@@ -22,56 +22,50 @@ final class ClusterStateTest extends FreeSpec
 
     "Sole" in {
       testJson[ClusterState](
-        Sole(ClusterNodeId("NODE-ID")),
+        Sole(Uri("http://ACTIVE")),
         json"""{
           "TYPE": "Sole",
-          "activeNodeId": "NODE-ID"
+          "activeUri": "http://ACTIVE"
         }""")
     }
 
     "AwaitingAppointment" in {
       testJson[ClusterState](
-        AwaitingAppointment(ClusterNodeId("ACTIVE"), Uri("http://A"), ClusterNodeId("PASSIVE")),
+        AwaitingAppointment(Uri("http://ACTIVE"), Uri("http://PASSIVE")),
           json"""{
             "TYPE": "AwaitingAppointment",
-            "activeNodeId": "ACTIVE",
-            "activeUri": "http://A",
-            "passiveNodeId": "PASSIVE"
+            "activeUri": "http://ACTIVE",
+            "passiveUri": "http://PASSIVE"
           }""")
     }
 
     "AwaitingFollower" in {
       testJson[ClusterState](
-        AwaitingFollower(ClusterNodeId("ACTIVE"), ClusterNodeId("PASSIVE"), Uri("http://B")),
+        AwaitingFollower(Uri("http://ACTIVE"), Uri("http://PASSIVE")),
         json"""{
           "TYPE": "AwaitingFollower",
-          "activeNodeId": "ACTIVE",
-          "passiveNodeId": "PASSIVE",
-          "passiveUri": "http://B"
+          "activeUri": "http://ACTIVE",
+          "passiveUri": "http://PASSIVE"
         }""")
     }
 
     "PreparedToBeCoupled" in {
       testJson[ClusterState](
-        PreparedToBeCoupled(ClusterNodeId("ACTIVE"), Uri("http://A"), ClusterNodeId("PASSIVE"), Uri("http://B")),
+        PreparedToBeCoupled(Uri("http://ACTIVE"), Uri("http://PASSIVE")),
         json"""{
           "TYPE": "PreparedToBeCoupled",
-          "activeNodeId": "ACTIVE",
-          "activeUri": "http://A",
-          "passiveNodeId": "PASSIVE",
-          "passiveUri": "http://B"
+          "activeUri": "http://ACTIVE",
+          "passiveUri": "http://PASSIVE"
         }""")
     }
 
     "Coupled" in {
       testJson[ClusterState](
-        Coupled(ClusterNodeId("ACTIVE"), Uri("http://A"), ClusterNodeId("PASSIVE"), Uri("http://B")),
+        Coupled(Uri("http://ACTIVE"), Uri("http://PASSIVE")),
         json"""{
           "TYPE": "Coupled",
-          "activeNodeId": "ACTIVE",
-          "activeUri": "http://A",
-          "passiveNodeId": "PASSIVE",
-          "passiveUri": "http://B"
+          "activeUri": "http://ACTIVE",
+          "passiveUri": "http://PASSIVE"
         }""")
     }
   }

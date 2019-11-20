@@ -7,7 +7,6 @@ import com.sos.jobscheduler.base.problem.Checked.implicits.{checkedJsonDecoder, 
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.data.cluster.ClusterNodeId
 import com.sos.jobscheduler.data.command.{CancelMode, CommonCommand}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.crypt.SignedString
@@ -110,12 +109,12 @@ object MasterCommand extends CommonCommand.Companion
     override def toString = s"ReplaceRepo($versionId, ${objects.size} objects)"
   }
 
-  final case class ClusterAppointBackup(nodeId: ClusterNodeId, uri: Uri)
+  final case class ClusterAppointBackup(activeUri: Uri, backupUri: Uri)
   extends MasterCommand {
     type Response = Response.Accepted
   }
 
-  final case class ClusterPassiveFollows(passiveNodeId: ClusterNodeId, activeUri: Uri)
+  final case class ClusterPassiveFollows(followedUri: Uri, followingUri: Uri)
   extends MasterCommand {
     type Response = Response.Accepted
   }

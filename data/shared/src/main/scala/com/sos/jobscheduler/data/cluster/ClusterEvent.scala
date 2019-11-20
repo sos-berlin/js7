@@ -9,13 +9,13 @@ sealed trait ClusterEvent extends NoKeyEvent
 
 object ClusterEvent
 {
-  final case class BecameSole(activeNodeId: ClusterNodeId)
+  final case class BecameSole(activeUri: Uri)
   extends ClusterEvent
 
-  final case class BackupNodeAppointed(nodeId: ClusterNodeId, uri: Uri)
+  final case class BackupNodeAppointed(uri: Uri)
   extends ClusterEvent
 
-  final case class FollowingStarted(passiveNodeId: ClusterNodeId, activeUri: Uri)
+  final case class FollowingStarted(followingUri: Uri)
   extends ClusterEvent
 
   sealed trait ClusterCoupled
@@ -23,7 +23,7 @@ object ClusterEvent
   case object ClusterCoupled
   extends ClusterCoupled
 
-  final case class SwitchedOver(nodeId: ClusterNodeId)
+  final case class SwitchedOver(uri: Uri)
   extends ClusterEvent
 
   //final case class Decoupled(passiveNodeId: ClusterNodeId) extends ClusterEvent

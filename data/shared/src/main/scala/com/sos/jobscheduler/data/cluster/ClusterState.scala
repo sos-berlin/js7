@@ -23,44 +23,40 @@ extends JournaledState[ClusterState, ClusterEvent]
       eventNotApplicable(keyedEvent)
     else
       (this, event) match {
-        case (Empty, BecameSole(activeNodeId)) =>
-          Right(Sole(activeNodeId))
+        case (Empty, BecameSole(activeUri)) =>
+          Right(Sole(activeUri))
 
-        case (Sole(nodeId), BackupNodeAppointed(passiveNodeId, passiveUri)) if nodeId != passiveNodeId =>
-          Right(AwaitingFollower(nodeId, passiveNodeId, passiveUri))
+        case (Sole(activeUri), BackupNodeAppointed(passiveUri)) if activeUri != passiveUri =>
+          Right(AwaitingFollower(activeUri, passiveUri))
 
-        case (Sole(nodeId), FollowingStarted(followingNodeId, activeUri)) if nodeId != followingNodeId =>
-          Right(AwaitingAppointment(nodeId, activeUri, followingNodeId))
+        case (Sole(activeUri), FollowingStarted(followingUri)) if activeUri != followingUri =>
+          Right(AwaitingAppointment(activeUri, followingUri))
 
-        case (AwaitingFollower(activeNodeId, appointedNodeId, appointedUri), FollowingStarted(followingNodeId, activeUri))
-          if appointedNodeId == followingNodeId =>
-            ensureDifferentUris(activeUri, appointedUri, event) >>
-              Right(PreparedToBeCoupled(activeNodeId, activeUri, appointedNodeId, appointedUri))
+        case (AwaitingFollower(activeUri, appointedUri), FollowingStarted(followingUri)) if appointedUri == followingUri =>
+          ensureDifferentUris(activeUri, appointedUri, event) >>
+            Right(PreparedToBeCoupled(activeUri, appointedUri))
 
-        case (AwaitingAppointment(activeNodeId, activeUri, followingNodeId), BackupNodeAppointed(appointedNodeId, appointedUri))
-          if followingNodeId == appointedNodeId =>
-            ensureDifferentUris(activeUri, appointedUri, event) >>
-              Right(PreparedToBeCoupled(activeNodeId, activeUri, appointedNodeId, appointedUri))
+        case (AwaitingAppointment(activeUri, followingUri), BackupNodeAppointed(appointedUri)) if followingUri == appointedUri =>
+          ensureDifferentUris(activeUri, appointedUri, event) >>
+            Right(PreparedToBeCoupled(activeUri, appointedUri))
 
-        case (PreparedToBeCoupled(activeNodeId, activeUri, passiveNodeId, passiveUri), ClusterCoupled) =>
-          Right(Coupled(activeNodeId, activeUri, passiveNodeId, passiveUri))
+        case (PreparedToBeCoupled(activeUri, passiveUri), ClusterCoupled) =>
+          Right(Coupled(activeUri, passiveUri))
 
-        case (state: Coupled, SwitchedOver(nodeId)) if state.passiveNodeId == nodeId =>
+        case (state: Coupled, SwitchedOver(uri)) if state.passiveUri == uri =>
           Right(Decoupled(
-            activeNodeId = nodeId, activeUri = state.passiveUri,
-            passiveNodeId = state.activeNodeId, passiveUri = state.activeUri))
+            activeUri = uri,
+            passiveUri = state.activeUri))
 
-        case (state: Decoupled, FollowingStarted(followingNodeId, activeUri))
-          if followingNodeId == state.passiveNodeId && activeUri == state.activeUri =>
-            Right(PreparedToBeCoupled(
-              activeNodeId = state.activeNodeId, activeUri = state.activeUri,
-              passiveNodeId = state.passiveNodeId, passiveUri = state.passiveUri))
+        case (state: Decoupled, FollowingStarted(followingUri)) if followingUri == state.passiveUri =>
+          Right(PreparedToBeCoupled(
+            activeUri = state.activeUri,
+            passiveUri = state.passiveUri))
 
-        case (state: Decoupled, FollowingStarted(followingNodeId, activeUri))
-          if followingNodeId == state.activeNodeId && activeUri == state.activeUri =>
-            Right(PreparedToBeCoupled(
-              activeNodeId = state.passiveNodeId, activeUri = state.passiveUri,
-              passiveNodeId = state.activeNodeId, passiveUri = state.activeUri))
+        case (state: Decoupled, FollowingStarted(followingUri)) if followingUri == state.activeUri =>
+          Right(PreparedToBeCoupled(
+            activeUri = state.passiveUri,
+            passiveUri = state.activeUri))
 
         case (_, keyedEvent) => eventNotApplicable(keyedEvent)
       }
@@ -72,9 +68,9 @@ extends JournaledState[ClusterState, ClusterEvent]
   def toSnapshotObservable =
     Observable.fromIterable((this != Empty) ? ClusterStateSnapshot(this))
 
-  def isActive(nodeId: ClusterNodeId): Boolean
+  def isActive(uri: Uri): Boolean
 
-  def isTheFollowingNode(nodeId: ClusterNodeId) = false
+  def isTheFollowingNode(uri: Uri) = false
 }
 
 object ClusterState
@@ -84,49 +80,48 @@ object ClusterState
   /** Cluster has not been initialized.
     * Like Sole but the NodeId is unknown. */
   case object Empty extends ClusterState {
-    def isActive(nodeId: ClusterNodeId) = false
+    def isActive(uri: Uri) = false
   }
 
   sealed trait HasActiveNode extends ClusterState {
-    def activeNodeId: ClusterNodeId
-    def isActive(nodeId: ClusterNodeId) = nodeId == activeNodeId
+    def activeUri: Uri
+    def isActive(uri: Uri) = uri == activeUri
   }
   //object HasActiveNode {
-  //  def unapply(state: ClusterState): Option[ClusterNodeId] =
+  //  def unapply(state: ClusterState): Option[Uri] =
   //    state match {
-  //      case state: HasActiveNode => Some(state.activeNodeId)
+  //      case state: HasActiveNode => Some(state.activeUri)
   //      case _ => None
   //    }
   //}
 
   sealed trait HasPassiveNode extends ClusterState {
-    def passiveNodeId: ClusterNodeId
+    def passiveUri: Uri
   }
 
   /** Sole node of the cluster.
     * Node is active without standby node. */
-  final case class Sole(activeNodeId: ClusterNodeId)
+  final case class Sole(activeUri: Uri)
   extends HasActiveNode
 
   /** A passive node follows the active node, but it is not yet appointment.
     * The URI of the following (passive) node is still unknown. */
-  final case class AwaitingAppointment(activeNodeId: ClusterNodeId, activeUri: Uri, passiveNodeId: ClusterNodeId)
+  final case class AwaitingAppointment(activeUri: Uri, passiveUri: Uri)
   extends HasActiveNode with HasPassiveNode
   {
-    assertThat(activeNodeId != passiveNodeId)
+    assertThat(activeUri != passiveUri)
   }
 
-  final case class AwaitingFollower(activeNodeId: ClusterNodeId, passiveNodeId: ClusterNodeId, passiveUri: Uri)
+  final case class AwaitingFollower(activeUri: Uri, passiveUri: Uri)
   extends HasActiveNode with HasPassiveNode
   {
-    assertThat(activeNodeId != passiveNodeId)
+    assertThat(activeUri != passiveUri)
   }
 
   /** Intermediate state only which is immediately followed by transition ClusterEvent.ClusterCoupled -> Coupled. */
-  final case class PreparedToBeCoupled(activeNodeId: ClusterNodeId, activeUri: Uri, passiveNodeId: ClusterNodeId, passiveUri: Uri)
+  final case class PreparedToBeCoupled(activeUri: Uri, passiveUri: Uri)
   extends HasActiveNode with HasPassiveNode
   {
-    assertThat(activeNodeId != passiveNodeId)
     assertThat(activeUri != passiveUri)
   }
 
@@ -137,19 +132,17 @@ object ClusterState
   }
 
   /** An active node is coupled with a passive node. */
-  final case class Coupled(activeNodeId: ClusterNodeId, activeUri: Uri, passiveNodeId: ClusterNodeId, passiveUri: Uri)
+  final case class Coupled(activeUri: Uri, passiveUri: Uri)
   extends CoupledOrDecoupled
   {
-    assertThat(activeNodeId != passiveNodeId)
     assertThat(activeUri != passiveUri)
 
-    override def isTheFollowingNode(nodeId: ClusterNodeId) = nodeId == passiveNodeId
+    override def isTheFollowingNode(uri: Uri) = uri == passiveUri
   }
 
-  final case class Decoupled(activeNodeId: ClusterNodeId, activeUri: Uri, passiveNodeId: ClusterNodeId, passiveUri: Uri)
+  final case class Decoupled(activeUri: Uri, passiveUri: Uri)
   extends CoupledOrDecoupled
   {
-    assertThat(activeNodeId != passiveNodeId)
     assertThat(activeUri != passiveUri)
   }
 

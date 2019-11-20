@@ -3,7 +3,6 @@ package com.sos.jobscheduler.master.data
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.cluster.ClusterNodeId
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.crypt.{GenericSignature, SignedString}
@@ -17,11 +16,11 @@ import org.scalatest.FreeSpec
 final class MasterCommandTest extends FreeSpec
 {
   "ClusterAppointBackup" in {
-    testJson[MasterCommand](ClusterAppointBackup(ClusterNodeId("NODE-ID"), Uri("http://example.com")),
+    testJson[MasterCommand](ClusterAppointBackup(Uri("http://ACTIVE"), Uri("http://BACKUP")),
       json"""{
         "TYPE": "ClusterAppointBackup",
-        "nodeId": "NODE-ID",
-        "uri": "http://example.com"
+        "activeUri": "http://ACTIVE",
+        "backupUri": "http://BACKUP"
       }""")
   }
 
@@ -87,11 +86,11 @@ final class MasterCommandTest extends FreeSpec
 
   "ClusterPassiveFollows" in {
     testJson[MasterCommand](
-      ClusterPassiveFollows(ClusterNodeId("NODE-ID"), Uri("http://example.com")),
+      ClusterPassiveFollows(Uri("http://ACTIVE"), Uri("http://FOLLOWING")),
       json"""{
         "TYPE": "ClusterPassiveFollows",
-        "passiveNodeId": "NODE-ID",
-        "activeUri": "http://example.com"
+        "followedUri": "http://ACTIVE",
+        "followingUri": "http://FOLLOWING"
       }""")
   }
 

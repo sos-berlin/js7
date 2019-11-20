@@ -24,6 +24,7 @@ import com.sos.jobscheduler.data.event.{Event, EventId, JournalEvent, JournalId,
 import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
 import com.sos.jobscheduler.master.cluster.PassiveClusterNode._
 import com.sos.jobscheduler.master.data.MasterCommand
+import com.sos.jobscheduler.master.data.MasterCommand.ClusterPassiveFollows
 import java.io.RandomAccessFile
 import java.nio.channels.FileChannel
 import java.nio.file.Files.move
@@ -37,6 +38,7 @@ import scala.concurrent.{Promise, TimeoutException}
 import scodec.bits.ByteVector
 
 final class PassiveClusterNode[S <: JournaledState[S, E], E <: Event] private(
+  ownUri: Uri,
   activeUri: Uri,
   journalMeta: JournalMeta,
   recovered: Recovered[S, E],
@@ -53,9 +55,10 @@ final class PassiveClusterNode[S <: JournaledState[S, E], E <: Event] private(
       }
       Resource.fromAutoCloseable(Task(AkkaHttpMasterApi(baseUri = activeUri.string)))
         .use(activeNodeApi =>
-          activeNodeApi.loginUntilReachable(clusterConf.userAndPassword, Iterator.continually(1.s/*TODO*/), onlyIfNotLoggedIn = true) >>
+          activeNodeApi.loginUntilReachable(clusterConf.userAndPassword, Iterator.continually(1.s/*TODO*/)) >>
             Task.parMap2(
-              activeNodeApi.executeCommand(MasterCommand.ClusterPassiveFollows(clusterConf.nodeId, activeUri)),   // TODO Retry until success
+              activeNodeApi.executeCommand(
+                ClusterPassiveFollows(followedUri = activeUri, followingUri = ownUri)),   // TODO Retry until success
               replicateJournalFiles(
                 continuation = recovered.recoveredJournalFile match {
                   case None => NoLocalJournal(recoveredClusterState)
@@ -83,7 +86,7 @@ final class PassiveClusterNode[S <: JournaledState[S, E], E <: Event] private(
     Task.tailRecM(continuation)(continuation =>
       replicateJournalFile(continuation, newStateBuilder, masterApi)
         .map(continuation =>
-            if (!continuation.clusterState.isActive(clusterConf.nodeId))
+            if (!continuation.clusterState.isActive(ownUri))
               Left(continuation)
             else
               Right((
@@ -190,7 +193,7 @@ final class PassiveClusterNode[S <: JournaledState[S, E], E <: Event] private(
           ()
         }
         .guarantee(Task { out.close() })
-        .takeWhileInclusive(_ => !builder.clusterState.isActive(clusterConf.nodeId))
+        .takeWhileInclusive(_ => !builder.clusterState.isActive(ownUri))
         .completedL
         .map { _ =>
           logger.debug(s"replicateJournalFile(${file.getFileName}) finished: " + builder.clusterState)
@@ -295,13 +298,14 @@ object PassiveClusterNode
     recoveredClusterState: ClusterState,
     recoveredState: S,
     getStatePromise: Promise[Task[S]],
+    ownUri: Uri,
     activeUri: Uri,
     journalMeta: JournalMeta,
     clusterConf: ClusterConf,
     actorSystem: ActorSystem)
     (implicit s: Scheduler)
   : Task[(ClusterState, ClusterFollowUp)] =
-    new PassiveClusterNode(activeUri, journalMeta, recovered, clusterConf)(actorSystem)
+    new PassiveClusterNode(ownUri, activeUri, journalMeta, recovered, clusterConf)(actorSystem)
       .run(recoveredClusterState, recoveredState, getStatePromise)
 
   private final class ServerTimeoutException extends TimeoutException("Journal web service timed out")

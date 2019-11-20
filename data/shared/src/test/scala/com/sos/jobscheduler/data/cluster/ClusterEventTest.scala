@@ -12,28 +12,26 @@ import org.scalatest.FreeSpec
 final class ClusterEventTest extends FreeSpec
 {
   "BecameSole" in {
-    testJson[ClusterEvent](BecameSole(ClusterNodeId("ACTIVE")),
+    testJson[ClusterEvent](BecameSole(Uri("http://ACTIVE")),
       json"""{
         "TYPE": "BecameSole",
-        "activeNodeId": "ACTIVE"
+        "activeUri": "http://ACTIVE"
       }""")
   }
 
   "BackupNodeAppointed" in {
-    testJson[ClusterEvent](BackupNodeAppointed(ClusterNodeId("PASSIVE"), Uri("http://example.com")),
+    testJson[ClusterEvent](BackupNodeAppointed(Uri("http://BACKUP")),
       json"""{
         "TYPE": "BackupNodeAppointed",
-        "nodeId": "PASSIVE",
-        "uri": "http://example.com"
+        "uri": "http://BACKUP"
       }""")
   }
 
   "FollowingStarted" in {
-    testJson[ClusterEvent](FollowingStarted(ClusterNodeId("FOLLOWER"), Uri("http://example.com")),
+    testJson[ClusterEvent](FollowingStarted(Uri("http://FOLLOWER")),
       json"""{
         "TYPE": "FollowingStarted",
-        "passiveNodeId": "FOLLOWER",
-        "activeUri": "http://example.com"
+        "followingUri": "http://FOLLOWER"
       }""")
   }
 
@@ -45,10 +43,10 @@ final class ClusterEventTest extends FreeSpec
   }
 
   "SwitchedOver" in {
-    testJson[ClusterEvent](SwitchedOver(ClusterNodeId("NODE-ID")),
+    testJson[ClusterEvent](SwitchedOver(Uri("http://NODE")),
       json"""{
         "TYPE": "SwitchedOver",
-        "nodeId": "NODE-ID"
+        "uri": "http://NODE"
       }""")
   }
 }

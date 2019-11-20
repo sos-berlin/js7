@@ -99,8 +99,6 @@ object MasterConfiguration
     name: String
   ): MasterConfiguration = {
     val dataDir = dataDirectory.toAbsolutePath
-    val stateDir = dataDir / "state"
-    if (!Files.exists(stateDir)) createDirectory(stateDir) // Side-effect for ClusterNodeId file !!!
     val configDir = configDirectory.toAbsolutePath
     val config = resolvedConfig(configDir, extraDefaultConfig)
     val masterId = MasterId(config.getString("jobscheduler.master.id"))
@@ -113,7 +111,7 @@ object MasterConfiguration
       timeZone = ZoneId.systemDefault,
       akkaAskTimeout = config.getDuration("jobscheduler.akka.ask-timeout").toFiniteDuration,
       journalConf = JournalConf.fromConfig(config),
-      clusterConf = ClusterConf.fromConfigAndFile(masterId.toUserId, config, stateDir / "ClusterNodeId").orThrow,
+      clusterConf = ClusterConf.fromConfigAndFile(masterId.toUserId, config).orThrow,
       name = name,
       config = config)
   }

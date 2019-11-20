@@ -13,11 +13,10 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.{findFreeTcpPort, findFreeTcpPorts}
+import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.listJournalFiles
 import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId}
-import com.sos.jobscheduler.data.common.Uri
+import com.sos.jobscheduler.data.cluster.ClusterEvent
 import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
@@ -92,18 +91,18 @@ final class MasterClusterTest extends FreeSpec
 
   "Cluster replicates journal files properly" in {
     val primaryHttpPort :: backupHttpPort :: Nil = findFreeTcpPorts(2)
-    withMasterAndBackup(primaryHttpPort) { (primary, backup) =>
+    withMasterAndBackup(primaryHttpPort, backupHttpPort) { (primary, backup) =>
       val primaryMaster = primary.startMaster(httpPort = Some(primaryHttpPort)) await 99.s
       primaryMaster.runOrder(FreshOrder(OrderId("🔶"), workflow.path))
 
       val backupMaster = backup.startMaster(httpPort = Some(backupHttpPort)) await 99.s
-      val backupNodeId = ClusterNodeId((backup.master.stateDir / "ClusterNodeId").contentString)  // TODO Web service
       primaryMaster.eventWatch.await[ClusterEvent.FollowingStarted]()
 
-      assert(!primaryMaster.journalActorState.isRequiringClusterAcknowledgement)
-      primaryMaster.executeCommandAsSystemUser(MasterCommand.ClusterAppointBackup(backupNodeId, Uri(backupMaster.localUri.toString)))
-        .await(99.s).orThrow
-      primaryMaster.eventWatch.await[ClusterEvent.BackupNodeAppointed]()
+      //assert(!primaryMaster.journalActorState.isRequiringClusterAcknowledgement)
+      //primaryMaster.executeCommandAsSystemUser(
+      //  ClusterAppointBackup(Uri(backupMaster.localUri.toString), Uri(primaryMaster.localUri.toString))
+      //).await(99.s).orThrow
+      //primaryMaster.eventWatch.await[ClusterEvent.BackupNodeAppointed]()
       primaryMaster.eventWatch.await[ClusterEvent.ClusterCoupled]()
       assert(primaryMaster.journalActorState.isRequiringClusterAcknowledgement)
 
@@ -154,14 +153,14 @@ final class MasterClusterTest extends FreeSpec
   }
 
   "Switchover" in {
-    val primaryHttpPort = findFreeTcpPort()
-    withMasterAndBackup(primaryHttpPort) { (primary, backup) =>
+    val primaryHttpPort :: backupHttpPort :: Nil = findFreeTcpPorts(2)
+    withMasterAndBackup(primaryHttpPort, backupHttpPort) { (primary, backup) =>
       var lastEventId = EventId.BeforeFirst
-      backup.runMaster() { backupMaster =>
-        val backupNodeId = ClusterNodeId((backup.master.stateDir / "ClusterNodeId").contentString)  // TODO Web service
+      backup.runMaster(httpPort = Some(backupHttpPort)) { backupMaster =>
         primary.runMaster(httpPort = Some(primaryHttpPort)) { primaryMaster =>
-          primaryMaster.executeCommandAsSystemUser(MasterCommand.ClusterAppointBackup(backupNodeId, Uri(backupMaster.localUri.toString)))
-            .await(99.s).orThrow
+          //primaryMaster.executeCommandAsSystemUser(
+          //  ClusterAppointBackup(activeUri = Uri(primaryMaster.localUri.toString), backupUri = Uri(backupMaster.localUri.toString))
+          //).await(99.s).orThrow
           primaryMaster.eventWatch.await[ClusterEvent.ClusterCoupled]()
           val orderId = OrderId("⭕")
           primaryMaster.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
@@ -171,7 +170,7 @@ final class MasterClusterTest extends FreeSpec
           // SWITCH OVER TO BACKUP
           primaryMaster.executeCommandAsSystemUser(MasterCommand.ClusterSwitchOver).await(99.s).orThrow
           primaryMaster.eventWatch.await[ClusterEvent.SwitchedOver]()
-          Try(primaryMaster.terminated.await(99.s)).failed foreach { t => logger.error(s"Master terminated. $t")}   // Erstmal beendet sich der Master nach SwitchOver
+          for (t <- Try(primaryMaster.terminated.await(99.s)).failed) logger.error(s"Master terminated. $t")   // Erstmal beendet sich der Master nach SwitchOver
 
           backupMaster.eventWatch.await[ClusterEvent.SwitchedOver]()
           lastEventId = backupMaster.eventWatch.await[OrderFinished](_.key == orderId).head.eventId
@@ -211,18 +210,23 @@ final class MasterClusterTest extends FreeSpec
     pending   // Test not written, beacuse this feature is provided for internal manual tests only
   }
 
-  private def withMasterAndBackup(primaryHttpPort: Int)(body: (DirectoryProvider, DirectoryProvider) => Unit): Unit =
+  private def withMasterAndBackup(primaryHttpPort: Int, backupHttpPort: Int)(body: (DirectoryProvider, DirectoryProvider) => Unit): Unit =
     withCloser { implicit closer =>
       val primary = new DirectoryProvider(agentRefPath :: Nil, workflow :: Nil, testName = Some("MasterClusterTest-Primary"),
-        masterConfig = ConfigFactory.parseString(
-          """jobscheduler.auth.users.Master.password = "plain:BACKUP-MASTER-PASSWORD"
-             jobscheduler.auth.users.TEST.password = "plain:TEST-PASSWORD"
-             jobscheduler.auth.cluster.password = "PRIMARY-MASTER-PASSWORD" """)
+        masterConfig = ConfigFactory.parseString(s"""
+          jobscheduler.master.cluster.this-node.role = Primary
+          jobscheduler.master.cluster.this-node.uri = "http://127.0.0.1:$primaryHttpPort"
+          jobscheduler.master.cluster.other-node.uri = "http://127.0.0.1:$backupHttpPort"
+          jobscheduler.auth.users.Master.password = "plain:BACKUP-MASTER-PASSWORD"
+          jobscheduler.auth.users.TEST.password = "plain:TEST-PASSWORD"
+          jobscheduler.auth.cluster.password = "PRIMARY-MASTER-PASSWORD" """)
       ).closeWithCloser
 
       val backup = new DirectoryProvider(Nil, Nil, testName = Some("MasterClusterTest-Backup"),
         masterConfig = ConfigFactory.parseString(s"""
-          jobscheduler.master.cluster.other-node-is-primary.uri = "http://127.0.0.1:$primaryHttpPort"
+          jobscheduler.master.cluster.this-node.role = Backup
+          jobscheduler.master.cluster.this-node.uri = "http://127.0.0.1:$backupHttpPort"
+          jobscheduler.master.cluster.other-node.uri = "http://127.0.0.1:$primaryHttpPort"
           jobscheduler.auth.users.Master.password = "plain:PRIMARY-MASTER-PASSWORD"
           jobscheduler.auth.cluster.password = "BACKUP-MASTER-PASSWORD" """)
       ).closeWithCloser

@@ -23,6 +23,7 @@ import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.Logger.ops._
+import com.sos.jobscheduler.common.scalautil.MonixUtils.ops.RichCheckedTask
 import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
 import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.core.common.ActorRegister
@@ -349,19 +350,23 @@ with MainJournalingActor[Event]
              masterMetaState = masterMetaState.copy(masterId = masterId, startedAt = startedAt)
            case _ =>
          }
-        self ! Internal.Ready
+        cluster.automaticallyAppointConfiguredBackupNode()
+          .materializeIntoChecked
+          .runToFuture
+          .map(Internal.Ready.apply)
+          .pipeTo(self)
       }
 
     case _ => stash()
   }
 
   private def becomingReady: Receive = {
-    case Internal.Ready =>
+    case Internal.Ready(Left(problem)) =>
+      logger.error(s"Appointment of configured cluster backup-node failed: $problem")
+      throw problem.throwable.appendCurrentStackTrace
+
+    case Internal.Ready(Right(Completed)) =>
       logger.info("Ready")
-      cluster.automaticallyAppointConfiguredBackupNode().runToFuture onComplete {
-        case Success(Right(Completed)) =>
-        case error => logger.error(s"Appointment of configured cluster backup-node failed: $error")
-      }
       become("Ready")(ready)
       unstashAll()
 
@@ -861,7 +866,7 @@ private[master] object MasterOrderKeeper
 
   private object Internal {
     final case class ClusterStarted(followUp: Try[ClusterFollowUp])
-    case object Ready
+    final case class Ready(outcome: Checked[Completed])
     case object AfterProceedEventsAdded
     case object StillShuttingDown extends DeadLetterSuppression
     case object StillSwitchingOver extends DeadLetterSuppression

@@ -16,8 +16,8 @@ import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.Recovered
 import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
 import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, ClusterCoupled, FollowingStarted, SwitchedOver}
-import com.sos.jobscheduler.data.cluster.ClusterState.{AwaitingAppointment, AwaitingFollower, Coupled, CoupledOrDecoupled, Decoupled, Empty}
-import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId, ClusterNodeRole, ClusterState}
+import com.sos.jobscheduler.data.cluster.ClusterState.{AwaitingAppointment, AwaitingFollower, Coupled, CoupledOrDecoupled, Decoupled, Empty, Sole}
+import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeRole, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest}
@@ -61,7 +61,7 @@ final class Cluster(
         persistence.start(clusterState)
         followUp
       })
-    .executeWithOptions(_.enableAutoCancelableRunLoops)
+      .executeWithOptions(_.enableAutoCancelableRunLoops)
 
   private def startCluster(
     recovered: Recovered[MasterState, Event],
@@ -70,113 +70,141 @@ final class Cluster(
     getStatePromise: Promise[Task[MasterState]])
   : Task[Checked[(ClusterState, ClusterFollowUp)]]
   =
-    recoveredClusterState match {
-      case Empty =>
-        conf.role match {
-          case _: ClusterNodeRole.Primary =>
-            Task { logger.info(s"Becoming the active primary cluster node still without backup") } >>
-            Task.pure(Right(recoveredClusterState -> ClusterFollowUp.BecomeActive(recovered)))
-          case ClusterNodeRole.Backup(activeUri) =>
-            Task { logger.info(s"Becoming the (still not following) backup cluster node for primary node at $activeUri") } >>
-            PassiveClusterNode.run[MasterState, Event](recovered, recoveredClusterState, recoveredState, getStatePromise, activeUri, journalMeta, conf, actorSystem)
-              .map(Right.apply)
+    (recoveredClusterState, conf.maybeOwnUri, conf.maybeRole) match {
+      case (Empty, _, None | Some(_: ClusterNodeRole.Primary)) =>
+        Task {
+          logger.info(s"Becoming the active primary cluster node still without backup")
+          Right(recoveredClusterState -> ClusterFollowUp.BecomeActive(recovered))
         }
 
-      case state if state.isActive(conf.nodeId) =>
+      case (Empty, Some(ownUri), Some(ClusterNodeRole.Backup(activeUri))) =>
+        Task { logger.info(s"Becoming the (still not following) backup cluster node '$ownUri' for primary node at $activeUri") } >>
+          PassiveClusterNode.run[MasterState, Event](recovered, recoveredClusterState, recoveredState, getStatePromise,
+            ownUri, activeUri, journalMeta, conf, actorSystem
+          ).map(Right.apply)
+
+      case (state, Some(ownUri), _) if state.isActive(ownUri) =>
         Task {
           state match {
-            case state: Coupled => logger.info(s"Becoming the active primary cluster node followed by the passive node ${state.passiveUri}")
-            case _ => logger.info("Becoming the active primary cluster node without following node")
+            case state: Coupled => logger.info(s"Becoming the active cluster node '$ownUri' followed by the passive node ${state.passiveUri}")
+            case _ => logger.info("Becoming the active cluster node without following node")
           }
-        } >>
-        Task { proceed(recoveredClusterState, recovered.eventId) } >>
-        Task.pure(Right(recoveredClusterState -> ClusterFollowUp.BecomeActive(recovered)))
+          proceed(recoveredClusterState, recovered.eventId)
+          Right(recoveredClusterState -> ClusterFollowUp.BecomeActive(recovered))
+        }
 
-      case state: CoupledOrDecoupled if state.passiveNodeId == conf.nodeId =>
+      case (state: CoupledOrDecoupled, Some(ownUri), _) if state.passiveUri == ownUri =>
         Task {
           logger.info(
-            if (state.isTheFollowingNode(conf.nodeId))
-              s"Becoming the following passive cluster node"
+            if (state.isTheFollowingNode(ownUri))
+              s"Becoming the following passive cluster node '$ownUri'"
             else
-              s"Becoming the still not following passive cluster node")
+              s"Becoming the still not following passive cluster node '$ownUri'")
         } >>
-        PassiveClusterNode.run[MasterState, Event](recovered, recoveredClusterState, recoveredState, getStatePromise,
-          state.activeUri, journalMeta, conf, actorSystem)
-          .map(Right.apply)
+          PassiveClusterNode.run[MasterState, Event](recovered, recoveredClusterState, recoveredState, getStatePromise,
+            ownUri, state.activeUri, journalMeta, conf, actorSystem)
+            .map(Right.apply)
 
-      case _ =>
-        Task.pure(Left(Problem.pure(s"This cluster node's ClusterNodeId(${conf.nodeId}) does not match state $recoveredClusterState")))
+      case (_, None, _) =>
+        Task.pure(Left(Problem.pure("This cluster node's own URI is unknown")))
+
+      case (_, Some(ownUri), _) =>
+        Task.pure(Left(Problem.pure(s"This cluster node's URI '$ownUri' does not match state $recoveredClusterState")))
     }
 
   def automaticallyAppointConfiguredBackupNode(): Task[Checked[Completed]] =
-    conf.role match {
-      case ClusterNodeRole.Primary(Some(nodeId), Some(uri)) =>
+    conf.maybeRole match {
+      case Some(ClusterNodeRole.Primary(Some(backupUri))) =>
         persistence.persistTransaction(NoKey) {
           case state @ (ClusterState.Empty | _: ClusterState.Sole | _: ClusterState.AwaitingAppointment) =>
-            Right(becomeSoleIfEmpty(state) ::: BackupNodeAppointed(nodeId, uri) :: Nil)
+            for (events <- becomeSoleIfEmpty(state)) yield
+              events ::: BackupNodeAppointed(backupUri) :: Nil
           case _ =>
             Right(Nil)
         }.map(_.toCompleted)
       case _ => Task.pure(Right(Completed))
     }
 
-  def appointBackupNode(nodeId: ClusterNodeId, uri: Uri): Task[Checked[Completed]] =
-    if (nodeId == conf.nodeId)
-      Task.pure(Left(Problem(s"A cluster node can not be appointed to itself")))
-    else
-      persistence.persistTransaction(NoKey)(state =>
-        Right(becomeSoleIfEmpty(state) :::
-          BackupNodeAppointed(nodeId, uri) ::
-          (state match {
-            case _: AwaitingAppointment => ClusterCoupled :: Nil
-            case _ => Nil
-          }))
-      ).map(_.map { case (stampedEvents, state) =>
-        proceed(state, stampedEvents.last.eventId)
-        Completed
-      })
+  def appointBackupNode(activeUri: Uri, backupUri: Uri): Task[Checked[Completed]] =
+    conf.maybeOwnUri match {
+      case None =>
+        Task.pure(Left(Problem.pure("Missing this node's own URI")))
+      case Some(ownUri) =>
+        if (backupUri == ownUri)
+          Task.pure(Left(Problem(s"A cluster node can not be appointed to itself")))
+        else
+          persistence.persistTransaction(NoKey) {
+            case state @ (Empty | _: Sole | AwaitingAppointment(`ownUri`, `backupUri`) /*| AwaitingFollower(`ownUri`, `backupUri`)*/)
+              if activeUri == ownUri =>
+                for (events <- becomeSoleIfEmpty(state)) yield
+                  events ::: BackupNodeAppointed(backupUri) ::
+                    (state match {
+                      case AwaitingAppointment(`ownUri`, `backupUri`) => ClusterCoupled :: Nil
+                      case _ => Nil
+                    })
+            case state =>
+              Left(Problem(s"A backup node can not be appointed while cluster is in state $state"))
+          }.map(_.map { case (stampedEvents, state) =>
+            proceed(state, stampedEvents.last.eventId)
+            Completed
+          })
+    }
 
-  def passiveNodesFollows(passiveNodeId: ClusterNodeId, activeUri: Uri): Task[Checked[Completed]] =
-    persistence.persistTransaction(NoKey)(state =>
-      Right(state match {
-        case _: Coupled =>
-          Nil
-        case _: AwaitingFollower | _: Decoupled =>
-          FollowingStarted(passiveNodeId, activeUri) :: ClusterCoupled :: Nil
-        case _ =>
-          becomeSoleIfEmpty(state) ::: FollowingStarted(passiveNodeId, activeUri) :: Nil
-      })
-    ).map(_.map { case (stampedEvents, state) =>
-      for (stamped <- stampedEvents.lastOption) proceed(state, stamped.eventId)
-      Completed
-    })
+  def passiveNodesFollows(followedUri: Uri, followingUri: Uri): Task[Checked[Completed]] =
+    conf.maybeOwnUri match {
+      case None =>
+        Task.pure(Left(Problem.pure("Missing this node's own URI")))
+      case Some(ownUri) =>
+        persistence.persistTransaction(NoKey) {
+          case _: Coupled =>
+            Right(Nil)
+          case state @ (Empty | Sole(`ownUri`) | AwaitingFollower(`ownUri`, `followingUri`)) if ownUri == followedUri =>
+            for (events <- becomeSoleIfEmpty(state)) yield
+              events ::: FollowingStarted(followingUri) ::
+                (state match {
+                  case AwaitingFollower(`ownUri`, `followingUri`) => ClusterCoupled :: Nil
+                  case _ => Nil
+                })
+          case AwaitingFollower(`ownUri`, `followingUri`) | Decoupled(`ownUri`, `followingUri`) if ownUri == followedUri =>
+            Right(FollowingStarted(followingUri) :: ClusterCoupled :: Nil)
+          case state =>
+            Left(Problem.pure(s"Following cluster node '$followingUri' ignored due to inappropriate cluster state $state"))
+        }.map(_.map { case (stampedEvents, state) =>
+          for (stamped <- stampedEvents.lastOption) proceed(state, stamped.eventId)
+          Completed
+        })
+    }
 
-  private def becomeSoleIfEmpty(state: ClusterState): List[BecameSole] =
+  private def becomeSoleIfEmpty(state: ClusterState): Checked[List[BecameSole]] =
     state match {
-      case Empty => BecameSole(conf.nodeId) :: Nil
-      case _ => Nil
+      case Empty =>
+        conf.maybeOwnUri match {
+          case None => Left(Problem.pure("This cluster node's own URI is unknown"))
+          case Some(ownUri) => Right(BecameSole(ownUri) :: Nil)
+        }
+      case _ => Right(Nil)
     }
 
   def switchOver: Task[Checked[Completed]] =
     persistence.persistEvent[ClusterEvent](NoKey) {
-      case coupled: Coupled if coupled.activeNodeId == conf.nodeId =>
-        Right(SwitchedOver(coupled.passiveNodeId))
+      case coupled: Coupled if conf.maybeOwnUri contains coupled.activeUri =>
+        Right(SwitchedOver(coupled.passiveUri))
       case state =>
-        Left(Problem(s"Not switching over because Cluster is not in expected state Coupled(active=${conf.nodeId}): $state"))
+        Left(Problem(s"Not switching over because Cluster is not in expected state Coupled(active=${conf.maybeOwnUri.map(_.toString)}): $state"))
     }.map(_.map(_ => Completed))
 
   private def proceed(state: ClusterState, eventId: EventId): Unit =
     state match {
       case state: Coupled =>
         if (!fetchingEvents.getAndSet(true)) {
-          fetchingEventsFuture = fetchAndHandleAcknowledgedEventIds(state.passiveNodeId, state.passiveUri, after = eventId)
+          fetchingEventsFuture = fetchAndHandleAcknowledgedEventIds(state.passiveUri, after = eventId)
             .executeWithOptions(_.enableAutoCancelableRunLoops)
             .runToFuture
         }
       case _ =>
     }
 
-  private def fetchAndHandleAcknowledgedEventIds(nodeId: ClusterNodeId, uri: Uri, after: EventId): Task[Completed] =
+  private def fetchAndHandleAcknowledgedEventIds(uri: Uri, after: EventId): Task[Completed] =
     Task { logger.debug(s"fetchAndHandleAcknowledgedEventIds(after=$after)") } >>
       Resource.fromAutoCloseable(Task { AkkaHttpMasterApi(AkkaUri(uri.string))(actorSystem) })
         .use(api =>
@@ -213,7 +241,7 @@ final class Cluster(
           askAgent(a)
             .recover { case throwable =>
               logger.error(throwable.toStringWithCauses)  // We ignore the error
-              Set.empty                                             /GETq
+              Set.empty
             })
       .map(_.flatten)
       // TODO Timeout einbauen
@@ -221,7 +249,7 @@ final class Cluster(
         case Failure(throwable) =>
           logger.error(throwable.toStringWithCauses)  // Should not happen because we have recovered already
         case Success(nodeIds) =>
-          val me = nodeIds.count(_ == conf.nodeId)
+          val me = nodeIds.count(_ == conf.uri)
           val other = nodeIds.count(_ == otherNodeId)
           logger.info(s"$me out of ${votingAgentRefPaths.size} Agents say this ClusterNode is reachable, $other say the other node is reachable")
           if (isAbsoluteMajority(me)) {
