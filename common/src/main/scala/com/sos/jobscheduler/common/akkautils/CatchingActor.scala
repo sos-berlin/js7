@@ -2,9 +2,9 @@ package com.sos.jobscheduler.common.akkautils
 
 import akka.actor.SupervisorStrategy.Decider
 import akka.actor.{Actor, ActorRef, ActorRefFactory, Props, Terminated}
+import com.sos.jobscheduler.common.akkautils.Akkas._
 import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Try}
-import com.sos.jobscheduler.common.akkautils.Akkas._
 
 /**
   * Catches the exception of a failing top-level actor.
@@ -64,13 +64,13 @@ object CatchingActor {
     loggingEnabled: Boolean = false)
     (implicit actorRefFactory: ActorRefFactory)
   : (ActorRef, Future[A]) = {
-    val terminated = Promise[A]()
+    val stopped = Promise[A]()
     val catchingProps = Props {
-      new CatchingActor(terminated, props(terminated),
+      new CatchingActor(stopped, props(stopped),
         name = if (name.isEmpty) "catching" else s"$name-caught",
         decider, onStopped, loggingEnabled = loggingEnabled) }
     val a = if (name.nonEmpty) actorRefFactory.actorOf(catchingProps, name) else actorRefFactory.actorOf(catchingProps)
-    (a, terminated.future)
+    (a, stopped.future)
   }
 
   final class StoppedException(actorRef: ActorRef)

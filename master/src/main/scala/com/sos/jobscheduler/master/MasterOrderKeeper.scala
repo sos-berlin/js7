@@ -253,14 +253,14 @@ with MainJournalingActor[Event]
     case Input.Start(recovered) =>
       val state = recovered.recoveredState getOrElse MasterState.Undefined
       val getStatePromise = Promise[Task[MasterState]]()
-      val clusterFuture = cluster
+      val whenClusterStarted = cluster
         .start(recovered, state.clusterState, state, getStatePromise)
         .map(_.orThrow)
         .onCancelRaiseError(new StartingClusterCanceledException)
         .runToFuture
       val totalRunningSince = now - recovered.recoveredJournalFile.fold(Duration.Zero)(_.calculatedJournalHeader.totalRunningTime)
-      become("startingCluster")(startingCluster(clusterFuture, totalRunningSince, getStatePromise))
-      clusterFuture onComplete { tried =>
+      become("startingCluster")(startingCluster(whenClusterStarted, totalRunningSince, getStatePromise))
+      whenClusterStarted onComplete { tried =>
         self ! Internal.ClusterStarted(tried)
       }
 

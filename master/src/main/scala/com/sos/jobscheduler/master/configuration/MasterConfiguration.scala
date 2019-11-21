@@ -66,6 +66,8 @@ object MasterConfiguration
   ) = {
     val data = configAndData / "data"
     if (!Files.exists(data)) createDirectory(data)
+    val state = data / "state"
+    if (!Files.exists(state)) createDirectory(state)
     fromDirectories(
       configDirectory = configAndData / "config",
       dataDirectory = data,

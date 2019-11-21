@@ -34,9 +34,8 @@ final class Cluster(
   journalMeta: JournalMeta,
   persistence: JournaledStatePersistence[ClusterState, ClusterEvent],
   conf: ClusterConf,
-  journalActorAskTimeout: Timeout,
   actorSystem: ActorSystem)
-  (implicit s: Scheduler)
+  (implicit s: Scheduler, journalActorAskTimeout: Timeout)
 {
   private val journalActor = persistence.journalActor
 
@@ -212,8 +211,7 @@ final class Cluster(
             .whileBusyBuffer(OverflowStrategy.DropOld(bufferSize = 2))
             .mapEval(eventId =>
               Task.deferFuture {
-                (journalActor ? JournalActor.Input.FollowerAcknowledged(eventId = eventId))(journalActorAskTimeout)
-                  .mapTo[Completed]
+                (journalActor ? JournalActor.Input.FollowerAcknowledged(eventId = eventId)).mapTo[Completed]
               })
             .foldL)
 

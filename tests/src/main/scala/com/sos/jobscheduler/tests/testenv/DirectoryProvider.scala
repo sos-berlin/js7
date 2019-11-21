@@ -151,7 +151,7 @@ extends HasCloser
   : Task[RunningMaster]
   =
     Task.deferFuture(
-      RunningMaster(RunningMaster.newInjectorForTest(master.directory, module, config withFallback masterConfig,
+      RunningMaster.fromInjector(RunningMaster.newInjectorForTest(master.directory, module, config withFallback masterConfig,
         httpPort = httpPort, httpsPort = httpsPort, mutualHttps = mutualHttps, name = name)))
     .map { runningMaster =>
       if (!suppressRepo) {

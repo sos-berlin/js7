@@ -89,7 +89,7 @@ object TestDockerExample
         Log4j.shutdown()
       } .closeWithCloser
 
-      val master = RunningMaster(injector) await 99.s
+      val master = RunningMaster.fromInjector(injector) await 99.s
       //??? master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery(1.minute)).runToFuture.await(99.s).orThrow
       master.terminated await 365 * 24.h
       master.close()
