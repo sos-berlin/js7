@@ -5,6 +5,7 @@ import com.sos.jobscheduler.base.generic.GenericString
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections.implicits._
+import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.source.SourcePos
 import com.sos.jobscheduler.data.workflow.instructions.Fork._
@@ -23,7 +24,7 @@ extends Instruction
 {
   // TODO Fork.checked(..): Checked[Fork]
   for (dups <- branches.duplicateKeys(_.id))
-    throw DuplicatedBranchIdsInForkProblem(dups.keys.toImmutableSeq).throwable
+    throw DuplicatedBranchIdsInForkProblem(dups.keys.toImmutableSeq).throwable.appendCurrentStackTrace
   for (idAndScript <- branches) Fork.validateBranch(idAndScript).orThrow
 
   def withoutSourcePos = copy(

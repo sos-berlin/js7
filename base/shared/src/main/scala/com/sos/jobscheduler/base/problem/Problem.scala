@@ -81,8 +81,8 @@ object Problem
 
     final def throwable =
       cause match {
-        case Some(p: FromEagerThrowable) => new ProblemException(this, p.throwable)
-        case _ => new ProblemException(this)
+        case Some(p: FromEagerThrowable) => new ProblemException(this, p.throwable) with NoStackTrace
+        case _ => new ProblemException(this) with NoStackTrace
       }
 
     override final def withPrefix(prefix: String) = new Lazy(normalizePrefix(prefix) + toString)

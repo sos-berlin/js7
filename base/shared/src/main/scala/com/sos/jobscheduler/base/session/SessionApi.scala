@@ -79,15 +79,15 @@ trait SessionApi extends HasSessionToken
     sessionTokenRef.get
 
   def hasSession = sessionTokenRef.get.nonEmpty
+
+  private def logThrowable(throwable: Throwable): Unit = {
+    scribe.error(s"$toString: ${throwable.toStringWithCauses}")
+    scribe.debug(s"$toString: ${throwable.toString}", throwable)
+  }
 }
 
 object SessionApi
 {
-  private def logThrowable(throwable: Throwable): Unit = {
-    scribe.error(throwable.toStringWithCauses)
-    scribe.debug(throwable.toString, throwable)
-  }
-
   private def isTemporary(throwable: Throwable) =
     throwable match {
       case e: HttpClient.HttpException => e.isUnreachable

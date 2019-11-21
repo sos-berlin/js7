@@ -102,6 +102,8 @@ trait HttpMasterApi extends MasterApi with SessionApi
     implicit val x = MasterSnapshots.SnapshotJsonCodec
     httpClient.get[Stamped[Seq[Any]]](uris.snapshot.list)
   }
+
+  override def toString = s"HttpMasterApi($baseUriString)"
 }
 
 object HttpMasterApi {
