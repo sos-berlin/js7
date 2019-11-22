@@ -10,7 +10,7 @@ import com.sos.jobscheduler.base.auth.{SessionToken, SimpleUser, UserAndPassword
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
 import com.sos.jobscheduler.base.generic.{Completed, SecretString}
 import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.session.SessionApi
+import com.sos.jobscheduler.base.session.HttpSessionApi
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegment
@@ -384,8 +384,8 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
   private def requireAccessToUnprotected(client: AkkaHttpClient): Unit =
     client.get_[String](s"$localUri/unprotected") await 99.s shouldEqual "THE RESPONSE"
 
-  private def withSessionApi(headers: List[HttpHeader] = Nil)(body: SessionApi with AkkaHttpClient => Unit): Unit = {
-    val api = new SessionApi with AkkaHttpClient {
+  private def withSessionApi(headers: List[HttpHeader] = Nil)(body: HttpSessionApi with AkkaHttpClient => Unit): Unit = {
+    val api = new HttpSessionApi with AkkaHttpClient {
       def httpClient = this: AkkaHttpClient
       def sessionUri = s"$baseUri/session"
       val actorSystem = SessionRouteTest.this.actorSystem

@@ -5,6 +5,10 @@ import com.sos.jobscheduler.base.auth.SessionToken
 /**
   * @author Joacim Zschimmer
   */
-trait HasSessionToken {
+trait HasSessionToken
+{
   protected def sessionToken: Option[SessionToken]
+
+  final def hasSession: Boolean =
+    sessionToken.isDefined
 }

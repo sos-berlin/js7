@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.master.client
 
 import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.session.SessionApi
+import com.sos.jobscheduler.base.session.HttpSessionApi
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.web.HttpClient
 import com.sos.jobscheduler.data.agent.AgentRef
@@ -19,7 +19,7 @@ import scala.concurrent.duration._
 import scala.reflect.ClassTag
 import scodec.bits.ByteVector
 
-trait HttpMasterApi extends MasterApi with SessionApi
+trait HttpMasterApi extends MasterApi with HttpSessionApi
 {
   /** Host URI or empty for addressing base on "master/". */
   protected def baseUriString: String

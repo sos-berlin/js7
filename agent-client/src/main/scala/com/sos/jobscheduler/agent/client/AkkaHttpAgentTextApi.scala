@@ -5,7 +5,7 @@ import com.sos.jobscheduler.agent.client.AkkaHttpAgentTextApi._
 import com.sos.jobscheduler.agent.data.web.AgentUris
 import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
 import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.session.SessionApi
+import com.sos.jobscheduler.base.session.HttpSessionApi
 import com.sos.jobscheduler.common.akkahttp.https.{AkkaHttps, TrustStoreRef}
 import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
 import com.sos.jobscheduler.common.configutils.Configs.{ConvertibleConfig, parseConfigIfExists}
@@ -23,7 +23,7 @@ private[agent] final class AkkaHttpAgentTextApi(
   agentUri: String,
   protected val print: String => Unit,
   configDirectory: Option[Path] = None)
-extends HasCloser with ProvideActorSystem with TextApi with SessionApi with AkkaHttpClient {
+extends HasCloser with ProvideActorSystem with TextApi with HttpSessionApi with AkkaHttpClient {
 
   protected val config = ConfigFactory.empty
 

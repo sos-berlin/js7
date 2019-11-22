@@ -9,7 +9,7 @@ import com.sos.jobscheduler.agent.data.views.{AgentOverview, TaskOverview, TaskR
 import com.sos.jobscheduler.agent.data.web.AgentUris
 import com.sos.jobscheduler.agent.data.{AgentApi, AgentTaskId}
 import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.session.SessionApi
+import com.sos.jobscheduler.base.session.HttpSessionApi
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.akkahttp.https.AkkaHttps.loadHttpsConnectionContext
 import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
@@ -27,7 +27,7 @@ import scala.collection.immutable.Seq
  *
  * @author Joacim Zschimmer
  */
-trait AgentClient extends AgentApi with SessionApi with AkkaHttpClient
+trait AgentClient extends AgentApi with HttpSessionApi with AkkaHttpClient
 {
   protected def httpClient = this
 

@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.master.client
 
 import akka.http.scaladsl.model.Uri
-import com.sos.jobscheduler.base.session.SessionApi
+import com.sos.jobscheduler.base.session.HttpSessionApi
 import com.sos.jobscheduler.common.akkahttp.https.{AkkaHttps, TrustStoreRef}
 import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
 import com.sos.jobscheduler.common.configutils.Configs.parseConfigIfExists
@@ -19,7 +19,7 @@ private[master] final class AkkaHttpMasterTextApi(
   protected val baseUri: Uri,
   protected val print: String => Unit,
   configDirectory: Option[Path] = None)
-extends HasCloser with ProvideActorSystem with TextApi with SessionApi with AkkaHttpClient {
+extends HasCloser with ProvideActorSystem with TextApi with HttpSessionApi with AkkaHttpClient {
 
   protected val config = ConfigFactory.empty
 
