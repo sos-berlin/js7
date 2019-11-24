@@ -19,7 +19,6 @@ import scala.concurrent.duration._
 
 /** Logs in, couples and fetches objects from a (HTTP) stream, and recouples after error. */
 abstract class RecouplingStreamReader[@specialized(Long/*EventId or file position*/) I, V, Api <: SessionApi](
-  zeroIndex: I,
   toIndex: V => I,
   maybeUserAndPassword: Option[UserAndPassword],
   conf: RecouplingStreamReaderConf)
@@ -50,7 +49,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
     scribe.debug(s"observe($api)")
     if (inUse.getAndSet(true)) throw new IllegalStateException("RecouplingStreamReader can not be used concurrently")
     Observable.fromTask(decouple) >>
-      new ForApi(api).observeAgainAndAgain(after = after)
+      new ForApi(api, after).observeAgainAndAgain
         .guarantee {
           Task { inUse := false }
         }
@@ -80,20 +79,18 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
         }
     }
 
-  private final class ForApi(api: Api) {
-    @volatile private var lastIndex = zeroIndex
+  private final class ForApi(api: Api, initialAfter: I) {
+    @volatile private var lastIndex = initialAfter
 
-    def observeAgainAndAgain(after: I) : Observable[V] = {
-      lastIndex = after
-      Observable.tailRecM(lastIndex)(after =>
+    def observeAgainAndAgain: Observable[V] =
+      Observable.tailRecM(initialAfter)(after =>
         if (eof(after))
           Observable.pure(Right(Observable.empty))
         else
-          Observable.pure(Right(observe(after))) ++
+          Observable.pure(Right(observe(after).onErrorFallbackTo(Observable.empty))) ++
             (Observable.fromTask(pauseBeforeNextTry(conf.delay)) >>
               Observable.delay(Left(lastIndex)))
       ).flatten
-    }
 
     private def observe(after: I): Observable[V] =
       Observable.fromTask(tryEndlesslyToGetObservable(after))
@@ -183,7 +180,6 @@ object RecouplingStreamReader
   private val PauseGranularity = 500.ms
 
   def observe[@specialized(Long/*EventId or file position*/) I, V, Api <: SessionApi](
-    zeroIndex: I,
     toIndex: V => I,
     api: Api,
     maybeUserAndPassword: Option[UserAndPassword],
@@ -196,7 +192,7 @@ object RecouplingStreamReader
   = {
     val eof_ = eof
     val getObservable_ = getObservable
-    new RecouplingStreamReader[I, V, Api](zeroIndex, toIndex, maybeUserAndPassword, conf) {
+    new RecouplingStreamReader[I, V, Api](toIndex, maybeUserAndPassword, conf) {
       def getObservable(api: Api, after: I) = getObservable_(after)
       override def eof(index: I) = eof_(index)
     }.observe(api, after)

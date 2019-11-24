@@ -215,7 +215,6 @@ final class PassiveClusterNode[S <: JournaledState[S, E], E <: Event] private(
   : Observable[PositionAnd[ByteVector]] =
     RecouplingStreamReader
       .observe[Long/*file position*/, PositionAnd[ByteVector], HttpMasterApi](
-        zeroIndex = EventId.BeforeFirst,
         toIndex = _.position,
         api,
         maybeUserAndPassword = clusterConf.userAndPassword,

@@ -1,0 +1,55 @@
+package com.sos.jobscheduler.common.http
+
+import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
+import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.session.TestSessionApi
+import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.common.http.configuration.RecouplingStreamReaderConf
+import monix.eval.Task
+import monix.execution.Scheduler.Implicits.global
+import monix.reactive.Observable
+import org.scalatest.FreeSpec
+
+/**
+  * @author Joacim Zschimmer
+  */
+final class RecouplingStreamReaderTest extends FreeSpec
+{
+  "RecouplingStreamReader" in {
+    val userAndPassword = UserAndPassword(UserId("USER"), SecretString("PASSWORD"))
+    val api = new TestSessionApi(Some(userAndPassword))
+    val recouplingStreamReaderConf = RecouplingStreamReaderConf(timeout = 5.s, delay = 1.s)
+
+    @volatile var lastErrorAt = -2
+    def getUnderlyingObservable(after: Long) =
+      Task {
+        lastErrorAt match {
+          case -2 =>
+            lastErrorAt = -1
+            throw new IllegalArgumentException("GET-ERROR")
+          case -1 =>
+            lastErrorAt = 0
+            Left(Problem("TEST-PROBLEM"))
+          case _ =>
+            Right(Observable.fromIterator(Task(
+              Iterator.from(after.toInt + 1)
+                .map {
+                  case 3 if lastErrorAt != 3 =>
+                    lastErrorAt = 3
+                    throw new IllegalArgumentException("TEST-ERROR")
+                  case i => i
+                }.map(_.toString))))
+        }
+      }
+
+    val observable = RecouplingStreamReader.observe[Long, String, TestSessionApi](
+      toIndex = _.toLong,
+      api,
+      Some(userAndPassword),
+      recouplingStreamReaderConf,
+      after = 0L,
+      getObservable = getUnderlyingObservable)
+    assert(observable.take(10).toListL.runSyncUnsafe(99.s) == (1 to 10).map(_.toString).toList)
+  }
+}

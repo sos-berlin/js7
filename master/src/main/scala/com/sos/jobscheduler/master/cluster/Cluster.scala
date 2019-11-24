@@ -29,6 +29,7 @@ import monix.execution.atomic.AtomicBoolean
 import monix.execution.{CancelableFuture, Scheduler}
 import monix.reactive.{Observable, OverflowStrategy}
 import scala.concurrent.Promise
+import scala.util.{Failure, Success}
 
 final class Cluster(
   journalMeta: JournalMeta,
@@ -199,6 +200,12 @@ final class Cluster(
           fetchingEventsFuture = fetchAndHandleAcknowledgedEventIds(state.passiveUri, after = eventId)
             .executeWithOptions(_.enableAutoCancelableRunLoops)
             .runToFuture
+          fetchingEventsFuture.onComplete {
+            case Success(Completed) =>
+              logger.error("observeEventIds terminated")  // The proper way to stop this Observable is by canceling
+            case Failure(t) =>
+              logger.error(s"observeEventIds(${state.passiveUri}, after=$eventId, userAndPassword=${conf.userAndPassword}) failed with ${t.toStringWithCauses}", t)
+          }
         }
       case _ =>
     }
@@ -218,7 +225,6 @@ final class Cluster(
   private def observeEventIds(api: HttpMasterApi, after: EventId): Observable[EventId] =
     RecouplingStreamReader
       .observe[EventId, EventId, HttpMasterApi](
-        zeroIndex = EventId.BeforeFirst,
         toIndex = identity,
         api,
         conf.userAndPassword,
@@ -228,9 +234,6 @@ final class Cluster(
           AkkaHttpClient.liftProblem(
             api.eventIdObservable(
               EventRequest.singleClass[Event](after = after, timeout = Some(conf.recouplingStreamReader.timeout)))))
-      .doOnError(t => Task {
-        logger.debug(s"observeEventIds($api, after=$after, userAndPassword=${conf.userAndPassword}) failed with ${t.toStringWithCauses}", t)
-      })
   /*
   private def queryAgents(otherNodeId: ClusterNodeId): Unit =
     Task

@@ -74,7 +74,6 @@ with ReceiveLoggingActor.WithStash
   private var isTerminating = false
 
   private val eventFetcher = new RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], AgentClient](
-    zeroIndex = EventId.BeforeFirst,
     _.eventId, agentUserAndPassword, conf.recouplingStreamReader)
   {
     override protected def couple(eventId: EventId) =
