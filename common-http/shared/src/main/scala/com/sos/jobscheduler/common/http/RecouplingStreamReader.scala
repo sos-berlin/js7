@@ -7,6 +7,7 @@ import com.sos.jobscheduler.base.problem.Problems.InvalidSessionTokenProblem
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.session.SessionApi
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.http.RecouplingStreamReader._
 import com.sos.jobscheduler.common.http.configuration.RecouplingStreamReaderConf
 import monix.eval.Task
@@ -46,7 +47,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
 
   /** Observes endlessly, recoupling and repeating when needed. */
   final def observe(api: Api, after: I): Observable[V] = {
-    scribe.debug(s"observe($api)")
+    scribe.debug(s"$api: observe(after=$after)")
     if (inUse.getAndSet(true)) throw new IllegalStateException("RecouplingStreamReader can not be used concurrently")
     Observable.fromTask(decouple) >>
       new ForApi(api, after).observeAgainAndAgain
@@ -87,7 +88,14 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
         if (eof(after))
           Observable.pure(Right(Observable.empty))
         else
-          Observable.pure(Right(observe(after).onErrorFallbackTo(Observable.empty))) ++
+          Observable.pure(Right(
+            observe(after)
+              .onErrorHandleWith { t =>
+                scribe.warn(s"$api: ${t.toStringWithCauses}")
+                scribe.debug(s"$api: $t", t)
+                Observable.empty
+              }
+          )) ++
             (Observable.fromTask(pauseBeforeNextTry(conf.delay)) >>
               Observable.delay(Left(lastIndex)))
       ).flatten
@@ -110,10 +118,10 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
               case Left(problem) =>
                 (problem match {
                   case InvalidSessionTokenProblem =>
-                    scribe.debug(InvalidSessionTokenProblem.toString)
+                    scribe.debug(s"$api: $InvalidSessionTokenProblem")
                     decouple
                   case _ =>
-                    scribe.warn(problem.toString)
+                    scribe.warn(s"$api: $problem")
                     Task.unit
                 }) >>
                   pauseBeforeRecoupling >>
@@ -131,7 +139,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
             .timeoutOnSlowUpstream(conf.timeout + TimeoutReserve)   // throws UpstreamTimeoutException
             .onErrorRecoverWith {
               case t: UpstreamTimeoutException =>
-                scribe.debug(t.toString)
+                scribe.debug(s"$api: $t")
                 Observable.empty   // Let it look like end of stream
             }))
 

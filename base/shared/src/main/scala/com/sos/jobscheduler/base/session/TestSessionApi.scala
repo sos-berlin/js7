@@ -28,6 +28,8 @@ extends SessionApi.LoginUntilReachable
   def hasSession = sessionTokenRef.get.isDefined
 
   protected def isTemporaryLoginError(throwable: Throwable) = false
+
+  override def toString = "TestSessionApi"
 }
 
 object TestSessionApi
