@@ -75,7 +75,7 @@ final class RunningMaster private(
   val fileBasedApi: MainFileBasedApi,
   val orderApi: OrderApi.WithCommands,
   commandExecutor: MasterCommandExecutor,
-  terminated1: Future[Completed],
+  terminated1: Future[MasterTermination],
   closer: Closer,
   val injector: Injector)
 extends AutoCloseable
@@ -87,13 +87,13 @@ extends AutoCloseable
   @TestOnly
   lazy val actorSystem = injector.instance[ActorSystem]
 
-  val terminated: Future[Completed] =
+  val terminated: Future[MasterTermination] =
     for (o <- terminated1) yield {
       close()
       o
     }
 
-  def terminate(): Task[Completed] =
+  def terminate(): Task[MasterTermination] =
     if (terminated.isCompleted)  // Works only if previous termination has been completed
       Task.fromFuture(terminated)
     else
@@ -101,7 +101,7 @@ extends AutoCloseable
         case Some(Failure(t)) => Task.raiseError(t)
         case Some(Success(_)) =>
           logger.warn("Master terminate: Akka has already been terminated")
-          Task.pure(Completed)
+          Task.pure(MasterTermination.Terminate)
         case None =>
           logger.debug("terminate")
           for {
@@ -214,11 +214,14 @@ object RunningMaster
       // startingClusterFuture terminates when this cluster node becomes active or terminates
       // maybePassiveState accesses the current MasterState while this node is passive, otherwise it is None
       val (startingClusterFuture, maybePassiveState) = startCluster(journalActor, cluster, recovered)
-      val (orderKeeperStarted, orderKeeperStopped) = {
+      val (orderKeeperStarted, orderKeeperTerminated) = {
         val whenOrderKeeperRunning = startingClusterFuture.map(_.flatMap(
           startMasterOrderKeeper(journalActor, cluster, _)))
         (whenOrderKeeperRunning.map(_.map(_.actor)),
-          whenOrderKeeperRunning.flatMap(_.fold(Future.successful(Completed))(_.stopped)))
+          whenOrderKeeperRunning.flatMap {
+            case None => Future.successful(MasterTermination.Terminate)
+            case Some(o) => o.termination
+          })
       }
       val orderKeeperTask = Task.fromFuture(orderKeeperStarted) flatMap {
         case None => Task.raiseError(JobSchedulerIsShuttingDownProblem.throwable)
@@ -229,8 +232,8 @@ object RunningMaster
       val orderApi = new MainOrderApi(orderKeeperTask)
 
       val webServer = injector.instance[MasterWebServer.Factory].apply(fileBasedApi, orderApi, commandExecutor,
-        masterState =  // TODO Do not check for completed futures (future.value)
-          orderKeeperStarted.value match {
+        masterState =
+          orderKeeperStarted.value/*Future completed?*/ match {
             case None =>
               maybePassiveState match {
                 case None => Task.pure(Left(ClusterNodeIsStillStartingProblem))
@@ -242,8 +245,7 @@ object RunningMaster
               Task.deferFuture(
                 (actor ? MasterOrderKeeper.Command.GetState).mapTo[MasterState]
               ).map(Right.apply)
-          }
-          ,
+          },
         totalRunningTime = Task.pure(recovered.totalRunningTime + runningSince.elapsed),
         recovered.eventWatch
       ).closeWithCloser
@@ -252,7 +254,7 @@ object RunningMaster
         createSessionTokenFile(injector.instance[SessionRegister[SimpleSession]])
         masterConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", _ + "/master")
         new RunningMaster(recovered.eventWatch.strict, webServer, fileBasedApi, orderApi, commandExecutor,
-          orderKeeperStopped, closer, injector)
+          orderKeeperTerminated, closer, injector)
       }
     }
 
@@ -297,18 +299,18 @@ object RunningMaster
           None
 
         case ClusterFollowUp.BecomeActive(recovered: Recovered[MasterState @unchecked, Event]) =>
-          val stoppedPromise = Promise[Completed]()
+          val terminationPromise = Promise[MasterTermination]()
           val actor = actorSystem.actorOf(
             Props {
-              new MasterOrderKeeper(stoppedPromise, journalActor, cluster, recovered.eventWatch, masterConfiguration,
+              new MasterOrderKeeper(terminationPromise, journalActor, cluster, recovered.eventWatch, masterConfiguration,
                 GenericSignatureVerifier(masterConfiguration.config).orThrow)
             },
             "MasterOrderKeeper")
           actor ! MasterOrderKeeper.Input.Start(recovered)
-          val stopped = stoppedPromise.future
+          val termination = terminationPromise.future
             .andThen { case Failure(t) => logger.error(t.toStringWithCauses, t) }
             .andThen { case _ => closer.close() }  // Close automatically after termination
-          Some(OrderKeeperStarted(tag[MasterOrderKeeper](actor), stopped))
+          Some(OrderKeeperStarted(tag[MasterOrderKeeper](actor), termination))
       }
   }
 
@@ -356,5 +358,5 @@ object RunningMaster
       }).map(_.map((_: MasterCommand.Response).asInstanceOf[command.Response]))
   }
 
-  private case class OrderKeeperStarted(actor: ActorRef @@ MasterOrderKeeper, stopped: Future[Completed])
+  private case class OrderKeeperStarted(actor: ActorRef @@ MasterOrderKeeper, termination: Future[MasterTermination])
 }

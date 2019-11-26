@@ -30,12 +30,20 @@ final class MasterMain
     val masterConfiguration = MasterConfiguration.fromCommandLine(arguments)
     StartUp.logStartUp(masterConfiguration.configDirectory, Some(masterConfiguration.dataDirectory))
     logConfig(masterConfiguration.config)
-    autoClosing(RunningMaster(masterConfiguration).awaitInfinite) { master =>
-      import master.scheduler
-      withShutdownHooks(masterConfiguration.config, "MasterMain", onJavaShutdown(master, _)) {
-        master.terminated.awaitInfinite
+    var restart = false
+    do {
+      autoClosing(RunningMaster(masterConfiguration).awaitInfinite) { runningMaster =>
+        import runningMaster.scheduler
+        withShutdownHooks(masterConfiguration.config, "MasterMain", onJavaShutdown(runningMaster, _)) {
+          runningMaster.terminated.awaitInfinite match {
+            case MasterTermination.Terminate => restart = false
+            case MasterTermination.Restart =>
+              logger.info("------- JobScheduler Master restarts -------")
+              restart = true
+          }
+        }
       }
-    }
+    } while (restart)
     val msg = "JobScheduler Master terminates"
     logger.info(msg)
     println(msg)

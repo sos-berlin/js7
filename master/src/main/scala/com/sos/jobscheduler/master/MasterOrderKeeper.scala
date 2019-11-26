@@ -78,7 +78,7 @@ import shapeless.tag.@@
   * @author Joacim Zschimmer
   */
 final class MasterOrderKeeper(
-  stopped: Promise[Completed],
+  stopped: Promise[MasterTermination],
   protected val journalActor: ActorRef @@ JournalActor.type,
   cluster: Cluster,
   eventWatch: JournalEventWatch,
@@ -232,7 +232,7 @@ with MainJournalingActor[Event]
       switchover foreach { _.close() }
     } finally {
       logger.debug("Stopped" + shutdown.since.fold("")(o => s" (terminated in ${o.elapsed.pretty})"))
-      stopped.success(Completed)
+      stopped.success(if (switchover.isDefined) MasterTermination.Restart else MasterTermination.Terminate)
       super.postStop()
     }
 
@@ -533,6 +533,7 @@ with MainJournalingActor[Event]
             switchover = Some(so)
             promise.future onComplete {
               case Success(Right(Completed)) =>
+                // Keep switchover for postStop
               case other => // asynchronous
                 logger.error(s"ClusterSwitchOver: $other")
                 switchover = None
