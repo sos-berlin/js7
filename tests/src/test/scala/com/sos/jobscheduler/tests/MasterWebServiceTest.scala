@@ -24,6 +24,7 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
+import com.sos.jobscheduler.common.time.WaitForCondition
 import com.sos.jobscheduler.core.crypt.silly.{SillySignature, SillySigner}
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.{<-:, Event, EventId, KeyedEvent}
@@ -48,6 +49,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.immutable
 import scala.concurrent.duration._
+import scala.util.Try
 
 /**
   * @author Joacim Zschimmer
@@ -112,6 +114,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Ma
   "/master/api" in {
     val overview = httpClient.get[Json](s"$uri/master/api") await 99.s
     assert(overview.fieldOrThrow("version").stringOrThrow == BuildInfo.prettyVersion)
+    WaitForCondition.waitForCondition(2.s, 10.ms) { Try(overview.fieldOrThrow("startedAt")).isSuccess }
     assert(overview.fieldOrThrow("startedAt").longOrThrow >= testStartedAt.toEpochMilli)
     assert(overview.fieldOrThrow("startedAt").longOrThrow < Timestamp.parse("2100-01-01T00:00:00Z").toEpochMilli)
   }
