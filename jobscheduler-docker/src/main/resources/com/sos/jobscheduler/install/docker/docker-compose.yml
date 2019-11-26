@@ -25,6 +25,10 @@ services:
     volumes:
       - ./volumes/master/config:/var/opt/jobscheduler/master/config:ro
       - ./volumes/master/data:/var/opt/jobscheduler/master/data:delegated
+    depends_on:
+      - backup-master
+      - agent-1
+      - agent-2
     stop_grace_period: 30s
     restart: unless-stopped
 
