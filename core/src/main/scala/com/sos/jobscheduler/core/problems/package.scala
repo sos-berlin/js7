@@ -41,4 +41,8 @@ package object problems
   }
 
   final case object JobSchedulerIsShuttingDownProblem extends Problem.ArgumentlessCoded
+
+  final case object ClusterNodeIsStillStartingProblem extends Problem.ArgumentlessCoded
+
+  final case object ClusterNodeIsNotActiveProblem extends Problem.ArgumentlessCoded
 }

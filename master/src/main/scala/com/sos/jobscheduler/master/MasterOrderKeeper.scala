@@ -52,7 +52,7 @@ import com.sos.jobscheduler.data.workflow.position.WorkflowPosition
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
 import com.sos.jobscheduler.master.MasterOrderKeeper._
 import com.sos.jobscheduler.master.agent.{AgentDriver, AgentDriverConfiguration}
-import com.sos.jobscheduler.master.cluster.{Cluster, ClusterFollowUp}
+import com.sos.jobscheduler.master.cluster.Cluster
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.MasterSnapshots.MasterMetaState
@@ -71,7 +71,7 @@ import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NoStackTrace
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Success}
 import shapeless.tag.@@
 
 /**
@@ -251,54 +251,12 @@ with MainJournalingActor[Event]
 
   def receive = {
     case Input.Start(recovered) =>
-      val state = recovered.recoveredState getOrElse MasterState.Undefined
-      val getStatePromise = Promise[Task[MasterState]]()
-      val whenClusterStarted = cluster
-        .start(recovered, state.clusterState, state, getStatePromise)
-        .map(_.orThrow)
-        .onCancelRaiseError(new StartingClusterCanceledException)
-        .runToFuture
-      val totalRunningSince = now - recovered.recoveredJournalFile.fold(Duration.Zero)(_.calculatedJournalHeader.totalRunningTime)
-      become("startingCluster")(startingCluster(whenClusterStarted, totalRunningSince, getStatePromise))
-      whenClusterStarted onComplete { tried =>
-        self ! Internal.ClusterStarted(tried)
-      }
-
-    case _ => stash()
-  }
-
-  private def startingCluster(cancelableCluster: Cancelable, totalRunningSince: Deadline,
-    getStatePromise: Promise[Task[MasterState]])
-  : Receive = {
-    case Internal.ClusterStarted(Success(ClusterFollowUp.BecomeActive(recovered_))) =>
-      val recovered = recovered_.asInstanceOf[Recovered[MasterState, Event]]
       recover(recovered)
       become("Recovering")(recovering)
       unstashAll()
 
-    case Internal.ClusterStarted(Success(ClusterFollowUp.Terminate)) =>
-      context.stop(self)
-
-    case Internal.ClusterStarted(Failure(_: StartingClusterCanceledException)) =>
-      context.stop(self)
-
-    case Internal.ClusterStarted(Failure(throwable)) =>
-      throw throwable.appendCurrentStackTrace
-
     case Command.Execute(MasterCommand.ShutDown, _) =>
-      logger.debug("cancelableCluster.cancel()")
-      cancelableCluster.cancel()
-      sender() ! Right(MasterCommand.Response.Accepted)
-
-    case Command.GetTotalRunningTime =>
-      sender() ! totalRunningSince.elapsed
-
-    case Command.GetState =>
-      if (!getStatePromise.isCompleted) {
-        sender() ! Status.Failure(Problem("Cluster is still starting").throwable)
-      } else {
-        Task.fromFuture(getStatePromise.future).flatten.runToFuture pipeTo sender()
-      }
+      stash()
 
     case _ => stash()
   }
@@ -413,9 +371,6 @@ with MainJournalingActor[Event]
 
     case Command.GetState =>
       masterState.runToFuture pipeTo sender()
-
-    case Command.GetTotalRunningTime =>
-      sender() ! Try(recoveredJournalHeader.orThrow).fold(akka.actor.Status.Failure.apply, _.totalRunningTime)
 
     case AgentDriver.Output.RegisteredAtAgent(agentRunId)=>
       val agentEntry = agentRegister(sender())
@@ -856,7 +811,6 @@ private[master] object MasterOrderKeeper
     final case object GetOrders extends Command
     final case object GetOrderCount extends Command
     final case object GetState extends Command
-    final case object GetTotalRunningTime extends Command
   }
 
   sealed trait Reponse
@@ -865,7 +819,6 @@ private[master] object MasterOrderKeeper
   }
 
   private object Internal {
-    final case class ClusterStarted(followUp: Try[ClusterFollowUp])
     final case class Ready(outcome: Checked[Completed])
     case object AfterProceedEventsAdded
     case object StillShuttingDown extends DeadLetterSuppression

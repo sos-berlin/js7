@@ -37,8 +37,7 @@ final class MasterCommandExecutorTest extends FreeSpec
       }
   }
 
-  private val commandExecutor = new MasterCommandExecutor(otherCommandExecutor,
-    cluster = () => throw new NotImplementedError)
+  private val commandExecutor = new MasterCommandExecutor(otherCommandExecutor)
 
   "NoOperation" in {
     assert(commandExecutor.executeCommand(NoOperation, meta).await(99.seconds) == Right(Response.Accepted))

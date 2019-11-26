@@ -28,7 +28,6 @@ import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean
 import monix.execution.{CancelableFuture, Scheduler}
 import monix.reactive.{Observable, OverflowStrategy}
-import scala.concurrent.Promise
 import scala.util.{Failure, Success}
 
 final class Cluster(
@@ -40,7 +39,6 @@ final class Cluster(
 {
   private val journalActor = persistence.journalActor
 
-  // Mutable state !!!
   private val fetchingEvents = AtomicBoolean(false)
   @volatile
   private var fetchingEventsFuture: CancelableFuture[Completed] = null
@@ -53,63 +51,56 @@ final class Cluster(
   def start(
     recovered: Recovered[MasterState, Event],
     recoveredClusterState: ClusterState,
-    recoveredState: MasterState,
-    getStatePromise: Promise[Task[MasterState]])
-  : Task[Checked[ClusterFollowUp]] =
-    startCluster(recovered, recoveredClusterState, recoveredState, getStatePromise)
+    recoveredState: MasterState)
+  : (Task[Checked[ClusterFollowUp[MasterState, Event]]], Option[Task[MasterState]]) = {
+    val (followUp, maybePassiveState) = startCluster(recovered, recoveredClusterState, recoveredState)
+    val preparedStart = followUp
       .map(_.map { case (clusterState, followUp) =>
         persistence.start(clusterState)
         followUp
       })
       .executeWithOptions(_.enableAutoCancelableRunLoops)
+    (preparedStart, maybePassiveState)
+  }
 
   private def startCluster(
     recovered: Recovered[MasterState, Event],
     recoveredClusterState: ClusterState,
-    recoveredState: MasterState,
-    getStatePromise: Promise[Task[MasterState]])
-  : Task[Checked[(ClusterState, ClusterFollowUp)]]
+    recoveredState: MasterState)
+  : (Task[Checked[(ClusterState, ClusterFollowUp[MasterState, Event])]], Option[Task[MasterState]])
   =
     (recoveredClusterState, conf.maybeOwnUri, conf.maybeRole) match {
       case (Empty, _, None | Some(_: ClusterNodeRole.Primary)) =>
-        Task {
-          logger.info(s"Becoming the active primary cluster node still without backup")
-          Right(recoveredClusterState -> ClusterFollowUp.BecomeActive(recovered))
-        }
+        logger.info(s"Becoming the active primary cluster node still without backup")
+        Task.pure(Right(recoveredClusterState -> ClusterFollowUp.BecomeActive(recovered))) -> None
 
       case (Empty, Some(ownUri), Some(ClusterNodeRole.Backup(activeUri))) =>
-        Task { logger.info(s"Becoming the (still not following) backup cluster node '$ownUri' for primary node at $activeUri") } >>
-          PassiveClusterNode.run[MasterState, Event](recovered, recoveredClusterState, recoveredState, getStatePromise,
-            ownUri, activeUri, journalMeta, conf, actorSystem
-          ).map(Right.apply)
+        logger.info(s"Becoming the (still not following) backup cluster node '$ownUri' for primary node at $activeUri")
+        val passive = new PassiveClusterNode(ownUri, activeUri, journalMeta, recovered, conf)(actorSystem)
+        passive.run(recoveredClusterState, recoveredState).map(Right.apply) -> Some(passive.state)
 
       case (state, Some(ownUri), _) if state.isActive(ownUri) =>
-        Task {
-          state match {
-            case state: Coupled => logger.info(s"Becoming the active cluster node '$ownUri' followed by the passive node ${state.passiveUri}")
-            case _ => logger.info("Becoming the active cluster node without following node")
-          }
-          proceed(recoveredClusterState, recovered.eventId)
-          Right(recoveredClusterState -> ClusterFollowUp.BecomeActive(recovered))
+        state match {
+          case state: Coupled => logger.info(s"Becoming the active cluster node '$ownUri' followed by the passive node ${state.passiveUri}")
+          case _ => logger.info("Becoming the active cluster node without following node")
         }
+        proceed(recoveredClusterState, recovered.eventId)
+        Task.pure(Right(recoveredClusterState -> ClusterFollowUp.BecomeActive(recovered))) -> None
 
       case (state: CoupledOrDecoupled, Some(ownUri), _) if state.passiveUri == ownUri =>
-        Task {
-          logger.info(
-            if (state.isTheFollowingNode(ownUri))
-              s"Becoming the following passive cluster node '$ownUri'"
-            else
-              s"Becoming the still not following passive cluster node '$ownUri'")
-        } >>
-          PassiveClusterNode.run[MasterState, Event](recovered, recoveredClusterState, recoveredState, getStatePromise,
-            ownUri, state.activeUri, journalMeta, conf, actorSystem)
-            .map(Right.apply)
+        logger.info(
+          if (state.isTheFollowingNode(ownUri))
+            s"Becoming a following passive cluster node '$ownUri'"
+          else
+            s"Becoming a still not following passive cluster node '$ownUri'")
+          val passive = new PassiveClusterNode(ownUri, state.activeUri, journalMeta, recovered, conf)(actorSystem)
+          passive.run(recoveredClusterState, recoveredState).map(Right.apply) -> Some(passive.state)
 
       case (_, None, _) =>
-        Task.pure(Left(Problem.pure("This cluster node's own URI is unknown")))
+        Task.pure(Left(Problem.pure("This cluster node's own URI is unknown"))) -> None
 
       case (_, Some(ownUri), _) =>
-        Task.pure(Left(Problem.pure(s"This cluster node's URI '$ownUri' does not match state $recoveredClusterState")))
+        Task.pure(Left(Problem.pure(s"This cluster node's URI '$ownUri' does not match state $recoveredClusterState"))) -> None
     }
 
   def automaticallyAppointConfiguredBackupNode(): Task[Checked[Completed]] =

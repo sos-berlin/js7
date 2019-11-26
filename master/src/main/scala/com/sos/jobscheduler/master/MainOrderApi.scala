@@ -11,28 +11,33 @@ import monix.eval.Task
 import scala.collection.immutable.Seq
 import shapeless.tag.@@
 
-private[master] class MainOrderApi(orderKeeper: ActorRef @@ MasterOrderKeeper.type)
+private[master] class MainOrderApi(orderKeeper: Task[ActorRef @@ MasterOrderKeeper])
   (implicit akkaAskTimeout: Timeout)
 extends OrderApi.WithCommands
 {
   def addOrder(order: FreshOrder) =
-    Task.deferFuture(
-      (orderKeeper ? MasterOrderKeeper.Command.AddOrder(order)).mapTo[MasterOrderKeeper.Response.ForAddOrder])
-      .map(_.created)
+    orderKeeper.flatMap(actor =>
+      Task.deferFuture(
+        (actor ? MasterOrderKeeper.Command.AddOrder(order)).mapTo[MasterOrderKeeper.Response.ForAddOrder])
+        .map(_.created))
 
   def addOrders(order: Seq[FreshOrder]) =
-    Task.deferFuture(
-      (orderKeeper ? MasterOrderKeeper.Command.AddOrders(order)).mapTo[Checked[Completed]])
+    orderKeeper.flatMap(actor =>
+      Task.deferFuture(
+        (actor ? MasterOrderKeeper.Command.AddOrders(order)).mapTo[Checked[Completed]]))
 
   def order(orderId: OrderId): Task[Option[Order[Order.State]]] =
-    Task.deferFuture(
-      (orderKeeper ? MasterOrderKeeper.Command.GetOrder(orderId)).mapTo[Option[Order[Order.State]]])
+    orderKeeper.flatMap(actor =>
+      Task.deferFuture(
+        (actor ? MasterOrderKeeper.Command.GetOrder(orderId)).mapTo[Option[Order[Order.State]]]))
 
   def orders: Task[Stamped[Seq[Order[Order.State]]]] =
-    Task.deferFuture(
-      (orderKeeper ? MasterOrderKeeper.Command.GetOrders).mapTo[Stamped[Seq[Order[Order.State]]]])
+    orderKeeper.flatMap(actor =>
+      Task.deferFuture(
+        (actor ? MasterOrderKeeper.Command.GetOrders).mapTo[Stamped[Seq[Order[Order.State]]]]))
 
   def orderCount =
-    Task.deferFuture(
-      (orderKeeper ? MasterOrderKeeper.Command.GetOrderCount).mapTo[Int])
+    orderKeeper.flatMap(actor =>
+      Task.deferFuture(
+        (actor ? MasterOrderKeeper.Command.GetOrderCount).mapTo[Int]))
 }

@@ -31,7 +31,10 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
   protected def getObservable(api: Api, after: I): Task[Checked[Observable[V]]]
 
   protected def onCouplingFailed(problem: Problem): Task[Completed] =
-    Task.pure(Completed)
+    Task {
+      scribe.warn(problem.toString)
+      Completed
+    }
 
   protected def onCoupled(api: Api): Task[Completed] =
     Task.pure(Completed)

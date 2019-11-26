@@ -34,10 +34,10 @@ import java.nio.file.{Files, Path, Paths}
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
-import scala.concurrent.{Promise, TimeoutException}
+import scala.concurrent.TimeoutException
 import scodec.bits.ByteVector
 
-final class PassiveClusterNode[S <: JournaledState[S, E], E <: Event] private(
+private[cluster] final class PassiveClusterNode[S <: JournaledState[S, E], E <: Event](
   ownUri: Uri,
   activeUri: Uri,
   journalMeta: JournalMeta,
@@ -47,12 +47,18 @@ final class PassiveClusterNode[S <: JournaledState[S, E], E <: Event] private(
 {
   import recovered.eventWatch
 
-  def run(recoveredClusterState: ClusterState, recoveredState: S, getStatePromise: Promise[Task[S]])
-  : Task[(ClusterState, ClusterFollowUp)] =
+  private val stateBuilderAndAccessor = new StateBuilderAndAccessor[S, E](recovered.newStateBuilder)
+
+  def state: Task[S] =
+    stateBuilderAndAccessor.state
+
+  def run(recoveredClusterState: ClusterState, recoveredState: S)
+  : Task[(ClusterState, ClusterFollowUp[S, E])] =
     Task.deferAction { implicit scheduler =>
       for (o <- recovered.recoveredJournalFile) {
         cutJournalFile(o.file, o.length)
       }
+
       Resource.fromAutoCloseable(Task(AkkaHttpMasterApi(baseUri = activeUri.string)))
         .use(activeNodeApi =>
           activeNodeApi.loginUntilReachable(clusterConf.userAndPassword, Iterator.continually(1.s/*TODO*/)) >>
@@ -64,7 +70,7 @@ final class PassiveClusterNode[S <: JournaledState[S, E], E <: Event] private(
                   case None => NoLocalJournal(recoveredClusterState)
                   case Some(recoveredJournalFile) => FirstPartialFile(recoveredJournalFile, recoveredClusterState)
                 },
-                new StateBuilderAndAccessor[S, E](recovered.newStateBuilder, getStatePromise).newStateBuilder _,
+                () => stateBuilderAndAccessor.newStateBuilder(),
                 activeNodeApi)
             )((_: MasterCommand.Response.Accepted, followUp) => followUp))
     }
@@ -81,7 +87,7 @@ final class PassiveClusterNode[S <: JournaledState[S, E], E <: Event] private(
     newStateBuilder: () => JournalStateBuilder[S, E],
     masterApi: HttpMasterApi)
     (implicit scheduler: Scheduler)
-  : Task[(ClusterState, ClusterFollowUp)]
+  : Task[(ClusterState, ClusterFollowUp[S, E])]
   =
     Task.tailRecM(continuation)(continuation =>
       replicateJournalFile(continuation, newStateBuilder, masterApi)
@@ -291,21 +297,6 @@ object PassiveClusterNode
 {
   private val TmpSuffix = ".tmp"  // Duplicate in JournalActor
   private val logger = Logger(getClass)
-
-  private[cluster] def run[S <: JournaledState[S, E], E <: Event](
-    recovered: Recovered[S, E],
-    recoveredClusterState: ClusterState,
-    recoveredState: S,
-    getStatePromise: Promise[Task[S]],
-    ownUri: Uri,
-    activeUri: Uri,
-    journalMeta: JournalMeta,
-    clusterConf: ClusterConf,
-    actorSystem: ActorSystem)
-    (implicit s: Scheduler)
-  : Task[(ClusterState, ClusterFollowUp)] =
-    new PassiveClusterNode(ownUri, activeUri, journalMeta, recovered, clusterConf)(actorSystem)
-      .run(recoveredClusterState, recoveredState, getStatePromise)
 
   private final class ServerTimeoutException extends TimeoutException("Journal web service timed out")
 }

@@ -1,13 +1,11 @@
 package com.sos.jobscheduler.master.command
 
-import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.command.{CommandExecutor, CommandMeta, CommandRegister, CommandRun}
 import com.sos.jobscheduler.core.startup.Halt
 import com.sos.jobscheduler.data.command.{CommandHandlerDetailed, CommandHandlerOverview, InternalCommandId}
-import com.sos.jobscheduler.master.cluster.Cluster
 import com.sos.jobscheduler.master.command.MasterCommandExecutor._
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.MasterCommand.{Batch, EmergencyStop}
@@ -16,7 +14,7 @@ import monix.eval.Task
 /**
   * @author Joacim Zschimmer
   */
-private[master] final class MasterCommandExecutor(otherCommandExecutor: CommandExecutor[MasterCommand], cluster: () => Cluster)
+private[master] final class MasterCommandExecutor(otherCommandExecutor: CommandExecutor[MasterCommand])
 extends CommandExecutor[MasterCommand]
 {
   private val register = new CommandRegister[MasterCommand]
@@ -46,14 +44,6 @@ extends CommandExecutor[MasterCommand]
 
       case EmergencyStop =>
         Halt.haltJava("Command EmergencyStop received: JOBSCHEDULER MASTER STOPS NOW")
-
-      case MasterCommand.ClusterAppointBackup(activeUri, backupUri) =>
-        cluster().appointBackupNode(activeUri, backupUri)
-          .map(_.map((_: Completed) => MasterCommand.Response.Accepted))
-
-      case MasterCommand.ClusterPassiveFollows(activeUri, followingUri) =>
-        cluster().passiveNodesFollows(activeUri, followingUri)
-          .map(_.map((_: Completed) => MasterCommand.Response.Accepted))
 
       case _ =>
         otherCommandExecutor.executeCommand(command, meta)

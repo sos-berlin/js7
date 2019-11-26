@@ -4,6 +4,7 @@ import akka.http.scaladsl.server.Directives.get
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.directives.PathDirectives.pathSingleSlash
 import com.sos.jobscheduler.base.auth.ValidUserPermission
+import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.completeTask
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers.monixObservableToMarshallable
 import com.sos.jobscheduler.common.http.CirceJsonSupport.jsonMarshaller
@@ -16,7 +17,7 @@ import monix.execution.Scheduler
 
 trait SnapshotRoute extends MasterRouteProvider
 {
-  protected def masterState: Task[MasterState]
+  protected def masterState: Task[Checked[MasterState]]
 
   private implicit def implicitScheduler: Scheduler = scheduler
 
@@ -25,11 +26,12 @@ trait SnapshotRoute extends MasterRouteProvider
       authorizedUser(ValidUserPermission) { _ =>
         pathSingleSlash {
           completeTask(
-            for (state <- masterState) yield {
-              implicit val x = stampedCirceStreamingSupport(eventId = state.eventId)
-              implicit val y = SnapshotJsonCodec
-              monixObservableToMarshallable(state.toSnapshotObservable)
-            })
+            for (checkedState <- masterState) yield
+              for (state <- checkedState) yield {
+                implicit val x = stampedCirceStreamingSupport(eventId = state.eventId)
+                implicit val y = SnapshotJsonCodec
+                monixObservableToMarshallable(state.toSnapshotObservable)
+              })
         }
       }
     }

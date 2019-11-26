@@ -16,8 +16,8 @@ final case class MasterOverview(
   id: MasterId,
   version: String,
   buildId: String,
-  startedAt: Timestamp,
-  orderCount: Int,
+  startedAt: Option[Timestamp],
+  orderCount: Option[Int],
   system: SystemInformation,
   java: JavaInformation,
   totalRunningTime: FiniteDuration)

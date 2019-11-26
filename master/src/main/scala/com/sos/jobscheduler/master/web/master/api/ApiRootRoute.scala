@@ -2,6 +2,7 @@ package com.sos.jobscheduler.master.web.master.api
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
+import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.completeTask
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
@@ -21,7 +22,7 @@ import scala.concurrent.duration.FiniteDuration
 trait ApiRootRoute extends MasterRouteProvider
 {
   protected def masterId: MasterId
-  protected def masterState: Task[MasterState]
+  protected def masterState: Task[Checked[MasterState]]
   protected def totalRunningTime: Task[FiniteDuration]
 
   private implicit def implicitScheduler: Scheduler = scheduler
@@ -35,13 +36,13 @@ trait ApiRootRoute extends MasterRouteProvider
     }
 
   private def overview: Task[MasterOverview] =
-    Task.parMap2(masterState, totalRunningTime)((masterState, totalRunningTime) =>
+    Task.parMap2(masterState, totalRunningTime)((checkedMasterState, totalRunningTime) =>
       MasterOverview(
         id = masterId,
         version = BuildInfo.prettyVersion,
         buildId = BuildInfo.buildId,
-        startedAt = masterState.masterMetaState.startedAt,
-        orderCount = masterState.orders.size,
+        startedAt = checkedMasterState.toOption.map(_.masterMetaState.startedAt),
+        orderCount = checkedMasterState.toOption.map(_.orders.size),
         system = systemInformation(),
         java = javaInformation,
         totalRunningTime = totalRunningTime))

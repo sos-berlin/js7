@@ -16,7 +16,7 @@ import shapeless.tag.@@
 
 private[master] final class MainFileBasedApi(
   masterConfiguration: MasterConfiguration,
-  orderKeeper: ActorRef @@ MasterOrderKeeper.type)
+  orderKeeper: Task[ActorRef @@ MasterOrderKeeper])
 extends FileBasedApi
 {
   def overview[A <: FileBased: FileBased.Companion](implicit O: FileBasedsOverview.Companion[A]): Task[Stamped[O.Overview]] =
@@ -42,7 +42,8 @@ extends FileBasedApi
   def stampedRepo: Task[Stamped[Repo]] = {
     import masterConfiguration.akkaAskTimeout  // TODO May timeout while Master recovers
     intelliJuseImport(akkaAskTimeout)
-    Task.deferFuture(
-      (orderKeeper ? MasterOrderKeeper.Command.GetRepo).mapTo[Stamped[Repo]])
+    orderKeeper.flatMap(actor =>
+      Task.deferFuture(
+        (actor ? MasterOrderKeeper.Command.GetRepo).mapTo[Stamped[Repo]]))
   }
 }

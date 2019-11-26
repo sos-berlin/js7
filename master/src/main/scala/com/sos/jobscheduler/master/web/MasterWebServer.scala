@@ -3,6 +3,7 @@ package com.sos.jobscheduler.master.web
 import akka.actor.ActorSystem
 import com.google.inject.Injector
 import com.sos.jobscheduler.base.auth.SimpleUser
+import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
@@ -31,7 +32,7 @@ final class MasterWebServer private(
   fileBasedApi: FileBasedApi,
   orderApi: OrderApi.WithCommands,
   commandExecutor: MasterCommandExecutor,
-  masterState: Task[MasterState],
+  masterState: Task[Checked[MasterState]],
   totalRunningTime: Task[FiniteDuration],
   sessionRegister: SessionRegister[SimpleSession],
   eventWatch: EventWatch,
@@ -85,7 +86,7 @@ object MasterWebServer
     closer: Closer)
   {
     def apply(fileBasedApi: FileBasedApi, orderApi: OrderApi.WithCommands,
-      commandExecutor: MasterCommandExecutor, masterState: Task[MasterState], totalRunningTime: Task[FiniteDuration],
+      commandExecutor: MasterCommandExecutor, masterState: Task[Checked[MasterState]], totalRunningTime: Task[FiniteDuration],
       eventWatch: EventWatch)
     : MasterWebServer =
       new MasterWebServer(

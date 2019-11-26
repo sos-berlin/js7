@@ -27,13 +27,13 @@ final class ApiRootRouteTest extends FreeSpec with RouteTester with ApiRootRoute
 {
   protected val masterId = MasterId("TEST-MASTER")
   protected implicit def scheduler: Scheduler = Scheduler.global
-  protected def masterState = Task.pure(MasterState(
+  protected def masterState = Task.pure(Right(MasterState(
     EventId(1001),
     MasterMetaState(MasterId("MASTER-ID"), Timestamp("2019-05-24T12:00:00Z")),
     ClusterState.Empty,
     Repo(MasterFileBaseds.jsonCodec),
     Map.empty,
-    Map.empty))
+    Map.empty)))
   protected def totalRunningTime = Task.pure(1.hour)
 
   private def route: Route =
@@ -48,9 +48,9 @@ final class ApiRootRouteTest extends FreeSpec with RouteTester with ApiRootRoute
       assert(overview.version == BuildInfo.prettyVersion)
       assert(overview.buildId == BuildInfo.buildId)
       assert(overview.java.systemProperties("java.version") == sys.props("java.version"))
-      assert(overview.startedAt == Timestamp("2019-05-24T12:00:00Z"))
+      assert(overview.startedAt == Some(Timestamp("2019-05-24T12:00:00Z")))
       assert(overview.totalRunningTime == 1.hour)
-      assert(overview.orderCount == 0)
+      assert(overview.orderCount == Some(0))
     }
   }
 }

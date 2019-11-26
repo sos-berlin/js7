@@ -5,6 +5,7 @@ import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.common.log.ScribeUtils
 import com.sos.jobscheduler.common.scalautil.Closer.ops._
 import com.sos.jobscheduler.common.scalautil.Closer.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
@@ -87,6 +88,8 @@ import scala.util.Try
 */
 final class MasterClusterTest extends FreeSpec
 {
+  ScribeUtils.coupleScribeWithSlf4j()
+
   private implicit val akkaTimeout = Timeout(88.s)
 
   "Cluster replicates journal files properly" in {
