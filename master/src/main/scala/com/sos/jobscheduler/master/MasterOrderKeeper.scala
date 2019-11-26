@@ -78,6 +78,7 @@ import shapeless.tag.@@
   * @author Joacim Zschimmer
   */
 final class MasterOrderKeeper(
+  stopped: Promise[Completed],
   protected val journalActor: ActorRef @@ JournalActor.type,
   cluster: Cluster,
   eventWatch: JournalEventWatch,
@@ -224,13 +225,16 @@ with MainJournalingActor[Event]
 
   watch(journalActor)
 
-  override def postStop() = {
-    super.postStop()
-    cluster.stop()
-    shutdown.close()
-    switchover foreach { _.close() }
-    logger.debug("Stopped" + shutdown.since.fold("")(o => s" (terminated in ${o.elapsed.pretty})"))
-  }
+  override def postStop() =
+    try {
+      cluster.stop()
+      shutdown.close()
+      switchover foreach { _.close() }
+    } finally {
+      logger.debug("Stopped" + shutdown.since.fold("")(o => s" (terminated in ${o.elapsed.pretty})"))
+      stopped.success(Completed)
+      super.postStop()
+    }
 
   protected def snapshots = Observable.fromTask(masterState)
     .flatMap(_.toSnapshotObservable)

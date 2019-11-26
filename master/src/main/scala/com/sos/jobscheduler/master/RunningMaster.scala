@@ -17,7 +17,6 @@ import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import com.sos.jobscheduler.common.akkautils.CatchingActor
 import com.sos.jobscheduler.common.event.{EventIdClock, StrictEventWatch}
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
@@ -35,7 +34,7 @@ import com.sos.jobscheduler.core.event.journal.JournalActor.Output
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.Recovered
 import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
-import com.sos.jobscheduler.core.problems.{ClusterNodeIsStillStartingProblem, ClusterNodeIsNotActiveProblem, JobSchedulerIsShuttingDownProblem}
+import com.sos.jobscheduler.core.problems.{ClusterNodeIsNotActiveProblem, ClusterNodeIsStillStartingProblem, JobSchedulerIsShuttingDownProblem}
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
 import com.sos.jobscheduler.data.event.Event
 import com.sos.jobscheduler.data.order.FreshOrder
@@ -57,7 +56,7 @@ import monix.execution.{Cancelable, CancelableFuture, Scheduler}
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future, blocking}
+import scala.concurrent.{Await, Future, Promise, blocking}
 import scala.util.control.NoStackTrace
 import scala.util.{Failure, Success}
 import shapeless.tag
@@ -298,18 +297,18 @@ object RunningMaster
           None
 
         case ClusterFollowUp.BecomeActive(recovered: Recovered[MasterState @unchecked, Event]) =>
-          val (actor, stopped) = CatchingActor.actorOf[Completed](
-            _ => Props {
-              new MasterOrderKeeper(journalActor, cluster, recovered.eventWatch, masterConfiguration,
+          val stoppedPromise = Promise[Completed]()
+          val actor = actorSystem.actorOf(
+            Props {
+              new MasterOrderKeeper(stoppedPromise, journalActor, cluster, recovered.eventWatch, masterConfiguration,
                 GenericSignatureVerifier(masterConfiguration.config).orThrow)
             },
-            "MasterOrderKeeper",
-            onStopped = _ => Success(Completed))
+            "MasterOrderKeeper")
           actor ! MasterOrderKeeper.Input.Start(recovered)
-          val stopped2 = stopped
+          val stopped = stoppedPromise.future
             .andThen { case Failure(t) => logger.error(t.toStringWithCauses, t) }
             .andThen { case _ => closer.close() }  // Close automatically after termination
-          Some(OrderKeeperStarted(tag[MasterOrderKeeper](actor), stopped2))
+          Some(OrderKeeperStarted(tag[MasterOrderKeeper](actor), stopped))
       }
   }
 
