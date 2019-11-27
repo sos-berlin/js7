@@ -138,7 +138,8 @@ extends AutoCloseable
 
   val localUri: Uri = webServer.localUri
   lazy val httpApi: HttpMasterApi = new AkkaHttpMasterApi.CommonAkka {
-      protected def baseUri = localUri
+      protected val baseUri = localUri
+      protected val name = "RunningMaster"
       protected def actorSystem = RunningMaster.this.actorSystem
     } closeWithCloser closer
 
@@ -223,6 +224,9 @@ object RunningMaster
             case Some(o) => o.termination
           })
       }
+      orderKeeperTerminated.onComplete { _ =>
+        startingClusterFuture.cancel()
+      }
       val orderKeeperTask = Task.fromFuture(orderKeeperStarted) flatMap {
         case None => Task.raiseError(JobSchedulerIsShuttingDownProblem.throwable)
         case Some(actor) => Task.pure(actor)
@@ -285,6 +289,7 @@ object RunningMaster
         .onErrorRecoverWith {
           case _: StartingClusterCanceledException => Task.pure(None)
         }
+        .executeWithOptions(_.enableAutoCancelableRunLoops)
         .runToFuture
       (startingClusterFuture, maybePassiveState)
     }

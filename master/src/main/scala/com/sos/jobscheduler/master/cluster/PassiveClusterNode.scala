@@ -48,19 +48,20 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, E], E <: 
   import recovered.eventWatch
 
   private val stateBuilderAndAccessor = new StateBuilderAndAccessor[S, E](recovered.newStateBuilder)
+  @volatile
+  private var terminated = false
 
   def state: Task[S] =
     stateBuilderAndAccessor.state
 
-  def run(recoveredClusterState: ClusterState, recoveredState: S)
-  : Task[(ClusterState, ClusterFollowUp[S, E])] =
+  def run(recoveredClusterState: ClusterState, recoveredState: S): Task[(ClusterState, ClusterFollowUp[S, E])] = {
+    assertThat(!terminated)  // Single-use only
     Task.deferAction { implicit scheduler =>
       for (o <- recovered.recoveredJournalFile) {
         cutJournalFile(o.file, o.length)
       }
-
-      Resource.fromAutoCloseable(Task(AkkaHttpMasterApi(baseUri = activeUri.string)))
-        .use(activeNodeApi =>
+      Resource.fromAutoCloseable(Task(AkkaHttpMasterApi(baseUri = activeUri.string, name = "fetching active cluster node journal")))
+        .use { activeNodeApi =>
           activeNodeApi.loginUntilReachable(clusterConf.userAndPassword, Iterator.continually(1.s/*TODO*/)) >>
             Task.parMap2(
               activeNodeApi.executeCommand(
@@ -72,8 +73,13 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, E], E <: 
                 },
                 () => stateBuilderAndAccessor.newStateBuilder(),
                 activeNodeApi)
-            )((_: MasterCommand.Response.Accepted, followUp) => followUp))
+            )((_: MasterCommand.Response.Accepted, followUp) => followUp)
+        }
+        .guarantee(Task {
+          terminated = true
+        })
     }
+  }
 
   private def cutJournalFile(file: Path, length: Long): Unit =
     if (Files.exists(file) && length < Files.size(file)) {
@@ -91,14 +97,15 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, E], E <: 
   =
     Task.tailRecM(continuation)(continuation =>
       replicateJournalFile(continuation, newStateBuilder, masterApi)
-        .map(continuation =>
-            if (!continuation.clusterState.isActive(ownUri))
-              Left(continuation)
-            else
-              Right((
-                continuation.clusterState,
-                ClusterFollowUp.BecomeActive(recovered.copy[S, E](
-                  recoveredJournalFile = continuation.maybeRecoveredJournalFile))))))
+        .map { continuation =>
+          if (!shouldFinishObservation(continuation.clusterState))
+            Left(continuation)
+          else
+            Right((
+              continuation.clusterState,
+              ClusterFollowUp.BecomeActive(recovered.copy[S, E](
+                recoveredJournalFile = continuation.maybeRecoveredJournalFile))))
+        })
 
   private def replicateJournalFile(
     continuation: Continuation,
@@ -199,10 +206,10 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, E], E <: 
           ()
         }
         .guarantee(Task { out.close() })
-        .takeWhileInclusive(_ => !builder.clusterState.isActive(ownUri))
+        .takeWhileInclusive(_ => !shouldFinishObservation(builder.clusterState))
         .completedL
         .map { _ =>
-          logger.debug(s"replicateJournalFile(${file.getFileName}) finished: " + builder.clusterState)
+          logger.debug(s"replicateJournalFile(${file.getFileName}) finished, clusterState=" + builder.clusterState)
           eventWatch.onJournalingEnded(replicatedFileLength)
           (builder.fileJournalHeader, builder.calculatedJournalHeader) match {
             case (Some(header), Some(calculatedHeader)) =>
@@ -216,6 +223,9 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, E], E <: 
         }
     }
 
+  private def shouldFinishObservation(clusterState: ClusterState) = clusterState.isActive(ownUri)
+
+  /** @return Journal lines with their position after the line (the corresponding file length). */
   private def observeJournalFile(api: HttpMasterApi, fileEventId: EventId, position: Long,
     eof: Long => Boolean)(implicit s: Scheduler)
   : Observable[PositionAnd[ByteVector]] =
@@ -231,7 +241,8 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, E], E <: 
             api.journalObservable(fileEventId = fileEventId, position = after, clusterConf.recouplingStreamReader.timeout, markEOF = true)
               .map(_
                 .scan(PositionAnd(after, ByteVector.empty/*unused*/))((s, a) => PositionAnd(s.position + a.length, a)))),
-            eof = eof)
+        eof = eof,
+        stopRequested = () => terminated)
       .doOnError(t => Task {
         logger.debug(s"observeJournalFile($api, fileEventId=$fileEventId, position=$position) failed with ${t.toStringWithCauses}", t)
       })
