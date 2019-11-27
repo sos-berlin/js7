@@ -4,6 +4,7 @@ import akka.actor.{Actor, ActorRef, DeadLetterSuppression, Props, Stash, Termina
 import akka.util.ByteString
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
@@ -148,8 +149,8 @@ extends Actor with Stash
 
     case Input.Store(timestamped, replyTo, acceptEarly, transaction, delay, alreadyDelayed, callersItem) =>
       if (switchedOver) {
-        logger.error(s"Event but journal has been switched over: ${timestamped.headOption.map(_.keyedEvent)}")
-        reply(sender(), replyTo, Output.StoreFailure(new IllegalStateException("Journal has been switched over")))
+        logger.error(s"Event but active cluster node has been switched over: ${timestamped.headOption.map(_.keyedEvent)}")
+        reply(sender(), replyTo, Output.StoreFailure(ClusterNodeHasBeenSwitchedOverProblem.throwable))
       } else {
         val stampedEvents = for (t <- timestamped) yield eventIdGenerator.stamp(t.keyedEvent, t.timestamp)
         eventWriter.writeEvents(stampedEvents, transaction = transaction)
@@ -176,8 +177,6 @@ extends Actor with Stash
             commit()
             logger.info(s"SwitchedOver: stopping journal")
             switchedOver = true  // No more events are accepted
-            // Await acknowledge from other node
-            // TODO Stop or restart JournalActor?
           case _ =>
             forwardCommit((delay max conf.delay) - alreadyDelayed)
         }
@@ -202,8 +201,25 @@ extends Actor with Stash
       snapshotRequesters += sender()
       tryTakeSnapshotIfRequested()
 
-    case Input.FollowerAcknowledged(eventId) =>
-      onFollowerAcknowledged(eventId)
+    case Input.FollowerAcknowledged(eventId_) =>
+      var eventId = eventId_
+      if (eventId > lastWrittenEventId && switchedOver) {
+        // The other cluster node may already have become active (uncoupled),
+        // generating new EventIds whose last one we may receive here.
+        // So we take the last one we know (must be the EventId of ClusterSwitchedOver)
+        eventId = writtenBuffer.reverseIterator.flatMap(_.lastStamped).map(_.eventId).buffered.headOption getOrElse eventId
+      }
+      if (eventId > lastWrittenEventId) {
+        val t = new RuntimeException(s"Passive cluster node acknowledged future event ${EventId.toString(eventId)}," +
+          s" but lastWrittenEventId=${EventId.toString(lastWrittenEventId)}") with NoStackTrace
+        logger.error(t.toString)
+        sender() ! akka.actor.Status.Failure(t)
+      } else {
+        sender() ! Completed
+        // The passive node does not know Written blocks (maybe transactions) and acknowledges events as they arrive.
+        // We take only complete Written blocks as acknowledged.
+        onCommitAcknowledged(n = writtenBuffer.iterator.takeWhile(_.lastStamped.forall(_.eventId <= eventId)).length)
+      }
 
     case Input.Terminate =>
       if (!switchedOver) {
@@ -231,7 +247,7 @@ extends Actor with Stash
           .collect { case o: LoggableWritten => o }
         val n = writtenBuffer.map(_.eventCount).sum
         logger.warn(s"Still waiting for acknowledgement from passive cluster node for $n events starting with " +
-          notAckSeq.flatMap(_.stamped).headOption.fold("(unknown)")(_.toString.truncateWithEllipsis((100))))
+          notAckSeq.flatMap(_.stamped).headOption.fold("(unknown)")(_.toString.truncateWithEllipsis((200))))
       } else {
         if (waitingForAcknowledgeTimer != null) {
           waitingForAcknowledgeTimer.cancel()
@@ -291,20 +307,6 @@ extends Actor with Stash
       waitingForAcknowledgeTimer = scheduler.scheduleAtFixedRate(5.s, 10.s) {
         self ! Internal.StillWaitingForAcknowledge
       }
-    }
-  }
-
-  private def onFollowerAcknowledged(eventId: EventId): Unit = {
-    if (eventId > lastWrittenEventId) {
-      val t = new RuntimeException(s"Passive cluster node acknowledged future event ${EventId.toString(eventId)}," +
-        s" but lastWrittenEventId=${EventId.toString(lastWrittenEventId)}") with NoStackTrace
-      logger.error(t.toString)
-      sender() ! akka.actor.Status.Failure(t)
-    } else {
-      sender() ! Completed
-      // The passive node does not know Written blocks (maybe transactions) and acknowledges events as they arrive.
-      // We take only complete Written blocks as acknowledged.
-      onCommitAcknowledged(n = writtenBuffer.iterator.takeWhile(_.lastStamped.forall(_.eventId <= eventId)).length)
     }
   }
 
@@ -586,6 +588,8 @@ object JournalActor
 {
   private val TmpSuffix = ".tmp"  // Duplicate in PassiveClusterNode
   private val DispatcherName = "jobscheduler.journal.dispatcher"  // Config setting; name is used for thread names
+
+  private val ClusterNodeHasBeenSwitchedOverProblem = Problem.pure("After switchover, this cluster node is no longer active")
 
   def props[E <: Event](
     journalMeta: JournalMeta,
