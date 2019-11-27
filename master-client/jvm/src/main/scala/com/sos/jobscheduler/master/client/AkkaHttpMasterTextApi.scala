@@ -23,6 +23,8 @@ extends HasCloser with ProvideActorSystem with TextApi with HttpSessionApi with 
 
   protected val config = ConfigFactory.empty
 
+  protected val name = "AkkaHttpMasterTextApi"
+
   protected def uriPrefixPath = "/master"
 
   private val masterUris = MasterUris(s"$baseUri/master")

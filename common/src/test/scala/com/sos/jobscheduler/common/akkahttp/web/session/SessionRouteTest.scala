@@ -386,6 +386,7 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
 
   private def withSessionApi(headers: List[HttpHeader] = Nil)(body: HttpSessionApi with AkkaHttpClient => Unit): Unit = {
     val api = new HttpSessionApi with AkkaHttpClient {
+      protected val name = "SessionRouteTest"
       def httpClient = this: AkkaHttpClient
       def sessionUri = s"$baseUri/session"
       val actorSystem = SessionRouteTest.this.actorSystem

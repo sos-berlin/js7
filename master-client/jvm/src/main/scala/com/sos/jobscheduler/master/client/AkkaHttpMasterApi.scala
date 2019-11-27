@@ -19,6 +19,7 @@ final class AkkaHttpMasterApi(
   override protected val keyStoreRef: Option[KeyStoreRef] = None,
   /** To trust the server's certificate. */
   override protected val trustStoreRef: Option[TrustStoreRef] = None,
+  override protected val name: String = "",
   protected val config: Config = ConfigFactory.empty)
 extends AkkaHttpMasterApi.CommonAkka
 with ProvideActorSystem
@@ -32,7 +33,7 @@ with ProvideActorSystem
 
   override def close() = closer.close()
 
-  override def toString = s"AkkaHttpMasterApi($baseUri)"
+  override def toString = s"AkkaHttpMasterApi($baseUri${if (name.isEmpty) "" else s" »$name«"})"
 }
 
 object AkkaHttpMasterApi
@@ -40,18 +41,21 @@ object AkkaHttpMasterApi
   def apply(
     baseUri: Uri,
     keyStoreRef: Option[KeyStoreRef] = None,
-    trustStoreRef: Option[TrustStoreRef] = None)
+    trustStoreRef: Option[TrustStoreRef] = None,
+    name: String = "")
     (implicit actorSystem: ActorSystem)
   : CommonAkka = {
     val baseUri_ = baseUri
     val actorSystem_ = actorSystem
     val keyStoreRef_ = keyStoreRef
     val trustStoreRef_ = trustStoreRef
+    val name_ = name
     new CommonAkka {
       protected val actorSystem = actorSystem_
       protected val baseUri = baseUri_
       override protected def keyStoreRef = keyStoreRef_
       override protected def trustStoreRef = trustStoreRef_
+      protected val name = name_
     }
   }
 

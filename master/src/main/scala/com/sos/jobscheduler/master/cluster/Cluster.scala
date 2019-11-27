@@ -203,8 +203,9 @@ final class Cluster(
 
   private def fetchAndHandleAcknowledgedEventIds(uri: Uri, after: EventId): Task[Completed] =
     Task { logger.debug(s"fetchAndHandleAcknowledgedEventIds(after=$after)") } >>
-      Resource.fromAutoCloseable(Task { AkkaHttpMasterApi(AkkaUri(uri.string))(actorSystem) })
-        .use(api =>
+      Resource.fromAutoCloseable(Task {
+        AkkaHttpMasterApi(AkkaUri(uri.string), name = "fetch passive cluster node acknowledgements")(actorSystem)
+      }).use(api =>
           observeEventIds(api, after = after)
             .whileBusyBuffer(OverflowStrategy.DropOld(bufferSize = 2))
             .mapEval(eventId =>

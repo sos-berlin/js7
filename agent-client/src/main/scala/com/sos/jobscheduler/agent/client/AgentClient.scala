@@ -96,6 +96,7 @@ object AgentClient
     new AgentClient {
       protected val actorSystem = a
       val baseUri = agentUri
+      protected val name = "Agent"
       protected def keyStoreRef = k
       protected def trustStoreRef = t
     }

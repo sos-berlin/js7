@@ -44,6 +44,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
   protected def actorSystem: ActorSystem
   protected def baseUri: Uri
   protected def uriPrefixPath: String
+  protected def name: String
   protected def standardHeaders: List[HttpHeader] = Nil
 
   private lazy val http = Http(actorSystem)
@@ -55,7 +56,11 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
 
   private lazy val httpsConnectionContext = httpsConnectionContextOption getOrElse http.defaultClientHttpsContext
 
-  def close() = for (o <- materializerLazy) o.shutdown()
+  def close() =
+    for (o <- materializerLazy) {
+      logger.debug(s"$toString: ActorMaterializer shutdown")
+      o.shutdown()
+    }
 
   def getDecodedLinesObservable[A: Decoder](uri: String) =
     getRawLinesObservable(uri)
@@ -135,6 +140,8 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
   private def logRequest(request: HttpRequest, logData: => Option[String]): Unit =
     logger.whenTraceEnabled {
       val b = new StringBuilder(200)
+      b.append(toString)
+      b.append(' ')
       b.append(request.method.value)
       b.append(' ')
       b.append(request.uri)
@@ -189,7 +196,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
     else
       Left(Problem(s"URI '$uri' does not match $baseUri$uriPrefixPath"))
 
-  override def toString = s"AkkaHttpClient($baseUri)"
+  override def toString = s"AkkaHttpClient($baseUri${if (name.isEmpty) "" else s" »$name«"})"
 }
 
 object AkkaHttpClient

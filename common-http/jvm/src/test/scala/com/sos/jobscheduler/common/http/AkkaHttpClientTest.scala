@@ -26,6 +26,7 @@ final class AkkaHttpClientTest extends FreeSpec with BeforeAndAfterAll
   private lazy val agentClient = new AkkaHttpClient {
     protected val actorSystem = AkkaHttpClientTest.this.actorSystem
     protected val baseUri = Uri("https://example.com:9999")
+    protected val name = "AkkaHttpClientTest"
     protected def uriPrefixPath = "/PREFIX"
     protected def sessionToken = None
   }

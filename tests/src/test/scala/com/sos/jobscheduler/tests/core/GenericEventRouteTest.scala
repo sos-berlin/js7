@@ -100,6 +100,7 @@ final class GenericEventRouteTest extends FreeSpec with BeforeAndAfterAll with P
   private lazy val api = new AkkaHttpClient {
     protected val actorSystem = GenericEventRouteTest.this.actorSystem
     protected val baseUri = server.localUri
+    protected val name = "GenericEventRouteTest"
     protected val uriPrefixPath = ""
     protected val sessionToken = None
   }

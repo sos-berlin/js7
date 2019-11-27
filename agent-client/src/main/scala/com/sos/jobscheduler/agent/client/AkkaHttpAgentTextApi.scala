@@ -23,8 +23,9 @@ private[agent] final class AkkaHttpAgentTextApi(
   agentUri: String,
   protected val print: String => Unit,
   configDirectory: Option[Path] = None)
-extends HasCloser with ProvideActorSystem with TextApi with HttpSessionApi with AkkaHttpClient {
-
+extends HasCloser with ProvideActorSystem with TextApi with HttpSessionApi with AkkaHttpClient
+{
+  protected val name = "AkkaHttpAgentTextApi"
   protected val config = ConfigFactory.empty
 
   private val agentUris = AgentUris(agentUri)

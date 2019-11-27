@@ -17,8 +17,9 @@ final class SimpleAgentClient(
   val baseUri: Uri,
   protected val keyStoreRef: Option[KeyStoreRef] = None,
   protected val trustStoreRef: Option[TrustStoreRef] = None)
-extends HasCloser with AgentClient {
-
+extends HasCloser with AgentClient
+{
+  protected val name = "SimpleAgentClient"
   protected val actorSystem = newActorSystem("SimpleAgentClient") withCloser (_.terminate())
 
   onClose { super[AgentClient].close() }

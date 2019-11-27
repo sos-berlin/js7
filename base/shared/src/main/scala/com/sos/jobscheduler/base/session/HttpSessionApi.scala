@@ -45,12 +45,12 @@ trait HttpSessionApi extends SessionApi.LoginUntilReachable with HasSessionToken
             .map { _: SessionCommand.Response.Accepted =>
               sessionTokenRef.compareAndSet(sometoken, None)  // Changes nothing in case of a concurrent successful Logout or Login
               Completed
-          }
+            }
       }
     }
 
   private def executeSessionCommand(command: SessionCommand, suppressSessionToken: Boolean = false): Task[command.Response] =
-    Task { scribe.debug(command.toString) } >>
+    Task { scribe.debug(s"$toString: $command") } >>
     httpClient.post[SessionCommand, SessionCommand.Response](sessionUri, command, suppressSessionToken = suppressSessionToken)
       .map(_.asInstanceOf[command.Response])
 
