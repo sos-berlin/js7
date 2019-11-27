@@ -166,7 +166,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
               throw t
             }
         else
-          httpResponse.entity.toStrict(FailureTimeout)
+          httpResponse.entity.toStrict(FailureTimeout, maxBytes = HttpErrorContentSizeMaximum)
             .map(entity => throw new HttpException(httpResponse, uri, entity.data.utf8String))
       })
 
@@ -202,7 +202,8 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
 object AkkaHttpClient
 {
   private val ErrorMessageLengthMaximum = 10000
-  private val FailureTimeout = 30.seconds
+  private val HttpErrorContentSizeMaximum = ErrorMessageLengthMaximum + 100
+  private val FailureTimeout = 10.seconds
   private val logger = Logger(getClass.getName stripSuffix "$" replaceFirst("^com[.]sos[.]jobscheduler", "jobscheduler"))  // TODO Use Logger adapter (unreachable in module common)
 
   def sessionMayBeLost(t: Throwable): Boolean =
