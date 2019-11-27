@@ -85,7 +85,7 @@ with ReceiveLoggingActor.WithStash
       Task { logger.debug(s"getObservable(after=$after)") } >>
         api.mastersEventObservable(EventRequest[Event](EventClasses, after = after, timeout = Some(conf.recouplingStreamReader.timeout)))
 
-    override protected def onCouplingFailed(problem: Problem) =
+    override protected def onCouplingFailed(api: AgentClient, problem: Problem) =
       promiseTask[Completed] {
         promise => self ! Internal.OnCouplingFailed(problem, promise)
       }
@@ -98,6 +98,8 @@ with ReceiveLoggingActor.WithStash
 
     override protected def logEvent(stampedEvent: Stamped[AnyKeyedEvent]) =
       AgentDriver.this.logEvent(stampedEvent)
+
+    protected def stopRequested = false
   }
 
   private val commandQueue = new CommandQueue(logger, batchSize = conf.commandBatchSize) {

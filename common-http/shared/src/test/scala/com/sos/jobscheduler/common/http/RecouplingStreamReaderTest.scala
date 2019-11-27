@@ -10,6 +10,7 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalatest.FreeSpec
+import scala.concurrent.Await
 
 /**
   * @author Joacim Zschimmer
@@ -51,5 +52,14 @@ final class RecouplingStreamReaderTest extends FreeSpec
       after = 0L,
       getObservable = getUnderlyingObservable)
     assert(observable.take(10).toListL.runSyncUnsafe(99.s) == (1 to 10).map(_.toString).toList)
+
+    // Cancel
+    val obs = observable.doOnNext(_ => Task.sleep(10.ms))
+      .toListL
+      .onCancelRaiseError(new RuntimeException("TEST"))
+      .runToFuture
+    sleep(50.ms)
+    obs.cancel()
+    assert(Await.ready(obs, 99.s).value exists (_.isFailure))
   }
 }

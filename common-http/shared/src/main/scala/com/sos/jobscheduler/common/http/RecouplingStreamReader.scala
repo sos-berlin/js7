@@ -23,16 +23,17 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
   toIndex: V => I,
   maybeUserAndPassword: Option[UserAndPassword],
   conf: RecouplingStreamReaderConf)
-  (implicit s: Scheduler)
 {
   protected def couple(index: I): Task[Checked[Completed]] =
     Task.pure(Checked.completed)
 
   protected def getObservable(api: Api, after: I): Task[Checked[Observable[V]]]
 
-  protected def onCouplingFailed(problem: Problem): Task[Completed] =
+  protected def onCouplingFailed(api: Api, problem: Problem): Task[Completed] =
     Task {
-      scribe.warn(problem.toString)
+      if (!stopRequested) scribe.warn(s"$api: $problem")
+      else scribe.warn(s"$api: $problem")
+      for (t <- problem.throwableOption) scribe.debug(s"$api: ${t.toStringWithCauses}", t)
       Completed
     }
 
@@ -40,6 +41,8 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
     Task.pure(Completed)
 
   protected def eof(index: I) = false
+
+  protected def stopRequested: Boolean
 
   protected def logEvent(a: V): Unit = {}
 
@@ -53,10 +56,11 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
     scribe.debug(s"$api: observe(after=$after)")
     if (inUse.getAndSet(true)) throw new IllegalStateException("RecouplingStreamReader can not be used concurrently")
     Observable.fromTask(decouple) >>
-      new ForApi(api, after).observeAgainAndAgain
-        .guarantee {
-          Task { inUse := false }
-        }
+      new ForApi(api, after)
+        .observeAgainAndAgain
+        .guarantee(Task {
+          inUse := false
+        })
   }
 
   final def terminate: Task[Completed] =
@@ -77,31 +81,28 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
 
   final def pauseBeforeNextTry(delay: FiniteDuration): Task[Unit] =
     Task.defer {
-      Task.sleep((sinceLastTry + delay).timeLeftOrZero roundUpToNext PauseGranularity) >>
-        Task {
-          sinceLastTry = now  // update asynchonously
-        }
-    }
+      Task.sleep((sinceLastTry + delay).timeLeftOrZero roundUpToNext PauseGranularity)
+    } >>
+      Task {
+        sinceLastTry = now  // update asynchronously
+      }
 
   private final class ForApi(api: Api, initialAfter: I) {
     @volatile private var lastIndex = initialAfter
 
     def observeAgainAndAgain: Observable[V] =
-      Observable.tailRecM(initialAfter)(after =>
-        if (eof(after))
+      Observable.tailRecM(initialAfter) { after =>
+        if (eof(after) || stopRequested)
           Observable.pure(Right(Observable.empty))
         else
           Observable.pure(Right(
             observe(after)
-              .onErrorHandleWith { t =>
-                scribe.warn(s"$api: ${t.toStringWithCauses}")
-                scribe.debug(s"$api: $t", t)
-                Observable.empty
-              }
+              .doOnError(t => onCouplingFailed(api, Problem.pure(t)).void)
+              .onErrorHandleWith { _ => Observable.empty }
           )) ++
             (Observable.fromTask(pauseBeforeNextTry(conf.delay)) >>
               Observable.delay(Left(lastIndex)))
-      ).flatten
+      }.flatten
 
     private def observe(after: I): Observable[V] =
       Observable.fromTask(tryEndlesslyToGetObservable(after))
@@ -114,24 +115,26 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
     /** Retries until web request returns an Observable. */
     private def tryEndlesslyToGetObservable(after: I): Task[Observable[V]] =
       Task.tailRecM(())(_ =>
-        coupleIfNeeded >>
-          getObservableX(after = after)
-            .materialize.map(Checked.flattenTryChecked)
-            .flatMap {
-              case Left(problem) =>
-                (problem match {
-                  case InvalidSessionTokenProblem =>
-                    scribe.debug(s"$api: $InvalidSessionTokenProblem")
-                    decouple
-                  case _ =>
-                    scribe.warn(s"$api: $problem")
-                    Task.unit
-                }) >>
-                  pauseBeforeRecoupling >>
-                  Task.pure(Left(()))
-              case Right(observable) =>
-                Task.pure(Right(observable))
-            })
+        (if (stopRequested)
+          Task.pure(Right(Observable.raiseError(new IllegalStateException(s"RecouplingStreamReader($api) is terminated"))))
+        else
+          coupleIfNeeded >>
+            getObservableX(after = after)
+              .materialize.map(Checked.flattenTryChecked)
+              .flatMap {
+                case Left(problem) =>
+                  (problem match {
+                    case InvalidSessionTokenProblem =>
+                      scribe.debug(s"$api: $InvalidSessionTokenProblem")
+                      decouple
+                    case _ =>
+                      onCouplingFailed(api, problem) >> decouple
+                  }) >>
+                    pauseBeforeRecoupling >>
+                    Task.pure(Left(()))
+                case Right(observable) =>
+                  Task.pure(Right(observable))
+              }))
 
     private def getObservableX(after: I): Task[Checked[Observable[V]]] =
       Task {
@@ -166,16 +169,14 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
             case Left(problem) =>
               for {
                 _ <- api.logout().onErrorHandle(_ => ())
-                _ <- onCouplingFailed(problem)
+                _ <- onCouplingFailed(api, problem)
                 _ <- pauseBeforeRecoupling
               } yield Left(())
 
             case Right(Completed) =>
               for {
                 _ <- coupledApiVar.tryPut(api)
-                _ <- Task {
-                  recouplingPause.onCouplingSucceeded()
-                }
+                _ <- Task { recouplingPause.onCouplingSucceeded() }
                 completed <- onCoupled(api)
               } yield Right(completed)
           })}
@@ -197,15 +198,18 @@ object RecouplingStreamReader
     conf: RecouplingStreamReaderConf,
     after: I,
     getObservable: I => Task[Checked[Observable[V]]],
-    eof: I => Boolean = (_: I) => false)
+    eof: I => Boolean = (_: I) => false,
+    stopRequested: () => Boolean = () => false)
     (implicit s: Scheduler)
   : Observable[V]
   = {
     val eof_ = eof
     val getObservable_ = getObservable
+    val stopRequested_ = stopRequested
     new RecouplingStreamReader[I, V, Api](toIndex, maybeUserAndPassword, conf) {
       def getObservable(api: Api, after: I) = getObservable_(after)
       override def eof(index: I) = eof_(index)
+      def stopRequested = stopRequested_()
     }.observe(api, after)
   }
 
