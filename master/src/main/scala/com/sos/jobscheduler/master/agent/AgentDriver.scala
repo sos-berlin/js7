@@ -214,7 +214,7 @@ with ReceiveLoggingActor.WithStash
           lastProblem = Some(problem)
           logger.warn(s"Coupling failed: $problem")
           for (t <- problem.throwableOption if t.getStackTrace.nonEmpty) logger.debug(s"Coupling failed: $problem", t)
-          persist(MasterAgentEvent.AgentCouplingFailed(problem)) { _ =>
+          persist(MasterAgentEvent.AgentCouplingFailed(problem), async = true) { _ =>
             Completed
           }
         })
