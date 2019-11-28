@@ -175,23 +175,19 @@ with MainJournalingActor[Event]
     private var stillSwitchingOverCancelable: Option[Cancelable] = None
     private var terminatingJournal = false
 
-    stillSwitchingOverCancelable = Some(scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
-      self ! Internal.StillSwitchingOver
-    })
-    agentRegister.values foreach {
-      _.actor ! AgentDriver.Input.Terminate
-    }
-    continue()
-
-    def close() =
-      stillSwitchingOverCancelable foreach { _.cancel() }
-
-    def onStillSwitchingOver() =
-      logger.info(s"Still switching over, waiting for ${agentRegister.runningActorCount} AgentDrivers")
-
-    def continue() = {
-      logger.trace(s"switchover.continue: ${agentRegister.runningActorCount} AgentDrivers")
-      if (agentRegister.runningActorCount == 0 && !terminatingJournal) {
+    def start(): Unit = {
+      stillSwitchingOverCancelable = Some(
+        scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
+          // asynchronous
+          logger.debug("StillSwitchingOver")
+          self ! Internal.StillSwitchingOver
+        })
+      // Only if ClusterState is Coupled and ClusterState does not change until switchover:
+      //agentRegister.values foreach {
+      //  _.actor ! AgentDriver.Input.Terminate
+      //}
+      //logger.trace(s"switchover.continue: ${agentRegister.runningActorCount} AgentDrivers")
+      if (/*agentRegister.runningActorCount == 0 &&*/ !terminatingJournal) {
         terminatingJournal = true
         val whenSwitchedOver = cluster.switchOver.runToFuture
         whenSwitchedOver.onComplete {
@@ -202,6 +198,13 @@ with MainJournalingActor[Event]
         promise.completeWith(whenSwitchedOver)
       }
     }
+
+    def close() =
+      stillSwitchingOverCancelable foreach { _.cancel() }
+
+    def onStillSwitchingOver() =
+      logger.info(s"Still switching over to the other cluster node")
+        //s" waiting for ${agentRegister.runningActorCount} AgentDrivers${if (terminatingJournal) " and JournalActor" else ""}")
   }
 
   private object afterProceedEvents {
@@ -342,7 +345,9 @@ with MainJournalingActor[Event]
     case Command.Execute(command, meta) =>
       val sender = this.sender()
       if (shuttingDown)
-        sender ! Left(MasterIsShuttingDownProblem)
+        sender ! Status.Failure(MasterIsShuttingDownProblem.throwable)
+      else if (switchover.isDefined)
+        sender ! Status.Failure(MasterIsSwitchingOverProblem.throwable)
       else
         executeMasterCommand(command, meta) onComplete {
           case Failure(t) => sender ! Status.Failure(t)
@@ -355,12 +360,16 @@ with MainJournalingActor[Event]
     case Command.AddOrder(order) =>
       if (shuttingDown)
         sender() ! Status.Failure(MasterIsShuttingDownProblem.throwable)
+      else if (switchover.isDefined)
+        sender() ! Status.Failure(MasterIsSwitchingOverProblem.throwable)
       else
         addOrder(order) map Response.ForAddOrder.apply pipeTo sender()
 
     case Command.AddOrders(orders) =>
       if (shuttingDown)
         sender() ! Status.Failure(MasterIsShuttingDownProblem.throwable)
+      else if (switchover.isDefined)
+        sender() ! Status.Failure(MasterIsSwitchingOverProblem.throwable)
       else
         addOrders(orders).pipeTo(sender())
 
@@ -461,7 +470,6 @@ with MainJournalingActor[Event]
     case Terminated(a) if agentRegister contains a =>
       agentRegister(a).actorTerminated = true
       shutdown.continue()
-      switchover foreach { _.continue() }
 
     case Terminated(`journalActor`) =>
       if (!shuttingDown && switchover.isEmpty) logger.error("JournalActor terminated")
@@ -531,6 +539,7 @@ with MainJournalingActor[Event]
           promiseFuture[Checked[Completed]] { promise =>
             val so = new Switchover(promise)
             switchover = Some(so)
+            so.start()
             promise.future onComplete {
               case Success(Right(Completed)) =>
                 // Keep switchover for postStop
@@ -710,7 +719,7 @@ with MainJournalingActor[Event]
   }
 
   private def proceedWithOrder(orderEntry: OrderEntry): Unit =
-    if (!shuttingDown) {
+    if (!shuttingDown && switchover.isEmpty) {
       val order = orderEntry.order
       for (mode <- order.cancel) {
         if ((order.isAttaching || order.isAttached) && !orderEntry.cancelationMarkedOnAgent) {
@@ -799,6 +808,7 @@ with MainJournalingActor[Event]
 private[master] object MasterOrderKeeper
 {
   private val MasterIsShuttingDownProblem = Problem.pure("Master is shutting down")
+  private val MasterIsSwitchingOverProblem = Problem.pure("Master is switching over active cluster node")
 
   private val logger = Logger(getClass)
 
