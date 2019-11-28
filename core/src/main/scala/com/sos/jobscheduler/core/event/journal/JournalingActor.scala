@@ -188,6 +188,7 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
   private def beginStashing(): Unit = {
     stashingCount += 1
     if (stashingCount == 1) {
+      logger.trace(s"“$toString” become journaling")
       context.become(journaling, discardOld = false)
     }
   }
@@ -200,6 +201,7 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
     }
     stashingCount -= 1
     if (stashingCount == 0) {
+      logger.trace(s"“$toString” unbecome")
       context.unbecome()
       unstashAll()
     }

@@ -175,7 +175,7 @@ extends Actor with Stash
             requireClusterAcknowledgement = true
           case Some(Stamped(_, _, KeyedEvent(_, _: ClusterEvent.SwitchedOver))) =>
             commit()
-            logger.info(s"SwitchedOver: stopping journal")
+            logger.debug("SwitchedOver: no more events are accepted")
             switchedOver = true  // No more events are accepted
           case _ =>
             forwardCommit((delay max conf.delay) - alreadyDelayed)
