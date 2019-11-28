@@ -42,8 +42,10 @@ trait HttpSessionApi extends SessionApi.LoginUntilReachable with HasSessionToken
         case None => Task.pure(Completed)
         case sometoken @ Some(sessionToken) =>
           executeSessionCommand(Logout(sessionToken), suppressSessionToken = true)
+            .doOnFinish(_ => Task {
+              sessionTokenRef.compareAndSet(sometoken, None)   // Changes nothing in case of a concurrent successful Logout or Login
+            })
             .map { _: SessionCommand.Response.Accepted =>
-              sessionTokenRef.compareAndSet(sometoken, None)  // Changes nothing in case of a concurrent successful Logout or Login
               Completed
             }
       }
