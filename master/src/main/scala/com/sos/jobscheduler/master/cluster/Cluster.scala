@@ -20,7 +20,7 @@ import com.sos.jobscheduler.data.cluster.ClusterState.{AwaitingAppointment, Awai
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeRole, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest}
+import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, Stamped}
 import com.sos.jobscheduler.master.MasterState
 import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
 import com.sos.jobscheduler.master.cluster.Cluster._
@@ -42,11 +42,18 @@ final class Cluster(
   private val fetchingEvents = AtomicBoolean(false)
   @volatile
   private var fetchingEventsFuture: CancelableFuture[Completed] = null
+  @volatile
+  private var switchoverAcknowledged = false
+  @volatile
+  private var stopRequested = false
 
-  def stop(): Unit =
+  def stop(): Unit = {
+    logger.debug("stop")
+    stopRequested = true
     for (o <- Option(fetchingEventsFuture)) {
       o.cancel()
     }
+  }
 
   def start(
     recovered: Recovered[MasterState, Event],
@@ -182,7 +189,10 @@ final class Cluster(
         Right(SwitchedOver(coupled.passiveUri))
       case state =>
         Left(Problem(s"Not switching over because Cluster is not in expected state Coupled(active=${conf.maybeOwnUri.map(_.toString)}): $state"))
-    }.map(_.map(_ => Completed))
+    }.map(_.map { case (_: Stamped[_], _) =>
+      switchoverAcknowledged = true
+      Completed
+    })
 
   private def proceed(state: ClusterState, eventId: EventId): Unit =
     state match {
@@ -208,11 +218,15 @@ final class Cluster(
       }).use(api =>
           observeEventIds(api, after = after)
             .whileBusyBuffer(OverflowStrategy.DropOld(bufferSize = 2))
+            .takeWhile(_ => !switchoverAcknowledged)  // Race conditition: may be set too late
             .mapEval(eventId =>
               Task.deferFuture {
+                // Possible dead letter when `switchoverAcknowledged` is detected too late,
+                // because after JournalActor has committed SwitchedOver (after ack), JournalActor stops.
                 (journalActor ? JournalActor.Input.FollowerAcknowledged(eventId = eventId)).mapTo[Completed]
               })
             .foldL)
+        .guaranteeCase(exitCase => Task { logger.debug(s"fetchAndHandleAcknowledgedEventIds finished => $exitCase") })
 
   private def observeEventIds(api: HttpMasterApi, after: EventId): Observable[EventId] =
     RecouplingStreamReader
@@ -225,7 +239,8 @@ final class Cluster(
         getObservable = (after: EventId) =>
           AkkaHttpClient.liftProblem(
             api.eventIdObservable(
-              EventRequest.singleClass[Event](after = after, timeout = Some(conf.recouplingStreamReader.timeout)))))
+              EventRequest.singleClass[Event](after = after, timeout = Some(conf.recouplingStreamReader.timeout)))),
+        stopRequested = () => stopRequested)
   /*
   private def queryAgents(otherNodeId: ClusterNodeId): Unit =
     Task
