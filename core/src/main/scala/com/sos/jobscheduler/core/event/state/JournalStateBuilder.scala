@@ -88,7 +88,7 @@ trait JournalStateBuilder[S <: JournaledState[S, E], E <: Event]
   }
 
   def synchronizedStateTask: Task[S] =
-    Task.deferFuture(getStatePromise.future).flatten
+    Task.fromFuture(getStatePromise.future).flatten
 
   /** Journal file's JournalHeader. */
   final def fileJournalHeader = _journalHeader.toOption
