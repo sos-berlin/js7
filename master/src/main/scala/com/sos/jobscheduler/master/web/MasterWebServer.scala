@@ -46,7 +46,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri
 
   protected def newRoute(binding: WebServerBinding) =
     new AkkaWebServer.BoundRoute with CompleteRoute {
-      protected val shuttingDownFuture      = MasterWebServer.this.shuttingDownFuture
+      protected val shuttingDownFuture  = MasterWebServer.this.shuttingDownFuture
       protected val masterConfiguration = MasterWebServer.this.masterConfiguration
       protected val masterId            = masterConfiguration.masterId
       protected val injector            = MasterWebServer.this.injector
