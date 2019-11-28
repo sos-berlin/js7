@@ -25,7 +25,7 @@ final class CommandRouteTest extends FreeSpec with RouteTester with CommandRoute
 
   protected def executeCommand(command: MasterCommand, meta: CommandMeta) =
     command match {
-      case MasterCommand.ShutDown =>
+      case MasterCommand.ShutDown(false) =>
         commandReceived = true
         Task.pure(Right(MasterCommand.Response.Accepted))
 
@@ -40,7 +40,7 @@ final class CommandRouteTest extends FreeSpec with RouteTester with CommandRoute
 
   "POST /api/command" in {
     assert(!commandReceived)
-    Post("/api/command", MasterCommand.ShutDown: MasterCommand) ~> Accept(`application/json`) ~> route ~> check {
+    Post("/api/command", MasterCommand.ShutDown(): MasterCommand) ~> Accept(`application/json`) ~> route ~> check {
       val response = responseAs[MasterCommand.Response]
       assert(response == MasterCommand.Response.Accepted)
     }

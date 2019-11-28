@@ -15,7 +15,7 @@ import com.sos.jobscheduler.data.filebased.{TypedPath, VersionId}
 import com.sos.jobscheduler.data.master.MasterFileBaseds.typedPathJsonDecoder
 import com.sos.jobscheduler.data.order.OrderId
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, JsonObject}
+import io.circe.{Decoder, Encoder, Json, JsonObject}
 import scala.collection.immutable.Seq
 
 /**
@@ -51,6 +51,7 @@ object MasterCommand extends CommonCommand.Companion
       JsonObject.fromIterable(
         ("orderId" -> o.orderId.asJson) ::
           (o.mode != CancelMode.Default).thenList("mode" -> o.mode.asJson))
+
     implicit val jsonDecoder: Decoder[CancelOrder] = c =>
       for {
         orderId <- c.get[OrderId]("orderId")
@@ -70,8 +71,18 @@ object MasterCommand extends CommonCommand.Companion
   }
 
   /** Master stops immediately with exit(). */
-  case object EmergencyStop extends MasterCommand {
+  final case class EmergencyStop(restart: Boolean = false) extends MasterCommand {
     type Response = Response.Accepted
+  }
+  object EmergencyStop {
+    implicit val jsonEncoder: Encoder.AsObject[EmergencyStop] = o =>
+      JsonObject.fromIterable(
+        (o.restart).thenList("restart" -> Json.True))
+
+    implicit val jsonDecoder: Decoder[EmergencyStop] = c =>
+      for {
+        restart <- c.get[Option[Boolean]]("restart") map (_ getOrElse false)
+      } yield EmergencyStop(restart)
   }
 
   /** Some outer component has accepted the events until (including) the given `eventId`.
@@ -82,8 +93,18 @@ object MasterCommand extends CommonCommand.Companion
   }
 
   /** Shut down the Master properly. */
-  final case object ShutDown extends MasterCommand {
+  final case class ShutDown(restart: Boolean = false) extends MasterCommand {
     type Response = Response.Accepted
+  }
+  object ShutDown {
+    implicit val jsonEncoder: Encoder.AsObject[ShutDown] = o =>
+      JsonObject.fromIterable(
+        (o.restart).thenList("restart" -> Json.True))
+
+    implicit val jsonDecoder: Decoder[ShutDown] = c =>
+      for {
+        restart <- c.get[Option[Boolean]]("restart") map (_ getOrElse false)
+      } yield ShutDown(restart)
   }
 
   case object TakeSnapshot extends MasterCommand {
@@ -143,10 +164,10 @@ object MasterCommand extends CommonCommand.Companion
     Subtype(deriveCodec[UpdateRepo]),
     Subtype(NoOperation),
     Subtype(IssueTestEvent),
-    Subtype(EmergencyStop),
+    Subtype[EmergencyStop],
     Subtype(deriveCodec[KeepEvents]),
     Subtype(deriveCodec[ClusterPassiveFollows]),
-    Subtype(ShutDown),
+    Subtype[ShutDown],
     Subtype(ClusterSwitchOver),
     Subtype(TakeSnapshot))
 }

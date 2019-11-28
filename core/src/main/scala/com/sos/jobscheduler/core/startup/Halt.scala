@@ -10,10 +10,10 @@ object Halt
 {
   private val logger = Logger(getClass)
 
-  def haltJava(msg: String): Nothing = {
+  def haltJava(msg: String, exitCode: Int = 99): Nothing = {
     logger.error(msg)
     Log4j.shutdown()
-    sys.runtime.halt(99)
+    sys.runtime.halt(exitCode)
     throw new Error("sys.runtime.halt failed")
   }
 }

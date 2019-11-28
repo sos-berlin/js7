@@ -81,8 +81,8 @@ extends MainJournalingActor[Event] with Stash {
   private val orderRegister = new OrderRegister
   private val orderProcessor = new OrderProcessor(workflowRegister.idToWorkflow.checked, orderRegister.idToOrder)
 
-  private object termination {
-    private var terminateCommand: Option[AgentCommand.ShutDown] = None
+  private object shutdown {
+    private var shutDownCommand: Option[AgentCommand.ShutDown] = None
     private var snapshotTaken = false
     private var stillTerminatingSchedule: Option[Cancelable] = None
     private var terminatingOrders = false
@@ -90,11 +90,11 @@ extends MainJournalingActor[Event] with Stash {
     private var terminatingJournal = false
     val since = SetOnce[Deadline]
 
-    def terminating = terminateCommand.isDefined
+    def shuttingDown = shutDownCommand.isDefined
 
     def start(terminate: AgentCommand.ShutDown): Unit =
-      if (!terminating) {
-        terminateCommand = Some(terminate)
+      if (!shuttingDown) {
+        shutDownCommand = Some(terminate)
         since := now
         journalActor ! JournalActor.Input.TakeSnapshot  // Take snapshot before OrderActors are stopped
         stillTerminatingSchedule = Some(scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
@@ -112,13 +112,13 @@ extends MainJournalingActor[Event] with Stash {
         (if (!snapshotTaken) ", and the snapshot" else ""))
 
     def onSnapshotTaken(): Unit =
-      if (terminating) {
+      if (shuttingDown) {
         snapshotTaken = true
         continue()
       }
 
     def continue() =
-      for (terminate <- terminateCommand) {
+      for (terminate <- shutDownCommand) {
         logger.trace(s"termination.continue: ${orderRegister.size} orders, ${jobRegister.size} jobs ${if (snapshotTaken) ", snapshot taken" else ""}")
         if (snapshotTaken) {
           if (!terminatingOrders) {
@@ -140,15 +140,15 @@ extends MainJournalingActor[Event] with Stash {
         }
       }
   }
-  import termination.terminating
+  import shutdown.shuttingDown
 
   self ! Internal.Recover(recovered_)
   // Do not use recovered_ after here to allow release of the big object
 
   override def postStop() = {
-    termination.close()
+    shutdown.close()
     super.postStop()
-    logger.debug("Stopped" + termination.since.fold("")(o => s" (terminated in ${o.elapsed.pretty})"))
+    logger.debug("Stopped" + shutdown.since.fold("")(o => s" (terminated in ${o.elapsed.pretty})"))
   }
 
   def snapshots = Future.successful(workflowRegister.workflows)
@@ -207,14 +207,14 @@ extends MainJournalingActor[Event] with Stash {
       response.completeWith(processCommand(cmd))
 
     case terminate: AgentCommand.ShutDown =>
-      termination.start(terminate)
+      shutdown.start(terminate)
       sender() ! AgentCommand.Response.Accepted
 
     case JournalActor.Output.SnapshotTaken =>
-      termination.onSnapshotTaken()
+      shutdown.onSnapshotTaken()
 
     case OrderActor.Output.OrderChanged(order, event) if orderRegister contains order.id =>
-      if (!terminating) {
+      if (!shuttingDown) {
         handleOrderEvent(order, event)
         (event, orderRegister(order.id).instruction) match {
           case (_: OrderStarted, _: Execute) =>  // Special for OrderActor: it issues immediately an OrderProcessingStarted
@@ -224,7 +224,7 @@ extends MainJournalingActor[Event] with Stash {
       }
 
     case JobActor.Output.ReadyForOrder if jobRegister contains sender() =>
-      if (!terminating) {
+      if (!shuttingDown) {
         tryStartProcessing(jobRegister(sender()))
       }
 
@@ -236,7 +236,7 @@ extends MainJournalingActor[Event] with Stash {
           // May occur after Master restart when Master is not sure about order has been attached previously.
           logger.debug(s"Ignoring duplicate AttachOrder(${workflow.id})")
           Future.successful(Right(Response.Accepted))
-        } else if (terminating)
+        } else if (shuttingDown)
           Future.successful(Left(AgentIsShuttingDownProblem))
         else
           attachOrder(workflowRegister.reuseMemory(order), workflow)
@@ -259,7 +259,7 @@ extends MainJournalingActor[Event] with Stash {
   }
 
   private def processOrderCommand(cmd: OrderCommand): Future[Checked[Response]] = cmd match {
-    case AttachOrder(order, signedWorkflowString) if !terminating =>
+    case AttachOrder(order, signedWorkflowString) if !shuttingDown =>
       order.attached match {
         case Left(problem) => Future.successful(Left(problem))
         case Right(agentRefPath) =>
@@ -291,7 +291,7 @@ extends MainJournalingActor[Event] with Stash {
           }
       }
 
-    case DetachOrder(orderId) if !terminating =>
+    case DetachOrder(orderId) if !shuttingDown =>
       orderRegister.get(orderId) match {
         case Some(orderEntry) =>
           // TODO Antwort erst nach OrderDetached _und_ Terminated senden, wenn Actor aus orderRegister entfernt worden ist
@@ -340,13 +340,13 @@ extends MainJournalingActor[Event] with Stash {
       Future.successful(Right(GetOrders.Response(
         for (orderEntry <- orderRegister.values) yield orderEntry.order)))
 
-    case KeepEvents(eventId) if !terminating =>
+    case KeepEvents(eventId) if !shuttingDown =>
       Future {  // Concurrently!
         eventWatch.keepEvents(eventId).orThrow
         Right(AgentCommand.Response.Accepted)
       }
 
-    case _ if terminating =>
+    case _ if shuttingDown =>
       Future.failed(AgentIsShuttingDownProblem.throwable)
   }
 
@@ -432,7 +432,7 @@ extends MainJournalingActor[Event] with Stash {
   }
 
   private def onOrderFreshOrReady(orderEntry: OrderEntry): Unit =
-    if (!terminating) {
+    if (!shuttingDown) {
       for (_ <- orderEntry.order.attached onProblem (p => logger.error(s"onOrderFreshOrReady: $p"))) {
         orderEntry.instruction match {
           case execute: Execute =>
@@ -498,25 +498,25 @@ extends MainJournalingActor[Event] with Stash {
     message match {
       case Terminated(actorRef) if jobRegister contains actorRef =>
         val jobKey = jobRegister.actorToKey(actorRef)
-        if (terminating) {
+        if (shuttingDown) {
           logger.debug(s"Actor '$jobKey' stopped")
         } else {
           logger.error(s"Actor '$jobKey' stopped unexpectedly")
         }
         jobRegister.onActorTerminated(actorRef)
-        termination.continue()
+        shutdown.continue()
 
       case Terminated(actorRef) if orderRegister contains actorRef =>
         val orderId = orderRegister(actorRef).order.id
         logger.debug(s"Actor '$orderId' stopped")
         orderRegister.onActorTerminated(actorRef)
-        termination.continue()
+        shutdown.continue()
 
-      case Terminated(`journalActor`) if terminating =>
+      case Terminated(`journalActor`) if shuttingDown =>
         context.stop(self)
 
       case Internal.StillTerminating =>
-        termination.onStillTerminating()
+        shutdown.onStillTerminating()
 
       case _ =>
         super.unhandled(message)

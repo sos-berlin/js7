@@ -7,10 +7,10 @@ import com.google.inject.{Guice, Injector, Module}
 import com.sos.jobscheduler.agent.RunningAgent._
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
 import com.sos.jobscheduler.agent.configuration.{AgentConfiguration, AgentStartInformation}
+import com.sos.jobscheduler.agent.data.AgentTermination
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.web.AgentWebServer
 import com.sos.jobscheduler.base.auth.{SessionToken, SimpleUser, UserId}
-import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
@@ -40,7 +40,7 @@ import scala.concurrent.{ExecutionContext, Future, Promise, blocking}
 final class RunningAgent private(
   val webServer: AgentWebServer,
   mainActor: ActorRef,
-  terminated1: Future[Completed],
+  terminated1: Future[AgentTermination.Terminate],
   val api: CommandMeta => DirectAgentApi,
   val sessionToken: SessionToken,
   closer: Closer,
@@ -53,7 +53,7 @@ extends AutoCloseable {
   @TestOnly
   lazy val actorSystem = injector.instance[ActorSystem]
 
-  val terminated: Future[Completed] =
+  val terminated: Future[AgentTermination.Terminate] =
     for (o <- terminated1) yield {
       close()
       o
@@ -64,7 +64,7 @@ extends AutoCloseable {
 
   def close() = closer.close()
 
-  def terminate(sigkillProcessesAfter: Option[FiniteDuration] = Some(5.seconds)): Task[Completed] =
+  def terminate(sigkillProcessesAfter: Option[FiniteDuration] = Some(5.seconds)): Task[AgentTermination.Terminate] =
     if (terminated.isCompleted)  // Works only if previous termination has been completed
       Task.fromFuture(terminated)
     else {
@@ -121,9 +121,9 @@ object RunningAgent {
 
     val sessionRegister = injector.instance[SessionRegister[SimpleSession]]
     val mainActorReadyPromise = Promise[MainActor.Ready]()
-    val stoppedPromise = Promise[Completed]()
+    val terminationPromise = Promise[AgentTermination.Terminate]()
     val mainActor = actorSystem.actorOf(
-      Props { new MainActor(agentConfiguration, sessionRegister, injector, mainActorReadyPromise, stoppedPromise) },
+      Props { new MainActor(agentConfiguration, sessionRegister, injector, mainActorReadyPromise, terminationPromise) },
       "main")
     implicit val scheduler = injector.instance[Scheduler]
 
@@ -141,6 +141,6 @@ object RunningAgent {
       api = ready.api
       _ <- webServer.start(api)
     } yield
-      new RunningAgent(webServer, mainActor, stoppedPromise.future, api, sessionToken, closer, injector)
+      new RunningAgent(webServer, mainActor, terminationPromise.future, api, sessionToken, closer, injector)
   }
 }

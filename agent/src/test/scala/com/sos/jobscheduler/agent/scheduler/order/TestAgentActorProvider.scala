@@ -5,6 +5,7 @@ import com.google.inject.{AbstractModule, Guice, Provides}
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newAgentActorSystem
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
+import com.sos.jobscheduler.agent.data.AgentTermination
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.AgentActor
 import com.sos.jobscheduler.agent.scheduler.order.TestAgentActorProvider._
@@ -28,7 +29,7 @@ private class TestAgentActorProvider extends HasCloser {
   private val directoryProvider = TestAgentDirectoryProvider().closeWithCloser
   lazy val agentDirectory = directoryProvider.agentDirectory
 
-  lazy val (eventCollector, agentActor) = start(agentDirectory)
+  lazy val (eventCollector, agentActor, _) = start(agentDirectory)
 
   def startAgent() = agentActor
 
@@ -47,7 +48,7 @@ object TestAgentActorProvider {
   def provide[A](body: TestAgentActorProvider => A): A =
     autoClosing(new TestAgentActorProvider)(body)
 
-  private def start(configAndData: Path)(implicit closer: Closer): (EventCollector, ActorRef) = {
+  private def start(configAndData: Path)(implicit closer: Closer): (EventCollector, ActorRef, Future[AgentTermination.Terminate]) = {
     implicit val agentConfiguration = AgentConfiguration.forTest(configAndData = configAndData)
     val actorSystem = newAgentActorSystem("TestAgentActorProvider")
     val injector = Guice.createInjector(new AgentModule(agentConfiguration))
@@ -61,7 +62,8 @@ object TestAgentActorProvider {
         factory.apply()
     }).instance[EventCollector]
 
-    val agentActor = actorSystem.actorOf(Props { injector.instance[AgentActor] }, "AgentActor")
-    (eventCollector, agentActor)
+    val terminatePromise = Promise[AgentTermination.Terminate]()
+    val agentActor = actorSystem.actorOf(Props { injector.instance[AgentActor.Factory].apply(terminatePromise) }, "AgentActor")
+    (eventCollector, agentActor, terminatePromise.future)
   }
 }

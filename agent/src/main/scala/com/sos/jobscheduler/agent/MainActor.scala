@@ -5,10 +5,10 @@ import com.google.inject.Injector
 import com.sos.jobscheduler.agent.MainActor._
 import com.sos.jobscheduler.agent.command.{CommandActor, CommandHandler}
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
+import com.sos.jobscheduler.agent.data.AgentTermination
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.{AgentActor, AgentHandle}
 import com.sos.jobscheduler.base.auth.UserId
-import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.akkautils.CatchingSupervisorStrategy
@@ -27,16 +27,16 @@ final class MainActor(
   sessionRegister: SessionRegister[SimpleSession],
   injector: Injector,
   readyPromise: Promise[Ready],
-  stoppedPromise: Promise[Completed])
+  terminationPromise: Promise[AgentTermination.Terminate])
 extends Actor {
 
   import agentConfiguration.akkaAskTimeout
   import context.{actorOf, watch}
 
-  override val supervisorStrategy = CatchingSupervisorStrategy(stoppedPromise)
+  override val supervisorStrategy = CatchingSupervisorStrategy(terminationPromise)
 
   private implicit val scheduler = injector.instance[Scheduler]
-  private val agentActor = watch(actorOf(Props { injector.instance[AgentActor] }, "agent"))
+  private val agentActor = watch(actorOf(Props { injector.instance[AgentActor.Factory].apply(terminationPromise) }, "agent"))
   private val agentHandle = new AgentHandle(agentActor)(akkaAskTimeout)
 
   private val commandHandler = injector.option[CommandHandler] getOrElse { // Only tests bind a CommandHandler
@@ -48,7 +48,7 @@ extends Actor {
 
   override def preStart() = {
     super.preStart()
-    for (t <- stoppedPromise.future.failed) readyPromise.tryFailure(t)
+    for (t <- terminationPromise.future.failed) readyPromise.tryFailure(t)
     agentActor ! AgentActor.Input.Start
   }
 
@@ -56,8 +56,8 @@ extends Actor {
     if (!readyPromise.isCompleted) {
       readyPromise.tryFailure(new RuntimeException("MainActor has stopped before AgentActor has become ready") with NoStackTrace)
     }
-    if (!stoppedPromise.isCompleted) {
-      stoppedPromise.tryFailure(new RuntimeException("MainActor has stopped unexpectedly") with NoStackTrace)
+    if (!terminationPromise.isCompleted) {
+      terminationPromise.tryFailure(new RuntimeException("MainActor has stopped unexpectedly") with NoStackTrace)
     }
     logger.debug("Stopped")
     super.postStop()
@@ -72,7 +72,7 @@ extends Actor {
 
     case Terminated(`agentActor`) =>
       logger.debug("Stop")
-      stoppedPromise.trySuccess(Completed)
+      terminationPromise.trySuccess(AgentTermination.Terminate())
       context.stop(self)
   }
 }

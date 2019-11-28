@@ -32,7 +32,7 @@ private[https] trait MasterHttpsStandardTests extends HttpsTestBase
   }
 
   "ShutDown" in {
-    masterApi.executeCommand(MasterCommand.ShutDown) await 99.s
+    masterApi.executeCommand(MasterCommand.ShutDown()) await 99.s
     masterApi.clearSession()  // To avoid automatic logoff because Master is terminating now.
     master.terminated await 99.s
   }

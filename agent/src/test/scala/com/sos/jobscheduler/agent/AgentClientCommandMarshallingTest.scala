@@ -34,7 +34,7 @@ extends FreeSpec with ScalaFutures with AgentTester {
         Task {
           (command match {
             case ExpectedTerminate => Right(AgentCommand.Response.Accepted)
-            case EmergencyStop => Right(AgentCommand.Response.Accepted)
+            case EmergencyStop(false) => Right(AgentCommand.Response.Accepted)
             case _ => throw new NotImplementedError
           })
           .map(_.asInstanceOf[command.Response])
@@ -50,7 +50,7 @@ extends FreeSpec with ScalaFutures with AgentTester {
 
   List[(AgentCommand, Checked[AgentCommand.Response])](
     ExpectedTerminate -> Right(AgentCommand.Response.Accepted),
-    EmergencyStop -> Right(AgentCommand.Response.Accepted))
+    EmergencyStop(false) -> Right(AgentCommand.Response.Accepted))
   .foreach { case (command, response) =>
     command.getClass.simpleScalaName in {
       assert(client.commandExecute(command).await(99.s) == response)

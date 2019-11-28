@@ -26,7 +26,7 @@ final class MasterCommandTest extends FreeSpec
 
   "Batch" - {
     "Batch" in {
-      testJson[MasterCommand](Batch(List(NoOperation, EmergencyStop)),
+      testJson[MasterCommand](Batch(List(NoOperation, EmergencyStop())),
         json"""{
           "TYPE": "Batch",
           "commands": [
@@ -37,8 +37,8 @@ final class MasterCommandTest extends FreeSpec
     }
 
     "Batch.toString" in {
-      assert(Batch(List(NoOperation, EmergencyStop, NoOperation)).toString == "Batch(NoOperation, EmergencyStop, NoOperation)")
-      assert(Batch(List(NoOperation, EmergencyStop, NoOperation, NoOperation)).toString == "Batch(NoOperation, EmergencyStop, 2×NoOperation)")
+      assert(Batch(List(NoOperation, EmergencyStop(), NoOperation)).toString == "Batch(NoOperation, EmergencyStop, NoOperation)")
+      assert(Batch(List(NoOperation, EmergencyStop(), NoOperation, NoOperation)).toString == "Batch(NoOperation, EmergencyStop, 2×NoOperation)")
     }
 
     "BatchResponse" in {
@@ -158,11 +158,21 @@ final class MasterCommandTest extends FreeSpec
       }""")
   }
 
-  "EmergencyStop" in {
-    testJson[MasterCommand](EmergencyStop,
-      json"""{
-        "TYPE": "EmergencyStop"
-      }""")
+  "EmergencyStop" - {
+    "restart=false" in {
+      testJson[MasterCommand](EmergencyStop(),
+        json"""{
+          "TYPE": "EmergencyStop"
+        }""")
+    }
+
+    "restart=true" in {
+      testJson[MasterCommand](EmergencyStop(restart = true),
+        json"""{
+          "TYPE": "EmergencyStop",
+          "restart": true
+        }""")
+    }
   }
 
   "KeepEvents" in {
@@ -202,11 +212,21 @@ final class MasterCommandTest extends FreeSpec
       }""")
   }
 
-  "ShutDown" in {
-    testJson[MasterCommand](ShutDown,
-      json"""{
-        "TYPE": "ShutDown"
-      }""")
+  "ShutDown" - {
+    "restart=false" in {
+      testJson[MasterCommand](ShutDown(),
+        json"""{
+          "TYPE": "ShutDown"
+        }""")
+    }
+
+    "restart=true" in {
+      testJson[MasterCommand](ShutDown(restart = true),
+        json"""{
+          "TYPE": "ShutDown",
+          "restart": true
+        }""")
+    }
   }
 
   "Response.Accepted" in {

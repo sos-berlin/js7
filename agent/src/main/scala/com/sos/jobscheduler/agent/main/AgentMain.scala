@@ -2,6 +2,7 @@ package com.sos.jobscheduler.agent.main
 
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
+import com.sos.jobscheduler.agent.data.AgentTermination
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.ShutDown
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
@@ -24,20 +25,21 @@ final class AgentMain
 {
   private val logger = Logger(getClass)
 
-  def run(arguments: CommandLineArguments): Unit = {
+  def run(arguments: CommandLineArguments): AgentTermination.Terminate = {
     logger.info(s"JobScheduler Agent Server ${BuildInfo.prettyVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
     logger.debug(arguments.toString)
     val agentConfiguration = AgentConfiguration.fromCommandLine(arguments)
     logConfig(agentConfiguration.config)
+    var terminated = AgentTermination.Terminate()
     autoClosing(RunningAgent(agentConfiguration).awaitInfinite) { agent =>
       withShutdownHooks(agentConfiguration.config, "AgentMain", onJavaShutdown(agent)) {
-        agent.terminated.awaitInfinite
+        terminated = agent.terminated.awaitInfinite
       }
     }
     val msg = "JobScheduler Agent Server terminates"
     logger.info(msg)
     println(msg)
-
+    terminated
   }
 
   private def onJavaShutdown(agent: RunningAgent)(timeout: FiniteDuration): Unit = {
@@ -49,14 +51,19 @@ final class AgentMain
     agent.close()
   }
 }
+
 object AgentMain
 {
   // Don't use a Logger here to avoid overwriting a concurrently used logfile
 
   def main(args: Array[String]): Unit = {
     println(s"${LocalTime.now.toString take 12} JobScheduler Agent Server ${BuildInfo.prettyVersion}")
+    var terminated = AgentTermination.Terminate()
     lockAndRunMain(args) { commandLineArguments =>
-      new AgentMain().run(commandLineArguments)
+      terminated = new AgentMain().run(commandLineArguments)
+    }
+    if (terminated.restart) {
+      System.exit(97)
     }
   }
 }

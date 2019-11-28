@@ -4,6 +4,7 @@ import akka.actor.{ActorRef, PoisonPill, Props, Terminated}
 import akka.pattern.{ask, pipe}
 import cats.instances.future._
 import com.sos.jobscheduler.agent.configuration.{AgentConfiguration, AgentStartInformation}
+import com.sos.jobscheduler.agent.data.AgentTermination
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Response
 import com.sos.jobscheduler.agent.data.event.KeyedEventJsonFormats.AgentKeyedEventJsonCodec
@@ -22,7 +23,7 @@ import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.common.akkautils.{Akkas, SupervisorStrategies}
 import com.sos.jobscheduler.common.scalautil.Closer.ops._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.common.scalautil.{Closer, IOExecutor, Logger}
+import com.sos.jobscheduler.common.scalautil.{Closer, IOExecutor, Logger, SetOnce}
 import com.sos.jobscheduler.common.system.JavaInformations.javaInformation
 import com.sos.jobscheduler.common.system.SystemInformations.systemInformation
 import com.sos.jobscheduler.core.common.ActorRegister
@@ -39,7 +40,7 @@ import com.sos.jobscheduler.data.event.{EventId, JournalEvent, JournalId, KeyedE
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.workflow.Workflow
-import javax.inject.Inject
+import javax.inject.{Inject, Singleton}
 import monix.execution.Scheduler
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.{Future, Promise}
@@ -49,6 +50,7 @@ import shapeless.tag
   * @author Joacim Zschimmer
   */
 private[agent] final class AgentActor @Inject private(
+  terminatePromise: Promise[AgentTermination.Terminate],
   agentConfiguration: AgentConfiguration,
   newTaskRunner: TaskRunner.Factory,
   keyedEventBus: StampedKeyedEventBus)
@@ -66,7 +68,8 @@ extends MainJournalingActor[AgentEvent] {
     "Journal")))
   private val masterToOrderKeeper = new MasterRegister
   private val signatureVerifier = GenericSignatureVerifier(agentConfiguration.config).orThrow
-  private var terminating = false
+  private var shutDownCommand = SetOnce[AgentCommand.ShutDown]
+  private def terminating = shutDownCommand.isDefined
   private val terminateCompleted = Promise[Completed]()
 
   def snapshots = Future.successful(
@@ -82,6 +85,7 @@ extends MainJournalingActor[AgentEvent] {
   override def postStop() = {
     for (m <- masterToOrderKeeper.values) m.eventWatch.close()
     super.postStop()
+    terminatePromise.success(AgentTermination.Terminate(restart = shutDownCommand.fold(false)(_.restart)))
     logger.debug("Stopped")
   }
 
@@ -160,7 +164,7 @@ extends MainJournalingActor[AgentEvent] {
     command match {
       case command: AgentCommand.ShutDown =>
         if (!terminating) {
-          terminating = true
+          shutDownCommand := command
           terminateOrderKeepers(command) onComplete { ordersTerminated =>
             response.complete(ordersTerminated map Right.apply)
             terminateCompleted.success(Completed)  // Wait for child Actor termination
@@ -251,7 +255,8 @@ extends MainJournalingActor[AgentEvent] {
   override def toString = "AgentActor"
 }
 
-object AgentActor {
+object AgentActor
+{
   private val logger = Logger(getClass)
   private val SnapshotJsonFormat = TypedJsonCodec[Any](
     Subtype[Workflow],
@@ -280,5 +285,16 @@ object AgentActor {
   }
   object MasterRegister {
     final case class Entry(masterId: MasterId, agentRunId: AgentRunId, eventWatch: JournalEventWatch, actor: ActorRef)
+  }
+
+  @Singleton
+  final class Factory @Inject private(
+    agentConfiguration: AgentConfiguration,
+    newTaskRunner: TaskRunner.Factory,
+    keyedEventBus: StampedKeyedEventBus)
+    (implicit closer: Closer, scheduler: Scheduler, iox: IOExecutor)
+  {
+    def apply(terminatePromise: Promise[AgentTermination.Terminate]) =
+      new AgentActor(terminatePromise, agentConfiguration, newTaskRunner, keyedEventBus)
   }
 }

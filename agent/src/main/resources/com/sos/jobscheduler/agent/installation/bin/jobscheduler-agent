@@ -112,48 +112,56 @@ execute=(
   com.sos.jobscheduler.agent.main.AgentMain "${agentOptions[@]}")
 (t=$(date +"%H:%M:%S.%N"); echo -e "\n-------\n${t:0:12}" "${execute[@]}")
 
-"${execute[@]}" &
+while true; do
+  "${execute[@]}" &
 
-pid=$!
-pidFile="$stateDir/pid"
-echo "$pid" >"$pidFile"
-echo "PID $pid"
+  pid=$!
+  pidFile="$stateDir/pid"
+  echo "$pid" >"$pidFile"
+  echo "PID $pid"
 
-terminate() {
-  echo
-  echo "ShutDown JobScheduler Agent Server"
-  # Add some seconds to start Java with AgentClientMain
-  terminateTimeout=30
-  if [ "$SHELL" = "/bin/bash" ]; then
-    "$JOBSCHEDULER_HOME"/bin/jobscheduler-client -data-directory="$data" "$terminateCommand" &
-  else
-    "$java" -Xmx50m \
-      -Dlog4j.configurationFile=com/sos/jobscheduler/agent/client/main/log4j2.xml \
-      -classpath "$classpathString" \
-      com.sos.jobscheduler.agent.client.main.AgentClientMain \
-      -data-directory="$data" \
-      http://127.0.0.1:"$httpPort" \
-      "$terminateCommand" \
-      >/dev/null &
+  terminate() {
+    echo
+    echo "ShutDown JobScheduler Agent Server"
+    # Add some seconds to start Java with AgentClientMain
+    terminateTimeout=30
+    if [ "$SHELL" = "/bin/bash" ]; then
+      "$JOBSCHEDULER_HOME"/bin/jobscheduler-client -data-directory="$data" "$terminateCommand" &
+    else
+      "$java" -Xmx50m \
+        -Dlog4j.configurationFile=com/sos/jobscheduler/agent/client/main/log4j2.xml \
+        -classpath "$classpathString" \
+        com.sos.jobscheduler.agent.client.main.AgentClientMain \
+        -data-directory="$data" \
+        http://127.0.0.1:"$httpPort" \
+        "$terminateCommand" \
+        >/dev/null &
+    fi
+    (sleep $terminateTimeout && kill $pid) &
+    killer=$!
+    wait $pid
+    kill $killer
+  }
+
+  trap terminate SIGTERM SIGINT
+  returnCode=0
+  wait $pid || {
+    returnCode=$?
+    echo "JobScheduler Agent Server exited with exit code $returnCode"
+  }
+  rm "$pidFile"
+  trap - SIGTERM SIGINT
+
+  if [ -n "$crashKillScript" ] && [ -s "$crashKillScript" ]; then :
+    ps fux || true
+    echo "Executing crash kill script $crashKillScript:"
+    cat "$crashKillScript"
+    (. "$crashKillScript" || true)
+    ps fux || true
   fi
-  (sleep $terminateTimeout && kill $pid) &
-  killer=$!
-  wait $pid
-  kill $killer
-}
+  (t=$(date +"%H:%M:%S.%N"); echo -e "\n${t:0:12} JobScheduler Agent Server has been shut down" >>"$logs/stdouterr.log")
 
-trap terminate SIGTERM SIGINT
-wait $pid || echo "JobScheduler Agent Server exited with exit code $?"
-rm "$pidFile"
-trap - SIGTERM SIGINT
-
-returnCode=$?
-if [ -n "$crashKillScript" ] && [ -s "$crashKillScript" ]; then :
-  ps fux || true
-  echo "Executing crash kill script $crashKillScript:"
-  cat "$crashKillScript"
-  (. "$crashKillScript" || true)
-  ps fux || true
-fi
-(t=$(date +"%H:%M:%S.%N"); echo -e "\n${t:0:12} JobScheduler Agent Server has been shut down" >>"$logs/stdouterr.log")
-exit $returnCode
+  if [[ $returnCode -ne 97 ]] && [[ $returnCode -ne 98 ]]; then
+    exit $returnCode
+  fi
+done

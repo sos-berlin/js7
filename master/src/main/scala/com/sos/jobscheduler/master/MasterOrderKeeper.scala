@@ -108,6 +108,7 @@ with MainJournalingActor[Event]
 
   private object shutdown {
     val since = SetOnce[Deadline]
+    private val shutDown = SetOnce[MasterCommand.ShutDown]
     private var stillShuttingDownCancelable: Option[Cancelable] = None
     private var terminatingAgentDrivers = false
     private var takingSnapshot = false
@@ -116,9 +117,12 @@ with MainJournalingActor[Event]
 
     def shuttingDown = since.isDefined
 
-    def start(): Unit =
+    def restart = shutDown.fold(false)(_.restart)
+
+    def start(shutDown: MasterCommand.ShutDown): Unit =
       if (!shuttingDown) {
         since := now
+        this.shutDown := shutDown
         journalActor ! JournalActor.Input.TakeSnapshot  // Take snapshot before OrderActors are stopped
         stillShuttingDownCancelable = Some(scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
           self ! Internal.StillShuttingDown
@@ -235,7 +239,7 @@ with MainJournalingActor[Event]
       switchover foreach { _.close() }
     } finally {
       logger.debug("Stopped" + shutdown.since.fold("")(o => s" (terminated in ${o.elapsed.pretty})"))
-      stopped.success(if (switchover.isDefined) MasterTermination.Restart else MasterTermination.Terminate)
+      stopped.success(if (switchover.isDefined) MasterTermination.Restart else MasterTermination.Terminate(restart = shutdown.restart))
       super.postStop()
     }
 
@@ -262,7 +266,7 @@ with MainJournalingActor[Event]
       become("Recovering")(recovering)
       unstashAll()
 
-    case Command.Execute(MasterCommand.ShutDown, _) =>
+    case Command.Execute(_: MasterCommand.ShutDown, _) =>
       stash()
 
     case _ => stash()
@@ -522,7 +526,7 @@ with MainJournalingActor[Event]
         // NoOperation completes only after MasterOrderKeeper has become ready (can be used to await readiness)
         Future.successful(Right(MasterCommand.Response.Accepted))
 
-      case MasterCommand.EmergencyStop | _: MasterCommand.Batch =>       // For completeness. RunningMaster has handled the command already
+      case _: MasterCommand.EmergencyStop | _: MasterCommand.Batch =>       // For completeness. RunningMaster has handled the command already
         Future.successful(Left(Problem.pure("THIS SHOULD NOT HAPPEN")))  // Never called
 
       case MasterCommand.TakeSnapshot =>
@@ -550,8 +554,8 @@ with MainJournalingActor[Event]
             }
           }.map(_.map((_: Completed) => MasterCommand.Response.Accepted))
 
-      case MasterCommand.ShutDown =>
-        shutdown.start()
+      case shutDown: MasterCommand.ShutDown =>
+        shutdown.start(shutDown)
         Future.successful(Right(MasterCommand.Response.Accepted))
 
       case MasterCommand.IssueTestEvent =>

@@ -17,10 +17,10 @@ import scala.concurrent.duration.DurationInt
 /**
   * @author Joacim Zschimmer
   */
-final class AgentCommandTest extends FreeSpec {
-
+final class AgentCommandTest extends FreeSpec
+{
   "Batch" in {
-    check(AgentCommand.Batch(List(AgentCommand.NoOperation, AgentCommand.EmergencyStop)),
+    check(AgentCommand.Batch(List(AgentCommand.NoOperation, AgentCommand.EmergencyStop())),
       json"""{
         "TYPE": "Batch",
         "commands": [
@@ -60,9 +60,19 @@ final class AgentCommandTest extends FreeSpec {
       }""")
   }
 
-  "EmergencyStop" in {
-    check(AgentCommand.EmergencyStop,
-      json"""{ "TYPE": "EmergencyStop" }""")
+  "EmergencyStop" - {
+    "restart=false" in {
+      check(AgentCommand.EmergencyStop(),
+        json"""{ "TYPE": "EmergencyStop" }""")
+    }
+
+    "restart=true" in {
+      check(AgentCommand.EmergencyStop(restart = true),
+        json"""{
+          "TYPE": "EmergencyStop",
+          "restart": true
+        }""")
+    }
   }
 
   "KeepEvents" in {
@@ -102,6 +112,14 @@ final class AgentCommandTest extends FreeSpec {
           "TYPE": "ShutDown",
           "sigtermProcesses": true,
           "sigkillProcessesAfter": 30
+        }""")
+    }
+
+    "JSON with restart" in {
+      check(AgentCommand.ShutDown(restart = true),
+        json"""{
+          "TYPE": "ShutDown",
+          "restart": true
         }""")
     }
   }

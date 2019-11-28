@@ -9,12 +9,15 @@ import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.Checked.implicits.{checkedJsonDecoder, checkedJsonEncoder}
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
+import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.data.agent.{AgentRefPath, AgentRunId}
 import com.sos.jobscheduler.data.command.{CancelMode, CommonCommand}
 import com.sos.jobscheduler.data.crypt.SignedString
 import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import io.circe.generic.JsonCodec
+import io.circe.syntax.EncoderOps
+import io.circe.{Decoder, Encoder, Json, JsonObject}
 import scala.collection.immutable.Seq
 import scala.concurrent.duration.FiniteDuration
 
@@ -57,9 +60,19 @@ object AgentCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
-  case object EmergencyStop extends ShutdownOrAbort {
+  final case class EmergencyStop(restart: Boolean = false) extends AgentCommand {
     /** The JVM is halted before responding. */
-    type Response = Nothing
+    type Response = Response.Accepted
+  }
+  object EmergencyStop {
+    implicit val jsonEncoder: Encoder.AsObject[EmergencyStop] = o =>
+      JsonObject.fromIterable(
+        (o.restart).thenList("restart" -> Json.True))
+
+    implicit val jsonDecoder: Decoder[EmergencyStop] = c =>
+      for {
+        restart <- c.get[Option[Boolean]]("restart") map (_ getOrElse false)
+      } yield EmergencyStop(restart)
   }
 
   /** Some outer component has accepted the events until (including) the given `eventId`.
@@ -97,13 +110,27 @@ object AgentCommand extends CommonCommand.Companion
 
   final case class ShutDown(
     sigtermProcesses: Boolean = false,
-    sigkillProcessesAfter: Option[FiniteDuration] = None)
+    sigkillProcessesAfter: Option[FiniteDuration] = None,
+    restart: Boolean = false)
   extends ShutdownOrAbort {
     type Response = Response.Accepted
   }
 
   object ShutDown {
     val MaxDuration = 31 * 24.h
+
+    implicit val jsonEncoder: Encoder.AsObject[ShutDown] = o =>
+      JsonObject.fromIterable(
+        o.sigtermProcesses.thenList("sigtermProcesses" -> Json.True) :::
+        o.sigkillProcessesAfter.map(o => "sigkillProcessesAfter" -> o.asJson).toList :::
+        o.restart.thenList("restart" -> Json.True))
+
+    implicit val jsonDecoder: Decoder[ShutDown] = c =>
+      for {
+        sigtermProcesses <- c.get[Option[Boolean]]("sigtermProcesses") map (_ getOrElse false)
+        sigkillProcessesAfter <- c.get[Option[FiniteDuration]]("sigkillProcessesAfter")
+        restart <- c.get[Option[Boolean]]("restart") map (_ getOrElse false)
+      } yield ShutDown(sigtermProcesses, sigkillProcessesAfter, restart)
   }
 
   sealed trait OrderCommand extends AgentCommand
@@ -152,12 +179,12 @@ object AgentCommand extends CommonCommand.Companion
     TypedJsonCodec[AgentCommand](
       Subtype(deriveCodec[Batch]),
       Subtype(deriveCodec[CancelOrder]),
-      Subtype(EmergencyStop),
+      Subtype[EmergencyStop],
       Subtype(deriveCodec[KeepEvents]),
       Subtype(NoOperation),
       Subtype(RegisterAsMaster),
       Subtype(deriveCodec[CoupleMaster]),
-      Subtype(deriveCodec[ShutDown]),
+      Subtype[ShutDown],
       Subtype(deriveCodec[AttachOrder]),
       Subtype(deriveCodec[DetachOrder]),
       Subtype(deriveCodec[GetOrder]),

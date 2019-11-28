@@ -101,11 +101,11 @@ extends AutoCloseable
         case Some(Failure(t)) => Task.raiseError(t)
         case Some(Success(_)) =>
           logger.warn("Master terminate: Akka has already been terminated")
-          Task.pure(MasterTermination.Terminate)
+          Task.pure(MasterTermination.Terminate(restart = false))
         case None =>
           logger.debug("terminate")
           for {
-            _ <- executeCommandAsSystemUser(MasterCommand.ShutDown) map (_.orThrow)
+            _ <- executeCommandAsSystemUser(MasterCommand.ShutDown()) map (_.orThrow)
             t <- Task.fromFuture(terminated)
           } yield t
       }
@@ -220,7 +220,7 @@ object RunningMaster
           startMasterOrderKeeper(journalActor, cluster, _)))
         (whenOrderKeeperRunning.map(_.map(_.actor)),
           whenOrderKeeperRunning.flatMap {
-            case None => Future.successful(MasterTermination.Terminate)
+            case None => Future.successful(MasterTermination.Terminate(restart = false))
             case Some(o) => o.termination
           })
       }
@@ -328,7 +328,7 @@ object RunningMaster
   {
     def executeCommand(command: MasterCommand, meta: CommandMeta): Task[Checked[command.Response]] =
       (command match {
-        case MasterCommand.ShutDown =>
+        case _: MasterCommand.ShutDown =>
           Task { startingClusterFuture.cancel() } >>
             Task.deferFutureAction(implicit s =>
               orderKeeperStarted flatMap {

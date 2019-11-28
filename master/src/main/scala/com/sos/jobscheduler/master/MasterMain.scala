@@ -24,29 +24,33 @@ final class MasterMain
 {
   private val logger = Logger(getClass)
 
-  def run(arguments: CommandLineArguments): Unit = {
+  def run(arguments: CommandLineArguments): MasterTermination.Terminate = {
     logger.info(s"JobScheduler Master ${BuildInfo.prettyVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
     logger.debug(arguments.toString)
     val masterConfiguration = MasterConfiguration.fromCommandLine(arguments)
     StartUp.logStartUp(masterConfiguration.configDirectory, Some(masterConfiguration.dataDirectory))
     logConfig(masterConfiguration.config)
-    var restart = false
+    var restartInProcess = false
+    var terminate = MasterTermination.Terminate()
     do {
       autoClosing(RunningMaster(masterConfiguration).awaitInfinite) { runningMaster =>
         import runningMaster.scheduler
         withShutdownHooks(masterConfiguration.config, "MasterMain", onJavaShutdown(runningMaster, _)) {
           runningMaster.terminated.awaitInfinite match {
-            case MasterTermination.Terminate => restart = false
+            case t: MasterTermination.Terminate =>
+              restartInProcess = false
+              terminate = t
             case MasterTermination.Restart =>
               logger.info("------- JobScheduler Master restarts -------")
-              restart = true
+              restartInProcess = true
           }
         }
       }
-    } while (restart)
+    } while (restartInProcess)
     val msg = "JobScheduler Master terminates"
     logger.info(msg)
     println(msg)
+    terminate
   }
 
   private def onJavaShutdown(master: RunningMaster, timeout: FiniteDuration)(implicit s: Scheduler): Unit = {
@@ -62,9 +66,13 @@ object MasterMain
 
   def main(args: Array[String]): Unit = {
     println(s"${LocalTime.now.toString take 12} JobScheduler Master ${BuildInfo.prettyVersion}")
+    var terminate = MasterTermination.Terminate()
     lockAndRunMain(args) { commandLineArguments =>
       ScribeUtils.coupleScribeWithSlf4j()
-      new MasterMain().run(commandLineArguments)
+      terminate = new MasterMain().run(commandLineArguments)
+    }
+    if (terminate.restart) {
+      System.exit(97)
     }
   }
 }
