@@ -21,6 +21,7 @@ private[event] object TestData
      |jobscheduler.journal.event-buffer-size = 1000
      |jobscheduler.journal.snapshot.period = 1h
      |jobscheduler.journal.snapshot.when-bigger-than = 1G
+     |jobscheduler.journal.ack-warn-duration = 10s
      |""".stripMargin)
 
   val SnapshotJsonFormat = TypedJsonCodec[Any](

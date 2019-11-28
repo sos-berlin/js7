@@ -94,6 +94,7 @@ trait AkkaWebServer extends AutoCloseable
 
   def close() =
     if (shuttingDownPromise.trySuccess(Completed)) {
+      logger.debug("close")
       // Now wait until (event) Observables has been closed?
       sleep(500.ms)  // Wait a short time to let event streams finish, to avoid connection reset
       try terminate() await shutdownTimeout + 1.s

@@ -243,11 +243,14 @@ extends Actor with Stash
 
     case Internal.StillWaitingForAcknowledge =>
       if (requireClusterAcknowledgement && lastAcknowledgedEventId < lastWrittenEventId) {
-        val notAckSeq = writtenBuffer//.dropWhile(o => !o.lastStamped.map(_.eventId).contains(lastAcknowledgedEventId))
-          .collect { case o: LoggableWritten => o }
+        val notAckSeq = writtenBuffer.collect { case o: LoggableWritten => o }
+          .takeWhile(_.since.elapsed >= conf.ackWarnDuration)
         val n = writtenBuffer.map(_.eventCount).sum
-        logger.warn(s"Still waiting for acknowledgement from passive cluster node for $n events starting with " +
-          notAckSeq.flatMap(_.stamped).headOption.fold("(unknown)")(_.toString.truncateWithEllipsis((200))))
+        if (n > 0) {
+          logger.warn(s"Still waiting for acknowledgement from passive cluster node" +
+            s" for ${writtenBuffer.size} bundles of $n events starting with " +
+            notAckSeq.flatMap(_.stamped).headOption.fold("(unknown)")(_.toString.truncateWithEllipsis((200))))
+        } else logger.debug(s"StillWaitingForAcknowledge n=0, writtenBuffer.size=${writtenBuffer.size}")
       } else {
         if (waitingForAcknowledgeTimer != null) {
           waitingForAcknowledgeTimer.cancel()
@@ -304,7 +307,7 @@ extends Actor with Stash
 
   private def startWaitingForAcknowledgeTimer(): Unit = {
     if (requireClusterAcknowledgement && lastAcknowledgedEventId < lastWrittenEventId && waitingForAcknowledgeTimer == null) {
-      waitingForAcknowledgeTimer = scheduler.scheduleAtFixedRate(5.s, 10.s) {
+      waitingForAcknowledgeTimer = scheduler.scheduleAtFixedRate(conf.ackWarnDuration, 2 * conf.ackWarnDuration) {
         self ! Internal.StillWaitingForAcknowledge
       }
     }

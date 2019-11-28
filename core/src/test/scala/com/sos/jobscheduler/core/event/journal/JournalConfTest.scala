@@ -54,9 +54,10 @@ object JournalConfTest
        snapshot.when-bigger-than = 8G
        snapshot.log-period = 9ms
        snapshot.log-actor-limit = 11
+       ack-warn-duration = 12s
      }""")
 
-  private val journalConf =       JournalConf(
+  private val journalConf = JournalConf(
     syncOnCommit = true,
     simulateSync = None,
     delay = 2.ms,
@@ -64,5 +65,6 @@ object JournalConfTest
     snapshotPeriod = 7.h,
     snapshotSizeLimit = 8*1000*1000*1000L,
     snapshotLogProgressPeriod = 9.ms,
-    snapshotLogProgressActorLimit = 11)
+    snapshotLogProgressActorLimit = 11,
+    ackWarnDuration = 12.s)
 }

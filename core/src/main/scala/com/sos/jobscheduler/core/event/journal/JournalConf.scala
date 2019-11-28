@@ -14,7 +14,8 @@ final case class JournalConf(
   snapshotPeriod: FiniteDuration,
   snapshotSizeLimit: Long,
   snapshotLogProgressPeriod: FiniteDuration,
-  snapshotLogProgressActorLimit: Int)
+  snapshotLogProgressActorLimit: Int,
+  ackWarnDuration: FiniteDuration)
 
 object JournalConf
 {
@@ -30,6 +31,7 @@ object JournalConf
       snapshotPeriod = config.getDuration("jobscheduler.journal.snapshot.period").toFiniteDuration,
       snapshotSizeLimit = config.as("jobscheduler.journal.snapshot.when-bigger-than")(StringAsByteCountWithDecimalPrefix),
       snapshotLogProgressPeriod = config.getDuration("jobscheduler.journal.snapshot.log-period").toFiniteDuration,
-      snapshotLogProgressActorLimit = config.getInt("jobscheduler.journal.snapshot.log-actor-limit"))
+      snapshotLogProgressActorLimit = config.getInt("jobscheduler.journal.snapshot.log-actor-limit"),
+      ackWarnDuration = config.getDuration("jobscheduler.journal.ack-warn-duration").toFiniteDuration)
   }
 }
