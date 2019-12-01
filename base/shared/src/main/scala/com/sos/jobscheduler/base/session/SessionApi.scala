@@ -16,6 +16,8 @@ trait SessionApi
   def login(userAndPassword: Option[UserAndPassword], onlyIfNotLoggedIn: Boolean = false): Task[Completed]
 
   def logout(): Task[Completed]
+
+  def clearSession(): Unit
 }
 
 object SessionApi

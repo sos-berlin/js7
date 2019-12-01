@@ -25,6 +25,9 @@ extends SessionApi.LoginUntilReachable
       Completed
     }
 
+  def clearSession() =
+    sessionTokenRef := None
+
   def hasSession = sessionTokenRef.get.isDefined
 
   protected def isTemporaryLoginError(throwable: Throwable) = false
