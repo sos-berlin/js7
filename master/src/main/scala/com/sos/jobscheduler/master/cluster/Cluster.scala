@@ -188,7 +188,8 @@ final class Cluster(
       case coupled: Coupled if conf.maybeOwnUri contains coupled.activeUri =>
         Right(SwitchedOver(coupled.passiveUri))
       case state =>
-        Left(Problem(s"Not switching over because Cluster is not in expected state Coupled(active=${conf.maybeOwnUri.map(_.toString)}): $state"))
+        Left(Problem(s"Switchover is possible only in cluster state Coupled(active=${clusterConf.maybeOwnUri.map(_.toString)})," +
+          s" but cluster state is: $state"))
     }.map(_.map { case (_: Stamped[_], _) =>
       switchoverAcknowledged = true
       Completed
@@ -203,9 +204,12 @@ final class Cluster(
             .runToFuture
           fetchingEventsFuture.onComplete {
             case Success(Completed) =>
-              logger.error("observeEventIds terminated")  // The proper way to stop this Observable is by canceling
+              if (!stopRequested) {
+                logger.error("observeEventIds terminated")
+              }
             case Failure(t) =>
-              logger.error(s"observeEventIds(${state.passiveUri}, after=$eventId, userAndPassword=${conf.userAndPassword}) failed with ${t.toStringWithCauses}", t)
+              logger.error(s"observeEventIds(${state.passiveUri}, after=$eventId, userAndPassword=${clusterConf.userAndPassword})" +
+                s" failed with ${t.toStringWithCauses}", t)
           }
         }
       case _ =>
@@ -214,7 +218,7 @@ final class Cluster(
   private def fetchAndHandleAcknowledgedEventIds(uri: Uri, after: EventId): Task[Completed] =
     Task { logger.debug(s"fetchAndHandleAcknowledgedEventIds(after=$after)") } >>
       Resource.fromAutoCloseable(Task {
-        AkkaHttpMasterApi(AkkaUri(uri.string), name = "fetch passive cluster node acknowledgements")(actorSystem)
+        AkkaHttpMasterApi(AkkaUri(uri.string), name = "acknowledgements")(actorSystem)
       }).use(api =>
           observeEventIds(api, after = after)
             .whileBusyBuffer(OverflowStrategy.DropOld(bufferSize = 2))

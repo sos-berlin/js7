@@ -26,10 +26,13 @@ trait ReceiveLoggingActor extends SimpleStateActor
 
   abstract override protected def become(state: String)(recv: Receive): Unit =
     if (isLoggingEnabled) {
-      logger.log(receiveLogLevel, Logger.Actor, s"${context.self.path.pretty} becomes $state")
+      logBecome(state)
       super.become(state)(debugReceive(recv))
     } else
       super.become(state)(recv)
+
+  protected final def logBecome(state: String): Unit =
+    logger.log(receiveLogLevel, Logger.Actor, s"${context.self.path.pretty} becomes journaling")
 
   private def debugReceive(recv: Receive): Receive = {
     new Receive {

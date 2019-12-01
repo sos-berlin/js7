@@ -81,7 +81,9 @@ extends Actor with Stash
     if (snapshotSchedule != null) snapshotSchedule.cancel()
     if (delayedCommit != null) delayedCommit.cancel()  // Discard commit for fast exit
     stopped.trySuccess(Stopped(keyedEventJournalingActorCount = journalingActors.size))
-    for (a <- journalingActors) logger.debug(s"Journal stopped while a JournalingActor is still running: ${a.path.pretty}")
+    if (!switchedOver) {
+      for (a <- journalingActors) logger.debug(s"Journal stopped while a JournalingActor is still running: ${a.path.pretty}")
+    }
     if (snapshotWriter != null) {
       logger.debug(s"Deleting temporary journal files due to termination: ${snapshotWriter.file}")
       snapshotWriter.close()
@@ -149,7 +151,7 @@ extends Actor with Stash
 
     case Input.Store(timestamped, replyTo, acceptEarly, transaction, delay, alreadyDelayed, callersItem) =>
       if (switchedOver) {
-        logger.error(s"Event but active cluster node has been switched over: ${timestamped.headOption.map(_.keyedEvent)}")
+        logger.debug(s"Event rejected while active cluster node is switching over: ${timestamped.headOption.map(_.keyedEvent)}")
         reply(sender(), replyTo, Output.StoreFailure(ClusterNodeHasBeenSwitchedOverProblem.throwable))
       } else {
         val stampedEvents = for (t <- timestamped) yield eventIdGenerator.stamp(t.keyedEvent, t.timestamp)
@@ -171,7 +173,7 @@ extends Actor with Stash
           case Some(Stamped(_, _, KeyedEvent(_, ClusterEvent.ClusterCoupled))) =>
             // Commit now to let ClusterCoupled event take effect on following events (avoids deadlock)
             commit()
-            logger.info(s"ClusterCoupled: Start requiring acknowledges from passive cluster node")
+            logger.info(s"ClusterCoupled: Start requiring acknowledgements from passive cluster node")
             requireClusterAcknowledgement = true
           case Some(Stamped(_, _, KeyedEvent(_, _: ClusterEvent.SwitchedOver))) =>
             commit()
@@ -248,7 +250,7 @@ extends Actor with Stash
         val n = writtenBuffer.map(_.eventCount).sum
         if (n > 0) {
           logger.warn(s"Still waiting for acknowledgement from passive cluster node" +
-            s" for ${writtenBuffer.size} bundles of $n events starting with " +
+            s" for ${writtenBuffer.size} bundle of $n events starting with " +
             notAckSeq.flatMap(_.stamped).headOption.fold("(unknown)")(_.toString.truncateWithEllipsis((200))))
         } else logger.debug(s"StillWaitingForAcknowledge n=0, writtenBuffer.size=${writtenBuffer.size}")
       } else {

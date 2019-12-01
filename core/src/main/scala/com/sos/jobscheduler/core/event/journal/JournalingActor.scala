@@ -1,8 +1,9 @@
 package com.sos.jobscheduler.core.event.journal
 
-import akka.actor.{Actor, ActorLogging, ActorRef, DeadLetterSuppression, Stash}
+import akka.actor.{Actor, ActorLogging, ActorRef, Cancellable, DeadLetterSuppression, Stash}
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec.typeName
 import com.sos.jobscheduler.base.generic.Accepted
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
@@ -29,6 +30,7 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
 
   private var stashingCount = 0
   private var _persistedEventId = EventId.BeforeFirst
+  private var journalingTimer: Cancellable = Cancellable.alreadyCancelled
 
   import context.dispatcher
 
@@ -45,6 +47,11 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
     // FIXME Race condition: A snapshot before JournalActor has received RegisterMe, will not include this Actor
     journalActor ! JournalActor.Input.RegisterMe
     super.preStart()
+  }
+
+  override def postStop(): Unit = {
+    journalingTimer.cancel()
+    super.postStop()
   }
 
   // TODO Inhibit bedeutet gehemmt, beeintrichtigt. Besser etwas wie 'stop'
@@ -181,15 +188,22 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
           throw tt  // ???
       }
 
-    case _ if stashingCount > 0 =>
+    case msg if stashingCount > 0 =>
+      if (TraceLog) logger.trace(s"“$toString” Still waiting for event commit: stash $msg")
       super.stash()
   }
 
   private def beginStashing(): Unit = {
     stashingCount += 1
     if (stashingCount == 1) {
-      logger.trace(s"“$toString” become journaling")
+      logBecome("journaling")
       context.become(journaling, discardOld = false)
+      logger.whenDebugEnabled {
+        journalingTimer.cancel()
+        journalingTimer = context.system.scheduler.schedule(5.s, 10.s) {
+          logger.debug(s"“$toString” still waiting for JournalActor")
+        }
+      }
     }
   }
 
@@ -201,6 +215,7 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
     }
     stashingCount -= 1
     if (stashingCount == 0) {
+      journalingTimer.cancel()
       logger.trace(s"“$toString” unbecome")
       context.unbecome()
       unstashAll()

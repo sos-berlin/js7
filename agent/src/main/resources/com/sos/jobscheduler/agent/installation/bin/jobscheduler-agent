@@ -110,9 +110,10 @@ execute=(
   "${javaOptions[@]}" \
   -classpath "$classpathString" \
   com.sos.jobscheduler.agent.main.AgentMain "${agentOptions[@]}")
-(t=$(date +"%H:%M:%S.%N"); echo -e "\n-------\n${t:0:12}" "${execute[@]}")
 
 while true; do
+  (t=$(date +"%H:%M:%S.%N"); echo -e "\n-------\n${t:0:12}" "${execute[@]}")
+
   "${execute[@]}" &
 
   pid=$!
@@ -164,4 +165,6 @@ while true; do
   if [[ $returnCode -ne 97 ]] && [[ $returnCode -ne 98 ]]; then
     exit $returnCode
   fi
+  echo
+  echo "Starting again"
 done

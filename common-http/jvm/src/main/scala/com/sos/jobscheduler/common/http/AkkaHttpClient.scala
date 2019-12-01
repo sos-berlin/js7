@@ -11,6 +11,7 @@ import akka.http.scaladsl.model.{ContentTypes, HttpHeader, HttpMethod, HttpReque
 import akka.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshal}
 import akka.http.scaladsl.{Http, HttpsConnectionContext}
 import akka.stream.ActorMaterializer
+import cats.effect.Resource
 import com.sos.jobscheduler.base.auth.SessionToken
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
 import com.sos.jobscheduler.base.problem.Checked._
@@ -30,6 +31,7 @@ import com.sos.jobscheduler.common.http.StreamingSupport._
 import com.typesafe.scalalogging.Logger
 import io.circe.{Decoder, Encoder}
 import monix.eval.Task
+import monix.execution.Cancelable
 import monix.reactive.Observable
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
@@ -130,29 +132,37 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
     withCheckedAgentUri(request) { request =>
       val headers = if (suppressSessionToken) None else sessionToken map (token => RawHeader(SessionToken.HeaderName, token.secret.string))
       val req = encodeGzip(request.withHeaders(headers ++: request.headers ++: standardHeaders))
-      Task.deferFuture {
-        logRequest(req, logData)
-        val httpsContext = if (request.uri.scheme == "https") httpsConnectionContext else http.defaultClientHttpsContext
-        http.singleRequest(req, httpsContext)
-      } map decodeResponse  // Decompress
+      loggingTimerResource(request, logData).use(_ =>
+        Task.deferFutureAction { implicit s =>
+          logRequest(req, logData)
+          val httpsContext = if (request.uri.scheme == "https") httpsConnectionContext else http.defaultClientHttpsContext
+          http.singleRequest(req, httpsContext)
+            .transform { tried =>
+              tried match {
+                case Failure(t) =>
+                  logger.debug(s"${requestToString(req, logData)} failed with ${t.toStringWithCauses}")
+                case Success(response) if response.status.isFailure =>
+                  logger.debug(s"${requestToString(req, logData)} failed with HTTP status ${response.status.intValue}")
+                case _ =>
+              }
+              tried
+            }
+        } map decodeResponse/*decompress*/)
     }
 
-  private def logRequest(request: HttpRequest, logData: => Option[String]): Unit =
-    logger.whenTraceEnabled {
-      val b = new StringBuilder(200)
-      b.append(toString)
-      b.append(' ')
-      b.append(request.method.value)
-      b.append(' ')
-      b.append(request.uri)
-      if (!request.entity.isKnownEmpty) {
-        for (o <- logData) {
-          b.append(' ')
-          b.append(o)
-        }
-      }
-      logger.trace(b.toString)
-    }
+  private val emptyLoggingTimerResource = Resource.make(Task.pure(Cancelable.empty))(_ => Task.unit)
+
+  private def loggingTimerResource[A](request: HttpRequest, logData: => Option[String]): Resource[Task, Cancelable] =
+    if (logger.underlying.isDebugEnabled)
+      Resource.make(
+        Task.deferAction(scheduler => Task {
+          scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
+            logger.debug(s"$toString: Still waiting for response to ${requestToString(request, logData)}")
+          }
+        })
+      )(timer => Task { timer.cancel() })
+    else
+      emptyLoggingTimerResource
 
   private def unmarshal[A: FromResponseUnmarshaller](method: HttpMethod, uri: Uri)(httpResponse: HttpResponse): Task[A] =
     Task.deferFuture(
@@ -204,7 +214,7 @@ object AkkaHttpClient
   private val ErrorMessageLengthMaximum = 10000
   private val HttpErrorContentSizeMaximum = ErrorMessageLengthMaximum + 100
   private val FailureTimeout = 10.seconds
-  private val logger = Logger(getClass.getName stripSuffix "$" replaceFirst("^com[.]sos[.]jobscheduler", "jobscheduler"))  // TODO Use Logger adapter (unreachable in module common)
+  private val logger = Logger(getClass.getName stripSuffix "$" replaceFirst("^com[.]sos[.]jobscheduler", "jobscheduler"))  // TODO Use Logger adapter (unreachable in module common-http)
 
   def sessionMayBeLost(t: Throwable): Boolean =
     t match {
@@ -226,6 +236,27 @@ object AkkaHttpClient
         Success(Right(a))
     }
     .dematerialize
+
+  private def logRequest(request: HttpRequest, logData: => Option[String]): Unit =
+    logger.whenTraceEnabled {
+      logger.trace(requestToString(request, logData))
+    }
+
+  private def requestToString(request: HttpRequest, logData: => Option[String]): String = {
+    val b = new StringBuilder(200)
+    b.append(toString)
+    b.append(' ')
+    b.append(request.method.value)
+    b.append(' ')
+    b.append(request.uri)
+    if (!request.entity.isKnownEmpty) {
+      for (o <- logData) {
+        b.append(' ')
+        b.append(o)
+      }
+    }
+    b.toString
+  }
 
   final class HttpException private[http](httpResponse: HttpResponse, val uri: Uri, val dataAsString: String)
   extends HttpClient.HttpException(s"${httpResponse.status}: $uri: ${dataAsString.truncateWithEllipsis(ErrorMessageLengthMaximum)}".trim)

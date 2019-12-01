@@ -8,7 +8,7 @@ import akka.http.scaladsl.server.Directives._
 import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.Strings.RichString
+import com.sos.jobscheduler.base.utils.Strings._
 import com.sos.jobscheduler.common.akkahttp.WebLogDirectives._
 import com.sos.jobscheduler.common.log.LogLevel
 import com.sos.jobscheduler.common.log.LogLevel._
@@ -77,7 +77,9 @@ trait WebLogDirectives extends ExceptionHandling {
       if (response.status.isFailure)
         response.entity match {  // Try to extract error message
           case entity @ HttpEntity.Strict(`text/plain(UTF-8)`, _) =>
-            appendQuotedString(sb, entity.data.utf8String take 210 map (c => if (c.isControl) '·' else c) truncateWithEllipsis 200)
+            val string = entity.data.utf8String
+            val truncated = string.take(201).reverseDropWhile(_ == '\n').map(c => if (c.isControl) '·' else c)
+            appendQuotedString(sb, truncated + ((truncated.length < string.length) ?? "..."))
 
           case entity @ HttpEntity.Strict(`application/json`, _) =>
             parseJson(entity.data.utf8String) flatMap (_.as[Problem]) match {

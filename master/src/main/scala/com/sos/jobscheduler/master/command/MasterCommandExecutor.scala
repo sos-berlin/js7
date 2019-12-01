@@ -2,6 +2,7 @@ package com.sos.jobscheduler.master.command
 
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.command.{CommandExecutor, CommandMeta, CommandRegister, CommandRun}
 import com.sos.jobscheduler.core.startup.Halt
@@ -30,9 +31,14 @@ extends CommandExecutor[MasterCommand]
         if (run.batchInternalId.isEmpty || checkedResponse != Right(MasterCommand.Response.Accepted)) {
           logger.debug(s"Response to ${run.idString} ${MasterCommand.jsonCodec.classToName(run.command.getClass)} (${run.runningSince.elapsed.pretty}): $checkedResponse")
         }
-        register.remove(run.internalId)
         checkedResponse.map(_.asInstanceOf[command.Response])
       }
+      .doOnFinish(maybeThrowable => Task {
+        for (t <- maybeThrowable if run.batchInternalId.isEmpty) {
+          logger.warn(s"Command $run failed with ${t.toStringWithCauses}")
+        }
+        register.remove(run.internalId)
+      })
   }
 
   private def executeCommand2(command: MasterCommand, meta: CommandMeta, id: InternalCommandId, batchId: Option[InternalCommandId])
