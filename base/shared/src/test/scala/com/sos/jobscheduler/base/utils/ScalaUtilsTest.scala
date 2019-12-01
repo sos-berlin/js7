@@ -112,6 +112,12 @@ final class ScalaUtilsTest extends FreeSpec
     someUnless(0, none = 0) shouldEqual None
   }
 
+  "|> (apply function, pipeline operator)" in {
+    assert((3 |> (_ * 7)) == 3 * 7)
+    def double(a: Int) = 2 * a
+    assert((3 |> double) == double(3))
+  }
+
   "substitute" in {
     7 substitute 7 -> 3 shouldEqual 3
     7.substitute(7, 3) shouldEqual 3

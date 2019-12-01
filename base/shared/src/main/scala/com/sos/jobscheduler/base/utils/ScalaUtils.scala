@@ -139,7 +139,11 @@ object ScalaUtils
   def someUnless[A](a: A, none: A): Option[A] =
     if (a == none) None else Some(a)
 
-  implicit final class RichAny[A](private val delegate: A) extends AnyVal {
+  implicit final class RichAny[A](private val delegate: A) extends AnyVal
+  {
+    /** Apply the function. */
+    @inline def |>[B] (f: A => B) = f(delegate)
+
     def substitute(substitution: (A, A)): A = substitute(substitution._1, substitution._2)
 
     @inline def substitute(when: A, _then: => A): A =
