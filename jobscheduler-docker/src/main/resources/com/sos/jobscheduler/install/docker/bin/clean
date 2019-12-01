@@ -1,0 +1,11 @@
+#! /usr/bin/env bash
+set -e
+
+home="$(cd "${0%/*}"/../bin/.. && pwd)"
+
+# First, free some disk space
+rm -f "$home"/volumes/*/data/log/*.gz
+
+# Fails if disk is full:
+docker-compose kill
+"$home"/build/bin/clean-volumes-data

@@ -21,6 +21,7 @@ fi
 rm -rf build
 tar xzf "$dockerTgz"
 cp "${installTgz[@]}" build/
+ln -sn build/bin . &>/dev/null || true
 build/bin/prepare-volumes
 
 [ -f docker-compose.yml ] || ln -sf build/docker-compose.yml .

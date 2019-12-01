@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -e
+
+for file in volumes/master/data/state/master--*.journal; do
+  echo "$file"
+  diff "$file" "volumes/backup-master/data/state/${file##*/}"
+done
+echo "The backup Master cluster node's journal files are exact copies of the primary cluster node"
