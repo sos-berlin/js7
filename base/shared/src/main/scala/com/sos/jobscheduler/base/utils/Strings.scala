@@ -9,7 +9,8 @@ object Strings
 {
   private val Ellipsis = "..."
 
-  implicit final class RichString(private val underlying: String) extends AnyVal {
+  implicit final class RichString(private val underlying: String) extends AnyVal
+  {
     /** Truncate to `n`, replacing the tail with ellipsis and, if the string is long, the total character count. */
     def truncateWithEllipsis(n: Int, showLength: Boolean = false): String = {
       val suffix = if (showLength) s"$Ellipsis(length ${underlying.length})" else Ellipsis
@@ -28,5 +29,17 @@ object Strings
         new String(chars)
       } else
         underlying
+
+    def reverseDropWhile(predicate: Char => Boolean): String = {
+      var i = underlying.length
+      while (i > 0 && predicate(underlying(i - 1))) i = i -1
+      underlying.substring(0, i)
+    }
+  }
+
+  implicit final class RichBooleanForString(private val underlying: Boolean) extends AnyVal
+  {
+    def ??(string: String): String =
+      if (underlying) string else ""
   }
 }

@@ -58,4 +58,17 @@ final class StringsTest extends FreeSpec {
     assert(a.replaceChar('-', '+') eq a)
     assert(("a-b--c---").replaceChar('-', '+') == "a+b++c+++")
   }
+
+  "reverseDropWhile" in {
+    assert("".reverseDropWhile(_ == '/') == "")
+    assert("/".reverseDropWhile(_ == '/') == "")
+    assert("//".reverseDropWhile(_ == '/') == "")
+    assert("/abc".reverseDropWhile(_ == '/') == "/abc")
+    assert("/abc//".reverseDropWhile(_ == '/') == "/abc")
+  }
+
+  "??" in {
+    assert((false ?? "string") == "")
+    assert((true ?? "string") == "string")
+  }
 }
