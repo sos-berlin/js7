@@ -303,8 +303,11 @@ with MainJournalingActor[Event]
     case JournalRecoverer.Output.JournalIsReady(journalHeader, runningSince_) =>
       recoveredJournalHeader := journalHeader
       runningSince = runningSince_
-      orderRegister.values.toVector/*copy*/ foreach proceedWithOrder  // Any ordering when continuing orders???
-      become("becomingReady")(becomingReady)
+      become("becomingReady")(becomingReady)  // `become` must be called early, before any persist!
+
+      for (order <- orderRegister.values.toVector/*copy*/) {  // Any ordering when continuing orders???
+        proceedWithOrder(order)  // May persist events!
+      }
       afterProceedEvents.persistThenHandleEvents()  // Persist and handle before Internal.Ready
       if (persistedEventId > EventId.BeforeFirst) {  // Recovered?
         logger.info(s"${orderRegister.size} Orders, ${repo.typedCount[Workflow]} Workflows and ${repo.typedCount[AgentRef]} AgentRefs recovered")
