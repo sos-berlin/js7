@@ -34,6 +34,6 @@ object ClusterConf
       }
       userAndPassword <- config.checkedOptionAs[SecretString]("jobscheduler.auth.cluster.password")
         .map(_.map(UserAndPassword(userId, _)))
-      recouplingStreamReaderConf <- RecouplingStreamReaderConfs.fromConfig(config)
+      recouplingStreamReaderConf <- RecouplingStreamReaderConfs.fromSubconfig(config.getConfig("jobscheduler.master.cluster"))
     } yield new ClusterConf(maybeRole, maybeOwnUri, userAndPassword, recouplingStreamReaderConf)
 }

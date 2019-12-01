@@ -172,43 +172,29 @@ with MainJournalingActor[Event]
   }
   import shutdown.shuttingDown
 
+  @volatile
   private var switchover: Option[Switchover] = None
 
   private final class Switchover(promise: Promise[Checked[Completed]]) {
-    val since = now
-    private var stillSwitchingOverCancelable: Option[Cancelable] = None
-    private var terminatingJournal = false
+    // 1) Issue SwitchedOver event
+    // 2) Terminate JournalActor
+    // 3) Stop MasterOrderKeeper includinge AgentDriver's
+    // Do not terminate AgentDrivers properly because we do not want any events.
 
-    def start(): Unit = {
-      stillSwitchingOverCancelable = Some(
-        scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
-          // asynchronous
-          logger.debug("StillSwitchingOver")
-          self ! Internal.StillSwitchingOver
-        })
-      // Only if ClusterState is Coupled and ClusterState does not change until switchover:
-      //agentRegister.values foreach {
-      //  _.actor ! AgentDriver.Input.Terminate
-      //}
-      //logger.trace(s"switchover.continue: ${agentRegister.runningActorCount} AgentDrivers")
-      if (/*agentRegister.runningActorCount == 0 &&*/ !terminatingJournal) {
-        terminatingJournal = true
-        val whenSwitchedOver = cluster.switchOver.runToFuture
-        whenSwitchedOver.onComplete {
-          case Success(Right(Completed)) =>
-            journalActor ! JournalActor.Input.Terminate
-          case other => logger.error(s"While switching over: $other")
-        }
-        promise.completeWith(whenSwitchedOver)
-      }
+    private val stillSwitchingOverSchedule = scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
+      logger.debug("Still switching over to the other cluster node")
     }
 
-    def close() =
-      stillSwitchingOverCancelable foreach { _.cancel() }
+    def start(): Unit =
+      promise.completeWith(
+        cluster.switchOver
+          .map(_.map { case Completed =>
+            journalActor ! JournalActor.Input.Terminate
+            Completed
+          })
+        .runToFuture)
 
-    def onStillSwitchingOver() =
-      logger.info(s"Still switching over to the other cluster node")
-        //s" waiting for ${agentRegister.runningActorCount} AgentDrivers${if (terminatingJournal) " and JournalActor" else ""}")
+    def close() = stillSwitchingOverSchedule.cancel()
   }
 
   private object afterProceedEvents {
@@ -295,6 +281,9 @@ with MainJournalingActor[Event]
       }
       persistedEventId = masterState.eventId
     }
+    // Send an extra RegisterMe here, to be sure JournalActor has registered the ClusterState actor when a snapshot is taken
+    // TODO Fix fundamentally the race condition with JournalActor.Input.RegisterMe
+    journalActor.tell(JournalActor.Input.RegisterMe, cluster.journalingActor)
     recovered.startJournalAndFinishRecovery(journalActor,
       requireClusterAcknowledgement = recovered.recoveredState.fold(false)(_.clusterState.isInstanceOf[ClusterState.Coupled]))
   }
@@ -471,9 +460,6 @@ with MainJournalingActor[Event]
     case Internal.StillShuttingDown =>
       shutdown.onStillShuttingDown()
 
-    case Internal.StillSwitchingOver =>
-      switchover foreach { _.onStillSwitchingOver() }
-
     case Terminated(a) if agentRegister contains a =>
       agentRegister(a).actorTerminated = true
       shutdown.continue()
@@ -555,8 +541,9 @@ with MainJournalingActor[Event]
             promise.future onComplete {
               case Success(Right(Completed)) =>
                 // Keep switchover for postStop
-              case other => // asynchronous
-                logger.error(s"ClusterSwitchOver: $other")
+              case other =>
+                // asynchronous!
+                logger.debug(s"ClusterSwitchOver: $other")
                 switchover = None
                 so.close()
             }
@@ -849,7 +836,6 @@ private[master] object MasterOrderKeeper
     final case class Ready(outcome: Checked[Completed])
     case object AfterProceedEventsAdded
     case object StillShuttingDown extends DeadLetterSuppression
-    case object StillSwitchingOver extends DeadLetterSuppression
   }
 
   private class AgentRegister extends ActorRegister[AgentRefPath, AgentEntry](_.actor) {

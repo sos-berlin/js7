@@ -60,12 +60,15 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, E], E <: 
       for (o <- recovered.recoveredJournalFile) {
         cutJournalFile(o.file, o.length)
       }
-      Resource.fromAutoCloseable(Task(AkkaHttpMasterApi(baseUri = activeUri.string, name = "fetching active cluster node journal")))
-        .use { activeNodeApi =>
+      Resource.fromAutoCloseable(Task(AkkaHttpMasterApi(baseUri = activeUri.string, name = "journal")))
+        .use(activeNodeApi =>
           activeNodeApi.loginUntilReachable(clusterConf.userAndPassword, Iterator.continually(1.s/*TODO*/)) >>
             Task.parMap2(
               activeNodeApi.executeCommand(
-                ClusterPassiveFollows(followedUri = activeUri, followingUri = ownUri)),   // TODO Retry until success
+                ClusterPassiveFollows(followedUri = activeUri, followingUri = ownUri))
+                  .onErrorRestartLoop(())((throwable, _, retry) =>
+                    Task { logger.warn(s"ClusterPassiveFollows command failed with ${throwable.toStringWithCauses}")} >>
+                      retry(()).delayExecution(1.s/*TODO*/)),
               replicateJournalFiles(
                 continuation = recovered.recoveredJournalFile match {
                   case None => NoLocalJournal(recoveredClusterState)
@@ -73,8 +76,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, E], E <: 
                 },
                 () => stateBuilderAndAccessor.newStateBuilder(),
                 activeNodeApi)
-            )((_: MasterCommand.Response.Accepted, followUp) => followUp)
-        }
+            )((_: MasterCommand.Response.Accepted, followUp) => followUp))
         .guarantee(Task {
           terminated = true
         })
@@ -239,8 +241,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, E], E <: 
         getObservable = (after: Long) =>
           AkkaHttpClient.liftProblem(
             api.journalObservable(fileEventId = fileEventId, position = after, clusterConf.recouplingStreamReader.timeout, markEOF = true)
-              .map(_
-                .scan(PositionAnd(after, ByteVector.empty/*unused*/))((s, a) => PositionAnd(s.position + a.length, a)))),
+              .map(_.scan(PositionAnd(after, ByteVector.empty/*unused*/))((s, a) => PositionAnd(s.position + a.length, a)))),
         eof = eof,
         stopRequested = () => terminated)
       .doOnError(t => Task {

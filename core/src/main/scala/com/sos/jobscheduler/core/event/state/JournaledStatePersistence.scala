@@ -32,13 +32,15 @@ extends AutoCloseable
   private val persistTask: Task[PersistFunction[S, E]] = Task.fromFuture(persistPromise.future)
   val currentState: Task[S] = Task.fromFuture(getStatePromise.future).flatten
 
-  private val actor = SetOnce[ActorRef]
+  private val actorSetOnce = SetOnce[ActorRef]
+
+  def actor = actorSetOnce.orThrow
 
   def close(): Unit =
-    actor.foreach(actorRefFactory.stop)
+    actorSetOnce.foreach(actorRefFactory.stop)
 
   def start(state: S): Unit =
-    actor := actorRefFactory.actorOf(
+    actorSetOnce := actorRefFactory.actorOf(
       StateJournalingActor.props[S, E](state, journalActor, persistPromise, getStatePromise),
       encodeAsActorName("StateJournalingActor-" + S.tpe.toString))
 
@@ -82,7 +84,7 @@ extends AutoCloseable
   }
 
   private def requireStarted() =
-    if (actor.isEmpty) throw new IllegalStateException(s"$toString has not yet been started")
+    if (actorSetOnce.isEmpty) throw new IllegalStateException(s"$toString has not yet been started")
 
   override def toString = s"JournaledStatePersistence[${S.tpe}]"
 }

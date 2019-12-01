@@ -224,7 +224,8 @@ object RunningMaster
             case Some(o) => o.termination
           })
       }
-      orderKeeperTerminated.onComplete { _ =>
+      orderKeeperTerminated.onComplete { tried =>
+        for (t <- tried.failed) logger.warn(s"MasterOrderKeeper failed with ${t.toStringWithCauses}")  // Support diagnosis
         startingClusterFuture.cancel()
       }
       val orderKeeperTask = Task.fromFuture(orderKeeperStarted) flatMap {

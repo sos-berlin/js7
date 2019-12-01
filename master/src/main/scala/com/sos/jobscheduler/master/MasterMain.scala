@@ -32,6 +32,10 @@ final class MasterMain
     logConfig(masterConfiguration.config)
     var restartInProcess = false
     var terminate = MasterTermination.Terminate()
+    /** val restartJvmWhenDeactivated = masterConfiguration.config.getBoolean("jobscheduler.master.cluster.when-deactivated-restart-jvm")
+       - Erste HTTP-Anforderungen an deaktivierten Knoten können in ins Leere laufen (mit Timeout abgefangen)
+       - Heap platzt nach vielen Deaktivierungen */
+    val restartJvmWhenDeactivated = true
     do {
       autoClosing(RunningMaster(masterConfiguration).awaitInfinite) { runningMaster =>
         import runningMaster.scheduler
@@ -41,8 +45,12 @@ final class MasterMain
               restartInProcess = false
               terminate = t
             case MasterTermination.Restart =>
-              logger.info("------- JobScheduler Master restarts -------")
-              restartInProcess = true
+              if (restartJvmWhenDeactivated) {
+                terminate = MasterTermination.Terminate(restart = true)
+              } else {
+                logger.info("------- JobScheduler Master restarts -------")
+                restartInProcess = true
+              }
           }
         }
       }
@@ -54,8 +62,10 @@ final class MasterMain
   }
 
   private def onJavaShutdown(master: RunningMaster, timeout: FiniteDuration)(implicit s: Scheduler): Unit = {
-    logger.warn("Trying to terminate Master due to Java shutdown")
-    master.terminate().runToFuture await timeout
+    logger.warn("Trying to shut down Master due to Java shutdown")
+    if (!master.actorSystem.whenTerminated.isCompleted) {
+      master.terminate().runToFuture await timeout
+    }
     master.close()
   }
 }

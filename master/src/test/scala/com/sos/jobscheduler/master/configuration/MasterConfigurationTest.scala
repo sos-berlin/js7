@@ -45,7 +45,7 @@ final class MasterConfigurationTest extends FreeSpec with BeforeAndAfterAll
       journalConf = JournalConf.fromConfig(DefaultConfig),
       clusterConf = ClusterConf(None, None, None,
         RecouplingStreamReaderConf(
-          timeout = 55.seconds,
+          timeout = 10.seconds,
           delay = 1.seconds)),
       name = MasterConfiguration.DefaultName,
       config = DefaultConfig))

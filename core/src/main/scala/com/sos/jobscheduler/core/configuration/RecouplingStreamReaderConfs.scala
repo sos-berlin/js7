@@ -8,9 +8,12 @@ import com.typesafe.config.Config
 object RecouplingStreamReaderConfs
 {
   def fromConfig(config: Config): Checked[RecouplingStreamReaderConf] =
+    fromSubconfig(config.getConfig("jobscheduler.web.client"))
+
+  def fromSubconfig(subconfig: Config): Checked[RecouplingStreamReaderConf] =
     Checked.catchNonFatal {
       RecouplingStreamReaderConf(
-        timeout = config.getDuration("jobscheduler.web.client.polling-get-without-traffic-timeout").toFiniteDuration,
-        delay   = config.getDuration("jobscheduler.web.client.delay-between-polling-gets").toFiniteDuration)
+        timeout = subconfig.getDuration("idle-get-timeout").toFiniteDuration,
+        delay   = subconfig.getDuration("delay-between-polling-gets").toFiniteDuration)
     }
 }

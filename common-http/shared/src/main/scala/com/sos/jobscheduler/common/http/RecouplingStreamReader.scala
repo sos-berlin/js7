@@ -3,6 +3,7 @@ package com.sos.jobscheduler.common.http
 import cats.syntax.flatMap._
 import com.sos.jobscheduler.base.auth.UserAndPassword
 import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.monixutils.MonixBase._
 import com.sos.jobscheduler.base.problem.Problems.InvalidSessionTokenProblem
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.session.SessionApi
@@ -15,6 +16,7 @@ import monix.execution.Scheduler
 import monix.execution.atomic.AtomicBoolean
 import monix.execution.exceptions.UpstreamTimeoutException
 import monix.reactive.Observable
+import scala.concurrent.TimeoutException
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 
@@ -31,9 +33,10 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
 
   protected def onCouplingFailed(api: Api, problem: Problem): Task[Completed] =
     Task {
-      if (!stopRequested) scribe.warn(s"$api: $problem")
-      else scribe.warn(s"$api: $problem")
-      for (t <- problem.throwableOption) scribe.debug(s"$api: ${t.toStringWithCauses}", t)
+      if (stopRequested) scribe.debug(s"$api: $problem") else scribe.warn(s"$api: $problem")
+      for (t <- problem.throwableOption) if (t.getStackTrace.nonEmpty) {
+        scribe.debug(s"$api: ${t.toStringWithCauses}", t)
+      }
       Completed
     }
 
@@ -41,6 +44,8 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
     Task.pure(Completed)
 
   protected def eof(index: I) = false
+
+  protected def idleTimeout: Duration = Duration.Inf
 
   protected def stopRequested: Boolean
 
@@ -116,7 +121,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
     private def tryEndlesslyToGetObservable(after: I): Task[Observable[V]] =
       Task.tailRecM(())(_ =>
         (if (stopRequested)
-          Task.pure(Right(Observable.raiseError(new IllegalStateException(s"RecouplingStreamReader($api) is terminated"))))
+          Task.pure(Right(Observable.raiseError(new IllegalStateException(s"RecouplingStreamReader($api) has been stopped"))))
         else
           coupleIfNeeded >>
             getObservableX(after = after)
@@ -139,15 +144,24 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
     private def getObservableX(after: I): Task[Checked[Observable[V]]] =
       Task {
         sinceLastTry = now
-      } >>
-        getObservable(api, after = after)
-          .map(_.map(_
-            .timeoutOnSlowUpstream(conf.timeout + TimeoutReserve)   // throws UpstreamTimeoutException
-            .onErrorRecoverWith {
-              case t: UpstreamTimeoutException =>
-                scribe.debug(s"$api: $t")
-                Observable.empty   // Let it look like end of stream
-            }))
+      } >> {
+        val task = getObservable(api, after = after)
+        idleTimeout match {
+          case d: FiniteDuration =>
+            task.timeout(d)
+              .onErrorRecoverWith { case t: TimeoutException =>
+                scribe.debug(s"$api: ${t.toString}")
+                Task.pure(Right(Observable.empty))
+              }
+              .map(_.map(
+                _.timeoutOnSlowUpstream(d + 1.s/*Let server time-out an idle stream first*/)
+                  .onErrorRecoverWith { case t: UpstreamTimeoutException =>
+                    scribe.debug(s"$api: ${t.toString}")
+                    Observable.empty
+                  }))
+          case _ => task
+        }
+      }
 
     private def coupleIfNeeded: Task[Completed] =
       coupledApiVar.tryRead.flatMap {
@@ -161,14 +175,14 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
           otherCoupledClient <- coupledApiVar.tryRead
           _ <- otherCoupledClient.fold(Task.unit)(_ => Task.raiseError(new IllegalStateException("Coupling while already coupled")))
           _ <- Task { recouplingPause.onCouple() }
-          _ <- api.login(maybeUserAndPassword, onlyIfNotLoggedIn = true)
+          _ <- api.login(maybeUserAndPassword, onlyIfNotLoggedIn = true).maybeTimeout(idleTimeout)
           checkedCompleted <- couple(index = lastIndex)
         } yield checkedCompleted)
           .materialize.map(o => Checked.flattenTryChecked(o))  // materializeIntoChecked
           .flatMap {
             case Left(problem) =>
               for {
-                _ <- api.logout().onErrorHandle(_ => ())
+                _ <- api.logout().orTimeout(idleTimeout, Task { api.clearSession(); Completed })
                 _ <- onCouplingFailed(api, problem)
                 _ <- pauseBeforeRecoupling
               } yield Left(())
@@ -188,7 +202,6 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
 object RecouplingStreamReader
 {
   val TerminatedProblem = Problem.pure("Agent API has been terminated")
-  private val TimeoutReserve = 10.s
   private val PauseGranularity = 500.ms
 
   def observe[@specialized(Long/*EventId or file position*/) I, V, Api <: SessionApi](
@@ -198,17 +211,20 @@ object RecouplingStreamReader
     conf: RecouplingStreamReaderConf,
     after: I,
     getObservable: I => Task[Checked[Observable[V]]],
+    idleTimeout: Duration = Duration.Inf,
     eof: I => Boolean = (_: I) => false,
     stopRequested: () => Boolean = () => false)
     (implicit s: Scheduler)
   : Observable[V]
   = {
+    val idleTimeout_ = idleTimeout
     val eof_ = eof
     val getObservable_ = getObservable
     val stopRequested_ = stopRequested
     new RecouplingStreamReader[I, V, Api](toIndex, maybeUserAndPassword, conf) {
       def getObservable(api: Api, after: I) = getObservable_(after)
       override def eof(index: I) = eof_(index)
+      override def idleTimeout = idleTimeout_
       def stopRequested = stopRequested_()
     }.observe(api, after)
   }

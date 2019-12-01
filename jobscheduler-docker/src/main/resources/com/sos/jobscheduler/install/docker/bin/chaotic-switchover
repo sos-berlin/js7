@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -e
+
+#while echo -n "·" && sleep 1; do :; done &
+#trap 'wait %1 2>/dev/null' EXIT
+
+while true; do
+  echo -n "master switchover: "
+  docker exec jobscheduler-master switch-over || true
+  sleep $((2 ** (RANDOM / 8000)))
+  echo -n "backup-master switchover: "
+  docker exec jobscheduler-backup-master switch-over || true
+  sleep $((2 ** (RANDOM / 8000)))
+done
+
+#wait %1 2>/dev/null

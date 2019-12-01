@@ -33,10 +33,11 @@ import scala.util.{Failure, Success}
 final class Cluster(
   journalMeta: JournalMeta,
   persistence: JournaledStatePersistence[ClusterState, ClusterEvent],
-  conf: ClusterConf,
+  clusterConf: ClusterConf,
   actorSystem: ActorSystem)
   (implicit s: Scheduler, journalActorAskTimeout: Timeout)
 {
+  private val idleTimeout = clusterConf.recouplingStreamReader.timeout
   private val journalActor = persistence.journalActor
 
   private val fetchingEvents = AtomicBoolean(false)
@@ -76,14 +77,14 @@ final class Cluster(
     recoveredState: MasterState)
   : (Task[Checked[(ClusterState, ClusterFollowUp[MasterState, Event])]], Option[Task[MasterState]])
   =
-    (recoveredClusterState, conf.maybeOwnUri, conf.maybeRole) match {
+    (recoveredClusterState, clusterConf.maybeOwnUri, clusterConf.maybeRole) match {
       case (Empty, _, None | Some(_: ClusterNodeRole.Primary)) =>
         logger.info(s"Becoming the active primary cluster node still without backup")
         Task.pure(Right(recoveredClusterState -> ClusterFollowUp.BecomeActive(recovered))) -> None
 
       case (Empty, Some(ownUri), Some(ClusterNodeRole.Backup(activeUri))) =>
         logger.info(s"Becoming the (still not following) backup cluster node '$ownUri' for primary node at $activeUri")
-        val passive = new PassiveClusterNode(ownUri, activeUri, journalMeta, recovered, conf)(actorSystem)
+        val passive = new PassiveClusterNode(ownUri, activeUri, journalMeta, recovered, clusterConf)(actorSystem)
         passive.run(recoveredClusterState, recoveredState).map(Right.apply) -> Some(passive.state)
 
       case (state, Some(ownUri), _) if state.isActive(ownUri) =>
@@ -100,7 +101,7 @@ final class Cluster(
             s"Becoming a following passive cluster node '$ownUri'"
           else
             s"Becoming a still not following passive cluster node '$ownUri'")
-          val passive = new PassiveClusterNode(ownUri, state.activeUri, journalMeta, recovered, conf)(actorSystem)
+          val passive = new PassiveClusterNode(ownUri, state.activeUri, journalMeta, recovered, clusterConf)(actorSystem)
           passive.run(recoveredClusterState, recoveredState).map(Right.apply) -> Some(passive.state)
 
       case (_, None, _) =>
@@ -111,7 +112,7 @@ final class Cluster(
     }
 
   def automaticallyAppointConfiguredBackupNode(): Task[Checked[Completed]] =
-    conf.maybeRole match {
+    clusterConf.maybeRole match {
       case Some(ClusterNodeRole.Primary(Some(backupUri))) =>
         persistence.persistTransaction(NoKey) {
           case state @ (ClusterState.Empty | _: ClusterState.Sole | _: ClusterState.AwaitingAppointment) =>
@@ -124,7 +125,7 @@ final class Cluster(
     }
 
   def appointBackupNode(activeUri: Uri, backupUri: Uri): Task[Checked[Completed]] =
-    conf.maybeOwnUri match {
+    clusterConf.maybeOwnUri match {
       case None =>
         Task.pure(Left(Problem.pure("Missing this node's own URI")))
       case Some(ownUri) =>
@@ -149,7 +150,7 @@ final class Cluster(
     }
 
   def passiveNodesFollows(followedUri: Uri, followingUri: Uri): Task[Checked[Completed]] =
-    conf.maybeOwnUri match {
+    clusterConf.maybeOwnUri match {
       case None =>
         Task.pure(Left(Problem.pure("Missing this node's own URI")))
       case Some(ownUri) =>
@@ -176,7 +177,7 @@ final class Cluster(
   private def becomeSoleIfEmpty(state: ClusterState): Checked[List[BecameSole]] =
     state match {
       case Empty =>
-        conf.maybeOwnUri match {
+        clusterConf.maybeOwnUri match {
           case None => Left(Problem.pure("This cluster node's own URI is unknown"))
           case Some(ownUri) => Right(BecameSole(ownUri) :: Nil)
         }
@@ -185,7 +186,7 @@ final class Cluster(
 
   def switchOver: Task[Checked[Completed]] =
     persistence.persistEvent[ClusterEvent](NoKey) {
-      case coupled: Coupled if conf.maybeOwnUri contains coupled.activeUri =>
+      case coupled: Coupled if clusterConf.maybeOwnUri contains coupled.activeUri =>
         Right(SwitchedOver(coupled.passiveUri))
       case state =>
         Left(Problem(s"Switchover is possible only in cluster state Coupled(active=${clusterConf.maybeOwnUri.map(_.toString)})," +
@@ -237,14 +238,17 @@ final class Cluster(
       .observe[EventId, EventId, HttpMasterApi](
         toIndex = identity,
         api,
-        conf.userAndPassword,
-        conf.recouplingStreamReader,
+        clusterConf.userAndPassword,
+        clusterConf.recouplingStreamReader,
         after = after,
-        getObservable = (after: EventId) =>
+        getObservable = (after: EventId) => {
+          val eventRequest = EventRequest.singleClass[Event](after = after, timeout = Some(idleTimeout))
           AkkaHttpClient.liftProblem(
-            api.eventIdObservable(
-              EventRequest.singleClass[Event](after = after, timeout = Some(conf.recouplingStreamReader.timeout)))),
+            api.eventIdObservable(eventRequest))
+        },
+        idleTimeout = idleTimeout,
         stopRequested = () => stopRequested)
+
   /*
   private def queryAgents(otherNodeId: ClusterNodeId): Unit =
     Task
@@ -277,6 +281,9 @@ final class Cluster(
 
   def currentState: Task[ClusterState] =
     persistence.currentState
+
+  // Used to RegisterMe actor in JournalActor
+  def journalingActor = persistence.actor
 }
 
 object Cluster

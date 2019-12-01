@@ -34,7 +34,7 @@ import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, Duration, FiniteDuration}
 import scala.concurrent.{Promise, blocking}
 import scala.util.Try
-import scala.util.control.{NoStackTrace, NonFatal}
+import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
@@ -204,24 +204,21 @@ extends Actor with Stash
       tryTakeSnapshotIfRequested()
 
     case Input.FollowerAcknowledged(eventId_) =>
-      var eventId = eventId_
-      if (eventId > lastWrittenEventId && switchedOver) {
+      var ack = eventId_
+      if (ack > lastWrittenEventId && switchedOver) {
         // The other cluster node may already have become active (uncoupled),
         // generating new EventIds whose last one we may receive here.
         // So we take the last one we know (must be the EventId of ClusterSwitchedOver)
-        eventId = writtenBuffer.reverseIterator.flatMap(_.lastStamped).map(_.eventId).buffered.headOption getOrElse eventId
+        // TODO Can web service /api/journal suppress EventIds on passive node side after becoming active?
+        lazy val msg = s"Passive cluster node acknowledged future event ${EventId.toString(ack)}," +
+                  s" but lastWrittenEventId=${EventId.toString(lastWrittenEventId)} (okay when switching over)"
+        if (lastAcknowledgedEventId < lastWrittenEventId) logger.warn(msg) else logger.debug(msg)
+        ack = lastWrittenEventId
       }
-      if (eventId > lastWrittenEventId) {
-        val t = new RuntimeException(s"Passive cluster node acknowledged future event ${EventId.toString(eventId)}," +
-          s" but lastWrittenEventId=${EventId.toString(lastWrittenEventId)}") with NoStackTrace
-        logger.error(t.toString)
-        sender() ! akka.actor.Status.Failure(t)
-      } else {
-        sender() ! Completed
-        // The passive node does not know Written blocks (maybe transactions) and acknowledges events as they arrive.
-        // We take only complete Written blocks as acknowledged.
-        onCommitAcknowledged(n = writtenBuffer.iterator.takeWhile(_.lastStamped.forall(_.eventId <= eventId)).length)
-      }
+      sender() ! Completed
+      // The passive node does not know Written bundles (maybe transactions) and acknowledges events as they arrive.
+      // We take only complete Written bundles as acknowledged.
+      onCommitAcknowledged(n = writtenBuffer.iterator.takeWhile(_.lastStamped.forall(_.eventId <= ack)).length)
 
     case Input.Terminate =>
       if (!switchedOver) {
@@ -307,13 +304,12 @@ extends Actor with Stash
     }
   }
 
-  private def startWaitingForAcknowledgeTimer(): Unit = {
+  private def startWaitingForAcknowledgeTimer(): Unit =
     if (requireClusterAcknowledgement && lastAcknowledgedEventId < lastWrittenEventId && waitingForAcknowledgeTimer == null) {
       waitingForAcknowledgeTimer = scheduler.scheduleAtFixedRate(conf.ackWarnDuration, 2 * conf.ackWarnDuration) {
         self ! Internal.StillWaitingForAcknowledge
       }
     }
-  }
 
   private def onCommitAcknowledged(n: Int): Unit = {
     val ackWritten = writtenBuffer take n
@@ -686,6 +682,7 @@ object JournalActor
     }
   }
 
+  /** A bundle of written but not yet committed (flushed and acknowledged) events. */
   private case class NormallyWritten(
     eventNumber: Long,
     stamped: Seq[Stamped[AnyKeyedEvent]],
