@@ -3,11 +3,11 @@ package com.sos.jobscheduler.core.event
 import akka.http.scaladsl.common.JsonEntityStreamingSupport
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.marshalling.sse.EventStreamMarshalling._
+import akka.http.scaladsl.model.HttpEntity
 import akka.http.scaladsl.model.MediaTypes.`text/event-stream`
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, ServiceUnavailable}
 import akka.http.scaladsl.model.headers.`Last-Event-ID`
 import akka.http.scaladsl.model.sse.ServerSentEvent
-import akka.http.scaladsl.model.{HttpEntity, Uri}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive1, ExceptionHandler, Route}
 import com.sos.jobscheduler.base.auth.ValidUserPermission
@@ -19,7 +19,7 @@ import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, RichThrowable}
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.BuildInfo
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.accept
+import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.{accept, completeTask}
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
 import com.sos.jobscheduler.common.akkahttp.EventSeqStreamingSupport.NonEmptyEventSeqJsonStreamingSupport
 import com.sos.jobscheduler.common.akkahttp.HttpStatusCodeException
@@ -96,21 +96,19 @@ trait GenericEventRoute extends RouteProvider
                     if (waitingSince.isDefined) logger.debug("Waiting for journal to become ready ...")
                     onSuccess(eventWatch.whenStarted) { eventWatch =>
                       for (o <- waitingSince.map(_.elapsed)) logger.debug(s"Journal is ready after ${o.pretty}, continuing event web service")
-                      extractUri { uri =>
-                        htmlPreferred {
-                          oneShot(uri, eventWatch)
-                        } ~
-                        accept(`application/x-ndjson`) {
-                          jsonSeqEvents(uri, eventWatch)(NdJsonStreamingSupport)
-                        } ~
-                        accept(`application/json-seq`) {
-                          jsonSeqEvents(uri, eventWatch)(JsonSeqStreamingSupport)
-                        } ~
-                        accept(`text/event-stream`) {
-                          serverSentEvents(eventWatch)
-                        } ~
-                        oneShot(uri, eventWatch)
-                      }
+                      htmlPreferred {
+                        oneShot(eventWatch)
+                      } ~
+                      accept(`application/x-ndjson`) {
+                        jsonSeqEvents(eventWatch)(NdJsonStreamingSupport)
+                      } ~
+                      accept(`application/json-seq`) {
+                        jsonSeqEvents(eventWatch)(JsonSeqStreamingSupport)
+                      } ~
+                      accept(`text/event-stream`) {
+                        serverSentEvents(eventWatch)
+                      } ~
+                      oneShot(eventWatch)
                     }
                 })
             }
@@ -118,10 +116,10 @@ trait GenericEventRoute extends RouteProvider
         }
       }
 
-    private def oneShot(uri: Uri, eventWatch: EventWatch): Route =
+    private def oneShot(eventWatch: EventWatch): Route =
       eventDirective(eventWatch.lastAddedEventId) { request =>
         intelliJuseImport(jsonOrYamlMarshaller)
-        completeTaskCancelable(uri,
+        completeTask(
           eventWatch.when[Event](request, predicate = isRelevantEvent).map {
             case o: TearableEventSeq.Torn =>
               ToResponseMarshallable(o: TearableEventSeq[Seq, KeyedEvent[Event]])
@@ -135,48 +133,47 @@ trait GenericEventRoute extends RouteProvider
           })
       }
 
-    private def jsonSeqEvents(uri: Uri, eventWatch: EventWatch)(implicit streamingSupport: JsonEntityStreamingSupport): Route =
+    private def jsonSeqEvents(eventWatch: EventWatch)(implicit streamingSupport: JsonEntityStreamingSupport): Route =
       eventDirective(eventWatch.lastAddedEventId, defaultTimeout = defaultJsonSeqChunkTimeout, defaultDelay = defaultStreamingDelay) { request =>
         parameter("eventIdOnly" ? false) { eventIdOnly =>
           def predicate(ke: KeyedEvent[Event]) = eventIdOnly || isRelevantEvent(ke)
           parameter("onlyLastOfChunk" ? false) { onlyLastOfChunk =>
             val runningSince = now
-            completeTaskCancelable(uri,
+            completeTask(
               // Await the first event to check for Torn and convert it to a proper error message, otherwise continue with observe
-              eventWatch.when(request, predicate)
-                .map {
-                  case TearableEventSeq.Torn(eventId) =>
-                    ToResponseMarshallable(
-                      BadRequest -> EventSeqTornProblem(requestedAfter = request.after, tornEventId = eventId))
+              eventWatch.when(request, predicate).map {
+                case TearableEventSeq.Torn(eventId) =>
+                  ToResponseMarshallable(
+                    BadRequest -> EventSeqTornProblem(requestedAfter = request.after, tornEventId = eventId))
 
-                  case EventSeq.Empty(_) =>
-                    implicit val x = jsonSeqMarshaller[Unit]
-                    monixObservableToMarshallable(
-                      Observable.empty[Unit])
+                case EventSeq.Empty(_) =>
+                  implicit val x = jsonSeqMarshaller[Unit]
+                  monixObservableToMarshallable(
+                    Observable.empty[Unit])
 
-                  case EventSeq.NonEmpty(closeableIterator) =>
-                    val head = autoClosing(closeableIterator)(_.next())
-                    val tail = eventWatch  // Continue with an Observable, skipping the already read event
-                      .observe(
-                        request.copy[Event](
-                          after = head.eventId,
-                          limit = request.limit - 1,
-                          delay = (request.delay - runningSince.elapsed) min Duration.Zero),
-                        predicate,
-                        onlyLastOfChunk = onlyLastOfChunk)
-                      .onErrorRecoverWith { case NonFatal(e) =>
-                        logger.warn(e.toStringWithCauses)
-                        Observable.empty  // The streaming event web service doesn't have an error channel, so we simply end the tail
-                      }
-                    val observable = (Observable.pure(head) ++ tail).takeUntil(Observable.fromFuture(shuttingDownFuture))
-                    if (eventIdOnly) {
-                      implicit val x = jsonSeqMarshaller[EventId]
-                      monixObservableToMarshallable(observable.map(_.eventId))
-                    } else {
-                      implicit val x = jsonSeqMarshaller[Stamped[KeyedEvent[Event]]]
-                      monixObservableToMarshallable(observable)
+                case EventSeq.NonEmpty(closeableIterator) =>
+                  val head = autoClosing(closeableIterator)(_.next())
+                  val tail = eventWatch  // Continue with an Observable, skipping the already read event
+                    .observe(
+                      request.copy[Event](
+                        after = head.eventId,
+                        limit = request.limit - 1,
+                        delay = (request.delay - runningSince.elapsed) min Duration.Zero),
+                      predicate,
+                      onlyLastOfChunk = onlyLastOfChunk)
+                    .onErrorRecoverWith { case NonFatal(e) =>
+                      logger.warn(e.toStringWithCauses)
+                      Observable.empty  // The streaming event web service doesn't have an error channel, so we simply end the tail
                     }
-                  })
+                  val observable = (Observable.pure(head) ++ tail).takeUntil(Observable.fromFuture(shuttingDownFuture))
+                  if (eventIdOnly) {
+                    implicit val x = jsonSeqMarshaller[EventId]
+                    monixObservableToMarshallable(observable.map(_.eventId))
+                  } else {
+                    implicit val x = jsonSeqMarshaller[Stamped[KeyedEvent[Event]]]
+                    monixObservableToMarshallable(observable)
+                  }
+                })
           }
         }
       }
@@ -219,16 +216,6 @@ trait GenericEventRoute extends RouteProvider
           .apply(eventRequest => inner(Tuple1(eventRequest)))
       }
   }
-
-  private def completeTaskCancelable(uri: Uri, task: Task[ToResponseMarshallable]): Route =
-    complete {
-      val future = task.runToFuture
-      shuttingDownFuture onComplete { _ =>
-        future.cancel()
-        logger.debug(s"HTTP request canceled due to shutdown: $uri")
-      }
-      future
-    }
 }
 
 object GenericEventRoute
