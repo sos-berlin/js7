@@ -336,7 +336,7 @@ with MainJournalingActor[Event]
 
     case Internal.Ready(Right(Completed)) =>
       logger.info("Ready")
-      become("Ready")(ready)
+      become("Ready")(ready orElse handleJournalTermination)
       unstashAll()
 
     case _ => stash()
@@ -474,7 +474,12 @@ with MainJournalingActor[Event]
     case Terminated(a) if agentRegister contains a =>
       agentRegister(a).actorTerminated = true
       shutdown.continue()
+  }
 
+  // JournalActor's termination must be handled in any `become`-state and must lead to MasterOrderKeeper's termination
+  override def journaling = handleJournalTermination orElse super.journaling
+
+  private def handleJournalTermination: Receive = {
     case Terminated(`journalActor`) =>
       if (!shuttingDown && switchover.isEmpty) logger.error("JournalActor terminated")
       context.stop(self)
