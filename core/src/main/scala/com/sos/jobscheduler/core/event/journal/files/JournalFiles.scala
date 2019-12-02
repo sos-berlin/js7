@@ -5,9 +5,10 @@ import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.data.event.EventId
-import java.nio.file.Files.exists
-import java.nio.file.{Files, Path}
+import java.nio.file.Files.{createSymbolicLink, delete, exists}
+import java.nio.file.{Files, Path, Paths}
 import scala.collection.JavaConverters._
+import scala.util.Try
 
 /**
   * @author Joacim Zschimmer
@@ -38,5 +39,11 @@ object JournalFiles
   {
     def file(after: EventId): Path =
       JournalFile.toFile(underlying.fileBase, after)
+
+    def updateSymbolicLink(toFile: Path): Unit = {
+      val symLink = Paths.get(underlying.fileBase + "-journal")  // We preserve the suffix ".journal" for the real journal files
+      Try { if (exists(symLink)) delete(symLink) }
+      Try { createSymbolicLink(symLink, toFile.getFileName) }
+    }
   }
 }

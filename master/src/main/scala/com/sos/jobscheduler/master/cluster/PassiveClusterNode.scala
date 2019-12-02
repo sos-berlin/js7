@@ -166,9 +166,10 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, E], E <: 
             eof = true
 
           case (fileLength, line, json) =>
-            builder.put(json)
             out.write(line.toByteBuffer)
             logger.trace(s"Replicated ${line.utf8StringTruncateAt(200).trim}")
+            builder.put(json)  // throws on invalid event, after logging
+
             for (tmpFile <- maybeTmpFile if isReplicatingHeadOfFile && json.isOfType[JournalEvent, SnapshotTaken.type]) {
               val journalId = builder.fileJournalHeader.map(_.journalId) getOrElse
                 sys.error(s"Missing JournalHeader in replicated journal file '$file'")
@@ -179,16 +180,13 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, E], E <: 
               isReplicatingHeadOfFile = false
               out.close()
               move(tmpFile, file, ATOMIC_MOVE)
+              journalMeta.updateSymbolicLink(file)
               out = FileChannel.open(file, APPEND)
               logger.info(continueReplicatingMsg)
-              val stamped = {
-                import journalMeta.eventJsonCodec
-                json.as[Stamped[KeyedEvent[Event]]].orThrow.asInstanceOf[Stamped[KeyedEvent[SnapshotTaken]]]
-              }
               eventWatch.onJournalingStarted(file, journalId,
                 tornLengthAndEventId = PositionAnd(replicatedFileLength/*Before SnapshotTaken, after EventHeader*/, continuation.fileEventId),
-                flushedLengthAndEventId = PositionAnd(fileLength, stamped.eventId))
-                // Unfortunately comparable: ensureEqualState(continuation, builder.state)
+                flushedLengthAndEventId = PositionAnd(fileLength, builder.eventId))
+                // Unfortunately not comparable: ensureEqualState(continuation, builder.state)
             }
             replicatedFileLength = fileLength
             if (!isReplicatingHeadOfFile) {

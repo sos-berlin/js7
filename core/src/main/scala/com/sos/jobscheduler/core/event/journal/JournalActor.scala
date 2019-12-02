@@ -545,16 +545,12 @@ extends Actor with Stash
   }
 
   private def newEventJsonWriter(after: EventId, withoutSnapshots: Boolean = false) = {
-    val symLink = Paths.get(journalMeta.fileBase + "-journal")  // We preserve the suffix ".journal" for the real journal files
-    Try { if (exists(symLink)) delete(symLink) }
-
-    val file = journalMeta.file(after = after)
     assertThat(journalHeader != null)
-    val writer = new EventJournalWriter(journalMeta, file, after = after, journalHeader.journalId,
+    val file = journalMeta.file(after = after)
+    val w = new EventJournalWriter(journalMeta, file, after = after, journalHeader.journalId,
       observer.orThrow, simulateSync = conf.simulateSync, withoutSnapshots = withoutSnapshots, initialEventCount = 1/*SnapshotTaken*/)
-
-    Try { createSymbolicLink(symLink, file.getFileName) }
-    writer
+    journalMeta.updateSymbolicLink(file)
+    w
   }
 
   private def closeEventWriter(): Unit =

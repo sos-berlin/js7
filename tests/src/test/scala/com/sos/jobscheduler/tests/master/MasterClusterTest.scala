@@ -29,6 +29,7 @@ import com.sos.jobscheduler.tests.master.MasterClusterTest._
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider
 import com.typesafe.config.ConfigFactory
 import java.nio.file.Files
+import java.nio.file.Files.readSymbolicLink
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
@@ -123,6 +124,7 @@ final class MasterClusterTest extends FreeSpec
             assert(backupJournalFile.byteVector == primaryFile.byteVector)
           }
         }
+        assert(readSymbolicLink(primary.master.stateDir / "master-journal") == journalFiles.last.file.getFileName)
       }
 
       assertEqualJournalFiles(1)

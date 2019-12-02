@@ -96,7 +96,7 @@ extends JournalStateBuilder[MasterState, Event]
 
         case event: OrderCoreEvent =>
           handleForkJoinEvent(orderId, event)
-          idToOrder(orderId) = idToOrder(orderId).update(event).orThrow  // 🔥 ProblemException
+          idToOrder(orderId) = idToOrder(orderId).update(event).orThrow
 
         case _: OrderStdWritten =>
       }
