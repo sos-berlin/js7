@@ -40,7 +40,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
       Completed
     }
 
-  protected def onCoupled(api: Api): Task[Completed] =
+  protected def onCoupled(api: Api, after: I): Task[Completed] =
     Task.pure(Completed)
 
   protected def eof(index: I) = false
@@ -123,7 +123,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
         (if (stopRequested)
           Task.pure(Right(Observable.raiseError(new IllegalStateException(s"RecouplingStreamReader($api) has been stopped"))))
         else
-          coupleIfNeeded >>
+          coupleIfNeeded(after = after) >>
             getObservableX(after = after)
               .materialize.map(Checked.flattenTryChecked)
               .flatMap {
@@ -163,13 +163,13 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
         }
       }
 
-    private def coupleIfNeeded: Task[Completed] =
+    private def coupleIfNeeded(after: I): Task[Completed] =
       coupledApiVar.tryRead.flatMap {
         case Some(_) => Task.pure(Completed)
-        case None => tryEndlesslyToCouple
+        case None => tryEndlesslyToCouple(after)
       }
 
-    private def tryEndlesslyToCouple: Task[Completed] =
+    private def tryEndlesslyToCouple(after: I): Task[Completed] =
       Task.tailRecM(())(_ =>
         (for {
           otherCoupledClient <- coupledApiVar.tryRead
@@ -191,7 +191,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
               for {
                 _ <- coupledApiVar.tryPut(api)
                 _ <- Task { recouplingPause.onCouplingSucceeded() }
-                completed <- onCoupled(api)
+                completed <- onCoupled(api, after)
               } yield Right(completed)
           })}
 

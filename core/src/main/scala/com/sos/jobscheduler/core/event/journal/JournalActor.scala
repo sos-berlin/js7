@@ -390,11 +390,13 @@ extends Actor with Stash
           val a =
             if (!requireClusterAcknowledgement)
               ""  // No cluster. Caller may continue if flushed or synced
-            else if (ack && !writtenIterator.hasNext && !stampedIterator.hasNext)
-              " ack"  // Acknowledged by passive cluster node. Caller may continue
+            else if (!ack)
+              "    "  // Only SnapshotWritten event
+            else if (writtenIterator.hasNext || stampedIterator.hasNext)
+              " ack"  // Event is part of an acknowledged event bundle
             else
-              "    "
-          logger.trace(f"#$i $flushOrSync$a STORED ${written.since.elapsed.pretty}%-7s ${stamped.eventId} ${stamped.value.toString.takeWhile(_ != '\n')}")
+              " ACK"  // Last event of an acknowledged event bundele. Caller may continue
+          logger.trace(f"#$i $flushOrSync STORED$a ${written.since.elapsed.pretty}%-7s ${stamped.eventId} ${stamped.value.toString.takeWhile(_ != '\n')}")
           i += 1
         }
       }
@@ -421,8 +423,6 @@ extends Actor with Stash
   private def becomeTakingSnapshotThen()(andThen: JournalHeader => Unit) = {
     val since = now
     val snapshotTaken = eventIdGenerator.stamp(KeyedEvent(JournalEvent.SnapshotTaken))
-    val file = journalMeta.file(after = lastWrittenEventId)
-    logger.info(s"Starting new journal file '${file.getFileName}' with a snapshot")
 
     if (snapshotSchedule != null) {
       snapshotSchedule.cancel()
@@ -438,6 +438,8 @@ extends Actor with Stash
     assertThat(journalHeader != null)
     journalHeader = journalHeader.nextGeneration(eventId = lastWrittenEventId, totalEventCount = totalEventCount,
       totalRunningTime = journalHeader.totalRunningTime + runningSince.elapsed)
+    val file = journalMeta.file(after = lastWrittenEventId)
+    logger.info(s"Starting new journal file #${journalHeader.generation} '${file.getFileName}' with a snapshot")
     snapshotWriter = new SnapshotJournalWriter(journalMeta, toSnapshotTemporary(file), after = lastWrittenEventId,
       simulateSync = conf.simulateSync)
     snapshotWriter.writeHeader(journalHeader)

@@ -217,7 +217,7 @@ final class Cluster(
     }
 
   private def fetchAndHandleAcknowledgedEventIds(uri: Uri, after: EventId): Task[Completed] =
-    Task { logger.debug(s"fetchAndHandleAcknowledgedEventIds(after=$after)") } >>
+    Task { logger.info(s"Fetching acknowledged EventIds from passive cluster node, after=${EventId.toString(after)}") } >>
       Resource.fromAutoCloseable(Task {
         AkkaHttpMasterApi(AkkaUri(uri.string), name = "acknowledgements")(actorSystem)
       }).use(api =>
