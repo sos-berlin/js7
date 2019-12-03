@@ -294,13 +294,6 @@ with MainJournalingActor[Event]
       runningSince = runningSince_
       become("becomingReady")(becomingReady)  // `become` must be called early, before any persist!
 
-      for (order <- orderRegister.values.toVector/*copy*/) {  // Any ordering when continuing orders???
-        proceedWithOrder(order)  // May persist events!
-      }
-      afterProceedEvents.persistThenHandleEvents()  // Persist and handle before Internal.Ready
-      if (persistedEventId > EventId.BeforeFirst) {  // Recovered?
-        logger.info(s"${orderRegister.size} Orders, ${repo.typedCount[Workflow]} Workflows and ${repo.typedCount[AgentRef]} AgentRefs recovered")
-      }
       persistMultiple(
         (!masterMetaState.isDefined ?
           (NoKey <-: MasterEvent.MasterInitialized(masterConfiguration.masterId, journalHeader.startedAt))
@@ -316,6 +309,22 @@ with MainJournalingActor[Event]
           .runToFuture
           .map(Internal.Ready.apply)
           .pipeTo(self)
+      }
+
+      for (order <- orderRegister.values.toVector/*copy*/) {  // Any ordering when continuing orders???
+        proceedWithOrder(order)  // May persist events! May send AttachOrder to AgentDriver!
+      }
+      afterProceedEvents.persistThenHandleEvents()  // Persist and handle before Internal.Ready
+      if (persistedEventId > EventId.BeforeFirst) {  // Recovered?
+        logger.info(s"${orderRegister.size} Orders, ${repo.typedCount[Workflow]} Workflows and ${repo.typedCount[AgentRef]} AgentRefs recovered")
+      }
+
+      // Start fetching events from Agents after AttachOrder has been sent to AgentDrivers.
+      // This is to handle race-condition: An Agent may have already completed an order.
+      // So send AttachOrder before DetachOrder.
+      // The Agent will ignore the duplicate AttachOrder if it arrives before DetachOrder.
+      agentRegister.values foreach {
+        _.actor ! AgentDriver.Input.StartFetchingEvents
       }
 
     case _ => stash()
@@ -569,7 +578,10 @@ with MainJournalingActor[Event]
     def updateAgents(diff: FileBaseds.Diff[AgentRefPath, AgentRef]): Seq[Checked[SyncIO[Unit]]] =
       deletionNotSupported(diff) :+
         Right(SyncIO {
-          for (agentRef <- diff.added) registerAgent(agentRef, agentRunId = None, eventId = EventId.BeforeFirst)
+          for (agentRef <- diff.added) {
+            val entry = registerAgent(agentRef, agentRunId = None, eventId = EventId.BeforeFirst)
+            entry.actor ! AgentDriver.Input.StartFetchingEvents
+          }
           for (agentRef <- diff.updated) {
             agentRegister.update(agentRef)
             agentRegister(agentRef.path).reconnect()

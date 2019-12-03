@@ -90,9 +90,9 @@ with ReceiveLoggingActor.WithStash
         promise => self ! Internal.OnCouplingFailed(problem, promise)
       }
 
-    override protected def onCoupled(api: AgentClient) =
+    override protected def onCoupled(api: AgentClient, after: EventId) =
       promiseTask[Completed] { promise =>
-        logger.info(s"Coupled with $api")
+        logger.info(s"Coupled with $api after=${EventId.toString(after)}")
         self ! Internal.OnCoupled(promise)
       }
 
@@ -132,11 +132,6 @@ with ReceiveLoggingActor.WithStash
   protected def recoverFromEvent(event: MasterAgentEvent) = throw new NotImplementedError
   protected def snapshot = None  // MasterOrderKeeper provides the AgentSnapshot
 
-  override def preStart() = {
-    super.preStart()
-    self ! Internal.FetchEvents
-  }
-
   override def postStop() = {
     eventFetcher.invalidateCoupledApi.materialize
       .flatMap(_ =>
@@ -152,7 +147,7 @@ with ReceiveLoggingActor.WithStash
   private def newAgentClient(uri: Uri): AgentClient =
     AgentClient(uri, masterConfiguration.keyStoreRefOption, masterConfiguration.trustStoreRefOption)(context.system)
 
-  def receive: Receive = {
+  def receive = {
     case input: Input with Queueable if sender() == context.parent && !isTerminating =>
       commandQueue.enqueue(input)
       scheduler.scheduleOnce(conf.commandBatchDelay) {
@@ -187,7 +182,7 @@ with ReceiveLoggingActor.WithStash
       eventFetcher.terminate.runAsyncAndForget  // Rejects current commands waiting for coupling
       stopIfTerminated()
 
-    case Internal.FetchEvents =>
+    case Input.StartFetchingEvents | Internal.FetchEvents =>
       assert(currentFetchedFuture.isEmpty, "Duplicate fetchEvents")
       currentFetchedFuture = Some(
         observeAndConsumeEventsUntilCanceled
@@ -379,6 +374,8 @@ private[master] object AgentDriver
 
   sealed trait Input
   object Input {
+    case object StartFetchingEvents
+
     final case class ChangeUri(uri: Uri)
 
     final case class AttachOrder(order: Order[Order.FreshOrReady], agentRefPath: AgentRefPath, signedWorkflow: Signed[Workflow]) extends Input with Queueable {
