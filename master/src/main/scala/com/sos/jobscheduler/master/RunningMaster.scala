@@ -188,7 +188,6 @@ object RunningMaster
 
   private class Starter(injector: Injector)
   {
-    private val runningSince = now
     private val masterConfiguration = injector.instance[MasterConfiguration]
     private val journalMeta = JournalMeta(SnapshotJsonCodec, MasterKeyedEventJsonCodec, masterConfiguration.journalFileBase)
     private implicit val scheduler = injector.instance[Scheduler]
@@ -202,8 +201,8 @@ object RunningMaster
         MasterJournalRecoverer.recover(journalMeta, masterConfiguration.config)
       }
       val journalActor = tag[JournalActor.type](actorSystem.actorOf(
-        JournalActor.props(journalMeta, runningSince,
-          masterConfiguration.journalConf, injector.instance[StampedKeyedEventBus], scheduler, injector.instance[EventIdClock]),
+        JournalActor.props(journalMeta, masterConfiguration.journalConf,
+          injector.instance[StampedKeyedEventBus], scheduler, injector.instance[EventIdClock]),
         "Journal"))
       val cluster = new Cluster(
         journalMeta,
@@ -251,7 +250,7 @@ object RunningMaster
                 (actor ? MasterOrderKeeper.Command.GetState).mapTo[MasterState]
               ).map(Right.apply)
           },
-        totalRunningTime = Task.pure(recovered.totalRunningTime + runningSince.elapsed),
+        recovered.totalRunningSince,  // Maybe different from JournalHeader
         recovered.eventWatch
       ).closeWithCloser
 

@@ -17,6 +17,7 @@ trait JournalStateBuilder[S <: JournaledState[S, E], E <: Event]
 {
   private val stopwatch = new Stopwatch
   private var _snapshotCount = 0L
+  private var _firstEventId = EventId.BeforeFirst
   private var _eventId = EventId.BeforeFirst
   private var _eventCount = 0L
   private val _journalHeader = SetOnce[JournalHeader]
@@ -46,7 +47,8 @@ trait JournalStateBuilder[S <: JournaledState[S, E], E <: Event]
     snapshot match {
       case journalHeader: JournalHeader =>
         this._journalHeader := journalHeader
-        require(_eventId == EventId.BeforeFirst)
+        require(_firstEventId == EventId.BeforeFirst && _eventId == EventId.BeforeFirst)
+        _firstEventId = journalHeader.eventId
         _eventId = journalHeader.eventId
 
       case _ =>
@@ -73,6 +75,9 @@ trait JournalStateBuilder[S <: JournaledState[S, E], E <: Event]
       }
       onAddEvent(stamped)
       _eventCount += 1
+      if (_firstEventId == EventId.BeforeFirst) {
+        _firstEventId = stamped.eventId
+      }
       _eventId = stamped.eventId
     }
 
@@ -99,7 +104,10 @@ trait JournalStateBuilder[S <: JournaledState[S, E], E <: Event]
       eventId = eventId,
       totalEventCount = totalEventCount,
       totalRunningTime = if (eventId == EventId.BeforeFirst) Duration.Zero
-        else _journalHeader.fold(Duration.Zero)(o => o.totalRunningTime + (lastEventIdTimestamp - o.timestamp)),
+        else _journalHeader.fold(Duration.Zero) { header =>
+          val lastJournalDuration = EventId.toTimestamp(_eventId) - EventId.toTimestamp(_firstEventId)
+          header.totalRunningTime + lastJournalDuration roundUpToNext 1.ms
+        },
       timestamp = lastEventIdTimestamp))
 
   final def eventId = _eventId

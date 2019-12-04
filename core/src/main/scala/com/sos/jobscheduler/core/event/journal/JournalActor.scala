@@ -24,16 +24,15 @@ import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
 import com.sos.jobscheduler.core.event.journal.write.{EventJournalWriter, ParallelExecutingPipeline, SnapshotJournalWriter}
 import com.sos.jobscheduler.data.cluster.ClusterEvent
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, JournalEvent, JournalId, KeyedEvent, Stamped}
-import java.nio.file.Files.{createSymbolicLink, delete, exists, move}
+import java.nio.file.Files.{delete, exists, move}
+import java.nio.file.Path
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
-import java.nio.file.{Path, Paths}
 import monix.execution.{Cancelable, Scheduler}
 import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, Duration, FiniteDuration}
 import scala.concurrent.{Promise, blocking}
-import scala.util.Try
 import scala.util.control.NonFatal
 
 /**
@@ -41,7 +40,6 @@ import scala.util.control.NonFatal
   */
 final class JournalActor private(
   journalMeta: JournalMeta,
-  runningSince: Deadline,
   conf: JournalConf,
   keyedEventBus: StampedKeyedEventBus,
   scheduler: Scheduler,
@@ -59,6 +57,7 @@ extends Actor with Stash
 
   /** Originates from `JournalValue`, calculated from recovered journal if not freshly initialized. */
   private var journalHeader: JournalHeader = null
+  private var totalRunningSince = now
   private var observer = SetOnce[Option[JournalingObserver]]
   private var eventWriter: EventJournalWriter = null
   private var snapshotWriter: SnapshotJournalWriter = null
@@ -98,10 +97,11 @@ extends Actor with Stash
   }
 
   def receive = {
-    case Input.Start(RecoveredJournalingActors(keyToActor), observer_, header, requireClusterAcknowledgement) =>
+    case Input.Start(RecoveredJournalingActors(keyToActor), observer_, header, totalRunningSince_, requireClusterAcknowledgement) =>
       this.requireClusterAcknowledgement = requireClusterAcknowledgement
       observer := observer_
       journalHeader = header
+      totalRunningSince = totalRunningSince_
       lastWrittenEventId = header.eventId
       lastAcknowledgedEventId = header.eventId
       totalEventCount = header.totalEventCount
@@ -119,7 +119,7 @@ extends Actor with Stash
       becomeTakingSnapshotThen() { journalHeader =>
         unstashAll()
         becomeReady()
-        sender ! Output.Ready(journalHeader, runningSince)
+        sender ! Output.Ready(journalHeader)
       }
 
     case Input.StartWithoutRecovery(observer_) =>  // Testing only
@@ -131,7 +131,7 @@ extends Actor with Stash
       eventWriter.onJournalingStarted()
       unstashAll()
       becomeReady()
-      sender() ! Output.Ready(journalHeader, runningSince)
+      sender() ! Output.Ready(journalHeader)
 
     case Input.RegisterMe =>
       handleRegisterMe()
@@ -437,7 +437,7 @@ extends Actor with Stash
 
     assertThat(journalHeader != null)
     journalHeader = journalHeader.nextGeneration(eventId = lastWrittenEventId, totalEventCount = totalEventCount,
-      totalRunningTime = journalHeader.totalRunningTime + runningSince.elapsed)
+      totalRunningTime = totalRunningSince.elapsed roundUpToNext 1.ms)
     val file = journalMeta.file(after = lastWrittenEventId)
     logger.info(s"Starting new journal file #${journalHeader.generation} '${file.getFileName}' with a snapshot")
     snapshotWriter = new SnapshotJournalWriter(journalMeta, toSnapshotTemporary(file), after = lastWrittenEventId,
@@ -592,14 +592,13 @@ object JournalActor
 
   def props[E <: Event](
     journalMeta: JournalMeta,
-    runningSince: Deadline,
     conf: JournalConf,
     keyedEventBus: StampedKeyedEventBus,
     scheduler: Scheduler,
     eventIdClock: EventIdClock = EventIdClock.Default,
     stopped: Promise[Stopped] = Promise())
   =
-    Props { new JournalActor(journalMeta, runningSince, conf, keyedEventBus, scheduler, eventIdClock, stopped) }
+    Props { new JournalActor(journalMeta, conf, keyedEventBus, scheduler, eventIdClock, stopped) }
       .withDispatcher(DispatcherName)
 
   private def toSnapshotTemporary(file: Path) = file resolveSibling file.getFileName + TmpSuffix
@@ -611,6 +610,7 @@ object JournalActor
       recoveredJournalingActors: RecoveredJournalingActors,
       journalingObserver: Option[JournalingObserver],
       recoveredJournalHeader: JournalHeader,
+      totalRunningSince: Deadline,
       requireClusterAcknowledgement: Boolean)
     final case class StartWithoutRecovery(journalingObserver: Option[JournalingObserver] = None)
     /*private[journal] due to race condition when starting AgentDriver*/ case object RegisterMe
@@ -636,7 +636,7 @@ object JournalActor
 
   sealed trait Output
   object Output {
-    final case class Ready(journalHeader: JournalHeader, runningSince: Deadline)
+    final case class Ready(journalHeader: JournalHeader)
     private[journal] final case class Stored(stamped: Seq[Stamped[AnyKeyedEvent]], item: CallersItem) extends Output
     private[journal] final case class Accepted(item: CallersItem) extends Output
     //final case class SerializationFailure(throwable: Throwable) extends Output

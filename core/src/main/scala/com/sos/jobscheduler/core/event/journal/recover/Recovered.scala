@@ -6,12 +6,13 @@ import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.event.state.JournalStateBuilder
 import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, JournaledState}
 import com.typesafe.config.Config
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.duration.Deadline
 import scala.language.higherKinds
 
 final case class Recovered[S <: JournaledState[S, E], E <: Event](
   journalMeta: JournalMeta,
   recoveredJournalFile: Option[RecoveredJournalFile[S, E]],
+  totalRunningSince: Deadline,
   /** The recovered state */
   newStateBuilder: () => JournalStateBuilder[S, E],
   eventWatch: JournalEventWatch,
@@ -29,9 +30,6 @@ extends AutoCloseable
   def recoveredState: Option[S] =
     recoveredJournalFile.map(_.state)
 
-  def totalRunningTime: FiniteDuration =
-    recoveredJournalFile.fold(Duration.Zero)(_.calculatedJournalHeader.totalRunningTime)
-
   // Suppresses Config (which may contain secrets)
   override def toString = s"Recovered($journalMeta,$recoveredJournalFile,$newStateBuilder,$eventWatch,Config)"
 
@@ -45,5 +43,6 @@ extends AutoCloseable
       requireClusterAcknowledgement = requireClusterAcknowledgement,
       Some(eventWatch),
       recoveredJournalFile.map(_.journalId),
-      recoveredJournalFile.map(_.calculatedJournalHeader))
+      recoveredJournalFile.map(_.calculatedJournalHeader),
+      totalRunningSince)
 }

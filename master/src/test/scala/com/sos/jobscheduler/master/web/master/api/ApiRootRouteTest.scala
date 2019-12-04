@@ -18,6 +18,7 @@ import com.sos.jobscheduler.master.web.master.api.test.RouteTester
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.FreeSpec
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 
 /**
@@ -34,7 +35,7 @@ final class ApiRootRouteTest extends FreeSpec with RouteTester with ApiRootRoute
     Repo(MasterFileBaseds.jsonCodec),
     Map.empty,
     Map.empty)))
-  protected def totalRunningTime = Task.pure(1.hour)
+  protected def totalRunningSince = now - 1.hour
 
   private def route: Route =
     pathSegment("api") {
@@ -49,7 +50,7 @@ final class ApiRootRouteTest extends FreeSpec with RouteTester with ApiRootRoute
       assert(overview.buildId == BuildInfo.buildId)
       assert(overview.java.systemProperties("java.version") == sys.props("java.version"))
       assert(overview.startedAt == Some(Timestamp("2019-05-24T12:00:00Z")))
-      assert(overview.totalRunningTime == 1.hour)
+      assert(overview.totalRunningTime >= 1.hour && overview.totalRunningTime <= 1.hour + 1.minute)
       assert(overview.orderCount == Some(0))
     }
   }

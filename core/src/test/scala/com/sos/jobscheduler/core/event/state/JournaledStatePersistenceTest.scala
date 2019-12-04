@@ -34,7 +34,6 @@ import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.mutable
-import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 import shapeless.tag
@@ -136,7 +135,7 @@ final class JournaledStatePersistenceTest extends FreeSpec with BeforeAndAfterAl
 
     private lazy val journalActor = tag[JournalActor.type](
       actorSystem.actorOf(
-        JournalActor.props(journalMeta, now, JournalConf.fromConfig(config), new StampedKeyedEventBus, Scheduler.global,
+        JournalActor.props(journalMeta, JournalConf.fromConfig(config), new StampedKeyedEventBus, Scheduler.global,
           new EventIdClock.Fixed(currentTimeMillis = 1000/*EventIds start at 1000000*/),
           journalStopped)))
 

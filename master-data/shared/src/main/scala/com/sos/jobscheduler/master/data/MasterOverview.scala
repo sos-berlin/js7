@@ -17,10 +17,10 @@ final case class MasterOverview(
   version: String,
   buildId: String,
   startedAt: Option[Timestamp],
+  totalRunningTime: FiniteDuration,
   orderCount: Option[Int],
   system: SystemInformation,
-  java: JavaInformation,
-  totalRunningTime: FiniteDuration)
+  java: JavaInformation)
 
 object MasterOverview
 {

@@ -93,7 +93,6 @@ with MainJournalingActor[Event]
   override val supervisorStrategy = SupervisorStrategies.escalate
 
   private val agentDriverConfiguration = AgentDriverConfiguration.fromConfig(masterConfiguration.config, masterConfiguration.journalConf).orThrow
-  private var runningSince = now  // Will be overwritten after recovery
   private var masterMetaState = MasterMetaState.Undefined
   private var repo = Repo(MasterFileBaseds.jsonCodec)
   private val repoCommandExecutor = new RepoCommandExecutor(new FileBasedVerifier(signatureVerifier, MasterFileBaseds.jsonCodec))
@@ -289,9 +288,8 @@ with MainJournalingActor[Event]
   }
 
   private def recovering: Receive = {
-    case JournalRecoverer.Output.JournalIsReady(journalHeader, runningSince_) =>
+    case JournalRecoverer.Output.JournalIsReady(journalHeader) =>
       recoveredJournalHeader := journalHeader
-      runningSince = runningSince_
       become("becomingReady")(becomingReady)  // `become` must be called early, before any persist!
 
       persistMultiple(

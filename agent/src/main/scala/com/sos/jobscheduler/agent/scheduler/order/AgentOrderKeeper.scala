@@ -73,7 +73,7 @@ extends MainJournalingActor[Event] with Stash {
   private val eventWatch = recovered_.eventWatch
   private val workflowVerifier = new FileBasedVerifier(signatureVerifier, Workflow.topJsonDecoder)
   protected val journalActor = tag[JournalActor.type](watch(actorOf(
-    JournalActor.props(journalMeta, now, conf.journalConf, keyedEventBus, scheduler),
+    JournalActor.props(journalMeta, conf.journalConf, keyedEventBus, scheduler),
     "Journal")))
   private val jobRegister = new JobRegister
   private val workflowRegister = new WorkflowRegister
@@ -185,7 +185,7 @@ extends MainJournalingActor[Event] with Stash {
       orderRegister(order.id).order = order
       proceedWithOrder(order.id)
 
-    case JournalRecoverer.Output.JournalIsReady(journalHeader, _) =>
+    case JournalRecoverer.Output.JournalIsReady(journalHeader) =>
       logger.info(s"${orderRegister.size} Orders and ${workflowRegister.size} Workflows recovered")
       persist(AgentReadyForMaster(ZoneId.systemDefault.getId, totalRunningTime = journalHeader.totalRunningTime)) { _ =>
         become("ready")(ready)

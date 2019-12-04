@@ -21,7 +21,7 @@ import com.typesafe.config.Config
 import javax.inject.{Inject, Singleton}
 import monix.eval.Task
 import monix.execution.Scheduler
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.Deadline
 
 /**
   * @author Joacim Zschimmer
@@ -33,7 +33,7 @@ final class MasterWebServer private(
   orderApi: OrderApi.WithCommands,
   commandExecutor: MasterCommandExecutor,
   masterState: Task[Checked[MasterState]],
-  totalRunningTime: Task[FiniteDuration],
+  totalRunningSince: Deadline,
   sessionRegister: SessionRegister[SimpleSession],
   eventWatch: EventWatch,
   protected val config: Config,
@@ -64,7 +64,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri
       protected def orderCount = orderApi.orderCount
       protected def executeCommand(command: MasterCommand, meta: CommandMeta) = commandExecutor.executeCommand(command, meta)
       protected def masterState = MasterWebServer.this.masterState
-      protected def totalRunningTime = MasterWebServer.this.totalRunningTime
+      protected def totalRunningSince = MasterWebServer.this.totalRunningSince
 
       def webServerRoute = completeRoute
 
@@ -86,12 +86,12 @@ object MasterWebServer
     closer: Closer)
   {
     def apply(fileBasedApi: FileBasedApi, orderApi: OrderApi.WithCommands,
-      commandExecutor: MasterCommandExecutor, masterState: Task[Checked[MasterState]], totalRunningTime: Task[FiniteDuration],
+      commandExecutor: MasterCommandExecutor, masterState: Task[Checked[MasterState]], totalRunningSince: Deadline,
       eventWatch: EventWatch)
     : MasterWebServer =
       new MasterWebServer(
         masterConfiguration, gateKeeperConfiguration,
-        fileBasedApi, orderApi, commandExecutor, masterState, totalRunningTime,
+        fileBasedApi, orderApi, commandExecutor, masterState, totalRunningSince,
         sessionRegister, eventWatch, config, injector,
         actorSystem, scheduler)
       .closeWithCloser(closer)

@@ -160,7 +160,7 @@ private object OrderActorTest {
       dir / "data" / "state" / "agent")
 
     private val journalActor = actorOf(
-      JournalActor.props(journalMeta, now, JournalConf.fromConfig(config), new StampedKeyedEventBus, Scheduler.global),
+      JournalActor.props(journalMeta, JournalConf.fromConfig(config), new StampedKeyedEventBus, Scheduler.global),
       "Journal")
     private val eventWatch = new JournalEventWatch(journalMeta, config)
     private val jobActor = actorOf(
@@ -188,7 +188,7 @@ private object OrderActorTest {
     }
 
     def receive = {
-      case JournalActor.Output.Ready(_, _) =>
+      case JournalActor.Output.Ready(_) =>
         become(jobActorReady)
         jobActor ! JobActor.Input.OrderAvailable
     }

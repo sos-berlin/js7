@@ -24,7 +24,6 @@ import java.util.UUID
 import monix.execution.Scheduler
 import scala.collection.mutable
 import scala.concurrent.Promise
-import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.DurationInt
 
 /**
@@ -38,7 +37,7 @@ extends Actor with Stash
   override val supervisorStrategy = SupervisorStrategies.escalate
   private implicit val askTimeout = Timeout(99.seconds)
   private val journalActor = context.watch(context.actorOf(
-    JournalActor.props(journalMeta, now, JournalConf.fromConfig(config withFallback TestConfig), new StampedKeyedEventBus, Scheduler.global,
+    JournalActor.props(journalMeta, JournalConf.fromConfig(config withFallback TestConfig), new StampedKeyedEventBus, Scheduler.global,
       new EventIdClock.Fixed(currentTimeMillis = 1000/*EventIds start at 1000000*/),
       journalStopped),
     "Journal"))
@@ -81,7 +80,7 @@ extends Actor with Stash
   }
 
   def receive = {
-    case JournalRecoverer.Output.JournalIsReady(_, _) =>
+    case JournalRecoverer.Output.JournalIsReady(_) =>
       context.become(ready)
       unstashAll()
       logger.info("Ready")
