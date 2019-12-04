@@ -20,7 +20,7 @@ import com.sos.jobscheduler.core.event.state.JournalStateBuilder
 import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.JournalEvent.SnapshotTaken
-import com.sos.jobscheduler.data.event.{Event, EventId, JournalEvent, JournalId, JournaledState, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{Event, EventId, JournalEvent, JournalId, JournaledState}
 import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
 import com.sos.jobscheduler.master.cluster.PassiveClusterNode._
 import com.sos.jobscheduler.master.data.MasterCommand
@@ -66,9 +66,9 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, E], E <: 
             Task.parMap2(
               activeNodeApi.executeCommand(
                 ClusterPassiveFollows(followedUri = activeUri, followingUri = ownUri))
-                  .onErrorRestartLoop(())((throwable, _, retry) =>
-                    Task { logger.warn(s"ClusterPassiveFollows command failed with ${throwable.toStringWithCauses}")} >>
-                      retry(()).delayExecution(1.s/*TODO*/)),
+                  .doOnFinish(maybeThrowable => Task {
+                    for (t <- maybeThrowable) logger.warn(s"ClusterPassiveFollows command failed with ${t.toStringWithCauses}")
+                  }),
               replicateJournalFiles(
                 continuation = recovered.recoveredJournalFile match {
                   case None => NoLocalJournal(recoveredClusterState)
@@ -76,7 +76,14 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, E], E <: 
                 },
                 () => stateBuilderAndAccessor.newStateBuilder(),
                 activeNodeApi)
+                .doOnFinish(maybeThrowable => Task {
+                  for (t <- maybeThrowable) logger.warn(s"Replicating journal files failed with ${t.toStringWithCauses}")
+                })
             )((_: MasterCommand.Response.Accepted, followUp) => followUp))
+        .onErrorRestartLoop(()) { (throwable, _, retry) =>
+          logger.debug(throwable.toString, throwable)  // A warning should have been issued above
+          retry(()).delayExecution(1.s/*TODO*/)
+        }
         .guarantee(Task {
           terminated = true
         })
