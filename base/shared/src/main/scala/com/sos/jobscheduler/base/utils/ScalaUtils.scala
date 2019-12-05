@@ -142,7 +142,10 @@ object ScalaUtils
   implicit final class RichAny[A](private val delegate: A) extends AnyVal
   {
     /** Apply the function. */
-    @inline def |>[B] (f: A => B) = f(delegate)
+    @inline def |>[B](f: A => B) = pipe(f)
+
+    /** Apply the function. */
+    @inline def pipe[B](f: A => B) = f(delegate)
 
     def substitute(substitution: (A, A)): A = substitute(substitution._1, substitution._2)
 
