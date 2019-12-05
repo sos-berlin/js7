@@ -173,13 +173,6 @@ final class JavaTimeTest extends FreeSpec {
       assert(Long.MaxValue.s.pretty == s"${Long.MaxValue / (366*24*60*60)}~years")   // No overflow
     }
 
-    "toSecondsString" in {
-      assert(0.s.toSecondsString == "0s")
-      assert(1.s.toSecondsString == "1s")
-      assert(1000000000.h.toSecondsString == "3600000000000s")
-      assert(Duration.ofNanos(1).toSecondsString == "0.000000001s")
-    }
-
     "parseDuration" in {
       intercept[DateTimeParseException] { parseDuration(".1s") }
       intercept[DateTimeParseException] { parseDuration(".1") }

@@ -291,7 +291,7 @@ object DirectoryProvider
       ).stripMargin
     else
       (s"""echo ${StdoutOutput.trim}
-          |sleep ${duration.toSecondsString}""" +
+          |sleep ${duration.toDecimalString}""" +
           resultVariable.fold("")(o => s"""|echo "result=SCRIPT-VARIABLE-$$SCHEDULER_PARAM_${o.toUpperCase}" >>"$$SCHEDULER_RETURN_VALUES"""")
       ).stripMargin
 

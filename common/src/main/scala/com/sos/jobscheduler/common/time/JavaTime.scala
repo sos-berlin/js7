@@ -173,8 +173,6 @@ object JavaTime
         s"${seconds / 60}min"
     }
 
-    def toSecondsString: String = delegate.toBigDecimal.bigDecimal.toPlainString + "s"
-
     def compare(o: RichDuration) = delegate compareTo o.delegate
   }
 

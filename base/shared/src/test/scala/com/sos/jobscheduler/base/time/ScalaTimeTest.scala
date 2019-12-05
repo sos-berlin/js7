@@ -164,10 +164,10 @@ final class ScalaTimeTest extends FreeSpec
       assert(Long.MaxValue.nanoseconds.pretty == "15250weeks")
     }
 
-    "toSecondsString" in {
-      assert(0.s.toSecondsString == "0s")
-      assert(1.s.toSecondsString == "1s")
-      assert(Duration(1, NANOSECONDS).toSecondsString == "0.000000001s")
+    "toDecimalString" in {
+      assert(0.s.toDecimalString == "0")
+      assert(1.s.toDecimalString == "1")
+      assert(Duration(1, NANOSECONDS).toDecimalString == "0.000000001")
     }
 
     "parseDuration" in {

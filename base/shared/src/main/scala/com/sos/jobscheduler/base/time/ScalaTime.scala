@@ -160,8 +160,6 @@ object ScalaTime
         s"${seconds / 60}min"
     }
 
-    def toSecondsString: String = delegate.toBigDecimal.bigDecimal.toPlainString + "s"
-
     def compare(o: RichDuration) = delegate compareTo o.delegate
   }
 
@@ -179,6 +177,9 @@ object ScalaTime
       val gran = granularity.toNanos
       Duration((nanos + (gran - 1) * sgn) / gran * gran, NANOSECONDS).toCoarsest
     }
+
+    def toDecimalString: String =
+      delegate.toBigDecimal.bigDecimal.toPlainString
   }
 
   implicit final class RichFiniteDurationCompanion(private val underlying: FiniteDuration.type) extends AnyVal
