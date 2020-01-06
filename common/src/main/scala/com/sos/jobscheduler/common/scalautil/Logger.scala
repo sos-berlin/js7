@@ -8,12 +8,12 @@ import com.typesafe.scalalogging.{Logger => ScalaLogger}
 import org.slf4j.{LoggerFactory, Marker, MarkerFactory}
 import scala.reflect.ClassTag
 
-object Logger {
-
-  val Timing: Marker = MarkerFactory.getMarker("timing")
-  val Event: Marker = MarkerFactory.getMarker("event")
-  val Actor: Marker = MarkerFactory.getMarker("actor")
-  val Java: Marker = MarkerFactory.getMarker("java")
+object Logger
+{
+  //val Timing: Marker = MarkerFactory.getMarker("Timing")
+  //val Event: Marker = MarkerFactory.getMarker("Event")
+  val Actor: Marker = MarkerFactory.getMarker("Actor")
+  val Java: Marker = MarkerFactory.getMarker("Java")
 
   def apply[A: ClassTag]: ScalaLogger =
     apply(implicitClass[A])
