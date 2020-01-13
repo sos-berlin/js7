@@ -100,7 +100,7 @@ final class Cluster(
           if (state.isTheFollowingNode(ownUri))
             s"Becoming a following passive cluster node '$ownUri'"
           else
-            s"Becoming a still not following passive cluster node '$ownUri'")
+            s"Becoming a passive cluster node '$ownUri', trying to follow the active node")
           val passive = new PassiveClusterNode(ownUri, state.activeUri, journalMeta, recovered, clusterConf)(actorSystem)
           passive.run(recoveredClusterState, recoveredState).map(Right.apply) -> Some(passive.state)
 

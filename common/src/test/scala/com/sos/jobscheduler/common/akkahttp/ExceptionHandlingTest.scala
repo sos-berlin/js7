@@ -1,11 +1,10 @@
 package com.sos.jobscheduler.common.akkahttp
 
 import akka.http.scaladsl.model.MediaTypes.`application/json`
-import akka.http.scaladsl.model.StatusCodes.{BadRequest, Forbidden, InternalServerError}
+import akka.http.scaladsl.model.StatusCodes.{Forbidden, InternalServerError}
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import com.sos.jobscheduler.base.exceptions.StandardPublicException
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.common.akkahttp.ExceptionHandlingTest._
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
@@ -71,19 +70,6 @@ final class ExceptionHandlingTest extends FreeSpec with ScalatestRouteTest with 
         check {
           assert(status == Forbidden)
           assert(entityAs[Problem] == Problem("PROBLEM"))
-        }
-  }
-
-  "PublicException" in {
-    post("/") ~>
-      seal {
-        complete {
-          throw new StandardPublicException("PUBLIC MESSAGE") with NoStackTrace
-        }
-      } ~>
-        check {
-          assert(status == BadRequest)
-          assert(entityAs[Problem] == Problem("PUBLIC MESSAGE"))
         }
   }
 

@@ -74,7 +74,7 @@ with JournalingObserver
     }
     synchronized {
       val after = flushedLengthAndEventId.value
-      if (after < lastEventId) throw new IllegalArgumentException(s"Invalid onJournalingStarted(after=$after), must be > $lastEventId")
+      if (after < lastEventId) throw new IllegalArgumentException(s"Invalid onJournalingStarted(after=$after), must be ≥ $lastEventId")
       for (current <- currentEventReaderOption) {
         if (file == current.journalFile) sys.error(s"onJournalingStarted: file == current.journalFile == ${file.getFileName}")
         if (current.lastEventId != tornLengthAndEventId.value)

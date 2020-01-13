@@ -164,7 +164,7 @@ extends Actor with Stash
         if (acceptEarly && !requireClusterAcknowledgement/*? irrelevant because acceptEarly is not used in a Cluster for now*/) {
           reply(sender(), replyTo, Output.Accepted(callersItem))
           writtenBuffer += AcceptEarlyWritten(stampedEvents.size, lastFileLengthAndEventId, sender())
-          // Ergibt falsche Reihenfolge mit dem anderen Aufruf: logStored(flushed = false, synced = false, stampedEvents)
+          // Ergibt falsche Reihenfolge mit dem anderen Aufruf: logCommitted(flushed = false, synced = false, stampedEvents)
         } else {
           writtenBuffer += NormallyWritten(totalEventCount + 1, stampedEvents, lastFileLengthAndEventId, replyTo, sender(), callersItem)
         }
@@ -247,7 +247,7 @@ extends Actor with Stash
         val n = writtenBuffer.map(_.eventCount).sum
         if (n > 0) {
           logger.warn(s"Still waiting for acknowledgement from passive cluster node" +
-            s" for ${writtenBuffer.size} bundle of $n events starting with " +
+            s" for ${writtenBuffer.size} bundles of $n events starting with " +
             notAckSeq.flatMap(_.stamped).headOption.fold("(unknown)")(_.toString.truncateWithEllipsis((200))))
         } else logger.debug(s"StillWaitingForAcknowledge n=0, writtenBuffer.size=${writtenBuffer.size}")
       } else {
@@ -326,7 +326,7 @@ extends Actor with Stash
   }
 
   private def notifyEventWatchAndContinueCaller(writtenSeq: collection.Seq[Written]): Unit = {
-    logStored(ack = requireClusterAcknowledgement, writtenSeq.iterator.collect { case o: NormallyWritten => o })
+    logCommitted(ack = requireClusterAcknowledgement, writtenSeq.iterator.collect { case o: NormallyWritten => o })
     for (lastFileLengthAndEventId <- writtenSeq.flatMap(_.lastFileLengthAndEventId).lastOption) {
       lastAcknowledgedEventId = lastFileLengthAndEventId.value
       eventWriter.onCommitted(lastFileLengthAndEventId, n = writtenSeq.iterator.map(_.eventCount).sum)
@@ -372,7 +372,7 @@ extends Actor with Stash
         isRequiringClusterAcknowledgement = requireClusterAcknowledgement)
   }
 
-  private def logStored(ack: Boolean, writtenIterator: Iterator[LoggableWritten]) =
+  private def logCommitted(ack: Boolean, writtenIterator: Iterator[LoggableWritten]) =
     logger.whenTraceEnabled {
       while (writtenIterator.hasNext) {
         val written = writtenIterator.next()
@@ -395,8 +395,10 @@ extends Actor with Stash
             else if (writtenIterator.hasNext || stampedIterator.hasNext)
               " ack"  // Event is part of an acknowledged event bundle
             else
-              " ACK"  // Last event of an acknowledged event bundele. Caller may continue
-          logger.trace(f"#$i $flushOrSync STORED$a ${written.since.elapsed.pretty}%-7s ${stamped.eventId} ${stamped.value.toString.takeWhile(_ != '\n')}")
+              " ACK"  // Last event of an acknowledged event bundle. Caller may continue
+          val t = written.since.elapsed.pretty + "      " take 7
+          // (number-toString may save a memory allocation)
+          logger.trace(s"#${i.toString} $flushOrSync$a COMMITTED $t ${stamped.eventId.toString} ${stamped.value.toString.takeWhile(_ != '\n')}")
           i += 1
         }
       }
@@ -523,7 +525,7 @@ extends Actor with Stash
     lastWrittenEventId = snapshotTaken.eventId
     lastAcknowledgedEventId = lastWrittenEventId  // We do not care for the acknowledgement of SnapshotTaken only, to ease shutdown
     totalEventCount += 1
-    logStored(ack = false,
+    logCommitted(ack = false,
       Iterator.single(LoggableWritten(totalEventCount + 1, snapshotTaken :: Nil, since, lastOfFlushedOrSynced = true)))
     snapshotWriter.closeAndLog()
 

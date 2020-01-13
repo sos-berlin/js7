@@ -140,9 +140,9 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
             .transform { tried =>
               tried match {
                 case Failure(t) =>
-                  logger.debug(s"${requestToString(req, logData)} failed with ${t.toStringWithCauses}")
+                  logger.debug(s"$toString: ${requestToString(req, logData)} failed with ${t.toStringWithCauses}")
                 case Success(response) if response.status.isFailure =>
-                  logger.debug(s"${requestToString(req, logData)} failed with HTTP status ${response.status.intValue}")
+                  logger.debug(s"$toString: ${requestToString(req, logData)} failed with HTTP status ${response.status.intValue}")
                 case _ =>
               }
               tried
@@ -171,7 +171,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
           Unmarshal(httpResponse).to[A]
             .recover { case t =>
               if (!materializer.isShutdown) {
-                logger.debug(s"Error when unmarshaling response of ${method.name} $uri: ${t.toStringWithCauses}", t)
+                logger.debug(s"$toString: Error when unmarshaling response of ${method.name} $uri: ${t.toStringWithCauses}", t)
               }
               throw t
             }
@@ -206,6 +206,27 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
     else
       Left(Problem(s"URI '$uri' does not match $baseUri$uriPrefixPath"))
 
+  private def logRequest(request: HttpRequest, logData: => Option[String]): Unit =
+    logger.whenTraceEnabled {
+      logger.trace(requestToString(request, logData))
+    }
+
+  private def requestToString(request: HttpRequest, logData: => Option[String]): String = {
+    val b = new StringBuilder(200)
+    b.append(toString)
+    b.append(' ')
+    b.append(request.method.value)
+    b.append(' ')
+    b.append(request.uri)
+    if (!request.entity.isKnownEmpty) {
+      for (o <- logData) {
+        b.append(' ')
+        b.append(o)
+      }
+    }
+    b.toString
+  }
+
   override def toString = s"AkkaHttpClient($baseUri${if (name.isEmpty) "" else s" »$name«"})"
 }
 
@@ -237,27 +258,6 @@ object AkkaHttpClient
     }
     .dematerialize
 
-  private def logRequest(request: HttpRequest, logData: => Option[String]): Unit =
-    logger.whenTraceEnabled {
-      logger.trace(requestToString(request, logData))
-    }
-
-  private def requestToString(request: HttpRequest, logData: => Option[String]): String = {
-    val b = new StringBuilder(200)
-    b.append(toString)
-    b.append(' ')
-    b.append(request.method.value)
-    b.append(' ')
-    b.append(request.uri)
-    if (!request.entity.isKnownEmpty) {
-      for (o <- logData) {
-        b.append(' ')
-        b.append(o)
-      }
-    }
-    b.toString
-  }
-
   final class HttpException private[http](httpResponse: HttpResponse, val uri: Uri, val dataAsString: String)
   extends HttpClient.HttpException(s"${httpResponse.status}: $uri: ${dataAsString.truncateWithEllipsis(ErrorMessageLengthMaximum)}".trim)
   {
@@ -272,7 +272,7 @@ object AkkaHttpClient
       if (httpResponse.entity.contentType == ContentTypes.`application/json`)
         io.circe.parser.decode[Problem](dataAsString) match {
           case Left(error) =>
-            logger.debug(s"Problem cannot be parsed: $error")
+            logger.debug(s"$toString: Problem cannot be parsed: $error")
             None
           case Right(o) => Some(o)
         }
