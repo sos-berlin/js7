@@ -32,7 +32,7 @@ extends MainJournalingActor[E]
   override def preStart() = {
     super.preStart()
     persistPromise.success(stateToEvent => persistStateToEvents(stateToEvent))
-    getStatePromise.success(Task(state))
+    getStatePromise.success(Task { state })
   }
 
   private def persistStateToEvents(stateToEvents: StateToEvents[S, E]): Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =

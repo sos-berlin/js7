@@ -112,15 +112,6 @@ object WebLogDirectives {
      |jobscheduler.webserver.verbose-error-messages = true
      |jobscheduler.webserver.shutdown-timeout = 10s""")
 
-  def apply(config: Config, actorSystem: ActorSystem): WebLogDirectives = {
-    val c = config
-    val a = actorSystem
-    new WebLogDirectives {
-      def config = c
-      def actorSystem = a
-    }
-  }
-
   private def appendQuotedString(sb: StringBuilder, string: String) = {
     sb.append('"')
     string foreach {
