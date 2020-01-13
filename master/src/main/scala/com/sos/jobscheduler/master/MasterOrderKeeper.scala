@@ -89,10 +89,11 @@ extends Stash
 with MainJournalingActor[Event]
 {
   import context.{actorOf, watch}
+  import masterConfiguration.config
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 
-  private val agentDriverConfiguration = AgentDriverConfiguration.fromConfig(masterConfiguration.config, masterConfiguration.journalConf).orThrow
+  private val agentDriverConfiguration = AgentDriverConfiguration.fromConfig(config, masterConfiguration.journalConf).orThrow
   private var masterMetaState = MasterMetaState.Undefined
   private var repo = Repo(MasterFileBaseds.jsonCodec)
   private val repoCommandExecutor = new RepoCommandExecutor(new FileBasedVerifier(signatureVerifier, MasterFileBaseds.jsonCodec))
@@ -102,8 +103,9 @@ with MainJournalingActor[Event]
   }
   private val idToOrder = orderRegister mapPartialFunction (_.order)
   private var orderProcessor = new OrderProcessor(PartialFunction.empty, idToOrder)
-  private val suppressOrderIdCheckFor = masterConfiguration.config.optionAs[String]("jobscheduler.TEST-ONLY.suppress-order-id-check-for")
   private var recoveredJournalHeader = SetOnce[JournalHeader]
+  private val suppressOrderIdCheckFor = config.optionAs[String]("jobscheduler.TEST-ONLY.suppress-order-id-check-for")
+  private val testAddOrderDelay = config.optionAs[FiniteDuration]("jobscheduler.TEST-ONLY.add-order-delay").fold(Task.unit)(Task.sleep)
 
   private object shutdown {
     val since = SetOnce[Deadline]
@@ -661,6 +663,7 @@ with MainJournalingActor[Event]
               handleOrderEvent(stamped)
               Right(true)
             }
+            .flatMap(o => testAddOrderDelay.runToFuture.map(_ => o))  // test only
         }
     }
   }

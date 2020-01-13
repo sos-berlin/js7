@@ -1,10 +1,9 @@
 package com.sos.jobscheduler.common.akkahttp
 
-import akka.http.scaladsl.model.HttpRequest
-import akka.http.scaladsl.model.StatusCodes.{BadRequest, InternalServerError}
+import akka.http.scaladsl.model.StatusCodes.{InternalServerError, ServiceUnavailable}
+import akka.http.scaladsl.model.{HttpRequest, StatusCode}
 import akka.http.scaladsl.server.Directives.{complete, extractRequest}
 import akka.http.scaladsl.server.{ExceptionHandler, Route}
-import com.sos.jobscheduler.base.exceptions.PublicException
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.akkahttp.ExceptionHandling._
@@ -24,22 +23,29 @@ trait ExceptionHandling
   implicit protected val exceptionHandler: ExceptionHandler =
     ExceptionHandler {
       case e: HttpStatusCodeException =>
-        complete((e.statusCode, e.problem))
+        complete(e.statusCode -> e.problem)
 
-      case e: PublicException =>
-        extractRequest { request =>
-          webLogger.warn(toLogMessage(request, e), e)
-          complete(BadRequest -> Problem.pure(e))
-        }
+      case e: akka.pattern.AskTimeoutException =>
+        if (isShuttingDown) {
+          extractRequest { request =>
+            webLogger.debug(toLogMessage(request, e), e)
+            complete(ServiceUnavailable -> Problem.pure("Shutting down"))
+          }
+        } else
+          completeWithError(ServiceUnavailable, e)
 
       case e =>
-        extractRequest { request =>
-          webLogger.warn(toLogMessage(request, e), e)
-          if (respondWithException)
-            complete(InternalServerError -> Problem.pure(e))
-          else
-            complete(InternalServerError)
-        }
+        completeWithError(InternalServerError, e)
+    }
+
+  private def completeWithError(status: StatusCode, e: Throwable): Route =
+    extractRequest { request =>
+      def msg = toLogMessage(request, e)
+      if (isShuttingDown) webLogger.debug(msg, e) else webLogger.warn(msg, e)
+      if (respondWithException)
+        complete(status -> Problem.pure(e))
+      else
+        complete(status)
     }
 
   protected final def seal(route: Route) =
