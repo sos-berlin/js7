@@ -18,6 +18,7 @@ import scala.util.control.NoStackTrace
 final class ExceptionHandlingTest extends FreeSpec with ScalatestRouteTest with ExceptionHandling
 {
   protected val config = ConfigFactory.parseString("jobscheduler.webserver.verbose-error-messages = true")
+  protected def isShuttingDown = false
 
   protected def actorSystem = system
 

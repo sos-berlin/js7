@@ -28,8 +28,9 @@ import scala.concurrent.duration._
 /**
  * @author Joacim Zschimmer
  */
-final class TaskWebServiceTest extends FreeSpec with WebServiceTest with TaskWebService {
-
+final class TaskWebServiceTest extends FreeSpec with WebServiceTest with TaskWebService
+{
+  protected def isShuttingDown = false
   protected lazy val taskRegister = {
     val actor = actorSystem.actorOf(TaskRegisterActor.props(None))
     new TaskRegister(actor)(99.seconds)

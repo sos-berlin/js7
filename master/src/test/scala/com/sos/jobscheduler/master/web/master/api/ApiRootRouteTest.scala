@@ -27,6 +27,7 @@ import scala.concurrent.duration._
 final class ApiRootRouteTest extends FreeSpec with RouteTester with ApiRootRoute
 {
   protected val masterId = MasterId("TEST-MASTER")
+  protected def isShuttingDown = false
   protected implicit def scheduler: Scheduler = Scheduler.global
   protected def masterState = Task.pure(Right(MasterState(
     EventId(1001),

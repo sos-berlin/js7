@@ -16,6 +16,7 @@ import com.typesafe.config.Config
   */
 trait ExceptionHandling
 {
+  protected def isShuttingDown: Boolean
   protected def config: Config
 
   private lazy val respondWithException = config.getBoolean("jobscheduler.webserver.verbose-error-messages")

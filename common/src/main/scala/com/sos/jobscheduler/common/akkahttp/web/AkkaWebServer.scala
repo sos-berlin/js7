@@ -38,7 +38,7 @@ trait AkkaWebServer extends AutoCloseable
   protected def newRoute(binding: WebServerBinding): BoundRoute
 
   private val shuttingDownPromise = Promise[Completed]()
-  protected final val shuttingDownFuture = shuttingDownPromise.future
+  protected final def isShuttingDown = shuttingDownPromise.future.isCompleted
   private val akkaHttp = Http(actorSystem)
   private implicit val materializer = ActorMaterializer()
   private lazy val shutdownTimeout = config.getDuration("jobscheduler.webserver.shutdown-timeout").toFiniteDuration

@@ -23,8 +23,9 @@ import scala.concurrent.duration._
 /**
  * @author Joacim Zschimmer
  */
-final class CommandWebServiceTest extends FreeSpec with WebServiceTest with CommandWebService {
-
+final class CommandWebServiceTest extends FreeSpec with WebServiceTest with CommandWebService
+{
+  protected def isShuttingDown = false
   protected def scheduler = Scheduler.global
   override protected val uriPathPrefix = "test"
 

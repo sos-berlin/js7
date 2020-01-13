@@ -5,7 +5,6 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.util.ByteString
 import com.sos.jobscheduler.base.auth.ValidUserPermission
-import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.accept
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
@@ -19,8 +18,6 @@ import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import com.sos.jobscheduler.master.web.master.api.JournalRoute._
 import monix.execution.Scheduler
-import monix.reactive.Observable
-import scala.concurrent.Future
 
 /** Returns the content of an old or currently written journal file as a live stream.
   * Additional to EventRoute this web service returns the complete file including
@@ -31,7 +28,6 @@ import scala.concurrent.Future
   */
 trait JournalRoute extends MasterRouteProvider
 {
-  protected val shuttingDownFuture: Future[Completed]
   protected def eventWatch: EventWatch
   protected def scheduler: Scheduler
 
@@ -59,7 +55,7 @@ trait JournalRoute extends MasterRouteProvider
                             HttpEntity(JournalContentType,
                               logAkkaStreamErrorToWebLog(
                                 observable
-                                  .takeUntil(Observable.fromFuture(shuttingDownFuture))
+                                  .takeWhile(_ => !isShuttingDown)
                                   .map(f)
                                   .toAkkaSource))
                           })

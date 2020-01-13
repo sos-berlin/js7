@@ -21,8 +21,9 @@ import org.scalatest.FreeSpec
 /**
  * @author Joacim Zschimmer
  */
-final class RootWebServiceTest extends FreeSpec with WebServiceTest with RootWebService {
-
+final class RootWebServiceTest extends FreeSpec with WebServiceTest with RootWebService
+{
+  protected def isShuttingDown = false
   protected def scheduler = Scheduler.global
   protected def agentOverview = Task.pure(AgentOverview(
     startedAt = Timestamp.parse("2015-06-01T12:00:00Z"),

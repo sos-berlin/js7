@@ -44,6 +44,7 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
 {
   protected type Session = SimpleSession
 
+  protected def isShuttingDown = false
   implicit protected def scheduler = Scheduler.global
   protected val config = ConfigFactory.parseString("jobscheduler.webserver.verbose-error-messages = on")
   private lazy val actorSystem = newActorSystem("SessionRouteTest")

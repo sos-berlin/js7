@@ -40,7 +40,7 @@ final class EventRouteTest extends FreeSpec with RouteTester with EventRoute
 
   private implicit val timeout = 99.seconds
   private implicit val routeTestTimeout = RouteTestTimeout(timeout)
-  protected val shuttingDownFuture = Future.never
+  protected def isShuttingDown = false
   protected val eventWatch = new EventCollector.ForTest()(Scheduler.global)
   protected implicit def scheduler: Scheduler = Scheduler.global
 

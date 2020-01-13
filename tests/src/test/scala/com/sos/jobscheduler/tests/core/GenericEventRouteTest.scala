@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.tests.core
 
 import com.sos.jobscheduler.base.auth.SimpleUser
-import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
@@ -34,7 +33,6 @@ import monix.reactive.Observable
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.immutable.Seq
 import scala.collection.mutable
-import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.reflect.runtime.universe._
@@ -77,8 +75,7 @@ final class GenericEventRouteTest extends FreeSpec with BeforeAndAfterAll with P
   protected val gateKeeper = new GateKeeper(GateKeeper.Configuration.fromConfig(config, SimpleUser.apply))
   protected final val sessionRegister = SessionRegister.start[SimpleSession](
     actorSystem, SimpleSession.apply, SessionRegister.TestConfig)
-  private val shuttingDownPromise = Promise[Completed]()
-  protected final lazy val shuttingDownFuture = shuttingDownPromise.future
+  @volatile protected var isShuttingDown = false
 
   protected val eventWatch = new EventCollector.ForTest()  // TODO Use real JournalEventWatch
 
@@ -219,20 +216,23 @@ final class GenericEventRouteTest extends FreeSpec with BeforeAndAfterAll with P
       assert(result.isEmpty && t.elapsed > 0.1.second)
     }
 
-    "shuttingDownFuture completes observable" in {
+    "isShuttingDown completes observable" in {
       val observableCompleted = getEventObservable(EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(99.s)))
         .foreach { _ => }
       sleep(10.ms)
       assert(!observableCompleted.isCompleted)
 
       // ShutDown service
-      shuttingDownPromise.success(Completed)
+      isShuttingDown = true
+      sleep(100.ms)
+      assert(!observableCompleted.isCompleted)  // isShuttingDown is only checked after an event has been received !!! (to avoid a memory leak)
+
+      eventWatch.addStamped(ExtraEvent)
       observableCompleted.await(1.s)
     }
   }
 
-  private def getEventObservable(eventRequest: EventRequest[Event])
-  : Observable[Stamped[KeyedEvent[Event]]] =
+  private def getEventObservable(eventRequest: EventRequest[Event]): Observable[Stamped[KeyedEvent[Event]]] =
     api.getDecodedLinesObservable[Stamped[KeyedEvent[Event]]](
       "/" + encodePath("event") + encodeQuery(eventRequest.toQueryParameters)
     ).await(99.s)
@@ -252,4 +252,7 @@ object GenericEventRouteTest
   private val TestEvents = for (i <- 1 to 18) yield
     Stamped(EventId(10 * i), Timestamp.ofEpochMilli(999),
       OrderId(i.toString) <-: OrderAdded(WorkflowPath("/test") ~ "VERSION", None, Map.empty))
+  private val ExtraEvent =
+    Stamped(EventId(10 * 99), Timestamp.ofEpochMilli(999),
+      OrderId(99.toString) <-: OrderAdded(WorkflowPath("/test") ~ "VERSION", None, Map.empty))
 }

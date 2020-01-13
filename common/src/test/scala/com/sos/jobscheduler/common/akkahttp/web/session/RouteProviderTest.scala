@@ -24,6 +24,7 @@ final class RouteProviderTest extends FreeSpec with RouteProvider with Scalatest
 
   protected type Session = MySession
 
+  protected def isShuttingDown = false
   implicit protected def scheduler = Scheduler.global
   protected val config = ConfigFactory.parseString("jobscheduler.webserver.verbose-error-messages = on")
   protected lazy val sessionRegister = SessionRegister.start[MySession](system, MySession.apply, SessionRegister.TestConfig)

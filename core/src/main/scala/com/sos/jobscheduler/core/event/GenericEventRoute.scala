@@ -53,7 +53,7 @@ import scala.util.control.NonFatal
   */
 trait GenericEventRoute extends RouteProvider
 {
-  protected val shuttingDownFuture: Future[Completed]
+  protected def isShuttingDown: Boolean
 
   private implicit def implicitScheduler: Scheduler = scheduler
 
@@ -72,7 +72,7 @@ trait GenericEventRoute extends RouteProvider
 
     private val exceptionHandler = ExceptionHandler {
       case t: com.sos.jobscheduler.core.event.journal.watch.ClosedException if t.getMessage != null =>
-        if (shuttingDownFuture.isCompleted)
+        if (isShuttingDown)
           complete(ServiceUnavailable -> JobSchedulerIsShuttingDownProblem)
         else
           complete(ServiceUnavailable -> Problem.pure(t.getMessage))

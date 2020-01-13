@@ -19,6 +19,7 @@ import org.scalatest.FreeSpec
 final class CommandRouteTest extends FreeSpec with RouteTester with CommandRoute {
 
   protected val masterId = MasterId("TEST-MASTER")
+  protected def isShuttingDown = false
   protected implicit def scheduler: Scheduler = Scheduler.global
 
   private var commandReceived = false

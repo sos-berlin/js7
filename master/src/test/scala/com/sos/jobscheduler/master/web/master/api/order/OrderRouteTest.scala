@@ -27,6 +27,7 @@ import scala.collection.immutable.Seq
   */
 final class OrderRouteTest extends FreeSpec with RouteTester with OrderRoute {
 
+  protected def isShuttingDown = false
   protected implicit def scheduler: Scheduler = Scheduler.global
   protected val eventIdGenerator = new EventIdGenerator
   protected val orderApi = new OrderApi.WithCommands {

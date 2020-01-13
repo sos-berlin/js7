@@ -19,8 +19,9 @@ import scala.collection.immutable.Seq
 /**
   * @author Joacim Zschimmer
   */
-final class AgentRefRouteTest extends FreeSpec with RouteTester with AgentRefRoute {
-
+final class AgentRefRouteTest extends FreeSpec with RouteTester with AgentRefRoute
+{
+  protected def isShuttingDown = false
   protected implicit def scheduler: Scheduler = Scheduler.global
   protected val fileBasedApi = FileBasedApi.forTest(pathToAgent)
 

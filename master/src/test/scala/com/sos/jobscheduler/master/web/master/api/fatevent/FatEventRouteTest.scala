@@ -52,6 +52,7 @@ final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRou
 {
   private lazy val configAndDataDirectory = Files.createTempDirectory("FatEventRouteTest-")
   protected val masterConfiguration = MasterConfiguration.forTest(configAndDataDirectory)
+  protected def isShuttingDown = false
 
   override def afterAll(): Unit = {
     deleteDirectoryRecursively(configAndDataDirectory)
