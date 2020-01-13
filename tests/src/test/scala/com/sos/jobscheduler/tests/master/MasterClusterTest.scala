@@ -18,7 +18,9 @@ import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.listJournalFiles
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.cluster.ClusterEvent
+import com.sos.jobscheduler.data.cluster.ClusterEvent.FollowerLost
 import com.sos.jobscheduler.data.event.EventId
+import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
@@ -115,8 +117,8 @@ final class MasterClusterTest extends FreeSpec
       def assertEqualJournalFiles(n: Int): Unit = {
         val journalFiles = listJournalFiles(primary.master.stateDir / "master")
         // Snapshot is not being acknowledged, so a new journal file starts asynchronously (or when one event has been written)
-        waitForCondition(9.s, 10.ms) { listJournalFiles(backup.master.stateDir / "master").size == journalFiles.size }
         assert(journalFiles.size == n)
+        waitForCondition(9.s, 10.ms) { listJournalFiles(backup.master.stateDir / "master").size == n }
         for (primaryFile <- journalFiles.map(_.file)) {
           withClue(s"$primaryFile: ") {
             val backupJournalFile = backup.master.stateDir.resolve(primaryFile.getFileName)
@@ -208,6 +210,31 @@ final class MasterClusterTest extends FreeSpec
           }
         }
       }
+    }
+  }
+
+  "Failover" in {
+    val primaryHttpPort :: backupHttpPort :: Nil = findFreeTcpPorts(2)
+    withMasterAndBackup(primaryHttpPort, backupHttpPort) { (primary, backup) =>
+      val primaryMaster = primary.startMaster(httpPort = Some(primaryHttpPort)) await 99.s
+      val backupMaster = backup.startMaster(httpPort = Some(backupHttpPort)) await 99.s
+
+      //primaryMaster.executeCommandAsSystemUser(
+      //  ClusterAppointBackup(activeUri = Uri(primaryMaster.localUri.toString), backupUri = Uri(backupMaster.localUri.toString))
+      //).await(99.s).orThrow
+      primaryMaster.eventWatch.await[ClusterEvent.ClusterCoupled]()
+
+      val orderId = OrderId("🔺")
+      primaryMaster.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
+      primaryMaster.eventWatch.await[OrderProcessingStarted](_.key == orderId)
+      backupMaster.eventWatch.await[OrderProcessingStarted](_.key == orderId)
+
+      // KILL BACKUP
+      backupMaster.terminate() await 99.s
+      val followerLost = primaryMaster.eventWatch.await[FollowerLost](_.key == NoKey).head.eventId
+
+      primaryMaster.eventWatch.await[OrderFinished](_.key == orderId, after = followerLost)
+      primaryMaster.terminate() await 99.s
     }
   }
 

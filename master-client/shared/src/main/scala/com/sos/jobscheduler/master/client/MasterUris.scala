@@ -26,25 +26,30 @@ final class MasterUris private(masterUri: String)
 
   val session = api("/session")
 
-  def events[E <: Event: ClassTag](request: EventRequest[E], eventIdOnly: Boolean = false, onlyLastOfChunk: Boolean = false)
+  def events[E <: Event: ClassTag](request: EventRequest[E], eventIdOnly: Boolean = false,
+    heartbeat: Option[FiniteDuration] = None, onlyLastOfChunk: Boolean = false)
   : String =
-    events_[E]("/event", request, eventIdOnly = eventIdOnly, onlyLastOfChunk = onlyLastOfChunk)
+    events_[E]("/event", request, eventIdOnly = eventIdOnly, heartbeat = heartbeat, onlyLastOfChunk = onlyLastOfChunk)
 
   def fatEvents[E <: FatEvent: ClassTag](request: EventRequest[E]): String =
     events_[E]("/fatEvent", request)
 
   private def events_[E <: Event: ClassTag](path: String, request: EventRequest[E],
-    eventIdOnly: Boolean = false, onlyLastOfChunk: Boolean = false)
+    eventIdOnly: Boolean = false, heartbeat: Option[FiniteDuration] = None, onlyLastOfChunk: Boolean = false)
   : String =
     api(path) + encodeQuery(
      (eventIdOnly thenVector ("eventIdOnly" -> "true")) ++
+     (heartbeat.map("heartbeat" -> _.toDecimalString)) ++
      (onlyLastOfChunk thenVector ("onlyLastOfChunk" -> "true")) ++
        request.toQueryParameters)
 
-  def journal(fileEventId: EventId, position: Long, timeout: FiniteDuration, markEOF: Boolean = false, returnLength: Boolean = false): String =
+  def journal(fileEventId: EventId, position: Long, heartbeat: Option[FiniteDuration] = None,
+    timeout: FiniteDuration, markEOF: Boolean = false, returnLength: Boolean = false)
+  : String =
     api("/journal") + encodeQuery(
       (returnLength.thenList("return" -> "length")) :::
-      ("timeout" -> timeout.toBigDecimal.bigDecimal.toPlainString) ::
+      (heartbeat.map("heartbeat" -> _.toDecimalString)).toList :::
+      ("timeout" -> timeout.toDecimalString) ::
       (markEOF.thenList("markEOF" -> "true")) :::
       ("file" -> fileEventId.toString) ::
       ("position" -> position.toString) :: Nil)

@@ -40,7 +40,7 @@ object TearableEventSeq {
     }
   }
 
-  implicit def jsonCodec[E: Encoder.AsObject: Decoder]: CirceObjectCodec[TearableEventSeq[Seq, E]] =
+  implicit def jsonCodec[E: Encoder: Decoder]: CirceObjectCodec[TearableEventSeq[Seq, E]] =
     TypedJsonCodec[TearableEventSeq[Seq, E]](
       Subtype[EventSeq[Seq, E]],
       Subtype(deriveCodec[Torn]))
@@ -62,13 +62,13 @@ object EventSeq {
     override def toString = s"EventSeq.Empty($lastEventId)"
   }
 
-  implicit def nonEmptyJsonEncoder[E: Encoder.AsObject]: Encoder.AsObject[NonEmpty[Seq, E]] =
+  implicit def nonEmptyJsonEncoder[E: Encoder]: Encoder.AsObject[NonEmpty[Seq, E]] =
     eventSeq => JsonObject.singleton("stamped", eventSeq.stamped.asJson)
 
   implicit def nonEmptyJsonDecoder[E: Decoder]: Decoder[NonEmpty[Seq, E]] =
     _.get[Seq[Stamped[E]]]("stamped") map NonEmpty.apply
 
-  implicit def jsonCodec[E: Encoder.AsObject: Decoder]: CirceObjectCodec[EventSeq[Seq, E]] =
+  implicit def jsonCodec[E: Encoder: Decoder]: CirceObjectCodec[EventSeq[Seq, E]] =
     TypedJsonCodec[EventSeq[Seq, E]](
       Subtype[NonEmpty[Seq, E]],
       Subtype(deriveCodec[Empty]))

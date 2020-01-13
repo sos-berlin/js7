@@ -1,10 +1,8 @@
 package com.sos.jobscheduler.master.cluster
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.model.{Uri => AkkaUri}
 import akka.pattern.ask
 import akka.util.Timeout
-import cats.effect.Resource
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
@@ -15,7 +13,8 @@ import com.sos.jobscheduler.core.event.journal.JournalActor
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.Recovered
 import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
-import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, ClusterCoupled, FollowingStarted, SwitchedOver}
+import com.sos.jobscheduler.core.problems.MissingPassiveClusterNodeHeartbeatProblem
+import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, ClusterCoupled, FollowerLost, FollowingStarted, SwitchedOver}
 import com.sos.jobscheduler.data.cluster.ClusterState.{AwaitingAppointment, AwaitingFollower, Coupled, CoupledOrDecoupled, Decoupled, Empty, Sole}
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeRole, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
@@ -24,10 +23,12 @@ import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, Stamped}
 import com.sos.jobscheduler.master.MasterState
 import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
 import com.sos.jobscheduler.master.cluster.Cluster._
+import com.sos.jobscheduler.master.cluster.ObservablePauseDetector._
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean
 import monix.execution.{CancelableFuture, Scheduler}
 import monix.reactive.{Observable, OverflowStrategy}
+import scala.concurrent.Promise
 import scala.util.{Failure, Success}
 
 final class Cluster(
@@ -37,12 +38,11 @@ final class Cluster(
   actorSystem: ActorSystem)
   (implicit s: Scheduler, journalActorAskTimeout: Timeout)
 {
-  private val idleTimeout = clusterConf.recouplingStreamReader.timeout
   private val journalActor = persistence.journalActor
-
   private val fetchingEvents = AtomicBoolean(false)
   @volatile
-  private var fetchingEventsFuture: CancelableFuture[Completed] = null
+  private var fetchingEventsFuture: CancelableFuture[Checked[Completed]] = null
+  private val fetchingEventsPromise = Promise[Checked[Completed]]()
   @volatile
   private var switchoverAcknowledged = false
   @volatile
@@ -85,7 +85,7 @@ final class Cluster(
       case (Empty, Some(ownUri), Some(ClusterNodeRole.Backup(activeUri))) =>
         logger.info(s"Becoming the (still not following) backup cluster node '$ownUri' for primary node at $activeUri")
         val passive = new PassiveClusterNode(ownUri, activeUri, journalMeta, recovered, clusterConf)(actorSystem)
-        passive.run(recoveredClusterState, recoveredState).map(Right.apply) -> Some(passive.state)
+        passive.run(recoveredClusterState, recoveredState) -> Some(passive.state)
 
       case (state, Some(ownUri), _) if state.isActive(ownUri) =>
         state match {
@@ -102,7 +102,7 @@ final class Cluster(
           else
             s"Becoming a passive cluster node '$ownUri', trying to follow the active node")
           val passive = new PassiveClusterNode(ownUri, state.activeUri, journalMeta, recovered, clusterConf)(actorSystem)
-          passive.run(recoveredClusterState, recoveredState).map(Right.apply) -> Some(passive.state)
+          passive.run(recoveredClusterState, recoveredState) -> Some(passive.state)
 
       case (_, None, _) =>
         Task.pure(Left(Problem.pure("This cluster node's own URI is unknown"))) -> None
@@ -200,38 +200,70 @@ final class Cluster(
     state match {
       case state: Coupled =>
         if (!fetchingEvents.getAndSet(true)) {
+          def msg = s"observeEventIds(${state.passiveUri}, after=$eventId, userAndPassword=${clusterConf.userAndPassword})"
           fetchingEventsFuture = fetchAndHandleAcknowledgedEventIds(state.passiveUri, after = eventId)
             .executeWithOptions(_.enableAutoCancelableRunLoops)
             .runToFuture
-          fetchingEventsFuture.onComplete {
-            case Success(Completed) =>
-              if (!stopRequested) {
-                logger.error("observeEventIds terminated")
+          fetchingEventsFuture onComplete {
+            case Success(Left(MissingPassiveClusterNodeHeartbeatProblem(uri))) =>
+              logger.warn("Missing heartbeat of passive cluster node - continuing as a single node")
+              val event = FollowerLost(uri)
+              persistence.persistEvent[ClusterEvent](NoKey)(_ => Right(event))
+                .runToFuture
+                .onComplete {
+                  case Success(Right(_)) => logger.info(s"Continuing as a single node after passive node failed")
+                  case failed => logger.error(s"$event event failed: $failed")
+                }
+
+            case tried =>
+              tried match {
+                case Success(Right(Completed)) =>
+                  if (!stopRequested) {
+                    logger.error("observeEventIds terminated")
+                  }
+
+                case Success(Left(problem)) =>
+                  logger.error(s"$msg failed with $problem")
+
+                case Failure(t) =>
+                  logger.error(s"$msg failed with ${t.toStringWithCauses}", t)
               }
-            case Failure(t) =>
-              logger.error(s"observeEventIds(${state.passiveUri}, after=$eventId, userAndPassword=${clusterConf.userAndPassword})" +
-                s" failed with ${t.toStringWithCauses}", t)
+              fetchingEventsPromise.complete(tried)
           }
         }
       case _ =>
     }
 
-  private def fetchAndHandleAcknowledgedEventIds(uri: Uri, after: EventId): Task[Completed] =
+  private def fetchAndHandleAcknowledgedEventIds(uri: Uri, after: EventId): Task[Checked[Completed]] =
     Task { logger.info(s"Fetching acknowledged EventIds from passive cluster node, after=${EventId.toString(after)}") } >>
-      Resource.fromAutoCloseable(Task {
-        AkkaHttpMasterApi(AkkaUri(uri.string), name = "acknowledgements")(actorSystem)
-      }).use(api =>
+      AkkaHttpMasterApi.resource(uri, name = "acknowledgements")(actorSystem)
+        .use(api =>
           observeEventIds(api, after = after)
             .whileBusyBuffer(OverflowStrategy.DropOld(bufferSize = 2))
-            .takeWhile(_ => !switchoverAcknowledged)  // Race conditition: may be set too late
-            .mapEval(eventId =>
-              Task.deferFuture {
-                // Possible dead letter when `switchoverAcknowledged` is detected too late,
-                // because after JournalActor has committed SwitchedOver (after ack), JournalActor stops.
-                (journalActor ? JournalActor.Input.FollowerAcknowledged(eventId = eventId)).mapTo[Completed]
-              })
-            .foldL)
-        .guaranteeCase(exitCase => Task { logger.debug(s"fetchAndHandleAcknowledgedEventIds finished => $exitCase") })
+            .detectPauses(2 * clusterConf.heartbeat)
+            .doOnNext(o => Task(logger.info(s"### $o")))
+            .takeWhile(_ => !switchoverAcknowledged)  // Race condition: may be set too late
+            .mapEval {
+              case None => Task.pure(Left(MissingPassiveClusterNodeHeartbeatProblem(uri)))
+              case Some(eventId) =>
+                Task.deferFuture {
+                  // Possible dead letter when `switchoverAcknowledged` is detected too late,
+                  // because after JournalActor has committed SwitchedOver (after ack), JournalActor stops.
+                  (journalActor ? JournalActor.Input.FollowerAcknowledged(eventId = eventId)).mapTo[Completed]
+                    .map(Right.apply)
+                }
+            }
+            .collect {
+              case Left(problem) => problem
+              //case Right(Completed) => (ignore)
+            }
+            .headOptionL
+            .map {
+              case Some(problem) => Left(problem)
+              case None => Right(Completed)
+            })
+        .guaranteeCase(exitCase => Task(
+          logger.debug(s"fetchAndHandleAcknowledgedEventIds finished => $exitCase")))
 
   private def observeEventIds(api: HttpMasterApi, after: EventId): Observable[EventId] =
     RecouplingStreamReader
@@ -242,12 +274,15 @@ final class Cluster(
         clusterConf.recouplingStreamReader,
         after = after,
         getObservable = (after: EventId) => {
-          val eventRequest = EventRequest.singleClass[Event](after = after, timeout = Some(idleTimeout))
+          val eventRequest = EventRequest.singleClass[Event](after = after, timeout = Some(clusterConf.recouplingStreamReader.timeout/*timing ???*/))
           AkkaHttpClient.liftProblem(
-            api.eventIdObservable(eventRequest))
+            api.eventIdObservable(eventRequest, heartbeat = Some(clusterConf.heartbeat)))
         },
-        idleTimeout = idleTimeout,
+        idleTimeout = 2 * clusterConf.heartbeat,  // timing ???
         stopRequested = () => stopRequested)
+
+  def onClusterCompleted: Task[Checked[Completed]] =
+    Task.fromFuture(fetchingEventsPromise.future)
 
   /*
   private def queryAgents(otherNodeId: ClusterNodeId): Unit =

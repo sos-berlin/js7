@@ -7,7 +7,7 @@ import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, ClusterCoupled, FollowingStarted, SwitchedOver}
+import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, ClusterCoupled, FollowerLost, FollowingStarted, SwitchedOver}
 import com.sos.jobscheduler.data.cluster.ClusterState._
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
@@ -43,11 +43,6 @@ extends JournaledState[ClusterState, ClusterEvent]
         case (PreparedToBeCoupled(activeUri, passiveUri), ClusterCoupled) =>
           Right(Coupled(activeUri, passiveUri))
 
-        case (state: Coupled, SwitchedOver(uri)) if state.passiveUri == uri =>
-          Right(Decoupled(
-            activeUri = uri,
-            passiveUri = state.activeUri))
-
         case (state: Decoupled, FollowingStarted(followingUri)) if followingUri == state.passiveUri =>
           Right(PreparedToBeCoupled(
             activeUri = state.activeUri,
@@ -57,6 +52,16 @@ extends JournaledState[ClusterState, ClusterEvent]
           Right(PreparedToBeCoupled(
             activeUri = state.passiveUri,
             passiveUri = state.activeUri))
+
+        case (state: Coupled, SwitchedOver(uri)) if state.passiveUri == uri =>
+          Right(Decoupled(
+            activeUri = uri,
+            passiveUri = state.activeUri))
+
+        case (state: Coupled, FollowerLost(uri)) if state.passiveUri == uri =>
+          Right(Decoupled(
+            activeUri = state.activeUri,
+            passiveUri = uri))
 
         case (_, keyedEvent) => eventNotApplicable(keyedEvent)
       }

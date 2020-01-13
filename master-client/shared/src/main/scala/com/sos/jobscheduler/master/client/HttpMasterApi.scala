@@ -65,25 +65,26 @@ trait HttpMasterApi extends MasterApi with HttpSessionApi
     : Task[Observable[Stamped[KeyedEvent[E]]]] =
     httpClient.getDecodedLinesObservable[Stamped[KeyedEvent[E]]](uris.events(request))
 
-  final def eventIdObservable[E <: Event: ClassTag](request: EventRequest[E]): Task[Observable[EventId]] =
-    httpClient.getDecodedLinesObservable[EventId](uris.events(request, eventIdOnly = true, onlyLastOfChunk = true))
+  final def eventIdObservable[E <: Event: ClassTag](request: EventRequest[E], heartbeat: Option[FiniteDuration] = None): Task[Observable[EventId]] =
+    httpClient.getDecodedLinesObservable[EventId](uris.events(request, heartbeat = heartbeat, eventIdOnly = true, onlyLastOfChunk = true))
 
   /** Observable for a journal file.
     * @param fileEventId denotes the journal file
     * @param markEOF mark EOF with the special line `JournalSeparators.EndOfJournalFileMarker`
     */
-  final def journalObservable(fileEventId: EventId, position: Long, timeout: FiniteDuration, markEOF: Boolean = false,
-    returnLength: Boolean = false)
+  final def journalObservable(fileEventId: EventId, position: Long, heartbeat: Option[FiniteDuration] = None, timeout: FiniteDuration,
+    markEOF: Boolean = false, returnLength: Boolean = false)
   : Task[Observable[ByteVector]] =
     httpClient.getRawLinesObservable(
-      uris.journal(fileEventId = fileEventId, position = position, timeout, markEOF = markEOF, returnLength = returnLength))
+      uris.journal(fileEventId = fileEventId, position = position,
+        heartbeat = heartbeat, timeout = timeout, markEOF = markEOF, returnLength = returnLength))
 
   /** Observable for the growing flushed (and maybe synced) length of a journal file.
     * @param fileEventId denotes the journal file
     * @param markEOF prepend every line with a space and return a last line "TIMEOUT\n" in case of timeout
     */
   final def journalLengthObservable(fileEventId: EventId, position: Long, timeout: FiniteDuration, markEOF: Boolean = false): Task[Observable[Long]] =
-    journalObservable(fileEventId, position, timeout, markEOF, returnLength = true)
+    journalObservable(fileEventId, position, timeout = timeout, markEOF = markEOF, returnLength = true)
       .map(_.map(_.decodeUtf8.orThrow.stripSuffix("\n").toLong))
 
   final def fatEvents[E <: FatEvent: ClassTag](request: EventRequest[E])(implicit kd: Decoder[KeyedEvent[E]], ke: Encoder.AsObject[KeyedEvent[E]])
@@ -103,7 +104,7 @@ trait HttpMasterApi extends MasterApi with HttpSessionApi
     httpClient.get[Stamped[Seq[Any]]](uris.snapshot.list)
   }
 
-  override def toString = s"HttpMasterApi($baseUriString)"
+  //override def toString = s"HttpMasterApi($baseUriString)"
 }
 
 object HttpMasterApi {

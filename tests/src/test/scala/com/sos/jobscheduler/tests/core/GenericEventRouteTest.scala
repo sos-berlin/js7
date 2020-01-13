@@ -200,6 +200,11 @@ final class GenericEventRouteTest extends FreeSpec with BeforeAndAfterAll with P
       assert(getDecodedLinesObservable[EventId]("/event?eventIdOnly=true&limit=3&after=30") == 40 :: 50 :: 60 :: Nil)
     }
 
+    "Fetch EventIds with heartbeat" in {
+      assert(getDecodedLinesObservable[EventId]("/event?eventIdOnly=true&limit=5&after=150&heartbeat=0.1&timeout=0.5").take(5) ==
+        160 :: 170 :: 180 :: 180/*heartbeat*/ :: 180/*heartbeat*/ :: Nil)
+    }
+
     "Fetching EventIds with after=unknown-EventId is rejected" in {
       val isKnownEventId = TestEvents.map(_.eventId).toSet
       for (unknown <- 1L to (TestEvents.last.eventId) if !isKnownEventId(unknown)) withClue(s"EventId $unknown: ") {

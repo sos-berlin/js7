@@ -71,7 +71,7 @@ import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NoStackTrace
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 import shapeless.tag.@@
 
 /**
@@ -337,7 +337,10 @@ with MainJournalingActor[Event]
 
     case Internal.Ready(Right(Completed)) =>
       logger.info("Ready")
-      become("Ready")(ready orElse handleJournalTermination)
+      cluster.onClusterCompleted.runToFuture onComplete { tried =>
+        self ! Internal.ClusterCompleted(tried)
+      }
+      become("Ready")(ready orElse handleExceptionalMessage)
       unstashAll()
 
     case _ => stash()
@@ -475,11 +478,16 @@ with MainJournalingActor[Event]
   }
 
   // JournalActor's termination must be handled in any `become`-state and must lead to MasterOrderKeeper's termination
-  override def journaling = handleJournalTermination orElse super.journaling
+  override def journaling = handleExceptionalMessage orElse super.journaling
 
-  private def handleJournalTermination: Receive = {
+  private def handleExceptionalMessage: Receive = {
     case Terminated(`journalActor`) =>
       if (!shuttingDown && switchover.isEmpty) logger.error("JournalActor terminated")
+      context.stop(self)
+
+    case Internal.ClusterCompleted(tried) =>
+      // Stacktrace is being debug-logged by Cluster
+      logger.error(s"Cluster terminated with $tried ")
       context.stop(self)
   }
 
@@ -849,6 +857,7 @@ private[master] object MasterOrderKeeper
     final case class Ready(outcome: Checked[Completed])
     case object AfterProceedEventsAdded
     case object StillShuttingDown extends DeadLetterSuppression
+    final case class ClusterCompleted(tried: Try[Checked[Completed]]) extends DeadLetterSuppression
   }
 
   private class AgentRegister extends ActorRegister[AgentRefPath, AgentEntry](_.actor) {

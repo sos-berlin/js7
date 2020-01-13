@@ -54,7 +54,6 @@ import java.nio.file.Path
 import monix.eval.Task
 import monix.execution.{Cancelable, CancelableFuture, Scheduler}
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future, Promise, blocking}
 import scala.util.control.NoStackTrace
@@ -215,17 +214,19 @@ object RunningMaster
       // maybePassiveState accesses the current MasterState while this node is passive, otherwise it is None
       val (startingClusterFuture, maybePassiveState) = startCluster(journalActor, cluster, recovered)
       val (orderKeeperStarted, orderKeeperTerminated) = {
-        val whenOrderKeeperRunning = startingClusterFuture.map(_.flatMap(
+        val started = startingClusterFuture.map(_.flatMap(
           startMasterOrderKeeper(journalActor, cluster, _)))
-        (whenOrderKeeperRunning.map(_.map(_.actor)),
-          whenOrderKeeperRunning.flatMap {
+        (started.map(_.map(_.actor)),
+          started.flatMap {
             case None => Future.successful(MasterTermination.Terminate(restart = false))
-            case Some(o) => o.termination
+            case Some(o) =>
+              o.termination andThen { case tried =>
+                for (t <- tried.failed) {
+                  logger.error(s"MasterOrderKeeper failed with ${t.toStringWithCauses}", t)  // Support diagnosis
+                }
+                startingClusterFuture.cancel()
+              }
           })
-      }
-      orderKeeperTerminated.onComplete { tried =>
-        for (t <- tried.failed) logger.warn(s"MasterOrderKeeper failed with ${t.toStringWithCauses}")  // Support diagnosis
-        startingClusterFuture.cancel()
       }
       val orderKeeperTask = Task.fromFuture(orderKeeperStarted) flatMap {
         case None => Task.raiseError(JobSchedulerIsShuttingDownProblem.throwable)

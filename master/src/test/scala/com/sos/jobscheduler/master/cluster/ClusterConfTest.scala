@@ -23,14 +23,16 @@ final class ClusterConfTest extends FreeSpec
     "Minimum configuration" in {
       val config = ConfigFactory.parseString("""
         jobscheduler.master.cluster.idle-get-timeout = 50s
-        jobscheduler.master.cluster.delay-between-polling-gets = 1s""")
+        jobscheduler.master.cluster.delay-between-polling-gets = 1s
+        jobscheduler.master.cluster.heartbeat = 7s""")
       val clusterConf = ClusterConf.fromConfigAndFile(UserId("USER"), config)  // Creates file
       assert(clusterConf == Right(
         ClusterConf(
           None,
           None,
           None,
-          streamReaderConf)))
+          streamReaderConf,
+          7.s)))
     }
 
     "Full configuration" in {
@@ -40,6 +42,7 @@ final class ClusterConfTest extends FreeSpec
         jobscheduler.master.cluster.other-node.uri = "http://BACKUP"
         jobscheduler.master.cluster.idle-get-timeout = 50s
         jobscheduler.master.cluster.delay-between-polling-gets = 1s
+        jobscheduler.master.cluster.heartbeat = 7s
         jobscheduler.auth.cluster.password = "PASSWORD" """)
       val checkedClusterConf = ClusterConf.fromConfigAndFile(UserId("USER"), config)  // Creates the file as a side-effect
       assert(checkedClusterConf == Right(
@@ -47,7 +50,8 @@ final class ClusterConfTest extends FreeSpec
           Some(ClusterNodeRole.Primary(Some(Uri("http://BACKUP")))),
           Some(Uri("http://PRIMARY")),
           Some(UserAndPassword(UserId("USER"), SecretString("PASSWORD"))),
-          streamReaderConf)))
+          streamReaderConf,
+          7.s)))
     }
   }
 }

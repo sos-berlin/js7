@@ -175,12 +175,22 @@ extends Actor with Stash
             commit()
             logger.info(s"ClusterCoupled: Start requiring acknowledgements from passive cluster node")
             requireClusterAcknowledgement = true
+
+          case Some(Stamped(_, _, KeyedEvent(_, _: ClusterEvent.FollowerLost))) =>
+            logger.debug("FollowerLost: no more acknowledgment required")
+            requireClusterAcknowledgement = false
+            if (waitingForAcknowledgeTimer != null) {
+              waitingForAcknowledgeTimer.cancel()
+              waitingForAcknowledgeTimer = null
+            }
+            onCommitAcknowledged(writtenBuffer.length)
+
           case Some(Stamped(_, _, KeyedEvent(_, _: ClusterEvent.SwitchedOver))) =>
             commit()
             logger.debug("SwitchedOver: no more events are accepted")
             switchedOver = true  // No more events are accepted
-          case _ =>
-            forwardCommit((delay max conf.delay) - alreadyDelayed)
+
+          case _ => forwardCommit((delay max conf.delay) - alreadyDelayed)
         }
       }
 
@@ -331,7 +341,7 @@ extends Actor with Stash
       lastAcknowledgedEventId = lastFileLengthAndEventId.value
       eventWriter.onCommitted(lastFileLengthAndEventId, n = writtenSeq.iterator.map(_.eventCount).sum)
     }
-    // AcceptEarlyWritten have already been replied.
+    // AcceptEarlyWritten has already been replied.
     for (NormallyWritten(_, keyedEvents, _, replyTo, sender, item) <- writtenSeq) {
       reply(sender, replyTo, Output.Stored(keyedEvents, item))
       keyedEvents foreach keyedEventBus.publish
@@ -382,7 +392,7 @@ extends Actor with Stash
           val stamped = stampedIterator.next()
           val flushOrSync =
             if (!written.isLastOfFlushedOrSynced || stampedIterator.hasNext)
-              "     "  // Wether flushed nor synced
+              "     "  // Neither flushed nor synced
             else if (conf.syncOnCommit) if (conf.simulateSync.isDefined)
               "~sync" else "sync "  // The file buffer has been flush and synced to disk
             else

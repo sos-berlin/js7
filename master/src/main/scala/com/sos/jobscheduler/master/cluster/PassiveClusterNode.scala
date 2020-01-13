@@ -4,6 +4,7 @@ import akka.actor.ActorSystem
 import cats.effect.Resource
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec._
 import com.sos.jobscheduler.base.problem.Checked._
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.ScalaUtils._
@@ -17,11 +18,13 @@ import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, JournalSeparat
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles._
 import com.sos.jobscheduler.core.event.journal.recover.{JournalFileStateBuilder, JournalRecovererState, Recovered, RecoveredJournalFile}
 import com.sos.jobscheduler.core.event.state.JournalStateBuilder
+import com.sos.jobscheduler.core.problems.MissingActiveClusterNodeHeartbeatProblem
 import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.JournalEvent.SnapshotTaken
 import com.sos.jobscheduler.data.event.{Event, EventId, JournalEvent, JournalId, JournaledState}
 import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
+import com.sos.jobscheduler.master.cluster.ObservablePauseDetector.RichPauseObservable
 import com.sos.jobscheduler.master.cluster.PassiveClusterNode._
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.MasterCommand.ClusterPassiveFollows
@@ -54,36 +57,16 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, E], E <: 
   def state: Task[S] =
     stateBuilderAndAccessor.state
 
-  def run(recoveredClusterState: ClusterState, recoveredState: S): Task[(ClusterState, ClusterFollowUp[S, E])] = {
+  def run(recoveredClusterState: ClusterState, recoveredState: S): Task[Checked[(ClusterState, ClusterFollowUp[S, E])]] = {
     assertThat(!terminated)  // Single-use only
     Task.deferAction { implicit scheduler =>
       for (o <- recovered.recoveredJournalFile) {
         cutJournalFile(o.file, o.length)
       }
-      Resource.fromAutoCloseable(Task(AkkaHttpMasterApi(baseUri = activeUri.string, name = "journal")))
-        .use(activeNodeApi =>
-          activeNodeApi.loginUntilReachable(clusterConf.userAndPassword, Iterator.continually(1.s/*TODO*/)) >>
-            Task.parMap2(
-              activeNodeApi.executeCommand(
-                ClusterPassiveFollows(followedUri = activeUri, followingUri = ownUri))
-                  .doOnFinish(maybeThrowable => Task {
-                    for (t <- maybeThrowable) logger.warn(s"ClusterPassiveFollows command failed with ${t.toStringWithCauses}")
-                  }),
-              replicateJournalFiles(
-                continuation = recovered.recoveredJournalFile match {
-                  case None => NoLocalJournal(recoveredClusterState)
-                  case Some(recoveredJournalFile) => FirstPartialFile(recoveredJournalFile, recoveredClusterState)
-                },
-                () => stateBuilderAndAccessor.newStateBuilder(),
-                activeNodeApi)
-                .doOnFinish(maybeThrowable => Task {
-                  for (t <- maybeThrowable) logger.warn(s"Replicating journal files failed with ${t.toStringWithCauses}")
-                })
-            )((_: MasterCommand.Response.Accepted, followUp) => followUp))
-        .onErrorRestartLoop(()) { (throwable, _, retry) =>
-          logger.debug(throwable.toString, throwable)  // A warning should have been issued above
-          retry(()).delayExecution(1.s/*TODO*/)
-        }
+      Task.parMap2(
+        clusterPassiveFollows,
+        replicateJournalFiles(recoveredClusterState)
+      )((_: MasterCommand.Response.Accepted, followUp) => followUp)
         .guarantee(Task {
           terminated = true
         })
@@ -97,33 +80,57 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, E], E <: 
       }
     }
 
-  private def replicateJournalFiles(
-    continuation: Continuation,
-    newStateBuilder: () => JournalStateBuilder[S, E],
-    masterApi: HttpMasterApi)
-    (implicit scheduler: Scheduler)
-  : Task[(ClusterState, ClusterFollowUp[S, E])]
-  =
-    Task.tailRecM(continuation)(continuation =>
-      replicateJournalFile(continuation, newStateBuilder, masterApi)
-        .map { continuation =>
-          if (!shouldFinishObservation(continuation.clusterState))
-            Left(continuation)
-          else
-            Right((
-              continuation.clusterState,
-              ClusterFollowUp.BecomeActive(recovered.copy[S, E](
-                recoveredJournalFile = continuation.maybeRecoveredJournalFile))))
-        })
+  private def clusterPassiveFollows: Task[MasterCommand.Response.Accepted] =
+    masterApi(activeUri, "ClusterPassiveFollows")
+      .use(_.executeCommand(
+        ClusterPassiveFollows(followedUri = activeUri, followingUri = ownUri)))
+      .onErrorRestartLoop(()) { (throwable, _, retry) =>
+        logger.warn(s"ClusterPassiveFollows command failed with ${throwable.toStringWithCauses}")
+        logger.debug(throwable.toString, throwable)  // A warning should have been issued above
+        retry(()).delayExecution(1.s/*TODO*/)
+      }
+
+  private def replicateJournalFiles(recoveredClusterState: ClusterState)(implicit s: Scheduler)
+  : Task[Checked[(ClusterState, ClusterFollowUp[S, E])]] =
+    masterApi(activeUri, "journal")
+      .use(activeNodeApi =>
+        Task.tailRecM(
+          (recovered.recoveredJournalFile match {
+            case None => NoLocalJournal(recoveredClusterState)
+            case Some(recoveredJournalFile) => FirstPartialFile(recoveredJournalFile, recoveredClusterState)
+          }): Continuation
+        )(continuation =>
+          replicateJournalFile(continuation, () => stateBuilderAndAccessor.newStateBuilder(), activeNodeApi)
+            // TODO Herzschlag auch beim Wechsel zur nächsten Journaldatei prüfen
+            .map {
+              case Left(problem) => Right(Left(problem))
+              case Right(continuation) =>
+                if (!shouldFinishObservation(continuation.clusterState))
+                  Left(continuation)
+                else
+                  Right(Right((
+                    continuation.clusterState,
+                    ClusterFollowUp.BecomeActive(recovered.copy[S, E](
+                      recoveredJournalFile = continuation.maybeRecoveredJournalFile)))))
+            }))
+      .doOnFinish(maybeThrowable => Task {
+        for (t <- maybeThrowable) logger.warn(s"Replicating journal files failed with ${t.toStringWithCauses}")
+      })
+
+  private def masterApi(uri: Uri, name: String): Resource[Task, HttpMasterApi] =
+    AkkaHttpMasterApi.resource(baseUri = activeUri, name = name)
+      .map[HttpMasterApi](identity)
+      .evalTap(_.loginUntilReachable(clusterConf.userAndPassword, Iterator.continually(1.s/*TODO*/)))
 
   private def replicateJournalFile(
     continuation: Continuation,
     newStateBuilder: () => JournalStateBuilder[S, E],
     masterApi: HttpMasterApi)
     (implicit scheduler: Scheduler)
-  : Task[Continuation] =
+  : Task[Checked[Continuation]] =
     Task.defer {
-      import continuation.{file, fileLength => recoveredFileLength}
+      logger.debug(s"### replicateJournalFile($continuation)")
+      import continuation.file
 
       val maybeTmpFile = continuation match {
         case _: NoLocalJournal | _: NextFile =>
@@ -140,8 +147,8 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, E], E <: 
         case Some(tmp) => FileChannel.open(tmp, CREATE, WRITE, TRUNCATE_EXISTING)
       }
       var isReplicatingHeadOfFile = maybeTmpFile.isDefined
-      val replicatedFirstEventPosition = SetOnce.fromOption(continuation.firstEventPosition)
-      var replicatedFileLength = recoveredFileLength
+      val replicatedFirstEventPosition = SetOnce.fromOption(continuation.firstEventPosition, "replicatedFirstEventPosition")
+      var replicatedFileLength = continuation.fileLength
       var inTransaction = false
       var eof = false
       val builder = new JournalFileStateBuilder[S, E](journalMeta, journalFileForInfo = file.getFileName,
@@ -162,17 +169,23 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, E], E <: 
 
         case _ =>
       }
-      observeJournalFile(masterApi, fileEventId = continuation.fileEventId, position = recoveredFileLength,
+
+      observeJournalFile(masterApi, fileEventId = continuation.fileEventId, position = continuation.fileLength,
         eof = pos => eof && pos >= replicatedFileLength
       ) .mapParallelOrdered(sys.runtime.availableProcessors) { case PositionAnd(fileLength, line) =>
           Task((fileLength, line, line.parseJson.orThrow))
         }
-        .map {
-          case (fileLength, JournalSeparators.EndOfJournalFileMarker, _) =>
+        .detectPauses(3 * clusterConf.heartbeat)
+        .map[Checked[Unit]] {
+          case None/*pause*/ =>
+            Left(MissingActiveClusterNodeHeartbeatProblem(activeUri))
+
+          case Some((fileLength, JournalSeparators.EndOfJournalFileMarker, _)) =>
             logger.debug(s"End of replicated journal file reached: ${file.getFileName} eventId=${builder.eventId} fileLength=$fileLength")
             eof = true
+            Left(EndOfJournalFileMarker)
 
-          case (fileLength, line, json) =>
+          case Some((fileLength, line, json)) =>
             out.write(line.toByteBuffer)
             logger.trace(s"Replicated ${line.utf8StringTruncateAt(200).trim}")
             builder.put(json)  // throws on invalid event, after logging
@@ -182,6 +195,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, E], E <: 
                 sys.error(s"Missing JournalHeader in replicated journal file '$file'")
               for (o <- continuation.maybeJournalId if o != journalId)
                 sys.error(s"Received JournalId '$journalId' does not match expected '$o'")
+              logger.debug(s"### replicatedFirstEventPosition := $replicatedFileLength, journalId=$journalId")
               replicatedFirstEventPosition := replicatedFileLength
               // SnapshotTaken occurs only as the first event of a journal file, just behind the snapshot
               isReplicatingHeadOfFile = false
@@ -209,32 +223,42 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, E], E <: 
                 inTransaction = false
                 eventWatch.onEventsCommitted(PositionAnd(fileLength, builder.eventId), 1)
               }
-          }
-          ()
+            }
+            Right(())
         }
         .guarantee(Task { out.close() })
+        .doOnNext(o => Task(logger.debug(s"### $o")))
+        .takeWhile(_.left.forall(_ != EndOfJournalFileMarker))
         .takeWhileInclusive(_ => !shouldFinishObservation(builder.clusterState))
-        .completedL
-        .map { _ =>
-          logger.debug(s"replicateJournalFile(${file.getFileName}) finished, clusterState=" + builder.clusterState)
-          eventWatch.onJournalingEnded(replicatedFileLength)
-          (builder.fileJournalHeader, builder.calculatedJournalHeader) match {
-            case (Some(header), Some(calculatedHeader)) =>
-              NextFile(
-                RecoveredJournalFile(file, replicatedFileLength, header, calculatedHeader, replicatedFirstEventPosition.orThrow,
-                  builder.state),
-                builder.clusterState)
-            case _ =>
-              sys.error(s"JournalHeader could not be replicated fileEventId=${continuation.fileEventId} eventId=${builder.eventId}")
-          }
+        .collect {
+          case Left(problem) => problem
+          //case Right(Completed) => -ignore-
         }
+        .headOptionL
+        .map {
+          case maybeProblem @ (None | Some(_: MissingActiveClusterNodeHeartbeatProblem)) =>
+            for (o <- maybeProblem) logger.warn(o.toString)  // ???
+            logger.debug(s"replicateJournalFile(${file.getFileName}) finished, replicatedFileLength=$replicatedFileLength, clusterState=${builder.clusterState}")
+            eventWatch.onJournalingEnded(replicatedFileLength)
+            (builder.fileJournalHeader, builder.calculatedJournalHeader) match {
+              case (Some(header), Some(calculatedHeader)) =>
+                Right(NextFile(
+                  RecoveredJournalFile(file, replicatedFileLength, header, calculatedHeader, replicatedFirstEventPosition.orThrow,
+                    builder.state),
+                  builder.clusterState))
+              case _ =>
+                Left(Problem.pure(s"JournalHeader could not be replicated fileEventId=${continuation.fileEventId} eventId=${builder.eventId}"))
+            }
+          case Some(problem) => Left(problem)
+        }
+        .guaranteeCase(exitCase => Task(logger.debug(s"### $exitCase")))
     }
 
   private def shouldFinishObservation(clusterState: ClusterState) = clusterState.isActive(ownUri)
 
   /** @return Journal lines with their position after the line (the corresponding file length). */
-  private def observeJournalFile(api: HttpMasterApi, fileEventId: EventId, position: Long,
-    eof: Long => Boolean)(implicit s: Scheduler)
+  private def observeJournalFile(api: HttpMasterApi, fileEventId: EventId, position: Long, eof: Long => Boolean)
+    (implicit s: Scheduler)
   : Observable[PositionAnd[ByteVector]] =
     RecouplingStreamReader
       .observe[Long/*file position*/, PositionAnd[ByteVector], HttpMasterApi](
@@ -245,8 +269,13 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, E], E <: 
         after = position,
         getObservable = (after: Long) =>
           AkkaHttpClient.liftProblem(
-            api.journalObservable(fileEventId = fileEventId, position = after, clusterConf.recouplingStreamReader.timeout, markEOF = true)
-              .map(_.scan(PositionAnd(after, ByteVector.empty/*unused*/))((s, a) => PositionAnd(s.position + a.length, a)))),
+            api.journalObservable(
+              fileEventId = fileEventId,
+              position = after,
+              heartbeat = Some(clusterConf.heartbeat),
+              timeout = clusterConf.recouplingStreamReader.timeout,
+              markEOF = true
+            ).map(_.scan(PositionAnd(after, ByteVector.empty/*unused*/))((s, a) => PositionAnd(s.position + a.length, a)))),
         eof = eof,
         stopRequested = () => terminated)
       .doOnError(t => Task {
@@ -279,7 +308,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, E], E <: 
     final val file = journalMeta.file(fileEventId)
   }
 
-  private final case class NoLocalJournal(clusterState: ClusterState)
+  private case class NoLocalJournal(clusterState: ClusterState)
   extends Continuation {
     def fileLength = 0
     def fileEventId = EventId.BeforeFirst
@@ -288,7 +317,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, E], E <: 
     def maybeRecoveredJournalFile = None
   }
 
-  private final case class FirstPartialFile(recoveredJournalFile: RecoveredJournalFile[S, E], clusterState: ClusterState)
+  private case class FirstPartialFile(recoveredJournalFile: RecoveredJournalFile[S, E], clusterState: ClusterState)
   extends Continuation {
     assertThat(file == recoveredJournalFile.file)
     def fileLength = recoveredJournalFile.length
@@ -299,7 +328,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, E], E <: 
     override def toString = s"FirstPartialFile($fileEventId,$fileLength,${recoveredJournalFile.eventId},…)"
   }
 
-  private final case class NextFile(recoveredJournalFile: RecoveredJournalFile[S, E], clusterState: ClusterState)
+  private case class NextFile(recoveredJournalFile: RecoveredJournalFile[S, E], clusterState: ClusterState)
   extends Continuation {
     def fileLength = 0
     def fileEventId = recoveredJournalFile.eventId
@@ -315,5 +344,6 @@ object PassiveClusterNode
   private val TmpSuffix = ".tmp"  // Duplicate in JournalActor
   private val logger = Logger(getClass)
 
+  private val EndOfJournalFileMarker = Problem.pure("End of journal file (internal use only)")
   private final class ServerTimeoutException extends TimeoutException("Journal web service timed out")
 }

@@ -5,17 +5,23 @@ import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.common.configutils.Configs._
 import com.sos.jobscheduler.common.http.configuration.RecouplingStreamReaderConf
+import com.sos.jobscheduler.common.time.JavaTimeConverters.AsScalaDuration
 import com.sos.jobscheduler.core.configuration.RecouplingStreamReaderConfs
 import com.sos.jobscheduler.data.cluster.ClusterNodeRole
 import com.sos.jobscheduler.data.cluster.ClusterNodeRole.{Backup, Primary}
 import com.sos.jobscheduler.data.common.Uri
 import com.typesafe.config.Config
+import scala.concurrent.duration.FiniteDuration
 
 final case class ClusterConf(
   maybeRole: Option[ClusterNodeRole],
   maybeOwnUri: Option[Uri],
   userAndPassword: Option[UserAndPassword],
-  recouplingStreamReader: RecouplingStreamReaderConf)
+  recouplingStreamReader: RecouplingStreamReaderConf,
+  heartbeat: FiniteDuration)
+{
+  val heartbeatAndIdleTimeout = heartbeat min recouplingStreamReader.timeout
+}
 
 object ClusterConf
 {
@@ -35,5 +41,7 @@ object ClusterConf
       userAndPassword <- config.checkedOptionAs[SecretString]("jobscheduler.auth.cluster.password")
         .map(_.map(UserAndPassword(userId, _)))
       recouplingStreamReaderConf <- RecouplingStreamReaderConfs.fromSubconfig(config.getConfig("jobscheduler.master.cluster"))
-    } yield new ClusterConf(maybeRole, maybeOwnUri, userAndPassword, recouplingStreamReaderConf)
+    } yield
+      new ClusterConf(maybeRole, maybeOwnUri, userAndPassword, recouplingStreamReaderConf,
+        heartbeat = config.getDuration("jobscheduler.master.cluster.heartbeat").toFiniteDuration)
 }

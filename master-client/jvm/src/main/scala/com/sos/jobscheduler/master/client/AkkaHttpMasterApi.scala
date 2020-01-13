@@ -1,20 +1,24 @@
 package com.sos.jobscheduler.master.client
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.model.Uri
+import akka.http.scaladsl.model.{Uri => AkkaUri}
+import cats.effect.Resource
+import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.akkahttp.https.AkkaHttps.loadHttpsConnectionContext
 import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
 import com.sos.jobscheduler.common.http.AkkaHttpClient
 import com.sos.jobscheduler.common.scalautil.AutoClosing.closeOnError
+import com.sos.jobscheduler.data.common.Uri
 import com.typesafe.config.{Config, ConfigFactory}
+import monix.eval.Task
 
 /**
   * @author Joacim Zschimmer
   */
 final class AkkaHttpMasterApi(
-  protected val baseUri: Uri,
+  protected val baseUri: AkkaUri,
   /** To provide a client certificate to server. */
   override protected val keyStoreRef: Option[KeyStoreRef] = None,
   /** To trust the server's certificate. */
@@ -39,7 +43,7 @@ with ProvideActorSystem
 object AkkaHttpMasterApi
 {
   def apply(
-    baseUri: Uri,
+    baseUri: AkkaUri,
     keyStoreRef: Option[KeyStoreRef] = None,
     trustStoreRef: Option[TrustStoreRef] = None,
     name: String = "")
@@ -58,6 +62,14 @@ object AkkaHttpMasterApi
       protected val name = name_
     }
   }
+
+  /** Logs out when the resource is being released. */
+  def resource(baseUri: Uri, name: String = "")(implicit actorSystem: ActorSystem): Resource[Task, CommonAkka] =
+    Resource.make(
+      acquire = Task(AkkaHttpMasterApi(baseUri = baseUri.string, name = name))
+    )(release = api =>
+        api.logout().onErrorHandle(_ => Completed) >>
+          Task(api.close()))
 
   trait CommonAkka extends HttpMasterApi with AkkaHttpClient
   {

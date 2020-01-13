@@ -33,7 +33,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
 
   protected def onCouplingFailed(api: Api, problem: Problem): Task[Completed] =
     Task {
-      if (stopRequested) scribe.debug(s"$api: $problem") else scribe.warn(s"$api: $problem")
+      if (stopRequested || !inUse.get) scribe.debug(s"$api: $problem") else scribe.warn(s"$api: $problem")
       for (t <- problem.throwableOption) if (t.getStackTrace.nonEmpty) {
         scribe.debug(s"$api: ${t.toStringWithCauses}", t)
       }
@@ -97,7 +97,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
 
     def observeAgainAndAgain: Observable[V] =
       Observable.tailRecM(initialAfter) { after =>
-        if (eof(after) || stopRequested)
+        if (eof(after) || stopRequested  || !inUse.get)
           Observable.pure(Right(Observable.empty))
         else
           Observable.pure(Right(
@@ -120,7 +120,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
     /** Retries until web request returns an Observable. */
     private def tryEndlesslyToGetObservable(after: I): Task[Observable[V]] =
       Task.tailRecM(())(_ =>
-        (if (stopRequested)
+        (if (stopRequested && !inUse.get)
           Task.pure(Right(Observable.raiseError(new IllegalStateException(s"RecouplingStreamReader($api) has been stopped"))))
         else
           coupleIfNeeded(after = after) >>

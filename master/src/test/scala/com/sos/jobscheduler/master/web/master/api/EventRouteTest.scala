@@ -5,6 +5,7 @@ import akka.http.scaladsl.model.MediaTypes.{`application/json`, `text/event-stre
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, OK}
 import akka.http.scaladsl.model.headers.{Accept, `Last-Event-ID`}
 import akka.http.scaladsl.testkit.RouteTestTimeout
+import akka.util.ByteString
 import com.google.common.base.Ascii
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
 import com.sos.jobscheduler.base.problem.Problem
@@ -27,7 +28,6 @@ import com.sos.jobscheduler.master.web.master.api.test.RouteTester
 import monix.execution.Scheduler
 import org.scalatest.FreeSpec
 import scala.collection.immutable.Seq
-import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 
@@ -99,6 +99,47 @@ final class EventRouteTest extends FreeSpec with RouteTester with EventRoute
       assert(status == BadRequest)
       assert(response.utf8StringFuture.await(99.s) == s"EventSeqTorn: Requested EventId after=5 is not available. Oldest available EventId is 0\n")
     }
+  }
+
+  "Fetch EventIds only" - {
+    "/event?eventIdOnly=true&limit=3&after=30" in {
+      val stampedSeq = getEventIds("/event?eventIdOnly=true&limit=3&after=30")
+      assert(stampedSeq.head == 40)
+      assert(stampedSeq.last == 60)
+    }
+
+    "/event?eventIdOnly=true&limit=3after=60" in {
+      val stampedSeq = getEventIds("/event?eventIdOnly=true&limit=3&after=60")
+      assert(stampedSeq.head == 70)
+      assert(stampedSeq.last == 90)
+    }
+
+    "/event?eventIdOnly=true&limit=3&after=200" in {
+      assert(getEventIds("/event?eventIdOnly=true&limit=3&after=200&timeout=0").isEmpty)
+    }
+
+    "Heartbeat when the first event is immediately returned" in {
+      val stampedSeq = getEventIds("/event?eventIdOnly=true&limit=3&heartbeat=0.1&timeout=1&after=170")
+      assert(stampedSeq.head == 180)  // Echoed last EventId
+      assert(stampedSeq.last == 180)
+      assert(stampedSeq.length >= 3)
+    }
+
+    "Heartbeat before the first event arrives" in {
+      val stampedSeq = getEventIds("/event?eventIdOnly=true&limit=3&heartbeat=0.1&timeout=1&after=200")
+      assert(stampedSeq.head == 180)  // Echoed last EventId
+      assert(stampedSeq.last == 180)
+      assert(stampedSeq.length >= 3)
+    }
+
+    def getEventIds(uri: String): Seq[EventId] =
+      Get(uri) ~> Accept(`application/x-ndjson`) ~> route ~> check {
+        if (status != OK) fail(s"$status - ${responseEntity.toStrict(timeout).value}")
+        responseAs[ByteString].utf8String match {
+          case "" => Vector.empty
+          case string => string.split('\n').map(java.lang.Long.parseLong).toVector
+        }
+      }
   }
 
   "Fetch events with repeated GET requests" - {  // Similar to FatEventRouteTest
@@ -185,30 +226,6 @@ final class EventRouteTest extends FreeSpec with RouteTester with EventRoute
 
     "After truncated journal snapshot" in pending  // TODO Test torn event stream
   }
-
-  //"Fetch EventIds only" - {
-  //  "/event?return=EventId&limit=3&after=30" in {
-  //    val stampedSeq = getEvents("/event?limit=3&after=30")
-  //    assert(stampedSeq.head.eventId == 40)
-  //    assert(stampedSeq.last.eventId == 60)
-  //  }
-  //
-  //  "/event?return=EventId:OrderAdded&limit=3&after=60" in {
-  //    val stampedSeq = getEvents("/event?limit=3&after=60")
-  //    assert(stampedSeq.head.eventId == 70)
-  //    assert(stampedSeq.last.eventId == 90)
-  //  }
-  //
-  //  "/event?return=EventId:OrderFinished&limit=3&after=60" in {
-  //    assert(getEvents("/event?limit=3&after=60").isEmpty)
-  //  }
-  //
-  //  def getEventIds(uri: String): Seq[EventId] =
-  //    Get(uri) ~> Accept(`application/json`) ~> route ~> check {
-  //      if (status != OK) fail(s"$status - ${responseEntity.toStrict(timeout).value}")
-  //      responseAs[TearableEventSeq[Seq, KeyedEvent[OrderEvent]]]
-  //    }
-  //}
 
   private def getEvents(uri: String): Seq[Stamped[KeyedEvent[OrderEvent]]] =
     getEventSeq(uri) match {

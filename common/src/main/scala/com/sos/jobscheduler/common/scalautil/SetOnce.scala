@@ -9,14 +9,14 @@ import scala.util.Success
  *
  * @author Joacim Zschimmer
  */
-class SetOnce[A](name: String)
+class SetOnce[A](label: String)
 {
   protected[this] val promise = Promise[A]
 
   def orThrow: A =
-    getOrElse { throw new IllegalStateException(s"SetOnce[$name] promise has not been kept so far") }
+    getOrElse { throw new IllegalStateException(s"SetOnce[$label] promise has not been kept so far") }
 
-  final override def toString = toStringOr(s"SetOnce[$name](not yet set)")
+  final override def toString = toStringOr(s"SetOnce[$label](not yet set)")
 
   @inline final def toStringOr(or: => String): String =
     promise.future.value match {
@@ -56,7 +56,7 @@ class SetOnce[A](name: String)
    * @throws IllegalStateException
    */
   final def :=(value: A): A = {
-    if (!promise.trySuccess(value)) throw new IllegalStateException(s"SetOnce[$name] has already been set")
+    if (!promise.trySuccess(value)) throw new IllegalStateException(s"SetOnce[$label] has already been set")
     value
   }
 }
@@ -69,6 +69,12 @@ object SetOnce
 
   def fromOption[A](option: Option[A])(implicit A: TypeTag[A]) = {
     val setOnce = new SetOnce[A](A.tpe.toString)
+    option foreach setOnce.:=
+    setOnce
+  }
+
+  def fromOption[A](option: Option[A], label: String) = {
+    val setOnce = new SetOnce[A](label)
     option foreach setOnce.:=
     setOnce
   }
