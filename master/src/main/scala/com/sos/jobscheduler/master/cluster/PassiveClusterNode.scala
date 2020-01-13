@@ -129,7 +129,6 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, E], E <: 
     (implicit scheduler: Scheduler)
   : Task[Checked[Continuation]] =
     Task.defer {
-      logger.debug(s"### replicateJournalFile($continuation)")
       import continuation.file
 
       val maybeTmpFile = continuation match {
@@ -195,7 +194,6 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, E], E <: 
                 sys.error(s"Missing JournalHeader in replicated journal file '$file'")
               for (o <- continuation.maybeJournalId if o != journalId)
                 sys.error(s"Received JournalId '$journalId' does not match expected '$o'")
-              logger.debug(s"### replicatedFirstEventPosition := $replicatedFileLength, journalId=$journalId")
               replicatedFirstEventPosition := replicatedFileLength
               // SnapshotTaken occurs only as the first event of a journal file, just behind the snapshot
               isReplicatingHeadOfFile = false
@@ -227,7 +225,6 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, E], E <: 
             Right(())
         }
         .guarantee(Task { out.close() })
-        .doOnNext(o => Task(logger.debug(s"### $o")))
         .takeWhile(_.left.forall(_ != EndOfJournalFileMarker))
         .takeWhileInclusive(_ => !shouldFinishObservation(builder.clusterState))
         .collect {
@@ -251,7 +248,6 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, E], E <: 
             }
           case Some(problem) => Left(problem)
         }
-        .guaranteeCase(exitCase => Task(logger.debug(s"### $exitCase")))
     }
 
   private def shouldFinishObservation(clusterState: ClusterState) = clusterState.isActive(ownUri)

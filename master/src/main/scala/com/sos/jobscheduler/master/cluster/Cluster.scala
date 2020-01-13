@@ -241,7 +241,6 @@ final class Cluster(
           observeEventIds(api, after = after)
             .whileBusyBuffer(OverflowStrategy.DropOld(bufferSize = 2))
             .detectPauses(2 * clusterConf.heartbeat)
-            .doOnNext(o => Task(logger.info(s"### $o")))
             .takeWhile(_ => !switchoverAcknowledged)  // Race condition: may be set too late
             .mapEval {
               case None => Task.pure(Left(MissingPassiveClusterNodeHeartbeatProblem(uri)))
