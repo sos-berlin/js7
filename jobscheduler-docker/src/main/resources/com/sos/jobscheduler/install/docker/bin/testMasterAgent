@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -e
 
+cd "$(cd "$(realpath "${0%/*}")"/../../build/bin/../.. && pwd)"
+
 [ -d "volumes/testMasterAgent" ] || mkdir volumes/testMasterAgent
 
 dir="$PWD/volumes/testMasterAgent"

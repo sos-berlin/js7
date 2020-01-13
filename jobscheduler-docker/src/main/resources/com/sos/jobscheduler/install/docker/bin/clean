@@ -1,11 +1,11 @@
 #! /usr/bin/env bash
 set -e
 
-home="$(cd "${0%/*}"/../bin/.. && pwd)"
+cd "$(cd "$(realpath "${0%/*}")"/../../build/bin/../.. && pwd)"
 
 # First, free some disk space
-rm -f "$home"/volumes/*/data/log/*.gz
+rm -f volumes/*/data/logs/*.gz
 
 # Fails if disk is full:
 docker-compose kill
-"$home"/build/bin/clean-volumes-data
+build/bin/clean-volumes-data

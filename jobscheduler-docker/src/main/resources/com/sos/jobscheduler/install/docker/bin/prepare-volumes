@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 set -e
 
-home="$(cd "${0%/*}"/../bin/.. && pwd)"
+cd "$(cd "$(realpath "${0%/*}")"/../../build/bin/../.. && pwd)"
 
 mkdir -p -m 700 volumes/{master,backup-master,provider,agent-1,agent-2}/config/private
 mkdir -p volumes/{master,backup-master,provider,agent-1,agent-2}/data/{logs,state}
 mkdir -p volumes/provider/config/{live,order-generators}
 mkdir -p volumes/agent-{1,2}/config/executables
 
-cp -Rnv "$home"/volumes . || true
+cp -Rnv volumes . || true
 ( umask go-rwx
   cp -nv volumes/master/config/private/* volumes/backup-master/config/private || true
 )
@@ -16,4 +16,4 @@ cp -Rnv "$home"/volumes . || true
 chmod -R go-wrx volumes/*/config/private
 chmod -R +x volumes/agent-*/config/executables/*
 
-$home/bin/prepare-pgp-keys
+build/bin/prepare-pgp-keys

@@ -29,7 +29,7 @@ services:
       - backup-master
       - agent-1
       - agent-2
-    stop_grace_period: 30s
+    stop_grace_period: 10s
     restart: unless-stopped
 
   backup-master:
@@ -49,7 +49,7 @@ services:
     volumes:
       - ./volumes/backup-master/config:/var/opt/jobscheduler/master/config:ro
       - ./volumes/backup-master/data:/var/opt/jobscheduler/master/data:delegated
-    stop_grace_period: 30s
+    stop_grace_period: 10s
     restart: unless-stopped
 
   provider:
@@ -72,7 +72,7 @@ services:
     volumes:
       - ./volumes/agent-1/config:/var/opt/jobscheduler/agent/config:ro
       - ./volumes/agent-1/data:/var/opt/jobscheduler/agent/data:delegated
-    stop_grace_period: 30s
+    stop_grace_period: 10s
     restart: unless-stopped
 
   agent-2:
@@ -84,5 +84,5 @@ services:
     volumes:
       - ./volumes/agent-2/config:/var/opt/jobscheduler/agent/config:ro
       - ./volumes/agent-2/data:/var/opt/jobscheduler/agent/data:delegated
-    stop_grace_period: 30s
+    stop_grace_period: 10s
     restart: unless-stopped

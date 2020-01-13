@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -e
 
+cd "$(cd "$(realpath "${0%/*}")"/../../build/bin/../.. && pwd)"
+
 for file in volumes/master/data/state/master--*.journal; do
   echo "$file"
   diff "$file" "volumes/backup-master/data/state/${file##*/}"

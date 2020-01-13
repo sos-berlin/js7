@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -e
 
+cd "$(cd "$(realpath "${0%/*}")"/../../build/bin/../.. && pwd)"
+
 dockerTgz="$(ls jobscheduler-docker-[0-9]*.tgz)"
 installTgz=($(ls jobscheduler-*install-[0-9]*.tgz))
 

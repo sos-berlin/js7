@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -e
 
+cd "$(cd "$(realpath "${0%/*}")"/../../build/bin/../.. && pwd)"
+
 homedir="$(pwd)/gnupg"
 privateKeyFile=volumes/provider/config/private/private-pgp-key.asc
 masterPublicKeyFile=volumes/master/config/private/trusted-pgp-keys.asc
