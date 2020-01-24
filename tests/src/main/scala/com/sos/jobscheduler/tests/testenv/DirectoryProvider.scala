@@ -8,6 +8,7 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.log.ScribeUtils
 import com.sos.jobscheduler.common.scalautil.AutoClosing.{closeOnError, multipleAutoClosing}
@@ -163,6 +164,10 @@ extends HasCloser
             myFileBased map (_ withVersion Vinitial) map fileBasedSigner.sign)
           ).await(99.s).orThrow
         }
+      }
+      for (t <- runningMaster.terminated.failed) {
+        scribe.warn(t.toStringWithCauses)
+        scribe.debug(t.toStringWithCauses, t)
       }
       runningMaster
     }

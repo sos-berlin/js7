@@ -228,6 +228,8 @@ object RunningMaster
               }
           })
       }
+      for (t <- orderKeeperStarted.failed) logger.debug("orderKeeperStarted => " + t.toStringWithCauses, t)
+      for (t <- orderKeeperTerminated.failed) logger.debug("orderKeeperTerminated => " + t.toStringWithCauses, t)
       val orderKeeperTask = Task.fromFuture(orderKeeperStarted) flatMap {
         case None => Task.raiseError(JobSchedulerIsShuttingDownProblem.throwable)
         case Some(actor) => Task.pure(actor)
@@ -256,10 +258,10 @@ object RunningMaster
       ).closeWithCloser
 
       for (_ <- webServer.start()) yield {
-        createSessionTokenFile(injector.instance[SessionRegister[SimpleSession]])
-        masterConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", _ + "/master")
-        new RunningMaster(recovered.eventWatch.strict, webServer, fileBasedApi, orderApi, commandExecutor,
-          orderKeeperTerminated, closer, injector)
+          createSessionTokenFile(injector.instance[SessionRegister[SimpleSession]])
+          masterConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", _ + "/master")
+          new RunningMaster(recovered.eventWatch.strict, webServer, fileBasedApi, orderApi, commandExecutor,
+            orderKeeperTerminated, closer, injector)
       }
     }
 
