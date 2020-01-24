@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.core.startup
 
+import com.sos.jobscheduler.common.process.ProcessPidRetriever.maybeOwnPid
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.system.JavaInformations
 import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem.{cpuModel, distributionNameAndVersionOption, hostname}
@@ -22,6 +23,7 @@ object StartUp {
       "(" + toMB(sys.runtime.maxMemory) + ") · " +
       sys.props("os.name") + distributionNameAndVersionOption.fold("")(o => s" ($o)") + " · " +
       cpuModel.fold("")(o => s"$o ") + "(" + sys.runtime.availableProcessors + " threads) · " +
+      (maybeOwnPid.fold("")(pid => s"pid=${pid.number} ")) +
       (if (hostname.nonEmpty) s"host=$hostname " else "") +
       s"config=$configDir " +
         dataDir.fold("")("data=".+))

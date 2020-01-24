@@ -13,9 +13,26 @@ import javax.lang.model.SourceVersion
  * @see https://github.com/flapdoodle-oss/de.flapdoodle.embed.process/blob/master/src/main/java/de/flapdoodle/embed/process/runtime/Processes.java
  * @author Joacim Zschimmer
  */
-private[process] object ProcessPidRetriever {
-
-  private val hasJava9 = SourceVersion.values map { _.toString } contains "RELEASE_9"
+object ProcessPidRetriever
+{
+  private[process] val hasJava9 = SourceVersion.values map { _.toString } contains "RELEASE_9"
+  lazy val maybeOwnPid: Option[Pid] =
+    if (!hasJava9)
+      None
+    else
+      try {
+        val processHandleClass = Class.forName("java.lang.ProcessHandle")
+        val currentProcessHandle = processHandleClass.getMethod("current").invoke(null)
+        Some(Pid(
+          processHandleClass
+            .getMethod("pid")
+            .invoke(currentProcessHandle)
+            .asInstanceOf[Long]))
+      } catch {
+        case t: Throwable =>
+          logger.debug(s"maybeOwnPid => ${t.toStringWithCauses}")
+          None
+      }
   private val logger = Logger(getClass)
 
   private[process] val processToPid: Process => Option[Pid] =
