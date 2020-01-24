@@ -9,13 +9,13 @@ import com.sos.jobscheduler.common.http.configuration.RecouplingStreamReaderConf
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
-import org.scalatest.FreeSpec
+import org.scalatest.AsyncFreeSpec
 import scala.concurrent.Await
 
 /**
   * @author Joacim Zschimmer
   */
-final class RecouplingStreamReaderTest extends FreeSpec
+final class RecouplingStreamReaderTest extends AsyncFreeSpec
 {
   "RecouplingStreamReader" in {
     val userAndPassword = UserAndPassword(UserId("USER"), SecretString("PASSWORD"))
@@ -52,15 +52,17 @@ final class RecouplingStreamReaderTest extends FreeSpec
         after = 0L,
         getObservable = getUnderlyingObservable)
     }
-    assert(observable.take(10).toListL.runSyncUnsafe(99.s) == (1 to 10).map(_.toString).toList)
+    observable.take(10).toListL.timeout(99.s).runToFuture.flatMap { list =>
+      assert(list == (1 to 10).map(_.toString).toList)
 
-    // Cancel
-    val obs = observable.doOnNext(_ => Task.sleep(10.ms))
-      .toListL
-      .onCancelRaiseError(new RuntimeException("TEST"))
-      .runToFuture
-    sleep(50.ms)
-    obs.cancel()
-    assert(Await.ready(obs, 99.s).value exists (_.isFailure))
+      // Cancel
+      val obs = observable.doOnNext(_ => Task.sleep(10.ms))
+        .toListL
+        .onCancelRaiseError(new RuntimeException("TEST"))
+        .runToFuture
+      sleep(50.ms)
+      obs.cancel()
+      assert(Await.ready(obs, 99.s).value exists (_.isFailure))
+    }
   }
 }
