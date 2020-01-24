@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.base.monixutils
 
 import monix.eval.Task
+import monix.reactive.Observable
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
@@ -23,5 +24,24 @@ object MonixBase
             }
         case _ => underlying
       }
+  }
+
+  implicit class RichMonixObservable[A](private val underlying: Observable[A]) extends AnyVal
+  {
+    // Copied from Monix echoRepeated
+    /** Mirror the source observable as long as the source keeps emitting
+      * items, otherwise if `timeout` passes without the source emitting
+      * anything new then the observable will start emitting
+      * `intersperseValue` repeatedly.
+      *
+      * Note: If the source Observable keeps emitting items more
+      * frequently than the length of the time window then the resulting
+      * observable will mirror the source exactly.
+      *
+      * @param timeout the window of silence that must pass in order for the
+      *        observable to start echoing the last item
+      */
+    final def beatOnSlowUpstream(timeout: FiniteDuration, value: A): Observable[A] =
+      new BeatOnSlowUpstream[A](underlying, timeout, onlyOnce = false, value)
   }
 }
