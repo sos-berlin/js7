@@ -5,6 +5,7 @@ import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.common.akkahttp.ExceptionHandling
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
+import com.sos.jobscheduler.core.message.ProblemCodeMessages
 import com.sos.jobscheduler.master.configuration.MasterConfiguration.DefaultConfig
 import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler.Implicits.global
@@ -16,6 +17,8 @@ import scala.concurrent.duration._
   */
 trait RouteTester extends ScalatestRouteTest with ExceptionHandling {
   this: Suite =>
+
+  ProblemCodeMessages.initialize()
 
   /** For RouteTest responseAs[]. */
   private implicit val routeTestDuration: Duration = 9.seconds

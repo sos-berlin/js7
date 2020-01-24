@@ -18,7 +18,6 @@ import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.http.JsonStreamingSupport.{`application/json-seq`, `application/x-ndjson`}
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.core.message.ProblemCodeMessages
 import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderFinished}
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
@@ -36,17 +35,15 @@ import scala.concurrent.duration._
   */
 final class EventRouteTest extends FreeSpec with RouteTester with EventRoute
 {
-  ProblemCodeMessages.initialize()
-
   private implicit val timeout = 99.seconds
   private implicit val routeTestTimeout = RouteTestTimeout(timeout)
   protected def isShuttingDown = false
-  protected val eventWatch = new EventCollector.ForTest()(Scheduler.global)
   protected implicit def scheduler: Scheduler = Scheduler.global
+  protected val eventWatch = new EventCollector.ForTest()
 
   TestEvents foreach eventWatch.addStamped
 
-  private def route = pathSegments("event")(eventRoute)
+  private val route = pathSegments("event")(eventRoute)
 
   for (uri <- List(
     "/event?return=OrderEvent&timeout=60&after=0",
