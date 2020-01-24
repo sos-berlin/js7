@@ -52,7 +52,7 @@ trait OrderRoute extends MasterRouteProvider
                     onSuccess(orderApi.addOrder(order).runToFuture) {
                       case Left(problem) => complete(problem)
                       case Right(isNoDuplicate) =>
-                        respondWithHeader(Location(uri + "/" + order.id.string)) {
+                        respondWithHeader(Location(uri.withPath(uri.path / order.id.string))) {
                           complete(
                             if (isNoDuplicate) Created
                             else Conflict -> Problem.pure(s"Order '${order.id.string}' has already been added"))

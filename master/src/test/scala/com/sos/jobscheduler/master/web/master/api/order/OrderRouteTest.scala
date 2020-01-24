@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master.web.master.api.order
 
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.{Conflict, Created, OK}
-import akka.http.scaladsl.model.headers.Accept
+import akka.http.scaladsl.model.headers.{Accept, Location}
 import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.time.Timestamp
@@ -25,8 +25,8 @@ import scala.collection.immutable.Seq
 /**
   * @author Joacim Zschimmer
   */
-final class OrderRouteTest extends FreeSpec with RouteTester with OrderRoute {
-
+final class OrderRouteTest extends FreeSpec with RouteTester with OrderRoute
+{
   protected def isShuttingDown = false
   protected implicit def scheduler: Scheduler = Scheduler.global
   protected val eventIdGenerator = new EventIdGenerator
@@ -82,9 +82,10 @@ final class OrderRouteTest extends FreeSpec with RouteTester with OrderRoute {
   }
 
   "POST new order" in {
-    val order = FreshOrder(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW"), Some(Timestamp.parse("2017-03-07T12:00:00Z")), Map("KEY" -> "VALUE"))
+    val order = FreshOrder(OrderId("ORDER/🔵"), WorkflowPath("/WORKFLOW"), Some(Timestamp.parse("2017-03-07T12:00:00Z")), Map("KEY" -> "VALUE"))
     Post(s"/master/api/order", order) ~> route ~> check {
       assert(status == Created)  // New order
+      assert(response.header[Location] contains Location("http://example.com/master/api/order/ORDER%2F%F0%9F%94%B5"))
     }
   }
 
@@ -92,6 +93,7 @@ final class OrderRouteTest extends FreeSpec with RouteTester with OrderRoute {
     val order = FreshOrder(DuplicateOrderId, WorkflowPath("/WORKFLOW"))
     Post("/master/api/order", order) ~> route ~> check {
       assert(status == Conflict)  // Duplicate order
+      assert(response.header[Location] contains Location(s"http://example.com/master/api/order/DUPLICATE"))
     }
   }
 
@@ -99,6 +101,7 @@ final class OrderRouteTest extends FreeSpec with RouteTester with OrderRoute {
     val orders = FreshOrder(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW")) :: FreshOrder(DuplicateOrderId, WorkflowPath("/WORKFLOW")) :: Nil
     Post("/master/api/order", orders) ~> route ~> check {
       assert(status == OK)
+      assert(response.header[Location].isEmpty)
     }
   }
 }
