@@ -248,15 +248,30 @@ with MainJournalingActor[Event]
       orderRegister.mapValues(_.order).toMap))
 
   def receive = {
-    case Input.Start(recovered) =>
+    case Input.Start(recovered, failover) =>
+      assertProperClusterState(recovered, failover)
       recover(recovered)
-      become("Recovering")(recovering)
+      become("recovering1")(recovering1(failover))
       unstashAll()
 
     case Command.Execute(_: MasterCommand.ShutDown, _) =>
       stash()
 
     case _ => stash()
+  }
+
+  private def assertProperClusterState(recovered: Recovered[MasterState, Event], failover: Boolean): Unit = {
+    for (clusterState <- recovered.recoveredState.map(_.clusterState);
+         ownUri <- masterConfiguration.clusterConf.maybeOwnUri if !clusterState.isActive(ownUri))
+    {
+      if (failover)
+        clusterState match {
+          case clusterState: ClusterState.Coupled if clusterState.passiveUri == ownUri =>
+          case _ => throw new AssertionError(s"Failover detected but ClusterState is not as expected: ownUri=$ownUri, clusterState=$clusterState")
+        }
+      else if (!clusterState.isActive(ownUri))
+        throw new AssertionError(s"Master has recovered from Journal but is not the active node in ClusterState: ownUri=$ownUri, clusterState=$clusterState")
+    }
   }
 
   private def recover(recovered: Recovered[MasterState, Event]) = {
@@ -289,8 +304,30 @@ with MainJournalingActor[Event]
       requireClusterAcknowledgement = recovered.recoveredState.fold(false)(_.clusterState.isInstanceOf[ClusterState.Coupled]))
   }
 
-  private def recovering: Receive = {
+  private def recovering1(failover: Boolean): Receive = {
     case JournalRecoverer.Output.JournalIsReady(journalHeader) =>
+      (if (failover)
+        cluster.failOver
+          .map(_.orThrow).runToFuture: Future[Completed]
+       else
+        Future.successful(Completed)
+      ).pipeTo(self)
+
+      become("failover") {
+        case Status.Failure(t) => throw t.appendCurrentStackTrace
+
+        case Completed =>
+          become("recovering2")(recovering2)
+          self ! Internal.FailoverHandled(journalHeader)
+
+        case _ => stash()
+      }
+
+    case _ => stash()
+  }
+
+  private def recovering2: Receive = {
+    case Internal.FailoverHandled(journalHeader) =>
       recoveredJournalHeader := journalHeader
       become("becomingReady")(becomingReady)  // `become` must be called early, before any persist!
 
@@ -833,7 +870,7 @@ private[master] object MasterOrderKeeper
   private val logger = Logger(getClass)
 
   object Input {
-    final case class Start(recovered: Recovered[MasterState, Event])
+    final case class Start(recovered: Recovered[MasterState, Event], failover: Boolean)
   }
 
   sealed trait Command
@@ -854,10 +891,11 @@ private[master] object MasterOrderKeeper
   }
 
   private object Internal {
+    final case class FailoverHandled(journalHeader: JournalHeader)
+    final case class ClusterCompleted(tried: Try[Checked[Completed]]) extends DeadLetterSuppression
     final case class Ready(outcome: Checked[Completed])
     case object AfterProceedEventsAdded
     case object StillShuttingDown extends DeadLetterSuppression
-    final case class ClusterCompleted(tried: Try[Checked[Completed]]) extends DeadLetterSuppression
   }
 
   private class AgentRegister extends ActorRegister[AgentRefPath, AgentEntry](_.actor) {

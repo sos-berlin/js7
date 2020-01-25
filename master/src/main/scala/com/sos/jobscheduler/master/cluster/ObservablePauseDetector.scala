@@ -8,10 +8,10 @@ private[cluster] object ObservablePauseDetector
   implicit final class RichPauseObservable[A](private val underlying: Observable[A]) extends AnyVal
   {
     /** Returns Some[A], or None for each pause (only one None per pause). */
-    def detectPauses(timeout: FiniteDuration): Observable[Option[A]] =
+    def detectPauses(notShorterThan: FiniteDuration): Observable[Option[A]] =
       Observable[Observable[Ticking]](
         underlying map Data.apply,
-        Observable.intervalWithFixedDelay(timeout, timeout).map(_ => Tick)
+        Observable.intervalWithFixedDelay(notShorterThan, notShorterThan).map(_ => Tick)
       ).merge
         .scan[Element[A]](Tick) {
           case (Tick, Tick) => Expired

@@ -5,7 +5,9 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.util.ByteString
 import com.sos.jobscheduler.base.auth.ValidUserPermission
+import com.sos.jobscheduler.base.monixutils.MonixBase._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichAny
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.accept
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.common.event.{EventWatch, PositionAnd}
@@ -18,6 +20,7 @@ import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import com.sos.jobscheduler.master.web.master.api.JournalRoute._
 import monix.execution.Scheduler
+import scala.concurrent.duration.FiniteDuration
 
 /** Returns the content of an old or currently written journal file as a live stream.
   * Additional to EventRoute this web service returns the complete file including
@@ -43,22 +46,25 @@ trait JournalRoute extends MasterRouteProvider
               parameter("position".as[Long].?) { maybePosition =>
                 parameter("timeout" ? defaultJsonSeqChunkTimeout) { timeout =>
                   parameter("markEOF" ? false) { markEOF =>
-                    parameter("return" ? "") { returnType =>
-                      accept(JournalContentType) {
-                        complete(
-                          for {
-                            returnLength <- parseReturnParameter(returnType)
-                            observable <- eventWatch.observeFile(fileEventId = maybeFileEventId, position = maybePosition, timeout,
-                              markEOF = markEOF, onlyLastOfChunk = returnLength)
-                          } yield {
-                            val f = if (returnLength) toLength _ else toContent _
-                            HttpEntity(JournalContentType,
-                              logAkkaStreamErrorToWebLog(
-                                observable
-                                  .takeWhile(_ => !isShuttingDown)
-                                  .map(f)
-                                  .toAkkaSource))
-                          })
+                    parameter("heartbeat".as[FiniteDuration].?) { heartbeat =>
+                      parameter("return" ? "") { returnType =>
+                        accept(JournalContentType) {
+                          complete(
+                            for {
+                              returnLength <- parseReturnParameter(returnType)
+                              observable <- eventWatch.observeFile(fileEventId = maybeFileEventId, position = maybePosition, timeout,
+                                markEOF = markEOF, onlyLastOfChunk = returnLength)
+                            } yield {
+                              val f = if (returnLength) toLength _ else toContent _
+                              HttpEntity(JournalContentType,
+                                logAkkaStreamErrorToWebLog(
+                                  observable
+                                    .takeWhile(_ => !isShuttingDown)
+                                    .map(f)
+                                    .pipe(o => heartbeat.fold(o)(o.beatOnSlowUpstream(_, HeartbeatMarker)))
+                                    .toAkkaSource))
+                            })
+                        }
                       }
                     }
                   }
@@ -83,7 +89,7 @@ trait JournalRoute extends MasterRouteProvider
 object JournalRoute
 {
   private val JournalContentType = `application/x-ndjson`
-  //private val JournalNoTimeoutPrefix = MasterUris.JournalNoTimeoutPrefix.toByteString
+  private val HeartbeatMarker = JournalSeparators.HeartbeatMarker.toByteString
   private val EndOfJournalFileMarker = JournalSeparators.EndOfJournalFileMarker.toByteString
 
   private def parseReturnParameter(returnType: String): Checked[Boolean] =

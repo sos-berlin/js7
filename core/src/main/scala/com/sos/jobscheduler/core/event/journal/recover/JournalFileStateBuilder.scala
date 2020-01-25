@@ -26,7 +26,7 @@ final class JournalFileStateBuilder[S <: JournaledState[S, E], E <: Event](
   newBuilder: () => JournalStateBuilder[S, E])
 {
   private val builder = newBuilder()
-  private var _recovererState = JournalRecovererState()
+  private var _recovererState: JournalRecovererState = JournalRecovererState.Initial
 
   private object transaction
   {

@@ -42,10 +42,10 @@ final class MasterUrisTest extends FreeSpec
   }
 
   "journal" in {
-    assert(masterUris.journal(fileEventId = 100, position = 111, timeout = 50.seconds) ==
+    assert(masterUris.journal(fileEventId = 100, position = 111, timeout = Some(50.seconds)) ==
       "http://example.com/master/api/journal?timeout=50&file=100&position=111")
-    assert(masterUris.journal(fileEventId = 100, position = 111, timeout = 50.seconds, markEOF = true, returnLength = true) ==
-      "http://example.com/master/api/journal?return=length&timeout=50&markEOF=true&file=100&position=111")
+    assert(masterUris.journal(fileEventId = 100, position = 111, heartbeat = Some(22.seconds), markEOF = true, returnLength = true) ==
+      "http://example.com/master/api/journal?return=length&heartbeat=22&markEOF=true&file=100&position=111")
   }
 
   "fatEvent" in {

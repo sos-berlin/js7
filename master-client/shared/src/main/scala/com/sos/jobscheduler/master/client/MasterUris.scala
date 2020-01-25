@@ -44,12 +44,12 @@ final class MasterUris private(masterUri: String)
        request.toQueryParameters)
 
   def journal(fileEventId: EventId, position: Long, heartbeat: Option[FiniteDuration] = None,
-    timeout: FiniteDuration, markEOF: Boolean = false, returnLength: Boolean = false)
+    timeout: Option[FiniteDuration] = None, markEOF: Boolean = false, returnLength: Boolean = false)
   : String =
     api("/journal") + encodeQuery(
       (returnLength.thenList("return" -> "length")) :::
       (heartbeat.map("heartbeat" -> _.toDecimalString)).toList :::
-      ("timeout" -> timeout.toDecimalString) ::
+      (timeout.map("timeout" -> _.toDecimalString)).toList :::
       (markEOF.thenList("markEOF" -> "true")) :::
       ("file" -> fileEventId.toString) ::
       ("position" -> position.toString) :: Nil)

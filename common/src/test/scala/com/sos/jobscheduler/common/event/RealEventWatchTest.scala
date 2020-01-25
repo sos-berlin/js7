@@ -22,6 +22,7 @@ final class RealEventWatchTest extends FreeSpec
     val eventWatch = new RealEventWatch {
       protected def scheduler = Scheduler.global
       def tornEventId = 0
+      def lastFileTornEventId = 0
       protected def eventsAfter(after: EventId) = Some(CloseableIterator.fromIterator(events.iterator dropWhile (_.eventId <= after)))
       def snapshotObjectsFor(after: EventId) = None
       def observeFile(fileEventId: Option[EventId], position: Option[Long], timeout: FiniteDuration, markEOF: Boolean, onlyLastOfChunk: Boolean) =
@@ -68,6 +69,8 @@ object RealEventWatchTest {
 
   private class EndlessEventWatch extends RealEventWatch {
     val tornEventId = 0
+
+    val lastFileTornEventId = 0
 
     def snapshotObjectsFor(after: EventId) = None
 

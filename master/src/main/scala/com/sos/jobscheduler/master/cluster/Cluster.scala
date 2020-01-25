@@ -14,7 +14,7 @@ import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.Recovered
 import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
 import com.sos.jobscheduler.core.problems.MissingPassiveClusterNodeHeartbeatProblem
-import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, ClusterCoupled, FollowerLost, FollowingStarted, SwitchedOver}
+import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, ClusterCoupled, FailedOver, FollowerLost, FollowingStarted, SwitchedOver}
 import com.sos.jobscheduler.data.cluster.ClusterState.{AwaitingAppointment, AwaitingFollower, Coupled, CoupledOrDecoupled, Decoupled, Empty, Sole}
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeRole, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
@@ -79,7 +79,7 @@ final class Cluster(
   =
     (recoveredClusterState, clusterConf.maybeOwnUri, clusterConf.maybeRole) match {
       case (Empty, _, None | Some(_: ClusterNodeRole.Primary)) =>
-        logger.info(s"Becoming the active primary cluster node still without backup")
+        logger.info(s"Becoming the active primary cluster node, still without backup")
         Task.pure(Right(recoveredClusterState -> ClusterFollowUp.BecomeActive(recovered))) -> None
 
       case (Empty, Some(ownUri), Some(ClusterNodeRole.Backup(activeUri))) =>
@@ -196,6 +196,15 @@ final class Cluster(
       Completed
     })
 
+  def failOver: Task[Checked[Completed]] =
+    persistence.persistEvent[ClusterEvent](NoKey) {
+      case coupled: Coupled if clusterConf.maybeOwnUri contains coupled.passiveUri =>
+        Right(FailedOver(failedActiveUri = coupled.activeUri, activatedUri = coupled.passiveUri))
+      case state =>
+        Left(Problem(s"Failover is possible only in cluster state Coupled(passive=${clusterConf.maybeOwnUri.map(_.toString)})," +
+          s" but cluster state is: $state"))
+    }.map(_.map((_: (Stamped[_], ClusterState)) => Completed))
+
   private def proceed(state: ClusterState, eventId: EventId): Unit =
     state match {
       case state: Coupled =>
@@ -273,7 +282,7 @@ final class Cluster(
         clusterConf.recouplingStreamReader,
         after = after,
         getObservable = (after: EventId) => {
-          val eventRequest = EventRequest.singleClass[Event](after = after, timeout = Some(clusterConf.recouplingStreamReader.timeout/*timing ???*/))
+          val eventRequest = EventRequest.singleClass[Event](after = after)
           AkkaHttpClient.liftProblem(
             api.eventIdObservable(eventRequest, heartbeat = Some(clusterConf.heartbeat)))
         },

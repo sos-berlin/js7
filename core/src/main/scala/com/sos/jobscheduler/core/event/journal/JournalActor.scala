@@ -27,6 +27,7 @@ import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, JournalEv
 import java.nio.file.Files.{delete, exists, move}
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
+import monix.execution.cancelables.SerialCancelable
 import monix.execution.{Cancelable, Scheduler}
 import scala.collection.immutable.Seq
 import scala.collection.mutable
@@ -70,7 +71,7 @@ extends Actor with Stash
   private var delayedCommit: Cancelable = null
   private var totalEventCount = 0L
   private var requireClusterAcknowledgement = false
-  private var waitingForAcknowledgeTimer: Cancelable = null
+  private var waitingForAcknowledgeTimer = SerialCancelable()
   private var switchedOver = false
 
   logger.debug(s"fileBase=${journalMeta.fileBase}")
@@ -91,7 +92,7 @@ extends Actor with Stash
     if (eventWriter != null) {
       eventWriter.close()
     }
-    if (waitingForAcknowledgeTimer != null) waitingForAcknowledgeTimer.cancel()
+    waitingForAcknowledgeTimer.cancel()
     logger.debug("Stopped")
     super.postStop()
   }
@@ -176,19 +177,22 @@ extends Actor with Stash
             logger.info(s"ClusterCoupled: Start requiring acknowledgements from passive cluster node")
             requireClusterAcknowledgement = true
 
-          case Some(Stamped(_, _, KeyedEvent(_, _: ClusterEvent.FollowerLost))) =>
-            logger.debug("FollowerLost: no more acknowledgment required")
-            requireClusterAcknowledgement = false
-            if (waitingForAcknowledgeTimer != null) {
-              waitingForAcknowledgeTimer.cancel()
-              waitingForAcknowledgeTimer = null
-            }
-            onCommitAcknowledged(writtenBuffer.length)
-
           case Some(Stamped(_, _, KeyedEvent(_, _: ClusterEvent.SwitchedOver))) =>
             commit()
             logger.debug("SwitchedOver: no more events are accepted")
             switchedOver = true  // No more events are accepted
+
+          case Some(Stamped(_, _, KeyedEvent(_, _: ClusterEvent.FailedOver))) =>
+            logger.debug("FailedOver: no acknowledgments required")
+            requireClusterAcknowledgement = false
+            waitingForAcknowledgeTimer := Cancelable.empty
+            commit()
+
+          case Some(Stamped(_, _, KeyedEvent(_, _: ClusterEvent.FollowerLost))) =>
+            logger.debug("FollowerLost: no more acknowledgments required")
+            requireClusterAcknowledgement = false
+            waitingForAcknowledgeTimer := Cancelable.empty
+            onCommitAcknowledged(writtenBuffer.length)
 
           case _ => forwardCommit((delay max conf.delay) - alreadyDelayed)
         }
@@ -261,10 +265,7 @@ extends Actor with Stash
             notAckSeq.flatMap(_.stamped).headOption.fold("(unknown)")(_.toString.truncateWithEllipsis((200))))
         } else logger.debug(s"StillWaitingForAcknowledge n=0, writtenBuffer.size=${writtenBuffer.size}")
       } else {
-        if (waitingForAcknowledgeTimer != null) {
-          waitingForAcknowledgeTimer.cancel()
-          waitingForAcknowledgeTimer = null
-        }
+        waitingForAcknowledgeTimer := Cancelable.empty
       }
   }
 
@@ -298,7 +299,7 @@ extends Actor with Stash
       throw tt;
     }
     for (w <- writtenBuffer.reverse collectFirst { case o: NormallyWritten => o }) {
-      w.isLastOfFlushedOrSynced = true  // For logging: This last Written (with all before) has been flushed or synced
+      w.isLastOfFlushedOrSynced = true  // For logging: This last Written (including all before) has been flushed or synced
     }
     if (!terminating) {
       if (!requireClusterAcknowledgement) {
@@ -315,8 +316,8 @@ extends Actor with Stash
   }
 
   private def startWaitingForAcknowledgeTimer(): Unit =
-    if (requireClusterAcknowledgement && lastAcknowledgedEventId < lastWrittenEventId && waitingForAcknowledgeTimer == null) {
-      waitingForAcknowledgeTimer = scheduler.scheduleAtFixedRate(conf.ackWarnDuration, 2 * conf.ackWarnDuration) {
+    if (requireClusterAcknowledgement && lastAcknowledgedEventId < lastWrittenEventId) {
+      waitingForAcknowledgeTimer := scheduler.scheduleAtFixedRate(conf.ackWarnDuration, 2 * conf.ackWarnDuration) {
         self ! Internal.StillWaitingForAcknowledge
       }
     }
@@ -327,10 +328,7 @@ extends Actor with Stash
     writtenBuffer.remove(0, n)
     assertThat((lastAcknowledgedEventId == lastWrittenEventId) == writtenBuffer.isEmpty)
     if (lastAcknowledgedEventId == lastWrittenEventId) {
-      if (waitingForAcknowledgeTimer != null) {
-        waitingForAcknowledgeTimer.cancel()
-        waitingForAcknowledgeTimer = null
-      }
+      waitingForAcknowledgeTimer := Cancelable.empty
       maybeDoASnapshot()
     }
   }

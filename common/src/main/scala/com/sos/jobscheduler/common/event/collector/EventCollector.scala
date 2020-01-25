@@ -27,6 +27,8 @@ extends RealEventWatch
   final def tornEventId: EventId =
     keyedEventQueue.tornEventId
 
+  final def lastFileTornEventId = tornEventId
+
   def eventsAfter(after: EventId) =
     keyedEventQueue.after(after) map CloseableIterator.fromIterator
 

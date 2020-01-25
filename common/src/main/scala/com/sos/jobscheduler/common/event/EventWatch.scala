@@ -79,6 +79,8 @@ trait EventWatch
 
   def tornEventId: EventId
 
+  def lastFileTornEventId: EventId
+
   def lastAddedEventId: EventId
 }
 

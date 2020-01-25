@@ -72,7 +72,8 @@ trait HttpMasterApi extends MasterApi with HttpSessionApi
     * @param fileEventId denotes the journal file
     * @param markEOF mark EOF with the special line `JournalSeparators.EndOfJournalFileMarker`
     */
-  final def journalObservable(fileEventId: EventId, position: Long, heartbeat: Option[FiniteDuration] = None, timeout: FiniteDuration,
+  final def journalObservable(fileEventId: EventId, position: Long,
+    heartbeat: Option[FiniteDuration] = None, timeout: Option[FiniteDuration] = None,
     markEOF: Boolean = false, returnLength: Boolean = false)
   : Task[Observable[ByteVector]] =
     httpClient.getRawLinesObservable(
@@ -84,7 +85,7 @@ trait HttpMasterApi extends MasterApi with HttpSessionApi
     * @param markEOF prepend every line with a space and return a last line "TIMEOUT\n" in case of timeout
     */
   final def journalLengthObservable(fileEventId: EventId, position: Long, timeout: FiniteDuration, markEOF: Boolean = false): Task[Observable[Long]] =
-    journalObservable(fileEventId, position, timeout = timeout, markEOF = markEOF, returnLength = true)
+    journalObservable(fileEventId, position, timeout = Some(timeout), markEOF = markEOF, returnLength = true)
       .map(_.map(_.decodeUtf8.orThrow.stripSuffix("\n").toLong))
 
   final def fatEvents[E <: FatEvent: ClassTag](request: EventRequest[E])(implicit kd: Decoder[KeyedEvent[E]], ke: Encoder.AsObject[KeyedEvent[E]])

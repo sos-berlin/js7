@@ -119,6 +119,11 @@ with JournalingObserver
         currentEventReader.tornEventId
     }
 
+  def lastFileTornEventId =
+    synchronized {
+      currentEventReaderOption.fold(afterEventIdToHistoric.keys.max)(_.tornEventId)
+    }
+
   /** Files containing non-kept events may be deleted. */
   @tailrec
   def keepEvents(after: EventId): Checked[Completed] = {

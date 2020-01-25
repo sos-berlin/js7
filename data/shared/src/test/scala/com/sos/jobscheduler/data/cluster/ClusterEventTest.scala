@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.data.cluster
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, ClusterCoupled, FollowerLost, FollowingStarted, SwitchedOver}
+import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, ClusterCoupled, FailedOver, FollowerLost, FollowingStarted, SwitchedOver}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
@@ -42,19 +42,28 @@ final class ClusterEventTest extends FreeSpec
       }""")
   }
 
-  "FollowerLost" in {
-    testJson[ClusterEvent](FollowerLost(Uri("http://FOLLOWER")),
-      json"""{
-        "TYPE": "FollowerLost",
-        "uri": "http://FOLLOWER"
-      }""")
-  }
-
   "SwitchedOver" in {
     testJson[ClusterEvent](SwitchedOver(Uri("http://NODE")),
       json"""{
         "TYPE": "SwitchedOver",
         "uri": "http://NODE"
+      }""")
+  }
+
+  "FailedOver" in {
+    testJson[ClusterEvent](FailedOver(Uri("http://FAILED"), Uri("http://ACTIVATED")),
+      json"""{
+        "TYPE": "FailedOver",
+        "failedActiveUri": "http://FAILED",
+        "activatedUri": "http://ACTIVATED"
+      }""")
+  }
+
+  "FollowerLost" in {
+    testJson[ClusterEvent](FollowerLost(Uri("http://FOLLOWER")),
+      json"""{
+        "TYPE": "FollowerLost",
+        "uri": "http://FOLLOWER"
       }""")
   }
 }

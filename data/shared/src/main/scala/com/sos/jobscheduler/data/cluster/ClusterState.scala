@@ -7,7 +7,7 @@ import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, ClusterCoupled, FollowerLost, FollowingStarted, SwitchedOver}
+import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, ClusterCoupled, FailedOver, FollowerLost, FollowingStarted, SwitchedOver}
 import com.sos.jobscheduler.data.cluster.ClusterState._
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
@@ -58,6 +58,12 @@ extends JournaledState[ClusterState, ClusterEvent]
             activeUri = uri,
             passiveUri = state.activeUri))
 
+        case (state: Coupled, event: FailedOver)
+          if state.activeUri == event.failedActiveUri && state.passiveUri == event.activatedUri =>
+          Right(Decoupled(
+            activeUri = event.activatedUri,
+            passiveUri = event.failedActiveUri))
+
         case (state: Coupled, FollowerLost(uri)) if state.passiveUri == uri =>
           Right(Decoupled(
             activeUri = state.activeUri,
@@ -83,7 +89,7 @@ object ClusterState
   final case class ClusterStateSnapshot(clusterState: ClusterState)
 
   /** Cluster has not been initialized.
-    * Like Sole but the NodeId is unknown. */
+    * Like Sole but own URI is unknown. */
   case object Empty extends ClusterState {
     def isActive(uri: Uri) = false
   }

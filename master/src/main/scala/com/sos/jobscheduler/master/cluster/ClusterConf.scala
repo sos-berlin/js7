@@ -19,9 +19,6 @@ final case class ClusterConf(
   userAndPassword: Option[UserAndPassword],
   recouplingStreamReader: RecouplingStreamReaderConf,
   heartbeat: FiniteDuration)
-{
-  val heartbeatAndIdleTimeout = heartbeat min recouplingStreamReader.timeout
-}
 
 object ClusterConf
 {

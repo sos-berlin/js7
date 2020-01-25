@@ -23,10 +23,13 @@ object ClusterEvent
   case object ClusterCoupled
   extends ClusterCoupled
 
-  final case class FollowerLost(uri: Uri)
+  final case class SwitchedOver(uri: Uri)
   extends ClusterEvent
 
-  final case class SwitchedOver(uri: Uri)
+  final case class FailedOver(failedActiveUri: Uri, activatedUri: Uri)
+  extends ClusterEvent
+
+  final case class FollowerLost(uri: Uri)
   extends ClusterEvent
 
   //final case class Decoupled(passiveNodeId: ClusterNodeId) extends ClusterEvent
@@ -54,6 +57,7 @@ object ClusterEvent
     Subtype(deriveCodec[BackupNodeAppointed]),
     Subtype(deriveCodec[FollowingStarted]),
     Subtype(ClusterCoupled),
-    Subtype(deriveCodec[FollowerLost]),
-    Subtype(deriveCodec[SwitchedOver]))
+    Subtype(deriveCodec[SwitchedOver]),
+    Subtype(deriveCodec[FailedOver]),
+    Subtype(deriveCodec[FollowerLost]))
 }

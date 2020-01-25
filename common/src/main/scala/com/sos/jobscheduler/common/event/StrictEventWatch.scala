@@ -97,5 +97,7 @@ final class StrictEventWatch(eventWatch: EventWatch)
 
   def tornEventId = eventWatch.tornEventId
 
+  def lastFileTornEventId = eventWatch.lastFileTornEventId
+
   def lastAddedEventId = eventWatch.lastAddedEventId
 }

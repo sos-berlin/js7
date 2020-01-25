@@ -22,4 +22,5 @@ object JournalSeparators
     * The file itself must not contain this line! */
   val EndOfJournalFileMarker: ByteVector = ByteVector.encodeUtf8("\"@@@ END OF JOURNAL FILE @@@\"\n").orThrow
   val EndOfJournalFileMarkerJson: Json = EndOfJournalFileMarker.utf8String.parseJsonOrThrow
+  val HeartbeatMarker: ByteVector = ByteVector.encodeUtf8("\"@@@ HEARTBEAT @@@\"\n").orThrow
 }

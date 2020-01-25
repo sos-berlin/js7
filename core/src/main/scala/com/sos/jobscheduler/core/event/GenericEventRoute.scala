@@ -165,7 +165,7 @@ trait GenericEventRoute extends RouteProvider
                           monixObservableToMarshallable(
                             (eventWatch.lastAddedEventId/*first heartbeat*/ +:
                               observe(request, predicate, onlyLastOfChunk, eventWatch).map(_.eventId)
-                            ).echoRepeated(heartbeat))
+                            ).echoRepeated/*FIXME no heartbeat before first event? Use beatOnSlowUpstream*/(heartbeat))
                       }
 
                     case EventSeq.NonEmpty(closeableIterator) =>

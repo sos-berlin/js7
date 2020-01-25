@@ -7,8 +7,6 @@ sealed trait JournalRecovererState
 
 object JournalRecovererState
 {
-  def apply(): JournalRecovererState = Initial
-
   case object Initial extends JournalRecovererState
 
   case object AfterHeader extends JournalRecovererState

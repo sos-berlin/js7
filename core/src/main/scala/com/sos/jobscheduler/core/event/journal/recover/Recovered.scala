@@ -31,7 +31,7 @@ extends AutoCloseable
     recoveredJournalFile.map(_.state)
 
   // Suppresses Config (which may contain secrets)
-  override def toString = s"Recovered($journalMeta,$recoveredJournalFile,$newStateBuilder,$eventWatch,Config)"
+  override def toString = s"Recovered($journalMeta,$recoveredJournalFile,$eventWatch,Config)"
 
   def startJournalAndFinishRecovery(
     journalActor: ActorRef,
