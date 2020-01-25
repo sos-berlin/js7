@@ -118,6 +118,11 @@ final class ScalaUtilsTest extends FreeSpec
     assert((3 |> double) == double(3))
   }
 
+  "pipeIf" in {
+    assert(3.pipeIf(true, _ * 7) == 3 * 7)
+    assert(3.pipeIf(false, _ * 7) == 3)
+  }
+
   "substitute" in {
     7 substitute 7 -> 3 shouldEqual 3
     7.substitute(7, 3) shouldEqual 3
