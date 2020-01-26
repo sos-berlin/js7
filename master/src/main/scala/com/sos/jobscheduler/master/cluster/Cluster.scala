@@ -19,7 +19,7 @@ import com.sos.jobscheduler.data.cluster.ClusterState.{AwaitingAppointment, Awai
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeRole, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, Stamped}
+import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, JournalPosition, Stamped}
 import com.sos.jobscheduler.master.MasterState
 import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
 import com.sos.jobscheduler.master.cluster.Cluster._
@@ -80,7 +80,7 @@ final class Cluster(
     (recoveredClusterState, clusterConf.maybeOwnUri, clusterConf.maybeRole) match {
       case (Empty, _, None | Some(_: ClusterNodeRole.Primary)) =>
         logger.info(s"Becoming the active primary cluster node, still without backup")
-        Task.pure(Right(recoveredClusterState -> ClusterFollowUp.BecomeActive(recovered))) -> None
+        Task.pure(Right(recoveredClusterState -> ClusterFollowUp.BecomeActive(recovered, failedAt = None))) -> None
 
       case (Empty, Some(ownUri), Some(ClusterNodeRole.Backup(activeUri))) =>
         logger.info(s"Becoming the (still not following) backup cluster node '$ownUri' for primary node at $activeUri")
@@ -93,7 +93,7 @@ final class Cluster(
           case _ => logger.info("Becoming the active cluster node without following node")
         }
         proceed(recoveredClusterState, recovered.eventId)
-        Task.pure(Right(recoveredClusterState -> ClusterFollowUp.BecomeActive(recovered))) -> None
+        Task.pure(Right(recoveredClusterState -> ClusterFollowUp.BecomeActive(recovered, failedAt = None))) -> None
 
       case (state: CoupledOrDecoupled, Some(ownUri), _) if state.passiveUri == ownUri =>
         logger.info(
@@ -164,7 +164,7 @@ final class Cluster(
                   case AwaitingFollower(`ownUri`, `followingUri`) => ClusterCoupled :: Nil
                   case _ => Nil
                 })
-          case AwaitingFollower(`ownUri`, `followingUri`) | Decoupled(`ownUri`, `followingUri`) if ownUri == followedUri =>
+          case AwaitingFollower(`ownUri`, `followingUri`) | Decoupled(`ownUri`, `followingUri`, _) if ownUri == followedUri =>
             Right(FollowingStarted(followingUri) :: ClusterCoupled :: Nil)
           case state =>
             Left(Problem.pure(s"Following cluster node '$followingUri' ignored due to inappropriate cluster state $state"))
@@ -196,10 +196,10 @@ final class Cluster(
       Completed
     })
 
-  def failOver: Task[Checked[Completed]] =
+  def failOver(failedAt: JournalPosition): Task[Checked[Completed]] =
     persistence.persistEvent[ClusterEvent](NoKey) {
       case coupled: Coupled if clusterConf.maybeOwnUri contains coupled.passiveUri =>
-        Right(FailedOver(failedActiveUri = coupled.activeUri, activatedUri = coupled.passiveUri))
+        Right(FailedOver(failedActiveUri = coupled.activeUri, activatedUri = coupled.passiveUri, failedAt))
       case state =>
         Left(Problem(s"Failover is possible only in cluster state Coupled(passive=${clusterConf.maybeOwnUri.map(_.toString)})," +
           s" but cluster state is: $state"))

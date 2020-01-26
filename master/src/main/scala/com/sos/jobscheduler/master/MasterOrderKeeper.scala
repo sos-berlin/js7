@@ -40,7 +40,7 @@ import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath, AgentRunId}
 import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.data.crypt.Signed
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{Event, EventId, JournalPosition, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
 import com.sos.jobscheduler.data.filebased.{FileBased, RepoEvent, TypedPath}
 import com.sos.jobscheduler.data.master.MasterFileBaseds
@@ -249,10 +249,10 @@ with MainJournalingActor[Event]
       orderRegister.mapValues(_.order).toMap))
 
   def receive = {
-    case Input.Start(recovered, failover) =>
-      assertProperClusterState(recovered, failover)
+    case Input.Start(recovered, failedAt) =>
+      assertProperClusterState(recovered, failover = failedAt.isDefined)
       recover(recovered)
-      become("recovering1")(recovering1(failover))
+      become("recovering1")(recovering1(failedAt))
       unstashAll()
 
     case Command.Execute(_: MasterCommand.ShutDown, _) =>
@@ -305,14 +305,13 @@ with MainJournalingActor[Event]
       requireClusterAcknowledgement = recovered.recoveredState.fold(false)(_.clusterState.isInstanceOf[ClusterState.Coupled]))
   }
 
-  private def recovering1(failover: Boolean): Receive = {
+  private def recovering1(failedAt: Option[JournalPosition]): Receive = {
     case JournalRecoverer.Output.JournalIsReady(journalHeader) =>
-      (if (failover)
-        cluster.failOver
-          .map(_.orThrow).runToFuture: Future[Completed]
-       else
-        Future.successful(Completed)
-      ).pipeTo(self)
+      failedAt
+        .fold(Future.successful(Completed))(failedAt =>
+          cluster.failOver(failedAt)
+            .map(_.orThrow).runToFuture: Future[Completed])
+        .pipeTo(self)
 
       become("failover") {
         case Status.Failure(t) => throw t.appendCurrentStackTrace
@@ -871,7 +870,7 @@ private[master] object MasterOrderKeeper
   private val logger = Logger(getClass)
 
   object Input {
-    final case class Start(recovered: Recovered[MasterState, Event], failover: Boolean)
+    final case class Start(recovered: Recovered[MasterState, Event], failedAt: Option[JournalPosition])
   }
 
   sealed trait Command

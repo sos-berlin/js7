@@ -3,7 +3,7 @@ package com.sos.jobscheduler.data.cluster
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.data.common.Uri
-import com.sos.jobscheduler.data.event.NoKeyEvent
+import com.sos.jobscheduler.data.event.{JournalPosition, NoKeyEvent}
 
 sealed trait ClusterEvent extends NoKeyEvent
 
@@ -26,7 +26,7 @@ object ClusterEvent
   final case class SwitchedOver(uri: Uri)
   extends ClusterEvent
 
-  final case class FailedOver(failedActiveUri: Uri, activatedUri: Uri)
+  final case class FailedOver(failedActiveUri: Uri, activatedUri: Uri, failedAt: JournalPosition)
   extends ClusterEvent
 
   final case class FollowerLost(uri: Uri)

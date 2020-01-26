@@ -306,7 +306,7 @@ object RunningMaster
         case _: ClusterFollowUp.Terminate[MasterState, Event] =>
           None
 
-        case ClusterFollowUp.BecomeActive(recovered: Recovered[MasterState @unchecked, Event], failover) =>
+        case ClusterFollowUp.BecomeActive(recovered: Recovered[MasterState @unchecked, Event], failedAt) =>
           val terminationPromise = Promise[MasterTermination]()
           val actor = actorSystem.actorOf(
             Props {
@@ -314,7 +314,7 @@ object RunningMaster
                 GenericSignatureVerifier(masterConfiguration.config).orThrow)
             },
             "MasterOrderKeeper")
-          actor ! MasterOrderKeeper.Input.Start(recovered, failover = failover)
+          actor ! MasterOrderKeeper.Input.Start(recovered, failedAt)
           val termination = terminationPromise.future
             .andThen { case Failure(t) => logger.error(t.toStringWithCauses, t) }
             .andThen { case _ => closer.close() }  // Close automatically after termination

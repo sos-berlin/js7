@@ -3,6 +3,7 @@ package com.sos.jobscheduler.data.cluster
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, ClusterCoupled, FailedOver, FollowerLost, FollowingStarted, SwitchedOver}
 import com.sos.jobscheduler.data.common.Uri
+import com.sos.jobscheduler.data.event.JournalPosition
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
 
@@ -51,11 +52,15 @@ final class ClusterEventTest extends FreeSpec
   }
 
   "FailedOver" in {
-    testJson[ClusterEvent](FailedOver(Uri("http://FAILED"), Uri("http://ACTIVATED")),
+    testJson[ClusterEvent](FailedOver(Uri("http://FAILED"), Uri("http://ACTIVATED"), JournalPosition(0, 1234)),
       json"""{
         "TYPE": "FailedOver",
         "failedActiveUri": "http://FAILED",
-        "activatedUri": "http://ACTIVATED"
+        "activatedUri": "http://ACTIVATED",
+        "failedAt": {
+          "fileEventId": 0,
+          "position": 1234
+        }
       }""")
   }
 

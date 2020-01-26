@@ -11,7 +11,7 @@ import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, Beca
 import com.sos.jobscheduler.data.cluster.ClusterState._
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{EventId, JournaledState, KeyedEvent}
+import com.sos.jobscheduler.data.event.{EventId, JournalPosition, JournaledState, KeyedEvent}
 import monix.reactive.Observable
 
 sealed trait ClusterState
@@ -41,7 +41,7 @@ extends JournaledState[ClusterState, ClusterEvent]
             Right(PreparedToBeCoupled(activeUri, appointedUri))
 
         case (PreparedToBeCoupled(activeUri, passiveUri), ClusterCoupled) =>
-          Right(Coupled(activeUri, passiveUri))
+          Right(Coupled(activeUri, passiveUri, failedAt = None))
 
         case (state: Decoupled, FollowingStarted(followingUri)) if followingUri == state.passiveUri =>
           Right(PreparedToBeCoupled(
@@ -56,18 +56,21 @@ extends JournaledState[ClusterState, ClusterEvent]
         case (state: Coupled, SwitchedOver(uri)) if state.passiveUri == uri =>
           Right(Decoupled(
             activeUri = uri,
-            passiveUri = state.activeUri))
+            passiveUri = state.activeUri,
+            state.failedAt))
 
         case (state: Coupled, event: FailedOver)
           if state.activeUri == event.failedActiveUri && state.passiveUri == event.activatedUri =>
           Right(Decoupled(
             activeUri = event.activatedUri,
-            passiveUri = event.failedActiveUri))
+            passiveUri = event.failedActiveUri,
+            state.failedAt))
 
         case (state: Coupled, FollowerLost(uri)) if state.passiveUri == uri =>
           Right(Decoupled(
             activeUri = state.activeUri,
-            passiveUri = uri))
+            passiveUri = uri,
+            state.failedAt))
 
         case (_, keyedEvent) => eventNotApplicable(keyedEvent)
       }
@@ -143,7 +146,7 @@ object ClusterState
   }
 
   /** An active node is coupled with a passive node. */
-  final case class Coupled(activeUri: Uri, passiveUri: Uri)
+  final case class Coupled(activeUri: Uri, passiveUri: Uri, failedAt: Option[JournalPosition])
   extends CoupledOrDecoupled
   {
     assertThat(activeUri != passiveUri)
@@ -151,7 +154,7 @@ object ClusterState
     override def isTheFollowingNode(uri: Uri) = uri == passiveUri
   }
 
-  final case class Decoupled(activeUri: Uri, passiveUri: Uri)
+  final case class Decoupled(activeUri: Uri, passiveUri: Uri, failedAt: Option[JournalPosition])
   extends CoupledOrDecoupled
   {
     assertThat(activeUri != passiveUri)

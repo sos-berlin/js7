@@ -22,7 +22,7 @@ import com.sos.jobscheduler.core.problems.MissingActiveClusterNodeHeartbeatProbl
 import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.JournalEvent.SnapshotTaken
-import com.sos.jobscheduler.data.event.{Event, EventId, JournalEvent, JournalId, JournaledState}
+import com.sos.jobscheduler.data.event.{Event, EventId, JournalEvent, JournalId, JournalPosition, JournaledState}
 import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
 import com.sos.jobscheduler.master.cluster.ObservablePauseDetector.RichPauseObservable
 import com.sos.jobscheduler.master.cluster.PassiveClusterNode._
@@ -103,12 +103,12 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, E], E <: 
             // TODO Herzschlag auch beim Wechsel zur nächsten Journaldatei prüfen
             .map {
               case Left(problem) => Right(Left(problem))
-              case Right(continuation: HeartbeatLost) =>
+              case Right(HeartbeatLost(recoveredJournalFile, clusterState)) =>
                 Right(Right((
-                  continuation.clusterState,
+                  clusterState,
                   ClusterFollowUp.BecomeActive(
-                    recovered.copy[S, E](recoveredJournalFile = Some(continuation.recoveredJournalFile)),
-                    failover = true))))
+                    recovered.copy[S, E](recoveredJournalFile = Some(recoveredJournalFile)),
+                    Some(JournalPosition(recoveredJournalFile.fileEventId, recoveredJournalFile.length))))))
               case Right(continuation: Continuation.Replicatable) =>
                 if (!shouldFinishFollowing(continuation.clusterState))
                   Left(continuation)
@@ -116,7 +116,8 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, E], E <: 
                   Right(Right((
                     continuation.clusterState,
                     ClusterFollowUp.BecomeActive(
-                      recovered.copy[S, E](recoveredJournalFile = continuation.maybeRecoveredJournalFile)))))
+                      recovered.copy[S, E](recoveredJournalFile = continuation.maybeRecoveredJournalFile),
+                      failedAt = None))))
             }))
 
   private def masterApi(uri: Uri, name: String): Resource[Task, HttpMasterApi] =
