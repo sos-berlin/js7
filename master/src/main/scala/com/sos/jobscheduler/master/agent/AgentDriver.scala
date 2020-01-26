@@ -83,7 +83,7 @@ with ReceiveLoggingActor.WithStash
 
     protected def getObservable(api: AgentClient, after: EventId) =
       Task { logger.debug(s"getObservable(after=$after)") } >>
-        api.mastersEventObservable(EventRequest[Event](EventClasses, after = after, timeout = Some(conf.recouplingStreamReader.timeout)))
+        api.mastersEventObservable(EventRequest[Event](EventClasses, after = after, timeout = Some(idleTimeout)))
 
     override protected def onCouplingFailed(api: AgentClient, problem: Problem) =
       promiseTask[Completed] {

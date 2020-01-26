@@ -286,7 +286,6 @@ final class Cluster(
           AkkaHttpClient.liftProblem(
             api.eventIdObservable(eventRequest, heartbeat = Some(clusterConf.heartbeat)))
         },
-        idleTimeout = clusterConf.failAfter,  // timing ???
         stopRequested = () => stopRequested)
 
   def onClusterCompleted: Task[Checked[Completed]] =

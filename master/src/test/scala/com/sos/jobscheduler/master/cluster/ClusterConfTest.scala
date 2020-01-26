@@ -22,10 +22,10 @@ final class ClusterConfTest extends FreeSpec
   "fromConfigAndFile" - {
     "Minimum configuration" in {
       val config = ConfigFactory.parseString("""
-        jobscheduler.master.cluster.idle-get-timeout = 50s
-        jobscheduler.master.cluster.delay-between-polling-gets = 1s
         jobscheduler.master.cluster.heartbeat = 7s
-        jobscheduler.master.cluster.fail-after = 5s""")
+        jobscheduler.master.cluster.fail-after = 5s
+        jobscheduler.web.client.idle-get-timeout = 50s
+        jobscheduler.web.client.delay-between-polling-gets = 1s""")
       val clusterConf = ClusterConf.fromConfigAndFile(UserId("USER"), config)
       assert(clusterConf == Right(
         ClusterConf(
@@ -42,11 +42,11 @@ final class ClusterConfTest extends FreeSpec
         jobscheduler.master.cluster.this-node.role = Primary
         jobscheduler.master.cluster.this-node.uri = "http://PRIMARY"
         jobscheduler.master.cluster.other-node.uri = "http://BACKUP"
-        jobscheduler.master.cluster.idle-get-timeout = 50s
-        jobscheduler.master.cluster.delay-between-polling-gets = 1s
         jobscheduler.master.cluster.heartbeat = 7s
         jobscheduler.master.cluster.fail-after = 5s
-        jobscheduler.auth.cluster.password = "PASSWORD" """)
+        jobscheduler.auth.cluster.password = "PASSWORD"
+        jobscheduler.web.client.idle-get-timeout = 50s
+        jobscheduler.web.client.delay-between-polling-gets = 1s """)
       val checkedClusterConf = ClusterConf.fromConfigAndFile(UserId("USER"), config)
       assert(checkedClusterConf == Right(
         ClusterConf(

@@ -45,7 +45,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
 
   protected def eof(index: I) = false
 
-  protected def idleTimeout: Duration = Duration.Inf
+  final def idleTimeout = conf.timeout
 
   protected def stopRequested: Boolean
 
@@ -211,20 +211,17 @@ object RecouplingStreamReader
     conf: RecouplingStreamReaderConf,
     after: I,
     getObservable: I => Task[Checked[Observable[V]]],
-    idleTimeout: Duration = Duration.Inf,
     eof: I => Boolean = (_: I) => false,
     stopRequested: () => Boolean = () => false)
     (implicit s: Scheduler)
   : Observable[V]
   = {
-    val idleTimeout_ = idleTimeout
     val eof_ = eof
     val getObservable_ = getObservable
     val stopRequested_ = stopRequested
     new RecouplingStreamReader[I, V, Api](toIndex, maybeUserAndPassword, conf) {
       def getObservable(api: Api, after: I) = getObservable_(after)
       override def eof(index: I) = eof_(index)
-      override def idleTimeout = idleTimeout_
       def stopRequested = stopRequested_()
     }.observe(api, after)
   }

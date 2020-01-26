@@ -38,7 +38,7 @@ object ClusterConf
       }
       userAndPassword <- config.checkedOptionAs[SecretString]("jobscheduler.auth.cluster.password")
         .map(_.map(UserAndPassword(userId, _)))
-      recouplingStreamReaderConf <- RecouplingStreamReaderConfs.fromSubconfig(config.getConfig("jobscheduler.master.cluster"))
+      recouplingStreamReaderConf <- RecouplingStreamReaderConfs.fromConfig(config)
       heartbeat <- Right(config.getDuration("jobscheduler.master.cluster.heartbeat").toFiniteDuration)
       failAfter <- Right(config.getDuration("jobscheduler.master.cluster.fail-after").toFiniteDuration)
       //_ <- if (heartbeat < failAfter) Right(()) else
