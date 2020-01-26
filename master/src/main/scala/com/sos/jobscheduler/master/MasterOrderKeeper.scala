@@ -63,7 +63,8 @@ import com.sos.jobscheduler.master.data.events.MasterEvent.{MasterShutDown, Mast
 import com.sos.jobscheduler.master.repo.RepoCommandExecutor
 import java.time.ZoneId
 import monix.eval.Task
-import monix.execution.{Cancelable, Scheduler}
+import monix.execution.Scheduler
+import monix.execution.cancelables.SerialCancelable
 import monix.reactive.Observable
 import scala.collection.immutable.Seq
 import scala.collection.mutable
@@ -110,7 +111,7 @@ with MainJournalingActor[Event]
   private object shutdown {
     val since = SetOnce[Deadline]
     private val shutDown = SetOnce[MasterCommand.ShutDown]
-    private var stillShuttingDownCancelable: Option[Cancelable] = None
+    private var stillShuttingDownCancelable = SerialCancelable()
     private var terminatingAgentDrivers = false
     private var takingSnapshot = false
     private var snapshotTaken = false
@@ -124,15 +125,15 @@ with MainJournalingActor[Event]
       if (!shuttingDown) {
         since := now
         this.shutDown := shutDown
-        journalActor ! JournalActor.Input.TakeSnapshot  // Take snapshot before OrderActors are stopped
-        stillShuttingDownCancelable = Some(scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
+        stillShuttingDownCancelable := scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
           self ! Internal.StillShuttingDown
-        })
+        }
+        journalActor ! JournalActor.Input.TakeSnapshot  // Take snapshot before OrderActors are stopped
         continue()
       }
 
     def close() =
-      stillShuttingDownCancelable.foreach(_.cancel())
+      stillShuttingDownCancelable.cancel()
 
     def onStillShuttingDown() =
       logger.info(s"Still shutting down, waiting for ${agentRegister.runningActorCount} AgentDrivers" +
