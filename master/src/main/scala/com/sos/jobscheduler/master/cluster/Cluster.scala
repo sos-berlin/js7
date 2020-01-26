@@ -249,7 +249,7 @@ final class Cluster(
         .use(api =>
           observeEventIds(api, after = after)
             .whileBusyBuffer(OverflowStrategy.DropOld(bufferSize = 2))
-            .detectPauses(2 * clusterConf.heartbeat)
+            .detectPauses(clusterConf.heartbeat + clusterConf.failAfter)
             .takeWhile(_ => !switchoverAcknowledged)  // Race condition: may be set too late
             .mapEval {
               case None => Task.pure(Left(MissingPassiveClusterNodeHeartbeatProblem(uri)))
@@ -286,7 +286,7 @@ final class Cluster(
           AkkaHttpClient.liftProblem(
             api.eventIdObservable(eventRequest, heartbeat = Some(clusterConf.heartbeat)))
         },
-        idleTimeout = 2 * clusterConf.heartbeat,  // timing ???
+        idleTimeout = clusterConf.failAfter,  // timing ???
         stopRequested = () => stopRequested)
 
   def onClusterCompleted: Task[Checked[Completed]] =

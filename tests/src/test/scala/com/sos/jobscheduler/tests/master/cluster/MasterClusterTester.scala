@@ -32,6 +32,7 @@ private[cluster] trait MasterClusterTester extends FreeSpec
           jobscheduler.master.cluster.this-node.uri = "http://127.0.0.1:$primaryHttpPort"
           jobscheduler.master.cluster.other-node.uri = "http://127.0.0.1:$backupHttpPort"
           jobscheduler.master.cluster.heartbeat = 3s
+          jobscheduler.master.cluster.fail-after = 5s
           jobscheduler.master.cluster.idle-get-timeout = 9s
           jobscheduler.auth.users.Master.password = "plain:BACKUP-MASTER-PASSWORD"
           jobscheduler.auth.users.TEST.password = "plain:TEST-PASSWORD"
@@ -44,6 +45,7 @@ private[cluster] trait MasterClusterTester extends FreeSpec
           jobscheduler.master.cluster.this-node.uri = "http://127.0.0.1:$backupHttpPort"
           jobscheduler.master.cluster.other-node.uri = "http://127.0.0.1:$primaryHttpPort"
           jobscheduler.master.cluster.heartbeat = 3s
+          jobscheduler.master.cluster.fail-after = 5s
           jobscheduler.master.cluster.idle-get-timeout = 9s
           jobscheduler.auth.users.Master.password = "plain:PRIMARY-MASTER-PASSWORD"
           jobscheduler.auth.cluster.password = "BACKUP-MASTER-PASSWORD" """)

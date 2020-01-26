@@ -176,7 +176,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, E], E <: 
       ) .mapParallelOrdered(sys.runtime.availableProcessors) { case PositionAnd(fileLength, line) =>
           Task((fileLength, line, line.parseJson.orThrow))
         }
-        .detectPauses(2 * clusterConf.heartbeat)
+        .detectPauses(clusterConf.heartbeat + clusterConf.failAfter)
         .flatMap[Checked[Unit]] {
           case None/*pause*/ =>
             (if (isReplicatingHeadOfFile) continuation.clusterState else builder.clusterState) match {

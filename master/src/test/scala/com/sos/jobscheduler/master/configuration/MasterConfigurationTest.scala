@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master.configuration
 
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerPort
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.http.configuration.RecouplingStreamReaderConf
@@ -13,7 +14,6 @@ import java.net.InetSocketAddress
 import java.nio.file.Files.{createDirectories, createTempDirectory, delete}
 import java.time.ZoneId
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
-import scala.concurrent.duration.DurationInt
 
 /**
   * @author Joacim Zschimmer
@@ -41,13 +41,14 @@ final class MasterConfigurationTest extends FreeSpec with BeforeAndAfterAll
       configDirectory = (directory /"CONFIG").toAbsolutePath,
       webServerPorts = Nil,
       ZoneId.systemDefault,
-      akkaAskTimeout = 60.seconds,
+      akkaAskTimeout = 60.s,
       journalConf = JournalConf.fromConfig(DefaultConfig),
       clusterConf = ClusterConf(None, None, None,
         RecouplingStreamReaderConf(
-          timeout = 19.seconds,
-          delay = 1.seconds),
-        heartbeat = 10.seconds),
+          timeout = 19.s,
+          delay = 1.s),
+        heartbeat = 1.s,
+        failAfter = 5.s),
       name = MasterConfiguration.DefaultName,
       config = DefaultConfig))
   }

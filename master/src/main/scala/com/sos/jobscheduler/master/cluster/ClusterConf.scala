@@ -18,7 +18,8 @@ final case class ClusterConf(
   maybeOwnUri: Option[Uri],
   userAndPassword: Option[UserAndPassword],
   recouplingStreamReader: RecouplingStreamReaderConf,
-  heartbeat: FiniteDuration)
+  heartbeat: FiniteDuration,
+  failAfter: FiniteDuration)
 
 object ClusterConf
 {
@@ -38,7 +39,11 @@ object ClusterConf
       userAndPassword <- config.checkedOptionAs[SecretString]("jobscheduler.auth.cluster.password")
         .map(_.map(UserAndPassword(userId, _)))
       recouplingStreamReaderConf <- RecouplingStreamReaderConfs.fromSubconfig(config.getConfig("jobscheduler.master.cluster"))
+      heartbeat <- Right(config.getDuration("jobscheduler.master.cluster.heartbeat").toFiniteDuration)
+      failAfter <- Right(config.getDuration("jobscheduler.master.cluster.fail-after").toFiniteDuration)
+      //_ <- if (heartbeat < failAfter) Right(()) else
+      //  Left(Problem(s"jobscheduler.master.cluster.heartbeat=${heartbeat.pretty} must be shorter than jobscheduler.master.cluster.fail-after=${failAfter.pretty}"))
     } yield
       new ClusterConf(maybeRole, maybeOwnUri, userAndPassword, recouplingStreamReaderConf,
-        heartbeat = config.getDuration("jobscheduler.master.cluster.heartbeat").toFiniteDuration)
+        heartbeat = heartbeat, failAfter = failAfter)
 }

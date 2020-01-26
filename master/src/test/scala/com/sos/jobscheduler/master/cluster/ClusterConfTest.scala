@@ -24,15 +24,17 @@ final class ClusterConfTest extends FreeSpec
       val config = ConfigFactory.parseString("""
         jobscheduler.master.cluster.idle-get-timeout = 50s
         jobscheduler.master.cluster.delay-between-polling-gets = 1s
-        jobscheduler.master.cluster.heartbeat = 7s""")
-      val clusterConf = ClusterConf.fromConfigAndFile(UserId("USER"), config)  // Creates file
+        jobscheduler.master.cluster.heartbeat = 7s
+        jobscheduler.master.cluster.fail-after = 5s""")
+      val clusterConf = ClusterConf.fromConfigAndFile(UserId("USER"), config)
       assert(clusterConf == Right(
         ClusterConf(
           None,
           None,
           None,
           streamReaderConf,
-          7.s)))
+          7.s,
+          5.s)))
     }
 
     "Full configuration" in {
@@ -43,15 +45,37 @@ final class ClusterConfTest extends FreeSpec
         jobscheduler.master.cluster.idle-get-timeout = 50s
         jobscheduler.master.cluster.delay-between-polling-gets = 1s
         jobscheduler.master.cluster.heartbeat = 7s
+        jobscheduler.master.cluster.fail-after = 5s
         jobscheduler.auth.cluster.password = "PASSWORD" """)
-      val checkedClusterConf = ClusterConf.fromConfigAndFile(UserId("USER"), config)  // Creates the file as a side-effect
+      val checkedClusterConf = ClusterConf.fromConfigAndFile(UserId("USER"), config)
       assert(checkedClusterConf == Right(
         ClusterConf(
           Some(ClusterNodeRole.Primary(Some(Uri("http://BACKUP")))),
           Some(Uri("http://PRIMARY")),
           Some(UserAndPassword(UserId("USER"), SecretString("PASSWORD"))),
           streamReaderConf,
-          7.s)))
+          7.s,
+          5.s)))
     }
+
+    //"heartbeat is longer then fail-after" in {
+    //  val config = ConfigFactory.parseString("""
+    //    jobscheduler.master.cluster.idle-get-timeout = 50s
+    //    jobscheduler.master.cluster.delay-between-polling-gets = 1s
+    //    jobscheduler.master.cluster.heartbeat = 6s
+    //    jobscheduler.master.cluster.fail-after = 5s""")
+    //  val checkedClusterConf = ClusterConf.fromConfigAndFile(UserId("USER"), config)
+    //  assert(checkedClusterConf == Left(Problem("jobscheduler.master.cluster.heartbeat=6s must be shorter than jobscheduler.master.cluster.fail-after=5s")))
+    //}
+    //
+    //"heartbeat is equal to fail-after" in {
+    //  val config = ConfigFactory.parseString("""
+    //    jobscheduler.master.cluster.idle-get-timeout = 50s
+    //    jobscheduler.master.cluster.delay-between-polling-gets = 1s
+    //    jobscheduler.master.cluster.heartbeat = 5s
+    //    jobscheduler.master.cluster.fail-after = 5s""")
+    //  val checkedClusterConf = ClusterConf.fromConfigAndFile(UserId("USER"), config)
+    //  assert(checkedClusterConf == Left(Problem("jobscheduler.master.cluster.heartbeat=5s must be shorter than jobscheduler.master.cluster.fail-after=5s")))
+    //}
   }
 }
