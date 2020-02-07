@@ -23,4 +23,9 @@ private[journal] trait JournalingObserver
   protected[journal] def keepEvents(eventId: EventId): Checked[Completed]
 
   protected[journal] def deleteObsoleteJournalFiles(): Unit
+
+  final def onFileWrittenAndEventsCommitted(positionAndEventId: PositionAnd[EventId], n: Int): Unit = {
+    onFileWritten(positionAndEventId.position)
+    onEventsCommitted(positionAndEventId, n)
+  }
 }

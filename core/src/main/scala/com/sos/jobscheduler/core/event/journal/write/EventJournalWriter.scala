@@ -59,9 +59,8 @@ with AutoCloseable
   /** For SnapshotTaken event written with SnapshotJournalWriter. */
   def onInitialEventsWritten(eventId: EventId, n: Int): Unit = {
     for (o <- observer) {
-      o.onFileWritten(jsonWriter.fileLength)
-      o.onEventsCommitted(PositionAnd(jsonWriter.fileLength, eventId), n)
       // Initially written events are not counted in statistics
+      o.onFileWrittenAndEventsCommitted(PositionAnd(jsonWriter.fileLength, eventId), n)
     }
   }
 
