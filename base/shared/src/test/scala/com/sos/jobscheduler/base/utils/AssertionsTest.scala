@@ -11,14 +11,11 @@ final class AssertionsTest extends FreeSpec
   "assertThat" in {
     assertThat(true)
 
-    val file = implicitly[sourcecode.File].value
-    assertThat(file endsWith "/base/shared/src/test/scala/com/sos/jobscheduler/base/utils/AssertionsTest.scala")
+    val a = 9
+    assert(intercept[AssertionError] { assertThat(0 == a) }.getMessage
+      == s"assertThat(0 == a) failed in com.sos.jobscheduler.base.utils.AssertionsTest, AssertionsTest.scala:15")
 
-    assert(intercept[AssertionError] { assertThat(1 == 0) }.getMessage
-      == s"assertThat(==) failed in com.sos.jobscheduler.base.utils.AssertionsTest, $file:17")  // Only "==" is shown
-
-    val a = 1
-    assert(intercept[AssertionError] { assertThat(a == 0) }.getMessage
-      == s"assertThat(a == 0) failed in com.sos.jobscheduler.base.utils.AssertionsTest, $file:21")
+    assert(intercept[AssertionError] { assertThat(a == 0, s"a=$a") }.getMessage
+      == s"assertThat(a == 0) failed in com.sos.jobscheduler.base.utils.AssertionsTest, AssertionsTest.scala:18, a=9")
   }
 }
