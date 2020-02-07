@@ -47,8 +47,8 @@ final class MasterConfigurationTest extends FreeSpec with BeforeAndAfterAll
         RecouplingStreamReaderConf(
           timeout = 55.s,
           delay = 1.s),
-        heartbeat = 1.s,
-        failAfter = 5.s),
+        heartbeat = 3.s,
+        failAfter = 10.s),
       name = MasterConfiguration.DefaultName,
       config = DefaultConfig))
   }

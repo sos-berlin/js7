@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
 import akka.util.ByteString
-import com.google.common.annotations.VisibleForTesting
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked.{CheckedOption, Ops}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
@@ -24,7 +23,7 @@ import java.nio.file.Path
 import monix.execution.atomic.{AtomicAny, AtomicLong}
 import monix.reactive.Observable
 import scala.annotation.tailrec
-import scala.collection.immutable.SortedMap
+import scala.collection.immutable.{Seq, SortedMap}
 import scala.concurrent.Promise
 import scala.concurrent.duration.FiniteDuration
 
@@ -109,19 +108,6 @@ with JournalingObserver
         Checked.unit
       case None =>
         Left(MasterRequiresUnknownEventIdProblem(requiredEventId = eventId))
-    }
-
-  def tornEventId =
-    synchronized {
-      if (afterEventIdToHistoric.nonEmpty)
-        afterEventIdToHistoric.keys.min
-      else
-        currentEventReader.tornEventId
-    }
-
-  def lastFileTornEventId =
-    synchronized {
-      currentEventReaderOption.fold(afterEventIdToHistoric.keys.max)(_.tornEventId)
     }
 
   /** Files containing non-kept events may be deleted. */
@@ -228,9 +214,10 @@ with JournalingObserver
   private def historicJournalFileAfter(after: EventId): Option[HistoricJournalFile] =
     afterEventIdToHistoric.values.toVector.reverseIterator find (_.afterEventId <= after)
 
-  @VisibleForTesting
-  private[watch] def historicFileEventIds: Set[EventId] =
-    afterEventIdToHistoric.keySet
+  def fileEventIds: Seq[EventId] =
+    synchronized {
+      afterEventIdToHistoric.keys.toImmutableSeq.sorted ++ currentEventReaderOption.map(_.tornEventId)
+    }
 
   def observeFile(fileEventId: Option[EventId], position: Option[Long], timeout: FiniteDuration, markEOF: Boolean, onlyLastOfChunk: Boolean)
   : Checked[Observable[PositionAnd[ByteString]]] =

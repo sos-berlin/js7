@@ -10,6 +10,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
+import scala.collection.immutable.Seq
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
@@ -77,9 +78,11 @@ trait EventWatch
   @TestOnly
   def all[E <: Event: ClassTag: TypeTag](implicit s: Scheduler): TearableEventSeq[CloseableIterator, KeyedEvent[E]]
 
-  def tornEventId: EventId
+  def fileEventIds: Seq[EventId]
 
-  def lastFileTornEventId: EventId
+  final def tornEventId = fileEventIds.head
+
+  final def lastFileTornEventId = fileEventIds.last
 
   def lastAddedEventId: EventId
 }

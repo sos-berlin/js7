@@ -13,8 +13,11 @@ import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.common.utils.Tests.isTest
 import com.sos.jobscheduler.core.configuration.CommonConfiguration
 import com.sos.jobscheduler.core.event.journal.JournalConf
+import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.master.cluster.ClusterConf
+import com.sos.jobscheduler.master.data.MasterSnapshots.SnapshotJsonCodec
+import com.sos.jobscheduler.master.data.events.MasterKeyedEventJsonCodec
 import com.typesafe.config.{Config, ConfigFactory}
 import java.net.InetSocketAddress
 import java.nio.file.Files.createDirectory
@@ -46,7 +49,7 @@ extends CommonConfiguration
 
   def stateDirectory: Path = dataDirectory / "state"
 
-  def journalFileBase = stateDirectory / "master"
+  lazy val journalMeta = JournalMeta(SnapshotJsonCodec, MasterKeyedEventJsonCodec, stateDirectory / "master")
 
   // Suppresses Config (which may contain secrets)
   override def toString = s"MasterConfiguration($masterId,$dataDirectory,$configDirectory,$webServerPorts," +

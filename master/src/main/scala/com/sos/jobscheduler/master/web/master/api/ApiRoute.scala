@@ -30,6 +30,7 @@ with AgentRefRoute
 with AgentProxyRoute
 with SnapshotRoute
 with SessionRoute
+with ClusterRoute
 {
   final val apiRoute: Route =
     respondWithHeaders(StandardResponseHeaders: _*) {
@@ -47,6 +48,7 @@ with SessionRoute
         case "agent"       => agentRefRoute
         case "agent-proxy" => agentProxyRoute
         case "snapshot"    => snapshotRoute
+        case "cluster"     => clusterRoute
         case "graphql"     => graphqlRoute
         case _ => complete(NotFound)
       }

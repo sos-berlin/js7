@@ -214,7 +214,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll
             writer.onCommitted(writer.fileLengthAndEventId, stampedSeq.length)
             writer.endEventSection(sync = false)
           }
-          assert(eventWatch.historicFileEventIds == Set[EventId]())
+          assert(eventWatch.fileEventIds == EventId.BeforeFirst :: Nil)
 
           autoClosing(EventJournalWriter.forTest(journalMeta, after = 3, journalId, Some(eventWatch))) { writer =>
             writer.beginEventSection(sync = false)
@@ -227,7 +227,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll
             writer.onCommitted(writer.fileLengthAndEventId, stampedSeq.length)
             writer.endEventSection(sync = false)
           }
-          assert(eventWatch.historicFileEventIds == Set[EventId](0))
+          assert(eventWatch.fileEventIds == EventId.BeforeFirst :: 3 :: Nil)
         }
       }
     }

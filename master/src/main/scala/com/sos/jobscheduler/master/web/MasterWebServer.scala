@@ -64,6 +64,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri
       protected def orderCount = orderApi.orderCount
       protected def executeCommand(command: MasterCommand, meta: CommandMeta) = commandExecutor.executeCommand(command, meta)
       protected def masterState = MasterWebServer.this.masterState
+      protected def clusterState = masterState.map(_.map(_.clusterState))
       protected def totalRunningSince = MasterWebServer.this.totalRunningSince
 
       def webServerRoute = completeRoute

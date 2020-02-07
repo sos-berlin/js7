@@ -1,11 +1,14 @@
 package com.sos.jobscheduler.tests.master.cluster
 
 import com.sos.jobscheduler.base.problem.Checked._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.log.ScribeUtils
 import com.sos.jobscheduler.common.scalautil.Closer.ops._
 import com.sos.jobscheduler.common.scalautil.Closer.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
+import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
+import com.sos.jobscheduler.core.event.journal.files.JournalFiles.listJournalFiles
 import com.sos.jobscheduler.core.message.ProblemCodeMessages
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.ExecutablePath
@@ -16,6 +19,7 @@ import com.sos.jobscheduler.tests.testenv.DirectoryProvider
 import com.typesafe.config.ConfigFactory
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
+import org.scalatest.Assertions._
 import org.scalatest.FreeSpec
 
 private[cluster] trait MasterClusterTester extends FreeSpec
@@ -33,7 +37,6 @@ private[cluster] trait MasterClusterTester extends FreeSpec
           jobscheduler.master.cluster.other-node.uri = "http://127.0.0.1:$backupHttpPort"
           jobscheduler.master.cluster.heartbeat = 3s
           jobscheduler.master.cluster.fail-after = 5s
-          jobscheduler.web.client.idle-get-timeout = 9s
           jobscheduler.auth.users.Master.password = "plain:BACKUP-MASTER-PASSWORD"
           jobscheduler.auth.users.TEST.password = "plain:TEST-PASSWORD"
           jobscheduler.auth.cluster.password = "PRIMARY-MASTER-PASSWORD" """)
@@ -46,7 +49,6 @@ private[cluster] trait MasterClusterTester extends FreeSpec
           jobscheduler.master.cluster.other-node.uri = "http://127.0.0.1:$primaryHttpPort"
           jobscheduler.master.cluster.heartbeat = 3s
           jobscheduler.master.cluster.fail-after = 5s
-          jobscheduler.master.cluster.idle-get-timeout = 9s
           jobscheduler.auth.users.Master.password = "plain:PRIMARY-MASTER-PASSWORD"
           jobscheduler.auth.cluster.password = "BACKUP-MASTER-PASSWORD" """)
       ).closeWithCloser
@@ -89,5 +91,19 @@ object MasterClusterTester
       (1 to stdoutSize / line.length)
         .map(i => "echo " + s"$i $line".take(line.length) + "\n")
         .mkString
+  }
+
+  private[cluster] def assertEqualJournalFiles(primary: DirectoryProvider.MasterTree, backup: DirectoryProvider.MasterTree, n: Int): Unit = {
+    val journalFiles = listJournalFiles(primary.stateDir / "master")
+    // Snapshot is not being acknowledged, so a new journal file starts asynchronously (or when one event has been written)
+    assert(journalFiles.size == n)
+    waitForCondition(9.s, 10.ms) { listJournalFiles(backup.stateDir / "master").size == n }
+    for (primaryFile <- journalFiles.map(_.file)) {
+      withClue(s"$primaryFile: ") {
+        val backupJournalFile = backup.stateDir.resolve(primaryFile.getFileName)
+        assert(backupJournalFile.contentString == primaryFile.contentString)
+        assert(backupJournalFile.byteVector == primaryFile.byteVector)
+      }
+    }
   }
 }

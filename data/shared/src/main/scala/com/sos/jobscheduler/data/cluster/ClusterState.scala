@@ -64,7 +64,14 @@ extends JournaledState[ClusterState, ClusterEvent]
           Right(Decoupled(
             activeUri = event.activatedUri,
             passiveUri = event.failedActiveUri,
-            state.failedAt))
+            Some(event.failedAt)))
+
+        case (state: OtherFailedOver, event: FailedOver)
+          if state.activeUri == event.activatedUri && state.passiveUri == event.failedActiveUri =>
+          Right(Decoupled(
+            activeUri = event.activatedUri,
+            passiveUri = event.failedActiveUri,
+            Some(event.failedAt)))
 
         case (state: Coupled, FollowerLost(uri)) if state.passiveUri == uri =>
           Right(Decoupled(
@@ -92,7 +99,7 @@ object ClusterState
   final case class ClusterStateSnapshot(clusterState: ClusterState)
 
   /** Cluster has not been initialized.
-    * Like Sole but own URI is unknown. */
+    * Like Sole but own URI is unknown. Non-permanent state, not stored. */
   case object Empty extends ClusterState {
     def isActive(uri: Uri) = false
   }
@@ -109,10 +116,6 @@ object ClusterState
   //    }
   //}
 
-  sealed trait HasPassiveNode extends ClusterState {
-    def passiveUri: Uri
-  }
-
   /** Sole node of the cluster.
     * Node is active without standby node. */
   final case class Sole(activeUri: Uri)
@@ -121,28 +124,28 @@ object ClusterState
   /** A passive node follows the active node, but it is not yet appointment.
     * The URI of the following (passive) node is still unknown. */
   final case class AwaitingAppointment(activeUri: Uri, passiveUri: Uri)
-  extends HasActiveNode with HasPassiveNode
+  extends HasActiveNode
   {
     assertThat(activeUri != passiveUri)
   }
 
   final case class AwaitingFollower(activeUri: Uri, passiveUri: Uri)
-  extends HasActiveNode with HasPassiveNode
+  extends HasActiveNode
   {
     assertThat(activeUri != passiveUri)
   }
 
   /** Intermediate state only which is immediately followed by transition ClusterEvent.ClusterCoupled -> Coupled. */
   final case class PreparedToBeCoupled(activeUri: Uri, passiveUri: Uri)
-  extends HasActiveNode with HasPassiveNode
+  extends HasActiveNode
   {
     assertThat(activeUri != passiveUri)
   }
 
-  sealed trait CoupledOrDecoupled extends HasActiveNode with HasPassiveNode
+  sealed trait CoupledOrDecoupled extends HasActiveNode
   {
-    def activeUri: Uri
     def passiveUri: Uri
+    def failedAt: Option[JournalPosition]
   }
 
   /** An active node is coupled with a passive node. */
@@ -160,6 +163,13 @@ object ClusterState
     assertThat(activeUri != passiveUri)
   }
 
+  /** Non-permanent state, not stored, used while retrieving the journal from the failed-over node. */
+  final case class OtherFailedOver(activeUri: Uri, passiveUri: Uri)
+  extends HasActiveNode
+  {
+    assertThat(activeUri != passiveUri)
+  }
+
   implicit val jsonCodec = TypedJsonCodec[ClusterState](
     Subtype(Empty),
     Subtype(deriveCodec[Sole]),
@@ -168,6 +178,7 @@ object ClusterState
     Subtype(deriveCodec[PreparedToBeCoupled]),
     Subtype(deriveCodec[Coupled]),
     Subtype(deriveCodec[Decoupled]))
+  //Subtype(deriveCodec[OtherFaileOver]))
 
   private def ensureDifferentUris(a: Uri, b: Uri, event: ClusterEvent): Checked[Unit] =
     if (a != b) Checked.unit

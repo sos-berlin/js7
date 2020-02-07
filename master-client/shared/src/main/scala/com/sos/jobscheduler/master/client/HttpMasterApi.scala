@@ -5,6 +5,7 @@ import com.sos.jobscheduler.base.session.HttpSessionApi
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.web.HttpClient
 import com.sos.jobscheduler.data.agent.AgentRef
+import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.fatevent.FatEvent
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrdersOverview}
@@ -38,6 +39,9 @@ trait HttpMasterApi extends MasterApi with HttpSessionApi
 
   final def overview: Task[MasterOverview] =
     httpClient.get[MasterOverview](uris.overview)
+
+  final def clusterState: Task[ClusterState] =
+    httpClient.get[ClusterState](uris.clusterState)
 
   final def addOrder(order: FreshOrder): Task[Boolean]  = {
     val uri = uris.order.add

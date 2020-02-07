@@ -15,9 +15,9 @@ import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
+import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, RichThrowable}
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import com.sos.jobscheduler.common.event.{EventIdClock, StrictEventWatch}
+import com.sos.jobscheduler.common.event.{EventIdGenerator, StrictEventWatch}
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAutoCloseable
@@ -31,7 +31,6 @@ import com.sos.jobscheduler.core.crypt.generic.GenericSignatureVerifier
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.JournalActor
 import com.sos.jobscheduler.core.event.journal.JournalActor.Output
-import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.Recovered
 import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
 import com.sos.jobscheduler.core.problems.{ClusterNodeIsNotActiveProblem, ClusterNodeIsStillStartingProblem, JobSchedulerIsShuttingDownProblem}
@@ -46,13 +45,11 @@ import com.sos.jobscheduler.master.command.MasterCommandExecutor
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
 import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.data.MasterSnapshots.SnapshotJsonCodec
-import com.sos.jobscheduler.master.data.events.MasterKeyedEventJsonCodec
 import com.sos.jobscheduler.master.web.MasterWebServer
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Path
 import monix.eval.Task
-import monix.execution.{Cancelable, CancelableFuture, Scheduler}
+import monix.execution.{Cancelable, Scheduler}
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future, Promise, blocking}
@@ -188,12 +185,11 @@ object RunningMaster
   private class Starter(injector: Injector)
   {
     private val masterConfiguration = injector.instance[MasterConfiguration]
-    private val journalMeta = JournalMeta(SnapshotJsonCodec, MasterKeyedEventJsonCodec, masterConfiguration.journalFileBase)
     private implicit val scheduler = injector.instance[Scheduler]
     private implicit lazy val closer = injector.instance[Closer]
     private implicit lazy val actorSystem = injector.instance[ActorSystem]
 
-    import masterConfiguration.akkaAskTimeout
+    import masterConfiguration.{akkaAskTimeout, journalMeta}
 
     private[RunningMaster] def start(): Future[RunningMaster] = {
       val whenRecovered = Future {  // May take minutes !!!
@@ -207,24 +203,31 @@ object RunningMaster
         journalMeta,
         new JournaledStatePersistence[ClusterState, ClusterEvent](journalActor).closeWithCloser,
         masterConfiguration.clusterConf,
+        masterConfiguration.config,
+        injector.instance[EventIdGenerator],
         actorSystem)
       val recovered = Await.result(whenRecovered, Duration.Inf).closeWithCloser
 
-      // startingClusterFuture terminates when this cluster node becomes active or terminates
+      // clusterFollowUpFuture terminates when this cluster node becomes active or terminates
       // maybePassiveState accesses the current MasterState while this node is passive, otherwise it is None
-      val (startingClusterFuture, maybePassiveState) = startCluster(journalActor, cluster, recovered)
+      val (currentPassiveState, clusterFollowUpTask) = startCluster(journalActor, cluster, recovered)
+      val clusterFollowUpFuture = clusterFollowUpTask
+        .executeWithOptions(_.enableAutoCancelableRunLoops)
+        .runToFuture
+      //val (clusterFollowUpFuture, maybePassiveState) = startCluster(journalActor, cluster, recovered)
       val (orderKeeperStarted, orderKeeperTerminated) = {
-        val started = startingClusterFuture.map(_.flatMap(
+        val started = clusterFollowUpFuture.map(_.flatMap(
           startMasterOrderKeeper(journalActor, cluster, _)))
         (started.map(_.map(_.actor)),
           started.flatMap {
-            case None => Future.successful(MasterTermination.Terminate(restart = false))
+            case None =>
+              Future.successful(MasterTermination.Terminate(restart = false))
             case Some(o) =>
               o.termination andThen { case tried =>
                 for (t <- tried.failed) {
                   logger.error(s"MasterOrderKeeper failed with ${t.toStringWithCauses}", t)  // Support diagnosis
                 }
-                startingClusterFuture.cancel()
+                clusterFollowUpFuture.cancel()
               }
           })
       }
@@ -234,17 +237,17 @@ object RunningMaster
         case None => Task.raiseError(JobSchedulerIsShuttingDownProblem.throwable)
         case Some(actor) => Task.pure(actor)
       }
-      val commandExecutor = new MasterCommandExecutor(new MyCommandExecutor(startingClusterFuture, orderKeeperStarted, cluster))
+      val commandExecutor = new MasterCommandExecutor(new MyCommandExecutor(clusterFollowUpFuture, orderKeeperStarted, cluster))
       val fileBasedApi = new MainFileBasedApi(masterConfiguration, orderKeeperTask)
       val orderApi = new MainOrderApi(orderKeeperTask)
 
       val webServer = injector.instance[MasterWebServer.Factory].apply(fileBasedApi, orderApi, commandExecutor,
-        masterState =
+        masterState = Task.defer {
           orderKeeperStarted.value/*Future completed?*/ match {
             case None =>
-              maybePassiveState match {
-                case None => Task.pure(Left(ClusterNodeIsStillStartingProblem))
-                case Some(state) => state map Right.apply
+              currentPassiveState.map {
+                case None => Left(ClusterNodeIsStillStartingProblem)
+                case Some(state) => Right(state)
               }
             case Some(Failure(t)) => Task.raiseError(t)
             case Some(Success(None)) => Task.pure(Left(JobSchedulerIsShuttingDownProblem))
@@ -252,16 +255,17 @@ object RunningMaster
               Task.deferFuture(
                 (actor ? MasterOrderKeeper.Command.GetState).mapTo[MasterState]
               ).map(Right.apply)
-          },
+          }
+        },
         recovered.totalRunningSince,  // Maybe different from JournalHeader
         recovered.eventWatch
       ).closeWithCloser
 
       for (_ <- webServer.start()) yield {
-          createSessionTokenFile(injector.instance[SessionRegister[SimpleSession]])
-          masterConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", _ + "/master")
-          new RunningMaster(recovered.eventWatch.strict, webServer, fileBasedApi, orderApi, commandExecutor,
-            orderKeeperTerminated, closer, injector)
+        createSessionTokenFile(injector.instance[SessionRegister[SimpleSession]])
+        masterConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", _ + "/master")
+        new RunningMaster(recovered.eventWatch.strict, webServer, fileBasedApi, orderApi, commandExecutor,
+          orderKeeperTerminated, closer, injector)
       }
     }
 
@@ -279,34 +283,35 @@ object RunningMaster
       journalActor: ActorRef @@ JournalActor.type,
       cluster: Cluster,
       recovered: Recovered[MasterState, Event])
-    : (CancelableFuture[Option[ClusterFollowUp[MasterState, Event]]], Option[Task[MasterState]]) =
+    : (Task[Option[MasterState]], Task[Option[ClusterFollowUp[MasterState, Event]]]) =
     {
       class StartingClusterCanceledException extends NoStackTrace
       val recoveredState = recovered.recoveredState getOrElse MasterState.Undefined
-      val (followUpTask, maybePassiveState) = cluster.start(recovered, recoveredState.clusterState, recoveredState)
-      val startingClusterFuture = followUpTask
-        .map(_.orThrow)
-        .doOnCancel(Task { logger.debug("Cancel Cluster") })
-        .onCancelRaiseError(new StartingClusterCanceledException)
-        .map(Some.apply)
-        .onErrorRecoverWith {
-          case _: StartingClusterCanceledException => Task.pure(None)
-        }
-        .executeWithOptions(_.enableAutoCancelableRunLoops)
-        .runToFuture
-      (startingClusterFuture, maybePassiveState)
+      val (passiveState, followUpTask) = cluster.start(recovered, recoveredState.clusterState, recoveredState)
+      passiveState ->
+        followUpTask
+          .doOnCancel(Task { logger.debug("Cancel Cluster") })
+          .onCancelRaiseError(new StartingClusterCanceledException)
+          .map(_.orThrow)
+          .map(Some.apply)
+        //.map { case (followUpTask, maybePassiveState) =>
+          .onErrorRecoverWith {
+            case _: StartingClusterCanceledException => Task.pure(None)
+          }
+      //(startingClusterFuture, maybePassiveState)
     }
 
     private def startMasterOrderKeeper(
       journalActor: ActorRef @@ JournalActor.type,
       cluster: Cluster,
       followUp: ClusterFollowUp[MasterState, Event])
-    : Option[OrderKeeperStarted] =
+    : Option[OrderKeeperStarted] = {
+      logger.debug(s"startMasterOrderKeeper(clusterFollowUp=${followUp.getClass.simpleScalaName})")
       followUp match {
         case _: ClusterFollowUp.Terminate[MasterState, Event] =>
           None
 
-        case ClusterFollowUp.BecomeActive(recovered: Recovered[MasterState @unchecked, Event], failedAt) =>
+        case ClusterFollowUp.BecomeActive(recovered: Recovered[MasterState @unchecked, Event]) =>
           val terminationPromise = Promise[MasterTermination]()
           val actor = actorSystem.actorOf(
             Props {
@@ -314,12 +319,13 @@ object RunningMaster
                 GenericSignatureVerifier(masterConfiguration.config).orThrow)
             },
             "MasterOrderKeeper")
-          actor ! MasterOrderKeeper.Input.Start(recovered, failedAt)
+          actor ! MasterOrderKeeper.Input.Start(recovered)
           val termination = terminationPromise.future
             .andThen { case Failure(t) => logger.error(t.toStringWithCauses, t) }
             .andThen { case _ => closer.close() }  // Close automatically after termination
           Some(OrderKeeperStarted(tag[MasterOrderKeeper](actor), termination))
       }
+    }
   }
 
   private class MyCommandExecutor(

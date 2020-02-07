@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.master.client
 
 import com.sos.jobscheduler.data.agent.AgentRef
+import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.data.event.{Event, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.fatevent.OrderFatEvent
 import com.sos.jobscheduler.data.order.{Order, OrdersOverview}
@@ -19,6 +20,8 @@ trait MasterApi {
   def executeCommand(command: MasterCommand): Task[command.Response]
 
   def overview: Task[MasterOverview]
+
+  def clusterState: Task[ClusterState]
 
   def events[E <: Event: ClassTag](eventRequest: EventRequest[E])(implicit kd: Decoder[KeyedEvent[E]], ke: Encoder.AsObject[KeyedEvent[E]])
     : Task[TearableEventSeq[Seq, KeyedEvent[E]]]

@@ -43,6 +43,8 @@ final class MasterUris private(masterUri: String)
      (onlyLastOfChunk thenVector ("onlyLastOfChunk" -> "true")) ++
        request.toQueryParameters)
 
+  def clusterState = api("/cluster")
+
   def journal(fileEventId: EventId, position: Long, heartbeat: Option[FiniteDuration] = None,
     timeout: Option[FiniteDuration] = None, markEOF: Boolean = false, returnLength: Boolean = false)
   : String =

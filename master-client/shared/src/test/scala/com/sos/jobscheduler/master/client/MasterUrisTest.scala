@@ -41,6 +41,10 @@ final class MasterUrisTest extends FreeSpec
       "http://example.com/master/api/event?eventIdOnly=true&return=OrderEvent,FileBasedEvent&delay=0&timeout=1&after=7")
   }
 
+  "clusterState" in {
+    assert(masterUris.clusterState == "http://example.com/master/api/cluster")
+  }
+
   "journal" in {
     assert(masterUris.journal(fileEventId = 100, position = 111, timeout = Some(50.seconds)) ==
       "http://example.com/master/api/journal?timeout=50&file=100&position=111")
