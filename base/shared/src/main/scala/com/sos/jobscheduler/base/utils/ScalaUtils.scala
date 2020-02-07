@@ -127,6 +127,11 @@ object ScalaUtils
       delegate.printStackTrace(new PrintWriter(w))
       w.toString
     }
+
+    /** Useable for logging.
+      * `logger.info(throwable.toStringWithCauses, throwable.nullIfNoStackTrace)` */
+    def nullIfNoStackTrace: Throwable =
+      if (delegate.getStackTrace.isEmpty) null else delegate
   }
 
   def cast[A: ClassTag](o: Any): A = {

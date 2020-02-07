@@ -83,21 +83,31 @@ final class ScalaUtilsTest extends FreeSpec
     assert(f.toString == "TEST")
   }
 
-  "Throwable.rootCause" in {
-    new Exception("A", new Exception("B", new Exception("ROOT"))).rootCause.getMessage shouldEqual "ROOT"
-  }
+  "Throwable" - {
+    "rootCause" in {
+      new Exception("A", new Exception("B", new Exception("ROOT"))).rootCause.getMessage shouldEqual "ROOT"
+    }
 
-  "Throwable.toStringWithCauses" in {
-    assert(new RuntimeException("TEST").toStringWithCauses == "TEST")
-    assert(new RuntimeException("TEST", new IllegalStateException("STATE")).toStringWithCauses ==
-      "TEST, caused by: IllegalStateException: STATE")
-  }
+    "toStringWithCauses" in {
+      assert(new RuntimeException("TEST").toStringWithCauses == "TEST")
+      assert(new RuntimeException("TEST", new IllegalStateException("STATE")).toStringWithCauses ==
+        "TEST, caused by: IllegalStateException: STATE")
+    }
 
-  "Throwable.toSimplifiedString" in {
-    assert(new RuntimeException("ERROR").toSimplifiedString == "ERROR")
-    assert(new IllegalArgumentException("ERROR").toSimplifiedString == "ERROR")
-    assert(new StandardPublicException("ERROR").toSimplifiedString == "ERROR")
-    assert(new IllegalStateException("ERROR").toSimplifiedString == "IllegalStateException: ERROR")
+    "toSimplifiedString" in {
+      assert(new RuntimeException("ERROR").toSimplifiedString == "ERROR")
+      assert(new IllegalArgumentException("ERROR").toSimplifiedString == "ERROR")
+      assert(new StandardPublicException("ERROR").toSimplifiedString == "ERROR")
+      assert(new IllegalStateException("ERROR").toSimplifiedString == "IllegalStateException: ERROR")
+    }
+
+    "nullIfNoStackTrace" in {
+      val withStackTrace = new Throwable
+      val withoutStackTrace = new Throwable("TEST") with NoStackTrace
+      assert(withStackTrace.nullIfNoStackTrace eq withStackTrace)
+      assert(withoutStackTrace.nullIfNoStackTrace eq null)
+      scribe.debug(s"nullIfNoStackTrace: ${withoutStackTrace.toStringWithCauses}", withoutStackTrace)
+    }
   }
 
   "cast" in {
