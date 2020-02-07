@@ -13,7 +13,7 @@ import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.common.akkautils.Akkas.RichActorPath
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
-import com.sos.jobscheduler.common.event.{EventIdClock, EventIdGenerator, PositionAnd}
+import com.sos.jobscheduler.common.event.{EventIdGenerator, PositionAnd}
 import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
 import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
@@ -224,8 +224,8 @@ extends Actor with Stash
         // generating new EventIds whose last one we may receive here.
         // So we take the last one we know (must be the EventId of ClusterSwitchedOver)
         // TODO Can web service /api/journal suppress EventIds on passive node side after becoming active?
-        lazy val msg = s"Passive cluster node acknowledged future event ${EventId.toString(ack)}," +
-                  s" but lastWrittenEventId=${EventId.toString(lastWrittenEventId)} (okay when switching over)"
+        lazy val msg = s"Passive cluster node acknowledged future event ${EventId.toString(ack)}" +
+                  s" while lastWrittenEventId=${EventId.toString(lastWrittenEventId)} (okay when switching over)"
         if (lastAcknowledgedEventId < lastWrittenEventId) logger.warn(msg) else logger.debug(msg)
         ack = lastWrittenEventId
       }

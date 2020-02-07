@@ -4,6 +4,7 @@ import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.AgentTermination
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.ShutDown
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.configutils.Configs.logConfig
@@ -36,7 +37,8 @@ final class AgentMain
         terminated = agent.terminated.awaitInfinite
       }
     }
-    val msg = "JobScheduler Agent Server terminates"
+    // Log complete timestamp in case of short log timestamp
+    val msg = s"JobScheduler Agent Server terminates at ${Timestamp.now.show}"
     logger.info(msg)
     println(msg)
     terminated

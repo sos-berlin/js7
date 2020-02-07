@@ -57,7 +57,7 @@ final class GateKeeper[U <: User](configuraton: Configuration[U], isLoopback: Bo
 
   def authenticateUser(userAndPassword: UserAndPassword): Option[U] = {
     if (!userAndPassword.userId.isAnonymous) ifPublic foreach { reason =>
-      logger.warn(s"User '${userAndPassword.userId.string}' logs in in despite $reason")
+      logger.warn(s"User '${userAndPassword.userId.string}' logs in despite $reason")
     }
     authenticator.authenticate(userAndPassword)
   }

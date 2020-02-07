@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master
 
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.configutils.Configs.logConfig
@@ -55,7 +56,8 @@ final class MasterMain
         }
       }
     } while (restartInProcess)
-    val msg = "JobScheduler Master terminates"
+    // Log complete timestamp in case of short log timestamp
+    val msg = s"JobScheduler Master terminates at ${Timestamp.now.show}"
     logger.info(msg)
     println(msg)
     terminate

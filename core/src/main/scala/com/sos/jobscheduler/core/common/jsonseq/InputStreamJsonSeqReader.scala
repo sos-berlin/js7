@@ -55,11 +55,21 @@ extends AutoCloseable
 
   def read(): Option[PositionAnd[Json]] =
     synchronized {
+      val blockPos_ = blockPos
+      val blockRead_ = blockRead
       val pos = position
       readRaw() map (o =>
         io.circe.parser.parse(o.utf8String) match {
-          case Left(failure) => throwCorrupt2(lineNumber - 1, pos, failure.message.replace(" (line 1, ", " (").replace("\n", "\\n"))
-          case Right(json) => PositionAnd(pos, json)
+          case Left(failure) =>
+            val lineNr = lineNumber - 1
+            val extra = failure.message.replace(" (line 1, ", " (").replace("\n", "\\n")
+            logger.warn("Read JSON sequence is corrupt at " +
+              (if (lineNr >= 0) s"line $lineNr, " else "") +
+              s"file position $pos (blockPos=${blockPos_} blockRead=${blockRead_}): $extra: ${o.utf8String}")  // Do not expose JSON content with exception
+            throwCorrupt2(lineNr, pos, extra)
+          case Right(json) =>
+            logger.trace(s"blockPos=${blockPos_} blockRead=${blockRead_} " + o.utf8String.trim)
+            PositionAnd(pos, json)
         })
     }
 
@@ -126,6 +136,7 @@ extends AutoCloseable
           blockRead = 0
         }
         lineNumber = -1
+        logger.trace(s"seek $pos => blockPos=$pos blockRead=$blockRead blockLength=$blockLength")
       }
     }
 
@@ -151,8 +162,8 @@ object InputStreamJsonSeqReader
     new InputStreamJsonSeqReader(SeekableInputStream.openFile(file), name = file.getFileName.toString, blockSize)
 
   private def throwCorrupt2(lineNumber: Long, position: Long, extra: String) = {
-    val where = if (lineNumber >= 0) s"line $lineNumber" else s"position $position"
-    sys.error(s"JSON sequence is corrupt at $where: $extra")
+    val where = if (lineNumber >= 0) s"line $lineNumber" else s"file position $position"
+    sys.error(s"Read JSON sequence is corrupt at $where: $extra")
   }
 
   final class ClosedException private[InputStreamJsonSeqReader](file: String)
