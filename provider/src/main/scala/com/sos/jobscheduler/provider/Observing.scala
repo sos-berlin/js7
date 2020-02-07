@@ -49,6 +49,7 @@ private[provider] trait Observing extends OrderProvider {
       retryUntilNoError(replace))
       .appendAll(
         directoryWatcher.singleUseObservable
+          .guarantee(Task { directoryWatcher.close() })
           .debounce(minimumSilence)
           .mapEval(_ =>
             retryUntilNoError(update)))
