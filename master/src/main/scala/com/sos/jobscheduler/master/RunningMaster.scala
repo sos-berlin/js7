@@ -201,7 +201,7 @@ object RunningMaster
       }
       val journalActor = tag[JournalActor.type](actorSystem.actorOf(
         JournalActor.props(journalMeta, masterConfiguration.journalConf,
-          injector.instance[StampedKeyedEventBus], scheduler, injector.instance[EventIdClock]),
+          injector.instance[StampedKeyedEventBus], scheduler, injector.instance[EventIdGenerator]),
         "Journal"))
       val cluster = new Cluster(
         journalMeta,

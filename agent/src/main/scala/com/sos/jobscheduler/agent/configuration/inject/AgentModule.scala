@@ -8,6 +8,7 @@ import com.sos.jobscheduler.agent.web.AgentWebServer
 import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
+import com.sos.jobscheduler.common.event.{EventIdClock, EventIdGenerator}
 import com.sos.jobscheduler.common.scalautil.Closer.ops._
 import com.sos.jobscheduler.common.scalautil.{Closer, IOExecutor}
 import com.sos.jobscheduler.core.system.ThreadPools
@@ -20,7 +21,11 @@ import scala.concurrent.ExecutionContext
  * @author Joacim Zschimmer
  */
 final class AgentModule(originalAgentConfiguration: AgentConfiguration)
-extends AbstractModule {
+extends AbstractModule
+{
+  @Provides @Singleton
+  def eventIdGenerator(): EventIdGenerator =
+    new EventIdGenerator()
 
   @Provides @Singleton
   def sessionRegister(actorSystem: ActorSystem, config: Config)(implicit s: Scheduler): SessionRegister[SimpleSession] =

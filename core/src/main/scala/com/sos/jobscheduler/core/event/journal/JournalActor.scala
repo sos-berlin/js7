@@ -44,14 +44,13 @@ final class JournalActor private(
   conf: JournalConf,
   keyedEventBus: StampedKeyedEventBus,
   scheduler: Scheduler,
-  eventIdClock: EventIdClock,
+  eventIdGenerator: EventIdGenerator,
   stopped: Promise[Stopped])
 extends Actor with Stash
 {
   import context.{become, stop, watch}
 
   private val logger = Logger.withPrefix[this.type](journalMeta.fileBase.getFileName.toString)
-  private val eventIdGenerator = new EventIdGenerator(eventIdClock)
   override val supervisorStrategy = SupervisorStrategies.escalate
   private var snapshotRequesters = mutable.Set[ActorRef]()
   private var snapshotSchedule: Cancelable = null
@@ -605,10 +604,10 @@ object JournalActor
     conf: JournalConf,
     keyedEventBus: StampedKeyedEventBus,
     scheduler: Scheduler,
-    eventIdClock: EventIdClock = EventIdClock.Default,
+    eventIdGenerator: EventIdGenerator,
     stopped: Promise[Stopped] = Promise())
   =
-    Props { new JournalActor(journalMeta, conf, keyedEventBus, scheduler, eventIdClock, stopped) }
+    Props { new JournalActor(journalMeta, conf, keyedEventBus, scheduler, eventIdGenerator, stopped) }
       .withDispatcher(DispatcherName)
 
   private def toSnapshotTemporary(file: Path) = file resolveSibling file.getFileName + TmpSuffix

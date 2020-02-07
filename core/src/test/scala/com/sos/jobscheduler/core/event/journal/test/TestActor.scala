@@ -7,7 +7,7 @@ import akka.util.Timeout
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
-import com.sos.jobscheduler.common.event.EventIdClock
+import com.sos.jobscheduler.common.event.{EventIdClock, EventIdGenerator}
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
@@ -38,7 +38,7 @@ extends Actor with Stash
   private implicit val askTimeout = Timeout(99.seconds)
   private val journalActor = context.watch(context.actorOf(
     JournalActor.props(journalMeta, JournalConf.fromConfig(config withFallback TestConfig), new StampedKeyedEventBus, Scheduler.global,
-      new EventIdClock.Fixed(currentTimeMillis = 1000/*EventIds start at 1000000*/),
+      new EventIdGenerator(new EventIdClock.Fixed(currentTimeMillis = 1000/*EventIds start at 1000000*/)),
       journalStopped),
     "Journal"))
   private val keyToAggregate = mutable.Map[String, ActorRef]()

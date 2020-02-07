@@ -9,7 +9,7 @@ import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.akkautils.DeadLetterActor
-import com.sos.jobscheduler.common.event.EventIdClock
+import com.sos.jobscheduler.common.event.{EventIdClock, EventIdGenerator}
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.{Closer, Logger}
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
@@ -28,6 +28,10 @@ import scala.util.control.NonFatal
   */
 final class MasterModule(configuration: MasterConfiguration) extends AbstractModule
 {
+  @Provides @Singleton
+  def eventIdGenerator(eventIdClock: EventIdClock): EventIdGenerator =
+    new EventIdGenerator(eventIdClock)
+
   @Provides @Singleton
   def eventIdClock(): EventIdClock =
     EventIdClock.Default

@@ -10,7 +10,7 @@ import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
-import com.sos.jobscheduler.common.event.EventIdClock
+import com.sos.jobscheduler.common.event.{EventIdClock, EventIdGenerator}
 import com.sos.jobscheduler.common.log.ScribeUtils
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
@@ -136,7 +136,7 @@ final class JournaledStatePersistenceTest extends FreeSpec with BeforeAndAfterAl
     private lazy val journalActor = tag[JournalActor.type](
       actorSystem.actorOf(
         JournalActor.props(journalMeta, JournalConf.fromConfig(config), new StampedKeyedEventBus, Scheduler.global,
-          new EventIdClock.Fixed(currentTimeMillis = 1000/*EventIds start at 1000000*/),
+          new EventIdGenerator(new EventIdClock.Fixed(currentTimeMillis = 1000/*EventIds start at 1000000*/)),
           journalStopped)))
 
     def start() = {

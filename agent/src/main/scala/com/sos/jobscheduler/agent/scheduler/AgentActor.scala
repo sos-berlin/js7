@@ -21,6 +21,7 @@ import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.common.akkautils.{Akkas, SupervisorStrategies}
+import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.scalautil.Closer.ops._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.{Closer, IOExecutor, Logger, SetOnce}
@@ -52,6 +53,7 @@ private[agent] final class AgentActor @Inject private(
   terminatePromise: Promise[AgentTermination.Terminate],
   agentConfiguration: AgentConfiguration,
   newTaskRunner: TaskRunner.Factory,
+  eventIdGenerator: EventIdGenerator,
   keyedEventBus: StampedKeyedEventBus)
   (implicit closer: Closer, scheduler: Scheduler, iox: IOExecutor)
 extends MainJournalingActor[AgentEvent] {
@@ -63,7 +65,7 @@ extends MainJournalingActor[AgentEvent] {
 
   private val journalMeta = JournalMeta(AgentSnapshot.jsonCodec, AgentEvent.KeyedEventJsonCodec, stateDirectory / "agent")
   protected val journalActor = tag[JournalActor.type](watch(actorOf(
-    JournalActor.props(journalMeta, agentConfiguration.journalConf, keyedEventBus, scheduler),
+    JournalActor.props(journalMeta, agentConfiguration.journalConf, keyedEventBus, scheduler, eventIdGenerator),
     "Journal")))
   private val masterToOrderKeeper = new MasterRegister
   private val signatureVerifier = GenericSignatureVerifier(agentConfiguration.config).orThrow
@@ -243,6 +245,7 @@ extends MainJournalingActor[AgentEvent] {
           signatureVerifier,
           newTaskRunner,
           askTimeout = akkaAskTimeout,
+          eventIdGenerator,
           keyedEventBus,
           agentConfiguration)
         },
@@ -290,10 +293,11 @@ object AgentActor
   final class Factory @Inject private(
     agentConfiguration: AgentConfiguration,
     newTaskRunner: TaskRunner.Factory,
+    eventIdGenerator: EventIdGenerator,
     keyedEventBus: StampedKeyedEventBus)
     (implicit closer: Closer, scheduler: Scheduler, iox: IOExecutor)
   {
     def apply(terminatePromise: Promise[AgentTermination.Terminate]) =
-      new AgentActor(terminatePromise, agentConfiguration, newTaskRunner, keyedEventBus)
+      new AgentActor(terminatePromise, agentConfiguration, newTaskRunner, eventIdGenerator, keyedEventBus)
   }
 }

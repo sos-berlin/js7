@@ -14,6 +14,7 @@ import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.akkautils.{CatchingActor, SupervisorStrategies}
+import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
@@ -160,7 +161,7 @@ private object OrderActorTest {
       dir / "data" / "state" / "agent")
 
     private val journalActor = actorOf(
-      JournalActor.props(journalMeta, JournalConf.fromConfig(config), new StampedKeyedEventBus, Scheduler.global),
+      JournalActor.props(journalMeta, JournalConf.fromConfig(config), new StampedKeyedEventBus, Scheduler.global, new EventIdGenerator),
       "Journal")
     private val eventWatch = new JournalEventWatch(journalMeta, config)
     private val jobActor = actorOf(

@@ -21,6 +21,7 @@ import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.common.akkautils.Akkas.{encodeAsActorName, uniqueActorName}
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
+import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.Logger.ops._
 import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
@@ -60,6 +61,7 @@ final class AgentOrderKeeper(
   signatureVerifier: SignatureVerifier,
   newTaskRunner: TaskRunner.Factory,
   implicit private val askTimeout: Timeout,
+  eventIdGenerator: EventIdGenerator,
   keyedEventBus: StampedKeyedEventBus,
   conf: AgentConfiguration)(
   implicit scheduler: Scheduler)
@@ -73,7 +75,7 @@ extends MainJournalingActor[Event] with Stash {
   private val eventWatch = recovered_.eventWatch
   private val workflowVerifier = new FileBasedVerifier(signatureVerifier, Workflow.topJsonDecoder)
   protected val journalActor = tag[JournalActor.type](watch(actorOf(
-    JournalActor.props(journalMeta, conf.journalConf, keyedEventBus, scheduler),
+    JournalActor.props(journalMeta, conf.journalConf, keyedEventBus, scheduler, eventIdGenerator),
     "Journal")))
   private val jobRegister = new JobRegister
   private val workflowRegister = new WorkflowRegister
