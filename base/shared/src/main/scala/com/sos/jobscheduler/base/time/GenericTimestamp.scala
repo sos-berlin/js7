@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.base.time
 
+import cats.Show
 import com.sos.jobscheduler.base.time.GenericTimestamp._
 import io.circe
 import scala.concurrent.duration._
@@ -49,6 +50,10 @@ trait GenericTimestamp[A <: GenericTimestamp[A]] extends Ordered[A] {
 
   def copy(epochMilli: Long): A
 
+  def show = toString
+
+  def pretty = toString.replace('T', ' ')
+
   override def toString = toIsoString
 }
 
@@ -83,5 +88,7 @@ object GenericTimestamp {
     final def now: A = ofEpochMilli(currentTimeMillis)
 
     final def currentTimeMillis = System.currentTimeMillis
+
+    implicit val TimestampShow: Show[A] = _.show
   }
 }

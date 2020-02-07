@@ -45,7 +45,4 @@ object Timestamp extends GenericTimestamp.Companion[Timestamp]
 
   def parse(string: String): Timestamp =
     ofInstant(Instant.from(dateTimeFormatter parse string))
-
-  implicit val TimestampShow = Show.fromToString[Timestamp]
-  implicit val JavaUtilDateShow = Show[java.util.Date](o => Timestamp(o).show)
 }

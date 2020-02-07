@@ -1,6 +1,8 @@
 package com.sos.jobscheduler.common.time
 
+import cats.Show
 import com.sos.jobscheduler.base.convert.As
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Ascii.isAsciiDigit
 import java.time._
 import org.jetbrains.annotations.TestOnly
@@ -223,4 +225,7 @@ object JavaTime
   }
 
   def dateToInstant(date: java.util.Date): Instant = Instant.ofEpochMilli(date.getTime)
+
+  implicit val JavaUtilDateShow = Show[java.util.Date](o =>
+    Timestamp(o).show)
 }

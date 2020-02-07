@@ -75,6 +75,16 @@ final class GenericTimestampTest extends FreeSpec {
     assert(Timestamp.parse("2015-01-01T12:01:30Z"    ).roundDownTo(60.seconds) == Timestamp.parse("2015-01-01T12:01:00Z"))
   }
 
+  "show" in {
+    assert(Timestamp.parse("2018-11-21T12:34:56Z").show == "2018-11-21T12:34:56Z")
+    assert(Timestamp.parse("2018-11-21T12:34:56.987Z").show == "2018-11-21T12:34:56.987Z")
+  }
+
+  "pretty" in {
+    assert(Timestamp.parse("2018-11-21T12:34:56Z").pretty == "2018-11-21 12:34:56Z")
+    assert(Timestamp.parse("2018-11-21T12:34:56.987Z").pretty == "2018-11-21 12:34:56.987Z")
+  }
+
   if (sys.props contains "test.speed")
   "JSON String/Number speed comparision" in {
     val n = 100000

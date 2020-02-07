@@ -1,6 +1,8 @@
 package com.sos.jobscheduler.common.time
 
+import cats.syntax.show._
 import com.sos.jobscheduler.base.convert.As
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.time.JavaTime._
 import java.time.format.DateTimeParseException
 import java.time.{Duration, Instant, LocalDateTime, LocalTime, ZoneId}
@@ -313,6 +315,11 @@ final class JavaTimeTest extends FreeSpec {
       assert(LocalDateTime.of(2016, 1, 1, 12, 0, 0).toInstant(timeZone) == Instant.parse("2016-01-01T10:00:00Z"))
       assert(LocalDateTime.of(2016, 7, 1, 12, 0, 0).toInstant(timeZone) == Instant.parse("2016-07-01T09:00:00Z"))
     }
+  }
+
+  "java.util.Date.show" in {
+    assert(Timestamp.parse("2018-11-21T12:34:56Z").toJavaUtilDate.show == "2018-11-21T12:34:56Z")
+    assert(Timestamp.parse("2018-11-21T12:34:56.987Z").toJavaUtilDate.show == "2018-11-21T12:34:56.987Z")
   }
 
   private def randomDuration(maximum: Duration): Duration =
