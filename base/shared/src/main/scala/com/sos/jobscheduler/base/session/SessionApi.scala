@@ -2,7 +2,7 @@ package com.sos.jobscheduler.base.session
 
 import com.sos.jobscheduler.base.auth.UserAndPassword
 import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
+import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, RichThrowable}
 import monix.eval.Task
 import scala.concurrent.duration.FiniteDuration
 
@@ -46,8 +46,10 @@ object SessionApi
       }
 
     protected def logThrowable(throwable: Throwable): Unit = {
-      scribe.error(s"$toString: ${throwable.toStringWithCauses}")
-      scribe.debug(s"$toString: ${throwable.toString}", throwable)
+      scribe.warn(s"$toString: ${throwable.toStringWithCauses}")
+      if (throwable.getStackTrace.nonEmpty && throwable.getClass.scalaName != "akka.stream.StreamTcpException") {
+        scribe.debug(s"$toString: ${throwable.toString}", throwable)
+      }
     }
   }
 }
