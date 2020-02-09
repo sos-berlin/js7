@@ -86,5 +86,8 @@ extends AutoCloseable
   private def requireStarted() =
     if (actorSetOnce.isEmpty) throw new IllegalStateException(s"$toString has not yet been started")
 
+  def waitUntilStarted: Task[JournaledStatePersistence[S, E]] =
+    actorSetOnce.task.map(_ => this)
+
   override def toString = s"JournaledStatePersistence[${S.tpe}]"
 }

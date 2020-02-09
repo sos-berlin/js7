@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.common.scalautil
 
-import scala.concurrent.Promise
+import monix.eval.Task
+import scala.concurrent.{Future, Promise}
 import scala.reflect.runtime.universe._
 import scala.util.Success
 
@@ -41,6 +42,12 @@ class SetOnce[A](label: String)
 
   final def toOption: Option[A] =
     promise.future.value.map(_.get)
+
+  final def task: Task[A] =
+    Task.fromFuture(future).memoize
+
+  final def future: Future[A] =
+    promise.future
 
   final def isDefined = nonEmpty
 

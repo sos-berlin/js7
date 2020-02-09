@@ -261,24 +261,25 @@ final class Cluster(
       case None =>
         Task.pure(Left(Problem.pure("Missing this node's own URI")))
       case Some(ownUri) =>
-        persistence.persistTransaction(NoKey) {
-          case _: Coupled =>
-            Right(Nil)
-          case state @ (Empty | Sole(`ownUri`) | AwaitingFollower(`ownUri`, `followingUri`)) if ownUri == followedUri =>
-            for (events <- becomeSoleIfEmpty(state)) yield
-              events ::: FollowingStarted(followingUri) ::
-                (state match {
-                  case AwaitingFollower(`ownUri`, `followingUri`) => ClusterCoupled :: Nil
-                  case _ => Nil
-                })
-          case AwaitingFollower(`ownUri`, `followingUri`) | Decoupled(`ownUri`, `followingUri`, _) if ownUri == followedUri =>
-            Right(FollowingStarted(followingUri) :: ClusterCoupled :: Nil)
-          case state =>
-            Left(Problem.pure(s"Following cluster node '$followingUri' ignored due to inappropriate cluster state $state"))
-        }.map(_.map { case (stampedEvents, state) =>
-          for (stamped <- stampedEvents.lastOption) proceed(state, stamped.eventId)
-          Completed
-        })
+        persistence.waitUntilStarted.flatMap(_
+          .persistTransaction(NoKey) {
+            case _: Coupled =>
+              Right(Nil)
+            case state @ (Empty | Sole(`ownUri`) | AwaitingFollower(`ownUri`, `followingUri`)) if ownUri == followedUri =>
+              for (events <- becomeSoleIfEmpty(state)) yield
+                events ::: FollowingStarted(followingUri) ::
+                  (state match {
+                    case AwaitingFollower(`ownUri`, `followingUri`) => ClusterCoupled :: Nil
+                    case _ => Nil
+                  })
+            case AwaitingFollower(`ownUri`, `followingUri`) | Decoupled(`ownUri`, `followingUri`, _) if ownUri == followedUri =>
+              Right(FollowingStarted(followingUri) :: ClusterCoupled :: Nil)
+            case state =>
+              Left(Problem.pure(s"Following cluster node '$followingUri' ignored due to inappropriate cluster state $state"))
+          }.map(_.map { case (stampedEvents, state) =>
+            for (stamped <- stampedEvents.lastOption) proceed(state, stamped.eventId)
+            Completed
+          }))
     }
 
   private def becomeSoleIfEmpty(state: ClusterState): Checked[List[BecameSole]] =
