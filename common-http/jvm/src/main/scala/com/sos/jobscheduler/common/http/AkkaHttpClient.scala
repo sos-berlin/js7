@@ -33,6 +33,7 @@ import io.circe.{Decoder, Encoder}
 import monix.eval.Task
 import monix.execution.Cancelable
 import monix.reactive.Observable
+import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success}
@@ -64,51 +65,51 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
       o.shutdown()
     }
 
-  def getDecodedLinesObservable[A: Decoder](uri: String) =
+  final def getDecodedLinesObservable[A: Decoder](uri: String) =
     getRawLinesObservable(uri)
       .map(_.map(_.decodeUtf8.orThrow.parseJsonCheckedAs[A].orThrow))
 
-  def getRawLinesObservable(uri: String): Task[Observable[ByteVector]] =
+  final def getRawLinesObservable(uri: String): Task[Observable[ByteVector]] =
     get_[HttpResponse](uri, StreamingJsonHeaders)
       .map(_.entity.dataBytes
         .toObservable
         .map(o => ByteVector.view(o.toArray))
         .flatMap(new ByteVectorToLinesObservable))
 
-  def get[A: Decoder](uri: String, timeout: Duration): Task[A] =
+  final def get[A: Decoder](uri: String, timeout: Duration): Task[A] =
     get[A](uri, timeout, Nil)
 
   /** HTTP Get with Accept: application/json. */
-  def get[A: Decoder](uri: Uri): Task[A] =
+  final def get[A: Decoder](uri: Uri): Task[A] =
     get[A](uri, Duration.Inf, Nil)
 
   /** HTTP Get with Accept: application/json. */
-  def get[A: Decoder](uri: Uri, timeout: Duration): Task[A] =
+  final def get[A: Decoder](uri: Uri, timeout: Duration): Task[A] =
     get[A](uri, timeout, Nil)
 
   /** HTTP Get with Accept: application/json. */
-  def get[A: Decoder](uri: Uri, headers: List[HttpHeader]): Task[A] =
+  final def get[A: Decoder](uri: Uri, headers: List[HttpHeader]): Task[A] =
     get[A](uri, Duration.Inf, headers)
 
   /** HTTP Get with Accept: application/json. */
-  def get[A: Decoder](uri: Uri, timeout: Duration, headers: List[HttpHeader]): Task[A] =
+  final def get[A: Decoder](uri: Uri, timeout: Duration, headers: List[HttpHeader]): Task[A] =
     get_[A](uri, headers ::: Accept(`application/json`) :: Nil)
 
-  def get_[A: FromResponseUnmarshaller](uri: Uri, headers: List[HttpHeader] = Nil): Task[A] =
+  final def get_[A: FromResponseUnmarshaller](uri: Uri, headers: List[HttpHeader] = Nil): Task[A] =
     sendReceive(HttpRequest(GET, uri, headers ::: `Cache-Control`(`no-cache`, `no-store`) :: Nil))
       .flatMap(unmarshal[A](GET, uri))
 
-  def post[A: Encoder, B: Decoder](uri: String, data: A, suppressSessionToken: Boolean): Task[B] =
+  final def post[A: Encoder, B: Decoder](uri: String, data: A, suppressSessionToken: Boolean): Task[B] =
     post2[A, B](Uri(uri), data, Nil, suppressSessionToken = suppressSessionToken)
 
-  def postWithHeaders[A: Encoder, B: Decoder](uri: Uri, data: A, headers: List[HttpHeader]): Task[B] =
+  final def postWithHeaders[A: Encoder, B: Decoder](uri: Uri, data: A, headers: List[HttpHeader]): Task[B] =
     post2[A, B](uri, data, headers, suppressSessionToken = false)
 
   private def post2[A: Encoder, B: Decoder](uri: Uri, data: A, headers: List[HttpHeader], suppressSessionToken: Boolean): Task[B] =
     post_[A](uri, data, headers ::: Accept(`application/json`) :: Nil, suppressSessionToken = suppressSessionToken)
       .flatMap(unmarshal[B](POST, uri))
 
-  def postDiscardResponse[A: Encoder](uri: String, data: A, allowedStatusCodes: Set[Int] = Set.empty): Task[Int] =
+  final def postDiscardResponse[A: Encoder](uri: String, data: A, allowedStatusCodes: Set[Int] = Set.empty): Task[Int] =
     post_[A](uri, data, Accept(`application/json`) :: Nil) map { httpResponse =>
       httpResponse.discardEntityBytes()
       if (!httpResponse.status.isSuccess && !allowedStatusCodes(httpResponse.status.intValue))
@@ -116,7 +117,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
       httpResponse.status.intValue
     }
 
-  def post_[A: Encoder](uri: Uri, data: A, headers: List[HttpHeader], suppressSessionToken: Boolean = false): Task[HttpResponse] =
+  final def post_[A: Encoder](uri: Uri, data: A, headers: List[HttpHeader], suppressSessionToken: Boolean = false): Task[HttpResponse] =
     for {
       entity <- Task.deferFuture(executeOn(materializer.executionContext)(implicit ec => Marshal(data).to[RequestEntity]))
       response <- sendReceive(
@@ -125,29 +126,41 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
         logData = Some(data.toString))
     } yield response
 
-  def postRaw(uri: Uri, headers: List[HttpHeader], entity: RequestEntity): Task[HttpResponse] =
+  final def postRaw(uri: Uri, headers: List[HttpHeader], entity: RequestEntity): Task[HttpResponse] =
     sendReceive(HttpRequest(POST, uri, headers, entity))
 
   final def sendReceive(request: HttpRequest, suppressSessionToken: Boolean = false, logData: => Option[String] = None): Task[HttpResponse] =
     withCheckedAgentUri(request) { request =>
       val headers = if (suppressSessionToken) None else sessionToken map (token => RawHeader(SessionToken.HeaderName, token.secret.string))
       val req = encodeGzip(request.withHeaders(headers ++: request.headers ++: standardHeaders))
-      loggingTimerResource(request, logData).use(_ =>
+      loggingTimerResource(request, logData).use { _ =>
+        var responseFuture: Future[HttpResponse] = null
         Task.deferFutureAction { implicit s =>
           logRequest(req, logData)
           val httpsContext = if (request.uri.scheme == "https") httpsConnectionContext else http.defaultClientHttpsContext
-          http.singleRequest(req, httpsContext)
-            .transform { tried =>
-              tried match {
-                case Failure(t) =>
-                  logger.debug(s"$toString: ${requestToString(req, logData)} failed with ${t.toStringWithCauses}")
-                case Success(response) if response.status.isFailure =>
-                  logger.debug(s"$toString: ${requestToString(req, logData)} failed with HTTP status ${response.status.intValue}")
-                case _ =>
-              }
-              tried
+          responseFuture = http.singleRequest(req, httpsContext)
+          responseFuture.transform { tried =>
+            tried match {
+              case Failure(t) =>
+                logger.debug(s"$toString: ${requestToString(req, logData)} failed with ${t.toStringWithCauses}")
+              case Success(response) if response.status.isFailure =>
+                logger.debug(s"$toString: ${requestToString(req, logData)} failed with HTTP status ${response.status.intValue}")
+              case _ =>
             }
-        } map decodeResponse/*decompress*/)
+            tried
+          }
+        }.doOnCancel(
+          Task.deferAction { implicit scheduler =>
+            if (responseFuture == null)
+              Task.unit
+            else
+              Task {
+                responseFuture.map(_.discardEntityBytes())
+                  .map(_ => ())
+              }
+            }
+        ) map decodeResponse/*decompress*/
+      }
     }
 
   private val emptyLoggingTimerResource = Resource.make(Task.pure(Cancelable.empty))(_ => Task.unit)
@@ -198,7 +211,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
   }
 
   /** Checks `uri` againts `baseUri` - scheme and authority must be equal. */
-  private[http] def checkAgentUri(uri: Uri): Checked[Uri] =
+  private[http] final def checkAgentUri(uri: Uri): Checked[Uri] =
     if (uri.scheme == baseUri.scheme &&
       uri.authority == baseUri.authority &&
        uri.path.toString.startsWith(uriPrefixPath))
