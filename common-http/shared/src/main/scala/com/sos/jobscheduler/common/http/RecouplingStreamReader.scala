@@ -45,7 +45,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
 
   protected def eof(index: I) = false
 
-  final def idleTimeout = conf.timeout
+  protected def idleTimeout = conf.timeout
 
   protected def stopRequested: Boolean
 

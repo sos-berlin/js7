@@ -44,6 +44,9 @@ object ClusterConf
       //_ <- if (heartbeat < failAfter) Right(()) else
       //  Left(Problem(s"jobscheduler.master.cluster.heartbeat=${heartbeat.pretty} must be shorter than jobscheduler.master.cluster.fail-after=${failAfter.pretty}"))
     } yield
-      new ClusterConf(maybeRole, maybeOwnUri, userAndPassword, recouplingStreamReaderConf,
-        heartbeat = heartbeat, failAfter = failAfter)
+      new ClusterConf(maybeRole, maybeOwnUri, userAndPassword,
+        recouplingStreamReaderConf.copy(
+          timeout = heartbeat + (failAfter - heartbeat) / 2),
+        heartbeat = heartbeat,
+        failAfter = failAfter)
 }

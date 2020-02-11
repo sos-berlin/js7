@@ -390,7 +390,7 @@ final class Cluster(
         clusterConf.recouplingStreamReader,
         after = after,
         getObservable = (after: EventId) => {
-          val eventRequest = EventRequest.singleClass[Event](after = after)
+          val eventRequest = EventRequest.singleClass[Event](after = after, timeout = None)
           AkkaHttpClient.liftProblem(
             api.eventIdObservable(eventRequest, heartbeat = Some(clusterConf.heartbeat)))
         },

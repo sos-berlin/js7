@@ -17,8 +17,6 @@ final class ClusterConfTest extends FreeSpec
 {
   ProblemCodeMessages.initialize()
 
-  private val streamReaderConf = RecouplingStreamReaderConf(timeout = 50.s, delay = 1.s)
-
   "fromConfigAndFile" - {
     "Minimum configuration" in {
       val config = ConfigFactory.parseString("""
@@ -32,7 +30,9 @@ final class ClusterConfTest extends FreeSpec
           None,
           None,
           None,
-          streamReaderConf,
+          RecouplingStreamReaderConf(
+            timeout = 6.s,  // Between 5s and 7s
+            delay = 1.s),
           7.s,
           5.s)))
     }
@@ -53,7 +53,9 @@ final class ClusterConfTest extends FreeSpec
           Some(ClusterNodeRole.Primary(Some(Uri("http://BACKUP")))),
           Some(Uri("http://PRIMARY")),
           Some(UserAndPassword(UserId("USER"), SecretString("PASSWORD"))),
-          streamReaderConf,
+          RecouplingStreamReaderConf(
+            timeout = 6.s,  // Between 5s and 7s
+            delay = 1.s),
           7.s,
           5.s)))
     }

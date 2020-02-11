@@ -287,7 +287,8 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
         .map {
           case Some(problem) => Left(problem)
           case None =>
-            logger.debug(s"replicateJournalFile(${file.getFileName}) finished, isReplicatingHeadOfFile=$isReplicatingHeadOfFile, replicatedFileLength=$replicatedFileLength, clusterState=${builder.clusterState}")
+            logger.debug(s"replicateJournalFile(${file.getFileName}) finished, isReplicatingHeadOfFile=$isReplicatingHeadOfFile, " +
+              s"replicatedFileLength=$replicatedFileLength, clusterState=${builder.clusterState}")
             if (!isReplicatingHeadOfFile) {
               eventWatch.onJournalingEnded(replicatedFileLength)
             }
@@ -314,7 +315,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
       .observe[Long/*file position*/, PositionAnd[ByteVector], HttpMasterApi](
         toIndex = _.position,
         api,
-        maybeUserAndPassword = clusterConf.userAndPassword,
+        clusterConf.userAndPassword,
         clusterConf.recouplingStreamReader,
         after = position,
         getObservable = (after: Long) =>
