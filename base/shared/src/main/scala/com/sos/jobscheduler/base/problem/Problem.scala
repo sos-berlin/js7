@@ -48,6 +48,8 @@ sealed trait Problem
 
   /** Message without cause. **/
   protected[problem] def message: String
+
+  def httpStatusCode: Int = 400  // Bad Request
 }
 
 object Problem

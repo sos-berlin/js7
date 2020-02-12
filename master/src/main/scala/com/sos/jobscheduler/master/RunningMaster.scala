@@ -45,6 +45,7 @@ import com.sos.jobscheduler.master.command.MasterCommandExecutor
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
 import com.sos.jobscheduler.master.data.MasterCommand
+import com.sos.jobscheduler.master.problems.MasterIsNotYetReadyProblem
 import com.sos.jobscheduler.master.web.MasterWebServer
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Path
@@ -233,9 +234,16 @@ object RunningMaster
       }
       for (t <- orderKeeperStarted.failed) logger.debug("orderKeeperStarted => " + t.toStringWithCauses, t)
       for (t <- orderKeeperTerminated.failed) logger.debug("orderKeeperTerminated => " + t.toStringWithCauses, t)
-      val orderKeeperTask = Task.fromFuture(orderKeeperStarted) flatMap {
-        case None => Task.raiseError(JobSchedulerIsShuttingDownProblem.throwable)
-        case Some(actor) => Task.pure(actor)
+      val orderKeeperTask = Task.defer {
+        orderKeeperStarted.value match {
+          case None => Task.raiseError(MasterIsNotYetReadyProblem.throwable)
+          case Some(orderKeeperTry) =>
+            orderKeeperTry match {
+              case Failure(t) => Task.raiseError(t)
+              case Success(None) => Task.raiseError(JobSchedulerIsShuttingDownProblem.throwable)
+              case Success(Some(actor)) => Task.pure(actor)
+            }
+        }
       }
       val commandExecutor = new MasterCommandExecutor(new MyCommandExecutor(clusterFollowUpFuture, orderKeeperStarted, cluster))
       val fileBasedApi = new MainFileBasedApi(masterConfiguration, orderKeeperTask)

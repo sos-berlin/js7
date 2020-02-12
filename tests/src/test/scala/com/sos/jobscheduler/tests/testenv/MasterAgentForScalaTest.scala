@@ -8,6 +8,7 @@ import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.data.filebased.{FileBased, TypedPath, VersionId}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.data.MasterCommand.UpdateRepo
+import com.sos.jobscheduler.master.data.events.MasterEvent.MasterReady
 import monix.execution.Scheduler.Implicits.global
 import scala.collection.immutable.Seq
 import scala.collection.mutable
@@ -31,7 +32,7 @@ trait MasterAgentForScalaTest extends DirectoryProviderForScalaTest {
   override def beforeAll() = {
     super.beforeAll()
     agents
-    master
+    master.eventWatch.await[MasterReady]()
   }
 
   override def afterAll() = {

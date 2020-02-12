@@ -4,7 +4,7 @@ import akka.http.scaladsl.model.StatusCodes.{InternalServerError, ServiceUnavail
 import akka.http.scaladsl.model.{HttpRequest, StatusCode}
 import akka.http.scaladsl.server.Directives.{complete, extractRequest}
 import akka.http.scaladsl.server.{ExceptionHandler, Route}
-import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.problem.{Problem, ProblemException}
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.akkahttp.ExceptionHandling._
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
@@ -34,6 +34,13 @@ trait ExceptionHandling
           }
         } else
           completeWithError(ServiceUnavailable, e)
+
+      case e: ProblemException =>
+        // TODO Better use Checked instead of ProblemException
+        extractRequest { request =>
+          webLogger.debug(toLogMessage(request, e), e)
+          complete(e.problem.httpStatusCode -> e.problem)
+        }
 
       case e =>
         completeWithError(InternalServerError, e)

@@ -60,6 +60,7 @@ import com.sos.jobscheduler.master.data.agent.{AgentEventIdEvent, AgentSnapshot}
 import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentReady
 import com.sos.jobscheduler.master.data.events.MasterEvent
 import com.sos.jobscheduler.master.data.events.MasterEvent.{MasterShutDown, MasterTestEvent}
+import com.sos.jobscheduler.master.problems.MasterIsNotYetReadyProblem
 import com.sos.jobscheduler.master.repo.RepoCommandExecutor
 import java.time.ZoneId
 import monix.eval.Task
@@ -258,6 +259,14 @@ with MainJournalingActor[Event]
     case Command.Execute(_: MasterCommand.ShutDown, _) =>
       stash()
 
+    case Command.Execute(cmd, _) =>
+      logger.warn(s"$MasterIsNotYetReadyProblem: $cmd")
+      sender ! Left(MasterIsNotYetReadyProblem)
+
+    case cmd: Command =>
+      logger.warn(s"$MasterIsNotYetReadyProblem: $cmd")
+      sender ! Status.Failure(MasterIsNotYetReadyProblem.throwable)
+
     case _ => stash()
   }
 
@@ -338,6 +347,17 @@ with MainJournalingActor[Event]
         _.actor ! AgentDriver.Input.StartFetchingEvents
       }
 
+    case Command.Execute(_: MasterCommand.ShutDown, _) =>
+      stash()
+
+    case Command.Execute(cmd, _) =>
+      logger.warn(s"$MasterIsNotYetReadyProblem: $cmd")
+      sender ! Left(MasterIsNotYetReadyProblem)
+
+    case cmd: Command =>
+      logger.warn(s"$MasterIsNotYetReadyProblem: $cmd")
+      sender ! Status.Failure(MasterIsNotYetReadyProblem.throwable)
+
     case _ => stash()
   }
 
@@ -354,7 +374,9 @@ with MainJournalingActor[Event]
       become("Ready")(ready orElse handleExceptionalMessage)
       unstashAll()
 
-    case _ => stash()
+    case _ =>
+      // stash Command too, after MasterReady event and cluster node has been initialized (see above)
+      stash()
   }
 
   private def ready: Receive = {
@@ -838,8 +860,8 @@ with MainJournalingActor[Event]
 
 private[master] object MasterOrderKeeper
 {
-  private val MasterIsShuttingDownProblem = Problem.pure("Master is shutting down")
-  private val MasterIsSwitchingOverProblem = Problem.pure("Master is switching over active cluster node")
+  private object MasterIsShuttingDownProblem extends Problem.ArgumentlessCoded
+  private object MasterIsSwitchingOverProblem extends Problem.ArgumentlessCoded
 
   private val logger = Logger(getClass)
 
@@ -849,7 +871,7 @@ private[master] object MasterOrderKeeper
 
   sealed trait Command
   object Command {
-    final case class Execute(command: MasterCommand, meta: CommandMeta)
+    final case class Execute(command: MasterCommand, meta: CommandMeta) extends Command
     final case object GetRepo extends Command
     final case class AddOrder(order: FreshOrder) extends Command
     final case class AddOrders(order: Seq[FreshOrder]) extends Command

@@ -22,7 +22,7 @@ final class SwitchOverClusterTest extends MasterClusterTester
     val primaryHttpPort :: backupHttpPort :: Nil = findFreeTcpPorts(2)
     withMasterAndBackup(primaryHttpPort, backupHttpPort) { (primary, backup) =>
       var lastEventId = EventId.BeforeFirst
-      backup.runMaster(httpPort = Some(backupHttpPort)) { backupMaster =>
+      backup.runMaster(httpPort = Some(backupHttpPort), dontWaitUntilReady = true) { backupMaster =>
         primary.runMaster(httpPort = Some(primaryHttpPort)) { primaryMaster =>
           //primaryMaster.executeCommandAsSystemUser(
           //  ClusterAppointBackup(activeUri = Uri(primaryMaster.localUri.toString), backupUri = Uri(backupMaster.localUri.toString))
@@ -45,7 +45,7 @@ final class SwitchOverClusterTest extends MasterClusterTester
         assert(!backupMaster.journalActorState.isRequiringClusterAcknowledgement)
 
         // Start again the passive primary node
-        primary.runMaster(httpPort = Some(primaryHttpPort)) { primaryMaster =>
+        primary.runMaster(httpPort = Some(primaryHttpPort), dontWaitUntilReady = true) { primaryMaster =>
           backupMaster.eventWatch.await[ClusterEvent.ClusterCoupled](after = lastEventId)
           primaryMaster.eventWatch.await[ClusterEvent.ClusterCoupled](after = lastEventId)
           assert(backupMaster.journalActorState.isRequiringClusterAcknowledgement)

@@ -5,6 +5,7 @@ import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.utils.ScalazStyle._
+import com.sos.jobscheduler.common.http.AkkaHttpClient
 import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger}
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.sos.jobscheduler.provider.Observing._
@@ -60,7 +61,10 @@ private[provider] trait Observing extends OrderProvider {
       .map(_.asTry).dematerialize  // Unify Success(Left(problem)) and Failure
       .onErrorRestartLoop(()) { (throwable, _, retry) =>
         logger.error(throwable.toStringWithCauses)
-        logger.debug(throwable.toStringWithCauses, throwable)
+        throwable match {
+          case _: AkkaHttpClient.HttpException =>
+          case _ => logger.debug(throwable.toStringWithCauses, throwable)
+        }
         (relogin >> retry(()))
           .delayExecution(errorWaitDuration)
       }

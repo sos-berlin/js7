@@ -80,7 +80,7 @@ trait EventWatch
 
   def fileEventIds: Seq[EventId]
 
-  final def tornEventId = fileEventIds.head
+  final def tornEventId = fileEventIds.headOption getOrElse EventId.BeforeFirst
 
   final def lastFileTornEventId = fileEventIds.last
 

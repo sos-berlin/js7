@@ -8,4 +8,8 @@ import com.sos.jobscheduler.base.problem.Problem
 package object problems
 {
   final case object FatEventServiceBusyProblem extends Problem.ArgumentlessCoded
+
+  final case object MasterIsNotYetReadyProblem extends Problem.ArgumentlessCoded {
+    override def httpStatusCode = 503  // Service Unavailable
+  }
 }

@@ -4,7 +4,7 @@ import akka.NotUsed
 import akka.http.scaladsl.marshalling.{Marshaller, ToEntityMarshaller, ToResponseMarshallable, ToResponseMarshaller}
 import akka.http.scaladsl.model.MediaTypes.`text/plain`
 import akka.http.scaladsl.model.StatusCodes.BadRequest
-import akka.http.scaladsl.model.{ContentType, HttpEntity, HttpResponse, MediaType}
+import akka.http.scaladsl.model.{ContentType, HttpEntity, HttpResponse, MediaType, StatusCode}
 import akka.http.scaladsl.unmarshalling.{FromStringUnmarshaller, Unmarshaller}
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
@@ -74,10 +74,12 @@ object StandardMarshallers
       jsonMarshaller[Problem](Problem.typedJsonEncoder))  // Add "TYPE": "Problem"
 
   implicit val problemToResponseMarshaller: ToResponseMarshaller[Problem] =
-    problemToEntityMarshaller map (entity => HttpResponse(ProblemStatusCode, Nil, entity))
+    Marshaller(implicit ec => problem =>
+      problemToEntityMarshaller(problem)
+        .map(_.map(_.map(HttpResponse(problem.httpStatusCode, Nil, _)))))
 
   implicit def problemToResponseMarshallable(problem: Problem): ToResponseMarshallable =
-    ToResponseMarshallable(ProblemStatusCode -> problem)
+    ToResponseMarshallable((problem.httpStatusCode: StatusCode) -> problem)
 
   def stringMarshaller[A](mediaType: MediaType.WithOpenCharset, toString: A => String): ToEntityMarshaller[A] =
     Marshaller.withOpenCharset(mediaType) { (a, charset) =>

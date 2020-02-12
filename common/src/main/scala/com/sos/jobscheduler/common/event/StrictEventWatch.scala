@@ -67,7 +67,7 @@ final class StrictEventWatch(eventWatch: EventWatch)
   @TestOnly
   def await[E <: Event: ClassTag](
     predicate: KeyedEvent[E] => Boolean = Every,
-    after: EventId = EventId.BeforeFirst,
+    after: EventId = tornEventId,
     timeout: FiniteDuration = 99.seconds)
     (implicit s: Scheduler, E: TypeTag[E])
   : Vector[Stamped[KeyedEvent[E]]]
