@@ -100,6 +100,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
         if (eof(after) || stopRequested  || !inUse.get)
           Observable.pure(Right(Observable.empty))
         else
+          // Memory leak due to https://github.com/monix/monix/issues/791 ???
           Observable.pure(Right(
             observe(after)
               .doOnError(t => onCouplingFailed(api, Problem.pure(t)).void)

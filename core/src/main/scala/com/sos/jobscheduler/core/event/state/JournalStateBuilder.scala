@@ -12,6 +12,7 @@ import com.sos.jobscheduler.data.event.{Event, EventId, JournaledState, KeyedEve
 import monix.eval.Task
 import scala.concurrent.Promise
 import scala.concurrent.duration.Duration
+import scala.util.control.NonFatal
 
 trait JournalStateBuilder[S <: JournaledState[S, E], E <: Event]
 {
@@ -73,7 +74,10 @@ trait JournalStateBuilder[S <: JournaledState[S, E], E <: Event]
       if (stamped.eventId <= _eventId) {
         throw new IllegalArgumentException(s"EventId out of order: ${EventId.toString(_eventId)} ≥ ${stamped.toString.truncateWithEllipsis(100)}")
       }
-      onAddEvent(stamped)
+      try onAddEvent(stamped)
+      catch { case NonFatal(t) =>
+        throw new RuntimeException(s"Event failed: $stamped", t)
+      }
       _eventCount += 1
       if (_firstEventId == EventId.BeforeFirst) {
         _firstEventId = stamped.eventId

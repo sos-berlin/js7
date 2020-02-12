@@ -137,7 +137,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
       val maybeTmpFile = continuation match {
         case _: NoLocalJournal | _: NextFile =>
           val tmp = Paths.get(file.toString + TmpSuffix)
-          logger.info(s"Replicating snapshot into journal file ${tmp.getName()}")
+          logger.debug(s"Replicating snapshot into temporary journal file ${tmp.getName()}")
           Some(tmp)
 
         case _: FirstPartialFile =>
@@ -156,10 +156,9 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
       val builder = new JournalFileStateBuilder[S, Event](journalMeta, journalFileForInfo = file.getFileName,
         continuation.maybeJournalId, newStateBuilder)
 
-      def continueReplicatingMsg = s"Continue replicating events into journal file ${file.getName()}"
       continuation match {
         case FirstPartialFile(recoveredJournalFile, _) =>
-          logger.info(continueReplicatingMsg)
+          logger.info(s"Start replicating events into journal file ${file.getName()}")
           builder.startWithState(JournalRecovererState.InEventsSection, Some(recoveredJournalFile.journalHeader),
             eventId = recoveredJournalFile.eventId,
             totalEventCount = recoveredJournalFile.calculatedJournalHeader.totalEventCount,
@@ -252,7 +251,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
                 move(tmpFile, file, ATOMIC_MOVE)
                 journalMeta.updateSymbolicLink(file)
                 out = FileChannel.open(file, APPEND)
-                logger.info(continueReplicatingMsg)
+                logger.info(s"Continue replicating events into next journal file ${file.getName()}")
                 eventWatch.onJournalingStarted(file, journalId,
                   tornLengthAndEventId = PositionAnd(replicatedFileLength/*After EventHeader, before SnapshotTaken, */, continuation.fileEventId),
                   flushedLengthAndEventId = PositionAnd(fileLength, builder.eventId))
