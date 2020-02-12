@@ -8,7 +8,7 @@ mkdir -p volumes/{master,backup-master,provider,agent-1,agent-2}/data/{logs,stat
 mkdir -p volumes/provider/config/{live,order-generators}
 mkdir -p volumes/agent-{1,2}/config/executables
 
-cp -Rnv volumes . || true
+cp -Rnv build/volumes . || true
 ( umask go-rwx
   cp -nv volumes/master/config/private/* volumes/backup-master/config/private || true
 )
