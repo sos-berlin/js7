@@ -111,7 +111,7 @@ execute=(
   "${masterOptions[@]}")
 
 while true; do
-  (t=$(date +"%H:%M:%S.%N"); echo -e "\n-------\n${t:0:12}" "${execute[@]}")
+  (t=$(date +"%Y-%m-%S %H:%M:%S.%N"); echo -e "\n-------\n${t:0:23}" "${execute[@]}")
 
   "${execute[@]}" &
 
@@ -151,7 +151,7 @@ while true; do
   }
   rm "$pidFile"
   trap - SIGTERM SIGINT
-  (t=$(date +"%H:%M:%S.%N"); echo -e "\n${t:0:12} JobScheduler Master has been shut down" >>"$logs/stdouterr.log")
+  (t=$(date +"%Y-%m-%S %H:%M:%S.%N"); echo -e "\n${t:0:23} JobScheduler Master has been shut down" >>"$logs/stdouterr.log")
 
   if [[ $returnCode -ne 97 ]] && [[ $returnCode -ne 98 ]]; then
     exit $returnCode

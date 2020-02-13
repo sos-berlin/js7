@@ -12,7 +12,7 @@ import com.sos.jobscheduler.core.startup.JavaMain.withShutdownHooks
 import com.sos.jobscheduler.core.startup.JavaMainLockfileSupport.lockAndRunMain
 import com.sos.jobscheduler.core.startup.StartUp
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
-import java.time.LocalTime
+import java.time.LocalDateTime
 import monix.execution.Scheduler
 import scala.concurrent.duration._
 
@@ -59,7 +59,7 @@ final class MasterMain
     // Log complete timestamp in case of short log timestamp
     val msg = s"JobScheduler Master terminates at ${Timestamp.now.show}"
     logger.info(msg)
-    println(msg)
+    println(s"${LocalDateTime.now.toString.replace('T', ' ')} $msg")
     terminate
   }
 
@@ -77,7 +77,7 @@ object MasterMain
   // Don't use a Logger here to avoid overwriting a concurrently used logfile
 
   def main(args: Array[String]): Unit = {
-    println(s"${LocalTime.now.toString take 12} JobScheduler Master ${BuildInfo.prettyVersion}")
+    println(s"${LocalDateTime.now.toString.replace('T', ' ')} JobScheduler Master ${BuildInfo.prettyVersion}")
     var terminate = MasterTermination.Terminate()
     lockAndRunMain(args) { commandLineArguments =>
       ScribeUtils.coupleScribeWithSlf4j()

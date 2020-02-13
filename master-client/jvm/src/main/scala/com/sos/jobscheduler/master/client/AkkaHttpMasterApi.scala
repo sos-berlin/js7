@@ -37,7 +37,7 @@ with ProvideActorSystem
 
   override def close() = closer.close()
 
-  override def toString = s"AkkaHttpMasterApi($baseUri${if (name.isEmpty) "" else s" »$name«"})"
+  override def toString = s"$baseUri${if (name.isEmpty) "" else s" »$name«"}"
 }
 
 object AkkaHttpMasterApi

@@ -184,7 +184,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
           Unmarshal(httpResponse).to[A]
             .recover { case t =>
               if (!materializer.isShutdown) {
-                logger.debug(s"$toString: Error when unmarshaling response of ${method.name} $uri: ${t.toStringWithCauses}", t)
+                logger.debug(s"$toString: Error when unmarshalling response of ${method.name} $uri: ${t.toStringWithCauses}", t)
               }
               throw t
             }
@@ -240,7 +240,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
     b.toString
   }
 
-  override def toString = s"AkkaHttpClient($baseUri${if (name.isEmpty) "" else s" »$name«"})"
+  override def toString = s"$baseUri${if (name.isEmpty) "" else s" »$name«"}"
 }
 
 object AkkaHttpClient

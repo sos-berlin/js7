@@ -84,7 +84,7 @@ trait AgentClient extends AgentApi with HttpSessionApi with AkkaHttpClient
       get[TearableEventSeq[Seq, KeyedEvent[Event]]](agentUris.mastersEvents(request)))
   }
 
-  override def toString = s"AgentClient($baseUri)"
+  override def toString = baseUri.toString
 }
 
 object AgentClient

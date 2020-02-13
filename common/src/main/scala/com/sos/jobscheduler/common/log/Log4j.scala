@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.common.log
 
-import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.scalautil.Logger
+import java.time.LocalDateTime
 import monix.execution.atomic.AtomicBoolean
 import scala.util.Try
 
@@ -28,7 +28,7 @@ object Log4j
     if (!isShutdown.getAndSet(true)) {
       for (logManager <- Try(Class.forName("org.apache.logging.log4j.LogManager"))) {
         // Log complete timestamp in case of short log timestamp
-        logger.debug(s"log4j.LogManager.shutdown at ${Timestamp.now.show}")
+        logger.debug(s"log4j.LogManager.shutdown at ${LocalDateTime.now.toString.replace('T', ' ')}")
         logManager.getMethod("shutdown", classOf[Boolean]).invoke(null, Boolean.box(true))
       }
     }

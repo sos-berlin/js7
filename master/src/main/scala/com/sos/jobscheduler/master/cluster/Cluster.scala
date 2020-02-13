@@ -68,9 +68,9 @@ final class Cluster(
 
   /**
     * Returns a pair of `Task`s
-    * - (Task[None], _) if this node starts as an active node
-    * - (Task[Some[MasterState]], _) with the other's node MasterState if this node starts as a passive node.
-    * - (_, Task[Checked[ClusterFollowUp]] when this node should be activated or terminated
+    * - `(Task[None], _)` if this node starts as an active node
+    * - `(Task[Some[MasterState]], _)` with the other's node MasterState if this node starts as a passive node.
+    * - `(_, Task[Checked[ClusterFollowUp]]` when this node should be activated or terminated
     * @return A pair of `Task`s with maybe the current `MasterState` of this passive node (if so)
     *         and ClusterFollowUp.
     */
@@ -133,7 +133,7 @@ final class Cluster(
                   val failedAt = otherState.failedAt getOrElse sys.error("Missing failedAt information from failed-over cluster node")
                   // This restarted, previously failed cluster node may have written one chunk of events more than
                   // the passive node, maybe even an extra snapshot with a new journal file.
-                  // This extra events are not acknowledged. So we truncate the journal.
+                  // These extra events are not acknowledged. So we truncate the journal.
                   var truncated = false
                   val journalFiles = JournalFiles.listJournalFiles(journalMeta.fileBase) takeRight 2
                   val journalFile =
@@ -237,7 +237,7 @@ final class Cluster(
         Task.pure(Left(Problem.pure("Missing this node's own URI")))
       case Some(ownUri) =>
         if (backupUri == ownUri)
-          Task.pure(Left(Problem(s"A cluster node can not be appointed to itself")))
+          Task.pure(Left(Problem.pure("A cluster node can not be appointed to itself")))
         else
           persistence.persistTransaction(NoKey) {
             case state @ (Empty | _: Sole | AwaitingAppointment(`ownUri`, `backupUri`) /*| AwaitingFollower(`ownUri`, `backupUri`)*/)
@@ -297,7 +297,7 @@ final class Cluster(
       case coupled: Coupled if clusterConf.maybeOwnUri contains coupled.activeUri =>
         Right(SwitchedOver(coupled.passiveUri))
       case state =>
-        Left(Problem(s"Switchover is possible only in cluster state Coupled(active=${clusterConf.maybeOwnUri.map(_.toString)})," +
+        Left(Problem.pure(s"Switchover is possible only in cluster state Coupled(active=${clusterConf.maybeOwnUri.map(_.toString)})," +
           s" but cluster state is: $state"))
     }.map(_.map { case (_: Stamped[_], _) =>
       switchoverAcknowledged = true
