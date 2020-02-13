@@ -136,7 +136,7 @@ extends HasCloser with Observing
         } else
           Right(completed))
 
-  private lazy val loginUntilReachable: Task[Completed] =
+  protected lazy val loginUntilReachable: Task[Completed] =
     Task.defer {
       if (masterApi.hasSession)
         Task.pure(Completed)

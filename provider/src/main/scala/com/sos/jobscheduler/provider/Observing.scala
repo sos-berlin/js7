@@ -65,7 +65,11 @@ private[provider] trait Observing extends OrderProvider {
           case _: AkkaHttpClient.HttpException =>
           case _ => logger.debug(throwable.toStringWithCauses, throwable)
         }
-        (relogin >> retry(()))
+        val logout =
+          if (AkkaHttpClient.sessionMayBeLost(throwable))
+            masterApi.logout().onErrorHandle(_ => masterApi.clearSession())
+          else Task.unit
+        logout >> (loginUntilReachable >> retry(()))
           .delayExecution(errorWaitDuration)
       }
 }
