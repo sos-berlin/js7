@@ -141,15 +141,15 @@ final class Cluster(
                       journalFiles.last
                     else if (journalFiles.length == 2 &&
                       journalFiles.head.afterEventId == failedAt.fileEventId &&
-                      journalFiles.last.afterEventId > failedAt.fileEventId
-                    ) {
+                      journalFiles.last.afterEventId > failedAt.fileEventId)
+                    {
                       logger.info(s"Removing journal file '${recoveredJournalFile.file}'")
                       truncated = true
                       val file = journalFiles.last.file
                       Files.move(file, Paths.get(file + "~"), REPLACE_EXISTING)
                       journalFiles.head
                     } else
-                      sys.error(s"Failed-over node's ClusterState does not match local journal files: $otherState")
+                      sys.error(s"Failed-over node's ClusterState does not match local journal files: $otherState <-> ${journalFiles.map(_.file.getFileName).mkString(", ")}")
                   assertThat(journalFile.afterEventId == failedAt.fileEventId)
                   val file = journalFile.file
                   val fileSize = Files.size(file)

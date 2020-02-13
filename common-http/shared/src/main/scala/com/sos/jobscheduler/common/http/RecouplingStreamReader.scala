@@ -33,10 +33,8 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
 
   protected def onCouplingFailed(api: Api, problem: Problem): Task[Completed] =
     Task {
-      if (stopRequested || !inUse.get) scribe.debug(s"$api: $problem") else scribe.warn(s"$api: $problem")
-      for (t <- problem.throwableOption) if (t.getStackTrace.nonEmpty) {
-        scribe.debug(s"$api: ${t.toStringWithCauses}", t)
-      }
+      if (inUse.get && !stopRequested) scribe.warn(s"$api: coupling failed: $problem")
+      scribe.debug(s"$api: onCouplingFailed: $problem", problem.throwableOption.map(_.nullIfNoStackTrace).orNull)
       Completed
     }
 
@@ -200,7 +198,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
 
 object RecouplingStreamReader
 {
-  val TerminatedProblem = Problem.pure("Agent API has been terminated")
+  val TerminatedProblem = Problem.pure("RecouplingStreamReader has been terminated")
   private val PauseGranularity = 500.ms
 
   def observe[@specialized(Long/*EventId or file position*/) I, V, Api <: SessionApi](
