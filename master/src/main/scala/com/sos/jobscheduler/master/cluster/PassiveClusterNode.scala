@@ -152,7 +152,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
       val replicatedFirstEventPosition = SetOnce.fromOption(continuation.firstEventPosition, "replicatedFirstEventPosition")
       var replicatedFileLength = continuation.fileLength
       var inTransaction = false
-      var eof = false
+      var _eof = false
       val builder = new JournalFileStateBuilder[S, Event](journalMeta, journalFileForInfo = file.getFileName,
         continuation.maybeJournalId, newStateBuilder)
 
@@ -171,9 +171,33 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
         case _ =>
       }
 
-      observeJournalFile(masterApi, fileEventId = continuation.fileEventId, position = continuation.fileLength,
-        eof = pos => eof && pos >= replicatedFileLength
-      ) .mapParallelOrdered(sys.runtime.availableProcessors) { case PositionAnd(fileLength, line) =>
+      val recouplingStreamReader = new RecouplingStreamReader[Long/*file position*/, PositionAnd[ByteVector], HttpMasterApi](
+        toIndex = _.position,
+        //api,
+        clusterConf.userAndPassword,
+        clusterConf.recouplingStreamReader)
+      {
+        protected def getObservable(api: HttpMasterApi, after: EventId) =
+          AkkaHttpClient.liftProblem(
+            api.journalObservable(
+              fileEventId = continuation.fileEventId,
+              position = after,
+              heartbeat = Some(clusterConf.heartbeat),
+              markEOF = true
+            ).map(_.scan(PositionAnd(after, ByteVector.empty/*unused*/))((s, line) =>
+              PositionAnd(s.position + (if (line == JournalSeparators.HeartbeatMarker) 0 else line.length), line))))
+
+        protected def stopRequested = terminated
+
+        override def eof(index: Long) = _eof && index >= replicatedFileLength
+      }
+
+      recouplingStreamReader.observe(masterApi, after = continuation.fileLength)
+        .doOnError(t => Task {
+          logger.debug(s"observeJournalFile($masterApi, fileEventId=${continuation.fileEventId}, " +
+            s"position=${continuation.fileLength}) failed with ${t.toStringWithCauses}", t)
+        })
+        .mapParallelOrdered(sys.runtime.availableProcessors) { case PositionAnd(fileLength, line) =>
           Task((fileLength, line, line.parseJson.orThrow))
         }
         .detectPauses(clusterConf.heartbeat + clusterConf.failAfter)
@@ -231,7 +255,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
 
           case Some((fileLength, JournalSeparators.EndOfJournalFileMarker, _)) =>
             logger.debug(s"End of replicated journal file reached: ${file.getFileName} eventId=${builder.eventId} fileLength=$fileLength")
-            eof = true
+            _eof = true
             Observable.pure(Left(EndOfJournalFileMarker))
 
           case Some((fileLength, line, json)) =>
@@ -300,37 +324,13 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
                 Left(Problem.pure(s"JournalHeader could not be replicated fileEventId=${continuation.fileEventId} eventId=${builder.eventId}"))
             }
         }
-        .guarantee(Task { out.close() })
+        .guarantee(
+          Task { out.close() } >>
+            recouplingStreamReader.terminate.map(_ => ()))
     }
 
   private def shouldFinishFollowing(clusterState: ClusterState) =
     clusterState.isActive(ownUri)
-
-  /** @return Journal lines with their position after the line (the corresponding file length). */
-  private def observeJournalFile(api: HttpMasterApi, fileEventId: EventId, position: Long, eof: Long => Boolean)
-    (implicit s: Scheduler)
-  : Observable[PositionAnd[ByteVector]] =
-    RecouplingStreamReader
-      .observe[Long/*file position*/, PositionAnd[ByteVector], HttpMasterApi](
-        toIndex = _.position,
-        api,
-        clusterConf.userAndPassword,
-        clusterConf.recouplingStreamReader,
-        after = position,
-        getObservable = (after: Long) =>
-          AkkaHttpClient.liftProblem(
-            api.journalObservable(
-              fileEventId = fileEventId,
-              position = after,
-              heartbeat = Some(clusterConf.heartbeat),
-              markEOF = true
-            ).map(_.scan(PositionAnd(after, ByteVector.empty/*unused*/))((s, line) =>
-              PositionAnd(s.position + (if (line == JournalSeparators.HeartbeatMarker) 0 else line.length), line)))),
-        eof = eof,
-        stopRequested = () => terminated)
-      .doOnError(t => Task {
-        logger.debug(s"observeJournalFile($api, fileEventId=$fileEventId, position=$position) failed with ${t.toStringWithCauses}", t)
-      })
 
   private def ensureEqualState(continuation: Continuation.Replicatable, snapshot: S)(implicit s: Scheduler): Unit =
     for (recoveredJournalFile <- continuation.maybeRecoveredJournalFile if recoveredJournalFile.state != snapshot) {

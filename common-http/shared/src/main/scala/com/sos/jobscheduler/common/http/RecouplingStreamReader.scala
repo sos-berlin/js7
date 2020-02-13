@@ -45,6 +45,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
 
   protected def idleTimeout = conf.timeout
 
+  // TODO Genügt nicht `terminate` ?
   protected def stopRequested: Boolean
 
   private val coupledApiVar = new CoupledApiVar[Api]
@@ -179,7 +180,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
           .flatMap {
             case Left(problem) =>
               for {
-                _ <- api.logout().orTimeout(idleTimeout, Task { api.clearSession(); Completed })
+                _ <- api.logout().timeout(idleTimeout).onErrorRecover { case _ => api.clearSession() }
                 _ <- onCouplingFailed(api, problem)
                 _ <- pauseBeforeRecoupling
               } yield Left(())
@@ -225,7 +226,7 @@ object RecouplingStreamReader
 
   private class RecouplingPause {
     // This class may be used asynchronously but not concurrently
-    private val Minimum = 1.second
+    private val Minimum = 1.s
     @volatile private var pauses = initial
     @volatile private var lastCouplingTriedAt = now
 
@@ -233,7 +234,7 @@ object RecouplingStreamReader
     def onCouplingSucceeded() = pauses = initial
     def nextPause() = (lastCouplingTriedAt + synchronized { pauses.next() }).timeLeft max Minimum
 
-    private def initial = Iterator(Minimum, 1.second, 1.second, 1.second, 2.seconds, 5.seconds) ++
-      Iterator.continually(10.seconds)
+    private def initial = Iterator(Minimum, 1.s, 1.s, 1.s, 2.s, 5.s) ++
+      Iterator.continually(10.s)
   }
 }
