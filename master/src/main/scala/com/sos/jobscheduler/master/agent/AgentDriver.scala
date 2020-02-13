@@ -96,8 +96,8 @@ with ReceiveLoggingActor.WithStash
         self ! Internal.OnCoupled(promise)
       }
 
-    override protected def logEvent(stampedEvent: Stamped[AnyKeyedEvent]) =
-      AgentDriver.this.logEvent(stampedEvent)
+    //override protected def logEvent(stampedEvent: Stamped[AnyKeyedEvent]) =
+    //  AgentDriver.this.logEvent(stampedEvent)
 
     protected def stopRequested = false
   }

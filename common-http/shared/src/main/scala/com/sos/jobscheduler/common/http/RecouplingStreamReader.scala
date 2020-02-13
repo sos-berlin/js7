@@ -49,8 +49,6 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
 
   protected def stopRequested: Boolean
 
-  protected def logEvent(a: V): Unit = {}
-
   private val coupledApiVar = new CoupledApiVar[Api]
   private val recouplingPause = new RecouplingPause
   private val inUse = AtomicBoolean(false)
