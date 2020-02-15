@@ -149,7 +149,8 @@ final class Cluster(
                       Files.move(file, Paths.get(file + "~"), REPLACE_EXISTING)
                       journalFiles.head
                     } else
-                      sys.error(s"Failed-over node's ClusterState does not match local journal files: $otherState <-> ${journalFiles.map(_.file.getFileName).mkString(", ")}")
+                      sys.error(s"Failed-over node's ClusterState does not match local journal files:" +
+                        s" $otherState <-> ${journalFiles.map(_.file.getFileName).mkString(", ")}")
                   assertThat(journalFile.afterEventId == failedAt.fileEventId)
                   val file = journalFile.file
                   val fileSize = Files.size(file)

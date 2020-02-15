@@ -50,8 +50,4 @@ package object problems
   final case class MissingPassiveClusterNodeHeartbeatProblem(passiveUri: Uri) extends Problem.Coded {
     override def arguments = Map("uri" -> passiveUri.toString)
   }
-
-  final case class MissingActiveClusterNodeHeartbeatProblem(activeUri: Uri) extends Problem.Coded {
-    override def arguments = Map("uri" -> activeUri.toString)
-  }
 }

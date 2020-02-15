@@ -19,7 +19,6 @@ import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, JournalSeparat
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles._
 import com.sos.jobscheduler.core.event.journal.recover.{JournalFileStateBuilder, JournalRecovererState, Recovered, RecoveredJournalFile}
 import com.sos.jobscheduler.core.event.state.JournalStateBuilder
-import com.sos.jobscheduler.core.problems.MissingActiveClusterNodeHeartbeatProblem
 import com.sos.jobscheduler.data.cluster.ClusterEvent.FailedOver
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
@@ -205,10 +204,11 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
           case None/*pause*/ =>
             (if (isReplicatingHeadOfFile) continuation.clusterState else builder.clusterState) match {
               case clusterState: ClusterState.Coupled if clusterState.passiveUri == ownUri =>
-                logger.warn(MissingActiveClusterNodeHeartbeatProblem(activeUri).toString)
+                // TODO Agenten fragen, ob der andere Knoten noch aktiv ist
+                logger.warn(s"Failing over due to missing heartbeat of the currently active cluster node '$activeUri")
                 if (isReplicatingHeadOfFile) {
                   val recoveredJournalFile = continuation.maybeRecoveredJournalFile.getOrElse(
-                    throw new AssertionError("MissingActiveClusterNodeHeartbeatProblem but nothing has been replicated"))
+                    throw new AssertionError("Failover but nothing has been replicated"))
                   val failedOverStamped = toStampedFailedOver(clusterState, JournalPosition(recoveredJournalFile.fileEventId, recoveredJournalFile.length))
                   val failedOver = failedOverStamped.value.event
                   val fileSize = {
@@ -349,8 +349,9 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
 
   private def toStampedFailedOver(clusterState: ClusterState.Coupled, failedAt: JournalPosition): Stamped[KeyedEvent[ClusterEvent]] = {
     val failedOver = FailedOver(failedActiveUri = clusterState.activeUri, activatedUri = clusterState.passiveUri, failedAt)
-    logger.debug(failedOver.toString)
-    eventIdGenerator.stamp(NoKey <-: (failedOver: ClusterEvent))
+    val stamped = eventIdGenerator.stamp(NoKey <-: (failedOver: ClusterEvent))
+    logger.debug(stamped.toString)
+    stamped
   }
 
   private sealed trait Continuation

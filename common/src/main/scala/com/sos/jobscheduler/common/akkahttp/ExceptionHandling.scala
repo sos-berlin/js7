@@ -29,7 +29,7 @@ trait ExceptionHandling
       case e: akka.pattern.AskTimeoutException =>
         if (isShuttingDown) {
           extractRequest { request =>
-            webLogger.debug(toLogMessage(request, e), e)
+            webLogger.debug(toLogMessage(request, e), e.nullIfNoStackTrace)
             complete(ServiceUnavailable -> Problem.pure("Shutting down"))
           }
         } else
@@ -38,7 +38,7 @@ trait ExceptionHandling
       case e: ProblemException =>
         // TODO Better use Checked instead of ProblemException
         extractRequest { request =>
-          webLogger.debug(toLogMessage(request, e), e)
+          webLogger.debug(toLogMessage(request, e), e.nullIfNoStackTrace)
           complete(e.problem.httpStatusCode -> e.problem)
         }
 
@@ -49,7 +49,7 @@ trait ExceptionHandling
   private def completeWithError(status: StatusCode, e: Throwable): Route =
     extractRequest { request =>
       def msg = toLogMessage(request, e)
-      if (isShuttingDown) webLogger.debug(msg, e) else webLogger.warn(msg, e)
+      if (isShuttingDown) webLogger.debug(msg, e) else webLogger.warn(msg, e.nullIfNoStackTrace)
       if (respondWithException)
         complete(status -> Problem.pure(e))
       else
