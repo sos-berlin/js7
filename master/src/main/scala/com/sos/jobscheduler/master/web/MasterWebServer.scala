@@ -13,6 +13,7 @@ import com.sos.jobscheduler.common.scalautil.Closer
 import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAutoCloseable
 import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.core.filebased.FileBasedApi
+import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.master.command.MasterCommandExecutor
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
@@ -32,6 +33,7 @@ final class MasterWebServer private(
   fileBasedApi: FileBasedApi,
   orderApi: OrderApi.WithCommands,
   commandExecutor: MasterCommandExecutor,
+  clusterState: Task[ClusterState],
   masterState: Task[Checked[MasterState]],
   totalRunningSince: Deadline,
   sessionRegister: SessionRegister[SimpleSession],
@@ -63,8 +65,8 @@ extends AkkaWebServer with AkkaWebServer.HasUri
       protected val orderApi = MasterWebServer.this.orderApi
       protected def orderCount = orderApi.orderCount
       protected def executeCommand(command: MasterCommand, meta: CommandMeta) = commandExecutor.executeCommand(command, meta)
+      protected def clusterState = MasterWebServer.this.clusterState
       protected def masterState = MasterWebServer.this.masterState
-      protected def clusterState = masterState.map(_.map(_.clusterState))
       protected def totalRunningSince = MasterWebServer.this.totalRunningSince
 
       def webServerRoute = completeRoute
@@ -87,12 +89,14 @@ object MasterWebServer
     closer: Closer)
   {
     def apply(fileBasedApi: FileBasedApi, orderApi: OrderApi.WithCommands,
-      commandExecutor: MasterCommandExecutor, masterState: Task[Checked[MasterState]], totalRunningSince: Deadline,
+      commandExecutor: MasterCommandExecutor,
+      clusterState: Task[ClusterState], masterState: Task[Checked[MasterState]],
+      totalRunningSince: Deadline,
       eventWatch: EventWatch)
     : MasterWebServer =
       new MasterWebServer(
         masterConfiguration, gateKeeperConfiguration,
-        fileBasedApi, orderApi, commandExecutor, masterState, totalRunningSince,
+        fileBasedApi, orderApi, commandExecutor, clusterState, masterState, totalRunningSince,
         sessionRegister, eventWatch, config, injector,
         actorSystem, scheduler)
       .closeWithCloser(closer)

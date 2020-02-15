@@ -241,7 +241,7 @@ with MainJournalingActor[Event]
     .toListL.runToFuture
 
   private def masterState: Task[MasterState] =
-    cluster.currentState.map(clusterState => MasterState(
+    cluster.currentClusterState.map(clusterState => MasterState(
       persistedEventId,
       masterMetaState,
       clusterState,

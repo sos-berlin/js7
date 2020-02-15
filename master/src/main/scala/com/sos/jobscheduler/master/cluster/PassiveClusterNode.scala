@@ -98,14 +98,14 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
   private def replicateJournalFiles(recoveredClusterState: ClusterState)(implicit s: Scheduler)
   : Task[Checked[(ClusterState, ClusterFollowUp[S, Event])]] =
     masterApi(activeUri, "journal")
-      .use(activeNodeApi =>
+      .use(activeMasterApi =>
         Task.tailRecM(
           (recovered.recoveredJournalFile match {
             case None => NoLocalJournal(recoveredClusterState)
             case Some(recoveredJournalFile) => FirstPartialFile(recoveredJournalFile, recoveredClusterState)
           }): Continuation.Replicatable
         )(continuation =>
-          replicateJournalFile(continuation, () => stateBuilderAndAccessor.newStateBuilder(), activeNodeApi)
+          replicateJournalFile(continuation, () => stateBuilderAndAccessor.newStateBuilder(), activeMasterApi)
             // TODO Herzschlag auch beim Wechsel zur nächsten Journaldatei prüfen
             .map {
               case Left(problem) => Right(Left(problem))
@@ -127,7 +127,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
   private def replicateJournalFile(
     continuation: Continuation.Replicatable,
     newStateBuilder: () => JournalStateBuilder[S, Event],
-    masterApi: HttpMasterApi)
+    activeMasterApi: HttpMasterApi)
     (implicit scheduler: Scheduler)
   : Task[Checked[Continuation]] =
     Task.defer {
@@ -191,9 +191,9 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
         override def eof(index: Long) = _eof && index >= replicatedFileLength
       }
 
-      recouplingStreamReader.observe(masterApi, after = continuation.fileLength)
+      recouplingStreamReader.observe(activeMasterApi, after = continuation.fileLength)
         .doOnError(t => Task {
-          logger.debug(s"observeJournalFile($masterApi, fileEventId=${continuation.fileEventId}, " +
+          logger.debug(s"observeJournalFile($activeMasterApi, fileEventId=${continuation.fileEventId}, " +
             s"position=${continuation.fileLength}) failed with ${t.toStringWithCauses}", t)
         })
         .mapParallelOrdered(sys.runtime.availableProcessors) { case PositionAnd(fileLength, line) =>

@@ -33,7 +33,7 @@ import com.sos.jobscheduler.core.event.journal.JournalActor
 import com.sos.jobscheduler.core.event.journal.JournalActor.Output
 import com.sos.jobscheduler.core.event.journal.recover.Recovered
 import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
-import com.sos.jobscheduler.core.problems.{ClusterNodeIsNotActiveProblem, ClusterNodeIsStillStartingProblem, JobSchedulerIsShuttingDownProblem}
+import com.sos.jobscheduler.core.problems.{ClusterNodeIsNotActiveProblem, ClusterNodeIsNotYetReadyProblem, JobSchedulerIsShuttingDownProblem}
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
 import com.sos.jobscheduler.data.event.Event
 import com.sos.jobscheduler.data.order.FreshOrder
@@ -211,11 +211,10 @@ object RunningMaster
 
       // clusterFollowUpFuture terminates when this cluster node becomes active or terminates
       // maybePassiveState accesses the current MasterState while this node is passive, otherwise it is None
-      val (currentPassiveState, clusterFollowUpTask) = startCluster(journalActor, cluster, recovered)
+      val (currentPassiveMasterState, clusterFollowUpTask) = startCluster(journalActor, cluster, recovered)
       val clusterFollowUpFuture = clusterFollowUpTask
         .executeWithOptions(_.enableAutoCancelableRunLoops)
         .runToFuture
-      //val (clusterFollowUpFuture, maybePassiveState) = startCluster(journalActor, cluster, recovered)
       val (orderKeeperStarted, orderKeeperTerminated) = {
         val started = clusterFollowUpFuture.map(_.flatMap(
           startMasterOrderKeeper(journalActor, cluster, _)))
@@ -250,11 +249,12 @@ object RunningMaster
       val orderApi = new MainOrderApi(orderKeeperTask)
 
       val webServer = injector.instance[MasterWebServer.Factory].apply(fileBasedApi, orderApi, commandExecutor,
+        cluster.currentClusterState,
         masterState = Task.defer {
           orderKeeperStarted.value/*Future completed?*/ match {
             case None =>
-              currentPassiveState.map {
-                case None => Left(ClusterNodeIsStillStartingProblem)
+              currentPassiveMasterState.map {
+                case None => Left(ClusterNodeIsNotYetReadyProblem)
                 case Some(state) => Right(state)
               }
             case Some(Failure(t)) => Task.raiseError(t)
@@ -302,11 +302,9 @@ object RunningMaster
           .onCancelRaiseError(new StartingClusterCanceledException)
           .map(_.orThrow)
           .map(Some.apply)
-        //.map { case (followUpTask, maybePassiveState) =>
           .onErrorRecoverWith {
             case _: StartingClusterCanceledException => Task.pure(None)
           }
-      //(startingClusterFuture, maybePassiveState)
     }
 
     private def startMasterOrderKeeper(

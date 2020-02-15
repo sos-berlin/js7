@@ -20,7 +20,7 @@ final class ClusterRouteTest extends FreeSpec with RouteTester with ClusterRoute
 
   protected def isShuttingDown = false
 
-  protected def clusterState = Task.pure(Right(ClusterState.Empty))
+  protected def clusterState = Task.pure(ClusterState.Empty)
 
   private def route: Route =
     pathSegment("cluster") {

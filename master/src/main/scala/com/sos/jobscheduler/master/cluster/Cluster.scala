@@ -3,6 +3,7 @@ package com.sos.jobscheduler.master.cluster
 import akka.actor.ActorSystem
 import akka.pattern.ask
 import akka.util.Timeout
+import cats.syntax.flatMap._
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
@@ -32,6 +33,7 @@ import com.typesafe.config.Config
 import java.io.RandomAccessFile
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, Paths}
+import monix.catnap.MVar
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean
 import monix.execution.{CancelableFuture, Scheduler}
@@ -57,6 +59,7 @@ final class Cluster(
   private var switchoverAcknowledged = false
   @volatile
   private var stopRequested = false
+  private val startingClusterStateMVar = MVar.empty[Task, Option[ClusterState]]().memoize
 
   def stop(): Unit = {
     logger.debug("stop")
@@ -79,9 +82,11 @@ final class Cluster(
     recoveredClusterState: ClusterState,
     recoveredState: MasterState)
   : (Task[Option[MasterState]], Task[Checked[ClusterFollowUp[MasterState, Event]]]) = {
+    startingClusterStateMVar.flatMap(_.put(Some(recoveredClusterState))).runSyncUnsafe(99.s)
     val (passiveState, followUp) = startCluster(recovered, recoveredClusterState, recoveredState, eventIdGenerator)
     passiveState ->
       followUp.map(_.map { case (clusterState, followUp) =>
+        startingClusterStateMVar.flatTap(_.take).flatMap(_.put(None)).runSyncUnsafe(99.s)
         persistence.start(clusterState)
         followUp
       })
@@ -110,9 +115,10 @@ final class Cluster(
         recoveredClusterState match {
           case recoveredClusterState: Coupled =>
             val retryDelay = 5.s  // TODO
+            val retryDelays = Iterator.single(1.s/*TODO*/) ++ Iterator.continually(retryDelay)
             val failedOver = AkkaHttpMasterApi.resource(recoveredClusterState.passiveUri, name = "clusterState")(actorSystem)
               .use(other =>
-                other.loginUntilReachable(clusterConf.userAndPassword, Iterator.single(1.s/*TODO*/) ++ Iterator.continually(retryDelay)) >>
+                other.loginUntilReachable(clusterConf.userAndPassword, retryDelays) >>
                   other.clusterState)
               .onErrorRestartLoop(()) { (throwable, _, retry) =>
                 logger.warn("While trying to reach the other cluster node due to restart: " + throwable.toStringWithCauses,
@@ -132,7 +138,7 @@ final class Cluster(
                   logger.info(s"The other cluster node '${otherState.activeUri}' has failed-over while this node was absent")
                   val failedAt = otherState.failedAt getOrElse sys.error("Missing failedAt information from failed-over cluster node")
                   // This restarted, previously failed cluster node may have written one chunk of events more than
-                  // the passive node, maybe even an extra snapshot with a new journal file.
+                  // the passive node, maybe even an extra snapshot in a new journal file.
                   // These extra events are not acknowledged. So we truncate the journal.
                   var truncated = false
                   val journalFiles = JournalFiles.listJournalFiles(journalMeta.fileBase) takeRight 2
@@ -430,8 +436,14 @@ final class Cluster(
     n > votingAgentRefPaths.size / 2
   */
 
-  def currentState: Task[ClusterState] =
-    persistence.currentState
+  /** Returns the current or at start the recovered ClusterState.
+    * Required for the /api/cluster web service used by the restarting active node
+    * asking the peer about its current (maybe failed-over) ClusterState. */
+  def currentClusterState: Task[ClusterState] =
+    startingClusterStateMVar.flatMap(_.read).flatMap {
+      case Some(o) => Task.pure(o)  // Use recovered (maybe old) ClusterState until the actual ClusterState has been established
+      case None => persistence.currentState
+    }
 
   // Used to RegisterMe actor in JournalActor
   def journalingActor = persistence.actor
