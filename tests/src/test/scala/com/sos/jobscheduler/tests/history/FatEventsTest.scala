@@ -27,7 +27,6 @@ import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.MasterCommand.NoOperation
-import com.sos.jobscheduler.master.data.events.MasterEvent.MasterReady
 import com.sos.jobscheduler.tests.history.FatEventsTest._
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider.StdoutOutput
@@ -147,8 +146,7 @@ final class FatEventsTest extends FreeSpec
           assert(listJournalFiles.size == 4 && !listJournalFiles.contains("master--0.journal"))  // First file deleted
           master.httpApi.login(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))) await 99.s
 
-          // Wait until Master is ready
-          master.eventWatch.await[MasterReady](after = lastAddedEventId)
+          master.waitUntilReady()
 
           // after=0 is torn
           val torn = master.httpApi.fatEvents(EventRequest.singleClass[FatEvent](after = EventId.BeforeFirst, timeout = Some(99.s))) await 99.s

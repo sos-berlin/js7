@@ -10,7 +10,6 @@ import com.sos.jobscheduler.data.cluster.ClusterEvent
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
 import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.data.events.MasterEvent.MasterReady
 import com.sos.jobscheduler.tests.master.cluster.MasterClusterTester._
 import monix.execution.Scheduler.Implicits.global
 
@@ -20,7 +19,7 @@ final class ReplicatingClusterTest extends MasterClusterTester
     val primaryHttpPort :: backupHttpPort :: Nil = findFreeTcpPorts(2)
     withMasterAndBackup(primaryHttpPort, backupHttpPort) { (primary, backup) =>
       val primaryMaster = primary.startMaster(httpPort = Some(primaryHttpPort)) await 99.s
-      primaryMaster.eventWatch.await[MasterReady]()
+      primaryMaster.waitUntilReady()
       primaryMaster.runOrder(FreshOrder(OrderId("🔶"), TestWorkflow.path))
 
       val backupMaster = backup.startMaster(httpPort = Some(backupHttpPort)) await 99.s

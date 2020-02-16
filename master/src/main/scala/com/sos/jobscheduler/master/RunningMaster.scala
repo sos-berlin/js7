@@ -45,6 +45,7 @@ import com.sos.jobscheduler.master.command.MasterCommandExecutor
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
 import com.sos.jobscheduler.master.data.MasterCommand
+import com.sos.jobscheduler.master.data.events.MasterEvent.MasterReady
 import com.sos.jobscheduler.master.problems.MasterIsNotYetReadyProblem
 import com.sos.jobscheduler.master.web.MasterWebServer
 import com.typesafe.config.{Config, ConfigFactory}
@@ -132,6 +133,9 @@ extends AutoCloseable
   @TestOnly
   def addOrderBlocking(order: FreshOrder): Boolean =
     orderApi.addOrder(order).runToFuture.await(99.s).orThrow
+
+  def waitUntilReady(): Unit =
+    eventWatch.await[MasterReady](after = eventWatch.tornEventId)
 
   val localUri: Uri = webServer.localUri
   lazy val httpApi: HttpMasterApi = new AkkaHttpMasterApi.CommonAkka {

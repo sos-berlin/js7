@@ -33,7 +33,6 @@ import com.sos.jobscheduler.data.master.MasterFileBaseds
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand.{ReplaceRepo, UpdateRepo}
-import com.sos.jobscheduler.master.data.events.MasterEvent.MasterReady
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider._
 import com.typesafe.config.ConfigUtil.quoteString
 import com.typesafe.config.{Config, ConfigFactory}
@@ -132,7 +131,7 @@ extends HasCloser
     val runningMaster = startMaster(httpPort = httpPort) await 99.s
     try {
       if (!dontWaitUntilReady) {
-        runningMaster.eventWatch.await[MasterReady]()
+        runningMaster.waitUntilReady()
       }
       val a = body(runningMaster)
       runningMaster.terminate() await 99.s
@@ -163,7 +162,7 @@ extends HasCloser
         val myFileBased = agentRefs ++ fileBased
         if (!filebasedHasBeenAdded.getAndSet(true) && myFileBased.nonEmpty) {
           // startMaster may be called several times. We configure only once.
-          runningMaster.eventWatch.await[MasterReady]()
+          runningMaster.waitUntilReady()
           runningMaster.executeCommandAsSystemUser(ReplaceRepo(
             Vinitial,
             myFileBased map (_ withVersion Vinitial) map fileBasedSigner.sign)

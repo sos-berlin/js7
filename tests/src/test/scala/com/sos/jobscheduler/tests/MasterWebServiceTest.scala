@@ -101,7 +101,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Ma
   // --------------------------------------------------------
 
   "Await MasterReady" in {
-    master.eventWatch.await[MasterReady]()
+    master.waitUntilReady()
   }
 
   "Await AgentReady" in {

@@ -90,6 +90,7 @@ final class MasterAgentWithoutAuthenticationTest extends FreeSpec
       val agentRef = AgentRef(agentRefPath ~ versionId, s"http://127.0.0.1:$agentPort")
       val agent = RunningAgent(agentConfiguration) await 99.seconds
       val master = RunningMaster(masterConfiguration) await 99.seconds
+      master.waitUntilReady()
 
       val replaceRepo = ReplaceRepo(versionId, (agentRef :: workflow :: Nil) map fileBasedSigner.sign)
       master.executeCommandAsSystemUser(replaceRepo).runSyncUnsafe(99.seconds).orThrow
