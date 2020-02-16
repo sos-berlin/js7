@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.agent.web
+package com.sos.jobscheduler.agent.web.master
 
 import akka.util.Timeout
 import com.sos.jobscheduler.agent.DirectAgentApi
@@ -14,7 +14,7 @@ import com.sos.jobscheduler.data.order.OrderEvent.OrderDetached
 /**
   * @author Joacim Zschimmer
   */
-trait MastersEventWebService extends AgentRouteProvider with GenericEventRoute
+trait MastersEventRoute extends AgentRouteProvider with GenericEventRoute
 {
   protected def agentApi(meta: CommandMeta): DirectAgentApi
   implicit protected def akkaAskTimeout: Timeout

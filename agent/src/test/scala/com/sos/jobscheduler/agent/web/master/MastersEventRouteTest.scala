@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.agent.web
+package com.sos.jobscheduler.agent.web.master
 
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{CoupleMaster, KeepEvents, RegisterAsMaster, TakeSnapshot}
@@ -22,7 +22,7 @@ import org.scalatest.FreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class MastersEventWebServiceTest extends FreeSpec with AgentTester
+final class MastersEventRouteTest extends FreeSpec with AgentTester
 {
   protected val akkaAskTimeout = 99.s
 
