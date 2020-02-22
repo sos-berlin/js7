@@ -3,7 +3,6 @@ package com.sos.jobscheduler.common.http
 import cats.syntax.flatMap._
 import com.sos.jobscheduler.base.auth.UserAndPassword
 import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.monixutils.MonixBase._
 import com.sos.jobscheduler.base.problem.Problems.InvalidSessionTokenProblem
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.session.SessionApi
@@ -72,7 +71,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
     coupledApiVar.tryTake
       .flatMap {
         case None => Task.pure(Completed)
-        case Some(api) => api.logout().onErrorHandle(_ => Completed)
+        case Some(api) => api.logoutOrTimeout(idleTimeout)
       }
 
   final def invalidateCoupledApi: Task[Completed] =
@@ -94,7 +93,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
 
     def observeAgainAndAgain: Observable[V] =
       Observable.tailRecM(initialAfter) { after =>
-        if (eof(after) || stopRequested  || !inUse.get)
+        if (eof(after) || stopRequested || coupledApiVar.isStopped || !inUse.get)
           Observable.pure(Right(Observable.empty))
         else
           // Memory leak due to https://github.com/monix/monix/issues/791 ???
@@ -118,7 +117,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
     /** Retries until web request returns an Observable. */
     private def tryEndlesslyToGetObservable(after: I): Task[Observable[V]] =
       Task.tailRecM(())(_ =>
-        (if (stopRequested && !inUse.get)
+        if ((stopRequested || coupledApiVar.isStopped) || !inUse.get)
           Task.pure(Right(Observable.raiseError(new IllegalStateException(s"RecouplingStreamReader($api) has been stopped"))))
         else
           coupleIfNeeded(after = after) >>
@@ -137,29 +136,24 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
                     Task.pure(Left(()))
                 case Right(observable) =>
                   Task.pure(Right(observable))
-              }))
+              })
 
     private def getObservableX(after: I): Task[Checked[Observable[V]]] =
       Task {
         sinceLastTry = now
-      } >> {
-        val task = getObservable(api, after = after)
-        idleTimeout match {
-          case d: FiniteDuration =>
-            task.timeout(d)
-              .onErrorRecoverWith { case t: TimeoutException =>
+      } >>
+        getObservable(api, after = after)
+          .timeout(idleTimeout)
+          .onErrorRecoverWith { case t: TimeoutException =>
+            scribe.debug(s"$api: ${t.toString}")
+            Task.pure(Right(Observable.empty))
+          }
+          .map(_.map(
+            _.timeoutOnSlowUpstream(idleTimeout + 1.s/*Let server time-out an idle stream first*/)
+              .onErrorRecoverWith { case t: UpstreamTimeoutException =>
                 scribe.debug(s"$api: ${t.toString}")
-                Task.pure(Right(Observable.empty))
-              }
-              .map(_.map(
-                _.timeoutOnSlowUpstream(d + 1.s/*Let server time-out an idle stream first*/)
-                  .onErrorRecoverWith { case t: UpstreamTimeoutException =>
-                    scribe.debug(s"$api: ${t.toString}")
-                    Observable.empty
-                  }))
-          case _ => task
-        }
-      }
+                Observable.empty
+              }))
 
     private def coupleIfNeeded(after: I): Task[Completed] =
       coupledApiVar.tryRead.flatMap {
@@ -169,29 +163,32 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
 
     private def tryEndlesslyToCouple(after: I): Task[Completed] =
       Task.tailRecM(())(_ =>
-        (for {
-          otherCoupledClient <- coupledApiVar.tryRead
-          _ <- otherCoupledClient.fold(Task.unit)(_ => Task.raiseError(new IllegalStateException("Coupling while already coupled")))
-          _ <- Task { recouplingPause.onCouple() }
-          _ <- api.login(maybeUserAndPassword, onlyIfNotLoggedIn = true).maybeTimeout(idleTimeout)
-          checkedCompleted <- couple(index = lastIndex)
-        } yield checkedCompleted)
-          .materialize.map(o => Checked.flattenTryChecked(o))  // materializeIntoChecked
-          .flatMap {
-            case Left(problem) =>
-              for {
-                _ <- api.logout().timeout(idleTimeout).onErrorRecover { case _ => api.clearSession() }
-                _ <- onCouplingFailed(api, problem)
-                _ <- pauseBeforeRecoupling
-              } yield Left(())
+        if (stopRequested || coupledApiVar.isStopped || !inUse.get)
+          Task.raiseError(new IllegalStateException(s"RecouplingStreamReader($api) has been stopped"))
+        else
+          (for {
+            otherCoupledClient <- coupledApiVar.tryRead
+            _ <- otherCoupledClient.fold(Task.unit)(_ => Task.raiseError(new IllegalStateException("Coupling while already coupled")))
+            _ <- Task { recouplingPause.onCouple() }
+            _ <- api.login(maybeUserAndPassword, onlyIfNotLoggedIn = true).timeout(idleTimeout)
+            checkedCompleted <- couple(index = lastIndex)
+          } yield checkedCompleted)
+            .materialize.map(o => Checked.flattenTryChecked(o))  // materializeIntoChecked
+            .flatMap {
+              case Left(problem) =>
+                for {
+                  _ <- api.logoutOrTimeout(idleTimeout)
+                  _ <- onCouplingFailed(api, problem)
+                  _ <- pauseBeforeRecoupling
+                } yield Left(())
 
-            case Right(Completed) =>
-              for {
-                _ <- coupledApiVar.tryPut(api)
-                _ <- Task { recouplingPause.onCouplingSucceeded() }
-                completed <- onCoupled(api, after)
-              } yield Right(completed)
-          })}
+              case Right(Completed) =>
+                for {
+                  _ <- coupledApiVar.tryPut(api)
+                  _ <- Task { recouplingPause.onCouplingSucceeded() }
+                  completed <- onCoupled(api, after)
+                } yield Right(completed)
+            })}
 
   private val pauseBeforeRecoupling =
     Task.defer(pauseBeforeNextTry(recouplingPause.nextPause()))
@@ -199,7 +196,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
 
 object RecouplingStreamReader
 {
-  val TerminatedProblem = Problem.pure("RecouplingStreamReader has been terminated")
+  val TerminatedProblem = Problem.pure("RecouplingStreamReader has been stopped")
   private val PauseGranularity = 500.ms
 
   def observe[@specialized(Long/*EventId or file position*/) I, V, Api <: SessionApi](

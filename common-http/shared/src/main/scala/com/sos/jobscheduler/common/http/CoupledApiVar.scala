@@ -17,9 +17,15 @@ import scala.concurrent.duration.Duration
 private[http] final class CoupledApiVar[Api <: SessionApi] {
   // The only Left value is TerminatedProblem
   private val coupledApiMVar = MVar.empty[Task, Checked[Api]]().memoize
+  @volatile private var stopped = false
+
+  def isStopped = stopped
 
   def terminate: Task[Completed] =
     Task.tailRecM(Duration.Zero)(delay =>
+      Task {
+        stopped = true
+      } >>
       (Task.delay(delay) >>
         invalidate >>
         coupledApiMVar.flatMap(_.tryPut(Left(TerminatedProblem)))
