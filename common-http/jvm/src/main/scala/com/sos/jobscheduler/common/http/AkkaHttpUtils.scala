@@ -3,9 +3,10 @@ package com.sos.jobscheduler.common.http
 import akka.http.scaladsl.coding.{Coder, Deflate, Gzip, NoCoding, StreamDecoder}
 import akka.http.scaladsl.model.headers.HttpEncodings.gzip
 import akka.http.scaladsl.model.headers.{HttpEncoding, HttpEncodings, `Accept-Encoding`}
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse, ResponseEntity}
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse, ResponseEntity, Uri => AkkaUri}
 import akka.stream.Materializer
 import akka.util.ByteString
+import com.sos.jobscheduler.data.common.Uri
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scodec.bits.ByteVector
@@ -77,5 +78,9 @@ object AkkaHttpUtils
 
   implicit final class AkkaByteVector(private val underlying: ByteVector) extends AnyVal {
     def toByteString = ByteString.fromArrayUnsafe(underlying.toArray)
+  }
+
+  implicit final class RichAkkaUri(private val underlying: Uri) extends AnyVal {
+    def asAkka = AkkaUri(underlying.string)
   }
 }
