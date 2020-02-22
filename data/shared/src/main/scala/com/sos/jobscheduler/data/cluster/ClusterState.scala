@@ -17,7 +17,7 @@ import monix.reactive.Observable
 sealed trait ClusterState
 extends JournaledState[ClusterState, ClusterEvent]
 {
-  def applyEvent(keyedEvent: KeyedEvent[ClusterEvent]) = {
+  def applyEvent(keyedEvent: KeyedEvent[ClusterEvent]): Checked[ClusterState] = {
     val event = keyedEvent.event
     if (!keyedEvent.key.isInstanceOf[NoKey])
       eventNotApplicable(keyedEvent)
@@ -48,16 +48,11 @@ extends JournaledState[ClusterState, ClusterEvent]
             activeUri = state.activeUri,
             passiveUri = state.passiveUri))
 
-        case (state: Decoupled, FollowingStarted(followingUri)) if followingUri == state.activeUri =>
-          Right(PreparedToBeCoupled(
-            activeUri = state.passiveUri,
-            passiveUri = state.activeUri))
-
         case (state: Coupled, SwitchedOver(uri)) if state.passiveUri == uri =>
           Right(Decoupled(
             activeUri = uri,
             passiveUri = state.activeUri,
-            state.failedAt))
+            failedAt = None))
 
         case (state: Coupled, event: FailedOver)
           if state.activeUri == event.failedActiveUri && state.passiveUri == event.activatedUri =>
@@ -77,7 +72,7 @@ extends JournaledState[ClusterState, ClusterEvent]
           Right(Decoupled(
             activeUri = state.activeUri,
             passiveUri = uri,
-            state.failedAt))
+            failedAt = None))
 
         case (_, keyedEvent) => eventNotApplicable(keyedEvent)
       }
