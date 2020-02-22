@@ -154,9 +154,8 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
             if (responseFuture == null)
               Task.unit
             else
-              Task {
+              Task.fromFuture {
                 responseFuture.map(_.discardEntityBytes())
-                  .map(_ => ())
               }
             }
         ) map decodeResponse/*decompress*/
