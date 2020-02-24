@@ -8,14 +8,14 @@ import akka.http.scaladsl.server.AuthenticationFailedRejection.CredentialsMissin
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route.seal
 import akka.http.scaladsl.server.{AuthenticationFailedRejection, Directive1, ExceptionHandler, RejectionHandler, Route}
-import com.sos.jobscheduler.base.auth.{HashedPassword, Permission, User, UserAndPassword, UserId, ValidUserPermission}
+import com.sos.jobscheduler.base.auth.{HashedPassword, Permission, SimpleUser, User, UserAndPassword, UserId, ValidUserPermission}
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper._
 import com.sos.jobscheduler.common.auth.IdToUser
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
-import com.typesafe.config.Config
+import com.typesafe.config.{Config, ConfigFactory}
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.duration._
@@ -202,4 +202,19 @@ object GateKeeper {
   private[auth] object GetIsPublic extends AuthorizationReason {
     override def toString = "get-is-public=true"
   }
+
+  def forTest(isPublic: Boolean = false, config: Config = ConfigFactory.empty)(implicit eh: ExceptionHandler, s: Scheduler)
+  : GateKeeper[SimpleUser] =
+    new GateKeeper(
+      GateKeeper.Configuration.fromConfig(
+        config.withFallback(ConfigFactory.parseString(
+         s"""jobscheduler.webserver.auth {
+            |  realm = "TEST REALM"
+            |  invalid-authentication-delay = 100ms
+            |  loopback-is-public = false
+            |  get-is-public = false
+            |  public = $isPublic
+            |}
+            |""".stripMargin)),
+        SimpleUser.apply))
 }

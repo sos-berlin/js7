@@ -1,24 +1,17 @@
 package com.sos.jobscheduler.common.akkahttp.web.session
 
 import akka.http.scaladsl.model.HttpHeader
-import akka.http.scaladsl.model.StatusCodes.{BadRequest, Forbidden, Unauthorized}
+import akka.http.scaladsl.model.StatusCodes.{BadRequest, Unauthorized}
 import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials, HttpChallenges, `WWW-Authenticate`}
-import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
-import com.sos.jobscheduler.base.auth.{SessionToken, SimpleUser, UserAndPassword, UserId, ValidUserPermission}
+import akka.http.scaladsl.testkit.RouteTestTimeout
+import com.sos.jobscheduler.base.auth.{SessionToken, UserAndPassword, UserId}
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
 import com.sos.jobscheduler.base.generic.{Completed, SecretString}
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.session.HttpSessionApi
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegment
-import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
-import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
-import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
 import com.sos.jobscheduler.common.akkahttp.web.session.SessionRouteTest._
-import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
 import com.sos.jobscheduler.common.http.AkkaHttpClient
 import com.sos.jobscheduler.common.http.AkkaHttpClient.HttpException
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
@@ -27,86 +20,23 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import com.typesafe.config.ConfigFactory
-import java.net.InetSocketAddress
+import monix.eval.Task
 import monix.execution.Scheduler
+import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
   */
-sealed abstract class SessionRouteTest(isPublic: Boolean)
-extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRoute
+sealed abstract class SessionRouteTest(override protected val isPublic: Boolean)
+extends FreeSpec with SessionRouteTester
 {
-  protected type Session = SimpleSession
-
-  protected def isShuttingDown = false
-  implicit protected def scheduler = Scheduler.global
-  protected val config = ConfigFactory.parseString("jobscheduler.webserver.verbose-error-messages = on")
-  private lazy val actorSystem = newActorSystem("SessionRouteTest")
-
-  protected lazy val gateKeeper = new GateKeeper(
-    GateKeeper.Configuration.fromConfig(
-      ConfigFactory.parseString(
-         s"""jobscheduler.webserver.auth {
-            |  realm = "TEST REALM"
-            |  invalid-authentication-delay = 100ms
-            |  loopback-is-public = false
-            |  get-is-public = false
-            |  public = $isPublic
-            |}
-            |
-            |jobscheduler.auth.users {
-            |  A-USER = "plain:A-PASSWORD"
-            |  B-USER = "plain:B-PASSWORD"
-            |}
-            |""".stripMargin),
-      SimpleUser.apply))
-
-  protected lazy val sessionRegister =
-    SessionRegister.start[SimpleSession](system, SimpleSession.apply, SessionRegister.TestConfig)
-
+  protected final implicit def scheduler = Scheduler.global
   private implicit val routeTestTimeout = RouteTestTimeout(10.seconds)
 
-  private val route = Route.seal(
-    decodeRequest {
-      pathSegment("session") {
-        sessionRoute
-      } ~
-      path("authorizedUser") {
-        get {
-          authorizedUser(ValidUserPermission) { user =>
-            complete(user.id.string)
-          }
-        }
-      } ~
-      path("unprotected") {
-        get {
-          complete("THE RESPONSE")
-        }
-      }
-    })
-
-  private lazy val server = new AkkaWebServer with AkkaWebServer.HasUri {
-    protected val config = ConfigFactory.parseString("jobscheduler.webserver.shutdown-timeout = 10s")
-    def actorSystem = SessionRouteTest.this.actorSystem
-    def scheduler = Scheduler.global
-    lazy val bindings = WebServerBinding.Http(new InetSocketAddress("127.0.0.1", findFreeTcpPort())) :: Nil
-    def newRoute(binding: WebServerBinding) = AkkaWebServer.BoundRoute(route)
-  }
-
   import gateKeeper.invalidAuthenticationDelay
-  import server.localUri
-
-  override def afterAll() = {
-    server.close()
-    actorSystem.terminate() await 99.s
-    super.afterAll()
-  }
 
   "login fails if server is unreachable" in {
     withSessionApi() { api =>
@@ -122,7 +52,7 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
     "invalid authorization" in {
       withSessionApi() { api =>
         @volatile var count = 0
-        def onError(t: Throwable) = {
+        def onError(t: Throwable) = Task {
           count += 1
           logger.debug(s"count=$count " + t.toStringWithCauses)
         }
@@ -147,7 +77,7 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
 
     "authorized" in {
       withSessionApi() { api =>
-        api.loginUntilReachable(Some(AUserAndPassword), Iterator.continually(10.milliseconds), _ => ()) await 99.s
+        api.loginUntilReachable(Some(AUserAndPassword), Iterator.continually(10.milliseconds), _ => Task.unit) await 99.s
         requireAuthorizedAccess(api)
         api.logout() await 99.s
         requireAccessIsUnauthorizedOrPublic(api)
@@ -338,60 +268,13 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
     }
   }
 
-  private def requireAuthorizedAccess(client: AkkaHttpClient): Unit = {
-    requireAccessToUnprotected(client)
-    client.get_[String](s"$localUri/authorizedUser") await 99.s shouldEqual "A-USER"
-  }
-
-  private def requireAccessIsUnauthorizedOrPublic(client: AkkaHttpClient): Unit = {
-    requireAccessToUnprotected(client)
-    if (isPublic) {
-      requireAccessIsPublic(client)
-    } else {
-      requireAccessIsUnauthorized(client)
-    }
-  }
-
-  private def requireAccessIsPublic(client: AkkaHttpClient): Unit = {
-    assert(isPublic)
-    requireAccessToUnprotected(client)
-    getViaAuthorizedUsed(client)
-  }
-
-  private def requireAccessIsUnauthorized(client: AkkaHttpClient): HttpException = {
-    requireAccessToUnprotected(client)
-    val exception = intercept[AkkaHttpClient.HttpException] {
-      getViaAuthorizedUsed(client)
-    }
-    assert(exception.status == Unauthorized)
-    assert(exception.header[`WWW-Authenticate`] ==
-      Some(`WWW-Authenticate`(List(HttpChallenges.basic(realm = "TEST REALM")))))
-    exception
-  }
-
-  private def requireAccessIsForbidden(client: AkkaHttpClient): HttpException = {
-    requireAccessToUnprotected(client)
-    val exception = intercept[AkkaHttpClient.HttpException] {
-      getViaAuthorizedUsed(client)
-    }
-    assert(exception.status == Forbidden)
-    assert(exception.header[`WWW-Authenticate`].isEmpty)
-    exception
-  }
-
-  private def getViaAuthorizedUsed(client: AkkaHttpClient) =
-    client.get_[String](s"$localUri/authorizedUser") await 99.s
-
-  private def requireAccessToUnprotected(client: AkkaHttpClient): Unit =
-    client.get_[String](s"$localUri/unprotected") await 99.s shouldEqual "THE RESPONSE"
-
   private def withSessionApi(headers: List[HttpHeader] = Nil)(body: HttpSessionApi with AkkaHttpClient => Unit): Unit = {
     val api = new HttpSessionApi with AkkaHttpClient {
       protected val name = "SessionRouteTest"
       def httpClient = this: AkkaHttpClient
       def sessionUri = s"$baseUri/session"
-      val actorSystem = SessionRouteTest.this.actorSystem
-      def baseUri = server.localUri
+      val actorSystem = SessionRouteTest.this.system
+      def baseUri = localUri
       def uriPrefixPath = ""
       override val standardHeaders = headers ::: super.standardHeaders
     }
