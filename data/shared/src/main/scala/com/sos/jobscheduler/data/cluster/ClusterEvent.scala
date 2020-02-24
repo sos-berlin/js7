@@ -28,6 +28,9 @@ object ClusterEvent
 
   final case class FailedOver(failedActiveUri: Uri, activatedUri: Uri, failedAt: JournalPosition)
   extends ClusterEvent
+  {
+    override def toString = s"$FailedOver($activatedUri <- $failedActiveUri, $failedAt)"
+  }
 
   final case class FollowerLost(uri: Uri)
   extends ClusterEvent

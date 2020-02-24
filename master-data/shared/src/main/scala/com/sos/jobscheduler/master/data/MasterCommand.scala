@@ -138,6 +138,7 @@ object MasterCommand extends CommonCommand.Companion
   final case class ClusterPassiveFollows(followedUri: Uri, followingUri: Uri)
   extends MasterCommand {
     type Response = Response.Accepted
+    override def toString = s"ClusterPassiveFollows($followedUri is followed by $followingUri)"
   }
 
   case object ClusterSwitchOver
