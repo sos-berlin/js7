@@ -48,7 +48,8 @@ final class MasterConfigurationTest extends FreeSpec with BeforeAndAfterAll
           timeout = 6500.ms,  // Between 3s and 10s
           delay = 1.s),
         heartbeat = 3.s,
-        failAfter = 10.s),
+        failAfter = 10.s,
+        Nil),
       name = MasterConfiguration.DefaultName,
       config = DefaultConfig))
   }

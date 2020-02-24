@@ -3,16 +3,21 @@ package com.sos.jobscheduler.master.cluster
 import akka.actor.ActorSystem
 import akka.pattern.ask
 import akka.util.Timeout
-import cats.syntax.flatMap._
-import com.sos.jobscheduler.base.generic.Completed
+import cats.data.EitherT
+import com.sos.jobscheduler.base.auth.UserAndPassword
+import com.sos.jobscheduler.base.generic.{Completed, SecretString}
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
+import com.sos.jobscheduler.base.utils.LockResource
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
+import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.event.EventIdGenerator
+import com.sos.jobscheduler.common.http.AkkaHttpUtils._
 import com.sos.jobscheduler.common.http.{AkkaHttpClient, RecouplingStreamReader}
 import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.core.cluster.HttpClusterWatch
 import com.sos.jobscheduler.core.event.journal.JournalActor
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles
@@ -20,30 +25,32 @@ import com.sos.jobscheduler.core.event.journal.recover.{JournaledStateRecoverer,
 import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
 import com.sos.jobscheduler.core.problems.MissingPassiveClusterNodeHeartbeatProblem
 import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, ClusterCoupled, FollowerLost, FollowingStarted, SwitchedOver}
-import com.sos.jobscheduler.data.cluster.ClusterState.{AwaitingAppointment, AwaitingFollower, Coupled, CoupledOrDecoupled, Decoupled, Empty, OtherFailedOver, Sole}
+import com.sos.jobscheduler.data.cluster.ClusterState.{AwaitingAppointment, AwaitingFollower, Coupled, CoupledOrDecoupled, Decoupled, Empty, HasActiveNode, OtherFailedOver, Sole}
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeRole, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, Stamped}
+import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.master.MasterState
 import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
 import com.sos.jobscheduler.master.cluster.Cluster._
 import com.sos.jobscheduler.master.cluster.ObservablePauseDetector._
-import com.typesafe.config.Config
+import com.typesafe.config.{Config, ConfigUtil}
 import java.io.RandomAccessFile
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, Paths}
-import monix.catnap.MVar
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean
 import monix.execution.{CancelableFuture, Scheduler}
 import monix.reactive.{Observable, OverflowStrategy}
+import scala.collection.immutable.Seq
 import scala.concurrent.Promise
 import scala.util.{Failure, Success}
 
 final class Cluster(
   journalMeta: JournalMeta,
   persistence: JournaledStatePersistence[ClusterState, ClusterEvent],
+  masterId: MasterId,
   clusterConf: ClusterConf,
   config: Config,
   eventIdGenerator: EventIdGenerator,
@@ -63,12 +70,23 @@ final class Cluster(
   @volatile
   private var startingClusterState: Option[ClusterState] = null
 
+  private lazy val clusterWatch = {
+    val uri = clusterConf.agentUris.headOption
+      .getOrElse(sys.error("Missing ClusterWatch / Agent URI in cluster configuration"))
+    new HttpClusterWatch(
+      uri.asAkka,
+      userAndPassword = config.optionAs[SecretString]("jobscheduler.auth.agents." + ConfigUtil.joinPath(uri.string))
+        .map(password => UserAndPassword(masterId.toUserId, password)),
+      actorSystem)
+  }
+
   def stop(): Unit = {
     logger.debug("stop")
     stopRequested = true
     for (o <- Option(fetchingEventsFuture)) {
       o.cancel()
     }
+    //TODO clusterWatch.logout()
   }
 
   /**
@@ -111,7 +129,8 @@ final class Cluster(
 
       case (Empty, Some(ownUri), Some(ClusterNodeRole.Backup(activeUri)), _) =>
         logger.info(s"Becoming the (still not following) backup cluster node '$ownUri' for primary node at $activeUri")
-        val passive = new PassiveClusterNode(ownUri, activeUri, journalMeta, recovered, clusterConf, eventIdGenerator)(actorSystem)
+        val passive = new PassiveClusterNode(ownUri, activeUri, journalMeta, recovered,
+          clusterWatch, clusterConf, eventIdGenerator)(actorSystem)
         passive.state.map(Some.apply) ->
           passive.run(recoveredClusterState, recoveredState)
 
@@ -188,7 +207,7 @@ final class Cluster(
                           clusterState = ClusterState.OtherFailedOver(
                             recoveredClusterState.passiveUri,
                             recoveredClusterState.activeUri))))),
-                    clusterConf, eventIdGenerator)(actorSystem)
+                    clusterWatch, clusterConf, eventIdGenerator)(actorSystem)
                   Some(OtherFailedOver(otherState.activeUri, otherState.passiveUri) -> passiveClusterNode)
                 case otherState =>
                   sys.error(s"The other node is in invalid clusterState=$otherState")  // ???
@@ -216,7 +235,8 @@ final class Cluster(
             s"Becoming a following passive cluster node '$ownUri'"
           else
             s"Becoming a passive cluster node '$ownUri', trying to follow the active node")
-        val passive = new PassiveClusterNode(ownUri, state.activeUri, journalMeta, recovered, clusterConf, eventIdGenerator)(actorSystem)
+        val passive = new PassiveClusterNode(ownUri, state.activeUri, journalMeta, recovered,
+          clusterWatch, clusterConf, eventIdGenerator)(actorSystem)
         passive.state.map(Some.apply) ->
           passive.run(recoveredClusterState, recoveredState)
 
@@ -232,7 +252,7 @@ final class Cluster(
   def automaticallyAppointConfiguredBackupNode(): Task[Checked[Completed]] =
     clusterConf.maybeRole match {
       case Some(ClusterNodeRole.Primary(Some(backupUri))) =>
-        persistence.persistTransaction(NoKey) {
+        persist {
           case state @ (ClusterState.Empty | _: ClusterState.Sole | _: ClusterState.AwaitingAppointment) =>
             for (events <- becomeSoleIfEmpty(state)) yield
               events ::: BackupNodeAppointed(backupUri) :: Nil
@@ -250,7 +270,7 @@ final class Cluster(
         if (backupUri == ownUri)
           Task.pure(Left(Problem.pure("A cluster node can not be appointed to itself")))
         else
-          persistence.persistTransaction(NoKey) {
+          persist {
             case state @ (Empty | _: Sole | AwaitingAppointment(`ownUri`, `backupUri`) /*| AwaitingFollower(`ownUri`, `backupUri`)*/)
               if activeUri == ownUri =>
                 for (events <- becomeSoleIfEmpty(state)) yield
@@ -272,8 +292,8 @@ final class Cluster(
       case None =>
         Task.pure(Left(Problem.pure("Missing this node's own URI")))
       case Some(ownUri) =>
-        persistence.waitUntilStarted.flatMap(_
-          .persistTransaction(NoKey) {
+        persistence.waitUntilStarted.flatMap(_ =>
+          persist {
             case _: Coupled =>
               Right(Nil)
             case state @ (Empty | Sole(`ownUri`) | AwaitingFollower(`ownUri`, `followingUri`)) if ownUri == followedUri =>
@@ -304,13 +324,13 @@ final class Cluster(
     }
 
   def switchOver: Task[Checked[Completed]] =
-    persistence.persistEvent[ClusterEvent](NoKey) {
+    persist {
       case coupled: Coupled if clusterConf.maybeOwnUri contains coupled.activeUri =>
-        Right(SwitchedOver(coupled.passiveUri))
+        Right(SwitchedOver(coupled.passiveUri) :: Nil)
       case state =>
         Left(Problem.pure(s"Switchover is possible only in cluster state Coupled(active=${clusterConf.maybeOwnUri.map(_.toString)})," +
           s" but cluster state is: $state"))
-    }.map(_.map { case (_: Stamped[_], _) =>
+    }.map(_.map { case (_: Seq[Stamped[_]], _) =>
       switchoverAcknowledged = true
       Completed
     })
@@ -338,7 +358,7 @@ final class Cluster(
       case Success(Left(MissingPassiveClusterNodeHeartbeatProblem(uri))) =>
         logger.warn("Missing heartbeat of passive cluster node - continuing as a single node")
         val event = FollowerLost(uri)
-        persistence.persistEvent[ClusterEvent](NoKey)(_ => Right(event))
+        persist(_ => Right(event :: Nil))
           .runToFuture
           .onComplete {
             case Success(Right(_)) => logger.info(s"Continuing as a single cluster node after passive node failed")
@@ -439,6 +459,38 @@ final class Cluster(
   private def isAbsoluteMajority(n: Int) =
     n > votingAgentRefPaths.size / 2
   */
+
+  private def persist(toEvents: ClusterState => Checked[Seq[ClusterEvent]])
+  : Task[Checked[(Seq[Stamped[KeyedEvent[ClusterEvent]]], ClusterState)]] =
+    (for {
+      persisted <- EitherT(persistence.persistTransaction(NoKey)(toEvents))
+      (stampedEvents, clusterState) = persisted
+      _ <- EitherT(
+        if (stampedEvents.isEmpty) Task.pure(Right(Completed))
+        else clusterWatchSynchronizer.applyEvents(stampedEvents.map(_.value.event), clusterState))
+    } yield persisted).value
+
+  private object clusterWatchSynchronizer
+  {
+    private val lock = LockResource()
+
+    def applyEvents(events: Seq[ClusterEvent], clusterState: ClusterState): Task[Checked[Completed]] =
+      clusterConf.maybeOwnUri match {
+        case None => Task.pure(Checked(Completed))
+        case Some(ownUri) =>
+          lock.use(_ =>
+            clusterWatch.applyEvents(from = ownUri, events, clusterState))
+      }
+
+    private def heartbeat(clusterState: ClusterState): Task[Checked[Completed]] =
+      lock.use(_ =>
+        clusterState match {
+          case clusterState: HasActiveNode if clusterConf.maybeOwnUri exists clusterState.isActive =>
+            clusterWatch.heartbeat(from = clusterState.activeUri, clusterState)
+          case _ =>
+            Task.pure(Right(Completed))
+        })
+  }
 
   /** Returns the current or at start the recovered ClusterState.
     * Required for the /api/cluster web service used by the restarting active node

@@ -8,6 +8,7 @@ import com.sos.jobscheduler.common.scalautil.Closer.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
+import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.listJournalFiles
 import com.sos.jobscheduler.core.message.ProblemCodeMessages
 import com.sos.jobscheduler.data.agent.AgentRefPath
@@ -30,6 +31,7 @@ private[cluster] trait MasterClusterTester extends FreeSpec
   protected[cluster] final def withMasterAndBackup(primaryHttpPort: Int, backupHttpPort: Int)(body: (DirectoryProvider, DirectoryProvider) => Unit): Unit =
     withCloser { implicit closer =>
       val testName = MasterClusterTester.this.getClass.getSimpleName
+      val agentPort = findFreeTcpPort()
       val primary = new DirectoryProvider(agentRefPath :: Nil, TestWorkflow :: Nil, testName = Some(s"$testName-Primary"),
         masterConfig = ConfigFactory.parseString(s"""
           jobscheduler.master.cluster.this-node.role = Primary
@@ -37,9 +39,11 @@ private[cluster] trait MasterClusterTester extends FreeSpec
           jobscheduler.master.cluster.other-node.uri = "http://127.0.0.1:$backupHttpPort"
           jobscheduler.master.cluster.heartbeat = 3s
           jobscheduler.master.cluster.fail-after = 5s
+          jobscheduler.master.cluster.agents = [ "http://127.0.0.1:$agentPort" ]
           jobscheduler.auth.users.Master.password = "plain:BACKUP-MASTER-PASSWORD"
           jobscheduler.auth.users.TEST.password = "plain:TEST-PASSWORD"
-          jobscheduler.auth.cluster.password = "PRIMARY-MASTER-PASSWORD" """)
+          jobscheduler.auth.cluster.password = "PRIMARY-MASTER-PASSWORD" """),
+        agentPorts = agentPort :: Nil
       ).closeWithCloser
 
       val backup = new DirectoryProvider(Nil, Nil, testName = Some(s"$testName-Backup"),
@@ -49,6 +53,7 @@ private[cluster] trait MasterClusterTester extends FreeSpec
           jobscheduler.master.cluster.other-node.uri = "http://127.0.0.1:$primaryHttpPort"
           jobscheduler.master.cluster.heartbeat = 3s
           jobscheduler.master.cluster.fail-after = 5s
+          jobscheduler.master.cluster.agents = [ "http://127.0.0.1:$agentPort" ]
           jobscheduler.auth.users.Master.password = "plain:PRIMARY-MASTER-PASSWORD"
           jobscheduler.auth.cluster.password = "BACKUP-MASTER-PASSWORD" """)
       ).closeWithCloser

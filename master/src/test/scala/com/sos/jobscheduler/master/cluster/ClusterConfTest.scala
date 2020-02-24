@@ -35,7 +35,8 @@ final class ClusterConfTest extends FreeSpec
             timeout = 6.s,  // Between 5s and 7s
             delay = 1.s),
           7.s,
-          5.s)))
+          5.s,
+          Uri("http://AGENT-1") :: Uri("http://AGENT-2") :: Nil)))
     }
 
     "Full configuration" in {
@@ -45,6 +46,7 @@ final class ClusterConfTest extends FreeSpec
         jobscheduler.master.cluster.other-node.uri = "http://BACKUP"
         jobscheduler.master.cluster.heartbeat = 7s
         jobscheduler.master.cluster.fail-after = 5s
+        jobscheduler.master.cluster.agents = [ "http://AGENT" ]
         jobscheduler.auth.cluster.password = "PASSWORD"
         jobscheduler.web.client.idle-get-timeout = 50s
         jobscheduler.web.client.delay-between-polling-gets = 1s""")
@@ -58,7 +60,8 @@ final class ClusterConfTest extends FreeSpec
             timeout = 6.s,  // Between 5s and 7s
             delay = 1.s),
           7.s,
-          5.s)))
+          5.s,
+          Uri("http://AGENT") :: Nil)))
     }
 
     //"heartbeat is longer then fail-after" in {

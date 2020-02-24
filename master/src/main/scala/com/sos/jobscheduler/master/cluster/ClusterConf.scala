@@ -11,6 +11,8 @@ import com.sos.jobscheduler.data.cluster.ClusterNodeRole
 import com.sos.jobscheduler.data.cluster.ClusterNodeRole.{Backup, Primary}
 import com.sos.jobscheduler.data.common.Uri
 import com.typesafe.config.Config
+import scala.collection.JavaConverters._
+import scala.collection.immutable.Seq
 import scala.concurrent.duration.FiniteDuration
 
 final case class ClusterConf(
@@ -19,7 +21,8 @@ final case class ClusterConf(
   userAndPassword: Option[UserAndPassword],
   recouplingStreamReader: RecouplingStreamReaderConf,
   heartbeat: FiniteDuration,
-  failAfter: FiniteDuration)
+  failAfter: FiniteDuration,
+  agentUris: Seq[Uri])
 
 object ClusterConf
 {
@@ -41,12 +44,12 @@ object ClusterConf
       recouplingStreamReaderConf <- RecouplingStreamReaderConfs.fromConfig(config)
       heartbeat <- Right(config.getDuration("jobscheduler.master.cluster.heartbeat").toFiniteDuration)
       failAfter <- Right(config.getDuration("jobscheduler.master.cluster.fail-after").toFiniteDuration)
-      //_ <- if (heartbeat < failAfter) Right(()) else
-      //  Left(Problem(s"jobscheduler.master.cluster.heartbeat=${heartbeat.pretty} must be shorter than jobscheduler.master.cluster.fail-after=${failAfter.pretty}"))
+      agentUris <- Right(config.getStringList("jobscheduler.master.cluster.agents").asScala.toVector map Uri.apply)
     } yield
       new ClusterConf(maybeRole, maybeOwnUri, userAndPassword,
         recouplingStreamReaderConf.copy(
           timeout = heartbeat + (failAfter - heartbeat) / 2),
         heartbeat = heartbeat,
-        failAfter = failAfter)
+        failAfter = failAfter,
+        agentUris)
 }

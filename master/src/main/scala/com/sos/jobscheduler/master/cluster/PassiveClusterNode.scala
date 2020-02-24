@@ -4,6 +4,7 @@ import akka.actor.ActorSystem
 import cats.effect.Resource
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec._
+import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.ScalaTime._
@@ -15,6 +16,8 @@ import com.sos.jobscheduler.common.http.{AkkaHttpClient, RecouplingStreamReader}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
+import com.sos.jobscheduler.core.cluster.ClusterWatch.OtherClusterNodeStillActiveProblem
+import com.sos.jobscheduler.core.cluster.ClusterWatchApi
 import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, JournalSeparators}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles._
 import com.sos.jobscheduler.core.event.journal.recover.{JournalFileStateBuilder, JournalRecovererState, Recovered, RecoveredJournalFile}
@@ -50,6 +53,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
   activeUri: Uri,
   journalMeta: JournalMeta,
   recovered: Recovered[S, Event],
+  clusterWatch: ClusterWatchApi,
   clusterConf: ClusterConf,
   eventIdGenerator: EventIdGenerator)
   (implicit actorSystem: ActorSystem)
@@ -58,14 +62,14 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
 
   private val stateBuilderAndAccessor = new StateBuilderAndAccessor[S, Event](recovered.newStateBuilder)
   @volatile
-  private var terminated = false
+  private var stopped = false
 
   def state: Task[S] =
     stateBuilderAndAccessor.state
 
   def run(recoveredClusterState: ClusterState, recoveredState: S): Task[Checked[(ClusterState, ClusterFollowUp[S, Event])]] =
     Task.deferAction { implicit scheduler =>
-      assertThat(!terminated)  // Single-use only
+      assertThat(!stopped)  // Single-use only
       for (o <- recovered.recoveredJournalFile) {
         cutJournalFile(o.file, o.length)
       }
@@ -74,7 +78,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
         replicateJournalFiles(recoveredClusterState)
       )((_: MasterCommand.Response.Accepted, followUp) => followUp)
         .guarantee(Task {
-          terminated = true
+          stopped = true
         })
     }
 
@@ -186,7 +190,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
             ).map(_.scan(PositionAnd(after, ByteVector.empty/*unused*/))((s, line) =>
               PositionAnd(s.position + (if (line == JournalSeparators.HeartbeatMarker) 0 else line.length), line))))
 
-        protected def stopRequested = terminated
+        protected def stopRequested = stopped
 
         override def eof(index: Long) = _eof && index >= replicatedFileLength
       }
@@ -204,44 +208,48 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
           case None/*pause*/ =>
             (if (isReplicatingHeadOfFile) continuation.clusterState else builder.clusterState) match {
               case clusterState: ClusterState.Coupled if clusterState.passiveUri == ownUri =>
-                // TODO Agenten fragen, ob der andere Knoten noch aktiv ist
                 logger.warn(s"Failing over due to missing heartbeat of the currently active cluster node '$activeUri")
                 if (isReplicatingHeadOfFile) {
                   val recoveredJournalFile = continuation.maybeRecoveredJournalFile.getOrElse(
                     throw new AssertionError("Failover but nothing has been replicated"))
-                  val failedOverStamped = toStampedFailedOver(clusterState, JournalPosition(recoveredJournalFile.fileEventId, recoveredJournalFile.length))
+                  val failedOverStamped = toStampedFailedOver(clusterState,
+                    JournalPosition(recoveredJournalFile.fileEventId, recoveredJournalFile.length))
                   val failedOver = failedOverStamped.value.event
-                  val fileSize = {
-                    val file = recoveredJournalFile.file
-                    assertThat(exists(file))
-                    autoClosing(newOutputStream(file, APPEND)) { out =>
-                      // FIXME EventFailed wird vielleicht nach EventFooter geschrieben
-                      out.write((failedOverStamped.asJson.compactPrint + "\n").getBytes(UTF_8))
-                      //out.sync()
+                  ifClusterWatchAllowsActivation(clusterState, failedOver) {
+                    val fileSize = {
+                      val file = recoveredJournalFile.file
+                      assertThat(exists(file))
+                      autoClosing(newOutputStream(file, APPEND)) { out =>
+                        // FIXME EventFailed wird vielleicht nach EventFooter geschrieben
+                        out.write((failedOverStamped.asJson.compactPrint + "\n").getBytes(UTF_8))
+                        //out.sync()
+                      }
+                      size(file)
                     }
-                    size(file)
+                    //eventWatch.onJournalingStarted(???)
+                    eventWatch.onFileWrittenAndEventsCommitted(PositionAnd(fileSize, failedOverStamped.eventId), n = 1)
+                    eventWatch.onJournalingEnded(fileSize)
+                    builder.startWithState(JournalRecovererState.InEventsSection,
+                      journalHeader = Some(recoveredJournalFile.journalHeader),
+                      eventId = failedOverStamped.eventId,
+                      totalEventCount = recoveredJournalFile.calculatedJournalHeader.totalEventCount + 1,
+                      recoveredJournalFile.state.applyEvent(failedOver).orThrow)
+                    replicatedFirstEventPosition := recoveredJournalFile.firstEventPosition
+                    replicatedFileLength = fileSize
+                    Observable.pure(Right(()))
                   }
-                  //eventWatch.onJournalingStarted(???)
-                  eventWatch.onFileWrittenAndEventsCommitted(PositionAnd(fileSize, failedOverStamped.eventId), n = 1)
-                  eventWatch.onJournalingEnded(fileSize)
-                  builder.startWithState(JournalRecovererState.InEventsSection,
-                    journalHeader = Some(recoveredJournalFile.journalHeader),
-                    eventId = failedOverStamped.eventId,
-                    totalEventCount = recoveredJournalFile.calculatedJournalHeader.totalEventCount + 1,
-                    recoveredJournalFile.state.applyEvent(failedOver).orThrow)
-                  replicatedFirstEventPosition := recoveredJournalFile.firstEventPosition
-                  replicatedFileLength = fileSize
-                  Observable.pure(Right(()))
                 } else {
                   val failedOverStamped = toStampedFailedOver(clusterState, JournalPosition(continuation.fileEventId, size(file)))
                   val failedOverJson = failedOverStamped.asJson
-                  builder.put(failedOverJson)
-                  out.write(ByteBuffer.wrap((failedOverJson.compactPrint + "\n").getBytes(UTF_8)))
-                  //out.sync()
-                  val fileSize = out.size
-                  replicatedFileLength = fileSize
-                  eventWatch.onFileWrittenAndEventsCommitted(PositionAnd(fileSize, failedOverStamped.eventId), n = 1)
-                  Observable.pure(Right(()))
+                  ifClusterWatchAllowsActivation(clusterState, failedOverStamped.value.event) {
+                    builder.put(failedOverJson)
+                    out.write(ByteBuffer.wrap((failedOverJson.compactPrint + "\n").getBytes(UTF_8)))
+                    //out.sync()
+                    val fileSize = out.size
+                    replicatedFileLength = fileSize
+                    eventWatch.onFileWrittenAndEventsCommitted(PositionAnd(fileSize, failedOverStamped.eventId), n = 1)
+                    Observable.pure(Right(()))
+                  }
                 }
 
               case clusterState =>
@@ -327,6 +335,21 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
         .guarantee(
           Task { out.close() } >>
             recouplingStreamReader.terminate.map(_ => ()))
+    }
+
+  private def ifClusterWatchAllowsActivation(clusterState: ClusterState, event: ClusterEvent)(body: => Observable[Checked[Unit]])
+  : Observable[Checked[Unit]] =
+    Observable.fromTask(
+      clusterWatch.applyEvents(from = ownUri, event :: Nil, clusterState.applyEvent(event).orThrow)
+    ).flatMap {
+      case Left(problem) =>
+        if (problem.codeOption contains OtherClusterNodeStillActiveProblem.code) {
+          logger.info(problem.toString)
+          Observable.empty  // Ignore heartbeat loss
+        } else
+          Observable.raiseError(problem.throwable)
+      case Right(Completed) =>
+        body
     }
 
   private def shouldFinishFollowing(clusterState: ClusterState) =

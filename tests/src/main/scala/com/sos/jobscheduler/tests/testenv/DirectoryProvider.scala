@@ -42,7 +42,7 @@ import java.nio.file.Path
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.atomic.AtomicBoolean
-import scala.collection.immutable.{IndexedSeq, Seq}
+import scala.collection.immutable.{IndexedSeq, Iterable, Seq}
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.Random
@@ -58,6 +58,7 @@ final class DirectoryProvider(
   agentHttps: Boolean = false,
   agentHttpsMutual: Boolean = false,
   agentConfig: Config = ConfigFactory.empty,
+  agentPorts: Iterable[Int] = Nil,
   provideAgentHttpsCertificate: Boolean = false,
   provideAgentClientCertificate: Boolean = false,
   masterHttpsMutual: Boolean = false,
@@ -79,15 +80,18 @@ extends HasCloser
   val master = new MasterTree(directory / "master",
     mutualHttps = masterHttpsMutual, masterConfig, clientCertificate = masterClientCertificate)
   val agentToTree: Map[AgentRefPath, AgentTree] =
-    agentRefPaths.map { o => o ->
-      new AgentTree(directory, o,
-        testName.fold("")(_ + "-") ++ o.name,
-        agentConfig,
-        https = agentHttps,
-        mutualHttps = agentHttpsMutual,
-        provideHttpsCertificate = provideAgentHttpsCertificate,
-        provideClientCertificate = provideAgentClientCertificate)
-    }.toMap
+    agentRefPaths
+      .zip(agentPorts ++ Vector.fill(agentRefPaths.size - agentPorts.size)(findFreeTcpPort()))
+      .map { case (agentRefPath, port) => agentRefPath ->
+        new AgentTree(directory, agentRefPath,
+          testName.fold("")(_ + "-") ++ agentRefPath.name,
+          agentConfig,
+          port = port,
+          https = agentHttps,
+          mutualHttps = agentHttpsMutual,
+          provideHttpsCertificate = provideAgentHttpsCertificate,
+          provideClientCertificate = provideAgentClientCertificate)
+      }.toMap
   val agents: Vector[AgentTree] = agentToTree.values.toVector
   lazy val agentRefs: Vector[AgentRef] = for (a <- agents) yield AgentRef(a.agentRefPath, uri = a.conf.localUri.toString)
   private val filebasedHasBeenAdded = AtomicBoolean(false)
@@ -106,16 +110,17 @@ extends HasCloser
          |}
          |""".stripMargin)
     }
+    useSignatureVerifier(signer.toVerifier)
     (master.configDir / "private" / "private.conf").append(
-      agentRefPaths.map(a =>
-        "jobscheduler.auth.agents." + quoteString(a.string) + " = " + quoteString(agentToTree(a).password.string) + "\n"
+      agents.map(a =>
+        "jobscheduler.auth.agents." + quoteString(a.agentRefPath.string) + " = " + quoteString(a.password.string) + "\n" +
+        "jobscheduler.auth.agents." + quoteString(a.localUri.toString) + " = " + quoteString(a.password.string) + "\n"
       ).mkString +
       s"""jobscheduler.https.keystore {
          |  store-password = "jobscheduler"
          |  key-password = "jobscheduler"
          |}
          |""".stripMargin)
-    useSignatureVerifier(signer.toVerifier)
   }
 
   val fileBasedSigner = new FileBasedSigner(signer, MasterFileBaseds.jsonCodec)
@@ -210,7 +215,7 @@ extends HasCloser
     }
     for (conf <- master.configDir / "master.conf" +: agents.map(_.configDir / "agent.conf")) {
       conf ++=
-        s"""|jobscheduler.configuration.trusted-signature-keys {
+        s"""jobscheduler.configuration.trusted-signature-keys {
            |  ${verifier.companion.typeName} = $${jobscheduler.config-directory}"/$keyFile"
            |}
            |""".stripMargin
@@ -256,16 +261,16 @@ object DirectoryProvider
   }
 
   final class AgentTree(rootDirectory: Path, val agentRefPath: AgentRefPath, name: String, config: Config,
-    https: Boolean, mutualHttps: Boolean, provideHttpsCertificate: Boolean, provideClientCertificate: Boolean)
+    port: Int, https: Boolean, mutualHttps: Boolean, provideHttpsCertificate: Boolean, provideClientCertificate: Boolean)
   extends Tree {
     val directory = rootDirectory / agentRefPath.name
     lazy val conf = AgentConfiguration.forTest(directory,
         config,
-        httpPort = !https ? findFreeTcpPort(),
-        httpsPort = https ? findFreeTcpPort(),
+        httpPort = !https ? port,
+        httpsPort = https ? port,
         mutualHttps = mutualHttps)
       .copy(name = name)
-    lazy val localUri = Uri((if (https) "https://localhost" else "http://127.0.0.1") + ":" + conf.http.head.address.getPort)
+    lazy val localUri = Uri((if (https) "https://localhost" else "http://127.0.0.1") + ":" + port)
     lazy val password = SecretString(Array.fill(8)(Random.nextPrintableChar()).mkString)
     lazy val executables = configDir / "executables"
 

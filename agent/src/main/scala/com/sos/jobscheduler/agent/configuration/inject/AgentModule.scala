@@ -8,9 +8,10 @@ import com.sos.jobscheduler.agent.web.AgentWebServer
 import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import com.sos.jobscheduler.common.event.{EventIdClock, EventIdGenerator}
+import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.scalautil.Closer.ops._
 import com.sos.jobscheduler.common.scalautil.{Closer, IOExecutor}
+import com.sos.jobscheduler.core.cluster.ClusterWatchRegister
 import com.sos.jobscheduler.core.system.ThreadPools
 import com.typesafe.config.Config
 import javax.inject.Singleton
@@ -74,8 +75,11 @@ extends AbstractModule
 
   @Provides @Singleton
   def provideAgentWebServer(conf: AgentConfiguration, gateKeeperConfiguration: GateKeeper.Configuration[SimpleUser],
-    sessionRegister: SessionRegister[SimpleSession], config: Config,
+    sessionRegister: SessionRegister[SimpleSession],
+    clusterWatchRegister: ClusterWatchRegister,
+    config: Config,
     actorSystem: ActorSystem, scheduler: Scheduler, closer: Closer): AgentWebServer =
-      new AgentWebServer(conf, gateKeeperConfiguration, sessionRegister, config, actorSystem, scheduler)
-        .closeWithCloser(closer)
+      new AgentWebServer(conf, gateKeeperConfiguration, sessionRegister, clusterWatchRegister,
+        config, actorSystem, scheduler
+      ).closeWithCloser(closer)
 }

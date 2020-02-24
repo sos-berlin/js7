@@ -207,6 +207,7 @@ object RunningMaster
       val cluster = new Cluster(
         journalMeta,
         new JournaledStatePersistence[ClusterState, ClusterEvent](journalActor).closeWithCloser,
+        masterConfiguration.masterId,
         masterConfiguration.clusterConf,
         masterConfiguration.config,
         injector.instance[EventIdGenerator],

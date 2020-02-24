@@ -11,6 +11,7 @@ import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.scalautil.SetOnce
+import com.sos.jobscheduler.core.cluster.ClusterWatchRegister
 import com.sos.jobscheduler.core.command.CommandMeta
 import com.typesafe.config.Config
 import monix.execution.Scheduler
@@ -23,6 +24,7 @@ final class AgentWebServer(
   conf: AgentConfiguration,
   gateKeeperConfiguration: GateKeeper.Configuration[SimpleUser],
   sessionRegister: SessionRegister[SimpleSession],
+  clusterWatchRegister: ClusterWatchRegister,
   protected val config: Config,
   implicit protected val actorSystem: ActorSystem,
   implicit protected val scheduler: Scheduler)
@@ -66,5 +68,6 @@ extends AkkaWebServer with AkkaWebServer.HasUri
       def webServerRoute = completeRoute
 
       override def boundMessageSuffix = gateKeeper.secureStateString
+      protected def clusterWatchRegister = AgentWebServer.this.clusterWatchRegister
     }
 }
