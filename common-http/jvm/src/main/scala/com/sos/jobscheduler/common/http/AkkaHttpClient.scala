@@ -213,7 +213,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
   private[http] final def checkAgentUri(uri: Uri): Checked[Uri] =
     if (uri.scheme == baseUri.scheme &&
       uri.authority == baseUri.authority &&
-       uri.path.toString.startsWith(uriPrefixPath))
+      uri.path.toString.startsWith(uriPrefixPath))
       Right(uri)
     else
       Left(Problem(s"URI '$uri' does not match $baseUri$uriPrefixPath"))
@@ -238,6 +238,9 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
     }
     b.toString
   }
+
+  final def liftProblem[A](task: Task[A]): Task[Checked[A]] =
+    AkkaHttpClient.liftProblem(task)
 
   override def toString = s"$baseUri${if (name.isEmpty) "" else s" »$name«"}"
 }

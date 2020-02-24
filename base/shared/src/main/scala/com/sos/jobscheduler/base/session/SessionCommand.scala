@@ -56,7 +56,7 @@ object SessionCommand
   object Response {
     sealed trait Accepted extends Response
     case object Accepted extends Accepted {
-      implicit val jsonCodec: CirceCodec[Accepted] = singletonCodec(Accepted)
+      implicit val jsonCodec: CirceCodec[Accepted.type] = singletonCodec(Accepted)
     }
 
     implicit val jsonCodec = TypedJsonCodec[Response](

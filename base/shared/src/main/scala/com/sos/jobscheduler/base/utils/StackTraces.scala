@@ -20,7 +20,7 @@ object StackTraces
     def appendCurrentStackTrace: Try[A] = {
       delegate match {
         case Failure(t) => t.appendStackTrace(new Exception().getStackTrace)
-        case o => o
+        case _ =>
       }
       delegate
     }

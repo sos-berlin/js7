@@ -356,6 +356,7 @@ lazy val core = project.dependsOn(common, tester.jvm % "test")
     import Dependencies._
     libraryDependencies ++=
       bouncyCastle ++
+      akkaHttpTestkit % "test" ++
       scalaTest % "test" ++
       scalaCheck % "test" ++
       log4j % "test"

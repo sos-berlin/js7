@@ -19,7 +19,8 @@ import com.sos.jobscheduler.common.http.JsonStreamingSupport
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.JavaTimeConverters.AsScalaDuration
-import com.typesafe.config.Config
+import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import com.typesafe.config.{Config, ConfigFactory}
 import java.net.InetSocketAddress
 import monix.execution.Scheduler
 import scala.collection.immutable.Seq
@@ -143,5 +144,12 @@ object AkkaWebServer {
       new BoundRoute {
         def webServerRoute = route
       }
+  }
+
+  final class ForTest(protected val actorSystem: ActorSystem, route: Route) extends AkkaWebServer with AkkaWebServer.HasUri {
+    protected val config = ConfigFactory.parseString("jobscheduler.webserver.shutdown-timeout = 10s")
+    protected def scheduler = Scheduler.global
+    protected lazy val bindings = WebServerBinding.Http(new InetSocketAddress("127.0.0.1", findFreeTcpPort())) :: Nil
+    protected def newRoute(binding: WebServerBinding) = AkkaWebServer.BoundRoute(route)
   }
 }

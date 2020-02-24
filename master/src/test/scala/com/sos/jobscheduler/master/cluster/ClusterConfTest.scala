@@ -22,6 +22,7 @@ final class ClusterConfTest extends FreeSpec
       val config = ConfigFactory.parseString("""
         jobscheduler.master.cluster.heartbeat = 7s
         jobscheduler.master.cluster.fail-after = 5s
+        jobscheduler.master.cluster.agents = [ "http://AGENT-1", "http://AGENT-2" ]
         jobscheduler.web.client.idle-get-timeout = 50s
         jobscheduler.web.client.delay-between-polling-gets = 1s""")
       val clusterConf = ClusterConf.fromConfigAndFile(UserId("USER"), config)
@@ -46,7 +47,7 @@ final class ClusterConfTest extends FreeSpec
         jobscheduler.master.cluster.fail-after = 5s
         jobscheduler.auth.cluster.password = "PASSWORD"
         jobscheduler.web.client.idle-get-timeout = 50s
-        jobscheduler.web.client.delay-between-polling-gets = 1s """)
+        jobscheduler.web.client.delay-between-polling-gets = 1s""")
       val checkedClusterConf = ClusterConf.fromConfigAndFile(UserId("USER"), config)
       assert(checkedClusterConf == Right(
         ClusterConf(
