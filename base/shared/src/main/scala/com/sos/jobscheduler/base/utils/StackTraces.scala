@@ -5,7 +5,12 @@ import scala.util.{Failure, Try}
 /**
   * @author Joacim Zschimmer
   */
-object StackTraces {
+object StackTraces
+{
+  private val eyecatcher = new StackTraceElement(
+    "________________________________________",
+    "________________________________________",
+    "appended", -1)
 
   /**
     * Applicable for `Try`  of another context, like from a `Future`.
@@ -34,7 +39,7 @@ object StackTraces {
       * Modifies the original `Throwable`.
       */
     def appendStackTrace(stackTrace: Array[StackTraceElement]): delegate.type = {
-      delegate.setStackTrace(delegate.getStackTrace ++ stackTrace)
+      delegate.setStackTrace((delegate.getStackTrace :+ eyecatcher) ++ stackTrace)
       delegate
     }
   }
