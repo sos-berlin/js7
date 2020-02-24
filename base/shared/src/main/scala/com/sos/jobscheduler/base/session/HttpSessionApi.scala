@@ -30,7 +30,7 @@ trait HttpSessionApi extends SessionApi.LoginUntilReachable with HasSessionToken
         }
     }
 
-  protected def isTemporaryLoginError(throwable: Throwable) =
+  protected def isUnreachable(throwable: Throwable) =
     throwable match {
       case e: HttpClient.HttpException => e.isUnreachable
       case _ => true  // May be a TCP exception

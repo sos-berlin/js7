@@ -39,8 +39,8 @@ trait AkkaWebServer extends AutoCloseable
 
   private val shuttingDownPromise = Promise[Completed]()
   protected final def isShuttingDown = shuttingDownPromise.future.isCompleted
-  private val akkaHttp = Http(actorSystem)
-  private implicit val materializer = ActorMaterializer()
+  private lazy val akkaHttp = Http(actorSystem)
+  private implicit lazy val materializer = ActorMaterializer()
   private lazy val shutdownTimeout = config.getDuration("jobscheduler.webserver.shutdown-timeout").toFiniteDuration
 
   private var activeBindings: Seq[Future[Http.ServerBinding]] = null

@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.base.web
 
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import io.circe.{Decoder, Encoder}
 import monix.eval.Task
 import monix.reactive.Observable
@@ -21,11 +22,15 @@ trait HttpClient
 
   /** Returns the HTTP status code, discarding the response data. */
   def postDiscardResponse[A: Encoder](uri: String, data: A, allowedStatusCodes: Set[Int] = Set.empty): Task[/*StatusCode*/Int]
+
+  def liftProblem[A](task: Task[A]): Task[Checked[A]]
 }
 
-object HttpClient {
+object HttpClient
+{
   abstract class HttpException(message: String) extends RuntimeException(message) {
     def statusInt: Int
+    def problem: Option[Problem]
     def isUnreachable = isUnreachableStatus(statusInt)
   }
 
