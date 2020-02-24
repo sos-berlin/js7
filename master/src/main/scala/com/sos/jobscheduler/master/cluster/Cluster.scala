@@ -59,7 +59,9 @@ final class Cluster(
   private var switchoverAcknowledged = false
   @volatile
   private var stopRequested = false
-  private val startingClusterStateMVar = MVar.empty[Task, Option[ClusterState]]().memoize
+  private val started = Promise[Unit]()
+  @volatile
+  private var startingClusterState: Option[ClusterState] = null
 
   def stop(): Unit = {
     logger.debug("stop")
@@ -82,11 +84,13 @@ final class Cluster(
     recoveredClusterState: ClusterState,
     recoveredState: MasterState)
   : (Task[Option[MasterState]], Task[Checked[ClusterFollowUp[MasterState, Event]]]) = {
-    startingClusterStateMVar.flatMap(_.put(Some(recoveredClusterState))).runSyncUnsafe(99.s)
+    startingClusterState = Some(recoveredClusterState)
+    started.success(())
     val (passiveState, followUp) = startCluster(recovered, recoveredClusterState, recoveredState, eventIdGenerator)
     passiveState ->
       followUp.map(_.map { case (clusterState, followUp) =>
-        startingClusterStateMVar.flatTap(_.take).flatMap(_.put(None)).runSyncUnsafe(99.s)
+        startingClusterState = None
+        // clusterWatch.heartbeat(ownUri, persistence.currentState)
         persistence.start(clusterState)
         followUp
       })
@@ -440,10 +444,11 @@ final class Cluster(
     * Required for the /api/cluster web service used by the restarting active node
     * asking the peer about its current (maybe failed-over) ClusterState. */
   def currentClusterState: Task[ClusterState] =
-    startingClusterStateMVar.flatMap(_.read).flatMap {
-      case Some(o) => Task.pure(o)  // Use recovered (maybe old) ClusterState until the actual ClusterState has been established
-      case None => persistence.currentState
-    }
+    Task.fromFuture(started.future).flatMap(_ =>
+      startingClusterState match {
+        case Some(o) => Task.pure(o)  // Use recovered (maybe old) ClusterState until the actual ClusterState has been established
+        case None => persistence.currentState
+      })
 
   // Used to RegisterMe actor in JournalActor
   def journalingActor = persistence.actor
