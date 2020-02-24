@@ -26,7 +26,6 @@ import scala.reflect.runtime.universe._
   */
 object StandardMarshallers
 {
-  private val ProblemStatusCode = BadRequest
   private val Nl = ByteString("\n")
   private val logger = Logger(getClass)
 

@@ -284,10 +284,11 @@ with ReceiveLoggingActor.WithStash
       stopIfTerminated()
 
     case Internal.BatchFailed(inputs, problem) =>
-      if (problem == RecouplingStreamReader.TerminatedProblem) {
-        logger.debug(s"Command batch failed: $problem")
-      } else {
-        logger.warn(s"Command batch failed: $problem")
+      problem match {
+        case RecouplingStreamReader.TerminatedProblem =>
+         logger.debug(s"Command batch failed: $problem")
+        case _ =>
+          logger.warn(s"Command batch failed: $problem")
       }
       delayCommandExecutionAfterErrorUntil = now + conf.commandErrorDelay
       commandQueue.handleBatchFailed(inputs)

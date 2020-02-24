@@ -35,9 +35,6 @@ import scala.concurrent.duration._
   */
 final class MasterAgentWithoutAuthenticationTest extends FreeSpec
 {
-  protected def agentRefPaths = agentRefPath :: Nil
-  protected def fileBased = workflow :: Nil
-
   "jobscheduler.webserver.auth.public = true" in {
     runMyTest(isPublic = true) { (master, _) =>
       master.addOrder(FreshOrder(orderId, workflow.path)).runSyncUnsafe(99.seconds).orThrow
