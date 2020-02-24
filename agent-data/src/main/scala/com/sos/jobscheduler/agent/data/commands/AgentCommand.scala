@@ -188,6 +188,7 @@ object AgentCommand extends CommonCommand.Companion
       Subtype(deriveCodec[AttachOrder]),
       Subtype(deriveCodec[DetachOrder]),
       Subtype(deriveCodec[GetOrder]),
+      Subtype(GetOrders),
       Subtype(TakeSnapshot),
       Subtype(GetOrderIds))
 

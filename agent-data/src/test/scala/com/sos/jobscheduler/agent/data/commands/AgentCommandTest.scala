@@ -189,6 +189,13 @@ final class AgentCommandTest extends FreeSpec
           "TYPE": "GetOrderIds"
         }""")
     }
+
+    "GetOrders" in {
+      check(AgentCommand.GetOrders,
+         json"""{
+          "TYPE": "GetOrders"
+        }""")
+    }
   }
 
   "Batch toString" in {
