@@ -1,6 +1,8 @@
 package com.sos.jobscheduler.base.auth
 
+import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
+import scala.collection.immutable.Iterable
 
 /**
   * @author Joacim Zschimmer
@@ -8,6 +10,15 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 trait Permission {
   def name: String = getClass.simpleScalaName stripSuffix "Permission"
 }
+
+object Permission
+{
+  def toStringToPermission(permissions: Iterable[Permission]) =
+    permissions.toKeyedMap(_.name)
+}
+
+/** SuperPermission covering all permissions. */
+case object SuperPermission extends Permission
 
 /**
   * Anonymous does not have this permission, while all other users have this permission.

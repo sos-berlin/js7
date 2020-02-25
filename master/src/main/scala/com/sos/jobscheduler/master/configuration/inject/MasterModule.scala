@@ -2,9 +2,8 @@ package com.sos.jobscheduler.master.configuration.inject
 
 import akka.actor.{ActorRefFactory, ActorSystem}
 import com.google.inject.{AbstractModule, Provides}
-import com.sos.jobscheduler.base.auth.{SimpleUser, UpdateRepoPermission}
+import com.sos.jobscheduler.base.auth.{Permission, SimpleUser, UpdateRepoPermission}
 import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
@@ -96,6 +95,6 @@ final class MasterModule(configuration: MasterConfiguration) extends AbstractMod
 
 object MasterModule {
   private val logger = Logger(getClass)
-  private val simplePermssions = List(UpdateRepoPermission)
-  private val stringToPermission = simplePermssions toKeyedMap (_.name)
+  private val stringToPermission = Permission.toStringToPermission(List(
+    UpdateRepoPermission))
 }
