@@ -9,7 +9,7 @@ import org.scalatest.FreeSpec
 final class SimpleUserTest extends FreeSpec
 {
   "Anonymous" in {
-    assert(SimpleUser.Anonymous.hashedPassword equalsClearText SecretString(""))
+    assert(SimpleUser.TestAnonymous.hashedPassword equalsClearText SecretString(""))
     assert(SimpleUser(UserId.Anonymous, HashedPassword.newEmpty()).grantedPermissions.isEmpty)
 
     intercept[RuntimeException] {

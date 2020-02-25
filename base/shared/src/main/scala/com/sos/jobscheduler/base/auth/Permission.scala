@@ -20,8 +20,10 @@ object Permission
 /** SuperPermission covering all permissions. */
 case object SuperPermission extends Permission
 
+case object GetPermission extends Permission
+
 /**
-  * Anonymous does not have this permission, while all other users have this permission.
+  * Permission for logged-in (non-anonymous) user or public access.
   * <p>
   * If required, access is permitted if
   * <ul>

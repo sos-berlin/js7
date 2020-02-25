@@ -8,7 +8,3 @@ import com.sos.jobscheduler.base.auth.{SessionToken, SimpleUser}
 final case class CommandMeta(
   user: SimpleUser,
   sessionTokenOption: Option[SessionToken] = None)
-
-object CommandMeta {
-  val Anonymous = new CommandMeta(SimpleUser.Anonymous)
-}

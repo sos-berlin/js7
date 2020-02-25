@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.base.auth
 
+import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 
 /**
@@ -12,17 +13,20 @@ final case class SimpleUser private(
 extends User
 {
   if (id.isAnonymous && grantedPermissions.contains(ValidUserPermission))
-    throw new IllegalArgumentException("Anonymous cannot not have ValidUserPermission")
+    throw new IllegalArgumentException("Anonymous must not have ValidUserPermission")
+  // SuperPermission is allowed for empowered Anonymous (public = on | loopback-is-public = on)
 }
 
-object SimpleUser extends User.Companion[SimpleUser] {
-  /** The unauthenticated, anonymous user without permissions.. */
-  val Anonymous = SimpleUser(UserId.Anonymous, HashedPassword.newEmpty(), grantedPermissions = Set.empty)
-  val System = SimpleUser(UserId("System"), HashedPassword.MatchesNothing, Set(UpdateRepoPermission))
+object SimpleUser extends User.Companion[SimpleUser]
+{
+  /** The unauthenticated, anonymous user without permissions, for testing. */
+  val TestAnonymous = SimpleUser(UserId.Anonymous, HashedPassword.newEmpty(), grantedPermissions = Set.empty)
+  val System = SimpleUser(UserId("System"), HashedPassword.MatchesNothing, Set(SuperPermission))
   implicit val companion = this
 
   def addPermissions(user: SimpleUser, permissions: Set[Permission]): SimpleUser =
-    user.copy(grantedPermissions = user.grantedPermissions ++ permissions)
+    reuseIfEqual(user, user.copy(
+      grantedPermissions = user.grantedPermissions ++ permissions))
 
   def apply(
     id: UserId,

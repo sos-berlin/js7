@@ -8,7 +8,7 @@ import akka.http.scaladsl.server.AuthenticationFailedRejection.CredentialsMissin
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route.seal
 import akka.http.scaladsl.server.{AuthenticationFailedRejection, Directive1, ExceptionHandler, RejectionHandler, Route}
-import com.sos.jobscheduler.base.auth.{HashedPassword, Permission, SimpleUser, User, UserAndPassword, UserId, ValidUserPermission}
+import com.sos.jobscheduler.base.auth.{GetPermission, HashedPassword, Permission, SimpleUser, SuperPermission, User, UserAndPassword, UserId, ValidUserPermission}
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper._
@@ -139,7 +139,7 @@ final class GateKeeper[U <: User](configuraton: Configuration[U], isLoopback: Bo
   private def isPermitted(user: U, requiredPermissions: Set[Permission], method: HttpMethod): Boolean =
     user.hasPermissions(requiredPermissions) && (
       requiredPermissions.contains(ValidUserPermission) ||  // If ValidUserPermission is not required (Anonymous is allowed)...
-      user.hasPermission(ValidUserPermission) ||            // ... then allow Anonymous ... (only Anonymous does not have ValidUserPermission)
+      user.hasPermission(ValidUserPermission) ||            // ... then allow Anonymous ... (only unempowered Anonymous does not have ValidUserPermission)
       isGet(method))                                        // ... only to read
 
   def invalidAuthenticationDelay = configuraton.invalidAuthenticationDelay
@@ -167,8 +167,6 @@ object GateKeeper {
     realm: String,
     /** To hamper an attack */
     invalidAuthenticationDelay: FiniteDuration,
-    publicPermissions: Set[Permission] = Set.empty,
-    publicGetPermissions: Set[Permission] = Set.empty,
     /* Anything is allowed for Anonymous */
     isPublic: Boolean = false,
     /** HTTP bound to a loopback interface is allowed for Anonymous */
@@ -176,6 +174,10 @@ object GateKeeper {
     /** HTTP GET is allowed for Anonymous */
     getIsPublic: Boolean = false,
     idToUser: UserId => Option[U])
+  {
+    val publicPermissions = Set[Permission](SuperPermission)
+    val publicGetPermissions = Set[Permission](GetPermission)
+  }
 
   object Configuration {
     def fromConfig[U <: User](

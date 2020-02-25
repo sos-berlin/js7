@@ -19,7 +19,7 @@ final class OurMemoizingAuthenticatorTest extends FreeSpec
     userId match {
       case AUser.id => Some(AUser)
       case BUser.id => Some(BUser)
-      case UserId.Anonymous => Some(SimpleUser.Anonymous)
+      case UserId.Anonymous => Some(SimpleUser.TestAnonymous)
       case _ => None
     }
   })
@@ -35,7 +35,7 @@ final class OurMemoizingAuthenticatorTest extends FreeSpec
   }
 
   "Missing credential: return predefined Anonymous if its password is empty" in {
-    assert(authenticator(Credentials(None)) == Some(SimpleUser.Anonymous))
+    assert(authenticator(Credentials(None)) == Some(SimpleUser.TestAnonymous))
   }
 
   "Missing credential rejected if user account Anonymous has a non-empty password" in {

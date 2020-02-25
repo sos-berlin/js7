@@ -11,12 +11,12 @@ import monix.eval.Task
  */
 trait CommandHandler
 {
-  def execute(command: AgentCommand, meta: CommandMeta = CommandMeta.Anonymous): Task[Checked[AgentCommand.Response]]
+  def execute(command: AgentCommand, meta: CommandMeta): Task[Checked[AgentCommand.Response]]
 
   def overview: Task[CommandHandlerOverview]
 
   def detailed: Task[CommandHandlerDetailed[AgentCommand]]
 
-  final def typedExecute(command: AgentCommand, meta: CommandMeta = CommandMeta.Anonymous): Task[Checked[command.Response]] =
+  final def typedExecute(command: AgentCommand, meta: CommandMeta): Task[Checked[command.Response]] =
     execute(command, meta) .map { _.asInstanceOf[Checked[command.Response]]}
 }

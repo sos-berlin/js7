@@ -21,10 +21,10 @@ trait User
       Checked.unit
 
   final def hasPermissions(requiredPermissions: Set[Permission]): Boolean =
-    requiredPermissions forall grantedPermissions.contains
+    requiredPermissions forall hasPermission
 
   final def hasPermission(requiredPermission: Permission): Boolean =
-    grantedPermissions contains requiredPermission
+    grantedPermissions.contains(requiredPermission) || grantedPermissions.contains(SuperPermission)
 
   final def isAnonymous = id.isAnonymous
 }

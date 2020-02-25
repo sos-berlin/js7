@@ -17,7 +17,7 @@ import scala.collection.immutable.Seq
 /**
   * @author Joacim Zschimmer
   */
-final class DirectAgentApi(commandHandler: CommandHandler, agentHandle: AgentHandle, meta: CommandMeta = CommandMeta.Anonymous)
+final class DirectAgentApi(commandHandler: CommandHandler, agentHandle: AgentHandle, meta: CommandMeta)
 extends AgentApi
 {
   def commandExecute(command: AgentCommand): Task[Checked[command.Response]] =

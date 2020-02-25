@@ -4,7 +4,7 @@ import akka.actor.ActorSystem
 import com.sos.jobscheduler.agent.DirectAgentApi
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.base.auth.SimpleUser
+import com.sos.jobscheduler.base.auth.{SimpleUser, UserId}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
@@ -42,7 +42,9 @@ extends AkkaWebServer with AkkaWebServer.HasUri
 
   protected def newRoute(binding: WebServerBinding) =
     new AkkaWebServer.BoundRoute with CompleteRoute {
-      private lazy val anonymousApi = api(CommandMeta.Anonymous)
+      private lazy val anonymousApi = api(CommandMeta(
+        user = gateKeeperConfiguration.idToUser(UserId.Anonymous)
+          .getOrElse(sys.error("Anonymous user has not been defined"))))
 
       protected def isShuttingDown = AgentWebServer.this.isShuttingDown
       protected implicit def scheduler: Scheduler = AgentWebServer.this.scheduler
