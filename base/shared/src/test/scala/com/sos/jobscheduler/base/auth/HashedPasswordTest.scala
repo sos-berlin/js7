@@ -27,8 +27,8 @@ final class HashedPasswordTest extends FreeSpec {
   }
 
   "empty" in {
-    val a = HashedPassword.newEmpty
-    val b = HashedPassword.newEmpty
+    val a = HashedPassword.newEmpty()
+    val b = HashedPassword.newEmpty()
     assert(a != b)
     assert(a.hashed != b.hashed)
     assert(a.hashed.string != b.hashed.string)

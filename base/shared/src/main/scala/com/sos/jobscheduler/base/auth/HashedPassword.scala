@@ -33,7 +33,7 @@ object HashedPassword
   private val toUrlBase64 = Base64.getUrlEncoder.withoutPadding.encodeToString _
 
   /** The empty clear-text password, differently hashed at each invocation. */
-  def newEmpty = Empty.hashAgainRandom
+  def newEmpty() = Empty.hashAgainRandom
 
   private def sha(string: String) = {
     val digest = MessageDigest.getInstance("SHA-256")  // Not thread-safe

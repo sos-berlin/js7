@@ -2,10 +2,11 @@ package com.sos.jobscheduler.common.auth
 
 import com.sos.jobscheduler.base.auth.{SimpleUser, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.common.auth.IdToUser.RawUserAccount
 import com.sos.jobscheduler.common.auth.IdToUserTest._
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.typesafe.config.ConfigFactory
 import org.scalatest.FreeSpec
 import scala.collection.JavaConverters._
@@ -15,8 +16,8 @@ import scala.concurrent.Future
 /**
   * @author Joacim Zschimmer
   */
-final class IdToUserTest extends FreeSpec {
-
+final class IdToUserTest extends FreeSpec
+{
   "Unknown user" in {
     assert(idToUser(UserId("UNKNOWN")) == None)
   }
@@ -75,7 +76,8 @@ final class IdToUserTest extends FreeSpec {
   }
 }
 
-private object IdToUserTest {
+private object IdToUserTest
+{
   private val PlainUserId = UserId("PLAIN-USER")
   private val PlainPassword = SecretString("PLAIN-PASSWORD")
   private val Sha512UserId = UserId("SHA512-USER")

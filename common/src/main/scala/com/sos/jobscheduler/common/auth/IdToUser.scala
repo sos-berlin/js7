@@ -47,7 +47,8 @@ extends (UserId => Option[U]) {
       yield toUser(userId, hashedPassword.hashAgainRandom, raw.permissions.map(toPermission.lift).flatten)
 }
 
-object IdToUser {
+object IdToUser
+{
   private val logger = Logger(getClass)
   private val EntryRegex = "([^:]+):(.*)".r
   private val UsersConfigPath = "jobscheduler.auth.users"
@@ -105,4 +106,6 @@ object IdToUser {
         logger.error(s"Missing password encoding scheme for User '$userId'. Try to prefix the configured password with 'plain:' or 'sha512:'")
         None
     }
+
+  private[auth] final case class RawUserAccount(encodedPassword: SecretString, permissions: Set[String])
 }

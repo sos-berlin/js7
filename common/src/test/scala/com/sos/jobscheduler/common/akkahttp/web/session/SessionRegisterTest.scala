@@ -93,8 +93,8 @@ final class SessionRegisterTest extends FreeSpec with ScalatestRouteTest
 private object SessionRegisterTest
 {
   private val TestSessionTimeout = 1.hour
-  private val AUser = SimpleUser(UserId("A"), HashedPassword.newEmpty)
-  private val BUser = SimpleUser(UserId("B"), HashedPassword.newEmpty)
+  private val AUser = SimpleUser(UserId("A"), HashedPassword.newEmpty())
+  private val BUser = SimpleUser(UserId("B"), HashedPassword.newEmpty())
 
   final case class MySession(sessionInit: SessionInit[SimpleUser]) extends Session {
     type User = SimpleUser

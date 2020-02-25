@@ -13,7 +13,7 @@ final class UserTest extends FreeSpec
     case class TestUser(id: UserId, hashedPassword: HashedPassword, grantedPermissions: Set[Permission]) extends User
 
     def testUser(grantedPermissions: Set[Permission]) =
-      TestUser(UserId("someone"), HashedPassword.newEmpty, grantedPermissions)
+      TestUser(UserId("someone"), HashedPassword.newEmpty(), grantedPermissions)
 
     assert(testUser(Set.empty) hasPermissions Set.empty)
     assert(testUser(Set(A)) hasPermissions Set.empty)
