@@ -2,6 +2,8 @@ package com.sos.jobscheduler.agent
 
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.http.scaladsl.model.Uri
+import cats.instances.either._
+import cats.syntax.flatMap._
 import com.google.inject.Stage.PRODUCTION
 import com.google.inject.{Guice, Injector, Module}
 import com.sos.jobscheduler.agent.RunningAgent._
@@ -12,6 +14,7 @@ import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.web.AgentWebServer
 import com.sos.jobscheduler.base.auth.{SessionToken, SimpleUser, UserId}
 import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
@@ -42,6 +45,7 @@ final class RunningAgent private(
   mainActor: ActorRef,
   terminated1: Future[AgentTermination.Terminate],
   val api: CommandMeta => DirectAgentApi,
+  sessionRegister: SessionRegister[SimpleSession],
   val sessionToken: SessionToken,
   closer: Closer,
   @TestOnly val injector: Injector)
@@ -81,7 +85,13 @@ extends AutoCloseable {
       promiseFuture[Checked[AgentCommand.Response]](promise =>
         mainActor ! MainActor.Input.ExternalCommand(UserId.Anonymous, command, promise)))
 
-  def executeCommand(command: AgentCommand, meta: CommandMeta = CommandMeta.Anonymous): Task[Checked[AgentCommand.Response]] =
+  def executeCommandAsSystemUser(command: AgentCommand): Task[Checked[AgentCommand.Response]] =
+    for {
+      checkedSession <- sessionRegister.systemSession
+      checkedChecked <- checkedSession.map(session => executeCommand(command, CommandMeta(session.currentUser))).evert
+    } yield checkedChecked.flatten
+
+  def executeCommand(command: AgentCommand, meta: CommandMeta): Task[Checked[AgentCommand.Response]] =
     api(meta).commandExecute(command)
 }
 
@@ -141,6 +151,6 @@ object RunningAgent {
       api = ready.api
       _ <- webServer.start(api)
     } yield
-      new RunningAgent(webServer, mainActor, terminationPromise.future, api, sessionToken, closer, injector)
+      new RunningAgent(webServer, mainActor, terminationPromise.future, api, sessionRegister, sessionToken, closer, injector)
   }
 }

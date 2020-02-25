@@ -80,7 +80,7 @@ object TestDockerExample
       JavaShutdownHook.add("TestDockerExample") {
         print('\n')
         (for (agent <- agents) yield {
-          agent.executeCommand(ShutDown(sigtermProcesses = true, sigkillProcessesAfter = Some(3.seconds)))
+          agent.executeCommandAsSystemUser(ShutDown(sigtermProcesses = true, sigkillProcessesAfter = Some(3.seconds)))
           val r = agent.terminated
           agent.close()
           r
@@ -93,7 +93,7 @@ object TestDockerExample
       //??? master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery(1.minute)).runToFuture.await(99.s).orThrow
       master.terminated await 365 * 24.h
       master.close()
-      for (agent <- agents) agent.executeCommand(AgentCommand.ShutDown())
+      for (agent <- agents) agent.executeCommandAsSystemUser(AgentCommand.ShutDown())
       agents map (_.terminated) await 60.s
       agents foreach (_.close())
     }

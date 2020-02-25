@@ -48,7 +48,8 @@ final class AgentMain
     logger.warn("Trying to shut down JobScheduler Agent Server due to Java shutdown")
     import agent.scheduler
     val sigkillAfter = agent.config.getDuration("jobscheduler.termination.sigkill-after").toFiniteDuration
-    agent.executeCommand(ShutDown(sigtermProcesses = true, sigkillProcessesAfter = Some(sigkillAfter))).runAsyncAndForget
+    agent.executeCommandAsSystemUser(ShutDown(sigtermProcesses = true, sigkillProcessesAfter = Some(sigkillAfter)))
+      .runAsyncAndForget
     agent.terminated await timeout
     agent.close()
   }
