@@ -7,10 +7,10 @@ import scala.util.{Failure, Try}
   */
 object StackTraces
 {
-  private val eyecatcher = new StackTraceElement(
-    "________________________________________",
-    "________________________________________",
-    "appended", -1)
+  private val eyecatcher = {
+    val bar = "________________________________________"
+    new StackTraceElement(bar, bar, "appended", -1)
+  }
 
   /**
     * Applicable for `Try`  of another context, like from a `Future`.
@@ -31,7 +31,7 @@ object StackTraces
       * Applicable for Throwables of another context, like from a `Future`.
       * Modifies the original `Throwable`.
       */
-    def appendCurrentStackTrace: T =  // delegate.type: inferred existential type _1.delegate.type forSome { val _1: com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable }, which cannot be expressed by wildcards,  should be enabled
+    def appendCurrentStackTrace: T =  // delegate.type: inferred existential type _1.delegate.type forSome { val _1: com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable }, which cannot be expressed by wildcards, should be enabled
       appendStackTrace(new Exception().getStackTrace)
 
     /**
@@ -39,7 +39,11 @@ object StackTraces
       * Modifies the original `Throwable`.
       */
     def appendStackTrace(stackTrace: Array[StackTraceElement]): delegate.type = {
-      delegate.setStackTrace((delegate.getStackTrace :+ eyecatcher) ++ stackTrace)
+      delegate.setStackTrace(
+        if (delegate.getStackTrace.isEmpty)
+          stackTrace
+        else
+          (delegate.getStackTrace :+ eyecatcher) ++ stackTrace)
       delegate
     }
   }
