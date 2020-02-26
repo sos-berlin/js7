@@ -8,6 +8,7 @@ import akka.util.ByteString
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.circeutils.CirceUtils.implicits.CompactPrinter
 import com.sos.jobscheduler.base.problem.Checked._
+import com.sos.jobscheduler.base.utils.ScalaUtils._
 import io.circe.{Decoder, Encoder, Json, Printer, jawn}
 
 object CirceJsonSupport
@@ -29,6 +30,6 @@ object CirceJsonSupport
       .forContentTypes(`application/json`)
       .map {
         case ByteString.empty => throw Unmarshaller.NoContentException
-        case byteString => jawn.parseByteBuffer(byteString.asByteBuffer).toChecked.orThrow
+        case byteString => jawn.parseByteBuffer(byteString.asByteBuffer).orThrow
       }
 }

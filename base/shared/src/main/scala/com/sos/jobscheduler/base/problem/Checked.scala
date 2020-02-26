@@ -7,7 +7,7 @@ import cats.syntax.semigroup._
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Problem._
-import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
+import com.sos.jobscheduler.base.utils.ScalaUtils._
 import io.circe.{Decoder, Encoder, Json}
 import scala.collection.immutable.{Iterable, Seq, VectorBuilder}
 import scala.collection.mutable
@@ -153,10 +153,10 @@ object Checked
       }
 
     def orThrow: A =
-      underlying match {
-        case Left(problem) => throw problem.throwable.appendCurrentStackTrace
-        case Right(a) => a
-      }
+      orThrow(identity)
+
+    def orThrow(toThrowable: Throwable => Throwable): A =
+      underlying.left.map(_.throwable).orThrow(toThrowable)
 
     def orThrowWithoutStacktrace: A =
       underlying match {

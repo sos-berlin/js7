@@ -3,6 +3,7 @@ package com.sos.jobscheduler.core.event.journal.recover
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
+import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.common.event.PositionAnd
 import com.sos.jobscheduler.common.scalautil.AutoClosing.closeOnError
@@ -109,7 +110,7 @@ extends AutoCloseable
     Iterator(journalHeader) ++ nextSnapshotsWithoutJournalHeader()
 
   def nextSnapshotsWithoutJournalHeader(): Iterator[Any] =
-    untilNoneIterator(nextSnapshotJson()).map(json => journalMeta.snapshotJsonCodec.decodeJson(json).toChecked.orThrow)
+    untilNoneIterator(nextSnapshotJson()).map(json => journalMeta.snapshotJsonCodec.decodeJson(json).orThrow)
 
   @tailrec
   private def nextSnapshotJson(): Option[Json] = {
@@ -233,7 +234,7 @@ extends AutoCloseable
   private def deserialize(json: Json) = {
     import journalMeta.eventJsonCodec
     intelliJuseImport(eventJsonCodec)
-    json.as[Stamped[KeyedEvent[Event]]].toChecked.orThrow
+    json.as[Stamped[KeyedEvent[Event]]].orThrow
   }
 
   def eventId = positionAndEventId.value

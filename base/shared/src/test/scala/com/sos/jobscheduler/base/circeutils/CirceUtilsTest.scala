@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.base.circeutils
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.problem.{Problem, ProblemException}
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Json, JsonObject}
@@ -83,7 +83,7 @@ final class CirceUtilsTest extends FreeSpec
 
   "parseJsonOrThrow" in {
     assert("7".parseJsonOrThrow == Json.fromInt(7))
-    intercept[ProblemException] {
+    intercept[io.circe.ParsingFailure] {
       "x".parseJsonOrThrow
     }
   }

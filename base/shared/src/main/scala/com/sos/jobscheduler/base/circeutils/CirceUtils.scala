@@ -2,9 +2,8 @@ package com.sos.jobscheduler.base.circeutils
 
 import cats.syntax.show._
 import com.sos.jobscheduler.base.circeutils.AnyJsonCodecs.anyToJson
-import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
+import com.sos.jobscheduler.base.utils.ScalaUtils._
 import io.circe.generic.decoding.DerivedDecoder
 import io.circe.generic.encoding.DerivedAsObjectEncoder
 import io.circe.syntax.EncoderOps
@@ -137,7 +136,7 @@ object CirceUtils
       io.circe.parser.parse(underlying).toChecked
 
     def parseJsonOrThrow: Json =
-      io.circe.parser.parse(underlying).toChecked.orThrow
+      io.circe.parser.parse(underlying).orThrow
   }
 
   implicit final class CirceUtilsChecked[A](private val underlying: Checked[A]) extends AnyVal {

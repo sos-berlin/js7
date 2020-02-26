@@ -236,8 +236,11 @@ object ScalaUtils
       }
 
     def orThrow: R =
+      orThrow(identity)
+
+    def orThrow(toThrowable: L => Throwable): R =
       underlying match {
-        case Left(t) => throw t.appendCurrentStackTrace
+        case Left(t) => throw toThrowable(t).appendCurrentStackTrace
         case Right(o) => o
       }
 

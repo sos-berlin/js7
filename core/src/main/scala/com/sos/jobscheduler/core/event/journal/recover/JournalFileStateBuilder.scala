@@ -129,7 +129,11 @@ final class JournalFileStateBuilder[S <: JournaledState[S, E], E <: Event](
   private def deserialize(json: Json): Stamped[KeyedEvent[E]] = {
     import journalMeta.eventJsonCodec
     json.as[Stamped[KeyedEvent[Event]]]
-      .orThrow
+      .orThrow { t =>
+        val msg = s"Unexpected JSON: ${(t: io.circe.DecodingFailure).message}"
+        logger.error(s"$msg: ${json.compactPrint}")
+        new IllegalArgumentException(msg)
+      }
       .asInstanceOf[Stamped[KeyedEvent[E]]]
   }
 }
