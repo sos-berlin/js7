@@ -2,7 +2,7 @@ package com.sos.jobscheduler.core.event.journal.recover
 
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.core.event.journal.data.JournalHeader
-import com.sos.jobscheduler.data.event.{Event, JournaledState}
+import com.sos.jobscheduler.data.event.{Event, JournalPosition, JournaledState}
 import java.nio.file.Path
 import scala.language.higherKinds
 
@@ -27,6 +27,8 @@ final case class RecoveredJournalFile[S <: JournaledState[S, E], E <: Event](
   def fileEventId = journalHeader.eventId
 
   def eventId = calculatedJournalHeader.eventId
+
+  def journalPosition = JournalPosition(fileEventId, length)
 
   override def toString = s"RecoveredJournalFile($file ($length bytes),$journalHeader,$firstEventPosition,$state,$calculatedJournalHeader)"
 }

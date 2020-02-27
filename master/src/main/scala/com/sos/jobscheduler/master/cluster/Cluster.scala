@@ -16,6 +16,7 @@ import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.http.AkkaHttpUtils._
 import com.sos.jobscheduler.common.http.{AkkaHttpClient, RecouplingStreamReader}
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.cluster.HttpClusterWatch
 import com.sos.jobscheduler.core.event.journal.JournalActor
@@ -25,7 +26,7 @@ import com.sos.jobscheduler.core.event.journal.recover.{JournaledStateRecoverer,
 import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
 import com.sos.jobscheduler.core.problems.MissingPassiveClusterNodeHeartbeatProblem
 import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, ClusterCoupled, FollowerLost, FollowingStarted, SwitchedOver}
-import com.sos.jobscheduler.data.cluster.ClusterState.{AwaitingAppointment, AwaitingFollower, Coupled, CoupledOrDecoupled, Decoupled, Empty, HasActiveNode, OtherFailedOver, Sole}
+import com.sos.jobscheduler.data.cluster.ClusterState.{AwaitingAppointment, AwaitingFollower, Coupled, CoupledOrDecoupled, Decoupled, Empty, HasActiveNode, HasPassiveNode, OtherFailedOver, Sole}
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeRole, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
@@ -159,6 +160,8 @@ final class Cluster(
 
                 case otherState: CoupledOrDecoupled =>
                   logger.info(s"The other cluster node '${otherState.activeUri}' has failed-over while this node was absent")
+                  assertThat(otherState.activeUri == recoveredClusterState.passiveUri &&
+                             otherState.passiveUri == recoveredClusterState.activeUri)
                   val failedAt = otherState.failedAt getOrElse sys.error("Missing failedAt information from failed-over cluster node")
                   // This restarted, previously failed cluster node may have written one chunk of events more than
                   // the passive node, maybe even an extra snapshot in a new journal file.
@@ -187,28 +190,27 @@ final class Cluster(
                     if (fileSize < failedAt.position)
                       sys.error(s"Journal file '${journalFile.file.getFileName} is shorter than the failed-over position ${failedAt.position}")
                     logger.info(s"Truncating journalFile ${journalFile.file.getFileName} at failed-over position")
-                    val f = new RandomAccessFile(file.toFile, "rw")
-                    try {
+                    autoClosing(new RandomAccessFile(file.toFile, "rw")) { f =>
                       f.seek(failedAt.position - 1)
                       if (f.read() != '\n')
                         sys.error(s"Invalid failed-over position=${failedAt.position} in '${journalFile.file.getFileName} journal file")
-                      //TODO assertThat(f.readLineReverse.as[Json]("eventId") == failedAt.eventId)
                       f.setLength(failedAt.position)
-                    } finally f.close()
+                    }
                   }
                   val truncatedRecoveredJournalFile = if (!truncated) recoveredJournalFile else
                     JournaledStateRecoverer.recover[MasterState, Event](journalMeta, recovered.newStateBuilder, config /*, runningSince=???*/)
                       .recoveredJournalFile getOrElse sys.error(s"Unrecoverable journal file '${file.getFileName}''")
                   assertThat(truncatedRecoveredJournalFile.state.clusterState == recoveredClusterState)
+                  assertThat(truncatedRecoveredJournalFile.journalPosition == failedAt)
+                  val otherFailedOver = OtherFailedOver(otherState.activeUri, otherState.passiveUri)
                   val passiveClusterNode = new PassiveClusterNode(ownUri, otherState.activeUri, journalMeta,
                     recovered.copy(recoveredJournalFile = Some(
                       truncatedRecoveredJournalFile.copy[MasterState, Event](
                         state = truncatedRecoveredJournalFile.state.copy(
-                          clusterState = ClusterState.OtherFailedOver(
-                            recoveredClusterState.passiveUri,
-                            recoveredClusterState.activeUri))))),
+                          clusterState = otherFailedOver)))),
                     clusterWatch, clusterConf, eventIdGenerator)(actorSystem)
-                  Some(OtherFailedOver(otherState.activeUri, otherState.passiveUri) -> passiveClusterNode)
+                  Some(otherFailedOver -> passiveClusterNode)
+
                 case otherState =>
                   sys.error(s"The other node is in invalid clusterState=$otherState")  // ???
               }
@@ -229,7 +231,7 @@ final class Cluster(
               Task.pure(Right(recoveredClusterState -> ClusterFollowUp.BecomeActive(recovered)))
         }
 
-      case (state: CoupledOrDecoupled, Some(ownUri), _, Some(_)) if state.passiveUri == ownUri =>
+      case (state: HasPassiveNode, Some(ownUri), _, Some(_)) if state.passiveUri == ownUri =>
         logger.info(
           if (state.isTheFollowingNode(ownUri))
             s"Becoming a following passive cluster node '$ownUri'"

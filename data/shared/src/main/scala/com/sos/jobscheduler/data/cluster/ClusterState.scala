@@ -103,13 +103,11 @@ object ClusterState
     def activeUri: Uri
     def isActive(uri: Uri) = uri == activeUri
   }
-  //object HasActiveNode {
-  //  def unapply(state: ClusterState): Option[Uri] =
-  //    state match {
-  //      case state: HasActiveNode => Some(state.activeUri)
-  //      case _ => None
-  //    }
-  //}
+
+  sealed trait HasPassiveNode extends HasActiveNode
+  {
+    def passiveUri: Uri
+  }
 
   /** Sole node of the cluster.
     * Node is active without standby node. */
@@ -119,27 +117,26 @@ object ClusterState
   /** A passive node follows the active node, but it is not yet appointment.
     * The URI of the following (passive) node is still unknown. */
   final case class AwaitingAppointment(activeUri: Uri, passiveUri: Uri)
-  extends HasActiveNode
+  extends HasPassiveNode
   {
     assertThat(activeUri != passiveUri)
   }
 
   final case class AwaitingFollower(activeUri: Uri, passiveUri: Uri)
-  extends HasActiveNode
+  extends HasPassiveNode
   {
     assertThat(activeUri != passiveUri)
   }
 
   /** Intermediate state only which is immediately followed by transition ClusterEvent.ClusterCoupled -> Coupled. */
   final case class PreparedToBeCoupled(activeUri: Uri, passiveUri: Uri)
-  extends HasActiveNode
+  extends HasPassiveNode
   {
     assertThat(activeUri != passiveUri)
   }
 
-  sealed trait CoupledOrDecoupled extends HasActiveNode
+  sealed trait CoupledOrDecoupled extends HasPassiveNode
   {
-    def passiveUri: Uri
     def failedAt: Option[JournalPosition]
   }
 
@@ -160,7 +157,7 @@ object ClusterState
 
   /** Non-permanent state, not stored, used while retrieving the journal from the failed-over node. */
   final case class OtherFailedOver(activeUri: Uri, passiveUri: Uri)
-  extends HasActiveNode
+  extends HasPassiveNode
   {
     assertThat(activeUri != passiveUri)
   }
