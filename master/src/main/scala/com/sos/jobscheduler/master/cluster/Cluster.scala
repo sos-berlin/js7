@@ -244,11 +244,11 @@ final class Cluster(
 
       case (_, None, _, _) =>
         Task.pure(None) ->
-          Task.pure(Left(Problem.pure(s"This cluster node's own URI is unknown, clusterState=$recoveredClusterState")))
+          Task.pure(Left(Problem.pure(s"This cluster node's own URI is not defined, but recovered clusterState=$recoveredClusterState")))
 
       case (_, Some(ownUri), _, _) =>
         Task.pure(None) ->
-          Task.pure(Left(Problem.pure(s"This cluster node's URI '$ownUri' does not match state $recoveredClusterState")))
+          Task.pure(Left(Problem.pure(s"Unexpected clusterState=$recoveredClusterState (ownUri=$ownUri)")))
     }
 
   def automaticallyAppointConfiguredBackupNode(): Task[Checked[Completed]] =
