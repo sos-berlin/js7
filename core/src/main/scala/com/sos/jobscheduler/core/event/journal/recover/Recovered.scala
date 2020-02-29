@@ -3,7 +3,7 @@ package com.sos.jobscheduler.core.event.journal.recover
 import akka.actor.{ActorRef, ActorRefFactory}
 import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, RecoveredJournalingActors}
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
-import com.sos.jobscheduler.core.event.state.JournalStateBuilder
+import com.sos.jobscheduler.core.event.state.JournaledStateBuilder
 import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, JournaledState}
 import com.typesafe.config.Config
 import scala.concurrent.duration.Deadline
@@ -14,7 +14,7 @@ final case class Recovered[S <: JournaledState[S, E], E <: Event](
   recoveredJournalFile: Option[RecoveredJournalFile[S, E]],
   totalRunningSince: Deadline,
   /** The recovered state */
-  newStateBuilder: () => JournalStateBuilder[S, E],
+  newStateBuilder: () => JournaledStateBuilder[S, E],
   eventWatch: JournalEventWatch,
   config: Config)
 extends AutoCloseable

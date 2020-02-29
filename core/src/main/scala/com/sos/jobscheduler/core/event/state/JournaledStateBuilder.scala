@@ -6,7 +6,7 @@ import com.sos.jobscheduler.base.utils.Strings._
 import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.core.event.journal.data.JournalHeader
-import com.sos.jobscheduler.core.event.state.JournalStateBuilder._
+import com.sos.jobscheduler.core.event.state.JournaledStateBuilder._
 import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.data.event.{Event, EventId, JournaledState, KeyedEvent, Stamped}
 import monix.eval.Task
@@ -14,7 +14,7 @@ import scala.concurrent.Promise
 import scala.concurrent.duration.Duration
 import scala.util.control.NonFatal
 
-trait JournalStateBuilder[S <: JournaledState[S, E], E <: Event]
+trait JournaledStateBuilder[S <: JournaledState[S, E], E <: Event]
 {
   private val stopwatch = new Stopwatch
   private var _snapshotCount = 0L
@@ -127,7 +127,7 @@ trait JournalStateBuilder[S <: JournaledState[S, E], E <: Event]
     else EventId.toTimestamp(eventId)
 }
 
-object JournalStateBuilder
+object JournaledStateBuilder
 {
   private val logger = Logger(getClass)
 }

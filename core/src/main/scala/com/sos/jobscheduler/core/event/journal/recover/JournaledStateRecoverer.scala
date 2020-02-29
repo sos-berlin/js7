@@ -10,7 +10,7 @@ import com.sos.jobscheduler.core.event.journal.files.JournalFiles
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
 import com.sos.jobscheduler.core.event.journal.recover.JournaledStateRecoverer._
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
-import com.sos.jobscheduler.core.event.state.JournalStateBuilder
+import com.sos.jobscheduler.core.event.state.JournaledStateBuilder
 import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, JournaledState}
 import com.typesafe.config.Config
 import java.nio.file.{Files, Path}
@@ -21,9 +21,9 @@ private final class JournaledStateRecoverer[S <: JournaledState[S, E], E <: Even
   protected val file: Path,
   expectedJournalId: Option[JournalId],
   journalMeta: JournalMeta,
-  newJournalFileStateBuilder: () => JournalFileStateBuilder[S, E])
+  newfileJournaledStateBuilder: () => FileJournaledStateBuilder[S, E])
 {
-  private val journalFileStateBuilder = newJournalFileStateBuilder()
+  private val fileJournaledStateBuilder = newfileJournaledStateBuilder()
 
   private var _position = 0L
   private val _firstEventPosition = SetOnce[Long]
@@ -33,16 +33,16 @@ private final class JournaledStateRecoverer[S <: JournaledState[S, E], E <: Even
     // TODO Use HistoricEventReader (and build JournalIndex only once, and reuse it for event reading)
     autoClosing(InputStreamJsonSeqReader.open(file)) { jsonReader =>
       for (json <- UntilNoneIterator(jsonReader.read()).map(_.value)) {
-        journalFileStateBuilder.put(json)
+        fileJournaledStateBuilder.put(json)
         _position = jsonReader.position
-        if (_firstEventPosition.isEmpty && journalFileStateBuilder.recovererState == JournalRecovererState.InEventsSection) {
+        if (_firstEventPosition.isEmpty && fileJournaledStateBuilder.recovererState == JournalProgress.InEventsSection) {
           _firstEventPosition := jsonReader.position
         }
       }
-      for (h <- journalFileStateBuilder.fileJournalHeader if journalMeta.file(h.eventId) != file) {
+      for (h <- fileJournaledStateBuilder.fileJournalHeader if journalMeta.file(h.eventId) != file) {
         sys.error(s"JournalHeaders eventId=${h.eventId} does not match the filename '${file.getFileName}'")
       }
-      journalFileStateBuilder.logStatistics()
+      fileJournaledStateBuilder.logStatistics()
     }
   }
 
@@ -57,12 +57,12 @@ object JournaledStateRecoverer
 
   def recover[S <: JournaledState[S, E], E <: Event](
     journalMeta: JournalMeta,
-    newStateBuilder: () => JournalStateBuilder[S, E],
+    newStateBuilder: () => JournaledStateBuilder[S, E],
     config: Config,
     runningSince: Deadline = now)
   : Recovered[S, E] = {
     val file = JournalFiles.currentFile(journalMeta.fileBase).toOption
-    val journalFileStateBuilder = new JournalFileStateBuilder[S, E](
+    val fileJournaledStateBuilder = new FileJournaledStateBuilder[S, E](
       journalMeta,
       journalFileForInfo = file getOrElse journalMeta.file(EventId.BeforeFirst)/*the expected new filename*/,
       expectedJournalId = None,
@@ -71,19 +71,19 @@ object JournaledStateRecoverer
 
     file match {
       case Some(file) =>
-        val recoverer = new JournaledStateRecoverer(file, expectedJournalId = None, journalMeta, () => journalFileStateBuilder)
+        val recoverer = new JournaledStateRecoverer(file, expectedJournalId = None, journalMeta, () => fileJournaledStateBuilder)
         recoverer.recoverAll()
-        val calculatedJournalHeader = journalFileStateBuilder.calculatedJournalHeader
+        val calculatedJournalHeader = fileJournaledStateBuilder.calculatedJournalHeader
           .getOrElse(sys.error(s"Missing JournalHeader in file '${file.getFileName}'"))
         Recovered(
           journalMeta,
           Some(RecoveredJournalFile(
             file,
             length = recoverer.position,
-            journalFileStateBuilder.fileJournalHeader getOrElse sys.error(s"Missing JournalHeader in file '${file.getFileName}'"),
+            fileJournaledStateBuilder.fileJournalHeader getOrElse sys.error(s"Missing JournalHeader in file '${file.getFileName}'"),
             calculatedJournalHeader,
             firstEventPosition = recoverer.firstEventPosition getOrElse sys.error(s"Missing JournalHeader in file '${file.getFileName}'"),
-            journalFileStateBuilder.state)),
+            fileJournaledStateBuilder.state)),
           totalRunningSince = runningSince - calculatedJournalHeader.totalRunningTime,
           newStateBuilder,
           eventWatch,

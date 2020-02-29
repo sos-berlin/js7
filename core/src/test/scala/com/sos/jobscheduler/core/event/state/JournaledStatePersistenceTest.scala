@@ -130,7 +130,7 @@ final class JournaledStatePersistenceTest extends FreeSpec with BeforeAndAfterAl
   }
 
   private class RunningPersistence {
-    private var journalStatePersistence: JournaledStatePersistence[TestState, TestEvent] = null
+    private var journaledStatePersistence: JournaledStatePersistence[TestState, TestEvent] = null
     private lazy val journalStopped = Promise[JournalActor.Stopped]()
 
     private lazy val journalActor = tag[JournalActor.type](
@@ -143,15 +143,15 @@ final class JournaledStatePersistenceTest extends FreeSpec with BeforeAndAfterAl
       val recovered = JournaledStateRecoverer.recover(journalMeta, () => new TestStateBuilder, JournalEventWatch.TestConfig)
       recovered.startJournalAndFinishRecovery(journalActor)(actorSystem)
       implicit val a = actorSystem
-      journalStatePersistence = new JournaledStatePersistence[TestState, TestEvent](journalActor)
-      journalStatePersistence.start(recovered.recoveredState getOrElse TestState.empty)
-      journalStatePersistence
+      journaledStatePersistence = new JournaledStatePersistence[TestState, TestEvent](journalActor)
+      journaledStatePersistence.start(recovered.recoveredState getOrElse TestState.empty)
+      journaledStatePersistence
     }
 
     def stop() = {
       (journalActor ? JournalActor.Input.TakeSnapshot)(99.seconds) await 99.seconds
-      if (journalStatePersistence != null) {
-        journalStatePersistence.close()
+      if (journaledStatePersistence != null) {
+        journaledStatePersistence.close()
       }
       journalActor ! JournalActor.Input.Terminate
       journalStopped.future await 99.s
@@ -169,7 +169,7 @@ private object JournaledStatePersistenceTest
      |}
      |""".stripMargin))
 
-  private class TestStateBuilder extends JournalStateBuilder[TestState, TestEvent]
+  private class TestStateBuilder extends JournaledStateBuilder[TestState, TestEvent]
   {
     private val numberThings = mutable.Map[NumberKey, NumberThing]()
     private var _state = TestState.empty

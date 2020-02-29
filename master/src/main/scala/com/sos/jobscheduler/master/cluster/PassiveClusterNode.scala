@@ -20,8 +20,8 @@ import com.sos.jobscheduler.core.cluster.ClusterWatch.OtherClusterNodeStillActiv
 import com.sos.jobscheduler.core.cluster.ClusterWatchApi
 import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, JournalSeparators}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles._
-import com.sos.jobscheduler.core.event.journal.recover.{JournalFileStateBuilder, JournalRecovererState, Recovered, RecoveredJournalFile}
-import com.sos.jobscheduler.core.event.state.JournalStateBuilder
+import com.sos.jobscheduler.core.event.journal.recover.{FileJournaledStateBuilder, JournalProgress, Recovered, RecoveredJournalFile}
+import com.sos.jobscheduler.core.event.state.JournaledStateBuilder
 import com.sos.jobscheduler.data.cluster.ClusterEvent.FailedOver
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
@@ -130,7 +130,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
 
   private def replicateJournalFile(
     continuation: Continuation.Replicatable,
-    newStateBuilder: () => JournalStateBuilder[S, Event],
+    newStateBuilder: () => JournaledStateBuilder[S, Event],
     activeMasterApi: HttpMasterApi)
     (implicit scheduler: Scheduler)
   : Task[Checked[Continuation]] =
@@ -156,13 +156,13 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
       var replicatedFileLength = continuation.fileLength
       var inTransaction = false
       var _eof = false
-      val builder = new JournalFileStateBuilder[S, Event](journalMeta, journalFileForInfo = file.getFileName,
+      val builder = new FileJournaledStateBuilder[S, Event](journalMeta, journalFileForInfo = file.getFileName,
         continuation.maybeJournalId, newStateBuilder)
 
       continuation match {
         case FirstPartialFile(recoveredJournalFile, _) =>
           logger.info(s"Start replicating events into journal file ${file.getName()}")
-          builder.startWithState(JournalRecovererState.InEventsSection, Some(recoveredJournalFile.journalHeader),
+          builder.startWithState(JournalProgress.InEventsSection, Some(recoveredJournalFile.journalHeader),
             eventId = recoveredJournalFile.eventId,
             totalEventCount = recoveredJournalFile.calculatedJournalHeader.totalEventCount,
             recoveredJournalFile.state)
@@ -229,7 +229,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
                     //eventWatch.onJournalingStarted(???)
                     eventWatch.onFileWrittenAndEventsCommitted(PositionAnd(fileSize, failedOverStamped.eventId), n = 1)
                     eventWatch.onJournalingEnded(fileSize)
-                    builder.startWithState(JournalRecovererState.InEventsSection,
+                    builder.startWithState(JournalProgress.InEventsSection,
                       journalHeader = Some(recoveredJournalFile.journalHeader),
                       eventId = failedOverStamped.eventId,
                       totalEventCount = recoveredJournalFile.calculatedJournalHeader.totalEventCount + 1,

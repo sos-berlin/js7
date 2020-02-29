@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master.cluster
 
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.event.state.JournalStateBuilder
+import com.sos.jobscheduler.core.event.state.JournaledStateBuilder
 import com.sos.jobscheduler.data.event.{Event, JournaledState}
 import com.sos.jobscheduler.master.cluster.StateBuilderAndAccessor._
 import monix.catnap.MVar
@@ -11,12 +11,12 @@ import monix.execution.Scheduler
 import scala.util.{Failure, Success}
 
 private final class StateBuilderAndAccessor[S <: JournaledState[S, E], E <: Event](
-  originalNewStateBuilder: () => JournalStateBuilder[S, E])
+  originalNewStateBuilder: () => JournaledStateBuilder[S, E])
 {
   private val getStateMVarTask = MVar.empty[Task, Task[S]]().memoize
   val state: Task[S] = getStateMVarTask.flatMap(_.read.flatten)
 
-  def newStateBuilder()(implicit s: Scheduler): JournalStateBuilder[S, E] = {
+  def newStateBuilder()(implicit s: Scheduler): JournaledStateBuilder[S, E] = {
     val builder = originalNewStateBuilder()
     (for {
         mVar <- getStateMVarTask

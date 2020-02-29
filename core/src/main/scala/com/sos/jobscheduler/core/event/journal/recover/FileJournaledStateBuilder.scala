@@ -5,11 +5,11 @@ import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowableEither
 import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.event.journal.data.JournalSeparators.{Commit, EventFooter, EventHeader, SnapshotFooter, Transaction}
-import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta, JournalSeparators}
-import com.sos.jobscheduler.core.event.journal.recover.JournalFileStateBuilder._
-import com.sos.jobscheduler.core.event.journal.recover.JournalRecovererState.{AfterEventsSection, AfterHeader, AfterSnapshotSection, InEventsSection, InSnapshotSection, InTransaction, Initial}
-import com.sos.jobscheduler.core.event.state.JournalStateBuilder
+import com.sos.jobscheduler.core.event.journal.data.JournalSeparators.{Commit, EventFooter, EventHeader, SnapshotFooter, SnapshotHeader, Transaction}
+import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta}
+import com.sos.jobscheduler.core.event.journal.recover.FileJournaledStateBuilder._
+import com.sos.jobscheduler.core.event.journal.recover.JournalProgress.{AfterEventsSection, AfterHeader, AfterSnapshotSection, InEventsSection, InSnapshotSection, InTransaction, Initial}
+import com.sos.jobscheduler.core.event.state.JournaledStateBuilder
 import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, JournaledState, KeyedEvent, Stamped}
 import io.circe.Json
 import java.nio.file.Path
@@ -19,14 +19,14 @@ import scala.collection.mutable.ArrayBuffer
 /**
   * @author Joacim Zschimmer
   */
-final class JournalFileStateBuilder[S <: JournaledState[S, E], E <: Event](
+final class FileJournaledStateBuilder[S <: JournaledState[S, E], E <: Event](
   journalMeta: JournalMeta,
   journalFileForInfo: Path,
   expectedJournalId: Option[JournalId],
-  newBuilder: () => JournalStateBuilder[S, E])
+  newBuilder: () => JournaledStateBuilder[S, E])
 {
   private val builder = newBuilder()
-  private var _recovererState: JournalRecovererState = JournalRecovererState.Initial
+  private var _progress: JournalProgress = JournalProgress.Initial
 
   private object transaction
   {
@@ -48,49 +48,49 @@ final class JournalFileStateBuilder[S <: JournaledState[S, E], E <: Event](
     private def isInTransaction = buffer != null
   }
 
-  def startWithState(recovererState: JournalRecovererState, journalHeader: Option[JournalHeader], eventId: EventId, totalEventCount: Long, state: S): Unit = {
-    this._recovererState = recovererState
+  def startWithState(progress: JournalProgress, journalHeader: Option[JournalHeader], eventId: EventId, totalEventCount: Long, state: S): Unit = {
+    this._progress = progress
     builder.initializeState(journalHeader, eventId, totalEventCount, state)
   }
 
   def put(json: Json): Unit =
-    _recovererState match {
+    _progress match {
       case Initial =>
         val header = JournalHeader.checkedHeader(json, journalFileForInfo, expectedJournalId).orThrow
         builder.addSnapshot(header)
         logger.debug(header.toString)
-        _recovererState = AfterHeader
+        _progress = AfterHeader
 
       case AfterHeader =>
-        if (json != JournalSeparators.SnapshotHeader) throw new IllegalArgumentException("Missing SnapshotHeader in journal file")
-        _recovererState = InSnapshotSection
+        if (json != SnapshotHeader) throw new IllegalArgumentException("Missing SnapshotHeader in journal file")
+        _progress = InSnapshotSection
 
       case InSnapshotSection =>
         if (json == SnapshotFooter) {
           builder.onAllSnapshotsAdded()
-          _recovererState = AfterSnapshotSection
+          _progress = AfterSnapshotSection
         } else {
           builder.addSnapshot(journalMeta.snapshotJsonCodec.decodeJson(json).orThrow)
         }
 
       case AfterSnapshotSection =>
         if (json != EventHeader) throw new IllegalArgumentException("Missing EventHeader in journal file")
-        _recovererState = InEventsSection
+        _progress = InEventsSection
 
       case InEventsSection =>
         json match {
           case EventFooter =>
-            _recovererState = AfterEventsSection
+            _progress = AfterEventsSection
           case Transaction =>
             transaction.begin()
-            _recovererState = InTransaction
+            _progress = InTransaction
           case _ =>
             builder.addEvent(deserialize(json))
        }
 
       case InTransaction =>
         if (json == Commit) {
-          _recovererState = InEventsSection
+          _progress = InEventsSection
           for (stamped <- transaction.buffer) {
             builder.addEvent(stamped)
           }
@@ -103,7 +103,7 @@ final class JournalFileStateBuilder[S <: JournaledState[S, E], E <: Event](
         throw new IllegalArgumentException(s"Illegal JSON while journal file reader is in state '$recovererState': ${json.compactPrint.truncateWithEllipsis(100)}")
     }
 
-  def recovererState = _recovererState
+  def recovererState = _progress
 
   def fileJournalHeader = builder.fileJournalHeader
 
@@ -116,13 +116,13 @@ final class JournalFileStateBuilder[S <: JournaledState[S, E], E <: Event](
   def clusterState = builder.clusterState
 
   def result: S =
-    _recovererState match {
+    _progress match {
       case InEventsSection | AfterEventsSection =>
         builder.state
       case _ => throw new IllegalStateException(s"Journal file '$journalFileForInfo' is truncated in state '$recovererState'")
     }
 
-  def isAcceptingEvents = _recovererState.isAcceptingEvents
+  def isAcceptingEvents = _progress.isAcceptingEvents
 
   def logStatistics() = builder.logStatistics()
 
@@ -138,7 +138,7 @@ final class JournalFileStateBuilder[S <: JournaledState[S, E], E <: Event](
   }
 }
 
-object JournalFileStateBuilder
+object FileJournaledStateBuilder
 {
   private val logger = Logger(getClass)
 }

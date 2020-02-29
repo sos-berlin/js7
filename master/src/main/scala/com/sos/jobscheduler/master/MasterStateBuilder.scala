@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master
 
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.utils.Collections.implicits._
-import com.sos.jobscheduler.core.event.state.JournalStateBuilder
+import com.sos.jobscheduler.core.event.state.JournaledStateBuilder
 import com.sos.jobscheduler.core.filebased.Repo
 import com.sos.jobscheduler.core.workflow.Recovering.followUpRecoveredSnapshots
 import com.sos.jobscheduler.data.agent.AgentRefPath
@@ -22,7 +22,7 @@ import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
 import scala.collection.mutable
 
 final class MasterStateBuilder
-extends JournalStateBuilder[MasterState, Event]
+extends JournaledStateBuilder[MasterState, Event]
 {
   private var masterMetaState = MasterMetaState.Undefined
   private var _clusterState: ClusterState = ClusterState.Empty

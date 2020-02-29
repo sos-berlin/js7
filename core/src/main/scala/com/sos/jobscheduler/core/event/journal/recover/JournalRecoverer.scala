@@ -20,7 +20,7 @@ import java.nio.file.{Files, Path}
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 
-// TODO Replace this class by JournalStateRecoverer
+// TODO Replace this class by JournaledStateRecoverer
 
 /**
   * @author Joacim Zschimmer
