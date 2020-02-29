@@ -125,7 +125,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
 
   private def masterApi(uri: Uri, name: String): Resource[Task, HttpMasterApi] =
     AkkaHttpMasterApi.resource(baseUri = activeUri, name = name)
-      .map[HttpMasterApi](identity)
+      .map(identity[HttpMasterApi])
       .evalTap(_.loginUntilReachable(clusterConf.userAndPassword, Iterator.continually(1.s/*TODO*/)))
 
   private def replicateJournalFile(
