@@ -26,6 +26,7 @@ import scala.annotation.tailrec
 import scala.collection.immutable.{Seq, SortedMap}
 import scala.concurrent.Promise
 import scala.concurrent.duration.FiniteDuration
+import scala.util.control.NoStackTrace
 
 /**
   * Watches a complete journal consisting of n `JournalFile`.
@@ -48,12 +49,16 @@ with JournalingObserver
       .toKeyedMap(_.afterEventId)
   private val startedPromise = Promise[this.type]()
   @volatile
-  private var currentEventReaderOption: Option[CurrentEventReader[Event]] = None
+  private var currentEventReaderOption: Option[CurrentEventReader] = None
   private val keepEventsAfter = AtomicLong(EventId.BeforeFirst)
+  @volatile
+  private var nextEventReaderPromise: Option[(EventId, Promise[CurrentEventReader])] = None
 
   def close() = {
     afterEventIdToHistoric.values foreach (_.close())
     currentEventReaderOption foreach (_.close())
+    for (o <- nextEventReaderPromise)
+      o._2.tryFailure(new IllegalStateException("JournalEventWatch has been closed") with NoStackTrace)
   }
 
   override def whenStarted = startedPromise.future
@@ -86,8 +91,11 @@ with JournalingObserver
           current.journalFile,
           Some(current)/*Reuse built-up JournalIndex*/)
       }
-      currentEventReaderOption = Some(new CurrentEventReader[Event](journalMeta, Some(expectedJournalId),
-        tornLengthAndEventId, flushedLengthAndEventId, config))
+      val currentEventReader = new CurrentEventReader(journalMeta, Some(expectedJournalId),
+        tornLengthAndEventId, flushedLengthAndEventId, config)
+      currentEventReaderOption = Some(currentEventReader)
+      for ((eventId, promise) <- nextEventReaderPromise if eventId == tornLengthAndEventId.value)
+        promise.success(currentEventReader)
     }
     onFileWritten(flushedLengthAndEventId.position)
     onEventsCommitted(flushedLengthAndEventId.value)  // Notify about already written events
@@ -98,6 +106,7 @@ with JournalingObserver
   def onJournalingEnded(fileLength: EventId) =
     for (o <- currentEventReaderOption) {
       logger.debug(s"onJournalingEnded ${o.journalFile.getFileName} fileLength=$fileLength")
+      nextEventReaderPromise = Some(o.lastEventId -> Promise[CurrentEventReader]())
       o.onJournalingEnded(fileLength)
     }
 
@@ -233,11 +242,18 @@ with JournalingObserver
 
   private def observeFile(fileEventId: EventId, position: Long, timeout: FiniteDuration, markEOF: Boolean, onlyLastOfChunk: Boolean)
   : Checked[Observable[PositionAnd[ByteString]]] =
-    currentEventReaderOption
-      .filter(_.tornEventId == fileEventId)
-      .orElse(afterEventIdToHistoric.get(fileEventId).map(_.eventReader))
-      .toRight(Problem(s"Unknown journal file=$fileEventId"))
-      .map(_.observeFile(position, timeout, markEOF = markEOF, onlyLastOfChunk = onlyLastOfChunk))
+    (nextEventReaderPromise match {
+      case Some((`fileEventId`, promise)) =>
+        logger.debug(s"observeFile($fileEventId): waiting for this new journal file")
+        Right(Observable.fromFuture(promise.future))
+      case _ =>
+        currentEventReaderOption
+          .filter(_.tornEventId == fileEventId)
+          .orElse(afterEventIdToHistoric.get(fileEventId).map(_.eventReader))
+          .toRight(Problem(s"Unknown journal file=$fileEventId"))
+          .map(Observable.pure)
+    }).map(_.flatMap(_
+      .observeFile(position, timeout, markEOF = markEOF, onlyLastOfChunk = onlyLastOfChunk)))
 
   private def lastEventId =
     currentEventReaderOption match {
@@ -302,7 +318,7 @@ with JournalingObserver
 
   private def currentEventReader = checkedCurrentEventReader.orThrow
 
-  private def checkedCurrentEventReader: Checked[CurrentEventReader[Event]] =
+  private def checkedCurrentEventReader: Checked[CurrentEventReader] =
     currentEventReaderOption.toChecked(JournalIsNotYetReadyProblem(journalMeta.fileBase))
 }
 

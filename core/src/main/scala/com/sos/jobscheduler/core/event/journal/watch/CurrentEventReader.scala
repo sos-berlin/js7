@@ -4,14 +4,14 @@ import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.common.event.{EventSync, PositionAnd}
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
-import com.sos.jobscheduler.data.event.{Event, EventId, JournalId}
+import com.sos.jobscheduler.data.event.{EventId, JournalId}
 import com.typesafe.config.Config
 import scala.concurrent.duration.Deadline
 
 /**
   * @author Joacim Zschimmer
   */
-private[watch] final class CurrentEventReader[E <: Event](
+private[watch] final class CurrentEventReader(
   protected val journalMeta: JournalMeta,
   protected val expectedJournalId: Option[JournalId],
   /** Length and after-EventId of initialized and empty journal. */
@@ -65,6 +65,8 @@ extends EventReader
     CloseableIterator.empty  // Not implemented
 
   def lastEventId = _lastEventId
+
+  def isEnded = journalingEnded
 
   override def toString = s"CurrentEventReader(${journalFile.getFileName})"
 }
