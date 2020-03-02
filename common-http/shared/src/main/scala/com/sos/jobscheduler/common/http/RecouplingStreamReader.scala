@@ -18,6 +18,7 @@ import monix.reactive.Observable
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
+import scala.util.control.NoStackTrace
 
 /** Logs in, couples and fetches objects from a (HTTP) stream, and recouples after error. */
 abstract class RecouplingStreamReader[@specialized(Long/*EventId or file position*/) I, V, Api <: SessionApi](
@@ -33,7 +34,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
   protected def onCouplingFailed(api: Api, problem: Problem): Task[Completed] =
     Task {
       if (inUse.get && !stopRequested) scribe.warn(s"$api: coupling failed: $problem")
-      scribe.debug(s"$api: onCouplingFailed: $problem", problem.throwableOption.map(_.nullIfNoStackTrace).orNull)
+      scribe.debug(s"$api: coupling failed: $problem", problem.throwableOption.map(_.nullIfNoStackTrace).orNull)
       Completed
     }
 
@@ -164,7 +165,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
     private def tryEndlesslyToCouple(after: I): Task[Completed] =
       Task.tailRecM(())(_ =>
         if (stopRequested || coupledApiVar.isStopped || !inUse.get)
-          Task.raiseError(new IllegalStateException(s"RecouplingStreamReader($api) has been stopped"))
+          Task.raiseError(new IllegalStateException(s"RecouplingStreamReader($api) has been stopped") with NoStackTrace)
         else
           (for {
             otherCoupledClient <- coupledApiVar.tryRead
