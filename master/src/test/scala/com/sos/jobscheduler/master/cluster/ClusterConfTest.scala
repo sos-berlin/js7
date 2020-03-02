@@ -17,7 +17,7 @@ final class ClusterConfTest extends FreeSpec
 {
   ProblemCodeMessages.initialize()
 
-  "fromConfigAndFile" - {
+  "fromConfig" - {
     "Minimum configuration" in {
       val config = ConfigFactory.parseString("""
         jobscheduler.master.cluster.heartbeat = 7s
@@ -25,7 +25,7 @@ final class ClusterConfTest extends FreeSpec
         jobscheduler.master.cluster.agents = [ "http://AGENT-1", "http://AGENT-2" ]
         jobscheduler.web.client.idle-get-timeout = 50s
         jobscheduler.web.client.delay-between-polling-gets = 1s""")
-      val clusterConf = ClusterConf.fromConfigAndFile(UserId("USER"), config)
+      val clusterConf = ClusterConf.fromConfig(UserId("USER"), config)
       assert(clusterConf == Right(
         ClusterConf(
           None,
@@ -50,7 +50,7 @@ final class ClusterConfTest extends FreeSpec
         jobscheduler.auth.cluster.password = "PASSWORD"
         jobscheduler.web.client.idle-get-timeout = 50s
         jobscheduler.web.client.delay-between-polling-gets = 1s""")
-      val checkedClusterConf = ClusterConf.fromConfigAndFile(UserId("USER"), config)
+      val checkedClusterConf = ClusterConf.fromConfig(UserId("USER"), config)
       assert(checkedClusterConf == Right(
         ClusterConf(
           Some(ClusterNodeRole.Primary(Some(Uri("http://BACKUP")))),
@@ -70,7 +70,7 @@ final class ClusterConfTest extends FreeSpec
     //    jobscheduler.master.cluster.delay-between-polling-gets = 1s
     //    jobscheduler.master.cluster.heartbeat = 6s
     //    jobscheduler.master.cluster.fail-after = 5s""")
-    //  val checkedClusterConf = ClusterConf.fromConfigAndFile(UserId("USER"), config)
+    //  val checkedClusterConf = ClusterConf.fromConfig(UserId("USER"), config)
     //  assert(checkedClusterConf == Left(Problem("jobscheduler.master.cluster.heartbeat=6s must be shorter than jobscheduler.master.cluster.fail-after=5s")))
     //}
     //
@@ -80,7 +80,7 @@ final class ClusterConfTest extends FreeSpec
     //    jobscheduler.master.cluster.delay-between-polling-gets = 1s
     //    jobscheduler.master.cluster.heartbeat = 5s
     //    jobscheduler.master.cluster.fail-after = 5s""")
-    //  val checkedClusterConf = ClusterConf.fromConfigAndFile(UserId("USER"), config)
+    //  val checkedClusterConf = ClusterConf.fromConfig(UserId("USER"), config)
     //  assert(checkedClusterConf == Left(Problem("jobscheduler.master.cluster.heartbeat=5s must be shorter than jobscheduler.master.cluster.fail-after=5s")))
     //}
   }

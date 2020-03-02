@@ -22,11 +22,12 @@ final case class ClusterConf(
   recouplingStreamReader: RecouplingStreamReaderConf,
   heartbeat: FiniteDuration,
   failAfter: FiniteDuration,
-  agentUris: Seq[Uri])
+  agentUris: Seq[Uri],
+  testHeartbeatLossPropertyKey: Option[String] = None)
 
 object ClusterConf
 {
-  def fromConfigAndFile(userId: UserId, config: Config): Checked[ClusterConf] =
+  def fromConfig(userId: UserId, config: Config): Checked[ClusterConf] =
     for {
       maybeRoleString <- config.checkedOptionAs[String]("jobscheduler.master.cluster.this-node.role")
       maybeOwnUri <- config.checkedOptionAs[Uri]("jobscheduler.master.cluster.this-node.uri")
@@ -45,11 +46,13 @@ object ClusterConf
       heartbeat <- Right(config.getDuration("jobscheduler.master.cluster.heartbeat").toFiniteDuration)
       failAfter <- Right(config.getDuration("jobscheduler.master.cluster.fail-after").toFiniteDuration)
       agentUris <- Right(config.getStringList("jobscheduler.master.cluster.agents").asScala.toVector map Uri.apply)
+      testHeartbeatLoss <- Right(config.optionAs[String]("jobscheduler.master.cluster.TEST-HEARTBEAT-LOSS"))
     } yield
       new ClusterConf(maybeRole, maybeOwnUri, userAndPassword,
         recouplingStreamReaderConf.copy(
           timeout = heartbeat + (failAfter - heartbeat) / 2),
         heartbeat = heartbeat,
         failAfter = failAfter,
-        agentUris)
+        agentUris,
+        testHeartbeatLoss)
 }

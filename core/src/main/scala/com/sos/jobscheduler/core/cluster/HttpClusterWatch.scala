@@ -53,7 +53,11 @@ extends ClusterWatchApi with AkkaHttpClient with HttpSessionApi with HttpAutoRel
         }
         .map((_: JsonObject) => Completed))
 
-  def heartbeat(from: Uri, reportedClusterState: ClusterState): Task[Checked[Completed]] = ???
+  def heartbeat(from: Uri, reportedClusterState: ClusterState): Task[Checked[Completed]] =
+    liftProblem(
+      loginUntilReachable(userAndPassword, loginDelays(), onlyIfNotLoggedIn = true) >>
+        post[ClusterWatchMessage, JsonObject](clusterUri, ClusterWatchHeartbeat(from, reportedClusterState))
+          .map((_: JsonObject) => Completed))
 
   def get: Task[Checked[ClusterState]] =
     liftProblem(

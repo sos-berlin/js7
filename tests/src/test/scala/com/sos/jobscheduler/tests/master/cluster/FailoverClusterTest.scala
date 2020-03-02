@@ -4,19 +4,23 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import com.sos.jobscheduler.core.event.journal.data.JournalSeparators.EventFooter
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
 import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterCoupled, FailedOver, SwitchedOver}
+import com.sos.jobscheduler.data.cluster.ClusterState
+import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event._
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
+import com.sos.jobscheduler.master.cluster.PassiveClusterNode
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand.ClusterSwitchOver
 import com.sos.jobscheduler.tests.master.cluster.MasterClusterTester._
-import java.nio.file.Files
+import java.nio.file.Files.size
 import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.duration.Deadline.now
 
@@ -26,13 +30,14 @@ final class FailoverClusterTest extends MasterClusterTester
     val primaryHttpPort :: backupHttpPort :: Nil = findFreeTcpPorts(2)
     withMasterAndBackup(primaryHttpPort, backupHttpPort) { (primary, backup) =>
       var primaryMaster = primary.startMaster(httpPort = Some(primaryHttpPort)) await 99.s
-      val backupMaster = backup.startMaster(httpPort = Some(backupHttpPort)) await 99.s
+      var backupMaster = backup.startMaster(httpPort = Some(backupHttpPort)) await 99.s
       primaryMaster.eventWatch.await[ClusterCoupled]()
 
       val t = now
       val sleepWhileFailing = 10.s  // Failover takes some seconds anyway
       val orderId = OrderId("💥")
-      primaryMaster.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path, arguments = Map("SLEEP" -> sleepWhileFailing.toSeconds.toString)))
+      primaryMaster.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path, arguments = Map(
+        "SLEEP" -> sleepWhileFailing.toSeconds.toString)))
       primaryMaster.eventWatch.await[OrderProcessingStarted](_.key == orderId)
       backupMaster.eventWatch.await[OrderProcessingStarted](_.key == orderId)
       // KILL PRIMARY
@@ -43,8 +48,8 @@ final class FailoverClusterTest extends MasterClusterTester
       assert(failedOver.failedAt.fileEventId == backupMaster.eventWatch.fileEventIds.last ||
              failedOver.failedAt.fileEventId == backupMaster.eventWatch.fileEventIds.dropRight(1).last)
       val expectedFailedFile = primaryMaster.injector.instance[MasterConfiguration].journalMeta.file(failedOver.failedAt.fileEventId)
-      assert(failedOver.failedAt.position == Files.size(expectedFailedFile) ||
-             failedOver.failedAt.position == Files.size(expectedFailedFile) - (EventFooter.compactPrint + "\n").length)
+      assert(failedOver.failedAt.position == size(expectedFailedFile) ||
+             failedOver.failedAt.position == size(expectedFailedFile) - (EventFooter.compactPrint + "\n").length)
 
       backupMaster.eventWatch.await[OrderFinished](_.key == orderId, after = failedOverEventId)
 
@@ -54,9 +59,32 @@ final class FailoverClusterTest extends MasterClusterTester
       assertEqualJournalFiles(primary.master, backup.master, 3)
 
       backupMaster.executeCommandForTest(ClusterSwitchOver).orThrow
-      backupMaster.eventWatch.await[SwitchedOver](after = failedOverEventId)
-      //backupMaster.terminate() await 99.s
+      val recoupledEventId = backupMaster.eventWatch.await[SwitchedOver](after = failedOverEventId).head.eventId
+      primaryMaster.eventWatch.await[SwitchedOver](after = failedOverEventId)
+
+      backupMaster.terminated await 99.s
+      backupMaster = backup.startMaster(httpPort = Some(backupHttpPort)) await 99.s
+      backupMaster.eventWatch.await[ClusterCoupled](after = recoupledEventId)
+      primaryMaster.eventWatch.await[ClusterCoupled](after = recoupledEventId)
+
+      // When heartbeat from passive to active node is broken, the ClusterWatch will nonetheless not agree to a failover
+      val stillCoupled = ClusterState.Coupled(
+        activeUri = Uri(primaryMaster.localUri.toString),
+        passiveUri = Uri(backupMaster.localUri.toString),
+        None)
+      assert(primaryMaster.clusterState.await(99.s) == stillCoupled)
+      assert(backupMaster.clusterState.await(99.s) == stillCoupled)
+
+      val whenAgentAgrees = backupMaster.testEventBus.when[PassiveClusterNode.AgentAgreesToActivation.type]
+      val whenAgentDoesNotAgree = backupMaster.testEventBus.when[PassiveClusterNode.AgentDoesNotAgreeToActivation.type]
+      sys.props(testHeartbeatLossPropertyKey) = "true"
+      whenAgentDoesNotAgree await 99.s
+      assert(!whenAgentAgrees.isCompleted)
+      assert(primaryMaster.clusterState.await(99.s) == stillCoupled)
+      assert(backupMaster.clusterState.await(99.s) == stillCoupled)
+
       primaryMaster.terminate() await 99.s
+      backupMaster.terminate() await 99.s
     }
   }
 }

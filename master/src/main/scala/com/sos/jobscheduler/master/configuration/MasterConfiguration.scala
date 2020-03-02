@@ -116,7 +116,7 @@ object MasterConfiguration
       timeZone = ZoneId.systemDefault,
       akkaAskTimeout = config.getDuration("jobscheduler.akka.ask-timeout").toFiniteDuration,
       journalConf = JournalConf.fromConfig(config),
-      clusterConf = ClusterConf.fromConfigAndFile(masterId.toUserId, config).orThrow,
+      clusterConf = ClusterConf.fromConfig(masterId.toUserId, config).orThrow,
       name = name,
       config = config)
   }

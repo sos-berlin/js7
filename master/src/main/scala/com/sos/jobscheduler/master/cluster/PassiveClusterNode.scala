@@ -4,6 +4,7 @@ import akka.actor.ActorSystem
 import cats.effect.Resource
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec._
+import com.sos.jobscheduler.base.eventbus.EventBus
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
@@ -16,7 +17,7 @@ import com.sos.jobscheduler.common.http.{AkkaHttpClient, RecouplingStreamReader}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
-import com.sos.jobscheduler.core.cluster.ClusterWatch.OtherClusterNodeStillActiveProblem
+import com.sos.jobscheduler.core.cluster.ClusterWatch.ClusterWatchHeartbeatFromInactiveNodeProblem
 import com.sos.jobscheduler.core.cluster.ClusterWatchApi
 import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, JournalSeparators}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles._
@@ -33,6 +34,7 @@ import com.sos.jobscheduler.master.cluster.ObservablePauseDetector.RichPauseObse
 import com.sos.jobscheduler.master.cluster.PassiveClusterNode._
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.MasterCommand.ClusterPassiveFollows
+import io.circe.Json
 import io.circe.syntax._
 import java.io.RandomAccessFile
 import java.nio.ByteBuffer
@@ -55,7 +57,8 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
   recovered: Recovered[S, Event],
   clusterWatch: ClusterWatchApi,
   clusterConf: ClusterConf,
-  eventIdGenerator: EventIdGenerator)
+  eventIdGenerator: EventIdGenerator,
+  testEventBus: EventBus)
   (implicit actorSystem: ActorSystem)
 {
   import recovered.eventWatch
@@ -113,7 +116,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
             // TODO Herzschlag auch beim Wechsel zur nächsten Journaldatei prüfen
             .map {
               case Left(problem) => Right(Left(problem))
-              case Right(continuation: Continuation.Replicatable) =>
+              case Right(continuation) =>
                 if (!shouldFinishFollowing(continuation.clusterState))
                   Left(continuation)
                 else
@@ -133,7 +136,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
     newStateBuilder: () => JournaledStateBuilder[S, Event],
     activeMasterApi: HttpMasterApi)
     (implicit scheduler: Scheduler)
-  : Task[Checked[Continuation]] =
+  : Task[Checked[Continuation.Replicatable]] =
     Task.defer {
       import continuation.file
 
@@ -203,12 +206,13 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
         .mapParallelOrdered(sys.runtime.availableProcessors) { case PositionAnd(fileLength, line) =>
           Task((fileLength, line, line.parseJson.orThrow))
         }
+        .filter(testHeartbeatSuppressor) // for testing
         .detectPauses(clusterConf.heartbeat + clusterConf.failAfter)
         .flatMap[Checked[Unit]] {
           case None/*pause*/ =>
             (if (isReplicatingHeadOfFile) continuation.clusterState else builder.clusterState) match {
               case clusterState: ClusterState.Coupled if clusterState.passiveUri == ownUri =>
-                logger.warn(s"Failing over due to missing heartbeat of the currently active cluster node '$activeUri")
+                logger.warn(s"No heartbeat from the currently active cluster node '$activeUri")
                 if (isReplicatingHeadOfFile) {
                   val recoveredJournalFile = continuation.maybeRecoveredJournalFile.getOrElse(
                     throw new AssertionError("Failover but nothing has been replicated"))
@@ -337,18 +341,30 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
             recouplingStreamReader.terminate.map(_ => ()))
     }
 
+  private def testHeartbeatSuppressor(tuple: (Long, ByteVector, Json)): Boolean =
+    tuple match {
+      case (_, JournalSeparators.HeartbeatMarker, _)
+        if clusterConf.testHeartbeatLossPropertyKey.fold(false)(k => sys.props(k).toBoolean) =>
+        logger.warn("TEST: Ignoring heartbeat")
+        false
+      case _ => true
+    }
+
   private def ifClusterWatchAllowsActivation(clusterState: ClusterState, event: ClusterEvent)(body: => Observable[Checked[Unit]])
   : Observable[Checked[Unit]] =
     Observable.fromTask(
       clusterWatch.applyEvents(from = ownUri, event :: Nil, clusterState.applyEvent(event).orThrow)
     ).flatMap {
       case Left(problem) =>
-        if (problem.codeOption contains OtherClusterNodeStillActiveProblem.code) {
-          logger.info(problem.toString)
+        if (problem.codeOption contains ClusterWatchHeartbeatFromInactiveNodeProblem.code) {
+          logger.info(s"ClusterWatch does not agree to failover: $problem")
+          testEventBus.publish(AgentDoesNotAgreeToActivation)
           Observable.empty  // Ignore heartbeat loss
         } else
           Observable.raiseError(problem.throwable)
       case Right(Completed) =>
+        logger.info(s"ClusterWatch agrees to failover")
+        testEventBus.publish(AgentAgreesToActivation)
         body
     }
 
@@ -435,4 +451,7 @@ object PassiveClusterNode
 
   private val EndOfJournalFileMarker = Problem.pure("End of journal file (internal use only)")
   private final class ServerTimeoutException extends TimeoutException("Journal web service timed out")
+
+  case object AgentDoesNotAgreeToActivation
+  case object AgentAgreesToActivation
 }

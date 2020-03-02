@@ -67,23 +67,28 @@ final class ClusterWatchTest extends FreeSpec
 
     "Heartbeat from wrong node is rejected" in {
       assert(watch.heartbeat(backup, clusterState).await(99.s) ==
-        Left(OtherClusterNodeStillActiveProblem(primary, wannabeActiveUri = backup)))
+        Left(ClusterWatchHeartbeatFromInactiveNodeProblem(backup, clusterState)))
 
-      assert(watch.heartbeat(backup, ClusterState.Coupled(activeUri = backup, primary, None)).await(99.s) ==
-        Left(OtherClusterNodeStillActiveProblem(primary, wannabeActiveUri = backup)))
+      locally {
+        assert(watch.heartbeat(backup, ClusterState.Coupled(activeUri = backup, primary, None)).await(99.s) ==
+          Left(ClusterWatchHeartbeatFromInactiveNodeProblem(backup, clusterState)))
+      }
 
+      assert(watch.get.await(99.s) == Right(clusterState))
+    }
+
+    "Heartbeat must not change active URI" in {
       // The inactive primary node should not send a heartbeat
       val badCoupled = ClusterState.Coupled(activeUri = backup, primary, None)
       assert(watch.heartbeat(primary, badCoupled).await(99.s) ==
-        Left(ClusterWatchHeartbeatFromInactiveNodeProblem(primary, badCoupled)))
-
+        Left(InvalidClusterWatchHeartbeatProblem(primary, badCoupled)))
       assert(watch.get.await(99.s) == Right(clusterState))
     }
 
     "FailedOver before heartbeat loss is rejected" in {
       scheduler.tick(1.s)
       assert(applyEvent(backup, FailedOver(primary, backup, failedAt) :: Nil) ==
-        Left(OtherClusterNodeStillActiveProblem(activeUri = primary, wannabeActiveUri = backup)))
+        Left(ClusterWatchHeartbeatFromInactiveNodeProblem(backup, clusterState)))
       assert(watch.isActive(primary).await(99.s).orThrow)
     }
 
@@ -95,7 +100,7 @@ final class ClusterWatchTest extends FreeSpec
 
     "FailedOver to node without heartbeat" in {
       pending
-      // FIXME ClusterWatch soll FailedOver ablehen, wenn der zu aktivierende Knoten keinen aktuellen Herzschlag hat ?
+      // FIXME ClusterWatch soll FailedOver ablehnen, wenn der zu aktivierende Knoten keinen aktuellen Herzschlag hat ?
       //  Oder FailedOver soll scheitern, wenn nicht eine absolute Mehrheit der ClusterWatch einen aktuellen Herzschlag
       //  für den zu aktivierenden Knoten hat.
     }
@@ -120,7 +125,7 @@ final class ClusterWatchTest extends FreeSpec
       assert(applyEvent(backup, FollowingStarted(primary) :: ClusterCoupled :: Nil) == Right(Completed))
       assert(watch.isActive(backup).await(99.s).orThrow)
       assert(applyEvent(primary, SwitchedOver(primary) :: Nil) ==
-        Left(OtherClusterNodeStillActiveProblem(backup, wannabeActiveUri = primary)))
+        Left(ClusterWatchHeartbeatFromInactiveNodeProblem(primary, clusterState)))
     }
 
     "applyEvents after event loss" in {

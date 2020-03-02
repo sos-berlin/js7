@@ -11,6 +11,7 @@ import com.google.inject.util.Modules
 import com.google.inject.util.Modules.EMPTY_MODULE
 import com.google.inject.{Guice, Injector, Module}
 import com.sos.jobscheduler.base.auth.SimpleUser
+import com.sos.jobscheduler.base.eventbus.EventBus
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked._
@@ -72,8 +73,10 @@ final class RunningMaster private(
   webServer: MasterWebServer,
   val fileBasedApi: MainFileBasedApi,
   val orderApi: OrderApi.WithCommands,
+  val clusterState: Task[ClusterState],
   commandExecutor: MasterCommandExecutor,
   terminated1: Future[MasterTermination],
+  val testEventBus: EventBus,
   closer: Closer,
   val injector: Injector)
 extends AutoCloseable
@@ -204,6 +207,7 @@ object RunningMaster
         JournalActor.props(journalMeta, masterConfiguration.journalConf,
           injector.instance[StampedKeyedEventBus], scheduler, injector.instance[EventIdGenerator]),
         "Journal"))
+      val testEventBus = new EventBus
       val cluster = new Cluster(
         journalMeta,
         new JournaledStatePersistence[ClusterState, ClusterEvent](journalActor).closeWithCloser,
@@ -211,7 +215,7 @@ object RunningMaster
         masterConfiguration.clusterConf,
         masterConfiguration.config,
         injector.instance[EventIdGenerator],
-        actorSystem)
+        testEventBus)
       val recovered = Await.result(whenRecovered, Duration.Inf).closeWithCloser
 
       // clusterFollowUpFuture terminates when this cluster node becomes active or terminates
@@ -277,8 +281,9 @@ object RunningMaster
       for (_ <- webServer.start()) yield {
         createSessionTokenFile(injector.instance[SessionRegister[SimpleSession]])
         masterConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", _ + "/master")
-        new RunningMaster(recovered.eventWatch.strict, webServer, fileBasedApi, orderApi, commandExecutor,
-          orderKeeperTerminated, closer, injector)
+        new RunningMaster(recovered.eventWatch.strict, webServer, fileBasedApi, orderApi, cluster.currentClusterState,
+          commandExecutor,
+          orderKeeperTerminated, testEventBus, closer, injector)
       }
     }
 

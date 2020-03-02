@@ -2,6 +2,7 @@ package com.sos.jobscheduler.tests.master.cluster
 
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.common.auth.SecretStringGenerator
 import com.sos.jobscheduler.common.log.ScribeUtils
 import com.sos.jobscheduler.common.scalautil.Closer.ops._
 import com.sos.jobscheduler.common.scalautil.Closer.withCloser
@@ -27,6 +28,8 @@ private[cluster] trait MasterClusterTester extends FreeSpec
 {
   ScribeUtils.coupleScribeWithSlf4j()
   ProblemCodeMessages.initialize()
+  protected final val testHeartbeatLossPropertyKey = "jobscheduler.TEST." + SecretStringGenerator.randomString()
+  sys.props(testHeartbeatLossPropertyKey) = "false"
 
   protected[cluster] final def withMasterAndBackup(primaryHttpPort: Int, backupHttpPort: Int)(body: (DirectoryProvider, DirectoryProvider) => Unit): Unit =
     withCloser { implicit closer =>
@@ -40,6 +43,7 @@ private[cluster] trait MasterClusterTester extends FreeSpec
           jobscheduler.master.cluster.heartbeat = 3s
           jobscheduler.master.cluster.fail-after = 5s
           jobscheduler.master.cluster.agents = [ "http://127.0.0.1:$agentPort" ]
+          jobscheduler.master.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"
           jobscheduler.auth.users.Master.password = "plain:BACKUP-MASTER-PASSWORD"
           jobscheduler.auth.users.TEST.password = "plain:TEST-PASSWORD"
           jobscheduler.auth.cluster.password = "PRIMARY-MASTER-PASSWORD" """),
@@ -54,6 +58,7 @@ private[cluster] trait MasterClusterTester extends FreeSpec
           jobscheduler.master.cluster.heartbeat = 3s
           jobscheduler.master.cluster.fail-after = 5s
           jobscheduler.master.cluster.agents = [ "http://127.0.0.1:$agentPort" ]
+          jobscheduler.master.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"
           jobscheduler.auth.users.Master.password = "plain:PRIMARY-MASTER-PASSWORD"
           jobscheduler.auth.cluster.password = "BACKUP-MASTER-PASSWORD" """)
       ).closeWithCloser

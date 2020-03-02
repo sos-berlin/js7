@@ -85,8 +85,7 @@ extends Actor {
         agentHandle.executeCommand(command, meta.user.id, response)
 
       case EmergencyStop(restart) =>
-        Halt.haltJava("Command EmergencyStop received: JOBSCHEDULER AGENT STOPS NOW",
-          exitCode = if (restart) 98 else 99)
+        Halt.haltJava("Command EmergencyStop received: JOBSCHEDULER AGENT STOPS NOW", restart = restart)
     }
 }
 

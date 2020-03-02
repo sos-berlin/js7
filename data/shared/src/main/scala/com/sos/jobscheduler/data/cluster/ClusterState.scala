@@ -17,6 +17,8 @@ import monix.reactive.Observable
 sealed trait ClusterState
 extends JournaledState[ClusterState, ClusterEvent]
 {
+  def maybeActiveNode: Option[Uri]
+
   def applyEvent(keyedEvent: KeyedEvent[ClusterEvent]): Checked[ClusterState] = {
     val event = keyedEvent.event
     if (!keyedEvent.key.isInstanceOf[NoKey])
@@ -84,7 +86,7 @@ extends JournaledState[ClusterState, ClusterEvent]
   def toSnapshotObservable =
     Observable.fromIterable((this != Empty) ? ClusterStateSnapshot(this))
 
-  def isActive(uri: Uri): Boolean
+  final def isActive(uri: Uri) = maybeActiveNode contains uri
 
   def isTheFollowingNode(uri: Uri) = false
 }
@@ -96,12 +98,12 @@ object ClusterState
   /** Cluster has not been initialized.
     * Like Sole but own URI is unknown. Non-permanent state, not stored. */
   case object Empty extends ClusterState {
-    def isActive(uri: Uri) = false
+    def maybeActiveNode = None
   }
 
   sealed trait HasActiveNode extends ClusterState {
     def activeUri: Uri
-    def isActive(uri: Uri) = uri == activeUri
+    final def maybeActiveNode = Some(activeUri)
   }
 
   sealed trait HasPassiveNode extends HasActiveNode

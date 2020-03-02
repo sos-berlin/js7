@@ -5,6 +5,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import cats.data.EitherT
 import com.sos.jobscheduler.base.auth.UserAndPassword
+import com.sos.jobscheduler.base.eventbus.EventBus
 import com.sos.jobscheduler.base.generic.{Completed, SecretString}
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
@@ -18,6 +19,7 @@ import com.sos.jobscheduler.common.http.AkkaHttpUtils._
 import com.sos.jobscheduler.common.http.{AkkaHttpClient, RecouplingStreamReader}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.core.cluster.ClusterWatch.ClusterWatchHeartbeatFromInactiveNodeProblem
 import com.sos.jobscheduler.core.cluster.HttpClusterWatch
 import com.sos.jobscheduler.core.event.journal.JournalActor
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
@@ -25,6 +27,7 @@ import com.sos.jobscheduler.core.event.journal.files.JournalFiles
 import com.sos.jobscheduler.core.event.journal.recover.{JournaledStateRecoverer, Recovered}
 import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
 import com.sos.jobscheduler.core.problems.MissingPassiveClusterNodeHeartbeatProblem
+import com.sos.jobscheduler.core.startup.Halt.haltJava
 import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, ClusterCoupled, FollowerLost, FollowingStarted, SwitchedOver}
 import com.sos.jobscheduler.data.cluster.ClusterState.{AwaitingAppointment, AwaitingFollower, Coupled, CoupledOrDecoupled, Decoupled, Empty, HasActiveNode, HasPassiveNode, OtherFailedOver, Sole}
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeRole, ClusterState}
@@ -42,6 +45,7 @@ import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, Paths}
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean
+import monix.execution.cancelables.SerialCancelable
 import monix.execution.{CancelableFuture, Scheduler}
 import monix.reactive.{Observable, OverflowStrategy}
 import scala.collection.immutable.Seq
@@ -55,8 +59,10 @@ final class Cluster(
   clusterConf: ClusterConf,
   config: Config,
   eventIdGenerator: EventIdGenerator,
-  actorSystem: ActorSystem)
-  (implicit s: Scheduler, journalActorAskTimeout: Timeout)
+  testEventBus: EventBus)
+  (implicit journalActorAskTimeout: Timeout,
+    scheduler: Scheduler,
+    actorSystem: ActorSystem)
 {
   private val journalActor = persistence.journalActor
   private val fetchingEvents = AtomicBoolean(false)
@@ -69,7 +75,8 @@ final class Cluster(
   private var stopRequested = false
   private val started = Promise[Unit]()
   @volatile
-  private var startingClusterState: Option[ClusterState] = null
+  private var startingClusterState: Task[ClusterState] = null
+  private val heartbeatSender = SerialCancelable()
 
   private lazy val clusterWatch = {
     val uri = clusterConf.agentUris.headOption
@@ -87,6 +94,7 @@ final class Cluster(
     for (o <- Option(fetchingEventsFuture)) {
       o.cancel()
     }
+    heartbeatSender.cancel()
     //TODO clusterWatch.logout()
   }
 
@@ -103,12 +111,15 @@ final class Cluster(
     recoveredClusterState: ClusterState,
     recoveredState: MasterState)
   : (Task[Option[MasterState]], Task[Checked[ClusterFollowUp[MasterState, Event]]]) = {
-    startingClusterState = Some(recoveredClusterState)
     started.success(())
     val (passiveState, followUp) = startCluster(recovered, recoveredClusterState, recoveredState, eventIdGenerator)
+    startingClusterState = passiveState flatMap {
+      case None => persistence.currentState
+      case Some(o) => Task.pure(o.clusterState)
+    }
     passiveState ->
       followUp.map(_.map { case (clusterState, followUp) =>
-        startingClusterState = None
+        startingClusterState = persistence.currentState
         // clusterWatch.heartbeat(ownUri, persistence.currentState)
         persistence.start(clusterState)
         followUp
@@ -131,7 +142,7 @@ final class Cluster(
       case (Empty, Some(ownUri), Some(ClusterNodeRole.Backup(activeUri)), _) =>
         logger.info(s"Becoming the (still not following) backup cluster node '$ownUri' for primary node at $activeUri")
         val passive = new PassiveClusterNode(ownUri, activeUri, journalMeta, recovered,
-          clusterWatch, clusterConf, eventIdGenerator)(actorSystem)
+          clusterWatch, clusterConf, eventIdGenerator, testEventBus)
         passive.state.map(Some.apply) ->
           passive.run(recoveredClusterState, recoveredState)
 
@@ -140,7 +151,7 @@ final class Cluster(
           case recoveredClusterState: Coupled =>
             val retryDelay = 5.s  // TODO
             val retryDelays = Iterator.single(1.s/*TODO*/) ++ Iterator.continually(retryDelay)
-            val failedOver = AkkaHttpMasterApi.resource(recoveredClusterState.passiveUri, name = "clusterState")(actorSystem)
+            val failedOver = AkkaHttpMasterApi.resource(recoveredClusterState.passiveUri, name = "clusterState")
               .use(other =>
                 other.loginUntilReachable(clusterConf.userAndPassword, retryDelays) >>
                   other.clusterState)
@@ -208,7 +219,7 @@ final class Cluster(
                       truncatedRecoveredJournalFile.copy[MasterState, Event](
                         state = truncatedRecoveredJournalFile.state.copy(
                           clusterState = otherFailedOver)))),
-                    clusterWatch, clusterConf, eventIdGenerator)(actorSystem)
+                    clusterWatch, clusterConf, eventIdGenerator, testEventBus)(actorSystem)
                   Some(otherFailedOver -> passiveClusterNode)
 
                 case otherState =>
@@ -238,7 +249,7 @@ final class Cluster(
           else
             s"Becoming a passive cluster node '$ownUri', trying to follow the active node")
         val passive = new PassiveClusterNode(ownUri, state.activeUri, journalMeta, recovered,
-          clusterWatch, clusterConf, eventIdGenerator)(actorSystem)
+          clusterWatch, clusterConf, eventIdGenerator, testEventBus)(actorSystem)
         passive.state.map(Some.apply) ->
           passive.run(recoveredClusterState, recoveredState)
 
@@ -432,36 +443,6 @@ final class Cluster(
   def onClusterCompleted: Task[Checked[Completed]] =
     Task.fromFuture(fetchingEventsPromise.future)
 
-  /*
-  private def queryAgents(otherNodeId: ClusterNodeId): Unit =
-    Task
-      .sequence(
-        for (a <- votingAgentRefPaths.toVector) yield
-          askAgent(a)
-            .recover { case throwable =>
-              logger.error(throwable.toStringWithCauses)  // We ignore the error
-              Set.empty
-            })
-      .map(_.flatten)
-      // TODO Timeout einbauen
-      .runToFuture onComplete {
-        case Failure(throwable) =>
-          logger.error(throwable.toStringWithCauses)  // Should not happen because we have recovered already
-        case Success(nodeIds) =>
-          val me = nodeIds.count(_ == conf.uri)
-          val other = nodeIds.count(_ == otherNodeId)
-          logger.info(s"$me out of ${votingAgentRefPaths.size} Agents say this ClusterNode is reachable, $other say the other node is reachable")
-          if (isAbsoluteMajority(me)) {
-            self ! ClusterEvent.MajorityForMe
-          } else if (isAbsoluteMajority(other)) {
-            self ! ClusterEvent.MajorityFor(otherNodeId)
-          }
-      }
-
-  private def isAbsoluteMajority(n: Int) =
-    n > votingAgentRefPaths.size / 2
-  */
-
   private def persist(toEvents: ClusterState => Checked[Seq[ClusterEvent]])
   : Task[Checked[(Seq[Stamped[KeyedEvent[ClusterEvent]]], ClusterState)]] =
     (for {
@@ -481,7 +462,23 @@ final class Cluster(
         case None => Task.pure(Checked(Completed))
         case Some(ownUri) =>
           lock.use(_ =>
-            clusterWatch.applyEvents(from = ownUri, events, clusterState))
+            clusterWatch.applyEvents(from = ownUri, events, clusterState)
+          .map(_.map { completed =>
+            val future = scheduler.scheduleWithFixedDelay(clusterConf.heartbeat, clusterConf.heartbeat) {
+              heartbeat(clusterState).runToFuture onComplete {
+                case Success(Right(Completed)) =>
+                case Success(Left(problem)) if problem.codeOption contains ClusterWatchHeartbeatFromInactiveNodeProblem.code =>
+                  haltJava(s"EMERGENCY STOP due to: $problem", restart = true)  // TODO How to test?
+                case Success(problem) =>
+                  logger.warn(s"Error when sending heartbeat to ClusterWatch: $problem")
+                case Failure(t) =>
+                  logger.warn(s"Error when sending heartbeat to ClusterWatch: ${t.toStringWithCauses}")
+                  logger.debug(s"Error when sending heartbeat to ClusterWatch: $t", t)
+              }
+            }
+            heartbeatSender := future
+            completed
+          }))
       }
 
     private def heartbeat(clusterState: ClusterState): Task[Checked[Completed]] =
@@ -498,11 +495,8 @@ final class Cluster(
     * Required for the /api/cluster web service used by the restarting active node
     * asking the peer about its current (maybe failed-over) ClusterState. */
   def currentClusterState: Task[ClusterState] =
-    Task.fromFuture(started.future).flatMap(_ =>
-      startingClusterState match {
-        case Some(o) => Task.pure(o)  // Use recovered (maybe old) ClusterState until the actual ClusterState has been established
-        case None => persistence.currentState
-      })
+    Task.fromFuture(started.future) >>
+      startingClusterState
 
   // Used to RegisterMe actor in JournalActor
   def journalingActor = persistence.actor
