@@ -196,17 +196,19 @@ object RunningMaster
     private implicit val scheduler = injector.instance[Scheduler]
     private implicit lazy val closer = injector.instance[Closer]
     private implicit lazy val actorSystem = injector.instance[ActorSystem]
-
+    private lazy val signatureVerifier = GenericSignatureVerifier(masterConfiguration.config).orThrow
     import masterConfiguration.{akkaAskTimeout, journalMeta}
 
     private[RunningMaster] def start(): Future[RunningMaster] = {
       val whenRecovered = Future {  // May take minutes !!!
         MasterJournalRecoverer.recover(journalMeta, masterConfiguration.config)
       }
+      // Start-up some stuff while recovering
       val journalActor = tag[JournalActor.type](actorSystem.actorOf(
         JournalActor.props(journalMeta, masterConfiguration.journalConf,
           injector.instance[StampedKeyedEventBus], scheduler, injector.instance[EventIdGenerator]),
         "Journal"))
+      signatureVerifier
       val testEventBus = new EventBus
       val cluster = new Cluster(
         journalMeta,
@@ -332,7 +334,7 @@ object RunningMaster
           val actor = actorSystem.actorOf(
             Props {
               new MasterOrderKeeper(terminationPromise, journalActor, cluster, recovered.eventWatch, masterConfiguration,
-                GenericSignatureVerifier(masterConfiguration.config).orThrow)
+                signatureVerifier)
             },
             "MasterOrderKeeper")
           actor ! MasterOrderKeeper.Input.Start(recovered)
