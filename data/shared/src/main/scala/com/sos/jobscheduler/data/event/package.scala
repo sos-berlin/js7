@@ -62,10 +62,10 @@ package object event {
             sb ++= iso
             sb.deleteCharAt(sb.length - 1)  // 'Z'
             if (!sb.contains('.')) sb ++= ".000"
+            sb ++= "Z-"
             sb += ('0' + micros / 100).toChar
             sb += ('0' + micros / 10 % 10).toChar
             sb += ('0' + micros % 10).toChar
-            sb += 'Z'
             sb.toString
           }
       }
