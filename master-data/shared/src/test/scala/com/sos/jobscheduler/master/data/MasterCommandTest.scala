@@ -2,7 +2,9 @@ package com.sos.jobscheduler.master.data
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentRefPath
+import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.crypt.{GenericSignature, SignedString}
@@ -158,6 +160,24 @@ final class MasterCommandTest extends FreeSpec
       }""")
   }
 
+  "ClusterInhibitActivation" in {
+    testJson[MasterCommand](ClusterInhibitActivation(7.s),
+      json"""{
+        "TYPE": "ClusterInhibitActivation",
+        "duration": 7
+      }""")
+  }
+
+  "ClusterInhibitActivation.Response" in {
+    testJson[MasterCommand.Response](ClusterInhibitActivation.Response(ClusterState.Empty),
+      json"""{
+        "TYPE": "ClusterInhibitActivationResponse",
+        "clusterState": {
+          "TYPE": "Empty"
+        }
+      }""")
+  }
+
   "EmergencyStop" - {
     "restart=false" in {
       testJson[MasterCommand](EmergencyStop(),
@@ -195,13 +215,6 @@ final class MasterCommandTest extends FreeSpec
     testJson[MasterCommand](IssueTestEvent,
       json"""{
         "TYPE": "IssueTestEvent"
-      }""")
-  }
-
-  "ClusterSwitchOver" in {
-    testJson[MasterCommand](ClusterSwitchOver,
-      json"""{
-        "TYPE": "ClusterSwitchOver"
       }""")
   }
 

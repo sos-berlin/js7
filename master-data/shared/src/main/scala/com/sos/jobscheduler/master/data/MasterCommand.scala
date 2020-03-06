@@ -7,6 +7,7 @@ import com.sos.jobscheduler.base.problem.Checked.implicits.{checkedJsonDecoder, 
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalazStyle._
+import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.data.command.{CancelMode, CommonCommand}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.crypt.SignedString
@@ -17,6 +18,7 @@ import com.sos.jobscheduler.data.order.OrderId
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json, JsonObject}
 import scala.collection.immutable.Seq
+import scala.concurrent.duration.FiniteDuration
 
 /**
   * @author Joacim Zschimmer
@@ -146,6 +148,15 @@ object MasterCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
+  final case class ClusterInhibitActivation(duration: FiniteDuration)
+  extends MasterCommand {
+    type Response = ClusterInhibitActivation.Response
+  }
+  object ClusterInhibitActivation {
+    final case class Response(clusterState: ClusterState)
+    extends MasterCommand.Response
+  }
+
   sealed trait Response
 
   object Response {
@@ -154,11 +165,11 @@ object MasterCommand extends CommonCommand.Companion
 
     implicit val ResponseJsonCodec: TypedJsonCodec[Response] = TypedJsonCodec[Response](
       Subtype(Accepted),
-      Subtype.named(deriveCodec[Batch.Response], "BatchResponse"))
+      Subtype.named(deriveCodec[Batch.Response], "BatchResponse"),
+      Subtype.named(deriveCodec[ClusterInhibitActivation.Response], "ClusterInhibitActivationResponse"))
   }
 
   implicit val jsonCodec: TypedJsonCodec[MasterCommand] = TypedJsonCodec[MasterCommand](
-    Subtype(deriveCodec[ClusterAppointBackup]),
     Subtype(deriveCodec[Batch]),
     Subtype[CancelOrder],
     Subtype(deriveCodec[ReplaceRepo]),
@@ -167,8 +178,10 @@ object MasterCommand extends CommonCommand.Companion
     Subtype(IssueTestEvent),
     Subtype[EmergencyStop],
     Subtype(deriveCodec[KeepEvents]),
-    Subtype(deriveCodec[ClusterPassiveFollows]),
     Subtype[ShutDown],
+    Subtype(deriveCodec[ClusterAppointBackup]),
+    Subtype(deriveCodec[ClusterPassiveFollows]),
     Subtype(ClusterSwitchOver),
+    Subtype(deriveCodec[ClusterInhibitActivation]),
     Subtype(TakeSnapshot))
 }

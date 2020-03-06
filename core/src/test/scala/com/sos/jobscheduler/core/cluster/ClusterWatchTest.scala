@@ -56,7 +56,7 @@ final class ClusterWatchTest extends FreeSpec
     }
 
     "Heartbeat with different ClusterState from same active node is accepted" in {
-      val reportedClusterState = ClusterState.Decoupled(primary, backup, None)
+      val reportedClusterState = ClusterState.ProperlyDecoupled(primary, backup)
       assert(watch.heartbeat(primary, reportedClusterState).await(99.s) == Right(Completed))
       assert(watch.get.await(99.s) == Right(reportedClusterState))
 
@@ -70,7 +70,7 @@ final class ClusterWatchTest extends FreeSpec
         Left(ClusterWatchHeartbeatFromInactiveNodeProblem(backup, clusterState)))
 
       locally {
-        assert(watch.heartbeat(backup, ClusterState.Coupled(activeUri = backup, primary, None)).await(99.s) ==
+        assert(watch.heartbeat(backup, ClusterState.Coupled(activeUri = backup, primary)).await(99.s) ==
           Left(ClusterWatchHeartbeatFromInactiveNodeProblem(backup, clusterState)))
       }
 
@@ -79,7 +79,7 @@ final class ClusterWatchTest extends FreeSpec
 
     "Heartbeat must not change active URI" in {
       // The inactive primary node should not send a heartbeat
-      val badCoupled = ClusterState.Coupled(activeUri = backup, primary, None)
+      val badCoupled = ClusterState.Coupled(activeUri = backup, primary)
       assert(watch.heartbeat(primary, badCoupled).await(99.s) ==
         Left(InvalidClusterWatchHeartbeatProblem(primary, badCoupled)))
       assert(watch.get.await(99.s) == Right(clusterState))
@@ -130,11 +130,11 @@ final class ClusterWatchTest extends FreeSpec
 
     "applyEvents after event loss" in {
       assert(watch.get.await(99.s) == Right(clusterState))
-      assert(watch.get.await(99.s) == Right(ClusterState.Coupled(backup, primary, None)))
+      assert(watch.get.await(99.s) == Right(ClusterState.Coupled(backup, primary)))
 
       // We test the loss of a FollowerLost event, and then apply ClusterCoupled
       val lostEvent = FollowerLost(primary)
-      val decoupled = ClusterState.Decoupled(backup, primary, None)
+      val decoupled = ClusterState.ProperlyDecoupled(backup, primary)
       assert(clusterState.applyEvent(NoKey <-: lostEvent) == Right(decoupled))
 
       val nextEvent = FollowingStarted(primary)

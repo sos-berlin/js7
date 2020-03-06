@@ -371,8 +371,12 @@ object RunningMaster
             .map(_.map((_: Completed) => MasterCommand.Response.Accepted))
 
         case MasterCommand.ClusterPassiveFollows(activeUri, followingUri) =>
-          cluster.passiveNodesFollows(activeUri, followingUri)
+          cluster.passiveNodeFollows(activeUri, followingUri)
             .map(_.map((_: Completed) => MasterCommand.Response.Accepted))
+
+        case MasterCommand.ClusterInhibitActivation(duration) =>
+          cluster.inhibitActivation(duration)
+            .map(_ map MasterCommand.ClusterInhibitActivation.Response.apply)
 
         case _ =>
           orderKeeperStarted.value match {

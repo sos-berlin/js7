@@ -15,7 +15,7 @@ import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
+import com.sos.jobscheduler.base.utils.ScalaUtils.{RichPartialFunction, RichThrowable}
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
@@ -253,21 +253,27 @@ with MainJournalingActor[Event]
     case Input.Start(recovered) =>
       assertProperClusterState(recovered)
       recover(recovered)
-      become("recovering")(recovering)
+
+      if (cluster.isRemainingActiveAfterRestart) {
+        cluster.inhibitActivationOfPeer
+          .map {
+            case otherState: ClusterState if masterConfiguration.clusterConf.maybeOwnUri exists otherState.isActive =>
+              recovered
+            case otherState =>
+              // TODO Restart Master properly
+              throw new RuntimeException(s"While activating this node, the other node's ClusterState has become $otherState")
+          }
+          .materialize
+          .map(Internal.OtherClusterNodeActivationInhibited.apply)
+          .runToFuture
+          .pipeTo(self)
+      } else {
+        self ! Internal.OtherClusterNodeActivationInhibited(Success(recovered))
+      }
+      become("inhibitingActivationOfOtherClusterNode")(inhibitingActivationOfOtherClusterNode)
       unstashAll()
 
-    case Command.Execute(_: MasterCommand.ShutDown, _) =>
-      stash()
-
-    case Command.Execute(cmd, _) =>
-      logger.warn(s"$MasterIsNotYetReadyProblem: $cmd")
-      sender ! Left(MasterIsNotYetReadyProblem)
-
-    case cmd: Command =>
-      logger.warn(s"$MasterIsNotYetReadyProblem: $cmd")
-      sender ! Status.Failure(MasterIsNotYetReadyProblem.throwable)
-
-    case _ => stash()
+    case msg => notYetReady(msg)
   }
 
   private def assertProperClusterState(recovered: Recovered[MasterState, Event]): Unit = {
@@ -275,11 +281,11 @@ with MainJournalingActor[Event]
          ownUri <- masterConfiguration.clusterConf.maybeOwnUri if !clusterState.isActive(ownUri))
     {
       if (!clusterState.isActive(ownUri))
-        throw new AssertionError(s"Master has recovered from Journal but is not the active node in ClusterState: ownUri=$ownUri, clusterState=$clusterState")
+        throw new IllegalStateException(s"Master has recovered from Journal but is not the active node in ClusterState: ownUri=$ownUri, clusterState=$clusterState")
     }
   }
 
-  private def recover(recovered: Recovered[MasterState, Event]) = {
+  private def recover(recovered: Recovered[MasterState, Event]): Unit = {
     for (masterState <- recovered.recoveredState) {
       if (masterState.masterMetaState.masterId != masterConfiguration.masterId)
         throw Problem(s"Recovered masterId='${masterState.masterMetaState.masterId}' differs from configured masterId='${masterConfiguration.masterId}'").throwable
@@ -302,14 +308,43 @@ with MainJournalingActor[Event]
       }
       persistedEventId = masterState.eventId
     }
-    // Send an extra RegisterMe here, to be sure JournalActor has registered the ClusterState actor when a snapshot is taken
-    // TODO Fix fundamentally the race condition with JournalActor.Input.RegisterMe
-    journalActor.tell(JournalActor.Input.RegisterMe, cluster.journalingActor)
-    recovered.startJournalAndFinishRecovery(journalActor,
-      requireClusterAcknowledgement = recovered.recoveredState.fold(false)(_.clusterState.isInstanceOf[ClusterState.Coupled]))
   }
 
-  private def recovering: Receive = {
+  private def inhibitingActivationOfOtherClusterNode: Receive = {
+    case Internal.OtherClusterNodeActivationInhibited(Failure(t)) =>
+      logger.error(s"Activation of this cluster node failed because the other cluster node reports: ${t.toStringWithCauses}")
+      if (t.getStackTrace.nonEmpty) logger.debug(t.toStringWithCauses, t)
+      throw t.appendCurrentStackTrace
+
+    case Internal.OtherClusterNodeActivationInhibited(Success(recovered)) =>
+      // Send an extra RegisterMe here, to be sure JournalActor has registered the ClusterState actor when a snapshot is taken
+      // TODO Fix fundamentally the race condition with JournalActor.Input.RegisterMe
+      journalActor.tell(JournalActor.Input.RegisterMe, cluster.journalingActor)
+      recovered.startJournalAndFinishRecovery(journalActor,
+        requireClusterAcknowledgement = recovered.recoveredState.fold(false)(_.clusterState.isInstanceOf[ClusterState.Coupled]))
+      become("journalIsStarting")(journalIsStarting)
+      unstashAll()
+
+    case msg => notYetReady(msg)
+  }
+
+  private def notYetReady(message: Any): Unit =
+    message match {
+      case Command.Execute(_: MasterCommand.ShutDown, _) =>
+        stash()
+
+      case Command.Execute(cmd, _) =>
+        logger.warn(s"$MasterIsNotYetReadyProblem: $cmd")
+        sender ! Left(MasterIsNotYetReadyProblem)
+
+      case cmd: Command =>
+        logger.warn(s"$MasterIsNotYetReadyProblem: $cmd")
+        sender ! Status.Failure(MasterIsNotYetReadyProblem.throwable)
+
+      case _ => stash()
+    }
+
+  private def journalIsStarting: Receive = {
     case JournalRecoverer.Output.JournalIsReady(journalHeader) =>
       recoveredJournalHeader := journalHeader
       become("becomingReady")(becomingReady)  // `become` must be called early, before any persist!
@@ -887,6 +922,7 @@ private[master] object MasterOrderKeeper
   }
 
   private object Internal {
+    final case class OtherClusterNodeActivationInhibited(recovered: Try[Recovered[MasterState, Event]])
     final case class ClusterCompleted(tried: Try[Checked[Completed]]) extends DeadLetterSuppression
     final case class Ready(outcome: Checked[Completed])
     case object AfterProceedEventsAdded
