@@ -36,11 +36,11 @@ object ClusterEvent
   extends ClusterEvent
 
   implicit val jsonCodec = TypedJsonCodec[ClusterEvent](
-    Subtype(deriveCodec[BecameSole]),
-    Subtype(deriveCodec[BackupNodeAppointed]),
-    Subtype(deriveCodec[FollowingStarted]),
-    Subtype(ClusterCoupled),
-    Subtype(deriveCodec[SwitchedOver]),
-    Subtype(deriveCodec[FailedOver]),
-    Subtype(deriveCodec[FollowerLost]))
+    Subtype.named(deriveCodec[BecameSole]         , "Cluster.BecameSole"),
+    Subtype.named(deriveCodec[BackupNodeAppointed], "Cluster.BackupNodeAppointed"),
+    Subtype.named(deriveCodec[FollowingStarted]   , "Cluster.FollowingStarted"),
+    Subtype.named(ClusterCoupled                  , "Cluster.ClusterCoupled"),
+    Subtype.named(deriveCodec[SwitchedOver]       , "Cluster.SwitchedOver"),
+    Subtype.named(deriveCodec[FailedOver]         , "Cluster.FailedOver"),
+    Subtype.named(deriveCodec[FollowerLost]       , "Cluster.FollowerLost"))
 }

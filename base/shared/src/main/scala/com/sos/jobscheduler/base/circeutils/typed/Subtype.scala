@@ -66,6 +66,16 @@ object Subtype {
   def named[A: ClassTag](codec: CirceObjectCodec[A], typeName: String): Subtype[A] =
     of(implicitClass[A], typeName, codec, codec)
 
+  /**
+    * Use explicitly given Encoder.AsObject and Decoder (CirceCodec).
+    * <p>
+    * Usage: Subtype.named(singleton, "name")
+    */
+  def named[A: ClassTag](singleton: A, typeName: String): Subtype[A] = {
+    val codec = singletonCodec(singleton)
+    of(implicitClass[A], typeName, codec, codec)
+  }
+
   private def fromClassName[A](cls: Class[_], encoder: Encoder.AsObject[A], decoder: Decoder[A]) =
     of(cls, typeName(cls), encoder, decoder)
 

@@ -15,7 +15,7 @@ final class ClusterEventTest extends FreeSpec
   "BecameSole" in {
     testJson[ClusterEvent](BecameSole(Uri("http://ACTIVE")),
       json"""{
-        "TYPE": "BecameSole",
+        "TYPE": "Cluster.BecameSole",
         "activeUri": "http://ACTIVE"
       }""")
   }
@@ -23,7 +23,7 @@ final class ClusterEventTest extends FreeSpec
   "BackupNodeAppointed" in {
     testJson[ClusterEvent](BackupNodeAppointed(Uri("http://BACKUP")),
       json"""{
-        "TYPE": "BackupNodeAppointed",
+        "TYPE": "Cluster.BackupNodeAppointed",
         "uri": "http://BACKUP"
       }""")
   }
@@ -31,7 +31,7 @@ final class ClusterEventTest extends FreeSpec
   "FollowingStarted" in {
     testJson[ClusterEvent](FollowingStarted(Uri("http://FOLLOWER")),
       json"""{
-        "TYPE": "FollowingStarted",
+        "TYPE": "Cluster.FollowingStarted",
         "followingUri": "http://FOLLOWER"
       }""")
   }
@@ -39,14 +39,14 @@ final class ClusterEventTest extends FreeSpec
   "ClusterCoupled" in {
     testJson[ClusterEvent](ClusterCoupled,
       json"""{
-        "TYPE": "ClusterCoupled"
+        "TYPE": "Cluster.ClusterCoupled"
       }""")
   }
 
   "SwitchedOver" in {
     testJson[ClusterEvent](SwitchedOver(Uri("http://NODE")),
       json"""{
-        "TYPE": "SwitchedOver",
+        "TYPE": "Cluster.SwitchedOver",
         "uri": "http://NODE"
       }""")
   }
@@ -54,7 +54,7 @@ final class ClusterEventTest extends FreeSpec
   "FailedOver" in {
     testJson[ClusterEvent](FailedOver(Uri("http://FAILED"), Uri("http://ACTIVATED"), JournalPosition(0, 1234)),
       json"""{
-        "TYPE": "FailedOver",
+        "TYPE": "Cluster.FailedOver",
         "failedActiveUri": "http://FAILED",
         "activatedUri": "http://ACTIVATED",
         "failedAt": {
@@ -67,7 +67,7 @@ final class ClusterEventTest extends FreeSpec
   "FollowerLost" in {
     testJson[ClusterEvent](FollowerLost(Uri("http://FOLLOWER")),
       json"""{
-        "TYPE": "FollowerLost",
+        "TYPE": "Cluster.FollowerLost",
         "uri": "http://FOLLOWER"
       }""")
   }

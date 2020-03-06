@@ -24,7 +24,7 @@ final class ClusterWatchMessageTest extends FreeSpec
           "from": "http://PRIMARY",
           "events": [
             {
-              "TYPE": "BecameSole",
+              "TYPE": "Cluster.BecameSole",
               "activeUri": "http://PRIMARY"
             }
           ],
