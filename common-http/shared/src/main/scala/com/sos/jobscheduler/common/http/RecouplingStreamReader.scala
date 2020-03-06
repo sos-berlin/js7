@@ -33,7 +33,9 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
 
   protected def onCouplingFailed(api: Api, problem: Problem): Task[Completed] =
     Task {
-      if (inUse.get && !stopRequested) scribe.warn(s"$api: coupling failed: $problem")
+      if (inUse.get && !stopRequested && !coupledApiVar.isStopped) {
+        scribe.warn(s"$api: coupling failed: $problem")
+      }
       scribe.debug(s"$api: coupling failed: $problem", problem.throwableOption.map(_.nullIfNoStackTrace).orNull)
       Completed
     }

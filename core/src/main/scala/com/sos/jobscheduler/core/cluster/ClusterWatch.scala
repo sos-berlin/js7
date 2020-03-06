@@ -64,7 +64,7 @@ extends ClusterWatchApi
   private def update(from: Uri, logLine: => String)(body: Option[State] => Checked[ClusterState]): Task[Checked[ClusterState]] =
     stateMVar.flatMap(mvar =>
       mvar.take.flatMap { current =>
-        logger.trace(s"$logLine age=${current.fold("—")(_.lastHeartbeat.elapsed.pretty)}")
+        logger.trace(s"$logLine, after ${current.fold("—")(_.lastHeartbeat.elapsed.pretty)}")
         mustBeStillActive(from, current)
           .flatMap(_ => body(current)) match {
             case Left(problem) =>

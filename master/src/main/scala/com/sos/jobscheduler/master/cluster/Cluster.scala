@@ -354,7 +354,7 @@ final class Cluster(
         case Left(problem) => Task.pure(Left(problem))
         case Right(_) =>
           currentClusterState.map { clusterState =>
-            logger.debug(s"inhibitActivation => $clusterState")
+            logger.debug(s"inhibitActivation(${duration.pretty}) => $clusterState")
             Right(clusterState)
           }
       }
@@ -559,7 +559,6 @@ final class Cluster(
       if (!started.future.isCompleted) logger.debug("currentClusterState: waiting for start")
       started.future
     } >>
-      Task { logger.debug("_currentClusterState") } >>
       _currentClusterState
 
   def isRemainingActiveAfterRestart =

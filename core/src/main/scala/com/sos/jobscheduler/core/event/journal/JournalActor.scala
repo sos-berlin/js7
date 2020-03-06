@@ -260,8 +260,8 @@ extends Actor with Stash
         val n = writtenBuffer.map(_.eventCount).sum
         if (n > 0) {
           logger.warn(s"Still waiting for acknowledgement from passive cluster node" +
-            s" for ${writtenBuffer.size} bundles of $n events starting with " +
-            notAckSeq.flatMap(_.stamped).headOption.fold("(unknown)")(_.toString.truncateWithEllipsis((200))))
+            s" for $n events (${writtenBuffer.size} commits) starting with " +
+            notAckSeq.flatMap(_.stampedSeq).headOption.fold("(unknown)")(_.toString.truncateWithEllipsis((200))))
         } else logger.debug(s"StillWaitingForAcknowledge n=0, writtenBuffer.size=${writtenBuffer.size}")
       } else {
         waitingForAcknowledgeTimer := Cancelable.empty
@@ -379,34 +379,42 @@ extends Actor with Stash
         isRequiringClusterAcknowledgement = requireClusterAcknowledgement)
   }
 
+  private val syncOrFlushString: String =
+    if (conf.syncOnCommit) if (conf.simulateSync.isDefined) "~sync" else "sync "
+    else "flush"
+
   private def logCommitted(ack: Boolean, writtenIterator: Iterator[LoggableWritten]) =
     logger.whenTraceEnabled {
       while (writtenIterator.hasNext) {
         val written = writtenIterator.next()
-        var i = written.eventNumber
-        val stampedIterator = written.stamped.iterator
+        var nr = written.eventNumber
+        var firstInCommit = true
+        val stampedIterator = written.stampedSeq.iterator
         while (stampedIterator.hasNext) {
           val stamped = stampedIterator.next()
+          val n = written.stampedSeq.length
           val flushOrSync =
-            if (!written.isLastOfFlushedOrSynced || stampedIterator.hasNext)
-              "     "  // Neither flushed nor synced
-            else if (conf.syncOnCommit) if (conf.simulateSync.isDefined)
-              "~sync" else "sync "  // The file buffer has been flush and synced to disk
+            if (written.isLastOfFlushedOrSynced && !stampedIterator.hasNext)
+              syncOrFlushString
+            else if (n > 1 && firstInCommit)
+              f"${written.stampedSeq.length}%4d×"  // Neither flushed nor synced, and not the only event of a commit
             else
-              "flush"   // The file buffer has been flushed
+              "     "
           val a =
             if (!requireClusterAcknowledgement)
-              ""  // No cluster. Caller may continue if flushed or synced
+              ""        // No cluster. Caller may continue if flushed or synced
             else if (!ack)
-              "    "  // Only SnapshotWritten event
+              "    "    // Only SnapshotWritten event
             else if (writtenIterator.hasNext || stampedIterator.hasNext)
-              " ack"  // Event is part of an acknowledged event bundle
+              " ack"    // Event is part of an acknowledged event bundle
             else
-              " ACK"  // Last event of an acknowledged event bundle. Caller may continue
+              " ACK"    // Last event of an acknowledged event bundle. Caller may continue
+          val committed = if (stampedIterator.hasNext) "committed" else "COMMITTED"
           val t = written.since.elapsed.pretty + "      " take 7
           // (number-toString may save a memory allocation)
-          logger.trace(s"#${i.toString} $flushOrSync$a COMMITTED $t ${stamped.eventId.toString} ${stamped.value.toString.takeWhile(_ != '\n')}")
-          i += 1
+          logger.trace(s"#${nr.toString} $flushOrSync$a $committed $t ${stamped.eventId.toString} ${stamped.value.toString.takeWhile(_ != '\n')}")
+          nr += 1
+          firstInCommit = false
         }
       }
     }
@@ -673,7 +681,7 @@ object JournalActor
 
   private sealed trait LoggableWritten {
     def eventNumber: Long
-    def stamped: Seq[Stamped[AnyKeyedEvent]]
+    def stampedSeq: Seq[Stamped[AnyKeyedEvent]]
     def since: Deadline
     def isLastOfFlushedOrSynced: Boolean
   }
@@ -682,7 +690,7 @@ object JournalActor
       val x = lastOfFlushedOrSynced
       new LoggableWritten {
         def eventNumber = number
-        def stamped = _stamped
+        def stampedSeq = _stamped
         def since = _since
         def isLastOfFlushedOrSynced = x
       }
@@ -692,7 +700,7 @@ object JournalActor
   /** A bundle of written but not yet committed (flushed and acknowledged) events. */
   private case class NormallyWritten(
     eventNumber: Long,
-    stamped: Seq[Stamped[AnyKeyedEvent]],
+    stampedSeq: Seq[Stamped[AnyKeyedEvent]],
     lastFileLengthAndEventId: Option[PositionAnd[EventId]],
     replyTo: ActorRef,
     sender: ActorRef,
@@ -702,12 +710,12 @@ object JournalActor
     /** For logging: last stamped has been flushed */
     var isLastOfFlushedOrSynced = false
 
-    def isEmpty = stamped.isEmpty
+    def isEmpty = stampedSeq.isEmpty
 
-    def eventCount = stamped.size
+    def eventCount = stampedSeq.size
 
     def lastStamped: Option[Stamped[AnyKeyedEvent]] =
-      stamped.reverseIterator.buffered.headOption
+      stampedSeq.reverseIterator.buffered.headOption
   }
 
   // Without event to keep heap usage low (especially for many big stdout event)

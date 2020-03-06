@@ -5,6 +5,7 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.typesafe.config.Config
+import java.lang.Thread.currentThread
 import monix.execution.schedulers.ExecutorScheduler
 import monix.execution.{ExecutionModel, UncaughtExceptionReporter}
 import scala.util.control.NonFatal
@@ -21,11 +22,16 @@ object ThreadPools
     case o => o.toInt
   }
 
-  private val uncaughtExceptionReporter: UncaughtExceptionReporter = {
-    case NonFatal(throwable) =>
-      logger.error(s"Uncaught exception in thread ${Thread.currentThread.getId} '${Thread.currentThread.getName}': ${throwable.toStringWithCauses}", throwable)
-    case throwable =>
-      UncaughtExceptionReporter.default.reportFailure(throwable)
+  private val uncaughtExceptionReporter: UncaughtExceptionReporter = { throwable =>
+    logger.error(
+      s"Uncaught exception in thread ${currentThread.getId} '${currentThread.getName}': ${throwable.toStringWithCauses}",
+      throwable.nullIfNoStackTrace)
+    throwable match {
+      case NonFatal(_) =>
+      case throwable =>
+        // Writes to stderr:
+        UncaughtExceptionReporter.default.reportFailure(throwable)
+    }
   }
 
   def newStandardScheduler(name: String, config: Config): ExecutorScheduler =
