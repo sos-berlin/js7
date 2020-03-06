@@ -3,8 +3,30 @@ set -e
 
 cd "$(cd "$(realpath "${0%/*}")"/../../build/bin/../.. && pwd)"
 
+if diff <(cd volumes/master/data/state && ls master--*.journal | sort) <(cd volumes/backup-master/data/state/ && ls master--*.journal | sort); then
+  namesRC=$?
+else
+  namesRC=$?
+fi
+
+contentRC=0
 for file in volumes/master/data/state/master--*.journal; do
   echo "$file"
-  diff "$file" "volumes/backup-master/data/state/${file##*/}"
+  if diff "$file" "volumes/backup-master/data/state/${file##*/}"; then
+    :
+  else
+    contentRC=$?
+  fi
 done
-echo "The backup Master cluster node's journal files are exact copies of the primary cluster node"
+
+echo
+if [ $namesRC -eq 0 ] && [ $contentRC -eq 0 ]; then
+  echo "✔️  The backup Master cluster node's journal files are exact copies of the primary cluster node"
+  exit 0
+else
+  if [ $namesRC -ne 0 ]; then
+    echo "🔥  THERE ARE EXTRA JOURNAL FILES ON SOME SIDE"
+  fi
+  echo "🔥  THE JOURNAL FILES ARE DIFFERENT"
+  exit 1
+fi

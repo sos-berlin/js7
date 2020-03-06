@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -e
+
+while true; do
+  echo -en "\n\e[0;31mkill "
+  docker kill jobscheduler-master || true
+  echo -en "\e[0m"
+  a=$((2 ** (RANDOM / 5000) + RANDOM / 500))
+  echo -n "Primary will start in ${a}s "
+  sleep $a
+  echo -n "start "
+  docker start jobscheduler-master || true
+  a=$((2 ** (RANDOM / 5000) + RANDOM / 250))
+  echo -n "Primary runs for ${a}s "
+  sleep $a
+done &
+primaryPid=$!
+
+sleep 1  # Delay to not mix startig echo lines
+while true; do
+  echo -en "\n\e[0;31mkill "
+  docker kill jobscheduler-backup-master || true
+  echo -en "\e[0m"
+  a=$((2 ** (RANDOM / 5000) + RANDOM / 500))
+  echo -n "Backup will start in ${a}s "
+  sleep $a
+  echo -n "start "
+  docker start jobscheduler-backup-master || true
+  a=$((2 ** (RANDOM / 5000) + RANDOM / 250))
+  echo -n "Backup runs for ${a}s "
+  sleep $a
+done &
+backupPid=$!
+
+sleep 1
+while echo -n "·" && sleep 1; do :; done &
+echoPid=$!
+
+trap "kill -- -$$ >/dev/null || kill $primaryPid $backupPid $echoPid" EXIT
+wait

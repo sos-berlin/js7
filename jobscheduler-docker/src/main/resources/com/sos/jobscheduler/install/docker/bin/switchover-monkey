@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -e
 
-#while echo -n "·" && sleep 1; do :; done &
-#trap 'wait %1 2>/dev/null' EXIT
+while echo -n "·" && sleep 1; do :; done &
+echoPid=$!
+trap "kill -- -$$ >/dev/null || kill $echoPid" EXIT
 
 while true; do
   echo -n "master switchover: "
@@ -13,4 +14,4 @@ while true; do
   sleep $((2 ** (RANDOM / 8000)))
 done
 
-#wait %1 2>/dev/null
+wait
