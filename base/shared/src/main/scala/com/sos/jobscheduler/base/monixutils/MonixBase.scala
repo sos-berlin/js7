@@ -33,6 +33,7 @@ object MonixBase
       * items, otherwise if `timeout` passes without the source emitting
       * anything new then the observable will start emitting
       * `intersperseValue` repeatedly.
+      * Different from `echoRepeated`, this inserts hearbeats from start
       *
       * Note: If the source Observable keeps emitting items more
       * frequently than the length of the time window then the resulting
@@ -41,7 +42,10 @@ object MonixBase
       * @param timeout the window of silence that must pass in order for the
       *        observable to start echoing the last item
       */
-    final def beatOnSlowUpstream(timeout: FiniteDuration, value: A): Observable[A] =
-      new BeatOnSlowUpstream[A](underlying, timeout, onlyOnce = false, value)
+    final def beatOnSlowUpstream(timeout: FiniteDuration, heartbeatValue: A): Observable[A] =
+      new BeatOnSlowUpstream[A](
+        heartbeatValue +: underlying,   // Insert heartbeats from start
+        timeout, onlyOnce = false, heartbeatValue
+      ).drop(1)  // Remove inserted initial heartbeat
   }
 }
