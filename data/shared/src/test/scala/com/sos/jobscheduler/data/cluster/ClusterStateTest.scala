@@ -23,70 +23,67 @@ final class ClusterStateTest extends FreeSpec
 
     "Sole" in {
       testJson[ClusterState](
-        Sole(Uri("http://ACTIVE")),
+        Sole(Uri("http://PRIMARY")),
         json"""{
           "TYPE": "Sole",
-          "activeUri": "http://ACTIVE"
+          "primaryUri": "http://PRIMARY"
         }""")
     }
 
     "AwaitingAppointment" in {
       testJson[ClusterState](
-        AwaitingAppointment(Uri("http://ACTIVE"), Uri("http://PASSIVE")),
+        AwaitingAppointment(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil),
           json"""{
             "TYPE": "AwaitingAppointment",
-            "activeUri": "http://ACTIVE",
-            "passiveUri": "http://PASSIVE"
+            "uris": [ "http://PRIMARY", "http://BACKUP" ]
           }""")
     }
 
     "AwaitingFollower" in {
       testJson[ClusterState](
-        AwaitingFollower(Uri("http://ACTIVE"), Uri("http://PASSIVE")),
+        AwaitingFollower(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil),
         json"""{
           "TYPE": "AwaitingFollower",
-          "activeUri": "http://ACTIVE",
-          "passiveUri": "http://PASSIVE"
+          "uris": [ "http://PRIMARY", "http://BACKUP" ]
         }""")
     }
 
     "PreparedToBeCoupled" in {
       testJson[ClusterState](
-        PreparedToBeCoupled(Uri("http://ACTIVE"), Uri("http://PASSIVE")),
+        PreparedToBeCoupled(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil),
         json"""{
           "TYPE": "PreparedToBeCoupled",
-          "activeUri": "http://ACTIVE",
-          "passiveUri": "http://PASSIVE"
+          "uris": [ "http://PRIMARY", "http://BACKUP" ]
         }""")
     }
 
     "Coupled" in {
       testJson[ClusterState](
-        Coupled(Uri("http://ACTIVE"), Uri("http://PASSIVE")),
+        Coupled(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil, 0),
         json"""{
           "TYPE": "Coupled",
-          "activeUri": "http://ACTIVE",
-          "passiveUri": "http://PASSIVE"
+          "uris": [ "http://PRIMARY", "http://BACKUP" ],
+          "active": 0
         }""")
     }
 
     "ProperlyDecoupled" in {
       testJson[ClusterState](
-        ProperlyDecoupled(Uri("http://ACTIVE"), Uri("http://PASSIVE")),
+        ProperlyDecoupled(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil, 0),
         json"""{
           "TYPE": "ProperlyDecoupled",
-          "activeUri": "http://ACTIVE",
-          "passiveUri": "http://PASSIVE"
+          "uris": [ "http://PRIMARY", "http://BACKUP" ],
+          "active": 0
         }""")
     }
 
     "FailedOverDecoupled" in {
       testJson[ClusterState](
-        FailedOverDecoupled(Uri("http://ACTIVE"), Uri("http://PASSIVE"), JournalPosition(0, 1234)),
+        FailedOverDecoupled(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil, 1, JournalPosition(0, 1234)),
         json"""{
           "TYPE": "FailedOverDecoupled",
-          "activeUri": "http://ACTIVE",
-          "passiveUri": "http://PASSIVE",
+          "uris": [ "http://PRIMARY", "http://BACKUP" ],
+          "active": 1,
           "failedAt": {
             "fileEventId": 0,
             "position": 1234
@@ -96,11 +93,11 @@ final class ClusterStateTest extends FreeSpec
 
     "OtherFailedOver" in {
       testJson[ClusterState](
-        OtherFailedOver(Uri("http://ACTIVE"), Uri("http://PASSIVE")),
+        OtherFailedOver(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil, 1),
         json"""{
           "TYPE": "OtherFailedOver",
-          "activeUri": "http://ACTIVE",
-          "passiveUri": "http://PASSIVE"
+          "uris": [ "http://PRIMARY", "http://BACKUP" ],
+          "active": 1
         }""")
     }
   }

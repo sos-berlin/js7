@@ -69,8 +69,10 @@ final class FailoverClusterTest extends MasterClusterTester
 
       // When heartbeat from passive to active node is broken, the ClusterWatch will nonetheless not agree to a failover
       val stillCoupled = ClusterState.Coupled(
-        activeUri = Uri(primaryMaster.localUri.toString),
-        passiveUri = Uri(backupMaster.localUri.toString))
+        List(
+          Uri(primaryMaster.localUri.toString),
+          Uri(backupMaster.localUri.toString)),
+        active = 0)
       assert(primaryMaster.clusterState.await(99.s) == stillCoupled)
       assert(backupMaster.clusterState.await(99.s) == stillCoupled)
 

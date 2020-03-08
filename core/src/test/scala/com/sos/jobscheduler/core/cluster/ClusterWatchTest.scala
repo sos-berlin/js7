@@ -56,7 +56,7 @@ final class ClusterWatchTest extends FreeSpec
     }
 
     "Heartbeat with different ClusterState from same active node is accepted" in {
-      val reportedClusterState = ClusterState.ProperlyDecoupled(primary, backup)
+      val reportedClusterState = ClusterState.ProperlyDecoupled(primary :: backup :: Nil, active = 0)
       assert(watch.heartbeat(primary, reportedClusterState).await(99.s) == Right(Completed))
       assert(watch.get.await(99.s) == Right(reportedClusterState))
 
@@ -70,7 +70,7 @@ final class ClusterWatchTest extends FreeSpec
         Left(ClusterWatchHeartbeatFromInactiveNodeProblem(backup, clusterState)))
 
       locally {
-        assert(watch.heartbeat(backup, ClusterState.Coupled(activeUri = backup, primary)).await(99.s) ==
+        assert(watch.heartbeat(backup, ClusterState.Coupled(primary :: backup :: Nil, active = 1)).await(99.s) ==
           Left(ClusterWatchHeartbeatFromInactiveNodeProblem(backup, clusterState)))
       }
 
@@ -79,7 +79,7 @@ final class ClusterWatchTest extends FreeSpec
 
     "Heartbeat must not change active URI" in {
       // The inactive primary node should not send a heartbeat
-      val badCoupled = ClusterState.Coupled(activeUri = backup, primary)
+      val badCoupled = ClusterState.Coupled(primary :: backup :: Nil, active = 1)
       assert(watch.heartbeat(primary, badCoupled).await(99.s) ==
         Left(InvalidClusterWatchHeartbeatProblem(primary, badCoupled)))
       assert(watch.get.await(99.s) == Right(clusterState))
@@ -106,7 +106,7 @@ final class ClusterWatchTest extends FreeSpec
     }
 
     "Coupled" in {
-      assert(applyEvent(backup, FollowingStarted(primary) :: ClusterCoupled :: Nil) == Right(Completed))
+      assert(applyEvent(backup, ClusterCoupled :: Nil) == Right(Completed))
     }
 
     "SwitchedOver before heartbeat" in {
@@ -117,12 +117,12 @@ final class ClusterWatchTest extends FreeSpec
 
     "SwitchedOver after heartbeat loss" in {
       scheduler.tick(11.s)
-      assert(applyEvent(primary, FollowingStarted(backup) :: ClusterCoupled :: SwitchedOver(backup) :: Nil) == Right(Completed))
+      assert(applyEvent(primary, ClusterCoupled :: SwitchedOver(backup) :: Nil) == Right(Completed))
       assert(watch.isActive(backup).await(99.s).orThrow)
     }
 
     "SwitchedOver from inactive node" in {
-      assert(applyEvent(backup, FollowingStarted(primary) :: ClusterCoupled :: Nil) == Right(Completed))
+      assert(applyEvent(backup, ClusterCoupled :: Nil) == Right(Completed))
       assert(watch.isActive(backup).await(99.s).orThrow)
       assert(applyEvent(primary, SwitchedOver(primary) :: Nil) ==
         Left(ClusterWatchHeartbeatFromInactiveNodeProblem(primary, clusterState)))
@@ -130,19 +130,19 @@ final class ClusterWatchTest extends FreeSpec
 
     "applyEvents after event loss" in {
       assert(watch.get.await(99.s) == Right(clusterState))
-      assert(watch.get.await(99.s) == Right(ClusterState.Coupled(backup, primary)))
+      assert(watch.get.await(99.s) == Right(ClusterState.Coupled(primary :: backup :: Nil, active = 1)))
 
       // We test the loss of a FollowerLost event, and then apply ClusterCoupled
       val lostEvent = FollowerLost(primary)
-      val decoupled = ClusterState.ProperlyDecoupled(backup, primary)
+      val decoupled = ClusterState.ProperlyDecoupled(primary :: backup :: Nil, active = 1)
       assert(clusterState.applyEvent(NoKey <-: lostEvent) == Right(decoupled))
 
-      val nextEvent = FollowingStarted(primary)
-      val preparedToBeCoupled = ClusterState.PreparedToBeCoupled(backup, primary)
-      assert(decoupled.applyEvent(NoKey <-: nextEvent) == Right(preparedToBeCoupled))
+      val nextEvent = ClusterCoupled
+      val coupled = ClusterState.Coupled(primary :: backup :: Nil, active = 1)
+      assert(decoupled.applyEvent(NoKey <-: nextEvent) == Right(coupled))
 
-      assert(watch.applyEvents(backup, nextEvent :: Nil, preparedToBeCoupled).await(99.s) == Right(Completed))
-      assert(watch.get.await(99.s) == Right(preparedToBeCoupled))
+      assert(watch.applyEvents(backup, nextEvent :: Nil, coupled).await(99.s) == Right(Completed))
+      assert(watch.get.await(99.s) == Right(coupled))
     }
 
     def applyEvent(from: Uri, events: Seq[ClusterEvent]): Checked[Completed] = {

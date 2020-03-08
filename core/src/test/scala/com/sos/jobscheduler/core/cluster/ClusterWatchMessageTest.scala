@@ -1,11 +1,11 @@
 package com.sos.jobscheduler.core.cluster
 
-import org.scalatest.FreeSpec
-import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.data.cluster.ClusterEvent.BecameSole
 import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.data.common.Uri
+import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import org.scalatest.FreeSpec
 
 /**
   * @author Joacim Zschimmer
@@ -25,12 +25,12 @@ final class ClusterWatchMessageTest extends FreeSpec
           "events": [
             {
               "TYPE": "Cluster.BecameSole",
-              "activeUri": "http://PRIMARY"
+              "primaryUri": "http://PRIMARY"
             }
           ],
           "clusterState": {
             "TYPE": "Sole",
-            "activeUri": "http://PRIMARY"
+            "primaryUri": "http://PRIMARY"
           }
         }""")
     }

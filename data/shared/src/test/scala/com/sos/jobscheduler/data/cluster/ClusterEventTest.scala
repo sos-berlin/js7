@@ -16,7 +16,7 @@ final class ClusterEventTest extends FreeSpec
     testJson[ClusterEvent](BecameSole(Uri("http://ACTIVE")),
       json"""{
         "TYPE": "Cluster.BecameSole",
-        "activeUri": "http://ACTIVE"
+        "primaryUri": "http://ACTIVE"
       }""")
   }
 
@@ -32,7 +32,7 @@ final class ClusterEventTest extends FreeSpec
     testJson[ClusterEvent](FollowingStarted(Uri("http://FOLLOWER")),
       json"""{
         "TYPE": "Cluster.FollowingStarted",
-        "followingUri": "http://FOLLOWER"
+        "uri": "http://FOLLOWER"
       }""")
   }
 

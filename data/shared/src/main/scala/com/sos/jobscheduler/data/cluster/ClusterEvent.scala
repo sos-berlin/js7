@@ -9,17 +9,16 @@ sealed trait ClusterEvent extends NoKeyEvent
 
 object ClusterEvent
 {
-  final case class BecameSole(activeUri: Uri)
+  final case class BecameSole(primaryUri: Uri)
   extends ClusterEvent
 
   final case class BackupNodeAppointed(uri: Uri)
   extends ClusterEvent
 
-  final case class FollowingStarted(followingUri: Uri)
+  final case class FollowingStarted(uri: Uri)
   extends ClusterEvent
 
-  sealed trait ClusterCoupled
-  extends ClusterEvent
+  sealed trait ClusterCoupled extends ClusterEvent
   case object ClusterCoupled
   extends ClusterCoupled
 
@@ -29,7 +28,7 @@ object ClusterEvent
   final case class FailedOver(failedActiveUri: Uri, activatedUri: Uri, failedAt: JournalPosition)
   extends ClusterEvent
   {
-    override def toString = s"$FailedOver($activatedUri <- $failedActiveUri, $failedAt)"
+    override def toString = s"$FailedOver($failedActiveUri --> $activatedUri, $failedAt)"
   }
 
   final case class FollowerLost(uri: Uri)

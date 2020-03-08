@@ -30,7 +30,7 @@ import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
 import com.sos.jobscheduler.core.problems.MissingPassiveClusterNodeHeartbeatProblem
 import com.sos.jobscheduler.core.startup.Halt.haltJava
 import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, ClusterCoupled, FollowerLost, FollowingStarted, SwitchedOver}
-import com.sos.jobscheduler.data.cluster.ClusterState.{AwaitingAppointment, AwaitingFollower, Coupled, Empty, FailedOverDecoupled, HasActiveNode, HasPassiveNode, OtherFailedOver, ProperlyDecoupled, Sole}
+import com.sos.jobscheduler.data.cluster.ClusterState.{AwaitingAppointment, AwaitingFollower, Coupled, Decoupled, Empty, HasBackupNode, HasPrimaryNode, OtherFailedOver, Sole}
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeRole, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
@@ -161,7 +161,7 @@ final class Cluster(
         recoveredClusterState match {
           case recoveredClusterState: Coupled =>
             import recoveredClusterState.passiveUri
-            logger.info("This cluster node was coupled before restart - asking the other node '$passiveUri' about its state")
+            logger.info(s"This cluster node was coupled before restart - asking the other node '$passiveUri' about its state")
             val failedOver = inhibitActivationOf(passiveUri).map {
               case otherState: ClusterState if otherState.isActive(ownUri) =>
                 logger.info("The other cluster is still passive: this node remains the active cluster node")
@@ -244,7 +244,7 @@ final class Cluster(
               Task.pure(Right(recoveredClusterState -> ClusterFollowUp.BecomeActive(recovered)))
         }
 
-      case (state: HasPassiveNode, Some(ownUri), _, Some(_)) if state.passiveUri == ownUri =>
+      case (state: HasBackupNode, Some(ownUri), _, Some(_)) if state.passiveUri == ownUri =>
         logger.info(
           if (state.isTheFollowingNode(ownUri))
             s"Remaining a passive cluster node following the active node '${state.activeUri}'"
@@ -289,12 +289,12 @@ final class Cluster(
           Task.pure(Left(Problem.pure("A cluster node can not be appointed to itself")))
         else
           persist {
-            case state @ (Empty | _: Sole | AwaitingAppointment(`ownUri`, `backupUri`) /*| AwaitingFollower(`ownUri`, `backupUri`)*/)
+            case state @ (Empty | _: Sole | AwaitingAppointment(Seq(`ownUri`, `backupUri`)))
               if activeUri == ownUri =>
                 for (events <- becomeSoleIfEmpty(state)) yield
                   events ::: BackupNodeAppointed(backupUri) ::
                     (state match {
-                      case AwaitingAppointment(`ownUri`, `backupUri`) => ClusterCoupled :: Nil
+                      case AwaitingAppointment(Seq(`ownUri`, `backupUri`)) => ClusterCoupled :: Nil
                       case _ => Nil
                     })
             case state =>
@@ -306,7 +306,7 @@ final class Cluster(
     }
 
   def passiveNodeFollows(followedUri: Uri, followingUri: Uri): Task[Checked[Completed]] = {
-    lazy val call = "passiveNodeFollows(followedUri=$followedUri, followingUri=$followingUri)"
+    lazy val call = s"passiveNodeFollows(followedUri=$followedUri, followingUri=$followingUri)"
     clusterConf.maybeOwnUri match {
       case None =>
         Task.pure(Left(Problem.pure("Missing this node's own URI")))
@@ -318,17 +318,21 @@ final class Cluster(
             persist {
               case _: Coupled =>
                 Right(Nil)
-              case state @ (Empty | Sole(`followedUri`) | AwaitingFollower(`followedUri`, `followingUri`)) =>
+
+              case state @ (Empty | Sole(`followedUri`) | AwaitingFollower(Seq(`followedUri`, `followingUri`))) =>
                 for (events <- becomeSoleIfEmpty(state)) yield
                   events ::: FollowingStarted(followingUri) ::
                     (state match {
-                      case AwaitingFollower(`followedUri`, `followingUri`) => ClusterCoupled :: Nil
+                      case AwaitingFollower(Seq(`followedUri`, `followingUri`)) => ClusterCoupled :: Nil
                       case _ => Nil
                     })
-              case AwaitingFollower(`followedUri`, `followingUri`) |
-                   ProperlyDecoupled(`followedUri`, `followingUri`) |
-                   FailedOverDecoupled(`followedUri`, `followingUri`, _) =>
+
+              case AwaitingFollower(Seq(`followedUri`, `followingUri`)) =>
                 Right(FollowingStarted(followingUri) :: ClusterCoupled :: Nil)
+
+              case state: Decoupled if state.activeUri == followedUri && state.passiveUri == followingUri =>
+                Right(ClusterCoupled :: Nil)
+
               case state =>
                 Left(Problem.pure(s"$call ignored due to inappropriate cluster state $state"))
             }.map(_.map { case (stampedEvents, state) =>
@@ -365,18 +369,18 @@ final class Cluster(
         throw new IllegalStateException("inhibitActivationOfPeer: ownUri is missing"))
     } .flatMap(ownUri =>
         _currentClusterState.flatMap {
-          case clusterState: ClusterState.HasPassiveNode if clusterState.isActive(ownUri) =>
+          case clusterState: ClusterState.HasBackupNode if clusterState.isActive(ownUri) =>
             inhibitActivationOf(clusterState.passiveUri)
 
           case clusterState => Task.raiseError(new IllegalStateException(
             s"inhibitActivationOfPeer expects active cluster node, but clusterState=$clusterState"))
         })
 
-  private def inhibitActivationOf(passiveUri: Uri): Task[ClusterState] =
+  private def inhibitActivationOf(uri: Uri): Task[ClusterState] =
     Task.defer {
       val retryDelay = 5.s  // TODO
       val retryDelays = Iterator.single(1.s/*TODO*/) ++ Iterator.continually(retryDelay)
-      AkkaHttpMasterApi.resource(passiveUri, name = "ClusterInhibitActivation")
+      AkkaHttpMasterApi.resource(uri, name = "ClusterInhibitActivation")
         .use(otherNode =>
           otherNode.loginUntilReachable(clusterConf.userAndPassword, retryDelays) >>
             otherNode.executeCommand(MasterCommand.ClusterInhibitActivation(2 * clusterConf.failAfter/*TODO*/))
@@ -387,7 +391,7 @@ final class Cluster(
           retry(()).delayExecution(retryDelay)
         }
     }.map { clusterState =>
-      logger.debug(s"$passiveUri ClusterInhibitActivation returned clusterState=$clusterState")
+      logger.debug(s"$uri ClusterInhibitActivation returned clusterState=$clusterState")
       clusterState
     }
 
@@ -544,7 +548,7 @@ final class Cluster(
       // TODO Use limited Observable to queue not more than one ClusterWatchMessage
       lock.use(_ =>
         clusterState match {
-          case clusterState: HasActiveNode if clusterConf.maybeOwnUri exists clusterState.isActive =>
+          case clusterState: HasPrimaryNode if clusterConf.maybeOwnUri exists clusterState.isActive =>
             clusterWatch.heartbeat(from = clusterState.activeUri, clusterState)
           case _ =>
             Task.pure(Right(Completed))
