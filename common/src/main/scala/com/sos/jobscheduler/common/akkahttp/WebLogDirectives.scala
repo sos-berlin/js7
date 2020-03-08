@@ -2,7 +2,7 @@ package com.sos.jobscheduler.common.akkahttp
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.ContentTypes.{`application/json`, `text/plain(UTF-8)`}
-import akka.http.scaladsl.model.{HttpEntity, HttpRequest, HttpResponse}
+import akka.http.scaladsl.model.{HttpEntity, HttpRequest, HttpResponse, StatusCode}
 import akka.http.scaladsl.server.Directive0
 import akka.http.scaladsl.server.Directives._
 import com.sos.jobscheduler.base.auth.UserId
@@ -21,12 +21,14 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-trait WebLogDirectives extends ExceptionHandling {
-
+trait WebLogDirectives extends ExceptionHandling
+{
   protected def config: Config
   protected def actorSystem: ActorSystem
 
   private lazy val logLevel = LogLevel(config.getString("jobscheduler.webserver.log.level"))
+  private lazy val log4xxLevel = LogLevel(config.getString("jobscheduler.webserver.log.4xx-level"))
+  private lazy val log5xxLevel = LogLevel(config.getString("jobscheduler.webserver.log.5xx-level"))
   private lazy val logResponse = actorSystem.settings.config.getBoolean("jobscheduler.webserver.log.response")
   private lazy val hasRemoteAddress = actorSystem.settings.config.getBoolean("akka.http.server.remote-address-header")
 
@@ -44,7 +46,8 @@ trait WebLogDirectives extends ExceptionHandling {
       if (logResponse) {
         val start = nanoTime
         mapResponse { response =>
-          log(request, Some(response), logLevel, userId, nanoTime - start, hasRemoteAddress = hasRemoteAddress)
+          log(request, Some(response), statusToLogLevel(response.status),
+            userId, nanoTime - start, hasRemoteAddress = hasRemoteAddress)
           response
         }
       } else {
@@ -53,14 +56,23 @@ trait WebLogDirectives extends ExceptionHandling {
         }
     }
 
-  private def log(request: HttpRequest, response: Option[HttpResponse], logLevel: LogLevel, userId: Option[UserId], nanos: Long, hasRemoteAddress: Boolean)(): Unit = {
-    val isFailure = response.exists(_.status.isFailure)
+  private def log(request: HttpRequest, response: Option[HttpResponse], logLevel: LogLevel,
+    userId: Option[UserId], nanos: Long, hasRemoteAddress: Boolean): Unit
+  =
     webLogger.log(
-      if (isFailure) Warn else logLevel,
+      logLevel,
       requestResponseToLine(request, response, userId, nanos, hasRemoteAddress = hasRemoteAddress))
-  }
 
-  private def requestResponseToLine(request: HttpRequest, responseOption: Option[HttpResponse], userId: Option[UserId], nanos: Long, hasRemoteAddress: Boolean) = {
+  private def statusToLogLevel(statusCode: StatusCode): LogLevel =
+    statusCode match {
+      case status if status.intValue < 400 => logLevel
+      case status if status.intValue < 500 => log4xxLevel
+      case _ => log5xxLevel
+    }
+
+  private def requestResponseToLine(request: HttpRequest, responseOption: Option[HttpResponse],
+    userId: Option[UserId], nanos: Long, hasRemoteAddress: Boolean)
+  = {
     val sb = new StringBuilder(200)
     for (response <- responseOption) sb.append(response.status.intValue)
     //val remoteAddress = (hasRemoteAddress option (request.header[`Remote-Address`] map { _.address })).flatten getOrElse RemoteAddress.Unknown
@@ -103,11 +115,14 @@ trait WebLogDirectives extends ExceptionHandling {
   }
 }
 
-object WebLogDirectives {
+object WebLogDirectives
+{
   private val webLogger = Logger("jobscheduler.web.log")
 
   val TestConfig = ConfigFactory.parseString("""
      |jobscheduler.webserver.log.level = debug
+     |jobscheduler.webserver.log.4xx-level = info
+     |jobscheduler.webserver.log.5xx-level = info
      |jobscheduler.webserver.log.duration = off
      |jobscheduler.webserver.verbose-error-messages = true
      |jobscheduler.webserver.shutdown-timeout = 10s""")

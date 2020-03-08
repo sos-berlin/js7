@@ -108,6 +108,13 @@ final class ScalaUtilsTest extends FreeSpec
       assert(withoutStackTrace.nullIfNoStackTrace eq null)
       scribe.debug(s"nullIfNoStackTrace: ${withoutStackTrace.toStringWithCauses}", withoutStackTrace)
     }
+
+    "ifNoStackTrace" in {
+      val withStackTrace = new Throwable
+      val withoutStackTrace = new Throwable("TEST") with NoStackTrace
+      assert(withStackTrace.ifNoStackTrace.get eq withStackTrace)
+      assert(withoutStackTrace.ifNoStackTrace == None)
+    }
   }
 
   "cast" in {

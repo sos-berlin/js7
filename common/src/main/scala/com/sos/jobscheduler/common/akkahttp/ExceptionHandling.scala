@@ -38,7 +38,7 @@ trait ExceptionHandling
       case e: ProblemException =>
         // TODO Better use Checked instead of ProblemException
         extractRequest { request =>
-          webLogger.debug(toLogMessage(request, e), e.nullIfNoStackTrace)
+          for (t <- e.ifNoStackTrace) webLogger.debug(toLogMessage(request, e), t)
           complete(e.problem.httpStatusCode -> e.problem)
         }
 
@@ -56,7 +56,7 @@ trait ExceptionHandling
         complete(status)
     }
 
-  protected final def seal(route: Route) =
+  protected final def seal(route: Route): Route =
     Route.seal(route)(exceptionHandler = exceptionHandler)
 }
 

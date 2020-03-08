@@ -132,6 +132,9 @@ object ScalaUtils
       * `logger.info(throwable.toStringWithCauses, throwable.nullIfNoStackTrace)` */
     def nullIfNoStackTrace: Throwable =
       if (delegate.getStackTrace.isEmpty) null else delegate
+
+    def ifNoStackTrace: Option[Throwable] =
+      Option(nullIfNoStackTrace)
   }
 
   def cast[A: ClassTag](o: Any): A = {
