@@ -214,8 +214,8 @@ final class Cluster(
                   JournaledStateRecoverer.recover[MasterState, Event](journalMeta, recovered.newStateBuilder, config /*, runningSince=???*/)
                     .recoveredJournalFile getOrElse sys.error(s"Unrecoverable journal file '${file.getFileName}''")
                 assertThat(truncatedRecoveredJournalFile.state.clusterState == recoveredClusterState)
-                assertThat(truncatedRecoveredJournalFile.journalPosition == failedAt)
-                val otherFailedOver = OtherFailedOver(otherState.activeUri, otherState.passiveUri)
+                assertThat(truncatedRecoveredJournalFile.journalPosition == failedAt, s"${truncatedRecoveredJournalFile.journalPosition} != $failedAt")
+                val otherFailedOver = OtherFailedOver(otherState.uris, otherState.active)
                 val passiveClusterNode = newPassiveClusterNode(
                   ownUri, otherState.activeUri,
                   recovered.copy(recoveredJournalFile = Some(
