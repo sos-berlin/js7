@@ -13,6 +13,6 @@ object Assertions
     if (!predicate.value) {
       val c = clue
       throw new IllegalStateException(s"assertThat(${predicate.source}) failed in " +
-        s"${fullName.value}, ${filename.value}:${line.value}${if (c.isEmpty) "" else s", $clue"}")
+        s"${fullName.value}, ${filename.value}:${line.value}${if (c.isEmpty) "" else s", $c"}")
     }
 }

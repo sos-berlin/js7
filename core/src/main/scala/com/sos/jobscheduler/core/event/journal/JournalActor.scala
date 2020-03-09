@@ -260,8 +260,9 @@ extends Actor with Stash
         val n = writtenBuffer.map(_.eventCount).sum
         if (n > 0) {
           logger.warn(s"Still waiting for acknowledgement from passive cluster node" +
-            s" for $n events (${writtenBuffer.size} commits) starting with " +
-            notAckSeq.flatMap(_.stampedSeq).headOption.fold("(unknown)")(_.toString.truncateWithEllipsis((200))))
+            s" for $n events (in ${writtenBuffer.size} commits) starting with " +
+            notAckSeq.flatMap(_.stampedSeq).headOption.fold("(unknown)")(_.toString.truncateWithEllipsis(200)) +
+            s", lastAcknowledgedEventId=${EventId.toString(lastAcknowledgedEventId)}")
         } else logger.debug(s"StillWaitingForAcknowledge n=0, writtenBuffer.size=${writtenBuffer.size}")
       } else {
         waitingForAcknowledgeTimer := Cancelable.empty

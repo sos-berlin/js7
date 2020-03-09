@@ -121,7 +121,7 @@ object WebLogDirectives
 
   val TestConfig = ConfigFactory.parseString("""
      |jobscheduler.webserver.log.level = debug
-     |jobscheduler.webserver.log.4xx-level = info
+     |jobscheduler.webserver.log.4xx-level = debug
      |jobscheduler.webserver.log.5xx-level = info
      |jobscheduler.webserver.log.duration = off
      |jobscheduler.webserver.verbose-error-messages = true

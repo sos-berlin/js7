@@ -128,11 +128,7 @@ final class Cluster(
     passiveState ->
       followUp.map(_.map { case (clusterState, followUp) =>
         _currentClusterState = persistence.currentState
-        followUp match {
-          case ClusterFollowUp.BecomeActive(_) =>
-            clusterWatchSynchronizer.startHeartbeat(clusterState)
-          case _ =>
-        }
+        clusterWatchSynchronizer.scheduleHeartbeats(clusterState)
         persistence.start(clusterState)
         followUp
       })

@@ -119,6 +119,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
                 Right(Left(problem))
 
               case Right(continuation) if shouldActivate(continuation.clusterState) =>
+                logger.info(s"Activating because ClusterState has become ${continuation.clusterState}")
                 Right(Right((
                   continuation.clusterState,
                   ClusterFollowUp.BecomeActive(

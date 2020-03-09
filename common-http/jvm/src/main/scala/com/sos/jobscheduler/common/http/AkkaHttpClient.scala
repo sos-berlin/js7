@@ -14,6 +14,7 @@ import akka.stream.ActorMaterializer
 import cats.effect.Resource
 import com.sos.jobscheduler.base.auth.SessionToken
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
+import com.sos.jobscheduler.base.exceptions.HasIsIgnorableStackTrace
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.session.HasSessionToken
@@ -42,7 +43,7 @@ import scodec.bits.ByteVector
 /**
   * @author Joacim Zschimmer
   */
-trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
+trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken with HasIsIgnorableStackTrace
 {
   protected def actorSystem: ActorSystem
   protected def baseUri: Uri
@@ -242,6 +243,11 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
 
   final def liftProblem[A](task: Task[A]): Task[Checked[A]] =
     AkkaHttpClient.liftProblem(task)
+
+  override def isIgnorableStackTrace(throwable: Throwable) = throwable match {
+    case _: akka.stream.StreamTcpException => false
+    case _ => true
+  }
 
   override def toString = s"$baseUri${if (name.isEmpty) "" else s" »$name«"}"
 }

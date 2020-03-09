@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master.client
 
+import com.sos.jobscheduler.base.exceptions.HasIsIgnorableStackTrace
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.session.HttpSessionApi
 import com.sos.jobscheduler.base.utils.ScalaUtils._
@@ -20,7 +21,7 @@ import scala.concurrent.duration._
 import scala.reflect.ClassTag
 import scodec.bits.ByteVector
 
-trait HttpMasterApi extends MasterApi with HttpSessionApi
+trait HttpMasterApi extends MasterApi with HttpSessionApi with HasIsIgnorableStackTrace
 {
   /** Host URI or empty for addressing base on "master/". */
   protected def baseUriString: String

@@ -163,7 +163,7 @@ trait GenericEventRoute extends RouteProvider
                           assertThat(eventIdOnly)
                           implicit val x = jsonSeqMarshaller[EventId]
                           monixObservableToMarshallable(
-                            (eventWatch.lastAddedEventId/*first heartbeat*/ +:
+                            (eventWatch.lastAddedEventId/*start heartbeating after this immediately returned value*/ +:
                               observe(request, predicate, onlyLastOfChunk, eventWatch).map(_.eventId)
                             ).echoRepeated(heartbeat))
                       }

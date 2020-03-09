@@ -2,6 +2,7 @@ package com.sos.jobscheduler.common.http
 
 import cats.syntax.flatMap._
 import com.sos.jobscheduler.base.auth.UserAndPassword
+import com.sos.jobscheduler.base.exceptions.HasIsIgnorableStackTrace
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Problems.InvalidSessionTokenProblem
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
@@ -21,7 +22,7 @@ import scala.concurrent.duration._
 import scala.util.control.NoStackTrace
 
 /** Logs in, couples and fetches objects from a (HTTP) stream, and recouples after error. */
-abstract class RecouplingStreamReader[@specialized(Long/*EventId or file position*/) I, V, Api <: SessionApi](
+abstract class RecouplingStreamReader[@specialized(Long/*EventId or file position*/) I, V, Api <: SessionApi with HasIsIgnorableStackTrace](
   toIndex: V => I,
   maybeUserAndPassword: Option[UserAndPassword],
   conf: RecouplingStreamReaderConf)
@@ -36,7 +37,9 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
       if (inUse.get && !stopRequested && !coupledApiVar.isStopped) {
         scribe.warn(s"$api: coupling failed: $problem")
       }
-      scribe.debug(s"$api: coupling failed: $problem", problem.throwableOption.map(_.nullIfNoStackTrace).orNull)
+      for (throwable <- problem.throwableOption.map(_.nullIfNoStackTrace) if !api.isIgnorableStackTrace(throwable)) {
+        scribe.debug(s"$api: coupling failed: $problem", throwable)
+      }
       Completed
     }
 
@@ -202,7 +205,7 @@ object RecouplingStreamReader
   val TerminatedProblem = Problem.pure("RecouplingStreamReader has been stopped")
   private val PauseGranularity = 500.ms
 
-  def observe[@specialized(Long/*EventId or file position*/) I, V, Api <: SessionApi](
+  def observe[@specialized(Long/*EventId or file position*/) I, V, Api <: SessionApi with HasIsIgnorableStackTrace](
     toIndex: V => I,
     api: Api,
     maybeUserAndPassword: Option[UserAndPassword],
