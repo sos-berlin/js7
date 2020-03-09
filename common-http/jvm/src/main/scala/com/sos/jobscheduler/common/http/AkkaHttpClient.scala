@@ -139,7 +139,16 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
           logRequest(req, logData)
           val httpsContext = if (request.uri.scheme == "https") httpsConnectionContext else http.defaultClientHttpsContext
           responseFuture = http.singleRequest(req, httpsContext)
-          responseFuture.transform { tried =>
+          responseFuture
+        }.doOnCancel(
+          Task.deferAction(implicit s =>
+            if (responseFuture == null)
+              Task.unit
+            else
+              Task.fromFuture(responseFuture)
+                .map[Unit](_.discardEntityBytes())
+                .onErrorHandle(_ => ()))  // Do not log lost exceptions
+        ) .materialize.map { tried =>
             tried match {
               case Failure(t) =>
                 logger.debug(s"$toString: ${requestToString(req, logData)} failed with ${t.toStringWithCauses}")
@@ -149,16 +158,8 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
             }
             tried
           }
-        }.doOnCancel(
-          Task.deferAction { implicit scheduler =>
-            if (responseFuture == null)
-              Task.unit
-            else
-              Task.fromFuture {
-                responseFuture.map(_.discardEntityBytes())
-              }
-            }
-        ) map decodeResponse/*decompress*/
+          .dematerialize
+          .map(decodeResponse)/*decompress*/
       }
     }
 
