@@ -85,6 +85,7 @@ object ClusterState
   }
 
   sealed trait HasPrimaryNode extends ClusterState {
+    /** Contains the primary node URI. */
     def uris: Seq[Uri]
     def primaryUri = uris.head
     def active: Int
@@ -100,6 +101,8 @@ object ClusterState
 
   sealed trait HasBackupNode extends HasPrimaryNode
   {
+    /** Contains the primary node URI and the backup node URI. */
+    def uris: Seq[Uri]
     final def backupUri = uris(1)
     final def passiveUri = uris(passive)
     final def passive = 1 - active

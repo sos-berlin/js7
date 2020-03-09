@@ -11,7 +11,8 @@ trait ClusterWatchApi
 {
   def get: Task[Checked[ClusterState]]
 
-  def applyEvents(from: Uri, events: Seq[ClusterEvent], reportedClusterState: ClusterState): Task[Checked[Completed]]
+  def applyEvents(from: Uri, events: Seq[ClusterEvent], reportedClusterState: ClusterState, force: Boolean = false)
+  : Task[Checked[Completed]]
 
   def heartbeat(from: Uri, reportedClusterState: ClusterState): Task[Checked[Completed]]
 }

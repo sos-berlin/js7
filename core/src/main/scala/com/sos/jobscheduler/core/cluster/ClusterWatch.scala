@@ -33,8 +33,8 @@ extends ClusterWatchApi
 
   /**
     * @param reportedClusterState the expected ClusterState after applying the `events` */
-  def applyEvents(from: Uri, events: Seq[ClusterEvent], reportedClusterState: ClusterState): Task[Checked[Completed]] =
-    update(from, s"MasterId '$masterId': applyEvents($from, $events, $reportedClusterState)") {
+  def applyEvents(from: Uri, events: Seq[ClusterEvent], reportedClusterState: ClusterState, force: Boolean): Task[Checked[Completed]] =
+    update(from, force, s"MasterId '$masterId': applyEvents($from, $events, $reportedClusterState)") {
       case None =>  // Not yet initialized: we accept anything
         Right(reportedClusterState)
       case Some(current) =>
@@ -51,7 +51,7 @@ extends ClusterWatchApi
     } .map(_.toCompleted)
 
   def heartbeat(from: Uri, reportedClusterState: ClusterState): Task[Checked[Completed]] =
-    update(from, s"MasterId '$masterId': heartbeat($from, $reportedClusterState)")(current =>
+    update(from, false, s"MasterId '$masterId': heartbeat($from, $reportedClusterState)")(current =>
       if (!reportedClusterState.isActive(from))
         Left(InvalidClusterWatchHeartbeatProblem(from, reportedClusterState))
       else {
@@ -61,25 +61,27 @@ extends ClusterWatchApi
       }
     ).map(_.toCompleted)
 
-  private def update(from: Uri, logLine: => String)(body: Option[State] => Checked[ClusterState]): Task[Checked[ClusterState]] =
+  private def update(from: Uri, force: Boolean, logLine: => String)(body: Option[State] => Checked[ClusterState]): Task[Checked[ClusterState]] =
     stateMVar.flatMap(mvar =>
       mvar.take.flatMap { current =>
         logger.trace(s"$logLine, after ${current.fold("—")(_.lastHeartbeat.elapsed.pretty)}")
         mustBeStillActive(from, current)
+          .left.flatMap(problem =>
+            if (force) Right(Completed) else Left(problem))
           .flatMap(_ => body(current)) match {
             case Left(problem) =>
               mvar.put(current)
                 .map(_ => Left(problem))
             case Right(updated) =>
               if (!current.exists(_.clusterState == updated)) {
-                logger.info(s"ClusterWatch($masterId) ClusterState changed to $updated")
+                logger.info(s"ClusterWatch($masterId) $from changed ClusterState to $updated")
               }
               mvar.put(Some(State(updated, now)))
                 .map(_ => Right(updated))
           }
       })
 
-  private def mustBeStillActive(from: Uri, state: Option[State]) =
+  private def mustBeStillActive(from: Uri, state: Option[State]): Checked[Completed.type] =
     state match {
       case Some(State(clusterState, lastHeartbeat))
         if !clusterState.isActive(from) && (lastHeartbeat + timeout).hasTimeLeft =>

@@ -23,10 +23,10 @@ trait MastersClusterRoute
     pathEnd {
       post {
         entity(as[ClusterWatchMessage]) {
-          case ClusterWatchEvents(from, events, clusterState) =>
+          case ClusterWatchEvents(from, events, clusterState, force) =>
             complete(
               clusterWatchRegister(masterId)
-                .flatMap(_.applyEvents(from, events, clusterState))
+                .flatMap(_.applyEvents(from, events, clusterState, force))
                 .map(_.map((_: Completed) => JsonObject.empty))
                 .runToFuture)
 

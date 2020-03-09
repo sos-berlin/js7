@@ -4,6 +4,7 @@ import akka.actor.ActorSystem
 import akka.pattern.ask
 import akka.util.Timeout
 import cats.data.EitherT
+import cats.effect.ExitCase
 import com.sos.jobscheduler.base.auth.UserAndPassword
 import com.sos.jobscheduler.base.eventbus.EventBus
 import com.sos.jobscheduler.base.generic.{Completed, SecretString}
@@ -30,7 +31,7 @@ import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
 import com.sos.jobscheduler.core.problems.MissingPassiveClusterNodeHeartbeatProblem
 import com.sos.jobscheduler.core.startup.Halt.haltJava
 import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, ClusterCoupled, FollowerLost, FollowingStarted, SwitchedOver}
-import com.sos.jobscheduler.data.cluster.ClusterState.{AwaitingAppointment, AwaitingFollower, Coupled, Decoupled, Empty, HasBackupNode, HasPrimaryNode, OtherFailedOver, Sole}
+import com.sos.jobscheduler.data.cluster.ClusterState.{AwaitingAppointment, AwaitingFollower, Coupled, Decoupled, Empty, HasBackupNode, OtherFailedOver, Sole}
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeRole, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
@@ -48,11 +49,11 @@ import java.nio.file.{Files, Paths}
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean
 import monix.execution.cancelables.SerialCancelable
-import monix.execution.{CancelableFuture, Scheduler}
+import monix.execution.{Cancelable, CancelableFuture, Scheduler}
 import monix.reactive.{Observable, OverflowStrategy}
 import scala.collection.immutable.Seq
 import scala.concurrent.Promise
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.util.{Failure, Success}
 
 final class Cluster(
@@ -80,7 +81,6 @@ final class Cluster(
   private val started = Promise[Unit]()
   @volatile
   private var _currentClusterState: Task[ClusterState] = null
-  private val heartbeatSender = SerialCancelable()
   private var remainingActiveAfterRestart = false
 
   private lazy val clusterWatch = {
@@ -99,7 +99,7 @@ final class Cluster(
     for (o <- Option(fetchingEventsFuture)) {
       o.cancel()
     }
-    heartbeatSender.cancel()
+    clusterWatchSynchronizer.stop()
     //TODO clusterWatch.logout()
   }
 
@@ -259,9 +259,10 @@ final class Cluster(
           Task.pure(Left(Problem.pure(s"Unexpected clusterState=$recoveredClusterState (ownUri=$ownUri)")))
     }
 
-  private def newPassiveClusterNode(ownUri: Uri, activeUri: Uri, recovered: Recovered[MasterState, Event]) =
-    new PassiveClusterNode(ownUri, activeUri, journalMeta, recovered,
-        clusterWatch, clusterConf, eventIdGenerator, activationInhibitor, testEventBus)(actorSystem)
+  private def newPassiveClusterNode(ownUri: Uri, activeUri: Uri, recovered: Recovered[MasterState, Event]) = {
+    val common = new ClusterCommon(ownUri, activationInhibitor, clusterWatch, testEventBus)
+    new PassiveClusterNode(ownUri, activeUri, journalMeta, recovered, clusterConf, eventIdGenerator, common)(actorSystem)
+  }
 
   def automaticallyAppointConfiguredBackupNode(): Task[Checked[Completed]] =
     clusterConf.maybeRole match {
@@ -330,7 +331,7 @@ final class Cluster(
                 Right(ClusterCoupled :: Nil)
 
               case state =>
-                Left(Problem.pure(s"$call ignored due to inappropriate cluster state $state"))
+                Left(Problem.pure(s"$call rejected due to inappropriate cluster state $state"))
             }.map(_.map { case (stampedEvents, state) =>
               for (stamped <- stampedEvents.lastOption) proceed(state, stamped.eventId)
               Completed
@@ -382,8 +383,10 @@ final class Cluster(
             otherNode.executeCommand(MasterCommand.ClusterInhibitActivation(2 * clusterConf.failAfter/*TODO*/))
               .map(_.clusterState))
         .onErrorRestartLoop(()) { (throwable, _, retry) =>
-          logger.warn("While trying to reach the other cluster node due to restart: " + throwable.toStringWithCauses,
-            throwable.nullIfNoStackTrace)
+          // TODO Code mit loginUntilReachable usw. zusammenfassen. Stacktrace unterdrücken wenn isNotIgnorableStackTrace
+          val msg = "While trying to reach the other cluster node due to restart: " + throwable.toStringWithCauses
+          logger.warn(msg)
+          for (t <- throwable.ifNoStackTrace) logger.debug(msg, t)
           retry(()).delayExecution(retryDelay)
         }
     }.map { clusterState =>
@@ -392,16 +395,23 @@ final class Cluster(
     }
 
   def switchOver: Task[Checked[Completed]] =
+    clusterWatchSynchronizer.stopHeartbeats() >>
     persist {
       case coupled: Coupled if clusterConf.maybeOwnUri contains coupled.activeUri =>
         Right(SwitchedOver(coupled.passiveUri) :: Nil)
       case state =>
         Left(Problem.pure(s"Switchover is possible only in cluster state Coupled(active=${clusterConf.maybeOwnUri.map(_.toString)})," +
           s" but cluster state is: $state"))
-    }.map(_.map { case (_: Seq[Stamped[_]], _) =>
-      switchoverAcknowledged = true
-      Completed
-    })
+    } .map(_.map { case (_: Seq[Stamped[_]], _) =>
+        switchoverAcknowledged = true
+        Completed
+      })
+      .guaranteeCase {
+        case ExitCase.Error(_) =>
+          currentClusterState.flatMap(clusterState =>  // TODO Lock currentClusterState (instead in JournalStatePersistence)
+            Task { clusterWatchSynchronizer.scheduleHeartbeats(clusterState) })
+        case _ => Task.unit
+      }
 
   private def proceed(state: ClusterState, eventId: EventId): Unit =
     state match {
@@ -423,17 +433,22 @@ final class Cluster(
         .executeWithOptions(_.enableAutoCancelableRunLoops)
         .runToFuture
       fetchingEventsFuture onComplete {
-        case Success(Left(MissingPassiveClusterNodeHeartbeatProblem(uri))) =>
-          logger.warn("Missing heartbeat of passive cluster node - continuing as a single node")
-          // FIXME ClusterWatch fragen
-          val event = FollowerLost(uri)
-          persist(_ => Right(event :: Nil))
-            .runToFuture
-            .onComplete {
-              case Success(Right(_)) =>
-              case Success(Left(problem)) => logger.error(s"$event event failed: $problem")
-              case Failure(t) => logger.error(s"$event event failed: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
-            }
+        case Success(Left(MissingPassiveClusterNodeHeartbeatProblem(uri))) if clusterConf.maybeOwnUri.isDefined =>
+          for (ownUri <- clusterConf.maybeOwnUri) {
+            logger.warn("No heartbeat of passive cluster node - continuing as single active cluster node")
+            val followerLost = FollowerLost(uri)
+            val common = new ClusterCommon(ownUri, activationInhibitor, clusterWatch, testEventBus)
+            common.ifClusterWatchAllowsActivation(state, followerLost,
+              persist(_ => Right(followerLost :: Nil))
+                .map(_.map(_ => true))
+            ) .runToFuture
+              .onComplete {
+                  case Failure(t) => logger.error(s"$followerLost event failed: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+                  case Success(Right(true)) =>
+                  case Success(Left(problem)) => logger.error(s"$followerLost event failed: $problem")
+                  case Success(Right(false)) => logger.error(s"$followerLost inhibited")  // ???
+                }
+          }
 
         case tried =>
           tried match {
@@ -506,49 +521,76 @@ final class Cluster(
       persisted <- EitherT(persistence.persistTransaction(NoKey)(toEvents))
       (stampedEvents, clusterState) = persisted
       _ <- EitherT(
-        if (stampedEvents.isEmpty) Task.pure(Right(Completed))
-        else clusterWatchSynchronizer.applyEvents(stampedEvents.map(_.value.event), clusterState))
+        if (stampedEvents.isEmpty)
+          Task.pure(Right(Completed))
+        else
+          clusterWatchSynchronizer.applyEvents(stampedEvents.map(_.value.event), clusterState))
     } yield persisted).value
 
   private object clusterWatchSynchronizer
   {
+    private val heartbeatSender = SerialCancelable()
+    // TODO Queue not more than one ClusterWatchMessage (with limited Observable?)
     private val lock = LockResource()
+    @volatile private var stopped = false
+
+    def stop(): Unit = {
+      stopped = true
+      heartbeatSender.cancel()
+    }
+
+    def stopHeartbeats(): Task[Unit] =
+      lock.use(_ => Task {
+        stopped = true
+        heartbeatSender := Cancelable.empty
+      })
 
     def applyEvents(events: Seq[ClusterEvent], clusterState: ClusterState): Task[Checked[Completed]] =
       clusterConf.maybeOwnUri match {
         case None => Task.pure(Checked(Completed))
         case Some(ownUri) =>
-          lock.use(_ =>
-            clusterWatch.applyEvents(from = ownUri, events, clusterState)
-          .map(_.map { completed =>
-            startHeartbeat(clusterState)
-            completed
-          }))
+          if (events.lengthCompare(1) == 0 && events.head.isInstanceOf[SwitchedOver])
+            Task.pure(Checked(Completed))  // FailedOver event is reported by the newly active node
+          else
+            lock.use(_ =>
+              Task {
+                stopped = true
+                heartbeatSender := Cancelable.empty
+              } >>
+                clusterWatch.applyEvents(from = ownUri, events, clusterState)
+            .map(_.map { completed =>
+              scheduleHeartbeats(clusterState)
+              completed
+            }))
       }
 
-    def startHeartbeat(clusterState: ClusterState) =
-      heartbeatSender := scheduler.scheduleWithFixedDelay(clusterConf.heartbeat, clusterConf.heartbeat) {
-        singleHeartbeat(clusterState).runToFuture onComplete {
-          case Success(Right(Completed)) =>
-          case Success(Left(problem)) if problem.codeOption contains ClusterWatchHeartbeatFromInactiveNodeProblem.code =>
-            haltJava(s"EMERGENCY STOP due to: $problem", restart = true)  // TODO How to test?
-          case Success(problem) =>
-            logger.warn(s"Error when sending heartbeat to ClusterWatch: $problem")
-          case Failure(t) =>
-            logger.warn(s"Error when sending heartbeat to ClusterWatch: ${t.toStringWithCauses}")
-            logger.debug(s"Error when sending heartbeat to ClusterWatch: $t", t)
-        }
-      }
-
-    private def singleHeartbeat(clusterState: ClusterState): Task[Checked[Completed]] =
-      // TODO Use limited Observable to queue not more than one ClusterWatchMessage
-      lock.use(_ =>
-        clusterState match {
-          case clusterState: HasPrimaryNode if clusterConf.maybeOwnUri exists clusterState.isActive =>
-            clusterWatch.heartbeat(from = clusterState.activeUri, clusterState)
-          case _ =>
-            Task.pure(Right(Completed))
-        })
+    def scheduleHeartbeats(clusterState: ClusterState): Unit = {
+      stopped = false
+      heartbeatSender := ((clusterConf.maybeOwnUri, clusterState) match {
+        case (Some(ownUri), clusterState: HasBackupNode) if clusterState.isActive(ownUri) =>
+          scheduler.scheduleAtFixedRate(Duration.Zero, clusterConf.heartbeat) {
+            lock.use(_ =>
+              currentClusterState.flatMap {
+                case clusterState: ClusterState.HasBackupNode if clusterState.isActive(ownUri) && !stopped =>  // check again
+                  clusterWatch.heartbeat(from = ownUri, clusterState)
+                case _ =>
+                  Task.pure(Right(Completed))
+              }
+            ) .runToFuture onComplete {
+                case Success(Right(Completed)) =>
+                case Success(Left(problem)) if problem.codeOption contains ClusterWatchHeartbeatFromInactiveNodeProblem.code =>
+                  haltJava(s"EMERGENCY STOP due to: $problem", restart = true)  // TODO How to test?
+                case Success(problem) =>
+                  logger.warn(s"Error when sending heartbeat to ClusterWatch: $problem")
+                case Failure(t) =>
+                  logger.warn(s"Error when sending heartbeat to ClusterWatch: ${t.toStringWithCauses}")
+                  logger.debug(s"Error when sending heartbeat to ClusterWatch: $t", t)
+              }
+          }
+        case _ =>
+          Cancelable.empty
+      })
+    }
   }
 
   /** Returns the current or at start the recovered ClusterState.

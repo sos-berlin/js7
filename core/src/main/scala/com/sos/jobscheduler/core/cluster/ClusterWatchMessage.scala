@@ -11,7 +11,8 @@ sealed trait ClusterWatchMessage
 final case class ClusterWatchEvents(
   from: Uri,
   events: Seq[ClusterEvent],
-  clusterState: ClusterState)
+  clusterState: ClusterState,
+  force: Boolean = false)
 extends ClusterWatchMessage
 
 final case class ClusterWatchHeartbeat(from: Uri, clusterState: ClusterState)

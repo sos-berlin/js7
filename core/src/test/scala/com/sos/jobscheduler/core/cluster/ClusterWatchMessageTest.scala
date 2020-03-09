@@ -18,7 +18,8 @@ final class ClusterWatchMessageTest extends FreeSpec
         ClusterWatchEvents(
           Uri("http://PRIMARY"),
           BecameSole(Uri("http://PRIMARY")) :: Nil,
-          ClusterState.Sole(Uri("http://PRIMARY"))),
+          ClusterState.Sole(Uri("http://PRIMARY")),
+          force = true),
         json"""{
           "TYPE": "ClusterWatchEvents",
           "from": "http://PRIMARY",
@@ -31,12 +32,24 @@ final class ClusterWatchMessageTest extends FreeSpec
           "clusterState": {
             "TYPE": "Sole",
             "primaryUri": "http://PRIMARY"
-          }
+          },
+          "force": true
         }""")
     }
 
     "ClusterWatchHeartbeat" in {
-      pending
+      testJson[ClusterWatchMessage](
+        ClusterWatchHeartbeat(
+          Uri("http://PRIMARY"),
+          ClusterState.Sole(Uri("http://PRIMARY"))),
+        json"""{
+          "TYPE": "ClusterWatchHeartbeat",
+          "from": "http://PRIMARY",
+          "clusterState": {
+            "TYPE": "Sole",
+            "primaryUri": "http://PRIMARY"
+          }
+        }""")
     }
   }
 }

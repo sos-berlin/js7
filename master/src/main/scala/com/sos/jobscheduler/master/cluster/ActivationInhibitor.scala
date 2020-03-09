@@ -9,6 +9,7 @@ import monix.eval.Task
 import monix.execution.cancelables.SerialCancelable
 import scala.concurrent.duration.FiniteDuration
 
+/** Inhibits activation of cluster node for the specified duration. */
 private[cluster] final class ActivationInhibitor
 {
   private val stateMvarTask = MVar[Task].of[State](Passive).memoize

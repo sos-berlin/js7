@@ -34,10 +34,11 @@ extends ClusterWatchApi with AkkaHttpClient with HttpSessionApi with HttpAutoRel
 
   private val clusterUri = baseUri + "/agent/api/master/cluster"
 
-  def applyEvents(from: Uri, events: Seq[ClusterEvent], reportedClusterState: ClusterState): Task[Checked[Completed]] =
+  def applyEvents(from: Uri, events: Seq[ClusterEvent], reportedClusterState: ClusterState, force: Boolean = false)
+  : Task[Checked[Completed]] =
     liftProblem(
       retryUntilReachable(
-        post[ClusterWatchMessage, JsonObject](clusterUri, ClusterWatchEvents(from, events, reportedClusterState))
+        post[ClusterWatchMessage, JsonObject](clusterUri, ClusterWatchEvents(from, events, reportedClusterState, force))
       ).onErrorRestartLoop(()) { (throwable, _, retry) =>
           // TODO onErrorRestartLoop duplicate with retryUntilReachable ?
           logger.warn(throwable.toStringWithCauses)
