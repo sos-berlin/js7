@@ -27,8 +27,8 @@ trait WebLogDirectives extends ExceptionHandling
   protected def actorSystem: ActorSystem
 
   private lazy val logLevel = LogLevel(config.getString("jobscheduler.webserver.log.level"))
-  private lazy val log4xxLevel = LogLevel(config.getString("jobscheduler.webserver.log.4xx-level"))
-  private lazy val log5xxLevel = LogLevel(config.getString("jobscheduler.webserver.log.5xx-level"))
+  private lazy val errorLogLevel = LogLevel(config.getString("jobscheduler.webserver.log.error-level"))
+  private lazy val internalServerErrrorLevel = LogLevel(config.getString("jobscheduler.webserver.log.500-level"))
   private lazy val logResponse = actorSystem.settings.config.getBoolean("jobscheduler.webserver.log.response")
   private lazy val hasRemoteAddress = actorSystem.settings.config.getBoolean("akka.http.server.remote-address-header")
 
@@ -66,8 +66,8 @@ trait WebLogDirectives extends ExceptionHandling
   private def statusToLogLevel(statusCode: StatusCode): LogLevel =
     statusCode match {
       case status if status.intValue < 400 => logLevel
-      case status if status.intValue < 500 => log4xxLevel
-      case _ => log5xxLevel
+      case status if status.intValue == 500 => internalServerErrrorLevel
+      case _ => errorLogLevel
     }
 
   private def requestResponseToLine(request: HttpRequest, responseOption: Option[HttpResponse],
@@ -121,8 +121,8 @@ object WebLogDirectives
 
   val TestConfig = ConfigFactory.parseString("""
      |jobscheduler.webserver.log.level = debug
-     |jobscheduler.webserver.log.4xx-level = debug
-     |jobscheduler.webserver.log.5xx-level = info
+     |jobscheduler.webserver.log.error-level = debug
+     |jobscheduler.webserver.log.500-level = info
      |jobscheduler.webserver.log.duration = off
      |jobscheduler.webserver.verbose-error-messages = true
      |jobscheduler.webserver.shutdown-timeout = 10s""")
