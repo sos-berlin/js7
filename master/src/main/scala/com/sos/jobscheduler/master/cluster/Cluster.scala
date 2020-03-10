@@ -222,16 +222,18 @@ final class Cluster(
 
               case otherState =>
                 sys.error(s"The other node is in invalid clusterState=$otherState")  // ???
-              }
-              .memoize
+            }.memoize
+
             failedOver.flatMap {
               case None => Task.pure(None)
               case Some((_, passiveClusterNode)) => passiveClusterNode.state map Some.apply
             } ->
-             failedOver.flatMap {
-               case None => Task.pure(Right(recoveredClusterState -> ClusterFollowUp.BecomeActive(recovered)))
-               case Some((otherClusterState, passiveClusterNode)) => passiveClusterNode.run(otherClusterState, recoveredState)
-             }
+              failedOver.flatMap {
+                case None =>
+                  Task.pure(Right(recoveredClusterState -> ClusterFollowUp.BecomeActive(recovered)))
+                case Some((otherClusterState, passiveClusterNode)) =>
+                  passiveClusterNode.run(otherClusterState, recoveredState)
+              }
 
           case _ =>
             logger.info("Remaining the active cluster node without following node")
@@ -417,7 +419,7 @@ final class Cluster(
     state match {
       case state: IsCoupled =>
         if (clusterConf.maybeOwnUri contains state.activeUri) {
-          proceedAsActive(state, eventId)
+          fetchAndHandleAcknowledgedEventIds(state, eventId)
         } else if (clusterConf.maybeOwnUri contains state.passiveUri) {
           throw new NotImplementedError("Restart of passive cluster node is not yet implemented")
           // FIXME PassiveClusterNode starten
@@ -426,7 +428,7 @@ final class Cluster(
       case _ =>
     }
 
-  private def proceedAsActive(state: ClusterState.IsCoupled, eventId: EventId): Unit =
+  private def fetchAndHandleAcknowledgedEventIds(state: ClusterState.IsCoupled, eventId: EventId): Unit =
     if (!fetchingEvents.getAndSet(true)) {
       def msg = s"observeEventIds(${state.passiveUri}, after=$eventId, userAndPassword=${clusterConf.userAndPassword})"
       fetchingEventsFuture = fetchAndHandleAcknowledgedEventIds(state.passiveUri, after = eventId)
@@ -443,11 +445,15 @@ final class Cluster(
                 .map(_.map(_ => true))
             ) .runToFuture
               .onComplete {
-                  case Failure(t) => logger.error(s"$followerLost event failed: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
-                  case Success(Right(true)) =>
-                  case Success(Left(problem)) => logger.error(s"$followerLost event failed: $problem")
-                  case Success(Right(false)) => logger.error(s"$followerLost inhibited")  // ???
-                }
+                case Failure(t) => logger.error(s"$followerLost event failed: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+                case Success(Left(problem)) => logger.error(s"$followerLost event failed: $problem")
+                case Success(Right(false)) => logger.error(s"$followerLost inhibited")  // ???
+                case Success(Right(true)) =>
+                  // FIXME Possible race condition: when immediately Coupled agein the acknowledgement are not being read
+                  //  Mit LockResource synchronisieren?
+                  for (o <- Option(fetchingEventsFuture)) o.cancel()
+                  fetchingEvents := false
+              }
           }
 
         case tried =>
