@@ -19,7 +19,7 @@ import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, JournalSeparat
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles._
 import com.sos.jobscheduler.core.event.journal.recover.{FileJournaledStateBuilder, JournalProgress, Recovered, RecoveredJournalFile}
 import com.sos.jobscheduler.core.event.state.JournaledStateBuilder
-import com.sos.jobscheduler.data.cluster.ClusterEvent.{FailedOver, SwitchedOver}
+import com.sos.jobscheduler.data.cluster.ClusterEvent.SwitchedOver
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.JournalEvent.SnapshotTaken
@@ -209,7 +209,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
         .flatMap[Checked[Unit]] {
           case None/*pause*/ =>
             (if (isReplicatingHeadOfFile) continuation.clusterState else builder.clusterState) match {
-              case clusterState: ClusterState.Coupled if clusterState.passiveUri == ownUri =>
+              case clusterState: ClusterState.IsCoupled if clusterState.passiveUri == ownUri =>
                 logger.warn(s"No heartbeat from the currently active cluster node '$activeUri'")
                 Observable.fromTask(
                   if (isReplicatingHeadOfFile) {
@@ -382,7 +382,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
       sys.error(msg)
     }
 
-  private def toStampedFailedOver(clusterState: ClusterState.Coupled, failedAt: JournalPosition): Stamped[KeyedEvent[ClusterEvent]] = {
+  private def toStampedFailedOver(clusterState: ClusterState.IsCoupled, failedAt: JournalPosition): Stamped[KeyedEvent[ClusterEvent]] = {
     val failedOver = ClusterEvent.FailedOver(failedActiveUri = clusterState.activeUri, activatedUri = clusterState.passiveUri, failedAt)
     val stamped = eventIdGenerator.stamp(NoKey <-: (failedOver: ClusterEvent))
     logger.debug(stamped.toString)

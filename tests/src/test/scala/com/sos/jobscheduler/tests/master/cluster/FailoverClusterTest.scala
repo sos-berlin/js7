@@ -9,7 +9,7 @@ import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import com.sos.jobscheduler.core.event.journal.data.JournalSeparators.EventFooter
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
-import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterCoupled, FailedOver, SwitchedOver}
+import com.sos.jobscheduler.data.cluster.ClusterEvent.{Coupled, FailedOver, SwitchedOver}
 import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
@@ -31,7 +31,7 @@ final class FailoverClusterTest extends MasterClusterTester
     withMasterAndBackup(primaryHttpPort, backupHttpPort) { (primary, backup) =>
       var primaryMaster = primary.startMaster(httpPort = Some(primaryHttpPort)) await 99.s
       var backupMaster = backup.startMaster(httpPort = Some(backupHttpPort)) await 99.s
-      primaryMaster.eventWatch.await[ClusterCoupled]()
+      primaryMaster.eventWatch.await[Coupled]()
 
       val t = now
       val sleepWhileFailing = 10.s  // Failover takes some seconds anyway
@@ -54,8 +54,8 @@ final class FailoverClusterTest extends MasterClusterTester
       backupMaster.eventWatch.await[OrderFinished](_.key == orderId, after = failedOverEventId)
 
       primaryMaster = primary.startMaster(httpPort = Some(primaryHttpPort)) await 99.s
-      primaryMaster.eventWatch.await[ClusterCoupled](after = failedOverEventId)
-      backupMaster.eventWatch.await[ClusterCoupled](after = failedOverEventId)
+      primaryMaster.eventWatch.await[Coupled](after = failedOverEventId)
+      backupMaster.eventWatch.await[Coupled](after = failedOverEventId)
       assertEqualJournalFiles(primary.master, backup.master, 3)
 
       backupMaster.executeCommandForTest(ClusterSwitchOver).orThrow
@@ -64,11 +64,11 @@ final class FailoverClusterTest extends MasterClusterTester
 
       backupMaster.terminated await 99.s
       backupMaster = backup.startMaster(httpPort = Some(backupHttpPort)) await 99.s
-      backupMaster.eventWatch.await[ClusterCoupled](after = recoupledEventId)
-      primaryMaster.eventWatch.await[ClusterCoupled](after = recoupledEventId)
+      backupMaster.eventWatch.await[Coupled](after = recoupledEventId)
+      primaryMaster.eventWatch.await[Coupled](after = recoupledEventId)
 
       // When heartbeat from passive to active node is broken, the ClusterWatch will nonetheless not agree to a failover
-      val stillCoupled = ClusterState.Coupled(
+      val stillCoupled = ClusterState.IsCoupled(
         List(
           Uri(primaryMaster.localUri.toString),
           Uri(backupMaster.localUri.toString)),

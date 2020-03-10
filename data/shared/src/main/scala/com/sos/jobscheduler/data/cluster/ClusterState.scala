@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, ClusterCoupled, FailedOver, FollowerLost, FollowingStarted, SwitchedOver}
+import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, Coupled, FailedOver, FollowerLost, FollowingStarted, SwitchedOver}
 import com.sos.jobscheduler.data.cluster.ClusterState._
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
@@ -39,25 +39,25 @@ extends JournaledState[ClusterState, ClusterEvent]
         case (state: AwaitingAppointment, BackupNodeAppointed(backupUri)) if state.backupUri == backupUri =>
           Right(PreparedToBeCoupled(state.uris))
 
-        case (state: PreparedToBeCoupled, ClusterCoupled) =>
-          Right(Coupled(state.uris, 0))
+        case (state: PreparedToBeCoupled, Coupled) =>
+          Right(IsCoupled(state.uris, 0))
 
-        case (state: Decoupled, ClusterCoupled) =>
-          Right(Coupled(state.uris, state.active))
+        case (state: Decoupled, Coupled) =>
+          Right(IsCoupled(state.uris, state.active))
 
-        case (state: Coupled, SwitchedOver(uri)) if uri == state.passiveUri =>
-          Right(ProperlyDecoupled(state.uris, state.passive))
+        case (state: IsCoupled, SwitchedOver(uri)) if uri == state.passiveUri =>
+          Right(IsSwitchedOver(state.uris, state.passive))
 
-        case (state: Coupled, FollowerLost(uri)) if state.passiveUri == uri =>
-          Right(ProperlyDecoupled(state.uris, state.active))
+        case (state: IsCoupled, FollowerLost(uri)) if state.passiveUri == uri =>
+          Right(IsFollowerLost(state.uris, state.active))
 
-        case (state: Coupled, event: FailedOver)
+        case (state: IsCoupled, event: FailedOver)
           if state.activeUri == event.failedActiveUri && state.passiveUri == event.activatedUri =>
-          Right(FailedOverDecoupled(state.uris, state.passive, event.failedAt))
+          Right(IsFailedOver(state.uris, state.passive, event.failedAt))
 
         case (state: OtherFailedOver, event: FailedOver)
           if state.activeUri == event.activatedUri && state.passiveUri == event.failedActiveUri =>
-          Right(FailedOverDecoupled(state.uris, state.active, event.failedAt))
+          Right(IsFailedOver(state.uris, state.active, event.failedAt))
 
         case (_, keyedEvent) => eventNotApplicable(keyedEvent)
       }
@@ -136,7 +136,7 @@ object ClusterState
     def active = 0
   }
 
-  /** Intermediate state only which is immediately followed by transition ClusterEvent.ClusterCoupled -> Coupled. */
+  /** Intermediate state only which is immediately followed by transition ClusterEvent.Coupled -> IsCoupled. */
   final case class PreparedToBeCoupled(uris: Seq[Uri])
   extends HasBackupNode
   {
@@ -161,34 +161,42 @@ object ClusterState
   }
 
   /** An active node is coupled with a passive node. */
-  final case class Coupled(uris: Seq[Uri], active: Int)
+  final case class IsCoupled(uris: Seq[Uri], active: Int)
   extends CoupledOrDecoupled
   {
     assertIsValid()
 
     override def isTheFollowingNode(uri: Uri) = uri == passiveUri
 
-    override def toString = s"Coupled($primaryBackupString)"
+    override def toString = s"IsCoupled($primaryBackupString)"
   }
 
   sealed trait Decoupled extends CoupledOrDecoupled
 
-  final case class ProperlyDecoupled(uris: Seq[Uri], active: Int)
+  final case class IsFollowerLost(uris: Seq[Uri], active: Int)
   extends Decoupled
   {
     assertIsValid()
 
-    override def toString = s"ProperlyDecoupled($primaryBackupString)"
+    override def toString = s"IsFollowerLost($primaryBackupString)"
+  }
+
+  final case class IsSwitchedOver(uris: Seq[Uri], active: Int)
+  extends Decoupled
+  {
+    assertIsValid()
+
+    override def toString = s"IsFollowerLost($primaryBackupString)"
   }
 
   /** Decoupled after failover.
     * @param failedAt the failing nodes journal must be truncated at this point. */
-  final case class FailedOverDecoupled(uris: Seq[Uri], active: Int, failedAt: JournalPosition)
+  final case class IsFailedOver(uris: Seq[Uri], active: Int, failedAt: JournalPosition)
   extends Decoupled
   {
     assertIsValid()
 
-    override def toString = s"FailedOverDecoupled($primaryBackupString, $failedAt)"
+    override def toString = s"IsFailedOver($primaryBackupString, $failedAt)"
   }
 
   /** Non-permanent state, not stored, used while retrieving the journal from the failed-over node. */
@@ -197,7 +205,7 @@ object ClusterState
   {
     assertIsValid()
 
-    override def toString = s"FailedOverDecoupled($primaryBackupString)"
+    override def toString = s"IsFailedOver($primaryBackupString)"
   }
 
   implicit val jsonCodec = TypedJsonCodec[ClusterState](
@@ -206,8 +214,9 @@ object ClusterState
     Subtype(deriveCodec[AwaitingAppointment]),
     Subtype(deriveCodec[AwaitingFollower]),
     Subtype(deriveCodec[PreparedToBeCoupled]),
-    Subtype(deriveCodec[Coupled]),
-    Subtype(deriveCodec[ProperlyDecoupled]),
-    Subtype(deriveCodec[FailedOverDecoupled]),
+    Subtype(deriveCodec[IsCoupled]),
+    Subtype(deriveCodec[IsFollowerLost]),
+    Subtype(deriveCodec[IsSwitchedOver]),
+    Subtype(deriveCodec[IsFailedOver]),
     Subtype(deriveCodec[OtherFailedOver]))
 }

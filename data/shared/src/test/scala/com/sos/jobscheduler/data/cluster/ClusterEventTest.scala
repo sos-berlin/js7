@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.data.cluster
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, ClusterCoupled, FailedOver, FollowerLost, FollowingStarted, SwitchedOver}
+import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, Coupled, FailedOver, FollowerLost, FollowingStarted, SwitchedOver}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.JournalPosition
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -36,10 +36,10 @@ final class ClusterEventTest extends FreeSpec
       }""")
   }
 
-  "ClusterCoupled" in {
-    testJson[ClusterEvent](ClusterCoupled,
+  "Coupled" in {
+    testJson[ClusterEvent](Coupled,
       json"""{
-        "TYPE": "Cluster.ClusterCoupled"
+        "TYPE": "Cluster.Coupled"
       }""")
   }
 

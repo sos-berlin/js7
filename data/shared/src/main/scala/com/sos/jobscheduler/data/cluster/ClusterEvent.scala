@@ -18,9 +18,8 @@ object ClusterEvent
   final case class FollowingStarted(uri: Uri)
   extends ClusterEvent
 
-  sealed trait ClusterCoupled extends ClusterEvent
-  case object ClusterCoupled
-  extends ClusterCoupled
+  type Coupled = Coupled.type
+  case object Coupled extends ClusterEvent
 
   final case class SwitchedOver(uri: Uri)
   extends ClusterEvent
@@ -38,7 +37,7 @@ object ClusterEvent
     Subtype.named(deriveCodec[BecameSole]         , "Cluster.BecameSole"),
     Subtype.named(deriveCodec[BackupNodeAppointed], "Cluster.BackupNodeAppointed"),
     Subtype.named(deriveCodec[FollowingStarted]   , "Cluster.FollowingStarted"),
-    Subtype.named(ClusterCoupled                  , "Cluster.ClusterCoupled"),
+    Subtype.named(Coupled                         , "Cluster.Coupled"),
     Subtype.named(deriveCodec[SwitchedOver]       , "Cluster.SwitchedOver"),
     Subtype.named(deriveCodec[FailedOver]         , "Cluster.FailedOver"),
     Subtype.named(deriveCodec[FollowerLost]       , "Cluster.FollowerLost"))

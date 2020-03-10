@@ -30,7 +30,7 @@ final class ReplicatingClusterTest extends MasterClusterTester
       //  ClusterAppointBackup(Uri(backupMaster.localUri.toString), Uri(primaryMaster.localUri.toString))
       //).await(99.s).orThrow
       //primaryMaster.eventWatch.await[ClusterEvent.BackupNodeAppointed]()
-      primaryMaster.eventWatch.await[ClusterEvent.ClusterCoupled]()
+      primaryMaster.eventWatch.await[ClusterEvent.Coupled]()
       assert(primaryMaster.journalActorState.isRequiringClusterAcknowledgement)
 
       primaryMaster.runOrder(FreshOrder(OrderId("🔷"), TestWorkflow.path))

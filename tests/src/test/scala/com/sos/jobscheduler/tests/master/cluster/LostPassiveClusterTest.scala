@@ -22,7 +22,7 @@ final class LostPassiveClusterTest extends MasterClusterTester
       //primaryMaster.executeCommandAsSystemUser(
       //  ClusterAppointBackup(activeUri = Uri(primaryMaster.localUri.toString), backupUri = Uri(backupMaster.localUri.toString))
       //).await(99.s).orThrow
-      primaryMaster.eventWatch.await[ClusterEvent.ClusterCoupled]()
+      primaryMaster.eventWatch.await[ClusterEvent.Coupled]()
 
       val orderId = OrderId("🔺")
       primaryMaster.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path))

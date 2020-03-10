@@ -27,7 +27,7 @@ final class SwitchOverClusterTest extends MasterClusterTester
           //primaryMaster.executeCommandAsSystemUser(
           //  ClusterAppointBackup(activeUri = Uri(primaryMaster.localUri.toString), backupUri = Uri(backupMaster.localUri.toString))
           //).await(99.s).orThrow
-          primaryMaster.eventWatch.await[ClusterEvent.ClusterCoupled]()
+          primaryMaster.eventWatch.await[ClusterEvent.Coupled]()
           val orderId = OrderId("⭕")
           primaryMaster.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path))
           primaryMaster.eventWatch.await[OrderProcessingStarted](_.key == orderId)
@@ -46,8 +46,8 @@ final class SwitchOverClusterTest extends MasterClusterTester
 
         // Start again the passive primary node
         primary.runMaster(httpPort = Some(primaryHttpPort), dontWaitUntilReady = true) { primaryMaster =>
-          backupMaster.eventWatch.await[ClusterEvent.ClusterCoupled](after = lastEventId)
-          primaryMaster.eventWatch.await[ClusterEvent.ClusterCoupled](after = lastEventId)
+          backupMaster.eventWatch.await[ClusterEvent.Coupled](after = lastEventId)
+          primaryMaster.eventWatch.await[ClusterEvent.Coupled](after = lastEventId)
           assert(backupMaster.journalActorState.isRequiringClusterAcknowledgement)
 
           val orderId = OrderId("🔴")

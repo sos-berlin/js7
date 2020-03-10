@@ -30,8 +30,8 @@ import com.sos.jobscheduler.core.event.journal.recover.{JournaledStateRecoverer,
 import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
 import com.sos.jobscheduler.core.problems.MissingPassiveClusterNodeHeartbeatProblem
 import com.sos.jobscheduler.core.startup.Halt.haltJava
-import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, ClusterCoupled, FollowerLost, FollowingStarted, SwitchedOver}
-import com.sos.jobscheduler.data.cluster.ClusterState.{AwaitingAppointment, AwaitingFollower, Coupled, Decoupled, Empty, HasBackupNode, OtherFailedOver, Sole}
+import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, Coupled, FollowerLost, FollowingStarted, SwitchedOver}
+import com.sos.jobscheduler.data.cluster.ClusterState.{AwaitingAppointment, AwaitingFollower, Decoupled, Empty, HasBackupNode, IsCoupled, OtherFailedOver, Sole}
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeRole, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
@@ -155,7 +155,7 @@ final class Cluster(
 
       case (_, Some(ownUri), _, Some(recoveredJournalFile)) if recoveredClusterState.isActive(ownUri) =>
         recoveredClusterState match {
-          case recoveredClusterState: Coupled =>
+          case recoveredClusterState: IsCoupled =>
             import recoveredClusterState.passiveUri
             logger.info(s"This cluster node was coupled before restart - asking the other node '$passiveUri' about its state")
             val failedOver = inhibitActivationOf(passiveUri).map {
@@ -166,7 +166,7 @@ final class Cluster(
                 proceed(recoveredClusterState, recovered.eventId)
                 None
 
-              case otherState: ClusterState.FailedOverDecoupled =>
+              case otherState: ClusterState.IsFailedOver =>
                 import otherState.failedAt
                 logger.info(s"The other cluster node '${otherState.activeUri}' has become active (failed-over) while this node was absent")
                 assertThat(otherState.activeUri == passiveUri &&
@@ -291,7 +291,7 @@ final class Cluster(
                 for (events <- becomeSoleIfEmpty(state)) yield
                   events ::: BackupNodeAppointed(backupUri) ::
                     (state match {
-                      case AwaitingAppointment(Seq(`ownUri`, `backupUri`)) => ClusterCoupled :: Nil
+                      case AwaitingAppointment(Seq(`ownUri`, `backupUri`)) => Coupled :: Nil
                       case _ => Nil
                     })
             case state =>
@@ -313,22 +313,22 @@ final class Cluster(
         else
           persistence.waitUntilStarted.flatMap(_ =>
             persist {
-              case _: Coupled =>
+              case _: IsCoupled =>
                 Right(Nil)
 
               case state @ (Empty | Sole(`followedUri`) | AwaitingFollower(Seq(`followedUri`, `followingUri`))) =>
                 for (events <- becomeSoleIfEmpty(state)) yield
                   events ::: FollowingStarted(followingUri) ::
                     (state match {
-                      case AwaitingFollower(Seq(`followedUri`, `followingUri`)) => ClusterCoupled :: Nil
+                      case AwaitingFollower(Seq(`followedUri`, `followingUri`)) => Coupled :: Nil
                       case _ => Nil
                     })
 
               case AwaitingFollower(Seq(`followedUri`, `followingUri`)) =>
-                Right(FollowingStarted(followingUri) :: ClusterCoupled :: Nil)
+                Right(FollowingStarted(followingUri) :: Coupled :: Nil)
 
               case state: Decoupled if state.activeUri == followedUri && state.passiveUri == followingUri =>
-                Right(ClusterCoupled :: Nil)
+                Right(Coupled :: Nil)
 
               case state =>
                 Left(Problem.pure(s"$call rejected due to inappropriate cluster state $state"))
@@ -397,10 +397,10 @@ final class Cluster(
   def switchOver: Task[Checked[Completed]] =
     clusterWatchSynchronizer.stopHeartbeats() >>
     persist {
-      case coupled: Coupled if clusterConf.maybeOwnUri contains coupled.activeUri =>
+      case coupled: IsCoupled if clusterConf.maybeOwnUri contains coupled.activeUri =>
         Right(SwitchedOver(coupled.passiveUri) :: Nil)
       case state =>
-        Left(Problem.pure(s"Switchover is possible only in cluster state Coupled(active=${clusterConf.maybeOwnUri.map(_.toString)})," +
+        Left(Problem.pure(s"Switchover is possible only in cluster state IsCoupled(active=${clusterConf.maybeOwnUri.map(_.toString)})," +
           s" but cluster state is: $state"))
     } .map(_.map { case (_: Seq[Stamped[_]], _) =>
         switchoverAcknowledged = true
@@ -415,7 +415,7 @@ final class Cluster(
 
   private def proceed(state: ClusterState, eventId: EventId): Unit =
     state match {
-      case state: Coupled =>
+      case state: IsCoupled =>
         if (clusterConf.maybeOwnUri contains state.activeUri) {
           proceedAsActive(state, eventId)
         } else if (clusterConf.maybeOwnUri contains state.passiveUri) {
@@ -426,7 +426,7 @@ final class Cluster(
       case _ =>
     }
 
-  private def proceedAsActive(state: ClusterState.Coupled, eventId: EventId): Unit =
+  private def proceedAsActive(state: ClusterState.IsCoupled, eventId: EventId): Unit =
     if (!fetchingEvents.getAndSet(true)) {
       def msg = s"observeEventIds(${state.passiveUri}, after=$eventId, userAndPassword=${clusterConf.userAndPassword})"
       fetchingEventsFuture = fetchAndHandleAcknowledgedEventIds(state.passiveUri, after = eventId)

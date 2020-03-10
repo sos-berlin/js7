@@ -6,7 +6,7 @@ import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.core.cluster.ClusterWatch._
-import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, ClusterCoupled, FailedOver, FollowerLost, FollowingStarted, SwitchedOver}
+import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, Coupled, FailedOver, FollowerLost, FollowingStarted, SwitchedOver}
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.JournalPosition
@@ -45,7 +45,7 @@ final class ClusterWatchTest extends FreeSpec
 
     "Coupling" in {
       scheduler.tick(11.s)
-      assert(applyEvent(primary, BackupNodeAppointed(backup) :: FollowingStarted(backup) :: ClusterCoupled :: Nil) == Right(Completed))
+      assert(applyEvent(primary, BackupNodeAppointed(backup) :: FollowingStarted(backup) :: Coupled :: Nil) == Right(Completed))
       assert(watch.isActive(primary).await(99.s).orThrow)
     }
 
@@ -56,7 +56,7 @@ final class ClusterWatchTest extends FreeSpec
     }
 
     "Heartbeat with different ClusterState from same active node is accepted" in {
-      val reportedClusterState = ClusterState.ProperlyDecoupled(primary :: backup :: Nil, active = 0)
+      val reportedClusterState = ClusterState.IsFollowerLost(primary :: backup :: Nil, active = 0)
       assert(watch.heartbeat(primary, reportedClusterState).await(99.s) == Right(Completed))
       assert(watch.get.await(99.s) == Right(reportedClusterState))
 
@@ -70,7 +70,7 @@ final class ClusterWatchTest extends FreeSpec
         Left(ClusterWatchHeartbeatFromInactiveNodeProblem(backup, clusterState)))
 
       locally {
-        assert(watch.heartbeat(backup, ClusterState.Coupled(primary :: backup :: Nil, active = 1)).await(99.s) ==
+        assert(watch.heartbeat(backup, ClusterState.IsCoupled(primary :: backup :: Nil, active = 1)).await(99.s) ==
           Left(ClusterWatchHeartbeatFromInactiveNodeProblem(backup, clusterState)))
       }
 
@@ -79,7 +79,7 @@ final class ClusterWatchTest extends FreeSpec
 
     "Heartbeat must not change active URI" in {
       // The inactive primary node should not send a heartbeat
-      val badCoupled = ClusterState.Coupled(primary :: backup :: Nil, active = 1)
+      val badCoupled = ClusterState.IsCoupled(primary :: backup :: Nil, active = 1)
       assert(watch.heartbeat(primary, badCoupled).await(99.s) ==
         Left(InvalidClusterWatchHeartbeatProblem(primary, badCoupled)))
       assert(watch.get.await(99.s) == Right(clusterState))
@@ -105,8 +105,8 @@ final class ClusterWatchTest extends FreeSpec
       //  für den zu aktivierenden Knoten hat.
     }
 
-    "Coupled" in {
-      assert(applyEvent(backup, ClusterCoupled :: Nil) == Right(Completed))
+    "IsCoupled" in {
+      assert(applyEvent(backup, Coupled :: Nil) == Right(Completed))
     }
 
     "SwitchedOver before heartbeat" in {
@@ -117,12 +117,12 @@ final class ClusterWatchTest extends FreeSpec
 
     "SwitchedOver after heartbeat loss" in {
       scheduler.tick(11.s)
-      assert(applyEvent(primary, ClusterCoupled :: SwitchedOver(backup) :: Nil) == Right(Completed))
+      assert(applyEvent(primary, Coupled :: SwitchedOver(backup) :: Nil) == Right(Completed))
       assert(watch.isActive(backup).await(99.s).orThrow)
     }
 
     "SwitchedOver from inactive node" in {
-      assert(applyEvent(backup, ClusterCoupled :: Nil) == Right(Completed))
+      assert(applyEvent(backup, Coupled :: Nil) == Right(Completed))
       assert(watch.isActive(backup).await(99.s).orThrow)
       assert(applyEvent(primary, SwitchedOver(primary) :: Nil) ==
         Left(ClusterWatchHeartbeatFromInactiveNodeProblem(primary, clusterState)))
@@ -130,15 +130,15 @@ final class ClusterWatchTest extends FreeSpec
 
     "applyEvents after event loss" in {
       assert(watch.get.await(99.s) == Right(clusterState))
-      assert(watch.get.await(99.s) == Right(ClusterState.Coupled(primary :: backup :: Nil, active = 1)))
+      assert(watch.get.await(99.s) == Right(ClusterState.IsCoupled(primary :: backup :: Nil, active = 1)))
 
-      // We test the loss of a FollowerLost event, and then apply ClusterCoupled
+      // We test the loss of a FollowerLost event, and then apply Coupled
       val lostEvent = FollowerLost(primary)
-      val decoupled = ClusterState.ProperlyDecoupled(primary :: backup :: Nil, active = 1)
+      val decoupled = ClusterState.IsFollowerLost(primary :: backup :: Nil, active = 1)
       assert(clusterState.applyEvent(NoKey <-: lostEvent) == Right(decoupled))
 
-      val nextEvent = ClusterCoupled
-      val coupled = ClusterState.Coupled(primary :: backup :: Nil, active = 1)
+      val nextEvent = Coupled
+      val coupled = ClusterState.IsCoupled(primary :: backup :: Nil, active = 1)
       assert(decoupled.applyEvent(NoKey <-: nextEvent) == Right(coupled))
 
       assert(watch.applyEvents(backup, nextEvent :: Nil, coupled).await(99.s) == Right(Completed))

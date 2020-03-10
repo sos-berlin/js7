@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.data.cluster
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.data.cluster.ClusterState.{AwaitingAppointment, AwaitingFollower, Coupled, Empty, FailedOverDecoupled, OtherFailedOver, PreparedToBeCoupled, ProperlyDecoupled, Sole}
+import com.sos.jobscheduler.data.cluster.ClusterState.{AwaitingAppointment, AwaitingFollower, Empty, IsCoupled, IsFailedOver, IsFollowerLost, IsSwitchedOver, OtherFailedOver, PreparedToBeCoupled, Sole}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.JournalPosition
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -57,31 +57,41 @@ final class ClusterStateTest extends FreeSpec
         }""")
     }
 
-    "Coupled" in {
+    "IsCoupled" in {
       testJson[ClusterState](
-        Coupled(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil, 0),
+        IsCoupled(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil, 0),
         json"""{
-          "TYPE": "Coupled",
+          "TYPE": "IsCoupled",
           "uris": [ "http://PRIMARY", "http://BACKUP" ],
           "active": 0
         }""")
     }
 
-    "ProperlyDecoupled" in {
+    "IsFollowerLost" in {
       testJson[ClusterState](
-        ProperlyDecoupled(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil, 0),
+        IsFollowerLost(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil, 0),
         json"""{
-          "TYPE": "ProperlyDecoupled",
+          "TYPE": "IsFollowerLost",
           "uris": [ "http://PRIMARY", "http://BACKUP" ],
           "active": 0
         }""")
     }
 
-    "FailedOverDecoupled" in {
+    "IsSwitchedOver" in {
       testJson[ClusterState](
-        FailedOverDecoupled(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil, 1, JournalPosition(0, 1234)),
+        IsSwitchedOver(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil, 0),
         json"""{
-          "TYPE": "FailedOverDecoupled",
+          "TYPE": "IsSwitchedOver",
+          "uris": [ "http://PRIMARY", "http://BACKUP" ],
+          "active": 0
+        }""")
+    }
+
+    "IsFailedOver" in {
+      testJson[ClusterState](
+        IsFailedOver(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil, 1, JournalPosition(0, 1234)),
+        json"""{
+          "TYPE": "IsFailedOver",
           "uris": [ "http://PRIMARY", "http://BACKUP" ],
           "active": 1,
           "failedAt": {

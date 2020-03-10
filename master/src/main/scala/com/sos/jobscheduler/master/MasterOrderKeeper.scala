@@ -321,7 +321,7 @@ with MainJournalingActor[Event]
       // TODO Fix fundamentally the race condition with JournalActor.Input.RegisterMe
       journalActor.tell(JournalActor.Input.RegisterMe, cluster.journalingActor)
       recovered.startJournalAndFinishRecovery(journalActor,
-        requireClusterAcknowledgement = recovered.recoveredState.fold(false)(_.clusterState.isInstanceOf[ClusterState.Coupled]))
+        requireClusterAcknowledgement = recovered.recoveredState.fold(false)(_.clusterState.isInstanceOf[ClusterState.IsCoupled]))
       become("journalIsStarting")(journalIsStarting)
       unstashAll()
 
