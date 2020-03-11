@@ -112,7 +112,7 @@ execute=(
   com.sos.jobscheduler.agent.main.AgentMain "${agentOptions[@]}")
 
 while true; do
-  (t=$(date +"%Y-%m-%S %H:%M:%S.%N"); echo -e "\n-------\n${t:0:23}" "${execute[@]}")
+  (t=$(date +"%Y-%m-%d %H:%M:%S.%N"); echo -e "\n-------\n${t:0:23}" "${execute[@]}")
 
   "${execute[@]}" &
 
@@ -160,7 +160,7 @@ while true; do
     (. "$crashKillScript" || true)
     ps fux || true
   fi
-  (t=$(date +"%Y-%m-%S %H:%M:%S.%N"); echo -e "\n${t:0:23} JobScheduler Agent Server has been shut down" >>"$logs/stdouterr.log")
+  (t=$(date +"%Y-%m-%d %H:%M:%S.%N"); echo -e "\n${t:0:23} JobScheduler Agent Server has been shut down" >>"$logs/stdouterr.log")
 
   if [[ $returnCode -ne 97 ]] && [[ $returnCode -ne 98 ]]; then
     exit $returnCode
