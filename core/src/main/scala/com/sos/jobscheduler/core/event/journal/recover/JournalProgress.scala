@@ -15,7 +15,7 @@ object JournalProgress
 
   case object AfterSnapshotSection extends JournalProgress
 
-  case object InEventsSection extends JournalProgress {
+  case object InCommittedEventsSection extends JournalProgress {
     override def isAcceptingEvents = true
   }
 

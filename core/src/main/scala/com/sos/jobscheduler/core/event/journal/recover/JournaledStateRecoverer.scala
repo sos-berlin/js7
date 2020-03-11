@@ -8,6 +8,7 @@ import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
+import com.sos.jobscheduler.core.event.journal.recover.JournalProgress.InCommittedEventsSection
 import com.sos.jobscheduler.core.event.journal.recover.JournaledStateRecoverer._
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.event.state.JournaledStateBuilder
@@ -35,7 +36,7 @@ private final class JournaledStateRecoverer[S <: JournaledState[S, E], E <: Even
       for (json <- UntilNoneIterator(jsonReader.read()).map(_.value)) {
         fileJournaledStateBuilder.put(json)
         _position = jsonReader.position
-        if (_firstEventPosition.isEmpty && fileJournaledStateBuilder.recovererState == JournalProgress.InEventsSection) {
+        if (_firstEventPosition.isEmpty && fileJournaledStateBuilder.journalProgress == InCommittedEventsSection) {
           _firstEventPosition := jsonReader.position
         }
       }

@@ -8,7 +8,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.journal.data.JournalSeparators.{Commit, EventFooter, EventHeader, SnapshotFooter, SnapshotHeader, Transaction}
 import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta}
 import com.sos.jobscheduler.core.event.journal.recover.FileJournaledStateBuilder._
-import com.sos.jobscheduler.core.event.journal.recover.JournalProgress.{AfterEventsSection, AfterHeader, AfterSnapshotSection, InEventsSection, InSnapshotSection, InTransaction, Initial}
+import com.sos.jobscheduler.core.event.journal.recover.JournalProgress.{AfterEventsSection, AfterHeader, AfterSnapshotSection, InCommittedEventsSection, InSnapshotSection, InTransaction, Initial}
 import com.sos.jobscheduler.core.event.state.JournaledStateBuilder
 import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, JournaledState, KeyedEvent, Stamped}
 import io.circe.Json
@@ -75,9 +75,9 @@ final class FileJournaledStateBuilder[S <: JournaledState[S, E], E <: Event](
 
       case AfterSnapshotSection =>
         if (json != EventHeader) throw new IllegalArgumentException("Missing EventHeader in journal file")
-        _progress = InEventsSection
+        _progress = InCommittedEventsSection
 
-      case InEventsSection =>
+      case InCommittedEventsSection =>
         json match {
           case EventFooter =>
             _progress = AfterEventsSection
@@ -90,7 +90,7 @@ final class FileJournaledStateBuilder[S <: JournaledState[S, E], E <: Event](
 
       case InTransaction =>
         if (json == Commit) {
-          _progress = InEventsSection
+          _progress = InCommittedEventsSection
           for (stamped <- transaction.buffer) {
             builder.addEvent(stamped)
           }
@@ -100,10 +100,28 @@ final class FileJournaledStateBuilder[S <: JournaledState[S, E], E <: Event](
         }
 
       case _ =>
-        throw new IllegalArgumentException(s"Illegal JSON while journal file reader is in state '$recovererState': ${json.compactPrint.truncateWithEllipsis(100)}")
+        throw new IllegalArgumentException(s"Illegal JSON while journal file reader is in state '$journalProgress': ${json.compactPrint.truncateWithEllipsis(100)}")
     }
 
-  def recovererState = _progress
+  def rollbackToEventSection(): Unit =
+    _progress match {
+      case InCommittedEventsSection =>
+      case InTransaction =>
+        rollback()
+      case AfterEventsSection =>
+        _progress = InCommittedEventsSection
+      case _ =>
+        throw new IllegalStateException(s"rollbackToEventSection() but progress=${_progress}")
+    }
+
+  private def rollback(): Unit = {
+    transaction.clear()
+    _progress = InCommittedEventsSection
+  }
+
+  def isInTransaction = _progress == InTransaction
+
+  def journalProgress = _progress
 
   def fileJournalHeader = builder.fileJournalHeader
 
@@ -117,9 +135,9 @@ final class FileJournaledStateBuilder[S <: JournaledState[S, E], E <: Event](
 
   def result: S =
     _progress match {
-      case InEventsSection | AfterEventsSection =>
+      case InCommittedEventsSection | AfterEventsSection =>
         builder.state
-      case _ => throw new IllegalStateException(s"Journal file '$journalFileForInfo' is truncated in state '$recovererState'")
+      case _ => throw new IllegalStateException(s"Journal file '$journalFileForInfo' is truncated in state '$journalProgress'")
     }
 
   def isAcceptingEvents = _progress.isAcceptingEvents
