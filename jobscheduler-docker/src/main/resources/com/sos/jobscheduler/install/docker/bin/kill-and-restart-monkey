@@ -10,7 +10,7 @@ while true; do
   sleep $a
   echo -n "start "
   docker start jobscheduler-master || true
-  a=$((2 ** (RANDOM / 5000) + RANDOM / 250))
+  a=$((2 ** (RANDOM / 10000) + RANDOM / 250))
   echo -n "Primary runs for ${a}s "
   sleep $a
 done &
