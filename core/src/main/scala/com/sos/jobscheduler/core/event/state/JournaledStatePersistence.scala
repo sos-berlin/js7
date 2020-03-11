@@ -4,8 +4,9 @@ import akka.actor.{ActorRef, ActorRefFactory}
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
-import com.sos.jobscheduler.common.scalautil.SetOnce
+import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
 import com.sos.jobscheduler.core.event.journal.JournalActor
+import com.sos.jobscheduler.core.event.state.JournaledStatePersistence._
 import com.sos.jobscheduler.core.event.state.StateJournalingActor.{PersistFunction, StateToEvents}
 import com.sos.jobscheduler.data.event.{Event, JournaledState, KeyedEvent, Stamped}
 import monix.eval.Task
@@ -87,7 +88,16 @@ extends AutoCloseable
     if (actorSetOnce.isEmpty) throw new IllegalStateException(s"$toString has not yet been started")
 
   def waitUntilStarted: Task[JournaledStatePersistence[S, E]] =
-    actorSetOnce.task.map(_ => this)
+    Task.deferFuture {
+      val f = actorSetOnce.future
+      if (!f.isCompleted) logger.debug(s"$toString waitUntilStarted ...")
+      f
+    }.map(_ => this)
 
   override def toString = s"JournaledStatePersistence[${S.tpe}]"
+}
+
+object JournaledStatePersistence
+{
+  private val logger = Logger(getClass)
 }

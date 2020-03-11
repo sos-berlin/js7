@@ -127,6 +127,9 @@ extends JournaledState[MasterState, Event]
   def agents = pathToAgent.values.toImmutableSeq
 
   def orders = idToOrder.values.toImmutableSeq
+
+  override def toString =
+    s"MasterState(${EventId.toString(eventId)} ${idToOrder.size} orders, Repo(${repo.currentVersion.size} objects))"
 }
 
 object MasterState
