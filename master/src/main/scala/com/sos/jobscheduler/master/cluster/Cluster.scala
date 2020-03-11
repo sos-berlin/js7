@@ -198,7 +198,9 @@ final class Cluster(
                 if (fileSize != failedAt.position) {
                   if (fileSize < failedAt.position)
                     sys.error(s"Journal file '${journalFile.file.getFileName} is shorter than the failed-over position ${failedAt.position}")
-                  logger.info(s"Truncating journalFile ${journalFile.file.getFileName} at failed-over position")
+                  logger.info(s"Truncating journalFile ${journalFile.file.getFileName}" +
+                    s" at failed-over position ${failedAt.position} (${fileSize - failedAt.position} bytes)")
+                  truncated = true
                   autoClosing(new RandomAccessFile(file.toFile, "rw")) { f =>
                     f.seek(failedAt.position - 1)
                     if (f.read() != '\n')
