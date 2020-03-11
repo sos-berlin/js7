@@ -12,7 +12,8 @@ fi
 contentRC=0
 for file in volumes/master/data/state/master--*.journal; do
   echo "$file"
-  if diff "$file" "volumes/backup-master/data/state/${file##*/}"; then
+  b="volumes/backup-master/data/state/${file##*/}"
+  if ! [ -e "$b" ] || diff "$file" "$b"; then
     :
   else
     contentRC=$?
