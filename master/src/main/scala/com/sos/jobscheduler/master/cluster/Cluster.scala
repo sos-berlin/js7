@@ -117,7 +117,7 @@ final class Cluster(
     recoveredState: MasterState)
   : (Task[Option[MasterState]], Task[Checked[ClusterFollowUp[MasterState, Event]]]) = {
     if (recoveredClusterState != ClusterState.Empty) {
-      logger.debug(s"Recovered clusterState=$recoveredClusterState")
+      logger.debug(s"recoveredClusterState=$recoveredClusterState")
     }
     val (passiveState, followUp) = startCluster(recovered, recoveredClusterState, recoveredState, eventIdGenerator)
     _currentClusterState = passiveState flatMap {
