@@ -141,7 +141,7 @@ extends AutoCloseable
   final def snapshotObjects: CloseableIterator[Any] =
     CloseableIterator.fromCloseable(new JournalReader(journalMeta, expectedJournalId, journalFile))(_.nextSnapshots())
 
-  /** Observers a journal file lines and length. */
+  /** Observes a journal file lines and length. */
   final def observeFile(position: Long, timeout: FiniteDuration, markEOF: Boolean = false, onlyLastOfChunk: Boolean)
   : Observable[PositionAnd[ByteString]] =
     Observable.fromResource(InputStreamJsonSeqReader.resource(journalFile))

@@ -10,7 +10,6 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json, JsonObject}
 import scala.collection.immutable.Iterable
 import scala.language.implicitConversions
-import scala.util.control.NoStackTrace
 
 /**
   * @author Joacim Zschimmer
@@ -83,8 +82,8 @@ object Problem
 
     final def throwable =
       cause match {
-        case Some(p: FromEagerThrowable) => new ProblemException(this, p.throwable) with NoStackTrace
-        case _ => new ProblemException(this) with NoStackTrace
+        case Some(p: FromEagerThrowable) => new ProblemException.NoStackTrace(this, p.throwable)
+        case _ => new ProblemException.NoStackTrace(this)
       }
 
     override final def withPrefix(prefix: String) = new Lazy(normalizePrefix(prefix) + toString)
@@ -156,7 +155,7 @@ object Problem
   final case class Multiple private[problem](problems: Iterable[Problem]) extends Problem {
     require(problems.nonEmpty)
 
-    def throwable = new ProblemException(this) with NoStackTrace
+    def throwable = new ProblemException.NoStackTrace(this)
 
     def throwableOption: None.type = None
 
@@ -208,11 +207,11 @@ object Problem
 
   implicit val problemSemigroup: Semigroup[Problem] = {
     case (a: Problem, b: FromThrowable) =>
-      Problem.fromLazyThrowable(new ProblemException(a, b.throwable) with NoStackTrace)
+      Problem.fromLazyThrowable(new ProblemException.NoStackTrace(a, b.throwable))
 
     case (a: FromThrowable, b: Problem) =>
       Problem.fromLazyThrowable {
-        val t = new ProblemException(a, b.throwable) with NoStackTrace
+        val t = new ProblemException.NoStackTrace(a, b.throwable)
         t.setStackTrace(a.throwable.getStackTrace)
         t
       }
