@@ -11,7 +11,7 @@ import scala.concurrent.duration._
 final case class AgentDriverConfiguration(
   recouplingStreamReader: RecouplingStreamReaderConf,
   eventBufferDelay: FiniteDuration,
-  eventBufferLimit: Int,
+  eventBufferSize: Int,
   commitDelay: FiniteDuration,
   commandBatchSize: Int,
   commandBatchDelay: FiniteDuration,
@@ -28,7 +28,7 @@ object AgentDriverConfiguration
           new AgentDriverConfiguration(
             recouplingStreamReader,
             eventBufferDelay    = config.getDuration("jobscheduler.master.agent-driver.event-buffer-delay").toFiniteDuration,
-            eventBufferLimit    = config.getInt     ("jobscheduler.master.agent-driver.event-buffer-limit"),
+            eventBufferSize     = config.getInt     ("jobscheduler.master.agent-driver.event-buffer-size"),
             commitDelay         = journalConf.delay,
             commandBatchSize    = config.getInt     ("jobscheduler.master.agent-driver.command-batch-size"),
             commandBatchDelay   = config.getDuration("jobscheduler.master.agent-driver.command-batch-delay").toFiniteDuration,

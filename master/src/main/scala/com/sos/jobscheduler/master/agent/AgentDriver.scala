@@ -312,7 +312,7 @@ with ReceiveLoggingActor.WithStash
       //.map { a => logEvent(a); a }
       .bufferTimedAndCounted(
         conf.eventBufferDelay max conf.commitDelay,
-        maxCount = conf.eventBufferLimit)  // ticks
+        maxCount = conf.eventBufferSize)  // ticks
       .filter(_.nonEmpty)   // Ignore empty ticks
       .map(_.toImmutableSeq)
       .mapEval(stampedEvents =>
