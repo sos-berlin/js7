@@ -8,6 +8,7 @@ import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Problem._
 import com.sos.jobscheduler.base.utils.ScalaUtils._
+import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import io.circe.{Decoder, Encoder, Json}
 import scala.collection.immutable.{Iterable, Seq, VectorBuilder}
 import scala.collection.mutable
@@ -156,13 +157,12 @@ object Checked
       orThrow(identity)
 
     def orThrow(toThrowable: Throwable => Throwable): A =
-      underlying.left.map(_.throwable).orThrow(toThrowable)
+      underlying
+        .left.map(problem => problem.throwableOption.fold(problem.throwable)(_.appendCurrentStackTrace))
+        .orThrow(toThrowable)
 
     def orThrowWithoutStacktrace: A =
-      underlying match {
-        case Left(problem) => throw problem.throwable
-        case Right(a) => a
-      }
+      underlying.left.map(_.throwable).orThrow
   }
 
   implicit final class RichCheckedIterable[A](private val underlying: Iterable[Checked[A]]) extends AnyVal {
