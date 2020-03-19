@@ -28,10 +28,9 @@ build/bin/prepare-volumes
 
 [ -f docker-compose.yml ] || ln -sf build/docker-compose.yml .
 
-docker-compose down
-docker-compose rm -v
+docker-compose down --remove-orphans
 # Let Docker not accumulate old images:
-docker rmi jobscheduler &>/dev/null || true
+docker rmi --jobscheduler &>/dev/null || true
 docker-compose build --parallel
 docker-compose up --no-start
 
