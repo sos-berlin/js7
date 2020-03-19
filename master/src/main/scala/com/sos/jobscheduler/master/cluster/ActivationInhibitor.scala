@@ -18,7 +18,7 @@ private[cluster] final class ActivationInhibitor
   def tryToActivate[A](ifInhibited: Task[A], activate: Task[A]): Task[A] =
     stateMvarTask.flatMap(mvar =>
       mvar.take.flatMap {
-        case Passive =>
+        case Passive | Active =>
           activate
             .guaranteeCase {
               case ExitCase.Completed => mvar.put(Active)
@@ -27,9 +27,6 @@ private[cluster] final class ActivationInhibitor
 
         case Inhibited =>
           mvar.put(Inhibited) >> ifInhibited
-
-        case Active => Task.raiseError(new IllegalStateException(
-          "ActivationInhibitor.tryToActivate but state is already Active"))
       })
 
   def inhibitActivation(duration: FiniteDuration): Task[Checked[Boolean]] =

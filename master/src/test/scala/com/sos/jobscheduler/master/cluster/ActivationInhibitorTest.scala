@@ -30,13 +30,12 @@ final class ActivationInhibitorTest extends FreeSpec
       assert(inhibitor.state.await(99.s) == Some(Active))
     }
 
-    "second activation is an error" in {
+    "second activation is allowed" in {
+      // That means, the current activation is acknowledged
       val a = activation.runToFuture
-      scheduler.tick()
-      //Await.ready(a, 9.s)
-      assert(a.value.map(_.failed.get.toString) ==
-        Some("java.lang.IllegalStateException: ActivationInhibitor.tryToActivate but state is already Active"))
-      assert(inhibitor.state.await(99.s) == None)  // Empty state after error !!!
+      scheduler.tick(1.s)
+      assert(a.value == Some(Success("ACTIVATED")))
+      assert(inhibitor.state.await(99.s) == Some(Active))
     }
   }
 
