@@ -29,7 +29,7 @@ import com.sos.jobscheduler.core.event.journal.recover.{JournaledStateRecoverer,
 import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
 import com.sos.jobscheduler.core.problems.MissingPassiveClusterNodeHeartbeatProblem
 import com.sos.jobscheduler.core.startup.Halt.haltJava
-import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, Coupled, FollowerLost, FollowingStarted, SwitchedOver}
+import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, Coupled, CouplingPrepared, PassiveLost, SwitchedOver}
 import com.sos.jobscheduler.data.cluster.ClusterState.{ClusterCoupled, ClusterEmpty, ClusterFailedOver, ClusterNodesAppointed, ClusterPreparedToBeCoupled, ClusterSole, Decoupled, HasBackupNode}
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeRole, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
@@ -241,7 +241,7 @@ final class Cluster(
 
       case (state: HasBackupNode, Some(ownUri), _, Some(_)) if state.passiveUri == ownUri =>
         logger.info(
-          if (state.isTheFollowingNode(ownUri))
+          if (state.isCoupledPassive(ownUri))
             s"Remaining a passive cluster node following the active node '${state.activeUri}'"
           else
             s"Remaining a passive cluster node trying to follow the active node '${state.activeUri}'")
@@ -307,34 +307,34 @@ final class Cluster(
           })
     }
 
-  def passiveNodeFollows(followedUri: Uri, followingUri: Uri): Task[Checked[Completed]] = {
-    lazy val call = s"passiveNodeFollows(followedUri=$followedUri, followingUri=$followingUri)"
+  def prepareCoupling(activeUri: Uri, passiveUri: Uri): Task[Checked[Completed]] = {
+    lazy val call = s"prepareCoupling(activeUri=$activeUri, passiveUri=$passiveUri)"
     clusterConf.maybeOwnUri match {
       case None =>
         Task.pure(Left(Problem.pure("Missing this node's own URI")))
       case Some(ownUri) =>
-        if (followedUri != ownUri)
+        if (activeUri != ownUri)
           Task.pure(Left(Problem.pure(s"$call but this is '$ownUri''")))
         else
           persistence.waitUntilStarted.flatMap(_ =>
             persist {
               case clusterState: ClusterPreparedToBeCoupled
-                if clusterState.activeUri == followedUri && clusterState.passiveUri == followingUri =>
+                if clusterState.activeUri == activeUri && clusterState.passiveUri == passiveUri =>
                 Right(Nil)
 
-              //case state @ (ClusterEmpty | ClusterSole(`followedUri`) | ClusterNodesAppointed(Seq(`followedUri`, `followingUri`))) =>
+              //case state @ (ClusterEmpty | ClusterSole(`activeUri`) | ClusterNodesAppointed(Seq(`activeUri`, `passiveUri`))) =>
               //  for (events <- becomeSoleIfEmpty(state)) yield
-              //    events ::: FollowingStarted(followingUri) ::
+              //    events ::: CouplingPrepared(passiveUri) ::
               //      (state match {
-              //        case ClusterNodesAppointed(Seq(`followedUri`, `followingUri`)) => ClusterPreparedToBeCoupled :: Nil
+              //        case ClusterNodesAppointed(Seq(`activeUri`, `passiveUri`)) => ClusterPreparedToBeCoupled :: Nil
               //        case _ => Nil
               //      })
 
-              case ClusterNodesAppointed(Seq(`followedUri`, `followingUri`)) =>
-                Right(FollowingStarted(followingUri) :: Nil)
+              case ClusterNodesAppointed(Seq(`activeUri`, `passiveUri`)) =>
+                Right(CouplingPrepared(passiveUri) :: Nil)
 
-              case state: Decoupled if state.activeUri == followedUri && state.passiveUri == followingUri =>
-                Right(FollowingStarted(followingUri) :: Nil)
+              case state: Decoupled if state.activeUri == activeUri && state.passiveUri == passiveUri =>
+                Right(CouplingPrepared(passiveUri) :: Nil)
 
               case state =>
                 Left(Problem.pure(s"$call rejected due to inappropriate cluster state $state"))
@@ -469,10 +469,10 @@ final class Cluster(
         case Success(Left(MissingPassiveClusterNodeHeartbeatProblem(uri))) if clusterConf.maybeOwnUri.isDefined =>
           for (ownUri <- clusterConf.maybeOwnUri) {
             logger.warn("No heartbeat of passive cluster node - continuing as single active cluster node")
-            val followerLost = FollowerLost(uri)
+            val passiveLost = PassiveLost(uri)
             val common = new ClusterCommon(ownUri, activationInhibitor, clusterWatch, testEventBus)
-            common.ifClusterWatchAllowsActivation(state, followerLost,
-              persist(_ => Right(followerLost :: Nil))
+            common.ifClusterWatchAllowsActivation(state, passiveLost,
+              persist(_ => Right(passiveLost :: Nil))
                 .map(_.map(_ => true))
             ) .guarantee(Task {
                 // FIXME Possible race condition: when immediately Coupled again the acknowledgement are not being read
@@ -482,9 +482,9 @@ final class Cluster(
               })
               .runToFuture
               .onComplete {
-                case Failure(t) => logger.error(s"$followerLost event failed: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
-                case Success(Left(problem)) => logger.error(s"$followerLost event failed: $problem")
-                case Success(Right(false)) => logger.error(s"$followerLost inhibited")  // ???
+                case Failure(t) => logger.error(s"$passiveLost event failed: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+                case Success(Left(problem)) => logger.error(s"$passiveLost event failed: $problem")
+                case Success(Right(false)) => logger.error(s"$passiveLost inhibited")  // ???
                 case Success(Right(true)) =>
               }
           }
@@ -520,7 +520,7 @@ final class Cluster(
                 Task.deferFuture {
                   // Possible dead letter when `switchoverAcknowledged` is detected too late,
                   // because after JournalActor has committed SwitchedOver (after ack), JournalActor stops.
-                  (journalActor ? JournalActor.Input.FollowerAcknowledged(eventId = eventId)).mapTo[Completed]
+                  (journalActor ? JournalActor.Input.PassiveNodeAcknowledged(eventId = eventId)).mapTo[Completed]
                     .map(Right.apply)
                 }
             }

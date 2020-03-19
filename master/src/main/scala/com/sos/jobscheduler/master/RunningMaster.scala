@@ -366,8 +366,8 @@ object RunningMaster
           cluster.appointBackupNode(activeUri, backupUri)
             .map(_.map((_: Completed) => MasterCommand.Response.Accepted))
 
-        case MasterCommand.ClusterPassiveFollows(activeUri, followingUri) =>
-          cluster.passiveNodeFollows(activeUri, followingUri)
+        case MasterCommand.ClusterPrepareCoupling(activeUri, passiveUri) =>
+          cluster.prepareCoupling(activeUri, passiveUri)
             .map(_.map((_: Completed) => MasterCommand.Response.Accepted))
 
         case MasterCommand.ClusterCouple(activeUri, followingUri) =>

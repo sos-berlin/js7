@@ -6,7 +6,7 @@ import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, Coupled, FailedOver, FollowerLost, FollowingStarted, SwitchedOver}
+import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, Coupled, CouplingPrepared, FailedOver, PassiveLost, SwitchedOver}
 import com.sos.jobscheduler.data.cluster.ClusterState._
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
@@ -31,10 +31,10 @@ extends JournaledState[ClusterState, ClusterEvent]
         case (ClusterSole(primaryUri), BackupNodeAppointed(backupUri)) if primaryUri != backupUri =>
           Right(ClusterNodesAppointed(primaryUri :: backupUri :: Nil))
 
-        //case (ClusterSole(primaryUri), FollowingStarted(followingUri)) if primaryUri != followingUri =>
-        //  Right(AwaitingAppointment(primaryUri :: followingUri :: Nil))
+        //case (ClusterSole(primaryUri), CouplingPrepared(passiveUri)) if primaryUri != passiveUri =>
+        //  Right(AwaitingAppointment(primaryUri :: passiveUri :: Nil))
 
-        case (state: ClusterNodesAppointed, FollowingStarted(followingUri)) if state.backupUri == followingUri =>
+        case (state: ClusterNodesAppointed, CouplingPrepared(passiveUri)) if state.backupUri == passiveUri =>
           Right(ClusterPreparedToBeCoupled(state.uris, active = 0/*primary*/))
 
         //case (state: AwaitingAppointment, BackupNodeAppointed(backupUri)) if state.backupUri == backupUri =>
@@ -46,14 +46,14 @@ extends JournaledState[ClusterState, ClusterEvent]
         case (state: ClusterCoupled, SwitchedOver(uri)) if uri == state.passiveUri =>
           Right(ClusterSwitchedOver(state.uris, state.passive))
 
-        case (state: ClusterCoupled, FollowerLost(uri)) if state.passiveUri == uri =>
+        case (state: ClusterCoupled, PassiveLost(uri)) if state.passiveUri == uri =>
           Right(ClusterPassiveLost(state.uris, state.active))
 
         case (state: ClusterCoupled, event: FailedOver)
           if state.activeUri == event.failedActiveUri && state.passiveUri == event.activatedUri =>
           Right(ClusterFailedOver(state.uris, state.passive, event.failedAt))
 
-        case (state: Decoupled, ClusterEvent.FollowingStarted(followingUri)) if followingUri == state.passiveUri =>
+        case (state: Decoupled, ClusterEvent.CouplingPrepared(passiveUri)) if passiveUri == state.passiveUri =>
           Right(ClusterPreparedToBeCoupled(state.uris, state.active))
 
         case (_, keyedEvent) => eventNotApplicable(keyedEvent)
@@ -68,7 +68,7 @@ extends JournaledState[ClusterState, ClusterEvent]
 
   final def isActive(uri: Uri) = maybeActiveUri contains uri
 
-  def isTheFollowingNode(uri: Uri) = false
+  def isCoupledPassive(uri: Uri) = false
 }
 
 object ClusterState
@@ -154,7 +154,7 @@ object ClusterState
   {
     assertIsValid()
 
-    override def isTheFollowingNode(uri: Uri) = uri == passiveUri
+    override def isCoupledPassive(uri: Uri) = uri == passiveUri
 
     override def toString = s"ClusterCoupled($nodesString)"
   }

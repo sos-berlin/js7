@@ -86,23 +86,23 @@ final class MasterCommandTest extends FreeSpec
     }
   }
 
-  "ClusterPassiveFollows" in {
+  "ClusterPrepareCoupling" in {
     testJson[MasterCommand](
-      ClusterPassiveFollows(Uri("http://ACTIVE"), Uri("http://FOLLOWING")),
+      ClusterPrepareCoupling(Uri("http://ACTIVE"), Uri("http://PASSIVE")),
       json"""{
-        "TYPE": "ClusterPassiveFollows",
-        "followedUri": "http://ACTIVE",
-        "followingUri": "http://FOLLOWING"
+        "TYPE": "ClusterPrepareCoupling",
+        "activeUri": "http://ACTIVE",
+        "passiveUri": "http://PASSIVE"
       }""")
   }
 
   "ClusterCouple" in {
     testJson[MasterCommand](
-      ClusterCouple(Uri("http://ACTIVE"), Uri("http://FOLLOWING")),
+      ClusterCouple(Uri("http://ACTIVE"), Uri("http://PASSIVE")),
       json"""{
         "TYPE": "ClusterCouple",
         "activeUri": "http://ACTIVE",
-        "passiveUri": "http://FOLLOWING"
+        "passiveUri": "http://PASSIVE"
       }""")
   }
 

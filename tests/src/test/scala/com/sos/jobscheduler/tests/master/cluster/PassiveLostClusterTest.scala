@@ -4,14 +4,14 @@ import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import com.sos.jobscheduler.data.cluster.ClusterEvent
-import com.sos.jobscheduler.data.cluster.ClusterEvent.{Coupled, FollowerLost}
+import com.sos.jobscheduler.data.cluster.ClusterEvent.{Coupled, PassiveLost}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
 import com.sos.jobscheduler.tests.master.cluster.MasterClusterTester._
 import monix.execution.Scheduler.Implicits.global
 
-final class FollowerLostClusterTest extends MasterClusterTester
+final class PassiveLostClusterTest extends MasterClusterTester
 {
   "Passive lost" in {
     val primaryHttpPort :: backupHttpPort :: Nil = findFreeTcpPorts(2)
@@ -31,17 +31,17 @@ final class FollowerLostClusterTest extends MasterClusterTester
 
       // KILL BACKUP
       backupMaster.terminate() await 99.s
-      val followerLost = primaryMaster.eventWatch.await[FollowerLost](_.key == NoKey).head.eventId
+      val passiveLost = primaryMaster.eventWatch.await[PassiveLost](_.key == NoKey).head.eventId
 
-      primaryMaster.eventWatch.await[OrderFinished](_.key == orderId, after = followerLost)
+      primaryMaster.eventWatch.await[OrderFinished](_.key == orderId, after = passiveLost)
 
       backupMaster = backup.startMaster(httpPort = Some(backupHttpPort)) await 99.s
       primaryMaster.eventWatch.await[Coupled](_.key == NoKey).head.eventId
 
       orderId = OrderId("🔸")
       primaryMaster.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path))
-      primaryMaster.eventWatch.await[OrderFinished](_.key == orderId, after = followerLost)
-      backupMaster.eventWatch.await[OrderFinished](_.key == orderId, after = followerLost)
+      primaryMaster.eventWatch.await[OrderFinished](_.key == orderId, after = passiveLost)
+      backupMaster.eventWatch.await[OrderFinished](_.key == orderId, after = passiveLost)
 
       primaryMaster.terminate() await 99.s
       backupMaster.terminate() await 99.s

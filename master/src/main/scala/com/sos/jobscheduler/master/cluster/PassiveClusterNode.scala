@@ -19,7 +19,7 @@ import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, JournalSeparat
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles._
 import com.sos.jobscheduler.core.event.journal.recover.{FileJournaledStateBuilder, JournalProgress, Recovered, RecoveredJournalFile}
 import com.sos.jobscheduler.core.event.state.JournaledStateBuilder
-import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, FailedOver, FollowerLost, FollowingStarted, SwitchedOver}
+import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, CouplingPrepared, FailedOver, PassiveLost, SwitchedOver}
 import com.sos.jobscheduler.data.cluster.ClusterState.{ClusterCoupled, ClusterEmpty, ClusterNodesAppointed, ClusterPreparedToBeCoupled, ClusterSole}
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
@@ -30,7 +30,7 @@ import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
 import com.sos.jobscheduler.master.cluster.ObservablePauseDetector.RichPauseObservable
 import com.sos.jobscheduler.master.cluster.PassiveClusterNode._
 import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.data.MasterCommand.{ClusterCouple, ClusterPassiveFollows}
+import com.sos.jobscheduler.master.data.MasterCommand.{ClusterCouple, ClusterPrepareCoupling}
 import io.circe.Json
 import io.circe.syntax._
 import java.nio.ByteBuffer
@@ -61,7 +61,7 @@ import scodec.bits.ByteVector
   import recovered.eventWatch
 
   private val stateBuilderAndAccessor = new StateBuilderAndAccessor[S, Event](recovered.newStateBuilder)
-  private val clusterPassiveFollowsSent = AtomicBoolean(false)
+  private val clusterPrepareCouplingSent = AtomicBoolean(false)
   private var dontActivateBecauseOtherFailedOver = otherFailed
   @volatile private var stopped = false
 
@@ -91,7 +91,7 @@ import scodec.bits.ByteVector
             case ClusterEmpty | _: ClusterSole | _: ClusterCoupled =>
               Task.unit
             case _: ClusterNodesAppointed | _: ClusterState.Decoupled =>
-              sendClusterPassiveFollows
+              sendClusterPrepareCoupling
             case _: ClusterPreparedToBeCoupled =>
               sendClusterCouple
           }
@@ -111,18 +111,18 @@ import scodec.bits.ByteVector
       }
     }
 
-  private def sendClusterPassiveFollows: Task[Unit] = {
-    if (clusterPassiveFollowsSent.getAndSet(true)) {  // eagerly check
+  private def sendClusterPrepareCoupling: Task[Unit] = {
+    if (clusterPrepareCouplingSent.getAndSet(true)) {  // eagerly check
       // Two points in this passive code may call this function, but exactly one must really call.
-      throw new IllegalStateException("MasterCommand.ClusterPassiveFollows has already been sent")
+      throw new IllegalStateException("MasterCommand.ClusterPrepareCoupling has already been sent")
     }
-    masterApi(activeUri, "ClusterPassiveFollows")
+    masterApi(activeUri, "ClusterPrepareCoupling")
       .use(_
         .executeCommand(
-          ClusterPassiveFollows(followedUri = activeUri, followingUri = ownUri)))
+          ClusterPrepareCoupling(activeUri = activeUri, passiveUri = ownUri)))
         .map((_: MasterCommand.Response.Accepted) => ())
       .onErrorRestartLoop(()) { (throwable, _, retry) =>
-        logger.warn(s"ClusterPassiveFollows command failed with ${throwable.toStringWithCauses}")
+        logger.warn(s"ClusterPrepareCoupling command failed with ${throwable.toStringWithCauses}")
         logger.debug(throwable.toString, throwable)
         retry(()).delayExecution(1.s/*TODO*/)
       }
@@ -373,22 +373,22 @@ import scodec.bits.ByteVector
                 Observable.pure(Right(()))
               } else if (json.toClass[ClusterEvent].isDefined)
                 json.as[ClusterEvent].orThrow match {
-                  case _: BackupNodeAppointed | _: FollowerLost =>
+                  case _: BackupNodeAppointed | _: PassiveLost =>
                     Observable.fromTask(
-                      sendClusterPassiveFollows
+                      sendClusterPrepareCoupling
                         .map(Right.apply))  // TODO Handle heartbeat timeout !
 
                   case _: FailedOver =>
                     // Now, this node has switched from still-active (but failed for the other node) to passive.
                     // It's time to recouple.
-                    // ClusterPassiveFollows command requests an event acknowledgement.
-                    // To avoid a deadlock, we send ClusterPassiveFollows command asynchronously and
+                    // ClusterPrepareCoupling command requests an event acknowledgement.
+                    // To avoid a deadlock, we send ClusterPrepareCoupling command asynchronously and
                     // continue immediately with acknowledgement of ClusterEvent.Coupled.
                     if (!otherFailed)
                       logger.error(s"Replicated unexpected FailedOver event")  // Should not happen
                     dontActivateBecauseOtherFailedOver = false
                     Observable.fromTask(
-                      sendClusterPassiveFollows
+                      sendClusterPrepareCoupling
                         .map(Right.apply))  // TODO Handle heartbeat timeout !
 
                   case _: SwitchedOver =>
@@ -399,7 +399,7 @@ import scodec.bits.ByteVector
                         .map(_.map(_ => Unit)))
                     // TODO sendClusterPassiveFollows ?
 
-                  case _: FollowingStarted =>
+                  case _: CouplingPrepared =>
                     Observable.fromTask(
                       sendClusterCouple
                         .map(Right.apply))  // TODO Handle heartbeat timeout !

@@ -188,8 +188,8 @@ extends Actor with Stash
             waitingForAcknowledgeTimer := Cancelable.empty
             commit()
 
-          case Some(Stamped(_, _, KeyedEvent(_, _: ClusterEvent.FollowerLost))) =>
-            logger.debug("FollowerLost: no more acknowledgments required")
+          case Some(Stamped(_, _, KeyedEvent(_, _: ClusterEvent.PassiveLost))) =>
+            logger.debug("PassiveLost: no more acknowledgments required")
             requireClusterAcknowledgement = false
             waitingForAcknowledgeTimer := Cancelable.empty
             onCommitAcknowledged(writtenBuffer.length)
@@ -217,7 +217,7 @@ extends Actor with Stash
       snapshotRequesters += sender()
       tryTakeSnapshotIfRequested()
 
-    case Input.FollowerAcknowledged(eventId_) =>
+    case Input.PassiveNodeAcknowledged(eventId_) =>
       var ack = eventId_
       if (ack > lastWrittenEventId && switchedOver) {
         // The other cluster node may already have become active (uncoupled),
@@ -642,7 +642,7 @@ object JournalActor
       alreadyDelayed: FiniteDuration,
       item: CallersItem)
     final case object TakeSnapshot
-    final case class FollowerAcknowledged(eventId: EventId)
+    final case class PassiveNodeAcknowledged(eventId: EventId)
     final case object Terminate
     final case object AwaitAndTerminate
     case object GetState

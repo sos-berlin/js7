@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.data.cluster
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, Coupled, FailedOver, FollowerLost, FollowingStarted, SwitchedOver}
+import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, Coupled, CouplingPrepared, FailedOver, PassiveLost, SwitchedOver}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.JournalPosition
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -28,11 +28,11 @@ final class ClusterEventTest extends FreeSpec
       }""")
   }
 
-  "FollowingStarted" in {
-    testJson[ClusterEvent](FollowingStarted(Uri("http://FOLLOWER")),
+  "CouplingPrepared" in {
+    testJson[ClusterEvent](CouplingPrepared(Uri("http://PASSIVE")),
       json"""{
-        "TYPE": "Cluster.FollowingStarted",
-        "uri": "http://FOLLOWER"
+        "TYPE": "Cluster.CouplingPrepared",
+        "passiveUri": "http://PASSIVE"
       }""")
   }
 
@@ -64,11 +64,11 @@ final class ClusterEventTest extends FreeSpec
       }""")
   }
 
-  "FollowerLost" in {
-    testJson[ClusterEvent](FollowerLost(Uri("http://FOLLOWER")),
+  "PassiveLost" in {
+    testJson[ClusterEvent](PassiveLost(Uri("http://PASSIVE")),
       json"""{
-        "TYPE": "Cluster.FollowerLost",
-        "uri": "http://FOLLOWER"
+        "TYPE": "Cluster.PassiveLost",
+        "uri": "http://PASSIVE"
       }""")
   }
 }

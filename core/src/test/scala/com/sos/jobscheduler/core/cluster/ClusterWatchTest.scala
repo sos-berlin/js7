@@ -6,7 +6,7 @@ import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.core.cluster.ClusterWatch._
-import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, Coupled, FailedOver, FollowerLost, FollowingStarted, SwitchedOver}
+import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, Coupled, CouplingPrepared, FailedOver, PassiveLost, SwitchedOver}
 import com.sos.jobscheduler.data.cluster.ClusterState.{ClusterCoupled, ClusterPassiveLost, ClusterSole}
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
@@ -46,7 +46,7 @@ final class ClusterWatchTest extends FreeSpec
 
     "Coupling" in {
       scheduler.tick(11.s)
-      assert(applyEvent(primary, BackupNodeAppointed(backup) :: FollowingStarted(backup) :: Coupled :: Nil) == Right(Completed))
+      assert(applyEvent(primary, BackupNodeAppointed(backup) :: CouplingPrepared(backup) :: Coupled :: Nil) == Right(Completed))
       assert(watch.isActive(primary).await(99.s).orThrow)
     }
 
@@ -107,7 +107,7 @@ final class ClusterWatchTest extends FreeSpec
     }
 
     "ClusterCoupled" in {
-      assert(applyEvent(backup, FollowingStarted(primary) :: Nil) == Right(Completed))
+      assert(applyEvent(backup, CouplingPrepared(primary) :: Nil) == Right(Completed))
       assert(applyEvent(backup, Coupled :: Nil) == Right(Completed))
     }
 
@@ -119,12 +119,12 @@ final class ClusterWatchTest extends FreeSpec
 
     "SwitchedOver after heartbeat loss" in {
       scheduler.tick(11.s)
-      assert(applyEvent(primary, FollowingStarted(backup) :: Coupled :: SwitchedOver(backup) :: Nil) == Right(Completed))
+      assert(applyEvent(primary, CouplingPrepared(backup) :: Coupled :: SwitchedOver(backup) :: Nil) == Right(Completed))
       assert(watch.isActive(backup).await(99.s).orThrow)
     }
 
     "SwitchedOver from inactive node" in {
-      assert(applyEvent(backup, FollowingStarted(primary) :: Coupled :: Nil) == Right(Completed))
+      assert(applyEvent(backup, CouplingPrepared(primary) :: Coupled :: Nil) == Right(Completed))
       assert(watch.isActive(backup).await(99.s).orThrow)
       assert(applyEvent(primary, SwitchedOver(primary) :: Nil) ==
         Left(ClusterWatchHeartbeatFromInactiveNodeProblem(primary, clusterState)))
@@ -134,12 +134,12 @@ final class ClusterWatchTest extends FreeSpec
       assert(watch.get.await(99.s) == Right(clusterState))
       assert(watch.get.await(99.s) == Right(ClusterCoupled(primary :: backup :: Nil, active = 1)))
 
-      // We test the loss of a FollowerLost event, and then apply Coupled
-      val lostEvent = FollowerLost(primary)
+      // We test the loss of a PassiveLost event, and then apply Coupled
+      val lostEvent = PassiveLost(primary)
       val decoupled = ClusterPassiveLost(primary :: backup :: Nil, active = 1)
       assert(clusterState.applyEvent(NoKey <-: lostEvent) == Right(decoupled))
 
-      val nextEvents = FollowingStarted(primary) :: Coupled :: Nil
+      val nextEvents = CouplingPrepared(primary) :: Coupled :: Nil
       val coupled = ClusterCoupled(primary :: backup :: Nil, active = 1)
       assert(decoupled.applyEvents(nextEvents.map(NoKey <-: _)) == Right(coupled))
 

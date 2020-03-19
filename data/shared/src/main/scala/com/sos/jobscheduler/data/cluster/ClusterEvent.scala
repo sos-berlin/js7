@@ -15,7 +15,7 @@ object ClusterEvent
   final case class BackupNodeAppointed(uri: Uri)
   extends ClusterEvent
 
-  final case class FollowingStarted(uri: Uri)
+  final case class CouplingPrepared(passiveUri: Uri)
   extends ClusterEvent
 
   //type ClusterPreparedToBeCoupled = ClusterPreparedToBeCoupled.type
@@ -33,15 +33,15 @@ object ClusterEvent
     override def toString = s"$FailedOver($failedActiveUri --> $activatedUri, $failedAt)"
   }
 
-  final case class FollowerLost(uri: Uri)
+  final case class PassiveLost(uri: Uri)
   extends ClusterEvent
 
   implicit val jsonCodec = TypedJsonCodec[ClusterEvent](
     Subtype.named(deriveCodec[BecameSole]         , "Cluster.BecameSole"),
     Subtype.named(deriveCodec[BackupNodeAppointed], "Cluster.BackupNodeAppointed"),
-    Subtype.named(deriveCodec[FollowingStarted]   , "Cluster.FollowingStarted"),
+    Subtype.named(deriveCodec[CouplingPrepared]   , "Cluster.CouplingPrepared"),
     Subtype.named(Coupled                         , "Cluster.Coupled"),
     Subtype.named(deriveCodec[SwitchedOver]       , "Cluster.SwitchedOver"),
     Subtype.named(deriveCodec[FailedOver]         , "Cluster.FailedOver"),
-    Subtype.named(deriveCodec[FollowerLost]       , "Cluster.FollowerLost"))
+    Subtype.named(deriveCodec[PassiveLost]        , "Cluster.PassiveLost"))
 }

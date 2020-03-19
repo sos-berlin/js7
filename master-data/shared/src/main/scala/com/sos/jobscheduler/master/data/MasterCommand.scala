@@ -137,10 +137,10 @@ object MasterCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
-  final case class ClusterPassiveFollows(followedUri: Uri, followingUri: Uri)
+  final case class ClusterPrepareCoupling(activeUri: Uri, passiveUri: Uri)
   extends MasterCommand {
     type Response = Response.Accepted
-    override def toString = s"ClusterPassiveFollows($followingUri follows $followedUri)"
+    override def toString = s"ClusterPrepareCoupling($passiveUri follows $activeUri)"
   }
 
   final case class ClusterCouple(activeUri: Uri, passiveUri: Uri)
@@ -186,7 +186,7 @@ object MasterCommand extends CommonCommand.Companion
     Subtype(deriveCodec[KeepEvents]),
     Subtype[ShutDown],
     Subtype(deriveCodec[ClusterAppointBackup]),
-    Subtype(deriveCodec[ClusterPassiveFollows]),
+    Subtype(deriveCodec[ClusterPrepareCoupling]),
     Subtype(deriveCodec[ClusterCouple]),
     Subtype(ClusterSwitchOver),
     Subtype(deriveCodec[ClusterInhibitActivation]),

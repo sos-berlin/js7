@@ -643,7 +643,7 @@ with MainJournalingActor[Event]
         persist(MasterTestEvent, async = true)(_ =>
           Right(MasterCommand.Response.Accepted))
 
-      case (_: MasterCommand.ClusterAppointBackup) | (_: MasterCommand.ClusterPassiveFollows) =>
+      case (_: MasterCommand.ClusterAppointBackup) | (_: MasterCommand.ClusterPrepareCoupling) =>
         // Handled by MasterCommandExecutor
         Future.failed(new NotImplementedError)
     }
