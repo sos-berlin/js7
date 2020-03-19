@@ -119,6 +119,20 @@ final class ScalaTimeTest extends FreeSpec
       assert((-1.s max -2.s) == -1.s)
     }
 
+    "msPretty" in {
+      assert(0.s.msPretty == "0ms")
+      assert(Duration(1, NANOSECONDS).msPretty == "1ns")
+      assert(Duration(999, NANOSECONDS).msPretty == "0.999µs")
+      assert(Duration(1, MICROSECONDS).msPretty == "0.001ms")
+      assert(Duration(10, MICROSECONDS).msPretty == "0.01ms")
+      assert(Duration(100, MICROSECONDS).msPretty == "0.1ms")
+      assert(Duration(1, MILLISECONDS).msPretty == "1ms")
+      assert(Duration(10, MILLISECONDS).msPretty == "10ms")
+      assert(Duration(100, MILLISECONDS).msPretty == "100ms")
+      assert(Duration(999999999, NANOSECONDS).msPretty == "999ms")
+      assert(Duration(1, SECONDS).msPretty == "1s")
+    }
+
     "pretty" in {
       assert(0.s.pretty == "0s")
       assert(Duration(1, NANOSECONDS).pretty == "1ns")

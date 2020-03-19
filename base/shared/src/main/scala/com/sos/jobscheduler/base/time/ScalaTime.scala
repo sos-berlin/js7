@@ -115,6 +115,26 @@ object ScalaTime
     def toBigDecimal = BigDecimal(delegate.toNanos) / 1000000000
     override def toString = pretty  // For ScalaTest
 
+    def msPretty: String = {
+      val nanos = delegate.toNanos
+      if (nanos == 0) "0ms"
+      else {
+        val a = abs(nanos)
+        if (a >= 1000000000)
+          pretty
+        else if (a >= 10000000)
+          formatNumber(nanos / 1000000.0, 10, "ms")
+        else if (a >= 1000000)
+          formatNumber(nanos / 1000000.0, 100, "ms")
+        else if (a >= 100000)
+          formatNumber(nanos / 1000000.0, 1000, "ms")
+        else if (a >= 1000)
+          formatNumber(nanos / 1000000.0, 1000, "ms")
+        else
+          pretty
+      }
+    }
+
     def pretty: String =
       delegate match {
         case Duration.Zero => "0s"
@@ -260,6 +280,7 @@ object ScalaTime
       result(p) = '.'
       var truncated = result.length
       while (result(truncated - 1) == '0') truncated -= 1
+      if (result(truncated - 1) == '.') truncated -= 1
       result.delete(truncated, result.length)
     }
     result ++= suffix
