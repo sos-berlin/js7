@@ -83,4 +83,8 @@ object AkkaHttpUtils
   implicit final class RichAkkaUri(private val underlying: Uri) extends AnyVal {
     def asAkka = AkkaUri(underlying.string)
   }
+
+  implicit final class RichAkkaAsUri(private val underlying: AkkaUri) extends AnyVal {
+    def asUri = Uri(underlying.toString)
+  }
 }

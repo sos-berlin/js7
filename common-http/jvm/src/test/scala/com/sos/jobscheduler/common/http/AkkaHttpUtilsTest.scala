@@ -20,8 +20,9 @@ final class AkkaHttpUtilsTest extends FreeSpec
     assert((ByteVector('A', 'B') ++ ByteVector('C')).toByteString == ByteString('A', 'B', 'C'))
   }
 
-  "Uri asAkka" in {
+  "Uri asAkka, asUri" in {
     val uri = "http://example.com:1/path/?query=value#hash"
     assert(Uri(uri).asAkka == AkkaUri(uri))
+    assert(AkkaUri(uri).asUri == Uri(uri))
   }
 }
