@@ -49,6 +49,32 @@ private[cluster] final class ClusterCommon(
     )
 }
 
-object ClusterCommon {
+private[cluster] object ClusterCommon
+{
   private val logger = Logger(getClass)
+
+  private[cluster] def truncateFile(file: Path, position: Long): Unit = {
+    autoClosing(FileChannel.open(file, READ, WRITE)) { f =>
+      autoClosing(FileChannel.open(Paths.get(file.toString + "~TRUNCATED-AFTER-FAILOVER"), WRITE, CREATE, TRUNCATE_EXISTING)) { out =>
+        val buffer = ByteBuffer.allocate(4096)
+        f.position(position - 1)
+        f.read(buffer)
+        buffer.flip()
+        if (!buffer.hasRemaining || buffer.get() != '\n')
+          sys.error(s"Invalid failed-over position=$position in '${file.getFileName} journal file")
+        copy(f, out, buffer)
+        f.truncate(position)
+      }
+    }
+  }
+
+  private def copy(in: ScatteringByteChannel, out: GatheringByteChannel, buffer: ByteBuffer): Unit = {
+    var eof = false
+    while(!eof) {
+      if (buffer.hasRemaining) out.write(buffer)
+      buffer.clear()
+      eof = in.read(buffer) <= 0
+      buffer.flip()
+    }
+  }
 }

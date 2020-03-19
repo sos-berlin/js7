@@ -18,7 +18,6 @@ import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.http.AkkaHttpUtils._
 import com.sos.jobscheduler.common.http.{AkkaHttpClient, RecouplingStreamReader}
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.cluster.ClusterWatch.ClusterWatchHeartbeatFromInactiveNodeProblem
 import com.sos.jobscheduler.core.cluster.HttpClusterWatch
@@ -31,7 +30,7 @@ import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
 import com.sos.jobscheduler.core.problems.MissingPassiveClusterNodeHeartbeatProblem
 import com.sos.jobscheduler.core.startup.Halt.haltJava
 import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, Coupled, FollowerLost, FollowingStarted, SwitchedOver}
-import com.sos.jobscheduler.data.cluster.ClusterState.{AwaitingAppointment, AwaitingFollower, Decoupled, Empty, HasBackupNode, IsCoupled, OtherFailedOver, Sole}
+import com.sos.jobscheduler.data.cluster.ClusterState.{Decoupled, Empty, HasBackupNode, IsCoupled, NodesAreAppointed, Sole}
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeRole, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
@@ -40,10 +39,10 @@ import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.master.MasterState
 import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
 import com.sos.jobscheduler.master.cluster.Cluster._
+import com.sos.jobscheduler.master.cluster.ClusterCommon.truncateFile
 import com.sos.jobscheduler.master.cluster.ObservablePauseDetector._
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.typesafe.config.{Config, ConfigUtil}
-import java.io.RandomAccessFile
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, Paths}
 import monix.eval.Task
@@ -70,9 +69,9 @@ final class Cluster(
 {
   private val journalActor = persistence.journalActor
   private val activationInhibitor = new ActivationInhibitor
-  private val fetchingEvents = AtomicBoolean(false)
+  private val fetchingAcks = AtomicBoolean(false)
   @volatile
-  private var fetchingEventsFuture: CancelableFuture[Checked[Completed]] = null
+  private var fetchingAcksFuture: CancelableFuture[Checked[Completed]] = null
   private val fetchingEventsPromise = Promise[Checked[Completed]]()
   @volatile
   private var switchoverAcknowledged = false
@@ -96,7 +95,7 @@ final class Cluster(
   def stop(): Unit = {
     logger.debug("stop")
     stopRequested = true
-    for (o <- Option(fetchingEventsFuture)) {
+    for (o <- Option(fetchingAcksFuture)) {
       o.cancel()
     }
     clusterWatchSynchronizer.stop()
@@ -168,7 +167,7 @@ final class Cluster(
 
               case otherState: ClusterState.IsFailedOver =>
                 import otherState.failedAt
-                logger.info(s"The other cluster node '${otherState.activeUri}' has become active (failed-over) while this node was absent")
+                logger.warn(s"The other cluster node '${otherState.activeUri}' has become active (failed-over) while this node was absent")
                 assertThat(otherState.activeUri == passiveUri &&
                            otherState.passiveUri == recoveredClusterState.activeUri)
                 // This restarted, previously failed cluster node may have written one chunk of events more than
@@ -183,10 +182,10 @@ final class Cluster(
                     journalFiles.head.afterEventId == failedAt.fileEventId &&
                     journalFiles.last.afterEventId > failedAt.fileEventId)
                   {
-                    logger.info(s"Removing journal file '${recoveredJournalFile.file}'")
+                    logger.info(s"Removing journal file written after failover: ${recoveredJournalFile.file.getFileName}")
                     truncated = true
                     val deleteFile = journalFiles.last.file
-                    Files.move(deleteFile, Paths.get(deleteFile + "~DELETE-AFTER-FAILOVER"), REPLACE_EXISTING)  // Keep the file for debugging
+                    Files.move(deleteFile, Paths.get(deleteFile + "~DELETED-AFTER-FAILOVER"), REPLACE_EXISTING)  // Keep the file for debugging
                     journalMeta.updateSymbolicLink(journalFiles.head.file)
                     journalFiles.head
                   } else
@@ -198,29 +197,25 @@ final class Cluster(
                 if (fileSize != failedAt.position) {
                   if (fileSize < failedAt.position)
                     sys.error(s"Journal file '${journalFile.file.getFileName} is shorter than the failed-over position ${failedAt.position}")
-                  logger.info(s"Truncating journalFile ${journalFile.file.getFileName}" +
-                    s" at failed-over position ${failedAt.position} (${fileSize - failedAt.position} bytes)")
+                  logger.info(s"Truncating journal file at failover position ${failedAt.position} (${fileSize - failedAt.position} bytes): ${journalFile.file.getFileName}")
                   truncated = true
-                  autoClosing(new RandomAccessFile(file.toFile, "rw")) { f =>
-                    f.seek(failedAt.position - 1)
-                    if (f.read() != '\n')
-                      sys.error(s"Invalid failed-over position=${failedAt.position} in '${journalFile.file.getFileName} journal file")
-                    f.setLength(failedAt.position)
-                  }
+                  truncateFile(file, failedAt.position)
                 }
-                val truncatedRecoveredJournalFile = if (!truncated) recoveredJournalFile else
-                  JournaledStateRecoverer.recover[MasterState, Event](journalMeta, recovered.newStateBuilder, config /*, runningSince=???*/)
-                    .recoveredJournalFile getOrElse sys.error(s"Unrecoverable journal file '${file.getFileName}''")
-                assertThat(truncatedRecoveredJournalFile.state.clusterState == recoveredClusterState)
-                assertThat(truncatedRecoveredJournalFile.journalPosition == failedAt, s"${truncatedRecoveredJournalFile.journalPosition} != $failedAt")
-                val otherFailedOver = OtherFailedOver(otherState.uris, otherState.active)
-                val passiveClusterNode = newPassiveClusterNode(
-                  ownUri, otherState.activeUri,
-                  recovered.copy(recoveredJournalFile = Some(
-                    truncatedRecoveredJournalFile.copy[MasterState, Event](
-                      state = truncatedRecoveredJournalFile.state.copy(
-                        clusterState = otherFailedOver)))))
-                Some(otherFailedOver -> passiveClusterNode)
+                var trunkRecovered = recovered
+                if (truncated) {
+                  // May take a long time !!!
+                  // TODO Recovering may be omitted because the new active node has written a snapshot immediately after failover
+                  logger.debug("Recovering again due to shortend journal after failover")
+                  trunkRecovered = JournaledStateRecoverer.recover[MasterState, Event](
+                    journalMeta, recovered.newStateBuilder, config /*, runningSince=???*/)
+                  val truncatedRecoveredJournalFile = trunkRecovered.recoveredJournalFile
+                    .getOrElse(sys.error(s"Unrecoverable journal file '${file.getFileName}''"))
+                  assertThat(truncatedRecoveredJournalFile.state.clusterState == recoveredClusterState)
+                  assertThat(truncatedRecoveredJournalFile.journalPosition == failedAt,
+                    s"${truncatedRecoveredJournalFile.journalPosition} != $failedAt")
+                }
+                Some(recoveredClusterState ->
+                  newPassiveClusterNode(ownUri, otherState.activeUri, trunkRecovered, otherFailedOver = true))
 
               case otherState =>
                 sys.error(s"The other node is in invalid clusterState=$otherState")  // ???
@@ -249,7 +244,7 @@ final class Cluster(
           if (state.isTheFollowingNode(ownUri))
             s"Remaining a passive cluster node following the active node '${state.activeUri}'"
           else
-            s"Remaning a passive cluster node trying to follow the active node '${state.activeUri}'")
+            s"Remaining a passive cluster node trying to follow the active node '${state.activeUri}'")
         val passive = newPassiveClusterNode(ownUri, state.activeUri, recovered)
         passive.state.map(Some.apply) ->
           passive.run(recoveredClusterState, recoveredState)
@@ -263,16 +258,22 @@ final class Cluster(
           Task.pure(Left(Problem.pure(s"Unexpected clusterState=$recoveredClusterState (ownUri=$ownUri)")))
     }
 
-  private def newPassiveClusterNode(ownUri: Uri, activeUri: Uri, recovered: Recovered[MasterState, Event]) = {
+  private def newPassiveClusterNode(
+    ownUri: Uri,
+    activeUri: Uri,
+    recovered: Recovered[MasterState, Event],
+    otherFailedOver: Boolean = false)
+  = {
     val common = new ClusterCommon(ownUri, activationInhibitor, clusterWatch, testEventBus)
-    new PassiveClusterNode(ownUri, activeUri, journalMeta, recovered, clusterConf, eventIdGenerator, common)(actorSystem)
+    new PassiveClusterNode(ownUri, activeUri, journalMeta, recovered,
+      otherFailedOver, clusterConf, eventIdGenerator, common)(actorSystem)
   }
 
   def automaticallyAppointConfiguredBackupNode(): Task[Checked[Completed]] =
     clusterConf.maybeRole match {
       case Some(ClusterNodeRole.Primary(Some(backupUri))) =>
         persist {
-          case state @ (ClusterState.Empty | _: ClusterState.Sole | _: ClusterState.AwaitingAppointment) =>
+          case state @ (ClusterState.Empty | _: ClusterState.Sole /*| _: ClusterState.AwaitingAppointment*/) =>
             for (events <- becomeSoleIfEmpty(state)) yield
               events ::: BackupNodeAppointed(backupUri) :: Nil
           case _ =>
@@ -290,12 +291,12 @@ final class Cluster(
           Task.pure(Left(Problem.pure("A cluster node can not be appointed to itself")))
         else
           persist {
-            case state @ (Empty | _: Sole | AwaitingAppointment(Seq(`ownUri`, `backupUri`)))
+            case state @ (Empty | _: Sole /*| AwaitingAppointment(Seq(`ownUri`, `backupUri`))*/)
               if activeUri == ownUri =>
                 for (events <- becomeSoleIfEmpty(state)) yield
                   events ::: BackupNodeAppointed(backupUri) ::
                     (state match {
-                      case AwaitingAppointment(Seq(`ownUri`, `backupUri`)) => Coupled :: Nil
+                      //case AwaitingAppointment(Seq(`ownUri`, `backupUri`)) => Coupled :: Nil
                       case _ => Nil
                     })
             case state =>
@@ -317,22 +318,23 @@ final class Cluster(
         else
           persistence.waitUntilStarted.flatMap(_ =>
             persist {
-              case _: IsCoupled =>
+              case clusterState: ClusterState.PreparedToBeCoupled
+                if clusterState.activeUri == followedUri && clusterState.passiveUri == followingUri =>
                 Right(Nil)
 
-              case state @ (Empty | Sole(`followedUri`) | AwaitingFollower(Seq(`followedUri`, `followingUri`))) =>
-                for (events <- becomeSoleIfEmpty(state)) yield
-                  events ::: FollowingStarted(followingUri) ::
-                    (state match {
-                      case AwaitingFollower(Seq(`followedUri`, `followingUri`)) => Coupled :: Nil
-                      case _ => Nil
-                    })
+              //case state @ (Empty | Sole(`followedUri`) | NodesAreAppointed(Seq(`followedUri`, `followingUri`))) =>
+              //  for (events <- becomeSoleIfEmpty(state)) yield
+              //    events ::: FollowingStarted(followingUri) ::
+              //      (state match {
+              //        case NodesAreAppointed(Seq(`followedUri`, `followingUri`)) => PreparedToBeCoupled :: Nil
+              //        case _ => Nil
+              //      })
 
-              case AwaitingFollower(Seq(`followedUri`, `followingUri`)) =>
-                Right(FollowingStarted(followingUri) :: Coupled :: Nil)
+              case NodesAreAppointed(Seq(`followedUri`, `followingUri`)) =>
+                Right(FollowingStarted(followingUri) :: Nil)
 
               case state: Decoupled if state.activeUri == followedUri && state.passiveUri == followingUri =>
-                Right(Coupled :: Nil)
+                Right(FollowingStarted(followingUri) :: Nil)
 
               case state =>
                 Left(Problem.pure(s"$call rejected due to inappropriate cluster state $state"))
@@ -340,6 +342,33 @@ final class Cluster(
               for (stamped <- stampedEvents.lastOption) proceed(state, stamped.eventId)
               Completed
             }))
+    }
+  }
+
+  def couple(activeUri: Uri, passiveUri: Uri): Task[Checked[Completed]] = {
+    lazy val call = s"couple(activeUri=$activeUri, passiveUri=$passiveUri)"
+    clusterConf.maybeOwnUri match {
+      case None =>
+        Task.pure(Left(Problem.pure("Missing this node's own URI")))
+      case Some(ownUri) =>
+        if (activeUri != ownUri)
+          Task.pure(Left(Problem.pure(s"$call but this is '$ownUri''")))
+        else
+          persist {
+            case s: ClusterState.IsCoupled
+              if s.activeUri == activeUri && s.passiveUri == passiveUri =>
+              Right(Nil)
+
+            case s: ClusterState.PreparedToBeCoupled
+              if s.activeUri == activeUri && s.passiveUri == passiveUri =>
+              Right(Coupled :: Nil)
+
+            case state =>
+              Left(Problem.pure(s"$call rejected due to inappropriate cluster state $state"))
+          }.map(_.map { case (stampedEvents, state) =>
+            for (stamped <- stampedEvents.lastOption) proceed(state, stamped.eventId)
+            Completed
+          })
     }
   }
 
@@ -431,12 +460,12 @@ final class Cluster(
     }
 
   private def fetchAndHandleAcknowledgedEventIds(state: ClusterState.IsCoupled, eventId: EventId): Unit =
-    if (!fetchingEvents.getAndSet(true)) {
+    if (!fetchingAcks.getAndSet(true)) {
       def msg = s"observeEventIds(${state.passiveUri}, after=$eventId, userAndPassword=${clusterConf.userAndPassword})"
-      fetchingEventsFuture = fetchAndHandleAcknowledgedEventIds(state.passiveUri, after = eventId)
+      fetchingAcksFuture = fetchAndHandleAcknowledgedEventIds(state.passiveUri, after = eventId)
         .executeWithOptions(_.enableAutoCancelableRunLoops)
         .runToFuture
-      fetchingEventsFuture onComplete {
+      fetchingAcksFuture onComplete {
         case Success(Left(MissingPassiveClusterNodeHeartbeatProblem(uri))) if clusterConf.maybeOwnUri.isDefined =>
           for (ownUri <- clusterConf.maybeOwnUri) {
             logger.warn("No heartbeat of passive cluster node - continuing as single active cluster node")
@@ -445,16 +474,18 @@ final class Cluster(
             common.ifClusterWatchAllowsActivation(state, followerLost,
               persist(_ => Right(followerLost :: Nil))
                 .map(_.map(_ => true))
-            ) .runToFuture
+            ) .guarantee(Task {
+                // FIXME Possible race condition: when immediately Coupled again the acknowledgement are not being read
+                //  Mit LockResource synchronisieren?
+                for (o <- Option(fetchingAcksFuture)) o.cancel()
+                fetchingAcks := false
+              })
+              .runToFuture
               .onComplete {
                 case Failure(t) => logger.error(s"$followerLost event failed: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
                 case Success(Left(problem)) => logger.error(s"$followerLost event failed: $problem")
                 case Success(Right(false)) => logger.error(s"$followerLost inhibited")  // ???
                 case Success(Right(true)) =>
-                  // FIXME Possible race condition: when immediately Coupled agein the acknowledgement are not being read
-                  //  Mit LockResource synchronisieren?
-                  for (o <- Option(fetchingEventsFuture)) o.cancel()
-                  fetchingEvents := false
               }
           }
 
@@ -476,7 +507,7 @@ final class Cluster(
     }
 
   private def fetchAndHandleAcknowledgedEventIds(uri: Uri, after: EventId): Task[Checked[Completed]] =
-    Task { logger.info(s"Fetching acknowledged EventIds from passive cluster node, after=${EventId.toString(after)}") } >>
+    Task { logger.info(s"Fetching acknowledgements from passive cluster node, after=${EventId.toString(after)}") } >>
       AkkaHttpMasterApi.resource(uri, name = "acknowledgements")(actorSystem)
         .use(api =>
           observeEventIds(api, after = after)

@@ -19,7 +19,7 @@ import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, JournalSeparat
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles._
 import com.sos.jobscheduler.core.event.journal.recover.{FileJournaledStateBuilder, JournalProgress, Recovered, RecoveredJournalFile}
 import com.sos.jobscheduler.core.event.state.JournaledStateBuilder
-import com.sos.jobscheduler.data.cluster.ClusterEvent.{FailedOver, SwitchedOver}
+import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, FailedOver, FollowerLost, FollowingStarted, SwitchedOver}
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.JournalEvent.SnapshotTaken
@@ -29,10 +29,9 @@ import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
 import com.sos.jobscheduler.master.cluster.ObservablePauseDetector.RichPauseObservable
 import com.sos.jobscheduler.master.cluster.PassiveClusterNode._
 import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.data.MasterCommand.ClusterPassiveFollows
+import com.sos.jobscheduler.master.data.MasterCommand.{ClusterCouple, ClusterPassiveFollows}
 import io.circe.Json
 import io.circe.syntax._
-import java.io.RandomAccessFile
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.charset.StandardCharsets.UTF_8
@@ -47,11 +46,12 @@ import monix.reactive.Observable
 import scala.concurrent.TimeoutException
 import scodec.bits.ByteVector
 
-private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
+/*private[cluster]*/ final class PassiveClusterNode[S <: JournaledState[S, Event]](
   ownUri: Uri,
   activeUri: Uri,
   journalMeta: JournalMeta,
   recovered: Recovered[S, Event],
+  otherFailed: Boolean,
   clusterConf: ClusterConf,
   eventIdGenerator: EventIdGenerator,
   common: ClusterCommon)
@@ -60,7 +60,8 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
   import recovered.eventWatch
 
   private val stateBuilderAndAccessor = new StateBuilderAndAccessor[S, Event](recovered.newStateBuilder)
-  val clusterPassiveFollowsSent = AtomicBoolean(false)
+  private val clusterPassiveFollowsSent = AtomicBoolean(false)
+  private var dontActivateBecauseOtherFailedOver = otherFailed
   @volatile private var stopped = false
 
   def state: Task[S] =
@@ -73,53 +74,72 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
     * @param recoveredState
     * @return
     */
-  def run(recoveredClusterState: ClusterState, recoveredState: S): Task[Checked[(ClusterState, ClusterFollowUp[S, Event])]] =
-    Task.deferAction { implicit scheduler =>
+  def run(recoveredClusterState: ClusterState, recoveredState: S)
+  : Task[Checked[(ClusterState, ClusterFollowUp[S, Event])]] =
+    Task.defer {
       logger.debug(s"recoveredClusterState=$recoveredClusterState")
       assertThat(!stopped)  // Single-use only
       for (o <- recovered.recoveredJournalFile) {
-        cutJournalFile(o.file, o.length)
+        cutJournalFile(o.file, o.length, o.eventId)
       }
-      val maybeSendPassiveFollows = recoveredClusterState match {
-        case ClusterState.Empty | _: ClusterState.IsCoupled | _: ClusterState.IsSwitchedOver  =>
-          // ClusterEvent.SwitchedOver has already been replicated so we let the active node couple now
-          sendClusterPassiveFollows
-            .map { _: MasterCommand.Response.Accepted => () }
-        case _ =>
+      ( if (otherFailed)
+          // Other node failed-over while this node was active but lost. FailedOver event will be replicated.
           Task.unit
-      }
-      Task.parMap2(
-        maybeSendPassiveFollows,
+        else
+          recoveredClusterState match {
+            case ClusterState.Empty | _: ClusterState.Sole | _: ClusterState.IsCoupled =>
+              Task.unit
+            case _: ClusterState.NodesAreAppointed | _: ClusterState.Decoupled =>
+              sendClusterPassiveFollows
+            case _: ClusterState.PreparedToBeCoupled =>
+              sendClusterCouple
+          }
+      ) >>
         replicateJournalFiles(recoveredClusterState)
-      )((_, followUp) => followUp)
         .guarantee(Task {
           stopped = true
         })
     }
 
-  private def cutJournalFile(file: Path, length: Long): Unit =
+  private def cutJournalFile(file: Path, length: Long, eventId: EventId): Unit =
     if (exists(file) && length < size(file)) {
-      autoClosing(new RandomAccessFile(file, "w")) { f =>
-        f.setLength(length)
+      // Partial event or partial transaction
+      logger.warn(s"Cutting incomplete data at end of ${file.getFileName} at position $length (EventId $eventId)")
+      autoClosing(FileChannel.open(file, WRITE)) { f =>
+        f.truncate(length)
       }
     }
 
-  private def sendClusterPassiveFollows: Task[MasterCommand.Response.Accepted] = {
+  private def sendClusterPassiveFollows: Task[Unit] = {
     if (clusterPassiveFollowsSent.getAndSet(true)) {  // eagerly check
       // Two points in this passive code may call this function, but exactly one must really call.
       throw new IllegalStateException("MasterCommand.ClusterPassiveFollows has already been sent")
     }
     masterApi(activeUri, "ClusterPassiveFollows")
-      .use(_.executeCommand(
-        ClusterPassiveFollows(followedUri = activeUri, followingUri = ownUri)))
+      .use(_
+        .executeCommand(
+          ClusterPassiveFollows(followedUri = activeUri, followingUri = ownUri)))
+        .map((_: MasterCommand.Response.Accepted) => ())
       .onErrorRestartLoop(()) { (throwable, _, retry) =>
         logger.warn(s"ClusterPassiveFollows command failed with ${throwable.toStringWithCauses}")
-        logger.debug(throwable.toString, throwable)  // A warning should have been issued above
+        logger.debug(throwable.toString, throwable)
         retry(()).delayExecution(1.s/*TODO*/)
       }
   }
 
-  private def replicateJournalFiles(recoveredClusterState: ClusterState)(implicit s: Scheduler)
+  private def sendClusterCouple: Task[Unit] =
+    masterApi(activeUri, "ClusterCouple")
+      .use(_
+        .executeCommand(
+          ClusterCouple(activeUri = activeUri, passiveUri = ownUri)))
+        .map((_: MasterCommand.Response.Accepted) => ())
+      .onErrorRestartLoop(()) { (throwable, _, retry) =>
+        logger.warn(s"ClusterCouple command failed with ${throwable.toStringWithCauses}")
+        logger.debug(throwable.toString, throwable)
+        retry(()).delayExecution(1.s/*TODO*/)        // TODO Handle heartbeat timeout!
+      }
+
+  private def replicateJournalFiles(recoveredClusterState: ClusterState)
   : Task[Checked[(ClusterState, ClusterFollowUp[S, Event])]] =
     masterApi(activeUri, "journal")
       .use(activeMasterApi =>
@@ -129,8 +149,9 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
             case Some(recoveredJournalFile) => FirstPartialFile(recoveredJournalFile, recoveredClusterState)
           }): Continuation.Replicatable
         )(continuation =>
-          replicateJournalFile(continuation, () => stateBuilderAndAccessor.newStateBuilder(), activeMasterApi)
-            // TODO Herzschlag auch beim Wechsel zur nächsten Journaldatei prüfen
+          Task.deferAction(implicit scheduler =>
+            replicateJournalFile(continuation, () => stateBuilderAndAccessor.newStateBuilder(), activeMasterApi)
+          ) // TODO Herzschlag auch beim Wechsel zur nächsten Journaldatei prüfen
             .map {
               case Left(problem) =>
                 Right(Left(problem))
@@ -155,7 +176,6 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
     continuation: Continuation.Replicatable,
     newStateBuilder: () => JournaledStateBuilder[S, Event],
     activeMasterApi: HttpMasterApi)
-    (implicit scheduler: Scheduler)
   : Task[Checked[Continuation.Replicatable]] =
     Task.defer {
       import continuation.file
@@ -239,7 +259,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
           case None/*heartbeat pause*/ =>
             (if (isReplicatingHeadOfFile) continuation.clusterState else builder.clusterState) match {
               case clusterState: ClusterState.IsCoupled if clusterState.passiveUri == ownUri =>
-                logger.warn(s"No heartbeat from the currently active cluster node '$activeUri'")
+                logger.warn(s"No heartbeat from the currently active cluster node '$activeUri' - trying to fail-over")
                 Observable.fromTask(
                   if (isReplicatingHeadOfFile) {
                     val recoveredJournalFile = continuation.maybeRecoveredJournalFile.getOrElse(
@@ -272,7 +292,8 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
                         Right(true)
                       })
                   } else {
-                    val failedOverStamped = toStampedFailedOver(clusterState, JournalPosition(continuation.fileEventId, size(file)))
+                    val failedOverStamped = toStampedFailedOver(clusterState,
+                      JournalPosition(continuation.fileEventId, lastProperEventPosition))
                     val failedOver = failedOverStamped.value.event
                     common.ifClusterWatchAllowsActivation(clusterState, failedOver,
                       Task {
@@ -295,7 +316,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
                 }
 
               case clusterState =>
-                logger.trace(s"Ignoring observed pause without heartbeat due to clusterState=$clusterState")
+                logger.trace(s"Ignoring observed pause without heartbeat because cluster is not coupled: clusterState=$clusterState")
                 Observable.empty  // Ignore
             }
 
@@ -340,8 +361,8 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
             if (isReplicatingHeadOfFile)
               Observable.pure(Right(()))
             else {
-              eventWatch.onFileWritten(fileLength)
               if (!builder.isInTransaction) {
+                eventWatch.onFileWritten(fileLength)
                 for (eventId <- json.asObject.flatMap(_("eventId").flatMap(_.asNumber).flatMap(_.toLong))) {
                   eventWatch.onEventsCommitted(PositionAnd(fileLength, eventId), 1)
                 }
@@ -349,23 +370,43 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
               if (json == JournalSeparators.Commit) {
                 eventWatch.onEventsCommitted(PositionAnd(fileLength, builder.eventId), 1)
                 Observable.pure(Right(()))
-              } else
-              if (json.isOfType[ClusterEvent, FailedOver]) {
-                // Now, this node has switched from still-active (but failed for the other node) to passive.
-                // It's time to recouple.
-                // ClusterPassiveFollows command requests an event acknowledgement.
-                // To avoid a deadlock, we send ClusterPassiveFollows command asynchronously and
-                // continue immediately with acknowledgement of ClusterEvent.Coupled.
-                sendClusterPassiveFollows
-                  .runAsyncAndForget
-                Observable.pure(Right(()))
-              } else if (json.isOfType[ClusterEvent, SwitchedOver]) {
-                // Notify ClusterWatch before starting heartbeating
-                val switchedOver = cast[SwitchedOver](json.as[ClusterEvent].orThrow)
-                Observable.fromTask(
-                  common.clusterWatch.applyEvents(from = ownUri, switchedOver :: Nil, builder.clusterState, force = true)
-                    .map(_.map(_ => Unit)))
-              } else
+              } else if (json.toClass[ClusterEvent].isDefined)
+                json.as[ClusterEvent].orThrow match {
+                  case _: BackupNodeAppointed | _: FollowerLost =>
+                    Observable.fromTask(
+                      sendClusterPassiveFollows
+                        .map(Right.apply))  // TODO Handle heartbeat timeout !
+
+                  case _: FailedOver =>
+                    // Now, this node has switched from still-active (but failed for the other node) to passive.
+                    // It's time to recouple.
+                    // ClusterPassiveFollows command requests an event acknowledgement.
+                    // To avoid a deadlock, we send ClusterPassiveFollows command asynchronously and
+                    // continue immediately with acknowledgement of ClusterEvent.Coupled.
+                    if (!otherFailed)
+                      logger.error(s"Replicated unexpected FailedOver event")  // Should not happen
+                    dontActivateBecauseOtherFailedOver = false
+                    Observable.fromTask(
+                      sendClusterPassiveFollows
+                        .map(Right.apply))  // TODO Handle heartbeat timeout !
+
+                  case _: SwitchedOver =>
+                    // Notify ClusterWatch before starting heartbeating
+                    val switchedOver = cast[SwitchedOver](json.as[ClusterEvent].orThrow)
+                    Observable.fromTask(
+                      common.clusterWatch.applyEvents(from = ownUri, switchedOver :: Nil, builder.clusterState, force = true)
+                        .map(_.map(_ => Unit)))
+                    // TODO sendClusterPassiveFollows ?
+
+                  case _: FollowingStarted =>
+                    Observable.fromTask(
+                      sendClusterCouple
+                        .map(Right.apply))  // TODO Handle heartbeat timeout !
+
+                  case _ =>
+                    Observable.pure(Right(()))
+                }
+              else
                 Observable.pure(Right(()))
             }
         }
@@ -408,7 +449,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S, Event]](
     }
 
   private def shouldActivate(clusterState: ClusterState) =
-    clusterState.isActive(ownUri)
+    !dontActivateBecauseOtherFailedOver && clusterState.isActive(ownUri)
 
   private def ensureEqualState(continuation: Continuation.Replicatable, snapshot: S)(implicit s: Scheduler): Unit =
     for (recoveredJournalFile <- continuation.maybeRecoveredJournalFile if recoveredJournalFile.state != snapshot) {

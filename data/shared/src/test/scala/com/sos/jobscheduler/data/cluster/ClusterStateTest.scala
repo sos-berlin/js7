@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.data.cluster
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.data.cluster.ClusterState.{AwaitingAppointment, AwaitingFollower, Empty, IsCoupled, IsFailedOver, IsFollowerLost, IsSwitchedOver, OtherFailedOver, PreparedToBeCoupled, Sole}
+import com.sos.jobscheduler.data.cluster.ClusterState.{Empty, IsCoupled, IsFailedOver, IsFollowerLost, IsSwitchedOver, NodesAreAppointed, PreparedToBeCoupled, Sole}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.JournalPosition
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -30,30 +30,31 @@ final class ClusterStateTest extends FreeSpec
         }""")
     }
 
-    "AwaitingAppointment" in {
-      testJson[ClusterState](
-        AwaitingAppointment(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil),
-          json"""{
-            "TYPE": "AwaitingAppointment",
-            "uris": [ "http://PRIMARY", "http://BACKUP" ]
-          }""")
-    }
+    //"AwaitingAppointment" in {
+    //  testJson[ClusterState](
+    //    AwaitingAppointment(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil),
+    //      json"""{
+    //        "TYPE": "AwaitingAppointment",
+    //        "uris": [ "http://PRIMARY", "http://BACKUP" ]
+    //      }""")
+    //}
 
-    "AwaitingFollower" in {
+    "NodesAreAppointed" in {
       testJson[ClusterState](
-        AwaitingFollower(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil),
+        NodesAreAppointed(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil),
         json"""{
-          "TYPE": "AwaitingFollower",
+          "TYPE": "NodesAreAppointed",
           "uris": [ "http://PRIMARY", "http://BACKUP" ]
         }""")
     }
 
     "PreparedToBeCoupled" in {
       testJson[ClusterState](
-        PreparedToBeCoupled(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil),
+        PreparedToBeCoupled(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil, active = 1),
         json"""{
           "TYPE": "PreparedToBeCoupled",
-          "uris": [ "http://PRIMARY", "http://BACKUP" ]
+          "uris": [ "http://PRIMARY", "http://BACKUP" ],
+          "active": 1
         }""")
     }
 
@@ -98,16 +99,6 @@ final class ClusterStateTest extends FreeSpec
             "fileEventId": 0,
             "position": 1234
           }
-        }""")
-    }
-
-    "OtherFailedOver" in {
-      testJson[ClusterState](
-        OtherFailedOver(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil, 1),
-        json"""{
-          "TYPE": "OtherFailedOver",
-          "uris": [ "http://PRIMARY", "http://BACKUP" ],
-          "active": 1
         }""")
     }
   }

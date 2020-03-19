@@ -263,11 +263,7 @@ object RunningMaster
         cluster.currentClusterState,
         masterState = Task.defer {
           orderKeeperStarted.value/*Future completed?*/ match {
-            case None =>
-              currentPassiveMasterState.map {
-                case None => Left(ClusterNodeIsNotYetReadyProblem)
-                case Some(state) => Right(state)
-              }
+            case None => currentPassiveMasterState.map(_.toChecked(ClusterNodeIsNotYetReadyProblem))
             case Some(Failure(t)) => Task.raiseError(t)
             case Some(Success(None)) => Task.pure(Left(JobSchedulerIsShuttingDownProblem))
             case Some(Success(Some(actor))) =>
@@ -372,6 +368,10 @@ object RunningMaster
 
         case MasterCommand.ClusterPassiveFollows(activeUri, followingUri) =>
           cluster.passiveNodeFollows(activeUri, followingUri)
+            .map(_.map((_: Completed) => MasterCommand.Response.Accepted))
+
+        case MasterCommand.ClusterCouple(activeUri, followingUri) =>
+          cluster.couple(activeUri, followingUri)
             .map(_.map((_: Completed) => MasterCommand.Response.Accepted))
 
         case MasterCommand.ClusterInhibitActivation(duration) =>

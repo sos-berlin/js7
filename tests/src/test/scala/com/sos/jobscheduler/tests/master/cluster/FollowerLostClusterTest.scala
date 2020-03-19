@@ -11,7 +11,7 @@ import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
 import com.sos.jobscheduler.tests.master.cluster.MasterClusterTester._
 import monix.execution.Scheduler.Implicits.global
 
-final class LostPassiveClusterTest extends MasterClusterTester
+final class FollowerLostClusterTest extends MasterClusterTester
 {
   "Passive lost" in {
     val primaryHttpPort :: backupHttpPort :: Nil = findFreeTcpPorts(2)

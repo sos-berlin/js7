@@ -96,6 +96,16 @@ final class MasterCommandTest extends FreeSpec
       }""")
   }
 
+  "ClusterCouple" in {
+    testJson[MasterCommand](
+      ClusterCouple(Uri("http://ACTIVE"), Uri("http://FOLLOWING")),
+      json"""{
+        "TYPE": "ClusterCouple",
+        "activeUri": "http://ACTIVE",
+        "passiveUri": "http://FOLLOWING"
+      }""")
+  }
+
   "ReplaceRepo" in {
     testJson[MasterCommand](ReplaceRepo(
       VersionId("1"),
@@ -104,10 +114,10 @@ final class MasterCommandTest extends FreeSpec
         GenericSignature(
           "PGP",
           """|-----BEGIN PGP SIGNATURE-----
-            |
-            |...
-            |-----END PGP SIGNATURE-----
-            |""".stripMargin)) :: Nil),
+             |
+             |...
+             |-----END PGP SIGNATURE-----
+             |""".stripMargin)) :: Nil),
       json"""{
         "TYPE": "ReplaceRepo",
         "versionId": "1",

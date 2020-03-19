@@ -23,7 +23,7 @@ private final class StateBuilderAndAccessor[S <: JournaledState[S, E], E <: Even
         _ <- mVar.tryTake
         _ <- mVar.put(builder.synchronizedStateTask)
       } yield ()
-    ).runToFuture
+    ).runToFuture  // Asynchronous ???
       .onComplete {
         case Success(()) =>
         case Failure(t) => logger.error(s"PassiveClusterNode StateBuilderAndAccessor failed: ${t.toStringWithCauses}")
