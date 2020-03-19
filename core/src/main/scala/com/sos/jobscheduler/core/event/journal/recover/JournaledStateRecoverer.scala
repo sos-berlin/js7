@@ -35,7 +35,13 @@ private final class JournaledStateRecoverer[S <: JournaledState[S, E], E <: Even
     autoClosing(InputStreamJsonSeqReader.open(file)) { jsonReader =>
       for (json <- UntilNoneIterator(jsonReader.read()).map(_.value)) {
         fileJournaledStateBuilder.put(json)
-        _position = jsonReader.position
+        fileJournaledStateBuilder.journalProgress match {
+          case JournalProgress.AfterSnapshotSection |
+               JournalProgress.InCommittedEventsSection |
+               JournalProgress.AfterEventsSection =>
+            _position = jsonReader.position
+          case _ =>
+        }
         if (_firstEventPosition.isEmpty && fileJournaledStateBuilder.journalProgress == InCommittedEventsSection) {
           _firstEventPosition := jsonReader.position
         }
