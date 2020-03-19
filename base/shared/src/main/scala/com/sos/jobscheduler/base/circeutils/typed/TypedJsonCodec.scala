@@ -66,6 +66,9 @@ extends Encoder.AsObject[A] with Decoder[A]
   def isOfType[A1 <: A: ClassTag](json: Json): Boolean =
     json.asObject.flatMap(_(TypeFieldName)) contains classToNameJson(implicitClass[A1])
 
+  def jsonToClass(json: Json): Option[Class[_ <: A]] =
+    json.asObject.flatMap(_(TypeFieldName)).flatMap(_.asString).flatMap(nameToClass.get)
+
   override def toString = s"TypedJsonCodec[$printName]"
 }
 
@@ -91,6 +94,9 @@ object TypedJsonCodec
   implicit final class TypedJson(private val underlying: Json) extends AnyVal {
     def isOfType[A: TypedJsonCodec, A1 <: A: ClassTag]: Boolean =
       implicitly[TypedJsonCodec[A]].isOfType[A1](underlying)
+
+    def toClass[A: TypedJsonCodec]: Option[Class[_ <: A]] =
+      implicitly[TypedJsonCodec[A]].jsonToClass(underlying)
   }
 
   final class UnknownClassForJsonException(subclass: Class[_], superclass: Class[_])

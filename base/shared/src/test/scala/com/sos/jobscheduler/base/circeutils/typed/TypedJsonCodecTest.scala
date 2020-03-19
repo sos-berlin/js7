@@ -72,6 +72,13 @@ final class TypedJsonCodecTest extends FreeSpec
     assert(AJsonCodec.isOfType[A1](a1Json))
     assert(!AJsonCodec.isOfType[A1](xJson))
   }
+
+  "jsonToClass" in {
+    val a1Json = json"""{ "TYPE":  "A1"}"""
+    val xJson = json"""{ "TYPE":  "X"}"""
+    assert(a1Json.toClass[A] == Some(classOf[A1]))
+    assert(xJson.toClass[A] == None)
+  }
 }
 
 object TypedJsonCodecTest {
