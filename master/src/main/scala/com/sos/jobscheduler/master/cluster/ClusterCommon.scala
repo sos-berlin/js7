@@ -3,13 +3,18 @@ package com.sos.jobscheduler.master.cluster
 import com.sos.jobscheduler.base.eventbus.EventBus
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.cluster.ClusterWatch.ClusterWatchHeartbeatFromInactiveNodeProblem
 import com.sos.jobscheduler.core.cluster.ClusterWatchApi
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.master.cluster.ClusterCommon._
-import com.sos.jobscheduler.master.cluster.PassiveClusterNode.{AgentAgreesToActivation, AgentDoesNotAgreeToActivation}
+import com.sos.jobscheduler.master.cluster.PassiveClusterNode.{ClusterWatchAgreesToActivation, ClusterWatchDisagreeToActivation}
+import java.nio.ByteBuffer
+import java.nio.channels.{FileChannel, GatheringByteChannel, ScatteringByteChannel}
+import java.nio.file.StandardOpenOption.{CREATE, READ, TRUNCATE_EXISTING, WRITE}
+import java.nio.file.{Path, Paths}
 import monix.eval.Task
 
 private[cluster] final class ClusterCommon(
@@ -30,14 +35,14 @@ private[cluster] final class ClusterCommon(
               case Left(problem) =>
                 if (problem.codeOption contains ClusterWatchHeartbeatFromInactiveNodeProblem.code) {
                   logger.info(s"ClusterWatch did not agree to failover: $problem")
-                  testEventBus.publish(AgentDoesNotAgreeToActivation)
+                  testEventBus.publish(ClusterWatchDisagreeToActivation)
                   Task.pure(Right(false))  // Ignore heartbeat loss
                 } else
                   Task.pure(Left(problem))
 
               case Right(Completed) =>
                 logger.info(s"ClusterWatch agreed to failover")
-                testEventBus.publish(AgentAgreesToActivation)
+                testEventBus.publish(ClusterWatchAgreesToActivation)
                 body
             }
         }

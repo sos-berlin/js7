@@ -197,11 +197,14 @@ trait ConvertingLogger extends ScalaLogger {
     delegate.info(marker, convertMessage(msg), t)
 }
 
-object ConvertingLogger {
+object ConvertingLogger
+{
   final class Prefixed(prefix: String, protected val delegate: ScalaLogger) extends ConvertingLogger {
-    private val escapedPrefix = prefix.replace("{}", "\\{}")
+    protected val fullPrefix = s"“$prefix” "
+    private val escapedPrefix = fullPrefix.replace("{}", "\\{}")
 
-    def convertMessage(o: String) = s"“$prefix” $o"
-    def convertFormat(o: String) = s"“$escapedPrefix” $o"
+    def convertMessage(o: String) = fullPrefix + o
+
+    def convertFormat(o: String) = escapedPrefix + o
   }
 }

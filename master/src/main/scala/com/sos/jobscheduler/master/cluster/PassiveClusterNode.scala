@@ -491,6 +491,6 @@ object PassiveClusterNode
   private val EndOfJournalFileMarker = Problem.pure("End of journal file (internal use only)")
   private final class ServerTimeoutException extends TimeoutException("Journal web service timed out")
 
-  case object AgentDoesNotAgreeToActivation
-  case object AgentAgreesToActivation
+  case object ClusterWatchAgreesToActivation
+  case object ClusterWatchDisagreeToActivation
 }

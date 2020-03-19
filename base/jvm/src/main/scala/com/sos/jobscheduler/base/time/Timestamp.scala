@@ -1,7 +1,5 @@
 package com.sos.jobscheduler.base.time
 
-import cats.Show
-import cats.syntax.show._
 import com.sos.jobscheduler.base.time.Timestamp._
 import java.time.Instant
 import java.time.format.DateTimeFormatter

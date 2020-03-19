@@ -52,13 +52,6 @@ final class ExceptionsTest extends FreeSpec {
     assert(t.failed.get.getMessage == "TEST")
   }
 
-//  "ignoreException ignores exception, with slf4j.Logger.trace" in {
-//    val slf4jLogger: slf4j.Logger = logger.delegate
-//    ignoreException(slf4jLogger.trace) {
-//      throw new RuntimeException
-//    }
-//  }
-
   "ignoreException ignores exception, with Logger" in {
     ignoreException(logger.asLazy.trace) {
       throw new RuntimeException("TEST")
