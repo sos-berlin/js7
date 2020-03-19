@@ -18,8 +18,8 @@ object ClusterEvent
   final case class FollowingStarted(uri: Uri)
   extends ClusterEvent
 
-  //type PreparedToBeCoupled = PreparedToBeCoupled.type
-  //case object PreparedToBeCoupled extends ClusterEvent
+  //type ClusterPreparedToBeCoupled = ClusterPreparedToBeCoupled.type
+  //case object ClusterPreparedToBeCoupled extends ClusterEvent
 
   type Coupled = Coupled.type
   case object Coupled extends ClusterEvent

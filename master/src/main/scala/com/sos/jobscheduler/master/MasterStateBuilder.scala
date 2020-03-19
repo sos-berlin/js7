@@ -6,6 +6,7 @@ import com.sos.jobscheduler.core.event.state.JournaledStateBuilder
 import com.sos.jobscheduler.core.filebased.Repo
 import com.sos.jobscheduler.core.workflow.Recovering.followUpRecoveredSnapshots
 import com.sos.jobscheduler.data.agent.AgentRefPath
+import com.sos.jobscheduler.data.cluster.ClusterState.ClusterEmpty
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, JournalEvent, KeyedEvent, Stamped}
@@ -25,7 +26,7 @@ final class MasterStateBuilder
 extends JournaledStateBuilder[MasterState, Event]
 {
   private var masterMetaState = MasterMetaState.Undefined
-  private var _clusterState: ClusterState = ClusterState.Empty
+  private var _clusterState: ClusterState = ClusterEmpty
   private var repo = Repo(MasterFileBaseds.jsonCodec)
   private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
   private val pathToAgent = mutable.Map[AgentRefPath, AgentSnapshot]()

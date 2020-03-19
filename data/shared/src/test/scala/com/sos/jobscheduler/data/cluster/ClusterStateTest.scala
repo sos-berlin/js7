@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.data.cluster
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.data.cluster.ClusterState.{Empty, IsCoupled, IsFailedOver, IsFollowerLost, IsSwitchedOver, NodesAreAppointed, PreparedToBeCoupled, Sole}
+import com.sos.jobscheduler.data.cluster.ClusterState.{ClusterCoupled, ClusterEmpty, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterPreparedToBeCoupled, ClusterSole, ClusterSwitchedOver}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.JournalPosition
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -13,19 +13,19 @@ import org.scalatest.FreeSpec
 final class ClusterStateTest extends FreeSpec
 {
   "JSON" - {
-    "Empty" in {
+    "ClusterEmpty" in {
       testJson[ClusterState](
-        Empty,
+        ClusterEmpty,
         json"""{
-          "TYPE": "Empty"
+          "TYPE": "ClusterEmpty"
         }""")
     }
 
-    "Sole" in {
+    "ClusterSole" in {
       testJson[ClusterState](
-        Sole(Uri("http://PRIMARY")),
+        ClusterSole(Uri("http://PRIMARY")),
         json"""{
-          "TYPE": "Sole",
+          "TYPE": "ClusterSole",
           "primaryUri": "http://PRIMARY"
         }""")
     }
@@ -39,60 +39,60 @@ final class ClusterStateTest extends FreeSpec
     //      }""")
     //}
 
-    "NodesAreAppointed" in {
+    "ClusterNodesAppointed" in {
       testJson[ClusterState](
-        NodesAreAppointed(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil),
+        ClusterNodesAppointed(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil),
         json"""{
-          "TYPE": "NodesAreAppointed",
+          "TYPE": "ClusterNodesAppointed",
           "uris": [ "http://PRIMARY", "http://BACKUP" ]
         }""")
     }
 
-    "PreparedToBeCoupled" in {
+    "ClusterPreparedToBeCoupled" in {
       testJson[ClusterState](
-        PreparedToBeCoupled(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil, active = 1),
+        ClusterPreparedToBeCoupled(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil, active = 1),
         json"""{
-          "TYPE": "PreparedToBeCoupled",
+          "TYPE": "ClusterPreparedToBeCoupled",
           "uris": [ "http://PRIMARY", "http://BACKUP" ],
           "active": 1
         }""")
     }
 
-    "IsCoupled" in {
+    "ClusterCoupled" in {
       testJson[ClusterState](
-        IsCoupled(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil, 0),
+        ClusterCoupled(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil, 0),
         json"""{
-          "TYPE": "IsCoupled",
+          "TYPE": "ClusterCoupled",
           "uris": [ "http://PRIMARY", "http://BACKUP" ],
           "active": 0
         }""")
     }
 
-    "IsFollowerLost" in {
+    "ClusterPassiveLost" in {
       testJson[ClusterState](
-        IsFollowerLost(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil, 0),
+        ClusterPassiveLost(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil, 0),
         json"""{
-          "TYPE": "IsFollowerLost",
+          "TYPE": "ClusterPassiveLost",
           "uris": [ "http://PRIMARY", "http://BACKUP" ],
           "active": 0
         }""")
     }
 
-    "IsSwitchedOver" in {
+    "ClusterSwitchedOver" in {
       testJson[ClusterState](
-        IsSwitchedOver(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil, 0),
+        ClusterSwitchedOver(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil, 0),
         json"""{
-          "TYPE": "IsSwitchedOver",
+          "TYPE": "ClusterSwitchedOver",
           "uris": [ "http://PRIMARY", "http://BACKUP" ],
           "active": 0
         }""")
     }
 
-    "IsFailedOver" in {
+    "ClusterFailedOver" in {
       testJson[ClusterState](
-        IsFailedOver(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil, 1, JournalPosition(0, 1234)),
+        ClusterFailedOver(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil, 1, JournalPosition(0, 1234)),
         json"""{
-          "TYPE": "IsFailedOver",
+          "TYPE": "ClusterFailedOver",
           "uris": [ "http://PRIMARY", "http://BACKUP" ],
           "active": 1,
           "failedAt": {

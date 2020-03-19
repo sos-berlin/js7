@@ -20,6 +20,7 @@ import com.sos.jobscheduler.core.event.journal.files.JournalFiles._
 import com.sos.jobscheduler.core.event.journal.recover.{FileJournaledStateBuilder, JournalProgress, Recovered, RecoveredJournalFile}
 import com.sos.jobscheduler.core.event.state.JournaledStateBuilder
 import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, FailedOver, FollowerLost, FollowingStarted, SwitchedOver}
+import com.sos.jobscheduler.data.cluster.ClusterState.{ClusterCoupled, ClusterEmpty, ClusterNodesAppointed, ClusterPreparedToBeCoupled, ClusterSole}
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.JournalEvent.SnapshotTaken
@@ -87,11 +88,11 @@ import scodec.bits.ByteVector
           Task.unit
         else
           recoveredClusterState match {
-            case ClusterState.Empty | _: ClusterState.Sole | _: ClusterState.IsCoupled =>
+            case ClusterEmpty | _: ClusterSole | _: ClusterCoupled =>
               Task.unit
-            case _: ClusterState.NodesAreAppointed | _: ClusterState.Decoupled =>
+            case _: ClusterNodesAppointed | _: ClusterState.Decoupled =>
               sendClusterPassiveFollows
-            case _: ClusterState.PreparedToBeCoupled =>
+            case _: ClusterPreparedToBeCoupled =>
               sendClusterCouple
           }
       ) >>
@@ -258,7 +259,7 @@ import scodec.bits.ByteVector
         .flatMap[Checked[Unit]] {
           case None/*heartbeat pause*/ =>
             (if (isReplicatingHeadOfFile) continuation.clusterState else builder.clusterState) match {
-              case clusterState: ClusterState.IsCoupled if clusterState.passiveUri == ownUri =>
+              case clusterState: ClusterCoupled if clusterState.passiveUri == ownUri =>
                 logger.warn(s"No heartbeat from the currently active cluster node '$activeUri' - trying to fail-over")
                 Observable.fromTask(
                   if (isReplicatingHeadOfFile) {
@@ -466,7 +467,7 @@ import scodec.bits.ByteVector
       sys.error(msg)
     }
 
-  private def toStampedFailedOver(clusterState: ClusterState.IsCoupled, failedAt: JournalPosition): Stamped[KeyedEvent[ClusterEvent]] = {
+  private def toStampedFailedOver(clusterState: ClusterCoupled, failedAt: JournalPosition): Stamped[KeyedEvent[ClusterEvent]] = {
     val failedOver = ClusterEvent.FailedOver(failedActiveUri = clusterState.activeUri, activatedUri = clusterState.passiveUri, failedAt)
     val stamped = eventIdGenerator.stamp(NoKey <-: (failedOver: ClusterEvent))
     logger.debug(stamped.toString)

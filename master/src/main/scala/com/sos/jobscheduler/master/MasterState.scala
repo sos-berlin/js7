@@ -6,6 +6,7 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.core.filebased.Repo
 import com.sos.jobscheduler.data.agent.AgentRefPath
+import com.sos.jobscheduler.data.cluster.ClusterState.ClusterEmpty
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, JournaledState, KeyedEvent}
@@ -137,7 +138,7 @@ object MasterState
   val Undefined = MasterState(
     EventId.BeforeFirst,
     MasterMetaState.Undefined,
-    ClusterState.Empty,
+    ClusterEmpty,
     Repo(MasterFileBaseds.jsonCodec),
     Map.empty,
     Map.empty)

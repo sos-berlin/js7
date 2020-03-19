@@ -11,7 +11,7 @@ import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import com.sos.jobscheduler.core.event.journal.data.JournalSeparators.EventFooter
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
 import com.sos.jobscheduler.data.cluster.ClusterEvent.{Coupled, FailedOver, SwitchedOver}
-import com.sos.jobscheduler.data.cluster.ClusterState
+import com.sos.jobscheduler.data.cluster.ClusterState.{ClusterCoupled, ClusterFailedOver}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event._
@@ -54,7 +54,7 @@ final class FailoverClusterTest extends MasterClusterTester
              failedOver.failedAt.position == size(expectedFailedFile) - (EventFooter.compactPrint + "\n").length)
 
       assert(backupMaster.clusterState.await(99.s) ==
-        ClusterState.IsFailedOver(Seq(primaryMaster.localUri.asUri, backupMaster.localUri.asUri), active = 1, failedOver.failedAt))
+        ClusterFailedOver(Seq(primaryMaster.localUri.asUri, backupMaster.localUri.asUri), active = 1, failedOver.failedAt))
 
       backupMaster.eventWatch.await[OrderFinished](_.key == orderId, after = failedOverEventId)
 
@@ -73,7 +73,7 @@ final class FailoverClusterTest extends MasterClusterTester
       primaryMaster.eventWatch.await[Coupled](after = recoupledEventId)
 
       // When heartbeat from passive to active node is broken, the ClusterWatch will nonetheless not agree to a failover
-      val stillCoupled = ClusterState.IsCoupled(
+      val stillCoupled = ClusterCoupled(
         List(
           Uri(primaryMaster.localUri.toString),
           Uri(backupMaster.localUri.toString)),

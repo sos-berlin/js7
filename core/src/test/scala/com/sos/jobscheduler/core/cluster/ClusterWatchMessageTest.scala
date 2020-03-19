@@ -2,7 +2,7 @@ package com.sos.jobscheduler.core.cluster
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.data.cluster.ClusterEvent.BecameSole
-import com.sos.jobscheduler.data.cluster.ClusterState
+import com.sos.jobscheduler.data.cluster.ClusterState.ClusterSole
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
@@ -18,7 +18,7 @@ final class ClusterWatchMessageTest extends FreeSpec
         ClusterWatchEvents(
           Uri("http://PRIMARY"),
           BecameSole(Uri("http://PRIMARY")) :: Nil,
-          ClusterState.Sole(Uri("http://PRIMARY")),
+          ClusterSole(Uri("http://PRIMARY")),
           force = true),
         json"""{
           "TYPE": "ClusterWatchEvents",
@@ -30,7 +30,7 @@ final class ClusterWatchMessageTest extends FreeSpec
             }
           ],
           "clusterState": {
-            "TYPE": "Sole",
+            "TYPE": "ClusterSole",
             "primaryUri": "http://PRIMARY"
           },
           "force": true
@@ -41,12 +41,12 @@ final class ClusterWatchMessageTest extends FreeSpec
       testJson[ClusterWatchMessage](
         ClusterWatchHeartbeat(
           Uri("http://PRIMARY"),
-          ClusterState.Sole(Uri("http://PRIMARY"))),
+          ClusterSole(Uri("http://PRIMARY"))),
         json"""{
           "TYPE": "ClusterWatchHeartbeat",
           "from": "http://PRIMARY",
           "clusterState": {
-            "TYPE": "Sole",
+            "TYPE": "ClusterSole",
             "primaryUri": "http://PRIMARY"
           }
         }""")

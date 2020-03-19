@@ -38,6 +38,7 @@ import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderProcessor
 import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath, AgentRunId}
 import com.sos.jobscheduler.data.cluster.ClusterState
+import com.sos.jobscheduler.data.cluster.ClusterState.ClusterCoupled
 import com.sos.jobscheduler.data.crypt.Signed
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
@@ -321,7 +322,7 @@ with MainJournalingActor[Event]
       // TODO Fix fundamentally the race condition with JournalActor.Input.RegisterMe
       journalActor.tell(JournalActor.Input.RegisterMe, cluster.journalingActor)
       recovered.startJournalAndFinishRecovery(journalActor,
-        requireClusterAcknowledgement = recovered.recoveredState.fold(false)(_.clusterState.isInstanceOf[ClusterState.IsCoupled]))
+        requireClusterAcknowledgement = recovered.recoveredState.fold(false)(_.clusterState.isInstanceOf[ClusterCoupled]))
       become("journalIsStarting")(journalIsStarting)
       unstashAll()
 
