@@ -243,7 +243,7 @@ object RunningMaster
           })
       }
       for (t <- orderKeeperStarted.failed) logger.debug("orderKeeperStarted => " + t.toStringWithCauses, t)
-      for (t <- orderKeeperTerminated.failed) logger.debug("orderKeeperTerminated => " + t.toStringWithCauses, t)
+      //for (t <- orderKeeperTerminated.failed) logger.debug("orderKeeperTerminated => " + t.toStringWithCauses, t)
       val orderKeeperTask = Task.defer {
         orderKeeperStarted.value match {
           case None => Task.raiseError(MasterIsNotYetReadyProblem.throwable)

@@ -154,6 +154,7 @@ extends Actor with Stash
         logger.debug(s"Event rejected while active cluster node is switching over: ${timestamped.headOption.map(_.keyedEvent)}")
         reply(sender(), replyTo, Output.StoreFailure(ClusterNodeHasBeenSwitchedOverProblem.throwable))
       } else {
+        val now_ = now
         val stampedEvents = for (t <- timestamped) yield eventIdGenerator.stamp(t.keyedEvent, t.timestamp)
         eventWriter.writeEvents(stampedEvents, transaction = transaction)
         val lastFileLengthAndEventId = stampedEvents.lastOption.map(o => PositionAnd(eventWriter.fileLength, o.eventId))
@@ -163,10 +164,10 @@ extends Actor with Stash
         // TODO Handle serialization (but not I/O) error? writeEvents is not atomic.
         if (acceptEarly && !requireClusterAcknowledgement/*? irrelevant because acceptEarly is not used in a Cluster for now*/) {
           reply(sender(), replyTo, Output.Accepted(callersItem))
-          writtenBuffer += AcceptEarlyWritten(stampedEvents.size, lastFileLengthAndEventId, sender())
+          writtenBuffer += AcceptEarlyWritten(stampedEvents.size, now_, lastFileLengthAndEventId, sender())
           // Ergibt falsche Reihenfolge mit dem anderen Aufruf: logCommitted(flushed = false, synced = false, stampedEvents)
         } else {
-          writtenBuffer += NormallyWritten(totalEventCount + 1, stampedEvents, lastFileLengthAndEventId, replyTo, sender(), callersItem)
+          writtenBuffer += NormallyWritten(totalEventCount + 1, stampedEvents, now_, lastFileLengthAndEventId, replyTo, sender(), callersItem)
         }
         totalEventCount += stampedEvents.size
         stampedEvents.lastOption match {
@@ -340,7 +341,7 @@ extends Actor with Stash
       eventWriter.onCommitted(lastFileLengthAndEventId, n = writtenSeq.iterator.map(_.eventCount).sum)
     }
     // AcceptEarlyWritten has already been replied.
-    for (NormallyWritten(_, keyedEvents, _, replyTo, sender, item) <- writtenSeq) {
+    for (NormallyWritten(_, keyedEvents, _, _, replyTo, sender, item) <- writtenSeq) {
       reply(sender, replyTo, Output.Stored(keyedEvents, item))
       keyedEvents foreach keyedEventBus.publish
     }
@@ -386,6 +387,7 @@ extends Actor with Stash
 
   private def logCommitted(ack: Boolean, writtenIterator: Iterator[LoggableWritten]) =
     logger.whenTraceEnabled {
+      val nw = now
       while (writtenIterator.hasNext) {
         val written = writtenIterator.next()
         var nr = written.eventNumber
@@ -411,7 +413,7 @@ extends Actor with Stash
             else
               " ACK"    // Last event of an acknowledged event bundle. Caller may continue
           val committed = if (stampedIterator.hasNext) "committed" else "COMMITTED"
-          val t = written.since.elapsed.pretty + "      " take 7
+          val t = if (stampedIterator.hasNext) "       " else ((nw - written.since).msPretty + "      ") take 7
           logger.trace(s"#$nr $flushOrSync$a $committed $t ${stamped.eventId} ${stamped.value.toString.takeWhile(_ != '\n')}")
           nr += 1
           firstInCommit = false
@@ -675,8 +677,7 @@ object JournalActor
     def isEmpty: Boolean
     def lastFileLengthAndEventId: Option[PositionAnd[EventId]]
     def lastStamped: Option[Stamped[AnyKeyedEvent]]
-
-    val since = now
+    def since: Deadline
   }
 
   private sealed trait LoggableWritten {
@@ -701,6 +702,7 @@ object JournalActor
   private case class NormallyWritten(
     eventNumber: Long,
     stampedSeq: Seq[Stamped[AnyKeyedEvent]],
+    since: Deadline,
     lastFileLengthAndEventId: Option[PositionAnd[EventId]],
     replyTo: ActorRef,
     sender: ActorRef,
@@ -719,7 +721,7 @@ object JournalActor
   }
 
   // Without event to keep heap usage low (especially for many big stdout event)
-  private case class AcceptEarlyWritten(eventCount: Int, lastFileLengthAndEventId: Option[PositionAnd[EventId]], sender: ActorRef)
+  private case class AcceptEarlyWritten(eventCount: Int, since: Deadline, lastFileLengthAndEventId: Option[PositionAnd[EventId]], sender: ActorRef)
   extends Written
   {
     def isEmpty = true
