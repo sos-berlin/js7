@@ -53,6 +53,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
 
   private lazy val http = Http(actorSystem)
   private val materializerLazy = Lazy(ActorMaterializer()(actorSystem))
+  @volatile private var closed = false
 
   implicit final def materializer = materializerLazy()
 
@@ -60,11 +61,13 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
 
   private lazy val httpsConnectionContext = httpsConnectionContextOption getOrElse http.defaultClientHttpsContext
 
-  def close() =
+  def close() = {
+    closed = true
     for (o <- materializerLazy) {
       logger.debug(s"$toString: ActorMaterializer shutdown")
       o.shutdown()
     }
+  }
 
   final def getDecodedLinesObservable[A: Decoder](uri: String) =
     getRawLinesObservable(uri)
@@ -138,6 +141,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
         var responseFuture: Future[HttpResponse] = null
         Task.deferFutureAction { implicit s =>
           logRequest(req, logData)
+          if (closed) throw new IllegalStateException(s"$toString has been closed")
           val httpsContext = if (request.uri.scheme == "https") httpsConnectionContext else http.defaultClientHttpsContext
           responseFuture = http.singleRequest(req, httpsContext)
           responseFuture
@@ -171,7 +175,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
       Resource.make(
         Task.deferAction(scheduler => Task {
           scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
-            logger.debug(s"$toString: Still waiting for response to ${requestToString(request, logData)}")
+            logger.debug(s"$toString: Still waiting for response to request: ${requestToString(request, logData)}")
           }
         })
       )(timer => Task { timer.cancel() })

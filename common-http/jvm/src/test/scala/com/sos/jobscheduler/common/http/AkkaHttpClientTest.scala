@@ -23,7 +23,7 @@ final class AkkaHttpClientTest extends FreeSpec with BeforeAndAfterAll
 {
   private lazy val actorSystem = ActorSystem("AkkaHttpClientTest")
 
-  private lazy val agentClient = new AkkaHttpClient {
+  private lazy val httpClient = new AkkaHttpClient {
     protected val actorSystem = AkkaHttpClientTest.this.actorSystem
     protected val baseUri = Uri("https://example.com:9999")
     protected val name = "AkkaHttpClientTest"
@@ -38,17 +38,17 @@ final class AkkaHttpClientTest extends FreeSpec with BeforeAndAfterAll
 
   "toCheckedAgentUri, checkAgentUri and apply, failing" - {
     for ((uri, None) <- Setting) s"$uri" in {
-      assert(agentClient.checkAgentUri(uri).isLeft)
-      assert(agentClient.toCheckedAgentUri(uri).isLeft)
-      assert(Await.result(agentClient.get_[HttpResponse](uri).runToFuture.failed, 99.seconds).getMessage
+      assert(httpClient.checkAgentUri(uri).isLeft)
+      assert(httpClient.toCheckedAgentUri(uri).isLeft)
+      assert(Await.result(httpClient.get_[HttpResponse](uri).runToFuture.failed, 99.seconds).getMessage
         contains "does not match")
     }
   }
 
   "normalizeAgentUri" - {
     for ((uri, Some(converted)) <- Setting) s"$uri" in {
-      assert(agentClient.normalizeAgentUri(uri) == converted)
-      assert(agentClient.toCheckedAgentUri(uri) == Right(converted))
+      assert(httpClient.normalizeAgentUri(uri) == converted)
+      assert(httpClient.toCheckedAgentUri(uri) == Right(converted))
     }
   }
 
@@ -90,6 +90,13 @@ final class AkkaHttpClientTest extends FreeSpec with BeforeAndAfterAll
       val e = new Exception
       assert(liftProblem(Task.raiseError(e)).failed.runSyncUnsafe(99.seconds) eq e)
     }
+  }
+
+  "Operations after close are rejected" in {
+    httpClient.close()
+    val uri = Uri("https://example.com:9999/PREFIX")
+    assert(Await.result(httpClient.get_[HttpResponse](uri).runToFuture.failed, 99.seconds).getMessage
+      contains "»AkkaHttpClientTest« has been closed")
   }
 }
 
