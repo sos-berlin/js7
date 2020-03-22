@@ -175,7 +175,7 @@ extends HasCloser
         }
       }
       for (t <- runningMaster.terminated.failed) {
-        scribe.warn(t.toStringWithCauses)
+        scribe.error(t.toStringWithCauses)
         scribe.debug(t.toStringWithCauses, t)
       }
       runningMaster

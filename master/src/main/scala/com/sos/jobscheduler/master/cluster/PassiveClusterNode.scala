@@ -103,11 +103,14 @@ import scodec.bits.ByteVector
     }
 
   private def cutJournalFile(file: Path, length: Long, eventId: EventId): Unit =
-    if (exists(file) && length < size(file)) {
-      // Partial event or partial transaction
-      logger.warn(s"Cutting incomplete data at end of ${file.getFileName} at position $length (EventId $eventId)")
-      autoClosing(FileChannel.open(file, WRITE)) { f =>
-        f.truncate(length)
+    if (exists(file)) {
+      val garbage = size(file) - length
+      if (garbage > 0) {
+        // Partial event or partial transaction
+        logger.info(s"Cutting incomplete data ($garbage bytes) at end of ${file.getFileName} at position $length, EventId $eventId ")
+        autoClosing(FileChannel.open(file, WRITE)) { f =>
+          f.truncate(length)
+        }
       }
     }
 

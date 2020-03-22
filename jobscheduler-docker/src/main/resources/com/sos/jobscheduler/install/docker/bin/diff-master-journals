@@ -9,7 +9,7 @@ for file in volumes/master/data/state/master--*.journal; do
   if [ -e "$b" ]; then
     echo "${file##*/}"
     if diff "$file" "$b"; then
-      :
+      echo -en "\e[1A\e[K"  # Cursor up
     else
       contentRC=$?
     fi

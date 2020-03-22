@@ -3,6 +3,7 @@ package com.sos.jobscheduler.master.cluster
 import com.sos.jobscheduler.base.eventbus.EventBus
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.cluster.ClusterWatch.ClusterWatchHeartbeatFromInactiveNodeProblem
@@ -31,17 +32,18 @@ private[cluster] final class ClusterCommon(
         clusterState.applyEvent(event) match {
           case Left(problem) => Task.pure(Left(problem))
           case Right(updatedClusterState) =>
+            val eventName = s"'${event.getClass.simpleScalaName}' event"
             clusterWatch.applyEvents(from = ownUri, event :: Nil, updatedClusterState).flatMap {
               case Left(problem) =>
                 if (problem.codeOption contains ClusterWatchHeartbeatFromInactiveNodeProblem.code) {
-                  logger.info(s"ClusterWatch did not agree to failover: $problem")
+                  logger.info(s"ClusterWatch did not agree to $eventName: $problem")
                   testEventBus.publish(ClusterWatchDisagreeToActivation)
                   Task.pure(Right(false))  // Ignore heartbeat loss
                 } else
                   Task.pure(Left(problem))
 
               case Right(Completed) =>
-                logger.info(s"ClusterWatch agreed to failover")
+                logger.info(s"ClusterWatch agreed to $eventName")
                 testEventBus.publish(ClusterWatchAgreesToActivation)
                 body
             }

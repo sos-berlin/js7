@@ -63,7 +63,7 @@ extends AutoCloseable
           case Left(failure) =>
             val lineNr = lineNumber - 1
             val extra = failure.message.replace(" (line 1, ", " (").replace("\n", "\\n")
-            logger.warn("Read JSON sequence is corrupt at " +
+            logger.warn(s"JSON sequence read from '$name' is corrupt at " +
               (if (lineNr >= 0) s"line $lineNr, " else "") +
               s"file position $pos (blockPos=${blockPos_} blockRead=${blockRead_}): $extra: ${o.utf8String}")  // Do not expose JSON content with exception
             throwCorrupt2(lineNr, pos, extra)
