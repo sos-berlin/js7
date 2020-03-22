@@ -263,7 +263,6 @@ object JournalTest {
     json"""{ "eventId": 1000064, "key": "TEST-A", "TYPE": "Appended", "char": "c" }""",
     json"""{ "eventId": 1000065, "key": "TEST-A", "TYPE": "Appended", "char": ")" }""",
     json"""{ "eventId": 1000066, "key": "TEST-B", "TYPE": "Removed" }""",
-    json""""-------END OF EVENTS-------"""",
   )
 
   private val SecondJournal = Vector(

@@ -6,7 +6,7 @@ import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.common.event.PositionAnd
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.core.event.journal.data.JournalSeparators.{Commit, EventFooter, Transaction}
+import com.sos.jobscheduler.core.event.journal.data.JournalSeparators.{Commit, Transaction}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles._
 import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
 import com.sos.jobscheduler.core.event.journal.write.EventJournalWriter._
@@ -78,7 +78,6 @@ with AutoCloseable
   // Event section begin has been written by SnapshotJournalWriter
   def endEventSection(sync: Boolean): Unit = {
     if (!eventsStarted) throw new IllegalStateException
-    jsonWriter.write(ByteString(EventFooter.compactPrint))
     flush(sync = sync)
     logger.debug(s"Journal finished, $fileSizeString written ($statistics)")
   }

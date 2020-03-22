@@ -5,10 +5,10 @@ import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowableEither
 import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.event.journal.data.JournalSeparators.{Commit, EventFooter, EventHeader, SnapshotFooter, SnapshotHeader, Transaction}
+import com.sos.jobscheduler.core.event.journal.data.JournalSeparators.{Commit, EventHeader, SnapshotFooter, SnapshotHeader, Transaction}
 import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta}
 import com.sos.jobscheduler.core.event.journal.recover.FileJournaledStateBuilder._
-import com.sos.jobscheduler.core.event.journal.recover.JournalProgress.{AfterEventsSection, AfterHeader, AfterSnapshotSection, InCommittedEventsSection, InSnapshotSection, InTransaction, Initial}
+import com.sos.jobscheduler.core.event.journal.recover.JournalProgress.{AfterHeader, AfterSnapshotSection, InCommittedEventsSection, InSnapshotSection, InTransaction, Initial}
 import com.sos.jobscheduler.core.event.state.JournaledStateBuilder
 import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, JournaledState, KeyedEvent, Stamped}
 import io.circe.Json
@@ -79,8 +79,6 @@ final class FileJournaledStateBuilder[S <: JournaledState[S, E], E <: Event](
 
       case InCommittedEventsSection =>
         json match {
-          case EventFooter =>
-            _progress = AfterEventsSection
           case Transaction =>
             transaction.begin()
             _progress = InTransaction
@@ -108,8 +106,6 @@ final class FileJournaledStateBuilder[S <: JournaledState[S, E], E <: Event](
       case InCommittedEventsSection =>
       case InTransaction =>
         rollback()
-      case AfterEventsSection =>
-        _progress = InCommittedEventsSection
       case _ =>
         throw new IllegalStateException(s"rollbackToEventSection() but progress=${_progress}")
     }
@@ -135,8 +131,7 @@ final class FileJournaledStateBuilder[S <: JournaledState[S, E], E <: Event](
 
   def result: S =
     _progress match {
-      case InCommittedEventsSection | AfterEventsSection =>
-        builder.state
+      case InCommittedEventsSection => builder.state
       case _ => throw new IllegalStateException(s"Journal file '$journalFileForInfo' is truncated in state '$journalProgress'")
     }
 

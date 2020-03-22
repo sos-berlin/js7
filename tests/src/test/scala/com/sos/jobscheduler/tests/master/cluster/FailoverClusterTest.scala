@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.tests.master.cluster
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
@@ -8,7 +7,6 @@ import com.sos.jobscheduler.common.http.AkkaHttpUtils._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPorts
-import com.sos.jobscheduler.core.event.journal.data.JournalSeparators.EventFooter
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
 import com.sos.jobscheduler.data.cluster.ClusterEvent.{Coupled, FailedOver, SwitchedOver}
 import com.sos.jobscheduler.data.cluster.ClusterState.{ClusterCoupled, ClusterFailedOver}
@@ -50,8 +48,7 @@ final class FailoverClusterTest extends MasterClusterTester
       assert(failedOver.failedAt.fileEventId == backupMaster.eventWatch.fileEventIds.last ||
              failedOver.failedAt.fileEventId == backupMaster.eventWatch.fileEventIds.dropRight(1).last)
       val expectedFailedFile = primaryMaster.injector.instance[MasterConfiguration].journalMeta.file(failedOver.failedAt.fileEventId)
-      assert(failedOver.failedAt.position == size(expectedFailedFile) ||
-             failedOver.failedAt.position == size(expectedFailedFile) - (EventFooter.compactPrint + "\n").length)
+      assert(failedOver.failedAt.position == size(expectedFailedFile))
 
       assert(backupMaster.clusterState.await(99.s) ==
         ClusterFailedOver(Seq(primaryMaster.localUri.asUri, backupMaster.localUri.asUri), active = 1, failedOver.failedAt))

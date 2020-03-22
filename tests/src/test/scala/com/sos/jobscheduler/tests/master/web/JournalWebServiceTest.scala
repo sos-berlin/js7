@@ -95,7 +95,6 @@ final class JournalWebServiceTest extends FreeSpec with BeforeAndAfterAll with M
     // After a snapshot (a new journal file is started),
     // the web services returns the end of the currently read journal file and ends itself.
     masterApi.executeCommand(MasterCommand.TakeSnapshot) await 99.s
-    assert(master0File.contentString endsWith s"${JournalSeparators.EventFooter}\n")
 
     whenReplicated await 9.s
     waitForCondition(10.s, 10.ms)(replicated endsWith EndOfJournalFileMarker)

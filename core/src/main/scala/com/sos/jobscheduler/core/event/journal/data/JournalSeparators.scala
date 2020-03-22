@@ -14,7 +14,6 @@ object JournalSeparators
   val SnapshotHeader = Json.fromString("-------SNAPSHOT-------")
   val SnapshotFooter = Json.fromString("-------END OF SNAPSHOT-------")
   val EventHeader    = Json.fromString("-------EVENTS-------")
-  val EventFooter    = Json.fromString("-------END OF EVENTS-------")
   val Transaction    = Json.fromString("TRANSACTION")
   val Commit         = Json.fromString("COMMIT")
 

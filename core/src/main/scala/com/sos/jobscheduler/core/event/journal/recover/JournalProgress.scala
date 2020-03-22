@@ -23,7 +23,5 @@ object JournalProgress
     override def isAcceptingEvents = true
   }
 
-  case object AfterEventsSection extends JournalProgress
-
   case object EndOfFile extends JournalProgress
 }
