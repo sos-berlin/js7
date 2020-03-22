@@ -115,8 +115,6 @@ final class FileJournaledStateBuilder[S <: JournaledState[S, E], E <: Event](
     _progress = InCommittedEventsSection
   }
 
-  def isInTransaction = _progress == InTransaction
-
   def journalProgress = _progress
 
   def fileJournalHeader = builder.fileJournalHeader

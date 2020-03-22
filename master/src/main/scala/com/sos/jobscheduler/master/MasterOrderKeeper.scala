@@ -72,7 +72,7 @@ import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.{Future, Promise, blocking}
 import scala.util.control.NoStackTrace
 import scala.util.{Failure, Success, Try}
 import shapeless.tag.@@
@@ -242,13 +242,23 @@ with MainJournalingActor[Event]
     .toListL.runToFuture
 
   private def masterState: Task[MasterState] =
-    cluster.currentClusterState.map(clusterState => MasterState(
-      persistedEventId,
-      masterMetaState,
-      clusterState,
-      repo,
-      pathToAgent = agentRegister.values.map(entry => entry.agentRefPath -> entry.toSnapshot).toMap,
-      orderRegister.mapValues(_.order).toMap))
+    Task.pure {
+      // FIXME Blockiert, damit ClusterState vom selben Zeitpunkt ist. EventId des ClusterState kann abweichen!
+      // TODO Einheitliches MasterState halten, also einheitliches JournaledStatePersistence
+      logger.debug("masterState blocking read ...")
+      val clusterState = blocking {
+        cluster.currentClusterState
+          .runSyncUnsafe(masterConfiguration.akkaAskTimeout.duration)
+      }
+      logger.debug("masterState blocking read okay")
+      MasterState(
+        persistedEventId,
+        masterMetaState,
+        clusterState,
+        repo,
+        pathToAgent = agentRegister.values.map(entry => entry.agentRefPath -> entry.toSnapshot).toMap,
+        orderRegister.mapValues(_.order).toMap)
+    }
 
   def receive = {
     case Input.Start(recovered) =>
@@ -258,11 +268,11 @@ with MainJournalingActor[Event]
       if (cluster.isRemainingActiveAfterRestart) {
         cluster.inhibitActivationOfPeer
           .map {
-            case otherState: ClusterState if masterConfiguration.clusterConf.maybeOwnUri exists otherState.isActive =>
-              recovered
-            case otherState =>
+            case None => recovered
+            case Some(otherFailedOver) =>
               // TODO Restart Master properly
-              throw new RuntimeException(s"While activating this node, the other node's ClusterState has become $otherState")
+              // TODO inhibit activation while recovering a long time
+              throw new RuntimeException(s"While activating this node, the other node has failed-over: $otherFailedOver")
           }
           .materialize
           .map(Internal.OtherClusterNodeActivationInhibited.apply)
@@ -282,7 +292,7 @@ with MainJournalingActor[Event]
          ownUri <- masterConfiguration.clusterConf.maybeOwnUri if !clusterState.isActive(ownUri))
     {
       if (!clusterState.isActive(ownUri))
-        throw new IllegalStateException(s"Master has recovered from Journal but is not the active node in ClusterState: ownUri=$ownUri, clusterState=$clusterState")
+        throw new IllegalStateException(s"Master has recovered from Journal but is not the active node in ClusterState: ownUri=$ownUri, failedOver=$clusterState")
     }
   }
 
@@ -404,8 +414,8 @@ with MainJournalingActor[Event]
 
     case Internal.Ready(Right(Completed)) =>
       logger.info("Ready")
-      cluster.onClusterCompleted.runToFuture onComplete { tried =>
-        self ! Internal.ClusterCompleted(tried)
+      cluster.onTerminatedUnexpectedly.runToFuture onComplete { tried =>
+        self ! Internal.ClusterModuleTerminatedUnexpectedly(tried)
       }
       become("Ready")(ready orElse handleExceptionalMessage)
       unstashAll()
@@ -554,9 +564,9 @@ with MainJournalingActor[Event]
       if (!shuttingDown && switchover.isEmpty) logger.error("JournalActor terminated")
       context.stop(self)
 
-    case Internal.ClusterCompleted(tried) =>
+    case Internal.ClusterModuleTerminatedUnexpectedly(tried) =>
       // Stacktrace is being debug-logged by Cluster
-      logger.error(s"Cluster terminated with $tried ")
+      logger.error(s"Cluster module terminated unexpectedly with $tried ")
       context.stop(self)
   }
 
@@ -643,7 +653,7 @@ with MainJournalingActor[Event]
         persist(MasterTestEvent, async = true)(_ =>
           Right(MasterCommand.Response.Accepted))
 
-      case (_: MasterCommand.ClusterAppointBackup) | (_: MasterCommand.ClusterPrepareCoupling) =>
+      case (_: MasterCommand.ClusterAppointBackup) | (_: MasterCommand.ClusterPrepareCoupling) | (_: MasterCommand.ClusterCouple) =>
         // Handled by MasterCommandExecutor
         Future.failed(new NotImplementedError)
     }
@@ -924,7 +934,7 @@ private[master] object MasterOrderKeeper
 
   private object Internal {
     final case class OtherClusterNodeActivationInhibited(recovered: Try[Recovered[MasterState, Event]])
-    final case class ClusterCompleted(tried: Try[Checked[Completed]]) extends DeadLetterSuppression
+    final case class ClusterModuleTerminatedUnexpectedly(tried: Try[Checked[Completed]]) extends DeadLetterSuppression
     final case class Ready(outcome: Checked[Completed])
     case object AfterProceedEventsAdded
     case object StillShuttingDown extends DeadLetterSuppression

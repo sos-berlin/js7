@@ -38,14 +38,18 @@ extends ClusterWatchApi
       case None =>  // Not yet initialized: we accept anything
         Right(reportedClusterState)
       case Some(current) =>
-        current.clusterState.applyEvents(events.map(NoKey <-: _)) match {
-          case Left(problem) =>
-            logger.warn(s"Master '${masterId.string}': $problem")
-            val superproblem: Problem = ClusterWatchEventMismatchProblem(events, current.clusterState, reportedClusterState = reportedClusterState)
-            logger.warn(s"Master '${masterId.string}': $superproblem")
-          case Right(clusterState) =>
-            if (clusterState != reportedClusterState)
-              logger.warn(ClusterWatchEventMismatchProblem(events, clusterState, reportedClusterState = reportedClusterState).toString)
+        if (current == reportedClusterState) {
+          logger.info(s"Master '${masterId.string}': Ignored probably duplicate events for already reached clusterState=$current")
+        } else {
+          current.clusterState.applyEvents(events.map(NoKey <-: _)) match {
+            case Left(problem) =>
+              logger.warn(s"Master '${masterId.string}': $problem")
+              val superproblem: Problem = ClusterWatchEventMismatchProblem(events, current.clusterState, reportedClusterState = reportedClusterState)
+              logger.warn(s"Master '${masterId.string}': $superproblem")
+            case Right(clusterState) =>
+              if (clusterState != reportedClusterState)
+                logger.warn(ClusterWatchEventMismatchProblem(events, clusterState, reportedClusterState = reportedClusterState).toString)
+          }
         }
         Right(reportedClusterState)
     } .map(_.toCompleted)

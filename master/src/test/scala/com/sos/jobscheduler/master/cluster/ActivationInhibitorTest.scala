@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master.cluster
 
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
-import com.sos.jobscheduler.master.cluster.ActivationInhibitor.{Active, Inhibited, Passive, State}
+import com.sos.jobscheduler.master.cluster.ActivationInhibitor.{Active, Inhibited, Initial, Passive, State}
 import monix.eval.Task
 import monix.execution.schedulers.TestScheduler
 import org.scalatest.FreeSpec
@@ -15,18 +15,52 @@ final class ActivationInhibitorTest extends FreeSpec
 {
   private implicit val scheduler = TestScheduler()
 
+  "startActive, startPassive" - {
+    lazy val inhibitor = new ActivationInhibitor
+
+    "state is Initial" in {
+      val c = inhibitor.state.runToFuture
+      scheduler.tick()
+      assert(c.value == Some(Success(Some(Initial))))
+    }
+
+    "startActive" in {
+      val a = inhibitor.startActive.runToFuture
+      scheduler.tick()
+      assert(a.value == Some(Success(())))
+    }
+
+    "Following startActive is rejected" in {
+      val b = inhibitor.startActive.runToFuture
+      scheduler.tick()
+      assert(b.value.get.isFailure)
+    }
+
+    "Following startPassive is rejected" in {
+      val b = inhibitor.startPassive.runToFuture
+      scheduler.tick()
+      assert(b.value.get.isFailure)
+    }
+
+    "state is Active" in {
+      val c = inhibitor.state.runToFuture
+      scheduler.tick()
+      assert(c.value == Some(Success(Some(Active))))
+    }
+  }
+
   "tryActivate" - {
     implicit lazy val inhibitor = new ActivationInhibitor
     lazy val activation = succeedingActivation(inhibitor)
 
     "first" in {
-      val a = activation.runToFuture
+      val b = activation.runToFuture
       scheduler.tick()
-      assert(!a.isCompleted)
+      assert(!b.isCompleted)
       assert(inhibitor.state.await(99.s) == None)
 
       scheduler.tick(1.s)
-      assert(a.value == Some(Success("ACTIVATED")))
+      assert(b.value == Some(Success("ACTIVATED")))
       assert(inhibitor.state.await(99.s) == Some(Active))
     }
 
@@ -43,14 +77,17 @@ final class ActivationInhibitorTest extends FreeSpec
     implicit lazy val inhibitor = new ActivationInhibitor
 
     "first" in {
-      val a = failingActivation(inhibitor).runToFuture
+      val a = inhibitor.startPassive.runToFuture
       scheduler.tick()
-      assert(!a.isCompleted)
+      assert(a.value == Some(Success(())))
+
+      val b = failingActivation(inhibitor).runToFuture
+      scheduler.tick()
+      assert(!b.isCompleted)
       assert(inhibitor.state.await(99.s) == None)
 
       scheduler.tick(1.s)
-      //Await.ready(a, 9.s)
-      assert(a.value.map(_.failed.get.toString) == Some("java.lang.RuntimeException: TEST"))
+      assert(b.value.map(_.failed.get.toString) == Some("java.lang.RuntimeException: TEST"))
       assert(inhibitor.state.await(99.s) == Some(Passive))
     }
 
@@ -66,14 +103,18 @@ final class ActivationInhibitorTest extends FreeSpec
     implicit lazy val inhibitor = new ActivationInhibitor
 
     "inhibitActivation" in {
+      val a = inhibitor.startPassive.runToFuture
+      scheduler.tick()
+      assert(a.value == Some(Success(())))
+
       val whenInhibited = inhibitor.inhibitActivation(2.s).runToFuture
       scheduler.tick()
       assert(whenInhibited.value == Some(Success(Right(true))))
       assert(state == Some(Inhibited))
 
-      val a = succeedingActivation(inhibitor).runToFuture
+      val b = succeedingActivation(inhibitor).runToFuture
       scheduler.tick()
-      assert(a.value == Some(Success("INHIBITED")))
+      assert(b.value == Some(Success("INHIBITED")))
     }
 
     "while inhibition is in effect" in {
@@ -98,7 +139,12 @@ final class ActivationInhibitorTest extends FreeSpec
 
   "inhibitActivation waits when currently activating" in {
     implicit val inhibitor = new ActivationInhibitor
-    val a = succeedingActivation(inhibitor).runToFuture
+
+    val a = inhibitor.startPassive.runToFuture
+    scheduler.tick()
+    assert(a.value == Some(Success(())))
+
+    val b = succeedingActivation(inhibitor).runToFuture
     scheduler.tick()
     val whenInhibited = inhibitor.inhibitActivation(2.s).runToFuture
 
@@ -106,7 +152,7 @@ final class ActivationInhibitorTest extends FreeSpec
     assert(!whenInhibited.isCompleted)
 
     scheduler.tick(1.s)
-    assert(a.value == Some(Success("ACTIVATED")))
+    assert(b.value == Some(Success("ACTIVATED")))
     assert(whenInhibited.value == Some(Success(Right(false))))
     assert(state == Some(Active))
 
@@ -116,6 +162,11 @@ final class ActivationInhibitorTest extends FreeSpec
 
   "inhibit while inhibiting" in {
     implicit val inhibitor = new ActivationInhibitor
+
+    val a = inhibitor.startPassive.runToFuture
+    scheduler.tick()
+    assert(a.value == Some(Success(())))
+
     val aInhibited = inhibitor.inhibitActivation(2.s).runToFuture
     scheduler.tick()
     assert(aInhibited.value == Some(Success(Right(true))))

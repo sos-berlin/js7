@@ -5,6 +5,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import cats.data.EitherT
 import cats.effect.ExitCase
+import cats.syntax.flatMap._
 import com.sos.jobscheduler.base.auth.UserAndPassword
 import com.sos.jobscheduler.base.eventbus.EventBus
 import com.sos.jobscheduler.base.generic.{Completed, SecretString}
@@ -25,7 +26,7 @@ import com.sos.jobscheduler.core.event.journal.JournalActor
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
-import com.sos.jobscheduler.core.event.journal.recover.{JournaledStateRecoverer, Recovered}
+import com.sos.jobscheduler.core.event.journal.recover.Recovered
 import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
 import com.sos.jobscheduler.core.problems.MissingPassiveClusterNodeHeartbeatProblem
 import com.sos.jobscheduler.core.startup.Halt.haltJava
@@ -41,7 +42,7 @@ import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
 import com.sos.jobscheduler.master.cluster.Cluster._
 import com.sos.jobscheduler.master.cluster.ClusterCommon.truncateFile
 import com.sos.jobscheduler.master.cluster.ObservablePauseDetector._
-import com.sos.jobscheduler.master.data.MasterCommand
+import com.sos.jobscheduler.master.data.MasterCommand.ClusterInhibitActivation
 import com.typesafe.config.{Config, ConfigUtil}
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, Paths}
@@ -71,8 +72,8 @@ final class Cluster(
   private val activationInhibitor = new ActivationInhibitor
   private val fetchingAcks = AtomicBoolean(false)
   @volatile
-  private var fetchingAcksFuture: CancelableFuture[Checked[Completed]] = null
-  private val fetchingEventsPromise = Promise[Checked[Completed]]()
+  private var fetchingAcksCancelable = SerialCancelable()
+  private val fetchingAcksTerminatedUnexpectedlyPromise = Promise[Checked[Completed]]()
   @volatile
   private var switchoverAcknowledged = false
   @volatile
@@ -95,9 +96,7 @@ final class Cluster(
   def stop(): Unit = {
     logger.debug("stop")
     stopRequested = true
-    for (o <- Option(fetchingAcksFuture)) {
-      o.cancel()
-    }
+    fetchingAcksCancelable.cancel()
     clusterWatchSynchronizer.stop()
     //TODO clusterWatch.logout()
   }
@@ -144,13 +143,15 @@ final class Cluster(
       case (ClusterEmpty, _, None | Some(_: ClusterNodeRole.Primary), _) =>
         logger.info(s"Remaining the active primary cluster node, still without backup")
         Task.pure(None) ->
-          Task.pure(Right(recoveredClusterState -> ClusterFollowUp.BecomeActive(recovered)))
+          (activationInhibitor.startActive >>
+            Task.pure(Right(recoveredClusterState -> ClusterFollowUp.BecomeActive(recovered))))
 
       case (ClusterEmpty, Some(ownUri), Some(ClusterNodeRole.Backup(activeUri)), _) =>
-        logger.info(s"Remaining the (still not following) backup cluster node '$ownUri' for primary node at $activeUri")
+        logger.info(s"Remaining the (still not following) backup cluster node '$ownUri' for primary node at '$activeUri''")
         val passive = newPassiveClusterNode(ownUri, activeUri, recovered)
         passive.state.map(Some.apply) ->
-          passive.run(recoveredClusterState, recoveredState)
+          (activationInhibitor.startPassive >>
+            passive.run(recoveredClusterState, recoveredState))
 
       case (_, Some(ownUri), _, Some(recoveredJournalFile)) if recoveredClusterState.isActive(ownUri) =>
         recoveredClusterState match {
@@ -158,18 +159,19 @@ final class Cluster(
             import recoveredClusterState.passiveUri
             logger.info(s"This cluster node was coupled before restart - asking the other node '$passiveUri' about its state")
             val failedOver = inhibitActivationOf(passiveUri).map {
-              case otherState: ClusterState if otherState.isActive(ownUri) =>
-                logger.info("The other cluster is still passive: this node remains the active cluster node")
+              case None =>
+                // The other node has not failed-over
+                logger.info("The other cluster is still passive, so this node remains the active cluster node")
                 assertThat(recoveredClusterState.isActive(ownUri))
                 remainingActiveAfterRestart = true
                 proceed(recoveredClusterState, recovered.eventId)
                 None
 
-              case otherState: ClusterFailedOver =>
-                import otherState.failedAt
-                logger.warn(s"The other cluster node '${otherState.activeUri}' has become active (failed-over) while this node was absent")
-                assertThat(otherState.activeUri == passiveUri &&
-                           otherState.passiveUri == recoveredClusterState.activeUri)
+              case Some(otherFailedOver) =>
+                import otherFailedOver.failedAt
+                logger.warn(s"The other cluster node '${otherFailedOver.activeUri}' has become active (failed-over) while this node was absent")
+                assertThat(otherFailedOver.activeUri == passiveUri &&
+                           otherFailedOver.passiveUri == recoveredClusterState.activeUri)
                 // This restarted, previously failed cluster node may have written one chunk of events more than
                 // the passive node, maybe even an extra snapshot in a new journal file.
                 // These extra events are not acknowledged. So we truncate the journal.
@@ -190,8 +192,10 @@ final class Cluster(
                     journalFiles.head
                   } else
                     sys.error(s"Failed-over node's ClusterState does not match local journal files:" +
-                      s" $otherState <-> ${journalFiles.map(_.file.getFileName).mkString(", ")}")
+                      s" $otherFailedOver <-> ${journalFiles.map(_.file.getFileName).mkString(", ")}")
                 assertThat(journalFile.afterEventId == failedAt.fileEventId)
+                assertThat(recoveredJournalFile.journalPosition == failedAt,
+                  s"${recoveredJournalFile.journalPosition} != $failedAt")
                 val file = journalFile.file
                 val fileSize = Files.size(file)
                 if (fileSize != failedAt.position) {
@@ -201,24 +205,11 @@ final class Cluster(
                   truncated = true
                   truncateFile(file, failedAt.position)
                 }
-                var trunkRecovered = recovered
-                if (truncated) {
-                  // May take a long time !!!
-                  // TODO Recovering may be omitted because the new active node has written a snapshot immediately after failover
-                  logger.debug("Recovering again due to shortend journal after failover")
-                  trunkRecovered = JournaledStateRecoverer.recover[MasterState, Event](
-                    journalMeta, recovered.newStateBuilder, config /*, runningSince=???*/)
-                  val truncatedRecoveredJournalFile = trunkRecovered.recoveredJournalFile
-                    .getOrElse(sys.error(s"Unrecoverable journal file '${file.getFileName}''"))
-                  assertThat(truncatedRecoveredJournalFile.state.clusterState == recoveredClusterState)
-                  assertThat(truncatedRecoveredJournalFile.journalPosition == failedAt,
-                    s"${truncatedRecoveredJournalFile.journalPosition} != $failedAt")
-                }
                 Some(recoveredClusterState ->
-                  newPassiveClusterNode(ownUri, otherState.activeUri, trunkRecovered, otherFailedOver = true))
+                  newPassiveClusterNode(ownUri, otherFailedOver.activeUri, recovered, otherFailedOver = true))
 
               case otherState =>
-                sys.error(s"The other node is in invalid clusterState=$otherState")  // ???
+                sys.error(s"The other node is in invalid failedOver=$otherState")  // ???
             }.memoize
 
             failedOver.flatMap {
@@ -236,7 +227,8 @@ final class Cluster(
             logger.info("Remaining the active cluster node without following node")
             proceed(recoveredClusterState, recovered.eventId)
             Task.pure(None) ->
-              Task.pure(Right(recoveredClusterState -> ClusterFollowUp.BecomeActive(recovered)))
+              (activationInhibitor.startActive >>
+                Task.pure(Right(recoveredClusterState -> ClusterFollowUp.BecomeActive(recovered))))
         }
 
       case (state: HasBackupNode, Some(ownUri), _, Some(_)) if state.passiveUri == ownUri =>
@@ -318,10 +310,6 @@ final class Cluster(
         else
           persistence.waitUntilStarted.flatMap(_ =>
             persist {
-              case clusterState: ClusterPreparedToBeCoupled
-                if clusterState.activeUri == activeUri && clusterState.passiveUri == passiveUri =>
-                Right(Nil)
-
               //case state @ (ClusterEmpty | ClusterSole(`activeUri`) | ClusterNodesAppointed(Seq(`activeUri`, `passiveUri`))) =>
               //  for (events <- becomeSoleIfEmpty(state)) yield
               //    events ::: CouplingPrepared(passiveUri) ::
@@ -332,6 +320,16 @@ final class Cluster(
 
               case ClusterNodesAppointed(Seq(`activeUri`, `passiveUri`)) =>
                 Right(CouplingPrepared(passiveUri) :: Nil)
+
+              case clusterState: ClusterPreparedToBeCoupled
+                if clusterState.activeUri == activeUri && clusterState.passiveUri == passiveUri =>
+                logger.debug(s"ClusterPreparedToBeCoupled ignored in clusterState=$clusterState")
+                Right(Nil)
+
+              case clusterState: ClusterCoupled
+                if clusterState.activeUri == activeUri && clusterState.passiveUri == passiveUri =>
+                logger.debug(s"ClusterPrepareCoupling ignored in clusterState=$clusterState")
+                Right(Nil)
 
               case state: Decoupled if state.activeUri == activeUri && state.passiveUri == passiveUri =>
                 Right(CouplingPrepared(passiveUri) :: Nil)
@@ -354,21 +352,23 @@ final class Cluster(
         if (activeUri != ownUri)
           Task.pure(Left(Problem.pure(s"$call but this is '$ownUri''")))
         else
-          persist {
-            case s: ClusterCoupled
-              if s.activeUri == activeUri && s.passiveUri == passiveUri =>
-              Right(Nil)
+          persistence.waitUntilStarted.flatMap(_ =>
+            persist {
+              case s: ClusterCoupled
+                if s.activeUri == activeUri && s.passiveUri == passiveUri =>
+                Right(Nil)
 
-            case s: ClusterPreparedToBeCoupled
-              if s.activeUri == activeUri && s.passiveUri == passiveUri =>
-              Right(Coupled :: Nil)
+              case s: ClusterPreparedToBeCoupled
+                if s.activeUri == activeUri && s.passiveUri == passiveUri =>
+                Right(Coupled :: Nil)
 
-            case state =>
-              Left(Problem.pure(s"$call rejected due to inappropriate cluster state $state"))
-          }.map(_.map { case (stampedEvents, state) =>
-            for (stamped <- stampedEvents.lastOption) proceed(state, stamped.eventId)
-            Completed
-          })
+              case state =>
+                Left(Problem.pure(s"$call rejected due to inappropriate cluster state $state"))
+            }.map(_
+              .map { case (stampedEvents, state) =>
+                for (stamped <- stampedEvents.lastOption) proceed(state, stamped.eventId)
+                Completed
+              }))
     }
   }
 
@@ -382,18 +382,24 @@ final class Cluster(
       case _ => Right(Nil)
     }
 
-  def inhibitActivation(duration: FiniteDuration): Task[Checked[ClusterState]] =
+  def inhibitActivation(duration: FiniteDuration): Task[Checked[Option[ClusterFailedOver]]] =
     activationInhibitor.inhibitActivation(duration)
       .flatMap {
         case Left(problem) => Task.pure(Left(problem))
-        case Right(_) =>
-          currentClusterState.map { clusterState =>
-            logger.debug(s"inhibitActivation(${duration.pretty}) => $clusterState")
-            Right(clusterState)
+        case Right(/*inhibited=*/true) => Task.pure(Right(None))
+        case Right(/*inhibited=*/false) =>
+          // Could not inhibit, so this node is already active
+          currentClusterState.map {
+            case failedOver: ClusterFailedOver =>
+              logger.debug(s"inhibitActivation(${duration.pretty}) => $failedOver")
+              Right(Some(failedOver))
+            case clusterState =>
+              Left(Problem.pure(
+                s"ClusterInhibitActivation command failed because node is already active but not failed-over: $clusterState"))
           }
       }
 
-  def inhibitActivationOfPeer: Task[ClusterState] =
+  def inhibitActivationOfPeer: Task[Option[ClusterFailedOver]] =
     Task {
       clusterConf.maybeOwnUri.getOrElse(
         throw new IllegalStateException("inhibitActivationOfPeer: ownUri is missing"))
@@ -406,15 +412,15 @@ final class Cluster(
             s"inhibitActivationOfPeer expects active cluster node, but clusterState=$clusterState"))
         })
 
-  private def inhibitActivationOf(uri: Uri): Task[ClusterState] =
+  private def inhibitActivationOf(uri: Uri): Task[Option[ClusterFailedOver]] =
     Task.defer {
       val retryDelay = 5.s  // TODO
       val retryDelays = Iterator.single(1.s/*TODO*/) ++ Iterator.continually(retryDelay)
       AkkaHttpMasterApi.resource(uri, name = "ClusterInhibitActivation")
         .use(otherNode =>
           otherNode.loginUntilReachable(clusterConf.userAndPassword, retryDelays) >>
-            otherNode.executeCommand(MasterCommand.ClusterInhibitActivation(2 * clusterConf.failAfter/*TODO*/))
-              .map(_.clusterState))
+            otherNode.executeCommand(ClusterInhibitActivation(2 * clusterConf.failAfter/*TODO*/))
+              .map(_.failedOver))
         .onErrorRestartLoop(()) { (throwable, _, retry) =>
           // TODO Code mit loginUntilReachable usw. zusammenfassen. Stacktrace unterdrücken wenn isNotIgnorableStackTrace
           val msg = "While trying to reach the other cluster node due to restart: " + throwable.toStringWithCauses
@@ -422,9 +428,9 @@ final class Cluster(
           for (t <- throwable.ifNoStackTrace) logger.debug(msg, t)
           retry(()).delayExecution(retryDelay)
         }
-    }.map { clusterState =>
-      logger.debug(s"$uri ClusterInhibitActivation returned clusterState=$clusterState")
-      clusterState
+    }.map { maybeFailedOver =>
+      logger.debug(s"$uri ClusterInhibitActivation returned failedOver=$maybeFailedOver")
+      maybeFailedOver
     }
 
   def switchOver: Task[Checked[Completed]] =
@@ -462,54 +468,58 @@ final class Cluster(
   private def fetchAndHandleAcknowledgedEventIds(state: ClusterCoupled, eventId: EventId): Unit =
     if (!fetchingAcks.getAndSet(true)) {
       def msg = s"observeEventIds(${state.passiveUri}, after=$eventId, userAndPassword=${clusterConf.userAndPassword})"
-      fetchingAcksFuture = fetchAndHandleAcknowledgedEventIds(state.passiveUri, after = eventId)
-        .executeWithOptions(_.enableAutoCancelableRunLoops)
-        .runToFuture
-      fetchingAcksFuture onComplete {
-        case Success(Left(MissingPassiveClusterNodeHeartbeatProblem(uri))) if clusterConf.maybeOwnUri.isDefined =>
-          for (ownUri <- clusterConf.maybeOwnUri) {
-            logger.warn("No heartbeat of passive cluster node - continuing as single active cluster node")
-            val passiveLost = PassiveLost(uri)
-            val common = new ClusterCommon(ownUri, activationInhibitor, clusterWatch, testEventBus)
-            common.ifClusterWatchAllowsActivation(state, passiveLost,
-              persist(_ => Right(passiveLost :: Nil))
-                .map(_.map(_ => true))
-            ) .guarantee(Task {
-                // FIXME Possible race condition: when immediately Coupled again the acknowledgement are not being read
-                //  Mit LockResource synchronisieren?
-                for (o <- Option(fetchingAcksFuture)) o.cancel()
-                fetchingAcks := false
+      val future: CancelableFuture[Checked[Completed]] =
+        fetchAndHandleAcknowledgedEventIds(state.passiveUri, after = eventId)
+          .flatMap {
+            case Left(missingHeartbeatProblem @ MissingPassiveClusterNodeHeartbeatProblem(uri)) =>
+              logger.warn("No heartbeat from passive cluster node - continuing as single active cluster node")
+              val passiveLost = PassiveLost(uri)
+              val common = new ClusterCommon(clusterConf.maybeOwnUri.get, activationInhibitor, clusterWatch, testEventBus)
+              common.ifClusterWatchAllowsActivation(state, passiveLost,
+                persist(_ => Right(passiveLost :: Nil), suppressClusterWatch = true/*already notified*/)
+                  .map(_.toCompleted)
+                  .map(_.map { (_: Completed) =>
+                    fetchingAcks := false  // Allow fetching acknowledgements again when recoupling
+                    true
+                  })
+              ).map(_.flatMap { allowed =>
+                if (!allowed) {
+                  // Should not happen
+                  haltJava(s"ClusterWatch has unexpectedly forbidden activation after $passiveLost event", restart = true)
+                }
+                Left(missingHeartbeatProblem)
               })
-              .runToFuture
-              .onComplete {
-                case Failure(t) => logger.error(s"$passiveLost event failed: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
-                case Success(Left(problem)) => logger.error(s"$passiveLost event failed: $problem")
-                case Success(Right(false)) => logger.error(s"$passiveLost inhibited")  // ???
-                case Success(Right(true)) =>
-              }
+            case o => Task.pure(o)
           }
-
-        case tried =>
-          tried match {
+          .materialize.flatTap(tried => Task { tried match {
             case Success(Right(Completed)) =>
-              if (!stopRequested) {
-                logger.error("observeEventIds terminated")
-              }
-
+              if (!stopRequested) logger.error("fetchAndHandleAcknowledgedEventIds terminated unexpectedly")
+            case Success(Left(_: MissingPassiveClusterNodeHeartbeatProblem)) =>
             case Success(Left(problem)) =>
               logger.error(s"$msg failed with $problem")
-
             case Failure(t) =>
               logger.error(s"$msg failed with ${t.toStringWithCauses}", t)
-          }
-          fetchingEventsPromise.complete(tried)
+          }})
+          .dematerialize
+          .executeWithOptions(_.enableAutoCancelableRunLoops)
+          .runToFuture
+        fetchingAcksCancelable := future
+      future.onComplete {
+        case Success(Left(_: MissingPassiveClusterNodeHeartbeatProblem)) =>
+        case tried =>
+          // Completes only when not canceled and then it is a failure
+          fetchingAcksTerminatedUnexpectedlyPromise.complete(tried)
       }
     }
 
   private def fetchAndHandleAcknowledgedEventIds(uri: Uri, after: EventId): Task[Checked[Completed]] =
-    Task { logger.info(s"Fetching acknowledgements from passive cluster node, after=${EventId.toString(after)}") } >>
-      AkkaHttpMasterApi.resource(uri, name = "acknowledgements")(actorSystem)
-        .use(api =>
+    Task {
+      logger.info(s"Fetching acknowledgements from passive cluster node, after=${EventId.toString(after)}")
+    } >>
+      Observable
+        .fromResource(
+          AkkaHttpMasterApi.resource(uri, name = "acknowledgements")(actorSystem))
+        .flatMap(api =>
           observeEventIds(api, after = after)
             .whileBusyBuffer(OverflowStrategy.DropOld(bufferSize = 2))
             .detectPauses(clusterConf.heartbeat + clusterConf.failAfter)
@@ -527,14 +537,14 @@ final class Cluster(
             .collect {
               case Left(problem) => problem
               //case Right(Completed) => (ignore)
-            }
-            .headOptionL
-            .map {
-              case Some(problem) => Left(problem)
-              case None => Right(Completed)
             })
+        .headOptionL
+        .map {
+          case Some(problem) => Left(problem)
+          case None => Right(Completed)
+        }
         .guaranteeCase(exitCase => Task(
-          logger.debug(s"fetchAndHandleAcknowledgedEventIds finished => $exitCase")))
+          logger.debug(s"fetchAndHandleAcknowledgedEventIds ended => $exitCase")))
 
   private def observeEventIds(api: HttpMasterApi, after: EventId): Observable[EventId] =
     RecouplingStreamReader
@@ -551,16 +561,16 @@ final class Cluster(
         },
         stopRequested = () => stopRequested)
 
-  def onClusterCompleted: Task[Checked[Completed]] =
-    Task.fromFuture(fetchingEventsPromise.future)
+  def onTerminatedUnexpectedly: Task[Checked[Completed]] =
+    Task.fromFuture(fetchingAcksTerminatedUnexpectedlyPromise.future)
 
-  private def persist(toEvents: ClusterState => Checked[Seq[ClusterEvent]])
+  private def persist(toEvents: ClusterState => Checked[Seq[ClusterEvent]], suppressClusterWatch: Boolean = false)
   : Task[Checked[(Seq[Stamped[KeyedEvent[ClusterEvent]]], ClusterState)]] =
     (for {
       persisted <- EitherT(persistence.persistTransaction(NoKey)(toEvents))
       (stampedEvents, clusterState) = persisted
       _ <- EitherT(
-        if (stampedEvents.isEmpty)
+        if (suppressClusterWatch || stampedEvents.isEmpty)
           Task.pure(Right(Completed))
         else
           clusterWatchSynchronizer.applyEvents(stampedEvents.map(_.value.event), clusterState))
@@ -615,16 +625,16 @@ final class Cluster(
                 case _ =>
                   Task.pure(Right(Completed))
               }
-            ) .runToFuture onComplete {
-                case Success(Right(Completed)) =>
-                case Success(Left(problem)) if problem.codeOption contains ClusterWatchHeartbeatFromInactiveNodeProblem.code =>
-                  haltJava(s"EMERGENCY STOP due to: $problem", restart = true)  // TODO How to test?
-                case Success(problem) =>
-                  logger.warn(s"Error when sending heartbeat to ClusterWatch: $problem")
-                case Failure(t) =>
-                  logger.warn(s"Error when sending heartbeat to ClusterWatch: ${t.toStringWithCauses}")
-                  logger.debug(s"Error when sending heartbeat to ClusterWatch: $t", t)
-              }
+            ).runToFuture onComplete {
+              case Success(Right(Completed)) =>
+              case Success(Left(problem)) if problem.codeOption contains ClusterWatchHeartbeatFromInactiveNodeProblem.code =>
+                haltJava(s"EMERGENCY STOP due to: $problem", restart = true)  // TODO How to test?
+              case Success(problem) =>
+                logger.warn(s"Error when sending heartbeat to ClusterWatch: $problem")
+              case Failure(t) =>
+                logger.warn(s"Error when sending heartbeat to ClusterWatch: ${t.toStringWithCauses}")
+                logger.debug(s"Error when sending heartbeat to ClusterWatch: $t", t)
+            }
           }
         case _ =>
           Cancelable.empty

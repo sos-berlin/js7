@@ -9,6 +9,8 @@ import scala.language.higherKinds
 final case class RecoveredJournalFile[S <: JournaledState[S, E], E <: Event](
   file: Path,
   length: Long,
+  /** Last position in events section, but not in a transaction. */
+  lastProperEventPosition: Long,
   /** File's JournalHeader. */
   journalHeader: JournalHeader,
   /** The calculated recovered JournalHeader to continue with. */

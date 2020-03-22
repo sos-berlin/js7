@@ -4,10 +4,11 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.cluster.ClusterState.ClusterEmpty
+import com.sos.jobscheduler.data.cluster.ClusterState.ClusterFailedOver
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.crypt.{GenericSignature, SignedString}
+import com.sos.jobscheduler.data.event.JournalPosition
 import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.WorkflowPath
@@ -179,11 +180,19 @@ final class MasterCommandTest extends FreeSpec
   }
 
   "ClusterInhibitActivation.Response" in {
-    testJson[MasterCommand.Response](ClusterInhibitActivation.Response(ClusterEmpty),
+    testJson[MasterCommand.Response](ClusterInhibitActivation.Response(Some(ClusterFailedOver(
+      List(Uri("http://PRIMARY"), Uri("http://BACKUP")),
+      active = 1,
+      JournalPosition(0, 1000)))),
       json"""{
         "TYPE": "ClusterInhibitActivationResponse",
-        "clusterState": {
-          "TYPE": "ClusterEmpty"
+        "failedOver": {
+          "uris": [ "http://PRIMARY", "http://BACKUP" ],
+          "active": 1,
+          "failedAt": {
+            "fileEventId": 0,
+            "position": 1000
+          }
         }
       }""")
   }

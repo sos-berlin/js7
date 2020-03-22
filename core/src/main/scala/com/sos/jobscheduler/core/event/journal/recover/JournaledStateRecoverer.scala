@@ -8,7 +8,7 @@ import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
-import com.sos.jobscheduler.core.event.journal.recover.JournalProgress.InCommittedEventsSection
+import com.sos.jobscheduler.core.event.journal.recover.JournalProgress.{AfterSnapshotSection, InCommittedEventsSection}
 import com.sos.jobscheduler.core.event.journal.recover.JournaledStateRecoverer._
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.event.state.JournaledStateBuilder
@@ -27,6 +27,7 @@ private final class JournaledStateRecoverer[S <: JournaledState[S, E], E <: Even
   private val fileJournaledStateBuilder = newfileJournaledStateBuilder()
 
   private var _position = 0L
+  private var _lastProperEventPosition = 0L
   private val _firstEventPosition = SetOnce[Long]
 
   def recoverAll(): Unit = {
@@ -36,10 +37,11 @@ private final class JournaledStateRecoverer[S <: JournaledState[S, E], E <: Even
       for (json <- UntilNoneIterator(jsonReader.read()).map(_.value)) {
         fileJournaledStateBuilder.put(json)
         fileJournaledStateBuilder.journalProgress match {
-          case JournalProgress.AfterSnapshotSection |
-               JournalProgress.InCommittedEventsSection |
-               JournalProgress.AfterEventsSection =>
+          case AfterSnapshotSection =>
             _position = jsonReader.position
+          case InCommittedEventsSection =>
+            _position = jsonReader.position
+            _lastProperEventPosition = jsonReader.position
           case _ =>
         }
         if (_firstEventPosition.isEmpty && fileJournaledStateBuilder.journalProgress == InCommittedEventsSection) {
@@ -56,6 +58,8 @@ private final class JournaledStateRecoverer[S <: JournaledState[S, E], E <: Even
   def firstEventPosition = _firstEventPosition.toOption
 
   def position: Long = _position
+
+  def lastProperEventPosition: Long = _lastProperEventPosition
 }
 
 object JournaledStateRecoverer
@@ -87,6 +91,7 @@ object JournaledStateRecoverer
           Some(RecoveredJournalFile(
             file,
             length = recoverer.position,
+            lastProperEventPosition = recoverer.lastProperEventPosition,
             fileJournaledStateBuilder.fileJournalHeader getOrElse sys.error(s"Missing JournalHeader in file '${file.getFileName}'"),
             calculatedJournalHeader,
             firstEventPosition = recoverer.firstEventPosition getOrElse sys.error(s"Missing JournalHeader in file '${file.getFileName}'"),

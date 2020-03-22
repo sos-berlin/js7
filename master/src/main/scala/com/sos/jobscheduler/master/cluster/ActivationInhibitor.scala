@@ -12,13 +12,29 @@ import scala.concurrent.duration.FiniteDuration
 /** Inhibits activation of cluster node for the specified duration. */
 private[cluster] final class ActivationInhibitor
 {
-  private val stateMvarTask = MVar[Task].of[State](Passive).memoize
+  private val stateMvarTask = MVar[Task].of[State](Initial).memoize
   private val inhibitionTimer = SerialCancelable()
+
+  def startActive: Task[Unit] =
+    startAs(Active)
+
+  def startPassive: Task[Unit] =
+    startAs(Passive)
+
+  private def startAs(state: State): Task[Unit] =
+    stateMvarTask.flatMap(mvar =>
+      mvar.tryTake.flatMap {
+        case Some(Initial) =>
+          mvar.put(state)
+        case s =>
+          s.fold(Task.unit)(mvar.put) >>
+            Task.raiseError(throw new IllegalStateException(s"ActivationInhibitor markAs($state): Already '$s''"))
+      })
 
   def tryToActivate[A](ifInhibited: Task[A], activate: Task[A]): Task[A] =
     stateMvarTask.flatMap(mvar =>
       mvar.take.flatMap {
-        case Passive | Active =>
+        case Initial | Passive | Active =>
           activate
             .guaranteeCase {
               case ExitCase.Completed => mvar.put(Active)
@@ -29,11 +45,14 @@ private[cluster] final class ActivationInhibitor
           mvar.put(Inhibited) >> ifInhibited
       })
 
+  /** Tries to inhibit activation for `duration`.
+    * @return true if activation is or has been inhibited, false if already active
+    */
   def inhibitActivation(duration: FiniteDuration): Task[Checked[Boolean]] =
     stateMvarTask.flatMap(mvar =>
       mvar.take
         .flatMap {
-          case Passive | Inhibited =>
+          case Initial | Passive | Inhibited =>
             mvar.put(Inhibited)
               .flatMap(_ => setInhibitionTimer(duration))
               .map(_ => Right(true))
@@ -69,6 +88,7 @@ private[cluster] object ActivationInhibitor
   private val logger = Logger(getClass)
 
   private[cluster] sealed trait State
+  private[cluster] case object Initial extends State
   private[cluster] case object Passive extends State
   private[cluster] case object Inhibited extends State
   private[cluster] case object Active extends State

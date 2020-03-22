@@ -7,7 +7,7 @@ import com.sos.jobscheduler.base.problem.Checked.implicits.{checkedJsonDecoder, 
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.data.cluster.ClusterState
+import com.sos.jobscheduler.data.cluster.ClusterState.ClusterFailedOver
 import com.sos.jobscheduler.data.command.{CancelMode, CommonCommand}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.crypt.SignedString
@@ -159,8 +159,11 @@ object MasterCommand extends CommonCommand.Companion
     type Response = ClusterInhibitActivation.Response
   }
   object ClusterInhibitActivation {
-    final case class Response(clusterState: ClusterState)
+    final case class Response(failedOver: Option[ClusterFailedOver])
     extends MasterCommand.Response
+
+    private implicit val x = deriveCodec[ClusterFailedOver]
+    implicit val jsonCodec = deriveCodec[Response]
   }
 
   sealed trait Response
@@ -172,7 +175,7 @@ object MasterCommand extends CommonCommand.Companion
     implicit val ResponseJsonCodec: TypedJsonCodec[Response] = TypedJsonCodec[Response](
       Subtype(Accepted),
       Subtype.named(deriveCodec[Batch.Response], "BatchResponse"),
-      Subtype.named(deriveCodec[ClusterInhibitActivation.Response], "ClusterInhibitActivationResponse"))
+      Subtype.named[ClusterInhibitActivation.Response]("ClusterInhibitActivationResponse"))
   }
 
   implicit val jsonCodec: TypedJsonCodec[MasterCommand] = TypedJsonCodec[MasterCommand](
