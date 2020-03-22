@@ -182,17 +182,11 @@ extends Actor with Stash
             logger.debug("SwitchedOver: no more events are accepted")
             switchedOver = true  // No more events are accepted
 
-          case Some(Stamped(_, _, KeyedEvent(_, _: ClusterEvent.FailedOver))) =>
-            logger.debug("FailedOver: no acknowledgments required")
+          case Some(Stamped(_, _, KeyedEvent(_, event @ (_: ClusterEvent.FailedOver | _: ClusterEvent.PassiveLost)))) =>
+            logger.debug(s"No more acknowledgments required due to $event event")
             requireClusterAcknowledgement = false
             waitingForAcknowledgeTimer := Cancelable.empty
             commit()
-
-          case Some(Stamped(_, _, KeyedEvent(_, _: ClusterEvent.PassiveLost))) =>
-            logger.debug("PassiveLost: no more acknowledgments required")
-            requireClusterAcknowledgement = false
-            waitingForAcknowledgeTimer := Cancelable.empty
-            onCommitAcknowledged(writtenBuffer.length)
 
           case _ => forwardCommit((delay max conf.delay) - alreadyDelayed)
         }
