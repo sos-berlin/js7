@@ -12,9 +12,12 @@ import monix.execution.atomic.AtomicBoolean
 /**
   * @author Joacim Zschimmer
   */
-object StartUp {
+object StartUp
+{
   private val logger = Logger(getClass)
   private val classPathLogged = AtomicBoolean(false)
+
+  Halt  // Initialize class and object for maybe quicker emergency stop
 
   /** Log Java version, config and data directory, and classpath. */
   def logStartUp(configDir: Path, dataDir: Option[Path]): Unit = {
