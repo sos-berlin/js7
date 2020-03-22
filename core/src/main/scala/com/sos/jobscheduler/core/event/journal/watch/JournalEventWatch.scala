@@ -103,7 +103,11 @@ with JournalingObserver
     evictUnusedEventReaders()
   }
 
-  def onJournalingEnded(fileLength: EventId) =
+  def onJournalingEnded(fileLength: Long) =
+    // TODO Delay until no FailedOver event may be written?
+    //  This would be after the next journal file has been written with an acknowledged event
+    //  - SnapshotTaken is not being acknowledged!
+    //  Können wir auf onJournalingEnded verzichten zu Gunsten von onJournalingStarted ?
     for (o <- currentEventReaderOption) {
       logger.debug(s"onJournalingEnded ${o.journalFile.getFileName} fileLength=$fileLength")
       nextEventReaderPromise = Some(o.lastEventId -> Promise[CurrentEventReader]())

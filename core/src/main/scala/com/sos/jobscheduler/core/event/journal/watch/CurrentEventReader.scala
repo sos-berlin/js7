@@ -43,7 +43,7 @@ extends EventReader
   protected def isFlushedAfterPosition(position: Long) =
     journalingEnded || position < flushedLengthSync.last
 
-  private[journal] def onJournalingEnded(fileLength: EventId) = {
+  private[journal] def onJournalingEnded(fileLength: Long) = {
     flushedLengthSync.onAdded(fileLength + 1)  // Plus one, to allow EOF detection
     _committedLength = fileLength
     journalingEnded = true

@@ -37,9 +37,9 @@ final class FileJournaledStateBuilder[S <: JournaledState[S, E], E <: Event](
       buffer = new mutable.ArrayBuffer[Stamped[KeyedEvent[Event]]]
     }
 
-    def add(positionAndStamped: Stamped[KeyedEvent[Event]]): Unit = {
+    def add(stamped: Stamped[KeyedEvent[Event]]): Unit = {
       require(isInTransaction)
-      buffer += positionAndStamped
+      buffer += stamped
     }
 
     def clear(): Unit =
