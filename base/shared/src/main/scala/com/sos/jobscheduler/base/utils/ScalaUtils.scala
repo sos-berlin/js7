@@ -275,15 +275,6 @@ object ScalaUtils
       }
   }
 
-  implicit final class RichString(private val underlying: String) extends AnyVal
-  {
-    def ?:(condition: Boolean): String =
-      when(condition)
-
-    @inline def when(condition: Boolean): String =
-      if (condition) underlying else ""
-  }
-
   /** Simple implementation (for tests), converts the string to an Array[Byte],
     * risking `OutOfMemoryError` for long Strings. */
   def shortStringToInputStream(string: String): InputStream =

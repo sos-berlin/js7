@@ -289,13 +289,6 @@ final class ScalaUtilsTest extends FreeSpec
     assert(in.read() == 0x9F)
     assert(in.read() == -1)
   }
-
-  "String ?" in {
-    assert((false ?: "STRING") == "")
-    assert((true ?: "STRING") == "STRING")
-    assert(("STRING" when false) == "")
-    assert(("STRING" when true) == "STRING")
-  }
 }
 
 object ScalaUtilsTest

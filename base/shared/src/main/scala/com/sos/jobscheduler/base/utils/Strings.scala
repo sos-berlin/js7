@@ -35,11 +35,11 @@ object Strings
       while (i > 0 && predicate(underlying(i - 1))) i = i -1
       underlying.substring(0, i)
     }
-  }
 
-  implicit final class RichBooleanForString(private val underlying: Boolean) extends AnyVal
-  {
-    def ??(string: String): String =
-      if (underlying) string else ""
+    def ?:(condition: Boolean): String =
+      when(condition)
+
+    @inline def when(condition: Boolean): String =
+      if (condition) underlying else ""
   }
 }

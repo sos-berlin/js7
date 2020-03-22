@@ -67,8 +67,10 @@ final class StringsTest extends FreeSpec {
     assert("/abc//".reverseDropWhile(_ == '/') == "/abc")
   }
 
-  "??" in {
-    assert((false ?? "string") == "")
-    assert((true ?? "string") == "string")
+  "String ?" in {
+    assert((false ?: "STRING") == "")
+    assert((true ?: "STRING") == "STRING")
+    assert(("STRING" when false) == "")
+    assert(("STRING" when true) == "STRING")
   }
 }
