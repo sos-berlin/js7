@@ -107,6 +107,16 @@ final class MasterCommandTest extends FreeSpec
       }""")
   }
 
+  "ClusterRecouple" in {
+    testJson[MasterCommand](
+      ClusterRecouple(Uri("http://ACTIVE"), Uri("http://PASSIVE")),
+      json"""{
+        "TYPE": "ClusterRecouple",
+        "activeUri": "http://ACTIVE",
+        "passiveUri": "http://PASSIVE"
+      }""")
+  }
+
   "ReplaceRepo" in {
     testJson[MasterCommand](ReplaceRepo(
       VersionId("1"),

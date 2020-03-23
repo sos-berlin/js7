@@ -194,8 +194,9 @@ final class Cluster(
                     sys.error(s"Failed-over node's ClusterState does not match local journal files:" +
                       s" $otherFailedOver <-> ${journalFiles.map(_.file.getFileName).mkString(", ")}")
                 assertThat(journalFile.afterEventId == failedAt.fileEventId)
-                assertThat(recoveredJournalFile.journalPosition == failedAt,
-                  s"${recoveredJournalFile.journalPosition} != $failedAt")
+                //FIXME JournalEventWatch darf noch nicht über den abgeschnittenen Teil benachrichtigt worden sein!
+                //assertThat(recoveredJournalFile.journalPosition == failedAt,
+                //  s"${recoveredJournalFile.journalPosition} != $failedAt")
                 val file = journalFile.file
                 val fileSize = Files.size(file)
                 if (fileSize != failedAt.position) {
@@ -233,7 +234,7 @@ final class Cluster(
 
       case (state: HasBackupNode, Some(ownUri), _, Some(_)) if state.passiveUri == ownUri =>
         logger.info(
-          if (state.isCoupledPassive(ownUri))
+          if (state.isCoupledPassiveUri(ownUri))
             s"Remaining a passive cluster node following the active node '${state.activeUri}'"
           else
             s"Remaining a passive cluster node trying to follow the active node '${state.activeUri}'")
@@ -369,6 +370,27 @@ final class Cluster(
                 for (stamped <- stampedEvents.lastOption) proceed(state, stamped.eventId)
                 Completed
               }))
+    }
+  }
+
+  def recouple(activeUri: Uri, passiveUri: Uri): Task[Checked[Completed]] = {
+    lazy val call = s"recouple(activeUri=$activeUri, passiveUri=$passiveUri)"
+    clusterConf.maybeOwnUri match {
+      case None =>
+        Task.pure(Left(Problem.pure("Missing this node's own URI")))
+      case Some(ownUri) =>
+        if (activeUri != ownUri)
+          Task.pure(Left(Problem.pure(s"$call but this is '$ownUri''")))
+        else
+          persistence.waitUntilStarted.flatMap(_ =>
+            persist {
+              case s: ClusterCoupled
+                if s.activeUri == activeUri && s.passiveUri == passiveUri =>
+                Right(PassiveLost(passiveUri) :: Nil)
+
+              case _ =>
+                Right(Nil)
+            }.map(_.toCompleted))
     }
   }
 

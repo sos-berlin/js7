@@ -374,6 +374,10 @@ object RunningMaster
           cluster.couple(activeUri, followingUri)
             .map(_.map((_: Completed) => MasterCommand.Response.Accepted))
 
+        case MasterCommand.ClusterRecouple(activeUri, followingUri) =>
+          cluster.recouple(activeUri, followingUri)
+            .map(_.map((_: Completed) => MasterCommand.Response.Accepted))
+
         case MasterCommand.ClusterInhibitActivation(duration) =>
           cluster.inhibitActivation(duration)
             .map(_ map MasterCommand.ClusterInhibitActivation.Response.apply)

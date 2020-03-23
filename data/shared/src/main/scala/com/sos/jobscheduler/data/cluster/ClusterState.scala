@@ -68,7 +68,7 @@ extends JournaledState[ClusterState, ClusterEvent]
 
   final def isActive(uri: Uri) = maybeActiveUri contains uri
 
-  def isCoupledPassive(uri: Uri) = false
+  def isCoupledPassiveUri(uri: Uri) = false
 }
 
 object ClusterState
@@ -154,7 +154,7 @@ object ClusterState
   {
     assertIsValid()
 
-    override def isCoupledPassive(uri: Uri) = uri == passiveUri
+    override def isCoupledPassiveUri(uri: Uri) = uri == passiveUri
 
     override def toString = s"ClusterCoupled($nodesString)"
   }
