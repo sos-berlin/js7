@@ -214,7 +214,6 @@ object RecouplingStreamReader
     getObservable: I => Task[Checked[Observable[V]]],
     eof: I => Boolean = (_: I) => false,
     stopRequested: () => Boolean = () => false)
-    (implicit s: Scheduler)
   : Observable[V]
   = {
     val eof_ = eof
