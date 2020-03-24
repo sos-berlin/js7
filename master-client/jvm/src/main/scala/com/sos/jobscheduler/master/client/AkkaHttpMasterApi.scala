@@ -68,8 +68,10 @@ object AkkaHttpMasterApi
     Resource.make(
       acquire = Task(AkkaHttpMasterApi(baseUri = baseUri.string, name = name))
     )(release = api =>
-        api.logout().onErrorHandle(_ => Completed) >>
-          Task(api.close()))
+      api.logout().map(_ => ()).onErrorHandle(_ => ())
+        .guarantee(Task {
+          api.close()
+        }))
 
   trait CommonAkka extends HttpMasterApi with AkkaHttpClient
   {
