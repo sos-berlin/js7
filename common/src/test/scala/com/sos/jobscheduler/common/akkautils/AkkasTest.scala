@@ -5,7 +5,10 @@ import akka.util.{ByteString, Timeout}
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.akkautils.Akkas._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.typesafe.config.ConfigFactory
+import monix.eval.Task
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import scala.concurrent.duration._
 import scala.util.Random
@@ -101,5 +104,15 @@ final class AkkasTest extends FreeSpec
       }})
     }
     finally actorSystem.terminate() await 99.s
+  }
+
+  "actorSystemResource" in {
+    var _actorSystem: ActorSystem = null
+    actorSystemResource("AkkasTest")
+      .use(actorSystem => Task {
+        _actorSystem = actorSystem
+      })
+      .await(99.s)
+    assert(_actorSystem.whenTerminated.value.get.get.isInstanceOf[akka.actor.Terminated])
   }
 }

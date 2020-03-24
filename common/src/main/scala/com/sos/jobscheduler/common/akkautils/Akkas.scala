@@ -4,16 +4,21 @@ import akka.actor.ActorSystem.Settings
 import akka.actor.{ActorContext, ActorPath, ActorSystem, Cancellable, ChildActorPath, RootActorPath}
 import akka.http.scaladsl.model.Uri
 import akka.util.{ByteString, Timeout}
+import cats.effect.Resource
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.configutils.Configs
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.typesafe.config.{Config, ConfigFactory}
+import monix.eval.Task
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 
 /**
  * @author Joacim Zschimmer
  */
-object Akkas {
+object Akkas
+{
   private val logger = Logger(getClass)
   private val ConfigResource = JavaResource(getClass.getClassLoader, "com/sos/jobscheduler/common/akkautils/akka.conf")
 
@@ -96,7 +101,6 @@ object Akkas {
     sb.toString
   }
 
-
   /** When an actor name to be re-used, the previous actor may still terminate, occupying the name. */
   def uniqueActorName(name: String)(implicit context: ActorContext): String = {
     var _name = name
@@ -119,4 +123,19 @@ object Akkas {
         case child: ChildActorPath => child.parent.pretty.stripSuffix("/") + "/" + decodeActorName(child.name)
       }
   }
+
+  def actorSystemResource(name: String, config: Config = ConfigFactory.empty): Resource[Task, ActorSystem] =
+    Resource.make(
+      acquire = Task { newActorSystem(name, config) }
+    )(release =
+      actorSystem =>
+        Task.deferFutureAction { implicit s =>
+          logger.debug(s"ActorSystem('$name') terminate")
+          val since = now
+          actorSystem.terminate()
+            .map { _ =>
+              logger.debug(s"ActorSystem('$name') terminated (${since.elapsed.pretty})")
+              ()
+            }
+        })
 }

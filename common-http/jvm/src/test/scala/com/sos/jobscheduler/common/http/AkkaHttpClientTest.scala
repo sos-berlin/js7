@@ -7,13 +7,16 @@ import akka.http.scaladsl.model.headers.`Content-Type`
 import akka.http.scaladsl.model.{HttpEntity, HttpResponse, Uri}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.http.AkkaHttpClient.{HttpException, liftProblem}
 import com.sos.jobscheduler.common.http.AkkaHttpClientTest._
+import java.net.ServerSocket
 import java.nio.charset.StandardCharsets.UTF_8
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
-import scala.concurrent.Await
+import scala.concurrent.{Await, TimeoutException}
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 
 /**
@@ -98,9 +101,52 @@ final class AkkaHttpClientTest extends FreeSpec with BeforeAndAfterAll
     assert(Await.result(httpClient.get_[HttpResponse](uri).runToFuture.failed, 99.seconds).getMessage
       contains "»AkkaHttpClientTest« has been closed")
   }
+
+  "Unreachable port, try several times" - {
+    lazy val port = {
+      val socket = new ServerSocket(0)
+      val port = socket.getLocalPort
+      socket.close()
+      port
+    }
+    lazy val uri = Uri(s"http://127.0.0.1:$port")
+
+    def newHttpClient(timeout: FiniteDuration) = new AkkaHttpClient {
+      protected val actorSystem = AkkaHttpClientTest.this.actorSystem
+      protected val baseUri = uri
+      protected val name = "AkkaHttpClientTest"
+      protected def uriPrefixPath = "/PREFIX"
+      protected def sessionToken = None
+    }
+    var duration: FiniteDuration = null
+
+    "First call" in {
+      val httpClient = newHttpClient(99.s)
+      try {
+        val since = now
+        val a = Await.ready(httpClient.get_(Uri(s"$uri/PREFIX/TEST")).runToFuture, 99.s - 1.s)
+        duration = since.elapsed
+        assert(a.value.get.isFailure)
+      } finally httpClient.close()
+    }
+
+    "Second call lets akka-http block for a very long time" in {
+      // Akka 2.5.30 blocks on next call after connection failure (why?),
+      // so our responseTimeout kicks in.
+      // TODO Replace by http4s ?
+      val httpClient = newHttpClient(duration - 1.s max 5.s)
+      intercept[TimeoutException] {
+        try {
+          val a = Await.ready(httpClient.get_(Uri(s"$uri/PREFIX/TEST")).runToFuture, duration + 1.s)
+          assert(a.value.get.isFailure)
+        } finally httpClient.close()
+      }
+    }
+  }
 }
 
-object AkkaHttpClientTest {
+object AkkaHttpClientTest
+{
   private val Setting = List[(Uri, Option[Uri])](
     Uri("http://example.com:9999") ->
       None,

@@ -29,7 +29,7 @@ object Akkas {
         logger.debug(s"ActorSystem('${o.name}') terminate")
         val since = now
         o.terminate() await myConfig.getDuration("jobscheduler.akka.shutdown-timeout").toFiniteDuration
-        logger.debug(s"ActorSystem terminated (${since.elapsed.pretty})")
+        logger.debug(s"ActorSystem('${o.name}') terminated (${since.elapsed.pretty})")
       }
     }
   }
