@@ -145,15 +145,16 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
           val httpsContext = if (request.uri.scheme == "https") httpsConnectionContext else http.defaultClientHttpsContext
           responseFuture = http.singleRequest(req, httpsContext)
           responseFuture
-        }.doOnCancel(
-          Task.deferAction(implicit s =>
-            if (responseFuture == null)
-              Task.unit
-            else
-              Task.fromFuture(responseFuture)
-                .map[Unit](_.discardEntityBytes())
-                .onErrorHandle(_ => ()))  // Do not log lost exceptions
-        ) .materialize.map { tried =>
+        } .guaranteeCase(exitCase => Task { logger.trace(s"$toString: $exitCase ${requestToString(request, logData)}") })
+          .doOnCancel(
+            Task.deferAction(implicit s =>
+              if (responseFuture == null)
+                Task.unit
+              else
+                Task.fromFuture(responseFuture)
+                  .map[Unit](_.discardEntityBytes())
+                  .onErrorHandle(_ => ())))  // Do not log lost exceptions
+          .materialize.map { tried =>
             tried match {
               case Failure(t) =>
                 logger.debug(s"$toString: ${requestToString(req, logData)} failed with ${t.toStringWithCauses}")
@@ -174,9 +175,14 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
     if (logger.underlying.isDebugEnabled)
       Resource.make(
         Task.deferAction(scheduler => Task {
-          scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
-            logger.debug(s"$toString: Still waiting for response to request: ${requestToString(request, logData)}")
+          lazy val timer: Cancelable = scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
+            if (closed) {
+              logger.debug(s"$toString: Closed while waiting for response to request: ${requestToString(request, logData)}")
+              timer.cancel()
+            } else
+              logger.debug(s"$toString: Still waiting for response to request: ${requestToString(request, logData)}")
           }
+          timer
         })
       )(timer => Task { timer.cancel() })
     else
