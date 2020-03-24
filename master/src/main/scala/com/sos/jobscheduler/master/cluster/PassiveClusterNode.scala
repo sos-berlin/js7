@@ -61,7 +61,6 @@ import scodec.bits.ByteVector
   import recovered.eventWatch
 
   private val stateBuilderAndAccessor = new StateBuilderAndAccessor[S, Event](recovered.newStateBuilder)
-  private val clusterPrepareCouplingSent = AtomicBoolean(false)
   private var dontActivateBecauseOtherFailedOver = otherFailed
   @volatile var awaitingCoupledEvent = false
   @volatile private var stopped = false
@@ -128,13 +127,8 @@ import scodec.bits.ByteVector
       }
     }
 
-  private def sendClusterPrepareCoupling: Task[Unit] = {
-    if (clusterPrepareCouplingSent.getAndSet(true)) {  // eagerly check
-      // Two points in this passive code may call this function, but exactly one must really call.
-      throw new IllegalStateException("MasterCommand.ClusterPrepareCoupling has already been sent")
-    }
+  private def sendClusterPrepareCoupling: Task[Unit] =
     tryEndlesslyToSendCommand(ClusterPrepareCoupling(activeUri = activeUri, passiveUri = ownUri))
-  }
 
   private def sendClusterCouple: Task[Unit] =
     tryEndlesslyToSendCommand(ClusterCouple(activeUri = activeUri, passiveUri = ownUri))
@@ -390,7 +384,6 @@ import scodec.bits.ByteVector
             else {
               if (builder.journalProgress == JournalProgress.InCommittedEventsSection) {
                 // An open transaction may be rolled back, so we do not notify about these
-                logger.debug(s"### onFileWritten($fileLength)")
                 eventWatch.onFileWritten(fileLength)
                 for (eventId <- json.asObject.flatMap(_("eventId").flatMap(_.asNumber).flatMap(_.toLong))) {
                   eventWatch.onEventsCommitted(PositionAnd(fileLength, eventId), 1)

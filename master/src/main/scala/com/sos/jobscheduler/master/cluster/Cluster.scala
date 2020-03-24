@@ -26,7 +26,7 @@ import com.sos.jobscheduler.core.event.journal.JournalActor
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
-import com.sos.jobscheduler.core.event.journal.recover.Recovered
+import com.sos.jobscheduler.core.event.journal.recover.{JournaledStateRecoverer, Recovered}
 import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
 import com.sos.jobscheduler.core.problems.MissingPassiveClusterNodeHeartbeatProblem
 import com.sos.jobscheduler.core.startup.Halt.haltJava
@@ -206,8 +206,21 @@ final class Cluster(
                   truncated = true
                   truncateFile(file, failedAt.position)
                 }
+                var trunkRecovered = recovered
+                if (truncated) {
+                  // TODO Recovering may be omitted because the new active node has written a snapshot immediately after failover
+                  // May take a long time !!!
+                  logger.debug("Recovering again due to shortend journal after failover")
+                  trunkRecovered = JournaledStateRecoverer.recover[MasterState, Event](
+                    journalMeta, recovered.newStateBuilder, config /*, runningSince=???*/)
+                  val truncatedRecoveredJournalFile = trunkRecovered.recoveredJournalFile
+                    .getOrElse(sys.error(s"Unrecoverable journal file '${file.getFileName}''"))
+                  assertThat(truncatedRecoveredJournalFile.state.clusterState == recoveredClusterState)
+                  assertThat(truncatedRecoveredJournalFile.journalPosition == failedAt,
+                    s"${truncatedRecoveredJournalFile.journalPosition} != $failedAt")
+                }
                 Some(recoveredClusterState ->
-                  newPassiveClusterNode(ownUri, otherFailedOver.activeUri, recovered, otherFailedOver = true))
+                  newPassiveClusterNode(ownUri, otherFailedOver.activeUri, trunkRecovered, otherFailedOver = true))
 
               case otherState =>
                 sys.error(s"The other node is in invalid failedOver=$otherState")  // ???
@@ -487,30 +500,37 @@ final class Cluster(
       case _ =>
     }
 
-  private def fetchAndHandleAcknowledgedEventIds(state: ClusterCoupled, eventId: EventId): Unit =
+  private def fetchAndHandleAcknowledgedEventIds(initialState: ClusterCoupled, eventId: EventId): Unit =
     if (!fetchingAcks.getAndSet(true)) {
-      def msg = s"observeEventIds(${state.passiveUri}, after=$eventId, userAndPassword=${clusterConf.userAndPassword})"
+      def msg = s"observeEventIds(${initialState.passiveUri}, after=$eventId, userAndPassword=${clusterConf.userAndPassword})"
       val future: CancelableFuture[Checked[Completed]] =
-        fetchAndHandleAcknowledgedEventIds(state.passiveUri, after = eventId)
+        fetchAndHandleAcknowledgedEventIds(initialState.passiveUri, after = eventId)
           .flatMap {
             case Left(missingHeartbeatProblem @ MissingPassiveClusterNodeHeartbeatProblem(uri)) =>
               logger.warn("No heartbeat from passive cluster node - continuing as single active cluster node")
               val passiveLost = PassiveLost(uri)
               val common = new ClusterCommon(clusterConf.maybeOwnUri.get, activationInhibitor, clusterWatch, testEventBus)
-              common.ifClusterWatchAllowsActivation(state, passiveLost,
-                persist(_ => Right(passiveLost :: Nil), suppressClusterWatch = true/*already notified*/)
-                  .map(_.toCompleted)
-                  .map(_.map { (_: Completed) =>
-                    fetchingAcks := false  // Allow fetching acknowledgements again when recoupling
-                    true
+              // FIXME Exklusiver Zugriff (Lock) wegen parallelem MasterCommand.ClusterRecouple, das ein EventLost auslöst,
+              //  mit CouplingPrepared infolge. Dann können wir kein PassiveLost ausgeben.
+              //  JournaledStatePersistence Lock in die Anwendungsebene (hier) heben
+              persistence.currentState.flatMap {
+                case clusterState: ClusterCoupled =>
+                  common.ifClusterWatchAllowsActivation(clusterState, passiveLost,
+                    persist(_ => Right(passiveLost :: Nil), suppressClusterWatch = true/*already notified*/)
+                      .map(_.toCompleted)
+                      .map(_.map { (_: Completed) =>
+                        fetchingAcks := false  // Allow fetching acknowledgements again when recoupling
+                        true
+                      })
+                  ).map(_.flatMap { allowed =>
+                    if (!allowed) {
+                      // Should not happen
+                      haltJava(s"ClusterWatch has unexpectedly forbidden activation after $passiveLost event", restart = true)
+                    }
+                    Left(missingHeartbeatProblem)
                   })
-              ).map(_.flatMap { allowed =>
-                if (!allowed) {
-                  // Should not happen
-                  haltJava(s"ClusterWatch has unexpectedly forbidden activation after $passiveLost event", restart = true)
-                }
-                Left(missingHeartbeatProblem)
-              })
+                case _ => Task.pure(Right(Completed))
+              }
             case o => Task.pure(o)
           }
           .materialize.flatTap(tried => Task { tried match {
