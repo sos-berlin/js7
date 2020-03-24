@@ -593,8 +593,11 @@ with MainJournalingActor[Event]
 
       case MasterCommand.KeepEvents(eventId) =>
         Future {  // asynchronous
-          eventWatch.keepEvents(eventId)
-            .map (_ => MasterCommand.Response.Accepted)
+          (if (config.getBoolean("jobscheduler.journal.delete-unused-files"))
+            eventWatch.keepEvents(eventId)
+          else
+            Right(Completed)
+          ).map(_ => MasterCommand.Response.Accepted)
         }
 
       case cmd: MasterCommand.ReplaceRepo =>
