@@ -6,7 +6,7 @@ object Dependencies
 {
   val scalaVersion = "2.12.10"
 
-  val akkaVersion = "2.5.26"
+  val akkaVersion = "2.5.30"
   val akkaHttpVersion = "10.1.11"
   val slf4jVersion = "1.7.30"  // See also plugins.sbt
   val log4jVersion = "2.13.1"  // See also plugins.sbt
