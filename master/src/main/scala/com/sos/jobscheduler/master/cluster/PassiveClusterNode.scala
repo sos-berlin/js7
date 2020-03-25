@@ -42,7 +42,6 @@ import java.nio.file.StandardOpenOption.{APPEND, CREATE, TRUNCATE_EXISTING, WRIT
 import java.nio.file.{Path, Paths}
 import monix.eval.Task
 import monix.execution.Scheduler
-import monix.execution.atomic.AtomicBoolean
 import monix.reactive.Observable
 import scala.concurrent.TimeoutException
 import scodec.bits.ByteVector
@@ -102,6 +101,7 @@ import scodec.bits.ByteVector
               // So we send a ClusterRecouple command to force a PassiveLost event.
               // Then the active node couples again with this passive node,
               // and we are sure to be coupled and up-to-date and may properly fail-over in case of an active node.
+              // The active node ignores this command if it has issued an PassiveLost event.
               awaitingCoupledEvent = true
               tryEndlesslyToSendCommand(ClusterRecouple(activeUri = activeUri, passiveUri = ownUri))
           }
@@ -268,7 +268,7 @@ import scodec.bits.ByteVector
               case clusterState: ClusterCoupled if clusterState.passiveUri == ownUri =>
                 if (awaitingCoupledEvent) {
                   logger.trace(
-                    s"Ignoring observed pause without heartbeat because cluster is coupled but nonde have not yet recoupled: clusterState=$clusterState")
+                    s"Ignoring observed pause without heartbeat because cluster is coupled but nodes have not yet recoupled: clusterState=$clusterState")
                   Observable.empty  // Ignore
                 } else {
                   logger.warn(s"No heartbeat from the currently active cluster node '$activeUri' - trying to fail-over")
@@ -425,7 +425,7 @@ import scodec.bits.ByteVector
                       sendClusterCouple
                         .map(Right.apply))  // TODO Handle heartbeat timeout !
 
-                  case Coupled  =>
+                  case Coupled =>
                     awaitingCoupledEvent = false
                     Observable.pure(Right(()))
 

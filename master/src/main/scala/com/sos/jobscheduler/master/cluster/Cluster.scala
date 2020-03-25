@@ -31,7 +31,7 @@ import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
 import com.sos.jobscheduler.core.problems.MissingPassiveClusterNodeHeartbeatProblem
 import com.sos.jobscheduler.core.startup.Halt.haltJava
 import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, Coupled, CouplingPrepared, PassiveLost, SwitchedOver}
-import com.sos.jobscheduler.data.cluster.ClusterState.{ClusterCoupled, ClusterEmpty, ClusterFailedOver, ClusterNodesAppointed, ClusterPreparedToBeCoupled, ClusterSole, Decoupled, HasBackupNode}
+import com.sos.jobscheduler.data.cluster.ClusterState.{ClusterCoupled, ClusterEmpty, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterPreparedToBeCoupled, ClusterSole, Decoupled, HasBackupNode}
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeRole, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
@@ -368,16 +368,26 @@ final class Cluster(
         else
           persistence.waitUntilStarted.flatMap(_ =>
             persist {
-              case s: ClusterCoupled
+              case s: ClusterPassiveLost
                 if s.activeUri == activeUri && s.passiveUri == passiveUri =>
+                // Happens when this active node has restarted just before the passive one
+                // and has already issued an PassiveLost event
+                // We ignore this.
+                // The passive node will replicate PassiveLost event and recouple
                 Right(Nil)
 
               case s: ClusterPreparedToBeCoupled
                 if s.activeUri == activeUri && s.passiveUri == passiveUri =>
+                // This is the normally expected ClusterState
                 Right(Coupled :: Nil)
 
-              case state =>
-                Left(Problem.pure(s"$call rejected due to inappropriate cluster state $state"))
+              case s: ClusterCoupled
+                if s.activeUri == activeUri && s.passiveUri == passiveUri =>
+                // Already coupled
+                Right(Nil)
+
+              case s =>
+                Left(Problem.pure(s"$call rejected due to inappropriate cluster state $s"))
             }.map(_
               .map { case (stampedEvents, state) =>
                 for (stamped <- stampedEvents.lastOption) proceed(state, stamped.eventId)
