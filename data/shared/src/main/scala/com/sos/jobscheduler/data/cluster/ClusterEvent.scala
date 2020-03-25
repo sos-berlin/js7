@@ -18,9 +18,6 @@ object ClusterEvent
   final case class CouplingPrepared(passiveUri: Uri)
   extends ClusterEvent
 
-  //type ClusterPreparedToBeCoupled = ClusterPreparedToBeCoupled.type
-  //case object ClusterPreparedToBeCoupled extends ClusterEvent
-
   type Coupled = Coupled.type
   case object Coupled extends ClusterEvent
 

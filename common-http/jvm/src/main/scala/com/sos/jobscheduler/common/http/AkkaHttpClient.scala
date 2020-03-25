@@ -146,14 +146,8 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
           responseFuture = http.singleRequest(req, httpsContext)
           responseFuture
         } .guaranteeCase(exitCase => Task { logger.trace(s"$toString: $exitCase ${requestToString(request, logData)}") })
-          .doOnCancel(
-            Task.deferAction(implicit s =>
-              if (responseFuture == null)
-                Task.unit
-              else
-                Task.fromFuture(responseFuture)
-                  .map[Unit](_.discardEntityBytes())
-                  .onErrorHandle(_ => ())))  // Do not log lost exceptions
+          .doOnCancel(Task.defer(
+            discardResponse(request, logData, responseFuture)))
           .materialize.map { tried =>
             tried match {
               case Failure(t) =>
@@ -168,6 +162,18 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
           .map(decodeResponse)/*decompress*/
       }
     }
+
+  private def discardResponse(request: HttpRequest, logData: => Option[String], responseFuture: Future[HttpResponse])
+  : Task[Unit] =
+    if (responseFuture == null)
+      Task.unit
+    else
+      Task.fromFuture(responseFuture)
+        .map[Unit] { response =>
+          logger.debug(s"$toString discardEntityBytes() ${requestToString(request, logData)}")
+          response.discardEntityBytes()
+        }
+        .onErrorHandle(_ => ())  // Do not log lost exceptions
 
   private val emptyLoggingTimerResource = Resource.make(Task.pure(Cancelable.empty))(_ => Task.unit)
 
