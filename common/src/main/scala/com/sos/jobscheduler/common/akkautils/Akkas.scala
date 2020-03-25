@@ -28,7 +28,7 @@ object Akkas
       .withFallback(config)
       .withFallback(Configs.loadResource(ConfigResource, internal = true))
       .resolve
-    ActorSystem(name, myConfig)
+    ActorSystem(name, myConfig, getClass.getClassLoader)
   }
 
   /**
