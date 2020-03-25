@@ -27,6 +27,13 @@ final class MasterCommandTest extends FreeSpec
       }""")
   }
 
+  "ClusterSwitchOver" in {
+    testJson[MasterCommand](ClusterSwitchOver,
+      json"""{
+        "TYPE": "ClusterSwitchOver"
+      }""")
+  }
+
   "Batch" - {
     "Batch" in {
       testJson[MasterCommand](Batch(List(NoOperation, EmergencyStop())),
