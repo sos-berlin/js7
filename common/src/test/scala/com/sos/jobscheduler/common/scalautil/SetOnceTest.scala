@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.common.scalautil
 
+import com.sos.jobscheduler.base.problem.{Problem, ProblemException}
 import org.scalatest.FreeSpec
 
 /**
@@ -12,7 +13,7 @@ final class SetOnceTest extends FreeSpec
     assert(a.isEmpty)
     assert(!a.nonEmpty)
     assert(!a.isDefined)
-    assert(intercept[IllegalStateException] { a.orThrow } .getMessage == "SetOnce[Int] promise has not been kept so far")
+    assert(intercept[ProblemException] { a.orThrow } .getMessage == "SetOnce[Int] promise has not been kept so far")
     assert(a.toOption == None)
     assert((a getOrElse -1) == -1)
     a := 0
@@ -34,6 +35,13 @@ final class SetOnceTest extends FreeSpec
     assert((a getOrUpdate 1) == 1)
     assert((a getOrUpdate 2) == 1)
     assert((a getOrUpdate sys.error("lazy")) == 1)
+  }
+
+  "checked" in {
+    val a = SetOnce[Int]
+    assert(a.checked == Left(Problem.pure("SetOnce[Int] promise has not been kept so far")))
+    a := 7
+    assert(a.checked == Right(7))
   }
 
   "toString" in {

@@ -1,5 +1,7 @@
 package com.sos.jobscheduler.common.scalautil
 
+import com.sos.jobscheduler.base.problem.Checked.Ops
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import monix.eval.Task
 import scala.concurrent.{Future, Promise}
 import scala.reflect.runtime.universe._
@@ -14,9 +16,6 @@ class SetOnce[A](label: String)
 {
   protected[this] val promise = Promise[A]
 
-  def orThrow: A =
-    getOrElse { throw new IllegalStateException(s"SetOnce[$label] promise has not been kept so far") }
-
   final override def toString = toStringOr(s"SetOnce[$label](not yet set)")
 
   @inline final def toStringOr(or: => String): String =
@@ -24,12 +23,6 @@ class SetOnce[A](label: String)
       case None => or
       case Some(Success(o)) => o.toString
       case Some(o) => o.toString  // Never happens
-    }
-
-  @inline final def getOrElse[B >: A](els: => B): B =
-    promise.future.value match {
-      case None => els
-      case Some(o) => o.get
     }
 
   final def getOrUpdate(value: => A): A =
@@ -63,9 +56,25 @@ class SetOnce[A](label: String)
    * @throws IllegalStateException
    */
   final def :=(value: A): A = {
-    if (!promise.trySuccess(value)) throw new IllegalStateException(s"SetOnce[$label] has already been set")
+    if (!trySet(value)) throw new IllegalStateException(s"SetOnce[$label] has already been set")
     value
   }
+
+  /** @return true iff the value has not yet been set. */
+  final def trySet(value: A): Boolean =
+    promise.trySuccess(value)
+
+  def orThrow: A =
+    checked.orThrow
+
+  final def getOrElse[B >: A](els: => B): B =
+    checked getOrElse els
+
+  final def checked: Checked[A] =
+    promise.future.value match {
+      case None => Left(Problem(s"SetOnce[$label] promise has not been kept so far"))
+      case Some(o) => Right(o.get)
+    }
 }
 
 object SetOnce
