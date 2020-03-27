@@ -25,7 +25,7 @@ final class SwitchOverClusterTest extends MasterClusterTester
       backup.runMaster(httpPort = Some(backupHttpPort), dontWaitUntilReady = true) { backupMaster =>
         primary.runMaster(httpPort = Some(primaryHttpPort)) { primaryMaster =>
           //primaryMaster.executeCommandAsSystemUser(
-          //  ClusterAppointBackup(activeUri = Uri(primaryMaster.localUri.toString), backupUri = Uri(backupMaster.localUri.toString))
+          //  ClusterAppointNodes(primaryUri = Uri(primaryMaster.localUri.toString), backupUri = Uri(backupMaster.localUri.toString))
           //).await(99.s).orThrow
           primaryMaster.eventWatch.await[ClusterEvent.Coupled]()
           val orderId = OrderId("⭕")

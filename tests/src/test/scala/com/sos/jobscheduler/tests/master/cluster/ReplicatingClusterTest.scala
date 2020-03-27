@@ -27,9 +27,9 @@ final class ReplicatingClusterTest extends MasterClusterTester
 
       //assert(!primaryMaster.journalActorState.isRequiringClusterAcknowledgement)
       //primaryMaster.executeCommandAsSystemUser(
-      //  ClusterAppointBackup(Uri(backupMaster.localUri.toString), Uri(primaryMaster.localUri.toString))
+      //  ClusterAppointNodes(Uri(backupMaster.localUri.toString), Uri(primaryMaster.localUri.toString))
       //).await(99.s).orThrow
-      //primaryMaster.eventWatch.await[ClusterEvent.BackupNodeAppointed]()
+      //primaryMaster.eventWatch.await[ClusterEvent.NodesAppointed]()
       primaryMaster.eventWatch.await[ClusterEvent.Coupled]()
       assert(primaryMaster.journalActorState.isRequiringClusterAcknowledgement)
 

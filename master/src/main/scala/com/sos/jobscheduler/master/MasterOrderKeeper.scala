@@ -288,11 +288,10 @@ with MainJournalingActor[Event]
   }
 
   private def assertProperClusterState(recovered: Recovered[MasterState, Event]): Unit = {
-    for (clusterState <- recovered.recoveredState.map(_.clusterState);
-         ownUri <- masterConfiguration.clusterConf.maybeOwnUri if !clusterState.isActive(ownUri))
-    {
-      if (!clusterState.isActive(ownUri))
-        throw new IllegalStateException(s"Master has recovered from Journal but is not the active node in ClusterState: ownUri=$ownUri, failedOver=$clusterState")
+    for (clusterState <- recovered.recoveredState.map(_.clusterState)) {
+      val role = masterConfiguration.clusterConf.role
+      if (!clusterState.isActive(role))
+        throw new IllegalStateException(s"Master has recovered from Journal but is not the active node in ClusterState: role=$role, failedOver=$clusterState")
     }
   }
 
@@ -656,7 +655,7 @@ with MainJournalingActor[Event]
         persist(MasterTestEvent, async = true)(_ =>
           Right(MasterCommand.Response.Accepted))
 
-      case (_: MasterCommand.ClusterAppointBackup) | (_: MasterCommand.ClusterPrepareCoupling) | (_: MasterCommand.ClusterCouple) =>
+      case (_: MasterCommand.ClusterAppointNodes) | (_: MasterCommand.ClusterPrepareCoupling) | (_: MasterCommand.ClusterCouple) =>
         // Handled by MasterCommandExecutor
         Future.failed(new NotImplementedError)
     }

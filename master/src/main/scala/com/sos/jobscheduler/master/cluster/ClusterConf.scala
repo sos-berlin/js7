@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master.cluster
 
+import cats.implicits._
 import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
@@ -16,8 +17,9 @@ import scala.collection.immutable.Seq
 import scala.concurrent.duration.FiniteDuration
 
 final case class ClusterConf(
-  maybeRole: Option[ClusterNodeRole],
-  maybeOwnUri: Option[Uri],
+  role: ClusterNodeRole,
+  /** None if role is Backup. */
+  maybeUris: Option[Seq[Uri]],
   userAndPassword: Option[UserAndPassword],
   recouplingStreamReader: RecouplingStreamReaderConf,
   heartbeat: FiniteDuration,
@@ -29,30 +31,37 @@ object ClusterConf
 {
   def fromConfig(userId: UserId, config: Config): Checked[ClusterConf] =
     for {
-      maybeRoleString <- config.checkedOptionAs[String]("jobscheduler.master.cluster.this-node.role")
-      maybeOwnUri <- config.checkedOptionAs[Uri]("jobscheduler.master.cluster.this-node.uri")
-      maybeOtherUri <- config.checkedOptionAs[Uri]("jobscheduler.master.cluster.other-node.uri")
-      maybeRole <- maybeRoleString.map(_.toLowerCase) match {
-        case None => Right(None)
-        case Some("primary") => Right(Some(Primary(maybeOtherUri)))
-        case Some("backup") => maybeOtherUri match {
-          case None => Left(Problem("Backup role requires the primary nodes URI (cluster.other-node.uri)"))
-          case Some(otherUri) => Right(Some(Backup(otherUri)))
+      role <- config.getString("jobscheduler.master.cluster.role")
+        .toLowerCase match {
+          case "primary" => Right(Primary)
+          case "backup" => Right(Backup)
+          case _ => Left(Problem("jobscheduler.master.cluster.role must be 'Primary' or 'Backup'"))
         }
+      maybeUris <- {
+        val key = "jobscheduler.master.cluster.uris"
+        if (!config.hasPath(key))
+          Right(None)
+        else if (role != Primary)
+          Left(Problem("jobscheduler.master.cluster.backup.uri may only be set for role=Primary"))
+        else
+          config.getStringList(key).asScala.toList.map(Uri.checked).sequence.map(Some.apply)
       }
       userAndPassword <- config.checkedOptionAs[SecretString]("jobscheduler.auth.cluster.password")
         .map(_.map(UserAndPassword(userId, _)))
       recouplingStreamReaderConf <- RecouplingStreamReaderConfs.fromConfig(config)
       heartbeat <- Right(config.getDuration("jobscheduler.master.cluster.heartbeat").toFiniteDuration)
       failAfter <- Right(config.getDuration("jobscheduler.master.cluster.fail-after").toFiniteDuration)
-      agentUris <- Right(config.getStringList("jobscheduler.master.cluster.agents").asScala.toVector map Uri.apply)
+      watchUris <- Right(config.getStringList("jobscheduler.master.cluster.watches").asScala.toVector map Uri.apply)
       testHeartbeatLoss <- Right(config.optionAs[String]("jobscheduler.master.cluster.TEST-HEARTBEAT-LOSS"))
     } yield
-      new ClusterConf(maybeRole, maybeOwnUri, userAndPassword,
+      new ClusterConf(
+        role,
+        maybeUris,
+        userAndPassword,
         recouplingStreamReaderConf.copy(
           timeout = heartbeat + (failAfter - heartbeat) / 2),
         heartbeat = heartbeat,
         failAfter = failAfter,
-        agentUris,
+        watchUris,
         testHeartbeatLoss)
 }

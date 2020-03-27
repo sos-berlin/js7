@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.master.cluster
 
 import akka.actor.ActorSystem
-import cats.effect.Resource
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec._
 import com.sos.jobscheduler.base.problem.Checked._
@@ -19,17 +18,16 @@ import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, JournalSeparat
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles._
 import com.sos.jobscheduler.core.event.journal.recover.{FileJournaledStateBuilder, JournalProgress, Recovered, RecoveredJournalFile}
 import com.sos.jobscheduler.core.event.state.JournaledStateBuilder
-import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, Coupled, CouplingPrepared, FailedOver, PassiveLost, SwitchedOver}
-import com.sos.jobscheduler.data.cluster.ClusterState.{ClusterCoupled, ClusterEmpty, ClusterNodesAppointed, ClusterPreparedToBeCoupled, ClusterSole, Decoupled}
+import com.sos.jobscheduler.data.cluster.ClusterEvent.{Coupled, CouplingPrepared, FailedOver, NodesAppointed, PassiveLost, SwitchedOver}
+import com.sos.jobscheduler.data.cluster.ClusterState.{ClusterCoupled, ClusterEmpty, ClusterNodesAppointed, ClusterPreparedToBeCoupled, Decoupled}
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.JournalEvent.SnapshotTaken
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, JournalEvent, JournalId, JournalPosition, JournaledState, KeyedEvent, Stamped}
-import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
+import com.sos.jobscheduler.master.client.HttpMasterApi
 import com.sos.jobscheduler.master.cluster.ObservablePauseDetector.RichPauseObservable
 import com.sos.jobscheduler.master.cluster.PassiveClusterNode._
-import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.MasterCommand.{ClusterCouple, ClusterPrepareCoupling, ClusterRecouple}
 import io.circe.Json
 import io.circe.syntax._
@@ -57,6 +55,7 @@ import scodec.bits.ByteVector
   common: ClusterCommon)
   (implicit actorSystem: ActorSystem)
 {
+  assertThat(ownUri != activeUri)
   import recovered.eventWatch
 
   private val stateBuilderAndAccessor = new StateBuilderAndAccessor[S, Event](recovered.newStateBuilder)
@@ -90,12 +89,10 @@ import scodec.bits.ByteVector
           recoveredClusterState match {
             case ClusterEmpty =>
               Task.unit
-            case _: ClusterSole =>
-              throw new IllegalStateException(s"Unexpected recovered clusterState=$recoveredClusterState")
             case _: ClusterNodesAppointed | _: Decoupled =>
               sendClusterPrepareCoupling
             case _: ClusterPreparedToBeCoupled =>
-              tryEndlesslyToSendCommand(ClusterCouple(activeUri = activeUri, passiveUri = ownUri))
+              common.tryEndlesslyToSendCommand(activeUri, ClusterCouple(activeUri = activeUri, passiveUri = ownUri))
             case _: ClusterCoupled =>
               // After a quick restart of this passive node, the active node may not yet have noticed the loss.
               // So we send a ClusterRecouple command to force a PassiveLost event.
@@ -103,7 +100,7 @@ import scodec.bits.ByteVector
               // and we are sure to be coupled and up-to-date and may properly fail-over in case of an active node.
               // The active node ignores this command if it has issued an PassiveLost event.
               awaitingCoupledEvent = true
-              tryEndlesslyToSendCommand(ClusterRecouple(activeUri = activeUri, passiveUri = ownUri))
+              common.tryEndlesslyToSendCommand(activeUri, ClusterRecouple(activeUri = activeUri, passiveUri = ownUri))
           }
       sendCommand
         .onErrorRecover { case t: Throwable =>
@@ -128,27 +125,14 @@ import scodec.bits.ByteVector
     }
 
   private def sendClusterPrepareCoupling: Task[Unit] =
-    tryEndlesslyToSendCommand(ClusterPrepareCoupling(activeUri = activeUri, passiveUri = ownUri))
+    common.tryEndlesslyToSendCommand(activeUri, ClusterPrepareCoupling(activeUri = activeUri, passiveUri = ownUri))
 
   private def sendClusterCouple: Task[Unit] =
-    tryEndlesslyToSendCommand(ClusterCouple(activeUri = activeUri, passiveUri = ownUri))
-
-  private def tryEndlesslyToSendCommand(command: MasterCommand): Task[Unit] = {
-    val name = command.getClass.simpleScalaName
-    masterApi(activeUri, name = name)
-      .use(_
-        .executeCommand(command))
-        .map((_: MasterCommand.Response) => ())
-      .onErrorRestartLoop(()) { (throwable, _, retry) =>
-        logger.warn(s"'$name' command failed with ${throwable.toStringWithCauses}")
-        logger.debug(throwable.toString, throwable)
-        retry(()).delayExecution(1.s/*TODO*/)        // TODO Handle heartbeat timeout!
-      }
-  }
+    common.tryEndlesslyToSendCommand(activeUri, ClusterCouple(activeUri = activeUri, passiveUri = ownUri))
 
   private def replicateJournalFiles(recoveredClusterState: ClusterState)
   : Task[Checked[(ClusterState, ClusterFollowUp[S, Event])]] =
-    masterApi(activeUri, "journal")
+    common.masterApi(activeUri, "journal")
       .use(activeMasterApi =>
         Task.tailRecM(
           (recovered.recoveredJournalFile match {
@@ -173,11 +157,6 @@ import scodec.bits.ByteVector
               case Right(continuation) =>
                 Left(continuation)
             }))
-
-  private def masterApi(uri: Uri, name: String): Resource[Task, HttpMasterApi] =
-    AkkaHttpMasterApi.resource(baseUri = activeUri, name = name)
-      .map(identity[HttpMasterApi])
-      .evalTap(_.loginUntilReachable(clusterConf.userAndPassword, Iterator.continually(1.s/*TODO*/)))
 
   private def replicateJournalFile(
     continuation: Continuation.Replicatable,
@@ -394,7 +373,7 @@ import scodec.bits.ByteVector
                 Observable.pure(Right(()))
               } else if (json.toClass[ClusterEvent].isDefined)
                 json.as[ClusterEvent].orThrow match {
-                  case _: BackupNodeAppointed | _: PassiveLost =>
+                  case _: NodesAppointed | _: PassiveLost =>
                     Observable.fromTask(
                       sendClusterPrepareCoupling
                         .map(Right.apply))  // TODO Handle heartbeat timeout !

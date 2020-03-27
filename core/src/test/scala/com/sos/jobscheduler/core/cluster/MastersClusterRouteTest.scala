@@ -9,7 +9,7 @@ import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import com.sos.jobscheduler.common.akkahttp.web.session.SimpleSession
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
-import com.sos.jobscheduler.data.cluster.ClusterState.ClusterSole
+import com.sos.jobscheduler.data.cluster.ClusterState.ClusterNodesAppointed
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.master.MasterId
@@ -41,8 +41,12 @@ final class MastersClusterRouteTest extends FreeSpec with ScalatestRouteTest wit
     }
   }
 
+  lazy private val uris = fromUri :: Uri("http://BACKUP") :: Nil
+
   "Post" in {
-    Post[ClusterWatchMessage]("/cluster", ClusterWatchEvents(fromUri, ClusterEvent.BecameSole(fromUri) :: Nil, ClusterSole(fromUri))) ~>
+    Post[ClusterWatchMessage]("/cluster",
+      ClusterWatchEvents(fromUri, ClusterEvent.NodesAppointed(uris) :: Nil, ClusterNodesAppointed(uris))
+    ) ~>
       Accept(`application/json`) ~> route ~>
       check {
         assert(status == OK && entityAs[JsonObject] == JsonObject.empty)
@@ -51,7 +55,7 @@ final class MastersClusterRouteTest extends FreeSpec with ScalatestRouteTest wit
 
   "Get for known MasterId" in {
     Get("/cluster") ~> Accept(`application/json`) ~> route ~> check {
-      assert(status == OK && entityAs[ClusterState] == ClusterSole(fromUri))
+      assert(status == OK && entityAs[ClusterState] == ClusterNodesAppointed(uris))
     }
   }
 }

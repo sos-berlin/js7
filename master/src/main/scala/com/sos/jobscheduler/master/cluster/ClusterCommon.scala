@@ -1,17 +1,22 @@
 package com.sos.jobscheduler.master.cluster
 
+import akka.actor.ActorSystem
+import cats.effect.Resource
 import com.sos.jobscheduler.base.eventbus.EventBus
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
+import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.cluster.ClusterWatch.ClusterWatchHeartbeatFromInactiveNodeProblem
 import com.sos.jobscheduler.core.cluster.ClusterWatchApi
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
+import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
 import com.sos.jobscheduler.master.cluster.ClusterCommon._
 import com.sos.jobscheduler.master.cluster.PassiveClusterNode.{ClusterWatchAgreesToActivation, ClusterWatchDisagreeToActivation}
+import com.sos.jobscheduler.master.data.MasterCommand
 import java.nio.ByteBuffer
 import java.nio.channels.{FileChannel, GatheringByteChannel, ScatteringByteChannel}
 import java.nio.file.StandardOpenOption.{CREATE, READ, TRUNCATE_EXISTING, WRITE}
@@ -22,7 +27,9 @@ private[cluster] final class ClusterCommon(
   ownUri: Uri,
   activationInhibitor: ActivationInhibitor,
   val clusterWatch: ClusterWatchApi,
+  clusterConf: ClusterConf,
   testEventBus: EventBus)
+  (implicit actorSystem: ActorSystem)
 {
   private[cluster] def ifClusterWatchAllowsActivation[A](clusterState: ClusterState, event: ClusterEvent, body: Task[Checked[Boolean]])
   : Task[Checked[Boolean]] =
@@ -47,8 +54,25 @@ private[cluster] final class ClusterCommon(
                 testEventBus.publish(ClusterWatchAgreesToActivation)
                 body
             }
-        }
-    )
+        })
+
+  def tryEndlesslyToSendCommand(uri: Uri, command: MasterCommand): Task[Unit] = {
+    val name = command.getClass.simpleScalaName
+    masterApi(uri, name = name)
+      .use(_
+        .executeCommand(command))
+        .map((_: MasterCommand.Response) => ())
+      .onErrorRestartLoop(()) { (throwable, _, retry) =>
+        logger.warn(s"'$name' command failed with ${throwable.toStringWithCauses}")
+        logger.debug(throwable.toString, throwable)
+        retry(()).delayExecution(1.s/*TODO*/)        // TODO Handle heartbeat timeout!
+      }
+  }
+
+  def masterApi(uri: Uri, name: String): Resource[Task, HttpMasterApi] =
+    AkkaHttpMasterApi.resource(baseUri = uri, name = name)
+      .map(identity[HttpMasterApi])
+      .evalTap(_.loginUntilReachable(clusterConf.userAndPassword, Iterator.continually(1.s/*TODO*/)))
 }
 
 private[cluster] object ClusterCommon

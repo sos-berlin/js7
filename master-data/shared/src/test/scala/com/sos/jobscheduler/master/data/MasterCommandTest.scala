@@ -18,12 +18,11 @@ import org.scalatest.FreeSpec
 
 final class MasterCommandTest extends FreeSpec
 {
-  "ClusterAppointBackup" in {
-    testJson[MasterCommand](ClusterAppointBackup(Uri("http://ACTIVE"), Uri("http://BACKUP")),
+  "ClusterAppointNodes" in {
+    testJson[MasterCommand](ClusterAppointNodes(Uri("http://ACTIVE") ::  Uri("http://BACKUP") :: Nil),
       json"""{
-        "TYPE": "ClusterAppointBackup",
-        "activeUri": "http://ACTIVE",
-        "backupUri": "http://BACKUP"
+        "TYPE": "ClusterAppointNodes",
+        "uris": [ "http://ACTIVE", "http://BACKUP" ]
       }""")
   }
 

@@ -5,6 +5,7 @@ import com.sos.jobscheduler.base.circeutils.ScalaJsonCodecs.{FiniteDurationJsonD
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.problem.Checked.implicits.{checkedJsonDecoder, checkedJsonEncoder}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.data.cluster.ClusterState.ClusterFailedOver
@@ -132,26 +133,38 @@ object MasterCommand extends CommonCommand.Companion
     override def toString = s"ReplaceRepo($versionId, ${objects.size} objects)"
   }
 
-  final case class ClusterAppointBackup(activeUri: Uri, backupUri: Uri)
+  final case class ClusterAppointNodes(uris: Seq[Uri])
   extends MasterCommand {
     type Response = Response.Accepted
+    assertThat(uris.size == 2)
+  }
+
+  // TODO Folgende Kommandos sind intern für die Knoten untereinander
+  //  und sollen eine eigenes ClusterCommand bildern.
+  final case class ClusterStartBackupNode(uris: Seq[Uri])
+  extends MasterCommand {
+    type Response = Response.Accepted
+    assertThat(uris.size == 2)
   }
 
   final case class ClusterPrepareCoupling(activeUri: Uri, passiveUri: Uri)
   extends MasterCommand {
     type Response = Response.Accepted
+    assertThat(activeUri != passiveUri)
     override def toString = s"ClusterPrepareCoupling($passiveUri follows $activeUri)"
   }
 
   final case class ClusterCouple(activeUri: Uri, passiveUri: Uri)
   extends MasterCommand {
     type Response = Response.Accepted
+    assertThat(activeUri != passiveUri)
     override def toString = s"ClusterCouple($passiveUri couples with $activeUri)"
   }
 
   final case class ClusterRecouple(activeUri: Uri, passiveUri: Uri)
   extends MasterCommand {
     type Response = Response.Accepted
+    assertThat(activeUri != passiveUri)
     override def toString = s"ClusterRecouple($passiveUri couples with $activeUri)"
   }
 
@@ -194,7 +207,8 @@ object MasterCommand extends CommonCommand.Companion
     Subtype[EmergencyStop],
     Subtype(deriveCodec[KeepEvents]),
     Subtype[ShutDown],
-    Subtype(deriveCodec[ClusterAppointBackup]),
+    Subtype(deriveCodec[ClusterAppointNodes]),
+    Subtype(deriveCodec[ClusterStartBackupNode]),
     Subtype(deriveCodec[ClusterPrepareCoupling]),
     Subtype(deriveCodec[ClusterCouple]),
     Subtype(deriveCodec[ClusterRecouple]),

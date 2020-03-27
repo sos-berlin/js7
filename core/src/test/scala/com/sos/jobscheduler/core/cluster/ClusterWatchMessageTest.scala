@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.core.cluster
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.data.cluster.ClusterEvent.BecameSole
-import com.sos.jobscheduler.data.cluster.ClusterState.ClusterSole
+import com.sos.jobscheduler.data.cluster.ClusterEvent.NodesAppointed
+import com.sos.jobscheduler.data.cluster.ClusterState.{ClusterCoupled, ClusterNodesAppointed}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
@@ -17,21 +17,21 @@ final class ClusterWatchMessageTest extends FreeSpec
       testJson[ClusterWatchMessage](
         ClusterWatchEvents(
           Uri("http://PRIMARY"),
-          BecameSole(Uri("http://PRIMARY")) :: Nil,
-          ClusterSole(Uri("http://PRIMARY")),
+          NodesAppointed(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil) :: Nil,
+          ClusterNodesAppointed(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil),
           force = true),
         json"""{
           "TYPE": "ClusterWatchEvents",
           "from": "http://PRIMARY",
           "events": [
             {
-              "TYPE": "Cluster.BecameSole",
-              "primaryUri": "http://PRIMARY"
+              "TYPE": "Cluster.NodesAppointed",
+              "uris": [ "http://PRIMARY", "http://BACKUP" ]
             }
           ],
           "clusterState": {
-            "TYPE": "ClusterSole",
-            "primaryUri": "http://PRIMARY"
+            "TYPE": "ClusterNodesAppointed",
+            "uris": [ "http://PRIMARY", "http://BACKUP" ]
           },
           "force": true
         }""")
@@ -41,13 +41,14 @@ final class ClusterWatchMessageTest extends FreeSpec
       testJson[ClusterWatchMessage](
         ClusterWatchHeartbeat(
           Uri("http://PRIMARY"),
-          ClusterSole(Uri("http://PRIMARY"))),
+          ClusterCoupled(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil, 1)),
         json"""{
           "TYPE": "ClusterWatchHeartbeat",
           "from": "http://PRIMARY",
           "clusterState": {
-            "TYPE": "ClusterSole",
-            "primaryUri": "http://PRIMARY"
+            "TYPE": "ClusterCoupled",
+            "uris": [ "http://PRIMARY", "http://BACKUP" ],
+            "active": 1
           }
         }""")
     }

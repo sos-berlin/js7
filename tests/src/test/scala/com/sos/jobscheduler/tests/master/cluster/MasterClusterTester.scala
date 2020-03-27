@@ -37,12 +37,11 @@ private[cluster] trait MasterClusterTester extends FreeSpec
       val agentPort = findFreeTcpPort()
       val primary = new DirectoryProvider(agentRefPath :: Nil, TestWorkflow :: Nil, testName = Some(s"$testName-Primary"),
         masterConfig = ConfigFactory.parseString(s"""
-          jobscheduler.master.cluster.this-node.role = Primary
-          jobscheduler.master.cluster.this-node.uri = "http://127.0.0.1:$primaryHttpPort"
-          jobscheduler.master.cluster.other-node.uri = "http://127.0.0.1:$backupHttpPort"
+          jobscheduler.master.cluster.role = Primary
+          jobscheduler.master.cluster.uris = [ "http://127.0.0.1:$primaryHttpPort", "http://127.0.0.1:$backupHttpPort" ]
           jobscheduler.master.cluster.heartbeat = 3s
           jobscheduler.master.cluster.fail-after = 5s
-          jobscheduler.master.cluster.agents = [ "http://127.0.0.1:$agentPort" ]
+          jobscheduler.master.cluster.watches = [ "http://127.0.0.1:$agentPort" ]
           jobscheduler.master.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"
           jobscheduler.auth.users.Master.password = "plain:BACKUP-MASTER-PASSWORD"
           jobscheduler.auth.users.TEST.password = "plain:TEST-PASSWORD"
@@ -52,12 +51,10 @@ private[cluster] trait MasterClusterTester extends FreeSpec
 
       val backup = new DirectoryProvider(Nil, Nil, testName = Some(s"$testName-Backup"),
         masterConfig = ConfigFactory.parseString(s"""
-          jobscheduler.master.cluster.this-node.role = Backup
-          jobscheduler.master.cluster.this-node.uri = "http://127.0.0.1:$backupHttpPort"
-          jobscheduler.master.cluster.other-node.uri = "http://127.0.0.1:$primaryHttpPort"
+          jobscheduler.master.cluster.role = Backup
           jobscheduler.master.cluster.heartbeat = 3s
           jobscheduler.master.cluster.fail-after = 5s
-          jobscheduler.master.cluster.agents = [ "http://127.0.0.1:$agentPort" ]
+          jobscheduler.master.cluster.watches = [ "http://127.0.0.1:$agentPort" ]
           jobscheduler.master.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"
           jobscheduler.auth.users.Master.password = "plain:PRIMARY-MASTER-PASSWORD"
           jobscheduler.auth.cluster.password = "BACKUP-MASTER-PASSWORD" """)

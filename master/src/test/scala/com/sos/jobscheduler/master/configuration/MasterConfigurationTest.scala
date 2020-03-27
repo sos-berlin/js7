@@ -6,6 +6,7 @@ import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.http.configuration.RecouplingStreamReaderConf
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.core.event.journal.JournalConf
+import com.sos.jobscheduler.data.cluster.ClusterNodeRole
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.master.cluster.ClusterConf
 import com.sos.jobscheduler.master.configuration.MasterConfiguration.DefaultConfig
@@ -43,7 +44,7 @@ final class MasterConfigurationTest extends FreeSpec with BeforeAndAfterAll
       ZoneId.systemDefault,
       akkaAskTimeout = 60.s,
       journalConf = JournalConf.fromConfig(DefaultConfig),
-      clusterConf = ClusterConf(None, None, None,
+      clusterConf = ClusterConf(ClusterNodeRole.Primary, None, None,
         RecouplingStreamReaderConf(
           timeout = 6500.ms,  // Between 3s and 10s
           delay = 1.s),

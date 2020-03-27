@@ -362,8 +362,12 @@ object RunningMaster
                     .mapTo[Checked[command.Response]]
               })
 
-        case MasterCommand.ClusterAppointBackup(activeUri, backupUri) =>
-          cluster.appointBackupNode(activeUri, backupUri)
+        case MasterCommand.ClusterAppointNodes(uris) =>
+          cluster.appointNodes(uris)
+            .map(_.map((_: Completed) => MasterCommand.Response.Accepted))
+
+        case MasterCommand.ClusterStartBackupNode(Seq(primaryUri, backupUri)) =>
+          cluster.startBackup(primaryUri, backupUri)
             .map(_.map((_: Completed) => MasterCommand.Response.Accepted))
 
         case MasterCommand.ClusterPrepareCoupling(activeUri, passiveUri) =>

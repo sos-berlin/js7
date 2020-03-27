@@ -22,13 +22,14 @@ final class ClusterConfTest extends FreeSpec
       val config = ConfigFactory.parseString("""
         jobscheduler.master.cluster.heartbeat = 7s
         jobscheduler.master.cluster.fail-after = 5s
-        jobscheduler.master.cluster.agents = [ "http://AGENT-1", "http://AGENT-2" ]
+        jobscheduler.master.cluster.role = Primary
+        jobscheduler.master.cluster.watches = [ "http://AGENT-1", "http://AGENT-2" ]
         jobscheduler.web.client.idle-get-timeout = 50s
         jobscheduler.web.client.delay-between-polling-gets = 1s""")
       val clusterConf = ClusterConf.fromConfig(UserId("USER"), config)
       assert(clusterConf == Right(
         ClusterConf(
-          None,
+          ClusterNodeRole.Primary,
           None,
           None,
           RecouplingStreamReaderConf(
@@ -41,20 +42,19 @@ final class ClusterConfTest extends FreeSpec
 
     "Full configuration" in {
       val config = ConfigFactory.parseString("""
-        jobscheduler.master.cluster.this-node.role = Primary
-        jobscheduler.master.cluster.this-node.uri = "http://PRIMARY"
-        jobscheduler.master.cluster.other-node.uri = "http://BACKUP"
+        jobscheduler.master.cluster.role = Primary
+        jobscheduler.master.cluster.uris = [ "http://PRIMARY", "http://BACKUP" ]
+        jobscheduler.master.cluster.watches = [ "http://AGENT" ]
         jobscheduler.master.cluster.heartbeat = 7s
         jobscheduler.master.cluster.fail-after = 5s
-        jobscheduler.master.cluster.agents = [ "http://AGENT" ]
         jobscheduler.auth.cluster.password = "PASSWORD"
         jobscheduler.web.client.idle-get-timeout = 50s
         jobscheduler.web.client.delay-between-polling-gets = 1s""")
       val checkedClusterConf = ClusterConf.fromConfig(UserId("USER"), config)
       assert(checkedClusterConf == Right(
         ClusterConf(
-          Some(ClusterNodeRole.Primary(Some(Uri("http://BACKUP")))),
-          Some(Uri("http://PRIMARY")),
+          ClusterNodeRole.Primary,
+          Some(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil),
           Some(UserAndPassword(UserId("USER"), SecretString("PASSWORD"))),
           RecouplingStreamReaderConf(
             timeout = 6.s,  // Between 5s and 7s
@@ -63,25 +63,5 @@ final class ClusterConfTest extends FreeSpec
           5.s,
           Uri("http://AGENT") :: Nil)))
     }
-
-    //"heartbeat is longer then fail-after" in {
-    //  val config = ConfigFactory.parseString("""
-    //    jobscheduler.master.cluster.idle-get-timeout = 50s
-    //    jobscheduler.master.cluster.delay-between-polling-gets = 1s
-    //    jobscheduler.master.cluster.heartbeat = 6s
-    //    jobscheduler.master.cluster.fail-after = 5s""")
-    //  val checkedClusterConf = ClusterConf.fromConfig(UserId("USER"), config)
-    //  assert(checkedClusterConf == Left(Problem("jobscheduler.master.cluster.heartbeat=6s must be shorter than jobscheduler.master.cluster.fail-after=5s")))
-    //}
-    //
-    //"heartbeat is equal to fail-after" in {
-    //  val config = ConfigFactory.parseString("""
-    //    jobscheduler.master.cluster.idle-get-timeout = 50s
-    //    jobscheduler.master.cluster.delay-between-polling-gets = 1s
-    //    jobscheduler.master.cluster.heartbeat = 5s
-    //    jobscheduler.master.cluster.fail-after = 5s""")
-    //  val checkedClusterConf = ClusterConf.fromConfig(UserId("USER"), config)
-    //  assert(checkedClusterConf == Left(Problem("jobscheduler.master.cluster.heartbeat=5s must be shorter than jobscheduler.master.cluster.fail-after=5s")))
-    //}
   }
 }

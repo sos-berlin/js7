@@ -38,7 +38,7 @@ extends ClusterWatchApi
       case None =>  // Not yet initialized: we accept anything
         Right(reportedClusterState)
       case Some(current) =>
-        if (current == reportedClusterState) {
+        if (current.clusterState == reportedClusterState) {
           logger.info(s"Master '${masterId.string}': Ignored probably duplicate events for already reached clusterState=$current")
         } else {
           current.clusterState.applyEvents(events.map(NoKey <-: _)) match {

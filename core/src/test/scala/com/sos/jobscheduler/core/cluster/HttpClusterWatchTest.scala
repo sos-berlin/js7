@@ -14,8 +14,8 @@ import com.sos.jobscheduler.common.scalautil.Closer.ops._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops.RichTask
 import com.sos.jobscheduler.core.cluster.HttpClusterWatchTest._
-import com.sos.jobscheduler.data.cluster.ClusterEvent.BecameSole
-import com.sos.jobscheduler.data.cluster.ClusterState.ClusterSole
+import com.sos.jobscheduler.data.cluster.ClusterEvent.NodesAppointed
+import com.sos.jobscheduler.data.cluster.ClusterState.ClusterNodesAppointed
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.master.MasterId
 import com.typesafe.config.ConfigFactory
@@ -52,8 +52,9 @@ final class HttpClusterWatchTest extends FreeSpec with BeforeAndAfterAll with Pr
 
   "HttpClusterWatch" in {
     val clusterWatch = new HttpClusterWatch(server.localUri, userAndPassword = None, actorSystem)
-    val expectedClusterState = ClusterSole(fromUri)
-    assert(clusterWatch.applyEvents(fromUri, BecameSole(fromUri) :: Nil, expectedClusterState).await(99.s) ==
+    val uris = fromUri :: Uri("http://BACKUP") :: Nil
+    val expectedClusterState = ClusterNodesAppointed(uris)
+    assert(clusterWatch.applyEvents(fromUri, NodesAppointed(uris) :: Nil, expectedClusterState).await(99.s) ==
       Right(Completed))
     assert(clusterWatch.get.await(99.s) == Right(expectedClusterState))
   }

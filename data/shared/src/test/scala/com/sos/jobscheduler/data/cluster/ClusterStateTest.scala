@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.data.cluster
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.data.cluster.ClusterState.{ClusterCoupled, ClusterEmpty, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterPreparedToBeCoupled, ClusterSole, ClusterSwitchedOver}
+import com.sos.jobscheduler.data.cluster.ClusterState.{ClusterCoupled, ClusterEmpty, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterPreparedToBeCoupled, ClusterSwitchedOver}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.JournalPosition
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -20,24 +20,6 @@ final class ClusterStateTest extends FreeSpec
           "TYPE": "ClusterEmpty"
         }""")
     }
-
-    "ClusterSole" in {
-      testJson[ClusterState](
-        ClusterSole(Uri("http://PRIMARY")),
-        json"""{
-          "TYPE": "ClusterSole",
-          "primaryUri": "http://PRIMARY"
-        }""")
-    }
-
-    //"AwaitingAppointment" in {
-    //  testJson[ClusterState](
-    //    AwaitingAppointment(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil),
-    //      json"""{
-    //        "TYPE": "AwaitingAppointment",
-    //        "uris": [ "http://PRIMARY", "http://BACKUP" ]
-    //      }""")
-    //}
 
     "ClusterNodesAppointed" in {
       testJson[ClusterState](
