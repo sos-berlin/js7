@@ -2,4 +2,5 @@
 # Shows the threads (one per line) of running JobScheduler
 set -e
 
-jstack "$(jps -l | awk '/jobscheduler/ { print $1 }')" | grep 'prio=' | sort
+pid="$(cat "$HOME"/data/state/pid)"
+jstack "$pid" | grep 'prio=' | sort
