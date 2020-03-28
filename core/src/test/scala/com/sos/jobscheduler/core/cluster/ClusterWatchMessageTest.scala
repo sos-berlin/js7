@@ -2,6 +2,7 @@ package com.sos.jobscheduler.core.cluster
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.data.cluster.ClusterEvent.NodesAppointed
+import com.sos.jobscheduler.data.cluster.ClusterNodeId
 import com.sos.jobscheduler.data.cluster.ClusterState.{ClusterCoupled, ClusterNodesAppointed}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -16,22 +17,39 @@ final class ClusterWatchMessageTest extends FreeSpec
     "ClusterWatchEvents" in {
       testJson[ClusterWatchMessage](
         ClusterWatchEvents(
-          Uri("http://PRIMARY"),
-          NodesAppointed(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil) :: Nil,
-          ClusterNodesAppointed(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil),
+          from = ClusterNodeId("A"),
+          List(
+            NodesAppointed(
+              Map(
+                ClusterNodeId("A") -> Uri("http://A"),
+                ClusterNodeId("B") -> Uri("http://B")),
+              ClusterNodeId("A"))),
+          ClusterNodesAppointed(
+            Map(
+              ClusterNodeId("A") -> Uri("http://A"),
+              ClusterNodeId("B") -> Uri("http://B")),
+            ClusterNodeId("A")),
           force = true),
         json"""{
           "TYPE": "ClusterWatchEvents",
-          "from": "http://PRIMARY",
+          "from": "A",
           "events": [
             {
               "TYPE": "Cluster.NodesAppointed",
-              "uris": [ "http://PRIMARY", "http://BACKUP" ]
+              "idToUri": {
+                "A": "http://A",
+                "B": "http://B"
+              },
+              "activeId": "A"
             }
           ],
           "clusterState": {
             "TYPE": "ClusterNodesAppointed",
-            "uris": [ "http://PRIMARY", "http://BACKUP" ]
+            "idToUri": {
+              "A": "http://A",
+              "B": "http://B"
+            },
+            "activeId": "A"
           },
           "force": true
         }""")
@@ -40,15 +58,22 @@ final class ClusterWatchMessageTest extends FreeSpec
     "ClusterWatchHeartbeat" in {
       testJson[ClusterWatchMessage](
         ClusterWatchHeartbeat(
-          Uri("http://PRIMARY"),
-          ClusterCoupled(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil, 1)),
+          from = ClusterNodeId("A"),
+          ClusterCoupled(
+            Map(
+              ClusterNodeId("A") -> Uri("http://A"),
+              ClusterNodeId("B") -> Uri("http://B")),
+            ClusterNodeId("A"))),
         json"""{
           "TYPE": "ClusterWatchHeartbeat",
-          "from": "http://PRIMARY",
+          "from": "A",
           "clusterState": {
             "TYPE": "ClusterCoupled",
-            "uris": [ "http://PRIMARY", "http://BACKUP" ],
-            "active": 1
+            "idToUri": {
+              "A": "http://A",
+              "B": "http://B"
+            },
+            "activeId": "A"
           }
         }""")
     }

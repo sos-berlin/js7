@@ -12,7 +12,6 @@ import com.google.inject.util.Modules.EMPTY_MODULE
 import com.google.inject.{Guice, Injector, Module}
 import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.base.eventbus.EventBus
-import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.time.ScalaTime._
@@ -362,29 +361,13 @@ object RunningMaster
                     .mapTo[Checked[command.Response]]
               })
 
-        case MasterCommand.ClusterAppointNodes(uris) =>
-          cluster.appointNodes(uris)
-            .map(_.map((_: Completed) => MasterCommand.Response.Accepted))
-
-        case MasterCommand.ClusterStartBackupNode(Seq(primaryUri, backupUri)) =>
-          cluster.startBackup(primaryUri, backupUri)
-            .map(_.map((_: Completed) => MasterCommand.Response.Accepted))
-
-        case MasterCommand.ClusterPrepareCoupling(activeUri, passiveUri) =>
-          cluster.prepareCoupling(activeUri, passiveUri)
-            .map(_.map((_: Completed) => MasterCommand.Response.Accepted))
-
-        case MasterCommand.ClusterCouple(activeUri, followingUri) =>
-          cluster.couple(activeUri, followingUri)
-            .map(_.map((_: Completed) => MasterCommand.Response.Accepted))
-
-        case MasterCommand.ClusterRecouple(activeUri, followingUri) =>
-          cluster.recouple(activeUri, followingUri)
-            .map(_.map((_: Completed) => MasterCommand.Response.Accepted))
-
-        case MasterCommand.ClusterInhibitActivation(duration) =>
-          cluster.inhibitActivation(duration)
-            .map(_ map MasterCommand.ClusterInhibitActivation.Response.apply)
+        case cmd @ (_: MasterCommand.ClusterAppointNodes |
+                    _: MasterCommand.ClusterPrepareCoupling |
+                    _: MasterCommand.ClusterCouple |
+                    _: MasterCommand.ClusterRecouple |
+                    _: MasterCommand.ClusterStartBackupNode |
+                    _: MasterCommand.ClusterInhibitActivation) =>
+          cluster.executeCommand(cmd)
 
         case _ =>
           orderKeeperStarted.value match {

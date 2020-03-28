@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.http.configuration.RecouplingStreamReaderConf
 import com.sos.jobscheduler.core.message.ProblemCodeMessages
-import com.sos.jobscheduler.data.cluster.ClusterNodeRole
+import com.sos.jobscheduler.data.cluster.ClusterNodeId
 import com.sos.jobscheduler.data.common.Uri
 import com.typesafe.config.ConfigFactory
 import org.scalatest.FreeSpec
@@ -20,16 +20,17 @@ final class ClusterConfTest extends FreeSpec
   "fromConfig" - {
     "Minimum configuration" in {
       val config = ConfigFactory.parseString("""
+        jobscheduler.master.cluster.node.is-backup = no
         jobscheduler.master.cluster.heartbeat = 7s
         jobscheduler.master.cluster.fail-after = 5s
-        jobscheduler.master.cluster.role = Primary
         jobscheduler.master.cluster.watches = [ "http://AGENT-1", "http://AGENT-2" ]
         jobscheduler.web.client.idle-get-timeout = 50s
         jobscheduler.web.client.delay-between-polling-gets = 1s""")
       val clusterConf = ClusterConf.fromConfig(UserId("USER"), config)
       assert(clusterConf == Right(
         ClusterConf(
-          ClusterNodeRole.Primary,
+          ClusterNodeId("Primary"),
+          isBackup = false,
           None,
           None,
           RecouplingStreamReaderConf(
@@ -42,8 +43,12 @@ final class ClusterConfTest extends FreeSpec
 
     "Full configuration" in {
       val config = ConfigFactory.parseString("""
-        jobscheduler.master.cluster.role = Primary
-        jobscheduler.master.cluster.uris = [ "http://PRIMARY", "http://BACKUP" ]
+        jobscheduler.master.cluster.node.id = A
+        jobscheduler.master.cluster.node.is-backup = no
+        jobscheduler.master.cluster.nodes = {
+          A: "http://A"
+          B: "http://B"
+        }
         jobscheduler.master.cluster.watches = [ "http://AGENT" ]
         jobscheduler.master.cluster.heartbeat = 7s
         jobscheduler.master.cluster.fail-after = 5s
@@ -53,8 +58,11 @@ final class ClusterConfTest extends FreeSpec
       val checkedClusterConf = ClusterConf.fromConfig(UserId("USER"), config)
       assert(checkedClusterConf == Right(
         ClusterConf(
-          ClusterNodeRole.Primary,
-          Some(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil),
+          ClusterNodeId("A"),
+          isBackup = false,
+          Some(Map(
+            ClusterNodeId("A") -> Uri("http://A"),
+            ClusterNodeId("B") -> Uri("http://B"))),
           Some(UserAndPassword(UserId("USER"), SecretString("PASSWORD"))),
           RecouplingStreamReaderConf(
             timeout = 6.s,  // Between 5s and 7s

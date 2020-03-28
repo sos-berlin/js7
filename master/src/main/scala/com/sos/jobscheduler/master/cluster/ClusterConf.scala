@@ -8,8 +8,7 @@ import com.sos.jobscheduler.common.configutils.Configs._
 import com.sos.jobscheduler.common.http.configuration.RecouplingStreamReaderConf
 import com.sos.jobscheduler.common.time.JavaTimeConverters.AsScalaDuration
 import com.sos.jobscheduler.core.configuration.RecouplingStreamReaderConfs
-import com.sos.jobscheduler.data.cluster.ClusterNodeRole
-import com.sos.jobscheduler.data.cluster.ClusterNodeRole.{Backup, Primary}
+import com.sos.jobscheduler.data.cluster.{ClusterNodeId, ClusterSetting}
 import com.sos.jobscheduler.data.common.Uri
 import com.typesafe.config.Config
 import scala.collection.JavaConverters._
@@ -17,9 +16,10 @@ import scala.collection.immutable.Seq
 import scala.concurrent.duration.FiniteDuration
 
 final case class ClusterConf(
-  role: ClusterNodeRole,
-  /** None if role is Backup. */
-  maybeUris: Option[Seq[Uri]],
+  ownId: ClusterNodeId,
+  isBackup: Boolean,
+  /** None if id is Backup. */
+  maybeIdToUri: Option[Map[ClusterNodeId, Uri]],
   userAndPassword: Option[UserAndPassword],
   recouplingStreamReader: RecouplingStreamReaderConf,
   heartbeat: FiniteDuration,
@@ -29,22 +29,33 @@ final case class ClusterConf(
 
 object ClusterConf
 {
-  def fromConfig(userId: UserId, config: Config): Checked[ClusterConf] =
+  def fromConfig(userId: UserId, config: Config): Checked[ClusterConf] = {
+    val isBackup = config.getBoolean("jobscheduler.master.cluster.node.is-backup")
     for {
-      role <- config.getString("jobscheduler.master.cluster.role")
-        .toLowerCase match {
-          case "primary" => Right(Primary)
-          case "backup" => Right(Backup)
-          case _ => Left(Problem("jobscheduler.master.cluster.role must be 'Primary' or 'Backup'"))
-        }
-      maybeUris <- {
-        val key = "jobscheduler.master.cluster.uris"
+      ownId <- config.checkedOptionAs[ClusterNodeId]("jobscheduler.master.cluster.node.id")
+        .map(_ getOrElse ClusterNodeId(if (isBackup) "Backup" else "Primary"))
+      maybeIdToUri <- {
+        val key = "jobscheduler.master.cluster.nodes"
         if (!config.hasPath(key))
           Right(None)
-        else if (role != Primary)
-          Left(Problem("jobscheduler.master.cluster.backup.uri may only be set for role=Primary"))
-        else
-          config.getStringList(key).asScala.toList.map(Uri.checked).sequence.map(Some.apply)
+        else if (isBackup)
+          Left(Problem(s"Backup cluster node must node have a '$key' configuration"))
+        else {
+          val vector: Vector[Checked[(ClusterNodeId, Uri)]]/*Scala 2.12 requires type*/ =
+            config.getObject(key)
+              .asScala.toVector
+              .map { case (k, v) =>
+                v.unwrapped match {
+                  case v: String => ClusterNodeId.checked(k).flatMap(id => Uri.checked(v).map(id -> _))
+                  case _ => Left(Problem("A cluster node URI is expected to be configured as a string"))
+                }
+              }
+          vector.sequence
+            // Ordering from config file is lost. Primary should be first
+            .map(_.sortBy(o => if (o._1 == ownId) 0 else 1))
+            .flatMap(idToUri =>
+              ClusterSetting.checkUris(idToUri.toMap) map Some.apply)
+        }
       }
       userAndPassword <- config.checkedOptionAs[SecretString]("jobscheduler.auth.cluster.password")
         .map(_.map(UserAndPassword(userId, _)))
@@ -55,8 +66,9 @@ object ClusterConf
       testHeartbeatLoss <- Right(config.optionAs[String]("jobscheduler.master.cluster.TEST-HEARTBEAT-LOSS"))
     } yield
       new ClusterConf(
-        role,
-        maybeUris,
+        ownId,
+        isBackup = isBackup,
+        maybeIdToUri,
         userAndPassword,
         recouplingStreamReaderConf.copy(
           timeout = heartbeat + (failAfter - heartbeat) / 2),
@@ -64,4 +76,5 @@ object ClusterConf
         failAfter = failAfter,
         watchUris,
         testHeartbeatLoss)
+  }
 }

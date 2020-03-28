@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.core
 
 import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.data.common.Uri
+import com.sos.jobscheduler.data.cluster.ClusterNodeId
 import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.order.OrderId
@@ -47,7 +47,7 @@ package object problems
 
   final case object ClusterNodeIsNotActiveProblem extends Problem.ArgumentlessCoded
 
-  final case class MissingPassiveClusterNodeHeartbeatProblem(passiveUri: Uri) extends Problem.Coded {
-    override def arguments = Map("uri" -> passiveUri.toString)
+  final case class MissingPassiveClusterNodeHeartbeatProblem(passiveId: ClusterNodeId) extends Problem.Coded {
+    override def arguments = Map("passiveId" -> passiveId.toString)
   }
 }

@@ -3,12 +3,15 @@ package com.sos.jobscheduler.master.data
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.ScalaJsonCodecs.{FiniteDurationJsonDecoder, FiniteDurationJsonEncoder}
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.Checked.implicits.{checkedJsonDecoder, checkedJsonEncoder}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalazStyle._
+import com.sos.jobscheduler.data.cluster.ClusterSetting.syntax._
 import com.sos.jobscheduler.data.cluster.ClusterState.ClusterFailedOver
+import com.sos.jobscheduler.data.cluster.{ClusterNodeId, ClusterSetting}
 import com.sos.jobscheduler.data.command.{CancelMode, CommonCommand}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.crypt.SignedString
@@ -133,39 +136,41 @@ object MasterCommand extends CommonCommand.Companion
     override def toString = s"ReplaceRepo($versionId, ${objects.size} objects)"
   }
 
-  final case class ClusterAppointNodes(uris: Seq[Uri])
+  final case class ClusterAppointNodes(idToUri: Map[ClusterNodeId, Uri], activeId: ClusterNodeId)
   extends MasterCommand {
     type Response = Response.Accepted
-    assertThat(uris.size == 2)
+    ClusterSetting.checkUris(idToUri, activeId).orThrow
   }
 
   // TODO Folgende Kommandos sind intern für die Knoten untereinander
   //  und sollen eine eigenes ClusterCommand bildern.
-  final case class ClusterStartBackupNode(uris: Seq[Uri])
+  final case class ClusterStartBackupNode(idToUri: Map[ClusterNodeId, Uri], activeId: ClusterNodeId)
   extends MasterCommand {
     type Response = Response.Accepted
-    assertThat(uris.size == 2)
+    ClusterSetting.checkUris(idToUri, activeId).orThrow
+
+    def passiveId = idToUri.peerOf(activeId)
   }
 
-  final case class ClusterPrepareCoupling(activeUri: Uri, passiveUri: Uri)
+  final case class ClusterPrepareCoupling(activeId: ClusterNodeId, passiveId: ClusterNodeId)
   extends MasterCommand {
     type Response = Response.Accepted
-    assertThat(activeUri != passiveUri)
-    override def toString = s"ClusterPrepareCoupling($passiveUri follows $activeUri)"
+    assertThat(activeId != passiveId)
+    override def toString = s"ClusterPrepareCoupling($passiveId follows $activeId)"
   }
 
-  final case class ClusterCouple(activeUri: Uri, passiveUri: Uri)
+  final case class ClusterCouple(activeId: ClusterNodeId, passiveId: ClusterNodeId)
   extends MasterCommand {
     type Response = Response.Accepted
-    assertThat(activeUri != passiveUri)
-    override def toString = s"ClusterCouple($passiveUri couples with $activeUri)"
+    assertThat(activeId != passiveId)
+    override def toString = s"ClusterCouple('$passiveId' couples with '$activeId')"
   }
 
-  final case class ClusterRecouple(activeUri: Uri, passiveUri: Uri)
+  final case class ClusterRecouple(activeId: ClusterNodeId, passiveId: ClusterNodeId)
   extends MasterCommand {
     type Response = Response.Accepted
-    assertThat(activeUri != passiveUri)
-    override def toString = s"ClusterRecouple($passiveUri couples with $activeUri)"
+    assertThat(activeId != passiveId)
+    override def toString = s"ClusterRecouple('$passiveId' couples with '$activeId')"
   }
 
   case object ClusterSwitchOver

@@ -10,7 +10,7 @@ import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import com.sos.jobscheduler.common.akkahttp.web.session.SimpleSession
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.data.cluster.ClusterState.ClusterNodesAppointed
-import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
+import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.master.MasterId
 import io.circe.JsonObject
@@ -29,7 +29,6 @@ final class MastersClusterRouteTest extends FreeSpec with ScalatestRouteTest wit
 
   private implicit val routeTestTimeout = RouteTestTimeout(10.s)
   private val masterId = MasterId("MASTER")
-  private val fromUri = Uri("http://example.com")
 
   private val route = pathSegment("cluster") {
     masterClusterRoute(masterId)
@@ -41,11 +40,14 @@ final class MastersClusterRouteTest extends FreeSpec with ScalatestRouteTest wit
     }
   }
 
-  lazy private val uris = fromUri :: Uri("http://BACKUP") :: Nil
+  private val idToUri = Map(
+    ClusterNodeId("A") -> Uri("http://A"),
+    ClusterNodeId("B") -> Uri("http://B"))
+  private val primaryId = ClusterNodeId("A")
 
   "Post" in {
     Post[ClusterWatchMessage]("/cluster",
-      ClusterWatchEvents(fromUri, ClusterEvent.NodesAppointed(uris) :: Nil, ClusterNodesAppointed(uris))
+      ClusterWatchEvents(ClusterNodeId("A"), ClusterEvent.NodesAppointed(idToUri, primaryId) :: Nil, ClusterNodesAppointed(idToUri, primaryId))
     ) ~>
       Accept(`application/json`) ~> route ~>
       check {
@@ -55,7 +57,7 @@ final class MastersClusterRouteTest extends FreeSpec with ScalatestRouteTest wit
 
   "Get for known MasterId" in {
     Get("/cluster") ~> Accept(`application/json`) ~> route ~> check {
-      assert(status == OK && entityAs[ClusterState] == ClusterNodesAppointed(uris))
+      assert(status == OK && entityAs[ClusterState] == ClusterNodesAppointed(idToUri, primaryId))
     }
   }
 }

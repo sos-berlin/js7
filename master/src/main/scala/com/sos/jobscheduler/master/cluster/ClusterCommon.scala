@@ -11,7 +11,7 @@ import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.cluster.ClusterWatch.ClusterWatchHeartbeatFromInactiveNodeProblem
 import com.sos.jobscheduler.core.cluster.ClusterWatchApi
-import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
+import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
 import com.sos.jobscheduler.master.cluster.ClusterCommon._
@@ -24,7 +24,6 @@ import java.nio.file.{Path, Paths}
 import monix.eval.Task
 
 private[cluster] final class ClusterCommon(
-  ownUri: Uri,
   activationInhibitor: ActivationInhibitor,
   val clusterWatch: ClusterWatchApi,
   clusterConf: ClusterConf,
@@ -40,7 +39,7 @@ private[cluster] final class ClusterCommon(
           case Left(problem) => Task.pure(Left(problem))
           case Right(updatedClusterState) =>
             val eventName = s"'${event.getClass.simpleScalaName}' event"
-            clusterWatch.applyEvents(from = ownUri, event :: Nil, updatedClusterState).flatMap {
+            clusterWatch.applyEvents(from = clusterConf.ownId, event :: Nil, updatedClusterState).flatMap {
               case Left(problem) =>
                 if (problem.codeOption contains ClusterWatchHeartbeatFromInactiveNodeProblem.code) {
                   logger.info(s"ClusterWatch did not agree to $eventName: $problem")

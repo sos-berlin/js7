@@ -262,7 +262,7 @@ with MainJournalingActor[Event]
 
   def receive = {
     case Input.Start(recovered) =>
-      assertProperClusterState(recovered)
+      assertActiveClusterState(recovered)
       recover(recovered)
 
       if (cluster.isRemainingActiveAfterRestart) {
@@ -287,13 +287,12 @@ with MainJournalingActor[Event]
     case msg => notYetReady(msg)
   }
 
-  private def assertProperClusterState(recovered: Recovered[MasterState, Event]): Unit = {
+  private def assertActiveClusterState(recovered: Recovered[MasterState, Event]): Unit =
     for (clusterState <- recovered.recoveredState.map(_.clusterState)) {
-      val role = masterConfiguration.clusterConf.role
-      if (!clusterState.isActive(role))
-        throw new IllegalStateException(s"Master has recovered from Journal but is not the active node in ClusterState: role=$role, failedOver=$clusterState")
+      import masterConfiguration.clusterConf.ownId
+      if (clusterState != ClusterState.ClusterEmpty && !clusterState.isNonEmptyActive(ownId))
+        throw new IllegalStateException(s"Master has recovered from Journal but is not the active node in ClusterState: id=$ownId, failedOver=$clusterState")
     }
-  }
 
   private def recover(recovered: Recovered[MasterState, Event]): Unit = {
     for (masterState <- recovered.recoveredState) {

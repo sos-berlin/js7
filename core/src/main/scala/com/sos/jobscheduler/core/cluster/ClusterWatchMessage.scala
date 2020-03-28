@@ -2,20 +2,19 @@ package com.sos.jobscheduler.core.cluster
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
-import com.sos.jobscheduler.data.common.Uri
+import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
 import scala.collection.immutable.Seq
 
 sealed trait ClusterWatchMessage
 
 final case class ClusterWatchEvents(
-  from: Uri,
+  from: ClusterNodeId,
   events: Seq[ClusterEvent],
   clusterState: ClusterState,
   force: Boolean = false)
 extends ClusterWatchMessage
 
-final case class ClusterWatchHeartbeat(from: Uri, clusterState: ClusterState)
+final case class ClusterWatchHeartbeat(from: ClusterNodeId, clusterState: ClusterState)
 extends ClusterWatchMessage
 
 object ClusterWatchMessage

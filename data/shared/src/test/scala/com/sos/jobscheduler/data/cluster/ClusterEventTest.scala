@@ -12,43 +12,54 @@ import org.scalatest.FreeSpec
   */
 final class ClusterEventTest extends FreeSpec
 {
+  private val Id = ClusterNodeId
+
   "NodesAppointed" in {
-    testJson[ClusterEvent](NodesAppointed(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil),
+    testJson[ClusterEvent](NodesAppointed(
+      Map(
+        Id("A") -> Uri("http://PRIMARY"),
+        Id("B") -> Uri("http://BACKUP")),
+      Id("A")),
       json"""{
         "TYPE": "Cluster.NodesAppointed",
-        "uris": [ "http://PRIMARY", "http://BACKUP" ]
+        "idToUri": {
+          "A":  "http://PRIMARY",
+          "B": "http://BACKUP"
+        },
+        "activeId": "A"
       }""")
   }
 
   "CouplingPrepared" in {
-    testJson[ClusterEvent](CouplingPrepared(Uri("http://PASSIVE")),
+    testJson[ClusterEvent](CouplingPrepared(Id("A")),
       json"""{
         "TYPE": "Cluster.CouplingPrepared",
-        "passiveUri": "http://PASSIVE"
+        "activeId": "A"
       }""")
   }
 
   "Coupled" in {
-    testJson[ClusterEvent](Coupled,
+    testJson[ClusterEvent](Coupled(ClusterNodeId("A")),
       json"""{
-        "TYPE": "Cluster.Coupled"
+        "TYPE": "Cluster.Coupled",
+        "activeId": "A"
       }""")
   }
 
   "SwitchedOver" in {
-    testJson[ClusterEvent](SwitchedOver(Uri("http://NODE")),
+    testJson[ClusterEvent](SwitchedOver(Id("B")),
       json"""{
         "TYPE": "Cluster.SwitchedOver",
-        "uri": "http://NODE"
+        "toId": "B"
       }""")
   }
 
   "FailedOver" in {
-    testJson[ClusterEvent](FailedOver(Uri("http://FAILED"), Uri("http://ACTIVATED"), JournalPosition(0, 1234)),
+    testJson[ClusterEvent](FailedOver(Id("A"), Id("B"), JournalPosition(0, 1234)),
       json"""{
         "TYPE": "Cluster.FailedOver",
-        "failedActiveUri": "http://FAILED",
-        "activatedUri": "http://ACTIVATED",
+        "failedActiveId": "A",
+        "activatedId": "B",
         "failedAt": {
           "fileEventId": 0,
           "position": 1234
@@ -57,10 +68,10 @@ final class ClusterEventTest extends FreeSpec
   }
 
   "PassiveLost" in {
-    testJson[ClusterEvent](PassiveLost(Uri("http://PASSIVE")),
+    testJson[ClusterEvent](PassiveLost(Id("B")),
       json"""{
         "TYPE": "Cluster.PassiveLost",
-        "uri": "http://PASSIVE"
+        "id": "B"
       }""")
   }
 }

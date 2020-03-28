@@ -4,6 +4,7 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentRefPath
+import com.sos.jobscheduler.data.cluster.ClusterNodeId
 import com.sos.jobscheduler.data.cluster.ClusterState.ClusterFailedOver
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.common.Uri
@@ -19,10 +20,18 @@ import org.scalatest.FreeSpec
 final class MasterCommandTest extends FreeSpec
 {
   "ClusterAppointNodes" in {
-    testJson[MasterCommand](ClusterAppointNodes(Uri("http://ACTIVE") ::  Uri("http://BACKUP") :: Nil),
+    testJson[MasterCommand](ClusterAppointNodes(
+      Map(
+        ClusterNodeId("A") ->Uri("http://ACTIVE"),
+        ClusterNodeId("B") -> Uri("http://B")),
+      ClusterNodeId("A")),
       json"""{
         "TYPE": "ClusterAppointNodes",
-        "uris": [ "http://ACTIVE", "http://BACKUP" ]
+        "idToUri": {
+          "A": "http://ACTIVE",
+          "B": "http://B"
+        },
+        "activeId": "A"
       }""")
   }
 
@@ -93,33 +102,50 @@ final class MasterCommandTest extends FreeSpec
     }
   }
 
+  "ClusterStartBackupNode" in {
+    testJson[MasterCommand](
+      ClusterStartBackupNode(
+        Map(
+          ClusterNodeId("A") -> Uri("http://A"),
+          ClusterNodeId("B") -> Uri("http://B")),
+        ClusterNodeId("A")),
+      json"""{
+        "TYPE": "ClusterStartBackupNode",
+        "idToUri": {
+          "A": "http://A",
+          "B": "http://B"
+        },
+        "activeId": "A"
+      }""")
+  }
+
   "ClusterPrepareCoupling" in {
     testJson[MasterCommand](
-      ClusterPrepareCoupling(Uri("http://ACTIVE"), Uri("http://PASSIVE")),
+      ClusterPrepareCoupling(ClusterNodeId("A"), ClusterNodeId("B")),
       json"""{
         "TYPE": "ClusterPrepareCoupling",
-        "activeUri": "http://ACTIVE",
-        "passiveUri": "http://PASSIVE"
+        "activeId": "A",
+        "passiveId": "B"
       }""")
   }
 
   "ClusterCouple" in {
     testJson[MasterCommand](
-      ClusterCouple(Uri("http://ACTIVE"), Uri("http://PASSIVE")),
+      ClusterCouple(ClusterNodeId("A"), ClusterNodeId("B")),
       json"""{
         "TYPE": "ClusterCouple",
-        "activeUri": "http://ACTIVE",
-        "passiveUri": "http://PASSIVE"
+        "activeId": "A",
+        "passiveId": "B"
       }""")
   }
 
   "ClusterRecouple" in {
     testJson[MasterCommand](
-      ClusterRecouple(Uri("http://ACTIVE"), Uri("http://PASSIVE")),
+      ClusterRecouple(ClusterNodeId("A"), ClusterNodeId("B")),
       json"""{
         "TYPE": "ClusterRecouple",
-        "activeUri": "http://ACTIVE",
-        "passiveUri": "http://PASSIVE"
+        "activeId": "A",
+        "passiveId": "B"
       }""")
   }
 
@@ -197,14 +223,19 @@ final class MasterCommandTest extends FreeSpec
 
   "ClusterInhibitActivation.Response" in {
     testJson[MasterCommand.Response](ClusterInhibitActivation.Response(Some(ClusterFailedOver(
-      List(Uri("http://PRIMARY"), Uri("http://BACKUP")),
-      active = 1,
+      Map(
+        ClusterNodeId("A") -> Uri("http://A"),
+        ClusterNodeId("B") -> Uri("http://B")),
+      activeId = ClusterNodeId("A"),
       JournalPosition(0, 1000)))),
       json"""{
         "TYPE": "ClusterInhibitActivationResponse",
         "failedOver": {
-          "uris": [ "http://PRIMARY", "http://BACKUP" ],
-          "active": 1,
+          "idToUri": {
+            "A": "http://A",
+            "B": "http://B"
+          },
+          "activeId": "A",
           "failedAt": {
             "fileEventId": 0,
             "position": 1000

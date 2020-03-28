@@ -13,6 +13,9 @@ import org.scalatest.FreeSpec
 final class ClusterStateTest extends FreeSpec
 {
   "JSON" - {
+    val idToUri = Map(
+      ClusterNodeId("A") -> Uri("http://A"),
+      ClusterNodeId("B") -> Uri("http://B"))
     "ClusterEmpty" in {
       testJson[ClusterState](
         ClusterEmpty,
@@ -23,60 +26,79 @@ final class ClusterStateTest extends FreeSpec
 
     "ClusterNodesAppointed" in {
       testJson[ClusterState](
-        ClusterNodesAppointed(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil),
+        ClusterNodesAppointed(idToUri, ClusterNodeId("A")),
         json"""{
           "TYPE": "ClusterNodesAppointed",
-          "uris": [ "http://PRIMARY", "http://BACKUP" ]
+          "idToUri": {
+            "A": "http://A",
+            "B": "http://B"
+          },
+          "activeId": "A"
         }""")
     }
 
     "ClusterPreparedToBeCoupled" in {
       testJson[ClusterState](
-        ClusterPreparedToBeCoupled(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil, active = 1),
+        ClusterPreparedToBeCoupled(idToUri, ClusterNodeId("A")),
         json"""{
           "TYPE": "ClusterPreparedToBeCoupled",
-          "uris": [ "http://PRIMARY", "http://BACKUP" ],
-          "active": 1
+          "idToUri": {
+            "A": "http://A",
+            "B": "http://B"
+          },
+          "activeId": "A"
         }""")
     }
 
     "ClusterCoupled" in {
       testJson[ClusterState](
-        ClusterCoupled(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil, 0),
+        ClusterCoupled(idToUri, ClusterNodeId("A")),
         json"""{
           "TYPE": "ClusterCoupled",
-          "uris": [ "http://PRIMARY", "http://BACKUP" ],
-          "active": 0
+          "idToUri": {
+            "A": "http://A",
+            "B": "http://B"
+          },
+          "activeId": "A"
         }""")
     }
 
     "ClusterPassiveLost" in {
       testJson[ClusterState](
-        ClusterPassiveLost(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil, 0),
+        ClusterPassiveLost(idToUri, ClusterNodeId("A")),
         json"""{
           "TYPE": "ClusterPassiveLost",
-          "uris": [ "http://PRIMARY", "http://BACKUP" ],
-          "active": 0
+          "idToUri": {
+            "A": "http://A",
+            "B": "http://B"
+          },
+          "activeId": "A"
         }""")
     }
 
     "ClusterSwitchedOver" in {
       testJson[ClusterState](
-        ClusterSwitchedOver(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil, 0),
+        ClusterSwitchedOver(idToUri, ClusterNodeId("A")),
         json"""{
           "TYPE": "ClusterSwitchedOver",
-          "uris": [ "http://PRIMARY", "http://BACKUP" ],
-          "active": 0
+          "idToUri": {
+            "A": "http://A",
+            "B": "http://B"
+          },
+          "activeId": "A"
         }""")
     }
 
     "ClusterFailedOver" in {
       testJson[ClusterState](
-        ClusterFailedOver(Uri("http://PRIMARY") :: Uri("http://BACKUP") :: Nil, 1, JournalPosition(0, 1234)),
+        ClusterFailedOver(idToUri, ClusterNodeId("A"), JournalPosition(0, 1234)),
         json"""{
           "TYPE": "ClusterFailedOver",
-          "uris": [ "http://PRIMARY", "http://BACKUP" ],
-          "active": 1,
+          "idToUri": {
+            "A": "http://A",
+            "B": "http://B"
+          },
+          "activeId": "A",
           "failedAt": {
             "fileEventId": 0,
             "position": 1234

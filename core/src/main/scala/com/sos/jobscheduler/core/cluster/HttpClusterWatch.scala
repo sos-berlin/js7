@@ -12,7 +12,7 @@ import com.sos.jobscheduler.common.http.AkkaHttpClient
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.cluster.ClusterWatch.isClusterWatchProblem
 import com.sos.jobscheduler.core.cluster.HttpClusterWatch._
-import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
+import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
 import io.circe._
 import monix.eval.Task
@@ -34,7 +34,7 @@ extends ClusterWatchApi with AkkaHttpClient with HttpSessionApi with HttpAutoRel
 
   private val clusterUri = baseUri + "/agent/api/master/cluster"
 
-  def applyEvents(from: Uri, events: Seq[ClusterEvent], reportedClusterState: ClusterState, force: Boolean = false)
+  def applyEvents(from: ClusterNodeId, events: Seq[ClusterEvent], reportedClusterState: ClusterState, force: Boolean = false)
   : Task[Checked[Completed]] =
     liftProblem(
       retryUntilReachable(
@@ -54,7 +54,7 @@ extends ClusterWatchApi with AkkaHttpClient with HttpSessionApi with HttpAutoRel
         }
         .map((_: JsonObject) => Completed))
 
-  def heartbeat(from: Uri, reportedClusterState: ClusterState): Task[Checked[Completed]] =
+  def heartbeat(from: ClusterNodeId, reportedClusterState: ClusterState): Task[Checked[Completed]] =
     liftProblem(
       loginUntilReachable(userAndPassword, loginDelays(), onlyIfNotLoggedIn = true) >>
         post[ClusterWatchMessage, JsonObject](clusterUri, ClusterWatchHeartbeat(from, reportedClusterState))

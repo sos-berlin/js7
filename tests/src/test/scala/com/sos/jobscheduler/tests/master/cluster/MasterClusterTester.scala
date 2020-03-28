@@ -37,8 +37,10 @@ private[cluster] trait MasterClusterTester extends FreeSpec
       val agentPort = findFreeTcpPort()
       val primary = new DirectoryProvider(agentRefPath :: Nil, TestWorkflow :: Nil, testName = Some(s"$testName-Primary"),
         masterConfig = ConfigFactory.parseString(s"""
-          jobscheduler.master.cluster.role = Primary
-          jobscheduler.master.cluster.uris = [ "http://127.0.0.1:$primaryHttpPort", "http://127.0.0.1:$backupHttpPort" ]
+          jobscheduler.master.cluster.nodes = {
+            Primary: "http://127.0.0.1:$primaryHttpPort"
+            Backup: "http://127.0.0.1:$backupHttpPort"
+          }
           jobscheduler.master.cluster.heartbeat = 3s
           jobscheduler.master.cluster.fail-after = 5s
           jobscheduler.master.cluster.watches = [ "http://127.0.0.1:$agentPort" ]
@@ -51,7 +53,7 @@ private[cluster] trait MasterClusterTester extends FreeSpec
 
       val backup = new DirectoryProvider(Nil, Nil, testName = Some(s"$testName-Backup"),
         masterConfig = ConfigFactory.parseString(s"""
-          jobscheduler.master.cluster.role = Backup
+          jobscheduler.master.cluster.node.is-backup = yes
           jobscheduler.master.cluster.heartbeat = 3s
           jobscheduler.master.cluster.fail-after = 5s
           jobscheduler.master.cluster.watches = [ "http://127.0.0.1:$agentPort" ]

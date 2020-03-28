@@ -20,7 +20,7 @@ import com.sos.jobscheduler.core.event.journal.recover.{FileJournaledStateBuilde
 import com.sos.jobscheduler.core.event.state.JournaledStateBuilder
 import com.sos.jobscheduler.data.cluster.ClusterEvent.{Coupled, CouplingPrepared, FailedOver, NodesAppointed, PassiveLost, SwitchedOver}
 import com.sos.jobscheduler.data.cluster.ClusterState.{ClusterCoupled, ClusterEmpty, ClusterNodesAppointed, ClusterPreparedToBeCoupled, Decoupled}
-import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
+import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.JournalEvent.SnapshotTaken
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
@@ -45,8 +45,9 @@ import scala.concurrent.TimeoutException
 import scodec.bits.ByteVector
 
 /*private[cluster]*/ final class PassiveClusterNode[S <: JournaledState[S, Event]](
-  ownUri: Uri,
-  activeUri: Uri,
+  ownId: ClusterNodeId,
+  idToUri: Map[ClusterNodeId, Uri],
+  activeId: ClusterNodeId,
   journalMeta: JournalMeta,
   recovered: Recovered[S, Event],
   otherFailed: Boolean,
@@ -55,8 +56,9 @@ import scodec.bits.ByteVector
   common: ClusterCommon)
   (implicit actorSystem: ActorSystem)
 {
-  assertThat(ownUri != activeUri)
+  assertThat(activeId != ownId)
   import recovered.eventWatch
+  private val activeUri = idToUri(activeId)
 
   private val stateBuilderAndAccessor = new StateBuilderAndAccessor[S, Event](recovered.newStateBuilder)
   private var dontActivateBecauseOtherFailedOver = otherFailed
@@ -92,7 +94,7 @@ import scodec.bits.ByteVector
             case _: ClusterNodesAppointed | _: Decoupled =>
               sendClusterPrepareCoupling
             case _: ClusterPreparedToBeCoupled =>
-              common.tryEndlesslyToSendCommand(activeUri, ClusterCouple(activeUri = activeUri, passiveUri = ownUri))
+              common.tryEndlesslyToSendCommand(activeUri, ClusterCouple(activeId = activeId, passiveId = ownId))
             case _: ClusterCoupled =>
               // After a quick restart of this passive node, the active node may not yet have noticed the loss.
               // So we send a ClusterRecouple command to force a PassiveLost event.
@@ -100,7 +102,7 @@ import scodec.bits.ByteVector
               // and we are sure to be coupled and up-to-date and may properly fail-over in case of an active node.
               // The active node ignores this command if it has issued an PassiveLost event.
               awaitingCoupledEvent = true
-              common.tryEndlesslyToSendCommand(activeUri, ClusterRecouple(activeUri = activeUri, passiveUri = ownUri))
+              common.tryEndlesslyToSendCommand(activeUri, ClusterRecouple(activeId = activeId, passiveId = ownId))
           }
       sendCommand
         .onErrorRecover { case t: Throwable =>
@@ -125,10 +127,10 @@ import scodec.bits.ByteVector
     }
 
   private def sendClusterPrepareCoupling: Task[Unit] =
-    common.tryEndlesslyToSendCommand(activeUri, ClusterPrepareCoupling(activeUri = activeUri, passiveUri = ownUri))
+    common.tryEndlesslyToSendCommand(activeUri, ClusterPrepareCoupling(activeId = activeId, passiveId = ownId))
 
   private def sendClusterCouple: Task[Unit] =
-    common.tryEndlesslyToSendCommand(activeUri, ClusterCouple(activeUri = activeUri, passiveUri = ownUri))
+    common.tryEndlesslyToSendCommand(activeUri, ClusterCouple(activeId = activeId, passiveId = ownId))
 
   private def replicateJournalFiles(recoveredClusterState: ClusterState)
   : Task[Checked[(ClusterState, ClusterFollowUp[S, Event])]] =
@@ -244,13 +246,13 @@ import scodec.bits.ByteVector
         .flatMap[Checked[Unit]] {
           case None/*heartbeat pause*/ =>
             (if (isReplicatingHeadOfFile) continuation.clusterState else builder.clusterState) match {
-              case clusterState: ClusterCoupled if clusterState.passiveUri == ownUri =>
+              case clusterState: ClusterCoupled if clusterState.passiveId == ownId =>
                 if (awaitingCoupledEvent) {
                   logger.trace(
                     s"Ignoring observed pause without heartbeat because cluster is coupled but nodes have not yet recoupled: clusterState=$clusterState")
                   Observable.empty  // Ignore
                 } else {
-                  logger.warn(s"No heartbeat from the currently active cluster node '$activeUri' - trying to fail-over")
+                  logger.warn(s"No heartbeat from the currently active cluster node '$activeId' - trying to fail-over")
                   Observable.fromTask(
                     if (isReplicatingHeadOfFile) {
                       val recoveredJournalFile = continuation.maybeRecoveredJournalFile.getOrElse(
@@ -395,16 +397,18 @@ import scodec.bits.ByteVector
                     // Notify ClusterWatch before starting heartbeating
                     val switchedOver = cast[SwitchedOver](json.as[ClusterEvent].orThrow)
                     Observable.fromTask(
-                      common.clusterWatch.applyEvents(from = ownUri, switchedOver :: Nil, builder.clusterState, force = true)
+                      common.clusterWatch.applyEvents(from = ownId, switchedOver :: Nil, builder.clusterState, force = true)
                         .map(_.map(_ => Unit)))
                     // TODO sendClusterPassiveFollows ?
 
-                  case _: CouplingPrepared =>
+                  case CouplingPrepared(activeId) =>
+                    assertThat(activeId != ownId)
                     Observable.fromTask(
                       sendClusterCouple
                         .map(Right.apply))  // TODO Handle heartbeat timeout !
 
-                  case Coupled =>
+                  case Coupled(activeId) =>
+                    assertThat(activeId != ownId)
                     awaitingCoupledEvent = false
                     Observable.pure(Right(()))
 
@@ -460,7 +464,7 @@ import scodec.bits.ByteVector
     }
 
   private def shouldActivate(clusterState: ClusterState) =
-    !dontActivateBecauseOtherFailedOver && clusterState.isActive(ownUri)
+    !dontActivateBecauseOtherFailedOver && clusterState.isNonEmptyActive(ownId)
 
   private def ensureEqualState(continuation: Continuation.Replicatable, snapshot: S)(implicit s: Scheduler): Unit =
     for (recoveredJournalFile <- continuation.maybeRecoveredJournalFile if recoveredJournalFile.state != snapshot) {
@@ -478,7 +482,7 @@ import scodec.bits.ByteVector
     }
 
   private def toStampedFailedOver(clusterState: ClusterCoupled, failedAt: JournalPosition): Stamped[KeyedEvent[ClusterEvent]] = {
-    val failedOver = ClusterEvent.FailedOver(failedActiveUri = clusterState.activeUri, activatedUri = clusterState.passiveUri, failedAt)
+    val failedOver = ClusterEvent.FailedOver(failedActiveId = clusterState.activeId, activatedId = clusterState.passiveId, failedAt)
     val stamped = eventIdGenerator.stamp(NoKey <-: (failedOver: ClusterEvent))
     logger.debug(stamped.toString)
     stamped

@@ -1,50 +1,54 @@
 package com.sos.jobscheduler.data.cluster
 
+import cats.instances.either._
+import cats.syntax.flatMap._
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
+import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.base.problem.Checked._
+import com.sos.jobscheduler.data.cluster.ClusterSetting.checkUris
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.{JournalPosition, NoKeyEvent}
-import scala.collection.immutable.Seq
 
 sealed trait ClusterEvent extends NoKeyEvent
 
 object ClusterEvent
 {
-  final case class NodesAppointed(uris: Seq[Uri])
+  private type Id = ClusterNodeId
+
+  final case class NodesAppointed(idToUri: Map[Id, Uri], activeId: Id)
   extends ClusterEvent
   {
-    assertThat(uris.size == 2 && uris(0) != uris(1))
+    checkUris(idToUri, activeId).orThrow
   }
   object NodesAppointed {
-    def checked(uris: Seq[Uri]): Checked[NodesAppointed] =
-      if (uris.size == 2) Right(NodesAppointed(uris))
-      else Left(Problem("Exactly two URIs are expected"))
+    def checked(idToUri: Map[Id, Uri], activeId: Id): Checked[NodesAppointed] =
+      checkUris(idToUri, activeId) >>
+        Checked(new NodesAppointed(idToUri, activeId))
   }
 
-  final case class CouplingPrepared(passiveUri: Uri)
+  final case class CouplingPrepared(activeId: Id)
   extends ClusterEvent
 
-  type Coupled = Coupled.type
-  case object Coupled extends ClusterEvent
-
-  final case class SwitchedOver(uri: Uri)
+  final case class Coupled(activeId: Id)
   extends ClusterEvent
 
-  final case class FailedOver(failedActiveUri: Uri, activatedUri: Uri, failedAt: JournalPosition)
+  final case class SwitchedOver(toId: Id)
+  extends ClusterEvent
+
+  final case class FailedOver(failedActiveId: Id, activatedId: Id, failedAt: JournalPosition)
   extends ClusterEvent
   {
-    override def toString = s"$FailedOver($failedActiveUri --> $activatedUri, $failedAt)"
+    override def toString = s"$FailedOver($failedActiveId --> $activatedId, $failedAt)"
   }
 
-  final case class PassiveLost(uri: Uri)
+  final case class PassiveLost(id: Id)
   extends ClusterEvent
 
   implicit val jsonCodec = TypedJsonCodec[ClusterEvent](
     Subtype.named(deriveCodec[NodesAppointed]  , "Cluster.NodesAppointed"),
     Subtype.named(deriveCodec[CouplingPrepared], "Cluster.CouplingPrepared"),
-    Subtype.named(Coupled                      , "Cluster.Coupled"),
+    Subtype.named(deriveCodec[Coupled]         , "Cluster.Coupled"),
     Subtype.named(deriveCodec[SwitchedOver]    , "Cluster.SwitchedOver"),
     Subtype.named(deriveCodec[FailedOver]      , "Cluster.FailedOver"),
     Subtype.named(deriveCodec[PassiveLost]     , "Cluster.PassiveLost"))

@@ -3,24 +3,22 @@ package com.sos.jobscheduler.data.cluster
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.base.utils.Strings._
 import com.sos.jobscheduler.data.cluster.ClusterEvent.{Coupled, CouplingPrepared, FailedOver, NodesAppointed, PassiveLost, SwitchedOver}
-import com.sos.jobscheduler.data.cluster.ClusterNodeRole.{Backup, Primary}
+import com.sos.jobscheduler.data.cluster.ClusterSetting.checkUris
+import com.sos.jobscheduler.data.cluster.ClusterSetting.syntax._
 import com.sos.jobscheduler.data.cluster.ClusterState._
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{EventId, JournalPosition, JournaledState, KeyedEvent}
 import monix.reactive.Observable
-import scala.collection.immutable.Seq
 
 sealed trait ClusterState
 extends JournaledState[ClusterState, ClusterEvent]
 {
-  def roleToMaybeUri(role: ClusterNodeRole): Option[Uri]
-
-  def maybeActiveUri: Option[Uri]
+  def isNonEmptyActive(id: ClusterNodeId): Boolean
 
   def applyEvent(keyedEvent: KeyedEvent[ClusterEvent]): Checked[ClusterState] = {
     val event = keyedEvent.event
@@ -28,27 +26,27 @@ extends JournaledState[ClusterState, ClusterEvent]
       eventNotApplicable(keyedEvent)
     else
       (this, event) match {
-        case (ClusterEmpty, NodesAppointed(uris)) =>
-          Right(ClusterNodesAppointed(uris))
+        case (ClusterEmpty, NodesAppointed(idToUris, activeId)) =>
+          Right(ClusterNodesAppointed(idToUris, activeId))
 
-        case (state: ClusterNodesAppointed, CouplingPrepared(passiveUri)) if state.backupUri == passiveUri =>
-          Right(ClusterPreparedToBeCoupled(state.uris, active = 0/*primary*/))
+        case (state: ClusterNodesAppointed, CouplingPrepared(activeId)) if state.activeId == activeId =>
+          Right(ClusterPreparedToBeCoupled(state.idToUri, activeId = state.activeId))
 
-        case (state: ClusterPreparedToBeCoupled, Coupled) =>
-          Right(ClusterCoupled(state.uris, state.active))
+        case (state: ClusterPreparedToBeCoupled, Coupled(activeId)) if state.activeId == activeId =>
+          Right(ClusterCoupled(state.idToUri, state.activeId))
 
-        case (state: ClusterCoupled, SwitchedOver(uri)) if uri == state.passiveUri =>
-          Right(ClusterSwitchedOver(state.uris, state.passive))
+        case (state: ClusterCoupled, SwitchedOver(id)) if state.passiveId == id =>
+          Right(ClusterSwitchedOver(state.idToUri, state.passiveId))
 
-        case (state: ClusterCoupled, PassiveLost(uri)) if state.passiveUri == uri =>
-          Right(ClusterPassiveLost(state.uris, state.active))
+        case (state: ClusterCoupled, PassiveLost(id)) if state.passiveId == id =>
+          Right(ClusterPassiveLost(state.idToUri, state.activeId))
 
         case (state: ClusterCoupled, event: FailedOver)
-          if state.activeUri == event.failedActiveUri && state.passiveUri == event.activatedUri =>
-          Right(ClusterFailedOver(state.uris, state.passive, event.failedAt))
+          if state.activeId == event.failedActiveId && state.passiveId == event.activatedId =>
+          Right(ClusterFailedOver(state.idToUri, event.activatedId, event.failedAt))
 
-        case (state: Decoupled, ClusterEvent.CouplingPrepared(passiveUri)) if passiveUri == state.passiveUri =>
-          Right(ClusterPreparedToBeCoupled(state.uris, state.active))
+        case (state: Decoupled, ClusterEvent.CouplingPrepared(activeId)) if state.activeId == activeId =>
+          Right(ClusterPreparedToBeCoupled(state.idToUri, state.activeId))
 
         case (_, keyedEvent) => eventNotApplicable(keyedEvent)
       }
@@ -60,89 +58,47 @@ extends JournaledState[ClusterState, ClusterEvent]
   def toSnapshotObservable =
     Observable.fromIterable((this != ClusterEmpty) ? ClusterStateSnapshot(this))
 
-  def isActive(role: ClusterNodeRole): Boolean
-
-  final def isPassive(role: ClusterNodeRole) = !isActive(role)
-
-  final def isActive(uri: Uri) = maybeActiveUri contains uri
-
-  def isCoupledPassiveRole(role: ClusterNodeRole) = false
+  def isCoupledPassiveRole(id: ClusterNodeId) = false
 }
 
 object ClusterState
 {
+  private type Id = ClusterNodeId
+
   final case class ClusterStateSnapshot(clusterState: ClusterState)
 
   /** Cluster has not been initialized.
     * Like ClusterSole but own URI is unknown. Non-permanent state, not stored. */
-  case object ClusterEmpty extends ClusterState {
-    def maybeActiveUri = None
-
-    def roleToMaybeUri(role: ClusterNodeRole) = None
-
-    final def isActive(role: ClusterNodeRole) =
-      role match {
-        case ClusterNodeRole.Primary => true
-        case ClusterNodeRole.Backup => false
-      }
+  case object ClusterEmpty extends ClusterState
+  {
+    def isNonEmptyActive(id: Id) = false
   }
 
   sealed trait HasNodes extends ClusterState
   {
-    /** Contains the primary node URI and the backup node URI. */
-    def uris: Seq[Uri]
-    def active: Int
+    protected final def assertIsValid(): Unit =
+      checkUris(idToUri, activeId).orThrow
 
-    final def roleToUri(role: ClusterNodeRole): Uri =
-      role match {
-        case Primary => uris(0)
-        case Backup => uris(1)
-      }
+    def idToUri: Map[Id, Uri]
+    def activeId: Id
 
-    final def passive = 1 - active
-    final def primaryUri = uris.head
-    final def backupUri = uris(1)
-    final def activeUri = uris(active)
-    final def passiveUri = uris(passive)
-    final def maybeActiveUri = Some(activeUri)
-    final def isActive(role: ClusterNodeRole) = role == activeRole
-
-    final def activeRole = active match {
-      case 0 => Primary
-      case 1 => Backup
-    }
-
-    protected final def passiveRole = passive match {
-      case 0 => Primary
-      case 1 => Backup
-    }
-
-    override def roleToMaybeUri(role: ClusterNodeRole) =
-      Some(role match {
-        case Primary => uris.head
-        case Backup =>  uris(1)
-      })
-
-    protected def assertIsValid(): Unit = {
-      val n = uris.length
-      assertThat(n == 2 && uris.toSet.size == n && active >= 0 && active < n)
-    }
+    final def isNonEmptyActive(id: Id) = id == activeId
+    final def passiveId = idToUri.peerOf(activeId)
+    final def passiveUri = idToUri(passiveId)
 
     protected final def nodesString =
-      primaryUri.string + ((active == 0) ?: " active") +
-        ", " + backupUri.string + ((active == 1) ?: " active")
+      (for ((id, uri) <- idToUri) yield s"$id=$uri${(activeId == id) ?: " active"}")
+        .mkString(", ")
   }
 
-  final case class ClusterNodesAppointed(uris: Seq[Uri])
+  final case class ClusterNodesAppointed(idToUri: Map[Id, Uri], activeId: Id)
   extends HasNodes
   {
     assertIsValid()
-
-    def active = 0
   }
 
   /** Intermediate state only, is immediately followed by transition ClusterEvent.Coupled -> ClusterCoupled. */
-  final case class ClusterPreparedToBeCoupled(uris: Seq[Uri], active: Int)
+  final case class ClusterPreparedToBeCoupled(idToUri: Map[Id, Uri], activeId: Id)
   extends HasNodes
   {
     assertIsValid()
@@ -153,19 +109,19 @@ object ClusterState
   sealed trait CoupledOrDecoupled extends HasNodes
 
   /** An active node is coupled with a passive node. */
-  final case class ClusterCoupled(uris: Seq[Uri], active: Int)
+  final case class ClusterCoupled(idToUri: Map[Id, Uri], activeId: Id)
   extends CoupledOrDecoupled
   {
     assertIsValid()
 
-    override def isCoupledPassiveRole(role: ClusterNodeRole) = role == passiveRole
+    override def isCoupledPassiveRole(id: Id) = id == passiveId
 
     override def toString = s"ClusterCoupled($nodesString)"
   }
 
   sealed trait Decoupled extends CoupledOrDecoupled
 
-  final case class ClusterPassiveLost(uris: Seq[Uri], active: Int)
+  final case class ClusterPassiveLost(idToUri: Map[Id, Uri], activeId: Id)
   extends Decoupled
   {
     assertIsValid()
@@ -173,7 +129,7 @@ object ClusterState
     override def toString = s"ClusterPassiveLost($nodesString)"
   }
 
-  final case class ClusterSwitchedOver(uris: Seq[Uri], active: Int)
+  final case class ClusterSwitchedOver(idToUri: Map[Id, Uri], activeId: Id)
   extends Decoupled
   {
     assertIsValid()
@@ -183,7 +139,7 @@ object ClusterState
 
   /** Decoupled after failover.
     * @param failedAt the failing nodes journal must be truncated at this point. */
-  final case class ClusterFailedOver(uris: Seq[Uri], active: Int, failedAt: JournalPosition)
+  final case class ClusterFailedOver(idToUri: Map[Id, Uri], activeId: Id, failedAt: JournalPosition)
   extends Decoupled
   {
     assertIsValid()

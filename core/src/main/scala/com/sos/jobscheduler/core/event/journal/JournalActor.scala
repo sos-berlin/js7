@@ -171,7 +171,7 @@ extends Actor with Stash
         }
         totalEventCount += stampedEvents.size
         stampedEvents.lastOption match {
-          case Some(Stamped(_, _, KeyedEvent(_, ClusterEvent.Coupled))) =>
+          case Some(Stamped(_, _, KeyedEvent(_, _: ClusterEvent.Coupled))) =>
             // Commit now to let Coupled event take effect on following events (avoids deadlock)
             commit()
             logger.info(s"Coupled: Start requiring acknowledgements from passive cluster node")
