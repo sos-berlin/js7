@@ -30,8 +30,8 @@ import com.sos.jobscheduler.core.event.journal.recover.{JournaledStateRecoverer,
 import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
 import com.sos.jobscheduler.core.problems.MissingPassiveClusterNodeHeartbeatProblem
 import com.sos.jobscheduler.core.startup.Halt.haltJava
-import com.sos.jobscheduler.data.cluster.ClusterEvent.{Coupled, CouplingPrepared, NodesAppointed, PassiveLost, SwitchedOver}
-import com.sos.jobscheduler.data.cluster.ClusterState.{ClusterCoupled, ClusterEmpty, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterPreparedToBeCoupled, Decoupled, HasNodes}
+import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
+import com.sos.jobscheduler.data.cluster.ClusterState.{Coupled, Decoupled, Empty, FailedOver, HasNodes, NodesAppointed, PassiveLost, PreparedToBeCoupled}
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
@@ -118,7 +118,7 @@ final class Cluster(
     recoveredClusterState: ClusterState,
     recoveredState: MasterState)
   : (Task[Option[MasterState]], Task[Checked[ClusterFollowUp[MasterState, Event]]]) = {
-    if (recoveredClusterState != ClusterEmpty) {
+    if (recoveredClusterState != Empty) {
       logger.debug(s"recoveredClusterState=$recoveredClusterState")
     }
     val (passiveState, followUp) = startCluster(recovered, recoveredClusterState, recoveredState, eventIdGenerator)
@@ -144,7 +144,7 @@ final class Cluster(
   : (Task[Option[MasterState]], Task[Checked[(ClusterState, ClusterFollowUp[MasterState, Event])]])
   = {
     (recoveredClusterState, recovered.recoveredJournalFile) match {
-      case (ClusterEmpty, _) =>
+      case (Empty, _) =>
         if (!clusterConf.isBackup) {
           logger.debug(s"Active primary cluster node '$ownId', still with no passive node appointed")
           Task.pure(None) ->
@@ -165,7 +165,7 @@ final class Cluster(
       case (recoveredClusterState: HasNodes, Some(recoveredJournalFile))
         if recoveredClusterState.activeId == ownId =>
         recoveredClusterState match {
-          case recoveredClusterState: ClusterCoupled =>
+          case recoveredClusterState: Coupled =>
             import recoveredClusterState.{passiveId, passiveUri}
             logger.info(s"This cluster node '$ownId' was coupled before restart - asking '$passiveId' about its state")
             val failedOver = inhibitActivationOf(passiveUri).map {
@@ -287,8 +287,8 @@ final class Cluster(
     clusterConf.maybeIdToUri match {
       case Some(isToUri) =>
         persist {
-          case ClusterEmpty =>
-            NodesAppointed.checked(isToUri, ownId).map(_ :: Nil)
+          case Empty =>
+            ClusterNodesAppointed.checked(isToUri, ownId).map(_ :: Nil)
           case _ =>
             Right(Nil)
         }.map(_.map { case (stampedEvents, state) =>
@@ -304,9 +304,9 @@ final class Cluster(
     command match {
       case MasterCommand.ClusterAppointNodes(idToUri, activeId) =>
         persist {
-          case ClusterEmpty =>
-            NodesAppointed.checked(idToUri, activeId).map(_ :: Nil)
-          case ClusterNodesAppointed(`idToUri`, `activeId`) =>
+          case Empty =>
+            ClusterNodesAppointed.checked(idToUri, activeId).map(_ :: Nil)
+          case NodesAppointed(`idToUri`, `activeId`) =>
             Right(Nil)
           case state =>
             Left(Problem(s"A backup node can not be appointed while cluster is in state $state"))
@@ -320,22 +320,22 @@ final class Cluster(
       case MasterCommand.ClusterPrepareCoupling(activeId, passiveId) =>
         persistence.waitUntilStarted.flatMap(_ =>
           persist {
-            case clusterState: ClusterNodesAppointed
+            case clusterState: NodesAppointed
               if clusterState.activeId == activeId && clusterState.passiveId == passiveId =>
-              Right(CouplingPrepared(activeId) :: Nil)
+              Right(ClusterCouplingPrepared(activeId) :: Nil)
 
-            case clusterState: ClusterPreparedToBeCoupled
+            case clusterState: PreparedToBeCoupled
               if clusterState.activeId == activeId  && clusterState.passiveId == passiveId =>
-              logger.debug(s"ClusterPreparedToBeCoupled ignored in clusterState=$clusterState")
+              logger.debug(s"PreparedToBeCoupled ignored in clusterState=$clusterState")
               Right(Nil)
 
-            case clusterState: ClusterCoupled
+            case clusterState: Coupled
               if clusterState.activeId == activeId && clusterState.passiveId == passiveId =>
               logger.debug(s"ClusterPrepareCoupling ignored in clusterState=$clusterState")
               Right(Nil)
 
             case clusterState: Decoupled if clusterState.activeId == activeId && clusterState.passiveId == passiveId =>
-              Right(CouplingPrepared(activeId) :: Nil)
+              Right(ClusterCouplingPrepared(activeId) :: Nil)
 
             case state =>
               Left(Problem.pure(s"$command command rejected due to inappropriate cluster state $state"))
@@ -347,7 +347,7 @@ final class Cluster(
       case MasterCommand.ClusterCouple(activeId, passiveId) =>
         persistence.waitUntilStarted >>
           persist {
-            case s: ClusterPassiveLost
+            case s: PassiveLost
               if s.activeId == activeId && s.passiveId == passiveId =>
               // Happens when this active node has restarted just before the passive one
               // and has already issued an PassiveLost event
@@ -355,12 +355,12 @@ final class Cluster(
               // The passive node will replicate PassiveLost event and recouple
               Right(Nil)
 
-            case s: ClusterPreparedToBeCoupled
+            case s: PreparedToBeCoupled
               if s.activeId == activeId && s.passiveId == passiveId =>
               // This is the normally expected ClusterState
-              Right(Coupled(activeId) :: Nil)
+              Right(ClusterCoupled(activeId) :: Nil)
 
-            case s: ClusterCoupled
+            case s: Coupled
               if s.activeId == activeId && s.passiveId == passiveId =>
               // Already coupled
               Right(Nil)
@@ -377,9 +377,9 @@ final class Cluster(
       case MasterCommand.ClusterRecouple(activeId, passiveId) =>
         persistence.waitUntilStarted >>
           persist {
-            case s: ClusterCoupled
+            case s: Coupled
               if s.activeId == activeId && s.passiveId == passiveId =>
-              Right(PassiveLost(passiveId) :: Nil)
+              Right(ClusterPassiveLost(passiveId) :: Nil)
 
             case _ =>
               Right(Nil)
@@ -410,7 +410,7 @@ final class Cluster(
             case Right(/*inhibited=*/false) =>
               // Could not inhibit, so this node is already active
               currentClusterState.map {
-                case failedOver: ClusterFailedOver =>
+                case failedOver: FailedOver =>
                   logger.debug(s"inhibitActivation(${duration.pretty}) => $failedOver")
                   Right(Response(Some(failedOver)))
                 case clusterState =>
@@ -420,7 +420,7 @@ final class Cluster(
           }
     }
 
-  def inhibitActivationOfPeer: Task[Option[ClusterFailedOver]] =
+  def inhibitActivationOfPeer: Task[Option[FailedOver]] =
     _currentClusterState.flatMap {
       case clusterState: ClusterState.HasNodes if clusterState.activeId == ownId =>
         inhibitActivationOf(clusterState.passiveUri)
@@ -429,7 +429,7 @@ final class Cluster(
         s"inhibitActivationOfPeer expects active cluster node, but clusterState=$clusterState"))
     }
 
-  private def inhibitActivationOf(uri: Uri): Task[Option[ClusterFailedOver]] =
+  private def inhibitActivationOf(uri: Uri): Task[Option[FailedOver]] =
     Task.defer {
       val retryDelay = 5.s  // TODO
       val retryDelays = Iterator.single(1.s/*TODO*/) ++ Iterator.continually(retryDelay)
@@ -453,8 +453,8 @@ final class Cluster(
   def switchOver: Task[Checked[Completed]] =
     clusterWatchSynchronizer.stopHeartbeats() >>
       persist {
-        case coupled: ClusterCoupled if coupled.activeId == ownId =>
-          Right(SwitchedOver(coupled.passiveId) :: Nil)
+        case coupled: Coupled if coupled.activeId == ownId =>
+          Right(ClusterSwitchedOver(coupled.passiveId) :: Nil)
         case state =>
           Left(Problem.pure(s"Switchover is possible only for the active cluster node," +
             s" but cluster state is: $state"))
@@ -471,7 +471,7 @@ final class Cluster(
 
   private def proceed(state: ClusterState, eventId: EventId): Unit =
     state match {
-      case state: ClusterNodesAppointed if state.activeId == ownId =>
+      case state: NodesAppointed if state.activeId == ownId =>
         val common = new ClusterCommon(activationInhibitor, clusterWatch, clusterConf, testEventBus)
         common.tryEndlesslyToSendCommand(
           state.passiveUri,
@@ -480,7 +480,7 @@ final class Cluster(
             logger.warn(s"Sending Cluster command to other node failed: $t", t)
           }.runAsyncAndForget
 
-      case state: ClusterCoupled =>
+      case state: Coupled =>
         if (state.activeId == ownId) {
           fetchAndHandleAcknowledgedEventIds(state, eventId)
         } else
@@ -488,7 +488,7 @@ final class Cluster(
       case _ =>
     }
 
-  private def fetchAndHandleAcknowledgedEventIds(initialState: ClusterCoupled, eventId: EventId): Unit =
+  private def fetchAndHandleAcknowledgedEventIds(initialState: Coupled, eventId: EventId): Unit =
     if (!fetchingAcks.getAndSet(true)) {
       def msg = s"observeEventIds(${initialState.passiveUri}, after=$eventId, userAndPassword=${clusterConf.userAndPassword})"
       val future: CancelableFuture[Checked[Completed]] =
@@ -497,13 +497,13 @@ final class Cluster(
             case Left(missingHeartbeatProblem @ MissingPassiveClusterNodeHeartbeatProblem(id)) =>
               logger.warn("No heartbeat from passive cluster node - continuing as single active cluster node")
               assert(id != ownId)
-              val passiveLost = PassiveLost(id)
+              val passiveLost = ClusterPassiveLost(id)
               val common = new ClusterCommon(activationInhibitor, clusterWatch, clusterConf, testEventBus)
               // FIXME Exklusiver Zugriff (Lock) wegen parallelen MasterCommand.ClusterRecouple, das ein EventLost auslöst,
-              //  mit CouplingPrepared infolge. Dann können wir kein PassiveLost ausgeben.
+              //  mit ClusterCouplingPrepared infolge. Dann können wir kein PassiveLost ausgeben.
               //  JournaledStatePersistence Lock in die Anwendungsebene (hier) heben
               persistence.currentState.flatMap {
-                case clusterState: ClusterCoupled =>
+                case clusterState: Coupled =>
                   common.ifClusterWatchAllowsActivation(clusterState, passiveLost,
                     persist(_ => Right(passiveLost :: Nil), suppressClusterWatch = true/*already notified*/)
                       .map(_.toCompleted)
@@ -626,7 +626,7 @@ final class Cluster(
       })
 
     def applyEvents(events: Seq[ClusterEvent], clusterState: ClusterState): Task[Checked[Completed]] =
-      if (events.lengthCompare(1) == 0 && events.head.isInstanceOf[SwitchedOver])
+      if (events.lengthCompare(1) == 0 && events.head.isInstanceOf[ClusterSwitchedOver])
         Task.pure(Checked(Completed))  // FailedOver event is reported by the newly active node
       else
         lock.use(_ =>

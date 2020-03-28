@@ -38,7 +38,6 @@ import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderProcessor
 import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath, AgentRunId}
 import com.sos.jobscheduler.data.cluster.ClusterState
-import com.sos.jobscheduler.data.cluster.ClusterState.ClusterCoupled
 import com.sos.jobscheduler.data.crypt.Signed
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
@@ -290,7 +289,7 @@ with MainJournalingActor[Event]
   private def assertActiveClusterState(recovered: Recovered[MasterState, Event]): Unit =
     for (clusterState <- recovered.recoveredState.map(_.clusterState)) {
       import masterConfiguration.clusterConf.ownId
-      if (clusterState != ClusterState.ClusterEmpty && !clusterState.isNonEmptyActive(ownId))
+      if (clusterState != ClusterState.Empty && !clusterState.isNonEmptyActive(ownId))
         throw new IllegalStateException(s"Master has recovered from Journal but is not the active node in ClusterState: id=$ownId, failedOver=$clusterState")
     }
 
@@ -330,7 +329,7 @@ with MainJournalingActor[Event]
       // TODO Fix fundamentally the race condition with JournalActor.Input.RegisterMe
       journalActor.tell(JournalActor.Input.RegisterMe, cluster.journalingActor)
       recovered.startJournalAndFinishRecovery(journalActor,
-        requireClusterAcknowledgement = recovered.recoveredState.fold(false)(_.clusterState.isInstanceOf[ClusterCoupled]))
+        requireClusterAcknowledgement = recovered.recoveredState.fold(false)(_.clusterState.isInstanceOf[ClusterState.Coupled]))
       become("journalIsStarting")(journalIsStarting)
       unstashAll()
 

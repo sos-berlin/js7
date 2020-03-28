@@ -9,8 +9,8 @@ import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import com.sos.jobscheduler.common.akkahttp.web.session.SimpleSession
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
-import com.sos.jobscheduler.data.cluster.ClusterState.ClusterNodesAppointed
-import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
+import com.sos.jobscheduler.data.cluster.ClusterEvent.ClusterNodesAppointed
+import com.sos.jobscheduler.data.cluster.{ClusterNodeId, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.master.MasterId
 import io.circe.JsonObject
@@ -36,7 +36,8 @@ final class MastersClusterRouteTest extends FreeSpec with ScalatestRouteTest wit
 
   "Get for unknown MasterId" in {
     Get("/cluster") ~> Accept(`application/json`) ~> route ~> check {
-      assert(status == BadRequest && entityAs[Problem] == Problem("No ClusterState registered for MasterId 'MASTER'"))
+      assert(status == BadRequest &&
+        entityAs[Problem] == Problem("No ClusterState registered for MasterId 'MASTER'"))
     }
   }
 
@@ -47,7 +48,10 @@ final class MastersClusterRouteTest extends FreeSpec with ScalatestRouteTest wit
 
   "Post" in {
     Post[ClusterWatchMessage]("/cluster",
-      ClusterWatchEvents(ClusterNodeId("A"), ClusterEvent.NodesAppointed(idToUri, primaryId) :: Nil, ClusterNodesAppointed(idToUri, primaryId))
+      ClusterWatchEvents(
+        ClusterNodeId("A"),
+        ClusterNodesAppointed(idToUri, primaryId) :: Nil,
+        ClusterState.NodesAppointed(idToUri, primaryId))
     ) ~>
       Accept(`application/json`) ~> route ~>
       check {
@@ -57,7 +61,8 @@ final class MastersClusterRouteTest extends FreeSpec with ScalatestRouteTest wit
 
   "Get for known MasterId" in {
     Get("/cluster") ~> Accept(`application/json`) ~> route ~> check {
-      assert(status == OK && entityAs[ClusterState] == ClusterNodesAppointed(idToUri, primaryId))
+      assert(status == OK &&
+        entityAs[ClusterState] == ClusterState.NodesAppointed(idToUri, primaryId))
     }
   }
 }

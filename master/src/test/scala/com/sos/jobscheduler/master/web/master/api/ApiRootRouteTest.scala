@@ -32,7 +32,7 @@ final class ApiRootRouteTest extends FreeSpec with RouteTester with ApiRootRoute
   protected def masterState = Task.pure(Right(MasterState(
     EventId(1001),
     MasterMetaState(MasterId("MASTER-ID"), Timestamp("2019-05-24T12:00:00Z")),
-    ClusterState.ClusterEmpty,
+    ClusterState.Empty,
     Repo(MasterFileBaseds.jsonCodec),
     Map.empty,
     Map.empty)))

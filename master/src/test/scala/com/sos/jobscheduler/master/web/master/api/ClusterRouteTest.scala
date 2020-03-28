@@ -6,7 +6,6 @@ import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.data.cluster.ClusterState
-import com.sos.jobscheduler.data.cluster.ClusterState.ClusterEmpty
 import com.sos.jobscheduler.master.web.master.api.test.RouteTester
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -21,7 +20,7 @@ final class ClusterRouteTest extends FreeSpec with RouteTester with ClusterRoute
 
   protected def isShuttingDown = false
 
-  protected def clusterState = Task.pure(ClusterEmpty)
+  protected def clusterState = Task.pure(ClusterState.Empty)
 
   private def route: Route =
     pathSegment("cluster") {
@@ -29,6 +28,6 @@ final class ClusterRouteTest extends FreeSpec with RouteTester with ClusterRoute
     }
 
   Get("/cluster") ~> Accept(`application/json`) ~> route ~> check {
-    assert(responseAs[ClusterState] == ClusterEmpty)
+    assert(responseAs[ClusterState] == ClusterState.Empty)
   }
 }

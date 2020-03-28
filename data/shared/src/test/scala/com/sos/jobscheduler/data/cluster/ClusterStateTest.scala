@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.data.cluster
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.data.cluster.ClusterState.{ClusterCoupled, ClusterEmpty, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterPreparedToBeCoupled, ClusterSwitchedOver}
+import com.sos.jobscheduler.data.cluster.ClusterState.{Coupled, Empty, FailedOver, NodesAppointed, PassiveLost, PreparedToBeCoupled, SwitchedOver}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.JournalPosition
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -16,19 +16,19 @@ final class ClusterStateTest extends FreeSpec
     val idToUri = Map(
       ClusterNodeId("A") -> Uri("http://A"),
       ClusterNodeId("B") -> Uri("http://B"))
-    "ClusterEmpty" in {
+    "Empty" in {
       testJson[ClusterState](
-        ClusterEmpty,
+        Empty,
         json"""{
-          "TYPE": "ClusterEmpty"
+          "TYPE": "Empty"
         }""")
     }
 
-    "ClusterNodesAppointed" in {
+    "NodesAppointed" in {
       testJson[ClusterState](
-        ClusterNodesAppointed(idToUri, ClusterNodeId("A")),
+        NodesAppointed(idToUri, ClusterNodeId("A")),
         json"""{
-          "TYPE": "ClusterNodesAppointed",
+          "TYPE": "NodesAppointed",
           "idToUri": {
             "A": "http://A",
             "B": "http://B"
@@ -37,11 +37,11 @@ final class ClusterStateTest extends FreeSpec
         }""")
     }
 
-    "ClusterPreparedToBeCoupled" in {
+    "PreparedToBeCoupled" in {
       testJson[ClusterState](
-        ClusterPreparedToBeCoupled(idToUri, ClusterNodeId("A")),
+        PreparedToBeCoupled(idToUri, ClusterNodeId("A")),
         json"""{
-          "TYPE": "ClusterPreparedToBeCoupled",
+          "TYPE": "PreparedToBeCoupled",
           "idToUri": {
             "A": "http://A",
             "B": "http://B"
@@ -50,11 +50,11 @@ final class ClusterStateTest extends FreeSpec
         }""")
     }
 
-    "ClusterCoupled" in {
+    "Coupled" in {
       testJson[ClusterState](
-        ClusterCoupled(idToUri, ClusterNodeId("A")),
+        Coupled(idToUri, ClusterNodeId("A")),
         json"""{
-          "TYPE": "ClusterCoupled",
+          "TYPE": "Coupled",
           "idToUri": {
             "A": "http://A",
             "B": "http://B"
@@ -63,11 +63,11 @@ final class ClusterStateTest extends FreeSpec
         }""")
     }
 
-    "ClusterPassiveLost" in {
+    "PassiveLost" in {
       testJson[ClusterState](
-        ClusterPassiveLost(idToUri, ClusterNodeId("A")),
+        PassiveLost(idToUri, ClusterNodeId("A")),
         json"""{
-          "TYPE": "ClusterPassiveLost",
+          "TYPE": "PassiveLost",
           "idToUri": {
             "A": "http://A",
             "B": "http://B"
@@ -76,11 +76,11 @@ final class ClusterStateTest extends FreeSpec
         }""")
     }
 
-    "ClusterSwitchedOver" in {
+    "SwitchedOver" in {
       testJson[ClusterState](
-        ClusterSwitchedOver(idToUri, ClusterNodeId("A")),
+        SwitchedOver(idToUri, ClusterNodeId("A")),
         json"""{
-          "TYPE": "ClusterSwitchedOver",
+          "TYPE": "SwitchedOver",
           "idToUri": {
             "A": "http://A",
             "B": "http://B"
@@ -89,11 +89,11 @@ final class ClusterStateTest extends FreeSpec
         }""")
     }
 
-    "ClusterFailedOver" in {
+    "FailedOver" in {
       testJson[ClusterState](
-        ClusterFailedOver(idToUri, ClusterNodeId("A"), JournalPosition(0, 1234)),
+        FailedOver(idToUri, ClusterNodeId("A"), JournalPosition(0, 1234)),
         json"""{
-          "TYPE": "ClusterFailedOver",
+          "TYPE": "FailedOver",
           "idToUri": {
             "A": "http://A",
             "B": "http://B"

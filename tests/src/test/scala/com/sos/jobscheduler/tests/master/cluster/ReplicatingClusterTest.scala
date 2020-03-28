@@ -23,14 +23,14 @@ final class ReplicatingClusterTest extends MasterClusterTester
       primaryMaster.runOrder(FreshOrder(OrderId("🔶"), TestWorkflow.path))
 
       val backupMaster = backup.startMaster(httpPort = Some(backupHttpPort)) await 99.s
-      primaryMaster.eventWatch.await[ClusterEvent.CouplingPrepared]()
+      primaryMaster.eventWatch.await[ClusterEvent.ClusterCouplingPrepared]()
 
       //assert(!primaryMaster.journalActorState.isRequiringClusterAcknowledgement)
       //primaryMaster.executeCommandAsSystemUser(
       //  ClusterAppointNodes(Uri(backupMaster.localUri.toString), Uri(primaryMaster.localUri.toString))
       //).await(99.s).orThrow
       //primaryMaster.eventWatch.await[ClusterEvent.NodesAppointed]()
-      primaryMaster.eventWatch.await[ClusterEvent.Coupled]()
+      primaryMaster.eventWatch.await[ClusterEvent.ClusterCoupled]()
       assert(primaryMaster.journalActorState.isRequiringClusterAcknowledgement)
 
       primaryMaster.runOrder(FreshOrder(OrderId("🔷"), TestWorkflow.path))

@@ -16,40 +16,40 @@ object ClusterEvent
 {
   private type Id = ClusterNodeId
 
-  final case class NodesAppointed(idToUri: Map[Id, Uri], activeId: Id)
+  final case class ClusterNodesAppointed(idToUri: Map[Id, Uri], activeId: Id)
   extends ClusterEvent
   {
     checkUris(idToUri, activeId).orThrow
   }
-  object NodesAppointed {
-    def checked(idToUri: Map[Id, Uri], activeId: Id): Checked[NodesAppointed] =
+  object ClusterNodesAppointed {
+    def checked(idToUri: Map[Id, Uri], activeId: Id): Checked[ClusterNodesAppointed] =
       checkUris(idToUri, activeId) >>
-        Checked(new NodesAppointed(idToUri, activeId))
+        Checked(new ClusterNodesAppointed(idToUri, activeId))
   }
 
-  final case class CouplingPrepared(activeId: Id)
+  final case class ClusterCouplingPrepared(activeId: Id)
   extends ClusterEvent
 
-  final case class Coupled(activeId: Id)
+  final case class ClusterCoupled(activeId: Id)
   extends ClusterEvent
 
-  final case class SwitchedOver(toId: Id)
+  final case class ClusterSwitchedOver(toId: Id)
   extends ClusterEvent
 
-  final case class FailedOver(failedActiveId: Id, activatedId: Id, failedAt: JournalPosition)
+  final case class ClusterFailedOver(failedActiveId: Id, activatedId: Id, failedAt: JournalPosition)
   extends ClusterEvent
   {
-    override def toString = s"$FailedOver($failedActiveId --> $activatedId, $failedAt)"
+    override def toString = s"ClusterFailedOver($failedActiveId --> $activatedId, $failedAt)"
   }
 
-  final case class PassiveLost(id: Id)
+  final case class ClusterPassiveLost(id: Id)
   extends ClusterEvent
 
   implicit val jsonCodec = TypedJsonCodec[ClusterEvent](
-    Subtype.named(deriveCodec[NodesAppointed]  , "Cluster.NodesAppointed"),
-    Subtype.named(deriveCodec[CouplingPrepared], "Cluster.CouplingPrepared"),
-    Subtype.named(deriveCodec[Coupled]         , "Cluster.Coupled"),
-    Subtype.named(deriveCodec[SwitchedOver]    , "Cluster.SwitchedOver"),
-    Subtype.named(deriveCodec[FailedOver]      , "Cluster.FailedOver"),
-    Subtype.named(deriveCodec[PassiveLost]     , "Cluster.PassiveLost"))
+    Subtype(deriveCodec[ClusterNodesAppointed]),
+    Subtype(deriveCodec[ClusterCouplingPrepared]),
+    Subtype(deriveCodec[ClusterCoupled]),
+    Subtype(deriveCodec[ClusterSwitchedOver]),
+    Subtype(deriveCodec[ClusterFailedOver]),
+    Subtype(deriveCodec[ClusterPassiveLost]))
 }

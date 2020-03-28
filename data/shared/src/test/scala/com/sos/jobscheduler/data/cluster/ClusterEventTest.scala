@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.data.cluster
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.data.cluster.ClusterEvent.{Coupled, CouplingPrepared, FailedOver, NodesAppointed, PassiveLost, SwitchedOver}
+import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.JournalPosition
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -14,14 +14,14 @@ final class ClusterEventTest extends FreeSpec
 {
   private val Id = ClusterNodeId
 
-  "NodesAppointed" in {
-    testJson[ClusterEvent](NodesAppointed(
+  "ClusterNodesAppointed" in {
+    testJson[ClusterEvent](ClusterNodesAppointed(
       Map(
         Id("A") -> Uri("http://PRIMARY"),
         Id("B") -> Uri("http://BACKUP")),
       Id("A")),
       json"""{
-        "TYPE": "Cluster.NodesAppointed",
+        "TYPE": "ClusterNodesAppointed",
         "idToUri": {
           "A":  "http://PRIMARY",
           "B": "http://BACKUP"
@@ -30,34 +30,34 @@ final class ClusterEventTest extends FreeSpec
       }""")
   }
 
-  "CouplingPrepared" in {
-    testJson[ClusterEvent](CouplingPrepared(Id("A")),
+  "ClusterCouplingPrepared" in {
+    testJson[ClusterEvent](ClusterCouplingPrepared(Id("A")),
       json"""{
-        "TYPE": "Cluster.CouplingPrepared",
+        "TYPE": "ClusterCouplingPrepared",
         "activeId": "A"
       }""")
   }
 
   "Coupled" in {
-    testJson[ClusterEvent](Coupled(ClusterNodeId("A")),
+    testJson[ClusterEvent](ClusterCoupled(ClusterNodeId("A")),
       json"""{
-        "TYPE": "Cluster.Coupled",
+        "TYPE": "ClusterCoupled",
         "activeId": "A"
       }""")
   }
 
   "SwitchedOver" in {
-    testJson[ClusterEvent](SwitchedOver(Id("B")),
+    testJson[ClusterEvent](ClusterSwitchedOver(Id("B")),
       json"""{
-        "TYPE": "Cluster.SwitchedOver",
+        "TYPE": "ClusterSwitchedOver",
         "toId": "B"
       }""")
   }
 
   "FailedOver" in {
-    testJson[ClusterEvent](FailedOver(Id("A"), Id("B"), JournalPosition(0, 1234)),
+    testJson[ClusterEvent](ClusterFailedOver(Id("A"), Id("B"), JournalPosition(0, 1234)),
       json"""{
-        "TYPE": "Cluster.FailedOver",
+        "TYPE": "ClusterFailedOver",
         "failedActiveId": "A",
         "activatedId": "B",
         "failedAt": {
@@ -68,9 +68,9 @@ final class ClusterEventTest extends FreeSpec
   }
 
   "PassiveLost" in {
-    testJson[ClusterEvent](PassiveLost(Id("B")),
+    testJson[ClusterEvent](ClusterPassiveLost(Id("B")),
       json"""{
-        "TYPE": "Cluster.PassiveLost",
+        "TYPE": "ClusterPassiveLost",
         "id": "B"
       }""")
   }

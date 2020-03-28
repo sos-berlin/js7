@@ -22,7 +22,7 @@ import com.sos.jobscheduler.core.event.journal.test.TestData
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalConf}
 import com.sos.jobscheduler.core.event.state.JournaledStatePersistenceTest._
-import com.sos.jobscheduler.data.cluster.ClusterState.ClusterEmpty
+import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import com.sos.jobscheduler.data.event.{Event, EventId, JournalEvent, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
 import com.typesafe.config.ConfigFactory
@@ -195,7 +195,7 @@ private object JournaledStatePersistenceTest
     def state =
       _state.copy(eventId = eventId)
 
-    def clusterState = ClusterEmpty
+    def clusterState = ClusterState.Empty
   }
 
   private def testJournalMeta(fileBase: Path) =

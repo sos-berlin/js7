@@ -22,7 +22,7 @@ import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta,
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.{JournalMetaOps, listJournalFiles}
 import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
 import com.sos.jobscheduler.core.event.journal.write.{EventJournalWriter, ParallelExecutingPipeline, SnapshotJournalWriter}
-import com.sos.jobscheduler.data.cluster.ClusterEvent
+import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver}
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, JournalEvent, JournalId, KeyedEvent, Stamped}
 import java.nio.file.Files.{delete, exists, move}
 import java.nio.file.Path
@@ -171,18 +171,18 @@ extends Actor with Stash
         }
         totalEventCount += stampedEvents.size
         stampedEvents.lastOption match {
-          case Some(Stamped(_, _, KeyedEvent(_, _: ClusterEvent.Coupled))) =>
+          case Some(Stamped(_, _, KeyedEvent(_, _: ClusterCoupled))) =>
             // Commit now to let Coupled event take effect on following events (avoids deadlock)
             commit()
             logger.info(s"Coupled: Start requiring acknowledgements from passive cluster node")
             requireClusterAcknowledgement = true
 
-          case Some(Stamped(_, _, KeyedEvent(_, _: ClusterEvent.SwitchedOver))) =>
+          case Some(Stamped(_, _, KeyedEvent(_, _: ClusterSwitchedOver))) =>
             commit()
             logger.debug("SwitchedOver: no more events are accepted")
             switchedOver = true  // No more events are accepted
 
-          case Some(Stamped(_, _, KeyedEvent(_, event @ (_: ClusterEvent.FailedOver | _: ClusterEvent.PassiveLost)))) =>
+          case Some(Stamped(_, _, KeyedEvent(_, event @ (_: ClusterFailedOver | _: ClusterPassiveLost)))) =>
             logger.debug(s"No more acknowledgments required due to $event event")
             requireClusterAcknowledgement = false
             waitingForAcknowledgeTimer := Cancelable.empty

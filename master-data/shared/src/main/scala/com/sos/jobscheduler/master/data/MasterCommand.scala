@@ -10,8 +10,7 @@ import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.data.cluster.ClusterSetting.syntax._
-import com.sos.jobscheduler.data.cluster.ClusterState.ClusterFailedOver
-import com.sos.jobscheduler.data.cluster.{ClusterNodeId, ClusterSetting}
+import com.sos.jobscheduler.data.cluster.{ClusterNodeId, ClusterSetting, ClusterState}
 import com.sos.jobscheduler.data.command.{CancelMode, CommonCommand}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.crypt.SignedString
@@ -183,10 +182,10 @@ object MasterCommand extends CommonCommand.Companion
     type Response = ClusterInhibitActivation.Response
   }
   object ClusterInhibitActivation {
-    final case class Response(failedOver: Option[ClusterFailedOver])
+    final case class Response(failedOver: Option[ClusterState.FailedOver])
     extends MasterCommand.Response
 
-    private implicit val x = deriveCodec[ClusterFailedOver]
+    private implicit val x = deriveCodec[ClusterState.FailedOver]
     implicit val jsonCodec = deriveCodec[Response]
   }
 

@@ -1,9 +1,8 @@
 package com.sos.jobscheduler.core.cluster
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.data.cluster.ClusterEvent.NodesAppointed
-import com.sos.jobscheduler.data.cluster.ClusterNodeId
-import com.sos.jobscheduler.data.cluster.ClusterState.{ClusterCoupled, ClusterNodesAppointed}
+import com.sos.jobscheduler.data.cluster.ClusterEvent.ClusterNodesAppointed
+import com.sos.jobscheduler.data.cluster.{ClusterNodeId, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
@@ -19,12 +18,12 @@ final class ClusterWatchMessageTest extends FreeSpec
         ClusterWatchEvents(
           from = ClusterNodeId("A"),
           List(
-            NodesAppointed(
+            ClusterNodesAppointed(
               Map(
                 ClusterNodeId("A") -> Uri("http://A"),
                 ClusterNodeId("B") -> Uri("http://B")),
               ClusterNodeId("A"))),
-          ClusterNodesAppointed(
+          ClusterState.NodesAppointed(
             Map(
               ClusterNodeId("A") -> Uri("http://A"),
               ClusterNodeId("B") -> Uri("http://B")),
@@ -35,7 +34,7 @@ final class ClusterWatchMessageTest extends FreeSpec
           "from": "A",
           "events": [
             {
-              "TYPE": "Cluster.NodesAppointed",
+              "TYPE": "ClusterNodesAppointed",
               "idToUri": {
                 "A": "http://A",
                 "B": "http://B"
@@ -44,7 +43,7 @@ final class ClusterWatchMessageTest extends FreeSpec
             }
           ],
           "clusterState": {
-            "TYPE": "ClusterNodesAppointed",
+            "TYPE": "NodesAppointed",
             "idToUri": {
               "A": "http://A",
               "B": "http://B"
@@ -59,7 +58,7 @@ final class ClusterWatchMessageTest extends FreeSpec
       testJson[ClusterWatchMessage](
         ClusterWatchHeartbeat(
           from = ClusterNodeId("A"),
-          ClusterCoupled(
+          ClusterState.Coupled(
             Map(
               ClusterNodeId("A") -> Uri("http://A"),
               ClusterNodeId("B") -> Uri("http://B")),
@@ -68,7 +67,7 @@ final class ClusterWatchMessageTest extends FreeSpec
           "TYPE": "ClusterWatchHeartbeat",
           "from": "A",
           "clusterState": {
-            "TYPE": "ClusterCoupled",
+            "TYPE": "Coupled",
             "idToUri": {
               "A": "http://A",
               "B": "http://B"

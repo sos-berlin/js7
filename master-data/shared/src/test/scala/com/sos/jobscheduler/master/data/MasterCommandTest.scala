@@ -4,8 +4,7 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.cluster.ClusterNodeId
-import com.sos.jobscheduler.data.cluster.ClusterState.ClusterFailedOver
+import com.sos.jobscheduler.data.cluster.{ClusterNodeId, ClusterState}
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.crypt.{GenericSignature, SignedString}
@@ -222,7 +221,7 @@ final class MasterCommandTest extends FreeSpec
   }
 
   "ClusterInhibitActivation.Response" in {
-    testJson[MasterCommand.Response](ClusterInhibitActivation.Response(Some(ClusterFailedOver(
+    testJson[MasterCommand.Response](ClusterInhibitActivation.Response(Some(ClusterState.FailedOver(
       Map(
         ClusterNodeId("A") -> Uri("http://A"),
         ClusterNodeId("B") -> Uri("http://B")),
