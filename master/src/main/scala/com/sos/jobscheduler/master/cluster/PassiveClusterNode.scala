@@ -127,6 +127,12 @@ import scodec.bits.ByteVector
     }
 
   private def sendClusterPrepareCoupling: Task[Unit] =
+    // TODO Delay until we have replicated nearly all events, to avoid a long PreparedCoupled state
+    //  Annhähernd gleichlaufende Uhren vorausgesetzt, können wir den Zeitstempel des letzten Events heranziehen.
+    //  Wenn kein Event kommt? Herzschlag mit Zeitstempel (nicht EventId) versehen (wäre sowieso nützlich)
+    //  ["HEARTBEAT", { timestamp: 1234.567 }]
+    //  {TYPE: "Heartbeat", eventId: 1234567000, timestamp: 1234.567 }    Herzschlag-Event?
+    //  Funktioniert nicht, wenn die Uhren verschieden gehen. Differenz feststellen?
     common.tryEndlesslyToSendCommand(activeUri, ClusterPrepareCoupling(activeId = activeId, passiveId = ownId))
 
   private def sendClusterCouple: Task[Unit] =

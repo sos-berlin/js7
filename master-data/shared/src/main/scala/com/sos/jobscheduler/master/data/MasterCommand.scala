@@ -155,21 +155,21 @@ object MasterCommand extends CommonCommand.Companion
   extends MasterCommand {
     type Response = Response.Accepted
     assertThat(activeId != passiveId)
-    override def toString = s"ClusterPrepareCoupling($passiveId follows $activeId)"
+    override def toString = s"ClusterPrepareCoupling(activeId=$passiveId passiveId=$activeId)"
   }
 
   final case class ClusterCouple(activeId: ClusterNodeId, passiveId: ClusterNodeId)
   extends MasterCommand {
     type Response = Response.Accepted
     assertThat(activeId != passiveId)
-    override def toString = s"ClusterCouple('$passiveId' couples with '$activeId')"
+    override def toString = s"ClusterCouple(activeId=$passiveId passiveId=$activeId)"
   }
 
   final case class ClusterRecouple(activeId: ClusterNodeId, passiveId: ClusterNodeId)
   extends MasterCommand {
     type Response = Response.Accepted
     assertThat(activeId != passiveId)
-    override def toString = s"ClusterRecouple('$passiveId' couples with '$activeId')"
+    override def toString = s"ClusterRecouple(activeId=$passiveId passiveId=$activeId)"
   }
 
   case object ClusterSwitchOver

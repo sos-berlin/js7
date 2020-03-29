@@ -34,9 +34,15 @@ object ClusterEvent
 
   final case class ClusterCouplingPrepared(activeId: Id)
   extends ClusterEvent
+  {
+    override def toString = s"ClusterCouplingPrepared(activeId=$activeId)"
+  }
 
   final case class ClusterCoupled(activeId: Id)
   extends ClusterEvent
+  {
+    override def toString = s"ClusterCoupled(activeId=$activeId)"
+  }
 
   final case class ClusterSwitchedOver(toId: Id)
   extends ClusterEvent
