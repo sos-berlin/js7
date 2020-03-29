@@ -2,15 +2,17 @@ package com.sos.jobscheduler.common.http
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.marshalling.Marshal
+import akka.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
 import akka.http.scaladsl.model.HttpMethods.{GET, POST}
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
 import akka.http.scaladsl.model.headers.CacheDirectives.{`no-cache`, `no-store`}
 import akka.http.scaladsl.model.headers.{Accept, RawHeader, `Cache-Control`}
-import akka.http.scaladsl.model.{ContentTypes, HttpHeader, HttpMethod, HttpRequest, HttpResponse, RequestEntity, StatusCode, Uri}
+import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpHeader, HttpMethod, HttpRequest, HttpResponse, RequestEntity, StatusCode, StatusCodes, Uri}
 import akka.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshal}
 import akka.http.scaladsl.{Http, HttpsConnectionContext}
 import akka.stream.ActorMaterializer
+import akka.util.ByteString
 import cats.effect.Resource
 import com.sos.jobscheduler.base.auth.SessionToken
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
@@ -138,16 +140,27 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
       val headers = if (suppressSessionToken) None else sessionToken map (token => RawHeader(SessionToken.HeaderName, token.secret.string))
       val req = encodeGzip(request.withHeaders(headers ++: request.headers ++: standardHeaders))
       loggingTimerResource(request, logData).use { _ =>
+        @volatile var canceled = false
         var responseFuture: Future[HttpResponse] = null
         Task.deferFutureAction { implicit s =>
           logRequest(req, logData)
           if (closed) throw new IllegalStateException(s"$toString has been closed")
           val httpsContext = if (request.uri.scheme == "https") httpsConnectionContext else http.defaultClientHttpsContext
           responseFuture = http.singleRequest(req, httpsContext)
-          responseFuture
+          responseFuture.recover {
+            case t if canceled =>
+              logger.debug(s"Error after cancel: ${t.toStringWithCauses}")
+              // Fake response to avoid completing Future with a Failure, which is logger by thread's reportFailure
+              HttpResponse(
+                StatusCodes.GatewayTimeout,
+                entity = HttpEntity.Strict(`text/plain(UTF-8)`, ByteString("Canceled in AkkaHttpClient")))
+          }
         } .guaranteeCase(exitCase => Task { logger.trace(s"$toString: $exitCase ${requestToString(request, logData)}") })
-          .doOnCancel(Task.defer(
-            discardResponse(request, logData, responseFuture)))
+          .doOnCancel(Task.defer {
+            // TODO Canceling does not cancel the ongoing Akka operation. Akka is not freeing the connection.
+            canceled = true
+            discardResponse(request, logData, responseFuture)
+          })
           .materialize.map { tried =>
             tried match {
               case Failure(t) =>
