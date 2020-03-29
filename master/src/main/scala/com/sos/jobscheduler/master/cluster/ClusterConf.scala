@@ -51,8 +51,6 @@ object ClusterConf
                 }
               }
           vector.sequence
-            // Ordering from config file is lost. Primary should be first
-            .map(_.sortBy(o => if (o._1 == ownId) 0 else 1))
             .flatMap(idToUri =>
               ClusterSetting.checkUris(idToUri.toMap) map Some.apply)
         }

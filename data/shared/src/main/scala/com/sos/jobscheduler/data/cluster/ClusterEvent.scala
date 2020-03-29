@@ -24,7 +24,12 @@ object ClusterEvent
   object ClusterNodesAppointed {
     def checked(idToUri: Map[Id, Uri], activeId: Id): Checked[ClusterNodesAppointed] =
       checkUris(idToUri, activeId) >>
-        Checked(new ClusterNodesAppointed(idToUri, activeId))
+        Checked(
+          new ClusterNodesAppointed(
+            idToUri
+              // Primary node should be first (possible for optimized short Scala Map)
+              .toVector.sortBy(o => if (o._1 == activeId) 0 else 1).toMap,
+            activeId))
   }
 
   final case class ClusterCouplingPrepared(activeId: Id)
