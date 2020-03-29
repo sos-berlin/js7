@@ -320,7 +320,7 @@ final class Cluster(
       case MasterCommand.ClusterPrepareCoupling(activeId, passiveId) =>
         persistence.waitUntilStarted.flatMap(_ =>
           persist {
-            case clusterState: NodesAppointed
+            case clusterState: Decoupled
               if clusterState.activeId == activeId && clusterState.passiveId == passiveId =>
               Right(ClusterCouplingPrepared(activeId) :: Nil)
 
@@ -333,9 +333,6 @@ final class Cluster(
               if clusterState.activeId == activeId && clusterState.passiveId == passiveId =>
               logger.debug(s"ClusterPrepareCoupling ignored in clusterState=$clusterState")
               Right(Nil)
-
-            case clusterState: Decoupled if clusterState.activeId == activeId && clusterState.passiveId == passiveId =>
-              Right(ClusterCouplingPrepared(activeId) :: Nil)
 
             case state =>
               Left(Problem.pure(s"$command command rejected due to inappropriate cluster state $state"))
@@ -478,7 +475,8 @@ final class Cluster(
           ClusterStartBackupNode(state.idToUri, activeId = ownId)
         ) .onErrorRecover { case t: Throwable =>
             logger.warn(s"Sending Cluster command to other node failed: $t", t)
-          }.runAsyncAndForget
+          }
+          .runAsyncAndForget
 
       case state: Coupled =>
         if (state.activeId == ownId) {

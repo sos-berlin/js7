@@ -29,8 +29,8 @@ extends JournaledState[ClusterState, ClusterEvent]
         case (Empty, ClusterNodesAppointed(idToUris, activeId)) =>
           Right(NodesAppointed(idToUris, activeId))
 
-        case (state: NodesAppointed, ClusterCouplingPrepared(activeId)) if state.activeId == activeId =>
-          Right(PreparedToBeCoupled(state.idToUri, activeId = state.activeId))
+        case (state: Decoupled, ClusterCouplingPrepared(activeId)) if state.activeId == activeId =>
+          Right(PreparedToBeCoupled(state.idToUri, state.activeId))
 
         case (state: PreparedToBeCoupled, ClusterCoupled(activeId)) if state.activeId == activeId =>
           Right(Coupled(state.idToUri, state.activeId))
@@ -45,8 +45,6 @@ extends JournaledState[ClusterState, ClusterEvent]
           if state.activeId == event.failedActiveId && state.passiveId == event.activatedId =>
           Right(FailedOver(state.idToUri, event.activatedId, event.failedAt))
 
-        case (state: Decoupled, ClusterEvent.ClusterCouplingPrepared(activeId)) if state.activeId == activeId =>
-          Right(PreparedToBeCoupled(state.idToUri, state.activeId))
 
         case (_, keyedEvent) => eventNotApplicable(keyedEvent)
       }
@@ -91,8 +89,12 @@ object ClusterState
         .mkString(", ")
   }
 
+  sealed trait CoupledOrDecoupled extends HasNodes
+
+  sealed trait Decoupled extends CoupledOrDecoupled
+
   final case class NodesAppointed(idToUri: Map[Id, Uri], activeId: Id)
-  extends HasNodes
+  extends Decoupled
   {
     assertIsValid()
   }
@@ -106,8 +108,6 @@ object ClusterState
     override def toString = s"PreparedToBeCoupled($nodesString)"
   }
 
-  sealed trait CoupledOrDecoupled extends HasNodes
-
   /** An active node is coupled with a passive node. */
   final case class Coupled(idToUri: Map[Id, Uri], activeId: Id)
   extends CoupledOrDecoupled
@@ -118,8 +118,6 @@ object ClusterState
 
     override def toString = s"Coupled($nodesString)"
   }
-
-  sealed trait Decoupled extends CoupledOrDecoupled
 
   final case class PassiveLost(idToUri: Map[Id, Uri], activeId: Id)
   extends Decoupled

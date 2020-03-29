@@ -91,7 +91,7 @@ import scodec.bits.ByteVector
           recoveredClusterState match {
             case ClusterState.Empty =>
               Task.unit
-            case _: NodesAppointed | _: Decoupled =>
+            case _: Decoupled =>
               sendClusterPrepareCoupling
             case _: PreparedToBeCoupled =>
               common.tryEndlesslyToSendCommand(activeUri, ClusterCouple(activeId = activeId, passiveId = ownId))
