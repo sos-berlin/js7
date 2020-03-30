@@ -82,7 +82,7 @@ val commonSettings = Seq(
       </developer>
     </developers>,
   scalaVersion := Dependencies.scalaVersion,
-  addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full),  // For Scala 2.13 replace with: scalacOptions += "-Ymacro-annotations"
+  addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full),  // For Scala 2.13 replace with: scalacOptions += "-Ymacro-annotations"
   javacOptions in Compile ++= Seq("-encoding", "UTF-8", "-source", "1.8"),  // This is for javadoc, too
   javacOptions in (Compile, compile) ++= Seq("-target", "1.8", "-deprecation", "-Xlint:all", "-Xlint:-serial"),
   dependencyOverrides ++= {
