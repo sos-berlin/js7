@@ -14,6 +14,7 @@ import com.sos.jobscheduler.core.startup.StartUp
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import java.time.LocalDateTime
 import monix.execution.Scheduler
+import com.sos.jobscheduler.base.utils.Strings._
 import scala.concurrent.duration._
 
 /**
@@ -57,7 +58,7 @@ final class MasterMain
       }
     } while (restartInProcess)
     // Log complete timestamp in case of short log timestamp
-    val msg = s"JobScheduler Master terminates at ${Timestamp.now.show}"
+    val msg = s"JobScheduler Master terminates at ${Timestamp.now.show}" + (terminate.restart ?: " – will try to restart")
     logger.info(msg)
     println(s"${LocalDateTime.now.toString.replace('T', ' ')} $msg")
     terminate

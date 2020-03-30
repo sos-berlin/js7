@@ -11,5 +11,5 @@ object ClusterFollowUp
     recovered: Recovered[S, E])
   extends ClusterFollowUp[S, E]
 
-  final case class Terminate[S <: JournaledState[S, E], E <: Event]() extends ClusterFollowUp[S, E]
+  //final case class Terminate[S <: JournaledState[S, E], E <: Event]() extends ClusterFollowUp[S, E]
 }
