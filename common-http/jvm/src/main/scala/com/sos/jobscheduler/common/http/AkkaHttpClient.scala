@@ -77,7 +77,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
 
   final def getRawLinesObservable(uri: String): Task[Observable[ByteVector]] =
     get_[HttpResponse](uri, StreamingJsonHeaders)
-      .map(_.entity.dataBytes
+      .map(_.entity.withoutSizeLimit.dataBytes
         .toObservable
         .map(o => ByteVector.view(o.toArray))
         .flatMap(new ByteVectorToLinesObservable))
