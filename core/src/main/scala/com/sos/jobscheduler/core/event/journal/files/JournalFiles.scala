@@ -2,7 +2,7 @@ package com.sos.jobscheduler.core.event.journal.files
 
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.data.event.EventId
 import java.nio.file.Files.{createSymbolicLink, delete, exists}

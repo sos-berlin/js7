@@ -7,15 +7,14 @@ import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.DecimalPrefixes
+import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
+import com.sos.jobscheduler.base.utils.Closer.syntax.RichClosersAutoCloseable
+import com.sos.jobscheduler.base.utils.Closer.withCloser
 import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
+import com.sos.jobscheduler.base.utils.{Closer, DecimalPrefixes}
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.log.Log4j
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.Closer
-import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAutoCloseable
-import com.sos.jobscheduler.common.scalautil.Closer.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryContentRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._

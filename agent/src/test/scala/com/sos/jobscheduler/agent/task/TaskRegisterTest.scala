@@ -14,11 +14,11 @@ import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
+import com.sos.jobscheduler.base.utils.HasCloser
 import com.sos.jobscheduler.common.process.Processes.Pid
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
-import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.WaitForCondition.retryUntil
 import com.sos.jobscheduler.data.job.JobKey
@@ -127,7 +127,7 @@ final class TaskRegisterTest extends FreeSpec with HasCloser with BeforeAndAfter
   }
 
   private def crashKillScript =
-    autoClosing(io.Source.fromFile(agentConfiguration.killScriptConf.get.crashKillScriptFile)) { _.getLines.toSet }
+    autoClosing(scala.io.Source.fromFile(agentConfiguration.killScriptConf.get.crashKillScriptFile)) { _.getLines.toSet }
 
   private def killFile = agentConfiguration.killScript.get.file
 }

@@ -4,9 +4,9 @@ import akka.http.scaladsl.model.Uri
 import com.sos.jobscheduler.base.auth.SessionToken
 import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
 import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.log.Log4j
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.master.client.AkkaHttpMasterTextApi
 import java.nio.file.{Files, Path}

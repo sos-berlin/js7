@@ -4,9 +4,9 @@ import com.sos.jobscheduler.agent.client.AkkaHttpAgentTextApi
 import com.sos.jobscheduler.base.auth.SessionToken
 import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
 import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.log.Log4j
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Logger
 import java.nio.file.{Files, Path}
 import scala.collection.JavaConverters._

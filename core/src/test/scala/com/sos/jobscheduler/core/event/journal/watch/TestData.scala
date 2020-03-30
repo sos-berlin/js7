@@ -3,7 +3,7 @@ package com.sos.jobscheduler.core.event.journal.watch
 import akka.util.ByteString
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJsonObject
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta}
 import com.sos.jobscheduler.core.event.journal.write.{EventJournalWriter, SnapshotJournalWriter}
 import com.sos.jobscheduler.data.event.JournalEvent.SnapshotTaken

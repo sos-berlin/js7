@@ -12,7 +12,6 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.http.RecouplingStreamReader._
 import com.sos.jobscheduler.common.http.configuration.RecouplingStreamReaderConf
 import monix.eval.Task
-import monix.execution.Scheduler
 import monix.execution.atomic.AtomicBoolean
 import monix.execution.exceptions.UpstreamTimeoutException
 import monix.reactive.Observable

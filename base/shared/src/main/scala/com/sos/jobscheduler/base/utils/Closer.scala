@@ -1,7 +1,6 @@
-package com.sos.jobscheduler.common.scalautil
+package com.sos.jobscheduler.base.utils
 
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.Closer._
+import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import java.util.Objects.requireNonNull
 import java.util.concurrent.ConcurrentLinkedDeque
 import monix.execution.atomic.AtomicAny
@@ -58,7 +57,7 @@ final class Closer extends AutoCloseable
             if (!throwable.compareAndSet(null, t)) {
               val tt = throwable.get
               if (tt ne t) {
-                logger.debug(s"Throwable.addSuppressed($t)")
+                scribe.debug(s"Throwable.addSuppressed($t)")
                 tt.addSuppressed(t)
               }
             }
@@ -69,9 +68,8 @@ final class Closer extends AutoCloseable
     }
 }
 
-object Closer {
-  private val logger = Logger(getClass)
-
+object Closer
+{
   def withCloser[A](f: Closer => A): A =
     autoClosing(new Closer)(f)
 
@@ -86,7 +84,7 @@ object Closer {
     override def close() = closer.close()
   }
 
-  object ops {
+  object syntax {
     implicit final class RichClosersAutoCloseable[A <: AutoCloseable](private val underlying: A) extends AnyVal {
       def closeWithCloser(implicit closer: Closer): A = {
         closer.register(underlying)

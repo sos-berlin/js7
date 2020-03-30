@@ -3,8 +3,8 @@ package com.sos.jobscheduler.tests
 import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.utils.Closer.syntax.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.BuildInfo
-import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.data.agent.AgentRefPath

@@ -3,8 +3,8 @@ package com.sos.jobscheduler.provider
 import com.sos.jobscheduler.base.auth.UserAndPassword
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.base.utils.HasCloser
 import com.sos.jobscheduler.common.files.DirectoryReader
-import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.core.filebased.TypedSourceReader
 import com.sos.jobscheduler.data.order.FreshOrder
 import com.sos.jobscheduler.master.client.HttpMasterApi

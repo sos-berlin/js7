@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.common.system
 
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import java.io.{File, FileInputStream}
 import java.net.InetAddress

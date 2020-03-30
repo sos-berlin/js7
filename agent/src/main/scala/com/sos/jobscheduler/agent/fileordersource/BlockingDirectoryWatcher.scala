@@ -2,8 +2,9 @@ package com.sos.jobscheduler.agent.fileordersource
 
 import com.sos.jobscheduler.agent.fileordersource.BlockingDirectoryWatcher._
 import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAutoCloseable
-import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
+import com.sos.jobscheduler.base.utils.Closer.syntax.RichClosersAutoCloseable
+import com.sos.jobscheduler.base.utils.HasCloser
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.system.OperatingSystem.isMac
 import java.nio.file.StandardWatchEventKinds._
 import java.nio.file.{FileSystems, Path, WatchEvent}

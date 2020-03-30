@@ -1,11 +1,12 @@
 package com.sos.jobscheduler.master
 
 import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
+import com.sos.jobscheduler.base.utils.Strings._
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.configutils.Configs.logConfig
 import com.sos.jobscheduler.common.log.ScribeUtils
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.startup.JavaMain.withShutdownHooks
@@ -14,7 +15,6 @@ import com.sos.jobscheduler.core.startup.StartUp
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import java.time.LocalDateTime
 import monix.execution.Scheduler
-import com.sos.jobscheduler.base.utils.Strings._
 import scala.concurrent.duration._
 
 /**

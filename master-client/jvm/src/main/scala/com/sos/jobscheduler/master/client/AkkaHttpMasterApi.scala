@@ -3,13 +3,12 @@ package com.sos.jobscheduler.master.client
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.{Uri => AkkaUri}
 import cats.effect.Resource
-import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.utils.AutoClosing.closeOnError
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.akkahttp.https.AkkaHttps.loadHttpsConnectionContext
 import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
 import com.sos.jobscheduler.common.http.AkkaHttpClient
-import com.sos.jobscheduler.common.scalautil.AutoClosing.closeOnError
 import com.sos.jobscheduler.data.common.Uri
 import com.typesafe.config.{Config, ConfigFactory}
 import monix.eval.Task

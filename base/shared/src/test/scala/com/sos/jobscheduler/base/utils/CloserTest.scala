@@ -1,17 +1,11 @@
-package com.sos.jobscheduler.common.scalautil
+package com.sos.jobscheduler.base.utils
 
-import com.sos.jobscheduler.common.scalautil.CloserTest._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.base.utils.CloserTest._
 import java.util.concurrent.ConcurrentLinkedQueue
 import monix.execution.atomic.AtomicBoolean
-import org.mockito.Mockito.{never, verify}
 import org.scalatest.FreeSpec
-import org.scalatestplus.mockito.MockitoSugar.mock
 import scala.collection.JavaConverters._
 import scala.collection.mutable
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
-import scala.concurrent.duration._
 import scala.util.control.NoStackTrace
 
 /**
@@ -64,16 +58,6 @@ final class CloserTest extends FreeSpec
     assert(e.getSuppressed.isEmpty)
   }
 
-  "Threads" in {
-    val closer = new Closer
-    val ctx = new Context
-    val closeables = Vector.fill(100000) { new ctx.TestCloseable }
-    for (c <- closeables) closer.register(c)
-    (1 to sys.runtime.availableProcessors).map(_ => Future(closer.close())) await 99.seconds
-    assert(closeables forall (_.isClosed))
-    assert(ctx.closed.toSet == closeables.toSet)
-  }
-
   "onClose" in {
     val closer = new Closer
     var a = false
@@ -100,21 +84,26 @@ final class CloserTest extends FreeSpec
     assert(closes == List(1, 2))
   }
 
-  "ops" - {
-    import Closer.ops._
+  "syntax" - {
+    import Closer.syntax._
+
     "closeWithCloser AutoClosable" in {
       implicit val closer = new Closer
-      val c = mock[AutoCloseable].closeWithCloser
-      verify(c, never).close()
+      val ctx = new Context
+      val closeable = new ctx.TestCloseable
+      closeable.closeWithCloser
       closer.close()
-      verify(c).close()
+      assert(closeable.isClosed)
+      closer.close()
     }
 
     "AnyRef.withCloser" in {
       implicit val closer = new Closer
-      trait A
+      class A
       var closedA: A = null
-      val c = mock[A].withCloser { a => closedA = a }
+      val a = new A
+      val c = a.withCloser { a => closedA = a }
+      assert(a eq c)
       assert(closedA == null)
       closer.close()
       assert(closedA == c)
@@ -125,11 +114,13 @@ final class CloserTest extends FreeSpec
     import Closer._
 
     "withCloser" in {
-      val a = mock[AutoCloseable]
+      val ctx = new Context
+      val closeable = new ctx.TestCloseable
+      assert(!closeable.isClosed)
       withCloser { closer =>
-        closer.register(a)
+        closer.register(closeable)
       }
-      verify(a).close()
+      assert(closeable.isClosed)
     }
 
     "closeOrdered" in {
@@ -142,8 +133,9 @@ final class CloserTest extends FreeSpec
   }
 }
 
-object CloserTest {
-  private class Context {
+object CloserTest
+{
+  private[utils] final class Context {
     private val closeables = new ConcurrentLinkedQueue[TestCloseable]
 
     def closed = closeables.asScala.toList

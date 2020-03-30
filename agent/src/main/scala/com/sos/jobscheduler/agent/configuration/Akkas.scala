@@ -2,11 +2,12 @@ package com.sos.jobscheduler.agent.configuration
 
 import akka.actor.ActorSystem
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.utils.Closer
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.base.utils.SideEffect._
 import com.sos.jobscheduler.common.akkautils.DeadLetterActor
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
-import com.sos.jobscheduler.common.scalautil.{Closer, Logger}
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.typesafe.config.{Config, ConfigFactory}
 import scala.concurrent.ExecutionContext

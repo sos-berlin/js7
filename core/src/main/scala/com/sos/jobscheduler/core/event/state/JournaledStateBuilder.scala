@@ -2,8 +2,9 @@ package com.sos.jobscheduler.core.event.state
 
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.utils.SetOnce
 import com.sos.jobscheduler.base.utils.Strings._
-import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.core.event.journal.data.JournalHeader
 import com.sos.jobscheduler.core.event.state.JournaledStateBuilder._

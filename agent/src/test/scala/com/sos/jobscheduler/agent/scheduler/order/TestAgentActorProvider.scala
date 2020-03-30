@@ -12,11 +12,11 @@ import com.sos.jobscheduler.agent.scheduler.order.TestAgentActorProvider._
 import com.sos.jobscheduler.agent.tests.TestAgentDirectoryProvider
 import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
+import com.sos.jobscheduler.base.utils.Closer.syntax.RichClosersAutoCloseable
+import com.sos.jobscheduler.base.utils.{Closer, HasCloser}
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAutoCloseable
-import com.sos.jobscheduler.common.scalautil.{Closer, HasCloser}
 import com.sos.jobscheduler.core.event.ActorEventCollector
 import java.nio.file.Path
 import javax.inject.Singleton

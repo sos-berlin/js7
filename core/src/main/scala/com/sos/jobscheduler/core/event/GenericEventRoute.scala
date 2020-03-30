@@ -15,6 +15,7 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils.CompactPrinter
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
+import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, RichThrowable, _}
 import com.sos.jobscheduler.base.utils.ScalazStyle._
@@ -32,7 +33,6 @@ import com.sos.jobscheduler.common.event.collector.EventDirectives
 import com.sos.jobscheduler.common.event.collector.EventDirectives.eventRequest
 import com.sos.jobscheduler.common.http.JsonStreamingSupport._
 import com.sos.jobscheduler.common.http.StreamingSupport._
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.JavaTimeConverters.AsScalaDuration
 import com.sos.jobscheduler.core.event.GenericEventRoute._

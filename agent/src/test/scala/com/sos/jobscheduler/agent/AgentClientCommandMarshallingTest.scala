@@ -9,9 +9,9 @@ import com.sos.jobscheduler.agent.data.commands.AgentCommand.{EmergencyStop, Shu
 import com.sos.jobscheduler.agent.tests.AgentTester
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.utils.Closer.syntax._
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
-import com.sos.jobscheduler.common.scalautil.Closer.ops._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.core.command.CommandMeta
 import javax.inject.Singleton

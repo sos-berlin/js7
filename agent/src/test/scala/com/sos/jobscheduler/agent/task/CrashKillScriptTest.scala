@@ -1,11 +1,11 @@
 package com.sos.jobscheduler.agent.task
 
 import com.sos.jobscheduler.agent.data.{AgentTaskId, ProcessKillScript}
+import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
+import com.sos.jobscheduler.base.utils.Closer.syntax.RichClosersAutoCloseable
+import com.sos.jobscheduler.base.utils.HasCloser
 import com.sos.jobscheduler.common.process.Processes.Pid
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.data.job.TaskId
 import java.nio.file.Files.{delete, exists, size}

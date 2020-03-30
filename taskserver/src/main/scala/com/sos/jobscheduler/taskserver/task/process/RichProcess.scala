@@ -5,13 +5,14 @@ import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.utils.HasCloser
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.log.LogLevel
 import com.sos.jobscheduler.common.log.LogLevel.LevelScalaLogger
 import com.sos.jobscheduler.common.process.Processes._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.IOExecutor.ioFuture
-import com.sos.jobscheduler.common.scalautil.{ClosedFuture, HasCloser, IOExecutor, Logger}
+import com.sos.jobscheduler.common.scalautil.{ClosedFuture, IOExecutor, Logger}
 import com.sos.jobscheduler.common.system.OperatingSystem._
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}

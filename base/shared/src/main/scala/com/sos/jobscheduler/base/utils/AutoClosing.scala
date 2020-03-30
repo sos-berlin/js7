@@ -1,14 +1,12 @@
-package com.sos.jobscheduler.common.scalautil
+package com.sos.jobscheduler.base.utils
 
 import scala.language.higherKinds
 import scala.util.control.{ControlThrowable, NonFatal}
 
 /** Wie java try(AutoCloseable), aber für alle Klassen mit close().
   * @author Joacim Zschimmer */
-object AutoClosing {
-
-  private val logger = Logger(getClass)
-
+object AutoClosing
+{
   def multipleAutoClosing[M[X] <: Iterable[X], A <: AutoCloseable, B](resources: M[A])(body: resources.type => B): B = {
     autoClosing(new Closer) { closer =>
       for (o <- resources) closer.register(o)
@@ -38,7 +36,7 @@ object AutoClosing {
   private def closeAfterError[A <: AutoCloseable](resource: A, t: Throwable): Unit = {
     t match {
       case NonFatal(_) | _: ControlThrowable => // Normal exception
-      case _ => logger.error(t.toString, t)
+      case _ => scribe.error(t.toString, t)
     }
     try resource.close()
     catch {
@@ -47,7 +45,7 @@ object AutoClosing {
           t.addSuppressed(suppressed)
           val suppresseds = t.getSuppressed
           if (suppresseds.isEmpty || (suppresseds.last ne suppressed)) // Suppression disabled?
-            logger.warn(s"While handling an exception, this second exception is ignored: $suppressed\n" + s"Original exception is: $t", suppressed)
+            scribe.warn(s"While handling an exception, this second exception is ignored: $suppressed\n" + s"Original exception is: $t", suppressed)
         }
     }
   }

@@ -1,10 +1,10 @@
 package com.sos.jobscheduler.agent.client
 
 import akka.http.scaladsl.model.Uri
+import com.sos.jobscheduler.base.utils.Closer.syntax.RichClosersAny
+import com.sos.jobscheduler.base.utils.HasCloser
 import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
-import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAny
-import com.sos.jobscheduler.common.scalautil.HasCloser
 
 /**
  * Simple client for JobScheduler Agent Server.

@@ -3,8 +3,9 @@ package com.sos.jobscheduler.core.event.state
 import akka.actor.{ActorRef, ActorRefFactory}
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
+import com.sos.jobscheduler.base.utils.SetOnce
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
-import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.journal.JournalActor
 import com.sos.jobscheduler.core.event.state.JournaledStatePersistence._
 import com.sos.jobscheduler.core.event.state.StateJournalingActor.{PersistFunction, StateToEvents}

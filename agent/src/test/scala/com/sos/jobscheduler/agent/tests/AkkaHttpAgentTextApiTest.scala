@@ -13,10 +13,10 @@ import com.sos.jobscheduler.base.auth.{HashedPassword, SimpleUser}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
+import com.sos.jobscheduler.base.utils.HasCloser
 import com.sos.jobscheduler.common.akkahttp.web.auth.OurMemoizingAuthenticator
 import com.sos.jobscheduler.common.http.AkkaHttpClient
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.sos.jobscheduler.core.command.CommandMeta

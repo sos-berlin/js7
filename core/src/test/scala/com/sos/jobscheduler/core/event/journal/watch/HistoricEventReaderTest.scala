@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils._
 import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps

@@ -6,8 +6,8 @@ import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.ShutDown
 import com.sos.jobscheduler.agent.tests.AgentClientMainTest._
 import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.base.utils.HasCloser
 import com.sos.jobscheduler.common.guice.ScalaAbstractModule
-import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.sos.jobscheduler.core.command.CommandMeta
 import monix.eval.Task

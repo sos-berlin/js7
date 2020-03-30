@@ -2,7 +2,7 @@ package com.sos.jobscheduler.agent.scheduler.job
 
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration.FileEncoding
 import com.sos.jobscheduler.agent.scheduler.job.ShellReturnValuesProvider._
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import java.nio.file.Files.createTempFile
 import java.nio.file.Path

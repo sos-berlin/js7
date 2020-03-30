@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.agent.fileordersource
 
 import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.scalautil.Closer.ops._
-import com.sos.jobscheduler.common.scalautil.Closer.withCloser
+import com.sos.jobscheduler.base.utils.Closer.syntax._
+import com.sos.jobscheduler.base.utils.Closer.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.FileUtils.touchAndDeleteWithCloser
 import com.sos.jobscheduler.common.scalautil.Futures.blockingThreadFuture

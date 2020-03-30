@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.common.scalautil
 
+import com.sos.jobscheduler.base.utils.HasCloser
 import org.scalatest.FreeSpec
 import scala.util.Success
 

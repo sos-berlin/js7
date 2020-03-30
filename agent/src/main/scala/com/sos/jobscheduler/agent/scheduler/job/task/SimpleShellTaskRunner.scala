@@ -11,7 +11,8 @@ import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger, SetOnce}
+import com.sos.jobscheduler.base.utils.SetOnce
+import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger}
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.taskserver.modules.shell.RichProcessStartSynchronizer

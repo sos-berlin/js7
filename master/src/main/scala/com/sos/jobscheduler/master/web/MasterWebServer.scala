@@ -4,13 +4,13 @@ import akka.actor.ActorSystem
 import com.google.inject.Injector
 import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.base.utils.Closer
+import com.sos.jobscheduler.base.utils.Closer.syntax.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.event.EventWatch
-import com.sos.jobscheduler.common.scalautil.Closer
-import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAutoCloseable
 import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.core.filebased.FileBasedApi
 import com.sos.jobscheduler.data.cluster.ClusterState

@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.scalautil
+package com.sos.jobscheduler.base.utils
 
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._

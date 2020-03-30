@@ -6,12 +6,13 @@ import com.sos.jobscheduler.agent.data.web.AgentUris
 import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.session.HttpSessionApi
+import com.sos.jobscheduler.base.utils.HasCloser
 import com.sos.jobscheduler.common.akkahttp.https.{AkkaHttps, TrustStoreRef}
 import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
 import com.sos.jobscheduler.common.configutils.Configs.{ConvertibleConfig, parseConfigIfExists}
 import com.sos.jobscheduler.common.http.{AkkaHttpClient, TextApi}
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Path
 import scala.collection.JavaConverters._

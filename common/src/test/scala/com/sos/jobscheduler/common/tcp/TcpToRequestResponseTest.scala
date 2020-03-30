@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.common.tcp
 
 import akka.util.ByteString
+import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.tcp.TcpToRequestResponseTest._
 import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}

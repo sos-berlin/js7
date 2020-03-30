@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.common.scalautil
+package com.sos.jobscheduler.base.utils
 
-trait HasCloser extends AutoCloseable {
-
+trait HasCloser extends AutoCloseable
+{
   private val _closer: Closer = new Closer
 
   protected implicit final def closer: Closer = {

@@ -3,14 +3,15 @@ package com.sos.jobscheduler.common.scalautil
 import akka.util.ByteString
 import com.google.common.base.Charsets.UTF_8
 import com.google.common.io.FileWriteMode.APPEND
-import com.google.common.io.{FileWriteMode, Files => GuavaFiles}
+import com.google.common.io.{Files => GuavaFiles}
 import com.sos.jobscheduler.base.circeutils.CirceUtils.CompactPrinter
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
+import com.sos.jobscheduler.base.utils.Closer
+import com.sos.jobscheduler.base.utils.Closer.syntax._
+import com.sos.jobscheduler.base.utils.Closer.withCloser
 import com.sos.jobscheduler.base.utils.JavaCollections.implicits._
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.Closer.ops._
-import com.sos.jobscheduler.common.scalautil.Closer.withCloser
 import com.sos.jobscheduler.common.system.OperatingSystem.isUnix
 import io.circe.Encoder
 import java.io.{BufferedOutputStream, File, FileOutputStream, OutputStream}

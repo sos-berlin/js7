@@ -6,12 +6,12 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.ShutDown
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.utils.Closer
+import com.sos.jobscheduler.base.utils.Closer.syntax.RichClosersAutoCloseable
+import com.sos.jobscheduler.base.utils.Closer.withCloser
 import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.log.Log4j
-import com.sos.jobscheduler.common.scalautil.Closer
-import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAutoCloseable
-import com.sos.jobscheduler.common.scalautil.Closer.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryContentRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._

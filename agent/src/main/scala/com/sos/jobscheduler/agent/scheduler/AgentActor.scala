@@ -20,11 +20,12 @@ import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked.Ops
+import com.sos.jobscheduler.base.utils.Closer.syntax._
+import com.sos.jobscheduler.base.utils.{Closer, SetOnce}
 import com.sos.jobscheduler.common.akkautils.{Akkas, SupervisorStrategies}
 import com.sos.jobscheduler.common.event.EventIdGenerator
-import com.sos.jobscheduler.common.scalautil.Closer.ops._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.common.scalautil.{Closer, IOExecutor, Logger, SetOnce}
+import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger}
 import com.sos.jobscheduler.common.system.JavaInformations.javaInformation
 import com.sos.jobscheduler.common.system.SystemInformations.systemInformation
 import com.sos.jobscheduler.core.common.ActorRegister

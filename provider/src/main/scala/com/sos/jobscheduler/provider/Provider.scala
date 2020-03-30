@@ -6,10 +6,11 @@ import com.sos.jobscheduler.base.convert.As._
 import com.sos.jobscheduler.base.generic.{Completed, SecretString}
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.utils.HasCloser
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.files.{DirectoryReader, PathSeqDiff, PathSeqDiffer}
 import com.sos.jobscheduler.common.http.AkkaHttpClient
-import com.sos.jobscheduler.common.scalautil.{HasCloser, IOExecutor, Logger}
+import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger}
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.sos.jobscheduler.core.crypt.generic.MessageSigners
 import com.sos.jobscheduler.core.filebased.FileBaseds.diffFileBaseds

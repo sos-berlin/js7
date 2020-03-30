@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.common.akkahttp.https
 
-import com.sos.jobscheduler.common.scalautil.AutoClosing._
+import com.sos.jobscheduler.base.utils.AutoClosing._
 import com.sos.jobscheduler.common.scalautil.Logger
 import java.net.URL
 import java.security.cert.{Certificate, X509Certificate}

@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.scalautil
+package com.sos.jobscheduler.base.utils
 
 import com.sos.jobscheduler.base.problem.{Problem, ProblemException}
 import org.scalatest.FreeSpec

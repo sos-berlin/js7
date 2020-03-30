@@ -1,11 +1,11 @@
 package com.sos.jobscheduler.common.tcp
 
 import akka.util.ByteString
-import com.sos.jobscheduler.common.scalautil.Closer.ops._
+import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.utils.Closer.syntax._
+import com.sos.jobscheduler.base.utils.HasCloser
 import com.sos.jobscheduler.common.scalautil.Futures._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.HasCloser
-import com.sos.jobscheduler.base.time.ScalaTime._
 import java.net.{InetAddress, InetSocketAddress, ServerSocket, Socket}
 import java.util.concurrent.TimeoutException
 import org.scalatest.Matchers._

@@ -2,10 +2,10 @@ package com.sos.jobscheduler.provider
 
 import cats.Show
 import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.common.scalautil.AutoClosing.closeOnError
+import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.utils.AutoClosing.closeOnError
 import com.sos.jobscheduler.common.scalautil.IOExecutor.ioFuture
 import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger}
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.provider.DirectoryWatcher._
 import java.nio.file.StandardWatchEventKinds._
 import java.nio.file.{ClosedWatchServiceException, Path, WatchEvent}

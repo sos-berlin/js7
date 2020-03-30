@@ -16,14 +16,15 @@ import com.sos.jobscheduler.base.auth.{SessionToken, SimpleUser, UserId}
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
+import com.sos.jobscheduler.base.utils.Closer
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.guice.GuiceImplicits._
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
-import com.sos.jobscheduler.common.scalautil.{Closer, Logger}
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.core.startup.StartUp
 import com.typesafe.config.Config

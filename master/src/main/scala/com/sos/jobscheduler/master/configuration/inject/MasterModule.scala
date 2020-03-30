@@ -4,13 +4,14 @@ import akka.actor.{ActorRefFactory, ActorSystem}
 import com.google.inject.{AbstractModule, Provides}
 import com.sos.jobscheduler.base.auth.{Permission, SimpleUser, UpdateRepoPermission}
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.utils.Closer
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.akkautils.DeadLetterActor
 import com.sos.jobscheduler.common.event.{EventIdClock, EventIdGenerator}
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.{Closer, Logger}
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.sos.jobscheduler.core.system.ThreadPools
 import com.sos.jobscheduler.master.configuration.MasterConfiguration

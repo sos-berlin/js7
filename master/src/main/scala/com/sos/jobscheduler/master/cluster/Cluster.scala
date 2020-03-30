@@ -13,13 +13,13 @@ import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.base.utils.LockResource
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
+import com.sos.jobscheduler.base.utils.{LockResource, SetOnce}
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.http.AkkaHttpUtils._
 import com.sos.jobscheduler.common.http.{AkkaHttpClient, RecouplingStreamReader}
-import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.cluster.ClusterWatch.ClusterWatchHeartbeatFromInactiveNodeProblem
 import com.sos.jobscheduler.core.cluster.HttpClusterWatch
 import com.sos.jobscheduler.core.event.journal.JournalActor

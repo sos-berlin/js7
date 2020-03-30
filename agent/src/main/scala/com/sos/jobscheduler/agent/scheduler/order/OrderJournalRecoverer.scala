@@ -6,10 +6,10 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
 import com.sos.jobscheduler.agent.scheduler.order.OrderJournalRecoverer._
 import com.sos.jobscheduler.base.problem.Checked.Ops
+import com.sos.jobscheduler.base.utils.Closer.syntax._
 import com.sos.jobscheduler.base.utils.Collections.implicits.{InsertableMutableMap, RichTraversable}
+import com.sos.jobscheduler.base.utils.HasCloser
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
-import com.sos.jobscheduler.common.scalautil.Closer.ops._
-import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.core.event.journal.JournalActor
 import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, RecoveredJournalingActors}
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer

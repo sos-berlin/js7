@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.common.files
 
+import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.base.utils.Collections._
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import java.nio.file.Files.newDirectoryStream
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{DirectoryStream, Files, Path}

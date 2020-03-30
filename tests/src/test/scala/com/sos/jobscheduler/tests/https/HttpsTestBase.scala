@@ -2,10 +2,10 @@ package com.sos.jobscheduler.tests.https
 
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked.Ops
+import com.sos.jobscheduler.base.utils.Closer.syntax.RichClosersAutoCloseable
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
-import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort

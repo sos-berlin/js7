@@ -7,10 +7,10 @@ import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.web.common.AgentRouteProvider
 import com.sos.jobscheduler.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
+import com.sos.jobscheduler.base.utils.HasCloser
 import com.sos.jobscheduler.common.akkahttp.WebLogDirectives
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.{BeforeAndAfterAll, Suite}

@@ -1,15 +1,12 @@
-package com.sos.jobscheduler.common.scalautil
+package com.sos.jobscheduler.base.utils
 
-import com.sos.jobscheduler.common.scalautil.AutoClosing._
-import com.sos.jobscheduler.common.scalautil.AutoClosingTest._
-import java.io.Closeable
-import org.mockito.Mockito._
+import com.sos.jobscheduler.base.utils.AutoClosing._
+import com.sos.jobscheduler.base.utils.AutoClosingTest._
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import org.scalatestplus.mockito.MockitoSugar.mock
 
-final class AutoClosingTest extends FreeSpec {
-
+final class AutoClosingTest extends FreeSpec
+{
   "autoClosing" - {
     "without Exception" in {
       val a = new A
@@ -74,12 +71,13 @@ final class AutoClosingTest extends FreeSpec {
 
   "closeOnError" in {
     val closer = new Closer
-    val a = mock[Closeable]
+    val ctx = new CloserTest.Context
+    val a = new ctx.TestCloseable
     closer.register(a)
     closeOnError(closer) {}
-    verify(a, never).close()
+    assert(!a.isClosed)
     intercept[IllegalStateException] { closeOnError(closer) { throw new IllegalStateException } }
-    verify(a, times(1)).close()
+    assert(a.isClosed)
   }
 }
 

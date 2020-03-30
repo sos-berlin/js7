@@ -2,7 +2,7 @@ package com.sos.jobscheduler.tests.testenv
 
 import com.google.inject.Module
 import com.google.inject.util.Modules.EMPTY_MODULE
-import com.sos.jobscheduler.common.scalautil.HasCloser
+import com.sos.jobscheduler.base.utils.HasCloser
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.core.crypt.MessageSigner

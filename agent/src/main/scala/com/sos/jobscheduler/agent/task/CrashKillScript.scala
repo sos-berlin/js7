@@ -3,9 +3,9 @@ package com.sos.jobscheduler.agent.task
 import com.google.common.base.StandardSystemProperty.LINE_SEPARATOR
 import com.sos.jobscheduler.agent.data.{AgentTaskId, ProcessKillScript}
 import com.sos.jobscheduler.agent.task.CrashKillScript._
+import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.log.LazyScalaLogger.AsLazyScalaLogger
 import com.sos.jobscheduler.common.process.Processes.Pid
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.Exceptions.ignoreException

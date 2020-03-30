@@ -4,8 +4,8 @@ import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.auth.SecretStringGenerator
 import com.sos.jobscheduler.common.log.ScribeUtils
-import com.sos.jobscheduler.common.scalautil.Closer.ops._
-import com.sos.jobscheduler.common.scalautil.Closer.withCloser
+import com.sos.jobscheduler.base.utils.Closer.syntax._
+import com.sos.jobscheduler.base.utils.Closer.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition

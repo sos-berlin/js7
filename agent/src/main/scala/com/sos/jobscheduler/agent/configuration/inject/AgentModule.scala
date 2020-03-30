@@ -6,11 +6,12 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newAgentActorSystem
 import com.sos.jobscheduler.agent.web.AgentWebServer
 import com.sos.jobscheduler.base.auth.SimpleUser
+import com.sos.jobscheduler.base.utils.Closer
+import com.sos.jobscheduler.base.utils.Closer.syntax._
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.event.EventIdGenerator
-import com.sos.jobscheduler.common.scalautil.Closer.ops._
-import com.sos.jobscheduler.common.scalautil.{Closer, IOExecutor}
+import com.sos.jobscheduler.common.scalautil.IOExecutor
 import com.sos.jobscheduler.core.cluster.ClusterWatchRegister
 import com.sos.jobscheduler.core.system.ThreadPools
 import com.typesafe.config.Config

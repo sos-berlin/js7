@@ -6,11 +6,11 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.base.auth.{SimpleUser, UserId}
 import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.utils.SetOnce
 import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import com.sos.jobscheduler.common.scalautil.SetOnce
 import com.sos.jobscheduler.core.cluster.ClusterWatchRegister
 import com.sos.jobscheduler.core.command.CommandMeta
 import com.typesafe.config.Config

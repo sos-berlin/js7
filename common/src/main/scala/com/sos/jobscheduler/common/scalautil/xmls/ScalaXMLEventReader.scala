@@ -1,10 +1,10 @@
 package com.sos.jobscheduler.common.scalautil.xmls
 
 import com.sos.jobscheduler.base.convert.ConvertiblePartialFunction
+import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils.{cast, implicitClass}
 import com.sos.jobscheduler.common.scalautil.AssignableFrom.assignableFrom
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaStax.{RichStartElement, getCommonXMLInputFactory}
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader._
 import java.util.NoSuchElementException
