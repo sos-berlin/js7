@@ -2,6 +2,7 @@ package com.sos.jobscheduler.base.circeutils
 
 import cats.syntax.show._
 import com.sos.jobscheduler.base.circeutils.AnyJsonCodecs.anyToJson
+import com.sos.jobscheduler.base.generic.GenericString
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import io.circe.generic.decoding.DerivedDecoder
@@ -208,7 +209,7 @@ object CirceUtils
 
     private def toJson(arg: Any): String =
       arg match {
-        case arg: String =>
+        case arg @ (_: String | _: GenericString) =>
           val j = Json.fromString(arg.toString).toString
           j.substring(1, j.length - 1)  // Interpolation is expected to occur already in quotes: "$var"
         case _ =>

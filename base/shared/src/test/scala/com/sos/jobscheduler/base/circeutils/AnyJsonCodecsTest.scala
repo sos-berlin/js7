@@ -1,7 +1,9 @@
 package com.sos.jobscheduler.base.circeutils
 
 import com.sos.jobscheduler.base.circeutils.AnyJsonCodecs._
+import com.sos.jobscheduler.base.circeutils.AnyJsonCodecsTest._
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.base.generic.GenericString
 import io.circe.syntax.EncoderOps
 import io.circe.{Json, JsonObject}
 import org.scalatest.FreeSpec
@@ -10,8 +12,8 @@ import scala.collection.JavaConverters._
 /**
   * @author Joacim Zschimmer
   */
-final class AnyJsonCodecsTest extends FreeSpec {
-
+final class AnyJsonCodecsTest extends FreeSpec
+{
   "anyToJson" in {
     assert(anyToJson(Map("key" -> 333).asJava) == Json.fromJsonObject(JsonObject.fromMap(Map("key" -> 333.asJson))))
     assert(anyToJson(Vector(111, 222).asJava) == Json.fromValues(Vector(111.asJson, 222.asJson)))
@@ -46,4 +48,21 @@ final class AnyJsonCodecsTest extends FreeSpec {
     assert(jsonToAny(Json.fromDoubleOrNull(1.23456789)) == 1.23456789)
     assert(jsonToAny(Json.fromBigDecimal(BigDecimal("111222333444555666777888999001"))) == BigDecimal("111222333444555666777888999001"))
   }
+
+  "GenericString" in {
+    val map = Map(
+      "string" -> "STRING",
+      "wrapped" -> WrappedString("WRAPPED"))
+    val json =
+      json"""{
+        "string": "STRING",
+        "wrapped": "WRAPPED"
+      }"""
+    assert(mapToJson(map) == json)
+  }
+}
+
+private object AnyJsonCodecsTest
+{
+  private final case class WrappedString(string: String) extends GenericString
 }

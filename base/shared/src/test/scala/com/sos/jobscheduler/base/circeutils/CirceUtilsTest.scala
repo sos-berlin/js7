@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.base.circeutils
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.base.generic.GenericString
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.syntax.EncoderOps
@@ -58,6 +59,12 @@ final class CirceUtilsTest extends FreeSpec
 
     "Interpolating String value" in {
       for (string <- "STRING" :: "STRING\"" :: "STRING\"\u007f." :: Nil)
+        assert(json"""{ "A": "!$string" }""" == Json.obj("A" -> Json.fromString("!" + string)))
+    }
+
+    "Interpolating GenericString value" in {
+      case class MyGenericString(string: String) extends GenericString
+      for (string <- MyGenericString("STRING") :: MyGenericString("STRING\")") :: MyGenericString("STRING\"\u007f.") :: Nil)
         assert(json"""{ "A": "!$string" }""" == Json.obj("A" -> Json.fromString("!" + string)))
     }
 

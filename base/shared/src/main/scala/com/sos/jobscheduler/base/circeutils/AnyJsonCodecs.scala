@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.base.circeutils
 
+import com.sos.jobscheduler.base.generic.GenericString
 import com.sos.jobscheduler.base.utils.Collections.RichMap
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import io.circe.{Decoder, Encoder, Json, JsonObject}
@@ -35,6 +36,7 @@ object AnyJsonCodecs {
       case v: Json => v
       case v: BigDecimal => Json.fromBigDecimal(v)
       case v: java.math.BigDecimal => Json.fromBigDecimal(v)
+      case v: GenericString => Json.fromString(v.string)
       case v => sys.error(s"Unsupported type for JSON serialization: ${v.getClass.getName}")
     }
 
