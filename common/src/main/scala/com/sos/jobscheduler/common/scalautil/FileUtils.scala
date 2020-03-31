@@ -16,7 +16,7 @@ import com.sos.jobscheduler.common.system.OperatingSystem.isUnix
 import io.circe.Encoder
 import java.io.{BufferedOutputStream, File, FileOutputStream, OutputStream}
 import java.nio.charset.Charset
-import java.nio.file.Files.{delete, isSymbolicLink, setPosixFilePermissions}
+import java.nio.file.Files.{delete, deleteIfExists, isSymbolicLink, setPosixFilePermissions}
 import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
 import java.nio.file.{FileAlreadyExistsException, FileVisitOption, Files, Path, Paths}
 import java.util.concurrent.ThreadLocalRandom
@@ -165,7 +165,7 @@ object FileUtils {
   def autoDeleting[A](file: Path)(body: Path => A): A =
     withCloser { closer =>
       closer.onClose {
-        delete(file)
+        deleteIfExists(file)
       }
       body(file)
   }

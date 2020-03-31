@@ -10,6 +10,7 @@ import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import com.sos.jobscheduler.master.web.master.api.ApiRoute._
 import com.sos.jobscheduler.master.web.master.api.fatevent.FatEventRoute
 import com.sos.jobscheduler.master.web.master.api.graphql.GraphqlRoute
+import com.sos.jobscheduler.master.web.master.api.log.LogRoute
 import com.sos.jobscheduler.master.web.master.api.order.OrderRoute
 import com.sos.jobscheduler.master.web.master.api.workflow.WorkflowRoute
 
@@ -31,6 +32,7 @@ with AgentProxyRoute
 with SnapshotRoute
 with SessionRoute
 with ClusterRoute
+with LogRoute
 {
   final val apiRoute: Route =
     respondWithHeaders(StandardResponseHeaders: _*) {
@@ -50,6 +52,7 @@ with ClusterRoute
         case "snapshot"    => snapshotRoute
         case "cluster"     => clusterRoute
         case "graphql"     => graphqlRoute
+        case "log"         => logRoute
         case _ => complete(NotFound)
       }
     }

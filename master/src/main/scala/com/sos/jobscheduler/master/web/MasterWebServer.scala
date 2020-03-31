@@ -11,6 +11,7 @@ import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.event.EventWatch
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.core.filebased.FileBasedApi
 import com.sos.jobscheduler.data.cluster.ClusterState
@@ -68,6 +69,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri
       protected def clusterState = MasterWebServer.this.clusterState
       protected def masterState = MasterWebServer.this.masterState
       protected def totalRunningSince = MasterWebServer.this.totalRunningSince
+      protected val currentLogFile = masterConfiguration.dataDirectory / "logs" / "master.log"
 
       def webServerRoute = completeRoute
 

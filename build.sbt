@@ -210,6 +210,7 @@ lazy val base = crossProject(JSPlatform, JVMPlatform)
       "io.monix" %%% "monix-eval" % monixVersion ++
       "io.monix" %%% "monix-reactive" % monixVersion ++
       "org.scodec" %%% "scodec-bits" % "1.1.12" ++
+      "org.scodec" %%% "scodec-cats" % "1.0.0" ++
       "com.lihaoyi" %%% "sourcecode" % "0.1.9" ++
       "com.outr" %%% "scribe" % scribeVersion ++
       findbugs % "compile" ++
