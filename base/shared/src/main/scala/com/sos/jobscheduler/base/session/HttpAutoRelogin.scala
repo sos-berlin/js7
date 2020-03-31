@@ -25,7 +25,7 @@ trait HttpAutoRelogin
           body.onErrorRestartLoop(()) { (throwable, _, retry) =>
             (throwable match {
               case e: HttpException if delays.hasNext && e.problem.exists(_.codeOption contains InvalidSessionTokenProblem.code) =>
-                scribe.warn(e.toStringWithCauses)
+                scribe.debug(e.toStringWithCauses)
                 loginUntilReachable(userAndPassword, delays)
 
               case e: HttpException if delays.hasNext && isUnreachable(e) =>
