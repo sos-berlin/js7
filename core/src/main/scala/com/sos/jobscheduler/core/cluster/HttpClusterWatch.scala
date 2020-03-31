@@ -38,8 +38,7 @@ extends ClusterWatchApi with AkkaHttpClient with HttpSessionApi with HttpAutoRel
     liftProblem(
       retryUntilReachable(
         post[ClusterWatchMessage, JsonObject](clusterUri, ClusterWatchEvents(from, events, reportedClusterState, force))
-      ).onErrorRestartLoop(()) { (throwable, _, retry) =>
-          // TODO onErrorRestartLoop duplicate with retryUntilReachable ?
+      ) .onErrorRestartLoop(()) { (throwable, _, retry) =>
           logger.warn(throwable.toStringWithCauses)
           throwable match {
             case throwable: HttpException if throwable.problem exists isClusterWatchProblem =>
@@ -55,9 +54,9 @@ extends ClusterWatchApi with AkkaHttpClient with HttpSessionApi with HttpAutoRel
 
   def heartbeat(from: ClusterNodeId, reportedClusterState: ClusterState): Task[Checked[Completed]] =
     liftProblem(
-      loginUntilReachable(userAndPassword, loginDelays(), onlyIfNotLoggedIn = true) >>
+      retryUntilReachable(
         post[ClusterWatchMessage, JsonObject](clusterUri, ClusterWatchHeartbeat(from, reportedClusterState))
-          .map((_: JsonObject) => Completed))
+      ).map((_: JsonObject) => Completed))
 
   def get: Task[Checked[ClusterState]] =
     liftProblem(
