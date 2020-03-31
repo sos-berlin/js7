@@ -9,6 +9,7 @@ import cats.syntax.flatMap._
 import com.sos.jobscheduler.base.auth.UserAndPassword
 import com.sos.jobscheduler.base.eventbus.EventBus
 import com.sos.jobscheduler.base.generic.{Completed, SecretString}
+import com.sos.jobscheduler.base.monixutils.MonixDeadline.now
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.ScalaTime._
@@ -20,6 +21,7 @@ import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.http.{AkkaHttpClient, RecouplingStreamReader}
 import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.scalautil.MonixUtils.ops.RichCheckedTask
 import com.sos.jobscheduler.core.cluster.ClusterWatch.ClusterWatchHeartbeatFromInactiveNodeProblem
 import com.sos.jobscheduler.core.cluster.HttpClusterWatch
 import com.sos.jobscheduler.core.event.journal.JournalActor
@@ -53,7 +55,7 @@ import monix.execution.{Cancelable, CancelableFuture, Scheduler}
 import monix.reactive.{Observable, OverflowStrategy}
 import scala.collection.immutable.Seq
 import scala.concurrent.Promise
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
 final class Cluster(
@@ -647,30 +649,43 @@ final class Cluster(
       stopped = false
       heartbeatSender := (clusterState match {
         case clusterState: HasNodes if clusterState.activeId == ownId =>
-          scheduler.scheduleAtFixedRate(Duration.Zero, clusterConf.heartbeat) {
-            lock.use(_ =>
-              currentClusterState.flatMap {
-                case clusterState: ClusterState.HasNodes if clusterState.activeId == ownId && !stopped =>  // check again
-                  clusterWatch.heartbeat(from = ownId, clusterState)
-
-                case _ =>
-                  Task.pure(Right(Completed))
-              }
-            ).runToFuture onComplete {
-              case Success(Right(Completed)) =>
-              case Success(Left(problem)) if problem.codeOption contains ClusterWatchHeartbeatFromInactiveNodeProblem.code =>
-                haltJava(s"EMERGENCY STOP due to: $problem", restart = true)  // TODO How to test?
-              case Success(problem) =>
-                logger.warn(s"Error when sending heartbeat to ClusterWatch: $problem")
-              case Failure(t) =>
-                logger.warn(s"Error when sending heartbeat to ClusterWatch: ${t.toStringWithCauses}")
-                logger.debug(s"Error when sending heartbeat to ClusterWatch: $t", t)
-            }
+          val future = sendHeartbeats.runToFuture
+          future onComplete {
+            case Success(Right(Completed)) =>
+            case Success(Left(problem)) if problem.codeOption contains ClusterWatchHeartbeatFromInactiveNodeProblem.code =>
+              haltJava(s"EMERGENCY STOP due to: $problem", restart = true)  // TODO How to test?
+            case Success(problem) =>
+              logger.warn(s"Error when sending heartbeat to ClusterWatch: $problem")
+            case Failure(t) =>
+              logger.warn(s"Error when sending heartbeat to ClusterWatch: ${t.toStringWithCauses}")
+              logger.debug(s"Error when sending heartbeat to ClusterWatch: $t", t)
           }
+          future
         case _ =>
           Cancelable.empty
       })
     }
+
+    private def sendHeartbeats: Task[Checked[Completed]] =
+      Task.tailRecM(())(_ =>
+        lock.use(_ =>
+          currentClusterState.flatMap {
+            case clusterState: ClusterState.HasNodes if clusterState.activeId == ownId && !stopped =>  // check again
+              Task(now).flatMap(since =>
+                clusterWatch.heartbeat(from = ownId, clusterState)
+                  .materializeIntoChecked
+                  .map { checked =>
+                    for (problem <- checked.left) logger.warn(s"ClusterWatch heartbeat: $problem")
+                    Left(since)  // Ignore error and continue
+                  })
+
+            case _ =>
+              Task.pure(Right(Right(Completed)))
+          })
+        .flatMap {
+          case Left(since) => Task.sleep(clusterConf.heartbeat - since.elapsed).map(_ => Left())
+          case Right(o) => Task.pure(Right(o))
+        })
   }
 
   /** Returns the current or at start the recovered ClusterState.
