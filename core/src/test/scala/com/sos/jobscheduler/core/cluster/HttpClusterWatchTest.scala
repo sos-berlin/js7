@@ -7,6 +7,7 @@ import com.sos.jobscheduler.base.generic.{Completed, SecretString}
 import com.sos.jobscheduler.base.session.SessionCommand
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.Closer.syntax._
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
 import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
@@ -16,7 +17,6 @@ import com.sos.jobscheduler.common.scalautil.MonixUtils.ops.RichTask
 import com.sos.jobscheduler.core.cluster.HttpClusterWatchTest._
 import com.sos.jobscheduler.data.cluster.ClusterEvent.ClusterNodesAppointed
 import com.sos.jobscheduler.data.cluster.{ClusterNodeId, ClusterState}
-import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.master.MasterId
 import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler

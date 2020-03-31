@@ -3,6 +3,7 @@ package com.sos.jobscheduler.tests.core
 import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
@@ -148,60 +149,60 @@ final class GenericEventRouteTest extends FreeSpec with BeforeAndAfterAll with P
       }
 
       "/event?limit=3&after=30 continue" in {
-        val stampedSeq = getEventsByUri("/event?limit=3&after=30")
+        val stampedSeq = getEventsByUri(Uri("/event?limit=3&after=30"))
         assert(stampedSeq.head.eventId == 40)
         assert(stampedSeq.last.eventId == 60)
       }
 
       "/event?limit=3&after=60 continue" in {
-        val stampedSeq = getEventsByUri("/event?limit=3&after=60")
+        val stampedSeq = getEventsByUri(Uri("/event?limit=3&after=60"))
         assert(stampedSeq.head.eventId == 70)
         assert(stampedSeq.last.eventId == 90)
       }
 
       "/event?limit=1&after=70 rewind in last chunk" in {
-        val stampedSeq = getEventsByUri("/event?limit=3&after=70")
+        val stampedSeq = getEventsByUri(Uri("/event?limit=3&after=70"))
         assert(stampedSeq.head.eventId ==  80)
         assert(stampedSeq.last.eventId == 100)
       }
 
       "/event?limit=3&after=80 continue" in {
-        val stampedSeq = getEventsByUri("/event?limit=3&after=80")
+        val stampedSeq = getEventsByUri(Uri("/event?limit=3&after=80"))
         assert(stampedSeq.head.eventId ==  90)
         assert(stampedSeq.last.eventId == 110)
       }
 
       "/event?limit=3&after=60 rewind to oldest" in {
-        val stampedSeq = getEventsByUri("/event?limit=3&after=60")
+        val stampedSeq = getEventsByUri(Uri("/event?limit=3&after=60"))
         assert(stampedSeq.head.eventId == 70)
         assert(stampedSeq.last.eventId == 90)
       }
 
       "/event?limit=3&after=150 skip some events" in {
         val runningSince = now
-        val stampedSeq = getEventsByUri("/event?delay=99&limit=3&after=150")
+        val stampedSeq = getEventsByUri(Uri("/event?delay=99&limit=3&after=150"))
         assert(runningSince.elapsed < 1.s)  // Events must have been returned immediately
         assert(stampedSeq.head.eventId == 160)
         assert(stampedSeq.last.eventId == 180)
       }
 
       "/event?after=180 no more events" in {
-        assert(getEventsByUri("/event?timeout=0&after=180").isEmpty)
+        assert(getEventsByUri(Uri("/event?timeout=0&after=180")).isEmpty)
       }
 
       "/event?after=180 no more events, with timeout" in {
         val runningSince = now
-        assert(getEventsByUri("/event?after=180&timeout=0.2").isEmpty)
+        assert(getEventsByUri(Uri("/event?after=180&timeout=0.2")).isEmpty)
         assert(runningSince.elapsed >= 200.millis)
       }
     }
 
     "Fetch EventIds" in {
-      assert(getDecodedLinesObservable[EventId]("/event?eventIdOnly=true&limit=3&after=30") == 40 :: 50 :: 60 :: Nil)
+      assert(getDecodedLinesObservable[EventId](Uri("/event?eventIdOnly=true&limit=3&after=30")) == 40 :: 50 :: 60 :: Nil)
     }
 
     "Fetch EventIds with heartbeat" in {
-      assert(getDecodedLinesObservable[EventId]("/event?eventIdOnly=true&limit=5&after=150&heartbeat=0.1&timeout=0.5").take(5) ==
+      assert(getDecodedLinesObservable[EventId](Uri("/event?eventIdOnly=true&limit=5&after=150&heartbeat=0.1&timeout=0.5")).take(5) ==
         160 :: 170 :: 180 :: 180/*heartbeat*/ :: 180/*heartbeat*/ :: Nil)
     }
 
@@ -209,7 +210,7 @@ final class GenericEventRouteTest extends FreeSpec with BeforeAndAfterAll with P
       val isKnownEventId = TestEvents.map(_.eventId).toSet
       for (unknown <- 1L to (TestEvents.last.eventId) if !isKnownEventId(unknown)) withClue(s"EventId $unknown: ") {
         val t = intercept[HttpException] {
-          getDecodedLinesObservable[EventId](s"/event?eventIdOnly=true&timeout=1&after=$unknown")
+          getDecodedLinesObservable[EventId](Uri(s"/event?eventIdOnly=true&timeout=1&after=$unknown"))
         }
         assert(t.problem contains EventSeqTornProblem(unknown, 0))
       }
@@ -217,7 +218,7 @@ final class GenericEventRouteTest extends FreeSpec with BeforeAndAfterAll with P
 
     "Fetching EventIds with after=future-event is accepted" in {
       val t = now
-      val result = getDecodedLinesObservable[EventId](s"/event?eventIdOnly=true&timeout=0.1&after=${TestEvents.last.eventId + 1}")
+      val result = getDecodedLinesObservable[EventId](Uri(s"/event?eventIdOnly=true&timeout=0.1&after=${TestEvents.last.eventId + 1}"))
       assert(result.isEmpty && t.elapsed > 0.1.second)
     }
 
@@ -239,13 +240,13 @@ final class GenericEventRouteTest extends FreeSpec with BeforeAndAfterAll with P
 
   private def getEventObservable(eventRequest: EventRequest[Event]): Observable[Stamped[KeyedEvent[Event]]] =
     api.getDecodedLinesObservable[Stamped[KeyedEvent[Event]]](
-      "/" + encodePath("event") + encodeQuery(eventRequest.toQueryParameters)
+      Uri("/" + encodePath("event") + encodeQuery(eventRequest.toQueryParameters))
     ).await(99.s)
 
-  private def getEventsByUri(uri: String): Seq[Stamped[KeyedEvent[OrderEvent]]] =
+  private def getEventsByUri(uri: Uri): Seq[Stamped[KeyedEvent[OrderEvent]]] =
     getDecodedLinesObservable[Stamped[KeyedEvent[OrderEvent]]](uri)
 
-  private def getDecodedLinesObservable[A: Decoder: TypeTag](uri: String): Seq[A] =
+  private def getDecodedLinesObservable[A: Decoder: TypeTag](uri: Uri): Seq[A] =
     Observable.fromTask(api.getDecodedLinesObservable[A](uri))
       .flatten
       .toListL

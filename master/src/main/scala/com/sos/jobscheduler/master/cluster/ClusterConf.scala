@@ -4,12 +4,12 @@ import cats.implicits._
 import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.configutils.Configs._
 import com.sos.jobscheduler.common.http.configuration.RecouplingStreamReaderConf
 import com.sos.jobscheduler.common.time.JavaTimeConverters.AsScalaDuration
 import com.sos.jobscheduler.core.configuration.RecouplingStreamReaderConfs
 import com.sos.jobscheduler.data.cluster.{ClusterNodeId, ClusterSetting}
-import com.sos.jobscheduler.data.common.Uri
 import com.typesafe.config.Config
 import scala.collection.JavaConverters._
 import scala.collection.immutable.Seq

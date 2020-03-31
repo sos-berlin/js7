@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.master.agent
 
 import akka.actor.{ActorRef, DeadLetterSuppression, Props}
-import akka.http.scaladsl.model.Uri
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
@@ -13,6 +12,7 @@ import com.sos.jobscheduler.base.problem.Problems.InvalidSessionTokenProblem
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversableOnce
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.utils.SetOnce
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.akkautils.ReceiveLoggingActor
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.http.RecouplingStreamReader

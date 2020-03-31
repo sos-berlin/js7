@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.master
 
 import akka.actor.{ActorRef, ActorSystem, Props}
-import akka.http.scaladsl.model.Uri
 import akka.pattern.ask
 import akka.util.Timeout
 import cats.instances.either._
@@ -140,7 +139,7 @@ extends AutoCloseable
   def waitUntilReady(): Unit =
     eventWatch.await[MasterReady](after = eventWatch.tornEventId)
 
-  val localUri: Uri = webServer.localUri
+  val localUri = webServer.localUri
   lazy val httpApi: HttpMasterApi = new AkkaHttpMasterApi.CommonAkka {
       protected val baseUri = localUri
       protected val name = "RunningMaster"

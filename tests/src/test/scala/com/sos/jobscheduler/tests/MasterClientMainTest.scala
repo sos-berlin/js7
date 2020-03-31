@@ -23,7 +23,7 @@ final class MasterClientMainTest extends FreeSpec with BeforeAndAfterAll with Ma
 
   override def beforeAll() = {
     directoryProvider.master.provideHttpsCertificate()
-    assert(master.localUri.scheme == "https")
+    assert(master.localUri.string startsWith "https://")
   }
 
   "main with Master URI only checks wether Master is responding (it is)" in {

@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.master.client
 
-import akka.http.scaladsl.model.Uri
 import com.sos.jobscheduler.base.session.HttpSessionApi
 import com.sos.jobscheduler.base.utils.HasCloser
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.akkahttp.https.{AkkaHttps, TrustStoreRef}
 import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
 import com.sos.jobscheduler.common.configutils.Configs.parseConfigIfExists
@@ -27,7 +27,7 @@ extends HasCloser with ProvideActorSystem with TextApi with HttpSessionApi with 
 
   protected def uriPrefixPath = "/master"
 
-  private val masterUris = MasterUris(s"$baseUri/master")
+  private val masterUris = MasterUris(Uri(s"$baseUri/master"))
 
   protected def httpClient = this
 

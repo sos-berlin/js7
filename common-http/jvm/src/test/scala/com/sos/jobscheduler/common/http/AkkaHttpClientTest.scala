@@ -4,10 +4,11 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.model.ContentTypes.{`application/json`, `text/plain(UTF-8)`}
 import akka.http.scaladsl.model.StatusCodes.BadRequest
 import akka.http.scaladsl.model.headers.`Content-Type`
-import akka.http.scaladsl.model.{HttpEntity, HttpResponse, Uri}
+import akka.http.scaladsl.model.{HttpEntity, HttpResponse}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.http.AkkaHttpClient.{HttpException, liftProblem}
 import com.sos.jobscheduler.common.http.AkkaHttpClientTest._
 import java.net.ServerSocket
@@ -15,9 +16,9 @@ import java.nio.charset.StandardCharsets.UTF_8
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
-import scala.concurrent.{Await, TimeoutException}
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
+import scala.concurrent.{Await, TimeoutException}
 
 /**
   * @author Joacim Zschimmer

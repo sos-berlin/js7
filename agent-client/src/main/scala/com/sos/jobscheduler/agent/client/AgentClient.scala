@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.agent.client
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.model.Uri
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand._
 import com.sos.jobscheduler.agent.data.event.KeyedEventJsonFormats.keyedEventJsonCodec
@@ -11,6 +10,7 @@ import com.sos.jobscheduler.agent.data.{AgentApi, AgentTaskId}
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.session.HttpSessionApi
 import com.sos.jobscheduler.base.utils.ScalazStyle._
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.akkahttp.https.AkkaHttps.loadHttpsConnectionContext
 import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import com.sos.jobscheduler.common.http.AkkaHttpClient
@@ -37,13 +37,13 @@ trait AgentClient extends AgentApi with HttpSessionApi with AkkaHttpClient
   override protected lazy val httpsConnectionContextOption =
     (keyStoreRef.nonEmpty || trustStoreRef.nonEmpty) ? loadHttpsConnectionContext(keyStoreRef, trustStoreRef)  // TODO None means HttpsConnectionContext? Or empty context?
 
-  protected lazy val sessionUri = agentUris.session.toString()
-  protected lazy val agentUris = AgentUris(baseUri.toString)
+  protected lazy val sessionUri = agentUris.session
+  protected lazy val agentUris = AgentUris(baseUri)
   protected lazy val uriPrefixPath = "/agent"
 
   final def commandExecute(command: AgentCommand): Task[Checked[command.Response]] =
     liftProblem(
-      post[AgentCommand, AgentCommand.Response](uri = agentUris.command.toString, command)
+      post[AgentCommand, AgentCommand.Response](uri = agentUris.command, command)
         .map(_.asInstanceOf[command.Response]))
 
   final def overview: Task[AgentOverview] = get[AgentOverview](agentUris.overview)
@@ -70,7 +70,7 @@ trait AgentClient extends AgentApi with HttpSessionApi with AkkaHttpClient
 
   final def mastersEventObservable(request: EventRequest[Event]): Task[Checked[Observable[Stamped[KeyedEvent[Event]]]]] =
     liftProblem(
-      getDecodedLinesObservable[Stamped[KeyedEvent[Event]]](agentUris.mastersEvents(request).toString))
+      getDecodedLinesObservable[Stamped[KeyedEvent[Event]]](agentUris.mastersEvents(request)))
 
   final def mastersEvents(request: EventRequest[Event]): Task[Checked[TearableEventSeq[Seq, KeyedEvent[Event]]]] = {
     //TODO Use Akka http connection level request with Akka streams and .withIdleTimeout()

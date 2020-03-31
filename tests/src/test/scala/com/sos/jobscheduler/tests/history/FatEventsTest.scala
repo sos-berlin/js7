@@ -6,6 +6,7 @@ import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
@@ -93,7 +94,7 @@ final class FatEventsTest extends FreeSpec
           }
           assert(rounds > 2)
           assert(history.orderEntries.map(normalizeTimestampsInEntry) ==
-            expectedOrderEntries(runningAgents map (_.localUri.toString)))
+            expectedOrderEntries(runningAgents.map(_.localUri)))
 
           assert(listJournalFiles.size == 3 && listJournalFiles.contains("master--0.journal"))
 
@@ -106,8 +107,8 @@ final class FatEventsTest extends FreeSpec
           lastAddedEventId = master.eventWatch.lastAddedEventId
         }
         assert(listJournalFiles.size == 3)  // Master shutdown added a journal file
-        val aAgentUri = runningAgents(0).localUri.toString
-        val bAgentUri = runningAgents(1).localUri.toString
+        val aAgentUri = runningAgents(0).localUri
+        val bAgentUri = runningAgents(1).localUri
         assert(fatEvents.toSet == Set(
           NoKey <-: MasterReadyFat(MasterId("Master"), ZoneId.systemDefault.getId),
           OrderId("🔺") <-: OrderAddedFat(TestWorkflowId, None, Map("KEY" -> "VALUE")),
@@ -217,7 +218,7 @@ object FatEventsTest
   private val TestOrder = FreshOrder(OrderId("🔺"), TestWorkflowId.path, arguments = Map("KEY" -> "VALUE"))
   private val TestTimestamp = Timestamp.Epoch
 
-  private def expectedOrderEntries(agentUris: IndexedSeq[String]) = {
+  private def expectedOrderEntries(agentUris: IndexedSeq[Uri]) = {
     implicit def toSome[A](a: A): Option[A] = Some(a)
     Vector(
       OrderEntry(

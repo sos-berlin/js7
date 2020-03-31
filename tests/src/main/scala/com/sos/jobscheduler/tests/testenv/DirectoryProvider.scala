@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.tests.testenv
 
-import akka.http.scaladsl.model.Uri
 import com.google.inject.Module
 import com.google.inject.util.Modules.EMPTY_MODULE
 import com.sos.jobscheduler.agent.RunningAgent
@@ -13,6 +12,7 @@ import com.sos.jobscheduler.base.utils.Closer.syntax.RichClosersAny
 import com.sos.jobscheduler.base.utils.HasCloser
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.utils.ScalazStyle._
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.log.ScribeUtils
 import com.sos.jobscheduler.common.scalautil.FileUtils
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
@@ -94,7 +94,7 @@ extends HasCloser
           provideClientCertificate = provideAgentClientCertificate)
       }.toMap
   val agents: Vector[AgentTree] = agentToTree.values.toVector
-  lazy val agentRefs: Vector[AgentRef] = for (a <- agents) yield AgentRef(a.agentRefPath, uri = a.conf.localUri.toString)
+  lazy val agentRefs: Vector[AgentRef] = for (a <- agents) yield AgentRef(a.agentRefPath, uri = a.conf.localUri)
   private val filebasedHasBeenAdded = AtomicBoolean(false)
 
   closeOnError(this) {

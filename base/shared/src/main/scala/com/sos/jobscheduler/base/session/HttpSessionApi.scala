@@ -3,7 +3,7 @@ package com.sos.jobscheduler.base.session
 import com.sos.jobscheduler.base.auth.{SessionToken, UserAndPassword}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.session.SessionCommand.{Login, Logout}
-import com.sos.jobscheduler.base.web.HttpClient
+import com.sos.jobscheduler.base.web.{HttpClient, Uri}
 import monix.eval.Task
 import monix.execution.atomic.AtomicAny
 
@@ -15,7 +15,7 @@ import monix.execution.atomic.AtomicAny
 trait HttpSessionApi extends SessionApi.LoginUntilReachable with HasSessionToken
 {
   protected def httpClient: HttpClient
-  protected def sessionUri: String
+  protected def sessionUri: Uri
 
   private val sessionTokenRef = AtomicAny[Option[SessionToken]](None)
 

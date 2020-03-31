@@ -4,6 +4,7 @@ import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.OK
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.core.filebased.FileBasedApi
@@ -82,6 +83,6 @@ final class AgentRefRouteTest extends FreeSpec with RouteTester with AgentRefRou
 
 object AgentRefRouteTest {
   private val AgentUri = "/api/agent"
-  private val TestAgent = AgentRef(AgentRefPath("/PATH/AGENT") ~ "VERSION", "https://localhost:65535")
+  private val TestAgent = AgentRef(AgentRefPath("/PATH/AGENT") ~ "VERSION", Uri("https://localhost:65535"))
   private val pathToAgent = Map(TestAgent.path -> TestAgent)
 }

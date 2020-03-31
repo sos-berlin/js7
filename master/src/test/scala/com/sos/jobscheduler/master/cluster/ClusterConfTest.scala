@@ -3,10 +3,10 @@ package com.sos.jobscheduler.master.cluster
 import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.http.configuration.RecouplingStreamReaderConf
 import com.sos.jobscheduler.core.message.ProblemCodeMessages
 import com.sos.jobscheduler.data.cluster.ClusterNodeId
-import com.sos.jobscheduler.data.common.Uri
 import com.typesafe.config.ConfigFactory
 import org.scalatest.FreeSpec
 

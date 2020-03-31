@@ -8,7 +8,7 @@ import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
 import akka.http.scaladsl.model.headers.CacheDirectives.{`no-cache`, `no-store`}
 import akka.http.scaladsl.model.headers.{Accept, RawHeader, `Cache-Control`}
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpHeader, HttpMethod, HttpRequest, HttpResponse, RequestEntity, StatusCode, StatusCodes, Uri}
+import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpHeader, HttpMethod, HttpRequest, HttpResponse, RequestEntity, StatusCode, StatusCodes, Uri => AkkaUri}
 import akka.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshal}
 import akka.http.scaladsl.{Http, HttpsConnectionContext}
 import akka.stream.ActorMaterializer
@@ -25,9 +25,9 @@ import com.sos.jobscheduler.base.utils.MonixAntiBlocking.executeOn
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichThrowable, RichThrowableEither}
 import com.sos.jobscheduler.base.utils.StackTraces._
 import com.sos.jobscheduler.base.utils.Strings.RichString
-import com.sos.jobscheduler.base.web.HttpClient
+import com.sos.jobscheduler.base.web.{HttpClient, Uri}
 import com.sos.jobscheduler.common.http.AkkaHttpClient._
-import com.sos.jobscheduler.common.http.AkkaHttpUtils.{decodeResponse, encodeGzip}
+import com.sos.jobscheduler.common.http.AkkaHttpUtils.{RichAkkaAsUri, RichAkkaUri, decodeResponse, encodeGzip}
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.http.JsonStreamingSupport.StreamingJsonHeaders
 import com.sos.jobscheduler.common.http.StreamingSupport._
@@ -55,6 +55,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
 
   private lazy val http = Http(actorSystem)
   private val materializerLazy = Lazy(ActorMaterializer()(actorSystem))
+  private lazy val baseAkkaUri = AkkaUri(baseUri.string)
   @volatile private var closed = false
 
   implicit final def materializer = materializerLazy()
@@ -71,19 +72,16 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
     }
   }
 
-  final def getDecodedLinesObservable[A: Decoder](uri: String) =
+  final def getDecodedLinesObservable[A: Decoder](uri: Uri) =
     getRawLinesObservable(uri)
       .map(_.map(_.decodeUtf8.orThrow.parseJsonCheckedAs[A].orThrow))
 
-  final def getRawLinesObservable(uri: String): Task[Observable[ByteVector]] =
+  final def getRawLinesObservable(uri: Uri): Task[Observable[ByteVector]] =
     get_[HttpResponse](uri, StreamingJsonHeaders)
       .map(_.entity.withoutSizeLimit.dataBytes
         .toObservable
         .map(o => ByteVector.view(o.toArray))
         .flatMap(new ByteVectorToLinesObservable))
-
-  final def get[A: Decoder](uri: String, timeout: Duration): Task[A] =
-    get[A](uri, timeout, Nil)
 
   /** HTTP Get with Accept: application/json. */
   final def get[A: Decoder](uri: Uri): Task[A] =
@@ -102,11 +100,11 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
     get_[A](uri, headers ::: Accept(`application/json`) :: Nil)
 
   final def get_[A: FromResponseUnmarshaller](uri: Uri, headers: List[HttpHeader] = Nil): Task[A] =
-    sendReceive(HttpRequest(GET, uri, headers ::: `Cache-Control`(`no-cache`, `no-store`) :: Nil))
+    sendReceive(HttpRequest(GET, AkkaUri(uri.string), headers ::: `Cache-Control`(`no-cache`, `no-store`) :: Nil))
       .flatMap(unmarshal[A](GET, uri))
 
-  final def post[A: Encoder, B: Decoder](uri: String, data: A, suppressSessionToken: Boolean): Task[B] =
-    post2[A, B](Uri(uri), data, Nil, suppressSessionToken = suppressSessionToken)
+  final def post[A: Encoder, B: Decoder](uri: Uri, data: A, suppressSessionToken: Boolean): Task[B] =
+    post2[A, B](uri, data, Nil, suppressSessionToken = suppressSessionToken)
 
   final def postWithHeaders[A: Encoder, B: Decoder](uri: Uri, data: A, headers: List[HttpHeader]): Task[B] =
     post2[A, B](uri, data, headers, suppressSessionToken = false)
@@ -115,7 +113,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
     post_[A](uri, data, headers ::: Accept(`application/json`) :: Nil, suppressSessionToken = suppressSessionToken)
       .flatMap(unmarshal[B](POST, uri))
 
-  final def postDiscardResponse[A: Encoder](uri: String, data: A, allowedStatusCodes: Set[Int] = Set.empty): Task[Int] =
+  final def postDiscardResponse[A: Encoder](uri: Uri, data: A, allowedStatusCodes: Set[Int] = Set.empty): Task[Int] =
     post_[A](uri, data, Accept(`application/json`) :: Nil) map { httpResponse =>
       httpResponse.discardEntityBytes()
       if (!httpResponse.status.isSuccess && !allowedStatusCodes(httpResponse.status.intValue))
@@ -127,13 +125,13 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
     for {
       entity <- Task.deferFuture(executeOn(materializer.executionContext)(implicit ec => Marshal(data).to[RequestEntity]))
       response <- sendReceive(
-        HttpRequest(POST, uri, headers, entity),
+        HttpRequest(POST, uri.asAkka, headers, entity),
         suppressSessionToken = suppressSessionToken,
         logData = Some(data.toString))
     } yield response
 
   final def postRaw(uri: Uri, headers: List[HttpHeader], entity: RequestEntity): Task[HttpResponse] =
-    sendReceive(HttpRequest(POST, uri, headers, entity))
+    sendReceive(HttpRequest(POST, uri.asAkka, headers, entity))
 
   final def sendReceive(request: HttpRequest, suppressSessionToken: Boolean = false, logData: => Option[String] = None): Task[HttpResponse] =
     withCheckedAgentUri(request) { request =>
@@ -224,8 +222,8 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
       })
 
   private def withCheckedAgentUri[A](request: HttpRequest)(body: HttpRequest => Task[A]): Task[A] =
-    toCheckedAgentUri(request.uri) match {
-      case Right(uri) => body(request.copy(uri = uri))
+    toCheckedAgentUri(request.uri.asUri) match {
+      case Right(uri) => body(request.copy(uri = uri.asAkka))
       case Left(problem) => Task.raiseError(problem.throwable)
     }
 
@@ -233,21 +231,23 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
     checkAgentUri(normalizeAgentUri(uri))
 
   private[http] final def normalizeAgentUri(uri: Uri): Uri = {
-    val Uri(scheme, authority, path, query, fragment) = uri
+    val AkkaUri(scheme, authority, path, query, fragment) = uri.asAkka
     if (scheme.isEmpty && authority.isEmpty)
-      Uri(baseUri.scheme, baseUri.authority, path, query, fragment)
+      AkkaUri(baseAkkaUri.scheme, baseAkkaUri.authority, path, query, fragment).asUri
     else
       uri
   }
 
   /** Checks `uri` againts `baseUri` - scheme and authority must be equal. */
-  private[http] final def checkAgentUri(uri: Uri): Checked[Uri] =
-    if (uri.scheme == baseUri.scheme &&
-      uri.authority == baseUri.authority &&
-      uri.path.toString.startsWith(uriPrefixPath))
+  private[http] final def checkAgentUri(uri: Uri): Checked[Uri] = {
+    val akkaUri = uri.asAkka
+    if (akkaUri.scheme == baseAkkaUri.scheme &&
+      akkaUri.authority == baseAkkaUri.authority &&
+      akkaUri.path.toString.startsWith(uriPrefixPath))
       Right(uri)
     else
       Left(Problem(s"URI '$uri' does not match $baseUri$uriPrefixPath"))
+  }
 
   private def logRequest(request: HttpRequest, logData: => Option[String]): Unit =
     logger.whenTraceEnabled {

@@ -3,10 +3,10 @@ package com.sos.jobscheduler.master.data
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.cluster.{ClusterNodeId, ClusterState}
 import com.sos.jobscheduler.data.command.CancelMode
-import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.crypt.{GenericSignature, SignedString}
 import com.sos.jobscheduler.data.event.JournalPosition
 import com.sos.jobscheduler.data.filebased.VersionId

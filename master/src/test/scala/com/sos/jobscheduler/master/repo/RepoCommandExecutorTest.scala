@@ -3,6 +3,7 @@ package com.sos.jobscheduler.master.repo
 import com.sos.jobscheduler.base.auth.User.UserDoesNotHavePermissionProblem
 import com.sos.jobscheduler.base.auth.{SimpleUser, UpdateRepoPermission, UserId}
 import com.sos.jobscheduler.base.problem.Checked.Ops
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.core.crypt.silly.{SillySignature, SillySigner}
 import com.sos.jobscheduler.core.filebased.{FileBasedSigner, FileBasedVerifier, Repo}
@@ -27,7 +28,7 @@ final class RepoCommandExecutorTest extends FreeSpec
   private val v1 = VersionId("1")
   private val v2 = VersionId("2")
   private val v3 = VersionId("3")
-  private val agentRef1 = AgentRef(AgentRefPath("/AGENT") ~ v1, "https://example.com")
+  private val agentRef1 = AgentRef(AgentRefPath("/AGENT") ~ v1, Uri("https://example.com"))
   private val workflow2 = Workflow(WorkflowPath("/WORKFLOW") ~ v2, Vector(Fail(None)))
   private val workflow3 = workflow2 withVersion v3
   private val commandMeta = CommandMeta(SimpleUser(UserId("PROVIDER")).copy(grantedPermissions = Set(UpdateRepoPermission)))

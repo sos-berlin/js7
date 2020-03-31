@@ -20,7 +20,7 @@ final class PassiveLostClusterTest extends MasterClusterTester
       var backupMaster = backup.startMaster(httpPort = Some(backupHttpPort)) await 99.s
 
       //primaryMaster.executeCommandAsSystemUser(
-      //  ClusterAppointNodes(primaryUri = Uri(primaryMaster.localUri.toString), backupUri = Uri(backupMaster.localUri.toString))
+      //  ClusterAppointNodes(primaryUri = Uri(primaryMaster.localUri), backupUri = Uri(backupMaster.localUri))
       //).await(99.s).orThrow
       primaryMaster.eventWatch.await[ClusterEvent.ClusterCoupled]()
 

@@ -44,7 +44,7 @@ final class TerminateTest extends FreeSpec with AgentTester {
     implicit val actorSystem = newAgentActorSystem("TerminateTest")
     closer onClose actorSystem.terminate()
 
-    val client = AgentClient(agentUri = agent.localUri.toString)
+    val client = AgentClient(agentUri = agent.localUri)
     client.login(Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD"))) await 99.s
     client.commandExecute(RegisterAsMaster) await 99.s
 

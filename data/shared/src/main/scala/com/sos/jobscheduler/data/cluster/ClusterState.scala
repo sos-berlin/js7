@@ -6,11 +6,11 @@ import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.base.utils.Strings._
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
 import com.sos.jobscheduler.data.cluster.ClusterSetting.checkUris
 import com.sos.jobscheduler.data.cluster.ClusterSetting.syntax._
 import com.sos.jobscheduler.data.cluster.ClusterState._
-import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{EventId, JournalPosition, JournaledState, KeyedEvent}
 import monix.reactive.Observable

@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.agent.data.web
 
-import akka.http.scaladsl.model.Uri
 import com.sos.jobscheduler.agent.data.AgentTaskId
+import com.sos.jobscheduler.base.web.Uri
 import org.scalatest.FreeSpec
 
 /**
@@ -9,7 +9,7 @@ import org.scalatest.FreeSpec
  */
 final class AgentUrisTest extends FreeSpec
 {
-  private val agentUris = AgentUris("https://example.com:9999/testPrefix")
+  private val agentUris = AgentUris(Uri("https://example.com:9999/testPrefix"))
 
   "command" in {
     assert(agentUris.command ==
@@ -49,9 +49,9 @@ final class AgentUrisTest extends FreeSpec
   }
 
   "Trailing slash in URI is ignored" in {
-    assert(AgentUris("https://example.com:9999").overview == Uri("https://example.com:9999/agent/api"))
-    assert(AgentUris("https://example.com:9999/").overview == Uri("https://example.com:9999/agent/api"))
-    assert(AgentUris("https://example.com:9999/x").overview == Uri("https://example.com:9999/x/agent/api"))
-    assert(AgentUris("https://example.com:9999/x/").overview == Uri("https://example.com:9999/x/agent/api"))
+    assert(AgentUris(Uri("https://example.com:9999")).overview == Uri("https://example.com:9999/agent/api"))
+    assert(AgentUris(Uri("https://example.com:9999/")).overview == Uri("https://example.com:9999/agent/api"))
+    assert(AgentUris(Uri("https://example.com:9999/x")).overview == Uri("https://example.com:9999/x/agent/api"))
+    assert(AgentUris(Uri("https://example.com:9999/x/")).overview == Uri("https://example.com:9999/x/agent/api"))
   }
 }

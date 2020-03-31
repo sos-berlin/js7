@@ -6,12 +6,12 @@ import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import com.sos.jobscheduler.common.akkahttp.web.session.SimpleSession
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.data.cluster.ClusterEvent.ClusterNodesAppointed
 import com.sos.jobscheduler.data.cluster.{ClusterNodeId, ClusterState}
-import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.master.MasterId
 import io.circe.JsonObject
 import monix.execution.Scheduler

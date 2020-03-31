@@ -3,7 +3,6 @@ package com.sos.jobscheduler.tests.master.cluster
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
-import com.sos.jobscheduler.common.http.AkkaHttpUtils._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPorts
@@ -32,8 +31,8 @@ final class FailoverClusterTest extends MasterClusterTester
       val primaryId = ClusterNodeId("Primary")
       val backupId = ClusterNodeId("Backup")
       val idToUri = Map(
-        primaryId -> primaryMaster.localUri.asUri,
-        backupId -> backupMaster.localUri.asUri)
+        primaryId -> primaryMaster.localUri,
+        backupId -> backupMaster.localUri)
       primaryMaster.eventWatch.await[ClusterCoupled]()
 
       val t = now

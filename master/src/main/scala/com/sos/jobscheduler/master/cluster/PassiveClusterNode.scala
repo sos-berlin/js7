@@ -11,6 +11,7 @@ import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.utils.ScodecUtils.RichByteVector
 import com.sos.jobscheduler.base.utils.SetOnce
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.event.{EventIdGenerator, PositionAnd}
 import com.sos.jobscheduler.common.http.{AkkaHttpClient, RecouplingStreamReader}
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
@@ -22,7 +23,6 @@ import com.sos.jobscheduler.core.event.state.JournaledStateBuilder
 import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
 import com.sos.jobscheduler.data.cluster.ClusterState.{Coupled, Decoupled, PreparedToBeCoupled}
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
-import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.JournalEvent.SnapshotTaken
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, JournalEvent, JournalId, JournalPosition, JournaledState, KeyedEvent, Stamped}

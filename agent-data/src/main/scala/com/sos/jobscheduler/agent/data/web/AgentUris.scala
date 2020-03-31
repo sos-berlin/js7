@@ -1,9 +1,10 @@
 package com.sos.jobscheduler.agent.data.web
 
-import akka.http.scaladsl.model.Uri
 import akka.http.scaladsl.model.Uri.{Path, Query}
+import akka.http.scaladsl.model.{Uri => AkkaUri}
 import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.agent.data.web.AgentUris._
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.data.event.{Event, EventRequest}
 import com.sos.jobscheduler.data.order.OrderId
 
@@ -12,9 +13,9 @@ import com.sos.jobscheduler.data.order.OrderId
  *
  * @author Joacim Zschimmer
  */
-final class AgentUris private(agentUri: String)
+final class AgentUris private(agentUri: Uri)
 {
-  val prefixedUri = Uri(s"$agentUri/agent")
+  private val prefixedUri = AkkaUri(s"$agentUri/agent")
 
   val overview = toUri("api")
   val session = toUri("api/session")
@@ -29,22 +30,22 @@ final class AgentUris private(agentUri: String)
 
   object order {
     def apply(orderId: OrderId): Uri =
-      toUri(Uri(path = Path("api/order") / orderId.string))
+      toUri(Path("api/order") / orderId.string)
 
     val ids: Uri =
-      toUri(Uri(path = Path("api/order/")) withQuery Query("return" -> "OrderId"))
+      toUri("api/order/", Query("return" -> "OrderId"))
 
     val events: Uri =
-      toUri(Uri(path = Path("api/order/")) withQuery Query("return" -> "OrderEvent"))
+      toUri("api/order/", Query("return" -> "OrderEvent"))
 
     val orders: Uri =
-      toUri(Uri(path = Path("api/order/")) withQuery Query("return" -> "Order"))
+      toUri("api/order/", Query("return" -> "Order"))
   }
 
   def mastersEvents[E <: Event](request: EventRequest[E]) =
-    toUri(Uri(path = Uri.Path("api/master/event")) withQuery Query(request.toQueryParameters: _*))
+    toUri("api/master/event", Query(request.toQueryParameters: _*))
 
-  def apply(relativeUri: String) = toUri(Path(stripLeadingSlash(relativeUri)))
+  def apply(relativeUri: String) = toUri(stripLeadingSlash(relativeUri))
 
   def api(relativeUri: String) =
     if (relativeUri.isEmpty)
@@ -52,21 +53,23 @@ final class AgentUris private(agentUri: String)
     else
       toUri(s"api/${stripLeadingSlash(relativeUri)}")
 
-  private def toUri(path: Path): Uri = toUri(Uri(path = path))
+  private def toUri(path: Path): Uri = Uri(withPath(AkkaUri(path = path)).toString)
 
-  private def toUri(uri: Uri): Uri = withPath(uri)
+  private def toUri(uri: String, query: Query): Uri = Uri(withPath(uri).withQuery(query).toString)
 
-  def withPath(uri: Uri) = {
+  private def toUri(uri: String): Uri = Uri(withPath(uri).toString)
+
+  private def withPath(uri: AkkaUri): AkkaUri = {
     val u = uri.resolvedAgainst(prefixedUri)
     u.copy(path = Path(s"${prefixedUri.path}/${stripLeadingSlash(uri.path.toString())}"))
   }
 
-  override def toString = agentUri
+  override def toString = agentUri.toString
 }
 
 object AgentUris
 {
-  def apply(uri: String) = new AgentUris(uri stripSuffix "/")
+  def apply(uri: Uri) = new AgentUris(Uri(uri.string stripSuffix "/"))
 
   private def stripLeadingSlash(o: String) = o stripPrefix "/"
 }

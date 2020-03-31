@@ -1,25 +1,24 @@
 package com.sos.jobscheduler.core.cluster
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.model.{Uri => AkkaUri}
 import com.sos.jobscheduler.base.auth.UserAndPassword
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.session.{HttpAutoRelogin, HttpSessionApi}
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.web.HttpClient.HttpException
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.http.AkkaHttpClient
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.cluster.ClusterWatch.isClusterWatchProblem
 import com.sos.jobscheduler.core.cluster.HttpClusterWatch._
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
-import com.sos.jobscheduler.data.common.Uri
 import io.circe._
 import monix.eval.Task
 import scala.collection.immutable.Seq
 
 final class HttpClusterWatch(
-  protected val baseUri: AkkaUri,
+  protected val baseUri: Uri,
   protected val userAndPassword: Option[UserAndPassword],
   protected val actorSystem: ActorSystem)
 extends ClusterWatchApi with AkkaHttpClient with HttpSessionApi with HttpAutoRelogin
@@ -28,11 +27,11 @@ extends ClusterWatchApi with AkkaHttpClient with HttpSessionApi with HttpAutoRel
 
   protected def uriPrefixPath = "/agent"
 
-  protected val sessionUri = baseUri + "/agent/api/session"
+  protected val sessionUri = Uri(baseUri + "/agent/api/session")
 
   protected def name = "ClusterWatch"
 
-  private val clusterUri = baseUri + "/agent/api/master/cluster"
+  private val clusterUri = Uri(baseUri + "/agent/api/master/cluster")
 
   def applyEvents(from: ClusterNodeId, events: Seq[ClusterEvent], reportedClusterState: ClusterState, force: Boolean = false)
   : Task[Checked[Completed]] =

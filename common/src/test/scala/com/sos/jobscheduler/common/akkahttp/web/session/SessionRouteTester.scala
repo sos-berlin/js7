@@ -5,8 +5,9 @@ import akka.http.scaladsl.model.headers.{HttpChallenges, `WWW-Authenticate`}
 import akka.http.scaladsl.server.Directives.{complete, decodeRequest, get, path, _}
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import com.sos.jobscheduler.base.auth.{SimpleUser, ValidUserPermission}
+import com.sos.jobscheduler.base.auth.ValidUserPermission
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
@@ -89,7 +90,7 @@ trait SessionRouteTester extends BeforeAndAfterAll with ScalatestRouteTest with 
 
   protected final def requireAuthorizedAccess(client: AkkaHttpClient): Unit = {
     requireAccessToUnprotected(client)
-    client.get_[String](s"$localUri/authorizedUser") await 99.s shouldEqual "A-USER"
+    client.get_[String](Uri(s"$localUri/authorizedUser")) await 99.s shouldEqual "A-USER"
   }
 
   protected final def requireAccessIsUnauthorizedOrPublic(client: AkkaHttpClient): Unit = {
@@ -129,8 +130,8 @@ trait SessionRouteTester extends BeforeAndAfterAll with ScalatestRouteTest with 
   }
 
   private def getViaAuthorizedUsed(client: AkkaHttpClient) =
-    client.get_[String](s"$localUri/authorizedUser") await 99.s
+    client.get_[String](Uri(s"$localUri/authorizedUser")) await 99.s
 
   protected final def requireAccessToUnprotected(client: AkkaHttpClient): Unit =
-    client.get_[String](s"$localUri/unprotected") await 99.s shouldEqual "THE RESPONSE"
+    client.get_[String](Uri(s"$localUri/unprotected")) await 99.s shouldEqual "THE RESPONSE"
 }

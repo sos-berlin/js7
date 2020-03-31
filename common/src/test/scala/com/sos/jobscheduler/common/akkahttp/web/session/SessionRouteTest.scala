@@ -12,6 +12,7 @@ import com.sos.jobscheduler.base.session.HttpSessionApi
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.akkahttp.web.session.SessionRouteTest._
 import com.sos.jobscheduler.common.http.AkkaHttpClient
 import com.sos.jobscheduler.common.http.AkkaHttpClient.HttpException
@@ -175,11 +176,11 @@ extends FreeSpec with SessionRouteTester
 
       if (isPublic) {
           // Access without Login (Session) is allowed
-          api.get_[String](s"$localUri/authorizedUser") await 99.s
+          api.get_[String](Uri(s"$localUri/authorizedUser")) await 99.s
       } else {
         // Access without Login (Session) is rejected
         intercept[HttpException] {
-          api.get_[String](s"$localUri/authorizedUser") await 99.s
+          api.get_[String](Uri(s"$localUri/authorizedUser")) await 99.s
         }.status shouldEqual Unauthorized
         assert(!api.hasSession)
       }
@@ -246,7 +247,7 @@ extends FreeSpec with SessionRouteTester
           // Using old SessionToken is Unauthorized
           otherClient.setSessionToken(firstSessionToken)
           val exception = intercept[AkkaHttpClient.HttpException] {
-            otherClient.get_[String](s"$localUri/authorizedUser") await 99.s
+            otherClient.get_[String](Uri(s"$localUri/authorizedUser")) await 99.s
           }
           requireAccessIsForbidden(otherClient)
           assert(AkkaHttpClient.sessionMayBeLost(exception))
@@ -272,7 +273,7 @@ extends FreeSpec with SessionRouteTester
     val api = new HttpSessionApi with AkkaHttpClient {
       protected val name = "SessionRouteTest"
       def httpClient = this: AkkaHttpClient
-      def sessionUri = s"$baseUri/session"
+      def sessionUri = Uri(s"$baseUri/session")
       val actorSystem = SessionRouteTest.this.system
       def baseUri = localUri
       def uriPrefixPath = ""

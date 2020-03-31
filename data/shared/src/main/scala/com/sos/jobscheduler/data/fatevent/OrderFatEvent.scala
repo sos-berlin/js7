@@ -5,6 +5,7 @@ import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.base.utils.Strings.RichString
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.order.{OrderId, Outcome}
 import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
@@ -47,7 +48,7 @@ object OrderFatEvent
   final case class OrderProcessingStartedFat(
     workflowPosition: WorkflowPosition,
     agentRefPath: AgentRefPath,
-    agentUri: String,
+    agentUri: Uri,
     jobName: Option[WorkflowJob.Name],
     keyValues: Map[String, String])
   extends OrderFatEvent

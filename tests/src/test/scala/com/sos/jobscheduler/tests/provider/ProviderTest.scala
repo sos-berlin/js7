@@ -210,7 +210,7 @@ final class ProviderTest extends FreeSpec with MasterAgentForScalaTest
     "Initial observation with a workflow and an agentRef added" in {
       lastEventId = master.eventWatch.lastAddedEventId
       writeWorkflowFile(BWorkflowPath)
-      live.resolve(agentRefPath.toFile(SourceType.Json)) := AgentRef(agentRefPath, uri = agent.localUri.toString)
+      live.resolve(agentRefPath.toFile(SourceType.Json)) := AgentRef(agentRefPath, uri = agent.localUri)
 
       whenObserved
       val versionId = master.eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId

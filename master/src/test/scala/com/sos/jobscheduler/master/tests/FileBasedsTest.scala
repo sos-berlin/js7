@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.master.tests
 
 import com.sos.jobscheduler.base.problem.Checked.Ops
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.core.filebased.FileBaseds
@@ -27,9 +28,9 @@ final class FileBasedsTest extends FreeSpec
       assert(diffFileBaseds(Nil, Nil).isEmpty)
     }
 
-    lazy val a = AgentRef(AgentRefPath("/A") ~ "1", "http://a")
-    lazy val b = AgentRef(AgentRefPath("/B") ~ "1", "http://b")
-    lazy val c = AgentRef(AgentRefPath("/C") ~ "1", "http://c")
+    lazy val a = AgentRef(AgentRefPath("/A") ~ "1", Uri("http://a"))
+    lazy val b = AgentRef(AgentRefPath("/B") ~ "1", Uri("http://b"))
+    lazy val c = AgentRef(AgentRefPath("/C") ~ "1", Uri("http://c"))
 
     "different order" in {
       assert(
@@ -58,18 +59,18 @@ final class FileBasedsTest extends FreeSpec
     "one updated" in {
       assert(
         diffFileBaseds(
-          a :: b.copy(uri = "http://B-CHANGED") :: Nil,
+          a :: b.copy(uri = Uri("http://B-CHANGED")) :: Nil,
           a :: b :: Nil
-        ) == RepoChange.Updated(b.copy(uri = "http://B-CHANGED")) :: Nil)
+        ) == RepoChange.Updated(b.copy(uri = Uri("http://B-CHANGED"))) :: Nil)
     }
 
     "added, deleted and updated" in {
       assert(
         diffFileBaseds(
-          a.copy(uri = "http://A-CHANGED") :: c :: Nil,
+          a.copy(uri = Uri("http://A-CHANGED")) :: c :: Nil,
           a :: b :: Nil
         ).toSet == Set(
-          RepoChange.Updated(a.copy(uri = "http://A-CHANGED")),
+          RepoChange.Updated(a.copy(uri = Uri("http://A-CHANGED"))),
           RepoChange.Deleted(b.path),
           RepoChange.Added(c)))
     }
@@ -129,8 +130,8 @@ object FileBasedsTest {
   private[tests] val DWorkflow = Workflow(WorkflowPath("/D"), Vector("D-END" @: ExplicitEnd()))
   private[tests] val EWorkflow = Workflow(WorkflowPath("/E"), Vector(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE")))))
   private[tests] val D1Workflow = WorkflowParser.parse(WorkflowPath("/D"), "define workflow { CHANGED-D-END: end; }").orThrow
-  private[tests] val AAgent = AgentRef(AgentRefPath("/A"), "http://A")
-  private[tests] val BAgent = AgentRef(AgentRefPath("/folder/B"), "http://B")
+  private[tests] val AAgent = AgentRef(AgentRefPath("/A"), Uri("http://A"))
+  private[tests] val BAgent = AgentRef(AgentRefPath("/folder/B"), Uri("http://B"))
 
   private[tests] def provideDirectory[A](body: Path => A): A = {
     val dir = createTempDirectory("test-")

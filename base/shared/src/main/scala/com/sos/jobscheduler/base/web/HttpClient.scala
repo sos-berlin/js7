@@ -12,16 +12,16 @@ import scodec.bits.ByteVector
   */
 trait HttpClient
 {
-  def getDecodedLinesObservable[A: Decoder](uri: String): Task[Observable[A]]
+  def getDecodedLinesObservable[A: Decoder](uri: Uri): Task[Observable[A]]
 
-  def getRawLinesObservable(uri: String): Task[Observable[ByteVector]]
+  def getRawLinesObservable(uri: Uri): Task[Observable[ByteVector]]
 
-  def get[A: Decoder](uri: String, timeout: Duration = Duration.Inf): Task[A]
+  def get[A: Decoder](uri: Uri, timeout: Duration = Duration.Inf): Task[A]
 
-  def post[A: Encoder, B: Decoder](uri: String, data: A, suppressSessionToken: Boolean = false): Task[B]
+  def post[A: Encoder, B: Decoder](uri: Uri, data: A, suppressSessionToken: Boolean = false): Task[B]
 
   /** Returns the HTTP status code, discarding the response data. */
-  def postDiscardResponse[A: Encoder](uri: String, data: A, allowedStatusCodes: Set[Int] = Set.empty): Task[/*StatusCode*/Int]
+  def postDiscardResponse[A: Encoder](uri: Uri, data: A, allowedStatusCodes: Set[Int] = Set.empty): Task[/*StatusCode*/Int]
 
   def liftProblem[A](task: Task[A]): Task[Checked[A]]
 }

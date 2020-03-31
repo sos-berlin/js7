@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.master.agent
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.http.CirceToYaml.ToYamlString
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryDirectory
@@ -21,17 +22,17 @@ final class AgentRefReaderTest extends FreeSpec {
       val expected = mutable.Buffer[AgentRef]()
 
       // JSON
-      val jsonAgent = AgentRef(AgentRefPath("/JSON"), "https://JSON")
+      val jsonAgent = AgentRef(AgentRefPath("/JSON"), Uri("https://JSON"))
       (dir / "JSON.agentref.json") := jsonAgent.asJson.toPrettyString
       expected += jsonAgent
 
       // YAML
-      val yamlAgent = AgentRef(AgentRefPath("/YAML"), "https://JSON")
+      val yamlAgent = AgentRef(AgentRefPath("/YAML"), Uri("https://JSON"))
       (dir / "YAML.agentref.yaml") := yamlAgent.asJson.toYamlString
       expected += yamlAgent
 
       // XML
-      val xmlAgent = AgentRef(AgentRefPath("/XML"), "https://XML")
+      val xmlAgent = AgentRef(AgentRefPath("/XML"), Uri("https://XML"))
       (dir / "XML.agent.xml").xml = <agent uri="https://XML"/>
       expected += xmlAgent
 

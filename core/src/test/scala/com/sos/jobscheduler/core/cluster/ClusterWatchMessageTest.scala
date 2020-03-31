@@ -1,9 +1,9 @@
 package com.sos.jobscheduler.core.cluster
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.data.cluster.ClusterEvent.ClusterNodesAppointed
 import com.sos.jobscheduler.data.cluster.{ClusterNodeId, ClusterState}
-import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
 

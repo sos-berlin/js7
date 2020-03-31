@@ -1,15 +1,14 @@
 package com.sos.jobscheduler.master.client
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.model.{Uri => AkkaUri}
 import cats.effect.Resource
 import com.sos.jobscheduler.base.utils.AutoClosing.closeOnError
 import com.sos.jobscheduler.base.utils.ScalazStyle._
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.akkahttp.https.AkkaHttps.loadHttpsConnectionContext
 import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
 import com.sos.jobscheduler.common.http.AkkaHttpClient
-import com.sos.jobscheduler.data.common.Uri
 import com.typesafe.config.{Config, ConfigFactory}
 import monix.eval.Task
 
@@ -17,7 +16,7 @@ import monix.eval.Task
   * @author Joacim Zschimmer
   */
 final class AkkaHttpMasterApi(
-  protected val baseUri: AkkaUri,
+  protected val baseUri: Uri,
   /** To provide a client certificate to server. */
   override protected val keyStoreRef: Option[KeyStoreRef] = None,
   /** To trust the server's certificate. */
@@ -42,7 +41,7 @@ with ProvideActorSystem
 object AkkaHttpMasterApi
 {
   def apply(
-    baseUri: AkkaUri,
+    baseUri: Uri,
     keyStoreRef: Option[KeyStoreRef] = None,
     trustStoreRef: Option[TrustStoreRef] = None,
     name: String = "")
@@ -65,7 +64,7 @@ object AkkaHttpMasterApi
   /** Logs out when the resource is being released. */
   def resource(baseUri: Uri, name: String = "")(implicit actorSystem: ActorSystem): Resource[Task, CommonAkka] =
     Resource.make(
-      acquire = Task(AkkaHttpMasterApi(baseUri = baseUri.string, name = name))
+      acquire = Task(AkkaHttpMasterApi(baseUri = baseUri, name = name))
     )(release = api =>
       api.logout().map(_ => ()).onErrorHandle(_ => ())
         .guarantee(Task {
@@ -78,7 +77,6 @@ object AkkaHttpMasterApi
     protected def keyStoreRef: Option[KeyStoreRef] = None
     /** To trust the server's certificate. */
     protected def trustStoreRef: Option[TrustStoreRef] = None
-    protected final lazy val baseUriString = baseUri.toString
 
     override protected final lazy val httpsConnectionContextOption =
       (keyStoreRef.nonEmpty || trustStoreRef.nonEmpty) ? loadHttpsConnectionContext(keyStoreRef, trustStoreRef)  // TODO None means HttpsConnectionContext? Or empty context?

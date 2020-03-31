@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.agent.client
 
-import akka.http.scaladsl.model.Uri
 import com.sos.jobscheduler.agent.client.AkkaHttpAgentTextApi._
 import com.sos.jobscheduler.agent.data.web.AgentUris
 import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.session.HttpSessionApi
 import com.sos.jobscheduler.base.utils.HasCloser
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.akkahttp.https.{AkkaHttps, TrustStoreRef}
 import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
 import com.sos.jobscheduler.common.configutils.Configs.{ConvertibleConfig, parseConfigIfExists}
@@ -21,7 +21,7 @@ import scala.collection.JavaConverters._
   * @author Joacim Zschimmer
   */
 private[agent] final class AkkaHttpAgentTextApi(
-  agentUri: String,
+  agentUri: Uri,
   protected val print: String => Unit,
   configDirectory: Option[Path] = None)
 extends HasCloser with ProvideActorSystem with TextApi with HttpSessionApi with AkkaHttpClient
@@ -45,13 +45,13 @@ extends HasCloser with ProvideActorSystem with TextApi with HttpSessionApi with 
     }
   }
 
-  protected val baseUri = Uri(agentUri)
+  protected val baseUri = agentUri
 
   protected def uriPrefixPath = "/agent"
 
   protected def serverName = "JobScheduler Agent Server"
 
-  protected val sessionUri = agentUris.session.toString
+  protected val sessionUri = agentUris.session
 
   protected val commandUri = agentUris.command
 

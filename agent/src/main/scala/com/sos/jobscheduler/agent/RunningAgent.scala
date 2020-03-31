@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.agent
 
 import akka.actor.{ActorRef, ActorSystem, Props}
-import akka.http.scaladsl.model.Uri
 import cats.instances.either._
 import cats.syntax.flatMap._
 import com.google.inject.Stage.PRODUCTION
@@ -19,6 +18,7 @@ import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.base.utils.Closer
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.guice.GuiceImplicits._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._

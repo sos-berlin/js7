@@ -6,8 +6,8 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked._
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.data.cluster.ClusterSetting.checkUris
-import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.{JournalPosition, NoKeyEvent}
 
 sealed trait ClusterEvent extends NoKeyEvent

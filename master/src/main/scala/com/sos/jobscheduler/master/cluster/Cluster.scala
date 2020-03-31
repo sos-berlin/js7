@@ -15,9 +15,9 @@ import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.utils.{LockResource, SetOnce}
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.event.EventIdGenerator
-import com.sos.jobscheduler.common.http.AkkaHttpUtils._
 import com.sos.jobscheduler.common.http.{AkkaHttpClient, RecouplingStreamReader}
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.cluster.ClusterWatch.ClusterWatchHeartbeatFromInactiveNodeProblem
@@ -33,7 +33,6 @@ import com.sos.jobscheduler.core.startup.Halt.haltJava
 import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
 import com.sos.jobscheduler.data.cluster.ClusterState.{Coupled, Decoupled, Empty, FailedOver, HasNodes, NodesAppointed, PassiveLost, PreparedToBeCoupled}
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
-import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.master.MasterId
@@ -91,7 +90,7 @@ final class Cluster(
     val uri = clusterConf.agentUris.headOption
       .getOrElse(sys.error("Missing ClusterWatch / Agent URI in cluster configuration"))
     new HttpClusterWatch(
-      uri.asAkka,
+      uri,
       userAndPassword = config.optionAs[SecretString]("jobscheduler.auth.agents." + ConfigUtil.joinPath(uri.string))
         .map(password => UserAndPassword(masterId.toUserId, password)),
       actorSystem)

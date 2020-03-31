@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.provider.configuration
 
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryDirectory
 import com.typesafe.config.ConfigFactory
@@ -20,7 +21,7 @@ final class ProviderConfigurationTest extends FreeSpec
         s"-config-directory=$dir" ::
         "-master-uri=http://example.com" :: Nil
       ).copy(config = ConfigFactory.empty)
-        == ProviderConfiguration(dir, "http://example.com"))
+        == ProviderConfiguration(dir, Uri("http://example.com")))
     }
   }
 
@@ -30,7 +31,7 @@ final class ProviderConfigurationTest extends FreeSpec
       assert(ProviderConfiguration.fromCommandLine(
         s"-config-directory=$dir" ::Nil
       ).copy(config = ConfigFactory.empty)
-        == ProviderConfiguration(dir, "http://example.com"))
+        == ProviderConfiguration(dir, Uri("http://example.com")))
     }
   }
 }

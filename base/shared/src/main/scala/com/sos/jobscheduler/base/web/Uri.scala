@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.data.common
+package com.sos.jobscheduler.base.web
 
 import com.sos.jobscheduler.base.generic.GenericString
 

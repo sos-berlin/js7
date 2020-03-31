@@ -3,7 +3,7 @@ package com.sos.jobscheduler.data.cluster
 import cats.instances.either._
 import cats.syntax.flatMap._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.data.common.Uri
+import com.sos.jobscheduler.base.web.Uri
 
 object ClusterSetting
 {

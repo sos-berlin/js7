@@ -7,6 +7,7 @@ import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.Closer.syntax._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowableEither
 import com.sos.jobscheduler.base.utils.ScodecUtils._
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.http.AkkaHttpClient.HttpException
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
@@ -58,7 +59,7 @@ final class JournalWebServiceTest extends FreeSpec with BeforeAndAfterAll with M
 
   "/master/api/journal requires authentication" in {
     val e = intercept[HttpException] {
-      masterApi.getDecodedLinesObservable[String](s"$uri/master/api/journal?file=0&position=0") await 99.s
+      masterApi.getDecodedLinesObservable[String](Uri(s"$uri/master/api/journal?file=0&position=0")) await 99.s
     }
     assert(e.status == Unauthorized)
   }
@@ -71,12 +72,12 @@ final class JournalWebServiceTest extends FreeSpec with BeforeAndAfterAll with M
     var replicated = ByteVector.empty
     master.eventWatch.await[AgentReady](_ => true)  // Await last event
 
-    val whenReplicated = masterApi.getRawLinesObservable(s"$uri/master/api/journal?markEOF=true&file=0&position=0")
+    val whenReplicated = masterApi.getRawLinesObservable(Uri(s"$uri/master/api/journal?markEOF=true&file=0&position=0"))
       .await(99.s)
       .foreach { replicated ++= _ }
 
     val observedLengths = mutable.Buffer[String]()
-    val whenLengthsObserved = masterApi.getRawLinesObservable(s"$uri/master/api/journal?markEOF=true&file=0&position=0&return=length")
+    val whenLengthsObserved = masterApi.getRawLinesObservable(Uri(s"$uri/master/api/journal?markEOF=true&file=0&position=0&return=length"))
       .await(99.s)
       .foreach(o => observedLengths += o.utf8String)
 
@@ -107,7 +108,7 @@ final class JournalWebServiceTest extends FreeSpec with BeforeAndAfterAll with M
   }
 
   "Timeout" in {
-    val lines = masterApi.getRawLinesObservable(s"$uri/master/api/journal?timeout=0&markEOF=true")
+    val lines = masterApi.getRawLinesObservable(Uri(s"$uri/master/api/journal?timeout=0&markEOF=true"))
       .await(99.s)
       .map(_.utf8String)
       .toListL
@@ -119,12 +120,12 @@ final class JournalWebServiceTest extends FreeSpec with BeforeAndAfterAll with M
     var lines = mutable.Buffer[String]()
     var heartbeatLines = mutable.Buffer[String]()
     val fileAfter = master.eventWatch.lastFileTornEventId
-    val u = s"$uri/master/api/journal?markEOF=true&file=$fileAfter&position=0"
+    val u = Uri(s"$uri/master/api/journal?markEOF=true&file=$fileAfter&position=0")
     masterApi.getRawLinesObservable(u).await(99.s)
       .foreach {
         lines += _.decodeUtf8.orThrow
       }
-    masterApi.getRawLinesObservable(u + "&heartbeat=0.1").await(99.s)
+    masterApi.getRawLinesObservable(Uri(u.string + "&heartbeat=0.1")).await(99.s)
       .timeoutOnSlowUpstream(200.ms)  // Check heartbeat
       .foreach {
         heartbeatLines += _.decodeUtf8.orThrow

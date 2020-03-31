@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.master.agent
 
 import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader
 import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefId}
 import javax.xml.transform.Source
@@ -16,7 +17,7 @@ object AgentRefXmlParser {
         import eventReader._
 
         eventReader.parseElement("agent") {
-          AgentRef(agentRefId, attributeMap("uri"))
+          AgentRef(agentRefId, Uri(attributeMap("uri")))
         }
       }
     }

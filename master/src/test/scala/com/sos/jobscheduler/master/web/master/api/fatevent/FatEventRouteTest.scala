@@ -8,6 +8,7 @@ import akka.http.scaladsl.testkit.RouteTestTimeout
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.CloseableIterator
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.event.collector.{EventCollector, EventDirectives}
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
@@ -156,7 +157,7 @@ final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRou
       eventWatch.addStamped(Stamped(EventId(193), OrderId("10") <-: OrderMoved(Position(1))))
 
       assert(getFatEventSeq("/fatEvent?after=180") == EventSeq.NonEmpty(List(
-        Stamped(191, OrderId("10") <-: OrderProcessingStartedFat(TestWorkflow.id /: Position(0), TestAgentRefId.path, "http://127.0.0.1:0", None, Map.empty)),
+        Stamped(191, OrderId("10") <-: OrderProcessingStartedFat(TestWorkflow.id /: Position(0), TestAgentRefId.path, Uri("http://127.0.0.1:0"), None, Map.empty)),
         Stamped(192, OrderId("10") <-: OrderProcessedFat(Outcome.succeeded, Map.empty)))))
 
       eventWatch.addStamped(Stamped(EventId(200), OrderId("10") <-: OrderDetachable))  // Does not yield an OrderFatEvent
@@ -278,7 +279,7 @@ object FatEventRouteTest
   private val InitialEvents =
     //Stamped(EventId(1), NoKey <-: MasterReady("UTC", 0.s)) ::  // Not required
     Stamped(EventId(2), NoKey <-: VersionAdded(TestVersionId)) ::
-    Stamped(EventId(3), NoKey <-: FileBasedAdded(TestAgentRefId.path, sign(AgentRef(TestAgentRefId, "http://127.0.0.1:0")))) ::
+    Stamped(EventId(3), NoKey <-: FileBasedAdded(TestAgentRefId.path, sign(AgentRef(TestAgentRefId, Uri("http://127.0.0.1:0"))))) ::
     Stamped(EventId(4), NoKey <-: FileBasedAdded(TestWorkflow.path, sign(TestWorkflow))) :: Nil
 
   private val TestEvents: Seq[Seq[Stamped[AnyKeyedEvent]]] =

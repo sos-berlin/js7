@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master.web.master.api.fatevent
 
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.core.crypt.silly.{SillySignatureVerifier, SillySigner}
 import com.sos.jobscheduler.core.filebased.{FileBasedSigner, FileBasedVerifier, Repo}
 import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
@@ -145,7 +146,7 @@ object FatStateTest
 {
   private val versionId = VersionId("1")
   private val orderId = OrderId("ORDER")
-  private val agentRef = AgentRef(AgentRefPath("/AGENT") ~ versionId, "https://0.0.0.0/")
+  private val agentRef = AgentRef(AgentRefPath("/AGENT") ~ versionId, Uri("https://0.0.0.0/"))
   private val workflow = Workflow.of(WorkflowPath("/WORKFLOW") ~ versionId,
     Execute.Anonymous(WorkflowJob(agentRef.path, ExecutablePath("/EXECUTABLE"))))
 }

@@ -1,10 +1,10 @@
 package com.sos.jobscheduler.master.client.main
 
-import akka.http.scaladsl.model.Uri
 import com.sos.jobscheduler.base.auth.SessionToken
 import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.log.Log4j
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -45,7 +45,7 @@ object MasterClientMain {
       else {
         operations foreach {
           case StringCommand(command) => textApi.executeCommand(command)
-          case StdinCommand => textApi.executeCommand(io.Source.stdin.mkString)
+          case StdinCommand => textApi.executeCommand(scala.io.Source.stdin.mkString)
           case Get(uri) => textApi.getApi(uri)
         }
         0
@@ -59,7 +59,7 @@ object MasterClientMain {
       val configDirectory = arguments.optionAs[Path]("-config-directory=")
       val dataDirectory = arguments.as[Path]("-data-directory=")
       val operations = arguments.keylessValues.tail map {
-        case url if url.startsWith("?") || url.startsWith("/") => Get(url)
+        case uri if uri.startsWith("?") || uri.startsWith("/") => Get(uri)
         case "-" => StdinCommand
         case command => StringCommand(command)
       }

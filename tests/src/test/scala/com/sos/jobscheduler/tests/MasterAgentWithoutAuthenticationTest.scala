@@ -4,6 +4,7 @@ import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryDirectory
@@ -84,7 +85,7 @@ final class MasterAgentWithoutAuthenticationTest extends FreeSpec
         "-data-directory=" + dir / "master/data" ::
         "-http-port=" + masterPort :: Nil))
 
-      val agentRef = AgentRef(agentRefPath ~ versionId, s"http://127.0.0.1:$agentPort")
+      val agentRef = AgentRef(agentRefPath ~ versionId, Uri(s"http://127.0.0.1:$agentPort"))
       val agent = RunningAgent(agentConfiguration) await 99.seconds
       val master = RunningMaster(masterConfiguration) await 99.seconds
       master.waitUntilReady()

@@ -6,7 +6,7 @@ import akka.http.scaladsl.model.headers.{HttpEncoding, HttpEncodings, `Accept-En
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, ResponseEntity, Uri => AkkaUri}
 import akka.stream.Materializer
 import akka.util.ByteString
-import com.sos.jobscheduler.data.common.Uri
+import com.sos.jobscheduler.base.web.Uri
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scodec.bits.ByteVector

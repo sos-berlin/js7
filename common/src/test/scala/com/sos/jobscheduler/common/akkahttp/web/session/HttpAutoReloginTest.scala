@@ -6,6 +6,7 @@ import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.session.{HttpAutoRelogin, HttpSessionApi}
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.http.AkkaHttpClient
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import monix.catnap.MVar
@@ -26,7 +27,7 @@ final class HttpAutoReloginTest extends FreeSpec with SessionRouteTester
         protected def scheduler = Scheduler.global
         protected val name = "HttpAutoReloginTest"
         def httpClient = this
-        def sessionUri = s"$baseUri/session"
+        def sessionUri = Uri(s"$baseUri/session")
         val actorSystem = HttpAutoReloginTest.this.system
         def baseUri = server.localUri
         def uriPrefixPath = ""
@@ -44,7 +45,7 @@ final class HttpAutoReloginTest extends FreeSpec with SessionRouteTester
               mvar.put("After retryUntilReachable") >>
               Task { requireAuthorizedAccess(api) } >>
               mvar.put("After requireAuthorizedAccess") >>
-              api.get_[String](s"$localUri/ServiceUnavailable")
+              api.get_[String](Uri(s"$localUri/ServiceUnavailable"))
                 .map(_ => throw new UnsupportedOperationException)
           })
       })

@@ -66,7 +66,7 @@ final class UpdateRepoAgentTest extends FreeSpec
           ).await(99.seconds)
 
           val versionId = VersionId(s"$i")
-          val agentRef = AgentRef(agentRefPath ~ versionId, uri = agent2.localUri.toString)
+          val agentRef = AgentRef(agentRefPath ~ versionId, uri = agent2.localUri)
           executeCommand(master, UpdateRepo(versionId, provider.fileBasedSigner.sign(agentRef) :: Nil))
 
           runOrder(master, OrderId(s"🔵-$i"))

@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.exceptions.HasIsIgnorableStackTrace
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.session.HttpSessionApi
 import com.sos.jobscheduler.base.utils.ScalaUtils._
-import com.sos.jobscheduler.base.web.HttpClient
+import com.sos.jobscheduler.base.web.{HttpClient, Uri}
 import com.sos.jobscheduler.data.agent.AgentRef
 import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
@@ -24,7 +24,7 @@ import scodec.bits.ByteVector
 trait HttpMasterApi extends MasterApi with HttpSessionApi with HasIsIgnorableStackTrace
 {
   /** Host URI or empty for addressing base on "master/". */
-  protected def baseUriString: String
+  protected def baseUri: Uri
 
   protected def uriPrefixPath = "/master"
 
@@ -32,7 +32,10 @@ trait HttpMasterApi extends MasterApi with HttpSessionApi with HasIsIgnorableSta
 
   protected final def sessionUri = uris.session
 
-  lazy val uris = MasterUris(masterUri = if (baseUriString.isEmpty) baseUriString else baseUriString.stripSuffix("/") + "/master")
+  lazy val uris = MasterUris(
+    masterUri =
+      if (baseUri.isEmpty) baseUri
+      else Uri(baseUri.string.stripSuffix("/") + "/master"))
 
   final def executeCommand(command: MasterCommand): Task[command.Response] =
     httpClient.post[MasterCommand, MasterCommand.Response](uris.command, command)
@@ -110,7 +113,7 @@ trait HttpMasterApi extends MasterApi with HttpSessionApi with HasIsIgnorableSta
     httpClient.get[Stamped[Seq[Any]]](uris.snapshot.list)
   }
 
-  //override def toString = s"HttpMasterApi($baseUriString)"
+  //override def toString = s"HttpMasterApi($baseUri)"
 }
 
 object HttpMasterApi {

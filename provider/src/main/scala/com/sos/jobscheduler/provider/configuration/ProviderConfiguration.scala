@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.provider.configuration
 
 import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.configutils.Configs
 import com.sos.jobscheduler.common.configutils.Configs.parseConfigIfExists
@@ -15,7 +16,7 @@ import scala.collection.JavaConverters._
   */
 final case class ProviderConfiguration(
   configDirectory: Path,
-  masterUri: String,
+  masterUri: Uri,
   config: Config = ConfigFactory.empty)
 {
   val liveDirectory = configDirectory / "live"
@@ -43,7 +44,7 @@ object ProviderConfiguration
         .resolve
       new ProviderConfiguration(
         configDirectory = configDir,
-        masterUri = a.optionAs[String]("-master-uri=") getOrElse config.getString("jobscheduler.provider.master.uri"),
+        masterUri = a.optionAs[Uri]("-master-uri=") getOrElse Uri(config.getString("jobscheduler.provider.master.uri")),
         config = config)
     }
 }

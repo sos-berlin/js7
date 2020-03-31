@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.common.http
 
-import akka.http.scaladsl.model.Uri
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.http.CirceToYaml._
 import io.circe.Json
 import monix.execution.Scheduler.Implicits.global
@@ -12,18 +12,18 @@ import scala.concurrent.{Await, Future}
 /**
   * @author Joacim Zschimmer
   */
-trait TextApi {
-
+trait TextApi
+{
   protected val print: String => Unit
   protected def serverName: String
-  protected def sessionUri: String
+  protected def sessionUri: Uri
   protected def commandUri: Uri
   protected def apiUri(tail: String): Uri
   protected def httpClient: AkkaHttpClient
 
   def executeCommand(command: String): Unit = {
     val response = awaitResult(
-      httpClient.post[Json, Json](uri = commandUri.toString, yamlToJson(command).orThrow).runToFuture)
+      httpClient.post[Json, Json](uri = commandUri, yamlToJson(command).orThrow).runToFuture)
     printer.doPrint(response.toYamlString)
   }
 

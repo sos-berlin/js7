@@ -3,6 +3,7 @@ package com.sos.jobscheduler.master.client
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.utils.ScalazStyle._
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.http.Uris.{encodePath, encodeQuery}
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest}
@@ -18,7 +19,7 @@ import scala.reflect.ClassTag
  *
  * @author Joacim Zschimmer
  */
-final class MasterUris private(masterUri: String)
+final class MasterUris private(masterUri: Uri)
 {
   def overview = api()
 
@@ -28,89 +29,85 @@ final class MasterUris private(masterUri: String)
 
   def events[E <: Event: ClassTag](request: EventRequest[E], eventIdOnly: Boolean = false,
     heartbeat: Option[FiniteDuration] = None, onlyLastOfChunk: Boolean = false)
-  : String =
+  : Uri =
     events_[E]("/event", request, eventIdOnly = eventIdOnly, heartbeat = heartbeat, onlyLastOfChunk = onlyLastOfChunk)
 
-  def fatEvents[E <: FatEvent: ClassTag](request: EventRequest[E]): String =
+  def fatEvents[E <: FatEvent: ClassTag](request: EventRequest[E]): Uri =
     events_[E]("/fatEvent", request)
 
   private def events_[E <: Event: ClassTag](path: String, request: EventRequest[E],
     eventIdOnly: Boolean = false, heartbeat: Option[FiniteDuration] = None, onlyLastOfChunk: Boolean = false)
-  : String =
-    api(path) + encodeQuery(
-     (eventIdOnly thenVector ("eventIdOnly" -> "true")) ++
-     (heartbeat.map("heartbeat" -> _.toDecimalString)) ++
-     (onlyLastOfChunk thenVector ("onlyLastOfChunk" -> "true")) ++
-       request.toQueryParameters)
+  = Uri(
+      api(path).string + encodeQuery(
+       (eventIdOnly thenVector ("eventIdOnly" -> "true")) ++
+       (heartbeat.map("heartbeat" -> _.toDecimalString)) ++
+       (onlyLastOfChunk thenVector ("onlyLastOfChunk" -> "true")) ++
+         request.toQueryParameters))
 
   def clusterState = api("/cluster")
 
   def journal(fileEventId: EventId, position: Long, heartbeat: Option[FiniteDuration] = None,
     timeout: Option[FiniteDuration] = None, markEOF: Boolean = false, returnLength: Boolean = false)
-  : String =
-    api("/journal") + encodeQuery(
+  = Uri(
+    api("/journal").string + encodeQuery(
       (returnLength.thenList("return" -> "length")) :::
       (heartbeat.map("heartbeat" -> _.toDecimalString)).toList :::
       (timeout.map("timeout" -> _.toDecimalString)).toList :::
       (markEOF.thenList("markEOF" -> "true")) :::
       ("file" -> fileEventId.toString) ::
-      ("position" -> position.toString) :: Nil)
+      ("position" -> position.toString) :: Nil))
 
   object order {
     def overview = api("/order")
 
     def add = api("/order")
 
-    def list[A: ClassTag]: String =
+    def list[A: ClassTag]: Uri =
       api("/" + encodePath("order", ""), "return" -> encodeClass[A])
 
-    def apply(orderId: OrderId): String =
+    def apply(orderId: OrderId): Uri =
       api("/" + encodePath("order", orderId.string))
   }
 
   object workflow {
-    def apply(path: WorkflowPath): String =
+    def apply(path: WorkflowPath): Uri =
       api("/" + encodePath("workflow", path.withoutStartingSlash))
 
-    def list[A: ClassTag]: String =
+    def list[A: ClassTag]: Uri =
       api("/" + encodePath("workflow", ""), "return" -> encodeClass[A])
   }
 
   object agent {
-    def apply(path: AgentRefPath): String =
+    def apply(path: AgentRefPath): Uri =
       api("/" + encodePath("agent", path.withoutStartingSlash))
 
-    def list[A: ClassTag]: String =
+    def list[A: ClassTag]: Uri =
       api("/" + encodePath("agent", ""), "return" -> encodeClass[A])
   }
 
   object snapshot {
-    val list: String =
+    val list: Uri =
       api("/" + encodePath("snapshot", ""))
   }
 
-  def api(query: (String, String)*): String =
+  def api(query: (String, String)*): Uri =
     api("", query: _*)
 
-  def api(path: String, query: (String, String)*): String = {
+  def api(path: String, query: (String, String)*): Uri = {
     if (path.nonEmpty && !path.startsWith("/")) throw new IllegalArgumentException("Master URI path must start with a slash")
-    master("api" + path) +
-      encodeQuery(query: _*)
+    Uri(
+      master("api" + path).string + encodeQuery(query: _*))
   }
 
-  def master(path: String) = s"$masterUri$path"
+  def master(path: String) = Uri(s"$masterUri$path")
 
-  override def toString = masterUri
+  override def toString = masterUri.string
 }
 
 object MasterUris
 {
-  def apply(masterUri: String): MasterUris =
-    new MasterUris(
-      if (masterUri.isEmpty)
-        masterUri
-      else
-        masterUri.stripSuffix("/") + "/")
+  def apply(masterUri: Uri): MasterUris =
+    new MasterUris(Uri(masterUri.string.stripSuffix("/") + "/"))
 
   private def encodeClass[A: ClassTag]: String =
     encodeClass(implicitClass[A])

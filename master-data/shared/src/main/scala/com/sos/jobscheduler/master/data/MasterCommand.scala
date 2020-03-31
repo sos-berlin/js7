@@ -9,10 +9,10 @@ import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalazStyle._
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.data.cluster.ClusterSetting.syntax._
 import com.sos.jobscheduler.data.cluster.{ClusterNodeId, ClusterSetting, ClusterState}
 import com.sos.jobscheduler.data.command.{CancelMode, CommonCommand}
-import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.crypt.SignedString
 import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.data.filebased.{TypedPath, VersionId}

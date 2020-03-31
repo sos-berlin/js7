@@ -51,11 +51,11 @@ private[https] trait HttpsTestBase extends FreeSpec with BeforeAndAfterAll with 
   override def beforeAll() = {
     // Reference to agents implicitly starts them (before master)
     provideAgentConfiguration(directoryProvider.agents(0))
-    assert(agents.forall(_.localUri.scheme == "https"))
+    assert(agents.forall(_.localUri.string startsWith "https://"))
 
     directoryProvider.master.provideHttpsCertificate()
     provideMasterConfiguration(directoryProvider.master)
-    assert(master.localUri.scheme == "https")
+    assert(master.localUri.string startsWith "https://")
 
     keyStore.contentBytes = ClientKeyStoreResource.contentBytes
     trustStore.contentBytes = DirectoryProvider.MasterTrustStoreResource.contentBytes

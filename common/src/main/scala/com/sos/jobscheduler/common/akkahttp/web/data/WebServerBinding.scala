@@ -1,11 +1,13 @@
 package com.sos.jobscheduler.common.akkahttp.web.data
 
-import akka.http.scaladsl.model.Uri
+import akka.http.scaladsl.model.{Uri => AkkaUri}
 import cats.syntax.either._
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.CatsUtils._
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
+import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichAkkaAsUri
 import java.net.{InetAddress, InetSocketAddress}
 import scala.collection.immutable.Seq
 
@@ -58,9 +60,9 @@ object WebServerBinding {
 
     final def locallyUsableUri(scheme: WebServerBinding.Scheme): Checked[Uri] =
       webServerPorts.collectFirst { case o if o.scheme == scheme => toLocallyUsableUri(scheme, o.address) }
-      .toChecked(Problem(s"No locally usable '$scheme' address: $webServerPorts"))
+        .toChecked(Problem(s"No locally usable '$scheme' address: $webServerPorts"))
 
-    private def toLocallyUsableUri(scheme: WebServerBinding.Scheme, address: InetSocketAddress) = {
+    private def toLocallyUsableUri(scheme: WebServerBinding.Scheme, address: InetSocketAddress): Uri = {
       val localhost = scheme match {
         case WebServerBinding.Http =>
           if (Set("0.0.0.0", "127.0.0.1") contains address.getAddress.getHostAddress)
@@ -77,7 +79,7 @@ object WebServerBinding {
         case o => o
       }
       val port = address.getPort
-      Uri(scheme.toString, Uri.Authority(Uri.Host(host), port))
+      AkkaUri(scheme.toString, AkkaUri.Authority(AkkaUri.Host(host), port)).asUri
     }
   }
 }
