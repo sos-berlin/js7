@@ -5,7 +5,7 @@ import cats.effect.{Resource, SyncIO}
 import cats.instances.vector._
 import cats.syntax.foldable._
 import cats.syntax.show._
-import com.sos.jobscheduler.base.utils.SyncResource.ops._
+import com.sos.jobscheduler.base.utils.SyncResource.syntax._
 import com.sos.jobscheduler.common.time.JavaTime._
 import java.io.{ByteArrayOutputStream, InputStream, OutputStream}
 import java.security.Security

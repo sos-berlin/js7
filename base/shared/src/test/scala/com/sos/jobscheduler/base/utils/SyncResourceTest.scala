@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.base.utils
 
 import cats.effect.{Resource, SyncIO}
-import com.sos.jobscheduler.base.utils.SyncResource.ops._
+import com.sos.jobscheduler.base.utils.SyncResource.syntax._
 import monix.execution.atomic.AtomicAny
 import org.scalatest.FreeSpec
 import scala.collection.mutable

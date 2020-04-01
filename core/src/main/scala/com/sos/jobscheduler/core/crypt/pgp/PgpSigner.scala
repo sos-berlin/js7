@@ -8,7 +8,7 @@ import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.CatsUtils.bytesToInputStreamResource
-import com.sos.jobscheduler.base.utils.SyncResource.ops.RichResource
+import com.sos.jobscheduler.base.utils.SyncResource.syntax.RichResource
 import com.sos.jobscheduler.common.scalautil.GuavaUtils.stringToInputStreamResource
 import com.sos.jobscheduler.core.crypt.MessageSigner
 import com.sos.jobscheduler.core.crypt.pgp.PgpCommons._

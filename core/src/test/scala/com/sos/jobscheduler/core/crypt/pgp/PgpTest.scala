@@ -3,7 +3,7 @@ package com.sos.jobscheduler.core.crypt.pgp
 import cats.syntax.show._
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.utils.SyncResource.ops._
+import com.sos.jobscheduler.base.utils.SyncResource.syntax._
 import com.sos.jobscheduler.common.scalautil.GuavaUtils.stringToInputStreamResource
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.core.crypt.pgp.PgpCommons.{readPublicKeyRingCollection, toPublicKeyRingCollection, writePublicKeyAsAscii, _}
