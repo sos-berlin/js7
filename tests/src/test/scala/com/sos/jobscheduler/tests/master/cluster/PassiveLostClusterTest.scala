@@ -2,7 +2,7 @@ package com.sos.jobscheduler.tests.master.cluster
 
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
+import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterCoupled, ClusterPassiveLost}
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId}

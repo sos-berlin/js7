@@ -5,7 +5,7 @@ import akka.util.{ByteString, Timeout}
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.akkautils.Akkas._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
+import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import com.typesafe.config.ConfigFactory
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global

@@ -9,6 +9,7 @@ import cats.syntax.flatMap._
 import com.sos.jobscheduler.base.auth.UserAndPassword
 import com.sos.jobscheduler.base.eventbus.EventBus
 import com.sos.jobscheduler.base.generic.{Completed, SecretString}
+import com.sos.jobscheduler.base.monixutils.MonixBase.syntax._
 import com.sos.jobscheduler.base.monixutils.MonixDeadline.now
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
@@ -21,7 +22,6 @@ import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.http.{AkkaHttpClient, RecouplingStreamReader}
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.scalautil.MonixUtils.ops.RichCheckedTask
 import com.sos.jobscheduler.core.cluster.ClusterWatch.ClusterWatchHeartbeatFromInactiveNodeProblem
 import com.sos.jobscheduler.core.cluster.HttpClusterWatch
 import com.sos.jobscheduler.core.event.journal.JournalActor

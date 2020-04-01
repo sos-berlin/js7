@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
-import com.sos.jobscheduler.common.scalautil.MonixUtils.ops.RichTaskCompanion
+import com.sos.jobscheduler.base.monixutils.MonixBase.syntax._
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.data.event.{EventId, JournalId}
 import com.typesafe.config.Config

@@ -9,7 +9,7 @@ import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.http.AkkaHttpClient.HttpException
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.RichFutures
-import com.sos.jobscheduler.common.scalautil.MonixUtils.ops.RichTask
+import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax.RichTask
 import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem.sleepingShellScript
 import com.sos.jobscheduler.core.filebased.Repo.ObjectVersionDoesNotMatchProblem
 import com.sos.jobscheduler.core.problems.TamperedWithSignedMessageProblem

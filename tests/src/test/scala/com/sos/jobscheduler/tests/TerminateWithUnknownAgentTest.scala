@@ -2,7 +2,7 @@ package com.sos.jobscheduler.tests
 
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
+import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
 import com.sos.jobscheduler.data.job.ExecutableScript
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}

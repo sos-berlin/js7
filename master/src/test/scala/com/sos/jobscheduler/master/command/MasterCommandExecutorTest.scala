@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master.command
 
 import com.sos.jobscheduler.base.auth.{SimpleUser, UserId}
 import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
+import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import com.sos.jobscheduler.core.command.{CommandExecutor, CommandMeta}
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.order.OrderId

@@ -8,7 +8,7 @@ import com.sos.jobscheduler.base.problem.Problems.InvalidSessionTokenProblem
 import com.sos.jobscheduler.common.akkahttp.web.session.SessionRegisterTest._
 import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
+import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.schedulers.TestScheduler
 import org.scalatest.FreeSpec

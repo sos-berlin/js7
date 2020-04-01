@@ -5,7 +5,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.util.ByteString
 import com.sos.jobscheduler.base.auth.ValidUserPermission
-import com.sos.jobscheduler.base.monixutils.MonixBase._
+import com.sos.jobscheduler.base.monixutils.MonixBase.syntax._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichAny
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.accept

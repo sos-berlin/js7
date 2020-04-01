@@ -13,7 +13,7 @@ import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
 import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
-import com.sos.jobscheduler.common.scalautil.MonixUtils.ops.RichTask
+import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax.RichTask
 import com.sos.jobscheduler.core.cluster.HttpClusterWatchTest._
 import com.sos.jobscheduler.data.cluster.ClusterEvent.ClusterNodesAppointed
 import com.sos.jobscheduler.data.cluster.{ClusterNodeId, ClusterState}

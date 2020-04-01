@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.base.monixutils
 
-import com.sos.jobscheduler.base.monixutils.MonixBase.RichMonixObservable
+import com.sos.jobscheduler.base.monixutils.MonixBase.syntax._
 import com.sos.jobscheduler.base.time.ScalaTime._
 import monix.eval.Task
 import monix.execution.schedulers.TestScheduler

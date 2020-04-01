@@ -3,18 +3,17 @@ package com.sos.jobscheduler.common.akkahttp
 import akka.NotUsed
 import akka.http.scaladsl.marshalling.{Marshaller, ToEntityMarshaller, ToResponseMarshallable, ToResponseMarshaller}
 import akka.http.scaladsl.model.MediaTypes.`text/plain`
-import akka.http.scaladsl.model.StatusCodes.BadRequest
 import akka.http.scaladsl.model.{ContentType, HttpEntity, HttpResponse, MediaType, StatusCode}
 import akka.http.scaladsl.unmarshalling.{FromStringUnmarshaller, Unmarshaller}
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
+import com.sos.jobscheduler.base.monixutils.MonixBase.closeableIteratorToObservable
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.http.CirceJsonSupport.jsonMarshaller
 import com.sos.jobscheduler.common.http.StreamingSupport.AkkaObservable
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.scalautil.MonixUtils.closeableIteratorToObservable
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import scala.concurrent.duration._

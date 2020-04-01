@@ -5,7 +5,7 @@ import com.sos.jobscheduler.agent.scheduler.order.OrderRegister._
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.common.scalautil.MonixUtils.ops.RichScheduler
+import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax.RichScheduler
 import com.sos.jobscheduler.core.common.ActorRegister
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.OrderEvent.OrderDetached

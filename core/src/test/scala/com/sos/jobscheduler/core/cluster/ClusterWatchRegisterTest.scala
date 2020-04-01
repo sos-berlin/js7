@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.core.cluster
 
 import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
+import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import com.sos.jobscheduler.data.master.MasterId
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global

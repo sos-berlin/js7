@@ -1,12 +1,16 @@
 package com.sos.jobscheduler.base.monixutils
 
 import com.sos.jobscheduler.base.monixutils.MonixBase._
+import com.sos.jobscheduler.base.monixutils.MonixBase.syntax._
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.utils.CloseableIterator
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.AsyncFreeSpec
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration.Duration
+import scala.language.reflectiveCalls
 
 /**
   * @author Joacim Zschimmer
@@ -33,6 +37,28 @@ final class MonixBaseTest extends AsyncFreeSpec
       .orTimeout(10.ms, Task(7))
       .map(o => assert(o == 7))
       .runToFuture
+  }
+
+  "materializeIntoChecked" in {
+    assert(Task.pure(Checked(1)).materializeIntoChecked.runSyncUnsafe() == Checked(1))
+    assert(Task.pure(Left(Problem("PROBLEM"))).materializeIntoChecked.runSyncUnsafe() == Left(Problem("PROBLEM")))
+    assert(Task(sys.error("ERROR")).materializeIntoChecked.runSyncUnsafe() == Checked.catchNonFatal(sys.error("ERROR")))
+  }
+
+  "closeableIteratorToObservable" in {
+    val iterator = new CloseableIterator[Int] {
+      var closed = false
+      private val it = List(1, 2, 3).iterator
+      def close() = closed = true
+      def hasNext = it.hasNext
+      def next() = it.next()
+    }
+    assert(!iterator.closed)
+    closeableIteratorToObservable(iterator).toListL
+      .runToFuture.map { result =>
+        assert(result == List(1, 2, 3))
+        assert(iterator.closed)
+      }
   }
 
   //"takeUntil memory leak" in {
