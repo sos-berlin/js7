@@ -105,7 +105,7 @@ object MasterConfiguration
   ): MasterConfiguration = {
     val dataDir = dataDirectory.toAbsolutePath
     val configDir = configDirectory.toAbsolutePath
-    val config = resolvedConfig(configDir, extraDefaultConfig)
+    val config = resolvedConfig(configDir, dataDir, extraDefaultConfig)
     val masterId = MasterId(config.getString("jobscheduler.master.id"))
     new MasterConfiguration(
       masterId = masterId,
@@ -121,10 +121,11 @@ object MasterConfiguration
       config = config)
   }
 
-  private def resolvedConfig(configDirectory: Path, extraDefaultConfig: Config): Config = {
+  private def resolvedConfig(configDirectory: Path, dataDirectory: Path, extraDefaultConfig: Config): Config = {
     val config = configDirectoryConfig(configDirectory)
     ConfigFactory.parseMap(Map(
-        "jobscheduler.config-directory" -> configDirectory.toString
+        "jobscheduler.config-directory" -> configDirectory.toString,
+        "jobscheduler.data-directory" -> dataDirectory.toString
       ).asJava)
       .withFallback(ConfigFactory.systemProperties)
       .withFallback(config)

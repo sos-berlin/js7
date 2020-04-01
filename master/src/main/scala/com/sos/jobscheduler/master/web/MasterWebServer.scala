@@ -3,6 +3,7 @@ package com.sos.jobscheduler.master.web
 import akka.actor.ActorSystem
 import com.google.inject.Injector
 import com.sos.jobscheduler.base.auth.SimpleUser
+import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.utils.Closer
 import com.sos.jobscheduler.base.utils.Closer.syntax.RichClosersAutoCloseable
@@ -10,8 +11,8 @@ import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
+import com.sos.jobscheduler.common.configutils.Configs._
 import com.sos.jobscheduler.common.event.EventWatch
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.core.filebased.FileBasedApi
 import com.sos.jobscheduler.data.cluster.ClusterState
@@ -20,6 +21,7 @@ import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.{MasterState, OrderApi}
 import com.typesafe.config.Config
+import java.nio.file.Path
 import javax.inject.{Inject, Singleton}
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -69,7 +71,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri
       protected def clusterState = MasterWebServer.this.clusterState
       protected def masterState = MasterWebServer.this.masterState
       protected def totalRunningSince = MasterWebServer.this.totalRunningSince
-      protected val currentLogFile = masterConfiguration.dataDirectory / "logs" / "master.log"
+      protected val currentLogFile = config.as[Path]("jobscheduler.log.file")
 
       def webServerRoute = completeRoute
 
