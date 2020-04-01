@@ -12,11 +12,12 @@ import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.cluster.ClusterWatch.ClusterWatchHeartbeatFromInactiveNodeProblem
 import com.sos.jobscheduler.core.cluster.ClusterWatchApi
-import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
+import com.sos.jobscheduler.data.cluster.{ClusterCommand, ClusterEvent, ClusterState}
 import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
 import com.sos.jobscheduler.master.cluster.ClusterCommon._
 import com.sos.jobscheduler.master.cluster.PassiveClusterNode.{ClusterWatchAgreesToActivation, ClusterWatchDisagreeToActivation}
 import com.sos.jobscheduler.master.data.MasterCommand
+import com.sos.jobscheduler.master.data.MasterCommand.InternalClusterCommand
 import java.nio.ByteBuffer
 import java.nio.channels.{FileChannel, GatheringByteChannel, ScatteringByteChannel}
 import java.nio.file.StandardOpenOption.{CREATE, READ, TRUNCATE_EXISTING, WRITE}
@@ -55,11 +56,11 @@ private[cluster] final class ClusterCommon(
             }
         })
 
-  def tryEndlesslyToSendCommand(uri: Uri, command: MasterCommand): Task[Unit] = {
+  def tryEndlesslyToSendCommand(uri: Uri, command: ClusterCommand): Task[Unit] = {
     val name = command.getClass.simpleScalaName
     masterApi(uri, name = name)
       .use(_
-        .executeCommand(command))
+        .executeCommand(InternalClusterCommand(command)))
         .map((_: MasterCommand.Response) => ())
       .onErrorRestartLoop(()) { (throwable, _, retry) =>
         logger.warn(s"'$name' command failed with ${throwable.toStringWithCauses}")

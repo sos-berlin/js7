@@ -368,13 +368,9 @@ object RunningMaster
                     .mapTo[Checked[command.Response]]
               })
 
-        case cmd @ (_: MasterCommand.ClusterAppointNodes |
-                    _: MasterCommand.ClusterPrepareCoupling |
-                    _: MasterCommand.ClusterCouple |
-                    _: MasterCommand.ClusterRecouple |
-                    _: MasterCommand.ClusterStartBackupNode |
-                    _: MasterCommand.ClusterInhibitActivation) =>
-          cluster.executeCommand(cmd)
+        case MasterCommand.InternalClusterCommand(clusterCommand) =>
+          cluster.executeCommand(clusterCommand)
+            .map(_.map(MasterCommand.InternalClusterCommand.Response.apply))
 
         case _ =>
           orderKeeperStarted.value match {

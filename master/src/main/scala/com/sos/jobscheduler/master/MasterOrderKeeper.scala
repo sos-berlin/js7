@@ -654,7 +654,7 @@ with MainJournalingActor[Event]
         persist(MasterTestEvent, async = true)(_ =>
           Right(MasterCommand.Response.Accepted))
 
-      case (_: MasterCommand.ClusterAppointNodes) | (_: MasterCommand.ClusterPrepareCoupling) | (_: MasterCommand.ClusterCouple) =>
+      case _: MasterCommand.InternalClusterCommand =>
         // Handled by MasterCommandExecutor
         Future.failed(new NotImplementedError)
     }

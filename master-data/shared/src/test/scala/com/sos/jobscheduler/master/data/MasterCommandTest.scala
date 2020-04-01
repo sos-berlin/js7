@@ -2,13 +2,10 @@ package com.sos.jobscheduler.master.data
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.cluster.{ClusterNodeId, ClusterState}
+import com.sos.jobscheduler.data.cluster.{ClusterCommand, ClusterNodeId}
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.crypt.{GenericSignature, SignedString}
-import com.sos.jobscheduler.data.event.JournalPosition
 import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.WorkflowPath
@@ -18,19 +15,30 @@ import org.scalatest.FreeSpec
 
 final class MasterCommandTest extends FreeSpec
 {
-  "ClusterAppointNodes" in {
-    testJson[MasterCommand](ClusterAppointNodes(
-      Map(
-        ClusterNodeId("A") ->Uri("http://ACTIVE"),
-        ClusterNodeId("B") -> Uri("http://B")),
-      ClusterNodeId("A")),
+  // Internal use only
+  "InternalClusterCommand" in {
+    testJson[MasterCommand](InternalClusterCommand(
+      ClusterCommand.ClusterCouple(
+        ClusterNodeId("A"),
+        ClusterNodeId("B"))),
       json"""{
-        "TYPE": "ClusterAppointNodes",
-        "idToUri": {
-          "A": "http://ACTIVE",
-          "B": "http://B"
-        },
-        "activeId": "A"
+        "TYPE": "InternalClusterCommand",
+        "clusterCommand": {
+          "TYPE": "ClusterCouple",
+          "activeId": "A",
+          "passiveId": "B"
+        }
+      }""")
+  }
+
+  "InternalClusterCommand.Response" in {
+    testJson[MasterCommand.Response](InternalClusterCommand.Response(
+      ClusterCommand.Response.Accepted),
+      json"""{
+        "TYPE": "InternalClusterCommand.Response",
+        "response": {
+          "TYPE": "Accepted"
+        }
       }""")
   }
 
@@ -101,53 +109,6 @@ final class MasterCommandTest extends FreeSpec
     }
   }
 
-  "ClusterStartBackupNode" in {
-    testJson[MasterCommand](
-      ClusterStartBackupNode(
-        Map(
-          ClusterNodeId("A") -> Uri("http://A"),
-          ClusterNodeId("B") -> Uri("http://B")),
-        ClusterNodeId("A")),
-      json"""{
-        "TYPE": "ClusterStartBackupNode",
-        "idToUri": {
-          "A": "http://A",
-          "B": "http://B"
-        },
-        "activeId": "A"
-      }""")
-  }
-
-  "ClusterPrepareCoupling" in {
-    testJson[MasterCommand](
-      ClusterPrepareCoupling(ClusterNodeId("A"), ClusterNodeId("B")),
-      json"""{
-        "TYPE": "ClusterPrepareCoupling",
-        "activeId": "A",
-        "passiveId": "B"
-      }""")
-  }
-
-  "ClusterCouple" in {
-    testJson[MasterCommand](
-      ClusterCouple(ClusterNodeId("A"), ClusterNodeId("B")),
-      json"""{
-        "TYPE": "ClusterCouple",
-        "activeId": "A",
-        "passiveId": "B"
-      }""")
-  }
-
-  "ClusterRecouple" in {
-    testJson[MasterCommand](
-      ClusterRecouple(ClusterNodeId("A"), ClusterNodeId("B")),
-      json"""{
-        "TYPE": "ClusterRecouple",
-        "activeId": "A",
-        "passiveId": "B"
-      }""")
-  }
-
   "ReplaceRepo" in {
     testJson[MasterCommand](ReplaceRepo(
       VersionId("1"),
@@ -209,37 +170,6 @@ final class MasterCommandTest extends FreeSpec
             "path": "/AGENT-A"
           }
         ]
-      }""")
-  }
-
-  "ClusterInhibitActivation" in {
-    testJson[MasterCommand](ClusterInhibitActivation(7.s),
-      json"""{
-        "TYPE": "ClusterInhibitActivation",
-        "duration": 7
-      }""")
-  }
-
-  "ClusterInhibitActivation.Response" in {
-    testJson[MasterCommand.Response](ClusterInhibitActivation.Response(Some(ClusterState.FailedOver(
-      Map(
-        ClusterNodeId("A") -> Uri("http://A"),
-        ClusterNodeId("B") -> Uri("http://B")),
-      activeId = ClusterNodeId("A"),
-      JournalPosition(0, 1000)))),
-      json"""{
-        "TYPE": "ClusterInhibitActivationResponse",
-        "failedOver": {
-          "idToUri": {
-            "A": "http://A",
-            "B": "http://B"
-          },
-          "activeId": "A",
-          "failedAt": {
-            "fileEventId": 0,
-            "position": 1000
-          }
-        }
       }""")
   }
 

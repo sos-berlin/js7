@@ -32,9 +32,10 @@ import com.sos.jobscheduler.core.event.journal.recover.{JournaledStateRecoverer,
 import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
 import com.sos.jobscheduler.core.problems.MissingPassiveClusterNodeHeartbeatProblem
 import com.sos.jobscheduler.core.startup.Halt.haltJava
+import com.sos.jobscheduler.data.cluster.ClusterCommand.{ClusterInhibitActivation, ClusterStartBackupNode}
 import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
 import com.sos.jobscheduler.data.cluster.ClusterState.{Coupled, Decoupled, Empty, FailedOver, HasNodes, NodesAppointed, PassiveLost, PreparedToBeCoupled}
-import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
+import com.sos.jobscheduler.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeId, ClusterState}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.master.MasterId
@@ -43,8 +44,7 @@ import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
 import com.sos.jobscheduler.master.cluster.Cluster._
 import com.sos.jobscheduler.master.cluster.ClusterCommon.truncateFile
 import com.sos.jobscheduler.master.cluster.ObservablePauseDetector._
-import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.data.MasterCommand.{ClusterInhibitActivation, ClusterStartBackupNode}
+import com.sos.jobscheduler.master.data.MasterCommand.InternalClusterCommand
 import com.typesafe.config.{Config, ConfigUtil}
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, Paths}
@@ -301,24 +301,43 @@ final class Cluster(
       case _ => Task.pure(Right(Completed))
     }
 
-  def executeCommand(command: MasterCommand): Task[Checked[MasterCommand.Response]] =
-    command match {
-      case MasterCommand.ClusterAppointNodes(idToUri, activeId) =>
-        persist {
-          case Empty =>
-            ClusterNodesAppointed.checked(idToUri, activeId).map(_ :: Nil)
-          case NodesAppointed(`idToUri`, `activeId`) =>
-            Right(Nil)
-          case state =>
-            Left(Problem(s"A backup node can not be appointed while cluster is in state $state"))
-        }.map(_.map { case (stampedEvents, state) =>
-          for (last <- stampedEvents.lastOption) {
-            proceed(state, last.eventId)
-          }
-          MasterCommand.Response.Accepted
-        })
+  //def appointClusterNodes(idToUri: Map[ClusterNodeId, Uri], activeId: ClusterNodeId): Task[Checked[Completed]] =
+  //  persist {
+  //    case Empty =>
+  //      ClusterNodesAppointed.checked(idToUri, activeId).map(_ :: Nil)
+  //    case NodesAppointed(`idToUri`, `activeId`) =>
+  //      Right(Nil)
+  //    case clusterState: HasNodes =>
+  //      if (clusterState.idToUri == idToUri)
+  //        Right(Nil)
+  //      else
+  //        Left(Problem(s"Different Cluster Nodes have already been appointed"))
+  //  }.map(_.map { case (stampedEvents, state) =>
+  //    for (last <- stampedEvents.lastOption) {
+  //      proceed(state, last.eventId)
+  //    }
+  //    Completed
+  //  })
 
-      case MasterCommand.ClusterPrepareCoupling(activeId, passiveId) =>
+  def executeCommand(command: ClusterCommand): Task[Checked[ClusterCommand.Response]] =
+    command match {
+      case command: ClusterCommand.ClusterStartBackupNode =>
+        Task {
+          expectingStartBackupCommand.toOption match {
+            case None => Left(Problem("Cluster node is not ready to accept a backup node configuration"))
+            case Some(promise) =>
+              if (command.passiveId != ownId)
+                Left(Problem.pure(s"$command sent to wrong node '$ownId'"))
+              else if (command.activeId == ownId)
+                Left(Problem.pure(s"$command must not be sent to the active node"))
+              else {
+                promise.trySuccess(command)
+                Right(ClusterCommand.Response.Accepted)
+              }
+          }
+        }
+
+      case ClusterCommand.ClusterPrepareCoupling(activeId, passiveId) =>
         persistence.waitUntilStarted.flatMap(_ =>
           persist {
             case clusterState: Decoupled
@@ -339,10 +358,10 @@ final class Cluster(
               Left(Problem.pure(s"$command command rejected due to inappropriate cluster state $state"))
           }.map(_.map { case (stampedEvents, state) =>
             for (stamped <- stampedEvents.lastOption) proceed(state, stamped.eventId)
-            MasterCommand.Response.Accepted
+            ClusterCommand.Response.Accepted
           }))
 
-      case MasterCommand.ClusterCouple(activeId, passiveId) =>
+      case ClusterCommand.ClusterCouple(activeId, passiveId) =>
         persistence.waitUntilStarted >>
           persist {
             case s: PassiveLost
@@ -368,11 +387,11 @@ final class Cluster(
           }.map(_
             .map { case (stampedEvents, state) =>
               for (stamped <- stampedEvents.lastOption) proceed(state, stamped.eventId)
-              MasterCommand.Response.Accepted
+              ClusterCommand.Response.Accepted
 
             })
 
-      case MasterCommand.ClusterRecouple(activeId, passiveId) =>
+      case ClusterCommand.ClusterRecouple(activeId, passiveId) =>
         persistence.waitUntilStarted >>
           persist {
             case s: Coupled
@@ -381,26 +400,10 @@ final class Cluster(
 
             case _ =>
               Right(Nil)
-          }.map(_.map(_ => MasterCommand.Response.Accepted))
+          }.map(_.map(_ => ClusterCommand.Response.Accepted))
 
-      case command: MasterCommand.ClusterStartBackupNode =>
-        Task {
-          expectingStartBackupCommand.toOption match {
-            case None => Left(Problem("Cluster node is not ready to accept a backup node configuration"))
-            case Some(promise) =>
-              if (command.passiveId != ownId)
-                Left(Problem.pure(s"$command sent to wrong node '$ownId'"))
-              else if (command.activeId == ownId)
-                Left(Problem.pure(s"$command must not be sent to the active node"))
-              else {
-                promise.trySuccess(command)
-                Right(MasterCommand.Response.Accepted)
-              }
-          }
-        }
-
-      case MasterCommand.ClusterInhibitActivation(duration) =>
-        import MasterCommand.ClusterInhibitActivation.Response
+      case ClusterCommand.ClusterInhibitActivation(duration) =>
+        import ClusterCommand.ClusterInhibitActivation.Response
         activationInhibitor.inhibitActivation(duration)
           .flatMap {
             case Left(problem) => Task.pure(Left(problem))
@@ -434,8 +437,10 @@ final class Cluster(
       AkkaHttpMasterApi.resource(uri, name = "ClusterInhibitActivation")
         .use(otherNode =>
           otherNode.loginUntilReachable(clusterConf.userAndPassword, retryDelays) >>
-            otherNode.executeCommand(ClusterInhibitActivation(2 * clusterConf.failAfter/*TODO*/))
-              .map(_.failedOver))
+            otherNode.executeCommand(
+              InternalClusterCommand(
+                ClusterInhibitActivation(2 * clusterConf.failAfter/*TODO*/))
+            ) .map(_.response.asInstanceOf[ClusterInhibitActivation.Response].failedOver))
         .onErrorRestartLoop(()) { (throwable, _, retry) =>
           // TODO Code mit loginUntilReachable usw. zusammenfassen. Stacktrace unterdrücken wenn isNotIgnorableStackTrace
           val msg = "While trying to reach the other cluster node due to restart: " + throwable.toStringWithCauses
@@ -498,7 +503,7 @@ final class Cluster(
               assert(id != ownId)
               val passiveLost = ClusterPassiveLost(id)
               val common = new ClusterCommon(activationInhibitor, clusterWatch, clusterConf, testEventBus)
-              // FIXME Exklusiver Zugriff (Lock) wegen parallelen MasterCommand.ClusterRecouple, das ein EventLost auslöst,
+              // FIXME Exklusiver Zugriff (Lock) wegen parallelen ClusterCommand.ClusterRecouple, das ein EventLost auslöst,
               //  mit ClusterCouplingPrepared infolge. Dann können wir kein PassiveLost ausgeben.
               //  JournaledStatePersistence Lock in die Anwendungsebene (hier) heben
               persistence.currentState/*???*/.flatMap {

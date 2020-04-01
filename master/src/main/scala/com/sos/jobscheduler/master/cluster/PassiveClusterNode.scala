@@ -20,6 +20,7 @@ import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, JournalSeparat
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles._
 import com.sos.jobscheduler.core.event.journal.recover.{FileJournaledStateBuilder, JournalProgress, Recovered, RecoveredJournalFile}
 import com.sos.jobscheduler.core.event.state.JournaledStateBuilder
+import com.sos.jobscheduler.data.cluster.ClusterCommand.{ClusterCouple, ClusterPrepareCoupling, ClusterRecouple}
 import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
 import com.sos.jobscheduler.data.cluster.ClusterState.{Coupled, Decoupled, PreparedToBeCoupled}
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
@@ -29,7 +30,6 @@ import com.sos.jobscheduler.data.event.{Event, EventId, JournalEvent, JournalId,
 import com.sos.jobscheduler.master.client.HttpMasterApi
 import com.sos.jobscheduler.master.cluster.ObservablePauseDetector.RichPauseObservable
 import com.sos.jobscheduler.master.cluster.PassiveClusterNode._
-import com.sos.jobscheduler.master.data.MasterCommand.{ClusterCouple, ClusterPrepareCoupling, ClusterRecouple}
 import io.circe.Json
 import io.circe.syntax._
 import java.nio.ByteBuffer
