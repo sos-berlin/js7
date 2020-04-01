@@ -688,7 +688,7 @@ final class Cluster(
               Task.pure(Right(Right(Completed)))
           })
         .flatMap {
-          case Left(since) => Task.sleep(clusterConf.heartbeat - since.elapsed).map(_ => Left())
+          case Left(since) => Task.sleep(clusterConf.heartbeat - since.elapsed).map(_ => Left(()))
           case Right(o) => Task.pure(Right(o))
         })
   }
