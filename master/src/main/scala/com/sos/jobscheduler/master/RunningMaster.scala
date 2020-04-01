@@ -11,6 +11,7 @@ import com.google.inject.util.Modules.EMPTY_MODULE
 import com.google.inject.{Guice, Injector, Module}
 import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.base.eventbus.EventBus
+import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.time.ScalaTime._
@@ -355,18 +356,22 @@ object RunningMaster
     def executeCommand(command: MasterCommand, meta: CommandMeta): Task[Checked[command.Response]] =
       (command match {
         case command: MasterCommand.ShutDown =>
-            Task {
-              onShutDownCommand(MasterTermination.Terminate(restart = command.restart))
-              startingClusterFuture.cancel()
-            } >>
-            Task.deferFutureAction(implicit s =>
-              orderKeeperStarted flatMap {
-                case None =>  // MasterOrderKeeper does not start
-                  Future.successful(Right(MasterCommand.Response.Accepted))
-                case Some(actor) =>
-                  (actor ? MasterOrderKeeper.Command.Execute(command, meta))
-                    .mapTo[Checked[command.Response]]
-              })
+          Task {
+            onShutDownCommand(MasterTermination.Terminate(restart = command.restart))
+            startingClusterFuture.cancel()
+          } >>
+          Task.deferFutureAction(implicit s =>
+            orderKeeperStarted flatMap {
+              case None =>  // MasterOrderKeeper does not start
+                Future.successful(Right(MasterCommand.Response.Accepted))
+              case Some(actor) =>
+                (actor ? MasterOrderKeeper.Command.Execute(command, meta))
+                  .mapTo[Checked[command.Response]]
+            })
+
+        case MasterCommand.ClusterAppointNodes(idToUri, activeId) =>
+          cluster.appointNodes(idToUri, activeId)
+            .map(_.map((_: Completed) => MasterCommand.Response.Accepted))
 
         case MasterCommand.InternalClusterCommand(clusterCommand) =>
           cluster.executeCommand(clusterCommand)

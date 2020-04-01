@@ -2,10 +2,11 @@ package com.sos.jobscheduler.tests.master.cluster
 
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.auth.SecretStringGenerator
-import com.sos.jobscheduler.common.log.ScribeUtils
 import com.sos.jobscheduler.base.utils.Closer.syntax._
 import com.sos.jobscheduler.base.utils.Closer.withCloser
+import com.sos.jobscheduler.base.utils.Strings._
+import com.sos.jobscheduler.common.auth.SecretStringGenerator
+import com.sos.jobscheduler.common.log.ScribeUtils
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
@@ -26,6 +27,8 @@ import org.scalatest.FreeSpec
 
 private[cluster] trait MasterClusterTester extends FreeSpec
 {
+  protected def configureClusterNodes = true
+
   ScribeUtils.coupleScribeWithSlf4j()
   ProblemCodeMessages.initialize()
   protected final val testHeartbeatLossPropertyKey = "jobscheduler.TEST." + SecretStringGenerator.randomString()
@@ -36,11 +39,11 @@ private[cluster] trait MasterClusterTester extends FreeSpec
       val testName = MasterClusterTester.this.getClass.getSimpleName
       val agentPort = findFreeTcpPort()
       val primary = new DirectoryProvider(agentRefPath :: Nil, TestWorkflow :: Nil, testName = Some(s"$testName-Primary"),
-        masterConfig = ConfigFactory.parseString(s"""
+        masterConfig = ConfigFactory.parseString((configureClusterNodes ?: s"""
           jobscheduler.master.cluster.nodes = {
             Primary: "http://127.0.0.1:$primaryHttpPort"
             Backup: "http://127.0.0.1:$backupHttpPort"
-          }
+          }""") + s"""
           jobscheduler.master.cluster.heartbeat = 3s
           jobscheduler.master.cluster.fail-after = 5s
           jobscheduler.master.cluster.watches = [ "http://127.0.0.1:$agentPort" ]

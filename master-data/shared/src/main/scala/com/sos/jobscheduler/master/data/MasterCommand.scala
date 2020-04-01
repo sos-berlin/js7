@@ -3,11 +3,13 @@ package com.sos.jobscheduler.master.data
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.ScalaJsonCodecs.{FiniteDurationJsonDecoder, FiniteDurationJsonEncoder}
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.Checked.implicits.{checkedJsonDecoder, checkedJsonEncoder}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.data.cluster.ClusterCommand
+import com.sos.jobscheduler.base.web.Uri
+import com.sos.jobscheduler.data.cluster.{ClusterCommand, ClusterNodeId, ClusterSetting}
 import com.sos.jobscheduler.data.command.{CancelMode, CommonCommand}
 import com.sos.jobscheduler.data.crypt.SignedString
 import com.sos.jobscheduler.data.event.EventId
@@ -130,11 +132,11 @@ object MasterCommand extends CommonCommand.Companion
     override def toString = s"ReplaceRepo($versionId, ${objects.size} objects)"
   }
 
-  //final case class ClusterAppointNodes(idToUri: Map[ClusterNodeId, Uri], activeId: ClusterNodeId)
-  //extends MasterCommand {
-  //  type Response = Response.Accepted
-  //  ClusterSetting.checkUris(idToUri, activeId).orThrow
-  //}
+  final case class ClusterAppointNodes(idToUri: Map[ClusterNodeId, Uri], activeId: ClusterNodeId)
+  extends MasterCommand {
+    type Response = Response.Accepted
+    ClusterSetting.checkUris(idToUri, activeId).orThrow
+  }
 
   case object ClusterSwitchOver
   extends MasterCommand {
@@ -173,6 +175,7 @@ object MasterCommand extends CommonCommand.Companion
     Subtype[EmergencyStop],
     Subtype(deriveCodec[KeepEvents]),
     Subtype[ShutDown],
+    Subtype(deriveCodec[ClusterAppointNodes]),
     Subtype(ClusterSwitchOver),
     Subtype(deriveCodec[InternalClusterCommand]),
     Subtype(TakeSnapshot))

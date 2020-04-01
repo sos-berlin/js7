@@ -301,23 +301,23 @@ final class Cluster(
       case _ => Task.pure(Right(Completed))
     }
 
-  //def appointClusterNodes(idToUri: Map[ClusterNodeId, Uri], activeId: ClusterNodeId): Task[Checked[Completed]] =
-  //  persist {
-  //    case Empty =>
-  //      ClusterNodesAppointed.checked(idToUri, activeId).map(_ :: Nil)
-  //    case NodesAppointed(`idToUri`, `activeId`) =>
-  //      Right(Nil)
-  //    case clusterState: HasNodes =>
-  //      if (clusterState.idToUri == idToUri)
-  //        Right(Nil)
-  //      else
-  //        Left(Problem(s"Different Cluster Nodes have already been appointed"))
-  //  }.map(_.map { case (stampedEvents, state) =>
-  //    for (last <- stampedEvents.lastOption) {
-  //      proceed(state, last.eventId)
-  //    }
-  //    Completed
-  //  })
+  def appointNodes(idToUri: Map[ClusterNodeId, Uri], activeId: ClusterNodeId): Task[Checked[Completed]] =
+    persist {
+      case Empty =>
+        ClusterNodesAppointed.checked(idToUri, activeId).map(_ :: Nil)
+      case NodesAppointed(`idToUri`, `activeId`) =>
+        Right(Nil)
+      case clusterState: HasNodes =>
+        if (clusterState.idToUri == idToUri)
+          Right(Nil)
+        else
+          Left(Problem(s"Different Cluster Nodes have already been appointed"))
+    }.map(_.map { case (stampedEvents, state) =>
+      for (last <- stampedEvents.lastOption) {
+        proceed(state, last.eventId)
+      }
+      Completed
+    })
 
   def executeCommand(command: ClusterCommand): Task[Checked[ClusterCommand.Response]] =
     command match {
