@@ -4,7 +4,6 @@ import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.common.configutils.Configs._
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.typesafe.config.Config
 import java.net.URL
 import java.nio.file.Path
@@ -27,6 +26,6 @@ object TrustStoreRef
     config.checkedPath("jobscheduler.https.truststore.store-password")(path =>
       Right(
         TrustStoreRef(
-          url = config.as[Path]("jobscheduler.https.truststore.file", default).toAbsolutePath.toURI.toURL,
+          url = config.as[Path]("jobscheduler.https.truststore.file", default).toAbsolutePath.toUri.toURL,
           storePassword = config.as[SecretString](path))))
 }

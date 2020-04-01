@@ -7,7 +7,7 @@ import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.http.AkkaHttpClient.HttpException
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.RichFutures
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax.RichTask
 import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem.sleepingShellScript

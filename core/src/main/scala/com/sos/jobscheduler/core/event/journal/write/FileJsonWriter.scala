@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.core.event.journal.write
 
 import akka.util.ByteString
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.core.common.jsonseq.OutputStreamJsonSeqWriter
 import java.io.{BufferedOutputStream, FileOutputStream}
 import java.nio.file.{Files, Path}
@@ -18,7 +17,7 @@ final class FileJsonWriter(
   simulateSync: Option[FiniteDuration] = None)
 extends AutoCloseable {
 
-  private val out = wrapException { new FileOutputStream(file, append) }
+  private val out = wrapException { new FileOutputStream(file.toFile, append) }
   private val bufferedOut = new BufferedOutputStream(out)
   private val writer = new OutputStreamJsonSeqWriter(bufferedOut)
   private val closed = new AtomicBoolean

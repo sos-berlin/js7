@@ -4,7 +4,6 @@ import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.common.configutils.Configs._
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.typesafe.config.Config
 import java.net.URL
 import java.nio.file.Path
@@ -29,7 +28,7 @@ object KeyStoreRef
     config.checkedPath("jobscheduler.https.keystore.store-password")(path =>
       Right(
         KeyStoreRef(
-          url = config.as[Path]("jobscheduler.https.keystore.file", default).toAbsolutePath.toURI.toURL,
+          url = config.as[Path]("jobscheduler.https.keystore.file", default).toAbsolutePath.toUri.toURL,
           storePassword = config.as[SecretString](path),
           keyPassword = config.as[SecretString]("jobscheduler.https.keystore.key-password"))))
 }

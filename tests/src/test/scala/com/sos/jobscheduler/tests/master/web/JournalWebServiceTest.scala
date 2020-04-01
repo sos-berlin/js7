@@ -10,7 +10,7 @@ import com.sos.jobscheduler.base.utils.ScodecUtils._
 import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.http.AkkaHttpClient.HttpException
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition

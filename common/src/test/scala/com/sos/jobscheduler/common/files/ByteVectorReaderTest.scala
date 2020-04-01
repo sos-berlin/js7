@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.common.files
 
 import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryFile
 import org.scalatest.FreeSpec
 import scala.util.Random

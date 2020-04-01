@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.common.files
 
 import com.google.common.io.MoreFiles.touch
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryDirectory
 import java.nio.file.Files.delete
 import org.scalatest.FreeSpec

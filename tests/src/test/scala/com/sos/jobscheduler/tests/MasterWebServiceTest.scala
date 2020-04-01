@@ -21,7 +21,7 @@ import com.sos.jobscheduler.common.http.AkkaHttpClient.HttpException
 import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
 import com.sos.jobscheduler.common.http.CirceToYaml.yamlToJson
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax.RichPath
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem

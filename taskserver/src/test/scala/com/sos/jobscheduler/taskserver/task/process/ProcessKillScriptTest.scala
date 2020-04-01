@@ -8,6 +8,7 @@ import com.sos.jobscheduler.common.process.Processes
 import com.sos.jobscheduler.common.process.Processes.{Pid, RobustlyStartProcess, processToPidOption}
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.system.FileUtils._

@@ -10,7 +10,7 @@ import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowableEither
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.event.{PositionAnd, TornException}
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax.RichPath
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryDirectory
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._

@@ -7,12 +7,13 @@ import com.sos.jobscheduler.base.auth.SessionToken
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.common.akkahttp.web.session.SessionRegister._
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.{RichPath, pathToFile}
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.typesafe.config.{Config, ConfigFactory}
-import java.nio.file.{Files, Path}
+import java.nio.file.Files.{createFile, deleteIfExists}
+import java.nio.file.Path
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.{Future, Promise}
@@ -27,8 +28,8 @@ final class SessionRegister[S <: Session] private[session](actor: ActorRef, impl
 
   def createSystemSession(user: S#User, file: Path): Task[SessionToken] =
     for (sessionToken <- login(user, isEternalSession = true)) yield {
-      file.delete()
-      Files.createFile(file, operatingSystem.secretFileAttributes: _*)
+      deleteIfExists(file)
+      createFile(file, operatingSystem.secretFileAttributes: _*)
       file := sessionToken.secret.string
       logger.info(s"Session token for internal user '${user.id.string}' placed in file $file")
       systemSessionPromise.completeWith(sessionFuture(Some(user), sessionToken))

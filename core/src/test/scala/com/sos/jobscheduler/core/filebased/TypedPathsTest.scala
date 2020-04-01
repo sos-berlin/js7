@@ -2,7 +2,7 @@ package com.sos.jobscheduler.core.filebased
 
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.problem.Problems.InvalidNameProblem
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.time.Stopwatch.measureTime
 import com.sos.jobscheduler.core.filebased.TypedPaths._
 import com.sos.jobscheduler.data.agent.AgentRefPath

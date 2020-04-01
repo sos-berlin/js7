@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerPort
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.http.configuration.RecouplingStreamReaderConf
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.core.event.journal.JournalConf
 import com.sos.jobscheduler.data.cluster.ClusterNodeId
 import com.sos.jobscheduler.data.master.MasterId

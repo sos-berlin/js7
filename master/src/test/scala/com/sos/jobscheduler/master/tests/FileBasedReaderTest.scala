@@ -3,7 +3,7 @@ package com.sos.jobscheduler.master.tests
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.common.files.DirectoryReader
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.core.filebased.TypedSourceReader
 import com.sos.jobscheduler.master.agent.AgentRefReader

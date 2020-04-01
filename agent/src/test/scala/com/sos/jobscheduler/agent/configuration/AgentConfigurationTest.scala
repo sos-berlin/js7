@@ -6,7 +6,7 @@ import com.sos.jobscheduler.agent.data.ProcessKillScript
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerPort
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.scalautil.FileUtils._
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.core.event.journal.JournalConf
 import com.typesafe.config.ConfigFactory

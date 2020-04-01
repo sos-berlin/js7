@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.common.process
 
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.process.Processes._
 import com.sos.jobscheduler.common.process.ProcessesForkedTest._
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax.RichPath
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.RichFutures
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import java.nio.file.Files.delete

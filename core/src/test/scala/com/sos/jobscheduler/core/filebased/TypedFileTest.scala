@@ -3,7 +3,7 @@ package com.sos.jobscheduler.core.filebased
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.common.files.DirectoryReader
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.core.filebased.TypedFile.checkUniqueness
 import com.sos.jobscheduler.core.filebased.TypedFileTest._
 import com.sos.jobscheduler.data.agent.AgentRefPath

@@ -3,7 +3,7 @@ package com.sos.jobscheduler.tests
 import com.sos.jobscheduler.base.circeutils.CirceUtils.{RichCirceString, RichJson}
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.core.event.journal.data.JournalHeader
 import com.sos.jobscheduler.core.event.journal.data.JournalHeader.JournalIdMismatchProblem
 import com.sos.jobscheduler.data.agent.AgentRefPath

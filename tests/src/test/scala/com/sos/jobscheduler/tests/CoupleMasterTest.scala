@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.tests
 
 import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.job.ExecutablePath
@@ -70,7 +70,7 @@ final class CoupleMasterTest extends FreeSpec with DirectoryProviderForScalaTest
     directoryProvider.runMaster() { master =>
       // REMOVE NEW AGENTS'S EVENTS THE MASTER HAS ALREADY READ => MasterRequiresUnknownEventIdProblem
       val journalFiles = agentStateDir.pathSet.toVector
-        .map(_.getFileName.getPath)
+        .map(_.getFileName.toString)
         .filter(_.startsWith("master-Master--"))
         .sorted
         .map(agentStateDir / _)

@@ -3,7 +3,7 @@ package com.sos.jobscheduler.provider
 import com.google.common.io.MoreFiles.touch
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.IOExecutor.Implicits.globalIOX
 import com.sos.jobscheduler.common.system.OperatingSystem.isMac

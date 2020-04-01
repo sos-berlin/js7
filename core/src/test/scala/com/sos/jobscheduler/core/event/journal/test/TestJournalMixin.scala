@@ -12,7 +12,7 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, RichThrowableE
 import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
 import com.sos.jobscheduler.common.akkautils.DeadLetterActor
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader

@@ -24,7 +24,7 @@ import com.sos.jobscheduler.base.utils.Closer.syntax._
 import com.sos.jobscheduler.base.utils.{Closer, SetOnce}
 import com.sos.jobscheduler.common.akkautils.{Akkas, SupervisorStrategies}
 import com.sos.jobscheduler.common.event.EventIdGenerator
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger}
 import com.sos.jobscheduler.common.system.JavaInformations.javaInformation
 import com.sos.jobscheduler.common.system.SystemInformations.systemInformation

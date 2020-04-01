@@ -3,7 +3,7 @@ package com.sos.jobscheduler.common.configutils
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.common.configutils.Configs._
 import com.sos.jobscheduler.common.configutils.ConfigsTest._
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryDirectory
 import com.typesafe.config.{ConfigException, ConfigFactory}
 import org.scalatest.FreeSpec

@@ -14,9 +14,9 @@ import com.sos.jobscheduler.base.utils.Closer.withCloser
 import com.sos.jobscheduler.base.utils.JavaCollections.implicits._
 import com.sos.jobscheduler.common.system.OperatingSystem.isUnix
 import io.circe.Encoder
-import java.io.{BufferedOutputStream, File, FileOutputStream, OutputStream}
+import java.io.{File, FileOutputStream}
 import java.nio.charset.Charset
-import java.nio.file.Files.{delete, deleteIfExists, isSymbolicLink, setPosixFilePermissions}
+import java.nio.file.Files.{delete, deleteIfExists, isDirectory, isSymbolicLink, setPosixFilePermissions}
 import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
 import java.nio.file.{FileAlreadyExistsException, FileVisitOption, Files, Path, Paths}
 import java.util.concurrent.ThreadLocalRandom
@@ -25,8 +25,8 @@ import scala.collection.AbstractIterator
 import scala.language.implicitConversions
 import scodec.bits.ByteVector
 
-object FileUtils {
-
+object FileUtils
+{
   val EmptyPath = Paths.get("")
   val WorkingDirectory = Paths.get(sys.props("user.dir")).toAbsolutePath
 
@@ -41,24 +41,33 @@ object FileUtils {
   }
 
   object implicits {
-    implicit def pathToFile(path: Path): File = path.toFile
+    implicit def pathToFile(path: Path): File =
+      path.toFile
 
-    implicit def fileToPath(file: File): Path = file.toPath
+    implicit def fileToPath(file: File): Path =
+      file.toPath
+  }
 
+  object syntax
+  {
     implicit final class RichPath(private val delegate: Path) extends AnyVal
     {
+      /** Must be a relative path without backslashes or single or double dot directories. */
+      def /(relative: String): Path =
+        delegate resolve checkRelativePath(relative).orThrow
+
       /** Writes `string` encoded with UTF-8 to file. */
       def :=[A <: CharSequence](string: A): Unit =
         contentString = string
 
-      def :=(byteString: Array[Byte]): Unit =
-        contentBytes = byteString
+      def :=(bytes: Array[Byte]): Unit =
+        contentBytes = bytes
 
-      def :=(byteString: Seq[Byte]): Unit =
-        contentBytes = byteString
+      def :=(bytes: Seq[Byte]): Unit =
+        contentBytes = bytes
 
       def :=(byteVector: ByteVector): Unit =
-        autoClosing(new FileOutputStream(delegate))(byteVector.copyToStream)
+        autoClosing(new FileOutputStream(delegate.toFile))(byteVector.copyToStream)
 
       def :=[A](a: A)(implicit jsonEncoder: Encoder[A]): Unit =
         contentString = jsonEncoder(a).printWith(CompactPrinter)
@@ -68,27 +77,30 @@ object FileUtils {
         append(string)
 
       def ++=(byteVector: ByteVector): Unit=
-        autoClosing(new FileOutputStream(delegate, true))(byteVector.copyToStream)
+        autoClosing(new FileOutputStream(delegate.toFile, true))(byteVector.copyToStream)
 
-      /** Must be a relative path without backslashes or single or double dot directories. */
-      def /(relative: String): Path =
-        delegate resolve checkRelativePath(relative).orThrow
+      def byteVector: ByteVector =
+        ByteVector(delegate.contentBytes)
 
-      def byteVector: ByteVector = file.byteVector
+      def byteString: ByteString =
+        ByteString(delegate.contentBytes)
 
-      def byteString: ByteString = file.byteString
+      def contentBytes: Array[Byte] =
+        GuavaFiles.toByteArray(delegate.toFile)
 
-      def contentBytes: Array[Byte] = file.contentBytes
+      def contentBytes_=(o: Array[Byte]): Unit =
+        GuavaFiles.write(o, delegate.toFile)
 
-      def contentBytes_=(o: Array[Byte]): Unit = file.contentBytes = o
+      def contentBytes_=(o: Seq[Byte]): Unit =
+        GuavaFiles.write(o.toArray, delegate.toFile)
 
-      def contentBytes_=(o: Seq[Byte]): Unit = file.contentBytes = o
+      def contentString: String = contentString(UTF_8)
 
-      def contentString: String = file.contentString
+      def contentString_=(o: CharSequence): Unit =
+        write(o, UTF_8)
 
-      def contentString_=(o: CharSequence): Unit = file.contentString = o
-
-      def contentString(encoding: Charset) = file.contentString(encoding)
+      def contentString(encoding: Charset) =
+        GuavaFiles.asCharSource(delegate.toFile, encoding).read()
 
       def writeExecutable(string: String): Unit = {
         this := string
@@ -100,46 +112,21 @@ object FileUtils {
           setPosixFilePermissions(delegate, PosixFilePermissions.fromString("r-x------"))
         }
 
-      def write(string: String, encoding: Charset = UTF_8): Unit =  file.write(string, encoding)
+      def write(string: CharSequence, encoding: Charset = UTF_8): Unit =
+        GuavaFiles.asCharSink(delegate.toFile, encoding).write(string)
 
-      def append(o: CharSequence, encoding: Charset = UTF_8): Unit = file.append(o, encoding)
-
-      private def file = delegate.toFile
+      def append(string: CharSequence, encoding: Charset = UTF_8): Unit =
+        GuavaFiles.asCharSink(delegate.toFile, encoding, APPEND).write(string)
 
       /**
         * Returns the content of the directory denoted by `this`.
         */
-      def pathSet: Set[Path] = autoClosing(Files.list(delegate)) { _.toSet }
-    }
-
-    implicit final class RichFile(private val delegate: File) extends AnyVal
-    {
-      def byteVector: ByteVector = ByteVector(delegate.contentBytes)
-
-      def byteString: ByteString = ByteString(delegate.contentBytes)
-
-      def contentBytes: Array[Byte] = GuavaFiles.toByteArray(delegate)
-
-      def contentBytes_=(o: Array[Byte]): Unit = GuavaFiles.write(o, delegate)
-
-      def contentBytes_=(o: Seq[Byte]): Unit = GuavaFiles.write(o.toArray, delegate)
-
-      def contentString: String = contentString(UTF_8)
-
-      def contentString_=(o: CharSequence): Unit = write(o, UTF_8)
-
-      def contentString(encoding: Charset) = GuavaFiles.asCharSource(delegate, encoding).read()
-
-      def write(string: CharSequence, encoding: Charset = UTF_8): Unit =  GuavaFiles.asCharSink(delegate, encoding).write(string)
-
-      def append(string: CharSequence, encoding: Charset = UTF_8): Unit = GuavaFiles.asCharSink(delegate, encoding, APPEND).write(string)
+      def pathSet: Set[Path] =
+        autoClosing(Files.list(delegate)) { _.toSet }
     }
   }
 
-  import implicits._
-
-  def writeToFile[A](file: Path, append: Boolean = false)(body: OutputStream => A): A =
-    autoClosing(new BufferedOutputStream(new FileOutputStream(file, append)))(body)
+  import syntax._
 
   @tailrec
   def createShortNamedDirectory(directory: Path, prefix: String): Path = {
@@ -161,7 +148,6 @@ object FileUtils {
   def withTemporaryFile[A](prefix: String, suffix: String, attributes: FileAttribute[_]*)(body: Path => A): A =
     autoDeleting(Files.createTempFile(prefix, suffix, attributes: _*))(body)
 
-
   def autoDeleting[A](file: Path)(body: Path => A): A =
     withCloser { closer =>
       closer.onClose {
@@ -181,7 +167,7 @@ object FileUtils {
   }
 
   def deleteDirectoryRecursively(dir: Path): Unit = {
-    require(dir.isDirectory, s"Not a directory: $dir")
+    require(isDirectory(dir), s"Not a directory: $dir")
     if (!isSymbolicLink(dir)) {
       deleteDirectoryContentRecursively(dir)
     }
@@ -190,7 +176,7 @@ object FileUtils {
 
   def deleteDirectoryContentRecursively(dir: Path): Unit = {
     for (f <- dir.pathSet) {
-      if (f.isDirectory && !isSymbolicLink(f)) deleteDirectoryContentRecursively(f)
+      if (isDirectory(f) && !isSymbolicLink(f)) deleteDirectoryContentRecursively(f)
       delete(f)
     }
   }

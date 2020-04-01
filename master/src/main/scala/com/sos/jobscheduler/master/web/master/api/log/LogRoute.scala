@@ -13,9 +13,9 @@ import com.sos.jobscheduler.common.akkahttp.StandardMarshallers.logAkkaStreamErr
 import com.sos.jobscheduler.common.files.GrowingFileObservable
 import com.sos.jobscheduler.common.http.AkkaHttpUtils.AkkaByteVector
 import com.sos.jobscheduler.common.http.StreamingSupport._
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import com.sos.jobscheduler.master.web.master.api.log.LogRoute._
+import java.nio.file.Files.{isReadable, isRegularFile}
 import java.nio.file.Path
 import monix.execution.Scheduler
 
@@ -35,7 +35,7 @@ trait LogRoute extends MasterRouteProvider
         }))
 
   private def streamFile(file: Path, endless: Boolean) =
-    if (file.isFile && file.canRead)
+    if (isRegularFile(file) && isReadable(file))
       complete(
         HttpEntity(
           contentType,

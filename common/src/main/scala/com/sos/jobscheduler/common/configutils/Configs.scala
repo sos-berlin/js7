@@ -5,7 +5,6 @@ import com.sos.jobscheduler.base.convert.{As, ConvertiblePartialFunction}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections.RichGenericCompanion
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.typesafe.config.ConfigRenderOptions.concise
@@ -31,7 +30,7 @@ object Configs
       logger.info(s"Reading configuration file $file")
       var options = Required
       if (secret) options = options.setOriginDescription(SecretOriginDescription)
-      ConfigFactory.parseFile(file, options)
+      ConfigFactory.parseFile(file.toFile, options)
     } else {
       logger.debug(s"No configuration file $file")
       ConfigFactory.empty

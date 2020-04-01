@@ -3,7 +3,7 @@ package com.sos.jobscheduler.common.process
 import com.sos.jobscheduler.common.process.Processes._
 import com.sos.jobscheduler.common.process.ProcessesTest._
 import com.sos.jobscheduler.common.scalautil.FileUtils.autoDeleting
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax.RichPath
 import com.sos.jobscheduler.common.system.FileUtils._
 import com.sos.jobscheduler.common.system.OperatingSystem.{isMac, isSolaris, isWindows}
 import com.sos.jobscheduler.data.system.Stdout

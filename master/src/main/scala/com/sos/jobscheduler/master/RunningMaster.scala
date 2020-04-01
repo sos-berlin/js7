@@ -22,7 +22,7 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, RichThrowable}
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.event.{EventIdGenerator, StrictEventWatch}
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
@@ -50,6 +50,7 @@ import com.sos.jobscheduler.master.data.events.MasterEvent.MasterReady
 import com.sos.jobscheduler.master.problems.MasterIsNotYetReadyProblem
 import com.sos.jobscheduler.master.web.MasterWebServer
 import com.typesafe.config.{Config, ConfigFactory}
+import java.nio.file.Files.deleteIfExists
 import java.nio.file.Path
 import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
@@ -294,7 +295,7 @@ object RunningMaster
         sessionRegister.createSystemSession(SimpleUser.System, sessionTokenFile)
           .runToFuture await masterConfiguration.akkaAskTimeout.duration
       }
-      closer onClose { sessionTokenFile.delete() }
+      closer onClose { deleteIfExists(sessionTokenFile) }
     }
 
     /** @return Task(None) when canceled. */

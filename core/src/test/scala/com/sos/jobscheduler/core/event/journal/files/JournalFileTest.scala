@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.core.event.journal.files
 
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import java.nio.file.Files.{createTempFile, delete, size}
 import java.nio.file.Paths
 import org.scalatest.FreeSpec

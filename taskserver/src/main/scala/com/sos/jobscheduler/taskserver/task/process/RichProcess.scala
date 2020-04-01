@@ -10,7 +10,6 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.log.LogLevel
 import com.sos.jobscheduler.common.log.LogLevel.LevelScalaLogger
 import com.sos.jobscheduler.common.process.Processes._
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.IOExecutor.ioFuture
 import com.sos.jobscheduler.common.scalautil.{ClosedFuture, IOExecutor, Logger}
 import com.sos.jobscheduler.common.system.OperatingSystem._
@@ -132,7 +131,8 @@ object RichProcess {
     start(processBuilder)
   }
 
-  private def toRedirect(pathOption: Option[Path]) = pathOption.fold(INHERIT)(o => Redirect.to(o))
+  private def toRedirect(pathOption: Option[Path]) =
+    pathOption.fold(INHERIT)(o => Redirect.to(o.toFile))
 
   def createStdFiles(directory: Path, id: String): Map[StdoutOrStderr, Path] =
     (StdoutOrStderr.values map { o => o -> newLogFile(directory, id, o) }).toMap

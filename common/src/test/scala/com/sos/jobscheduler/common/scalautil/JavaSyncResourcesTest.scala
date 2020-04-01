@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.common.scalautil
 
 import cats.effect.SyncIO
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryFile
 import com.sos.jobscheduler.common.scalautil.JavaSyncResources.fileAsResource
 import java.io.{BufferedReader, InputStreamReader}

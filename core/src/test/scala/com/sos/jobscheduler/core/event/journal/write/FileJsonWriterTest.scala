@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.core.event.journal.write
 
 import akka.util.ByteString
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax.RichPath
 import java.io.IOException
 import java.nio.file.Files.{createTempDirectory, createTempFile, delete}
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}

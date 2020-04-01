@@ -1,8 +1,9 @@
 package com.sos.jobscheduler.common.scalautil
 
-import com.google.common.io.Files.touch
+import com.google.common.io.MoreFiles.touch
 import com.sos.jobscheduler.base.problem.ProblemException
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.FileUtils.{autoDeleting, checkRelativePath, withTemporaryFile}
 import com.sos.jobscheduler.common.scalautil.FileUtilsTest._
 import io.circe.Json
@@ -31,37 +32,6 @@ final class FileUtilsTest extends FreeSpec with BeforeAndAfterAll
 
   "implicit pathToFile" in {
     new File("/a").toPath: File
-  }
-
-  "File extention methods" - {
-    "contentString" in {
-      file.contentString = TestString
-      file.contentString shouldEqual TestString
-      new String(Files.readAllBytes(file), UTF_8) shouldEqual TestString
-    }
-
-    "contentBytes = Array" in {
-      file.contentBytes shouldEqual TestBytes
-      file.contentBytes = Array[Byte](1, 2)
-      file.contentBytes shouldEqual Vector[Byte](1, 2)
-    }
-
-    "contentBytes = Seq" in {
-      file.contentBytes = Array.empty[Byte]
-      assert(file.contentBytes.isEmpty)
-      file.contentBytes = Seq[Byte](1, 2)
-      file.contentBytes shouldEqual Vector[Byte](1, 2)
-    }
-
-    "write" in {
-      file.write(TestString, UTF_16BE)
-      file.contentBytes shouldEqual TestString.getBytes(UTF_16BE)
-    }
-
-    "append" in {
-      file.append("X", UTF_16BE)
-      file.contentString(UTF_16BE) shouldEqual TestString + "X"
-    }
   }
 
   "Path extention methods" - {

@@ -16,7 +16,7 @@ import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.log.ScribeUtils
 import com.sos.jobscheduler.common.scalautil.FileUtils
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
@@ -247,7 +247,7 @@ object DirectoryProvider
   final class MasterTree(val directory: Path, mutualHttps: Boolean, config: Config, clientCertificate: Option[JavaResource]) extends Tree {
     def provideHttpsCertificate(): Unit = {
       // Keystore
-      (configDir / "private/https-keystore.p12").contentBytes = MasterKeyStoreResource.contentBytes
+      (configDir / "private/https-keystore.p12") := MasterKeyStoreResource.contentBytes
 
       // Truststore
       (configDir / "private/private.conf").append("""
@@ -255,7 +255,7 @@ object DirectoryProvider
         |  store-password = "jobscheduler"
         |}""".stripMargin)
       val trustStore = configDir / "private/https-truststore.p12"
-      trustStore.contentBytes = AgentTrustStoreResource.contentBytes
+      trustStore := AgentTrustStoreResource.contentBytes
       for (o <- clientCertificate) importKeyStore(trustStore, o)
       // KeyStore passwords has been provided
     }
@@ -279,13 +279,13 @@ object DirectoryProvider
       super.createDirectoriesAndFiles()
       createDirectory(executables)
       if (provideHttpsCertificate) {
-        (configDir / "private/https-keystore.p12").contentBytes = AgentKeyStoreResource.contentBytes
+        (configDir / "private/https-keystore.p12") := AgentKeyStoreResource.contentBytes
         if (provideClientCertificate) {
           (configDir / "private/private.conf").append("""
             |jobscheduler.https.truststore {
             |  store-password = "jobscheduler"
             |}""".stripMargin)
-          (configDir / "private/https-truststore.p12").contentBytes = MasterTrustStoreResource.contentBytes
+          (configDir / "private/https-truststore.p12") := MasterTrustStoreResource.contentBytes
         }
         // KeyStore passwords has been provided by DirectoryProvider (must happen early)
       }
@@ -322,7 +322,7 @@ object DirectoryProvider
 
   private def importKeyStore(keyStore: Path, add: JavaResource): Unit =
     FileUtils.withTemporaryFile("test-", ".p12") { file =>
-      file.contentBytes = add.contentBytes
+      file := add.contentBytes
       importKeyStore(keyStore, file)
     }
 

@@ -6,7 +6,7 @@ import com.sos.jobscheduler.common.akkahttp.web.data.WebServerPort
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.configutils.Configs
 import com.sos.jobscheduler.common.configutils.Configs._
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource

@@ -6,7 +6,7 @@ import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.files.DirectoryReader.Entry
 import com.sos.jobscheduler.common.files.DirectoryReaderTest._
 import com.sos.jobscheduler.common.scalautil.FileUtils._
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.sos.jobscheduler.common.time.Stopwatch.measureTime

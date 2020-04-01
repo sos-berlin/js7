@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.master.cluster
 
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryFile
 import com.sos.jobscheduler.master.cluster.ClusterCommon._
 import java.nio.file.Files.{delete, size}

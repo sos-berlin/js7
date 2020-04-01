@@ -6,7 +6,7 @@ import com.sos.jobscheduler.base.utils.Closer.syntax.RichClosersAutoCloseable
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax.RichPath
 import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
@@ -57,8 +57,8 @@ private[https] trait HttpsTestBase extends FreeSpec with BeforeAndAfterAll with 
     provideMasterConfiguration(directoryProvider.master)
     assert(master.localUri.string startsWith "https://")
 
-    keyStore.contentBytes = ClientKeyStoreResource.contentBytes
-    trustStore.contentBytes = DirectoryProvider.MasterTrustStoreResource.contentBytes
+    keyStore := ClientKeyStoreResource.contentBytes
+    trustStore := DirectoryProvider.MasterTrustStoreResource.contentBytes
 
     super.beforeAll()
   }

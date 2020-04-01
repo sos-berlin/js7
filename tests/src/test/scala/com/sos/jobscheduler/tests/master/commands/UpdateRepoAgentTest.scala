@@ -9,7 +9,7 @@ import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.http.AkkaHttpClient.HttpException
 import com.sos.jobscheduler.common.log.ScribeUtils
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax.RichTask
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort

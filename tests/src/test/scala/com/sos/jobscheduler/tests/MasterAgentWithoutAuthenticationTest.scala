@@ -6,7 +6,7 @@ import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryDirectory
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder
@@ -70,7 +70,7 @@ final class MasterAgentWithoutAuthenticationTest extends FreeSpec
           keyFile := signature.string
           dir / x / "config/private/private.conf" ++=
             "jobscheduler.configuration.trusted-signature-keys.Silly = " +
-              "\"" + keyFile.getPath.replace("""\""", """\\""") + "\"\n"
+              "\"" + keyFile.toString.replace("""\""", """\\""") + "\"\n"
         }
         new FileBasedSigner(new SillySigner(signature), MasterFileBaseds.jsonCodec)
       }

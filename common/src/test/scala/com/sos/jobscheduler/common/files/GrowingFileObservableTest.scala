@@ -3,7 +3,7 @@ package com.sos.jobscheduler.common.files
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.ScodecUtils.RichByteVector
 import com.sos.jobscheduler.common.scalautil.FileUtils._
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import java.util.concurrent.ArrayBlockingQueue
 import monix.execution.Scheduler.Implicits.global

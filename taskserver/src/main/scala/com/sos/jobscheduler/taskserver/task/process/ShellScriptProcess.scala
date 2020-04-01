@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.taskserver.task.process
 
 import com.sos.jobscheduler.common.process.Processes._
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.IOExecutor
 import com.sos.jobscheduler.common.scalautil.IOExecutor.ioFuture
@@ -59,7 +59,7 @@ object ShellScriptProcess
     (implicit ec: ExecutionContext, iox: IOExecutor): ShellScriptProcess =
   {
     val processBuilder = new ProcessBuilder(toShellCommandArguments(shellFile, conf.idArgumentOption.toList).asJava)
-    for (o <- conf.workingDirectory) processBuilder.directory(o)
+    for (o <- conf.workingDirectory) processBuilder.directory(o.toFile)
     processBuilder.environment.putAll(conf.additionalEnvironment.asJava)
     val process = processBuilder.startRobustly()
     def copy(in: InputStream, w: Writer) = copyChunks(new InputStreamReader(in, conf.encoding), stdChannels.charBufferSize, w)

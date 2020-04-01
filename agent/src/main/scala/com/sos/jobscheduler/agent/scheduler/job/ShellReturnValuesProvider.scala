@@ -3,7 +3,7 @@ package com.sos.jobscheduler.agent.scheduler.job
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration.FileEncoding
 import com.sos.jobscheduler.agent.scheduler.job.ShellReturnValuesProvider._
 import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import java.nio.file.Files.createTempFile
 import java.nio.file.Path
 
@@ -22,7 +22,7 @@ final class ShellReturnValuesProvider(temporaryDirectory: Path)
     ReturnValuesFileEnvironmentVariableName -> file.toString
 
   def variables: Map[String, String] =
-    autoClosing(scala.io.Source.fromFile(file)(FileEncoding)) { source =>
+    autoClosing(scala.io.Source.fromFile(file.toFile)(FileEncoding)) { source =>
       (source.getLines map lineToKeyValue).toMap
     }
 

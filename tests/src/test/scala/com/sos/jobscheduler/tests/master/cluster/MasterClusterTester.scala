@@ -7,7 +7,7 @@ import com.sos.jobscheduler.base.utils.Closer.withCloser
 import com.sos.jobscheduler.base.utils.Strings._
 import com.sos.jobscheduler.common.auth.SecretStringGenerator
 import com.sos.jobscheduler.common.log.ScribeUtils
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort

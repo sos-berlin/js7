@@ -14,7 +14,6 @@ import com.sos.jobscheduler.base.utils.SetOnce
 import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.event.{EventIdGenerator, PositionAnd}
 import com.sos.jobscheduler.common.http.{AkkaHttpClient, RecouplingStreamReader}
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, JournalSeparators}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles._
@@ -178,7 +177,7 @@ import scodec.bits.ByteVector
       val maybeTmpFile = continuation match {
         case _: NoLocalJournal | _: NextFile =>
           val tmp = Paths.get(file.toString + TmpSuffix)
-          logger.debug(s"Replicating snapshot into temporary journal file ${tmp.getName()}")
+          logger.debug(s"Replicating snapshot into temporary journal file ${tmp.getFileName()}")
           Some(tmp)
 
         case _: FirstPartialFile =>
@@ -199,7 +198,7 @@ import scodec.bits.ByteVector
 
       continuation match {
         case FirstPartialFile(recoveredJournalFile, _) =>
-          logger.info(s"Start replicating events into journal file ${file.getName()}")
+          logger.info(s"Start replicating events into journal file ${file.getFileName()}")
           builder.startWithState(JournalProgress.InCommittedEventsSection, Some(recoveredJournalFile.journalHeader),
             eventId = recoveredJournalFile.eventId,
             totalEventCount = recoveredJournalFile.calculatedJournalHeader.totalEventCount,
@@ -235,7 +234,7 @@ import scodec.bits.ByteVector
 
       locally {
         val f = maybeTmpFile getOrElse file
-        logger.trace(s"replicateJournalFile($continuation) size(${f.getName()})=${size(f)} ${builder.clusterState}")
+        logger.trace(s"replicateJournalFile($continuation) size(${f.getFileName()})=${size(f)} ${builder.clusterState}")
         assertThat(continuation.fileLength == size(f))
       }
 
@@ -355,7 +354,7 @@ import scodec.bits.ByteVector
                 move(tmpFile, file, ATOMIC_MOVE)
                 journalMeta.updateSymbolicLink(file)
                 out = FileChannel.open(file, APPEND)
-                logger.info(s"Continue replicating events into next journal file ${file.getName()}")
+                logger.info(s"Continue replicating events into next journal file ${file.getFileName()}")
                 eventWatch.onJournalingStarted(file, journalId,
                   tornLengthAndEventId = PositionAnd(replicatedFileLength/*After EventHeader, before SnapshotTaken, */, continuation.fileEventId),
                   flushedLengthAndEventId = PositionAnd(fileLength, builder.eventId))

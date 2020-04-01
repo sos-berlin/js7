@@ -1,9 +1,9 @@
 package com.sos.jobscheduler.taskserver.task.process
 
-import com.google.common.io.Files.touch
+import com.google.common.io.MoreFiles.touch
 import com.sos.jobscheduler.common.process.Processes.ShellFileExtension
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.system.OperatingSystem.isUnix
 import java.nio.file.Files
 import java.nio.file.Files._

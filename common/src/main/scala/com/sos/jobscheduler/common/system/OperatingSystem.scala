@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.common.system
 
 import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import java.io.{File, FileInputStream}
 import java.net.InetAddress
 import java.nio.file.Files.newDirectoryStream
@@ -52,7 +51,7 @@ object OperatingSystem {
 
   def makeModuleFilename(path: String): String = {
     val file = new File(path)
-    new File(file.getParent, System.mapLibraryName(file.getFileName.toString)).toString
+    new File(file.getParent, System.mapLibraryName(file.getName)).toString
   }
 
   def makeExecutableFilename(name: String): String = operatingSystem.makeExecutableFilename(name)
@@ -88,7 +87,7 @@ object OperatingSystem {
 
     lazy val distributionNameAndVersionOption: Option[String] = {
       def readFirstLine(file: Path): String =
-        autoClosing(new FileInputStream(file)) { in =>
+        autoClosing(new FileInputStream(file.toFile)) { in =>
           fromInputStream(in).getLines.next().trim
         }
 

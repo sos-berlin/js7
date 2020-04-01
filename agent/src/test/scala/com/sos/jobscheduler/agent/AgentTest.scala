@@ -10,7 +10,7 @@ import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
 import com.sos.jobscheduler.common.scalautil.FileUtils.WorkingDirectory
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.core.command.CommandMeta

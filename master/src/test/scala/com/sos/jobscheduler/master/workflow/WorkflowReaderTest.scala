@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.common.http.CirceToYaml.ToYamlString
 import com.sos.jobscheduler.common.scalautil.FileUtils
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.core.filebased.TypedSourceReader
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.ExecutablePath

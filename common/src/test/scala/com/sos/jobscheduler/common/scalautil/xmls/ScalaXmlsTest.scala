@@ -2,7 +2,7 @@ package com.sos.jobscheduler.common.scalautil.xmls
 
 import akka.util.ByteString
 import com.google.common.base.Charsets.ISO_8859_1
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits._
 import java.io.File
 import java.nio.file.Files.delete
@@ -12,18 +12,8 @@ import org.scalatest.FreeSpec
 /**
  * @author Joacim Zschimmer
  */
-final class ScalaXmlsTest extends FreeSpec {
-
-  "File.xml" in {
-    val file = File.createTempFile("sos", ".tmp")
-    try {
-      file.xml = <å/>
-      assert(file.xml == <å/>)
-      assert(file.contentString == "<?xml version='1.0' encoding='UTF-8'?>\n<å/>")
-    }
-    finally file.delete()
-  }
-
+final class ScalaXmlsTest extends FreeSpec
+{
   "Path.xml" in {
     val path: Path = File.createTempFile("sos", ".tmp").toPath
     try {

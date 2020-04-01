@@ -9,6 +9,7 @@ import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import com.sos.jobscheduler.common.http.StreamingSupport._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryFile
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.master.web.master.api.test.RouteTester

@@ -6,7 +6,6 @@ import com.sos.jobscheduler.agent.task.CrashKillScript._
 import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.log.LazyScalaLogger.AsLazyScalaLogger
 import com.sos.jobscheduler.common.process.Processes.Pid
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.Exceptions.ignoreException
 import com.sos.jobscheduler.data.job.TaskId
@@ -109,5 +108,5 @@ object CrashKillScript {
   }
 
   private def open(path: Path, append: Boolean = false): Writer =
-    new BufferedWriter(new OutputStreamWriter(new FileOutputStream(path, append), defaultCharset))
+    new BufferedWriter(new OutputStreamWriter(new FileOutputStream(path.toFile, append), defaultCharset))
 }

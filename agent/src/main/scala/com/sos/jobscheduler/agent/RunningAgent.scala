@@ -21,13 +21,14 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.guice.GuiceImplicits._
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.core.startup.StartUp
 import com.typesafe.config.Config
+import java.nio.file.Files.deleteIfExists
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
@@ -145,7 +146,7 @@ object RunningAgent {
       sessionRegister.createSystemSession(SimpleUser.System, sessionTokenFile)
         .runToFuture await agentConfiguration.akkaAskTimeout.duration
     }
-    closer onClose { sessionTokenFile.delete() }
+    closer onClose { deleteIfExists(sessionTokenFile) }
 
     for  {
       ready <- mainActorReadyPromise.future

@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.common.scalautil.xmls
 
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax.RichPath
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.{createTempFile, delete}
 import org.scalatest.FreeSpec

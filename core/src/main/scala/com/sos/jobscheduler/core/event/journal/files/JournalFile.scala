@@ -5,7 +5,6 @@ import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.data.event.EventId
 import java.io.RandomAccessFile
 import java.nio.file.Path
@@ -19,7 +18,7 @@ private[journal] final case class JournalFile private[journal](afterEventId: Eve
   override def toString = file.getFileName.toString
 
   def properLength: Long =
-    autoClosing(new RandomAccessFile(file, "r")) { f =>
+    autoClosing(new RandomAccessFile(file.toFile, "r")) { f =>
       var truncated = f.length
       while (truncated > 0) {
         f.seek(truncated - 1)

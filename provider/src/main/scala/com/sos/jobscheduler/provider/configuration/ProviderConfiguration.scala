@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.configutils.Configs
 import com.sos.jobscheduler.common.configutils.Configs.parseConfigIfExists
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Path

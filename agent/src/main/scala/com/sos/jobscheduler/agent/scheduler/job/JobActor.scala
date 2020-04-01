@@ -10,7 +10,7 @@ import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.process.Processes.ShellFileAttributes
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.system.OperatingSystem.{isUnix, isWindows}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ExecutableScript, JobKey}

@@ -1,11 +1,12 @@
 package com.sos.jobscheduler.core.common.jsonseq
 
-import com.google.common.io.Files.touch
+import com.google.common.io.MoreFiles.touch
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowableEither
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryFile
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.core.common.jsonseq.FileJsonSeqTest._
@@ -94,7 +95,7 @@ final class FileJsonSeqTest extends FreeSpec {
     def addFileTests(/*outputFilter: OutputStream => OutputStream, inputFilter: InputStream => InputStream*/): Unit = {
       "OutputStreamJsonSeqWriter with flush at end" in {
         withTemporaryFile { file =>
-          autoClosing(new OutputStreamJsonSeqWriter(new FileOutputStream(file))) { w =>
+          autoClosing(new OutputStreamJsonSeqWriter(new FileOutputStream(file.toFile))) { w =>
             val stopwatch = new Stopwatch
             for (_ <- 1 to m) {
               for (i <- 1 to n) {
@@ -110,7 +111,7 @@ final class FileJsonSeqTest extends FreeSpec {
 
       "OutputStreamJsonSeqWriter with flush after every document" in {
         withTemporaryFile { file =>
-          autoClosing(new OutputStreamJsonSeqWriter(new FileOutputStream(file))) { w =>
+          autoClosing(new OutputStreamJsonSeqWriter(new FileOutputStream(file.toFile))) { w =>
             val stopwatch = new Stopwatch
             for (_ <- 1 to m) {
               for (i <- 1 to n) {
@@ -141,7 +142,7 @@ final class FileJsonSeqTest extends FreeSpec {
 
       "OutputStreamJsonSeqWriter with sync" in {
         withTemporaryFile { file =>
-          autoClosing(new FileOutputStream(file)) { fileOut =>
+          autoClosing(new FileOutputStream(file.toFile)) { fileOut =>
             val out = fileOut
             val w = new OutputStreamJsonSeqWriter(out)
             val stopwatch = new Stopwatch

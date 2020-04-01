@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.core.common
 
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.data.job.ExecutablePath
 import java.nio.file.Path
 

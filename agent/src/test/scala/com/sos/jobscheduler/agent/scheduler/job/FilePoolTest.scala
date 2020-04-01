@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.agent.scheduler.job
 
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
 import com.sos.jobscheduler.data.job.JobKey
 import java.nio.file.Files.exists
