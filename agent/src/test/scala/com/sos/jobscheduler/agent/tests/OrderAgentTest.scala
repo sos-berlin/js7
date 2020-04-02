@@ -44,9 +44,9 @@ final class OrderAgentTest extends FreeSpec {
 
   "AgentCommand AttachOrder" in {
     provideAgentDirectory { directory =>
-      directory / "config" / "private" / "trusted-pgp-keys.asc" := signer.publicKey
+      directory / "config" / "private" / "trusted-pgp-keys" / "test.asc" := signer.publicKey
       directory / "config" / "private" / "private.conf" ++=
-        s"""|jobscheduler.configuration.trusted-signature-keys.PGP = $${jobscheduler.config-directory}"/private/trusted-pgp-keys.asc"
+        s"""|jobscheduler.configuration.trusted-signature-keys.PGP = $${jobscheduler.config-directory}"/private/trusted-pgp-keys"
            |""".stripMargin
 
       val jobDir = directory / "config" / "executables"

@@ -5,9 +5,14 @@ cd "$(cd "$(realpath "${0%/*}")"/../../build/bin/../.. && pwd)"
 
 homedir="$(pwd)/gnupg"
 privateKeyFile=volumes/provider/config/private/private-pgp-key.asc
-masterPublicKeyFile=volumes/master/config/private/trusted-pgp-keys.asc
-agent1PublicKeyFile=volumes/agent-1/config/private/trusted-pgp-keys.asc
-agent2PublicKeyFile=volumes/agent-2/config/private/trusted-pgp-keys.asc
+masterPublicKeyFile=volumes/master/config/private/trusted-pgp-keys/test.asc
+agent1PublicKeyFile=volumes/agent-1/config/private/trusted-pgp-keys/test.asc
+agent2PublicKeyFile=volumes/agent-2/config/private/trusted-pgp-keys/test.asc
+
+mkdir -p volumes/master/config/private/trusted-pgp-keys
+mkdir -p volumes/backup-master/config/private/trusted-pgp-keys
+mkdir -p volumes/agent-1/config/private/trusted-pgp-keys
+mkdir -p volumes/agent-2/config/private/trusted-pgp-keys
 
 umask go-rwx
 
@@ -45,6 +50,6 @@ EOF
 fi
 
 for a in volumes/backup-master volumes/agent-*; do
-  cp -p "$masterPublicKeyFile" "$a/config/private/trusted-pgp-keys.asc"
+  cp -p "$masterPublicKeyFile" "$a/config/private/trusted-pgp-keys/test.asc"
 done
-ls -ld "$privateKeyFile" volumes/*/config/private/trusted-pgp-keys.asc
+ls -ld "$privateKeyFile" volumes/*/config/private/trusted-pgp-keys/test.asc

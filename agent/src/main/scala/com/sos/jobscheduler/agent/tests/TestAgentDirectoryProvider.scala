@@ -41,6 +41,7 @@ trait TestAgentDirectoryProvider extends HasCloser
       }
       throw t
     }
+    createDirectory(agentDirectory / "config" / "private" / "trusted-pgp-keys")
     createDirectory(agentDirectory / "config" / "executables")
     createDirectory(agentDirectory / "data")
     agentDirectory
