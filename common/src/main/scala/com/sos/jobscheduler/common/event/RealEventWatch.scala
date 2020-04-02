@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.common.event
 
 import cats.syntax.option._
-import com.google.common.annotations.VisibleForTesting
 import com.sos.jobscheduler.base.monixutils.MonixBase.closeableIteratorToObservable
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
@@ -27,7 +26,7 @@ import scala.reflect.runtime.universe._
   */
 trait RealEventWatch extends EventWatch
 {
-  @VisibleForTesting
+  @TestOnly
   protected def eventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[Event]]]]
 
   // Lazy, initialize only after whenStarted has been called!

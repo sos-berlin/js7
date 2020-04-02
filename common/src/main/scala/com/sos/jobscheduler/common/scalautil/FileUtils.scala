@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.common.scalautil
 
 import akka.util.ByteString
-import com.google.common.base.Charsets.UTF_8
 import com.google.common.io.FileWriteMode.APPEND
 import com.google.common.io.{Files => GuavaFiles}
 import com.sos.jobscheduler.base.circeutils.CirceUtils.CompactPrinter
@@ -16,7 +15,8 @@ import com.sos.jobscheduler.common.system.OperatingSystem.isUnix
 import io.circe.Encoder
 import java.io.{File, FileOutputStream}
 import java.nio.charset.Charset
-import java.nio.file.Files.{delete, deleteIfExists, isDirectory, isSymbolicLink, setPosixFilePermissions}
+import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.Files.{delete, deleteIfExists, isDirectory, isSymbolicLink, readAllBytes, setPosixFilePermissions}
 import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
 import java.nio.file.{FileAlreadyExistsException, FileVisitOption, Files, Path, Paths}
 import java.util.concurrent.ThreadLocalRandom
@@ -86,18 +86,18 @@ object FileUtils
         ByteString(delegate.contentBytes)
 
       def contentBytes: Array[Byte] =
-        GuavaFiles.toByteArray(delegate.toFile)
+        readAllBytes(delegate)
 
-      def contentBytes_=(o: Array[Byte]): Unit =
-        GuavaFiles.write(o, delegate.toFile)
+      def contentBytes_=(bytes: Array[Byte]): Unit =
+        Files.write(delegate, bytes)
 
-      def contentBytes_=(o: Seq[Byte]): Unit =
-        GuavaFiles.write(o.toArray, delegate.toFile)
+      def contentBytes_=(bytes: Seq[Byte]): Unit =
+        Files.write(delegate, bytes.toArray)
 
       def contentString: String = contentString(UTF_8)
 
-      def contentString_=(o: CharSequence): Unit =
-        write(o, UTF_8)
+      def contentString_=(string: CharSequence): Unit =
+        write(string, UTF_8)
 
       def contentString(encoding: Charset) =
         GuavaFiles.asCharSource(delegate.toFile, encoding).read()
