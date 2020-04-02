@@ -492,7 +492,6 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Ma
     val shortenedArray = Json.fromValues(array.filterNot(o => o.asObject.get("TYPE").contains("AgentSnapshot".asJson)))  // Delete AgentSnapshot in `array` (for easy comparison)
     val masterMetaState = array.iterator.map(_.as(MasterSnapshots.SnapshotJsonCodec).orThrow)
       .collectFirst { case o: MasterMetaState => o }.get
-    println("###")
     assert(shortenedArray == json"""[
       {
         "TYPE": "MasterMetaState",

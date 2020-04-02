@@ -64,7 +64,6 @@ final class LogRouteTest extends FreeSpec with RouteTester with LogRoute
             for (text <- Array("/ZWEI", "/DREI")) {
               out.write(text)
               out.flush()
-              println(s"### ${file.contentString}")
               assert(queue.poll(9, SECONDS) == text)
             }
           }
