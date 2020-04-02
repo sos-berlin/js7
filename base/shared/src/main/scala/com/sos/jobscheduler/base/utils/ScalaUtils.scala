@@ -3,6 +3,7 @@ package com.sos.jobscheduler.base.utils
 import com.sos.jobscheduler.base.exceptions.PublicException
 import com.sos.jobscheduler.base.problem.{Checked, Problem, ProblemException}
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
+import com.sos.jobscheduler.base.utils.Strings.RichString
 import java.io.{ByteArrayInputStream, InputStream, PrintWriter, StringWriter}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.concurrent.atomic.AtomicBoolean
@@ -138,10 +139,25 @@ object ScalaUtils
   }
 
   def cast[A: ClassTag](o: Any): A = {
-    val a = implicitClass[A]
-    if (o == null) throw new NullPointerException(s"Expected ${a.getName}, found: null")
-    if (!(a isAssignableFrom o.getClass)) throw new ClassCastException(s"${o.getClass.getName} is not a ${a.getName}: $o")
-    o.asInstanceOf[A]
+    checkedCast[A](o) match {
+      case Left(problem) =>
+        throw problem.throwableOption getOrElse new ClassCastException(problem.toString)
+      case Right(a) => a
+    }
+  }
+
+  def checkedCast[A: ClassTag](o: Any): Checked[A] =
+    checkedCast[A](o,
+      Problem(s"Expected ${o.getClass.getName} but got ${implicitClass[A].getName}: ${o.toString.truncateWithEllipsis(30)}"))
+
+  def checkedCast[A: ClassTag](o: Any, problem: => Problem): Checked[A] = {
+    val A = implicitClass[A]
+    if (o == null)
+      Left(Problem.pure(new NullPointerException(s"Expected ${A.getName}, found: null")))
+    else if (A isAssignableFrom o.getClass)
+      Right(o.asInstanceOf[A])
+    else
+      Left(problem)
   }
 
   def someUnless[A](a: A, none: A): Option[A] =

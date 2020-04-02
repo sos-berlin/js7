@@ -121,7 +121,15 @@ final class ScalaUtilsTest extends FreeSpec
     val s: Any = "Hej!"
     val string = cast[String](s)
     (string: String) shouldEqual "Hej!"
-    intercept[ClassCastException]{ cast[String](123) } .getMessage shouldEqual "java.lang.Integer is not a java.lang.String: 123"
+    intercept[ClassCastException]{ cast[String](123) } .getMessage shouldEqual "Expected java.lang.Integer but got java.lang.String: 123"
+  }
+
+  "checkedCast" in {
+    val s: Any = "Hej!"
+    val string = checkedCast[String](s)
+    string shouldEqual Right("Hej!")
+    assert(checkedCast[String](123) == Left(Problem("Expected java.lang.Integer but got java.lang.String: 123")))
+    assert(checkedCast[String](null).left.exists(_.throwable.isInstanceOf[NullPointerException]))
   }
 
   "someUnless" in {
