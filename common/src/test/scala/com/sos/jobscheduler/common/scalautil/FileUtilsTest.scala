@@ -21,10 +21,9 @@ import scodec.bits.ByteVector
  */
 final class FileUtilsTest extends FreeSpec with BeforeAndAfterAll
 {
-  private lazy val file = createTempFile("FileUtilTest-", ".tmp").toFile
-  private lazy val path = file.toPath
+  private lazy val path = createTempFile("FileUtilTest-", ".tmp")
 
-  override def afterAll() = delete(file)
+  override def afterAll() = delete(path)
 
   "implicit fileToPath" in {
     new File("/a"): Path
@@ -115,13 +114,14 @@ final class FileUtilsTest extends FreeSpec with BeforeAndAfterAll
       path.contentString(UTF_16BE) shouldEqual TestString + "X"
     }
 
-    "pathSet" in {
+    "pathSet, pathSeq" in {
       intercept[NotDirectoryException] { path.pathSet }
       val dir = createTempDirectory("FileUtilsTest-")
       assert(dir.pathSet.isEmpty)
       val files = Set("a.tmp", "b.tmp") map dir.resolve
       files foreach { o => touch(o) }
       assert(dir.pathSet == files)
+      assert(dir.pathSeq.toSet == files)
       files foreach delete
       delete(dir)
     }

@@ -10,7 +10,7 @@ import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.base.utils.Closer
 import com.sos.jobscheduler.base.utils.Closer.syntax._
 import com.sos.jobscheduler.base.utils.Closer.withCloser
-import com.sos.jobscheduler.base.utils.JavaCollections.implicits._
+import com.sos.jobscheduler.base.utils.JavaCollections.syntax._
 import com.sos.jobscheduler.common.system.OperatingSystem.isUnix
 import io.circe.Encoder
 import java.io.{File, FileOutputStream}
@@ -22,6 +22,7 @@ import java.nio.file.{FileAlreadyExistsException, FileVisitOption, Files, Path, 
 import java.util.concurrent.ThreadLocalRandom
 import scala.annotation.tailrec
 import scala.collection.AbstractIterator
+import scala.collection.immutable.Seq
 import scala.language.implicitConversions
 import scodec.bits.ByteVector
 
@@ -63,7 +64,7 @@ object FileUtils
       def :=(bytes: Array[Byte]): Unit =
         contentBytes = bytes
 
-      def :=(bytes: Seq[Byte]): Unit =
+      def :=(bytes: collection.Seq[Byte]): Unit =
         contentBytes = bytes
 
       def :=(byteVector: ByteVector): Unit =
@@ -91,7 +92,7 @@ object FileUtils
       def contentBytes_=(bytes: Array[Byte]): Unit =
         Files.write(delegate, bytes)
 
-      def contentBytes_=(bytes: Seq[Byte]): Unit =
+      def contentBytes_=(bytes: collection.Seq[Byte]): Unit =
         Files.write(delegate, bytes.toArray)
 
       def contentString: String = contentString(UTF_8)
@@ -122,7 +123,13 @@ object FileUtils
         * Returns the content of the directory denoted by `this`.
         */
       def pathSet: Set[Path] =
-        autoClosing(Files.list(delegate)) { _.toSet }
+        autoClosing(Files.list(delegate)) { _.asScala.toSet }
+
+      /**
+        * Returns the content of the directory denoted by `this`.
+        */
+      def pathSeq: Seq[Path] =
+        autoClosing(Files.list(delegate)) { _.asScala.toVector }
     }
   }
 
@@ -184,7 +191,7 @@ object FileUtils
   def nestedPathsIterator(directory: Path, options: FileVisitOption*): AutoCloseable with Iterator[Path] =
     new AbstractIterator[Path] with AutoCloseable {
       private val javaStream = Files.walk(directory, options: _*)
-      private val iterator = javaStreamToIterator(javaStream)
+      private val iterator = javaStream.asScala
 
       def close() = javaStream.close()
       def hasNext = iterator.hasNext
