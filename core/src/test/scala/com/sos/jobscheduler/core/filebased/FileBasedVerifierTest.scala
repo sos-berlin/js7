@@ -4,6 +4,7 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked.Ops
+import com.sos.jobscheduler.base.utils.CatsUtils.bytesToInputStreamResource
 import com.sos.jobscheduler.core.crypt.pgp.PgpCommons.RichPGPPublicKey
 import com.sos.jobscheduler.core.crypt.pgp.{PgpKeyGenerator, PgpSignatureVerifier, PgpSigner}
 import com.sos.jobscheduler.core.filebased.FileBasedVerifierTest._
@@ -66,7 +67,9 @@ object FileBasedVerifierTest
   private val (signer, verifier) = {
     val password = SecretString("TEST-PASSWORD")
     val secretKey = PgpKeyGenerator.generateSecretKey(signerIds.head, password, keySize = 1024/*fast*/)
-    val verifier = PgpSignatureVerifier.checked(secretKey.getPublicKey.toArmoredAsciiBytes).orThrow
+    val verifier = PgpSignatureVerifier.checked(
+      bytesToInputStreamResource(secretKey.getPublicKey.toArmoredAsciiBytes) :: Nil
+    ).orThrow
     val signer = PgpSigner(secretKey, password).orThrow
     (signer, verifier)
   }

@@ -1,15 +1,22 @@
 package com.sos.jobscheduler.core.crypt.generic
 
 import cats.Applicative
+import cats.effect.{Resource, SyncIO}
 import cats.instances.either._
 import cats.instances.vector._
 import cats.syntax.traverse._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.base.utils.Collections._
+import com.sos.jobscheduler.base.utils.JavaCollections.syntax._
+import com.sos.jobscheduler.base.utils.ScalaUtils.checkedCast
+import com.sos.jobscheduler.common.scalautil.JavaSyncResources.fileAsResource
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.crypt.SignatureVerifier
 import com.sos.jobscheduler.data.crypt.{GenericSignature, SignerId}
 import com.typesafe.config.Config
+import java.io.InputStream
+import java.nio.file.Files.{exists, isDirectory}
 import java.nio.file.{Files, Paths}
 import scala.collection.JavaConverters._
 import scala.collection.immutable.Seq
@@ -23,7 +30,7 @@ final class GenericSignatureVerifier private(typeToVerifier: Map[String, Checked
 
   def companion = GenericSignatureVerifier
 
-  def key = throw new NotImplementedError("GenericSignatureVerifier#key")
+  def keys = throw new NotImplementedError("GenericSignatureVerifier#key")
 
   def keyOrigin = "(GenericSignatureVerifier)"
 
@@ -44,24 +51,31 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion
 
   def typeName = "(generic)"
 
-  def recommendedKeyFileName = throw new NotImplementedError("GenericSignatureVerifier#recommendedKeyFileName")
+  def recommendedKeyDirectoryName = throw new NotImplementedError("GenericSignatureVerifier recommendedKeyDirectoryName")
+  def fileExtension = throw new NotImplementedError("GenericSignatureVerifier fileExtenson")
 
   implicitly[Applicative[Checked]]
 
   def apply(config: Config): Checked[GenericSignatureVerifier] =
     config.getObject(configPath).asScala.toMap  // All Config key-values
       .map { case (typeName, v) =>
-        typeName -> (v.unwrapped match {
-          case o: String =>
-            val file = Paths.get(o)
-            if (!Files.exists(file))
-              Left(Problem.pure(s"Signature key file '$file' for '$typeName' does not exists"))
-            else
-              SignatureVerifiers.typeToSignatureVerifierCompanion(typeName)
-                .flatMap(_.checked(Files.readAllBytes(file).toVector, keyOrigin = file.toString))
-          case _ =>
-            Left(Problem.pure(s"String expected as value for configuration key $configPath.$typeName"))
-        })
+        typeName -> (
+          checkedCast[String](v.unwrapped, Problem.pure(s"String expected as value of configuration key $configPath.$typeName"))
+            .map(Paths.get(_))
+            .flatMap(file =>
+              SignatureVerifiers.typeToSignatureVerifierCompanion(typeName).flatMap { companion =>
+                if (!exists(file))
+                  Left(Problem.pure(s"Signature key file '$file' for '$typeName' does not exists"))
+                else {
+                  val files =
+                    if (isDirectory(file))  // recommended usage
+                      autoClosing(Files.list(file))(
+                        _.asScala.filter(_.getFileName.toString.endsWith(companion.fileExtension)).toVector)
+                    else
+                      file :: Nil
+                  companion.checked(files map fileAsResource, keyOrigin = file.toString)
+                }
+              }))
       }
       .toVector.map {
         case (k, Right(v)) => Right(k -> v)
@@ -84,7 +98,9 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion
       }
 
   @deprecated("Not implemented", "")
-  def checked(publicKey: Seq[Byte], keyOrigin: String) = throw new NotImplementedError("GenericSignatureVerifier.checked?")
+  def checked(publicKeyRings: Seq[Resource[SyncIO, InputStream]], keyOrigin: String) =
+    throw new NotImplementedError("GenericSignatureVerifier.checked?")
 
-  def genericSignatureToSignature(signature: GenericSignature) = signature
+  def genericSignatureToSignature(signature: GenericSignature) =
+    signature
 }

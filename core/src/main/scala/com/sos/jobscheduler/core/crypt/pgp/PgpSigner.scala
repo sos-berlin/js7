@@ -79,7 +79,8 @@ extends MessageSigner
     signatureGenerator.generate.getEncoded(/*forTransfer=*/true)
 
   def toVerifier =
-    PgpSignatureVerifier.checked(bytesToInputStreamResource(publicKey), keyOrigin = "PgpSigner").orThrow
+    PgpSignatureVerifier.checked(bytesToInputStreamResource(publicKey) :: Nil, origin = "PgpSigner")
+      .orThrow
 
   def verifierCompanion = PgpSignatureVerifier
 

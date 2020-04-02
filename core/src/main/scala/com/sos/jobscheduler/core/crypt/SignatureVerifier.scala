@@ -1,7 +1,9 @@
 package com.sos.jobscheduler.core.crypt
 
+import cats.effect.{Resource, SyncIO}
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.data.crypt.{GenericSignature, Signature, SignedString, SignerId}
+import java.io.InputStream
 import scala.collection.immutable.Seq
 
 /**
@@ -13,7 +15,7 @@ trait SignatureVerifier
 
   def companion: SignatureVerifier.Companion { type MySignature = SignatureVerifier.this.MySignature }
 
-  def key: Seq[Byte]
+  def keys: Seq[Seq[Byte]]
 
   def keyOrigin: String
 
@@ -35,9 +37,13 @@ object SignatureVerifier
 
     def typeName: String
 
-    def recommendedKeyFileName: String
+    def recommendedKeyDirectoryName: String
 
-    def checked(publicKey: Seq[Byte], keyOrigin: String = "UNKNOWN"): Checked[MySignatureVerifier]
+    //def recommendedSingleKeyFilename: String
+
+    def fileExtension: String
+
+    def checked(publicKeys: Seq[Resource[SyncIO, InputStream]], keyOrigin: String = "(unknown source)"): Checked[MySignatureVerifier]
 
     def genericSignatureToSignature(signature: GenericSignature): MySignature
   }

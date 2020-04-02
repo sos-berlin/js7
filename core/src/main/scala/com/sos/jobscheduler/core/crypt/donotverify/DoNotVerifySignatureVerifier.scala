@@ -1,8 +1,10 @@
 package com.sos.jobscheduler.core.crypt.donotverify
 
+import cats.effect.{Resource, SyncIO}
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.core.crypt.SignatureVerifier
 import com.sos.jobscheduler.data.crypt.GenericSignature
+import java.io.InputStream
 import scala.collection.immutable.Seq
 
 /**
@@ -18,17 +20,18 @@ extends SignatureVerifier with SignatureVerifier.Companion  // Both Verifier and
 
   def keyOrigin = "(no signature verification)"
 
-  def recommendedKeyFileName = throw new NotImplementedError("DoNotVerifySignatureVerifier recommendedKeyFileName")
+  def recommendedKeyDirectoryName = throw new NotImplementedError("DoNotVerifySignatureVerifier recommendedKeyDirectoryName")
+  def fileExtension = throw new NotImplementedError("DoNotVerifySignatureVerifier fileExtension")
 
-  def key = throw new NotImplementedError("DoNotVerifySignatureVerifier#key")
+  def keys = throw new NotImplementedError("DoNotVerifySignatureVerifier#key")
 
   def verify(message: String, signature: DoNotVerifySignature.type) = Right(Nil)
 
   def typeName = DoNotVerifySignature.TypeName
 
-  def checked(publicKey: Seq[Byte], keyOrigin: String = keyOrigin) =
-    if (publicKey.nonEmpty)
-      Left(Problem.pure("DoNotVerifySignatureVerifier only accepts an empty public key"))
+  def checked(publicKeyRings: Seq[Resource[SyncIO, InputStream]], keyOrigin: String = keyOrigin) =
+    if (publicKeyRings.nonEmpty)
+      Left(Problem.pure("DoNotVerifySignatureVerifier only accepts an empty public key collection"))
     else
       Right(DoNotVerifySignatureVerifier)
 

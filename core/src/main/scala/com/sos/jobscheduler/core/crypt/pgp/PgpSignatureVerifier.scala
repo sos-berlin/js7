@@ -3,7 +3,6 @@ package com.sos.jobscheduler.core.crypt.pgp
 import cats.effect.{Resource, SyncIO}
 import cats.syntax.show._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.CatsUtils.bytesToInputStreamResource
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.SyncResource.syntax._
 import com.sos.jobscheduler.common.scalautil.GuavaUtils.stringToInputStreamResource
@@ -34,7 +33,7 @@ extends SignatureVerifier
 
   private val contentVerifierBuilderProvider = new JcaPGPContentVerifierBuilderProvider().setProvider("BC")
 
-  def key = publicKeyRingCollection.toArmoredAsciiBytes
+  def keys = publicKeyRingCollection.toArmoredAsciiBytes :: Nil
 
   /** Returns `Right(message)` iff signature matches the message. */
   def verify(message: String, signature: PgpSignature): Checked[Seq[SignerId]] =
@@ -76,16 +75,14 @@ object PgpSignatureVerifier extends SignatureVerifier.Companion
   protected type MySignatureVerifier = PgpSignatureVerifier
 
   val typeName = PgpSignature.TypeName
-  val recommendedKeyFileName = "trusted-pgp-key.asc"
+  val recommendedKeyDirectoryName = "trusted-pgp-keys"
+  val fileExtension = ".asc"
 
   private val logger = Logger(getClass)
 
-  def checked(keyRings: Seq[Byte], keyOrigin: String) =
-    checked(bytesToInputStreamResource(keyRings), keyOrigin = keyOrigin)
-
-  def checked(keyRings: Resource[SyncIO, InputStream], keyOrigin: String): Checked[PgpSignatureVerifier] =
+  def checked(publicKeyRings: Seq[Resource[SyncIO, InputStream]], origin: String) =
     Checked.catchNonFatal(
-      new PgpSignatureVerifier(readPublicKeyRingCollection(keyRings), keyOrigin))
+      new PgpSignatureVerifier(readPublicKeyRingCollection(publicKeyRings), origin))
 
   def genericSignatureToSignature(signature: GenericSignature): PgpSignature = {
     assert(signature.typeName == typeName)

@@ -210,14 +210,17 @@ extends HasCloser
   private def masterName = testName.fold(MasterConfiguration.DefaultName)(_ + "-Master")
 
   private def useSignatureVerifier(verifier: SignatureVerifier): Unit = {
-    val keyFile = "private/" + verifier.companion.recommendedKeyFileName
+    val dir = "private/" + verifier.companion.recommendedKeyDirectoryName
     for (config <- master.configDir +: agents.map(_.configDir)) {
-      config / keyFile := verifier.key
+      createDirectory(config / dir )
+      for ((key, i) <- verifier.keys.zipWithIndex) {
+        config / dir / (s"key-${i+1}" + verifier.companion.fileExtension) := key
+      }
     }
     for (conf <- master.configDir / "master.conf" +: agents.map(_.configDir / "agent.conf")) {
       conf ++=
         s"""jobscheduler.configuration.trusted-signature-keys {
-           |  ${verifier.companion.typeName} = $${jobscheduler.config-directory}"/$keyFile"
+           |  ${verifier.companion.typeName} = $${jobscheduler.config-directory}"/$dir"
            |}
            |""".stripMargin
     }

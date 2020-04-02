@@ -22,7 +22,7 @@ final class SillySigner(signature: SillySignature) extends MessageSigner
 
   def publicKey = privateKey
 
-  def toVerifier = new SillySignatureVerifier(signature, keyOrigin = "SillySigner")
+  def toVerifier = new SillySignatureVerifier(signature :: Nil, keyOrigin = "SillySigner")
 
   def verifierCompanion = SillySignatureVerifier
 }

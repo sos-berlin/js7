@@ -169,9 +169,12 @@ object PgpCommons
     armored.close()
   }
 
-  def readPublicKeyRingCollection(resource: Resource[SyncIO, InputStream]): PGPPublicKeyRingCollection =
-    resource.useSync(in =>
-      new PGPPublicKeyRingCollection(PGPUtil.getDecoderStream(in), newFingerPrintCalculator))
+  def readPublicKeyRingCollection(resources: Seq[Resource[SyncIO, InputStream]]): PGPPublicKeyRingCollection =
+    new PGPPublicKeyRingCollection(
+      resources.map(_
+        .useSync(in =>
+          new PGPPublicKeyRing(PGPUtil.getDecoderStream(in), newFingerPrintCalculator))
+      ).asJava)
 
   def newFingerPrintCalculator: KeyFingerPrintCalculator =
     new JcaKeyFingerprintCalculator  // or BcKeyFingerprintCalculator

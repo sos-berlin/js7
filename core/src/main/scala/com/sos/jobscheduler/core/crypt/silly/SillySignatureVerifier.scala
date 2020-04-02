@@ -1,29 +1,33 @@
 package com.sos.jobscheduler.core.crypt.silly
 
+import cats.effect.{Resource, SyncIO}
+import com.google.common.io.ByteStreams.toByteArray
+import com.sos.jobscheduler.base.utils.SyncResource.syntax.RichResource
 import com.sos.jobscheduler.core.crypt.SignatureVerifier
 import com.sos.jobscheduler.core.problems.TamperedWithSignedMessageProblem
 import com.sos.jobscheduler.data.crypt.{GenericSignature, SignerId}
+import java.io.InputStream
 import java.nio.charset.StandardCharsets.UTF_8
 import scala.collection.immutable.Seq
 
 /**
   * @author Joacim Zschimmer
   */
-final class SillySignatureVerifier(requiredSignature: SillySignature, val keyOrigin: String)
+final class SillySignatureVerifier(signatures: Seq[SillySignature], val keyOrigin: String)
 extends SignatureVerifier
 {
   import SillySignatureVerifier._
 
-  def this() = this(SillySignature.Default, keyOrigin = "Silly")
+  def this() = this(SillySignature.Default :: Nil, keyOrigin = "Silly")
 
   protected type MySignature = SillySignature
 
   def companion = SillySignatureVerifier
 
-  def key = requiredSignature.string.getBytes(UTF_8).toVector
+  def keys = signatures.map(_.string.getBytes(UTF_8).toVector)
 
   def verify(message: String, signature: SillySignature) =
-    if (signature != requiredSignature)
+    if (!signatures.contains(signature))
       Left(TamperedWithSignedMessageProblem)
     else
       Right(SillySignerId :: Nil)
@@ -37,14 +41,15 @@ object SillySignatureVerifier extends SignatureVerifier.Companion
   protected type MySignatureVerifier = SillySignatureVerifier
 
   val typeName = SillySignature.TypeName
-  val recommendedKeyFileName = "trusted-silly-signature-key.txt"
+  val recommendedKeyDirectoryName = "trusted-silly-signature-keys"
+  val fileExtension = ".txt"
 
   private val SillySignerId = SignerId("Silly")
 
-  def checked(publicKey: Seq[Byte], keyOrigin: String = "Silly") =
+  def checked(publicKeys: Seq[Resource[SyncIO, InputStream]], keyOrigin: String = "Silly") =
     Right(
       new SillySignatureVerifier(
-        SillySignature(new String(publicKey.toArray, UTF_8)),
+        publicKeys.map(o => SillySignature(new String(o.useSync(toByteArray), UTF_8))),
         keyOrigin = keyOrigin))
 
   def genericSignatureToSignature(signature: GenericSignature) = {
