@@ -9,12 +9,13 @@ import scala.language.implicitConversions
   */
 object JavaCollections
 {
-  object implicits {
-    implicit def javaStreamToIterator[A](stream: java.util.stream.Stream[A]): Iterator[A] = stream.iterator.asScala
+  object syntax
+  {
+    implicit final class JavaStreamToScala[A](private val underlying: java.util.stream.Stream[A]) extends AnyVal {
+      def asScala: Iterator[A] = underlying.iterator.asScala
 
-    implicit final class RichJavaStream[A](private val delegate: java.util.stream.Stream[A]) extends AnyVal {
       def toImmutableSeq: Seq[A] =
-        Vector.empty ++ delegate.iterator.asScala
+        Vector.empty ++ underlying.iterator.asScala
     }
   }
 }
