@@ -23,8 +23,8 @@ final case class KeyedEvent[+E <: Event](key: E#Key, event: E)
 object KeyedEvent {
   private[event] val KeyFieldName = "key"
 
-  sealed trait NoKey
-  case object NoKey extends NoKey {
+  type NoKey = NoKey.type
+  case object NoKey {
     implicit val JsonEncoder: Encoder[NoKey] = _ => sys.error("NoKey Encoder")
     implicit val JsonDecoder: Decoder[NoKey] = _ => sys.error("NoKey Decoder")
 
