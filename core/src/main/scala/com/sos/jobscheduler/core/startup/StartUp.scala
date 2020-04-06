@@ -7,6 +7,7 @@ import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem.{cpuMo
 import com.sos.jobscheduler.common.utils.ByteUnits.toMB
 import java.io.File
 import java.nio.file.Path
+import java.time.LocalDateTime
 import monix.execution.atomic.AtomicBoolean
 
 /**
@@ -42,4 +43,7 @@ object StartUp
       logger.debug("Logger TRACE enabled")
     }
   }
+
+  def printlnWithClock(line: String) =
+    println(s"${LocalDateTime.now.toString.replace('T', ' ')} $line")
 }

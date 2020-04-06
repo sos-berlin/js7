@@ -14,7 +14,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.sos.jobscheduler.core.startup.JavaMain.withShutdownHooks
 import com.sos.jobscheduler.core.startup.JavaMainLockfileSupport.lockAndRunMain
-import java.time.LocalDateTime
+import com.sos.jobscheduler.core.startup.StartUp.printlnWithClock
 import scala.concurrent.duration._
 
 /**
@@ -40,7 +40,7 @@ final class AgentMain
     // Log complete timestamp in case of short log timestamp
     val msg = s"JobScheduler Agent Server terminates at ${Timestamp.now.show}"
     logger.info(msg)
-    println(s"${LocalDateTime.now.toString.replace('T', ' ')} $msg")
+    printlnWithClock(msg)
     terminated
   }
 
@@ -60,7 +60,7 @@ object AgentMain
   // Don't use a Logger here to avoid overwriting a concurrently used logfile
 
   def main(args: Array[String]): Unit = {
-    println(s"${LocalDateTime.now.toString.replace('T', ' ')} JobScheduler Agent Server ${BuildInfo.prettyVersion}")
+    printlnWithClock(s"JobScheduler Agent Server ${BuildInfo.prettyVersion}")
     var terminated = AgentTermination.Terminate()
     lockAndRunMain(args) { commandLineArguments =>
       terminated = new AgentMain().run(commandLineArguments)

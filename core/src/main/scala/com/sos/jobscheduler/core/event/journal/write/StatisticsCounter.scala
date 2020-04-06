@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.core.event.journal.write
 
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.utils.Strings._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.core.event.journal.write.StatisticsCounter._
 import java.lang.System.nanoTime
@@ -38,8 +39,8 @@ private[journal] trait StatisticsCounter
     s"$flushes flushes, $syncs syncs"
 
   protected def flushesTimingString =
-    if (flushes == 0) ""
-    else (t(flushNanos, flushes, "flush") ++ t(syncNanos, syncs, "sync")).mkString(", ")
+    (flushes > 0) ?:
+      (t(flushNanos, flushes, "flush") ++ t(syncNanos, syncs, "sync")).mkString(", ")
 
   final def flushCount = flushes
 

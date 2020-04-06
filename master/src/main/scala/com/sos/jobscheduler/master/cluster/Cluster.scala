@@ -172,7 +172,7 @@ final class Cluster(
             val failedOver = inhibitActivationOf(passiveUri).map {
               case None =>
                 // The other node has not failed-over
-                logger.info("The other cluster is still passive, so this node remains the active cluster node")
+                logger.info(s"The other cluster node '$passiveId' is still passive, so this node remains the active cluster node")
                 remainingActiveAfterRestart = true
                 proceed(recoveredClusterState, recovered.eventId)
                 None

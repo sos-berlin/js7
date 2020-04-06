@@ -7,6 +7,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.sos.jobscheduler.common.utils.JavaShutdownHook
 import com.sos.jobscheduler.core.message.ProblemCodeMessages
+import com.sos.jobscheduler.core.startup.StartUp.printlnWithClock
 import com.typesafe.config.Config
 import scala.collection.immutable.Seq
 import scala.concurrent.duration.FiniteDuration
@@ -24,7 +25,7 @@ object JavaMain
     } catch { case t: Throwable =>
       logger.error(t.toStringWithCauses, t)
       Log4j.shutdown()
-      println(s"TERMINATING DUE TO ERROR: ${t.toStringWithCauses}")
+      printlnWithClock(s"TERMINATING DUE TO ERROR: ${t.toStringWithCauses}")
       sys.runtime.exit(1)
     }
 

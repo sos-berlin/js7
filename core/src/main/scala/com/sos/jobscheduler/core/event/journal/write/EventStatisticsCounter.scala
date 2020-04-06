@@ -2,6 +2,7 @@ package com.sos.jobscheduler.core.event.journal.write
 
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.ScalazStyle._
+import com.sos.jobscheduler.base.utils.Strings._
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -24,18 +25,16 @@ private[journal] final class EventStatisticsCounter(initialEventCount: Int) exte
     else s"$events events" //+ (if (syncs > 0) s", $syncs syncs" else "")
 
   def debugString: Option[String] =
-    (events != 0) ? (
+    (events > 0) ? (
       s"$events events, $commits commits ($flushesDebugString) " +
-        (if (events == 0) ""
-         else
-          (if (stopwatch.duration >= 1.s) s"$flushesTimingString, " else "") + {
-            val factorFormat = NumberFormat.getInstance(Locale.ROOT)  // Not thread-safe
-            factorFormat.setMaximumFractionDigits(1)
-            factorFormat.setGroupingUsed(false)  // For MacOS
-            (if (flushCount > 0) factorFormat.format(commits.toDouble / flushCount) + s" commits/flush" else "") +
-              (if (syncCount < 10) "" // syncOnCommit?
-               else ", " +
-                factorFormat.format(commits.toDouble / syncCount) + s" commits/sync, " +
-                factorFormat.format(events.toDouble / syncCount) + s" events/sync")
-          }))
+        (((flushCount > 0 && stopwatch.duration >= 1.s) ?: s"$flushesTimingString, ") + {
+          val factorFormat = NumberFormat.getInstance(Locale.ROOT)  // Not thread-safe
+          factorFormat.setMaximumFractionDigits(1)
+          factorFormat.setGroupingUsed(false)  // For MacOS
+          ((flushCount > 0) ?: factorFormat.format(commits.toDouble / flushCount) + " commits/flush") +
+          ((syncCount >= 10) ?: // syncOnCommit?
+            (", " +
+              factorFormat.format(commits.toDouble / syncCount) + s" commits/sync, " +
+              factorFormat.format(events.toDouble / syncCount) + s" events/sync"))
+        }))
 }
