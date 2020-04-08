@@ -35,7 +35,7 @@ import com.sos.jobscheduler.core.event.journal.recover.{JournalRecoverer, Recove
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.event.journal.{BabyJournaledState, JournalActor, MainJournalingActor}
 import com.sos.jobscheduler.core.filebased.{FileBasedVerifier, FileBaseds, Repo}
-import com.sos.jobscheduler.core.problems.{ReverseKeepEventsProblem, UnknownOrderProblem}
+import com.sos.jobscheduler.core.problems.{ReverseReleaseEventsProblem, UnknownOrderProblem}
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderProcessor
 import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath, AgentRunId}
@@ -594,16 +594,16 @@ with MainJournalingActor[Event]
             }
         }
 
-      case MasterCommand.KeepEvents(after) =>
+      case MasterCommand.ReleaseEvents(untilEventId) =>
         val userId = commandMeta.user.id
         if (!masterConfiguration.journalConf.releaseEventsUserIds.contains(userId))
-          Future(Left(Problem.pure("Your UserId has not been configured for KeepEvents command")))
+          Future(Left(Problem.pure("Your UserId has not been configured for ReleaseEvents command")))
         else {
           val current = journalState.userIdToReleasedEventId.getOrElse(userId, EventId.BeforeFirst)
-          if (after < current)
-            Future(Left(ReverseKeepEventsProblem(requestedAfter = after, currentAfter = current)))
+          if (untilEventId < current)
+            Future(Left(ReverseReleaseEventsProblem(requestedUntilEventId = untilEventId, currentUntilEventId = current)))
           else
-            persist(JournalEventsReleased(userId, after)) { case Stamped(_,_, _ <-: event) =>
+            persist(JournalEventsReleased(userId, untilEventId)) { case Stamped(_,_, _ <-: event) =>
               journalState = journalState.applyEvent(event)
               Right(MasterCommand.Response.Accepted)
             }

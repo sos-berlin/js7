@@ -157,12 +157,12 @@ final class MasterCommandTest extends FreeSpec
     }
   }
 
-  "KeepEvents" in {
+  "ReleaseEvents" in {
     testJson[MasterCommand](
-      KeepEvents(123),
+      ReleaseEvents(123),
       json"""{
-        "TYPE": "KeepEvents",
-        "after": 123
+        "TYPE": "ReleaseEvents",
+        "untilEventId": 123
       }""")
   }
 

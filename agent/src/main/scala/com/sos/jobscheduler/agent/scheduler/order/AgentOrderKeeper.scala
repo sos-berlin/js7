@@ -5,7 +5,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, CancelOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, KeepEvents, OrderCommand, Response}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, CancelOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, ReleaseEvents, OrderCommand, Response}
 import com.sos.jobscheduler.agent.data.event.AgentMasterEvent.AgentReadyForMaster
 import com.sos.jobscheduler.agent.scheduler.job.JobActor
 import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
@@ -32,7 +32,7 @@ import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
 import com.sos.jobscheduler.core.event.journal.{BabyJournaledState, JournalActor, MainJournalingActor}
 import com.sos.jobscheduler.core.filebased.FileBasedVerifier
-import com.sos.jobscheduler.core.problems.ReverseKeepEventsProblem
+import com.sos.jobscheduler.core.problems.ReverseReleaseEventsProblem
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderProcessor
 import com.sos.jobscheduler.core.workflow.Workflows.ExecutableWorkflow
@@ -199,7 +199,7 @@ extends MainJournalingActor[Event] with Stash {
       if (!journalState.userIdToReleasedEventId.contains(masterId.toUserId)) {
         // Automatically add Master's UserId to list of users allowed to release events,
         // to avoid deletion of journal files due to an empty list, becore master has read the events.
-        // The master has to send KeepOrders commands to release obsolete journal files.
+        // The master has to send ReleaseEvents commands to release obsolete journal files.
         persist(JournalEventsReleased(masterId.toUserId, EventId.BeforeFirst)) { case Stamped(_,_, _ <-: event) =>
           journalState = journalState.applyEvent(event)
         }
@@ -357,11 +357,11 @@ extends MainJournalingActor[Event] with Stash {
       Future.successful(Right(GetOrders.Response(
         for (orderEntry <- orderRegister.values) yield orderEntry.order)))
 
-    case KeepEvents(after) if !shuttingDown =>
+    case ReleaseEvents(after) if !shuttingDown =>
       val userId = masterId.toUserId
       val current = journalState.userIdToReleasedEventId(userId)  // Must contain userId
       if (after < current)
-        Future(Left(ReverseKeepEventsProblem(requestedAfter = after, currentAfter = current)))
+        Future(Left(ReverseReleaseEventsProblem(requestedUntilEventId = after, currentUntilEventId = current)))
       else
         persist(JournalEventsReleased(userId, after)) { case Stamped(_,_, _ <-: event) =>
           journalState = journalState.applyEvent(event)

@@ -47,7 +47,7 @@ final class FatEventsTest extends FreeSpec
     autoClosing(new DirectoryProvider(AAgentRefPath :: BAgentRefPath :: Nil, TestWorkflow :: Nil, testName = Some("FatEventsTest"))) { provider =>
       (provider.master.configDir / "private/private.conf").append("""
         |jobscheduler.auth.users.TEST-USER = "plain:TEST-PASSWORD"
-        |jobscheduler.journal.users-allowed-to-keep-events = [ "TEST-USER" ]
+        |jobscheduler.journal.users-allowed-to-release-events = [ "TEST-USER" ]
         |""".stripMargin )
       for (a <- provider.agents) a.writeExecutable(TestExecutablePath, DirectoryProvider.script(0.s))
 
@@ -70,7 +70,7 @@ final class FatEventsTest extends FreeSpec
           assert(stampedEvents1.head == stampedEvents(1))
         }
         assert(listJournalFiles.size == 2)  // Master shutdown added a journal file
-        var keepEventsEventId = EventId.BeforeFirst
+        var releaseEventsEventId = EventId.BeforeFirst
         var lastAddedEventId = EventId.BeforeFirst
         val fatEvents = mutable.Buffer[KeyedEvent[FatEvent]]()
         provider.runMaster() { master =>
@@ -99,12 +99,12 @@ final class FatEventsTest extends FreeSpec
 
           assert(listJournalFiles.size == 3 && listJournalFiles.contains("master--0.journal"))
 
-          master.httpApi.executeCommand(MasterCommand.KeepEvents(finishedEventId - 1)) await 99.s
+          master.httpApi.executeCommand(MasterCommand.ReleaseEvents(finishedEventId - 1)) await 99.s
           assert(listJournalFiles.size == 3 && listJournalFiles.contains("master--0.journal"))  // Nothing deleted
 
-          master.httpApi.executeCommand(MasterCommand.KeepEvents(finishedEventId)) await 99.s
+          master.httpApi.executeCommand(MasterCommand.ReleaseEvents(finishedEventId)) await 99.s
           assert(listJournalFiles.size == 2 && !listJournalFiles.contains("master--0.journal"))  // First file deleted
-          keepEventsEventId = finishedEventId
+          releaseEventsEventId = finishedEventId
           lastAddedEventId = master.eventWatch.lastAddedEventId
         }
         assert(listJournalFiles.size == 3)  // Master shutdown added a journal file
@@ -154,8 +154,8 @@ final class FatEventsTest extends FreeSpec
           val torn = master.httpApi.fatEvents(EventRequest.singleClass[FatEvent](after = EventId.BeforeFirst, timeout = Some(99.s))) await 99.s
           assert(torn.isInstanceOf[TearableEventSeq.Torn])
 
-          val EventSeq.NonEmpty(stamped) = master.httpApi.fatEvents(EventRequest.singleClass[FatEvent](after = keepEventsEventId, timeout = Some(99.s))) await 99.s
-          assert(stamped.head.eventId > keepEventsEventId)
+          val EventSeq.NonEmpty(stamped) = master.httpApi.fatEvents(EventRequest.singleClass[FatEvent](after = releaseEventsEventId, timeout = Some(99.s))) await 99.s
+          assert(stamped.head.eventId > releaseEventsEventId)
           assert(stamped.map(_.value.event) ==
             Vector.fill(2)(MasterReadyFat(MasterId("Master"), ZoneId.systemDefault.getId)))  // Only MasterReady, nothing else happened
 
@@ -170,8 +170,8 @@ final class FatEventsTest extends FreeSpec
             val EventSeq.Empty(eventId2) = master.httpApi.fatEvents(EventRequest.singleClass[FatEvent](after = eventId1, timeout = Some(0.s))) await 99.s
             assert(eventId2 > eventId1)
 
-            // KeepEvents deletes last file
-            master.httpApi.executeCommand(MasterCommand.KeepEvents(eventId2)) await 99.s
+            // ReleaseEvents deletes last file
+            master.httpApi.executeCommand(MasterCommand.ReleaseEvents(eventId2)) await 99.s
             assert(listJournalFiles.size == 1)  // One file deleted
 
             // Should not return Torn:

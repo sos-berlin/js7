@@ -27,10 +27,10 @@ package object problems
     def arguments = Map("file" -> file)
   }
 
-  final case class ReverseKeepEventsProblem(requestedAfter: EventId, currentAfter: EventId) extends Problem.Coded {
+  final case class ReverseReleaseEventsProblem(requestedUntilEventId: EventId, currentUntilEventId: EventId) extends Problem.Coded {
     def arguments = Map(
-      "requestedAfter" -> requestedAfter.toString,
-      "currentAfter" -> currentAfter.toString)
+      "requestedUntilEventId" -> requestedUntilEventId.toString,
+      "currentUntilEventId" -> currentUntilEventId.toString)
   }
 
   case object TamperedWithSignedMessageProblem extends Problem.ArgumentlessCoded

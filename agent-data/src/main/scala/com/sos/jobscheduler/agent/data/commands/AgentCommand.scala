@@ -75,10 +75,11 @@ object AgentCommand extends CommonCommand.Companion
       } yield EmergencyStop(restart)
   }
 
-  /** Some outer component has accepted the events until (including) the given `eventId`.
-    * JobScheduler may delete these events to reduce the journal, keeping all events after `after`.
+  /** Some outer component no longer needs the events until (including) the given `untilEventId`.
+    * JobScheduler may delete these events to reduce the journal,
+    * keeping all events after `untilEventId`.
     */
-  final case class KeepEvents(after: EventId) extends OrderCommand {
+  final case class ReleaseEvents(untilEventId: EventId) extends OrderCommand {
     type Response = Response.Accepted
   }
 
@@ -180,7 +181,7 @@ object AgentCommand extends CommonCommand.Companion
       Subtype(deriveCodec[Batch]),
       Subtype(deriveCodec[CancelOrder]),
       Subtype[EmergencyStop],
-      Subtype(deriveCodec[KeepEvents]),
+      Subtype(deriveCodec[ReleaseEvents]),
       Subtype(NoOperation),
       Subtype(RegisterAsMaster),
       Subtype(deriveCodec[CoupleMaster]),

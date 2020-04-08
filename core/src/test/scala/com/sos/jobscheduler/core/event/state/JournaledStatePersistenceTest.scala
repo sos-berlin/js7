@@ -164,8 +164,8 @@ private object JournaledStatePersistenceTest
   private val TestConfig = TestData.TestConfig
     .withFallback(ConfigFactory.parseString("""
      |jobscheduler.akka.actor-message-log-level = Trace
-     |jobscheduler.journal.delete-unused-files = true
-     |jobscheduler.journal.users-allowed-to-keep-events = []
+     |jobscheduler.journal.remove-obsolete-files = true
+     |jobscheduler.journal.users-allowed-to-release-events = []
      |jobscheduler.journal.dispatcher.type = PinnedDispatcher
      |""".stripMargin))
 

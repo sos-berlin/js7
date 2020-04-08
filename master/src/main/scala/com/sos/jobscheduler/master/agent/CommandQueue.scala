@@ -4,7 +4,7 @@ import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Batch
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.master.agent.AgentDriver.{Input, KeepEventsQueueable, Queueable}
+import com.sos.jobscheduler.master.agent.AgentDriver.{Input, ReleaseEventsQueueable, Queueable}
 import com.sos.jobscheduler.master.agent.CommandQueue._
 import com.typesafe.scalalogging.{Logger => ScalaLogger}
 import monix.eval.Task
@@ -97,8 +97,8 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
         AgentCommand.DetachOrder(orderId)
       case Input.CancelOrder(orderId, mode) =>
         AgentCommand.CancelOrder(orderId, mode)
-      case KeepEventsQueueable(after) =>
-        AgentCommand.KeepEvents(after)
+      case ReleaseEventsQueueable(untilEventId) =>
+        AgentCommand.ReleaseEvents(untilEventId)
     }
 
   final def handleBatchSucceeded(responses: Seq[QueuedInputResponse]): Seq[Queueable] = {

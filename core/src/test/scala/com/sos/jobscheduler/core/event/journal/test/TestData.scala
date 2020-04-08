@@ -22,8 +22,8 @@ private[event] object TestData
      |jobscheduler.journal.snapshot.period = 1h
      |jobscheduler.journal.snapshot.when-bigger-than = 1G
      |jobscheduler.journal.ack-warn-duration = 10s
-     |jobscheduler.journal.delete-unused-files = false  # DIFFERS FROM DEFAULT TO ALLOW AWAITNG FOR OLD EVENTS !
-     |jobscheduler.journal.users-allowed-to-keep-events = []
+     |jobscheduler.journal.remove-obsolete-files = false  # DIFFERS FROM DEFAULT TO ALLOW AWAITNG FOR OLD EVENTS !
+     |jobscheduler.journal.users-allowed-to-release-events = []
      |""".stripMargin)
 
   val SnapshotJsonFormat = TypedJsonCodec[Any](

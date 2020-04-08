@@ -7,7 +7,7 @@ import com.sos.jobscheduler.core.command.{CommandExecutor, CommandMeta}
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.data.MasterCommand.{Batch, CancelOrder, KeepEvents, NoOperation, Response}
+import com.sos.jobscheduler.master.data.MasterCommand.{Batch, CancelOrder, ReleaseEvents, NoOperation, Response}
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
@@ -49,7 +49,7 @@ final class MasterCommandExecutorTest extends FreeSpec
   }
 
   "Batch" in {
-    assert(commandExecutor.executeCommand(Batch(NoOperation :: KeepEvents(999) :: cancelOrder :: Nil), meta).await(99.seconds) ==
+    assert(commandExecutor.executeCommand(Batch(NoOperation :: ReleaseEvents(999) :: cancelOrder :: Nil), meta).await(99.seconds) ==
       Right(Batch.Response(Right(Response.Accepted) :: Left(Problem("COMMAND NOT IMPLEMENTED")) :: Right(Response.Accepted) :: Nil)))
     assert(otherCommandExecutor.canceled == 2)
   }

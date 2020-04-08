@@ -69,8 +69,8 @@ with ReceiveLoggingActor.WithStash
   private var lastEventId = initialEventId
   private var lastProblem: Option[Problem] = None
   private var currentFetchedFuture: Option[CancelableFuture[Completed]] = None
-  private var keepEventsCancelable: Option[Cancelable] = None
-  private var delayNextKeepEvents = false
+  private var releaseEventsCancelable: Option[Cancelable] = None
+  private var delayNextReleaseEvents = false
   private var delayCommandExecutionAfterErrorUntil = now
   private var isTerminating = false
 
@@ -141,7 +141,7 @@ with ReceiveLoggingActor.WithStash
           .guarantee(Task(client.close()))
           .runAsyncAndForget
     currentFetchedFuture foreach (_.cancel())
-    keepEventsCancelable foreach (_.cancel())
+    releaseEventsCancelable foreach (_.cancel())
     super.postStop()
   }
 
@@ -196,7 +196,7 @@ with ReceiveLoggingActor.WithStash
 
     case Internal.OnCoupled(promise) =>
       lastProblem = None
-      delayNextKeepEvents = false
+      delayNextReleaseEvents = false
       commandQueue.onCoupled()
       commandQueue.maySend()
       promise.success(Completed)
@@ -232,12 +232,12 @@ with ReceiveLoggingActor.WithStash
 
     case Internal.EventsAccepted(after, promise) =>
       lastEventId = after
-      if (keepEventsCancelable.isEmpty) {
-        val delay = if (delayNextKeepEvents) conf.keepEventsPeriod else Duration.Zero
-        keepEventsCancelable = Some(scheduler.scheduleOnce(delay) {
-          self ! Internal.KeepEvents
+      if (releaseEventsCancelable.isEmpty) {
+        val delay = if (delayNextReleaseEvents) conf.releaseEventsPeriod else Duration.Zero
+        releaseEventsCancelable = Some(scheduler.scheduleOnce(delay) {
+          self ! Internal.ReleaseEvents
         })
-        delayNextKeepEvents = true
+        delayNextReleaseEvents = true
       }
       promise.success(Completed)
 
@@ -255,9 +255,9 @@ with ReceiveLoggingActor.WithStash
           }
         }
 
-    case Internal.KeepEvents =>
+    case Internal.ReleaseEvents =>
       if (!isTerminating) {
-        commandQueue.enqueue(KeepEventsQueueable(lastEventId))
+        commandQueue.enqueue(ReleaseEventsQueueable(lastEventId))
       }
 
     case Internal.CommandQueueReady =>
@@ -277,10 +277,10 @@ with ReceiveLoggingActor.WithStash
         context.parent ! Output.OrdersCancelationMarked(canceledOrderIds.toSet)
       }
 
-      val keepEvents = succeededInputs collect { case o: KeepEventsQueueable => o }
-      if (keepEvents.nonEmpty) {
-        keepEventsCancelable foreach (_.cancel())
-        keepEventsCancelable = None
+      val releaseEvents = succeededInputs collect { case o: ReleaseEventsQueueable => o }
+      if (releaseEvents.nonEmpty) {
+        releaseEventsCancelable foreach (_.cancel())
+        releaseEventsCancelable = None
       }
       stopIfTerminated()
 
@@ -372,7 +372,7 @@ private[master] object AgentDriver
     def toShortString = toString
   }
 
-  private[agent] final case class KeepEventsQueueable(agentEventId: EventId) extends Queueable
+  private[agent] final case class ReleaseEventsQueueable(agentEventId: EventId) extends Queueable
 
   sealed trait Input
   object Input {
@@ -410,7 +410,7 @@ private[master] object AgentDriver
     final case class OnCouplingFailed(problem: Problem, promise: Promise[Completed]) extends DeadLetterSuppression
     final case class OnCoupled(promise: Promise[Completed]) extends DeadLetterSuppression
     final case class EventsAccepted(agentEventId: EventId, promise: Promise[Completed]) extends DeadLetterSuppression
-    final case object KeepEvents extends DeadLetterSuppression
+    final case object ReleaseEvents extends DeadLetterSuppression
     final case class UriChanged(uri: Uri) extends DeadLetterSuppression
   }
 

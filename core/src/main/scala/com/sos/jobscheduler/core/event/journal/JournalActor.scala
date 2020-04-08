@@ -631,14 +631,14 @@ extends Actor with Stash
       releaseObsoleteEvents(journaledState.journalState.toReleaseEventId(lastAcknowledgedEventId, conf.releaseEventsUserIds))
     }
 
-  private def releaseObsoleteEvents(releaseEventId: EventId): Unit = {
-    logger.debug(s"releaseObsoleteEvents($releaseEventId) ${journaledState.journalState}, clusterState=${journaledState.clusterState}")
+  private def releaseObsoleteEvents(untilEventId: EventId): Unit = {
+    logger.debug(s"releaseObsoleteEvents($untilEventId) ${journaledState.journalState}, clusterState=${journaledState.clusterState}")
     journalingObserver.orThrow match {
       case Some(o) =>
-        o.releaseEvents(releaseEventId)
+        o.releaseEvents(untilEventId)
       case None =>
         // Without a JournalingObserver, we can delete all previous journal files (for Agent server)
-        val until = releaseEventId min journalHeader.eventId
+        val until = untilEventId min journalHeader.eventId
         for (j <- listJournalFiles(journalFileBase = journalMeta.fileBase) if j.afterEventId < until) {
           val file = j.file
           assertThat(file != eventWriter.file)

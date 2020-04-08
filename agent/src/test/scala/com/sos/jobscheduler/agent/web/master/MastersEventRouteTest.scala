@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.agent.web.master
 
 import com.sos.jobscheduler.agent.client.AgentClient
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{CoupleMaster, KeepEvents, RegisterAsMaster, TakeSnapshot}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{CoupleMaster, ReleaseEvents, RegisterAsMaster, TakeSnapshot}
 import com.sos.jobscheduler.agent.data.event.AgentMasterEvent.AgentReadyForMaster
 import com.sos.jobscheduler.agent.data.problems.MasterAgentMismatchProblem
 import com.sos.jobscheduler.agent.tests.AgentTester
@@ -85,8 +85,8 @@ final class MastersEventRouteTest extends FreeSpec with AgentTester
     assert(stampedEvents.head.value.event == JournalEvent.SnapshotTaken)
     eventId = stampedEvents.head.eventId
 
-    // Delete old journal files
-    agentClient.commandExecute(KeepEvents(eventId)).await(99.s).orThrow
+    // Remove obsolete journal files
+    agentClient.commandExecute(ReleaseEvents(eventId)).await(99.s).orThrow
     // Await JournalEventsReleased
     eventId = agentClient.mastersEvents(EventRequest.singleClass[Event](after = eventId)).await(99.s).orThrow
       .asInstanceOf[EventSeq.NonEmpty[Seq, AnyKeyedEvent]].stamped.last.eventId

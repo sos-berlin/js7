@@ -75,11 +75,11 @@ final class AgentCommandTest extends FreeSpec
     }
   }
 
-  "KeepEvents" in {
-    check(AgentCommand.KeepEvents(123),
+  "ReleaseEvents" in {
+    check(AgentCommand.ReleaseEvents(123),
       json"""{
-        "TYPE": "KeepEvents",
-        "after": 123
+        "TYPE": "ReleaseEvents",
+        "untilEventId": 123
       }""")
   }
 

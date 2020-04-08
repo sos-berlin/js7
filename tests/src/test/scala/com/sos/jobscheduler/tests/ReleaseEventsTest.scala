@@ -21,9 +21,9 @@ import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
-import com.sos.jobscheduler.master.data.MasterCommand.{KeepEvents, TakeSnapshot}
+import com.sos.jobscheduler.master.data.MasterCommand.{ReleaseEvents, TakeSnapshot}
 import com.sos.jobscheduler.master.data.events.MasterEvent
-import com.sos.jobscheduler.tests.KeepEventsTest._
+import com.sos.jobscheduler.tests.ReleaseEventsTest._
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider.script
 import com.sos.jobscheduler.tests.testenv.DirectoryProviderForScalaTest
 import com.typesafe.config.ConfigFactory
@@ -33,21 +33,21 @@ import org.scalatest.FreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class KeepEventsTest extends FreeSpec with DirectoryProviderForScalaTest
+final class ReleaseEventsTest extends FreeSpec with DirectoryProviderForScalaTest
 {
   protected val agentRefPaths = TestAgentRefPath :: Nil
   protected val fileBased = TestWorkflow :: Nil
   override protected val masterConfig = ConfigFactory.parseString(
      """jobscheduler {
-       |  journal.users-allowed-to-keep-events = [ "A", "B" ]
+       |  journal.users-allowed-to-release-events = [ "A", "B" ]
        |  auth.users {
        |    A = "plain:PASSWORD"
        |    B = "plain:PASSWORD"
        |  }
-       |  master.agent-driver.keep-events-period = 0ms
+       |  master.agent-driver.release-events-period = 0ms
        |}""".stripMargin)
 
-  "KeepEvents" in {
+  "ReleaseEvents" in {
     for ((_, tree) <- directoryProvider.agentToTree) {
       tree.writeExecutable(TestExecutablePath, script(0.s))
     }
@@ -73,13 +73,13 @@ final class KeepEventsTest extends FreeSpec with DirectoryProviderForScalaTest
       val a = new TestApi(master, aUserAndPassword)
       val b = new TestApi(master, bUserAndPassword)
 
-      a.executeCommand(KeepEvents(finished.head.eventId)).await(99.s)
+      a.executeCommand(ReleaseEvents(finished.head.eventId)).await(99.s)
       assert(masterJournalFiles.size == 3)
 
-      b.executeCommand(KeepEvents(finished.head.eventId)).await(99.s)
+      b.executeCommand(ReleaseEvents(finished.head.eventId)).await(99.s)
       assert(masterJournalFiles.size == 2)
 
-      // Master sends KeepOrder after some events from Agent have arrived. So we start an order.
+      // Master sends ReleaseEvents after some events from Agent have arrived. So we start an order.
       master.executeCommandAsSystemUser(TakeSnapshot).await(99.s).orThrow
       val bAdded = master.runOrder(bOrder).head.eventId
       assert(masterJournalFiles.size == 3)
@@ -91,20 +91,20 @@ final class KeepEventsTest extends FreeSpec with DirectoryProviderForScalaTest
       master.executeCommandAsSystemUser(TakeSnapshot).await(99.s).orThrow
       assert(masterJournalFiles.size == 5)
 
-      b.executeCommand(KeepEvents(bAdded)).await(99.s)
+      b.executeCommand(ReleaseEvents(bAdded)).await(99.s)
       assert(masterJournalFiles.size == 5)
 
-      a.executeCommand(KeepEvents(lastFileTornEventId)).await(99.s)
+      a.executeCommand(ReleaseEvents(lastFileTornEventId)).await(99.s)
       assert(masterJournalFiles.size == 3 && tornEventId <= bAdded)
 
-      b.executeCommand(KeepEvents(lastFileTornEventId)).await(99.s)
+      b.executeCommand(ReleaseEvents(lastFileTornEventId)).await(99.s)
       assert(masterJournalFiles.size == 1)
 
       // TakeSnapshot and KeepSnapshot on last event written should tear this event
       master.executeCommandAsSystemUser(TakeSnapshot).await(99.s).orThrow
       assert(tornEventId < lastFileTornEventId)
-      a.executeCommand(KeepEvents(lastFileTornEventId)).await(99.s)
-      b.executeCommand(KeepEvents(lastFileTornEventId)).await(99.s)
+      a.executeCommand(ReleaseEvents(lastFileTornEventId)).await(99.s)
+      b.executeCommand(ReleaseEvents(lastFileTornEventId)).await(99.s)
       //waitForCondition(5.s, 10.ms) { tornEventId == last }
       assert(tornEventId == lastFileTornEventId)
 
@@ -119,7 +119,7 @@ final class KeepEventsTest extends FreeSpec with DirectoryProviderForScalaTest
   }
 }
 
-private object KeepEventsTest
+private object ReleaseEventsTest
 {
   private val aUserAndPassword = UserAndPassword(UserId("A"), SecretString("PASSWORD"))
   private val bUserAndPassword = UserAndPassword(UserId("B"), SecretString("PASSWORD"))

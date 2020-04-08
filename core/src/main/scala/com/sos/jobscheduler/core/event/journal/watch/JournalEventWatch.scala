@@ -320,7 +320,7 @@ object JournalEventWatch
      |jobscheduler.journal.watch.keep-open = 2
      |jobscheduler.journal.watch.index-size = 100
      |jobscheduler.journal.watch.index-factor = 10
-     |jobscheduler.journal.delete-unused-files = true
-     |jobscheduler.journal.users-allowed-to-keep-events = []
+     |jobscheduler.journal.remove-obsolete-files = true
+     |jobscheduler.journal.users-allowed-to-release-events = []
     """.stripMargin)
 }

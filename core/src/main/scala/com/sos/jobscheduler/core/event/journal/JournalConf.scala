@@ -36,7 +36,7 @@ object JournalConf
       snapshotLogProgressPeriod = config.getDuration("jobscheduler.journal.snapshot.log-period").toFiniteDuration,
       snapshotLogProgressActorLimit = config.getInt("jobscheduler.journal.snapshot.log-actor-limit"),
       ackWarnDuration = config.getDuration("jobscheduler.journal.ack-warn-duration").toFiniteDuration,
-      deleteObsoleteFiles = config.getBoolean("jobscheduler.journal.delete-unused-files"),
-      releaseEventsUserIds = config.seqAs[UserId]("jobscheduler.journal.users-allowed-to-keep-events").toSet)
+      deleteObsoleteFiles = config.getBoolean("jobscheduler.journal.remove-obsolete-files"),
+      releaseEventsUserIds = config.seqAs[UserId]("jobscheduler.journal.users-allowed-to-release-events").toSet)
   }
 }

@@ -17,7 +17,7 @@ final case class AgentDriverConfiguration(
   commandBatchDelay: FiniteDuration,
   commandErrorDelay: FiniteDuration,
   commandParallelism: Int,
-  keepEventsPeriod: FiniteDuration)
+  releaseEventsPeriod: FiniteDuration)
 
 object AgentDriverConfiguration
 {
@@ -34,6 +34,6 @@ object AgentDriverConfiguration
             commandBatchDelay   = config.getDuration("jobscheduler.master.agent-driver.command-batch-delay").toFiniteDuration,
             commandErrorDelay   = config.getDuration("jobscheduler.master.agent-driver.command-error-delay").toFiniteDuration,
             commandParallelism  = config.getInt     ("jobscheduler.master.agent-driver.command-parallelism"),
-            keepEventsPeriod    = config.getDuration("jobscheduler.master.agent-driver.keep-events-period").toFiniteDuration)
+            releaseEventsPeriod    = config.getDuration("jobscheduler.master.agent-driver.release-events-period").toFiniteDuration)
         })
 }

@@ -55,7 +55,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll
     }
   }
 
-  "eventWatch.when, .keepEvents" in {
+  "eventWatch.when" in {
     withJournalMeta { journalMeta =>
       writeJournal(journalMeta, EventId.BeforeFirst, MyEvents1)
       withJournal(journalMeta, MyEvents1.last.eventId) { (writer, eventWatch) =>
@@ -102,8 +102,6 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll
         eventWatch.releaseEvents(untilEventId = 220)
         assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(120)))
         assert(when(EventId.BeforeFirst) == TearableEventSeq.Torn(120))
-
-        //eventWatch.releaseEvents(untilEventId = 0) shouldEqual Left(ReverseKeepEventsProblem(0, 220))
       }
     }
   }

@@ -56,7 +56,7 @@ final class JournalWebServiceTest extends FreeSpec with BeforeAndAfterAll with M
         password = "plain:TEST-PASSWORD",
       }
     }
-    jobscheduler.journal.delete-unused-files = false""")
+    jobscheduler.journal.remove-obsolete-files = false""")
 
   "/master/api/journal requires authentication" in {
     val e = intercept[HttpException] {
