@@ -32,7 +32,8 @@ object StackTraces
       * Modifies the original `Throwable`.
       */
     def appendCurrentStackTrace: T =  // delegate.type: inferred existential type _1.delegate.type forSome { val _1: com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable }, which cannot be expressed by wildcards, should be enabled
-      appendStackTrace(new Exception().getStackTrace)
+      appendStackTrace(new Exception().getStackTrace
+        .dropWhile(_.getClassName startsWith "com.sos.jobscheduler.base.utils.StackTraces"))
 
     /**
       * Applicable for Throwables of another context, like from a `Future`.
