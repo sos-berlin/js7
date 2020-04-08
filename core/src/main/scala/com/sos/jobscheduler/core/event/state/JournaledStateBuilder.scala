@@ -9,7 +9,7 @@ import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.core.event.journal.data.JournalHeader
 import com.sos.jobscheduler.core.event.state.JournaledStateBuilder._
 import com.sos.jobscheduler.data.cluster.ClusterState
-import com.sos.jobscheduler.data.event.{Event, EventId, JournaledState, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{Event, EventId, JournalState, JournaledState, KeyedEvent, Stamped}
 import monix.eval.Task
 import scala.concurrent.Promise
 import scala.concurrent.duration.Duration
@@ -42,6 +42,8 @@ trait JournaledStateBuilder[S <: JournaledState[S, E], E <: Event]
   protected def onAddEvent: PartialFunction[Stamped[KeyedEvent[Event]], Unit]
 
   def state: S
+
+  def journalState: JournalState
 
   def clusterState: ClusterState
 

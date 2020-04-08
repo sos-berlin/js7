@@ -76,7 +76,7 @@ final class CoupleMasterTest extends FreeSpec with DirectoryProviderForScalaTest
         .map(agentStateDir / _)
       for (o <- journalFiles.init) move(o, Paths.get(s"$o-MOVED"))
       directoryProvider.runAgents() { _ =>
-        master.eventWatch.await[AgentCouplingFailed](after = lastEventId, predicate =
+        master.eventWatch.await[AgentCouplingFailed](after = master.eventWatch.lastFileTornEventId, predicate =
           ke => ke.key == agentRefPath &&
             ke.event.problem.codeOption.contains(MasterRequiresUnknownEventIdProblem.code))
       }

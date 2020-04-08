@@ -30,12 +30,14 @@ import com.sos.jobscheduler.common.utils.Exceptions.wrapException
 import com.sos.jobscheduler.core.crypt.SignatureVerifier
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
-import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActor}
+import com.sos.jobscheduler.core.event.journal.{BabyJournaledState, JournalActor, MainJournalingActor}
 import com.sos.jobscheduler.core.filebased.FileBasedVerifier
+import com.sos.jobscheduler.core.problems.ReverseKeepEventsProblem
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderProcessor
 import com.sos.jobscheduler.core.workflow.Workflows.ExecutableWorkflow
-import com.sos.jobscheduler.data.event.{Event, KeyedEvent}
+import com.sos.jobscheduler.data.event.JournalEvent.JournalEventsReleased
+import com.sos.jobscheduler.data.event.{<-:, Event, EventId, JournalState, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.job.JobKey
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderBroken, OrderDetached, OrderStarted}
@@ -73,7 +75,7 @@ extends MainJournalingActor[Event] with Stash {
   override val supervisorStrategy = SupervisorStrategies.escalate
 
   private val journalMeta = recovered_.journalMeta
-  private val eventWatch = recovered_.eventWatch
+  private var journalState = JournalState.empty
   private val workflowVerifier = new FileBasedVerifier(signatureVerifier, Workflow.topJsonDecoder)
   protected val journalActor = tag[JournalActor.type](watch(actorOf(
     JournalActor.props(journalMeta, conf.journalConf, keyedEventBus, scheduler, eventIdGenerator),
@@ -154,7 +156,7 @@ extends MainJournalingActor[Event] with Stash {
     logger.debug("Stopped" + shutdown.since.fold("")(o => s" (terminated in ${o.elapsed.pretty})"))
   }
 
-  def snapshots = Future.successful(workflowRegister.workflows)
+  def snapshots = Future.successful(journalState +: workflowRegister.workflows)
 
   def receive = {
     case Internal.Recover(recovered) =>
@@ -166,6 +168,7 @@ extends MainJournalingActor[Event] with Stash {
 
   private def recover(recovered: OrderJournalRecoverer.Recovered): Unit = {
     val state = recovered.agentState
+    journalState = state.journalState
     for (workflow <- state.idToWorkflow.values)
       wrapException(s"Error when recovering ${workflow.path}") {
         workflowRegister.recover(workflow)
@@ -179,7 +182,10 @@ extends MainJournalingActor[Event] with Stash {
         orderRegister.recover(order, workflow, actor)
         actor ! OrderActor.Input.Recover(order)
       }
-    recovered.startJournalAndFinishRecovery(journalActor = journalActor, orderRegister.recoveredJournalingActors)
+    recovered.startJournalAndFinishRecovery(
+      journalActor = journalActor,
+      BabyJournaledState(recovered.eventId, journalState),
+      orderRegister.recoveredJournalingActors)
     become("Recovering")(recovering)
   }
 
@@ -190,6 +196,14 @@ extends MainJournalingActor[Event] with Stash {
 
     case JournalRecoverer.Output.JournalIsReady(journalHeader) =>
       logger.info(s"${orderRegister.size} Orders and ${workflowRegister.size} Workflows recovered")
+      if (!journalState.userIdToReleasedEventId.contains(masterId.toUserId)) {
+        // Automatically add Master's UserId to list of users allowed to release events,
+        // to avoid deletion of journal files due to an empty list, becore master has read the events.
+        // The master has to send KeepOrders commands to release obsolete journal files.
+        persist(JournalEventsReleased(masterId.toUserId, EventId.BeforeFirst)) { case Stamped(_,_, _ <-: event) =>
+          journalState = journalState.applyEvent(event)
+        }
+      }
       persist(AgentReadyForMaster(ZoneId.systemDefault.getId, totalRunningTime = journalHeader.totalRunningTime)) { _ =>
         become("ready")(ready)
         unstashAll()
@@ -343,11 +357,16 @@ extends MainJournalingActor[Event] with Stash {
       Future.successful(Right(GetOrders.Response(
         for (orderEntry <- orderRegister.values) yield orderEntry.order)))
 
-    case KeepEvents(eventId) if !shuttingDown =>
-      Future {  // Concurrently!
-        eventWatch.keepEvents(eventId).orThrow
-        Right(AgentCommand.Response.Accepted)
-      }
+    case KeepEvents(after) if !shuttingDown =>
+      val userId = masterId.toUserId
+      val current = journalState.userIdToReleasedEventId(userId)  // Must contain userId
+      if (after < current)
+        Future(Left(ReverseKeepEventsProblem(requestedAfter = after, currentAfter = current)))
+      else
+        persist(JournalEventsReleased(userId, after)) { case Stamped(_,_, _ <-: event) =>
+          journalState = journalState.applyEvent(event)
+          Right(AgentCommand.Response.Accepted)
+        }
 
     case _ if shuttingDown =>
       Future.failed(AgentIsShuttingDownProblem.throwable)

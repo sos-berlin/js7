@@ -5,11 +5,12 @@ import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
+import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import com.sos.jobscheduler.data.cluster.ClusterEvent
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
-import com.sos.jobscheduler.master.data.MasterCommand
+import com.sos.jobscheduler.master.data.MasterCommand.TakeSnapshot
 import com.sos.jobscheduler.tests.master.cluster.MasterClusterTester._
 import monix.execution.Scheduler.Implicits.global
 
@@ -37,21 +38,24 @@ final class ReplicatingClusterTest extends MasterClusterTester
 
       assertEqualJournalFiles(primary.master, backup.master, 1)
 
-      primaryMaster.executeCommandAsSystemUser(MasterCommand.TakeSnapshot).await(99.s).orThrow
-      assertEqualJournalFiles(primary.master, backup.master, 2)
+      primaryMaster.executeCommandAsSystemUser(TakeSnapshot).await(99.s).orThrow
+      assertEqualJournalFiles(primary.master, backup.master, 1)
 
       primaryMaster.runOrder(FreshOrder(OrderId("🔵"), TestWorkflow.path))
-      assertEqualJournalFiles(primary.master, backup.master, 2)
+      assertEqualJournalFiles(primary.master, backup.master, 1)
 
       primaryMaster.terminate() await 99.s
       backupMaster.terminate() await 99.s
-      assertEqualJournalFiles(primary.master, backup.master, 3)  // TODO Maybe "ShutDown" has not been replicated
+      assertEqualJournalFiles(primary.master, backup.master, 1)  // TODO Maybe "ShutDown" has not been replicated
 
       // RESTART
 
       backup.runMaster(httpPort = Some(backupHttpPort), dontWaitUntilReady = true) { backupMaster =>
         primary.runMaster(httpPort = Some(primaryHttpPort)) { primaryMaster =>
+          // Recoupling may take a short time
+          waitForCondition(10.s, 10.ms)(primaryMaster.journalActorState.isRequiringClusterAcknowledgement)
           assert(primaryMaster.journalActorState.isRequiringClusterAcknowledgement)
+
           val lastEventId = primaryMaster.eventWatch.lastAddedEventId
           primaryMaster.runOrder(FreshOrder(OrderId("🔹"), TestWorkflow.path))
           primaryMaster.eventWatch.await[OrderFinished](_.key == OrderId("🔹"), after = lastEventId)

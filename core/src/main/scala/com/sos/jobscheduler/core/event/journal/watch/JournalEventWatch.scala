@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
 import akka.util.ByteString
-import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked.{CheckedOption, Ops}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.Timestamp
@@ -13,14 +12,13 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.listJournalFiles
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch._
-import com.sos.jobscheduler.core.problems.ReverseKeepEventsProblem
 import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.problems.MasterRequiresUnknownEventIdProblem
 import com.typesafe.config.{Config, ConfigFactory}
 import java.io.IOException
 import java.nio.file.Files.delete
 import java.nio.file.Path
-import monix.execution.atomic.{AtomicAny, AtomicLong}
+import monix.execution.atomic.AtomicAny
 import monix.reactive.Observable
 import scala.annotation.tailrec
 import scala.collection.immutable.{Seq, SortedMap}
@@ -50,7 +48,6 @@ with JournalingObserver
   private val startedPromise = Promise[this.type]()
   @volatile
   private var currentEventReaderOption: Option[CurrentEventReader] = None
-  private val keepEventsAfter = AtomicLong(EventId.BeforeFirst)
   @volatile
   private var nextEventReaderPromise: Option[(EventId, Promise[CurrentEventReader])] = None
 
@@ -69,6 +66,7 @@ with JournalingObserver
     tornLengthAndEventId: PositionAnd[EventId],
     flushedLengthAndEventId: PositionAnd[EventId]): Unit
   = {
+    // Always tornLengthAndEventId == flushedLengthAndEventId ???
     logger.debug(s"onJournalingStarted ${file.getFileName}, torn length=${tornLengthAndEventId.position}, " +
       s"torn eventId=${tornLengthAndEventId.value}, flushed length=${flushedLengthAndEventId.position}, " +
       s"flushed eventId=${flushedLengthAndEventId.value}")
@@ -123,29 +121,13 @@ with JournalingObserver
         Left(MasterRequiresUnknownEventIdProblem(requiredEventId = eventId))
     }
 
-  /** Files containing non-kept events may be deleted. */
-  @tailrec
-  def keepEvents(after: EventId): Checked[Completed] = {
-    val old = keepEventsAfter.get
-    if (after < old)
-      Left(ReverseKeepEventsProblem(requestedAfter = after, currentAfter = old))
-    else if (after == old)
-      Checked.completed
-    else if (!keepEventsAfter.compareAndSet(old, after))
-      keepEvents(after)  // Try again when concurrently called
-    else {
-      deleteObsoleteJournalFiles()
-      Checked.completed
-    }
-  }
-
-  protected[journal] def deleteObsoleteJournalFiles(): Unit = {
-    val after = keepEventsAfter.get
+  def releaseEvents(untilEventId: EventId): Unit = {
+    logger.debug(s"releaseEvents($untilEventId)")
     val keepFileAfter = currentEventReaderOption match {
-      case Some(current) if current.tornEventId <= after =>
+      case Some(current) if current.tornEventId <= untilEventId =>
         current.tornEventId
       case _ =>
-        historicJournalFileAfter(after).fold(EventId.BeforeFirst)(_.afterEventId)  // Delete only journal files before the file containing `after`
+        historicJournalFileAfter(untilEventId).fold(EventId.BeforeFirst)(_.afterEventId)  // Delete only journal files before the file containing `after`
     }
     for (historic <- afterEventIdToHistoric.values if historic.afterEventId < keepFileAfter) {
       logger.info(s"Deleting obsolete journal file '$historic'")
@@ -338,5 +320,7 @@ object JournalEventWatch
      |jobscheduler.journal.watch.keep-open = 2
      |jobscheduler.journal.watch.index-size = 100
      |jobscheduler.journal.watch.index-factor = 10
+     |jobscheduler.journal.delete-unused-files = true
+     |jobscheduler.journal.users-allowed-to-keep-events = []
     """.stripMargin)
 }

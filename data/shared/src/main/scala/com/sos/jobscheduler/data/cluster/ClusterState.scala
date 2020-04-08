@@ -20,6 +20,10 @@ extends JournaledState[ClusterState, ClusterEvent]
 {
   def isNonEmptyActive(id: ClusterNodeId): Boolean
 
+  // ClusterState should be included in MasterState, which provides journalState ???
+  def journalState = throw new NotImplementedError
+  def clusterState = this
+
   def applyEvent(keyedEvent: KeyedEvent[ClusterEvent]): Checked[ClusterState] = {
     val event = keyedEvent.event
     if (!keyedEvent.key.isInstanceOf[NoKey])
@@ -85,7 +89,7 @@ object ClusterState
     final def passiveUri = idToUri(passiveId)
 
     protected final def nodesString =
-      (for ((id, uri) <- idToUri) yield s"$id=$uri${(activeId == id) ?: " active"}")
+      (for ((id, uri) <- idToUri) yield s"$id ($uri)${(activeId == id) ?: " active"}")
         .mkString(", ")
   }
 

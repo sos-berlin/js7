@@ -36,9 +36,9 @@ import com.sos.jobscheduler.core.event.journal.recover.Recovered
 import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
 import com.sos.jobscheduler.core.problems.{ClusterNodeIsNotActiveProblem, ClusterNodeIsNotYetReadyProblem, JobSchedulerIsShuttingDownProblem}
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
-import com.sos.jobscheduler.data.event.Event
-import com.sos.jobscheduler.data.order.FreshOrder
+import com.sos.jobscheduler.data.event.{Event, EventRequest, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
+import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent}
 import com.sos.jobscheduler.master.RunningMaster._
 import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
 import com.sos.jobscheduler.master.cluster.{Cluster, ClusterFollowUp}
@@ -46,7 +46,6 @@ import com.sos.jobscheduler.master.command.MasterCommandExecutor
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
 import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.data.events.MasterEvent.MasterReady
 import com.sos.jobscheduler.master.problems.MasterIsNotYetReadyProblem
 import com.sos.jobscheduler.master.web.MasterWebServer
 import com.typesafe.config.{Config, ConfigFactory}
@@ -55,6 +54,7 @@ import java.nio.file.Path
 import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
 import org.jetbrains.annotations.TestOnly
+import scala.collection.immutable._
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future, Promise, blocking}
 import scala.util.control.NoStackTrace
@@ -76,6 +76,7 @@ final class RunningMaster private(
   val orderApi: OrderApi.WithCommands,
   val clusterState: Task[ClusterState],
   commandExecutor: MasterCommandExecutor,
+  whenReady: Future[MasterOrderKeeper.MasterReadyTestIncident.type],
   terminated1: Future[MasterTermination],
   val testEventBus: EventBus,
   closer: Closer,
@@ -128,20 +129,31 @@ extends AutoCloseable
     orderApi.addOrder(order)
 
   @TestOnly
-  def runOrder(order: FreshOrder): Unit = {
+  def runOrder(order: FreshOrder): Seq[Stamped[OrderEvent]] = {
+    val timeout = 99.s
     val eventId = eventWatch.lastAddedEventId
     addOrderBlocking(order)
-    eventWatch.await[OrderFinished](_.key == order.id, after = eventId)
+    eventWatch
+      .observe(EventRequest.singleClass[OrderEvent](eventId, Some(timeout - 1.s)))
+      .takeWhile(_.value.key == order.id)
+      .map(o => o.copy(value = o.value.event))
+      .takeWhileInclusive(o => !o.value.isInstanceOf[OrderFinished])
+      .toListL
+      .await(timeout)
   }
 
   @TestOnly
   def addOrderBlocking(order: FreshOrder): Boolean =
     orderApi.addOrder(order).runToFuture.await(99.s).orThrow
 
+  @TestOnly
   def waitUntilReady(): Unit =
-    eventWatch.await[MasterReady](after = eventWatch.tornEventId)
+    whenReady await 99.s
 
+  @TestOnly
   val localUri = webServer.localUri
+
+  @TestOnly
   lazy val httpApi: HttpMasterApi = new AkkaHttpMasterApi.CommonAkka {
       protected val baseUri = localUri
       protected val name = "RunningMaster"
@@ -205,17 +217,19 @@ object RunningMaster
       val whenRecovered = Future {  // May take minutes !!!
         MasterJournalRecoverer.recover(journalMeta, masterConfiguration.config)
       }
+      val testEventBus = injector.instance[EventBus]
+      val whenReady = testEventBus.when[MasterOrderKeeper.MasterReadyTestIncident.type]  // TODO Replace by a new StampedEventBus ?
       // Start-up some stuff while recovering
       val journalActor = tag[JournalActor.type](actorSystem.actorOf(
         JournalActor.props(journalMeta, masterConfiguration.journalConf,
           injector.instance[StampedKeyedEventBus], scheduler, injector.instance[EventIdGenerator]),
         "Journal"))
       signatureVerifier
-      val testEventBus = new EventBus
       val cluster = new Cluster(
         journalMeta,
         new JournaledStatePersistence[ClusterState, ClusterEvent](journalActor).closeWithCloser,
         masterConfiguration.masterId,
+        masterConfiguration.journalConf,
         masterConfiguration.clusterConf,
         masterConfiguration.config,
         injector.instance[EventIdGenerator],
@@ -230,7 +244,7 @@ object RunningMaster
         .runToFuture
       val (orderKeeperStarted, orderKeeperTerminated) = {
         val started = clusterFollowUpFuture.map(_.flatMap(
-          startMasterOrderKeeper(journalActor, cluster, _)))
+          startMasterOrderKeeper(journalActor, cluster, _, testEventBus)))
         (started.map(_.map(_.actor)),
           started.flatMap {
             case Left(termination) =>
@@ -285,7 +299,7 @@ object RunningMaster
         masterConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", _ + "/master")
         new RunningMaster(recovered.eventWatch.strict, webServer, fileBasedApi, orderApi, cluster.currentClusterState,
           commandExecutor,
-          orderKeeperTerminated, testEventBus, closer, injector)
+          whenReady, orderKeeperTerminated, testEventBus, closer, injector)
       }
     }
 
@@ -307,7 +321,7 @@ object RunningMaster
     {
       class StartingClusterCanceledException extends NoStackTrace
       val recoveredState = recovered.recoveredState getOrElse MasterState.Undefined
-      val (passiveState, followUpTask) = cluster.start(recovered, recoveredState.clusterState, recoveredState)
+      val (passiveState, followUpTask) = cluster.start(recovered, recoveredState)
       passiveState ->
         followUpTask
           .doOnCancel(Task { logger.debug("Cancel Cluster") })
@@ -322,7 +336,8 @@ object RunningMaster
     private def startMasterOrderKeeper(
       journalActor: ActorRef @@ JournalActor.type,
       cluster: Cluster,
-      followUp: ClusterFollowUp[MasterState, Event])
+      followUp: ClusterFollowUp[MasterState, Event],
+      testEventBus: EventBus)
     : Either[MasterTermination.Terminate, OrderKeeperStarted] = {
       logger.debug(s"startMasterOrderKeeper(clusterFollowUp=${followUp.getClass.simpleScalaName})")
       followUp match {
@@ -334,7 +349,7 @@ object RunningMaster
           val actor = actorSystem.actorOf(
             Props {
               new MasterOrderKeeper(terminationPromise, journalActor, cluster, recovered.eventWatch, masterConfiguration,
-                signatureVerifier)
+                signatureVerifier, testEventBus)
             },
             "MasterOrderKeeper")
           actor ! MasterOrderKeeper.Input.Start(recovered)

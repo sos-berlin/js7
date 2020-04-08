@@ -52,17 +52,17 @@ with AutoCloseable
     for (o <- observer) {
       val lengthAndEventId = PositionAnd(fileLengthBeforeEvents, lastWrittenEventId)
       o.onJournalingStarted(file, journalId, lengthAndEventId, lengthAndEventId)
-      //o.onFileWritten(fileLengthBeforeEvents)  // <-- duplicate code ???
+      o.onFileWritten(jsonWriter.fileLength)
     }
   }
 
-  /** For SnapshotTaken event written with SnapshotJournalWriter. */
-  def onInitialEventsWritten(eventId: EventId, n: Int): Unit = {
-    for (o <- observer) {
-      // Initially written events are not counted in statistics
-      o.onFileWrittenAndEventsCommitted(PositionAnd(jsonWriter.fileLength, eventId), n)
-    }
-  }
+  ///** For SnapshotTaken event written with SnapshotJournalWriter. */
+  //def onInitialEventsWritten(): Unit = {
+  //  for (o <- observer) {
+  //    // Initially written events are not counted in statistics
+  //    o.onFileWritten(jsonWriter.fileLength)
+  //  }
+  //}
 
   def writeEvents(stampedEvents: Seq[Stamped[KeyedEvent[Event]]], transaction: Boolean = false): Unit = {
     // TODO Rollback writes in case of error (with seek?)

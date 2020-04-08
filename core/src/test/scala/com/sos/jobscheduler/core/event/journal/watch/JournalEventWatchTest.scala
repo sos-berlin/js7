@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.{Checked, Problem, ProblemException}
+import com.sos.jobscheduler.base.problem.{Problem, ProblemException}
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowableEither
@@ -22,7 +22,6 @@ import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatchTest._
 import com.sos.jobscheduler.core.event.journal.watch.TestData.{writeJournal, writeJournalSnapshot}
 import com.sos.jobscheduler.core.event.journal.write.EventJournalWriter
-import com.sos.jobscheduler.core.problems.ReverseKeepEventsProblem
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, JournalEvent, JournalId, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
 import io.circe._
@@ -31,7 +30,6 @@ import java.nio.file.Files
 import java.util.UUID
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
-import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.mutable
 import scala.reflect.ClassTag
@@ -89,23 +87,23 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll
         assert(when(210) == EventSeq.NonEmpty(MyEvents2.tail))
         assert(eventWatch.when(EventRequest.singleClass[MyEvent](after = 220, timeout = Some(10.ms))).await(99.s).strict == EventSeq.Empty(220))
 
-        eventWatch.keepEvents(after = 0) shouldEqual Checked.completed
+        eventWatch.releaseEvents(untilEventId = 0)
         assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(0), journalMeta.file(120)))
         assert(when(EventId.BeforeFirst) == EventSeq.NonEmpty(MyEvents1 ++ MyEvents2))
 
-        eventWatch.keepEvents(after = 110) shouldEqual Checked.completed
+        eventWatch.releaseEvents(untilEventId = 110)
         assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(0), journalMeta.file(120)))
         assert(when(EventId.BeforeFirst) == EventSeq.NonEmpty(MyEvents1 ++ MyEvents2))
 
-        eventWatch.keepEvents(after = 120) shouldEqual Checked.completed
+        eventWatch.releaseEvents(untilEventId = 120)
         assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(120)))
         assert(when(EventId.BeforeFirst) == TearableEventSeq.Torn(120))
 
-        eventWatch.keepEvents(after = 220) shouldEqual Checked.completed
+        eventWatch.releaseEvents(untilEventId = 220)
         assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(120)))
         assert(when(EventId.BeforeFirst) == TearableEventSeq.Torn(120))
 
-        eventWatch.keepEvents(after = 0) shouldEqual Left(ReverseKeepEventsProblem(0, 220))
+        //eventWatch.releaseEvents(untilEventId = 0) shouldEqual Left(ReverseKeepEventsProblem(0, 220))
       }
     }
   }

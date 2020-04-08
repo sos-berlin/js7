@@ -1,13 +1,17 @@
 package com.sos.jobscheduler.core.event.journal.test
 
 import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.data.event.{EventId, JournaledState, KeyedEvent}
+import com.sos.jobscheduler.data.cluster.ClusterState
+import com.sos.jobscheduler.data.event.{EventId, JournalState, JournaledState, KeyedEvent}
 import monix.reactive.Observable
 
 /**
   * @author Joacim Zschimmer
   */
-final case class TestState(keyToAggregate: Map[String, TestAggregate])
+final case class TestState(
+  keyToAggregate: Map[String, TestAggregate],
+  journalState: JournalState = JournalState.empty,
+  clusterState: ClusterState = ClusterState.Empty)
 extends JournaledState[TestState, TestEvent]
 {
   def applySnapshot(aggregate: TestAggregate): TestState =

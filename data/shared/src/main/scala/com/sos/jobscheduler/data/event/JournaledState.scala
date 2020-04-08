@@ -2,17 +2,22 @@ package com.sos.jobscheduler.data.event
 
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Strings.RichString
+import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.data.event.JournaledState._
 import monix.reactive.Observable
 import scala.collection.immutable._
 
 trait JournaledState[Self <: JournaledState[Self, E], E <: Event]
 {
+  def toSnapshotObservable: Observable[Any]
+
+  def journalState: JournalState
+
+  def clusterState: ClusterState
+
   def applyEvent(keyedEvent: KeyedEvent[E]): Checked[Self]
 
   def withEventId(eventId: EventId): Self
-
-  def toSnapshotObservable: Observable[Any]
 
   final def applyEvents(keyedEvents: Seq[KeyedEvent[E]]): Checked[Self] = {
     var state = this.asInstanceOf[Self]

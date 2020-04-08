@@ -3,11 +3,11 @@ package com.sos.jobscheduler.core.event.journal.test
 import akka.actor.{ActorContext, ActorRef}
 import com.sos.jobscheduler.base.utils.DuplicateKeyException
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
-import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor
 import com.sos.jobscheduler.core.event.journal.data.RecoveredJournalingActors
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, JournalEvent, KeyedEvent, Stamped}
+import com.sos.jobscheduler.core.event.journal.{BabyJournaledState, KeyedJournalingActor}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, KeyedEvent, Stamped}
 import scala.collection.mutable
 
 /**
@@ -25,7 +25,7 @@ private[journal] trait JournalActorRecoverer extends JournalRecoverer
 
   final def recoverAllAndTransferTo(journalActor: ActorRef)(implicit context: ActorContext): Unit = {
     recoverAll()
-    startJournalAndFinishRecovery(journalActor = journalActor, recoveredJournalingActors,
+    startJournalAndFinishRecovery(journalActor = journalActor, BabyJournaledState.empty, recoveredJournalingActors,
       Some(newJournalEventWatch))
   }
 

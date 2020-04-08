@@ -208,6 +208,9 @@ trait RealEventWatch extends EventWatch
       case _: EventSeq.Empty =>
         throw new TimeoutException(s"RealEventWatch.await[${implicitClass[E].scalaName}](after=$after, timeout=$timeout) timed out")
 
+      //? case TearableEventSeq.Torn(tornEventId) =>
+      //?   throw new TornException(after, tornEventId)
+
       case o =>
         sys.error(s"RealEventWatch.await[${implicitClass[E].scalaName}](after=$after) unexpected EventSeq: $o")
     }

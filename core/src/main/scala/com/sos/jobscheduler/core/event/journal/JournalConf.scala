@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.core.event.journal
 
+import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.convert.As.StringAsByteCountWithDecimalPrefix
 import com.sos.jobscheduler.common.configutils.Configs._
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
@@ -15,7 +16,9 @@ final case class JournalConf(
   snapshotSizeLimit: Long,
   snapshotLogProgressPeriod: FiniteDuration,
   snapshotLogProgressActorLimit: Int,
-  ackWarnDuration: FiniteDuration)
+  ackWarnDuration: FiniteDuration,
+  deleteObsoleteFiles: Boolean,
+  releaseEventsUserIds: Set[UserId] = Set.empty)
 
 object JournalConf
 {
@@ -32,6 +35,8 @@ object JournalConf
       snapshotSizeLimit = config.as("jobscheduler.journal.snapshot.when-bigger-than")(StringAsByteCountWithDecimalPrefix),
       snapshotLogProgressPeriod = config.getDuration("jobscheduler.journal.snapshot.log-period").toFiniteDuration,
       snapshotLogProgressActorLimit = config.getInt("jobscheduler.journal.snapshot.log-actor-limit"),
-      ackWarnDuration = config.getDuration("jobscheduler.journal.ack-warn-duration").toFiniteDuration)
+      ackWarnDuration = config.getDuration("jobscheduler.journal.ack-warn-duration").toFiniteDuration,
+      deleteObsoleteFiles = config.getBoolean("jobscheduler.journal.delete-unused-files"),
+      releaseEventsUserIds = config.seqAs[UserId]("jobscheduler.journal.users-allowed-to-keep-events").toSet)
   }
 }

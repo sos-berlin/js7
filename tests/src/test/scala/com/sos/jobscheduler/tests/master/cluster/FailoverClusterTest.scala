@@ -61,7 +61,7 @@ final class FailoverClusterTest extends MasterClusterTester
       primaryMaster = primary.startMaster(httpPort = Some(primaryHttpPort)) await 99.s
       primaryMaster.eventWatch.await[ClusterCoupled](after = failedOverEventId)
       backupMaster.eventWatch.await[ClusterCoupled](after = failedOverEventId)
-      assertEqualJournalFiles(primary.master, backup.master, 3)
+      assertEqualJournalFiles(primary.master, backup.master, 1)
 
       backupMaster.executeCommandForTest(ClusterSwitchOver).orThrow
       val recoupledEventId = backupMaster.eventWatch.await[ClusterSwitchedOver](after = failedOverEventId).head.eventId

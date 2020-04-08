@@ -55,6 +55,8 @@ object JournalConfTest
        snapshot.log-period = 9ms
        snapshot.log-actor-limit = 11
        ack-warn-duration = 12s
+       delete-unused-files = true
+       users-allowed-to-keep-events = []
      }""")
 
   private val journalConf = JournalConf(
@@ -66,5 +68,6 @@ object JournalConfTest
     snapshotSizeLimit = 8*1000*1000*1000L,
     snapshotLogProgressPeriod = 9.ms,
     snapshotLogProgressActorLimit = 11,
-    ackWarnDuration = 12.s)
+    ackWarnDuration = 12.s,
+    deleteObsoleteFiles = true)
 }

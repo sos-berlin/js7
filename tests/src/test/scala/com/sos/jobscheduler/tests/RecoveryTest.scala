@@ -29,6 +29,7 @@ import com.sos.jobscheduler.master.data.events.MasterEvent
 import com.sos.jobscheduler.tests.RecoveryTest._
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider.{StdoutOutput, script}
+import com.typesafe.config.ConfigFactory
 import java.nio.file.Path
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
@@ -40,8 +41,8 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-final class RecoveryTest extends FreeSpec {
-
+final class RecoveryTest extends FreeSpec
+{
   // TODO Starte Master und Agenten in eigenen Prozessen, die wir abbrechen können.
 
   "test" in {
@@ -53,7 +54,8 @@ final class RecoveryTest extends FreeSpec {
         AgentRefPaths,
         TestWorkflow :: QuickWorkflow :: Nil,
         signer = new SillySigner(SillySignature("MY-SILLY-SIGNATURE")),
-        testName = Some("RecoveryTest"))
+        testName = Some("RecoveryTest"),
+        masterConfig = TestConfig)
       autoClosing(directoryProvider) { _ =>
         for (agent <- directoryProvider.agentToTree.values)
           agent.writeExecutable(TestExecutablePath, script(1.s, resultVariable = Some("var1")))
@@ -146,6 +148,7 @@ final class RecoveryTest extends FreeSpec {
 private object RecoveryTest {
   private val logger = Logger(getClass)
 
+  private val TestConfig = ConfigFactory.parseString("jobscheduler.journal.delete-unused-files = false")
   private val AgentRefPaths = AgentRefPath("/agent-111") :: AgentRefPath("/agent-222") :: Nil
   private val TestExecutablePath = ExecutablePath("/TEST.cmd")
 

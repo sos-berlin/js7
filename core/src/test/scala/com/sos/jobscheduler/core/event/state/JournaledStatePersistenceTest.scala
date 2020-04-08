@@ -24,7 +24,7 @@ import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalConf}
 import com.sos.jobscheduler.core.event.state.JournaledStatePersistenceTest._
 import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import com.sos.jobscheduler.data.event.{Event, EventId, JournalEvent, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
+import com.sos.jobscheduler.data.event.{Event, EventId, JournalEvent, JournalState, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
 import com.typesafe.config.ConfigFactory
 import io.circe.generic.JsonCodec
 import java.nio.file.Files.createTempDirectory
@@ -164,9 +164,9 @@ private object JournaledStatePersistenceTest
   private val TestConfig = TestData.TestConfig
     .withFallback(ConfigFactory.parseString("""
      |jobscheduler.akka.actor-message-log-level = Trace
-     |jobscheduler.journal.dispatcher {
-     |  type = PinnedDispatcher
-     |}
+     |jobscheduler.journal.delete-unused-files = true
+     |jobscheduler.journal.users-allowed-to-keep-events = []
+     |jobscheduler.journal.dispatcher.type = PinnedDispatcher
      |""".stripMargin))
 
   private class TestStateBuilder extends JournaledStateBuilder[TestState, TestEvent]
@@ -195,6 +195,8 @@ private object JournaledStatePersistenceTest
     def state =
       _state.copy(eventId = eventId)
 
+    def journalState = JournalState.empty
+
     def clusterState = ClusterState.Empty
   }
 
@@ -219,7 +221,11 @@ private object JournaledStatePersistenceTest
       }
   }
 
-  final case class TestState(eventId: EventId, numberThingCollection: NumberThingCollection)
+  final case class TestState(
+    eventId: EventId,
+    numberThingCollection: NumberThingCollection,
+    journalState: JournalState = JournalState.empty,
+    clusterState: ClusterState = ClusterState.Empty)
   extends JournaledState[TestState, TestEvent]
   {
     protected type Self = NumberThingCollection

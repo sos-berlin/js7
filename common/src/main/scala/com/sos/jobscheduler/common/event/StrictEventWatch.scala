@@ -23,7 +23,7 @@ final class StrictEventWatch(eventWatch: EventWatch)
   def fileEventIds: Seq[EventId] =
     eventWatch.fileEventIds
 
-  def observe[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean = (_: KeyedEvent[E]) => true, onlyLastOfChunk: Boolean)
+  def observe[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean = (_: KeyedEvent[E]) => true, onlyLastOfChunk: Boolean = false)
   : Observable[Stamped[KeyedEvent[E]]]
   = eventWatch.observe(request, predicate, onlyLastOfChunk)
 

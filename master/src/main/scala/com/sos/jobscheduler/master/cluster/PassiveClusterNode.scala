@@ -15,6 +15,7 @@ import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.event.{EventIdGenerator, PositionAnd}
 import com.sos.jobscheduler.common.http.{AkkaHttpClient, RecouplingStreamReader}
 import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.core.event.journal.JournalConf
 import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, JournalSeparators}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles._
 import com.sos.jobscheduler.core.event.journal.recover.{FileJournaledStateBuilder, JournalProgress, Recovered, RecoveredJournalFile}
@@ -23,7 +24,7 @@ import com.sos.jobscheduler.data.cluster.ClusterCommand.{ClusterCouple, ClusterP
 import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
 import com.sos.jobscheduler.data.cluster.ClusterState.{Coupled, Decoupled, PreparedToBeCoupled}
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
-import com.sos.jobscheduler.data.event.JournalEvent.SnapshotTaken
+import com.sos.jobscheduler.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, JournalEvent, JournalId, JournalPosition, JournaledState, KeyedEvent, Stamped}
 import com.sos.jobscheduler.master.client.HttpMasterApi
@@ -51,6 +52,7 @@ import scodec.bits.ByteVector
   journalMeta: JournalMeta,
   recovered: Recovered[S, Event],
   otherFailed: Boolean,
+  journalConf: JournalConf,
   clusterConf: ClusterConf,
   eventIdGenerator: EventIdGenerator,
   common: ClusterCommon)
@@ -71,15 +73,18 @@ import scodec.bits.ByteVector
   /**
     * Runs the passive mode until being activated or terminated.
     * Returns also a `Task` with the current ClusterState while being passive or active.
-    * @param recoveredClusterState After failover, this is the other (failed-over) node's ClusterState
-    * @param recoveredState
-    * @return
     */
-  def run(recoveredClusterState: ClusterState, recoveredState: S)
+  def run(recoveredState: S)
   : Task[Checked[(ClusterState, ClusterFollowUp[S, Event])]] =
     Task.deferAction { implicit s =>
+      val recoveredClusterState = recoveredState.clusterState
       logger.debug(s"recoveredClusterState=$recoveredClusterState")
       assertThat(!stopped)  // Single-use only
+
+      // Delete obsolete journal files left by last run
+      eventWatch.releaseEvents(
+        recoveredState.journalState.toReleaseEventId(recovered.eventId, journalConf.releaseEventsUserIds))
+
       for (o <- recovered.recoveredJournalFile) {
         cutJournalFile(o.file, o.length, o.eventId)
       }
@@ -144,8 +149,10 @@ import scodec.bits.ByteVector
       .use(activeMasterApi =>
         Task.tailRecM(
           (recovered.recoveredJournalFile match {
-            case None => NoLocalJournal(recoveredClusterState)
-            case Some(recoveredJournalFile) => FirstPartialFile(recoveredJournalFile, recoveredClusterState)
+            case None =>
+              assertThat(recoveredClusterState == ClusterState.Empty)
+              NoLocalJournal
+            case Some(recoveredJournalFile) => FirstPartialFile(recoveredJournalFile/*, recoveredClusterState*/)
           }): Continuation.Replicatable
         )(continuation =>
           Task.deferAction(implicit scheduler =>
@@ -175,7 +182,7 @@ import scodec.bits.ByteVector
       import continuation.file
 
       val maybeTmpFile = continuation match {
-        case _: NoLocalJournal | _: NextFile =>
+        case NoLocalJournal | _: NextFile =>
           val tmp = Paths.get(file.toString + TmpSuffix)
           logger.debug(s"Replicating snapshot into temporary journal file ${tmp.getFileName()}")
           Some(tmp)
@@ -197,7 +204,7 @@ import scodec.bits.ByteVector
         continuation.maybeJournalId, newStateBuilder)
 
       continuation match {
-        case FirstPartialFile(recoveredJournalFile, _) =>
+        case FirstPartialFile(recoveredJournalFile) =>
           logger.info(s"Start replicating events into journal file ${file.getFileName()}")
           builder.startWithState(JournalProgress.InCommittedEventsSection, Some(recoveredJournalFile.journalHeader),
             eventId = recoveredJournalFile.eventId,
@@ -295,6 +302,7 @@ import scodec.bits.ByteVector
                           Right(true)
                         })
                     } else {
+                      // TODO Similar to then-part
                       val failedOverStamped = toStampedFailedOver(clusterState,
                         JournalPosition(continuation.fileEventId, lastProperEventPosition))
                       val failedOver = failedOverStamped.value.event
@@ -359,6 +367,8 @@ import scodec.bits.ByteVector
                   tornLengthAndEventId = PositionAnd(replicatedFileLength/*After EventHeader, before SnapshotTaken, */, continuation.fileEventId),
                   flushedLengthAndEventId = PositionAnd(fileLength, builder.eventId))
                   // ??? Unfortunately not comparable: ensureEqualState(continuation, builder.state)
+                eventWatch.releaseEvents(
+                  builder.journalState.toReleaseEventId(eventWatch.lastFileTornEventId, journalConf.releaseEventsUserIds))
               }
             }
             //assertThat(fileLength == out.size, s"fileLength=$fileLength, out.size=${out.size}")  // Maybe slow
@@ -379,6 +389,10 @@ import scodec.bits.ByteVector
               if (json == JournalSeparators.Commit) {
                 eventWatch.onEventsCommitted(PositionAnd(fileLength, builder.eventId), 1)
                 Observable.pure(Right(()))
+              } else if (journalMeta.eventJsonCodec.isOfType[JournalEventsReleased](json)) {
+                eventWatch.releaseEvents(
+                  builder.journalState.toReleaseEventId(eventWatch.lastFileTornEventId, journalConf.releaseEventsUserIds))
+                Observable.pure(Right(()))
               } else if (json.toClass[ClusterEvent].isDefined)
                 json.as[ClusterEvent].orThrow match {
                   case _: ClusterNodesAppointed | _: ClusterPassiveLost =>
@@ -391,7 +405,7 @@ import scodec.bits.ByteVector
                     // It's time to recouple.
                     // ClusterPrepareCoupling command requests an event acknowledgement.
                     // To avoid a deadlock, we send ClusterPrepareCoupling command asynchronously and
-                    // continue immediately with acknowledgement of ClusterEvent.Coupled.
+                    // continue immediately with acknowledgement of ClusterEvent.ClusterCoupled.
                     if (!otherFailed)
                       logger.error(s"Replicated unexpected FailedOver event")  // Should not happen
                     dontActivateBecauseOtherFailedOver = false
@@ -449,8 +463,7 @@ import scodec.bits.ByteVector
               case (Some(header), Some(calculatedHeader)) =>
                 Right(NextFile(
                   RecoveredJournalFile(file, length = replicatedFileLength, lastProperEventPosition = lastProperEventPosition,
-                    header, calculatedHeader, replicatedFirstEventPosition.orThrow, builder.state),
-                  builder.clusterState))
+                    header, calculatedHeader, replicatedFirstEventPosition.orThrow, builder.state)))
               case _ =>
                 Left(Problem.pure(s"JournalHeader could not be replicated fileEventId=${continuation.fileEventId} eventId=${builder.eventId}"))
             }
@@ -488,7 +501,7 @@ import scodec.bits.ByteVector
     }
 
   private def toStampedFailedOver(clusterState: Coupled, failedAt: JournalPosition): Stamped[KeyedEvent[ClusterEvent]] = {
-    val failedOver = ClusterEvent.ClusterFailedOver(failedActiveId = clusterState.activeId, activatedId = clusterState.passiveId, failedAt)
+    val failedOver = ClusterFailedOver(failedActiveId = clusterState.activeId, activatedId = clusterState.passiveId, failedAt)
     val stamped = eventIdGenerator.stamp(NoKey <-: (failedOver: ClusterEvent))
     logger.debug(stamped.toString)
     stamped
@@ -512,13 +525,15 @@ import scodec.bits.ByteVector
     private[PassiveClusterNode] sealed trait HasRecoveredJournalFile
     extends Continuation.Replicatable {
       def recoveredJournalFile: RecoveredJournalFile[S, Event]
+      def clusterState = recoveredJournalFile.state.clusterState
       final def maybeJournalId = Some(recoveredJournalFile.journalId)
       final def maybeRecoveredJournalFile = Some(recoveredJournalFile)
     }
   }
 
-  private sealed case class NoLocalJournal(clusterState: ClusterState)
+  private case object NoLocalJournal
   extends Continuation.Replicatable {
+    def clusterState = ClusterState.Empty
     def fileLength = 0
     def fileEventId = EventId.BeforeFirst
     def firstEventPosition = None
@@ -527,7 +542,7 @@ import scodec.bits.ByteVector
     def maybeRecoveredJournalFile = None
   }
 
-  private sealed case class FirstPartialFile(recoveredJournalFile: RecoveredJournalFile[S, Event], clusterState: ClusterState)
+  private sealed case class FirstPartialFile(recoveredJournalFile: RecoveredJournalFile[S, Event])
   extends Continuation.Replicatable with Continuation.HasRecoveredJournalFile {
     assertThat(recoveredJournalFile.file == file)
     def fileLength = recoveredJournalFile.length
@@ -537,7 +552,7 @@ import scodec.bits.ByteVector
     override def toString = s"FirstPartialFile($fileEventId,$fileLength,${recoveredJournalFile.eventId})"
   }
 
-  private sealed case class NextFile(recoveredJournalFile: RecoveredJournalFile[S, Event], clusterState: ClusterState)
+  private sealed case class NextFile(recoveredJournalFile: RecoveredJournalFile[S, Event])
   extends Continuation.Replicatable with Continuation.HasRecoveredJournalFile {
     /** The next file is initially empty. */
     def fileLength = 0

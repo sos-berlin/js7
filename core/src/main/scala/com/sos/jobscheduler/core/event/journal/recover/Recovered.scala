@@ -1,9 +1,11 @@
 package com.sos.jobscheduler.core.event.journal.recover
 
 import akka.actor.{ActorRef, ActorRefFactory}
+import com.sos.jobscheduler.core.event.journal.BabyJournaledState
 import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, RecoveredJournalingActors}
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.event.state.JournaledStateBuilder
+import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, JournaledState}
 import com.typesafe.config.Config
 import scala.concurrent.duration.Deadline
@@ -27,6 +29,13 @@ extends AutoCloseable
 
   def journalId: Option[JournalId] = recoveredJournalFile.map(_.journalId)
 
+  def babyJournaledState: BabyJournaledState =
+    recoveredJournalFile.fold(BabyJournaledState.empty)(o =>
+      BabyJournaledState(o.eventId, o.state.journalState, o.state.clusterState))
+
+  def clusterState: ClusterState =
+    babyJournaledState.clusterState
+
   def recoveredState: Option[S] =
     recoveredJournalFile.map(_.state)
 
@@ -35,12 +44,13 @@ extends AutoCloseable
 
   def startJournalAndFinishRecovery(
     journalActor: ActorRef,
-    recoveredActors: RecoveredJournalingActors = RecoveredJournalingActors.Empty,
-    requireClusterAcknowledgement: Boolean = false)
+    recoveredActors: RecoveredJournalingActors = RecoveredJournalingActors.Empty)
     (implicit actorRefFactory: ActorRefFactory)
   =
-    JournalRecoverer.startJournalAndFinishRecovery[Event](journalActor, recoveredActors,
-      requireClusterAcknowledgement = requireClusterAcknowledgement,
+    JournalRecoverer.startJournalAndFinishRecovery[Event](
+      journalActor,
+      babyJournaledState,
+      recoveredActors,
       Some(eventWatch),
       recoveredJournalFile.map(_.journalId),
       recoveredJournalFile.map(_.calculatedJournalHeader),

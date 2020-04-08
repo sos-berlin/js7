@@ -9,6 +9,7 @@ import cats.instances.vector._
 import cats.syntax.flatMap._
 import cats.syntax.traverse._
 import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
+import com.sos.jobscheduler.base.eventbus.EventBus
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.monixutils.MonixBase.syntax._
 import com.sos.jobscheduler.base.problem.Checked._
@@ -32,16 +33,17 @@ import com.sos.jobscheduler.core.crypt.SignatureVerifier
 import com.sos.jobscheduler.core.event.journal.data.JournalHeader
 import com.sos.jobscheduler.core.event.journal.recover.{JournalRecoverer, Recovered}
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
-import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActor}
+import com.sos.jobscheduler.core.event.journal.{BabyJournaledState, JournalActor, MainJournalingActor}
 import com.sos.jobscheduler.core.filebased.{FileBasedVerifier, FileBaseds, Repo}
-import com.sos.jobscheduler.core.problems.UnknownOrderProblem
+import com.sos.jobscheduler.core.problems.{ReverseKeepEventsProblem, UnknownOrderProblem}
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderProcessor
 import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath, AgentRunId}
 import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.data.crypt.Signed
+import com.sos.jobscheduler.data.event.JournalEvent.JournalEventsReleased
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{<-:, Event, EventId, JournalState, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
 import com.sos.jobscheduler.data.filebased.{FileBased, RepoEvent, TypedPath}
 import com.sos.jobscheduler.data.master.MasterFileBaseds
@@ -86,7 +88,8 @@ final class MasterOrderKeeper(
   cluster: Cluster,
   eventWatch: JournalEventWatch,
   masterConfiguration: MasterConfiguration,
-  signatureVerifier: SignatureVerifier)
+  signatureVerifier: SignatureVerifier,
+  testEventBus: EventBus)
   (implicit scheduler: Scheduler)
 extends Stash
 with MainJournalingActor[Event]
@@ -106,6 +109,7 @@ with MainJournalingActor[Event]
   }
   private val idToOrder = orderRegister mapPartialFunction (_.order)
   private var orderProcessor = new OrderProcessor(PartialFunction.empty, idToOrder)
+  private var journalState = JournalState.empty
   private var recoveredJournalHeader = SetOnce[JournalHeader]
   private val suppressOrderIdCheckFor = config.optionAs[String]("jobscheduler.TEST-ONLY.suppress-order-id-check-for")
   private val testAddOrderDelay = config.optionAs[FiniteDuration]("jobscheduler.TEST-ONLY.add-order-delay").fold(Task.unit)(Task.sleep)
@@ -253,8 +257,8 @@ with MainJournalingActor[Event]
       logger.debug("masterState blocking read okay")
       MasterState(
         persistedEventId,
+        BabyJournaledState(persistedEventId, journalState, clusterState),
         masterMetaState,
-        clusterState,
         repo,
         pathToAgent = agentRegister.values.map(entry => entry.agentRefPath -> entry.toSnapshot).toMap,
         orderRegister.mapValues(_.order).toMap)
@@ -315,6 +319,7 @@ with MainJournalingActor[Event]
       for (order <- masterState.orders) {
         orderRegister.insert(order.id -> new OrderEntry(order))
       }
+      journalState = masterState.journalState
       persistedEventId = masterState.eventId
     }
   }
@@ -329,8 +334,7 @@ with MainJournalingActor[Event]
       // Send an extra RegisterMe here, to be sure JournalActor has registered the ClusterState actor when a snapshot is taken
       // TODO Fix fundamentally the race condition with JournalActor.Input.RegisterMe
       journalActor.tell(JournalActor.Input.RegisterMe, cluster.journalingActor)
-      recovered.startJournalAndFinishRecovery(journalActor,
-        requireClusterAcknowledgement = recovered.recoveredState.fold(false)(_.clusterState.isInstanceOf[ClusterState.Coupled]))
+      recovered.startJournalAndFinishRecovery(journalActor)
       become("journalIsStarting")(journalIsStarting)
       unstashAll()
 
@@ -368,6 +372,7 @@ with MainJournalingActor[Event]
              masterMetaState = masterMetaState.copy(masterId = masterId, startedAt = startedAt)
            case _ =>
          }
+        testEventBus.publish(MasterReadyTestIncident)
         cluster.automaticallyAppointConfiguredBackupNode()
           .materializeIntoChecked
           .runToFuture
@@ -589,13 +594,19 @@ with MainJournalingActor[Event]
             }
         }
 
-      case MasterCommand.KeepEvents(eventId) =>
-        Future {  // asynchronous
-          (if (config.getBoolean("jobscheduler.journal.delete-unused-files"))
-            eventWatch.keepEvents(eventId)
+      case MasterCommand.KeepEvents(after) =>
+        val userId = commandMeta.user.id
+        if (!masterConfiguration.journalConf.releaseEventsUserIds.contains(userId))
+          Future(Left(Problem.pure("Your UserId has not been configured for KeepEvents command")))
+        else {
+          val current = journalState.userIdToReleasedEventId.getOrElse(userId, EventId.BeforeFirst)
+          if (after < current)
+            Future(Left(ReverseKeepEventsProblem(requestedAfter = after, currentAfter = current)))
           else
-            Right(Completed)
-          ).map(_ => MasterCommand.Response.Accepted)
+            persist(JournalEventsReleased(userId, after)) { case Stamped(_,_, _ <-: event) =>
+              journalState = journalState.applyEvent(event)
+              Right(MasterCommand.Response.Accepted)
+            }
         }
 
       case cmd: MasterCommand.ReplaceRepo =>
@@ -990,4 +1001,6 @@ private[master] object MasterOrderKeeper
   }
 
   private class StartingClusterCanceledException extends Exception with NoStackTrace
+
+  object MasterReadyTestIncident
 }

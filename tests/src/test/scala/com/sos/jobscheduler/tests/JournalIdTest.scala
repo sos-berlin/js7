@@ -18,6 +18,7 @@ import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentCouplingFai
 import com.sos.jobscheduler.tests.JournalIdTest._
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider.script
 import com.sos.jobscheduler.tests.testenv.DirectoryProviderForScalaTest
+import com.typesafe.config.ConfigFactory
 import io.circe.syntax.EncoderOps
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
@@ -29,6 +30,12 @@ final class JournalIdTest extends FreeSpec with DirectoryProviderForScalaTest
 {
   protected val agentRefPaths = agentRefPath :: Nil
   protected val fileBased = TestWorkflow :: Nil
+  override protected val masterConfig = ConfigFactory.parseString(
+     """jobscheduler.journal.delete-unused-files = false
+       |""".stripMargin)
+  override protected val agentConfig = ConfigFactory.parseString(
+     """jobscheduler.journal.delete-unused-files = false
+       |""".stripMargin)
 
   private lazy val agentStateDir = directoryProvider.agents.head.dataDir / "state"
   private lazy val firstJournalFile = agentStateDir / "master-Master--0.journal"

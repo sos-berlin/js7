@@ -1,14 +1,16 @@
 package com.sos.jobscheduler.master
 
 import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
 import com.sos.jobscheduler.base.utils.ScalazStyle._
+import com.sos.jobscheduler.core.event.journal.BabyJournaledState
 import com.sos.jobscheduler.core.filebased.Repo
 import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
+import com.sos.jobscheduler.data.cluster.ClusterEvent
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{Event, EventId, JournaledState, KeyedEvent}
+import com.sos.jobscheduler.data.event.{Event, EventId, JournalEvent, JournaledState, KeyedEvent}
 import com.sos.jobscheduler.data.filebased.RepoEvent
 import com.sos.jobscheduler.data.master.MasterFileBaseds
 import com.sos.jobscheduler.data.master.MasterFileBaseds.MasterTypedPathCompanions
@@ -26,16 +28,18 @@ import monix.reactive.Observable
   */
 final case class MasterState(
   eventId: EventId,
+  babyJournaledState: BabyJournaledState,
   masterMetaState: MasterMetaState,
-  clusterState: ClusterState,
   repo: Repo,
   pathToAgent: Map[AgentRefPath, AgentSnapshot],
   idToOrder: Map[OrderId, Order[Order.State]])
 extends JournaledState[MasterState, Event]
 {
+  assertThat(eventId == babyJournaledState.eventId)
+
   def toSnapshotObservable: Observable[Any] =
+    babyJournaledState.toSnapshotObservable ++
     Observable.fromIterable(masterMetaState.isDefined ? masterMetaState) ++
-    clusterState.toSnapshotObservable ++
     Observable.fromIterable(repo.eventsFor(MasterTypedPathCompanions)) ++
     Observable.fromIterable(agents) ++
     Observable.fromIterable(orders)
@@ -114,30 +118,37 @@ extends JournaledState[MasterState, Event]
     case KeyedEvent(_, MasterTestEvent) =>
       Right(this)
 
-    case KeyedEvent(_: NoKey, e: ClusterEvent) =>
-      for (o <- clusterState.applyEvent(e))
-        yield copy(clusterState = o)
+    case KeyedEvent(_, _: JournalEvent | _: ClusterEvent) =>
+      for (o <- babyJournaledState.applyEvent(keyedEvent))
+        yield copy(babyJournaledState = o)
 
     case _ => eventNotApplicable(keyedEvent)
   }
 
   def withEventId(eventId: EventId) =
-    copy(eventId = eventId)
+    copy(
+      eventId = eventId,
+      babyJournaledState = babyJournaledState.copy(
+        eventId = eventId))
+
+  def journalState = babyJournaledState.journalState
+
+  def clusterState = babyJournaledState.clusterState
 
   def agents = pathToAgent.values.toImmutableSeq
 
   def orders = idToOrder.values.toImmutableSeq
 
   override def toString =
-    s"MasterState(${EventId.toString(eventId)} ${idToOrder.size} orders, Repo(${repo.currentVersion.size} objects))"
+    s"MasterState(${EventId.toString(eventId)} ${idToOrder.size} orders, Repo(${repo.currentVersion.size} objects, ...))"
 }
 
 object MasterState
 {
   val Undefined = MasterState(
     EventId.BeforeFirst,
+    BabyJournaledState.empty,
     MasterMetaState.Undefined,
-    ClusterState.Empty,
     Repo(MasterFileBaseds.jsonCodec),
     Map.empty,
     Map.empty)

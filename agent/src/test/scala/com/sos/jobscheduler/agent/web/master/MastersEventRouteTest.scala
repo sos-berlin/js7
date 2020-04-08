@@ -13,7 +13,7 @@ import com.sos.jobscheduler.common.guice.GuiceImplicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import com.sos.jobscheduler.core.problems.NoSuchMasterProblem
 import com.sos.jobscheduler.data.agent.AgentRunId
-import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, JournalEvent, JournalId, TearableEventSeq}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, JournalEvent, JournalId, TearableEventSeq}
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.problems.MasterRequiresUnknownEventIdProblem
 import monix.execution.Scheduler
@@ -87,6 +87,9 @@ final class MastersEventRouteTest extends FreeSpec with AgentTester
 
     // Delete old journal files
     agentClient.commandExecute(KeepEvents(eventId)).await(99.s).orThrow
+    // Await JournalEventsReleased
+    eventId = agentClient.mastersEvents(EventRequest.singleClass[Event](after = eventId)).await(99.s).orThrow
+      .asInstanceOf[EventSeq.NonEmpty[Seq, AnyKeyedEvent]].stamped.last.eventId
 
     assert(agentClient.commandExecute(CoupleMaster(agentRunId, EventId.BeforeFirst)).await(99.s) ==
       Left(MasterRequiresUnknownEventIdProblem(EventId.BeforeFirst)))
@@ -118,7 +121,7 @@ final class MastersEventRouteTest extends FreeSpec with AgentTester
   }
 
   "Future event (not used by Master)" in {
-    // Master does not use this feature provided by GenericEventRoute
+    // Master does not use this feature provided by GenericEventRoute. We test anyway.
     val futureEventId = eventId + 1
     val Right(EventSeq.Empty(lastEventId)) =
       agentClient.mastersEvents(EventRequest.singleClass[Event](after = futureEventId)).await(99.s)

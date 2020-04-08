@@ -34,11 +34,11 @@ import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
-import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActor}
+import com.sos.jobscheduler.core.event.journal.{BabyJournaledState, JournalActor, MainJournalingActor}
 import com.sos.jobscheduler.core.problems.NoSuchMasterProblem
 import com.sos.jobscheduler.data.agent.AgentRunId
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{EventId, JournalEvent, JournalId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{EventId, JournalEvent, JournalId, JournalState, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.workflow.Workflow
@@ -81,7 +81,7 @@ extends MainJournalingActor[AgentEvent] {
     super.preStart()
     val recoverer = new MyJournalRecoverer()
     recoverer.recoverAll()
-    recoverer.startJournalAndFinishRecovery(journalActor)
+    recoverer.startJournalAndFinishRecovery(journalActor, BabyJournaledState.empty)
   }
 
   override def postStop() = {
@@ -262,6 +262,7 @@ object AgentActor
 {
   private val logger = Logger(getClass)
   private val SnapshotJsonFormat = TypedJsonCodec[Any](
+    Subtype[JournalState],
     Subtype[Workflow],
     Subtype[Order[Order.State]])
 

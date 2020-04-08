@@ -14,7 +14,7 @@ import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta,
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer._
 import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
-import com.sos.jobscheduler.core.event.journal.{JournalActor, KeyedJournalingActor}
+import com.sos.jobscheduler.core.event.journal.{BabyJournaledState, JournalActor, KeyedJournalingActor}
 import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
 import java.nio.file.{Files, Path}
 import scala.concurrent.duration.Deadline.now
@@ -99,13 +99,16 @@ trait JournalRecoverer
   //    (journalActor ? JournalActor.Input.Start(RecoveredJournalingActors.Empty, journalingObserver, journalHeader))(journalMeta.askTimeout)
   //      .map { case _: JournalActor.Output.Ready => Completed })
 
+  // TODO Use Recovered startJournalAndFinishRecoveryReplace instead
   final def startJournalAndFinishRecovery(
     journalActor: ActorRef,
+    journaledState: BabyJournaledState,
     recoveredActors: RecoveredJournalingActors = RecoveredJournalingActors.Empty,
     journalingObserver: Option[JournalingObserver] = None)
     (implicit actorRefFactory: ActorRefFactory)
   =
-    JournalRecoverer.startJournalAndFinishRecovery[Event](journalActor, recoveredActors, requireClusterAcknowledgement = false,
+    JournalRecoverer.startJournalAndFinishRecovery[Event](journalActor,
+      journaledState, recoveredActors,
       journalingObserver, expectedJournalId, recoveredJournalHeader,
       totalRunningSince = now + recoveredJournalHeader.fold(Duration.Zero)(_.totalRunningTime))
 
@@ -140,8 +143,8 @@ object JournalRecoverer {
 
   private[recover] def startJournalAndFinishRecovery[E <: Event](
     journalActor: ActorRef,
+    journaledState: BabyJournaledState,
     recoveredActors: RecoveredJournalingActors,
-    requireClusterAcknowledgement: Boolean,
     observer: Option[JournalingObserver],
     expectedJournalId: Option[JournalId],
     recoveredJournalHeader: Option[JournalHeader],
@@ -153,10 +156,10 @@ object JournalRecoverer {
     actorRefFactory.actorOf(
       Props {
         new Actor {
-          journalActor ! JournalActor.Input.Start(recoveredActors, observer,
+          journalActor ! JournalActor.Input.Start(
+            journaledState, recoveredActors, observer,
             recoveredJournalHeader getOrElse JournalHeader.initial(expectedJournalId getOrElse JournalId.random()),
-            totalRunningSince,
-            requireClusterAcknowledgement = requireClusterAcknowledgement)
+            totalRunningSince)
 
           def receive = {
             case JournalActor.Output.Ready(journalHeader) =>

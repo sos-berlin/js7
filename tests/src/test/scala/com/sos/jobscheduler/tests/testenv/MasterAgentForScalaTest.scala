@@ -22,7 +22,6 @@ trait MasterAgentForScalaTest extends DirectoryProviderForScalaTest {
   protected final lazy val agent: RunningAgent = agents.head
   protected final lazy val master: RunningMaster = directoryProvider.startMaster(
      masterModule,
-     masterConfig,
      httpPort = masterHttpPort,
      httpsPort = masterHttpsPort,
      mutualHttps = masterHttpsMutual,
@@ -38,7 +37,6 @@ trait MasterAgentForScalaTest extends DirectoryProviderForScalaTest {
     master.terminate() await 15.s
     master.close()
     agents.map(_.terminate()) await 15.s
-    //closer.close()
     for (a <- agents) a.close()
     super.afterAll()
   }

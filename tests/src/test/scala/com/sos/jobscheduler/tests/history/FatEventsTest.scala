@@ -47,6 +47,7 @@ final class FatEventsTest extends FreeSpec
     autoClosing(new DirectoryProvider(AAgentRefPath :: BAgentRefPath :: Nil, TestWorkflow :: Nil, testName = Some("FatEventsTest"))) { provider =>
       (provider.master.configDir / "private/private.conf").append("""
         |jobscheduler.auth.users.TEST-USER = "plain:TEST-PASSWORD"
+        |jobscheduler.journal.users-allowed-to-keep-events = [ "TEST-USER" ]
         |""".stripMargin )
       for (a <- provider.agents) a.writeExecutable(TestExecutablePath, DirectoryProvider.script(0.s))
 
@@ -174,7 +175,7 @@ final class FatEventsTest extends FreeSpec
             assert(listJournalFiles.size == 1)  // One file deleted
 
             // Should not return Torn:
-            val EventSeq.Empty(`eventId2`) = master.httpApi.fatEvents(EventRequest.singleClass[FatEvent](after = eventId2, timeout = Some(0.s))) await 99.s
+            val EventSeq.Empty(_) = master.httpApi.fatEvents(EventRequest.singleClass[FatEvent](after = eventId2, timeout = Some(0.s))) await 99.s
 
             // Again, issue an ignored event. Then fetch fatEvents again after=eventId2 the second time
             master.httpApi.executeCommand(MasterCommand.IssueTestEvent) await 99.s

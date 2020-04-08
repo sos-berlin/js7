@@ -235,7 +235,7 @@ with ReceiveLoggingActor.WithStash
       if (keepEventsCancelable.isEmpty) {
         val delay = if (delayNextKeepEvents) conf.keepEventsPeriod else Duration.Zero
         keepEventsCancelable = Some(scheduler.scheduleOnce(delay) {
-          self ! Internal.KeepEvents(after)
+          self ! Internal.KeepEvents
         })
         delayNextKeepEvents = true
       }
@@ -255,9 +255,9 @@ with ReceiveLoggingActor.WithStash
           }
         }
 
-    case Internal.KeepEvents(agentEventId) =>
+    case Internal.KeepEvents =>
       if (!isTerminating) {
-        commandQueue.enqueue(KeepEventsQueueable(agentEventId))
+        commandQueue.enqueue(KeepEventsQueueable(lastEventId))
       }
 
     case Internal.CommandQueueReady =>
@@ -410,7 +410,7 @@ private[master] object AgentDriver
     final case class OnCouplingFailed(problem: Problem, promise: Promise[Completed]) extends DeadLetterSuppression
     final case class OnCoupled(promise: Promise[Completed]) extends DeadLetterSuppression
     final case class EventsAccepted(agentEventId: EventId, promise: Promise[Completed]) extends DeadLetterSuppression
-    final case class KeepEvents(agentEventId: EventId) extends DeadLetterSuppression
+    final case object KeepEvents extends DeadLetterSuppression
     final case class UriChanged(uri: Uri) extends DeadLetterSuppression
   }
 

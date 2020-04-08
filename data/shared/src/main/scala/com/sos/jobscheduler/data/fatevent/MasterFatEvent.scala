@@ -13,7 +13,6 @@ sealed trait MasterFatEvent extends FatEvent with NoKeyEvent
 object MasterFatEvent
 {
   final case class MasterReadyFat(masterId: MasterId, timezone: String) extends MasterFatEvent
-  case object MasterReady
 
   implicit val jsonCodec: TypedJsonCodec[MasterFatEvent] = TypedJsonCodec(
     Subtype(deriveCodec[MasterReadyFat]))

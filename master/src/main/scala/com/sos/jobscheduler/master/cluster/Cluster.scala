@@ -24,11 +24,11 @@ import com.sos.jobscheduler.common.http.{AkkaHttpClient, RecouplingStreamReader}
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.cluster.ClusterWatch.ClusterWatchHeartbeatFromInactiveNodeProblem
 import com.sos.jobscheduler.core.cluster.HttpClusterWatch
-import com.sos.jobscheduler.core.event.journal.JournalActor
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
 import com.sos.jobscheduler.core.event.journal.recover.{JournaledStateRecoverer, Recovered}
+import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalConf}
 import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
 import com.sos.jobscheduler.core.problems.MissingPassiveClusterNodeHeartbeatProblem
 import com.sos.jobscheduler.core.startup.Halt.haltJava
@@ -62,6 +62,7 @@ final class Cluster(
   journalMeta: JournalMeta,
   persistence: JournaledStatePersistence[ClusterState, ClusterEvent],
   masterId: MasterId,
+  journalConf: JournalConf,
   clusterConf: ClusterConf,
   config: Config,
   eventIdGenerator: EventIdGenerator,
@@ -114,15 +115,12 @@ final class Cluster(
     * @return A pair of `Task`s with maybe the current `MasterState` of this passive node (if so)
     *         and ClusterFollowUp.
     */
-  def start(
-    recovered: Recovered[MasterState, Event],
-    recoveredClusterState: ClusterState,
-    recoveredState: MasterState)
+  def start(recovered: Recovered[MasterState, Event], recoveredState: MasterState)
   : (Task[Option[MasterState]], Task[Checked[ClusterFollowUp[MasterState, Event]]]) = {
-    if (recoveredClusterState != Empty) {
-      logger.debug(s"recoveredClusterState=$recoveredClusterState")
+    if (recovered.clusterState != Empty) {
+      logger.debug(s"recoveredClusterState=${recovered.clusterState}")
     }
-    val (passiveState, followUp) = startCluster(recovered, recoveredClusterState, recoveredState, eventIdGenerator)
+    val (passiveState, followUp) = startCluster(recovered, recoveredState, eventIdGenerator)
     _currentClusterState = passiveState flatMap {
       case None => persistence.currentState
       case Some(o) => Task.pure(o.clusterState)
@@ -139,18 +137,17 @@ final class Cluster(
 
   private def startCluster(
     recovered: Recovered[MasterState, Event],
-    recoveredClusterState: ClusterState,
     recoveredState: MasterState,
     eventIdGenerator: EventIdGenerator)
   : (Task[Option[MasterState]], Task[Checked[(ClusterState, ClusterFollowUp[MasterState, Event])]])
   = {
-    (recoveredClusterState, recovered.recoveredJournalFile) match {
+    (recovered.clusterState, recovered.recoveredJournalFile) match {
       case (Empty, _) =>
         if (!clusterConf.isBackup) {
           logger.debug(s"Active primary cluster node '$ownId', still with no passive node appointed")
           Task.pure(None) ->
             (activationInhibitor.startActive >>
-              Task.pure(Right(recoveredClusterState -> ClusterFollowUp.BecomeActive(recovered))))
+              Task.pure(Right(recovered.clusterState -> ClusterFollowUp.BecomeActive(recovered))))
         } else {
           logger.info(s"Backup cluster node '$ownId', awaiting appointment from a primary node")
           val promise = Promise[ClusterStartBackupNode]()
@@ -160,11 +157,12 @@ final class Cluster(
             .memoize
           passiveTask.flatMap(_.state.map(Some.apply)) ->
             passiveTask.flatMap(passive => activationInhibitor.startPassive >>
-              passive.run(recoveredClusterState, recoveredState))
+              passive.run(recoveredState))
         }
 
       case (recoveredClusterState: HasNodes, Some(recoveredJournalFile))
         if recoveredClusterState.activeId == ownId =>
+        assert(recoveredClusterState == recoveredJournalFile.state.clusterState)
         recoveredClusterState match {
           case recoveredClusterState: Coupled =>
             import recoveredClusterState.{passiveId, passiveUri}
@@ -244,8 +242,9 @@ final class Cluster(
               failedOver.flatMap {
                 case None =>
                   Task.pure(Right(recoveredClusterState -> ClusterFollowUp.BecomeActive(recovered)))
-                case Some((otherClusterState, passiveClusterNode)) =>
-                  passiveClusterNode.run(otherClusterState, recoveredState)
+                case Some((otherClusterState/*unused???*/, passiveClusterNode)) =>
+                  assertThat(otherClusterState == recoveredState.clusterState)
+                  passiveClusterNode.run(recoveredState)
               }
 
           case _ =>
@@ -264,11 +263,11 @@ final class Cluster(
             s"Remaining a passive cluster node trying to follow the active node '${state.activeId}'")
         val passive = newPassiveClusterNode(state.idToUri, state.activeId, recovered)
         passive.state.map(Some.apply) ->
-          passive.run(recoveredClusterState, recoveredState)
+          passive.run(recoveredState)
 
       case _ =>
         Task.pure(None) ->
-          Task.pure(Left(Problem.pure(s"Unexpected clusterState=$recoveredClusterState (id=$ownId)")))
+          Task.pure(Left(Problem.pure(s"Unexpected clusterState=${recovered.clusterState} (id=$ownId)")))
     }
   }
 
@@ -281,7 +280,7 @@ final class Cluster(
   = {
     val common = new ClusterCommon(activationInhibitor, clusterWatch, clusterConf, testEventBus)
     new PassiveClusterNode(ownId, idToUri, activeId, journalMeta, recovered,
-      otherFailedOver, clusterConf, eventIdGenerator, common)(actorSystem)
+      otherFailedOver, journalConf, clusterConf, eventIdGenerator, common)(actorSystem)
   }
 
   def automaticallyAppointConfiguredBackupNode(): Task[Checked[Completed]] =

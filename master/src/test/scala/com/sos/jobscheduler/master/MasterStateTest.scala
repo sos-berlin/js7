@@ -1,15 +1,18 @@
 package com.sos.jobscheduler.master
 
+import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections.implicits._
+import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.core.event.journal.BabyJournaledState
 import com.sos.jobscheduler.core.filebased.Repo
 import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.cluster.ClusterState
-import com.sos.jobscheduler.data.event.EventId
+import com.sos.jobscheduler.data.cluster.{ClusterNodeId, ClusterState}
+import com.sos.jobscheduler.data.event.{EventId, JournalState}
 import com.sos.jobscheduler.data.filebased.RepoEvent.VersionAdded
 import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.data.master.{MasterFileBaseds, MasterId}
@@ -30,8 +33,15 @@ final class MasterStateTest extends FreeSpec
 {
   private val masterState = MasterState(
     EventId(1001),
+    BabyJournaledState(
+      EventId(1001),
+      JournalState(Map(UserId("A") -> EventId(1000))),
+      ClusterState.Coupled(
+        Map(
+          ClusterNodeId("A") -> Uri("http://A"),
+          ClusterNodeId("B") -> Uri("http://B")),
+        ClusterNodeId("A"))),
     MasterMetaState(MasterId("MASTER-ID"), Timestamp("2019-05-24T12:00:00Z")),
-    ClusterState.Empty,
     Repo(MasterFileBaseds.jsonCodec).applyEvent(VersionAdded(VersionId("1.0"))).orThrow,
     (AgentSnapshot(AgentRefPath("/AGENT"), None, 7) :: Nil).toKeyedMap(_.agentRefPath),
     (Order(OrderId("ORDER"), WorkflowPath("/WORKFLOW") /: Position(1), Order.Fresh(None)) :: Nil).toKeyedMap(_.id))
@@ -43,7 +53,7 @@ final class MasterStateTest extends FreeSpec
   "fromIterator is the reverse of toSnapshotObservable + EventId" in {
     assert(masterState ==
       MasterState.fromIterator(masterState.toSnapshotObservable.toListL.runToFuture.await(9.s).iterator)
-        .copy(eventId = masterState.eventId))
+        .withEventId(masterState.eventId))
   }
 
   "toSnapshotObservable JSON" in {
@@ -51,6 +61,21 @@ final class MasterStateTest extends FreeSpec
     testJson(masterState.toSnapshotObservable.toListL.runToFuture.await(9.s),
       json"""[
         {
+          "TYPE": "JournalState",
+          "userIdToReleasedEventId": {
+            "A": 1000
+          }
+        }, {
+          "TYPE": "ClusterStateSnapshot",
+          "clusterState": {
+            "TYPE": "Coupled",
+            "idToUri": {
+              "A": "http://A",
+              "B": "http://B"
+            },
+            "activeId": "A"
+          }
+        }, {
           "TYPE": "MasterMetaState",
           "masterId": "MASTER-ID",
           "startedAt": 1558699200000

@@ -125,6 +125,8 @@ final class FileJournaledStateBuilder[S <: JournaledState[S, E], E <: Event](
 
   def state = builder.state
 
+  def journalState = builder.journalState
+
   def clusterState = builder.clusterState
 
   def result: S =

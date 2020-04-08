@@ -2,6 +2,7 @@ package com.sos.jobscheduler.agent.scheduler
 
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.data.agent.AgentRunId
+import com.sos.jobscheduler.data.event.JournalState
 import com.sos.jobscheduler.data.master.MasterId
 import io.circe.generic.JsonCodec
 
@@ -15,5 +16,6 @@ private[scheduler] object AgentSnapshot {
   final case class Master(masterId: MasterId, agentRunId: AgentRunId) extends AgentSnapshot
 
   val jsonCodec = TypedJsonCodec[Any](
+    Subtype[JournalState],
     Subtype[Master])
 }

@@ -106,6 +106,7 @@ object MasterClusterTester
   }
 
   private[cluster] def assertEqualJournalFiles(primary: DirectoryProvider.MasterTree, backup: DirectoryProvider.MasterTree, n: Int): Unit = {
+    waitForCondition(9.s, 10.ms) { listJournalFiles(primary.stateDir / "master").size == n }
     val journalFiles = listJournalFiles(primary.stateDir / "master")
     // Snapshot is not being acknowledged, so a new journal file starts asynchronously (or when one event has been written)
     assert(journalFiles.size == n)
