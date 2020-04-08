@@ -19,7 +19,13 @@ final class KeyedEventTypedJsonCodec[E <: Event: ClassTag](
   val nameToDecoder: Map[String, Decoder.Result[Decoder[KeyedEvent[_ <: E]]]],
   val nameToClass: Map[String, Class[_ <: E]])
 extends Encoder.AsObject[KeyedEvent[E]]
-with Decoder[KeyedEvent[E]] {
+with Decoder[KeyedEvent[E]]
+{
+  private val _classToName: Map[Class[_ <: E], String] =
+    nameToClass.map(o => o._2 -> o._1).toMap
+
+  private val classToNameJson: Map[Class[_ <: E], Json/*String*/] =
+    Map()/*force eagerness*/ ++ _classToName.mapValues(Json.fromString)
 
   /** Union. */
   def |[B <: Event](other: KeyedEventTypedJsonCodec[B]): KeyedEventTypedJsonCodec[Event] = {
@@ -60,6 +66,9 @@ with Decoder[KeyedEvent[E]] {
       case _ => false
     }
 
+  def isOfType[E1 <: E: ClassTag](json: Json): Boolean =
+    json.asObject.flatMap(_(TypeFieldName)) contains classToNameJson(implicitClass[E1])
+
   def typenameToClassOption(name: String): Option[Class[_ <: E]] =
     if (name == this.name)
       Some(implicitClass[E])
@@ -69,8 +78,8 @@ with Decoder[KeyedEvent[E]] {
   override def toString = s"KeyedEventTypedJsonCodec[$printName]"
 }
 
-object KeyedEventTypedJsonCodec {
-
+object KeyedEventTypedJsonCodec
+{
   def apply[E <: Event: ClassTag](subtypes: KeyedSubtype[_ <: E]*) = {
     val cls = implicitClass[E]
     new KeyedEventTypedJsonCodec[E](

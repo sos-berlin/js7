@@ -64,6 +64,13 @@ final class KeyedEventTypedJsonCodecTest extends FreeSpec {
     assert(TestEventKeyedEventTypedJsonCodec.typenameToClassOption("E0") == Some(E0.getClass))
     assert(TestEventKeyedEventTypedJsonCodec.typenameToClassOption("E1") == Some(classOf[E1]))
   }
+
+  "isOfType" in {
+    val a1Json = json"""{ "TYPE": "E1", "key": "A", "int": 7 }"""
+    val xJson = json"""{ "TYPE":  "X"}"""
+    assert(StringEventJsonCodec.isOfType[E1](a1Json))
+    assert(!StringEventJsonCodec.isOfType[E1](xJson))
+  }
 }
 
 object KeyedEventTypedJsonCodecTest {
