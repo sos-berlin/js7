@@ -389,7 +389,7 @@ extends MainJournalingActor[Event] with Stash {
         body(orderEntry)
     }
 
-  private def attachOrder(order: Order[Order.FreshOrReady], workflow: Workflow): Future[Completed] = {
+  private def attachOrder(order: Order[Order.IsFreshOrReady], workflow: Workflow): Future[Completed] = {
     val actor = newOrderActor(order)
     orderRegister.insert(order, workflow, actor)
     (actor ? OrderActor.Command.Attach(order)).mapTo[Completed]  // TODO ask will time-out when Journal blocks
@@ -445,7 +445,7 @@ extends MainJournalingActor[Event] with Stash {
               orderRegister(orderId_).actor ? OrderActor.Command.HandleEvent(event)  // Ignore response ???
 
             case None =>
-              if (order.isState[Order.FreshOrReady]) {
+              if (order.isState[Order.IsFreshOrReady]) {
                 onOrderFreshOrReady(orderEntry)
               }
           }
@@ -557,7 +557,7 @@ object AgentOrderKeeper {
 
   private object Internal {
     final case class Recover(recovered: OrderJournalRecoverer.Recovered)
-    final case class ContinueAttachOrder(order: Order[Order.FreshOrReady], workflow: Workflow, promise: Promise[Checked[AgentCommand.Response.Accepted]])
+    final case class ContinueAttachOrder(order: Order[Order.IsFreshOrReady], workflow: Workflow, promise: Promise[Checked[AgentCommand.Response.Accepted]])
     final case class Due(orderId: OrderId)
     object StillTerminating extends DeadLetterSuppression
   }

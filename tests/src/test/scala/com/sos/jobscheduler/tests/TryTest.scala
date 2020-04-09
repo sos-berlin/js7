@@ -7,7 +7,7 @@ import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCatched, OrderDetachable, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTerminated, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCatched, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTerminated, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
@@ -36,7 +36,7 @@ final class TryTest extends FreeSpec
     }
   }
 
-  "Nested try catch with failing catch, OrderStopped" in {
+  "Nested try catch with failing catch, OrderFailed" in {
     autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, StoppingWorkflow :: Nil, testName = Some("TryTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) {
         a.writeExecutable(ExecutablePath(s"/FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
@@ -45,7 +45,7 @@ final class TryTest extends FreeSpec
       directoryProvider.run { (master, _) =>
         val orderId = OrderId("❌")
         master.addOrderBlocking(FreshOrder(orderId, StoppingWorkflow.id.path))
-        master.eventWatch.await[OrderStopped](_.key == orderId)
+        master.eventWatch.await[OrderFailed](_.key == orderId)
         checkEventSeq(orderId, master.eventWatch.all[OrderEvent], ExpectedStoppedEvent)
       }
     }
@@ -207,7 +207,7 @@ object TryTest {
      |  try {                                               // #0
      |    execute executable="/FAIL-1$sh", agent="AGENT";   // #0/0#0  OrderCatched
      |  } catch {
-     |    execute executable="/FAIL-2$sh", agent="AGENT";   // #0/1#0  OrderStopped
+     |    execute executable="/FAIL-2$sh", agent="AGENT";   // #0/1#0  OrderFailed
      |  }
      |}""".stripMargin
   private val StoppingWorkflow = WorkflowParser.parse(WorkflowPath("/STOPPING") ~ "INITIAL", stoppingScript).orThrow
@@ -225,5 +225,5 @@ object TryTest {
 
     OrderProcessingStarted,
     OrderProcessed(Outcome.Failed(ReturnCode(2))),
-    OrderStopped(Outcome.Failed(ReturnCode(2))))
+    OrderFailed(Outcome.Failed(ReturnCode(2))))
 }

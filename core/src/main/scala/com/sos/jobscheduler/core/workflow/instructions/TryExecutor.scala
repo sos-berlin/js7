@@ -20,7 +20,7 @@ object TryExecutor extends PositionInstructionExecutor with EventInstructionExec
 
   def toEvent(context: OrderContext, order: Order[Order.State], instruction: TryInstruction) =
     Right(
-      order.ifState[Order.FreshOrReady].map(order =>
+      order.ifState[Order.IsFreshOrReady].map(order =>
         order.id <-: OrderMoved(nextPos(order))))
 
   private def nextPos(order: Order[Order.State]) =

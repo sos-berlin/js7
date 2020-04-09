@@ -5,11 +5,11 @@ import com.sos.jobscheduler.core.crypt.silly.{SillySignatureVerifier, SillySigne
 import com.sos.jobscheduler.core.filebased.{FileBasedSigner, FileBasedVerifier, Repo}
 import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderCanceledFat, OrderFinishedFat, OrderForkedFat, OrderJoinedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStderrWrittenFat, OrderStdoutWrittenFat, OrderStoppedFat}
+import com.sos.jobscheduler.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderCanceledFat, OrderFailedFat, OrderFinishedFat, OrderForkedFat, OrderJoinedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStderrWrittenFat, OrderStdoutWrittenFat}
 import com.sos.jobscheduler.data.filebased.{RepoEvent, VersionId}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.master.{MasterFileBaseds, MasterId}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCanceled, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStderrWritten, OrderStdoutWritten, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCanceled, OrderDetachable, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStderrWritten, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.Execute
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
@@ -120,11 +120,11 @@ final class FatStateTest extends FreeSpec
       Some(orderId <-: OrderFinishedFat(workflow.id /: Position(2))))
   }
 
-  "OrderStopped" in {
+  "OrderFailed" in {
     fatState = beforeFinished
     val outcome = Outcome.Failed(Some("ERROR"), ReturnCode(1))
-    check(orderId <-: OrderStopped(outcome),
-      Some(orderId <-: OrderStoppedFat(workflow.id /: Position(2), outcome)))
+    check(orderId <-: OrderFailed(outcome),
+      Some(orderId <-: OrderFailedFat(workflow.id /: Position(2), outcome)))
   }
 
   "OrderCanceled" in {

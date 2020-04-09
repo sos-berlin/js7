@@ -41,7 +41,7 @@ object OrderFatEvent
 
   final case class OrderFinishedFat(workflowPosition: WorkflowPosition) extends OrderFatEvent
 
-  final case class OrderStoppedFat(workflowPosition: WorkflowPosition, outcome: Outcome.NotSucceeded) extends OrderFatEvent
+  final case class OrderFailedFat(workflowPosition: WorkflowPosition, outcome: Outcome.NotSucceeded) extends OrderFatEvent
 
   final case class OrderCanceledFat(workflowPosition: WorkflowPosition) extends OrderFatEvent
 
@@ -92,7 +92,7 @@ object OrderFatEvent
     Subtype(deriveCodec[OrderForkedFat]),
     Subtype(deriveCodec[OrderJoinedFat]),
     Subtype(deriveCodec[OrderFinishedFat]),
-    Subtype(deriveCodec[OrderStoppedFat]),
+    Subtype(deriveCodec[OrderFailedFat]),
     Subtype(deriveCodec[OrderCanceledFat]),
     Subtype(deriveCodec[OrderProcessingStartedFat]),
     Subtype(deriveCodec[OrderProcessedFat]),

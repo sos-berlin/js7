@@ -6,7 +6,7 @@ import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderFailedInFork, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTransferredToAgent}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.position.Position
@@ -21,7 +21,7 @@ import scala.reflect.runtime.universe._
 final class FailTest extends FreeSpec
 {
   "fail" in {
-    runUntil[OrderStopped]("""
+    runUntil[OrderFailed]("""
       |define workflow {
       |  execute agent="/AGENT", executable="/test.cmd", successReturnCodes=[3];
       |  fail;
@@ -34,11 +34,11 @@ final class FailTest extends FreeSpec
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
         OrderMoved(Position(1)),
-        OrderStopped(Outcome.Failed(ReturnCode(3)))))
+        OrderFailed(Outcome.Failed(ReturnCode(3)))))
   }
 
   "fail (returnCode=7)" in {
-    runUntil[OrderStopped]("""
+    runUntil[OrderFailed]("""
       |define workflow {
       |  execute agent="/AGENT", executable="/test.cmd", successReturnCodes=[3];
       |  fail (returnCode=7);
@@ -51,22 +51,22 @@ final class FailTest extends FreeSpec
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
         OrderMoved(Position(1)),
-        OrderStopped(Outcome.Failed(ReturnCode(7)))))
+        OrderFailed(Outcome.Failed(ReturnCode(7)))))
   }
 
   "fail (returnCode=7, message='ERROR')" in {
-    runUntil[OrderStopped]("""
+    runUntil[OrderFailed]("""
       |define workflow {
       |  fail (returnCode=7, message='ERROR');
       |}""".stripMargin,
       Vector(
         OrderAdded(TestWorkflowId),
         OrderStarted,
-        OrderStopped(Outcome.Failed(Some("ERROR"), ReturnCode(7)))))
+        OrderFailed(Outcome.Failed(Some("ERROR"), ReturnCode(7)))))
   }
 
   "fail in fork" in {
-    runUntil[OrderStopped]("""
+    runUntil[OrderFailed]("""
       |define workflow {
       |  fork {
       |    "🥕": { execute agent="/AGENT", executable="/test.cmd", successReturnCodes=[3] },
@@ -80,7 +80,7 @@ final class FailTest extends FreeSpec
           OrderForked.Child("🥕", OrderId("🔺/🥕")),
           OrderForked.Child("🍋", OrderId("🔺/🍋")))),
         OrderJoined(Outcome.Failed(ReturnCode(0))),
-        OrderStopped(Outcome.Failed(ReturnCode(0)))),
+        OrderFailed(Outcome.Failed(ReturnCode(0)))),
       OrderId("🔺/🍋") -> Vector(
         OrderFailedInFork(Outcome.Failed(None, ReturnCode(0)))))
   }

@@ -15,7 +15,7 @@ object IfExecutor extends EventInstructionExecutor with PositionInstructionExecu
   type Instr = If
 
   def toEvent(context: OrderContext, order: Order[Order.State], instruction: If) =
-    if (order.isState[Order.Broken] || order.isState[Order.StoppedWhileFresh] || order.isState[Order.Stopped])
+    if (order.isState[Order.Broken] || order.isState[Order.FailedWhileFresh] || order.isState[Order.Failed])
       Right(None)
     else
       nextPosition(context, order, instruction)

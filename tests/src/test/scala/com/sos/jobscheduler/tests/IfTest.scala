@@ -7,7 +7,7 @@ import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
@@ -30,7 +30,7 @@ final class IfTest extends FreeSpec {
           val orderId = OrderId("🔺" + returnCode.number)
           master.addOrderBlocking(newOrder(orderId, returnCode))
           if (returnCode == ReturnCode(2))
-            master.eventWatch.await[OrderStopped](_.key == orderId)
+            master.eventWatch.await[OrderFailed](_.key == orderId)
           else
             master.eventWatch.await[OrderFinished](_.key == orderId)
           checkEventSeq(orderId, master.eventWatch.all[OrderEvent], returnCode)
@@ -131,7 +131,7 @@ object IfTest {
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(Outcome.Failed(ReturnCode(2), Map("JOB-KEY" -> "JOB-RESULT"))),
-      OrderStopped(Outcome.Failed(ReturnCode(2), Map("JOB-KEY" -> "JOB-RESULT")))))    // TODO Key-values in OrderStopped ?
+      OrderFailed(Outcome.Failed(ReturnCode(2), Map("JOB-KEY" -> "JOB-RESULT")))))    // TODO Key-values in OrderFailed ?
 
   private def newOrder(orderId: OrderId, returnCode: ReturnCode) =
     FreshOrder(orderId, TestWorkflow.id.path, arguments = Map(

@@ -139,45 +139,6 @@ final class OrderEventTest extends FreeSpec {
       }""")
   }
 
-  "OrderStopped(Failed)" in {
-    check(OrderStopped(Outcome.Failed(ReturnCode(1))), json"""
-      {
-        "TYPE": "OrderStopped",
-        "outcome": {
-          "TYPE": "Failed",
-          "returnCode": 1
-        }
-      }""")
-  }
-
-  "OrderStopped(Failed) complete" in {
-    check(OrderStopped(Outcome.Failed(Some("ERROR"), ReturnCode(1))), json"""
-      {
-        "TYPE": "OrderStopped",
-        "outcome": {
-          "TYPE": "Failed",
-          "returnCode": 1,
-          "message": "ERROR"
-        }
-      }""")
-  }
-
-  "OrderStopped(Disrupted(PROBLEM))" in {
-    check(OrderStopped(Outcome.Disrupted(Problem("PROBLEM"))), json"""
-      {
-        "TYPE": "OrderStopped",
-        "outcome": {
-          "TYPE": "Disrupted",
-          "reason": {
-            "TYPE": "Other",
-            "problem": {
-              "message": "PROBLEM"
-            }
-          }
-        }
-      }""")
-  }
-
   "OrderCatched" in {
     check(OrderCatched(Outcome.Failed(ReturnCode(1)), Position(1)), json"""
       {
@@ -214,7 +175,7 @@ final class OrderEventTest extends FreeSpec {
       }""")
   }
 
-  "OrderFailed complete" in {
+  "OrderFailed(Failed) complete" in {
     check(OrderFailed(Outcome.Failed(Some("ERROR"), ReturnCode(1))), json"""
       {
         "TYPE": "OrderFailed",
@@ -222,6 +183,22 @@ final class OrderEventTest extends FreeSpec {
           "TYPE": "Failed",
           "returnCode": 1,
           "message": "ERROR"
+        }
+      }""")
+  }
+
+  "OrderFailed(Disrupted(PROBLEM))" in {
+    check(OrderFailed(Outcome.Disrupted(Problem("PROBLEM"))), json"""
+      {
+        "TYPE": "OrderFailed",
+        "outcome": {
+          "TYPE": "Disrupted",
+          "reason": {
+            "TYPE": "Other",
+            "problem": {
+              "message": "PROBLEM"
+            }
+          }
         }
       }""")
   }

@@ -138,7 +138,7 @@ object AgentCommand extends CommonCommand.Companion
 
   sealed trait AttachOrDetachOrder extends OrderCommand
 
-  final case class AttachOrder(order: Order[Order.FreshOrReady], signedWorkflow: SignedString)
+  final case class AttachOrder(order: Order[Order.IsFreshOrReady], signedWorkflow: SignedString)
   extends AttachOrDetachOrder {
     order.workflowId.requireNonAnonymous()
     order.attached.orThrow
@@ -148,7 +148,7 @@ object AgentCommand extends CommonCommand.Companion
     override def toShortString = s"AttachOrder($order)"
   }
   object AttachOrder {
-    def apply(order: Order[Order.FreshOrReady], agentRefPath: AgentRefPath, signedWorkflow: SignedString) =
+    def apply(order: Order[Order.IsFreshOrReady], agentRefPath: AgentRefPath, signedWorkflow: SignedString) =
       new AttachOrder(
         order.copy(attachedState = Some(Order.Attached(agentRefPath))),
         signedWorkflow)

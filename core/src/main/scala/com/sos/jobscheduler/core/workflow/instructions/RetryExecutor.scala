@@ -6,7 +6,7 @@ import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.core.workflow.OrderContext
 import com.sos.jobscheduler.core.workflow.instructions.RetryExecutor._
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderRetrying, OrderStopped}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderFailed, OrderRetrying}
 import com.sos.jobscheduler.data.order.{Order, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.{Retry, TryInstruction}
 import com.sos.jobscheduler.data.workflow.position.{BranchPath, TryBranchId}
@@ -36,7 +36,7 @@ final class RetryExecutor(clock: () => Timestamp) extends EventInstructionExecut
             .toChecked(missingTryProblem(branchPath))
             .map {
               case (Some(maxRetries), _) if order.position.tryCount >= maxRetries =>
-                Some(order.id <-: OrderStopped(Outcome.Disrupted(Problem.pure(s"Retry stopped because maxRetries=$maxRetries has been reached"))))
+                Some(order.id <-: OrderFailed(Outcome.Disrupted(Problem.pure(s"Retry stopped because maxRetries=$maxRetries has been reached"))))
               case (_, delay) =>
                 Some(order.id <-: OrderRetrying(
                   movedTo = branchPath % 0,

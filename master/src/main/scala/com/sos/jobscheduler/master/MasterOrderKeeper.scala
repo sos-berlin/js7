@@ -852,8 +852,8 @@ with MainJournalingActor[Event]
   private def proceedWithOrderOnMaster(orderEntry: OrderEntry): Unit = {
     val order = orderEntry.order
     order.state match {
-      case _: Order.FreshOrReady =>
-        val freshOrReady = order.castState[Order.FreshOrReady]
+      case _: Order.IsFreshOrReady =>
+        val freshOrReady = order.castState[Order.IsFreshOrReady]
         instruction(order.workflowPosition) match {
           case _: Execute => tryAttachOrderToAgent(freshOrReady)
           case _ =>
@@ -883,7 +883,7 @@ with MainJournalingActor[Event]
     }
   }
 
-  private def tryAttachOrderToAgent(order: Order[Order.FreshOrReady]): Unit =
+  private def tryAttachOrderToAgent(order: Order[Order.IsFreshOrReady]): Unit =
     for ((signedWorkflow, job, agentEntry) <- checkedWorkflowJobAndAgentEntry(order).onProblem(p => logger.error(p))) {  // TODO OrderBroken on error?
       if (order.isDetached && !orderProcessor.isOrderCancelable(order))
         persist(order.id <-: OrderAttachable(agentEntry.agentRefPath)) { stamped =>

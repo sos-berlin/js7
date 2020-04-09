@@ -8,7 +8,7 @@ import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
@@ -32,7 +32,7 @@ final class ExecuteTest extends FreeSpec
       directoryProvider.run { (master, _) =>
         val orderId = OrderId("❌")
         master.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
-        val stampedSeq = master.eventWatch.await[OrderStopped](_.key == orderId)
+        val stampedSeq = master.eventWatch.await[OrderFailed](_.key == orderId)
         assert(stampedSeq.head.value.event.outcome.asInstanceOf[Outcome.Disrupted].reason.problem
           == Problem.pure("Agent does not allow signed script jobs"))
       }

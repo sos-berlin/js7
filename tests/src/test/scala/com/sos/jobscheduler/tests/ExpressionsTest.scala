@@ -8,7 +8,7 @@ import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
@@ -90,7 +90,7 @@ object ExpressionsTest {
   private val ExpectedEvents = Map(
     OrderId("❌") -> Vector(
       OrderAdded(TestWorkflow.id),
-      OrderStopped(Outcome.Disrupted(Problem("No such named value: ARG")))),
+      OrderFailed(Outcome.Disrupted(Problem("No such named value: ARG")))),
     OrderId("⭕️") -> Vector(
       OrderAdded(TestWorkflow.id, None, Map("ARG" -> "ARG-VALUE")),
       OrderMoved(Position(0) / Then % 0),
@@ -99,7 +99,7 @@ object ExpressionsTest {
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(Outcome.Succeeded(ReturnCode(0), Map("JOB-KEY" -> "JOB-RESULT"))),
-      OrderStopped(Outcome.Disrupted(Problem("No such named value: ARG2")))),
+      OrderFailed(Outcome.Disrupted(Problem("No such named value: ARG2")))),
     OrderId("🔺") -> Vector(
       OrderAdded(TestWorkflow.id, None, Map("ARG" -> "ARG-VALUE", "ARG2" -> "ARG2-VALUE", "RETURN_CODE" -> "1")),
       OrderMoved(Position(0) / Then % 0),

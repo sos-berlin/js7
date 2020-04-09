@@ -13,7 +13,7 @@ import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
 import com.sos.jobscheduler.data.expression.Expression.{Equal, LastReturnCode, NumericConstant}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.{Execute, ExplicitEnd, Gap, Goto, If, IfFailedGoto, TryInstruction}
@@ -344,12 +344,12 @@ final class OrderEventSourceTest extends FreeSpec
         OrderCatched(failed, Position(0) / catch_(0) % 0)))
     }
 
-    "Processed failed in outer catch-block -> OrderStopped" in {
+    "Processed failed in outer catch-block -> OrderFailed" in {
       val pos = Position(0) / catch_(0) % 0
       val order = Order(OrderId("ORDER"), workflow.id /: pos, Order.Processed,
         historicOutcomes = HistoricOutcome(pos, failed) :: Nil)
       assert(eventSource(order).nextEvent(order.id) == Some(order.id <-:
-        OrderStopped(failed)))
+        OrderFailed(failed)))
     }
 
     "Processed failed in try in catch -> OrderCatched" in {
@@ -360,19 +360,19 @@ final class OrderEventSourceTest extends FreeSpec
         OrderCatched(failed, Position(0) / catch_(0) % 1 / catch_(0) % 0)))
     }
 
-    "Processed failed in catch in catch -> OrderStopped" in {
+    "Processed failed in catch in catch -> OrderFailed" in {
       val order = Order(OrderId("ORDER"), workflow.id /: (Position(0) / catch_(0) % 0), Order.Processed,
         historicOutcomes = HistoricOutcome(Position(0), failed) :: Nil)
       assert(eventSource(order).nextEvent(order.id) == Some(order.id <-:
-        OrderStopped(failed)))
+        OrderFailed(failed)))
     }
 
-    "Processed failed not in try/catch -> OrderStopped" in {
+    "Processed failed not in try/catch -> OrderFailed" in {
       val pos = Position(1)
       val order = Order(OrderId("ORDER"), workflow.id /: pos, Order.Processed,
         historicOutcomes = HistoricOutcome(pos, failed) :: Nil)
       assert(eventSource(order).nextEvent(order.id) == Some(order.id <-:
-        OrderStopped(failed)))
+        OrderFailed(failed)))
     }
 
     "Try catch and fork" in {

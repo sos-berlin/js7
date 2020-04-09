@@ -6,11 +6,11 @@ import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.fatevent.MasterFatEvent.MasterReadyFat
-import com.sos.jobscheduler.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderCanceledFat, OrderFinishedFat, OrderForkedFat, OrderJoinedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStdWrittenFat, OrderStoppedFat}
+import com.sos.jobscheduler.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderCanceledFat, OrderFailedFat, OrderFinishedFat, OrderForkedFat, OrderJoinedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStdWrittenFat}
 import com.sos.jobscheduler.data.fatevent.{AgentFatEvent, FatEvent, MasterFatEvent, OrderFatEvent}
 import com.sos.jobscheduler.data.filebased.RepoEvent
 import com.sos.jobscheduler.data.master.MasterId
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCanceled, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderProcessed, OrderProcessingStarted, OrderStdWritten, OrderStopped}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCanceled, OrderCoreEvent, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.data.workflow.instructions.Execute
@@ -86,8 +86,8 @@ private[fatevent] final case class FatState(masterId: MasterId, eventId: EventId
       case OrderFinished =>
         Some(OrderFinishedFat(order.workflowPosition))
 
-      case OrderStopped(outcome) =>
-        Some(OrderStoppedFat(order.workflowPosition, outcome))
+      case OrderFailed(outcome) =>
+        Some(OrderFailedFat(order.workflowPosition, outcome))
 
       case OrderCanceled =>
         Some(OrderCanceledFat(order.workflowPosition))

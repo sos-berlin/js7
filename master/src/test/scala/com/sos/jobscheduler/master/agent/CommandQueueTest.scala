@@ -99,7 +99,7 @@ object CommandQueueTest {
   private val fileBasedSigner = new FileBasedSigner(new SillySigner(SillySignature("MY-SILLY-SIGNATURE")), Workflow.jsonEncoder)
   private val signedWorkflow: Signed[Workflow] = fileBasedSigner.toSigned(TestWorkflow)
 
-  private def toQueuedInputResponse(order: Order[Order.FreshOrReady]) =
+  private def toQueuedInputResponse(order: Order[Order.IsFreshOrReady]) =
     QueuedInputResponse(AgentDriver.Input.AttachOrder(order, TestAgentRefPath, signedWorkflow), Right(AgentCommand.Response.Accepted))
 
   private def toOrder(name: String) = Order(OrderId(name), TestWorkflow.id, Order.Fresh.StartImmediately)

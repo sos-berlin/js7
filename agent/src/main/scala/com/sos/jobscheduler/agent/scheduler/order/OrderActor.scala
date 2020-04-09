@@ -81,7 +81,7 @@ extends KeyedJournalingActor[OrderEvent]
 
     case command: Command =>
       command match {
-        case Command.Attach(attached @ Order(`orderId`, workflowPosition, state: Order.FreshOrReady, arguments, historicOutcomes, Some(Order.Attached(agentRefPath)), parent, cancelationMarked/*???*/)) =>
+        case Command.Attach(attached @ Order(`orderId`, workflowPosition, state: Order.IsFreshOrReady, arguments, historicOutcomes, Some(Order.Attached(agentRefPath)), parent, cancelationMarked/*???*/)) =>
           becomeAsStateOf(attached, force = true)
           persist(OrderAttached(arguments, workflowPosition, state, historicOutcomes, parent, agentRefPath)) { event =>
             update(event)
@@ -133,7 +133,7 @@ extends KeyedJournalingActor[OrderEvent]
         context.stop(self)
     }
 
-  private def stoppedOrBroken: Receive =
+  private def failedOrBroken: Receive =
     receiveEvent orElse {
       case command: Command =>
         executeOtherCommand(command)
@@ -247,11 +247,11 @@ extends KeyedJournalingActor[OrderEvent]
         case _: Order.DelayedAfterError => become("delayedAfterError")(delayedAfterError)
         case _: Order.Offering   => become("offering")(offering)
         case _: Order.Forked     => become("forked")(forked)
-        case _: Order.Stopped    => become("stopped")(stoppedOrBroken)
-        case _: Order.StoppedWhileFresh => become("stoppedWhileFresh")(stoppedOrBroken)
-        case _: Order.FailedInFork => become("failedInFork")(stoppedOrBroken)
-        case _: Order.Broken     => become("broken")(stoppedOrBroken)
-        case _: Order.Awaiting | _: Order.Offering | Order.Finished | Order.Canceled | _: Order.Failed =>
+        case _: Order.Failed     => become("failed")(failedOrBroken)
+        case _: Order.FailedWhileFresh => become("stoppedWhileFresh")(failedOrBroken)
+        case _: Order.FailedInFork => become("failedInFork")(failedOrBroken)
+        case _: Order.Broken     => become("broken")(failedOrBroken)
+        case _: Order.Awaiting | _: Order.Finished | Order.Canceled =>
           sys.error(s"Order is expected to be on Master, not on Agent: ${order.state}")   // A Finished order must be at Master
       }
     }
@@ -328,7 +328,7 @@ private[order] object OrderActor
 
   sealed trait Command
   object Command {
-    final case class Attach(order: Order[Order.FreshOrReady]) extends Command
+    final case class Attach(order: Order[Order.IsFreshOrReady]) extends Command
     final case class HandleEvent(event: OrderCoreEvent) extends Input
   }
 

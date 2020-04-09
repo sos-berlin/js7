@@ -9,7 +9,7 @@ import com.sos.jobscheduler.core.problems.{CancelChildOrderProblem, CancelStarte
 import com.sos.jobscheduler.core.workflow.instructions.{ForkExecutor, InstructionExecutor}
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderDetachable, OrderFailedCatchable, OrderFailedInFork, OrderMoved, OrderStopped}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderDetachable, OrderFailed, OrderFailedCatchable, OrderFailedInFork, OrderMoved}
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.{End, Fork, Goto, IfFailedGoto, Retry, TryInstruction}
 import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
@@ -74,7 +74,7 @@ final class OrderEventSource(
             if (order.position.isInFork)
               Right(Some(oId <-: OrderFailedInFork(outcome)))
             else
-              Right(Some(oId <-: OrderStopped(outcome)))
+              Right(Some(oId <-: OrderFailed(outcome)))
         }
 
       case o => o
@@ -83,7 +83,7 @@ final class OrderEventSource(
 
   // Special handling for try with maxRetries and catch block with retry instruction only:
   // try (maxRetries=n) ... catch retry
-  // In this case, OrderStopped event must have original failures's position, not failed retry's position.
+  // In this case, OrderFailed event must have original failures's position, not failed retry's position.
   private def isMaxRetriesReached(order: Order[Order.State], firstCatchPos: Position): Boolean =
     catchStartsWithRetry(order.workflowId /: firstCatchPos) &&
       firstCatchPos.dropChild.forall(parentPos =>
@@ -98,8 +98,8 @@ final class OrderEventSource(
   : Option[KeyedEvent[OrderActorEvent]] =
     checkedEvent match {
       case Left(problem)  =>
-        if (order.isOrderStoppedApplicable)
-          Some(order.id <-: OrderStopped(Outcome.Disrupted(problem)))
+        if (order.isOrderFailedApplicable)
+          Some(order.id <-: OrderFailed(Outcome.Disrupted(problem)))
         else
           Some(order.id <-: OrderBroken(problem))
 
@@ -164,8 +164,8 @@ final class OrderEventSource(
     (order.isState[Order.Fresh] ||
       (mode == CancelMode.FreshOrStarted && (
         order.isState[Order.Ready] ||
-        order.isState[Order.StoppedWhileFresh] ||
-        order.isState[Order.Stopped] ||
+        order.isState[Order.FailedWhileFresh] ||
+        order.isState[Order.Failed] ||
         order.isState[Order.Broken]))
     ) &&
       (order.isDetached || order.isAttached) &&

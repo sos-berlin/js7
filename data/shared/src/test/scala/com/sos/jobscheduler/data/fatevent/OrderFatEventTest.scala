@@ -113,13 +113,13 @@ final class OrderFatEventTest extends FreeSpec {
     )
   }
 
-  "OrderStoppedFat" in {
+  "OrderFailedFat" in {
     testJson[OrderFatEvent](
-      OrderStoppedFat(
+      OrderFailedFat(
         (WorkflowPath("/WORKFLOW") ~ "VERSION") /: Position(99),
         Outcome.Failed(Some("ERROR MESSAGE"), ReturnCode(1), Map.empty)),
       json"""{
-        "TYPE": "OrderStoppedFat",
+        "TYPE": "OrderFailedFat",
         "workflowPosition": {
           "workflowId": {
             "path": "/WORKFLOW",

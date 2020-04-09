@@ -10,7 +10,7 @@ import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.{EventId, EventRequest, EventSeq}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCatched, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCatched, OrderDetachable, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
@@ -180,7 +180,7 @@ final class RetryTest extends FreeSpec with MasterAgentForScalaTest
     val orderId = OrderId("⭕")
     val afterEventId = eventWatch.lastAddedEventId
     master.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
-    eventWatch.await[OrderStopped](_.key == orderId, after = afterEventId)
+    eventWatch.await[OrderFailed](_.key == orderId, after = afterEventId)
 
     val EventSeq.NonEmpty(stamped) = eventWatch.when(EventRequest.singleClass[OrderProcessingStarted](after = afterEventId)).await(9.seconds)
     logger.debug(0.to(2).map(i => (stamped(i+1).timestamp - stamped(i).timestamp).pretty).mkString(" "))
@@ -209,13 +209,13 @@ final class RetryTest extends FreeSpec with MasterAgentForScalaTest
       OrderCatched(Outcome.Failed(ReturnCode(0)), Position(0) / catch_(1) % 0),
       OrderRetrying(Position(0) / try_(2) % 0),
 
-      // No OrderCatched here! OrderStopped has Outcome of last failed instruction in try block
-      OrderStopped(Outcome.Failed(ReturnCode(0))))
+      // No OrderCatched here! OrderFailed has Outcome of last failed instruction in try block
+      OrderFailed(Outcome.Failed(ReturnCode(0))))
 
     val orderId = OrderId("🔶")
     val afterEventId = eventWatch.lastAddedEventId
     master.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
-    awaitAndCheckEventSeq[OrderStopped](afterEventId, orderId, expectedEvents)
+    awaitAndCheckEventSeq[OrderFailed](afterEventId, orderId, expectedEvents)
   }
 
   "maxTries=3, standard handling, stopping at retry instruction" in {
@@ -239,12 +239,12 @@ final class RetryTest extends FreeSpec with MasterAgentForScalaTest
       OrderRetrying(Position(0) / try_(2) % 0),
 
       OrderCatched(Outcome.Failed(ReturnCode(0)), Position(0) / catch_(2) % 0 / Then % 0),
-      OrderStopped(Outcome.Disrupted(Problem("Retry stopped because maxRetries=3 has been reached"))))
+      OrderFailed(Outcome.Disrupted(Problem("Retry stopped because maxRetries=3 has been reached"))))
 
     val orderId = OrderId("🔵")
     val afterEventId = eventWatch.lastAddedEventId
     master.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
-    awaitAndCheckEventSeq[OrderStopped](afterEventId, orderId, expectedEvents)
+    awaitAndCheckEventSeq[OrderFailed](afterEventId, orderId, expectedEvents)
   }
 
   private def awaitAndCheckEventSeq[E <: OrderEvent: ClassTag: TypeTag](after: EventId, orderId: OrderId, expected: Vector[OrderEvent]): Unit =

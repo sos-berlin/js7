@@ -25,7 +25,6 @@ import scala.collection.immutable.Seq
   */
 sealed trait OrderEvent extends Event {
   type Key = OrderId
-  //type State <: Order.State
 }
 
 object OrderEvent {
@@ -36,7 +35,6 @@ object OrderEvent {
   final case class OrderAdded(workflowId: WorkflowId, scheduledFor: Option[Timestamp] = None, arguments: Map[String, String] = Map.empty)
   extends OrderCoreEvent {
     workflowId.requireNonAnonymous()
-    //type State = FreshOrReady
   }
   object OrderAdded {
     private[OrderEvent] implicit val jsonCodec: Encoder.AsObject[OrderAdded] =
@@ -53,34 +51,26 @@ object OrderEvent {
       } yield OrderAdded(workflowId, scheduledFor, arguments)
   }
 
-  final case class OrderAttached(arguments: Map[String, String], workflowPosition: WorkflowPosition, state: FreshOrReady, historicOutcomes: Seq[HistoricOutcome],
+  final case class OrderAttached(arguments: Map[String, String], workflowPosition: WorkflowPosition, state: IsFreshOrReady, historicOutcomes: Seq[HistoricOutcome],
     parent: Option[OrderId], agentRefPath: AgentRefPath)
   extends OrderCoreEvent {
     workflowPosition.workflowId.requireNonAnonymous()
-    //type State = FreshOrReady
   }
 
   final case class OrderTransferredToAgent(agentRefPath: AgentRefPath)
-  extends OrderCoreEvent {
-    //type State = FreshOrReady
-  }
+  extends OrderCoreEvent
 
-  sealed trait OrderTransferredToMaster
+  type OrderTransferredToMaster = OrderTransferredToMaster.type
   case object OrderTransferredToMaster
-  extends OrderCoreEvent {
-    //type State = Detached.type
-  }
+  extends OrderCoreEvent
 
-  sealed trait OrderStarted extends OrderActorEvent
-  case object OrderStarted extends OrderStarted
+  type OrderStarted = OrderStarted.type
+  case object OrderStarted extends OrderActorEvent
 
-  sealed trait OrderProcessingStarted extends OrderCoreEvent
-  case object OrderProcessingStarted extends OrderProcessingStarted {
-    //type State = Processing
-  }
+  type OrderProcessingStarted = OrderProcessingStarted.type
+  case object OrderProcessingStarted extends OrderCoreEvent
 
   sealed trait OrderStdWritten extends OrderEvent {
-    //type State = Processing
 
     def stdoutStderrType: StdoutOrStderr
     protected def chunk: String
@@ -111,9 +101,7 @@ object OrderEvent {
     override def toString = super.toString
   }
 
-  final case class OrderProcessed(outcome: Outcome) extends OrderCoreEvent {
-    //type State = Processed
-  }
+  final case class OrderProcessed(outcome: Outcome) extends OrderCoreEvent
 
   final case class OrderForked(children: Seq[OrderForked.Child]) extends OrderActorEvent
   object OrderForked {
@@ -130,22 +118,18 @@ object OrderEvent {
   final case class OrderAwaiting(orderId: OrderId) extends OrderActorEvent
 
   final case class OrderMoved(to: Position)
-  extends OrderActorEvent {
-    //type State = Ready.type
-  }
+  extends OrderActorEvent
 
+  // TODO OrderCatched should not contain key-values ?
   final case class OrderFailed(outcome: Outcome.NotSucceeded)
-  extends OrderActorEvent with OrderTerminated
+  extends OrderActorEvent
 
   final case class OrderFailedInFork(outcome: Outcome.NotSucceeded)
   extends OrderActorEvent
 
-  /** Only internal. Will be converted to `OrderStopped` or `OrderCatched`. */
+  /** Only internal. Will be converted to `OrderFailed` or `OrderCatched`. */
   final case class OrderFailedCatchable(outcome: Outcome.NotSucceeded)
   extends OrderActorEvent
-
-  // TODO OrderStopped should not contain key-values. Do we need the outcome?
-  final case class OrderStopped(outcome: Outcome.NotSucceeded) extends OrderActorEvent
 
   // TODO OrderCatched should not contain key-values
   final case class OrderCatched(outcome: Outcome.NotSucceeded, movedTo: Position) extends OrderActorEvent
@@ -153,46 +137,38 @@ object OrderEvent {
   final case class OrderRetrying(movedTo: Position, delayedUntil: Option[Timestamp] = None)
   extends OrderActorEvent
 
-  sealed trait OrderAwoke extends OrderActorEvent
-  case object OrderAwoke extends OrderAwoke
+  type OrderAwoke = OrderAwoke.type
+  case object OrderAwoke extends OrderActorEvent
 
   final case class OrderBroken(problem: Problem) extends OrderActorEvent
 
   /**
     * Master may have started to attach Order to Agent..
     */
-  final case class OrderAttachable(agentRefPath: AgentRefPath) extends OrderCoreEvent {
-    //type State = Attaching.type
-  }
+  final case class OrderAttachable(agentRefPath: AgentRefPath) extends OrderCoreEvent
 
+  type OrderDetachable = OrderDetachable.type
   /**
     * Agent has processed all steps and the Order should be fetched by the Master.
     */
-  sealed trait OrderDetachable extends OrderActorEvent
-  case object OrderDetachable extends OrderDetachable {
-    //type State = Detaching.type
-  }
+  case object OrderDetachable extends OrderActorEvent
 
+  type OrderDetached = OrderDetached.type
   /**
     * Order has been removed from the Agent and is held by the Master.
     */
-  sealed trait OrderDetached extends OrderCoreEvent
-  case object OrderDetached extends OrderDetached {
-    //type State = Detached.type
-  }
+  case object OrderDetached extends OrderCoreEvent
 
-  sealed trait OrderFinished extends OrderActorEvent with OrderTerminated
-  case object OrderFinished extends OrderFinished {
-    //type State = Finished
-  }
+  type OrderFinished = OrderFinished.type
+  case object OrderFinished extends OrderActorEvent with OrderTerminated
 
   /** A OrderCancelationMarked on Agent is different from same Event on Master.
     * Master will ignore the Agent's OrderCancelationMarked.
     * Master should have issued the event independendly. **/
   final case class OrderCancelationMarked(mode: CancelMode) extends OrderActorEvent
 
-  sealed trait OrderCanceled extends OrderActorEvent with OrderTerminated
-  case object OrderCanceled extends OrderCanceled
+  type OrderCanceled = OrderCanceled.type
+  case object OrderCanceled extends OrderActorEvent with OrderTerminated
 
   implicit val jsonCodec = TypedJsonCodec[OrderEvent](
     Subtype[OrderAdded],
@@ -201,7 +177,6 @@ object OrderEvent {
     Subtype(deriveCodec[OrderStdoutWritten]),
     Subtype(deriveCodec[OrderStderrWritten]),
     Subtype(deriveCodec[OrderProcessed]),
-    Subtype(deriveCodec[OrderStopped]),
     Subtype(deriveCodec[OrderCatched]),
     Subtype(deriveCodec[OrderRetrying]),
     Subtype(OrderAwoke),

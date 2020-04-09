@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.tests.history
 
 import com.sos.jobscheduler.data.event.{<-:, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderCanceledFat, OrderFinishedFat, OrderForkedFat, OrderJoinedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStdWrittenFat, OrderStoppedFat}
+import com.sos.jobscheduler.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderCanceledFat, OrderFailedFat, OrderFinishedFat, OrderForkedFat, OrderJoinedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStdWrittenFat}
 import com.sos.jobscheduler.data.fatevent.{FatEvent, OrderFatEvent}
 import com.sos.jobscheduler.data.order.OrderId
 import scala.collection.immutable.Seq
@@ -68,7 +68,7 @@ final class InMemoryHistory {
           finishedAt = Some(timestamp),
           endWorkflowPosition = Some(workflowPosition))
 
-      case OrderStoppedFat(workflowPosition, _) =>
+      case OrderFailedFat(workflowPosition, _) =>
         idToOrderEntry(orderId) = idToOrderEntry(orderId).copy(
           finishedAt = Some(timestamp),
           endWorkflowPosition = Some(workflowPosition))

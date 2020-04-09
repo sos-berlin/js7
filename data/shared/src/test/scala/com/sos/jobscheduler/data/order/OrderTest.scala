@@ -8,8 +8,8 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, DelayedAfterError, Detaching, Failed, FailedInFork, Finished, Forked, Fresh, FreshOrReady, Offering, Processed, Processing, Ready, State, Stopped, StoppedWhileFresh}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Canceled, DelayedAfterError, Detaching, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, IsFreshOrReady, Offering, Processed, Processing, Ready, State}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.instructions.Fork
 import com.sos.jobscheduler.data.workflow.position.BranchId.Then
@@ -138,17 +138,10 @@ final class OrderTest extends FreeSpec
           }""")
       }
 
-      "Stopped" in {
-        testJson[State](Stopped,
+      "FailedWhileFresh" in {
+        testJson[State](FailedWhileFresh,
           json"""{
-            "TYPE": "Stopped"
-          }""")
-      }
-
-      "StoppedWhileFresh" in {
-        testJson[State](StoppedWhileFresh,
-          json"""{
-            "TYPE": "StoppedWhileFresh"
+            "TYPE": "FailedWhileFresh"
           }""")
       }
 
@@ -239,7 +232,7 @@ final class OrderTest extends FreeSpec
       //OrderStdoutWritten("stdout") is not an OrderCoreEvent
       //OrderStderrWritten("stderr") is not an OrderCoreEvent
       OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
-      OrderStopped(Outcome.Failed(ReturnCode(1))),
+      OrderFailed(Outcome.Failed(ReturnCode(1))),
       OrderCatched(Outcome.Failed(ReturnCode(1)), Position(1)),
       OrderRetrying(Position(1)),
       OrderAwoke,
@@ -272,10 +265,10 @@ final class OrderTest extends FreeSpec
         attachingAllowed[Fresh] orElse
         detachingAllowed[Fresh] orElse {
           case (_: OrderMoved            , `detached` | `attached`              ) => _.isInstanceOf[Fresh]
-          case (_: OrderStopped          , `detached` | `attached`)               => _.isInstanceOf[StoppedWhileFresh]  // Expression error
+          case (_: OrderFailed           , `detached` | `attached`)               => _.isInstanceOf[FailedWhileFresh]  // Expression error
           case (_: OrderStarted          , `detached` | `attached`              ) => _.isInstanceOf[Ready]
           case (_: OrderCancelationMarked, `detached` | `attaching` | `attached`) => _.isInstanceOf[Fresh]
-          case (OrderCanceled            , `detached`                           ) => _.isInstanceOf[Order.Canceled]
+          case (OrderCanceled            , `detached`                           ) => _.isInstanceOf[Canceled]
           case (_: OrderBroken           , _                                    ) => _.isInstanceOf[Broken]
         })
     }
@@ -290,13 +283,12 @@ final class OrderTest extends FreeSpec
           case (_: OrderForked           , `detached` | `attached`) => _.isInstanceOf[Forked]
           case (_: OrderOffered          , `detached`             ) => _.isInstanceOf[Processed]
           case (_: OrderAwaiting         , `detached`             ) => _.isInstanceOf[Awaiting]
-          case (_: OrderFailed           , `detached`             ) => _.isInstanceOf[Failed]
           case (_: OrderFailedInFork     , `detached` | `attached`) => _.isInstanceOf[FailedInFork]
           case (_: OrderCatched          , `detached` | `attached`) => _.isInstanceOf[Ready]
-          case (_: OrderStopped          , `detached` | `attached`) => _.isInstanceOf[Stopped]
+          case (_: OrderFailed           , `detached` | `attached`) => _.isInstanceOf[Failed]
           case (_: OrderRetrying         , `detached` | `attached`) => _.isInstanceOf[Ready]
           case (_: OrderFinished         , `detached`             ) => _.isInstanceOf[Finished]
-          case (OrderCanceled            , `detached`             ) => _.isInstanceOf[Order.Canceled]
+          case (OrderCanceled            , `detached`             ) => _.isInstanceOf[Canceled]
           case (_: OrderBroken           , _                      ) => _.isInstanceOf[Broken]
         })
     }
@@ -314,29 +306,19 @@ final class OrderTest extends FreeSpec
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(ReturnCode(0))) :: Nil),
         cancelationMarkingAllowed[Processed] orElse {
           case (_: OrderMoved       , `detached` | `attached`) => _.isInstanceOf[Ready]
-          case (_: OrderStopped     , `detached` | `attached`) => _.isInstanceOf[Stopped]
+          case (_: OrderFailed      , `detached` | `attached`) => _.isInstanceOf[Failed]
           case (_: OrderFailedInFork, `detached` | `attached`) => _.isInstanceOf[FailedInFork]
           case (_: OrderCatched     , `detached` | `attached`) => _.isInstanceOf[Ready]
           case (_: OrderBroken      , _                      ) => _.isInstanceOf[Broken]
         })
     }
 
-    "StoppedWhileFresh" - {
-      checkAllEvents(Order(orderId, workflowId, StoppedWhileFresh,
+    "FailedWhileFresh" - {
+      checkAllEvents(Order(orderId, workflowId, FailedWhileFresh,
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Failed(ReturnCode(1))) :: Nil),
-        detachingAllowed[StoppedWhileFresh] orElse
-        cancelationMarkingAllowed[StoppedWhileFresh] orElse {
-          case (OrderCanceled , `detached`) => _.isInstanceOf[Order.Canceled]
-          case (_: OrderBroken, _         ) => _.isInstanceOf[Broken]
-        })
-    }
-
-    "Stopped" - {
-      checkAllEvents(Order(orderId, workflowId, Stopped,
-          historicOutcomes = HistoricOutcome(Position(0), Outcome.Failed(ReturnCode(1))) :: Nil),
-        detachingAllowed[Stopped] orElse
-        cancelationMarkingAllowed[Stopped] orElse {
-          case (OrderCanceled , `detached`) => _.isInstanceOf[Order.Canceled]
+        detachingAllowed[FailedWhileFresh] orElse
+        cancelationMarkingAllowed[FailedWhileFresh] orElse {
+          case (OrderCanceled , `detached`) => _.isInstanceOf[Canceled]
           case (_: OrderBroken, _         ) => _.isInstanceOf[Broken]
         })
     }
@@ -344,7 +326,11 @@ final class OrderTest extends FreeSpec
     "Failed" - {
       checkAllEvents(Order(orderId, workflowId, Failed(Outcome.Failed(ReturnCode(1))),
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Failed(ReturnCode(1))) :: Nil),
-        PartialFunction.empty)
+        detachingAllowed[Failed] orElse
+        cancelationMarkingAllowed[Failed] orElse {
+          case (OrderCanceled , `detached`) => _.isInstanceOf[Canceled]
+          case (_: OrderBroken, _         ) => _.isInstanceOf[Broken]
+        })
     }
 
     "FailedInFork" - {
@@ -357,7 +343,7 @@ final class OrderTest extends FreeSpec
       checkAllEvents(Order(orderId, workflowId, DelayedAfterError(Timestamp("2019-03-07T12:00:00Z"))),
         cancelationMarkingAllowed[DelayedAfterError] orElse {
           case (OrderAwoke    , `attached`) => _.isInstanceOf[Order.Ready]
-          case (OrderCanceled , `detached`) => _.isInstanceOf[Order.Canceled]
+          case (OrderCanceled , `detached`) => _.isInstanceOf[Canceled]
           case (_: OrderBroken, _         ) => _.isInstanceOf[Broken]
         })
     }
@@ -366,7 +352,7 @@ final class OrderTest extends FreeSpec
       checkAllEvents(Order(orderId, workflowId, Broken(Problem("PROBLEM"))),
         detachingAllowed[Broken] orElse
         cancelationMarkingAllowed[Broken] orElse {
-          case (OrderCanceled , `detached`) => _.isInstanceOf[Order.Canceled]
+          case (OrderCanceled , `detached`) => _.isInstanceOf[Canceled]
           case (_: OrderBroken, _         ) => _.isInstanceOf[Broken]
         })
     }
@@ -457,7 +443,7 @@ final class OrderTest extends FreeSpec
 
     "castState" in {
       assert(testOrder.castState[Ready] eq testOrder)
-      assert(testOrder.castState[FreshOrReady] eq testOrder)
+      assert(testOrder.castState[IsFreshOrReady] eq testOrder)
       assert(testOrder.castState[State] eq testOrder)
       intercept[ProblemException] {
         testOrder.castState[Processed]
@@ -466,7 +452,7 @@ final class OrderTest extends FreeSpec
 
     "ifState" in {
       assert(testOrder.ifState[Ready] == Some(testOrder))
-      assert(testOrder.ifState[FreshOrReady] == Some(testOrder))
+      assert(testOrder.ifState[IsFreshOrReady] == Some(testOrder))
       assert(testOrder.ifState[State] == Some(testOrder))
       assert(testOrder.ifState[Processed] == None)
     }

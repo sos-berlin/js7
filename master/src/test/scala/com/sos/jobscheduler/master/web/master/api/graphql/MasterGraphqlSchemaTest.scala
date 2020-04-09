@@ -325,7 +325,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec
                 }
               },
               "state": {
-                "TYPE": "Stopped"
+                "TYPE": "Failed"
               }
             }, {
               "id": "19",
@@ -516,7 +516,7 @@ object MasterGraphqlSchemaTest
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(ReturnCode(7))) :: Nil),
         Order(OrderId("17"), (WorkflowPath("/B-WORKFLOW") ~ "1") /: Position(2), Order.Processed,
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Failed(ReturnCode(8))) :: Nil),
-        Order(OrderId("18"), (WorkflowPath("/B-WORKFLOW") ~ "1") /: Position(2), Order.Stopped  ,
+        Order(OrderId("18"), (WorkflowPath("/B-WORKFLOW") ~ "1") /: Position(2), Order.Failed(Outcome.Disrupted(Problem("MESSAGE")))  ,
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Disrupted(Problem("MESSAGE"))) :: Nil),
         Order(OrderId("19"), (WorkflowPath("/B-WORKFLOW") ~ "1") /: Position(2), Order.Processed,
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted)) :: Nil),

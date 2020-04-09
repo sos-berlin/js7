@@ -13,7 +13,6 @@ import com.sos.jobscheduler.data.order.Order._
 import com.sos.jobscheduler.data.order.OrderEvent._
 import com.sos.jobscheduler.data.workflow.WorkflowId
 import com.sos.jobscheduler.data.workflow.position.{InstructionNr, Position, WorkflowPosition}
-import io.circe.generic.JsonCodec
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, DecodingFailure, Encoder, JsonObject}
 import scala.collection.immutable.Seq
@@ -88,9 +87,9 @@ final case class Order[+S <: Order.State](
             historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
 
       case OrderFailed(outcome_) =>
-        check(isState[Ready] && isDetached,
+        check(isOrderFailedApplicable,
           copy(
-            state = Failed(outcome_),
+            state = if (isState[Fresh]) FailedWhileFresh else Failed(outcome_),
             historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
 
       case OrderFailedInFork(outcome_) =>
@@ -101,12 +100,6 @@ final case class Order[+S <: Order.State](
 
       case OrderFailedCatchable(_) =>
         inapplicable
-
-      case OrderStopped(outcome_) =>
-        check(isOrderStoppedApplicable,
-          copy(
-            state = if (isState[Fresh]) StoppedWhileFresh else Stopped,
-            historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
 
       case OrderCatched(outcome_, movedTo) =>
         check(isState[Ready] && (isDetached || isAttached)  ||  isState[Processed] && (isAttached | isDetached),
@@ -145,7 +138,7 @@ final case class Order[+S <: Order.State](
           copy(state = Awaiting(orderId)))
 
       case OrderMoved(to) =>
-        check((isState[FreshOrReady]/*before TryInstruction*/ || isState[Processed]) && (isDetached || isAttached),
+        check((isState[IsFreshOrReady]/*before TryInstruction*/ || isState[Processed]) && (isDetached || isAttached),
           withPosition(to).copy(
             state = if (isState[Fresh]) state else Ready))
 
@@ -157,7 +150,7 @@ final case class Order[+S <: Order.State](
           })
 
       case OrderBroken(message) =>
-        check(!isDeleted,
+        check(!isState[IsFinal],
           copy(state = Broken(message)))
 
       case OrderAttachable(agentRefPath) =>
@@ -172,7 +165,7 @@ final case class Order[+S <: Order.State](
         attachedState match {
           case Some(Attached(agentRefPath))
             if isState[Fresh] || isState[Ready] || isState[Forked] ||
-               isState[StoppedWhileFresh] || isState[Stopped] || isState[FailedInFork] || isState[Broken] =>
+               isState[FailedWhileFresh] || isState[Failed] || isState[FailedInFork] || isState[Broken] =>
               Right(copy(attachedState = Some(Detaching(agentRefPath))))
           case _ =>
             inapplicable
@@ -180,32 +173,27 @@ final case class Order[+S <: Order.State](
 
       case OrderDetached =>
         check(isDetaching && (isState[Fresh] || isState[Ready] || isState[Forked] ||
-                              isState[StoppedWhileFresh] || isState[Stopped] || isState[FailedInFork] || isState[Broken]),
+                              isState[FailedWhileFresh] || isState[Failed] || isState[FailedInFork] || isState[Broken]),
           copy(attachedState = None))
 
       case OrderTransferredToMaster =>
         check(isDetaching && (isState[Fresh] || isState[Ready] || isState[Forked] ||
-                              isState[StoppedWhileFresh] || isState[Stopped] || isState[FailedInFork] || isState[Broken]),
+                              isState[FailedWhileFresh] || isState[Failed] || isState[FailedInFork] || isState[Broken]),
           copy(attachedState = None))
 
       case OrderCancelationMarked(mode) =>
-        check(!isState[Canceled] && !isDetaching && !isState[Finished],
+        check(!isState[IsFinal] && !isDetaching,
           copy(cancel = Some(mode)))
 
       case OrderCanceled =>
-        check((isState[FreshOrReady] || isState[DelayedAfterError] || isState[StoppedWhileFresh] || isState[Stopped] || isState[Broken])
+        check((isState[IsFreshOrReady] || isState[DelayedAfterError] || isState[FailedWhileFresh] || isState[Failed] || isState[Broken])
             && isDetached,
           copy(state = Canceled))
     }
   }
 
-  def isDeleted = state match {
-    case _: Finished | _: Canceled | _: Failed => true
-    case _ => false
-  }
-
-  def isOrderStoppedApplicable =
-    isState[FreshOrReady] && (isDetached || isAttached)  ||
+  def isOrderFailedApplicable =
+    isState[IsFreshOrReady] && (isDetached || isAttached)  ||
     isState[Processed] && (isDetached || isAttached)
 
   def withInstructionNr(to: InstructionNr): Order[S] =
@@ -221,7 +209,7 @@ final case class Order[+S <: Order.State](
     .collect { case HistoricOutcome(_, o: Outcome.Undisrupted) => o.keyValues }
     .fold(arguments)((a, b) => a ++ b)
 
-  def isStarted = isState[Started]
+  def isStarted = isState[IsStarted]
 
   def castAfterEvent(event: OrderProcessingStarted): Order[Order.Processing] =
     castState[Order.Processing]
@@ -282,12 +270,13 @@ final case class Order[+S <: Order.State](
     }
 }
 
-object Order {
+object Order
+{
   def fromOrderAdded(id: OrderId, event: OrderAdded): Order[Fresh] = {
     Order(id, event.workflowId, Fresh(event.scheduledFor), event.arguments)
   }
 
-  def fromOrderAttached(id: OrderId, event: OrderAttached): Order[FreshOrReady] =
+  def fromOrderAttached(id: OrderId, event: OrderAttached): Order[IsFreshOrReady] =
     Order(id, event.workflowPosition, event.state, event.arguments, event.historicOutcomes, Some(Attached(event.agentRefPath)))
 
   sealed trait AttachedState
@@ -317,47 +306,44 @@ object Order {
     def maybeDelayedUntil: Option[Timestamp] = None
   }
 
-  sealed trait FreshOrReady extends State
+  /** OrderStarted occurred. */
+  sealed trait IsStarted extends State
+
+  sealed trait IsFreshOrReady extends State
+
+  /** Final state — the order will be deleted immediately. */
+  sealed trait IsFinal extends State
 
   sealed trait DelayedUntil {
     def delayedUntil: Timestamp
   }
 
-  @JsonCodec
-  final case class Fresh(scheduledFor: Option[Timestamp] = None) extends FreshOrReady {
+  final case class Fresh(scheduledFor: Option[Timestamp] = None) extends IsFreshOrReady {
     override def maybeDelayedUntil = scheduledFor
   }
   object Fresh {
     val StartImmediately = Fresh(None)
   }
 
-  sealed trait Started extends State
+  type Ready = Ready.type
+  case object Ready extends IsStarted with IsFreshOrReady
 
-  sealed trait Ready extends Started with FreshOrReady
-  case object Ready extends Ready
-
-  @JsonCodec
-  final case class DelayedAfterError(until: Timestamp) extends Started {
+  final case class DelayedAfterError(until: Timestamp) extends IsStarted {
     override def maybeDelayedUntil = Some(until)
   }
 
-  sealed trait StoppedWhileFresh extends Started
-  case object StoppedWhileFresh extends StoppedWhileFresh
+  type FailedWhileFresh = FailedWhileFresh.type
+  case object FailedWhileFresh extends State
 
-  sealed trait Stopped extends Started
-  case object Stopped extends Stopped
+  final case class Broken(problem: Problem) extends IsStarted/*!!!*/
 
-  @JsonCodec
-  final case class Broken(problem: Problem) extends Started/*!!!*/
+  type Processing = Processing.type
+  case object Processing extends IsStarted
 
-  sealed trait Processing extends Started
-  case object Processing extends Processing
+  type Processed = Processed.type
+  case object Processed extends IsStarted
 
-  sealed trait Processed extends Started
-  case object Processed extends Processed
-
-  @JsonCodec
-  final case class Forked(children: Seq[Forked.Child]) extends Started {
+  final case class Forked(children: Seq[Forked.Child]) extends IsStarted {
     def childOrderIds = children map (_.orderId)
   }
   object Forked {
@@ -365,44 +351,40 @@ object Order {
     val Child = OrderForked.Child
   }
 
-  @JsonCodec
   final case class Offering(until: Timestamp)
-  extends Started
+  extends IsStarted
 
-  @JsonCodec
-  final case class Awaiting(offeredOrderId: OrderId) extends Started
+  final case class Awaiting(offeredOrderId: OrderId) extends IsStarted
 
-  @JsonCodec
-  final case class Failed(outcome: Outcome.NotSucceeded) extends Finished
+  // TODO Redundant outcome ?
+  final case class Failed(outcome: Outcome.NotSucceeded) extends IsStarted
 
-  @JsonCodec
-  final case class FailedInFork(outcome: Outcome.NotSucceeded) extends Finished
+  final case class FailedInFork(outcome: Outcome.NotSucceeded) extends IsStarted with IsFinal
 
-  sealed trait Finished extends Started
-  case object Finished extends Finished
+  type Finished = Finished.type
+  case object Finished extends IsStarted with IsFinal
 
-  sealed trait Canceled extends State
-  case object Canceled extends Canceled
+  type Canceled = Canceled.type
+  case object Canceled extends IsFinal
 
-  implicit val FreshOrReadyJsonCodec: TypedJsonCodec[FreshOrReady] = TypedJsonCodec[FreshOrReady](
-    Subtype[Fresh],
+  implicit val FreshOrReadyJsonCodec: TypedJsonCodec[IsFreshOrReady] = TypedJsonCodec[IsFreshOrReady](
+    Subtype(deriveCodec[Fresh]),
     Subtype(Ready))
 
   implicit val StateJsonCodec: TypedJsonCodec[State] = TypedJsonCodec(
-    Subtype[FreshOrReady],
+    Subtype[IsFreshOrReady],
     Subtype(Processing),
     Subtype(Processed),
-    Subtype[DelayedAfterError],
-    Subtype(StoppedWhileFresh),
-    Subtype(Stopped),
-    Subtype[Forked],
-    Subtype[Offering],
-    Subtype[Awaiting],
-    Subtype[Failed],
-    Subtype[FailedInFork],
+    Subtype(deriveCodec[DelayedAfterError]),
+    Subtype(FailedWhileFresh),
+    Subtype(deriveCodec[Forked]),
+    Subtype(deriveCodec[Offering]),
+    Subtype(deriveCodec[Awaiting]),
+    Subtype(deriveCodec[Failed]),
+    Subtype(deriveCodec[FailedInFork]),
     Subtype(Finished),
     Subtype(Canceled),
-    Subtype[Broken])
+    Subtype(deriveCodec[Broken]))
 
   implicit val jsonEncoder: Encoder.AsObject[Order[State]] = order =>
     JsonObject(
@@ -428,10 +410,10 @@ object Order {
     } yield
       Order(id, workflowPosition, state, arguments, historicOutcomes, attachedState, parent, cancel)
 
-  implicit val FreshOrReadyOrderJsonEncoder: Encoder.AsObject[Order[FreshOrReady]] = o => jsonEncoder.encodeObject(o)
-  implicit val FreshOrReadyOrderJsonDecoder: Decoder[Order[FreshOrReady]] = cursor =>
+  implicit val FreshOrReadyOrderJsonEncoder: Encoder.AsObject[Order[IsFreshOrReady]] = o => jsonEncoder.encodeObject(o)
+  implicit val FreshOrReadyOrderJsonDecoder: Decoder[Order[IsFreshOrReady]] = cursor =>
     jsonDecoder(cursor) flatMap {
-      o => o.ifState[FreshOrReady] match {
+      o => o.ifState[IsFreshOrReady] match {
         case None => Left(DecodingFailure(s"Order is not Fresh or Ready, but: ${o.state.getClass.simpleScalaName}", cursor.history))
         case Some(x) => Right(x)
       }
