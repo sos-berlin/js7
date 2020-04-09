@@ -159,7 +159,7 @@ object Problem
 
     def throwableOption: None.type = None
 
-    lazy val message = problems map (_.toString) reduce combineMessages
+    lazy val message = problems.map(_.toString) reduce combineMessages
 
     override def head = problems.head
 

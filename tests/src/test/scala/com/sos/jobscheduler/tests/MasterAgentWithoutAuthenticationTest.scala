@@ -26,7 +26,8 @@ import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand.ReplaceRepo
 import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentCouplingFailed
 import com.sos.jobscheduler.tests.MasterAgentWithoutAuthenticationTest._
-import java.nio.file.Files.createDirectories
+import java.nio.file.Files
+import java.nio.file.Files.{createDirectories, createDirectory}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import scala.concurrent.duration._
@@ -66,11 +67,13 @@ final class MasterAgentWithoutAuthenticationTest extends FreeSpec
       val fileBasedSigner = {
         val signature = SillySignature("✘✘✘")
         for (x <- Array("master", "agent")) {
-          val keyFile = dir / x / "config/private/silly-signature.txt"
+          val keyDirectory = dir / x / "config/private/silly-signatures"
+          createDirectory(keyDirectory)
+          val keyFile =keyDirectory / "silly-signature.txt"
           keyFile := signature.string
           dir / x / "config/private/private.conf" ++=
             "jobscheduler.configuration.trusted-signature-keys.Silly = " +
-              "\"" + keyFile.toString.replace("""\""", """\\""") + "\"\n"
+              "\"" + keyDirectory.toString.replace("""\""", """\\""") + "\"\n"
         }
         new FileBasedSigner(new SillySigner(signature), MasterFileBaseds.jsonCodec)
       }

@@ -21,7 +21,6 @@ extends SignatureVerifier with SignatureVerifier.Companion  // Both Verifier and
   def keyOrigin = "(no signature verification)"
 
   def recommendedKeyDirectoryName = throw new NotImplementedError("DoNotVerifySignatureVerifier recommendedKeyDirectoryName")
-  def fileExtension = throw new NotImplementedError("DoNotVerifySignatureVerifier fileExtension")
 
   def keys = throw new NotImplementedError("DoNotVerifySignatureVerifier#key")
 

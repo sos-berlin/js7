@@ -39,10 +39,6 @@ object SignatureVerifier
 
     def recommendedKeyDirectoryName: String
 
-    //def recommendedSingleKeyFilename: String
-
-    def fileExtension: String
-
     def checked(publicKeys: Seq[Resource[SyncIO, InputStream]], keyOrigin: String = "(unknown source)"): Checked[MySignatureVerifier]
 
     def genericSignatureToSignature(signature: GenericSignature): MySignature

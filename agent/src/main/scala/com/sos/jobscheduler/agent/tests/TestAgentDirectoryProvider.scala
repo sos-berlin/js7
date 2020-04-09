@@ -16,7 +16,7 @@ import com.sos.jobscheduler.core.crypt.silly.{SillySignature, SillySigner}
 import com.sos.jobscheduler.core.filebased.FileBasedSigner
 import com.sos.jobscheduler.data.workflow.Workflow
 import java.nio.file.Files.{createDirectories, createDirectory, createTempDirectory, delete}
-import java.nio.file.Path
+import java.nio.file.{Files, Path}
 import scala.util.control.NonFatal
 
 trait TestAgentDirectoryProvider extends HasCloser
@@ -61,9 +61,11 @@ trait TestAgentDirectoryProvider extends HasCloser
   }
 
   private def provideSignature(configDirectory: Path): Unit = {
-    configDirectory / "private" / "trusted-silly-signature-key.txt" := signature.string
+    val directory = configDirectory / "private" / "trusted-silly-signature-keys"
+    createDirectory(directory)
+    directory / "trusted-silly-signature-key.txt" := signature.string
     configDirectory / "private" / "private.conf" ++=
-      s"""|jobscheduler.configuration.trusted-signature-keys.Silly = $${jobscheduler.config-directory}"/private/trusted-silly-signature-key.txt"
+      s"""|jobscheduler.configuration.trusted-signature-keys.Silly = $${jobscheduler.config-directory}"/private/trusted-silly-signature-keys"
          |""".stripMargin
   }
 }

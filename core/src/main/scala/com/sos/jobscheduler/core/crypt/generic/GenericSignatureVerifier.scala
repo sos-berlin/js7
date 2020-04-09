@@ -16,7 +16,7 @@ import com.sos.jobscheduler.core.crypt.SignatureVerifier
 import com.sos.jobscheduler.data.crypt.{GenericSignature, SignerId}
 import com.typesafe.config.Config
 import java.io.InputStream
-import java.nio.file.Files.{exists, isDirectory}
+import java.nio.file.Files.exists
 import java.nio.file.{Files, Paths}
 import scala.collection.JavaConverters._
 import scala.collection.immutable.Seq
@@ -24,7 +24,8 @@ import scala.collection.immutable.Seq
 /** A `SignatureVerifier` that verifies different types of signatures.
   * @author Joacim Zschimmer
   */
-final class GenericSignatureVerifier private(typeToVerifier: Map[String, Checked[SignatureVerifier]]) extends SignatureVerifier
+final class GenericSignatureVerifier private(typeToVerifier: Map[String, Checked[SignatureVerifier]])
+extends SignatureVerifier
 {
   protected type MySignature = GenericSignature
 
@@ -52,7 +53,6 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion
   def typeName = "(generic)"
 
   def recommendedKeyDirectoryName = throw new NotImplementedError("GenericSignatureVerifier recommendedKeyDirectoryName")
-  def fileExtension = throw new NotImplementedError("GenericSignatureVerifier fileExtenson")
 
   implicitly[Applicative[Checked]]
 
@@ -62,18 +62,14 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion
         typeName -> (
           checkedCast[String](v.unwrapped, Problem.pure(s"String expected as value of configuration key $configPath.$typeName"))
             .map(Paths.get(_))
-            .flatMap(file =>
+            .flatMap(directory =>
               SignatureVerifiers.typeToSignatureVerifierCompanion(typeName).flatMap { companion =>
-                if (!exists(file))
-                  Left(Problem.pure(s"Signature key file '$file' for '$typeName' does not exists"))
+                if (!exists(directory))
+                  Left(Problem.pure(s"Signature key directory '$directory' for '$typeName' does not exists"))
                 else {
-                  val files =
-                    if (isDirectory(file))  // recommended usage
-                      autoClosing(Files.list(file))(
-                        _.asScala.filter(_.getFileName.toString.endsWith(companion.fileExtension)).toVector)
-                    else
-                      file :: Nil
-                  companion.checked(files map fileAsResource, keyOrigin = file.toString)
+                  val files = autoClosing(Files.list(directory))(_
+                    .asScala.filterNot(_.getFileName.toString.startsWith(".")).toVector)
+                  companion.checked(files map fileAsResource, keyOrigin = directory.toString)
                 }
               }))
       }

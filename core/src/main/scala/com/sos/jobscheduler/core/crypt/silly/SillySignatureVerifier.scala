@@ -42,7 +42,6 @@ object SillySignatureVerifier extends SignatureVerifier.Companion
 
   val typeName = SillySignature.TypeName
   val recommendedKeyDirectoryName = "trusted-silly-signature-keys"
-  val fileExtension = ".txt"
 
   private val SillySignerId = SignerId("Silly")
 

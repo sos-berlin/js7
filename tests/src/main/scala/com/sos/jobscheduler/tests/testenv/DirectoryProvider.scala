@@ -40,6 +40,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import java.lang.ProcessBuilder.Redirect.INHERIT
 import java.nio.file.Files.{createDirectory, createTempDirectory}
 import java.nio.file.Path
+import java.util.Locale
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.atomic.AtomicBoolean
@@ -214,7 +215,7 @@ extends HasCloser
     for (config <- master.configDir +: agents.map(_.configDir)) {
       createDirectory(config / dir )
       for ((key, i) <- verifier.keys.zipWithIndex) {
-        config / dir / (s"key-${i+1}" + verifier.companion.fileExtension) := key
+        config / dir / (s"key-${i+1}." + verifier.companion.typeName.toLowerCase(Locale.ROOT)) := key
       }
     }
     for (conf <- master.configDir / "master.conf" +: agents.map(_.configDir / "agent.conf")) {
