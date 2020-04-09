@@ -12,4 +12,6 @@ package object problems
     def arguments = Map("requiredEventId" -> EventId.toString(requiredEventId))
   }
   object MasterRequiresUnknownEventIdProblem extends Problem.Coded.Companion
+
+  case object UserIsNotEnabledToReleaseEventsProblem extends Problem.ArgumentlessCoded
 }

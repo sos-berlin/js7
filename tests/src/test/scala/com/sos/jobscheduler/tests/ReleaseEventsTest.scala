@@ -16,6 +16,7 @@ import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
+import com.sos.jobscheduler.data.problems.UserIsNotEnabledToReleaseEventsProblem
 import com.sos.jobscheduler.data.workflow.instructions.Execute
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
@@ -43,6 +44,7 @@ final class ReleaseEventsTest extends FreeSpec with DirectoryProviderForScalaTes
        |  auth.users {
        |    A = "plain:PASSWORD"
        |    B = "plain:PASSWORD"
+       |    X = "plain:PASSWORD"
        |  }
        |  master.agent-driver.release-events-period = 0ms
        |}""".stripMargin)
@@ -72,6 +74,12 @@ final class ReleaseEventsTest extends FreeSpec with DirectoryProviderForScalaTes
 
       val a = new TestApi(master, aUserAndPassword)
       val b = new TestApi(master, bUserAndPassword)
+
+      locally {
+        val x = new TestApi(master, xUserAndPassword)
+        val result = x.liftProblem(x.executeCommand(ReleaseEvents(finished.head.eventId))).await(99.s)
+        assert(result.left.toOption.flatMap(_.codeOption) contains UserIsNotEnabledToReleaseEventsProblem.code)
+      }
 
       a.executeCommand(ReleaseEvents(finished.head.eventId)).await(99.s)
       assert(masterJournalFiles.size == 3)
@@ -123,6 +131,7 @@ private object ReleaseEventsTest
 {
   private val aUserAndPassword = UserAndPassword(UserId("A"), SecretString("PASSWORD"))
   private val bUserAndPassword = UserAndPassword(UserId("B"), SecretString("PASSWORD"))
+  private val xUserAndPassword = UserAndPassword(UserId("X"), SecretString("PASSWORD"))
   private val TestAgentRefPath = AgentRefPath("/agent-111")
   private val TestExecutablePath = ExecutablePath(s"/TEST$sh")
   private val TestWorkflow = Workflow.of(WorkflowPath("/test"),

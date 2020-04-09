@@ -49,6 +49,7 @@ import com.sos.jobscheduler.data.filebased.{FileBased, RepoEvent, TypedPath}
 import com.sos.jobscheduler.data.master.MasterFileBaseds
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderBroken, OrderCancelationMarked, OrderCoreEvent, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderEvent, OrderId}
+import com.sos.jobscheduler.data.problems.UserIsNotEnabledToReleaseEventsProblem
 import com.sos.jobscheduler.data.workflow.instructions.Execute
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.position.WorkflowPosition
@@ -597,7 +598,7 @@ with MainJournalingActor[Event]
       case MasterCommand.ReleaseEvents(untilEventId) =>
         val userId = commandMeta.user.id
         if (!masterConfiguration.journalConf.releaseEventsUserIds.contains(userId))
-          Future(Left(Problem.pure("Your UserId has not been configured for ReleaseEvents command")))
+          Future(Left(UserIsNotEnabledToReleaseEventsProblem))
         else {
           val current = journalState.userIdToReleasedEventId.getOrElse(userId, EventId.BeforeFirst)
           if (untilEventId < current)
