@@ -29,7 +29,7 @@ import sbtcrossproject.CrossPlugin.autoImport.crossProject
 
 val rootDirectory = Paths.get(".").toAbsolutePath
 
-val publishRepositoryCredentialsFile = sys.props.get("publishRepository.credentialsFile") map (o => new File(o))
+val publishRepositoryCredentialsFile = sys.props.get("publishRepository.credentialsFile").map(o => new File(o))
 val publishRepositoryName            = sys.props.get("publishRepository.name")
 val publishRepositoryUri             = sys.props.get("publishRepository.uri")
 // BuildUtils reads more properties.
@@ -61,31 +61,36 @@ addCommandAlias("quickPublishLocal", "; compile; publishLocal; project jobschedu
 //scalafixDependencies in ThisBuild += "org.scala-lang.modules" %% "scala-collection-migrations" % "2.1.4"
 //addCompilerPlugin(scalafixSemanticdb)
 //ThisBuild / scalacOptions ++= Seq("-P:semanticdb:synthetics:on", "-Yrangepos"/*required by SemanticDB compiler plugin*/)
+val enableWarnings =Seq(
+  "-Wunused:imports",
+  "-Wunused:privates",
+  "-Wunused:locals",
+  "-Wunused:implicits",
+  "-Xlint:infer-any",
+  "-Xlint:doc-detached",
+  "-Xlint:private-shadow",
+  //"-Xlint:type-parameter-shadow",
+  "-Xlint:poly-implicit-overload",
+  "-Xlint:constant",
+  "-Xlint:implicit-not-found",
+  "-Xlint:eta-zero")
+
+//scalafixDependencies in ThisBuild += "org.scalatest" %% "autofix" % "3.1.0.0"
+//addCompilerPlugin(scalafixSemanticdb) // enable SemanticDB
+val jdkVersion = "1.8"
+
 ThisBuild / scalacOptions ++= Seq(
   "-Ymacro-annotations",
-  //"-Wunused:imports",
-  //"-Wunused:privates",
-  //"-Wunused:locals",
-  //"-Wunused:implicits",
-  //"-Xlint:infer-any",
-  //"-Xlint:doc-detached",
-  //"-Xlint:private-shadow",
-  //"-Xlint:type-parameter-shadow",
-  //"-Xlint:poly-implicit-overload",
-  //"-Xlint:constant",
-  //"-Xlint:implicit-not-found",
-  //"-Xlint:eta-zero",
   "-unchecked",
   "-deprecation",
   "-feature")
-  //, "-Xlint"
 
 val scalaTestArguments = Tests.Argument(TestFrameworks.ScalaTest, "-oNCLPQF", "-W", "30", "30")  // http://www.scalatest.org/user_guide/using_scalatest_with_sbt
 
 val publishSettings = Seq(
   publishArtifact in (Compile, packageDoc) := false,
-  credentials ++= publishRepositoryCredentialsFile map (o => Credentials(o)),
-  publishTo := publishRepositoryUri map (uri => publishRepositoryName getOrElse uri at uri))
+  credentials ++= publishRepositoryCredentialsFile.map(o => Credentials(o)),
+  publishTo := publishRepositoryUri.map(uri => publishRepositoryName getOrElse uri at uri))
 
 maintainer := "Joacim Zschimmer <jogit@zschimmer.com>"
 val commonSettings = Seq(
@@ -101,8 +106,8 @@ val commonSettings = Seq(
       </developer>
     </developers>,
   scalaVersion := Dependencies.scalaVersion,
-  javacOptions in Compile ++= Seq("-encoding", "UTF-8", "-source", "1.8"),  // This is for javadoc, too
-  javacOptions in (Compile, compile) ++= Seq("-target", "1.8", "-deprecation", "-Xlint:all", "-Xlint:-serial"),
+  javacOptions in Compile ++= Seq("-encoding", "UTF-8", "-source", jdkVersion),  // This is for javadoc, too
+  javacOptions in (Compile, compile) ++= Seq("-target", jdkVersion, "-deprecation", "-Xlint:all", "-Xlint:-serial"),
   dependencyOverrides ++= {
     if (sys.props.contains("evictionWarnings"))
       Nil
@@ -120,8 +125,8 @@ val commonSettings = Seq(
   test in publishM2 := {},
   // Publish
   publishArtifact in (Compile, packageDoc) := false,
-  credentials += publishRepositoryCredentialsFile map (o => Credentials(o)),
-  publishTo := publishRepositoryUri map (uri => publishRepositoryName getOrElse uri at uri))
+  credentials += publishRepositoryCredentialsFile.map(o => Credentials(o)),
+  publishTo := publishRepositoryUri.map(uri => publishRepositoryName getOrElse uri at uri))
 
 useJGit
 git.uncommittedSignifier := Some("UNCOMMITTED")
@@ -177,7 +182,7 @@ lazy val `jobscheduler-install` = project
     universalPluginSettings,
     topLevelDirectory in Universal := Some(s"jobscheduler-${version.value}"),
     mappings in Universal :=
-      (((mappings in Universal).value filter { case (_, path) => (path startsWith "lib/") && !isTestJar(path stripPrefix "lib/") }) ++
+      (((mappings in Universal).value filter { case (_, path) => (path startsWith "lib/") && !doNotInstallJar(path stripPrefix "lib/") }) ++
         NativePackagerHelper.contentOf((master / Compile / classDirectory).value / "com/sos/jobscheduler/master/installation") ++
         NativePackagerHelper.contentOf((provider / Compile / classDirectory).value / "com/sos/jobscheduler/provider/installation") ++
         NativePackagerHelper.contentOf((agent  / Compile / classDirectory).value / "com/sos/jobscheduler/agent/installation") ++
@@ -320,7 +325,7 @@ lazy val master = project.dependsOn(`master-data`.jvm, `master-client`.jvm, core
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings(
-    mappings in (Compile, packageDoc) := Seq())
+    mappings in (Compile, packageDoc) := Seq.empty)
   .settings {
     import Dependencies._
     libraryDependencies ++=
@@ -336,7 +341,7 @@ lazy val provider = project.dependsOn(`master-data`.jvm, master, `master-client`
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings(
-    mappings in (Compile, packageDoc) := Seq())
+    mappings in (Compile, packageDoc) := Seq.empty)
   .settings {
     import Dependencies._
     libraryDependencies ++=
@@ -472,7 +477,7 @@ lazy val tests = project.dependsOn(master, agent, `agent-client`, provider, test
   .settings(
     commonSettings,
     skip in publish := true,
-    description := "JobScheduler Tests")
+    Keys.description := "JobScheduler Tests")
   .settings {
     import Dependencies._
     libraryDependencies ++=
@@ -509,9 +514,4 @@ def isStandardTest(name: String): Boolean = !isExclusiveTest(name) && !isForkedT
 def isExclusiveTest(name: String): Boolean = name endsWith "ExclusiveTest"
 def isForkedTest(name: String): Boolean = name endsWith "ForkedTest"
 
-def isTestJar(name: String) = // How to automatically determine/exclude test dependencies ???
-  name.startsWith("com.typesafe.akka.akka-testkit_") ||
-  name.startsWith("com.typesafe.akka.akka-http-testkit_") ||
-  name.startsWith("org.scalatest.scalatest_") ||
-  name.startsWith("org.mockito.") ||
-  name.startsWith("org.hamcrest.")
+def doNotInstallJar(name: String) = false
