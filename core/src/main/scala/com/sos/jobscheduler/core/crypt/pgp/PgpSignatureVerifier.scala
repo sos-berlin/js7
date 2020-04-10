@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.core.crypt.pgp
 
 import cats.effect.{Resource, SyncIO}
-import cats.syntax.semigroup._
 import cats.syntax.show._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
@@ -83,7 +82,7 @@ object PgpSignatureVerifier extends SignatureVerifier.Companion
   def checked(publicKeyRings: Seq[Resource[SyncIO, InputStream]], origin: String) =
     Checked.catchNonFatal(
       new PgpSignatureVerifier(readPublicKeyRingCollection(publicKeyRings), origin)
-    ).left.map(o => Problem(s"Error when reading public key '$origin'") |+| o)
+    ).left.map(o => Problem(s"Error when reading public key '$origin'", cause = Some(o)))
 
   def genericSignatureToSignature(signature: GenericSignature): PgpSignature = {
     assert(signature.typeName == typeName)

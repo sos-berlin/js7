@@ -8,7 +8,6 @@ import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Problem._
 import com.sos.jobscheduler.base.utils.ScalaUtils._
-import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import io.circe.{Decoder, Encoder, Json}
 import scala.collection.immutable.{Iterable, Seq, VectorBuilder}
 import scala.collection.mutable
@@ -158,7 +157,7 @@ object Checked
 
     def orThrow(toThrowable: Throwable => Throwable): A =
       underlying
-        .left.map(problem => problem.throwableOption.fold(problem.throwable)(_.appendCurrentStackTrace))
+        .left.map(_.throwable)
         .orThrow(toThrowable)
 
     def orThrowWithoutStacktrace: A =

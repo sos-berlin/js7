@@ -7,6 +7,7 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.Decoder
 import org.scalatest.FreeSpec
+import scala.util.Try
 
 /**
   * @author Joacim Zschimmer
@@ -69,13 +70,15 @@ final class ProblemTest extends FreeSpec
     assert(problem.throwableOption contains throwable)
     assert(problem.throwable eq throwable)
 
-    assert(problem.withKey("KEY").toString == "Problem with 'KEY', caused by: MESSAGE")
-    assert(problem.withKey("KEY").throwable.getMessage == "Problem with 'KEY':")
+    assert(problem.withKey("KEY").toString == "Problem with 'KEY': MESSAGE")
+    assert(problem.withKey("KEY").throwable.getMessage == "Problem with 'KEY': MESSAGE")
 
     assert(Problem.fromLazyThrowable(new RuntimeException).toString == "java.lang.RuntimeException")
   }
 
   "cause" in {
+    assert(Problem("A", Some(Problem("B"))).toString == "A [B]")
+    assert(Problem.pure("A", Some(Problem("B"))).toString == "A [B]")
     assert(new Problem.Lazy("A", Some(Problem("B"))).toString == "A [B]")
     assert(catch_(new Problem.Lazy("A", Some(Problem("B")))) == "A [B]")
   }
@@ -86,12 +89,12 @@ final class ProblemTest extends FreeSpec
     assert((Problem("A: ") |+| Problem("B")) == Problem("A: B"))
     assert((Problem("A -") |+| Problem("B")) == Problem("A - B"))
     assert((Problem("A - ") |+| Problem("B")) == Problem("A - B"))
-    assert((Problem("A") |+| Problem.fromLazyThrowable(new RuntimeException("B"))).throwableOption.get.getMessage == "A")
-    assert((Problem("A") |+| Problem.fromLazyThrowable(new RuntimeException("B"))).throwableOption.get.toStringWithCauses == "A, caused by: B")
-    assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem("B")).throwableOption.get.getMessage == "A")
-    assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem("B")).throwableOption.get.toStringWithCauses == "A, caused by: B")
-    assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem.fromLazyThrowable(new RuntimeException("B"))).throwableOption.get.getMessage == "A")
-    assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem.fromLazyThrowable(new RuntimeException("B"))).throwableOption.get.toStringWithCauses == "A, caused by: B")
+    assert((Problem("A") |+| Problem.fromLazyThrowable(new RuntimeException("B"))).throwableOption.get.getMessage == "A\n & B")
+    assert((Problem("A") |+| Problem.fromLazyThrowable(new RuntimeException("B"))).throwableOption.get.toStringWithCauses == "A\n & B")
+    assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem("B")).throwableOption.get.getMessage == "A\n & B")
+    assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem("B")).throwableOption.get.toStringWithCauses == "A\n & B")
+    assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem.fromLazyThrowable(new RuntimeException("B"))).throwableOption.get.getMessage == "A\n & B")
+    assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem.fromLazyThrowable(new RuntimeException("B"))).throwableOption.get.toStringWithCauses == "A\n & B")
 
     assert(catch_(Problem("A") |+| Problem("B")) == "A\n & B")
   }
@@ -119,12 +122,25 @@ final class ProblemTest extends FreeSpec
     }
   }
 
+  "Multiple combines all optional stacktraces" in {
+    def throwB() = throw new RuntimeException("B-EXCEPTION")
+    def throwD() = throw new RuntimeException("D-EXCEPTION")
+    val a = Problem("A-PROBLEM")
+    val b = Problem.pure(Try(throwB()).failed.get: Throwable)
+    val c = Problem("C-PROBLEM")
+    val d = Problem.pure(Try(throwD()).failed.get: Throwable)
+    val combinedThrowable = (a |+| b |+| c |+| d).throwable
+    assert(combinedThrowable.toString == "ProblemException: A-PROBLEM\n & B-EXCEPTION\n & C-PROBLEM\n & D-EXCEPTION")
+    assert(combinedThrowable.getStackTrace.exists(_.getMethodName contains "throwB"))
+    assert(combinedThrowable.getStackTrace.exists(_.getMethodName contains "throwD"))
+  }
+
   "head" in {
     val a = Problem("A")
     assert(a.head eq a)
     val ma = new Problem.Lazy("A")
     val mb = new Problem.Lazy("B")
-    val m = new Problem.Multiple(List(ma, mb))
+    val m = Problem.Multiple(List(ma, mb))
     assert(m.head eq ma)
   }
 
@@ -152,7 +168,7 @@ final class ProblemTest extends FreeSpec
 
   "Problem.pure" in {
     assert(Problem.pure(new RuntimeException("EXCEPTION")).toString == "EXCEPTION")
-    assert(Problem.pure(new RuntimeException("EXCEPTION")).withPrefix("PREFIX").toString == "PREFIX, caused by: EXCEPTION")
+    assert(Problem.pure(new RuntimeException("EXCEPTION")).withPrefix("PREFIX:").toString == "PREFIX: EXCEPTION")
   }
 
   "equals" in {
@@ -196,9 +212,7 @@ final class ProblemTest extends FreeSpec
   }
 
   private def catch_(problem: Problem): String =
-    intercept[ProblemException] {
-      throw problem.throwable
-    }.toStringWithCauses
+    intercept[ProblemException] { throw problem.throwable } .toStringWithCauses
 }
 
 object ProblemTest {

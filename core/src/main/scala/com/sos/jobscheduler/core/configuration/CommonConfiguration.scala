@@ -52,7 +52,7 @@ trait CommonConfiguration extends WebServerBinding.HasLocalUris
 
       case WebServerPort.Https(port, mutual) =>
         WebServerBinding.Https(port,
-          keyStoreRef.mapProblem(Problem("HTTPS requires a key store") |+| _).orThrow,
+          keyStoreRef.mapProblem(Problem("HTTPS requires a key store:") |+| _).orThrow,
           trustStoreRefOption,
           mutual = mutual)
     }

@@ -90,7 +90,7 @@ object JournalHeader
       header <-
         json.as[JournalHeader].toChecked.mapProblem(problem =>
           Problem.pure(
-            s"Not a valid JobScheduler journal file: $journalFileForInfo. Expected a JournalHeader instead of ${json.compactPrint}"
+            s"Not a valid JobScheduler journal file: $journalFileForInfo. Expected a JournalHeader instead of ${json.compactPrint}:"
           ) |+| problem)
       header <-
         expectedJournalId match {

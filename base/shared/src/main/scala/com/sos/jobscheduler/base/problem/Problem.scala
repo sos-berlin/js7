@@ -6,6 +6,7 @@ import com.sos.jobscheduler.base.problem.Problem._
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, RichThrowable}
 import com.sos.jobscheduler.base.utils.ScalazStyle._
+import com.sos.jobscheduler.base.utils.StackTraces._
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json, JsonObject}
 import scala.collection.immutable.Iterable
@@ -28,7 +29,7 @@ sealed trait Problem
 
   def withKey(key: Any): Problem = withPrefix(s"Problem with '$key':")
 
-  def withPrefix(prefix: String): Problem = Problem(prefix) |+| this
+  def withPrefix(prefix: String): Problem = Problem.pure(prefix) |+| this
 
   final def wrapProblemWith(message: String) = new Lazy(message, Some(this))
 
@@ -56,11 +57,14 @@ object Problem
   implicit def toInvalid[A](problem: Problem): Left[Problem, A] =
     Left(problem)
 
-  def apply(messageFunction: => String): Problem =
-    new Lazy(messageFunction)
+  def apply(messageFunction: => String, cause: Option[Problem] = None): Problem =
+    new Lazy(messageFunction, cause)
 
   def pure(message: String): Problem =
-    apply(message)
+    apply(message, cause = None)
+
+  def pure(message: String, cause: Option[Problem]): Problem =
+    apply(message, cause)
 
   def pure(throwable: Throwable): Problem =
     new FromEagerThrowable(throwable)
@@ -134,11 +138,13 @@ object Problem
     override val rawMessage: String)
   extends HasCode
 
-  class Eager protected[problem](protected val rawMessage: String, val cause: Option[Problem] = None) extends Simple {
+  class Eager protected[problem](protected val rawMessage: String, val cause: Option[Problem] = None)
+  extends Simple {
     override final def hashCode = super.hashCode  // Derived case class should not override
   }
 
-  class Lazy protected[problem](messageFunction: => String, val cause: Option[Problem] = None) extends Simple {
+  class Lazy protected[problem](messageFunction: => String, val cause: Option[Problem] = None)
+  extends Simple {
     protected def rawMessage = messageFunction
     override final def hashCode = super.hashCode  // Derived case class should not override
   }
@@ -155,9 +161,17 @@ object Problem
   final case class Multiple private[problem](problems: Iterable[Problem]) extends Problem {
     require(problems.nonEmpty)
 
-    def throwable = new ProblemException.NoStackTrace(this)
+    def throwable = throwableOption getOrElse new ProblemException.NoStackTrace(this)
 
-    def throwableOption: None.type = None
+    def throwableOption = {
+      val throwables = problems.flatMap(_.throwableOption)
+      throwables.headOption.map { head =>
+        val throwable = new ProblemException(this)
+        throwable.setStackTrace(head.getStackTrace)
+        for (o <- throwables.tail) throwable.appendStackTrace(o.getStackTrace)
+        throwable
+      }
+    }
 
     lazy val message = problems.map(_.toString) reduce combineMessages
 
@@ -180,7 +194,8 @@ object Problem
 
   sealed trait FromThrowable extends Problem
 
-  private final class FromEagerThrowable(val throwable: Throwable) extends FromThrowable
+  private final class FromEagerThrowable(val throwable: Throwable)
+  extends FromThrowable
   {
     lazy val message = throwable.toStringWithCauses
 
@@ -191,7 +206,8 @@ object Problem
       None
   }
 
-  private final class FromLazyThrowable(throwableFunction: () => Throwable) extends FromThrowable
+  private final class FromLazyThrowable(throwableFunction: () => Throwable)
+  extends FromThrowable
   {
     private lazy val throwable_ = throwableFunction()
     lazy val message = throwable_.toStringWithCauses
@@ -206,27 +222,17 @@ object Problem
   }
 
   implicit val problemSemigroup: Semigroup[Problem] = {
-    case (a: Problem, b: FromThrowable) =>
-      Problem.fromLazyThrowable(new ProblemException.NoStackTrace(a, b.throwable))
-
-    case (a: FromThrowable, b: Problem) =>
-      Problem.fromLazyThrowable {
-        val t = new ProblemException.NoStackTrace(a, b.throwable)
-        t.setStackTrace(a.throwable.getStackTrace)
-        t
-      }
-
-    case (a: Simple, b: Simple) =>
-      Multiple(a :: b :: Nil)
-
-    case (a: Simple, b: Multiple) =>
-      Multiple(a +: b.problems.toVector)
-
-    case (a: Multiple, b: Lazy) =>
-      Multiple(a.problems.toVector :+ b)
+    case (a: Multiple, b: Multiple) =>
+      Multiple(a.problems.toVector ++ b.problems)
 
     case (a: Multiple, b: Problem) =>
-      Multiple(a.problems.toVector :+ new Lazy(b.toString))  // TODO If b is FromThrowable, then b.throwable is lost
+      Multiple(a.problems.toVector :+ b)
+
+    case (a: Problem, b: Multiple) =>
+      Multiple(a +: b.problems.toVector)
+
+    case (a: Problem, b: Problem) =>
+      Multiple(Vector(a, b))
   }
 
   implicit val problemEq: Eq[Problem] = Eq.fromUniversalEquals[Problem]
@@ -266,7 +272,7 @@ object Problem
   implicit val jsonDecoder: Decoder[Problem] =
     c => for {
       maybeCode <- c.get[Option[ProblemCode]]("code")
-      arguments <- c.get[Option[Map[String, String]]]("arguments") map (_ getOrElse Map.empty)
+      arguments <- c.get[Option[Map[String, String]]]("arguments").map(_ getOrElse Map.empty)
       message <- c.get[String]("message")
     } yield
       maybeCode match {
