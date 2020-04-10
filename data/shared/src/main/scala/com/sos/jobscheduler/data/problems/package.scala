@@ -8,10 +8,10 @@ import com.sos.jobscheduler.data.event.EventId
   */
 package object problems
 {
-  final case class MasterRequiresUnknownEventIdProblem(requiredEventId: EventId) extends Problem.Coded {
+  final case class UnknownEventIdProblem(requiredEventId: EventId) extends Problem.Coded {
     def arguments = Map("requiredEventId" -> EventId.toString(requiredEventId))
   }
-  object MasterRequiresUnknownEventIdProblem extends Problem.Coded.Companion
+  object UnknownEventIdProblem extends Problem.Coded.Companion
 
   case object UserIsNotEnabledToReleaseEventsProblem extends Problem.ArgumentlessCoded
 }

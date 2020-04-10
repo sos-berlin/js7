@@ -7,7 +7,7 @@ import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
-import com.sos.jobscheduler.data.problems.MasterRequiresUnknownEventIdProblem
+import com.sos.jobscheduler.data.problems.UnknownEventIdProblem
 import com.sos.jobscheduler.data.workflow.instructions.Execute
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
@@ -38,7 +38,7 @@ final class CoupleMasterTest extends FreeSpec with DirectoryProviderForScalaTest
     directoryProvider.agents(0).writeExecutable(TestExecutablePath, script(0.s))
   }
 
-  "CoupleMaster command fails with MasterRequiresUnknownEventIdProblem when Agent misses old events" in {
+  "CoupleMaster command fails with UnknownEventIdProblem when Agent misses old events" in {
     directoryProvider.runMaster() { master =>
       directoryProvider.runAgents() { _ =>
         val order = orderGenerator.next()
@@ -46,12 +46,12 @@ final class CoupleMasterTest extends FreeSpec with DirectoryProviderForScalaTest
         lastEventId = lastEventIdOf(master.eventWatch.await[OrderFinished](after = lastEventId, predicate = _.key == order.id))
       }
 
-      // DELETE OLD AGENTS'S EVENTS THE MASTER HAS NOT READ => MasterRequiresUnknownEventIdProblem
+      // DELETE OLD AGENTS'S EVENTS THE MASTER HAS NOT READ => UnknownEventIdProblem
       move(firstJournalFile, Paths.get(s"$firstJournalFile-MOVED"))
       directoryProvider.runAgents() { _ =>
         val event = master.eventWatch.await[AgentCouplingFailed](after = lastEventId, predicate =
           ke => ke.key == agentRefPath &&
-            ke.event.problem.codeOption.contains(MasterRequiresUnknownEventIdProblem.code))
+            ke.event.problem.codeOption.contains(UnknownEventIdProblem.code))
         lastEventId = event.last.eventId
       }
       move(Paths.get(s"$firstJournalFile-MOVED"), firstJournalFile)
@@ -66,9 +66,9 @@ final class CoupleMasterTest extends FreeSpec with DirectoryProviderForScalaTest
     }
   }
 
-  "CoupleMaster command fails with MasterRequiresUnknownEventIdProblem if Agent misses last events" in {
+  "CoupleMaster command fails with UnknownEventIdProblem if Agent misses last events" in {
     directoryProvider.runMaster() { master =>
-      // REMOVE NEW AGENTS'S EVENTS THE MASTER HAS ALREADY READ => MasterRequiresUnknownEventIdProblem
+      // REMOVE NEW AGENTS'S EVENTS THE MASTER HAS ALREADY READ => UnknownEventIdProblem
       val journalFiles = agentStateDir.pathSet.toVector
         .map(_.getFileName.toString)
         .filter(_.startsWith("master-Master--"))
@@ -78,7 +78,7 @@ final class CoupleMasterTest extends FreeSpec with DirectoryProviderForScalaTest
       directoryProvider.runAgents() { _ =>
         master.eventWatch.await[AgentCouplingFailed](after = master.eventWatch.lastFileTornEventId, predicate =
           ke => ke.key == agentRefPath &&
-            ke.event.problem.codeOption.contains(MasterRequiresUnknownEventIdProblem.code))
+            ke.event.problem.codeOption.contains(UnknownEventIdProblem.code))
       }
     }
   }

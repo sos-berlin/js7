@@ -13,7 +13,7 @@ import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.listJournalFiles
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch._
 import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.problems.MasterRequiresUnknownEventIdProblem
+import com.sos.jobscheduler.data.problems.UnknownEventIdProblem
 import com.typesafe.config.{Config, ConfigFactory}
 import java.io.IOException
 import java.nio.file.Files.delete
@@ -118,7 +118,7 @@ with JournalingObserver
         iterator.close()
         Checked.unit
       case None =>
-        Left(MasterRequiresUnknownEventIdProblem(requiredEventId = eventId))
+        Left(UnknownEventIdProblem(requiredEventId = eventId))
     }
 
   def releaseEvents(untilEventId: EventId): Unit = {
