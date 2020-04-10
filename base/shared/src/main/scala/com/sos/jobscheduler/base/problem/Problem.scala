@@ -149,16 +149,16 @@ object Problem
     override final def hashCode = super.hashCode  // Derived case class should not override
   }
 
-  def set(problems: String*): Multiple =
-    multiple(problems.toSet)
+  def set(problems: String*): Combined =
+    combined(problems.toSet)
 
-  def multiple(problems: String*): Multiple =
-    multiple(problems.toImmutableSeq)
+  def combined(problems: String*): Combined =
+    combined(problems.toImmutableSeq)
 
-  def multiple(problems: Iterable[String]): Multiple =
-    Multiple(problems.map(o => new Lazy(o)))
+  def combined(problems: Iterable[String]): Combined =
+    Combined(problems.map(o => new Lazy(o)))
 
-  final case class Multiple private[problem](problems: Iterable[Problem]) extends Problem {
+  final case class Combined private[problem](problems: Iterable[Problem]) extends Problem {
     require(problems.nonEmpty)
 
     def throwable = throwableOption getOrElse new ProblemException.NoStackTrace(this)
@@ -180,7 +180,7 @@ object Problem
     def cause = None
 
     override def equals(o: Any) = o match {
-      case o: Multiple =>
+      case o: Combined =>
         (problems, o.problems) match {
           case (problems: Set[Problem], _) => problems == o.problems.toSet  // Ignore ordering (used in tests)
           case (_, o: Set[Problem])        => problems.toSet == o           // Ignore ordering (used in tests)
@@ -222,17 +222,17 @@ object Problem
   }
 
   implicit val problemSemigroup: Semigroup[Problem] = {
-    case (a: Multiple, b: Multiple) =>
-      Multiple(a.problems.toVector ++ b.problems)
+    case (a: Combined, b: Combined) =>
+      Combined(a.problems.toVector ++ b.problems)
 
-    case (a: Multiple, b: Problem) =>
-      Multiple(a.problems.toVector :+ b)
+    case (a: Combined, b: Problem) =>
+      Combined(a.problems.toVector :+ b)
 
-    case (a: Problem, b: Multiple) =>
-      Multiple(a +: b.problems.toVector)
+    case (a: Problem, b: Combined) =>
+      Combined(a +: b.problems.toVector)
 
     case (a: Problem, b: Problem) =>
-      Multiple(Vector(a, b))
+      Combined(Vector(a, b))
   }
 
   implicit val problemEq: Eq[Problem] = Eq.fromUniversalEquals[Problem]

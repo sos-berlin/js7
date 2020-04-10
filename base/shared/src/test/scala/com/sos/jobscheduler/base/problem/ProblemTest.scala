@@ -99,30 +99,30 @@ final class ProblemTest extends FreeSpec
     assert(catch_(Problem("A") |+| Problem("B")) == "A\n & B")
   }
 
-  "Multiple" in {
+  "Combined" in {
     Problem("A") |+| Problem("B") match {
-      case Problem.Multiple(problems) => assert(problems == List(Problem("A"), Problem("B")))
+      case Problem.Combined(problems) => assert(problems == List(Problem("A"), Problem("B")))
       case _ => fail()
     }
   }
 
-  "Multiple is flat" in {
+  "Combined is flat" in {
     Problem("A") |+| Problem("B") |+| Problem("C") match {
-      case Problem.Multiple(problems) => assert(problems == List(Problem("A"), Problem("B"), Problem("C")))
+      case Problem.Combined(problems) => assert(problems == List(Problem("A"), Problem("B"), Problem("C")))
       case _ => fail()
     }
-    val multiProblem: Problem = Problem.Multiple(List(new Problem.Lazy("A"), new Problem.Lazy("B")))
+    val multiProblem: Problem = Problem.Combined(List(new Problem.Lazy("A"), new Problem.Lazy("B")))
     multiProblem |+| Problem("C") match {
-      case Problem.Multiple(problems) => assert(problems == List(Problem("A"), Problem("B"), Problem("C")))
+      case Problem.Combined(problems) => assert(problems == List(Problem("A"), Problem("B"), Problem("C")))
       case _ => fail()
     }
     Problem("X") |+| multiProblem match {
-      case Problem.Multiple(problems) => assert(problems == List(Problem("X"), Problem("A"), Problem("B")))
+      case Problem.Combined(problems) => assert(problems == List(Problem("X"), Problem("A"), Problem("B")))
       case _ => fail()
     }
   }
 
-  "Multiple combines all optional stacktraces" in {
+  "Combined combines all optional stacktraces" in {
     def throwB() = throw new RuntimeException("B-EXCEPTION")
     def throwD() = throw new RuntimeException("D-EXCEPTION")
     val a = Problem("A-PROBLEM")
@@ -140,7 +140,7 @@ final class ProblemTest extends FreeSpec
     assert(a.head eq a)
     val ma = new Problem.Lazy("A")
     val mb = new Problem.Lazy("B")
-    val m = Problem.Multiple(List(ma, mb))
+    val m = Problem.Combined(List(ma, mb))
     assert(m.head eq ma)
   }
 

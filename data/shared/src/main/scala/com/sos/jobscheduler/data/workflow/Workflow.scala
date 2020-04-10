@@ -63,7 +63,7 @@ extends FileBased
         Problem.pure(s"Unknown label '${jump.to}'")
     }
     if (problems.nonEmpty)
-      Left(Problem.Multiple(problems))
+      Left(Problem.Combined(problems))
     else
       Right(this)
   }
@@ -76,7 +76,7 @@ extends FileBased
       checkLabels
     val problems = chk collect { case Left(problem) => problem }
     if (problems.nonEmpty)
-      Left(Problem.Multiple(problems))
+      Left(Problem.Combined(problems))
     else
       Right(this)
   }

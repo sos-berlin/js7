@@ -44,7 +44,7 @@ final class FileBasedReaderTest extends FreeSpec with BeforeAndAfterAll
 
   "readFileBased with syntax errors and an alien file" in {
       assert(typedSourceReader.readFileBaseds(DirectoryReader.files(directory)) ==
-        Left(Problem.Multiple(Set(
+        Left(Problem.Combined(Set(
           Problem("""Problem with 'Workflow:/D' (txt) [Expected "define":1:1, found "ERROR"]"""),
           Problem("""Problem with 'Workflow:/E' (JSON) [JSON ParsingFailure: expected json value got 'NO-JSO...' (line 1, column 1)]"""),
           Problem(s"File '...${separator}folder${separator}test.alien.json' is not recognized as a configuration file")))))
@@ -53,7 +53,7 @@ final class FileBasedReaderTest extends FreeSpec with BeforeAndAfterAll
   "Duplicate FileBased, Workflows are not checked" in {
     directory / "A.workflow.txt" := "DUPLICATE"
     assert(typedSourceReader.readFileBaseds(DirectoryReader.files(directory)) ==
-      Left(Problem.Multiple(Set(
+      Left(Problem.Combined(Set(
         Problem(s"Duplicate configuration files: ${directory / "A.workflow.json"}, ${directory / "A.workflow.txt"}"),
         Problem(s"File '...${separator}folder${separator}test.alien.json' is not recognized as a configuration file")))))
   }

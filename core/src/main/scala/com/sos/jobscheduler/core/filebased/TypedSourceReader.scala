@@ -25,7 +25,7 @@ final class TypedSourceReader(directory: Path, readers: Iterable[FileBasedReader
     val checkedTypedFiles = files.map(toTypedFile)
     TypedFile.checkUniqueness(checkedTypedFiles collect { case Right(o) => o }) match {
       case Left(problem) =>
-        Left(Problem.Multiple(checkedTypedFiles.collect { case Left(p) => p } :+ problem))
+        Left(Problem.Combined(checkedTypedFiles.collect { case Left(p) => p } :+ problem))
       case Right(_) =>
         checkedTypedFiles.traverseAndCombineProblems(typedFile => toCheckedFileBased(readTypedSource(typedFile)))
     }

@@ -146,7 +146,7 @@ final class ProviderTest extends FreeSpec with MasterAgentForScalaTest
       (live / "ERROR-1.workflow.json") := json"""{ "something": "different" }"""
       (live / "ERROR-2.workflow.json") := json"""{ "instructions": 0 }"""
       assert(provider.updateMasterConfiguration(V2.some).await(99.seconds) ==
-        Left(Problem.Multiple(Set(
+        Left(Problem.Combined(Set(
           TypedPaths.AlienFileProblem(Paths.get("UNKNOWN.tmp")),
           FileBasedReader.SourceProblem(WorkflowPath("/NO-JSON"), SourceType.Json, Problem("JSON ParsingFailure: expected json value got 'INVALI...' (line 1, column 1)")),
           FileBasedReader.SourceProblem(WorkflowPath("/ERROR-1"), SourceType.Json, Problem("JSON DecodingFailure at .instructions: Attempt to decode value on failed cursor")),

@@ -239,7 +239,7 @@ final class CheckedTest extends FreeSpec
   "traverseAndCombineProblems" in {
     assert(List(Right(1), Right(2)).traverseAndCombineProblems(i => Right(i * 11)) == Right(Seq(11, 22)))
     assert(List(Left(Problem("ONE")), Right(2), Left(Problem("TWO"))).traverseAndCombineProblems(i => Right(i * 11)) ==
-      Left(Problem.multiple("ONE", "TWO")))
+      Left(Problem.combined("ONE", "TWO")))
   }
 
   "failFastMap" - {
