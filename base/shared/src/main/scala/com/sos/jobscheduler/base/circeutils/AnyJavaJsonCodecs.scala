@@ -2,7 +2,7 @@ package com.sos.jobscheduler.base.circeutils
 
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import io.circe.Json
-import scala.collection.immutable.ListMap
+import scala.collection.immutable.SeqMap
 import scala.jdk.CollectionConverters._
 
 /**
@@ -45,7 +45,7 @@ object AnyJavaJsonCodecs {
               case None =>
                 json.asObject match {
                   case Some(o) =>
-                    (ListMap() ++ (o.toVector/*ordered*/ filter (!_._2.isNull)/*remove None*/ map { case (k, v) => k -> jsonToJava(v) })).asJava
+                    (SeqMap.empty ++ (o.toVector/*ordered*/ filter (!_._2.isNull)/*remove None*/ map { case (k, v) => k -> jsonToJava(v) })).asJava
                   case None =>
                     json.asArray match {
                       case Some(o) => (o map jsonToJava).asJava: java.util.List[Any]

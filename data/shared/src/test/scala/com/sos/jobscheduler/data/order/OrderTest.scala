@@ -465,7 +465,7 @@ final class OrderTest extends AnyFreeSpec
       for (o <- Array(
             order.copy(attachedState = Some(Attached(AgentRefPath("/AGENT")))),
             order.copy(attachedState = None))) {
-        val problem = o.detaching.left.get
+        val Left(problem) = o.detaching
         assert(problem.toString contains "ORDER-ID")
       }
     }

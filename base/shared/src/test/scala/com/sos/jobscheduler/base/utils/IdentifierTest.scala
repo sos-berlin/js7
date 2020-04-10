@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.base.utils
 
 import com.sos.jobscheduler.base.utils.Identifier._
-import scala.collection.JavaConverters.asScalaIteratorConverter
 import org.scalatest.freespec.AnyFreeSpec
+import scala.jdk.CollectionConverters._
 
 /**
   * @author Joacim Zschimmer

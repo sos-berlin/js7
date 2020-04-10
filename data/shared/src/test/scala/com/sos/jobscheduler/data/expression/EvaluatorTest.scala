@@ -361,7 +361,7 @@ final class EvaluatorTest extends AnyFreeSpec
 
   private def completeExpression[_: P] = ExpressionParser.expression ~ End
 
-  private def testSyntaxError(exprString: String, problem: String)(implicit evaluator: Evaluator, pos: source.Position): Unit =
+  private def testSyntaxError(exprString: String, problem: String)(implicit pos: source.Position): Unit =
     registerTest(s"$exprString - should fail") {
       assert(checkedParse(exprString.trim, completeExpression(_)) == Left(Problem(problem)))
     }

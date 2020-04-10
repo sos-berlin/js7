@@ -66,7 +66,7 @@ extends HasCloser with Observing
       loginUntilReachable
 
   // We don't use ReplaceRepo because it changes every existing object only because of changed signature.
-  private def replaceMasterConfiguration(versionId: Option[VersionId] = None): Task[Checked[Completed]] =
+  private def replaceMasterConfiguration(versionId: Option[VersionId]): Task[Checked[Completed]] =
     for {
       _ <- loginUntilReachable
       currentEntries = readDirectory

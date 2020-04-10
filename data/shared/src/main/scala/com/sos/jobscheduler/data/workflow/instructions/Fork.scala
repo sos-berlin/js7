@@ -65,7 +65,7 @@ extends Instruction
 
 object Fork
 {
-  private def apply(branches: IndexedSeq[Fork.Branch], sourcePos: Option[SourcePos] = None) =
+  private def apply(branches: IndexedSeq[Fork.Branch], sourcePos: Option[SourcePos]) =
     throw new NotImplementedError
 
   def forTest(branches: IndexedSeq[Fork.Branch], sourcePos: Option[SourcePos] = None): Fork =

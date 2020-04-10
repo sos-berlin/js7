@@ -171,9 +171,8 @@ extends AutoCloseable
                 }
                 if (markEOF && isEOF(lastPosition)) {
                   iterator = iterator
-                    .map { o =>
+                    .tapEach { o =>
                       if (o.value == EndOfJournalFileMarker) sys.error(s"Journal file must not contain a line like $o")
-                      o
                     } ++ {
                       eofMarked = true
                       Iterator.single(PositionAnd(lastPosition, EndOfJournalFileMarker))

@@ -276,14 +276,15 @@ final class ScalaUtilsTest extends AnyFreeSpec
       assert(Right[Throwable, Int](7).withStackTrace == Right[Throwable, Int](7))
       val t = new IllegalArgumentException
       assert(t.getStackTrace.nonEmpty)
-      assert(Left[Throwable, Int](t).withStackTrace.left.get eq t)
+      val Left(t2) = Left[Throwable, Int](t).withStackTrace
+      assert(t2 eq t)
     }
 
     "without stacktrace provided" in {
       val u = new IllegalArgumentException with NoStackTrace
       assert(u.getStackTrace.isEmpty)
-      Left[Throwable, Int](u).withStackTrace.left.get match {
-        case uu: IllegalStateException => assert(uu.getStackTrace.nonEmpty)
+      Left[Throwable, Int](u).withStackTrace match {
+        case Left(uu: IllegalStateException) => assert(uu.getStackTrace.nonEmpty)
       }
     }
   }

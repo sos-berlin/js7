@@ -399,7 +399,7 @@ object RunningMaster
             case Some(Success(None)) =>   // MasterOrderKeeper does not start
               Task.pure(Left(JobSchedulerIsShuttingDownProblem))
             case Some(Success(Some(actor))) =>
-              Task.deferFutureAction(implicit s =>
+              Task.deferFuture(
                 (actor ? MasterOrderKeeper.Command.Execute(command, meta))
                   .mapTo[Checked[command.Response]])
           }

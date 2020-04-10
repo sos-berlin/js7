@@ -68,7 +68,7 @@ with AutoCloseable
     if (!eventsStarted) throw new IllegalStateException
     _eventWritten = true
     statistics.countEventsToBeCommitted(stampedEvents.size)
-    val ta = transaction && stampedEvents.lengthCompare(1) > 0
+    val ta = transaction && stampedEvents.lengthIs > 1
     if (ta) jsonWriter.write(TransactionByteString)
     stampedEvents foreach writeEvent
     if (ta) jsonWriter.write(CommitByteString)

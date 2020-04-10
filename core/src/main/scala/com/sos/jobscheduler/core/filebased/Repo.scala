@@ -40,7 +40,7 @@ final case class Repo private(
   private lazy val pathToVersionToSignedFileBased: Map[TypedPath, Map[VersionId, Option[Signed[FileBased]]]] =
     idToSignedFileBased.map { case (id, maybeSigned) => (id.path, id.versionId, maybeSigned) }
       .groupBy(_._1)
-      .mapValuesStrict(_ toKeyedMap (_._2) mapValuesStrict (_._3))
+      .mapValuesStrict(_.toKeyedMap(_._2).mapValuesStrict(_._3))
 
   lazy val currentVersion: Map[TypedPath, Signed[FileBased]] =
     for {

@@ -184,9 +184,8 @@ with JournalingObserver
     historicJournalFileAfter(after) flatMap { historicJournalFile =>
       var last = after
       historicJournalFile.eventReader.eventsAfter(after) map { events =>
-        events.map { stamped =>
+        events.tapEach { stamped =>
           last = stamped.eventId
-          stamped
         } ++  // ++ is lazy, so last contains last read eventId
           (if (last == after)  // Nothing read
             CloseableIterator.empty

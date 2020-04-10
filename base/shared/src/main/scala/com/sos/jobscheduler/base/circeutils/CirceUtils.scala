@@ -9,7 +9,7 @@ import io.circe.generic.decoding.DerivedDecoder
 import io.circe.generic.encoding.DerivedAsObjectEncoder
 import io.circe.syntax.EncoderOps
 import io.circe.{CursorOp, Decoder, DecodingFailure, Encoder, HCursor, Json, JsonNumber, JsonObject, Printer}
-import scala.collection.immutable.ListMap
+import scala.collection.immutable.SeqMap
 import shapeless.Lazy
 
 /**
@@ -161,13 +161,13 @@ object CirceUtils
       def apply(c: HCursor) = Right(singleton)
     }
 
-  def listMapCodec[K: Encoder: Decoder, V: Encoder: Decoder](keyName: String = "key", valueName: String = "value"): CirceCodec[ListMap[K, V]] =
-    new Encoder[ListMap[K, V]] with Decoder[ListMap[K, V]] {
-      def apply(listMap: ListMap[K, V]) =
+  def listMapCodec[K: Encoder: Decoder, V: Encoder: Decoder](keyName: String = "key", valueName: String = "value"): CirceCodec[SeqMap[K, V]] =
+    new Encoder[SeqMap[K, V]] with Decoder[SeqMap[K, V]] {
+      def apply(listMap: SeqMap[K, V]) =
         Json.fromValues(
           for ((key, value) <- listMap) yield
             Json.fromJsonObject(JsonObject.fromMap(
-              ListMap(keyName -> key.asJson) ++
+              SeqMap(keyName -> key.asJson) ++
                 JsonObject.singleton(valueName, value.asJson).toMap)))
 
       private implicit val idAndScriptDecoder: Decoder[(K, V)] =
@@ -179,7 +179,7 @@ object CirceUtils
             id -> value
 
       def apply(cursor: HCursor) =
-        cursor.as[Seq[(K, V)]].map(ListMap.empty.++)
+        cursor.as[Seq[(K, V)]].map(SeqMap.empty.++)
     }
 
   //def delegateCodec[A, B: Encoder: Decoder](toB: A => B, fromB: B => A): CirceCodec[A] =

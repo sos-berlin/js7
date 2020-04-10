@@ -6,7 +6,7 @@ import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Json, JsonObject}
-import scala.collection.immutable.ListMap
+import scala.collection.immutable.SeqMap
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
@@ -36,10 +36,10 @@ final class CirceUtilsTest extends AnyFreeSpec
   }
 
   "listMapCodec" in {
-    final case class A(a: Int, listMap: ListMap[Int, String])
-    implicit val myListMapCodec = listMapCodec[Int, String]()
+    final case class A(a: Int, listMap: SeqMap[Int, String])
+    implicit val mySeqMapCodec = listMapCodec[Int, String]()
     implicit val aCodec = deriveCodec[A]
-    testJson(A(0, ListMap(1 -> "eins", 2 -> "zwei", 3 -> "drei", 4 -> "vier")),
+    testJson(A(0, SeqMap(1 -> "eins", 2 -> "zwei", 3 -> "drei", 4 -> "vier")),
       json"""{
         "a": 0,
         "listMap": [

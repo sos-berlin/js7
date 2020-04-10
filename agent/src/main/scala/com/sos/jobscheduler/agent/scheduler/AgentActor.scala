@@ -25,7 +25,7 @@ import com.sos.jobscheduler.base.utils.{Closer, SetOnce}
 import com.sos.jobscheduler.common.akkautils.{Akkas, SupervisorStrategies}
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger}
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.system.JavaInformations.javaInformation
 import com.sos.jobscheduler.common.system.SystemInformations.systemInformation
 import com.sos.jobscheduler.core.common.ActorRegister
@@ -297,7 +297,7 @@ object AgentActor
     newTaskRunner: TaskRunner.Factory,
     eventIdGenerator: EventIdGenerator,
     keyedEventBus: StampedKeyedEventBus)
-    (implicit closer: Closer, scheduler: Scheduler, iox: IOExecutor)
+    (implicit closer: Closer, scheduler: Scheduler)
   {
     def apply(terminatePromise: Promise[AgentTermination.Terminate]) =
       new AgentActor(terminatePromise, agentConfiguration, newTaskRunner, eventIdGenerator, keyedEventBus)

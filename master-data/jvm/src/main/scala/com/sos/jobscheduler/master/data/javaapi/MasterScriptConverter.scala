@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.master.data.javaapi
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils.{RichCirceString, RichJson}
-import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.JavaChecked
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPrinter}

@@ -104,7 +104,7 @@ extends FileBased
       case (position, Some(label) @: _) => (label, position)
     } .groupBy(_._1)
       .view
-      .filter(_._2.lengthCompare(1) > 0)
+      .filter(_._2.lengthIs > 1)
       .mapValues(_.map(_._2))
       .map { case (label, positions) =>
         Left(Problem(s"Label '${label.string}' is duplicated at positions " + positions.mkString(", ")))

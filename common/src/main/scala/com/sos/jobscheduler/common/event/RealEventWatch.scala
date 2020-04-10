@@ -179,7 +179,7 @@ trait RealEventWatch extends EventWatch
         case Some(stampeds) =>
           var lastEventId = after
           val eventIterator = stampeds
-            .map { o => lastEventId = o.eventId; o }
+            .tapEach { o => lastEventId = o.eventId }
             .collect { case stamped if collect isDefinedAt stamped.value => stamped map collect }
             .take(limit)
           if (eventIterator.isEmpty) {

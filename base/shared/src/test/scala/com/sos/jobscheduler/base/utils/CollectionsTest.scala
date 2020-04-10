@@ -233,14 +233,6 @@ final class CollectionsTest extends AnyFreeSpec
       assert(intercept[NoSuchElementException] { m(2) }.getMessage == "NO SUCH KEY: 2")
     }
   }
-
-  "Vector.build" in {
-    assert(Vector.build[Int] { builder => builder += 7} == Vector(7))
-  }
-
-  "Array.build" in {
-    assert(Array.build[Int] { builder => builder += 7 } sameElements Array(7))
-  }
 }
 
 private object CollectionsTest {

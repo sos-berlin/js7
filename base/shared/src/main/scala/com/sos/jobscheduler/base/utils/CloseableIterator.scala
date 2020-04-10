@@ -56,6 +56,9 @@ trait CloseableIterator[+A] extends Iterator[A] with AutoCloseable
   override def flatMap[B](f: A => IterableOnce[B]): CloseableIterator[B] =
     wrap(super.flatMap(f))
 
+  override def tapEach[U](f: A => U): CloseableIterator[A] =
+    wrap(super.tapEach(f))
+
   override def collect[B](pf: PartialFunction[A, B]): CloseableIterator[B] =
     wrap(super.collect[B](pf))
 

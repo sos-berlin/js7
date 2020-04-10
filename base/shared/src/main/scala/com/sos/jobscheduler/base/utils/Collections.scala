@@ -6,9 +6,9 @@ import scala.annotation.tailrec
 import scala.collection.immutable.VectorBuilder
 import scala.collection.{BufferedIterator, mutable}
 import scala.jdk.CollectionConverters._
-import scala.reflect.ClassTag
 
-object Collections {
+object Collections
+{
   object implicits {
     implicit final class RichIndexedSeq[A](private val underlying: IndexedSeq[A]) extends AnyVal {
       def get(i: Int): Option[A] =
@@ -155,24 +155,6 @@ object Collections {
         if (delegate contains kv._1) throw new DuplicateKeyException(s"Key ${kv._1} is already known")
         delegate += kv
       }
-    }
-  }
-
-  implicit final class RichVectorCompanion(private val underlying: Vector.type) extends AnyVal {
-    @deprecated
-    def build[A](body: VectorBuilder[A] => Unit): Vector[A] = {
-      val b = new VectorBuilder[A]
-      body(b)
-      b.result
-    }
-  }
-
-  implicit final class RichArrayCompanion(private val underlying: Array.type) extends AnyVal {
-    @deprecated
-    def build[A: ClassTag](body: mutable.ArrayBuilder[A] => Unit): Array[A] = {
-      val b = mutable.ArrayBuilder.make[A]
-      body(b)
-      b.result()
     }
   }
 

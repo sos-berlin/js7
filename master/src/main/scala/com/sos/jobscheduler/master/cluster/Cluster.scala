@@ -385,7 +385,6 @@ final class Cluster(
             .map { case (stampedEvents, state) =>
               for (stamped <- stampedEvents.lastOption) proceed(state, stamped.eventId)
               ClusterCommand.Response.Accepted
-
             })
 
       case ClusterCommand.ClusterRecouple(activeId, passiveId) =>
@@ -633,7 +632,7 @@ final class Cluster(
       })
 
     def applyEvents(events: Seq[ClusterEvent], clusterState: ClusterState): Task[Checked[Completed]] =
-      if (events.lengthCompare(1) == 0 && events.head.isInstanceOf[ClusterSwitchedOver])
+      if (events.lengthIs == 1 && events.head.isInstanceOf[ClusterSwitchedOver])
         Task.pure(Checked(Completed))  // FailedOver event is reported by the newly active node
       else
         lock.use(_ =>
