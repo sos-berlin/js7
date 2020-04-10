@@ -7,7 +7,6 @@ import akka.util.Timeout
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.base.utils.Collections._
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, RichThrowableEither}
 import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
 import com.sos.jobscheduler.common.akkautils.DeadLetterActor
@@ -30,6 +29,7 @@ import java.nio.file.Files.createTempDirectory
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicInteger
 import org.scalatest.{BeforeAndAfterAll, Suite}
+import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
@@ -133,12 +133,12 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
 
   protected final def journalJsons(file: Path): Vector[Json] =
     autoClosing(InputStreamJsonSeqReader.open(file)) { reader =>
-      Vector.build[Json] { builder =>
-        try reader.iterator foreach (o => builder += normalizeValues(o.value))
-        catch {
-          case _: EOFException => None
-        }
+      val builder = new VectorBuilder[Json]
+      try reader.iterator foreach (o => builder += normalizeValues(o.value))
+      catch {
+        case _: EOFException => None
       }
+      builder.result()
     }
 
   final def testCommands(prefix: String) = Vector(

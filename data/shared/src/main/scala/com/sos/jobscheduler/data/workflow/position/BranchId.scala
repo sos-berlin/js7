@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.workflow.position
 
-import cats.syntax.either.catsSyntaxEither
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json}
@@ -10,7 +9,8 @@ import scala.language.implicitConversions
   *
   * @author Joacim Zschimmer
   */
-sealed trait BranchId {
+sealed trait BranchId
+{
   private[position] def toSimpleType: Any
 
   def normalized: BranchId

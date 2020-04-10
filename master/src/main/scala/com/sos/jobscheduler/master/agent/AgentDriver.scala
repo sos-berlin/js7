@@ -35,7 +35,6 @@ import com.typesafe.config.ConfigUtil
 import monix.eval.Task
 import monix.execution.atomic.AtomicLong
 import monix.execution.{Cancelable, CancelableFuture, Scheduler}
-import scala.collection.immutable.Seq
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}

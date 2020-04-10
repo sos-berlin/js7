@@ -71,12 +71,10 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.cancelables.SerialCancelable
 import monix.reactive.Observable
-import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise, blocking}
-import scala.util.control.NoStackTrace
 import scala.util.{Failure, Success, Try}
 import shapeless.tag.@@
 
@@ -111,14 +109,14 @@ with MainJournalingActor[Event]
   private val idToOrder = orderRegister mapPartialFunction (_.order)
   private var orderProcessor = new OrderProcessor(PartialFunction.empty, idToOrder)
   private var journalState = JournalState.empty
-  private var recoveredJournalHeader = SetOnce[JournalHeader]
+  private val recoveredJournalHeader = SetOnce[JournalHeader]
   private val suppressOrderIdCheckFor = config.optionAs[String]("jobscheduler.TEST-ONLY.suppress-order-id-check-for")
   private val testAddOrderDelay = config.optionAs[FiniteDuration]("jobscheduler.TEST-ONLY.add-order-delay").fold(Task.unit)(Task.sleep)
 
   private object shutdown {
     val since = SetOnce[Deadline]
     private val shutDown = SetOnce[MasterCommand.ShutDown]
-    private var stillShuttingDownCancelable = SerialCancelable()
+    private val stillShuttingDownCancelable = SerialCancelable()
     private var terminatingAgentDrivers = false
     private var takingSnapshot = false
     private var snapshotTaken = false
@@ -262,7 +260,7 @@ with MainJournalingActor[Event]
         masterMetaState,
         repo,
         pathToAgent = agentRegister.values.map(entry => entry.agentRefPath -> entry.toSnapshot).toMap,
-        orderRegister.mapValues(_.order).toMap)
+        orderRegister.view.mapValues(_.order).toMap)
     }
 
   def receive = {
@@ -666,7 +664,7 @@ with MainJournalingActor[Event]
         persist(MasterTestEvent, async = true)(_ =>
           Right(MasterCommand.Response.Accepted))
 
-      case _: MasterCommand.InternalClusterCommand =>
+      case _ =>
         // Handled by MasterCommandExecutor
         Future.failed(new NotImplementedError)
     }
@@ -1000,8 +998,6 @@ private[master] object MasterOrderKeeper
           }
       }
   }
-
-  private class StartingClusterCanceledException extends Exception with NoStackTrace
 
   object MasterReadyTestIncident
 }

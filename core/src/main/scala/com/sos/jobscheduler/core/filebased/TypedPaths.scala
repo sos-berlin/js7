@@ -1,13 +1,10 @@
 package com.sos.jobscheduler.core.filebased
 
-import cats.instances.either._
-import cats.syntax.flatMap._
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
 import java.io.File.separator
 import java.nio.file.Path
-import scala.collection.immutable.Iterable
 
 /**
   * @author Joacim Zschimmer

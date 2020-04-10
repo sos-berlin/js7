@@ -7,7 +7,6 @@ import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.data.event.EventId
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
-import scala.collection.immutable.Seq
 import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._

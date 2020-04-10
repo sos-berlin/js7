@@ -16,7 +16,6 @@ import com.sos.jobscheduler.master.data.{MasterCommand, MasterOverview, MasterSn
 import io.circe.{Decoder, Encoder}
 import monix.eval.Task
 import monix.reactive.Observable
-import scala.collection.immutable.Seq
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
 import scodec.bits.ByteVector

@@ -20,7 +20,6 @@ import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import com.sos.jobscheduler.master.web.master.api.order.OrderRoute._
 import io.circe.Json
 import monix.execution.Scheduler
-import scala.collection.immutable.Seq
 
 /**
   * @author Joacim Zschimmer

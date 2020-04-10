@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.filebased
 
-import scala.collection.immutable.IndexedSeq
 
 /**
   * @author Joacim Zschimmer

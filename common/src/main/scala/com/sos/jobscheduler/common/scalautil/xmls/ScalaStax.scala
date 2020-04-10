@@ -5,7 +5,7 @@ import com.sos.jobscheduler.common.scalautil.ScalaThreadLocal._
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.xml.stream.XMLInputFactory
 import javax.xml.stream.events.{Attribute, StartElement}
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object ScalaStax {
   private val logger = Logger(getClass)

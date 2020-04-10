@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.job
 
-import cats.syntax.either._
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition, _}

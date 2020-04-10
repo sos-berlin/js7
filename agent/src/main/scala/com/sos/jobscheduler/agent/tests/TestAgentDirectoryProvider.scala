@@ -16,7 +16,7 @@ import com.sos.jobscheduler.core.crypt.silly.{SillySignature, SillySigner}
 import com.sos.jobscheduler.core.filebased.FileBasedSigner
 import com.sos.jobscheduler.data.workflow.Workflow
 import java.nio.file.Files.{createDirectories, createDirectory, createTempDirectory, delete}
-import java.nio.file.{Files, Path}
+import java.nio.file.Path
 import scala.util.control.NonFatal
 
 trait TestAgentDirectoryProvider extends HasCloser

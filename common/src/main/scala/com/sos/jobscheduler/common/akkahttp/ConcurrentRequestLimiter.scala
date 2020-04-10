@@ -54,7 +54,7 @@ extends Directive0
         logger.debug(s"limit=$limit busy=$busy Request #$number timed out")
       }
     }
-    promise.tryCompleteWith(completeWithTooManyRequests(requestContext))
+    promise.completeWith(completeWithTooManyRequests(requestContext))
   }
 
   private def completeWithTooManyRequests(requestContext: RequestContext) =

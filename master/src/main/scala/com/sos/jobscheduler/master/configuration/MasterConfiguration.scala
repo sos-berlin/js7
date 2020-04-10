@@ -23,9 +23,7 @@ import java.net.InetSocketAddress
 import java.nio.file.Files.createDirectory
 import java.nio.file.{Files, Path}
 import java.time.ZoneId
-import scala.collection.JavaConverters._
-import scala.collection.immutable.Seq
-
+import scala.jdk.CollectionConverters._
 /**
   * @author Joacim Zschimmer
   */

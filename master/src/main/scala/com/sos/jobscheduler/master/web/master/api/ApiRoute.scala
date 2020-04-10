@@ -59,6 +59,6 @@ with LogRoute
 }
 
 object ApiRoute {
-  private val StandardResponseHeaders = Array(
+  private val StandardResponseHeaders = Vector(
     `Cache-Control`(`max-age`(0), `no-store`, `no-cache`))
 }

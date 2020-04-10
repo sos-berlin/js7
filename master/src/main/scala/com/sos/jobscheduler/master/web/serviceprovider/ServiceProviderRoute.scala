@@ -10,8 +10,7 @@ import com.sos.jobscheduler.common.akkahttp.StandardDirectives.combineRoutes
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.master.web.serviceprovider.ServiceProviderRoute._
 import java.util.ServiceLoader
-import scala.collection.JavaConverters._
-import scala.collection.immutable.Seq
+import scala.jdk.CollectionConverters._
 
 /**
   * @author Joacim Zschimmer

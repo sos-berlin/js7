@@ -1,8 +1,6 @@
 package com.sos.jobscheduler.agent
 
 import akka.actor.{ActorRef, ActorSystem, Props}
-import cats.instances.either._
-import cats.syntax.flatMap._
 import com.google.inject.Stage.PRODUCTION
 import com.google.inject.{Guice, Injector, Module}
 import com.sos.jobscheduler.agent.RunningAgent._
@@ -139,7 +137,7 @@ object RunningAgent {
       "main")
     implicit val scheduler = injector.instance[Scheduler]
 
-    agentConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", _ + "/agent")
+    agentConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", o => s"$o/agent")
 
     val sessionTokenFile = agentConfiguration.stateDirectory / "session-token"
     val sessionToken = blocking {

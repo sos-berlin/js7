@@ -5,8 +5,6 @@ import com.sos.jobscheduler.agent.data.views.AgentOverview
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import monix.eval.Task
-import scala.collection.immutable.Seq
-
 /**
   * @author Joacim Zschimmer
   */

@@ -11,7 +11,6 @@ import java.io.{ByteArrayInputStream, InputStream}
 import java.nio.charset.StandardCharsets.{US_ASCII, UTF_8}
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import scala.collection.immutable.Seq
 import scala.language.reflectiveCalls
 
 /**

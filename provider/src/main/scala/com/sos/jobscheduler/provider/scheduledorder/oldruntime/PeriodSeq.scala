@@ -2,10 +2,9 @@ package com.sos.jobscheduler.provider.scheduledorder.oldruntime
 
 import com.sos.jobscheduler.provider.scheduledorder.oldruntime.PeriodSeq._
 import java.time.LocalTime
-import scala.collection.immutable
 import scala.language.implicitConversions
 
-abstract sealed case class PeriodSeq(orderedSeq: immutable.Seq[Period]) {
+abstract sealed case class PeriodSeq(orderedSeq: Seq[Period]) {
 
   requireOrderedAndNotOverlapping(orderedSeq)
 

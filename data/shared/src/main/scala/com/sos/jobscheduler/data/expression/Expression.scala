@@ -114,9 +114,9 @@ object Expression
     override def toString =
       if (string.isEmpty) "\"\""
       else if (string contains '\'')
-        '"' + string + '"'
+        s""""$string""""
       else
-        '\'' + string + '\''
+        s"'$string'"
   }
 
   final case class NamedValue(where: NamedValue.Where, what: NamedValue.What, default: Option[Expression] = None)

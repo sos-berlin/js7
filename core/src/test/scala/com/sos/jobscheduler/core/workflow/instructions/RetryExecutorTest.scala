@@ -11,7 +11,6 @@ import com.sos.jobscheduler.data.workflow.instructions.{Gap, Retry, TryInstructi
 import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import org.scalatest.FreeSpec
-import scala.collection.immutable.Seq
 import scala.concurrent.duration._
 
 /**

@@ -4,14 +4,13 @@ import cats.effect.Resource
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.state.LockKeeper._
 import monix.eval.Task
-import monix.execution.Scheduler
 import monix.execution.atomic.AtomicBoolean
 import scala.collection.mutable
 import scala.concurrent.Promise
 
 // TODO Timeout, web service for inspection ?
 
-private[state] final class LockKeeper[K](implicit s: Scheduler)
+private[state] final class LockKeeper[K]
 {
   private val keyMap = mutable.Map[Any, mutable.Queue[Promise[Token]]]()
 
@@ -55,14 +54,14 @@ private[state] final class LockKeeper[K](implicit s: Scheduler)
     }
 
   override def toString =
-    "LogKeeper(" +
+    s"LogKeeper(${
       synchronized {
         (for ((key, queue) <- keyMap) yield
           if (queue.isEmpty) key.toString
-          else key + " (" + queue.length + " waiting)"
+          else s"$key (${queue.length} waiting)"
         ).mkString(", ")
-      } +
-      ")"
+      }
+    })"
 
   private case class GlobalEntry(key: Any, promise: Promise[Token])
 

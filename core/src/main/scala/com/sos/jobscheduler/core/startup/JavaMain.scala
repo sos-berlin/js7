@@ -9,7 +9,6 @@ import com.sos.jobscheduler.common.utils.JavaShutdownHook
 import com.sos.jobscheduler.core.message.ProblemCodeMessages
 import com.sos.jobscheduler.core.startup.StartUp.printlnWithClock
 import com.typesafe.config.Config
-import scala.collection.immutable.Seq
 import scala.concurrent.duration.FiniteDuration
 
 object JavaMain

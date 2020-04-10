@@ -4,7 +4,6 @@ import com.sos.jobscheduler.data.event.{<-:, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderCanceledFat, OrderFailedFat, OrderFinishedFat, OrderForkedFat, OrderJoinedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStdWrittenFat}
 import com.sos.jobscheduler.data.fatevent.{FatEvent, OrderFatEvent}
 import com.sos.jobscheduler.data.order.OrderId
-import scala.collection.immutable.Seq
 import scala.collection.mutable
 
 /**

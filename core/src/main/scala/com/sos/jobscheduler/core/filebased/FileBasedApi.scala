@@ -6,7 +6,6 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
 import com.sos.jobscheduler.data.event.Stamped
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedsOverview, TypedPath}
 import monix.eval.Task
-import scala.collection.immutable.Seq
 
 /**
   * @author Joacim Zschimmer

@@ -12,7 +12,7 @@ import javax.xml.stream.events.{Characters, Comment, EndDocument, EndElement, St
 import javax.xml.stream.{Location, XMLEventReader, XMLInputFactory}
 import javax.xml.transform.Source
 import scala.annotation.tailrec
-import scala.collection.{immutable, mutable}
+import scala.collection.mutable
 import scala.language.implicitConversions
 import scala.reflect.ClassTag
 
@@ -86,13 +86,13 @@ extends AutoCloseable {
     result
   }
 
-  def parseEachRepeatingElement[A](name: String)(body: => A): immutable.IndexedSeq[A] =
+  def parseEachRepeatingElement[A](name: String)(body: => A): IndexedSeq[A] =
     parseElements[A] { case `name` => parseElement() { body } } map { _._2 }
 
   def forEachStartElement[A](body: PartialFunction[String, A]): ConvertedElementMap[A] =
     new ConvertedElementMap(parseElements[A](body))
 
-  def parseElements[A](body: PartialFunction[String, A]): immutable.IndexedSeq[(String, A)] = {
+  def parseElements[A](body: PartialFunction[String, A]): IndexedSeq[(String, A)] = {
     val results = Vector.newBuilder[(String, A)]
     val liftedBody = body.lift
     @tailrec def g(): Unit = peek match {
@@ -267,13 +267,13 @@ object ScalaXMLEventReader {
 
     def requireAllAttributesRead(): Unit = {
       if (keySet != readAttributes) {
-        val names = keySet -- readAttributes
+        val names = keySet.toSet -- readAttributes
         if (names.nonEmpty) throw new UnparsedAttributesException(names.toImmutableSeq)
       }
     }
   }
 
-  final class ConvertedElementMap[A] private[xmls](pairs: immutable.IndexedSeq[(String, A)]) {
+  final class ConvertedElementMap[A] private[xmls](pairs: IndexedSeq[(String, A)]) {
 
     def one[B <: A : ClassTag]: B =
       option[B] getOrElse { throw new NoSuchElementException(s"No element for type ${implicitClass[B].getSimpleName}") }
@@ -293,20 +293,20 @@ object ScalaXMLEventReader {
       result.headOption map cast[B]
     }
 
-    def byClass[B <: A : ClassTag]: immutable.IndexedSeq[B] =
+    def byClass[B <: A : ClassTag]: IndexedSeq[B] =
       values collect assignableFrom[B]
 
-    def byName[B <: A : ClassTag](elementName: String): immutable.Seq[B] =
+    def byName[B <: A : ClassTag](elementName: String): Seq[B] =
       apply(elementName) map cast[B]
 
-    def values: immutable.IndexedSeq[A] =
+    def values: IndexedSeq[A] =
       pairs map { _._2 }
 
-    def apply(elementName: String): immutable.Seq[A] =
+    def apply(elementName: String): Seq[A] =
       pairs collect { case (k, v) if k == elementName => v }
   }
 
-  final class UnparsedAttributesException private[xmls](val names: immutable.Seq[String]) extends RuntimeException {
+  final class UnparsedAttributesException private[xmls](val names: Seq[String]) extends RuntimeException {
     override def getMessage = s"Unknown XML attributes " + (names map { "'" + _ + "'" } mkString ", ")
   }
 

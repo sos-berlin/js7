@@ -7,7 +7,6 @@ import com.sos.jobscheduler.data.workflow.Instruction.Labeled
 import com.sos.jobscheduler.data.workflow.position._
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json}
-import scala.collection.immutable.Seq
 import scala.language.implicitConversions
 
 /**

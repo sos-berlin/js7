@@ -18,7 +18,6 @@ import com.sos.jobscheduler.data.order.{Order, OrderId}
 import io.circe.generic.JsonCodec
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json, JsonObject}
-import scala.collection.immutable.Seq
 import scala.concurrent.duration.FiniteDuration
 
 /**

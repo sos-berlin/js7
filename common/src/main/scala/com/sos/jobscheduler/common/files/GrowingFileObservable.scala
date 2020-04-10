@@ -39,7 +39,7 @@ extends Observable[ByteVector]
         }
       }
 
-    def complete() {
+    def complete(): Unit = {
       try reader.close()
       finally subscriber.onComplete()
     }

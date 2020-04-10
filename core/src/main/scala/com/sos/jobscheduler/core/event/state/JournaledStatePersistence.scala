@@ -12,9 +12,7 @@ import com.sos.jobscheduler.core.event.state.StateJournalingActor.{PersistFuncti
 import com.sos.jobscheduler.data.event.{Event, JournaledState, KeyedEvent, Stamped}
 import monix.eval.Task
 import monix.execution.Scheduler
-import scala.collection.immutable.Seq
 import scala.concurrent.Promise
-import scala.language.higherKinds
 import scala.reflect.runtime.universe._
 import shapeless.tag.@@
 

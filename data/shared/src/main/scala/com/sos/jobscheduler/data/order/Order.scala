@@ -15,7 +15,6 @@ import com.sos.jobscheduler.data.workflow.WorkflowId
 import com.sos.jobscheduler.data.workflow.position.{InstructionNr, Position, WorkflowPosition}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, DecodingFailure, Encoder, JsonObject}
-import scala.collection.immutable.Seq
 import scala.reflect.ClassTag
 
 /**

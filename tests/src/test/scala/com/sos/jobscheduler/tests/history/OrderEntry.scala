@@ -8,7 +8,6 @@ import com.sos.jobscheduler.data.system.StdoutOrStderr
 import com.sos.jobscheduler.data.workflow.position.WorkflowPosition
 import com.sos.jobscheduler.tests.history.OrderEntry._
 import io.circe.{Decoder, Encoder, Json}
-import scala.collection.immutable.Seq
 
 /**
   * @author Joacim Zschimmer

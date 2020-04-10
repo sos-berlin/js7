@@ -4,7 +4,6 @@ import cats.effect.{Resource, SyncIO}
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.data.crypt.{GenericSignature, Signature, SignedString, SignerId}
 import java.io.InputStream
-import scala.collection.immutable.Seq
 
 /**
   * @author Joacim Zschimmer

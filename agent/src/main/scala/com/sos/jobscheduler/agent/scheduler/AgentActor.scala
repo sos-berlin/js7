@@ -56,7 +56,7 @@ private[agent] final class AgentActor @Inject private(
   newTaskRunner: TaskRunner.Factory,
   eventIdGenerator: EventIdGenerator,
   keyedEventBus: StampedKeyedEventBus)
-  (implicit closer: Closer, scheduler: Scheduler, iox: IOExecutor)
+  (implicit closer: Closer, scheduler: Scheduler)
 extends MainJournalingActor[AgentEvent] {
 
   import agentConfiguration.{akkaAskTimeout, stateDirectory}
@@ -70,7 +70,7 @@ extends MainJournalingActor[AgentEvent] {
     "Journal")))
   private val masterToOrderKeeper = new MasterRegister
   private val signatureVerifier = GenericSignatureVerifier(agentConfiguration.config).orThrow
-  private var shutDownCommand = SetOnce[AgentCommand.ShutDown]
+  private val shutDownCommand = SetOnce[AgentCommand.ShutDown]
   private def terminating = shutDownCommand.isDefined
   private val terminateCompleted = Promise[Completed]()
 

@@ -8,7 +8,6 @@ import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.data.event.Stamped
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId}
 import monix.eval.Task
-import scala.collection.immutable.Seq
 import shapeless.tag.@@
 
 private[master] class MainOrderApi(orderKeeper: Task[ActorRef @@ MasterOrderKeeper])

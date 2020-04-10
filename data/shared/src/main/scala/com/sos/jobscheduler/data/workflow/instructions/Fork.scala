@@ -13,7 +13,6 @@ import com.sos.jobscheduler.data.workflow.position.BranchId
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
 import io.circe._
 import io.circe.syntax._
-import scala.collection.immutable.{IndexedSeq, Seq}
 import scala.language.implicitConversions
 
 /**

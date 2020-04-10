@@ -7,8 +7,6 @@ import com.sos.jobscheduler.core.event.journal.watch.JournalIndex._
 import com.sos.jobscheduler.data.event.EventId
 import java.util.Arrays.binarySearch
 import org.jetbrains.annotations.TestOnly
-import scala.collection.immutable.Seq
-
 /**
   * @author Joacim Zschimmer
   */

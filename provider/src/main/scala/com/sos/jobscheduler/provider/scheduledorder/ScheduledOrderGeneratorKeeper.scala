@@ -6,7 +6,6 @@ import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
 import com.sos.jobscheduler.provider.scheduledorder.ScheduledOrderGeneratorKeeper._
 import com.sos.jobscheduler.provider.scheduledorder.oldruntime.InstantInterval
-import scala.collection.immutable.{Iterable, Seq}
 
 /**
   * @author Joacim Zschimmer

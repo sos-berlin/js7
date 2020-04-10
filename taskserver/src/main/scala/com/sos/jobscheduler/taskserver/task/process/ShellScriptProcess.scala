@@ -10,8 +10,8 @@ import com.sos.jobscheduler.taskserver.task.process.RichProcess._
 import java.io.{InputStream, InputStreamReader, Reader, Writer}
 import java.nio.file.Path
 import scala.annotation.tailrec
-import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext
+import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 
 /**

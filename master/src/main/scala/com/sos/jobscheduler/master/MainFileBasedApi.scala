@@ -11,7 +11,6 @@ import com.sos.jobscheduler.data.event.Stamped
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, FileBasedsOverview, TypedPath}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import monix.eval.Task
-import scala.collection.immutable.Seq
 import shapeless.tag.@@
 
 private[master] final class MainFileBasedApi(

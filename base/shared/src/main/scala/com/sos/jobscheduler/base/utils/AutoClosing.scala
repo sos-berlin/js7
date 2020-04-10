@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.base.utils
 
-import scala.language.higherKinds
 import scala.util.control.{ControlThrowable, NonFatal}
 
 /** Wie java try(AutoCloseable), aber für alle Klassen mit close().

@@ -6,7 +6,6 @@ import monix.eval.Task
 import monix.execution.schedulers.TestScheduler
 import monix.reactive.Observable
 import org.scalatest.FreeSpec
-import scala.collection.immutable._
 import scala.concurrent.Await
 
 /**

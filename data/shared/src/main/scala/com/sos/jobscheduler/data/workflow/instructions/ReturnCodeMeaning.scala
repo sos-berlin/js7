@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.workflow.instructions
 
-import cats.syntax.either.catsSyntaxEither
 import com.sos.jobscheduler.data.job.ReturnCode
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}

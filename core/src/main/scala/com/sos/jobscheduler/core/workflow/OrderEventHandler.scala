@@ -9,7 +9,6 @@ import com.sos.jobscheduler.data.order.OrderEvent.{OrderAwaiting, OrderForked, O
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.Execute
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowId}
-import scala.collection.immutable.Seq
 import scala.collection.mutable
 
 /**

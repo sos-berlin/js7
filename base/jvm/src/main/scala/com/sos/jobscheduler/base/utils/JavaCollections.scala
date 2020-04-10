@@ -1,9 +1,6 @@
 package com.sos.jobscheduler.base.utils
 
-import scala.collection.JavaConverters._
-import scala.collection.immutable.{Seq, Vector}
-import scala.language.implicitConversions
-
+import scala.jdk.CollectionConverters._
 /**
   * @author Joacim Zschimmer
   */

@@ -10,8 +10,6 @@ import com.typesafe.config.{Config, ConfigFactory}
 import java.net.InetSocketAddress
 import java.nio.file.{Path, Paths}
 import org.scalatest.FreeSpec
-import scala.collection.immutable.Seq
-
 /**
   * @author Joacim Zschimmer
   */

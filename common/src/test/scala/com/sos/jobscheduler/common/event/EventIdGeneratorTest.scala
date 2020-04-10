@@ -1,15 +1,15 @@
 package com.sos.jobscheduler.common.event
 
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.event
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.data.event.EventId
 import java.util.concurrent.ConcurrentHashMap
 import org.scalatest.FreeSpec
-import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.jdk.CollectionConverters._
 
 /**
   * @author Joacim Zschimmer

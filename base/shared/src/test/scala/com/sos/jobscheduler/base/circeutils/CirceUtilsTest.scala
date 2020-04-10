@@ -7,7 +7,7 @@ import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Json, JsonObject}
 import org.scalatest.FreeSpec
-import scala.collection.immutable._
+import scala.collection.immutable.ListMap
 
 /**
   * @author Joacim Zschimmer

@@ -3,7 +3,6 @@ package com.sos.jobscheduler.core.crypt
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.data.crypt.Signature
-import scala.collection.immutable.Seq
 
 trait MessageSigner
 {

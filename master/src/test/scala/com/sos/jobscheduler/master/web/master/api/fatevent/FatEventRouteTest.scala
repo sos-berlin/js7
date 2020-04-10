@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.master.web.master.api.fatevent
 
 import akka.http.scaladsl.model.MediaTypes.`application/json`
-import akka.http.scaladsl.model.StatusCode
 import akka.http.scaladsl.model.StatusCodes.{OK, TooManyRequests}
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.testkit.RouteTestTimeout
@@ -41,7 +40,6 @@ import java.util.UUID.randomUUID
 import monix.execution.Scheduler
 import org.scalatest.{Args, FreeSpec}
 import scala.annotation.tailrec
-import scala.collection.immutable.Seq
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
@@ -296,6 +294,4 @@ object FatEventRouteTest
       })
 
   private def fatEventsAfter(after: EventId) = TestFatEvents dropWhile (_.eventId <= after)
-
-  private class ResponseException(val status: StatusCode, message: String) extends RuntimeException(s"$status - $message")
 }

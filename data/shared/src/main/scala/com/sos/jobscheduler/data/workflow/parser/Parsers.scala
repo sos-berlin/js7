@@ -10,7 +10,7 @@ object Parsers
 {
   /** Parses the whole string, return a `Checked`. */
   def checkedParse[T, V, R](string: String, parser: P[_] => P[T])
-    (implicit s: Implicits.Sequencer[T, V, R], whitespace: P[_] => P[Unit])
+    (implicit whitespace: P[_] => P[Unit])
   : Checked[T] = {
     def complete(implicit ctx: P[_]): P[T] = parser(ctx) ~ End
     parse(string, complete(_)) match {

@@ -6,8 +6,6 @@ import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.{Decoder, Encoder, Json}
 import org.scalatest.FreeSpec
-import scala.collection.immutable.Seq
-
 /**
   * @author Joacim Zschimmer
   */

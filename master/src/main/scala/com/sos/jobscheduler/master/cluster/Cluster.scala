@@ -53,7 +53,6 @@ import monix.execution.atomic.AtomicBoolean
 import monix.execution.cancelables.SerialCancelable
 import monix.execution.{Cancelable, CancelableFuture, Scheduler}
 import monix.reactive.{Observable, OverflowStrategy}
-import scala.collection.immutable.Seq
 import scala.concurrent.Promise
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
@@ -76,8 +75,7 @@ final class Cluster(
   private val journalActor = persistence.journalActor
   private val activationInhibitor = new ActivationInhibitor
   private val fetchingAcks = AtomicBoolean(false)
-  @volatile
-  private var fetchingAcksCancelable = SerialCancelable()
+  private val fetchingAcksCancelable = SerialCancelable()
   private val fetchingAcksTerminatedUnexpectedlyPromise = Promise[Checked[Completed]]()
   @volatile
   private var switchoverAcknowledged = false
@@ -195,7 +193,7 @@ final class Cluster(
                     logger.info(s"Removing journal file written after failover: ${recoveredJournalFile.file.getFileName}")
                     truncated = true
                     val deleteFile = journalFiles.last.file
-                    Files.move(deleteFile, Paths.get(deleteFile + "~DELETED-AFTER-FAILOVER"), REPLACE_EXISTING)  // Keep the file for debugging
+                    Files.move(deleteFile, Paths.get(s"$deleteFile~DELETED-AFTER-FAILOVER"), REPLACE_EXISTING)  // Keep the file for debugging
                     journalMeta.updateSymbolicLink(journalFiles.head.file)
                     journalFiles.head
                   } else
@@ -280,7 +278,7 @@ final class Cluster(
   = {
     val common = new ClusterCommon(activationInhibitor, clusterWatch, clusterConf, testEventBus)
     new PassiveClusterNode(ownId, idToUri, activeId, journalMeta, recovered,
-      otherFailedOver, journalConf, clusterConf, eventIdGenerator, common)(actorSystem)
+      otherFailedOver, journalConf, clusterConf, eventIdGenerator, common)
   }
 
   def automaticallyAppointConfiguredBackupNode(): Task[Checked[Completed]] =

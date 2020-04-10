@@ -34,7 +34,6 @@ import com.sos.jobscheduler.tests.testenv.DirectoryProvider.StdoutOutput
 import java.time.ZoneId
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
-import scala.collection.immutable.IndexedSeq
 import scala.collection.mutable
 import scala.language.implicitConversions
 

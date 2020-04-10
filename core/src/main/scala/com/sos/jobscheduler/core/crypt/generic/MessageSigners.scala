@@ -6,7 +6,6 @@ import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.core.crypt.MessageSigner
 import com.sos.jobscheduler.core.crypt.pgp.PgpSigner
 import com.sos.jobscheduler.core.crypt.silly.SillySigner
-import scala.collection.immutable.Seq
 
 /**
   * @author Joacim Zschimmer

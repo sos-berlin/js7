@@ -6,7 +6,6 @@ import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Ascii.isAsciiDigit
 import java.time._
 import org.jetbrains.annotations.TestOnly
-import scala.language.implicitConversions
 import scala.math.abs
 
 object JavaTime
@@ -157,7 +156,7 @@ object JavaTime
       else if (a >= 100)
         formatNumber(nanos / 1000.0, 1000, "µs")
       else
-        nanos + "ns"
+        s"${nanos}ns"
     }
 
     private def bigPretty = {

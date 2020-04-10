@@ -2,7 +2,6 @@ package com.sos.jobscheduler.core.event.journal
 
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Stamped}
-import scala.collection.immutable.Seq
 import scala.concurrent.Future
 import scala.concurrent.duration._
 

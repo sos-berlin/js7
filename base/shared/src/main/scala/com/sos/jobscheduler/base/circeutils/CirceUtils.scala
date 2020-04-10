@@ -9,7 +9,7 @@ import io.circe.generic.decoding.DerivedDecoder
 import io.circe.generic.encoding.DerivedAsObjectEncoder
 import io.circe.syntax.EncoderOps
 import io.circe.{CursorOp, Decoder, DecodingFailure, Encoder, HCursor, Json, JsonNumber, JsonObject, Printer}
-import scala.collection.immutable.{ListMap, Seq}
+import scala.collection.immutable.ListMap
 import shapeless.Lazy
 
 /**
@@ -196,7 +196,7 @@ object CirceUtils
 
   implicit final class JsonStringInterpolator(private val sc: StringContext) extends AnyVal {
     def json(args: Any*): Json = {
-      sc.checkLengths(args)
+      StringContext.checkLengths(args, sc.parts)
       val p = sc.parts.iterator
       val builder = new StringBuilder(sc.parts.map(_.length).sum + 50)
       builder.append(p.next())

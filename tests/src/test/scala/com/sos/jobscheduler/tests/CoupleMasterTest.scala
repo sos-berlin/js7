@@ -94,5 +94,5 @@ private object CoupleMasterTest
       Execute(WorkflowJob(agentRefPath, TestExecutablePath))))
 
   private def lastEventIdOf[E <: Event](stamped: IterableOnce[Stamped[KeyedEvent[E]]]): EventId =
-    stamped.toVector.last.eventId
+    stamped.iterator.to(Iterable).last.eventId
 }

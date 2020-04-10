@@ -32,7 +32,6 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
-import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._

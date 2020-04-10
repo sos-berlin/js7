@@ -2,7 +2,6 @@ package com.sos.jobscheduler.data.command
 
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
 import com.sos.jobscheduler.base.problem.Checked
-import scala.collection.immutable.Seq
 import scala.collection.mutable
 
 /**

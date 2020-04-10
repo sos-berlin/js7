@@ -4,9 +4,7 @@ import com.sos.jobscheduler.base.generic.GenericString
 import com.sos.jobscheduler.base.utils.Collections.RichMap
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import io.circe.{Decoder, Encoder, Json, JsonObject}
-import scala.collection.JavaConverters._
-import scala.collection.immutable.Seq
-
+import scala.jdk.CollectionConverters._
 /**
   * @author Joacim Zschimmer
   */

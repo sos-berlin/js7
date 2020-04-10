@@ -18,6 +18,6 @@ object TimeoutWithSteps
   /** Liefert einen Iterator mit den Zeitpunkten startInstant, startInstant + step, ..., startInstant + timeout.
   */
   def deadlineIterator(start: Deadline, timeout: FiniteDuration, step: FiniteDuration): Iterator[Deadline] =
-    (0L to timeout.toMillis - 1 by step.toMillis).toIterator.map(o => start + o.millis) ++
+    (0L to timeout.toMillis - 1 by step.toMillis).iterator.map(o => start + o.millis) ++
       Iterator(start + timeout)
 }

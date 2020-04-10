@@ -7,8 +7,6 @@ import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.data.event.EventSeq.{Empty, NonEmpty}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
-import scala.collection.immutable.Seq
-import scala.language.higherKinds
 
 /**
   * @author Joacim Zschimmer
@@ -54,7 +52,7 @@ object EventSeq {
   extends EventSeq[M, E] {
     assert(stamped.knownSize != 0)
 
-    override def toString = s"EventSeq.NonEmpty(" + (if (stamped.knownSize >= 0) stamped.knownSize + " events" else "lazy") + ")"
+    override def toString = s"EventSeq.NonEmpty(" + (if (stamped.knownSize >= 0) s"${stamped.knownSize} events" else "lazy") + ")"
   }
 
   final case class Empty(lastEventId: EventId)

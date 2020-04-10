@@ -4,7 +4,7 @@ import com.google.common.collect.{AbstractIterator => GuavaIterator}
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, EventId, Stamped}
 import java.util.NoSuchElementException
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 /**
   * @author Joacim Zschimmer

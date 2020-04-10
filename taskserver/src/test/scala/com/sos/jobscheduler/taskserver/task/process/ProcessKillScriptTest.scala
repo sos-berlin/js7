@@ -20,10 +20,10 @@ import java.lang.ProcessBuilder.Redirect.INHERIT
 import java.nio.file.Files._
 import java.nio.file.Path
 import org.scalatest.FreeSpec
-import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Future, blocking}
+import scala.jdk.CollectionConverters._
 
 /**
   * JS-1558 Agent includes kill scripts

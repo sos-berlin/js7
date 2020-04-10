@@ -4,8 +4,8 @@ import com.sos.jobscheduler.base.utils.CloserTest._
 import java.util.concurrent.ConcurrentLinkedQueue
 import monix.execution.atomic.AtomicBoolean
 import org.scalatest.FreeSpec
-import scala.collection.JavaConverters._
 import scala.collection.mutable
+import scala.jdk.CollectionConverters._
 import scala.util.control.NoStackTrace
 
 /**

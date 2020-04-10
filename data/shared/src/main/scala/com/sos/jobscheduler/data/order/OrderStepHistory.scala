@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.data.order
 
 import com.sos.jobscheduler.data.workflow.position.Position
-import scala.collection.immutable.Seq
 
 final case class OrderStepHistory(steps: Seq[OrderStepHistory.StepOutcome])
 

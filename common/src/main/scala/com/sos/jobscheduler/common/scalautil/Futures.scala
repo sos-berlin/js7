@@ -3,10 +3,9 @@ package com.sos.jobscheduler.common.scalautil
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.StackTraces._
 import java.util.concurrent.TimeoutException
-import scala.collection.generic.CanBuildFrom
+import scala.collection.BuildFrom
 import scala.concurrent._
 import scala.concurrent.duration._
-import scala.language.higherKinds
 import scala.reflect.runtime.universe._
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
@@ -116,16 +115,16 @@ object Futures {
       /**
         * Awaits the futures completion for the duration or infinite.
         */
-      def await(duration: Option[FiniteDuration])(implicit ec: ExecutionContext, cbf: CanBuildFrom[M[Future[A]], A, M[A]], MA: TypeTag[M[A]]): M[A] =
+      def await(duration: Option[FiniteDuration])(implicit ec: ExecutionContext, cbf: BuildFrom[M[Future[A]], A, M[A]], MA: TypeTag[M[A]]): M[A] =
         duration match {
           case Some(o) => await(o)
           case None => awaitInfinite
         }
 
-      def await(duration: FiniteDuration)(implicit ec: ExecutionContext, cbf: CanBuildFrom[M[Future[A]], A, M[A]], MA: TypeTag[M[A]]): M[A] =
+      def await(duration: FiniteDuration)(implicit ec: ExecutionContext, cbf: BuildFrom[M[Future[A]], A, M[A]], MA: TypeTag[M[A]]): M[A] =
         Future.sequence(delegate)(cbf, ec) await duration
 
-      def awaitInfinite(implicit ec: ExecutionContext, cbf: CanBuildFrom[M[Future[A]], A, M[A]]): M[A] =
+      def awaitInfinite(implicit ec: ExecutionContext, cbf: BuildFrom[M[Future[A]], A, M[A]]): M[A] =
         Future.sequence(delegate)(cbf, ec).awaitInfinite
     }
 

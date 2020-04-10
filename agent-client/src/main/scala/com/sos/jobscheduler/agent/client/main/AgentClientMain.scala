@@ -10,8 +10,7 @@ import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.log.Log4j
 import com.sos.jobscheduler.common.scalautil.Logger
 import java.nio.file.{Files, Path}
-import scala.collection.JavaConverters._
-import scala.io
+import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 
 /**
@@ -23,7 +22,7 @@ object AgentClientMain {
 
   def main(args: Array[String]): Unit =
     try {
-      val rc = run(args, println)
+      val rc = run(args.toIndexedSeq, println)
       Log4j.shutdown()
       sys.runtime.exit(rc)
     }

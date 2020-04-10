@@ -3,8 +3,6 @@ package com.sos.jobscheduler.core.cluster
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
-import scala.collection.immutable.Seq
-
 sealed trait ClusterWatchMessage
 
 final case class ClusterWatchEvents(

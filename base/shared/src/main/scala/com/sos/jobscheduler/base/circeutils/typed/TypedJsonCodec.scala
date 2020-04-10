@@ -20,7 +20,7 @@ extends Encoder.AsObject[A] with Decoder[A]
     nameToClass.map(o => o._2 -> o._1).toMap
 
   private val classToNameJson: Map[Class[_ <: A], Json/*String*/] =
-    Map()/*force eagerness*/ ++ _classToName.mapValues(Json.fromString)
+    _classToName.view.mapValues(Json.fromString).toMap
 
   /** Union. */
   def |[B](other: TypedJsonCodec[B]): TypedJsonCodec[Any] = {
@@ -58,7 +58,7 @@ extends Encoder.AsObject[A] with Decoder[A]
   def classToName(getClass: Class[_ <: A]): String =
     _classToName(getClass)
 
-  def classes[A1 <: A : ClassTag]: Set[Class[_ <: A1]] =
+  def classes[A1 <: A: ClassTag]: Set[Class[_ <: A1]] =
     classToEncoder.keySet collect {
       case c if implicitClass[A1] isAssignableFrom c => c.asInstanceOf[Class[A1]]
     }

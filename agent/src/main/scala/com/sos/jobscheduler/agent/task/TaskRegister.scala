@@ -11,7 +11,6 @@ import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.process.ProcessSignal.SIGTERM
 import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import org.jetbrains.annotations.TestOnly
-import scala.collection.immutable.Seq
 import scala.concurrent.Future
 
 /**

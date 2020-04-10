@@ -10,9 +10,7 @@ import com.sos.jobscheduler.common.log.Log4j
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.master.client.AkkaHttpMasterTextApi
 import java.nio.file.{Files, Path}
-import scala.collection.JavaConverters._
-import scala.collection.immutable.Seq
-import scala.io
+import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 
 /**

@@ -2,7 +2,6 @@ package com.sos.jobscheduler.data.workflow
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.data.filebased.FileBasedsOverview
-import scala.collection.immutable.Seq
 
 /**
   * @author Joacim Zschimmer

@@ -15,8 +15,6 @@ import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedA
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, FileBasedId_, RepoEvent, TypedPath, VersionId}
 import io.circe.Decoder
 import org.jetbrains.annotations.TestOnly
-import scala.collection.immutable
-import scala.collection.immutable.{Iterable, Seq}
 
 /**
   * Representation of versioned FileBased (configuration objects).
@@ -104,10 +102,10 @@ final case class Repo private(
   def currentTyped[A <: FileBased](implicit A: FileBased.Companion[A]): Map[A#Path, A] =
     typeToPathToCurrentFileBased(A).view.mapValues(_.value).toMap.asInstanceOf[Map[A#Path, A]]
 
-  def currentFileBaseds: immutable.Iterable[FileBased] =
+  def currentFileBaseds: Iterable[FileBased] =
     currentSignedFileBaseds.map(_.value)
 
-  def currentSignedFileBaseds: immutable.Iterable[Signed[FileBased]] =
+  def currentSignedFileBaseds: Iterable[Signed[FileBased]] =
     currentVersion.values.toImmutableIterable
 
   def applyEvents(events: Seq[RepoEvent]): Checked[Repo] = {

@@ -23,9 +23,9 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.delete
 import java.nio.file.Path
 import org.jetbrains.annotations.TestOnly
-import scala.collection.JavaConverters._
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.{ExecutionContext, Future, blocking}
+import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 
 /**

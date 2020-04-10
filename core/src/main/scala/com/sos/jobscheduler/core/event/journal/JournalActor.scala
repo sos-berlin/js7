@@ -34,7 +34,6 @@ import java.nio.file.Path
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import monix.execution.cancelables.SerialCancelable
 import monix.execution.{Cancelable, Scheduler}
-import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, Duration, FiniteDuration}
@@ -57,7 +56,7 @@ extends Actor with Stash
 
   private val logger = Logger.withPrefix[this.type](journalMeta.fileBase.getFileName.toString)
   override val supervisorStrategy = SupervisorStrategies.escalate
-  private var snapshotRequesters = mutable.Set[ActorRef]()
+  private val snapshotRequesters = mutable.Set[ActorRef]()
   private var snapshotSchedule: Cancelable = null
 
   private var journaledState =  BabyJournaledState.empty
@@ -65,7 +64,7 @@ extends Actor with Stash
   /** Originates from `JournalValue`, calculated from recovered journal if not freshly initialized. */
   private var journalHeader: JournalHeader = null
   private var totalRunningSince = now
-  private var journalingObserver = SetOnce[Option[JournalingObserver]]
+  private val journalingObserver = SetOnce[Option[JournalingObserver]]
   private var eventWriter: EventJournalWriter = null
   private var snapshotWriter: SnapshotJournalWriter = null
   private var lastSnapshotTakenEventId = EventId.BeforeFirst
@@ -77,7 +76,7 @@ extends Actor with Stash
   private var delayedCommit: Cancelable = null
   private var totalEventCount = 0L
   private var requireClusterAcknowledgement = false
-  private var waitingForAcknowledgeTimer = SerialCancelable()
+  private val waitingForAcknowledgeTimer = SerialCancelable()
   private var switchedOver = false
 
   logger.debug(s"fileBase=${journalMeta.fileBase}")
@@ -674,7 +673,7 @@ object JournalActor
     Props { new JournalActor(journalMeta, conf, keyedEventBus, scheduler, eventIdGenerator, stopped) }
       .withDispatcher(DispatcherName)
 
-  private def toSnapshotTemporary(file: Path) = file resolveSibling file.getFileName + TmpSuffix
+  private def toSnapshotTemporary(file: Path) = file.resolveSibling(s"${file.getFileName}$TmpSuffix")
 
   private[journal] trait CallersItem
 
@@ -739,17 +738,6 @@ object JournalActor
     def stampedSeq: Seq[Stamped[AnyKeyedEvent]]
     def since: Deadline
     def isLastOfFlushedOrSynced: Boolean
-  }
-  private object LoggableWritten {
-    def apply(number: Long, _stamped: Seq[Stamped[AnyKeyedEvent]], _since: Deadline, lastOfFlushedOrSynced: Boolean): LoggableWritten = {
-      val x = lastOfFlushedOrSynced
-      new LoggableWritten {
-        def eventNumber = number
-        def stampedSeq = _stamped
-        def since = _since
-        def isLastOfFlushedOrSynced = x
-      }
-    }
   }
 
   /** A bundle of written but not yet committed (flushed and acknowledged) events. */

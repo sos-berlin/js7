@@ -42,7 +42,7 @@ final class IfTest extends FreeSpec {
   private def checkEventSeq(orderId: OrderId, eventSeq: TearableEventSeq[IterableOnce, KeyedEvent[OrderEvent]], returnCode: ReturnCode): Unit = {
     eventSeq match {
       case EventSeq.NonEmpty(stampeds) =>
-        val events = stampeds.filter(_.value.key == orderId).map(_.value.event).toVector
+        val events = stampeds.iterator.filter(_.value.key == orderId).map(_.value.event).to(Vector)
         assert(events == ExpectedEvents(returnCode))
       case o =>
         fail(s"Unexpected EventSeq received: $o")

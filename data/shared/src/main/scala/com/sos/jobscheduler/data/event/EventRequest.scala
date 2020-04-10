@@ -3,7 +3,6 @@ package com.sos.jobscheduler.data.event
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.data.event.EventRequest._
 import scala.annotation.tailrec
-import scala.collection.immutable.Seq
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.reflect.ClassTag

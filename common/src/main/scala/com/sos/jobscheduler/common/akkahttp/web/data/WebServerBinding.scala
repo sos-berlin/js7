@@ -9,7 +9,6 @@ import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichAkkaAsUri
 import java.net.{InetAddress, InetSocketAddress}
-import scala.collection.immutable.Seq
 
 /**
   * @author Joacim Zschimmer

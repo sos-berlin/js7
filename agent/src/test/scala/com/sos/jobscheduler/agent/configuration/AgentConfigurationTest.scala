@@ -90,7 +90,7 @@ final class AgentConfigurationTest extends FreeSpec  {
   }
 
   private def dummyDirectoriesConf(args: String*) =
-    conf(Array("-config-directory=CONFIG", "-data-directory=DATA") ++ args: _*)
+    conf(List("-config-directory=CONFIG", "-data-directory=DATA") ++ args: _*)
 
   private def conf(args: String*) = {
     AgentConfiguration.fromCommandLine(

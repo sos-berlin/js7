@@ -2,7 +2,6 @@ package com.sos.jobscheduler.common.files
 
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.common.files.DirectoryReader.Entry
-import scala.collection.immutable.Seq
 
 /**
   * @author Joacim Zschimmer

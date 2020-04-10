@@ -13,7 +13,6 @@ import com.sos.jobscheduler.provider.scheduledorder.{OrderScheduleGenerator, Sch
 import java.time.ZoneId
 import monix.eval.Task
 import monix.execution.Scheduler
-import scala.collection.immutable.Seq
 
 /**
   * @author Joacim Zschimmer

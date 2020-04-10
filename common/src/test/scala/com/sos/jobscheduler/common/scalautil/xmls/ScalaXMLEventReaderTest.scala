@@ -9,7 +9,6 @@ import com.sos.jobscheduler.common.time.Stopwatch.measureTime
 import javax.xml.transform.Source
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import scala.collection.immutable
 
 /**
  * @author Joacim Zschimmer
@@ -17,7 +16,7 @@ import scala.collection.immutable
 final class ScalaXMLEventReaderTest extends FreeSpec {
 
   "Methods" in {
-    case class X(y: Y, z: immutable.Seq[Z])
+    case class X(y: Y, z: Seq[Z])
     trait T
     case class Y() extends T
     case class Z() extends T
@@ -29,23 +28,23 @@ final class ScalaXMLEventReaderTest extends FreeSpec {
           case "Z" => parseElement() { Z() }
         }
 
-        (children.values: immutable.IndexedSeq[T]) shouldEqual List(Y(), Z(), Z())
+        (children.values: IndexedSeq[T]) shouldEqual List(Y(), Z(), Z())
 
         (children.one[Y]("Y"): Y) shouldEqual Y()
         (children.one[Y]: Y)  shouldEqual Y()
         (children.option[Y]("Y"): Option[Y]) shouldEqual Some(Y())
         (children.option[Y]: Option[Y])  shouldEqual Some(Y())
-        (children.byClass[Y]: immutable.Seq[Y]) shouldEqual List(Y())
-        (children.byClass[Y]: immutable.Seq[Y]) shouldEqual List(Y())
-        (children.byName[Y]("Y"): immutable.Seq[Y]) shouldEqual List(Y())
+        (children.byClass[Y]: Seq[Y]) shouldEqual List(Y())
+        (children.byClass[Y]: Seq[Y]) shouldEqual List(Y())
+        (children.byName[Y]("Y"): Seq[Y]) shouldEqual List(Y())
 
         intercept[IllegalArgumentException] { children.one[Z]("Z") }
         intercept[IllegalArgumentException] { children.one[Z] }
         intercept[IllegalArgumentException] { children.option[Z]("Z") }
         intercept[IllegalArgumentException] { children.option[Z] }
-        (children.byClass[Z]: immutable.Seq[Z]) shouldEqual List(Z(), Z())
-        (children.byClass[Z]: immutable.Seq[Z]) shouldEqual List(Z(), Z())
-        (children.byName[Z]("Z"): immutable.Seq[Z]) shouldEqual List(Z(), Z())
+        (children.byClass[Z]: Seq[Z]) shouldEqual List(Z(), Z())
+        (children.byClass[Z]: Seq[Z]) shouldEqual List(Z(), Z())
+        (children.byName[Z]("Z"): Seq[Z]) shouldEqual List(Z(), Z())
 
         intercept[ClassCastException] { children.one[Y]("Z") }
         intercept[ClassCastException] { children.option[Y]("Z") }
@@ -224,7 +223,7 @@ final class ScalaXMLEventReaderTest extends FreeSpec {
 private object ScalaXMLEventReaderTest {
   private case class A(b: B, c: C)
   private case class B()
-  private case class C(x: String, o: String, ds: immutable.Seq[D])
+  private case class C(x: String, o: String, ds: Seq[D])
   private case class D()
 
   private def parseA(eventReader: ScalaXMLEventReader): A = {

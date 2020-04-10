@@ -18,8 +18,6 @@ import com.sos.jobscheduler.data.event.{Event, EventRequest, KeyedEvent, Stamped
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import monix.eval.Task
 import monix.reactive.Observable
-import scala.collection.immutable.Seq
-
 /**
  * Client for JobScheduler Agent Server.
  * The HTTP requests are considerd to be responded within `RequestTimeout`.

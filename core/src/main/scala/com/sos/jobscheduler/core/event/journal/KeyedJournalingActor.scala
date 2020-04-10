@@ -5,7 +5,6 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor._
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, KeyedEvent, Stamped}
 import monix.eval.Task
-import scala.collection.immutable.{Iterable, Seq}
 import scala.concurrent.Future
 import scala.concurrent.duration.{Duration, FiniteDuration}
 

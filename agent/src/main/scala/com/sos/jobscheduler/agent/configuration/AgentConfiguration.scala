@@ -25,8 +25,7 @@ import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_8}
 import java.nio.file.Files.{createDirectory, exists}
 import java.nio.file.{Path, Paths}
 import org.scalactic.Requirements._
-import scala.collection.JavaConverters._
-import scala.collection.immutable.Seq
+import scala.jdk.CollectionConverters._
 
 /**
  * @author Joacim Zschimmer

@@ -154,7 +154,7 @@ final class TryTest extends FreeSpec
   private def checkEventSeq(orderId: OrderId, eventSeq: TearableEventSeq[IterableOnce, KeyedEvent[OrderEvent]], expected: Vector[OrderEvent]): Unit = {
     eventSeq match {
       case EventSeq.NonEmpty(stampeds) =>
-        val events = stampeds.filter(_.value.key == orderId).map(_.value.event).toVector
+        val events = stampeds.iterator.filter(_.value.key == orderId).map(_.value.event).toVector
         assert(events == expected)
       case o =>
         fail(s"Unexpected EventSeq received: $o")

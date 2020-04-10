@@ -9,7 +9,6 @@ import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.base.utils.StackTraces._
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json, JsonObject}
-import scala.collection.immutable.Iterable
 import scala.language.implicitConversions
 
 /**

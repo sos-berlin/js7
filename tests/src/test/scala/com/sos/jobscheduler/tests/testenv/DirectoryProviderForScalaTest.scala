@@ -11,8 +11,6 @@ import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.filebased.FileBased
 import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatest.BeforeAndAfterAll
-import scala.collection.immutable.Seq
-
 /**
   * @author Joacim Zschimmer
   */

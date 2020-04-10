@@ -4,7 +4,6 @@ import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.core.filebased.TypedPaths.fileToTypedPathAndSourceType
 import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
 import java.nio.file.Path
-import scala.collection.immutable.{Iterable, Seq}
 
 /**
   * @author Joacim Zschimmer

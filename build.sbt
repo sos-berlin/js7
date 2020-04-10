@@ -60,11 +60,25 @@ addCommandAlias("TestMasterAgent", "tests/runMain com.sos.jobscheduler.tests.Tes
 addCommandAlias("quickPublishLocal", "; compile; publishLocal; project jobschedulerJS; compile; publishLocal")
 //scalafixDependencies in ThisBuild += "org.scala-lang.modules" %% "scala-collection-migrations" % "2.1.4"
 //addCompilerPlugin(scalafixSemanticdb)
-//ThisBuild / scalacOptions ++= Seq("-P:semanticdb:synthetics:on")
+//ThisBuild / scalacOptions ++= Seq("-P:semanticdb:synthetics:on", "-Yrangepos"/*required by SemanticDB compiler plugin*/)
 ThisBuild / scalacOptions ++= Seq(
   "-Ymacro-annotations",
-  "-unchecked", "-deprecation", "-feature"/*, "-Xlint"*/,
-  "-Yrangepos")            // required by SemanticDB compiler plugin
+  //"-Wunused:imports",
+  //"-Wunused:privates",
+  //"-Wunused:locals",
+  //"-Wunused:implicits",
+  //"-Xlint:infer-any",
+  //"-Xlint:doc-detached",
+  //"-Xlint:private-shadow",
+  //"-Xlint:type-parameter-shadow",
+  //"-Xlint:poly-implicit-overload",
+  //"-Xlint:constant",
+  //"-Xlint:implicit-not-found",
+  //"-Xlint:eta-zero",
+  "-unchecked",
+  "-deprecation",
+  "-feature")
+  //, "-Xlint"
 
 val scalaTestArguments = Tests.Argument(TestFrameworks.ScalaTest, "-oNCLPQF", "-W", "30", "30")  // http://www.scalatest.org/user_guide/using_scalatest_with_sbt
 

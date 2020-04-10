@@ -12,8 +12,6 @@ import com.sos.jobscheduler.data.command.{CommandHandlerDetailed, CommandHandler
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import monix.eval.Task
-import scala.collection.immutable.Seq
-
 /**
   * @author Joacim Zschimmer
   */

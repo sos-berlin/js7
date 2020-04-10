@@ -5,8 +5,6 @@ import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.core.crypt.SignatureVerifier
 import com.sos.jobscheduler.data.crypt.GenericSignature
 import java.io.InputStream
-import scala.collection.immutable.Seq
-
 /**
   * @author Joacim Zschimmer
   */

@@ -32,9 +32,8 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.AtomicAny
 import monix.reactive.Observable
-import scala.collection.JavaConverters._
-import scala.collection.immutable.Seq
 import scala.concurrent.duration._
+import scala.jdk.CollectionConverters._
 
 // Test in com.sos.jobscheduler.tests.provider.ProviderTest
 /**

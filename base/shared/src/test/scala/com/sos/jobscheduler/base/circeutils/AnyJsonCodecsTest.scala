@@ -7,7 +7,7 @@ import com.sos.jobscheduler.base.generic.GenericString
 import io.circe.syntax.EncoderOps
 import io.circe.{Json, JsonObject}
 import org.scalatest.FreeSpec
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 /**
   * @author Joacim Zschimmer

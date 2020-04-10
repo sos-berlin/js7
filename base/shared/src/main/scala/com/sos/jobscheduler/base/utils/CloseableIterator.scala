@@ -2,7 +2,6 @@ package com.sos.jobscheduler.base.utils
 
 import com.sos.jobscheduler.base.utils.CloseableIterator._
 import java.util.NoSuchElementException
-import scala.collection.{GenTraversableOnce, Iterator, Seq}
 import scala.util.control.NonFatal
 
 /**
@@ -54,7 +53,7 @@ trait CloseableIterator[+A] extends Iterator[A] with AutoCloseable
   override def map[B](f: A => B): CloseableIterator[B] =
     wrap(super.map(f))
 
-  override def flatMap[B](f: A => GenTraversableOnce[B]): CloseableIterator[B] =
+  override def flatMap[B](f: A => IterableOnce[B]): CloseableIterator[B] =
     wrap(super.flatMap(f))
 
   override def collect[B](pf: PartialFunction[A, B]): CloseableIterator[B] =

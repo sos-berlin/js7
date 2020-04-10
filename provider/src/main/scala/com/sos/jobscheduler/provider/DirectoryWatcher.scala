@@ -12,9 +12,9 @@ import java.nio.file.{ClosedWatchServiceException, Path, WatchEvent}
 import monix.execution.atomic.AtomicBoolean
 import monix.execution.{Ack, Cancelable, Scheduler}
 import monix.reactive.Observable
-import scala.collection.JavaConverters._
 import scala.concurrent.Future
 import scala.concurrent.duration._
+import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success}
 
 /**

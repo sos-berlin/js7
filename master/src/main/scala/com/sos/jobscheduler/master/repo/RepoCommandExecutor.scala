@@ -10,8 +10,6 @@ import com.sos.jobscheduler.data.crypt.{Signed, SignedString}
 import com.sos.jobscheduler.data.filebased.{FileBased, RepoEvent}
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.repo.RepoCommandExecutor._
-import scala.collection.immutable.Seq
-
 /**
   * @author Joacim Zschimmer
   */

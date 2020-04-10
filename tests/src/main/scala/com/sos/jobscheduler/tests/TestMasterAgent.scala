@@ -38,7 +38,6 @@ import java.nio.file.Files.createDirectory
 import java.nio.file.{Files, Path}
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
-import scala.collection.immutable.Seq
 import scala.concurrent.duration._
 
 /**
@@ -61,7 +60,7 @@ object TestMasterAgent
           deleteDirectoryContentRecursively(directory)
         }
       }
-    val conf = Conf.parse(args, () => directory)
+    val conf = Conf.parse(args.toIndexedSeq, () => directory)
     println(s"${conf.agentCount * conf.workflowLength} jobs/agent, ${conf.jobDuration.pretty} each, ${conf.tasksPerJob} tasks/agent, ${conf.agentCount} agents, ${conf.period.pretty}/order")
     try run(conf)
     finally Log4j.shutdown()
@@ -160,7 +159,7 @@ object TestMasterAgent
     }
   }
 
-  private val PathNames = Stream("🥕", "🍋", "🍊", "🍐", "🍏", "🍓", "🍒") ++ Iterator.from(8).map("🌶".+)
+  private val PathNames = LazyList("🥕", "🍋", "🍊", "🍐", "🍏", "🍓", "🍒") ++ Iterator.from(8).map("🌶".+)
   private def testJob(conf: Conf, agentRefPath: AgentRefPath) =
     WorkflowJob(agentRefPath, TestExecutablePath,
       Map("JOB-VARIABLE" -> s"VALUE-${agentRefPath.withoutStartingSlash}"),

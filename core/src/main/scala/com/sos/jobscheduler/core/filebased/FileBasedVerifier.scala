@@ -7,8 +7,6 @@ import com.sos.jobscheduler.core.filebased.FileBasedVerifier._
 import com.sos.jobscheduler.data.crypt.{Signed, SignedString, SignerId}
 import com.sos.jobscheduler.data.filebased.FileBased
 import io.circe.Decoder
-import scala.collection.immutable.Seq
-
 /**
   * @author Joacim Zschimmer
   */

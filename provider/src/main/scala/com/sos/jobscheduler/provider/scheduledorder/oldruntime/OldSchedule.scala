@@ -5,7 +5,7 @@ import com.sos.jobscheduler.common.time.JavaTime._
 import com.sos.jobscheduler.provider.scheduledorder.oldruntime.OldSchedule._
 import java.time._
 import scala.annotation.tailrec
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 final case class OldSchedule(
   timeZone: ZoneId,

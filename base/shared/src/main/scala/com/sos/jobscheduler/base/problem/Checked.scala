@@ -7,10 +7,9 @@ import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Problem._
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import io.circe.{Decoder, Encoder, Json}
-import scala.collection.immutable.{Iterable, Seq, VectorBuilder}
+import scala.collection.immutable.VectorBuilder
 import scala.collection.mutable
 import scala.concurrent.Future
-import scala.language.higherKinds
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 

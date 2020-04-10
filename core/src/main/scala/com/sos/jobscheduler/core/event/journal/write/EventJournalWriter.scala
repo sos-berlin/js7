@@ -13,7 +13,6 @@ import com.sos.jobscheduler.core.event.journal.write.EventJournalWriter._
 import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
 import io.circe.syntax.EncoderOps
 import java.nio.file.Path
-import scala.collection.immutable.Seq
 import scala.concurrent.duration.FiniteDuration
 
 /**

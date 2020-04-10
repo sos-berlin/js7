@@ -21,7 +21,6 @@ import com.sos.jobscheduler.data.workflow.position.{BranchPath, InstructionNr, P
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 import scala.annotation.tailrec
-import scala.collection.immutable.{IndexedSeq, Seq}
 
 /**
   * @author Joacim Zschimmer
@@ -49,8 +48,8 @@ extends FileBased
   type Self = Workflow
 
   val companion = Workflow
-  val labeledInstructions = rawLabeledInstructions map (o => o.copy(instruction = o.instruction.adopt(this)))
-  val instructions: IndexedSeq[Instruction] = labeledInstructions map (_.instruction)
+  val labeledInstructions = rawLabeledInstructions.map(o => o.copy(instruction = o.instruction.adopt(this)))
+  val instructions: IndexedSeq[Instruction] = labeledInstructions.map(_.instruction)
   private val labelToNumber: Map[Label, InstructionNr] =
     numberedInstructions.flatMap { case (nr, Instruction.Labeled(maybeLabel, _)) => maybeLabel map (_ -> nr) }
       .uniqueToMap(labels => throw new IllegalArgumentException(s"Duplicate labels in Workflow: ${labels mkString ","}"))
@@ -104,6 +103,7 @@ extends FileBased
     flattenedInstructions.collect {
       case (position, Some(label) @: _) => (label, position)
     } .groupBy(_._1)
+      .view
       .filter(_._2.lengthCompare(1) > 0)
       .mapValues(_.map(_._2))
       .map { case (label, positions) =>

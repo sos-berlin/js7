@@ -23,7 +23,6 @@ import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.typesafe.config.{Config, ConfigFactory}
 import java.net.InetSocketAddress
 import monix.execution.Scheduler
-import scala.collection.immutable.Seq
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 

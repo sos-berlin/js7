@@ -3,8 +3,6 @@ package com.sos.jobscheduler.master
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.pattern.ask
 import akka.util.Timeout
-import cats.instances.either._
-import cats.syntax.flatMap._
 import com.google.inject.Stage.{DEVELOPMENT, PRODUCTION}
 import com.google.inject.util.Modules
 import com.google.inject.util.Modules.EMPTY_MODULE
@@ -54,7 +52,6 @@ import java.nio.file.Path
 import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
 import org.jetbrains.annotations.TestOnly
-import scala.collection.immutable._
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future, Promise, blocking}
 import scala.util.control.NoStackTrace
@@ -296,7 +293,7 @@ object RunningMaster
 
       for (_ <- webServer.start()) yield {
         createSessionTokenFile(injector.instance[SessionRegister[SimpleSession]])
-        masterConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", _ + "/master")
+        masterConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", o => s"$o/master")
         new RunningMaster(recovered.eventWatch.strict, webServer, fileBasedApi, orderApi, cluster.currentClusterState,
           commandExecutor,
           whenReady, orderKeeperTerminated, testEventBus, closer, injector)

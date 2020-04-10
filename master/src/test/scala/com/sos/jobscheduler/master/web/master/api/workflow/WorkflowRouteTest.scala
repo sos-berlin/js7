@@ -15,7 +15,6 @@ import com.sos.jobscheduler.master.web.master.api.test.RouteTester
 import com.sos.jobscheduler.master.web.master.api.workflow.WorkflowRouteTest._
 import monix.execution.Scheduler
 import org.scalatest.FreeSpec
-import scala.collection.immutable.Seq
 
 /**
   * @author Joacim Zschimmer

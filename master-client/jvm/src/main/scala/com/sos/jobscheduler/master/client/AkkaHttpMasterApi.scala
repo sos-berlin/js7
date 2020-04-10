@@ -26,8 +26,6 @@ final class AkkaHttpMasterApi(
 extends AkkaHttpMasterApi.CommonAkka
 with ProvideActorSystem
 {
-  private type CommonAkka = AkkaHttpMasterApi.CommonAkka
-
   closer onClose { super[CommonAkka].close() }
   closeOnError(closer) {
     actorSystem  // Initialize eagerly to avoid "ClassCastException: interface akka.event.LoggingFilter is not assignable from class akka.event.slf4j.Slf4jLoggingFilter"

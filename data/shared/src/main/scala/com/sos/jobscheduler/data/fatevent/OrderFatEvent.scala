@@ -13,7 +13,6 @@ import com.sos.jobscheduler.data.workflow.instructions.Fork
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.position.WorkflowPosition
 import io.circe.generic.JsonCodec
-import scala.collection.immutable.Seq
 
 /**
   * @author Joacim Zschimmer

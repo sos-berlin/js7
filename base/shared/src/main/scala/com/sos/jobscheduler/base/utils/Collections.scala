@@ -3,10 +3,9 @@ package com.sos.jobscheduler.base.utils
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import javax.annotation.Nullable
 import scala.annotation.tailrec
-import scala.collection.JavaConverters._
-import scala.collection.immutable.{Seq, Vector, VectorBuilder}
-import scala.collection.{BufferedIterator, immutable, mutable}
-import scala.language.{higherKinds, implicitConversions}
+import scala.collection.immutable.VectorBuilder
+import scala.collection.{BufferedIterator, mutable}
+import scala.jdk.CollectionConverters._
 import scala.reflect.ClassTag
 
 object Collections {
@@ -23,16 +22,17 @@ object Collections {
           case _ => Vector.empty ++ delegate
         }
 
-      def toImmutableIterable: immutable.Iterable[A] =
+      def toImmutableIterable: Iterable[A] =
         delegate match {
-          case o: immutable.Iterable[A] => o
-          case _ => immutable.Iterable() ++ delegate
+          case o: Iterable[A] => o
+          case _ => Iterable() ++ delegate
         }
 
       def countEquals: Map[A, Int] =
-        delegate.toTraversable groupBy identity map { case (k, v) => k -> v.size }
+        delegate.iterator.to(Iterable) groupBy identity map { case (k, v) => k -> v.size }
 
-      def compareElementWise(other: IterableOnce[A])(implicit ordering: Ordering[A]): Int = compareIteratorsElementWise(delegate.toIterator, other.toIterator)
+      def compareElementWise(other: IterableOnce[A])(implicit ordering: Ordering[A]): Int =
+        compareIteratorsElementWise(delegate.iterator, other.iterator)
     }
 
     implicit final class RichSeq[A](private val delegate: collection.Iterable[A]) extends AnyVal {
@@ -106,9 +106,9 @@ object Collections {
         * Like `groupBy`, but returns a `Vector[(K, Vector[A])] ` retaining the original key order (of every first occurrence),
         */
       def retainOrderGroupBy[K](toKey: A => K): Vector[(K, Vector[A])] = {
-        val m = mutable.LinkedHashMap[K, immutable.VectorBuilder[A]]()
+        val m = mutable.LinkedHashMap[K, VectorBuilder[A]]()
         for (elem <- delegate) {
-          m.getOrElseUpdate(toKey(elem), new immutable.VectorBuilder[A]) += elem
+          m.getOrElseUpdate(toKey(elem), new VectorBuilder[A]) += elem
         }
         val b = Vector.newBuilder[(K, Vector[A])]
         b.sizeHint(m.size)
@@ -178,7 +178,7 @@ object Collections {
 
   implicit final class RichMap[K, V](private val underlying: Map[K, V]) extends AnyVal {
     def toChecked(unknownKey: K => Problem): Map[K, Checked[V]] =
-      underlying.mapValues(Right.apply).toMap withDefault unknownKey.andThen(Left.apply)
+      underlying.view.mapValues(Right.apply).toMap withDefault unknownKey.andThen(Left.apply)
 
     def withNoSuchKey(noSuchKey: K => Nothing): Map[K, V] =
       underlying withDefault (k => noSuchKey(k))

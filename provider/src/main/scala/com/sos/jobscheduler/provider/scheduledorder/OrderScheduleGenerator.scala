@@ -12,7 +12,6 @@ import com.typesafe.config.Config
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean
 import monix.execution.{Cancelable, Scheduler}
-import scala.collection.immutable.Seq
 import scala.util.{Failure, Success}
 
 /**

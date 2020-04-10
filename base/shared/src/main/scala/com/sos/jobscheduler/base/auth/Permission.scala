@@ -2,7 +2,6 @@ package com.sos.jobscheduler.base.auth
 
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
-import scala.collection.immutable.Iterable
 
 /**
   * @author Joacim Zschimmer

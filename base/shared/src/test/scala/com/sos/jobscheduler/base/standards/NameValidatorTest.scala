@@ -2,7 +2,7 @@ package com.sos.jobscheduler.base.standards
 
 import com.sos.jobscheduler.base.standards.NameValidator._
 import org.scalatest.FreeSpec
-import scala.collection.JavaConverters.asScalaIteratorConverter
+import scala.jdk.CollectionConverters._
 
 /**
   * @author Joacim Zschimmer

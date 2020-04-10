@@ -21,8 +21,6 @@ import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import com.sos.jobscheduler.master.web.master.api.AgentProxyRoute._
 import monix.eval.Task
 import monix.execution.Scheduler
-import scala.collection.immutable.Seq
-
 /**
   * @author Joacim Zschimmer
   */

@@ -11,20 +11,20 @@ final class CommandLineArgumentsTest extends FreeSpec {
 
   "Flag" - {
     "boolean" in {
-      assert(parse(Array("-option")) { _.boolean("-option") })
-      assert(parse(Array("-option")) { _.boolean("-option") })
+      assert(parse(List("-option")) { _.boolean("-option") })
+      assert(parse(List("-option")) { _.boolean("-option") })
       assert(!parse(Nil) { _.boolean("-option") })
       assert(!parse(Nil) { _.boolean("-option", false) })
       assert(parse(Nil) { _.boolean("-option", true) })
     }
 
     "Second switch overrides first with same name" in {
-      assert(parse(Array("-option", "-option")) { _.boolean("-option") })
-      assert(parse(Array("-option-", "-option")) { _.boolean("-option") })
+      assert(parse(List("-option", "-option")) { _.boolean("-option") })
+      assert(parse(List("-option-", "-option")) { _.boolean("-option") })
     }
 
     "false" in {
-      assert(!parse(Array("-option-")) { _.boolean("-option") })
+      assert(!parse(List("-option-")) { _.boolean("-option") })
     }
 
     "Missing boolean" in {
@@ -37,7 +37,7 @@ final class CommandLineArgumentsTest extends FreeSpec {
 
     "Invalid used boolean option" in {
       intercept[IllegalArgumentException] {
-        parse(Array("-option=value")) { a =>
+        parse(List("-option=value")) { a =>
           a.boolean("-option")
         }
       }
@@ -46,7 +46,7 @@ final class CommandLineArgumentsTest extends FreeSpec {
 
     "Multiple boolean option" in {
       intercept[IllegalArgumentException] {
-        parse(Array("-option", "-option", "-option")) { a =>
+        parse(List("-option", "-option", "-option")) { a =>
           a.boolean("-option")
         }
       }
@@ -179,7 +179,7 @@ final class CommandLineArgumentsTest extends FreeSpec {
   "Ignore CR at and of last argument" in {
     // In case an unexperienced user lets end the shell script line with "\r\n"
     intercept[IllegalArgumentException] {
-      parse(Array("-option\r")) { _.boolean("-option") }
+      parse(List("-option\r")) { _.boolean("-option") }
     }
   }
 }

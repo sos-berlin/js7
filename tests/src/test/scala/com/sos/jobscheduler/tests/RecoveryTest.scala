@@ -34,7 +34,6 @@ import java.nio.file.Path
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import scala.collection.immutable.{IndexedSeq, Seq}
 import scala.collection.mutable
 import scala.util.control.NonFatal
 
@@ -219,5 +218,5 @@ private object RecoveryTest {
   }
 
   private def lastEventIdOf[E <: Event](stamped: IterableOnce[Stamped[KeyedEvent[E]]]): EventId =
-    stamped.toVector.last.eventId
+    stamped.iterator.to(Vector).last.eventId
 }

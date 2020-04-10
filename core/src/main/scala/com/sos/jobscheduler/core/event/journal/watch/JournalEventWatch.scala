@@ -21,7 +21,7 @@ import java.nio.file.Path
 import monix.execution.atomic.AtomicAny
 import monix.reactive.Observable
 import scala.annotation.tailrec
-import scala.collection.immutable.{Seq, SortedMap}
+import scala.collection.immutable.SortedMap
 import scala.concurrent.Promise
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NoStackTrace

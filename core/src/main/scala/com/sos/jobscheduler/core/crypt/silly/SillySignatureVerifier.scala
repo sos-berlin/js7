@@ -8,7 +8,6 @@ import com.sos.jobscheduler.core.problems.TamperedWithSignedMessageProblem
 import com.sos.jobscheduler.data.crypt.{GenericSignature, SignerId}
 import java.io.InputStream
 import java.nio.charset.StandardCharsets.UTF_8
-import scala.collection.immutable.Seq
 
 /**
   * @author Joacim Zschimmer

@@ -3,7 +3,6 @@ package com.sos.jobscheduler.data.expression
 import cats.instances.either._
 import cats.instances.list._
 import cats.syntax.apply._
-import cats.syntax.flatMap._
 import cats.syntax.traverse._
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}

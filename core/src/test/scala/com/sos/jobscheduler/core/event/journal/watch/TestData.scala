@@ -12,7 +12,6 @@ import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import com.sos.jobscheduler.data.event.{Event, EventId, JournalEvent, JournalId, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
 import java.nio.file.Path
 import java.util.UUID
-import scala.collection.immutable.Seq
 
 /**
   * @author Joacim Zschimmer

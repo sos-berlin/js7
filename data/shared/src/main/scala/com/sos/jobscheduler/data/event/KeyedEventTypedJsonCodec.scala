@@ -25,7 +25,7 @@ with Decoder[KeyedEvent[E]]
     nameToClass.map(o => o._2 -> o._1).toMap
 
   private val classToNameJson: Map[Class[_ <: E], Json/*String*/] =
-    Map()/*force eagerness*/ ++ _classToName.mapValues(Json.fromString)
+    _classToName.view.mapValues(Json.fromString).toMap
 
   /** Union. */
   def |[B <: Event](other: KeyedEventTypedJsonCodec[B]): KeyedEventTypedJsonCodec[Event] = {

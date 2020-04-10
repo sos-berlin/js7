@@ -7,7 +7,6 @@ import java.nio.file.Files.newDirectoryStream
 import java.nio.file.attribute.PosixFilePermissions.asFileAttribute
 import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
 import java.nio.file.{Path, Paths}
-import scala.collection.immutable
 import scala.concurrent.duration._
 import scala.io.Source.fromInputStream
 import scala.util.Try
@@ -17,7 +16,7 @@ import scala.util.Try
  */
 trait OperatingSystem {
 
-  def secretFileAttributes: immutable.Seq[FileAttribute[java.util.Set[_]]]
+  def secretFileAttributes: Seq[FileAttribute[java.util.Set[_]]]
 
   def makeExecutableFilename(name: String): String
 
@@ -77,7 +76,7 @@ object OperatingSystem {
 
   final class Unix private[system] extends OperatingSystem {
     val secretFileAttributes = List(asFileAttribute(PosixFilePermissions fromString "rw-------"))
-      .asInstanceOf[immutable.Seq[FileAttribute[java.util.Set[_]]]]
+      .asInstanceOf[Seq[FileAttribute[java.util.Set[_]]]]
 
     def makeExecutableFilename(name: String): String = name
 

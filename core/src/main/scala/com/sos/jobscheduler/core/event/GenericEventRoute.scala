@@ -42,7 +42,6 @@ import io.circe.syntax.EncoderOps
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
-import scala.collection.immutable.Seq
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.util.control.NonFatal

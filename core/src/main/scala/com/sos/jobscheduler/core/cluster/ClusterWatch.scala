@@ -14,8 +14,6 @@ import monix.catnap.MVar
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
-import scala.collection.immutable.Seq
-
 final class ClusterWatch(masterId: MasterId, scheduler: Scheduler)
 extends ClusterWatchApi
 {

@@ -44,7 +44,6 @@ import java.util.Locale
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.atomic.AtomicBoolean
-import scala.collection.immutable.{IndexedSeq, Iterable, Seq}
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.Random

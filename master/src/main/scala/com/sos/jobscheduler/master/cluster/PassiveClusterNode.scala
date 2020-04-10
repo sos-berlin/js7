@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.master.cluster
 
-import akka.actor.ActorSystem
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec._
 import com.sos.jobscheduler.base.problem.Checked._
@@ -56,7 +55,6 @@ import scodec.bits.ByteVector
   clusterConf: ClusterConf,
   eventIdGenerator: EventIdGenerator,
   common: ClusterCommon)
-  (implicit actorSystem: ActorSystem)
 {
   assertThat(activeId != ownId)
   import recovered.eventWatch
@@ -570,7 +568,6 @@ object PassiveClusterNode
   private val logger = Logger(getClass)
 
   private val EndOfJournalFileMarker = Problem.pure("End of journal file (internal use only)")
-  private final class ServerTimeoutException extends TimeoutException("Journal web service timed out")
 
   case object ClusterWatchAgreesToActivation
   case object ClusterWatchDisagreeToActivation

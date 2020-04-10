@@ -2,7 +2,6 @@ package com.sos.jobscheduler.data.master
 
 import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.generic.GenericString
-import com.sos.jobscheduler.base.problem.Checked.Ops
 
 /**
   * @author Joacim Zschimmer

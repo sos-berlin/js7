@@ -1,8 +1,6 @@
 package com.sos.jobscheduler.base.convert
 
 import com.sos.jobscheduler.base.convert.ConvertiblePartialFunctions.wrappedConvert
-import scala.collection.immutable.Seq
-
 /**
   * Provides methods for convertion of the Iterable result of a PartialFunction (for example a Map).
   *

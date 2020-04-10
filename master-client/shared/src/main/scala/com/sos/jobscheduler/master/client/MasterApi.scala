@@ -9,7 +9,6 @@ import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.master.data.{MasterCommand, MasterOverview}
 import io.circe.{Decoder, Encoder}
 import monix.eval.Task
-import scala.collection.immutable.Seq
 import scala.reflect.ClassTag
 
 /**

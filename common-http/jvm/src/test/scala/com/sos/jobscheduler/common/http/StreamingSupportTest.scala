@@ -9,7 +9,6 @@ import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalatest.FreeSpec
 import scala.concurrent.Await
-import scala.language.reflectiveCalls
 
 /**
   * @author Joacim Zschimmer

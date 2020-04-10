@@ -15,7 +15,6 @@ import com.sos.jobscheduler.data.master.MasterId
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.schedulers.TestScheduler
 import org.scalatest.FreeSpec
-import scala.collection.immutable._
 
 /**
   * @author Joacim Zschimmer

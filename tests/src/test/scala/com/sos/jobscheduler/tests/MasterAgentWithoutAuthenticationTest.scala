@@ -26,7 +26,6 @@ import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand.ReplaceRepo
 import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentCouplingFailed
 import com.sos.jobscheduler.tests.MasterAgentWithoutAuthenticationTest._
-import java.nio.file.Files
 import java.nio.file.Files.{createDirectories, createDirectory}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec

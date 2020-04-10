@@ -118,8 +118,8 @@ final class JournalWebServiceTest extends FreeSpec with BeforeAndAfterAll with M
   }
 
   "Heartbeat" in {
-    var lines = mutable.Buffer[String]()
-    var heartbeatLines = mutable.Buffer[String]()
+    val lines = mutable.Buffer[String]()
+    val heartbeatLines = mutable.Buffer[String]()
     val fileAfter = master.eventWatch.lastFileTornEventId
     val u = Uri(s"$uri/master/api/journal?markEOF=true&file=$fileAfter&position=0")
     masterApi.getRawLinesObservable(u).await(99.s)

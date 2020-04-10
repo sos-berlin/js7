@@ -18,7 +18,6 @@ import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
 import io.circe.generic.JsonCodec
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
-import scala.collection.immutable.Seq
 
 /**
   * @author Joacim Zschimmer

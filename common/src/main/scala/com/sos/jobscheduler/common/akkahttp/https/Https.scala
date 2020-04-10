@@ -6,7 +6,7 @@ import java.net.URL
 import java.security.cert.{Certificate, X509Certificate}
 import java.security.{KeyStore, SecureRandom}
 import javax.net.ssl.{KeyManager, KeyManagerFactory, SSLContext, TrustManager, TrustManagerFactory}
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 /**
   * Provides HTTPS keystore and truststore..

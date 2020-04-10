@@ -18,7 +18,6 @@ import com.sos.jobscheduler.data.filebased.FileBasedId.VersionSeparator
 import com.sos.jobscheduler.data.filebased.TypedPath._
 import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json, JsonObject}
 import java.nio.file.{Path, Paths}
-import scala.collection.immutable.Iterable
 import scala.reflect.ClassTag
 
 trait TypedPath extends GenericString {

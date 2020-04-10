@@ -17,8 +17,6 @@ import com.sos.jobscheduler.tests.OfferAndAwaitOrderTest._
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
-import scala.collection.immutable.Seq
-
 /**
   * @author Joacim Zschimmer
   */
@@ -144,7 +142,7 @@ final class OfferAndAwaitOrderTest extends FreeSpec
   private def checkEventSeq(eventSeq: TearableEventSeq[IterableOnce, KeyedEvent[OrderEvent]], expectedOffering: Seq[OrderEvent], expectedAwaiting: Seq[OrderEvent]): Unit =
     eventSeq match {
       case EventSeq.NonEmpty(stampeds) =>
-        val keyedEvents = stampeds.map(_.value).toVector
+        val keyedEvents = stampeds.iterator.map(_.value).to(Vector)
         for (orderId <- Array(JoinBefore1Order.id, JoinBefore2Order.id, JoinAfterOrder.id)) {
           assert(keyedEvents.collect { case `orderId` <-: event => event } == expectedAwaiting, s" - $orderId")
         }

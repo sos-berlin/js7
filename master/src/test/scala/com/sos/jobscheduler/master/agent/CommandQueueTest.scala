@@ -22,7 +22,6 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.language.reflectiveCalls
 

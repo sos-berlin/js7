@@ -10,8 +10,7 @@ import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderFinished, OrderForked}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowId}
-import scala.collection.immutable.Iterable
-import scala.collection.mutable
+import scala.collection.{Iterable, mutable}
 
 /**
   * @author Joacim Zschimmer

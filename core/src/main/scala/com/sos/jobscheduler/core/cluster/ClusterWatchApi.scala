@@ -4,8 +4,6 @@ import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
 import monix.eval.Task
-import scala.collection.immutable.Seq
-
 trait ClusterWatchApi
 {
   def get: Task[Checked[ClusterState]]

@@ -17,7 +17,7 @@ extends (ByteVector => Observable[ByteVector])
   private var line = ByteVector.empty
   private val lines = new ArrayBuffer[ByteVector]
 
-  def apply(byteVector: ByteVector) =
+  def apply(byteVector: ByteVector): Observable[ByteVector] =
     if (!byteVector.lastOption.contains('\n'))
       Observable.raiseError(Problem(s"Event streaming chunk does not contain whole lines: ${byteVector.utf8String.truncateWithEllipsis(50)}").throwable)
     else {

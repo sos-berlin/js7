@@ -1,13 +1,11 @@
 package com.sos.jobscheduler.common.files
 
 import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.base.utils.Collections._
 import java.nio.file.Files.newDirectoryStream
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{DirectoryStream, Files, Path}
 import java.util.Comparator
-import scala.collection.immutable.Seq
-
+import scala.collection.mutable
 /**
   * @author Joacim Zschimmer
   */
@@ -24,12 +22,13 @@ object DirectoryReader
     array.toVector
   }
 
-  private def unorderedEntryArray(directory: Path, filter: Path => Boolean): Array[Entry] =
-    Array.build { entries =>
-      deepForEachPathAndAttributes(directory, p => filter(p), nestingLimit = NestingLimit) { entry =>
-        entries += entry
-      }
+  private def unorderedEntryArray(directory: Path, filter: Path => Boolean): Array[Entry] = {
+    val builder = mutable.ArrayBuilder.make[Entry]
+    deepForEachPathAndAttributes(directory, p => filter(p), nestingLimit = NestingLimit) { entry =>
+      builder += entry
     }
+    builder.result()
+  }
 
   /**
     * @param nestingLimit to avoid StackOverflowException and symbolic recursion

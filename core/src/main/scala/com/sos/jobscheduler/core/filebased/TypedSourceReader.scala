@@ -7,7 +7,6 @@ import com.sos.jobscheduler.common.files.DirectoryReader
 import com.sos.jobscheduler.common.scalautil.FileUtils.syntax.RichPath
 import com.sos.jobscheduler.data.filebased.{FileBased, TypedPath}
 import java.nio.file.Path
-import scala.collection.immutable.{Iterable, Seq}
 
 /**
   * @author Joacim Zschimmer

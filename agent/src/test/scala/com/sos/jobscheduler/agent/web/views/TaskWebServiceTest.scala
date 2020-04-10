@@ -21,7 +21,6 @@ import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import io.circe.Json
 import monix.execution.Scheduler
 import org.scalatest.FreeSpec
-import scala.collection.immutable
 import scala.concurrent.Promise
 import scala.concurrent.duration._
 
@@ -69,7 +68,7 @@ final class TaskWebServiceTest extends FreeSpec with WebServiceTest with TaskWeb
 
   "task/" in {
     Get("/agent/api/task/") ~> testSessionHeader ~> Accept(`application/json`) ~> route ~> check {
-      assert(responseAs[immutable.Seq[TaskOverview]] == TestTaskOverviews)
+      assert(responseAs[Seq[TaskOverview]] == TestTaskOverviews)
       assert(responseAs[Json] == json"""
         [
           {

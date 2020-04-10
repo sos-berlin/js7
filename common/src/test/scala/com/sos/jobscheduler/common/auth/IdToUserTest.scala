@@ -9,9 +9,9 @@ import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.typesafe.config.ConfigFactory
 import org.scalatest.FreeSpec
-import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.jdk.CollectionConverters._
 
 /**
   * @author Joacim Zschimmer

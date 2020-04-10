@@ -1,16 +1,15 @@
 package com.sos.jobscheduler.common.process
 
 import com.sos.jobscheduler.base.generic.GenericLong
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.process.OperatingSystemSpecific.OS
 import com.sos.jobscheduler.common.process.Processes.RobustlyStartProcess.TextFileBusyIOException
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.data.system.StdoutOrStderr
 import java.io.IOException
 import java.nio.file.Path
 import java.nio.file.attribute.FileAttribute
-import scala.collection.immutable
 import scala.concurrent.duration._
 
 object Processes {
@@ -31,7 +30,7 @@ object Processes {
   /**
    * Builds an argument list for [[ProcessBuilder]].
    */
-  def toShellCommandArguments(file: Path, arguments: Seq[String] = Nil): immutable.Seq[String] = Vector(file.toString) ++ arguments
+  def toShellCommandArguments(file: Path, arguments: Seq[String] = Nil): Seq[String] = Vector(file.toString) ++ arguments
 
 
   // Shortcuts for operating system specific methods
@@ -42,13 +41,13 @@ object Processes {
     */
   val ShellFileExtension = OS.shellFileExtension
 
-  val ShellFileAttributes: immutable.Seq[FileAttribute[java.util.Set[_]]] = OS.shellFileAttributes
+  val ShellFileAttributes: Seq[FileAttribute[java.util.Set[_]]] = OS.shellFileAttributes
 
   def newTemporaryShellFile(name: String): Path = OS.newTemporaryShellFile(name)
 
   def newLogFile(directory: Path, name: String, outerr: StdoutOrStderr): Path = OS.newLogFile(directory, name, outerr)
 
-  def directShellCommandArguments(argument: String): immutable.Seq[String] = OS.directShellCommandArguments(argument)
+  def directShellCommandArguments(argument: String): Seq[String] = OS.directShellCommandArguments(argument)
 
   implicit final class RobustlyStartProcess(private val delegate: ProcessBuilder) extends AnyVal {
     /**

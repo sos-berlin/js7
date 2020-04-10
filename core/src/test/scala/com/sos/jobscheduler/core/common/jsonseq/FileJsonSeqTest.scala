@@ -105,7 +105,7 @@ final class FileJsonSeqTest extends FreeSpec {
               info("OutputStreamJsonSeqWriter: " + stopwatch.itemsPerSecondString(n, "events"))
             }
           }
-          info(Files.size(file) + " bytes,  " + Files.size(file) / (m*n) + "/document")
+          info(s"${Files.size(file)} bytes,  ${Files.size(file) / (m * n)}/document")
         }
       }
 
@@ -120,7 +120,7 @@ final class FileJsonSeqTest extends FreeSpec {
               }
               info("flush: " + stopwatch.itemsPerSecondString(n, "events"))
             }
-            info(Files.size(file) + " bytes,  " + Files.size(file) / (m*n) + "/document")
+            info(s"${Files.size(file)} bytes,  ${Files.size(file) / (m * n)}/document")
           }
 
           for (_ <- 1 to 5)

@@ -48,7 +48,6 @@ import java.time.ZoneId
 import javax.inject.Singleton
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
-import scala.collection.immutable
 import scala.concurrent.duration._
 import scala.util.Try
 
@@ -550,7 +549,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Ma
   "/master/api/event (only JSON)" in {
     val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
     val eventsJson = httpClient.get[Json](Uri(s"$uri/master/api/event?after=0"), headers) await 99.s
-    val keyedEvents: immutable.Seq[KeyedEvent[Event]] = {
+    val keyedEvents: Seq[KeyedEvent[Event]] = {
       import com.sos.jobscheduler.master.data.events.MasterKeyedEventJsonCodec
       eventsJson.asObject.get("stamped").get.asArray.get.map(_.as[KeyedEvent[Event]].orThrow)
     }

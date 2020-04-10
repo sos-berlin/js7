@@ -10,7 +10,6 @@ import com.sos.jobscheduler.data.workflow.position.{BranchId, CatchBranchId, Try
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
-import scala.collection.immutable.Seq
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
 /**

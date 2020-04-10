@@ -119,7 +119,7 @@ object Akkas
     /** Returns a non-unique readable string. "/" and "%2F" are both returns as "/". */
     def pretty: String =
       underlying match {
-        case RootActorPath(address, name) => address + name
+        case RootActorPath(address, name) => address.toString + name
         case child: ChildActorPath => child.parent.pretty.stripSuffix("/") + "/" + decodeActorName(child.name)
       }
   }

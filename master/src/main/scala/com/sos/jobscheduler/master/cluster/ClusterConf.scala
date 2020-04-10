@@ -11,9 +11,8 @@ import com.sos.jobscheduler.common.time.JavaTimeConverters.AsScalaDuration
 import com.sos.jobscheduler.core.configuration.RecouplingStreamReaderConfs
 import com.sos.jobscheduler.data.cluster.{ClusterNodeId, ClusterSetting}
 import com.typesafe.config.Config
-import scala.collection.JavaConverters._
-import scala.collection.immutable.Seq
 import scala.concurrent.duration.FiniteDuration
+import scala.jdk.CollectionConverters._
 
 final case class ClusterConf(
   ownId: ClusterNodeId,

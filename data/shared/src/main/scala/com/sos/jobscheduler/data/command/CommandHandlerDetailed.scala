@@ -3,8 +3,6 @@ package com.sos.jobscheduler.data.command
 import com.sos.jobscheduler.base.circeutils.CirceObjectCodec
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import io.circe.{Decoder, Encoder}
-import scala.collection.immutable.Seq
-
 /**
  * @author Joacim Zschimmer
  */

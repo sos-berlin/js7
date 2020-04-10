@@ -5,8 +5,6 @@ import com.sos.jobscheduler.base.time.ScalaTime._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.AsyncFreeSpec
-import scala.collection.immutable.Seq
-
 /**
   * @author Joacim Zschimmer
   */

@@ -55,8 +55,4 @@ object JournalFile
             .toChecked(Problem(s"Filename does not match a journal filename: $filename"))
       }
   }
-
-  private final class NotAJournalFileProblem(file: Path) extends Problem.Coded {
-    def arguments = Map("file" -> file.toString)
-  }
 }

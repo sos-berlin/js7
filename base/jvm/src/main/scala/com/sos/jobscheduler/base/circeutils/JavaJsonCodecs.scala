@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.base.circeutils
 
-import cats.syntax.either.catsSyntaxEither
 import com.sos.jobscheduler.base.circeutils.CirceUtils.toStringJsonCodec
 import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json}
 import java.nio.file.{Path, Paths}
@@ -11,8 +10,8 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-object JavaJsonCodecs {
-
+object JavaJsonCodecs
+{
   implicit val PathJsonCodec: CirceCodec[Path] = toStringJsonCodec(o => Paths.get(o))
 
   implicit val DurationEncoder: Encoder[Duration] =

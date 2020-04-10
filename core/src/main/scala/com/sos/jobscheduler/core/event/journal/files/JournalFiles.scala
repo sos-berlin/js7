@@ -7,7 +7,7 @@ import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.data.event.EventId
 import java.nio.file.Files.{createSymbolicLink, delete, exists}
 import java.nio.file.{Files, Path, Paths}
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 /**
@@ -41,7 +41,7 @@ object JournalFiles
       JournalFile.toFile(underlying.fileBase, after)
 
     def updateSymbolicLink(toFile: Path): Unit = {
-      val symLink = Paths.get(underlying.fileBase + "-journal")  // We preserve the suffix ".journal" for the real journal files
+      val symLink = Paths.get(s"${underlying.fileBase}-journal")  // We preserve the suffix ".journal" for the real journal files
       Try { if (exists(symLink)) delete(symLink) }
       Try { createSymbolicLink(symLink, toFile.getFileName) }
     }

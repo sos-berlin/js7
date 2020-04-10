@@ -8,12 +8,12 @@ object ByteUnits {
   /** Converts to bytes, kB, MB or GB */
   def toKBGB(size: Long): String =
     size match {
-      case _ if size < 0 => size + "bytes"
+      case _ if size < 0 => s"${size}bytes"
       case _ if size == 0  => "0kB"
       case _ if size < 1000  => "<1kB"
-      case _ if size < 1000000 => size / 1000 + "kB"
-      case _ if size < 1000000000 => size / 1000000 + "MB"
-      case _ => size / 1000000000 + "GB"
+      case _ if size < 1000000 => s"${size / 1000}kB"
+      case _ if size < 1000000000 => s"${size / 1000000}MB"
+      case _ => s"${size / 1000000000}GB"
     }
 
   def toMB(size: Long): String =

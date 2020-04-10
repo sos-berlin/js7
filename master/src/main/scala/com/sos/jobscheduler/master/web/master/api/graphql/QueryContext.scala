@@ -5,7 +5,6 @@ import com.sos.jobscheduler.data.filebased.FileBased
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import java.util.regex.Pattern
-import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future}
 
 /**

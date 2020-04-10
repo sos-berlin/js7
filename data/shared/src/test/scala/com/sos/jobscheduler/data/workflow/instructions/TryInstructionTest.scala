@@ -12,7 +12,6 @@ import com.sos.jobscheduler.data.workflow.position.{BranchId, Position}
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
-import scala.collection.immutable.Seq
 import scala.concurrent.duration._
 
 /**

@@ -18,7 +18,7 @@ object JavaMainLockfileSupport
 
   /** Exits program if lockfile is already locked. */
   def lockAndRunMain(args: Array[String])(body: CommandLineArguments => Unit): Unit =
-    CommandLineArguments.parse(args) { arguments =>
+    CommandLineArguments.parse(args.toIndexedSeq) { arguments =>
       val dataDirectory = Paths.get(arguments.as[String]("-data-directory="))
       val stateDirectory = dataDirectory resolve "state"
       if (!exists(stateDirectory)) {

@@ -10,7 +10,7 @@ object Randoms {
    */
   def randomStartInts(range: Iterable[Int]): Iterator[Int] = {
     val r = randomInt(range)
-    (r to range.last).toIterator ++ (range.head until r).toIterator
+    (r to range.last).iterator ++ (range.head until r).iterator
   }
 
   def randomInt(r: Iterable[Int]): Int =

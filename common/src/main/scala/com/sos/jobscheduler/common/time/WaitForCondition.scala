@@ -55,5 +55,5 @@ object WaitForCondition
     * Wenn aufeinanderfolgende Zeitpunkte schon erreicht sind, kehrt der Iterator trotzdem jedesmal zurück.
     * Dass kann zu überflüssigen Aktionen des Aufrufers führen (aufeinanderfolgende Prüfung einer aufwändigen Bedingung). */
   private[time] def realTimeIterator(deadlines: IterableOnce[Deadline]): Iterator[Unit] =
-    deadlines.toIterator map sleepUntil // toIterator führt dazu, das now erst bei next() oder hasNext lazy aufgerufen wird.
+    deadlines.iterator map sleepUntil // toIterator führt dazu, das now erst bei next() oder hasNext lazy aufgerufen wird.
 }

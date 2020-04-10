@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.common.scalautil
 
 import com.sos.jobscheduler.base.utils.DuplicateKeyException
-import scala.collection.JavaConverters._
 import scala.collection.mutable
+import scala.jdk.CollectionConverters._
 
 /**
  * Scala adapter for [[java.util.concurrent.ConcurrentHashMap]].

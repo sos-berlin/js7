@@ -18,8 +18,6 @@ import com.sos.jobscheduler.data.master.MasterFileBaseds.typedPathJsonDecoder
 import com.sos.jobscheduler.data.order.OrderId
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json, JsonObject}
-import scala.collection.immutable.Seq
-
 /**
   * @author Joacim Zschimmer
   */

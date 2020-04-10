@@ -15,9 +15,7 @@ import java.io.InputStream
 import org.bouncycastle.openpgp.jcajce.JcaPGPObjectFactory
 import org.bouncycastle.openpgp.operator.jcajce.JcaPGPContentVerifierBuilderProvider
 import org.bouncycastle.openpgp.{PGPPublicKey, PGPPublicKeyRingCollection, PGPSignature, PGPSignatureList, PGPUtil}
-import scala.collection.JavaConverters._
-import scala.collection.immutable.Seq
-
+import scala.jdk.CollectionConverters._
 /**
   * @author Joacim Zschimmer
   */
@@ -50,7 +48,7 @@ extends SignatureVerifier
   private def findPublicKeyInKeyRing(signature: PGPSignature): Checked[PGPPublicKey] =
     publicKeyRingCollection.getPublicKey(signature.getKeyID) match {  // Public key is matched with the only 64-bit long key ID ???
       case null =>
-        logger.debug(MessageSignedByUnknownProblem + ", no public key for " + signature.show)
+        logger.debug(s"$MessageSignedByUnknownProblem, no public key for ${signature.show}")
         Left(MessageSignedByUnknownProblem)
       case publicKey =>
         Right(publicKey)

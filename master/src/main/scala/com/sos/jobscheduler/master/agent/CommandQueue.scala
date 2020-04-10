@@ -4,12 +4,11 @@ import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Batch
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.master.agent.AgentDriver.{Input, ReleaseEventsQueueable, Queueable}
+import com.sos.jobscheduler.master.agent.AgentDriver.{Input, Queueable, ReleaseEventsQueueable}
 import com.sos.jobscheduler.master.agent.CommandQueue._
 import com.typesafe.scalalogging.{Logger => ScalaLogger}
 import monix.eval.Task
 import monix.execution.Scheduler
-import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.util.{Failure, Success}
 

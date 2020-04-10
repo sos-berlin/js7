@@ -189,7 +189,7 @@ final class OrderEventSource(
       case Right(Some(position)) =>
         if (visited contains position)
           Left(Problem(s"${order.id} is in a workflow loop: " +
-            visited.reverse.map(pos => pos + " " +
+            visited.reverse.map(pos => pos.toString + " " +
               idToWorkflow(order.workflowId).orThrow.labeledInstruction(pos).toString.truncateWithEllipsis(50)).mkString(" --> ")))
         else
           applyMoveInstructions(order.withPosition(position), position :: visited)

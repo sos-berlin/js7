@@ -22,7 +22,6 @@ import java.nio.file.{FileAlreadyExistsException, FileVisitOption, Files, Path, 
 import java.util.concurrent.ThreadLocalRandom
 import scala.annotation.tailrec
 import scala.collection.AbstractIterator
-import scala.collection.immutable.Seq
 import scala.language.implicitConversions
 import scodec.bits.ByteVector
 

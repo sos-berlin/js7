@@ -10,7 +10,6 @@ import com.sos.jobscheduler.data.workflow.position.Position._
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, DecodingFailure, Encoder, Json}
 import scala.annotation.tailrec
-import scala.collection.immutable.IndexedSeq
 
 /**
   * @author Joacim Zschimmer

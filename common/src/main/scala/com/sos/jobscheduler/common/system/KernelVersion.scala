@@ -3,13 +3,12 @@ package com.sos.jobscheduler.common.system
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversableOnce
 import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.common.scalautil.Logger
-import scala.collection.immutable
 import scala.util.control.NonFatal
 
 /**
  * @author Joacim Zschimmer
  */
-final case class KernelVersion(kernelName: String, version: immutable.Seq[Int]) {
+final case class KernelVersion(kernelName: String, version: Seq[Int]) {
   def >=(o: KernelVersion) = kernelName == o.kernelName && (version compareElementWise o.version) >= 0
 
   override def toString = List(kernelName, version mkString ".") mkString " "

@@ -3,7 +3,6 @@ package com.sos.jobscheduler.common.configutils
 import com.sos.jobscheduler.base.convert.ConvertiblePartialFunctions.wrappedConvert
 import com.sos.jobscheduler.base.convert.{As, ConvertiblePartialFunction}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.Collections.RichVectorCompanion
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.JavaResource
@@ -12,9 +11,8 @@ import com.typesafe.config.{Config, ConfigFactory, ConfigParseOptions, ConfigVal
 import java.nio.file.Files.exists
 import java.nio.file.Path
 import java.time.Duration
-import scala.collection.JavaConverters._
-import scala.collection.immutable.{IndexedSeq, Seq}
-
+import scala.collection.immutable.VectorBuilder
+import scala.jdk.CollectionConverters._
 /**
   * @author Joacim Zschimmer
   */
@@ -46,23 +44,25 @@ object Configs
   def logConfig(config: Config): Unit =
     for (line <- renderConfig(config)) logger.debug(line)
 
-  def renderConfig(config: Config): Seq[String] =
-    Vector.build[String] { builder =>
-      val sb = new StringBuilder
-      for (entry <- config.entrySet.asScala.toVector
-        .filter(_.getValue.origin.description.replaceFirst(": [0-9]+(-[0-9]+)?", "") != InternalOriginDescription)
-        .sortBy(_.getKey))
-      {
-        sb.clear()
-        sb ++= renderKeyValue(entry.getKey, entry.getValue)
-        if (!entry.getValue.origin.description.startsWith(SecretOriginDescription)) {
-          sb ++= " ("
-          sb ++= entry.getValue.origin.description
-          sb += ')'
-        }
-        builder += sb.toString
+  def renderConfig(config: Config): Seq[String] = {
+    val builder = new VectorBuilder[String]
+    val sb = new StringBuilder
+    for (entry <- config.entrySet.asScala.view
+      .filter(_.getValue.origin.description.replaceFirst(": [0-9]+(-[0-9]+)?", "") != InternalOriginDescription)
+      .toVector
+      .sortBy(_.getKey))
+    {
+      sb.clear()
+      sb ++= renderKeyValue(entry.getKey, entry.getValue)
+      if (!entry.getValue.origin.description.startsWith(SecretOriginDescription)) {
+        sb ++= " ("
+        sb ++= entry.getValue.origin.description
+        sb += ')'
       }
+      builder += sb.toString
     }
+    builder.result()
+  }
 
   private def renderKeyValue(key: String, value: ConfigValue): String = {
     val v =

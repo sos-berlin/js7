@@ -13,8 +13,6 @@ import java.io.{File, InputStream}
 import java.net.{URI, URL}
 import java.nio.file.{CopyOption, DirectoryNotEmptyException, FileAlreadyExistsException, Files, Path}
 import java.util.Objects.requireNonNull
-import scala.collection.immutable
-import scala.language.experimental.macros
 import scala.language.implicitConversions
 
 /**
@@ -49,7 +47,7 @@ final case class JavaResource(classLoader: ClassLoader, path: String)
     * the `REPLACE_EXISTING` option is specified but the file cannot be replaced because
     * it is a non-empty directory <i>(optional specific exception)</i>
     */
-  def copyToFiles(resourceNames: Iterable[String], directory: Path, copyOptions: CopyOption*): immutable.Seq[Path] = {
+  def copyToFiles(resourceNames: Iterable[String], directory: Path, copyOptions: CopyOption*): Seq[Path] = {
     val resourcePathAndDllFiles = for (name <- resourceNames) yield (this / name, directory resolve name)
     for ((resourcePath, file) <- resourcePathAndDllFiles) {
       resourcePath.copyToFile(file, copyOptions: _*)   // After an exception here, already created files are left !!!

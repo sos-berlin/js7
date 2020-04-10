@@ -28,7 +28,6 @@ import java.util.concurrent.Executors.newSingleThreadExecutor
 import monix.eval.Task
 import monix.execution.{Scheduler, UncaughtExceptionReporter}
 import org.jetbrains.annotations.TestOnly
-import scala.collection.immutable.Seq
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 

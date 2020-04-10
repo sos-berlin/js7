@@ -5,10 +5,9 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
-import scala.collection.generic.CanBuildFrom
+import scala.collection.BuildFrom
 import scala.concurrent.Promise
 import scala.concurrent.duration._
-import scala.language.higherKinds
 import scala.reflect.runtime.universe._
 import scala.util.{Failure, Success, Try}
 
@@ -17,8 +16,6 @@ import scala.util.{Failure, Success, Try}
   */
 object MonixUtils
 {
-  private val logger = Logger(getClass)
-
   object syntax {
     implicit class RichTask[A](private val underlying: Task[A]) extends AnyVal
     {
@@ -31,10 +28,10 @@ object MonixUtils
 
     implicit final class RichTaskTraversable[A, M[X] <: Iterable[X]](private val underlying: M[Task[A]]) extends AnyVal
     {
-      def await(duration: FiniteDuration)(implicit s: Scheduler, cbf: CanBuildFrom[M[Task[A]], A, M[A]], MA: TypeTag[M[A]]): M[A] =
+      def await(duration: FiniteDuration)(implicit s: Scheduler, cbf: BuildFrom[M[Task[A]], A, M[A]], MA: TypeTag[M[A]]): M[A] =
         Task.sequence(underlying)(cbf).runToFuture await duration
 
-      def awaitInfinite(implicit s: Scheduler, cbf: CanBuildFrom[M[Task[A]], A, M[A]]): M[A] =
+      def awaitInfinite(implicit s: Scheduler, cbf: BuildFrom[M[Task[A]], A, M[A]]): M[A] =
         Task.sequence(underlying)(cbf).runToFuture.awaitInfinite
     }
 
@@ -52,5 +49,4 @@ object MonixUtils
 
   def promiseTask[A](body: Promise[A] => Unit): Task[A] =
     Task.deferFuture(promiseFuture(body))
-
 }

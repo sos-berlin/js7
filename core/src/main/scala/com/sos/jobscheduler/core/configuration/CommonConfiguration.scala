@@ -14,8 +14,6 @@ import com.sos.jobscheduler.core.configuration.CommonConfiguration._
 import com.typesafe.config.Config
 import java.net.InetSocketAddress
 import java.nio.file.Path
-import scala.collection.immutable.Seq
-
 /**
   * @author Joacim Zschimmer
   */

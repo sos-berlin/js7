@@ -2,10 +2,9 @@ package com.sos.jobscheduler.data.event
 
 import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
+import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import monix.reactive.Observable
-import scala.collection.immutable.Iterable
-import com.sos.jobscheduler.base.utils.ScalazStyle._
 
 final case class JournalState(userIdToReleasedEventId: Map[UserId, EventId])
 {

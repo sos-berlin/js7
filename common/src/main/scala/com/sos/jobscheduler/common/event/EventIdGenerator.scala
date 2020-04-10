@@ -39,6 +39,6 @@ final class EventIdGenerator @Inject()(clock: EventIdClock = EventIdClock.Defaul
   def stamp[A](a: A, timestamp: Option[Timestamp] = None): Stamped[A] =
     stampWith(a, next(), timestamp)
 
-  private def stampWith[A](a: A, eventId: EventId, timestamp: Option[Timestamp] = None): Stamped[A] =
+  private def stampWith[A](a: A, eventId: EventId, timestamp: Option[Timestamp]): Stamped[A] =
     Stamped(eventId, timestamp getOrElse EventId.toTimestamp(eventId), a)
 }

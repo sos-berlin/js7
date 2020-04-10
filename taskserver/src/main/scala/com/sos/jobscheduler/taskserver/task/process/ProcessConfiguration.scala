@@ -7,7 +7,6 @@ import com.sos.jobscheduler.data.system.StdoutOrStderr
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_8}
 import java.nio.file.Path
-import scala.collection.immutable.Seq
 
 /**
  * @author Joacim Zschimmer

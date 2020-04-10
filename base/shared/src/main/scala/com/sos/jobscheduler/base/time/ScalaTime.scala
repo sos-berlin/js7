@@ -6,7 +6,6 @@ import com.sos.jobscheduler.base.utils.Ascii.isAsciiDigit
 import scala.annotation.tailrec
 import scala.concurrent.blocking
 import scala.concurrent.duration._
-import scala.language.implicitConversions
 import scala.math.abs
 import scala.util.Random
 
@@ -164,7 +163,7 @@ object ScalaTime
       else if (a >= 100)
         formatNumber(nanos / 1000.0, 1000, "µs")
       else
-        nanos + "ns"
+        s"${nanos}ns"
     }
 
     private def bigPretty = {

@@ -25,11 +25,11 @@ import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.typesafe.config.ConfigFactory
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
-import scala.collection.JavaConverters._
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.io
+import scala.jdk.CollectionConverters._
 
 /**
   * @author Joacim Zschimmer

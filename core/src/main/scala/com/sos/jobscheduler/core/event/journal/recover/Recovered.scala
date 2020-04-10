@@ -9,7 +9,6 @@ import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, JournaledState}
 import com.typesafe.config.Config
 import scala.concurrent.duration.Deadline
-import scala.language.higherKinds
 
 final case class Recovered[S <: JournaledState[S, E], E <: Event](
   journalMeta: JournalMeta,

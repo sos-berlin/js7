@@ -18,8 +18,7 @@ import com.typesafe.config.Config
 import java.io.InputStream
 import java.nio.file.Files.exists
 import java.nio.file.{Files, Paths}
-import scala.collection.JavaConverters._
-import scala.collection.immutable.Seq
+import scala.jdk.CollectionConverters._
 
 /** A `SignatureVerifier` that verifies different types of signatures.
   * @author Joacim Zschimmer
