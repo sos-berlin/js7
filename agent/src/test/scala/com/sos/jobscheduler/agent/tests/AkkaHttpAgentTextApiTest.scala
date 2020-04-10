@@ -109,7 +109,7 @@ extends FreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider wi
     }
     assert(output == List("JobScheduler Agent Server is responding"))
     val agentUri = Uri(s"http://127.0.0.1:${findFreeTcpPort()}")
-    autoClosing(new AkkaHttpAgentTextApi(agentUri, _ => Unit)) { client =>
+    autoClosing(new AkkaHttpAgentTextApi(agentUri, _ => ())) { client =>
       val t = intercept[Exception] {
         client.requireIsResponding()
       }

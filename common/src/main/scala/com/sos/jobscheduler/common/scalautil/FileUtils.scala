@@ -191,11 +191,11 @@ object FileUtils
   def nestedPathsIterator(directory: Path, options: FileVisitOption*): AutoCloseable with Iterator[Path] =
     new AbstractIterator[Path] with AutoCloseable {
       private val javaStream = Files.walk(directory, options: _*)
-      private val iterator = javaStream.asScala
+      private val underlyingIterator = javaStream.asScala
 
       def close() = javaStream.close()
-      def hasNext = iterator.hasNext
-      def next() = iterator.next()
+      def hasNext = underlyingIterator.hasNext
+      def next() = underlyingIterator.next()
     }
 
   private val RelativePathRegex = """^(/|\\|..?/|..?\\)|([/\\]..?([/\\]|$))""".r.unanchored

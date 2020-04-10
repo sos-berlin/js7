@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.base.convert
 
 import com.sos.jobscheduler.base.convert.ConvertiblePartialFunctions.wrappedConvert
-import scala.collection.breakOut
 import scala.collection.immutable.Seq
 
 /**
@@ -39,7 +38,7 @@ trait ConvertibleMultiPartialFunction[K, V] {
       case None => Nil  // Missing is equivalent to empty
       case Some(seq) =>
         val c = wrappedConvert(convert.apply, renderKey(key))
-        seq.map(c)(breakOut): Vector[W]
+        seq.map(c).toVector
     }
 
   protected def renderKey(key: K) = s"key '$key'"

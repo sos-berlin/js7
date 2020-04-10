@@ -218,6 +218,6 @@ private object RecoveryTest {
     result.toVector
   }
 
-  private def lastEventIdOf[E <: Event](stamped: TraversableOnce[Stamped[KeyedEvent[E]]]): EventId =
+  private def lastEventIdOf[E <: Event](stamped: IterableOnce[Stamped[KeyedEvent[E]]]): EventId =
     stamped.toVector.last.eventId
 }

@@ -4,7 +4,7 @@ import scala.language.implicitConversions
 //noinspection TypeAnnotation
 object Dependencies
 {
-  val scalaVersion = "2.12.11"
+  val scalaVersion = "2.13.1"
 
   val akkaVersion = "2.5.30"
   val akkaHttpVersion = "10.1.11"
@@ -13,17 +13,18 @@ object Dependencies
   val catsVersion = "2.1.0"
   val catsEffectVersion = catsVersion
   val kittensVersion = "1.2.1"
-  val fastparseVersion = "2.1.2"
+  val fastparseVersion = "2.2.4"
   val circeVersion = "0.13.0"
   val scalaTestVersion = "3.0.8"
+  val scalaCheckVersion= "1.14.3"
   val simulacrumVersion = "0.19.0"
-  val disciplineVersion = "0.8"  //"0.11.0"
+  val disciplineVersion = "1.0.1"
   val monixVersion = "3.1.0"
   val monocleVersion = "1.5.0"
   val scribeVersion = "2.7.10"
   val scalaJsDomVersion = "0.9.7"
-  val sangriaVersion = "1.4.2"
-  val sangriaCirceVersion = "1.2.1"
+  val sangriaVersion = "2.0.0-M4"
+  val sangriaCirceVersion = "1.3.0"
 
   val slf4j               = "org.slf4j" % "slf4j-api"    % slf4jVersion
   val slf4jNop            = "org.slf4j" % "slf4j-nop"    % slf4jVersion
@@ -39,7 +40,7 @@ object Dependencies
   val scalaXml            = "org.scala-lang.modules" %% "scala-xml" % "1.2.0"
   val scalaTest           = "org.scalatest" %% "scalatest" % scalaTestVersion
   val scalactic           = "org.scalactic" %% "scalactic" % scalaTestVersion
-  val scalaCheck          = "org.scalacheck" %% "scalacheck" % "1.14.0"
+  val scalaCheck          = "org.scalacheck" %% "scalacheck" % scalaCheckVersion
   val scalaLogging        = "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2" :: slf4j :: Nil
   val cats                = "org.typelevel" %% "cats-core" % catsVersion
 

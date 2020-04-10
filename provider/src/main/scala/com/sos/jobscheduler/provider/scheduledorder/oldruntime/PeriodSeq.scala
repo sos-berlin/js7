@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.provider.scheduledorder.oldruntime
 
 import com.sos.jobscheduler.provider.scheduledorder.oldruntime.PeriodSeq._
-import java.time._
+import java.time.LocalTime
 import scala.collection.immutable
 import scala.language.implicitConversions
 
@@ -26,7 +26,7 @@ object PeriodSeq {
   val Empty = PeriodSeq(Nil)
 
   def apply(o: Seq[Period]) =
-    new PeriodSeq(o.sorted.to[immutable.Seq]) {}
+    new PeriodSeq(o.sorted) {}
 
   implicit def fromPeriod(period: Period): PeriodSeq =
     PeriodSeq(List(period))

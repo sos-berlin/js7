@@ -53,7 +53,7 @@ object CodedMessages
     }
     val message = sb.toString
     val unused = arguments.keySet -- used
-    message + unusedArgumentsToString(arguments filterKeys unused)
+    message + unusedArgumentsToString(arguments.filterKeys(unused).toMap)
   }
 
   private def unusedArgumentsToString(arguments: Map[String, String]): String =

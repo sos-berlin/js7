@@ -40,13 +40,13 @@ object WaitForCondition
     * Die relative Zeitpunkt gelten ab jetzt (Instant.now).
     * condition wird am Anfang und am Ende geprüft.
     * @return letztes Ergebnis von condition */
-  def waitFromNowFor(deadlines: TraversableOnce[Deadline])(condition: => Boolean): Boolean =
+  def waitFromNowFor(deadlines: IterableOnce[Deadline])(condition: => Boolean): Boolean =
     waitAtDeadlinesFor(deadlines)(condition)
 
   /** Wartet bis zu den Zeitpunkten, bis condition wahr wird.
     * condition wird am Anfang und am Ende geprüft.
     * @return letztes Ergebnis von condition */
-  def waitAtDeadlinesFor(instants: TraversableOnce[Deadline])(condition: => Boolean) =
+  def waitAtDeadlinesFor(instants: IterableOnce[Deadline])(condition: => Boolean) =
     blocking {
       realTimeIterator(instants) exists {_ => condition}
     }
@@ -54,6 +54,6 @@ object WaitForCondition
   /** Ein Iterator, der bei next() (oder hasNext) auf den nächsten Zeitpunkt wartet.
     * Wenn aufeinanderfolgende Zeitpunkte schon erreicht sind, kehrt der Iterator trotzdem jedesmal zurück.
     * Dass kann zu überflüssigen Aktionen des Aufrufers führen (aufeinanderfolgende Prüfung einer aufwändigen Bedingung). */
-  private[time] def realTimeIterator(deadlines: TraversableOnce[Deadline]): Iterator[Unit] =
+  private[time] def realTimeIterator(deadlines: IterableOnce[Deadline]): Iterator[Unit] =
     deadlines.toIterator map sleepUntil // toIterator führt dazu, das now erst bei next() oder hasNext lazy aufgerufen wird.
 }

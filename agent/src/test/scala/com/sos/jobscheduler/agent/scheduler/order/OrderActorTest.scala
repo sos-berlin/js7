@@ -268,7 +268,7 @@ private object OrderActorTest {
     private def checkTermination(): Unit = {
       if (orderDetached && orderActorTerminated && events.lastOption.contains(OrderDetached) && (orderChangeds.lastOption map { _.event } contains OrderDetached)) {
         assert(events == (orderChangeds map { _.event }))
-        terminatedPromise.success(Result(events.toVector, stdoutStderr mapValues { _.toString }, runningSince.elapsed))
+        terminatedPromise.success(Result(events.toVector, stdoutStderr.view.mapValues(_.toString).toMap, runningSince.elapsed))
         context.stop(self)
       }
     }

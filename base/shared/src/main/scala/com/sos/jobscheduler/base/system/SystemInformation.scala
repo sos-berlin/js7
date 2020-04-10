@@ -1,9 +1,8 @@
 package com.sos.jobscheduler.base.system
 
 import com.sos.jobscheduler.base.circeutils.AnyJsonCodecs.implicits._
-import io.circe.generic.JsonCodec
+import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 
-@JsonCodec
 final case class SystemInformation(
   hostname: String,
   distribution: Option[String] = None,
@@ -14,4 +13,6 @@ object SystemInformation {
   (MapJsonDecoder, MapJsonEncoder)  // Force import usage for IntelliJ (hidden usage by @JsonCocec)
 
   val ForTest = SystemInformation(hostname = "HOSTNAME")
+
+  implicit val jsonCodec = deriveCodec[SystemInformation]
 }

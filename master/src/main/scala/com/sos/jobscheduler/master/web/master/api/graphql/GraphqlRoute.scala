@@ -31,8 +31,8 @@ import scala.util.{Failure, Success}
 /**
   * @author Joacim Zschimmer
   */
-trait GraphqlRoute extends MasterRouteProvider {
-
+trait GraphqlRoute extends MasterRouteProvider
+{
   protected def orderApi: OrderApi
   protected def fileBasedApi: FileBasedApi
 
@@ -157,6 +157,7 @@ trait GraphqlRoute extends MasterRouteProvider {
     Json.obj("errors" -> Json.arr(Json.obj("message" -> message.asJson)))
 }
 
-object GraphqlRoute {
+object GraphqlRoute
+{
   private val GraphiqlResource = JavaResource("com/sos/jobscheduler/master/web/master/api/graphql/graphiql.html")
 }

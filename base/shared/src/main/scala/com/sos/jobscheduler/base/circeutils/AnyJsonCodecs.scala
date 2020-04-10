@@ -10,8 +10,8 @@ import scala.collection.immutable.Seq
 /**
   * @author Joacim Zschimmer
   */
-object AnyJsonCodecs {
-
+object AnyJsonCodecs
+{
   object implicits {
     implicit val MapJsonEncoder: Encoder[Map[String, Any]] = anyToJson
     implicit val MapJsonDecoder: Decoder[Map[String, Any]] =
@@ -71,7 +71,7 @@ object AnyJsonCodecs {
               case None if json.isNull => null
               case None =>
                 json.asObject match {
-                  case Some(o) => o.toMap filter (!_._2.isNull)/*remove None*/ mapValuesStrict jsonToAny
+                  case Some(o) => o.toMap.filter(!_._2.isNull).mapValuesStrict(jsonToAny)
                   case None =>
                     json.asArray match {
                       case Some(o) => o map jsonToAny: Seq[Any]

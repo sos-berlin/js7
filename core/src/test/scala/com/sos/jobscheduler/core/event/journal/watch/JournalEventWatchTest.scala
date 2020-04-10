@@ -232,7 +232,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll
       withJournalEventWatch(lastEventId = EventId.BeforeFirst) { (writer, eventWatch) =>
         val stampeds = mutable.Buffer[Stamped[KeyedEvent[AEvent]]]()
         val observed = eventWatch.observe(EventRequest.singleClass[AEvent](limit = 3, timeout = Some(99.s)))
-          .foreach(stampeds.+=)
+          .foreach(stampeds += _)
         assert(stampeds.isEmpty)
 
         val stampedSeq = Stamped(1, "1" <-: A1) :: Stamped(2, "2" <-: B1) :: Stamped(3, "3" <-: A1) :: Nil
@@ -257,7 +257,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll
       // Wie geben wir am besten 'Torn' zurück? Als Ende des Streams, als Exception oder als eigenes Objekt?
       withJournalEventWatch(lastEventId = EventId(1000)) { (_, eventWatch) =>
         val e = intercept[TornException] {
-          eventWatch.observe(EventRequest.singleClass[AEvent](after = 10, timeout = Some(99.s))).countL await 99.s
+          eventWatch.observe(EventRequest.singleClass[AEvent](after = EventId(10), timeout = Some(99.s))).countL await 99.s
         }
         assert(e.after == 10 && e.tornEventId == 1000)
       }
@@ -271,12 +271,12 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll
           writer.onCommitted(writer.fileLengthAndEventId, MyEvents1.length)
 
           val e = intercept[TornException] {
-            eventWatch.observe(EventRequest.singleClass[AEvent](after = 115, timeout = Some(99.s))).countL await 99.s
+            eventWatch.observe(EventRequest.singleClass[AEvent](after = EventId(115), timeout = Some(99.s))).countL await 99.s
           }
           assert(e.after == 115 && e.tornEventId == 100)
 
           val stampeds = mutable.Buffer[Stamped[KeyedEvent[AEvent]]]()
-          eventWatch.observe(EventRequest.singleClass[AEvent](after = 110, timeout = Some(500.ms))).foreach(stampeds.+=) await 99.s
+          eventWatch.observe(EventRequest.singleClass[AEvent](after = EventId(110), timeout = Some(500.ms))).foreach(stampeds += _) await 99.s
           assert(stampeds == MyEvents1(1) :: Nil)
         }
       }

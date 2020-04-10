@@ -1,8 +1,6 @@
 package com.sos.jobscheduler.base.problem
 
 import cats.Applicative
-import cats.instances.either._
-import cats.syntax.flatMap._
 import cats.syntax.semigroup._
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
 import com.sos.jobscheduler.base.generic.Completed
@@ -186,12 +184,12 @@ object Checked
       }
   }
 
-  implicit final class FailFastMap[A](private val underlying: TraversableOnce[A]) {
+  implicit final class FailFastMap[A](private val underlying: IterableOnce[A]) {
     /** Like map(f).sequence, but fails fast. `L` does not accumulate. */
     def failFastMap[B, L](f: A => Either[L, B]): Either[L, Seq[B]] = {
       val builder = new VectorBuilder[B]
       var failed: Left[L, B] = null
-      val it = underlying.toIterator
+      val it = underlying.iterator
       while (failed == null && it.hasNext) {
         f(it.next()) match {
           case o @ Left(_) => failed = o

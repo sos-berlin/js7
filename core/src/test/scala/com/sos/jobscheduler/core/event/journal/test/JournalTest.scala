@@ -141,7 +141,7 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournal
       assert(journalFileNames.length == 1)
     }
 
-    for ((n, eventBufferSize) <- Array(1000 -> 1000) ++ (if (sys.props.contains("test.speed")) Array(1000 -> 300, 100 -> 100, 100 -> 30, 100 -> 10) else Nil)) {
+    for ((n, eventBufferSize) <- Vector(1000 -> 1000) ++ (if (sys.props.contains("test.speed")) Array(1000 -> 300, 100 -> 100, 100 -> 30, 100 -> 10) else Nil)) {
       s"$n actors, event-buffer-size=$eventBufferSize" in {
         run(n = n, eventBufferSize = eventBufferSize)
       }

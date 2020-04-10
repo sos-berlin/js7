@@ -39,8 +39,9 @@ with Decoder[KeyedEvent[E]]
     new KeyedEventTypedJsonCodec[Event](
       name = "Event",
       printName = s"$printName|${other.printName}",
-      classToEncoder.asInstanceOf[Map[Class[_ <: Event], Encoder.AsObject[KeyedEvent[_ <: Event]]]] ++
-        other.classToEncoder.asInstanceOf[Map[Class[_ <: Event], Encoder.AsObject[KeyedEvent[_ <: Event]]]],
+      (classToEncoder.asInstanceOf[Map[Class[_ <: Event], Encoder.AsObject[KeyedEvent[_ <: Event]]]] ++
+        other.classToEncoder.asInstanceOf[Map[Class[_ <: Event], Encoder.AsObject[KeyedEvent[_ <: Event]]]]
+      ).toMap,
       nameToDecoder.asInstanceOf[Map[String, Decoder.Result[Decoder[KeyedEvent[_ <: Event]]]]] ++
         other.nameToDecoder.asInstanceOf[Map[String, Decoder.Result[Decoder[KeyedEvent[_ <: Event]]]]],
       nameToClass.asInstanceOf[Map[String, Class[_ <: Event]]] ++

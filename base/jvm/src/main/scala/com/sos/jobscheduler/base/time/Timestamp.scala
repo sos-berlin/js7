@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.base.time
 
-import com.sos.jobscheduler.base.time.Timestamp._
+import com.sos.jobscheduler.base.time.Timestamp.dateTimeFormatter
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 

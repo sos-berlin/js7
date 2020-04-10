@@ -102,7 +102,7 @@ final case class Repo private(
     }
 
   def currentTyped[A <: FileBased](implicit A: FileBased.Companion[A]): Map[A#Path, A] =
-    typeToPathToCurrentFileBased(A).mapValues(_.value).asInstanceOf[Map[A#Path, A]]
+    typeToPathToCurrentFileBased(A).view.mapValues(_.value).toMap.asInstanceOf[Map[A#Path, A]]
 
   def currentFileBaseds: immutable.Iterable[FileBased] =
     currentSignedFileBaseds.map(_.value)
@@ -194,7 +194,8 @@ final case class Repo private(
         .flatMap { case (path, versionToFileBasedOpt) =>
           versionToFileBasedOpt map { case (v, opt) => v -> (opt map Left.apply getOrElse Right(path)) }
         }
-        .groupBy(_._1).mapValues(_ map (_._2))
+        .groupBy(_._1).view.mapValues(_ map (_._2))
+        .toMap
     versions.tails
       .map {
         case Nil =>  // Last of tails

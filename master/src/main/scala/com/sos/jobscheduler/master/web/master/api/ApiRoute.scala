@@ -35,7 +35,7 @@ with ClusterRoute
 with LogRoute
 {
   final val apiRoute: Route =
-    respondWithHeaders(StandardResponseHeaders: _*) {
+    respondWithHeaders(StandardResponseHeaders) {
       pathEnd {
         apiRootRoute
       } ~

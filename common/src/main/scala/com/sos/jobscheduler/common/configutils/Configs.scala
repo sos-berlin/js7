@@ -3,7 +3,7 @@ package com.sos.jobscheduler.common.configutils
 import com.sos.jobscheduler.base.convert.ConvertiblePartialFunctions.wrappedConvert
 import com.sos.jobscheduler.base.convert.{As, ConvertiblePartialFunction}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.Collections.RichGenericCompanion
+import com.sos.jobscheduler.base.utils.Collections.RichVectorCompanion
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.JavaResource

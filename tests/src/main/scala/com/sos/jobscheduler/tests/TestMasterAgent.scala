@@ -201,7 +201,7 @@ object TestMasterAgent
   }
 
   private object Conf {
-    def parse(args: collection.Seq[String], directory: () => Path): Conf =
+    def parse(args: Seq[String], directory: () => Path): Conf =
       CommandLineArguments.parse(args) { a: CommandLineArguments =>
         val agentCount = a.as[Int]("-agents=", 1)
         require(agentCount > 0)

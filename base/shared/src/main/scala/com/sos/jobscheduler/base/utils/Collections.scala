@@ -4,9 +4,8 @@ import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import javax.annotation.Nullable
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
-import scala.collection.generic.{GenMapFactory, GenericCompanion}
-import scala.collection.immutable.{Seq, Vector}
-import scala.collection.{GenMap, GenMapLike, GenTraversable, TraversableLike, immutable, mutable}
+import scala.collection.immutable.{Seq, Vector, VectorBuilder}
+import scala.collection.{BufferedIterator, immutable, mutable}
 import scala.language.{higherKinds, implicitConversions}
 import scala.reflect.ClassTag
 
@@ -17,7 +16,7 @@ object Collections {
         if (underlying.indices contains i) Some(underlying(i)) else None
     }
 
-    implicit final class RichTraversableOnce[A](private val delegate: TraversableOnce[A]) extends AnyVal {
+    implicit final class RichTraversableOnce[A](private val delegate: IterableOnce[A]) extends AnyVal {
       def toImmutableSeq: Seq[A] =
         delegate match {
           case o: Seq[A] => o
@@ -33,7 +32,7 @@ object Collections {
       def countEquals: Map[A, Int] =
         delegate.toTraversable groupBy identity map { case (k, v) => k -> v.size }
 
-      def compareElementWise(other: TraversableOnce[A])(implicit ordering: Ordering[A]): Int = compareIteratorsElementWise(delegate.toIterator, other.toIterator)
+      def compareElementWise(other: IterableOnce[A])(implicit ordering: Ordering[A]): Int = compareIteratorsElementWise(delegate.toIterator, other.toIterator)
     }
 
     implicit final class RichSeq[A](private val delegate: collection.Iterable[A]) extends AnyVal {
@@ -64,7 +63,7 @@ object Collections {
         Vector.empty ++ delegate.asScala
     }
 
-    implicit final class RichTraversable[F[x] <: Traversable[x], A](private val delegate: F[A]) extends AnyVal {
+    implicit final class RichTraversable[F[x] <: Iterable[x], A](private val delegate: F[A]) extends AnyVal {
       def toKeyedMap[K](toKey: A => K): Map[K, A] = (delegate map { o => toKey(o) -> o }).uniqueToMap
 
       def toKeyedMap[K](toKey: A => K, ifNot: Iterable[K] => Nothing): Map[K, A] = (delegate map { o => toKey(o) -> o }).uniqueToMap(ifNot)
@@ -81,23 +80,23 @@ object Collections {
           case None => Right(delegate)
         }
 
-      def requireUniqueness: Traversable[A] =
+      def requireUniqueness: Iterable[A] =
         requireUniqueness(identity[A])
 
-      def requireUniqueness[K](key: A => K): Traversable[A] =
+      def requireUniqueness[K](key: A => K): Iterable[A] =
         ifNotUnique[K, A](key, keys => throw new DuplicateKeyException(s"Unexpected duplicates: ${keys mkString ", "}"))
 
-      def ifNotUnique[K, B >: A](key: A => K, then_ : Iterable[K] => Traversable[B]): Traversable[B] =
+      def ifNotUnique[K, B >: A](key: A => K, then_ : Iterable[K] => Iterable[B]): Iterable[B] =
         duplicateKeys(key) match {
           case Some(o) => then_(o.keys)
           case None => delegate
         }
 
-      def duplicates: Traversable[A] =
+      def duplicates: Iterable[A] =
         delegate groupBy identity collect { case (k, v) if v.size > 1 => k }
 
       /** Liefert die Duplikate, also Listenelemente, deren Schlüssel mehr als einmal vorkommt. */
-      def duplicateKeys[K](key: A => K): Option[Map[K, Traversable[A]]] =
+      def duplicateKeys[K](key: A => K): Option[Map[K, Iterable[A]]] =
         delegate groupBy key filter { _._2.size > 1 } match {
           case o if o.isEmpty => None
           case o => Some(o)
@@ -136,7 +135,7 @@ object Collections {
         delegate forall (k => !o.contains(k))
     }
 
-    implicit final class RichPairTraversable[A, B](private val delegate: Traversable[(A, B)]) extends AnyVal {
+    implicit final class RichPairTraversable[A, B](private val delegate: Iterable[(A, B)]) extends AnyVal {
       def uniqueToMap: Map[A, B] = {
         delegate.requireUniqueness { _._1 }
         delegate.toMap
@@ -153,23 +152,25 @@ object Collections {
 
     implicit final class InsertableMutableMap[K, V](private val delegate: mutable.Map[K, V]) extends AnyVal {
       def insert(kv: (K, V)): Unit = {
-        if (delegate contains kv._1) throw new DuplicateKeyException(s"Key ${kv._1} is already known in ${delegate.stringPrefix}")
+        if (delegate contains kv._1) throw new DuplicateKeyException(s"Key ${kv._1} is already known")
         delegate += kv
       }
     }
   }
 
-  implicit final class RichGenericCompanion[+CC[X] <: GenTraversable[X]](private val delegate: GenericCompanion[CC]) extends AnyVal {
-    def build[A](body: mutable.Builder[A, CC[A]] => Unit): CC[A] = {
-      val b = delegate.newBuilder[A]
+  implicit final class RichVectorCompanion(private val underlying: Vector.type) extends AnyVal {
+    @deprecated
+    def build[A](body: VectorBuilder[A] => Unit): Vector[A] = {
+      val b = new VectorBuilder[A]
       body(b)
       b.result
     }
   }
 
   implicit final class RichArrayCompanion(private val underlying: Array.type) extends AnyVal {
+    @deprecated
     def build[A: ClassTag](body: mutable.ArrayBuilder[A] => Unit): Array[A] = {
-      val b = mutable.ArrayBuilder.make[A]()
+      val b = mutable.ArrayBuilder.make[A]
       body(b)
       b.result()
     }
@@ -177,7 +178,7 @@ object Collections {
 
   implicit final class RichMap[K, V](private val underlying: Map[K, V]) extends AnyVal {
     def toChecked(unknownKey: K => Problem): Map[K, Checked[V]] =
-      underlying mapValues Right.apply withDefault unknownKey.andThen(Left.apply)
+      underlying.mapValues(Right.apply).toMap withDefault unknownKey.andThen(Left.apply)
 
     def withNoSuchKey(noSuchKey: K => Nothing): Map[K, V] =
       underlying withDefault (k => noSuchKey(k))
@@ -191,20 +192,6 @@ object Collections {
       underlying map { case (k, v) => k -> f(v) }
   }
 
-  implicit final class RichMapCompanion[CC[A, B] <: GenMap[A, B] with GenMapLike[A, B, CC[A, B]]](private val delegate: GenMapFactory[CC]) extends AnyVal {
-    def build[A, B](body: mutable.Builder[(A, B), CC[A, B]] => Unit): CC[A, B] = {
-      val b = delegate.newBuilder[A, B]
-      body(b)
-      b.result
-    }
-  }
-
-  //implicit final class RichListMap[K, V](private val underlying: ListMap[K, V]) extends AnyVal {
-  //  // ListMap is ordered
-  //  def keySeq: Seq[K] = underlying.keys.toVector
-  //  def valueSeq: Seq[V] = underlying.values.toVector
-  //}
-
   implicit final class RichBufferedIterator[A](private val delegate: BufferedIterator[A]) extends AnyVal {
     def headOption: Option[A] = if (delegate.hasNext) Some(delegate.head) else None
   }
@@ -212,7 +199,7 @@ object Collections {
   def emptyToNone(@Nullable o: String): Option[String] =
     if (o == null || o.isEmpty) None else Some(o)
 
-  def emptyToNone[A <: TraversableLike[_, _]](@Nullable o: A): Option[A] =
+  def emptyToNone[A <: Iterable[_]](@Nullable o: A): Option[A] =
     if (o == null || o.isEmpty) None else Some(o)
 
   def emptyToNone[A](@Nullable o: Array[A]): Option[Array[A]] =

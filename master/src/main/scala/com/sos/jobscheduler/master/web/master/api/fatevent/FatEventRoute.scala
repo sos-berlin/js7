@@ -26,7 +26,7 @@ import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import com.sos.jobscheduler.master.web.master.api.fatevent.FatEventRoute._
 import java.util.concurrent.Executors.newSingleThreadExecutor
 import monix.eval.Task
-import monix.execution.Scheduler
+import monix.execution.{Scheduler, UncaughtExceptionReporter}
 import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.Seq
 import scala.concurrent.duration.Deadline.now
@@ -42,16 +42,19 @@ trait FatEventRoute extends MasterRouteProvider
   protected def eventWatch: EventWatch
   protected def masterConfiguration: MasterConfiguration
 
-  private implicit val fatScheduler = Scheduler(
+  private implicit val fatScheduler: Scheduler = Scheduler(
     newSingleThreadExecutor { runnable =>
       val thread = new Thread(runnable)
       thread.setName(s"JobScheduler-fatEvent-${thread.getId}")
       thread
     },
-    _ match {
-      case t: ClosedException => logger.debug(t.toString)  // Why throws thread?
-      case throwable: Throwable => logger.error(throwable.toStringWithCauses, throwable)
-    })
+    reporter = new UncaughtExceptionReporter {
+      def reportFailure(throwable: Throwable): Unit =
+        throwable match {
+          case t: ClosedException => logger.debug(t.toString)  // Why throws thread?
+          case throwable: Throwable => logger.error(throwable.toStringWithCauses, throwable)
+        }
+      })
 
   // Rebuilding FatState may take a long time, so we allow only one per time.
   // The client may impatiently abort and retry, overloading the server with multiple useless requests.

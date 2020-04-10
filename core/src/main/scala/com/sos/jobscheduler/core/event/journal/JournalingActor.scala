@@ -225,7 +225,7 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
   private def stashingCountRemaining = if (stashingCount > 0) s", $stashingCount remaining" else ""
 
   protected def toTimestamped[EE <: E](keyEvents: collection.Iterable[KeyedEvent[EE]]): Seq[Timestamped[EE]] =
-    keyEvents.view.map(e => Timestamped(e)).to[Vector]
+    keyEvents.view.map(e => Timestamped(e)).toVector
 
   protected type Timestamped[+EE <: E] = JournalingActor.Timestamped[EE]
 

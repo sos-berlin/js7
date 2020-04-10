@@ -141,7 +141,7 @@ final class OfferAndAwaitOrderTest extends FreeSpec
     master.eventWatch.await[OrderFinished](_.key == JoinAfterOrder.id)
   }
 
-  private def checkEventSeq(eventSeq: TearableEventSeq[TraversableOnce, KeyedEvent[OrderEvent]], expectedOffering: Seq[OrderEvent], expectedAwaiting: Seq[OrderEvent]): Unit =
+  private def checkEventSeq(eventSeq: TearableEventSeq[IterableOnce, KeyedEvent[OrderEvent]], expectedOffering: Seq[OrderEvent], expectedAwaiting: Seq[OrderEvent]): Unit =
     eventSeq match {
       case EventSeq.NonEmpty(stampeds) =>
         val keyedEvents = stampeds.map(_.value).toVector

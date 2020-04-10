@@ -3,7 +3,7 @@ package com.sos.jobscheduler.provider.scheduledorder.oldruntime
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.time.JavaTime._
 import com.sos.jobscheduler.provider.scheduledorder.oldruntime.RepeatPeriod._
-import java.time._
+import java.time.{Duration, LocalTime}
 
 final case class RepeatPeriod(
   begin: LocalTime, // = StartOfDay,

@@ -418,7 +418,7 @@ import scodec.bits.ByteVector
                     val switchedOver = cast[ClusterSwitchedOver](json.as[ClusterEvent].orThrow)
                     Observable.fromTask(
                       common.clusterWatch.applyEvents(from = ownId, switchedOver :: Nil, builder.clusterState, force = true)
-                        .map(_.map(_ => Unit)))
+                        .map(_.map(_ => ())))
                     // TODO sendClusterPassiveFollows ?
 
                   case ClusterCouplingPrepared(activeId) =>

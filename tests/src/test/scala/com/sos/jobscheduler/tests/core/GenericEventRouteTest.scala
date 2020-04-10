@@ -132,7 +132,7 @@ final class GenericEventRouteTest extends FreeSpec with BeforeAndAfterAll with P
 
       val observed = mutable.Buffer[Stamped[KeyedEvent[Event]]]()
       val observableCompleted = getEventObservable(EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(99.s)))
-        .foreach(observed.+=)
+        .foreach(observed += _)
       waitForCondition(9.s, 1.ms) { observed.size == 1 }
       assert(observed(0) == TestEvents(0))
 

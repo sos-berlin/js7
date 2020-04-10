@@ -19,12 +19,12 @@ class ScalaConcurrentHashMap[K, V] extends mutable.Map[K, V]{
     this
   }
 
-  final override def +=(kv: (K, V)) = {
+  final override def addOne(kv: (K, V)) = {
     delegate.put(kv._1, kv._2)
     this
   }
 
-  final override def -=(key: K) = {
+  final override def subtractOne(key: K) = {
     delegate.remove(key)
     this
   }

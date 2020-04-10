@@ -23,7 +23,6 @@
   */
 import BuildUtils._
 import java.nio.file.Paths
-import sbt.CrossVersion
 import sbt.Keys.testOptions
 // shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
@@ -59,7 +58,13 @@ addCommandAlias("publish-all"    , "universal:publish")  // Publishes artifacts 
 addCommandAlias("publish-install", "; install/universal:publish; install-docker:universal:publish")
 addCommandAlias("TestMasterAgent", "tests/runMain com.sos.jobscheduler.tests.TestMasterAgent -agents=2 -nodes-per-agent=3 -tasks=3 -job-duration=1.5s -period=10.s")
 addCommandAlias("quickPublishLocal", "; compile; publishLocal; project jobschedulerJS; compile; publishLocal")
-ThisBuild / scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature"/*, "-Xlint"*/)  // -Yno-adapted-args?
+//scalafixDependencies in ThisBuild += "org.scala-lang.modules" %% "scala-collection-migrations" % "2.1.4"
+//addCompilerPlugin(scalafixSemanticdb)
+//ThisBuild / scalacOptions ++= Seq("-P:semanticdb:synthetics:on")
+ThisBuild / scalacOptions ++= Seq(
+  "-Ymacro-annotations",
+  "-unchecked", "-deprecation", "-feature"/*, "-Xlint"*/,
+  "-Yrangepos")            // required by SemanticDB compiler plugin
 
 val scalaTestArguments = Tests.Argument(TestFrameworks.ScalaTest, "-oNCLPQF", "-W", "30", "30")  // http://www.scalatest.org/user_guide/using_scalatest_with_sbt
 
@@ -82,7 +87,6 @@ val commonSettings = Seq(
       </developer>
     </developers>,
   scalaVersion := Dependencies.scalaVersion,
-  addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full),  // For Scala 2.13 replace with: scalacOptions += "-Ymacro-annotations"
   javacOptions in Compile ++= Seq("-encoding", "UTF-8", "-source", "1.8"),  // This is for javadoc, too
   javacOptions in (Compile, compile) ++= Seq("-target", "1.8", "-deprecation", "-Xlint:all", "-Xlint:-serial"),
   dependencyOverrides ++= {
@@ -203,7 +207,8 @@ lazy val base = crossProject(JSPlatform, JVMPlatform)
     libraryDependencies ++=
       "org.typelevel" %%% "cats-core" % catsVersion ++
       "org.typelevel" %%% "cats-laws" % catsVersion % "test" ++
-      "org.typelevel" %%% "discipline" % disciplineVersion % "test" ++
+      "org.typelevel" %%% "discipline-core" % disciplineVersion % "test" ++
+      "org.typelevel" %%% "discipline-scalatest" % disciplineVersion % "test" ++
       "io.circe" %%% "circe-core" % circeVersion ++
       "io.circe" %%% "circe-parser" % circeVersion ++
       "io.circe" %%% "circe-generic" % circeVersion ++
@@ -214,7 +219,8 @@ lazy val base = crossProject(JSPlatform, JVMPlatform)
       "com.lihaoyi" %%% "sourcecode" % "0.1.9" ++
       "com.outr" %%% "scribe" % scribeVersion ++
       findbugs % "compile" ++
-      "org.scalatest" %%% "scalatest" % scalaTestVersion % "test"
+      "org.scalatest" %%% "scalatest" % scalaTestVersion % "test" ++
+      "org.scalacheck" %% "scalacheck" % scalaCheckVersion % "test"
   }
 
 lazy val data = crossProject(JSPlatform, JVMPlatform)
@@ -229,7 +235,8 @@ lazy val data = crossProject(JSPlatform, JVMPlatform)
       "com.lihaoyi" %%% "fastparse" % fastparseVersion ++
       "org.scalatest" %%% "scalatest" % scalaTestVersion % "test" ++
       "org.typelevel" %%% "cats-laws" % catsVersion % "test" ++
-      "org.typelevel" %%% "discipline" % disciplineVersion % "test" ++
+      "org.typelevel" %%% "discipline-core" % disciplineVersion % "test" ++
+      "org.typelevel" %%% "discipline-scalatest" % disciplineVersion % "test" ++
       "com.github.mpilquist" %% "simulacrum" % simulacrumVersion
   }
 

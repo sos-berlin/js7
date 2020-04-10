@@ -50,11 +50,11 @@ object TearableEventSeq {
 sealed trait EventSeq[+M[_], +E] extends TearableEventSeq[M, E]
 
 object EventSeq {
-  final case class NonEmpty[M[_] <: TraversableOnce[_], E](stamped: M[Stamped[E]])
+  final case class NonEmpty[M[_] <: IterableOnce[_], E](stamped: M[Stamped[E]])
   extends EventSeq[M, E] {
-    assert(stamped.nonEmpty)
+    assert(stamped.knownSize != 0)
 
-    override def toString = s"EventSeq.NonEmpty(" + (if (stamped.hasDefiniteSize) stamped.size + " events" else "lazy") + ")"
+    override def toString = s"EventSeq.NonEmpty(" + (if (stamped.knownSize >= 0) stamped.knownSize + " events" else "lazy") + ")"
   }
 
   final case class Empty(lastEventId: EventId)

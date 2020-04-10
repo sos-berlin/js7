@@ -10,7 +10,8 @@ import scala.runtime.BoxedUnit.UNIT
  * Scala adapter for [[java.util.concurrent.ConcurrentHashMap]].
  * @author Joacim Zschimmer
  */
-class ScalaConcurrentHashSet[A] extends mutable.Set[A]{
+class ScalaConcurrentHashSet[A] extends mutable.Set[A]
+{
   val delegate = new java.util.concurrent.ConcurrentHashMap[A, BoxedUnit]
 
   final def insert(key: A): this.type = {
@@ -19,12 +20,15 @@ class ScalaConcurrentHashSet[A] extends mutable.Set[A]{
     this
   }
 
-  final override def +=(a: A) = {
+  final def clear(): Unit =
+    delegate.clear()
+
+  final override def addOne(a: A) = {
     delegate.put(a, UNIT)
     this
   }
 
-  final override def -=(a: A) = {
+  final override def subtractOne(a: A) = {
     delegate.remove(a)
     this
   }

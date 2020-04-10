@@ -2,8 +2,7 @@ package com.sos.jobscheduler.base.utils
 
 import com.sos.jobscheduler.base.utils.CloseableIterator._
 import java.util.NoSuchElementException
-import scala.collection.immutable.Seq
-import scala.collection.{GenTraversableOnce, Iterator}
+import scala.collection.{GenTraversableOnce, Iterator, Seq}
 import scala.util.control.NonFatal
 
 /**
@@ -73,12 +72,12 @@ trait CloseableIterator[+A] extends Iterator[A] with AutoCloseable
       override def toString = CloseableIterator.this.toString
   }
 
-  private def wrap[B](iterator: Iterator[B]): CloseableIterator[B] =
+  private def wrap[B](baseIterator: Iterator[B]): CloseableIterator[B] =
     new CloseableIterator[B] {
       def close() = CloseableIterator.this.close()
-      def hasNext = iterator.hasNext
-      def next() = iterator.next()
-      override def toString = s"CloseableIterator($iterator)"
+      def hasNext = baseIterator.hasNext
+      def next() = baseIterator.next()
+      override def toString = s"CloseableIterator($baseIterator)"
     }
 }
 
@@ -100,12 +99,12 @@ object CloseableIterator {
       throw t
     }
 
-  def fromIterator[A](iterator: Iterator[A]): CloseableIterator[A] =
+  def fromIterator[A](baseIterator: Iterator[A]): CloseableIterator[A] =
     new CloseableIterator[A] {
       def close() = {}
-      def hasNext = iterator.hasNext
-      def next() = iterator.next()
-      override def toString = s"CloseableIterator($iterator)"
+      def hasNext = baseIterator.hasNext
+      def next() = baseIterator.next()
+      override def toString = s"CloseableIterator($baseIterator)"
     }
 
   private class CloseAtEnd[A](underlying: CloseableIterator[A]) extends CloseableIterator[A]

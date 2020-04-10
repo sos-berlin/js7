@@ -112,7 +112,7 @@ object Futures {
       }
     }
 
-    implicit final class RichFutures[A, M[X] <: TraversableOnce[X]](private val delegate: M[Future[A]]) extends AnyVal {
+    implicit final class RichFutures[A, M[X] <: IterableOnce[X]](private val delegate: M[Future[A]]) extends AnyVal {
       /**
         * Awaits the futures completion for the duration or infinite.
         */

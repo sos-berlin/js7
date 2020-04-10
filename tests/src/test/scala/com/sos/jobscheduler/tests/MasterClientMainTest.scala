@@ -32,7 +32,7 @@ final class MasterClientMainTest extends FreeSpec with BeforeAndAfterAll with Ma
       MasterClientMain.run(
         s"-config-directory=$configDirectory" :: s"-data-directory=$dataDirectory" ::
           s"https://localhost:$httpsPort" :: Nil,
-        output.+=)
+        output += _)
     }
     assert(output == List("JobScheduler Master is responding"))
   }
@@ -44,7 +44,7 @@ final class MasterClientMainTest extends FreeSpec with BeforeAndAfterAll with Ma
         s"-config-directory=$configDirectory" :: s"-data-directory=$dataDirectory" ::
           s"https://localhost:$httpsPort" ::
           "?" :: "/order" :: Nil,
-        output.+=)
+        output += _)
     }
     assert(output(0) contains "version:")
     assert(output(1) == "---")
@@ -72,7 +72,7 @@ final class MasterClientMainTest extends FreeSpec with BeforeAndAfterAll with Ma
       s"-config-directory=$configDirectory" :: s"-data-directory=$dataDirectory" ::
         s"https://localhost:$httpsPort" ::
         commandYaml :: Nil,
-      output.+=)
+      output += _)
     assert(output == List("TYPE: Accepted"))
     master.terminated await 99.s
   }

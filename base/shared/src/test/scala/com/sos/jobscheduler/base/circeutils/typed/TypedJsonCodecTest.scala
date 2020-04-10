@@ -5,7 +5,6 @@ import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec._
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodecTest._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowableEither
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import io.circe.generic.JsonCodec
 import io.circe.syntax.EncoderOps
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
@@ -53,7 +52,7 @@ final class TypedJsonCodecTest extends FreeSpec
     assert(AJsonCodec.classToName(A0.getClass) == "A0")
     intercept[NoSuchElementException] {
       assert(AJsonCodec.classToName(classOf[A]) == "A")
-    } .getMessage shouldEqual "key not found: interface com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodecTest$A"
+    }
   }
 
   "typeName" in {
@@ -61,7 +60,7 @@ final class TypedJsonCodecTest extends FreeSpec
     assert(AJsonCodec.typeName(A1(1)) == "A1")
     intercept[NoSuchElementException] {
       AJsonCodec.typeName(Other)
-    } .getMessage shouldEqual "key not found: class com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodecTest$Other$"
+    }
   }
 
   "isOfType, isOfType" in {
@@ -84,22 +83,22 @@ final class TypedJsonCodecTest extends FreeSpec
 object TypedJsonCodecTest {
   sealed trait A
   case object A0 extends A
-  @JsonCodec final case class A1(int: Int) extends A
-  @JsonCodec final case class A2(string: String) extends A
-  @JsonCodec final case class NotRegistered(int: Int) extends A
+  final case class A1(int: Int) extends A
+  final case class A2(string: String) extends A
+  final case class NotRegistered(int: Int) extends A
 
   sealed trait AA extends A
-  @JsonCodec final case class AA1(int: Int) extends AA
+  final case class AA1(int: Int) extends AA
 
   object Other extends A
 
   private implicit val AAJsonCodec: TypedJsonCodec[AA] = TypedJsonCodec[AA](
-    Subtype[AA1])
+    Subtype(deriveCodec[AA1]))
 
   private implicit val AJsonCodec: TypedJsonCodec[A] = TypedJsonCodec[A](
     Subtype(A0),
-    Subtype[A1],
-    Subtype[A2],
+    Subtype(deriveCodec[A1]),
+    Subtype(deriveCodec[A2]),
     Subtype[AA])
 
   sealed trait B

@@ -22,7 +22,7 @@ final class ParallelExecutingPipelineTest extends FreeSpec
     val n = 2 * sys.runtime.availableProcessors
     val result = mutable.ArrayBuffer[Int]()
     result.sizeHint(n)
-    val pipeline = new ParallelExecutingPipeline[Int](result.+=)(executionContext)
+    val pipeline = new ParallelExecutingPipeline[Int](result += _)(executionContext)
     val count = new ParallelismCounter
     def f(i: Int, duration: FiniteDuration) = count {
       sleep(duration)
