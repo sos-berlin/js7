@@ -5,16 +5,16 @@ import com.sos.jobscheduler.common.event
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.data.event.EventId
 import java.util.concurrent.ConcurrentHashMap
-import org.scalatest.FreeSpec
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.jdk.CollectionConverters._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class EventIdGeneratorTest extends FreeSpec {
+final class EventIdGeneratorTest extends AnyFreeSpec {
 
   "test" in {
     val eventIds: mutable.Map[EventId, Unit] = new ConcurrentHashMap[EventId, Unit].asScala

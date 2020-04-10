@@ -9,12 +9,12 @@ import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.master.web.master.api.test.RouteTester
 import monix.eval.Task
 import monix.execution.Scheduler
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ClusterRouteTest extends FreeSpec with RouteTester with ClusterRoute
+final class ClusterRouteTest extends AnyFreeSpec with RouteTester with ClusterRoute
 {
   protected def scheduler = Scheduler.global
 

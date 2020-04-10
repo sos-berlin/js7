@@ -4,12 +4,12 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.generic.GenericString.EmptyStringProblem
 import com.sos.jobscheduler.base.problem.Problems.InvalidNameProblem
 import com.sos.jobscheduler.tester.CirceJsonTester._
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ExecutableTest extends FreeSpec
+final class ExecutableTest extends AnyFreeSpec
 {
   "JSON" - {
     "ExecutablePath" in {

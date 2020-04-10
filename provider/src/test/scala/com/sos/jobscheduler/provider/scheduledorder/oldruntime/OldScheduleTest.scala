@@ -3,12 +3,12 @@ package com.sos.jobscheduler.provider.scheduledorder.oldruntime
 import com.sos.jobscheduler.common.time.JavaTime._
 import com.sos.jobscheduler.provider.scheduledorder.oldruntime.OldSchedule.EveryDay
 import java.time.{DayOfWeek, LocalTime, ZoneId, ZonedDateTime}
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class OldScheduleTest extends FreeSpec {
+final class OldScheduleTest extends AnyFreeSpec {
 
   private val timeZone = ZoneId.of("Europe/Helsinki")
 

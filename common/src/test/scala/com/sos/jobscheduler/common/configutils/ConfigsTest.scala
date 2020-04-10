@@ -6,12 +6,12 @@ import com.sos.jobscheduler.common.configutils.ConfigsTest._
 import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryDirectory
 import com.typesafe.config.{ConfigException, ConfigFactory}
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ConfigsTest extends FreeSpec
+final class ConfigsTest extends AnyFreeSpec
 {
   "Config syntax" in {
     assert(TestConfig.getString("string") == "STRING")

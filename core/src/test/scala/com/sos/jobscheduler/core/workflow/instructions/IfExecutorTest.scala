@@ -15,12 +15,12 @@ import com.sos.jobscheduler.data.workflow.position.BranchId.{Else, Then}
 import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class IfExecutorTest extends FreeSpec {
+final class IfExecutorTest extends AnyFreeSpec {
 
   private lazy val context = new OrderContext {
     def idToOrder = Map(AOrder.id -> AOrder, BOrder.id -> BOrder)

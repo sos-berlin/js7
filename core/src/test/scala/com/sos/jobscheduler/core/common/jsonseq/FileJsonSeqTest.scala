@@ -16,12 +16,12 @@ import io.circe.generic.JsonCodec
 import io.circe.syntax.EncoderOps
 import java.io.FileOutputStream
 import java.nio.file.Files
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class FileJsonSeqTest extends FreeSpec {
+final class FileJsonSeqTest extends AnyFreeSpec {
 
   "Empty file" in {
     withTemporaryFile { file =>

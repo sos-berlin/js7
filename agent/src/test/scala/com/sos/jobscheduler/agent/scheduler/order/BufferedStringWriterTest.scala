@@ -4,14 +4,14 @@ import com.sos.jobscheduler.agent.scheduler.order.BufferedStringWriterTest._
 import com.sos.jobscheduler.base.generic.Accepted
 import java.io.IOException
 import monix.execution.Scheduler
-import org.scalatest.FreeSpec
 import scala.collection.mutable
 import scala.concurrent.Future
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class BufferedStringWriterTest extends FreeSpec {
+final class BufferedStringWriterTest extends AnyFreeSpec {
 
   private val w = new W
 

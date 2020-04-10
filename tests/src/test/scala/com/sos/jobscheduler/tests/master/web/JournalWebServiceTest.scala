@@ -33,12 +33,14 @@ import com.sos.jobscheduler.tests.testenv.MasterAgentForScalaTest
 import com.typesafe.config.ConfigFactory
 import java.nio.file.Files
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.Matchers._
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.BeforeAndAfterAll
 import scala.collection.mutable
 import scodec.bits.ByteVector
+import org.scalatest.matchers
+import org.scalatest.freespec.AnyFreeSpec
 
-final class JournalWebServiceTest extends FreeSpec with BeforeAndAfterAll with MasterAgentForScalaTest
+final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with MasterAgentForScalaTest
 {
   protected val agentRefPaths = agentRefPath :: Nil
   protected val fileBased = workflow :: Nil

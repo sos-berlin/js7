@@ -1,9 +1,10 @@
 package com.sos.jobscheduler.common.utils
 
-import org.scalatest.FunSuite
-import org.scalatest.Matchers._
+import org.scalatest.matchers
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.funsuite.AnyFunSuite
 
-final class RandomsTest extends FunSuite {
+final class RandomsTest extends AnyFunSuite {
   test("randomInt") {
     val range = 1 to 10
     for (i <- 1 to 1000)

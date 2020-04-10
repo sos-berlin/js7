@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.core.event.journal.recover
 
-import org.scalatest.FreeSpec
 import JournaledStateRecovererTest._
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.common.scalautil.FileUtils
@@ -15,11 +14,12 @@ import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import com.typesafe.config.ConfigFactory
 import java.nio.file.Paths
 import monix.reactive.Observable
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class JournaledStateRecovererTest extends FreeSpec
+final class JournaledStateRecovererTest extends AnyFreeSpec
 {
   //import JournaledStateRecovererTest.snapshotJsonCodec
   //import JournaledStateRecovererTest.eventJsonCodec

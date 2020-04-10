@@ -2,12 +2,12 @@ package com.sos.jobscheduler.data.system
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class StdoutOrStderrTest extends FreeSpec {
+final class StdoutOrStderrTest extends AnyFreeSpec {
   "JSON" in {
     testJson[StdoutOrStderr](Stdout, json""" "stdout" """)
     testJson[StdoutOrStderr](Stderr, json""" "stderr" """)

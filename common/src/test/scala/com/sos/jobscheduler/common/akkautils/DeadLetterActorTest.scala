@@ -6,13 +6,13 @@ import com.sos.jobscheduler.common.akkautils.DeadLetterActorTest._
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import com.typesafe.config.ConfigFactory
-import org.scalatest.FreeSpec
 import scala.collection.mutable
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class DeadLetterActorTest extends FreeSpec {
+final class DeadLetterActorTest extends AnyFreeSpec {
 
   "DeadLetterActor.subscribe" in {
     val actorSystem = newActorSystem(classOf[DeadLetterActorTest].getSimpleName, ConfigFactory.parseString("akka.log-dead-letters = 0"))

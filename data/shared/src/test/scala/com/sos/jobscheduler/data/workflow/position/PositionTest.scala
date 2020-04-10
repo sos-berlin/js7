@@ -6,13 +6,13 @@ import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.workflow.position.BranchId.{Then, catch_, try_}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.syntax.EncoderOps
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 
 /**
   * @author Joacim Zschimmer
   */
-final class PositionTest extends FreeSpec {
+final class PositionTest extends AnyFreeSpec {
 
   "JSON" in {
     testJson(Position(1)               , json"""[ 1 ]""")

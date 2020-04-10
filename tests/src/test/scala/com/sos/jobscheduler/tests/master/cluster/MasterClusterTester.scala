@@ -23,9 +23,9 @@ import com.typesafe.config.ConfigFactory
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import org.scalatest.Assertions._
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
-private[cluster] trait MasterClusterTester extends FreeSpec
+private[cluster] trait MasterClusterTester extends AnyFreeSpec
 {
   protected def configureClusterNodes = true
 

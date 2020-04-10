@@ -14,12 +14,13 @@ import com.typesafe.config.ConfigFactory
 import java.net.InetSocketAddress
 import java.nio.file.Files.{createDirectories, createTempDirectory, delete}
 import java.time.ZoneId
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class MasterConfigurationTest extends FreeSpec with BeforeAndAfterAll
+final class MasterConfigurationTest extends AnyFreeSpec with BeforeAndAfterAll
 {
   private lazy val directory = createTempDirectory("MasterConfigurationTest-")
 

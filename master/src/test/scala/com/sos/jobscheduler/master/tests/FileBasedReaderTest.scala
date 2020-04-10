@@ -12,12 +12,13 @@ import com.sos.jobscheduler.master.workflow.WorkflowReader
 import io.circe.syntax.EncoderOps
 import java.io.File.separator
 import java.nio.file.Files.{createDirectories, createDirectory, createTempDirectory, delete}
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class FileBasedReaderTest extends FreeSpec with BeforeAndAfterAll
+final class FileBasedReaderTest extends AnyFreeSpec with BeforeAndAfterAll
 {
   private lazy val directory = createTempDirectory("test-")
 

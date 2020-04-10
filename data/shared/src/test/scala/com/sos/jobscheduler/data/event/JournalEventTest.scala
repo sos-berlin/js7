@@ -4,12 +4,12 @@ import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import com.sos.jobscheduler.tester.CirceJsonTester._
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class JournalEventTest extends FreeSpec
+final class JournalEventTest extends AnyFreeSpec
 {
   "SnapshotTaken" in {
     testJson[JournalEvent](SnapshotTaken,

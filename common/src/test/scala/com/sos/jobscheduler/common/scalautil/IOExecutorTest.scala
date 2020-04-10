@@ -2,14 +2,14 @@ package com.sos.jobscheduler.common.scalautil
 
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.IOExecutor.ioFuture
-import org.scalatest.FreeSpec
 import scala.concurrent.Await
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class IOExecutorTest extends FreeSpec
+final class IOExecutorTest extends AnyFreeSpec
 {
   private implicit val iox = new IOExecutor(Duration.Zero, name = "IOExecutorTest")
 

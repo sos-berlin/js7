@@ -2,12 +2,12 @@ package com.sos.jobscheduler.agent.scheduler.order
 
 import com.sos.jobscheduler.base.utils.DuplicateKeyException
 import com.sos.jobscheduler.data.order.OrderId
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class JobRegisterTest extends FreeSpec {
+final class JobRegisterTest extends AnyFreeSpec {
 
   "OrderQueue" in {
     val q = new JobRegister.OrderQueue

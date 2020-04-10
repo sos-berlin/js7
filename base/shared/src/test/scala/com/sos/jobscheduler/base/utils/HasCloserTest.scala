@@ -1,9 +1,9 @@
 package com.sos.jobscheduler.base.utils
 
-import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers._
 
-final class HasCloserTest extends FreeSpec {
+final class HasCloserTest extends AnyFreeSpec {
 
   "onClose" in {
     class A extends HasCloser {

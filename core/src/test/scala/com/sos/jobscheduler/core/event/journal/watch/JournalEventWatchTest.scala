@@ -30,15 +30,16 @@ import java.nio.file.Files
 import java.util.UUID
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import org.scalatest.BeforeAndAfterAll
 import scala.collection.mutable
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll
+final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
 {
   private implicit val keyedEventTypedJsonCodec = JournalEventWatchTest.keyedEventTypedJsonCodec
 

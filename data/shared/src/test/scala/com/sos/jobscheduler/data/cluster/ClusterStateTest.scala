@@ -5,12 +5,12 @@ import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.data.cluster.ClusterState.{Coupled, Empty, FailedOver, NodesAppointed, PassiveLost, PreparedToBeCoupled, SwitchedOver}
 import com.sos.jobscheduler.data.event.JournalPosition
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ClusterStateTest extends FreeSpec
+final class ClusterStateTest extends AnyFreeSpec
 {
   "JSON" - {
     val idToUri = Map(

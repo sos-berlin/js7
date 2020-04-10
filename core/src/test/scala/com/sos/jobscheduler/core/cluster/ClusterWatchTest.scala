@@ -14,12 +14,12 @@ import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.master.MasterId
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.schedulers.TestScheduler
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ClusterWatchTest extends FreeSpec
+final class ClusterWatchTest extends AnyFreeSpec
 {
   private val aId = ClusterNodeId("A")
   private val bId = ClusterNodeId("B")

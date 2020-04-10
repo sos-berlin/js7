@@ -5,13 +5,13 @@ import akka.http.scaladsl.server.directives.Credentials
 import com.sos.jobscheduler.base.auth.{HashedPassword, SimpleUser, UserAndPassword, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.common.akkahttp.web.auth.OurMemoizingAuthenticatorTest._
-import org.scalatest.FreeSpec
 import scala.collection.mutable
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class OurMemoizingAuthenticatorTest extends FreeSpec
+final class OurMemoizingAuthenticatorTest extends AnyFreeSpec
 {
   private val accessCounter = mutable.Map[UserId, Int]()
   private lazy val authenticator = new OurMemoizingAuthenticator[SimpleUser](userId => {

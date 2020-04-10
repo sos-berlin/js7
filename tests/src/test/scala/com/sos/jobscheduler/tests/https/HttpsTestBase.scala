@@ -19,15 +19,16 @@ import com.sos.jobscheduler.tests.https.HttpsTestBase._
 import com.sos.jobscheduler.tests.testenv.{DirectoryProvider, MasterAgentForScalaTest}
 import com.typesafe.config.ConfigUtil.quoteString
 import java.nio.file.Files.{createTempFile, delete}
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * Master and Agent with server-side HTTPS.
   *
   * @author Joacim Zschimmer
   */
-private[https] trait HttpsTestBase extends FreeSpec with BeforeAndAfterAll with MasterAgentForScalaTest {
+private[https] trait HttpsTestBase extends AnyFreeSpec with BeforeAndAfterAll with MasterAgentForScalaTest {
 
   override protected final def provideAgentHttpsCertificate = true
   protected def provideMasterClientCertificate = false

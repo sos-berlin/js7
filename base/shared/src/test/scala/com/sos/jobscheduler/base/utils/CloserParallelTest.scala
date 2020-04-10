@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.base.utils
 
-import org.scalatest.AsyncFreeSpec
 import scala.concurrent.Future
+import org.scalatest.freespec.AsyncFreeSpec
 
 final class CloserParallelTest extends AsyncFreeSpec
 {

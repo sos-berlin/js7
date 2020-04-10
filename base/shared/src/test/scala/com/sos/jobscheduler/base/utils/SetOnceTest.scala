@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.base.utils
 
 import com.sos.jobscheduler.base.problem.{Problem, ProblemException}
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class SetOnceTest extends FreeSpec
+final class SetOnceTest extends AnyFreeSpec
 {
   "SetOnce" in {
     val a = SetOnce[Int]

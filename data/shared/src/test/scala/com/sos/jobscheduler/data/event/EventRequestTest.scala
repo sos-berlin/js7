@@ -1,13 +1,13 @@
 package com.sos.jobscheduler.data.event
 
 import com.sos.jobscheduler.data.event.EventRequestTest._
-import org.scalatest.FreeSpec
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class EventRequestTest extends FreeSpec {
+final class EventRequestTest extends AnyFreeSpec {
 
   "toQueryParameters" in {
     assert(EventRequest.singleClass[AEvent](after = EventId(3), timeout = Some(123.seconds), delay = 500.milliseconds, limit = 999, tornOlder = Some(10.seconds))

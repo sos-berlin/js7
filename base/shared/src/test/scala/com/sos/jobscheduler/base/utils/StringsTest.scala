@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.base.utils
 
 import com.sos.jobscheduler.base.utils.Strings._
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class StringsTest extends FreeSpec {
+final class StringsTest extends AnyFreeSpec {
 
   "truncateWithEllipsis" in {
     assert("".truncateWithEllipsis(0) == "")

@@ -8,14 +8,14 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped}
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
 import scala.collection.mutable
 import scala.concurrent.duration.FiniteDuration
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class RealEventWatchTest extends FreeSpec
+final class RealEventWatchTest extends AnyFreeSpec
 {
   "tornOlder" in {
     val events = Stamped(1, 1 <-: TestEvent(1)) :: Nil  // Event 1 = 1970-01-01, very old

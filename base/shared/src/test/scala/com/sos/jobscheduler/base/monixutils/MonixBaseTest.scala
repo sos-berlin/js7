@@ -7,10 +7,10 @@ import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.AsyncFreeSpec
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration.Duration
 import scala.language.reflectiveCalls
+import org.scalatest.freespec.AsyncFreeSpec
 
 /**
   * @author Joacim Zschimmer

@@ -2,12 +2,12 @@ package com.sos.jobscheduler.base.utils
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class MapDiffTest extends FreeSpec
+final class MapDiffTest extends AnyFreeSpec
 {
   "applyTo" in {
     assert(MapDiff().applyTo(Map()) == Map())

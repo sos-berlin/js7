@@ -27,12 +27,13 @@ import java.io.Writer
 import java.nio.file.Files.{createTempDirectory, setPosixFilePermissions}
 import java.nio.file.attribute.PosixFilePermissions
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class TaskRunnerTest extends FreeSpec with BeforeAndAfterAll with TestAgentDirectoryProvider {
+final class TaskRunnerTest extends AnyFreeSpec with BeforeAndAfterAll with TestAgentDirectoryProvider {
 
   private lazy val injector = Guice.createInjector(new AgentModule(AgentConfiguration.forTest(agentDirectory)))
 

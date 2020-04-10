@@ -10,13 +10,13 @@ import com.sos.jobscheduler.data.order.{HistoricOutcome, Order, OrderId, Outcome
 import com.sos.jobscheduler.data.workflow.instructions.{Gap, Retry, TryInstruction}
 import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowId, WorkflowPath}
-import org.scalatest.FreeSpec
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class RetryExecutorTest extends FreeSpec
+final class RetryExecutorTest extends AnyFreeSpec
 {
   "toEvent" in {
     assert(toEvent(Position(1)) == Left(Problem("Retry, but not in a catch-block")))

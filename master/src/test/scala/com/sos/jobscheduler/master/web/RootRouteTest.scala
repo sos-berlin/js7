@@ -5,12 +5,12 @@ import akka.http.scaladsl.testkit.ScalatestRouteTest
 import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.base.time.ScalaTime._
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class RootRouteTest extends FreeSpec with ScalatestRouteTest with RootRoute {
+final class RootRouteTest extends AnyFreeSpec with ScalatestRouteTest with RootRoute {
 
   "/" in {
     Get("/") ~> root ~> check {

@@ -4,12 +4,12 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
 import com.sos.jobscheduler.data.job.JobKey
 import java.nio.file.Files.exists
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class FilePoolTest extends FreeSpec
+final class FilePoolTest extends AnyFreeSpec
 {
   private val filePool = new FilePool(JobKey.forTest, temporaryDirectory)
   private var a: FilePool.FileSet = null

@@ -3,14 +3,14 @@ package com.sos.jobscheduler.common.files
 import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryFile
-import org.scalatest.FreeSpec
 import scala.util.Random
 import scodec.bits.ByteVector
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ByteVectorReaderTest extends FreeSpec
+final class ByteVectorReaderTest extends AnyFreeSpec
 {
   "ByteVectorReader" in {
     withTemporaryFile("ByteVectorReaderTest", ".tmp") { file =>

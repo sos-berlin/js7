@@ -3,12 +3,12 @@ package com.sos.jobscheduler.core.event.journal
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.core.event.journal.JournalConfTest._
 import com.typesafe.config.ConfigFactory
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class JournalConfTest extends FreeSpec
+final class JournalConfTest extends AnyFreeSpec
 {
   "JournalConf" in {
     assert(JournalConf.fromConfig(config) == journalConf)

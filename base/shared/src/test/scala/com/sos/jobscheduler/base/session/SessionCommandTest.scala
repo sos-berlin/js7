@@ -4,12 +4,12 @@ import com.sos.jobscheduler.base.auth.{SessionToken, UserAndPassword, UserId}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class SessionCommandTest extends FreeSpec {
+final class SessionCommandTest extends AnyFreeSpec {
 
   "JSON" - {
     "Login" in {

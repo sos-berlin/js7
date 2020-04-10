@@ -11,13 +11,13 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.schedulers.TestScheduler
-import org.scalatest.FreeSpec
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class SessionRegisterTest extends FreeSpec with ScalatestRouteTest
+final class SessionRegisterTest extends AnyFreeSpec with ScalatestRouteTest
 {
   override def executor = super.executor  // Not implicit
 

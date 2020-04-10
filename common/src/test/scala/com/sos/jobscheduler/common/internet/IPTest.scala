@@ -3,12 +3,12 @@ package com.sos.jobscheduler.common.internet
 import com.sos.jobscheduler.base.convert.As.convert
 import com.sos.jobscheduler.common.internet.IP._
 import java.net.{InetAddress, InetSocketAddress, UnknownHostException}
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class IPTest extends FreeSpec {
+final class IPTest extends AnyFreeSpec {
 
   "InetAddress" in {
     intercept[IllegalArgumentException] { convert[String, InetAddress]("") }

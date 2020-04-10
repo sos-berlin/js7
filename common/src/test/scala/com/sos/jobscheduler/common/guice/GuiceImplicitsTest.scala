@@ -3,12 +3,12 @@ package com.sos.jobscheduler.common.guice
 import com.google.inject.{AbstractModule, Guice, Provides}
 import com.sos.jobscheduler.common.guice.GuiceImplicits._
 import javax.inject.Singleton
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class GuiceImplicitsTest extends FreeSpec {
+final class GuiceImplicitsTest extends AnyFreeSpec {
 
   private val injector = Guice.createInjector(new AbstractModule {
     @Provides @Singleton

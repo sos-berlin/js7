@@ -9,13 +9,13 @@ import com.sos.jobscheduler.data.workflow.WorkflowPrinter.WorkflowShow
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fork, Goto, If, IfFailedGoto, Offer, ReturnCodeMeaning}
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
-import org.scalatest.FreeSpec
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class WorkflowPrinterTest extends FreeSpec {
+final class WorkflowPrinterTest extends AnyFreeSpec {
   // Also tested by WorkflowParserTest.
 
   "execute" in {

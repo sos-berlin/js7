@@ -1,14 +1,14 @@
 package com.sos.jobscheduler.base.generic
 
-import org.scalatest.FreeSpec
 import cats.syntax.monoid._
 import cats.syntax.foldable._
 import cats.instances.list._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class CompletedTest extends FreeSpec
+final class CompletedTest extends AnyFreeSpec
 {
   "combine" in {
     assert((Completed |+| Completed) == Completed)

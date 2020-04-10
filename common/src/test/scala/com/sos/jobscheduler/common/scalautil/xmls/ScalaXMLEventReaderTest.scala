@@ -7,13 +7,14 @@ import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReaderTest._
 import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
 import com.sos.jobscheduler.common.time.Stopwatch.measureTime
 import javax.xml.transform.Source
-import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
+import org.scalatest.matchers
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class ScalaXMLEventReaderTest extends FreeSpec {
+final class ScalaXMLEventReaderTest extends AnyFreeSpec {
 
   "Methods" in {
     case class X(y: Y, z: Seq[Z])

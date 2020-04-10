@@ -3,14 +3,14 @@ package com.sos.jobscheduler.base.utils
 import cats.effect.{Resource, SyncIO}
 import com.sos.jobscheduler.base.utils.SyncResource.syntax._
 import monix.execution.atomic.AtomicAny
-import org.scalatest.FreeSpec
 import scala.collection.mutable
 import scala.util.Random
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class SyncResourceTest extends FreeSpec
+final class SyncResourceTest extends AnyFreeSpec
 {
   "SyncIO useSync" in {
     val opened = mutable.Set[MySimpleResource]()

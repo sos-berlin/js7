@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.master.data.javaapi
 
 import com.sos.jobscheduler.master.data.javaapi.MasterScriptConverterTester._
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class MasterScriptConverterTest extends FreeSpec
+final class MasterScriptConverterTest extends AnyFreeSpec
 {
   "Workflow JSON to script" in {
     testWorkflowJsonToScript()

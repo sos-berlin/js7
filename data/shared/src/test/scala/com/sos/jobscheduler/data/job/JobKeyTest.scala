@@ -5,12 +5,12 @@ import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowBranchPath}
 import com.sos.jobscheduler.tester.CirceJsonTester._
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class JobKeyTest extends FreeSpec
+final class JobKeyTest extends AnyFreeSpec
 {
   "JSON" - {
     "JobKey.Anonymous" in {

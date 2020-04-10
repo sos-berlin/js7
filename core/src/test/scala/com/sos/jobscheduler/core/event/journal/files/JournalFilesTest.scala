@@ -4,12 +4,12 @@ import com.google.common.io.MoreFiles.touch
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.FileUtils.{deleteDirectoryContentRecursively, withTemporaryDirectory}
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class JournalFilesTest extends FreeSpec
+final class JournalFilesTest extends AnyFreeSpec
 {
   "listJournalFiles, currentFile" in {
     withTemporaryDirectory("JournalHistoryTest-") { dir =>

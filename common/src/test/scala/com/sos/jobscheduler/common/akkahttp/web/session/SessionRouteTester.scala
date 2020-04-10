@@ -18,8 +18,9 @@ import com.sos.jobscheduler.common.log.ScribeUtils
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import com.typesafe.config.ConfigFactory
-import org.scalatest.Matchers._
+import org.scalatest.matchers.should.Matchers._
 import org.scalatest.{BeforeAndAfterAll, Suite}
+import org.scalatest.matchers
 
 trait SessionRouteTester extends BeforeAndAfterAll with ScalatestRouteTest with SessionRoute
 {

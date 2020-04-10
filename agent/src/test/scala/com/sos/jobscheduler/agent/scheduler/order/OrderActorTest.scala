@@ -44,16 +44,17 @@ import java.nio.file.{Files, Path}
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Assertions._
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import org.scalatest.BeforeAndAfterAll
 import scala.collection.mutable
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAll
+final class OrderActorTest extends AnyFreeSpec with HasCloser with BeforeAndAfterAll
 {
   private lazy val directoryProvider = TestAgentDirectoryProvider()
   private lazy val config = AgentConfiguration.forTest(directoryProvider.agentDirectory).finishAndProvideFiles.config

@@ -23,16 +23,17 @@ import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import monix.eval.Task
 import monix.execution.Scheduler
-import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
+import org.scalatest.matchers.should.Matchers._
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
+import org.scalatest.matchers
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
 sealed abstract class SessionRouteTest(override protected val isPublic: Boolean)
-extends FreeSpec with SessionRouteTester
+extends AnyFreeSpec with SessionRouteTester
 {
   protected final implicit def scheduler = Scheduler.global
   private implicit val routeTestTimeout = RouteTestTimeout(10.seconds)

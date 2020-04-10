@@ -6,13 +6,13 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.generic.GenericString
 import io.circe.syntax.EncoderOps
 import io.circe.{Json, JsonObject}
-import org.scalatest.FreeSpec
 import scala.jdk.CollectionConverters._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class AnyJsonCodecsTest extends FreeSpec
+final class AnyJsonCodecsTest extends AnyFreeSpec
 {
   "anyToJson" in {
     assert(anyToJson(Map("key" -> 333).asJava) == Json.fromJsonObject(JsonObject.fromMap(Map("key" -> 333.asJson))))

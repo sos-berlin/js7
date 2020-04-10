@@ -4,13 +4,13 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowableEither
 import com.sos.jobscheduler.base.utils.ScodecUtils._
-import org.scalatest.FreeSpec
 import scodec.bits.ByteVector
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ScodecUtilsTest extends FreeSpec
+final class ScodecUtilsTest extends AnyFreeSpec
 {
   "utf8StringTruncateAt" in {
     assert(ByteVector.encodeUtf8("").orThrow.utf8StringTruncateAt(0) == "")

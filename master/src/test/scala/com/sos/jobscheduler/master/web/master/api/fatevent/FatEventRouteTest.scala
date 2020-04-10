@@ -38,16 +38,17 @@ import com.sos.jobscheduler.master.web.master.api.test.RouteTester
 import java.nio.file.Files
 import java.util.UUID.randomUUID
 import monix.execution.Scheduler
-import org.scalatest.{Args, FreeSpec}
+import org.scalatest.Args
 import scala.annotation.tailrec
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRoute
+final class FatEventRouteTest extends AnyFreeSpec with RouteTester with FatEventRoute
 {
   private lazy val configAndDataDirectory = Files.createTempDirectory("FatEventRouteTest-")
   protected val masterConfiguration = MasterConfiguration.forTest(configAndDataDirectory)

@@ -21,9 +21,10 @@ import com.sos.jobscheduler.data.master.MasterId
 import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.freespec.AnyFreeSpec
 
-final class HttpClusterWatchTest extends FreeSpec with BeforeAndAfterAll with ProvideActorSystem
+final class HttpClusterWatchTest extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem
 {
   override protected def config = ConfigFactory.empty
   private val masterId = MasterId("MASTER")

@@ -14,11 +14,11 @@ import com.sos.jobscheduler.data.filebased.FileBasedsOverview
 import com.sos.jobscheduler.master.web.master.api.AgentRefRouteTest._
 import com.sos.jobscheduler.master.web.master.api.test.RouteTester
 import monix.execution.Scheduler
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class AgentRefRouteTest extends FreeSpec with RouteTester with AgentRefRoute
+final class AgentRefRouteTest extends AnyFreeSpec with RouteTester with AgentRefRoute
 {
   protected def isShuttingDown = false
   protected implicit def scheduler: Scheduler = Scheduler.global

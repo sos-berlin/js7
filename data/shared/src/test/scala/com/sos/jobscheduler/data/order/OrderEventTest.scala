@@ -15,13 +15,13 @@ import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.Json
 import io.circe.syntax.EncoderOps
-import org.scalatest.FreeSpec
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class OrderEventTest extends FreeSpec {
+final class OrderEventTest extends AnyFreeSpec {
 
   "OrderAdded" in {
     check(OrderAdded(WorkflowPath("/WORKFLOW") ~ "VERSION", None, Map("VAR" -> "VALUE")), json"""

@@ -4,13 +4,13 @@ import akka.http.scaladsl.model.{Uri => AkkaUri}
 import akka.util.ByteString
 import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.http.AkkaHttpUtils._
-import org.scalatest.FreeSpec
 import scodec.bits.ByteVector
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class AkkaHttpUtilsTest extends FreeSpec
+final class AkkaHttpUtilsTest extends AnyFreeSpec
 {
   "Akka ByteString and Scodec ByteVector" in {
     assert((ByteString('A', 'B')).toByteVector == ByteVector('A', 'B'))

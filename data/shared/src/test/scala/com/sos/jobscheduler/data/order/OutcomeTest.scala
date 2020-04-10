@@ -5,12 +5,12 @@ import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.Outcome.Undisrupted
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class OutcomeTest extends FreeSpec {
+final class OutcomeTest extends AnyFreeSpec {
 
   "isSucceeded" in {
     assert(Outcome.Succeeded(ReturnCode(0)).isSucceeded)

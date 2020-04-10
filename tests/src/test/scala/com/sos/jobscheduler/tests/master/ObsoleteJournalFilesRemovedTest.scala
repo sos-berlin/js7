@@ -18,12 +18,12 @@ import com.sos.jobscheduler.tests.master.ObsoleteJournalFilesRemovedTest._
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider.script
 import com.sos.jobscheduler.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ObsoleteJournalFilesRemovedTest extends FreeSpec with DirectoryProviderForScalaTest
+final class ObsoleteJournalFilesRemovedTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
   protected val agentRefPaths = agentRefPath :: Nil
   protected val fileBased = workflow :: Nil

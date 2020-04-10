@@ -8,14 +8,14 @@ import com.sos.jobscheduler.core.event.state.LockKeeperTest._
 import java.util.concurrent.ConcurrentHashMap
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
 import scala.concurrent.Future
 import scala.jdk.CollectionConverters._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class LockKeeperTest extends FreeSpec
+final class LockKeeperTest extends AnyFreeSpec
 {
   "LockKeeper.lock" in {
     val keys = 0 until 8

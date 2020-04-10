@@ -3,12 +3,12 @@ package com.sos.jobscheduler.common.akkahttp
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.common.http.CirceToYaml._
 import io.circe.{Json, JsonObject}
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class CirceToYamlTest extends FreeSpec {
+final class CirceToYamlTest extends AnyFreeSpec {
 
   private val json = Json.fromJsonObject(JsonObject.fromMap(Map[String, Json](
     "number" -> Json.fromDoubleOrNull(1.23),

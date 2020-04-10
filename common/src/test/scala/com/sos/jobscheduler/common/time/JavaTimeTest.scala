@@ -6,11 +6,11 @@ import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.time.JavaTime._
 import java.time.format.DateTimeParseException
 import java.time.{Duration, Instant, LocalDateTime, LocalTime, ZoneId}
-import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers._
 import scala.util.Random
 
-final class JavaTimeTest extends FreeSpec {
+final class JavaTimeTest extends AnyFreeSpec {
 
   "Duration" - {
     "Int.µs" in {

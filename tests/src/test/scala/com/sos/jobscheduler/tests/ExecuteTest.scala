@@ -17,9 +17,9 @@ import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.tests.ExecuteTest._
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
-final class ExecuteTest extends FreeSpec
+final class ExecuteTest extends AnyFreeSpec
 {
   "Executing an inline script is not allowed" in {
     val workflowNotation = """

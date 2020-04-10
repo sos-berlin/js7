@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.base.utils
 
 import com.sos.jobscheduler.base.utils.Assertions._
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class AssertionsTest extends FreeSpec
+final class AssertionsTest extends AnyFreeSpec
 {
   "assertThat" in {
     assertThat(true)

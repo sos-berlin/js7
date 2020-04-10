@@ -16,13 +16,13 @@ import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.generic.JsonCodec
 import monix.eval.Coeval
-import org.scalatest.FreeSpec
 import scala.util.{Failure, Success}
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class CheckedTest extends FreeSpec
+final class CheckedTest extends AnyFreeSpec
 {
   "JSON" - {
     import Checked.implicits.{checkedJsonDecoder, checkedJsonEncoder}

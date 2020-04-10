@@ -5,12 +5,12 @@ import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.master.data.MasterSnapshots.MasterMetaState
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class MasterSnapshotsTest extends FreeSpec
+final class MasterSnapshotsTest extends AnyFreeSpec
 {
   "MasterMetaState" in {
     implicit val x = MasterSnapshots.SnapshotJsonCodec

@@ -3,12 +3,12 @@ package com.sos.jobscheduler.base.monixutils
 import com.sos.jobscheduler.base.monixutils.MonixDeadline.now
 import com.sos.jobscheduler.base.time.ScalaTime._
 import monix.execution.schedulers.TestScheduler
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class MonixDeadlineTest extends FreeSpec
+final class MonixDeadlineTest extends AnyFreeSpec
 {
   private implicit val scheduler = TestScheduler()
 

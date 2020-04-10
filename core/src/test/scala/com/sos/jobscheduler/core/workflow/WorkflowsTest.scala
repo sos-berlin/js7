@@ -5,12 +5,12 @@ import com.sos.jobscheduler.data.workflow.instructions.{Fork, Gap}
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting._
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class WorkflowsTest extends FreeSpec {
+final class WorkflowsTest extends AnyFreeSpec {
 
   "reduceForAgent A" in {
     assert(TestWorkflow.reduceForAgent(AAgentRefPath) == Workflow(

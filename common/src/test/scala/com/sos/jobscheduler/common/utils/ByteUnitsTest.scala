@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.common.utils
 
 import com.sos.jobscheduler.common.utils.ByteUnits.{toKBGB, toMB}
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ByteUnitsTest extends FreeSpec {
+final class ByteUnitsTest extends AnyFreeSpec {
 
   "toKBGB" in {
     assert(toKBGB(-1) == "-1bytes")

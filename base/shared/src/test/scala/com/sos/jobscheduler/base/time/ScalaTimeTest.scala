@@ -2,11 +2,12 @@ package com.sos.jobscheduler.base.time
 
 import com.sos.jobscheduler.base.convert.As
 import com.sos.jobscheduler.base.time.ScalaTime._
-import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
+import org.scalatest.matchers.should.Matchers._
 import scala.concurrent.duration._
+import org.scalatest.matchers
+import org.scalatest.freespec.AnyFreeSpec
 
-final class ScalaTimeTest extends FreeSpec
+final class ScalaTimeTest extends AnyFreeSpec
 {
   "Duration" - {
     "Int.µs" in {

@@ -14,12 +14,12 @@ import com.sos.jobscheduler.tests.TerminateWithUnknownAgentTest._
 import com.sos.jobscheduler.tests.testenv.MasterAgentForScalaTest
 import java.net.ServerSocket
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class TerminateWithUnknownAgentTest extends FreeSpec with MasterAgentForScalaTest
+final class TerminateWithUnknownAgentTest extends AnyFreeSpec with MasterAgentForScalaTest
 {
   private lazy val socket = new ServerSocket(0, /*backlog=*/1)
   protected val fileBased = workflow :: AgentRef(agentRefPath, Uri(s"http://127.0.0.1:${socket.getLocalPort}")) ::  Nil

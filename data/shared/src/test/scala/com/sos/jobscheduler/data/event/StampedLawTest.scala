@@ -7,14 +7,14 @@ import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.data.event.Stamped._
 import org.scalacheck.Arbitrary
 import org.scalacheck.Arbitrary.arbitrary
-import org.scalatest.FunSuite
 import org.scalatest.prop.Configuration
 import org.typelevel.discipline.scalatest.FunSuiteDiscipline
+import org.scalatest.funsuite.AnyFunSuite
 
 /**
   * @author Joacim Zschimmer
   */
-final class StampedLawTest extends FunSuite with Configuration with FunSuiteDiscipline
+final class StampedLawTest extends AnyFunSuite with Configuration with FunSuiteDiscipline
 {
   private implicit def arbitraryStamped[A: Arbitrary]: Arbitrary[Stamped[A]] =
     Arbitrary(arbitrary[A] map (o => Stamped(EventId(111), Timestamp.ofEpochMilli(222), o)))

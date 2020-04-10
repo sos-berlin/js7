@@ -4,12 +4,12 @@ import cats.syntax.show._
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.data.workflow.position.BranchPath.Segment
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class BranchPathTest extends FreeSpec
+final class BranchPathTest extends AnyFreeSpec
 {
   "JSON" in {
     testJson(Nil: BranchPath                      , json"""[]""")

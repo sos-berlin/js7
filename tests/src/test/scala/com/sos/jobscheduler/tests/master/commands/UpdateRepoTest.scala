@@ -27,15 +27,15 @@ import com.sos.jobscheduler.tests.master.commands.UpdateRepoTest._
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider.Vinitial
 import com.sos.jobscheduler.tests.testenv.MasterAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class UpdateRepoTest extends FreeSpec with MasterAgentForScalaTest
+final class UpdateRepoTest extends AnyFreeSpec with MasterAgentForScalaTest
 {
   protected val agentRefPaths = TestAgentRefPath :: Nil
   protected val fileBased = Nil

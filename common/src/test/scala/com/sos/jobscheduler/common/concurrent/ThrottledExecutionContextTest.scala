@@ -4,14 +4,15 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch.measureTime
 import java.util.concurrent.Executors.newFixedThreadPool
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Random
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ThrottledExecutionContextTest extends FreeSpec with BeforeAndAfterAll {
+final class ThrottledExecutionContextTest extends AnyFreeSpec with BeforeAndAfterAll {
 
   private lazy val threadPool = newFixedThreadPool(3)
   private lazy val executionContext = ExecutionContext.fromExecutorService(threadPool)

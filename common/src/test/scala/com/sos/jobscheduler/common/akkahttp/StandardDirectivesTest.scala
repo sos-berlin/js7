@@ -4,12 +4,12 @@ import akka.http.scaladsl.model.Uri.Path
 import akka.http.scaladsl.server.PathMatcher.{Matched, Unmatched}
 import com.sos.jobscheduler.common.akkahttp.StandardDirectives._
 import com.sos.jobscheduler.data.filebased.APath
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class StandardDirectivesTest extends FreeSpec
+final class StandardDirectivesTest extends AnyFreeSpec
 {
   private val matched = Matched(Path.Empty, Tuple1(APath("/FOLDER/NAME")))
 

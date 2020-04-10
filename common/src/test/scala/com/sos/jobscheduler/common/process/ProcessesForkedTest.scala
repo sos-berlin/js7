@@ -12,9 +12,9 @@ import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import java.nio.file.Files.delete
 import java.nio.file.Path
 import java.util.concurrent.ForkJoinPool
-import org.scalatest.FreeSpec
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * JS-1581 "Text file busy" when starting many processes.
@@ -22,7 +22,7 @@ import scala.util.control.NonFatal
   * @author Joacim Zschimmer
   * @see https://bugs.openjdk.java.net/browse/JDK-8068370
   */
-final class ProcessesForkedTest extends FreeSpec {
+final class ProcessesForkedTest extends AnyFreeSpec {
 
   private val n = 1000
   private val threadCount = 10 * sys.runtime.availableProcessors

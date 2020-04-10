@@ -5,12 +5,13 @@ import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.WaitForCondition._
 import com.sos.jobscheduler.common.time.WaitForConditionExclusiveTest._
-import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
+import org.scalatest.matchers.should.Matchers._
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
+import org.scalatest.matchers
+import org.scalatest.freespec.AnyFreeSpec
 
-final class WaitForConditionExclusiveTest extends FreeSpec
+final class WaitForConditionExclusiveTest extends AnyFreeSpec
 {
   "Warm-up" in {
     for (_ <- 1 to 2) realTimeIterator(Seq(now + 10.ms)).next() // Aufruf zum Warmwerden. Laden der Klasse kann eine Weile dauern

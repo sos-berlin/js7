@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.base.convert
 
-import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers._
 
 /**
   * @author Joacim Zschimmer
   */
-final class ConvertibleMultiPartialFunctionTest extends FreeSpec {
+final class ConvertibleMultiPartialFunctionTest extends AnyFreeSpec {
 
   "as with default" in {
     assert(convertible("KEY" -> List("111")).as[Int]("KEY", default = 999) == 111)

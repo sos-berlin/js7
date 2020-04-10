@@ -20,13 +20,13 @@ import java.nio.file.Path
 import java.util.Objects.requireNonNull
 import java.util.concurrent.ArrayBlockingQueue
 import monix.execution.Scheduler
-import org.scalatest.FreeSpec
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class LogRouteTest extends FreeSpec with RouteTester with LogRoute
+final class LogRouteTest extends AnyFreeSpec with RouteTester with LogRoute
 {
   protected def isShuttingDown = false
   protected def currentLogFile = requireNonNull/*call lazily!*/(_currentLogFile)

@@ -1,13 +1,13 @@
 package com.sos.jobscheduler.base.generic
 
 import java.lang.System.nanoTime
-import org.scalatest.FreeSpec
 import scala.util.Random
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class SecretStringTest extends FreeSpec {
+final class SecretStringTest extends AnyFreeSpec {
 
   "equals" in {
     assert(SecretString("") == SecretString(""))

@@ -25,15 +25,16 @@ import javax.inject.Singleton
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Assertions._
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import org.scalatest.BeforeAndAfterAll
 import scala.collection.mutable
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
 final class AkkaHttpAgentTextApiTest
-extends FreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider with TestAgentDirectoryProvider {
+extends AnyFreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider with TestAgentDirectoryProvider {
 
   override protected lazy val agentConfiguration = AgentConfiguration.forTest(configAndData = agentDirectory,
     httpPort = None, httpsPort = Some(findFreeTcpPort()))

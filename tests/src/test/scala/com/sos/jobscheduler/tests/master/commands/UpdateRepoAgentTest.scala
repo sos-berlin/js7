@@ -26,13 +26,13 @@ import com.sos.jobscheduler.master.data.MasterCommand.UpdateRepo
 import com.sos.jobscheduler.tests.master.commands.UpdateRepoAgentTest._
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class UpdateRepoAgentTest extends FreeSpec
+final class UpdateRepoAgentTest extends AnyFreeSpec
 {
   ScribeUtils.coupleScribeWithSlf4j()
 

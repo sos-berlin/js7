@@ -19,10 +19,10 @@ import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.data.MasterCommand.UpdateRepo
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
 import scala.util.Try
+import org.scalatest.freespec.AnyFreeSpec
 
-final class MasterRepoTest extends FreeSpec {
+final class MasterRepoTest extends AnyFreeSpec {
   import MasterRepoTest._
 
   "test" in {

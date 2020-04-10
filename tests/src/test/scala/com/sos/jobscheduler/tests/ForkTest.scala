@@ -22,10 +22,10 @@ import com.sos.jobscheduler.tests.testenv.DirectoryProvider.{StdoutOutput, scrip
 import com.sos.jobscheduler.tests.testenv.MasterAgentForScalaTest
 import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
-final class ForkTest extends FreeSpec with MasterAgentForScalaTest
+final class ForkTest extends AnyFreeSpec with MasterAgentForScalaTest
 {
   protected val agentRefPaths = AAgentRefPath :: BAgentRefPath :: Nil
   override protected val masterConfig = ConfigFactory.parseString(

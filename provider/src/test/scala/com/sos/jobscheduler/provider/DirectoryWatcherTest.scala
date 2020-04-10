@@ -10,13 +10,14 @@ import com.sos.jobscheduler.common.system.OperatingSystem.isMac
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import java.nio.file.Files.{createTempDirectory, delete}
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class DirectoryWatcherTest extends FreeSpec with BeforeAndAfterAll
+final class DirectoryWatcherTest extends AnyFreeSpec with BeforeAndAfterAll
 {
   private val timeout = if (isMac) 100.milliseconds else 5.minutes
   private lazy val dir = createTempDirectory("DirectoryWatcherTest-")

@@ -25,13 +25,13 @@ import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import java.nio.file.Files.createDirectory
 import java.nio.file.Path
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class AgentTest extends FreeSpec with AgentTester
+final class AgentTest extends AnyFreeSpec with AgentTester
 {
   "state/http-uri" in {
     assert((agentConfiguration.stateDirectory / "http-uri").contentString == s"${agent.localUri}/agent")

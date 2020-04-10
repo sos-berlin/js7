@@ -1,13 +1,13 @@
 package com.sos.jobscheduler.base.utils
 
 import com.sos.jobscheduler.base.utils.CloseableIteratorTest._
-import org.scalatest.FreeSpec
 import scala.language.reflectiveCalls
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class CloseableIteratorTest extends FreeSpec
+final class CloseableIteratorTest extends AnyFreeSpec
 {
   "strict" in {
     val a = new TestIterator(Iterator(1, 2, 3))

@@ -17,13 +17,13 @@ import io.circe.Json
 import io.circe.syntax.EncoderOps
 import monix.eval.Task
 import monix.execution.Scheduler
-import org.scalatest.FreeSpec
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class CommandWebServiceTest extends FreeSpec with WebServiceTest with CommandWebService
+final class CommandWebServiceTest extends AnyFreeSpec with WebServiceTest with CommandWebService
 {
   protected def isShuttingDown = false
   protected def scheduler = Scheduler.global

@@ -7,12 +7,12 @@ import com.sos.jobscheduler.base.problem.Problems.InvalidNameProblem
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.tester.CirceJsonTester
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class WorkflowJobTest extends FreeSpec
+final class WorkflowJobTest extends AnyFreeSpec
 {
   "JSON" in {
     CirceJsonTester.testJson(

@@ -2,14 +2,14 @@ package com.sos.jobscheduler.base.utils
 
 import monix.eval.Task
 import monix.execution.Scheduler
-import org.scalatest.FreeSpec
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future, Promise}
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class MonixAntiBlockingTest extends FreeSpec
+final class MonixAntiBlockingTest extends AnyFreeSpec
 {
   if (sys.props.get("scala.concurrent.context.numThreads") contains "1") {
     "Trying to minimize blocking error ..." in {

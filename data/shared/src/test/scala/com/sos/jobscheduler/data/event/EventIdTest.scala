@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.data.event
 
 import com.sos.jobscheduler.base.time.Timestamp
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class EventIdTest extends FreeSpec
+final class EventIdTest extends AnyFreeSpec
 {
   private val MaximumJsonLosslessEventIdInstant = Timestamp.parse("2255-06-05T23:47:34.740Z")
 //private val MaximumJsonLosslessEventIdInstant = Timestamp.parse("2255-06-05T23:47:34.740992Z")

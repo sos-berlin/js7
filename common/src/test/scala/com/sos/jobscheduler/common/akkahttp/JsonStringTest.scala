@@ -10,12 +10,12 @@ import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import com.sos.jobscheduler.common.akkahttp.JsonStringTest._
 import java.nio.charset.StandardCharsets.UTF_8
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class JsonStringTest extends FreeSpec with ScalatestRouteTest {
+final class JsonStringTest extends AnyFreeSpec with ScalatestRouteTest {
 
   private val testString = """{"Ä": "a"}"""
   private val jsonString = JsonString(testString)

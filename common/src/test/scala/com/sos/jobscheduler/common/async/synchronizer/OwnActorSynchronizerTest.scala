@@ -6,13 +6,13 @@ import com.sos.jobscheduler.base.utils.Closer.withCloser
 import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
 import com.sos.jobscheduler.common.scalautil.Futures.blockingThreadFuture
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.RichFutures
-import org.scalatest.FreeSpec
 import scala.concurrent.Future
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class OwnActorSynchronizerTest extends FreeSpec {
+final class OwnActorSynchronizerTest extends AnyFreeSpec {
 
   "test" in {
     withCloser { implicit closer =>

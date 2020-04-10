@@ -9,13 +9,13 @@ import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Offer}
 import com.sos.jobscheduler.data.workflow.position.WorkflowPosition
 import com.sos.jobscheduler.data.workflow.{WorkflowId, WorkflowPath}
-import org.scalatest.FreeSpec
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class AwaitOrderExecutorTest extends FreeSpec {
+final class AwaitOrderExecutorTest extends AnyFreeSpec {
 
   "test" in {
     val context = new OrderContext {

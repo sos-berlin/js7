@@ -2,13 +2,13 @@ package com.sos.jobscheduler.base.convert
 
 import com.sos.jobscheduler.base.convert.ConvertiblePartialFunction.MissingConfigurationKeyProblem
 import com.sos.jobscheduler.base.problem.Problem
-import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers._
 
 /**
   * @author Joacim Zschimmer
   */
-final class ConvertiblePartialFunctionTest extends FreeSpec {
+final class ConvertiblePartialFunctionTest extends AnyFreeSpec {
 
   "as with default" in {
     assert(convertible("KEY" -> "111").as[Int]("KEY", default = 999) == 111)

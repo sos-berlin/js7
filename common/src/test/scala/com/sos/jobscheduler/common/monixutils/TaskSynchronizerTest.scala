@@ -5,14 +5,14 @@ import java.lang.Thread.sleep
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.atomic.AtomicInt
-import org.scalatest.FreeSpec
 import scala.concurrent.Future
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /** Runs one task after the other.
   * @author Joacim Zschimmer
   */
-final class TaskSynchronizerTest extends FreeSpec
+final class TaskSynchronizerTest extends AnyFreeSpec
 {
   "run" in {
     val counter = AtomicInt(0)

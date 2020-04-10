@@ -12,13 +12,13 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files.{createTempDirectory, createTempFile, delete}
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
-import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers._
 
 /**
  * @author Joacim Zschimmer
  */
-final class JavaResourceTest extends FreeSpec
+final class JavaResourceTest extends AnyFreeSpec
 {
   "Macro derives ClassLoader" in {
     assert(JavaResource(getClass.getClassLoader, "MISSING").classLoader eq getClass.getClassLoader)

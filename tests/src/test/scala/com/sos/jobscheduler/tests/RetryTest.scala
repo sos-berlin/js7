@@ -20,12 +20,12 @@ import com.sos.jobscheduler.tests.RetryTest._
 import com.sos.jobscheduler.tests.testenv.MasterAgentForScalaTest
 import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
+import org.scalatest.freespec.AnyFreeSpec
 
-final class RetryTest extends FreeSpec with MasterAgentForScalaTest
+final class RetryTest extends AnyFreeSpec with MasterAgentForScalaTest
 {
   override protected val masterConfig = ConfigFactory.parseString(
     s"""jobscheduler.journal.simulate-sync = 10ms""")  // Avoid excessive syncs in case of test failure

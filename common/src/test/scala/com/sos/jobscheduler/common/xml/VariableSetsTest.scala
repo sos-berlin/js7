@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.common.xml
 
 import com.sos.jobscheduler.common.xml.VariableSets.{parseXml, toParamsXmlElem, toXmlElem}
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class VariableSetsTest extends FreeSpec {
+final class VariableSetsTest extends AnyFreeSpec {
 
   "parseXml" in {
     val x =

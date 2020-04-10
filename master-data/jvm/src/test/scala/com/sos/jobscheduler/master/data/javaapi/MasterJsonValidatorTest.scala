@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.master.data.javaapi
 
 import com.sos.jobscheduler.master.data.javaapi.MasterJsonValidatorTester._
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class MasterJsonValidatorTest extends FreeSpec {
+final class MasterJsonValidatorTest extends AnyFreeSpec {
 
   "Valid Workflow" in {
     testValidWorkflow()

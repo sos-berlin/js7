@@ -12,12 +12,12 @@ import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.{Execute, ReturnCodeMeaning}
 import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
 import com.sos.jobscheduler.data.workflow.{WorkflowId, WorkflowPath}
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ExecuteTest extends FreeSpec {
+final class ExecuteTest extends AnyFreeSpec {
 
   private val executeAnonymous = Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"),
     returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 3, 9)))

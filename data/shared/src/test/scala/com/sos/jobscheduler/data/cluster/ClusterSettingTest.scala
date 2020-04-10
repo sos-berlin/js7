@@ -3,12 +3,12 @@ package com.sos.jobscheduler.data.cluster
 import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.data.cluster.ClusterSetting._
 import com.sos.jobscheduler.data.cluster.ClusterSetting.syntax._
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ClusterSettingTest extends FreeSpec
+final class ClusterSettingTest extends AnyFreeSpec
 {
   private val idToUri = Map(
     ClusterNodeId("A") -> Uri("http://A"),

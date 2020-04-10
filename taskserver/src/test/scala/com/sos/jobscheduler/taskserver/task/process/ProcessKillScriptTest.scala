@@ -19,18 +19,18 @@ import java.io.InputStream
 import java.lang.ProcessBuilder.Redirect.INHERIT
 import java.nio.file.Files._
 import java.nio.file.Path
-import org.scalatest.FreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Future, blocking}
 import scala.jdk.CollectionConverters._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * JS-1558 Agent includes kill scripts
   *
   * @author Joacim Zschimmer
   */
-final class ProcessKillScriptTest extends FreeSpec {
+final class ProcessKillScriptTest extends AnyFreeSpec {
 
   "Kill script kills descendants" in {
     if (isMac) {

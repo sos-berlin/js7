@@ -1,14 +1,15 @@
 package com.sos.jobscheduler.common.scalautil.xmls
 
 import com.sos.jobscheduler.common.scalautil.xmls.SafeXMLTest._
-import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
+import org.scalatest.matchers.should.Matchers._
 import org.xml.sax.SAXParseException
+import org.scalatest.matchers
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class SafeXMLTest extends FreeSpec {
+final class SafeXMLTest extends AnyFreeSpec {
 
   "xml.XML.load allows DOCTYPE" in {
     assertResult(<a>BAD</a>) { xml.XML.loadString(DoctypeXml) }

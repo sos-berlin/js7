@@ -28,13 +28,13 @@ import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentCouplingFai
 import com.sos.jobscheduler.tests.MasterAgentWithoutAuthenticationTest._
 import java.nio.file.Files.{createDirectories, createDirectory}
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class MasterAgentWithoutAuthenticationTest extends FreeSpec
+final class MasterAgentWithoutAuthenticationTest extends AnyFreeSpec
 {
   "jobscheduler.webserver.auth.public = true" in {
     runMyTest(isPublic = true) { (master, _) =>

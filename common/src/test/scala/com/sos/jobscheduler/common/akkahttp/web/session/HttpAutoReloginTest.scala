@@ -12,9 +12,9 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import monix.catnap.MVar
 import monix.eval.Task
 import monix.execution.Scheduler
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
-final class HttpAutoReloginTest extends FreeSpec with SessionRouteTester
+final class HttpAutoReloginTest extends AnyFreeSpec with SessionRouteTester
 {
   protected implicit def scheduler = Scheduler.global
 

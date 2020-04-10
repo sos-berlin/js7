@@ -12,12 +12,12 @@ import com.sos.jobscheduler.data.workflow.WorkflowPath
 import java.io.File.separator
 import java.nio.file.Files.{createDirectories, createTempDirectory}
 import java.nio.file.Path
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class TypedFileTest extends FreeSpec
+final class TypedFileTest extends AnyFreeSpec
 {
   "typedFiles, checkUniqueness" in {
     provideDataDirectory { dir =>

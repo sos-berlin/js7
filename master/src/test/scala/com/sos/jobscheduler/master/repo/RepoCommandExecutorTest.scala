@@ -13,12 +13,12 @@ import com.sos.jobscheduler.data.master.MasterFileBaseds
 import com.sos.jobscheduler.data.workflow.instructions.Fail
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.data.MasterCommand.{ReplaceRepo, UpdateRepo}
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class RepoCommandExecutorTest extends FreeSpec
+final class RepoCommandExecutorTest extends AnyFreeSpec
 {
   private lazy val signer = new SillySigner(SillySignature("RepoCommandExecutorTest"))
   private lazy val signatureVerifier = signer.toVerifier

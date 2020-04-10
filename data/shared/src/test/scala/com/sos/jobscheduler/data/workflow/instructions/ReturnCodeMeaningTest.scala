@@ -3,12 +3,12 @@ package com.sos.jobscheduler.data.workflow.instructions
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ReturnCodeMeaningTest extends FreeSpec
+final class ReturnCodeMeaningTest extends AnyFreeSpec
 {
   "Success" in {
     val success0 = ReturnCodeMeaning.Success(Set(ReturnCode(0)))

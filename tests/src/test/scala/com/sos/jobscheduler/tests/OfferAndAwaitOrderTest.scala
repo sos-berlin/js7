@@ -16,11 +16,11 @@ import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.tests.OfferAndAwaitOrderTest._
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class OfferAndAwaitOrderTest extends FreeSpec
+final class OfferAndAwaitOrderTest extends AnyFreeSpec
 {
   "Offer and Await after a job" in {
     val workflows = List(

@@ -7,12 +7,12 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import com.sos.jobscheduler.common.akkahttp.web.auth.CSRF.forbidCSRF
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class CSRFTest extends FreeSpec with ScalatestRouteTest {
+final class CSRFTest extends AnyFreeSpec with ScalatestRouteTest {
 
   private val route: Route =
     forbidCSRF {

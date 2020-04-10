@@ -2,13 +2,13 @@ package com.sos.jobscheduler.base.utils
 
 import com.sos.jobscheduler.base.utils.StackTraces._
 import com.sos.jobscheduler.base.utils.StackTracesTest._
-import org.scalatest.FreeSpec
 import scala.util.Try
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class StackTracesTest extends FreeSpec {
+final class StackTracesTest extends AnyFreeSpec {
 
   "withThisSackTrace extends possible failures stack strace with own stack trace" in {
     val t = Try[Unit] { throw new TestException }

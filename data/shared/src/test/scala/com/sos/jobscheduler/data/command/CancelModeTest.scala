@@ -2,12 +2,12 @@ package com.sos.jobscheduler.data.command
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class CancelModeTest extends FreeSpec
+final class CancelModeTest extends AnyFreeSpec
 {
   "JSON" - {
     "NotStarted" in {

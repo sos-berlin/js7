@@ -7,12 +7,12 @@ import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits._
 import java.io.File
 import java.nio.file.Files.delete
 import java.nio.file.Path
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class ScalaXmlsTest extends FreeSpec
+final class ScalaXmlsTest extends AnyFreeSpec
 {
   "Path.xml" in {
     val path: Path = File.createTempFile("sos", ".tmp").toPath

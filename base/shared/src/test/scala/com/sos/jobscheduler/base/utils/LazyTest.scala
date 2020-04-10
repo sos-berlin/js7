@@ -1,11 +1,11 @@
 package com.sos.jobscheduler.base.utils
 
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class LazyTest extends FreeSpec
+final class LazyTest extends AnyFreeSpec
 {
   "Lazy" in {
     var counter = 0

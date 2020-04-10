@@ -16,12 +16,12 @@ import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.web.master.api.fatevent.FatStateTest._
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class FatStateTest extends FreeSpec
+final class FatStateTest extends AnyFreeSpec
 {
   private val sign = new FileBasedSigner(new SillySigner, MasterFileBaseds.jsonCodec).sign _
   private val repo = Repo.signatureVerifying(new FileBasedVerifier(new SillySignatureVerifier, MasterFileBaseds.jsonCodec))

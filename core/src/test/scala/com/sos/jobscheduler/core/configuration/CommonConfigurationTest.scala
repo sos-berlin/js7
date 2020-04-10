@@ -9,11 +9,11 @@ import com.sos.jobscheduler.core.configuration.CommonConfigurationTest._
 import com.typesafe.config.{Config, ConfigFactory}
 import java.net.InetSocketAddress
 import java.nio.file.{Path, Paths}
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class CommonConfigurationTest extends FreeSpec
+final class CommonConfigurationTest extends AnyFreeSpec
 {
   "-config-directory=" in {
     assert(conf().configDirectory == Paths.get("CONFIG").toAbsolutePath)

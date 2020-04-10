@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.base.problem
 
 import com.sos.jobscheduler.base.problem.CodedMessages.patternToMessage
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class CodedMessagesTest extends FreeSpec
+final class CodedMessagesTest extends AnyFreeSpec
 {
   "patternToMessage" - {
     "without arguments" in {

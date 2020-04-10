@@ -8,12 +8,12 @@ import com.sos.jobscheduler.common.http.configuration.RecouplingStreamReaderConf
 import com.sos.jobscheduler.core.message.ProblemCodeMessages
 import com.sos.jobscheduler.data.cluster.ClusterNodeId
 import com.typesafe.config.ConfigFactory
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ClusterConfTest extends FreeSpec
+final class ClusterConfTest extends AnyFreeSpec
 {
   ProblemCodeMessages.initialize()
 

@@ -3,12 +3,12 @@ package com.sos.jobscheduler.core.event.journal.files
 import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import java.nio.file.Files.{createTempFile, delete, size}
 import java.nio.file.Paths
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class JournalFileTest extends FreeSpec
+final class JournalFileTest extends AnyFreeSpec
 {
   "properLength" in {
     val file = createTempFile("JournalFileTest-", ".tmp")

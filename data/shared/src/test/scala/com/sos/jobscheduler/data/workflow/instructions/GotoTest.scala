@@ -5,12 +5,12 @@ import com.sos.jobscheduler.data.source.SourcePos
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
 import com.sos.jobscheduler.data.workflow.{Instruction, Label}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class GotoTest extends FreeSpec {
+final class GotoTest extends AnyFreeSpec {
 
   // For compatibility with JobScheduler 1 only.
 

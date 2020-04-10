@@ -5,14 +5,14 @@ import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import monix.execution.{Cancelable, Scheduler}
-import org.scalatest.FreeSpec
 import scala.concurrent.Promise
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class MonixUtilsTest extends FreeSpec
+final class MonixUtilsTest extends AnyFreeSpec
 {
   "Scheduler.scheduleFor" in {
     val scheduler = Scheduler.global

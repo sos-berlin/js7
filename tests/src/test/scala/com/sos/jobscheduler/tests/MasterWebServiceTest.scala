@@ -47,14 +47,15 @@ import io.circe.{Json, JsonObject}
 import java.time.ZoneId
 import javax.inject.Singleton
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.duration._
 import scala.util.Try
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with MasterAgentForScalaTest
+final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with MasterAgentForScalaTest
 {
   override lazy val signer = new SillySigner(SillySignature("MY-SILLY-SIGNATURE"))
 

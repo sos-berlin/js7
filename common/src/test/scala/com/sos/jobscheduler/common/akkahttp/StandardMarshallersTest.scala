@@ -16,14 +16,15 @@ import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import io.circe.generic.semiauto.deriveEncoder
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class StandardMarshallersTest extends FreeSpec with BeforeAndAfterAll {
+final class StandardMarshallersTest extends AnyFreeSpec with BeforeAndAfterAll {
 
   private val actorSystem = newActorSystem("StandardMarshallersTest")
   private implicit val mat = ActorMaterializer()(actorSystem)

@@ -7,12 +7,12 @@ import com.sos.jobscheduler.core.crypt.pgp.PgpSigner.readSecretKey
 import com.sos.jobscheduler.core.crypt.pgp.{PgpSigner, PgpTest}
 import com.sos.jobscheduler.core.problems.TamperedWithSignedMessageProblem
 import com.typesafe.config.ConfigFactory
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class GenericSignatureVerifierTest extends FreeSpec
+final class GenericSignatureVerifierTest extends AnyFreeSpec
 {
   "Directory of public keys (recommended usage)" in {
     withTemporaryDirectory("GenericSignatureVerifierTest-") { directory =>

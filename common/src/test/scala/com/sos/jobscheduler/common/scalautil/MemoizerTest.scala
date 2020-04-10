@@ -4,15 +4,15 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MemoizerTest._
 import com.sos.jobscheduler.base.time.ScalaTime._
 import java.util.concurrent.atomic.AtomicInteger
-import org.scalatest.FreeSpec
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class MemoizerTest extends FreeSpec {
+final class MemoizerTest extends AnyFreeSpec {
 
   "Unary" in {
     val called = mutable.Buffer[Int]()

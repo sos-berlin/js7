@@ -5,12 +5,12 @@ import com.sos.jobscheduler.base.system.SystemInformation
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.data.system.JavaInformation
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class AgentOverviewTest extends FreeSpec {
+final class AgentOverviewTest extends AnyFreeSpec {
 
   "JSON" in {
     testJson(

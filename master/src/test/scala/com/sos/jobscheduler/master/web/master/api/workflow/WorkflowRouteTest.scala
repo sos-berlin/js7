@@ -14,12 +14,12 @@ import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.web.master.api.test.RouteTester
 import com.sos.jobscheduler.master.web.master.api.workflow.WorkflowRouteTest._
 import monix.execution.Scheduler
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class WorkflowRouteTest extends FreeSpec with RouteTester with WorkflowRoute {
+final class WorkflowRouteTest extends AnyFreeSpec with RouteTester with WorkflowRoute {
 
   protected def isShuttingDown = false
   protected implicit def scheduler: Scheduler = Scheduler.global

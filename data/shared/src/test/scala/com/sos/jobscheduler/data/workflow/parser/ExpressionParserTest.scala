@@ -9,12 +9,12 @@ import com.sos.jobscheduler.data.workflow.parser.Parsers.checkedParse
 import fastparse.NoWhitespace._
 import fastparse.{Parsed, _}
 import org.scalactic.source
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ExpressionParserTest extends FreeSpec
+final class ExpressionParserTest extends AnyFreeSpec
 {
   // See also EvaluatorTest
 

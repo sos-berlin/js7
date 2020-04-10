@@ -1,13 +1,13 @@
 package com.sos.jobscheduler.base.standards
 
 import com.sos.jobscheduler.base.standards.NameValidator._
-import org.scalatest.FreeSpec
 import scala.jdk.CollectionConverters._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class NameValidatorTest extends FreeSpec {
+final class NameValidatorTest extends AnyFreeSpec {
 
   "isValid" in {
     assert(isValid("a"))

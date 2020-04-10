@@ -21,14 +21,14 @@ import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
 import javax.inject.Singleton
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
 import scala.concurrent.Future
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class TerminateTest extends FreeSpec with AgentTester {
+final class TerminateTest extends AnyFreeSpec with AgentTester {
 
   override def beforeAll() = {
     (agentDirectory / "config" / "private" / "private.conf") ++= """

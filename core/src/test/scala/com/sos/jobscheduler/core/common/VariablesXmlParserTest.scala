@@ -3,12 +3,12 @@ package com.sos.jobscheduler.core.common
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader
 import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
 import com.sos.jobscheduler.common.time.Stopwatch.measureTime
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class VariablesXmlParserTest extends FreeSpec {
+final class VariablesXmlParserTest extends AnyFreeSpec {
 
   "variables" in {
     for (variablesXml <- Array(

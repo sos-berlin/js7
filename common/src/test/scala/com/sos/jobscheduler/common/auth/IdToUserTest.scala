@@ -8,15 +8,15 @@ import com.sos.jobscheduler.common.auth.IdToUserTest._
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.typesafe.config.ConfigFactory
-import org.scalatest.FreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.jdk.CollectionConverters._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class IdToUserTest extends FreeSpec
+final class IdToUserTest extends AnyFreeSpec
 {
   "Unknown user" in {
     assert(idToUser(UserId("UNKNOWN")) == None)

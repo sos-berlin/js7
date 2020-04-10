@@ -12,14 +12,15 @@ import java.io.File.separator
 import java.nio.charset.StandardCharsets.{UTF_16BE, UTF_8}
 import java.nio.file.Files.{createTempDirectory, createTempFile, delete, exists}
 import java.nio.file.{Files, NotDirectoryException, Path, Paths}
-import org.scalatest.Matchers._
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers._
 import scodec.bits.ByteVector
 
 /**
  * @author Joacim Zschimmer
  */
-final class FileUtilsTest extends FreeSpec with BeforeAndAfterAll
+final class FileUtilsTest extends AnyFreeSpec with BeforeAndAfterAll
 {
   private lazy val path = createTempFile("FileUtilTest-", ".tmp")
 

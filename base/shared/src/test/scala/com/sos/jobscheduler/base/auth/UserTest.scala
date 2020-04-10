@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.base.auth
 
 import com.sos.jobscheduler.base.auth.UserTest._
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class UserTest extends FreeSpec
+final class UserTest extends AnyFreeSpec
 {
   "hasPermissions" in {
     assert(testUser(Set.empty) hasPermissions Set.empty)

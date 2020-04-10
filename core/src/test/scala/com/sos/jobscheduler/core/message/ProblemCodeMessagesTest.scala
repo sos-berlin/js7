@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.core.message
 
 import com.sos.jobscheduler.base.problem.{ProblemCode, TestCodeProblem}
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ProblemCodeMessagesTest extends FreeSpec
+final class ProblemCodeMessagesTest extends AnyFreeSpec
 {
   ProblemCodeMessages.initialize()
 

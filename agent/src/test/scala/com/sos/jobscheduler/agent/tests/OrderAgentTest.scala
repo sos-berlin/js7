@@ -32,15 +32,16 @@ import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
 import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
+import org.scalatest.matchers.should.Matchers._
 import scala.collection.mutable
 import scala.concurrent.duration._
+import org.scalatest.matchers
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class OrderAgentTest extends FreeSpec {
+final class OrderAgentTest extends AnyFreeSpec {
 
   "AgentCommand AttachOrder" in {
     provideAgentDirectory { directory =>

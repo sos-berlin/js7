@@ -1,13 +1,13 @@
 package com.sos.jobscheduler.common.scalautil
 
 import com.sos.jobscheduler.base.utils.HasCloser
-import org.scalatest.FreeSpec
 import scala.util.Success
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class ClosedFutureTest extends FreeSpec {
+final class ClosedFutureTest extends AnyFreeSpec {
 
   "closed future succeeds" in {
     object o extends HasCloser with ClosedFuture

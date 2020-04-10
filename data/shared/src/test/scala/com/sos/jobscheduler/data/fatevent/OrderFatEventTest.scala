@@ -11,12 +11,12 @@ import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class OrderFatEventTest extends FreeSpec {
+final class OrderFatEventTest extends AnyFreeSpec {
 
   "OrderAddedFat" in {
     testJson[OrderFatEvent](

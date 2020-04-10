@@ -7,13 +7,13 @@ import com.sos.jobscheduler.common.http.StreamingSupport._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
-import org.scalatest.FreeSpec
 import scala.concurrent.Await
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class StreamingSupportTest extends FreeSpec
+final class StreamingSupportTest extends AnyFreeSpec
 {
   "Observable toAkkaSource" in {
     val actorSystem = ActorSystem("StreamingSupportTest")

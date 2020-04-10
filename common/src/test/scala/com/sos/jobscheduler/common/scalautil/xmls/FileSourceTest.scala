@@ -3,12 +3,12 @@ package com.sos.jobscheduler.common.scalautil.xmls
 import com.sos.jobscheduler.common.scalautil.FileUtils.syntax.RichPath
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.{createTempFile, delete}
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class FileSourceTest extends FreeSpec {
+final class FileSourceTest extends AnyFreeSpec {
 
   "FileSource" in {
     val file = createTempFile("test-", ".tmp")

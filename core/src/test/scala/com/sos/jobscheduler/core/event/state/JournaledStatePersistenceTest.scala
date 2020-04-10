@@ -32,16 +32,17 @@ import java.nio.file.Path
 import java.util.concurrent.Executors
 import monix.execution.Scheduler
 import monix.reactive.Observable
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import org.scalatest.BeforeAndAfterAll
 import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 import shapeless.tag
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class JournaledStatePersistenceTest extends FreeSpec with BeforeAndAfterAll with ProvideActorSystem
+final class JournaledStatePersistenceTest extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem
 {
   ScribeUtils.coupleScribeWithSlf4j()
 

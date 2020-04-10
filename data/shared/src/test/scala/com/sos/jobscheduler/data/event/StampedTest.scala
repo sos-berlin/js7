@@ -4,12 +4,12 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.syntax.EncoderOps
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class StampedTest extends FreeSpec {
+final class StampedTest extends AnyFreeSpec {
 
   "map" in {
     val eventId = EventId(100)

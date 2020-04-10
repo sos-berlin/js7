@@ -13,14 +13,16 @@ import com.sos.jobscheduler.core.event.journal.files.JournalFiles.listJournalFil
 import com.sos.jobscheduler.core.event.journal.test.JournalTest._
 import com.typesafe.config.ConfigFactory
 import java.nio.file.Files.{delete, deleteIfExists}
-import org.scalatest.Matchers._
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.ExecutionContext.Implicits.global
+import org.scalatest.matchers
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournalMixin
+final class JournalTest extends AnyFreeSpec with BeforeAndAfterAll with TestJournalMixin
 {
   "First run" in {
     withTestActor() { (actorSystem, actor) =>

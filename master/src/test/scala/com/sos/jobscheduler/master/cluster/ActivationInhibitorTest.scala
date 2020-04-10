@@ -5,13 +5,13 @@ import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import com.sos.jobscheduler.master.cluster.ActivationInhibitor.{Active, Inhibited, Initial, Passive, State}
 import monix.eval.Task
 import monix.execution.schedulers.TestScheduler
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 import scala.util.Success
 
 /**
   * @author Joacim Zschimmer
   */
-final class ActivationInhibitorTest extends FreeSpec
+final class ActivationInhibitorTest extends AnyFreeSpec
 {
   private implicit val scheduler = TestScheduler()
 

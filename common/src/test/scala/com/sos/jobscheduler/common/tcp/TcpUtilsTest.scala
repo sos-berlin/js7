@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.common.tcp
 
 import com.sos.jobscheduler.common.tcp.TcpUtils.{parseTcpPort, requireTcpPortNumber}
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class TcpUtilsTest extends FreeSpec {
+final class TcpUtilsTest extends AnyFreeSpec {
 
   "parseTcpPort" in {
     assert(parseTcpPort("1") == 1)

@@ -33,14 +33,14 @@ import com.sos.jobscheduler.tests.testenv.DirectoryProvider
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider.StdoutOutput
 import java.time.ZoneId
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
 import scala.collection.mutable
 import scala.language.implicitConversions
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class FatEventsTest extends FreeSpec
+final class FatEventsTest extends AnyFreeSpec
 {
   "test" in {
     autoClosing(new DirectoryProvider(AAgentRefPath :: BAgentRefPath :: Nil, TestWorkflow :: Nil, testName = Some("FatEventsTest"))) { provider =>

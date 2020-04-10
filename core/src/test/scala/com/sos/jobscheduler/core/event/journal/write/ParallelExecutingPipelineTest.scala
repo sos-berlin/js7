@@ -3,16 +3,16 @@ package com.sos.jobscheduler.core.event.journal.write
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.concurrent.ParallelismCounter
 import java.util.concurrent.Executors
-import org.scalatest.FreeSpec
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ParallelExecutingPipelineTest extends FreeSpec
+final class ParallelExecutingPipelineTest extends AnyFreeSpec
 {
   private val sleepDuration = 200.millis
 

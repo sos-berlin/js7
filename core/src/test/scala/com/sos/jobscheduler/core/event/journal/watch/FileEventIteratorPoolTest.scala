@@ -8,12 +8,12 @@ import com.sos.jobscheduler.core.event.journal.watch.FileEventIteratorPoolTest._
 import com.sos.jobscheduler.core.event.journal.watch.TestData.{AEvent, TestKeyedEventJsonCodec, journalId, writeJournal}
 import com.sos.jobscheduler.data.event.{EventId, Stamped}
 import java.nio.file.Files
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class FileEventIteratorPoolTest extends FreeSpec
+final class FileEventIteratorPoolTest extends AnyFreeSpec
 {
   "FileEventIteratorPool" in {
     FileUtils.withTemporaryDirectory("FileEventIteratorPoolTest-") { dir =>

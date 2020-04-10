@@ -13,13 +13,13 @@ import com.typesafe.config.ConfigFactory
 import java.net.InetSocketAddress
 import java.nio.file.Files.createTempDirectory
 import java.nio.file.{Path, Paths}
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.DurationInt
 
 /**
  * @author Joacim Zschimmer
  */
-final class AgentConfigurationTest extends FreeSpec  {
+final class AgentConfigurationTest extends AnyFreeSpec  {
 
   private val shellExt = if (isWindows) "cmd" else "sh"
 

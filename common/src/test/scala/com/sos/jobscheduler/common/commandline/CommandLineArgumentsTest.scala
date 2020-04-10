@@ -1,13 +1,13 @@
 package com.sos.jobscheduler.common.commandline
 
 import com.sos.jobscheduler.common.commandline.CommandLineArguments.parse
-import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers._
 
 /**
  * @author Joacim Zschimmer
  */
-final class CommandLineArgumentsTest extends FreeSpec {
+final class CommandLineArgumentsTest extends AnyFreeSpec {
 
   "Flag" - {
     "boolean" in {

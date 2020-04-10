@@ -20,13 +20,13 @@ import com.sos.jobscheduler.tests.CancelOrderTest._
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider.script
 import com.sos.jobscheduler.tests.testenv.MasterAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class CancelOrderTest extends FreeSpec with MasterAgentForScalaTest
+final class CancelOrderTest extends AnyFreeSpec with MasterAgentForScalaTest
 {
   protected val agentRefPaths = TestAgentRefPath :: Nil
   protected val fileBased = SingleJobWorkflow :: TwoJobsWorkflow :: Nil

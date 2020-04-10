@@ -16,13 +16,13 @@ import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.system.Stdout
 import com.sos.jobscheduler.taskserver.task.process.ShellScriptProcess.startShellScript
 import java.nio.file.Files._
-import org.scalatest.FreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class ShellScriptProcessTest extends FreeSpec
+final class ShellScriptProcessTest extends AnyFreeSpec
 {
   "ShellScriptProcess" in {
     val envName = "ENVNAME"

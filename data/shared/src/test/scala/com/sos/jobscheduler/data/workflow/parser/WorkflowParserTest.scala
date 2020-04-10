@@ -12,14 +12,14 @@ import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Finish, Fork, Goto, If, IfFailedGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowSource}
 import com.sos.jobscheduler.data.workflow.{Label, Workflow, WorkflowPath}
-import org.scalatest.FreeSpec
 import scala.concurrent.duration._
 import scala.util.control.NoStackTrace
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class WorkflowParserTest extends FreeSpec {
+final class WorkflowParserTest extends AnyFreeSpec {
 
   "parse" in {
     assert(parse(TestWorkflowSource).withoutSourcePos == TestWorkflow.withId(WorkflowPath.NoId))

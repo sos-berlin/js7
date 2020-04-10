@@ -18,12 +18,12 @@ import com.sos.jobscheduler.tests.testenv.DirectoryProviderForScalaTest
 import java.nio.file.Files.move
 import java.nio.file.Paths
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class CoupleMasterTest extends FreeSpec with DirectoryProviderForScalaTest
+final class CoupleMasterTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
   protected val agentRefPaths = agentRefPath :: Nil
   protected val fileBased = TestWorkflow :: Nil

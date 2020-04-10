@@ -2,12 +2,12 @@ package com.sos.jobscheduler.base.auth
 
 import com.sos.jobscheduler.base.auth.Permission._
 import com.sos.jobscheduler.base.auth.PermissionTest._
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class PermissionTest extends FreeSpec
+final class PermissionTest extends AnyFreeSpec
 {
   "toStringToPermission" in {
     assert(toStringToPermission(Set(TestPermission, AnotherPermission)) ==

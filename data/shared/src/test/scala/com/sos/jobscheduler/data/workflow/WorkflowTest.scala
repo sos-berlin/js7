@@ -15,12 +15,12 @@ import com.sos.jobscheduler.data.workflow.position.BranchId.{Else, Then, Try_, c
 import com.sos.jobscheduler.data.workflow.position._
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class WorkflowTest extends FreeSpec {
+final class WorkflowTest extends AnyFreeSpec {
 
   "JSON" - {
     "Workflow without WorkflowID, when placed in configuration directory" in {

@@ -6,15 +6,15 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.Exceptions._
 import com.sos.jobscheduler.common.utils.ExceptionsTest._
 import java.io.IOException
-import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers._
 import scala.concurrent.duration.Deadline.now
 import scala.util.{Success, Try}
 
 /**
   * @author Joacim Zschimmer
   */
-final class ExceptionsTest extends FreeSpec {
+final class ExceptionsTest extends AnyFreeSpec {
 
   "repeatUntilNoException" in {
     // Warm-up

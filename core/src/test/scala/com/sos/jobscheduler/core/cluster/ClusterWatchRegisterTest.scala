@@ -5,12 +5,12 @@ import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import com.sos.jobscheduler.data.master.MasterId
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ClusterWatchRegisterTest extends FreeSpec
+final class ClusterWatchRegisterTest extends AnyFreeSpec
 {
   private val clusterWatchRegister = new ClusterWatchRegister(Scheduler.global)
 

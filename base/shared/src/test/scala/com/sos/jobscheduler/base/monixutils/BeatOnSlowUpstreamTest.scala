@@ -5,13 +5,13 @@ import com.sos.jobscheduler.base.time.ScalaTime._
 import monix.eval.Task
 import monix.execution.schedulers.TestScheduler
 import monix.reactive.Observable
-import org.scalatest.FreeSpec
 import scala.concurrent.Await
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class BeatOnSlowUpstreamTest extends FreeSpec
+final class BeatOnSlowUpstreamTest extends AnyFreeSpec
 {
   private implicit val scheduler = TestScheduler()
   private val heartbeat = -1

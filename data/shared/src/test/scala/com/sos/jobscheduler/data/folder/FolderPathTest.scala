@@ -2,12 +2,12 @@ package com.sos.jobscheduler.data.folder
 
 import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
 import com.sos.jobscheduler.data.folder.FolderPathTest._
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class FolderPathTest extends FreeSpec {
+final class FolderPathTest extends AnyFreeSpec {
 
   "subfolder" in {
     assert(FolderPath("/").subfolder("x") == FolderPath("/x"))

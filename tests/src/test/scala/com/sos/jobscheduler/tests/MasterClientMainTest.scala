@@ -5,13 +5,14 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.sos.jobscheduler.master.client.main.MasterClientMain
 import com.sos.jobscheduler.tests.testenv.MasterAgentForScalaTest
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import org.scalatest.BeforeAndAfterAll
 import scala.collection.mutable
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class MasterClientMainTest extends FreeSpec with BeforeAndAfterAll with MasterAgentForScalaTest {
+final class MasterClientMainTest extends AnyFreeSpec with BeforeAndAfterAll with MasterAgentForScalaTest {
 
   protected val agentRefPaths = Nil
   protected val fileBased = Nil

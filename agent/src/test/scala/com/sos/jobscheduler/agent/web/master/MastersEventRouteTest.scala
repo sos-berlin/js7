@@ -17,12 +17,12 @@ import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequ
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.problems.UnknownEventIdProblem
 import monix.execution.Scheduler
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class MastersEventRouteTest extends FreeSpec with AgentTester
+final class MastersEventRouteTest extends AnyFreeSpec with AgentTester
 {
   protected val akkaAskTimeout = 99.s
 

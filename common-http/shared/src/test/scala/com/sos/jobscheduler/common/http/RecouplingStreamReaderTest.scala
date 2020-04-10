@@ -9,8 +9,8 @@ import com.sos.jobscheduler.common.http.configuration.RecouplingStreamReaderConf
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
-import org.scalatest.AsyncFreeSpec
 import scala.concurrent.Await
+import org.scalatest.freespec.AsyncFreeSpec
 
 /**
   * @author Joacim Zschimmer

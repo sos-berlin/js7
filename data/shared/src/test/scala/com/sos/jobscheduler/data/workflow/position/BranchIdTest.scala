@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.data.workflow.position
 
 import com.sos.jobscheduler.data.workflow.position.BranchId.{catch_, try_}
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class BranchIdTest extends FreeSpec
+final class BranchIdTest extends AnyFreeSpec
 {
   "try_" in {
     intercept[IllegalArgumentException](try_(-1))

@@ -17,15 +17,15 @@ import com.sos.jobscheduler.core.command.CommandMeta
 import javax.inject.Singleton
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
 import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
 
 /**
  * @author Joacim Zschimmer
  */
 final class AgentClientCommandMarshallingTest
-extends FreeSpec with ScalaFutures with AgentTester {
+extends AnyFreeSpec with ScalaFutures with AgentTester {
 
   override protected def extraAgentModule = new AbstractModule {
     @Provides @Singleton

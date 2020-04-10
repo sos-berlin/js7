@@ -16,9 +16,9 @@ import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.tests.TryTest._
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
-final class TryTest extends FreeSpec
+final class TryTest extends AnyFreeSpec
 {
   "Nested try catch with outer non-failing catch, OrderFinished" in {
     autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, FinishingWorkflow :: Nil, testName = Some("TryTest"))) { directoryProvider =>

@@ -12,13 +12,13 @@ import com.sos.jobscheduler.data.workflow.parser.Parsers.checkedParse
 import fastparse.NoWhitespace._
 import fastparse._
 import org.scalactic.source
-import org.scalatest.FreeSpec
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class EvaluatorTest extends FreeSpec
+final class EvaluatorTest extends AnyFreeSpec
 {
   "NamedValue expressions" - {
     implicit val evaluator = new Evaluator(

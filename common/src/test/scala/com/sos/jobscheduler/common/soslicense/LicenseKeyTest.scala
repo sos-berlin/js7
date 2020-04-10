@@ -4,12 +4,12 @@ import com.sos.jobscheduler.common.soslicense.LicenseKey.Parameter
 import com.sos.jobscheduler.common.soslicense.LicenseKey.Parameter.{Expired, Missing, OK}
 import com.sos.jobscheduler.common.soslicense.Parameters._
 import java.time.LocalDate
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class LicenseKeyTest extends FreeSpec {
+final class LicenseKeyTest extends AnyFreeSpec {
 
   testLicenseKey("SOS-DEMO-1-D3Q-1AWS-ZZ-ITOT9Q6") { key =>
     assert(key.toString == "SOS-DEMO-1-D3Q-1AWS-ZZ")

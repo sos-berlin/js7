@@ -21,12 +21,12 @@ import com.sos.jobscheduler.tests.testenv.DirectoryProviderForScalaTest
 import com.typesafe.config.ConfigFactory
 import io.circe.syntax.EncoderOps
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class JournalIdTest extends FreeSpec with DirectoryProviderForScalaTest
+final class JournalIdTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
   protected val agentRefPaths = agentRefPath :: Nil
   protected val fileBased = TestWorkflow :: Nil

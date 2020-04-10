@@ -13,13 +13,13 @@ import com.sos.jobscheduler.common.time.Stopwatch.measureTime
 import java.nio.file.Files.createDirectory
 import java.nio.file.Paths
 import java.util.Comparator
-import org.scalatest.FreeSpec
 import scala.util.Random
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class DirectoryReaderTest extends FreeSpec
+final class DirectoryReaderTest extends AnyFreeSpec
 {
   "entries" in {
     withTemporaryDirectory("Z-") { dir =>

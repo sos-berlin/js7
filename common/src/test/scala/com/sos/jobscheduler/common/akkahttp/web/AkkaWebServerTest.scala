@@ -23,14 +23,15 @@ import java.net.{InetAddress, InetSocketAddress}
 import java.nio.file.Files.{createDirectory, createTempDirectory}
 import javax.net.ssl.SSLHandshakeException
 import monix.execution.Scheduler
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class AkkaWebServerTest extends FreeSpec with BeforeAndAfterAll
+final class AkkaWebServerTest extends AnyFreeSpec with BeforeAndAfterAll
 {
   private implicit lazy val actorSystem = newActorSystem("AkkaWebServerTest")
   private lazy val List(httpPort, httpsPort) = findFreeTcpPorts(2)

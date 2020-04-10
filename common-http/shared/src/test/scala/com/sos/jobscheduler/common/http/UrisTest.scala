@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.common.http
 
 import com.sos.jobscheduler.common.http.Uris._
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class UrisTest extends FreeSpec {
+final class UrisTest extends AnyFreeSpec {
 
   "encodePath" in {
     assert(encodePath("") == "")

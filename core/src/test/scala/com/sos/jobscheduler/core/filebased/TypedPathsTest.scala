@@ -10,12 +10,12 @@ import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import java.io.File.separator
 import java.nio.file.Paths
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class TypedPathsTest extends FreeSpec {
+final class TypedPathsTest extends AnyFreeSpec {
 
   "fileToTypedPathAndSourceType" in {
     val dir = Paths.get("DIR")

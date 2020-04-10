@@ -2,12 +2,12 @@ package com.sos.jobscheduler.provider.scheduledorder.oldruntime
 
 import com.sos.jobscheduler.common.time.JavaTime._
 import java.time.LocalTime
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class PeriodSeqTest extends FreeSpec {
+final class PeriodSeqTest extends AnyFreeSpec {
 
   private val periodSeq = PeriodSeq(List(
     RepeatPeriod(LocalTime.of( 9, 0), ExtendedLocalTime.of(10,  0), absoluteRepeat = 20*60.s),

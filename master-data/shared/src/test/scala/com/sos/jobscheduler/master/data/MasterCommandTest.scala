@@ -12,9 +12,9 @@ import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.data.MasterCommand._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
-final class MasterCommandTest extends FreeSpec
+final class MasterCommandTest extends AnyFreeSpec
 {
   "Batch" - {
     "Batch" in {

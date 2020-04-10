@@ -3,13 +3,14 @@ package com.sos.jobscheduler.common.soslicense
 import com.sos.jobscheduler.common.soslicense.LicenseKey.Parameter
 import com.sos.jobscheduler.common.soslicense.LicenseKey.Parameter.{Expired, Missing, OK}
 import com.sos.jobscheduler.common.soslicense.Parameters._
-import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
+import org.scalatest.matchers
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class LicenseKeyBunchTest extends FreeSpec {
+final class LicenseKeyBunchTest extends AnyFreeSpec {
 
   "Empty" in {
     assert(LicenseKeyBunch() == LicenseKeyBunch(""))

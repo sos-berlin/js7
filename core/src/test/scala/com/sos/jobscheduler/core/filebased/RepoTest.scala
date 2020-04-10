@@ -12,12 +12,12 @@ import com.sos.jobscheduler.data.crypt.{GenericSignature, SignedString}
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
 import com.sos.jobscheduler.data.filebased.{AFileBased, APath, BFileBased, BPath, FileBased, VersionId}
 import io.circe.syntax.EncoderOps
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class RepoTest extends FreeSpec
+final class RepoTest extends AnyFreeSpec
 {
   import fileBasedSigner.{sign, toSigned}
 

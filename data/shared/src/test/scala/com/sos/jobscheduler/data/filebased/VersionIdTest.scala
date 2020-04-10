@@ -5,12 +5,12 @@ import com.sos.jobscheduler.base.generic.GenericString.EmptyStringProblem
 import com.sos.jobscheduler.base.problem.ProblemException
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.syntax.EncoderOps
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class VersionIdTest extends FreeSpec
+final class VersionIdTest extends AnyFreeSpec
 {
   "JSON" in {
     testJson(VersionId("X"), json""" "X" """)

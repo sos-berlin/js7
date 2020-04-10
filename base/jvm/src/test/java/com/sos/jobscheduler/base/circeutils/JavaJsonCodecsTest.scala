@@ -11,13 +11,13 @@ import java.io.File
 import java.nio.file.Paths
 import java.time.format.DateTimeParseException
 import java.time.{Duration, Instant}
-import org.scalatest.FreeSpec
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class JavaJsonCodecsTest extends FreeSpec {
+final class JavaJsonCodecsTest extends AnyFreeSpec {
 
   "Path" in {
     if (File.separatorChar == '\\') {

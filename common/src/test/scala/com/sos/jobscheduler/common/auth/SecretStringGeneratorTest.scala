@@ -6,12 +6,12 @@ import com.sos.jobscheduler.common.auth.SecretStringGeneratorTest._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch.measureTime
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class SecretStringGeneratorTest extends FreeSpec {
+final class SecretStringGeneratorTest extends AnyFreeSpec {
 
   "newSecretString returns different secrets" in {
     logger.debug(newSecretString().string)

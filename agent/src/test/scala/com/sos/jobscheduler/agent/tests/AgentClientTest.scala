@@ -6,13 +6,13 @@ import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
 import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class AgentClientTest extends FreeSpec with ScalaFutures with AgentTester {
+final class AgentClientTest extends AnyFreeSpec with ScalaFutures with AgentTester {
 
   override implicit val patienceConfig = PatienceConfig(timeout = 10.s)
 

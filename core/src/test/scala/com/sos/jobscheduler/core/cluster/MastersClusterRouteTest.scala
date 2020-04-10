@@ -15,12 +15,12 @@ import com.sos.jobscheduler.data.cluster.{ClusterNodeId, ClusterState}
 import com.sos.jobscheduler.data.master.MasterId
 import io.circe.JsonObject
 import monix.execution.Scheduler
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class MastersClusterRouteTest extends FreeSpec with ScalatestRouteTest with MastersClusterRoute
+final class MastersClusterRouteTest extends AnyFreeSpec with ScalatestRouteTest with MastersClusterRoute
 {
   protected type Session = SimpleSession
 

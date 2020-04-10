@@ -22,13 +22,13 @@ import com.sos.jobscheduler.data.workflow.position.BranchId.{Else, Then, catch_,
 import com.sos.jobscheduler.data.workflow.position.{BranchId, Position}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import org.scalatest.FreeSpec
 import scala.collection.mutable
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class OrderEventSourceTest extends FreeSpec
+final class OrderEventSourceTest extends AnyFreeSpec
 {
   ProblemCodeMessages.initialize()
 

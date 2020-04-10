@@ -1,14 +1,14 @@
 package com.sos.jobscheduler.base.eventbus
 
 import com.sos.jobscheduler.base.eventbus.EventBusTest._
-import org.scalatest.FreeSpec
 import scala.collection.mutable
 import scala.util.Success
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class EventBusTest extends FreeSpec
+final class EventBusTest extends AnyFreeSpec
 {
   "subscribe" in {
     val events = mutable.Buffer[AnyRef]()

@@ -3,13 +3,13 @@ package com.sos.jobscheduler.base.circeutils
 import com.sos.jobscheduler.base.circeutils.AnyJavaJsonCodecs._
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import io.circe.Json
-import org.scalatest.FreeSpec
 import scala.jdk.CollectionConverters._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class AnyJavaJsonCodecsTest extends FreeSpec {
+final class AnyJavaJsonCodecsTest extends AnyFreeSpec {
 
   "jsonToJava" in {
     val map = Map(

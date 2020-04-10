@@ -20,14 +20,14 @@ import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import io.circe.Json
 import monix.execution.Scheduler
-import org.scalatest.FreeSpec
 import scala.concurrent.Promise
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class TaskWebServiceTest extends FreeSpec with WebServiceTest with TaskWebService
+final class TaskWebServiceTest extends AnyFreeSpec with WebServiceTest with TaskWebService
 {
   protected def isShuttingDown = false
   protected lazy val taskRegister = {

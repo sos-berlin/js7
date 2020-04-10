@@ -11,12 +11,12 @@ import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.web.master.api.test.RouteTester
 import monix.eval.Task
 import monix.execution.Scheduler
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class CommandRouteTest extends FreeSpec with RouteTester with CommandRoute {
+final class CommandRouteTest extends AnyFreeSpec with RouteTester with CommandRoute {
 
   protected val masterId = MasterId("TEST-MASTER")
   protected def isShuttingDown = false

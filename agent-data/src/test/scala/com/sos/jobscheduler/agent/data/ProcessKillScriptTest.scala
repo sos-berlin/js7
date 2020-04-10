@@ -3,12 +3,12 @@ package com.sos.jobscheduler.agent.data
 import com.sos.jobscheduler.common.process.Processes.Pid
 import com.sos.jobscheduler.data.job.TaskId
 import java.nio.file.Paths
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ProcessKillScriptTest extends FreeSpec {
+final class ProcessKillScriptTest extends AnyFreeSpec {
 
   "toCommandArguments" in {
     val killScript = ProcessKillScript(Paths.get("KILL-SCRIPT"))

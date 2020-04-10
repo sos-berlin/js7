@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.common.utils
 
 import com.sos.jobscheduler.common.utils.BeanPropertyReader.Keep
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class BeanPropertyReaderTest extends FreeSpec {
+final class BeanPropertyReaderTest extends AnyFreeSpec {
 
   "toMap" in {
     class Bean {

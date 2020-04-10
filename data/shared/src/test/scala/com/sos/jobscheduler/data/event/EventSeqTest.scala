@@ -5,11 +5,11 @@ import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.{Decoder, Encoder, Json}
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class EventSeqTest extends FreeSpec {
+final class EventSeqTest extends AnyFreeSpec {
 
   private object TestEvent extends Event {
     type Key = String

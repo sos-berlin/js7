@@ -14,12 +14,12 @@ import com.sos.jobscheduler.data.filebased.FileBased
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import io.circe.syntax.EncoderOps
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class FileBasedVerifierTest extends FreeSpec
+final class FileBasedVerifierTest extends AnyFreeSpec
 {
   "FileBasedSigner.sign" in {
     implicit val jsonCodec = FileBasedVerifierTest.jsonCodec

@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.provider.scheduledorder.oldruntime
 
 import java.time.{Instant, LocalDate, LocalDateTime, LocalTime, ZoneId}
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ExtendedLocalTimeTest extends FreeSpec {
+final class ExtendedLocalTimeTest extends AnyFreeSpec {
 
   "fromString" - {
     "Invalid times" in {

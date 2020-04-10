@@ -5,10 +5,10 @@ import com.sos.jobscheduler.master.cluster.ObservablePauseDetector._
 import monix.eval.Task
 import monix.execution.schedulers.TestScheduler
 import monix.reactive.Observable
-import org.scalatest.FreeSpec
 import scala.util.Success
+import org.scalatest.freespec.AnyFreeSpec
 
-final class ObservablePauseDetectorTest extends FreeSpec
+final class ObservablePauseDetectorTest extends AnyFreeSpec
 {
   private implicit val scheduler = TestScheduler()
   private val pausingObservable = Observable.fromIterable(1 to 5)

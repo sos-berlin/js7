@@ -12,9 +12,9 @@ import com.sos.jobscheduler.tests.master.commands.AddOrderTimeoutTest._
 import com.sos.jobscheduler.tests.testenv.MasterAgentForScalaTest
 import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
-final class AddOrderTimeoutTest extends FreeSpec with MasterAgentForScalaTest
+final class AddOrderTimeoutTest extends AnyFreeSpec with MasterAgentForScalaTest
 {
   protected val agentRefPaths = Nil
   protected val fileBased = workflow :: Nil

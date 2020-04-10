@@ -5,12 +5,12 @@ import com.sos.jobscheduler.data.workflow.parser.BasicParsers._
 import com.sos.jobscheduler.data.workflow.parser.Parsers.checkedParse
 import fastparse.NoWhitespace._
 import fastparse._
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class BasicParsersTest extends FreeSpec
+final class BasicParsersTest extends AnyFreeSpec
 {
   "checkedParse" - {
     "End" in {

@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.agent.data
 
-import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers._
 
 /**
  * @author Joacim Zschimmer
  */
-final class IncreasingPositiveLongsTest extends FreeSpec {
+final class IncreasingPositiveLongsTest extends AnyFreeSpec {
 
   "Only positives" in {
     val iterator = new IncreasingPositiveLongs()

@@ -29,12 +29,12 @@ import com.sos.jobscheduler.tests.testenv.DirectoryProvider.script
 import com.sos.jobscheduler.tests.testenv.DirectoryProviderForScalaTest
 import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ReleaseEventsTest extends FreeSpec with DirectoryProviderForScalaTest
+final class ReleaseEventsTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
   protected val agentRefPaths = TestAgentRefPath :: Nil
   protected val fileBased = TestWorkflow :: Nil

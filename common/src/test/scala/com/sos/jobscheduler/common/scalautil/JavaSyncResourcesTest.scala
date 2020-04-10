@@ -5,12 +5,12 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryFile
 import com.sos.jobscheduler.common.scalautil.JavaSyncResources.fileAsResource
 import java.io.{BufferedReader, InputStreamReader}
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class JavaSyncResourcesTest extends FreeSpec
+final class JavaSyncResourcesTest extends AnyFreeSpec
 {
   "use" in {
     withTemporaryFile { file =>

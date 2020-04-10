@@ -1,13 +1,13 @@
 package com.sos.jobscheduler.base.convert
 
 import com.sos.jobscheduler.base.convert.ConvertiblePartialFunctions.ImplicitConvertablePF
-import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers._
 
 /**
   * @author Joacim Zschimmer
   */
-final class ConvertiblePartialFunctionsTest extends FreeSpec {
+final class ConvertiblePartialFunctionsTest extends AnyFreeSpec {
 
   private val pf: PartialFunction[String, String] = Map("KEY" -> "111", "other" -> "000")
 

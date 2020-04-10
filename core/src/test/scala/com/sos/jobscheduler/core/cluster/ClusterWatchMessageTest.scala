@@ -5,12 +5,12 @@ import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.data.cluster.ClusterEvent.ClusterNodesAppointed
 import com.sos.jobscheduler.data.cluster.{ClusterNodeId, ClusterState}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ClusterWatchMessageTest extends FreeSpec
+final class ClusterWatchMessageTest extends AnyFreeSpec
 {
   "JSON" - {
     "ClusterWatchEvents" in {

@@ -3,12 +3,12 @@ package com.sos.jobscheduler.core.system
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.core.system.ThreadPools._
 import com.typesafe.config.ConfigFactory
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ThreadPoolsTest extends FreeSpec
+final class ThreadPoolsTest extends AnyFreeSpec
 {
   "ThreadCount" - {
     val config = ConfigFactory.parseString(

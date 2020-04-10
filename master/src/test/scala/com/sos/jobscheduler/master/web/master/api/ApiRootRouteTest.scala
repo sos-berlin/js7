@@ -19,14 +19,14 @@ import com.sos.jobscheduler.master.data.MasterSnapshots.MasterMetaState
 import com.sos.jobscheduler.master.web.master.api.test.RouteTester
 import monix.eval.Task
 import monix.execution.Scheduler
-import org.scalatest.FreeSpec
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ApiRootRouteTest extends FreeSpec with RouteTester with ApiRootRoute
+final class ApiRootRouteTest extends AnyFreeSpec with RouteTester with ApiRootRoute
 {
   protected val masterId = MasterId("TEST-MASTER")
   protected def isShuttingDown = false

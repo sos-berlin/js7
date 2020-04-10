@@ -1,13 +1,14 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
 import com.sos.jobscheduler.common.event.PositionAnd
-import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
+import org.scalatest.matchers
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class JournalIndexTest extends FreeSpec {
+final class JournalIndexTest extends AnyFreeSpec {
 
   private val index = new JournalIndex(PositionAnd(100, 1), size = 6)
 

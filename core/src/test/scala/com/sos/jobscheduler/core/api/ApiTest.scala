@@ -4,13 +4,13 @@ import com.sos.jobscheduler.core.api.Api.quoteString
 import com.sos.jobscheduler.data.workflow.parser.{ExpressionParser, Parsers}
 import fastparse.NoWhitespace._
 import fastparse.{End, P}
-import org.scalatest.FreeSpec
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ApiTest extends FreeSpec
+final class ApiTest extends AnyFreeSpec
 {
   "quoteString" - {
     "explicit cases" in {

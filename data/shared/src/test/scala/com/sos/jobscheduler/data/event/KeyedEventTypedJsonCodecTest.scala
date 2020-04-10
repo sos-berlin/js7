@@ -10,13 +10,14 @@ import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.DecodingFailure
 import io.circe.generic.JsonCodec
 import io.circe.syntax.EncoderOps
-import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
+import org.scalatest.matchers
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class KeyedEventTypedJsonCodecTest extends FreeSpec {
+final class KeyedEventTypedJsonCodecTest extends AnyFreeSpec {
 
   "encode and decode" in {
     testJson[KeyedEvent[TestEvent]](NoKey <-: E0,      json"""{ "TYPE": "E0" }""")

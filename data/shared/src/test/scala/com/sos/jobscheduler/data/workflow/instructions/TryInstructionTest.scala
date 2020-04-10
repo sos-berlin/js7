@@ -11,13 +11,13 @@ import com.sos.jobscheduler.data.workflow.position.BranchId.{Catch_, Try_}
 import com.sos.jobscheduler.data.workflow.position.{BranchId, Position}
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import org.scalatest.FreeSpec
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class TryInstructionTest extends FreeSpec
+final class TryInstructionTest extends AnyFreeSpec
 {
   private val try_ = TryInstruction(
     tryWorkflow = Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/TRY")))),

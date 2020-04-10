@@ -14,13 +14,13 @@ import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler
-import org.scalatest.FreeSpec
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class RouteProviderTest extends FreeSpec with RouteProvider with ScalatestRouteTest {
+final class RouteProviderTest extends AnyFreeSpec with RouteProvider with ScalatestRouteTest {
 
   protected type Session = MySession
 

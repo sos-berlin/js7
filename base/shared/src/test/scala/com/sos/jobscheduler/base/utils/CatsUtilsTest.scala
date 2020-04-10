@@ -4,12 +4,12 @@ import cats.data.Validated
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.{Problem, ProblemException}
 import com.sos.jobscheduler.base.utils.CatsUtils._
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class CatsUtilsTest extends FreeSpec
+final class CatsUtilsTest extends AnyFreeSpec
 {
   "Validated[Throwable, _] orThrow" in {
     assert((Valid(1): Validated[Throwable, Int]).orThrow == 1)

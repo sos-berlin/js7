@@ -1,11 +1,11 @@
 package com.sos.jobscheduler.base.auth
 
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class UserIdTest extends FreeSpec {
+final class UserIdTest extends AnyFreeSpec {
 
   "Invalid UserId" in {
     assert(UserId.checked("").isLeft)

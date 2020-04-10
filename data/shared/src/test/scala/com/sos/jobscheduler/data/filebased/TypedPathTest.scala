@@ -6,12 +6,12 @@ import com.sos.jobscheduler.base.problem.{Problem, ProblemException}
 import com.sos.jobscheduler.data.filebased.FileBasedId.VersionSeparator
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.syntax.EncoderOps
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class TypedPathTest extends FreeSpec
+final class TypedPathTest extends AnyFreeSpec
 {
   "JSON" in {
     testJson(APath("/PATH"), json""" "/PATH" """)

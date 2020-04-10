@@ -15,15 +15,15 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import io.circe.Json
 import monix.execution.Scheduler
-import org.scalatest.FreeSpec
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.concurrent.{Future, blocking}
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ConcurrentRequestLimiterExclusiveTest extends FreeSpec with ScalatestRouteTest
+final class ConcurrentRequestLimiterExclusiveTest extends AnyFreeSpec with ScalatestRouteTest
 {
   private val concurrentProblem = Problem.pure("CONCURRENT")
   private val testResponse = HttpEntity.Strict(ContentTypes.`text/plain(UTF-8)`, ByteString("RESPONSE"))

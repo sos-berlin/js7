@@ -4,12 +4,12 @@ import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryDirectory
 import com.typesafe.config.ConfigFactory
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ProviderConfigurationTest extends FreeSpec
+final class ProviderConfigurationTest extends AnyFreeSpec
 {
   "Empty command line" in {
     intercept[NoSuchElementException] { ProviderConfiguration.fromCommandLine(Nil) }

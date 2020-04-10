@@ -6,13 +6,13 @@ import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.{Decoder, Encoder}
 import io.circe.syntax.EncoderOps
 import java.time.Instant
-import org.scalatest.FreeSpec
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class GenericTimestampTest extends FreeSpec {
+final class GenericTimestampTest extends AnyFreeSpec {
 
   private val isoString = "2017-12-04T11:22:33.456Z"
   private val millis = 1512386553456L

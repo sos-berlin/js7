@@ -25,13 +25,13 @@ import com.sos.jobscheduler.master.web.master.api.test.RouteTester
 import io.circe.Json
 import monix.eval.Task
 import monix.execution.Scheduler
-import org.scalatest.FreeSpec
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class GraphqlRouteTest extends FreeSpec with RouteTester with GraphqlRoute {
+final class GraphqlRouteTest extends AnyFreeSpec with RouteTester with GraphqlRoute {
 
   protected def isShuttingDown = false
   private implicit val routeTestTimeout = RouteTestTimeout(10.seconds)

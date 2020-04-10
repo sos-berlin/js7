@@ -5,12 +5,12 @@ import com.sos.jobscheduler.data.workflow.Instruction._
 import com.sos.jobscheduler.data.workflow.Label
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class InstructionsTest extends FreeSpec {
+final class InstructionsTest extends AnyFreeSpec {
 
   "JSON" - {
     "With Label" in {

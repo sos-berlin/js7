@@ -3,13 +3,13 @@ package com.sos.jobscheduler.master.data.events
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.master.data.events.MasterEvent._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import org.scalatest.FreeSpec
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class MasterEventTest extends FreeSpec
+final class MasterEventTest extends AnyFreeSpec
 {
   "MasterReady" in {
     testJson[MasterEvent](MasterReady("Europe/Berlin", 1.hour),

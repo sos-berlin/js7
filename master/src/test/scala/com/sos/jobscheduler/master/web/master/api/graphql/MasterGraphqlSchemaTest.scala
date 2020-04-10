@@ -17,18 +17,18 @@ import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.web.master.api.graphql.MasterGraphqlSchemaTest._
 import io.circe.Json
-import org.scalatest.FreeSpec
 import sangria.ast.Document
 import sangria.execution.Executor
 import sangria.macros._
 import sangria.marshalling.circe._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class MasterGraphqlSchemaTest extends FreeSpec
+final class MasterGraphqlSchemaTest extends AnyFreeSpec
 {
   "order" in {
     testGraphql(

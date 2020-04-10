@@ -1,13 +1,13 @@
 package com.sos.jobscheduler.base.utils
 
 import com.sos.jobscheduler.base.utils.Identifier._
-import org.scalatest.FreeSpec
 import scala.collection.JavaConverters.asScalaIteratorConverter
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class IdentifierTest extends FreeSpec {
+final class IdentifierTest extends AnyFreeSpec {
 
   "isIdentifier" in {
     assert(isIdentifier("a"))

@@ -5,14 +5,14 @@ import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.tcp.LengthHeaderMessageCollector.intToBytesString
 import com.sos.jobscheduler.common.tcp.LengthHeaderMessageCollectorTest._
-import org.scalatest.FreeSpec
 import scala.concurrent.duration.Deadline.now
 import scala.util.Random
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class LengthHeaderMessageCollectorTest extends FreeSpec {
+final class LengthHeaderMessageCollectorTest extends AnyFreeSpec {
 
   "intToByteString" in {
     assert(intToBytesString(0) == ByteString(0, 0, 0, 0))

@@ -1,15 +1,15 @@
 package com.sos.jobscheduler.common.scalautil
 
 import com.sos.jobscheduler.common.scalautil.AssignableFrom.assignableFrom
-import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers._
 import scala.reflect.ClassTag
 
 
 /**
  * @author Joacim Zschimmer
  */
-final class AssignableFromTest extends FreeSpec {
+final class AssignableFromTest extends AnyFreeSpec {
 
   "AssignableFrom" in {
     trait I

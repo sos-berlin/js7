@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.base.problem
 
 import com.sos.jobscheduler.base.problem.JavaCheckedTester._
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class JavaCheckedTest extends FreeSpec {
+final class JavaCheckedTest extends AnyFreeSpec {
 
   "isValid" in testIsValid
   "isInvalid" in testIsInvalid

@@ -1,11 +1,11 @@
 package com.sos.jobscheduler.base.utils
 
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class PerKeyLimiterTest extends FreeSpec {
+final class PerKeyLimiterTest extends AnyFreeSpec {
 
   "PerKeyLimiter" in {
     def perKeyLimiter(limit: Int) = new PerKeyLimiter(limit, (v: (Int, Int)) => v._1)

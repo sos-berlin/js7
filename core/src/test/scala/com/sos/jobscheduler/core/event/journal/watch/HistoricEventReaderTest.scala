@@ -9,12 +9,12 @@ import com.sos.jobscheduler.core.event.journal.watch.HistoricEventReaderTest._
 import com.sos.jobscheduler.core.event.journal.watch.TestData.{AEvent, BEvent, TestKeyedEventJsonCodec, journalId}
 import com.sos.jobscheduler.core.event.journal.write.EventJournalWriter
 import com.sos.jobscheduler.data.event.Stamped
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class HistoricEventReaderTest extends FreeSpec
+final class HistoricEventReaderTest extends AnyFreeSpec
 {
   "eventsAfter" in {
     withTemporaryDirectory("HistoricEventReaderTest-") { dir =>

@@ -8,13 +8,13 @@ import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, KeyedEvent}
 import io.circe.generic.JsonCodec
-import org.scalatest.FreeSpec
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class EventDirectivesTest extends FreeSpec with ScalatestRouteTest {
+final class EventDirectivesTest extends AnyFreeSpec with ScalatestRouteTest {
 
   private implicit val myKeyedEventJsonFormat = {
     KeyedEvent.typedJsonCodec[MyEvent](

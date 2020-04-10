@@ -15,7 +15,8 @@ object Dependencies
   val kittensVersion = "1.2.1"
   val fastparseVersion = "2.2.4"
   val circeVersion = "0.13.0"
-  val scalaTestVersion = "3.0.8"
+  val scalaTestVersion = "3.1.1"
+  val scalaTestCheckVersion = "3.1.0.0"
   val scalaCheckVersion= "1.14.3"
   val simulacrumVersion = "0.19.0"
   val disciplineVersion = "1.0.1"
@@ -38,9 +39,11 @@ object Dependencies
 
   val scalaReflect        = "org.scala-lang" % "scala-reflect" % scalaVersion
   val scalaXml            = "org.scala-lang.modules" %% "scala-xml" % "1.2.0"
-  val scalaTest           = "org.scalatest" %% "scalatest" % scalaTestVersion
+  val scalaTest           = "org.scalatest" %% "scalatest" % scalaTestVersion ::
+                            /*"org.scalatest" %% "scalatest-freespec" % scalaTestVersion ::*/ Nil
   val scalactic           = "org.scalactic" %% "scalactic" % scalaTestVersion
-  val scalaCheck          = "org.scalacheck" %% "scalacheck" % scalaCheckVersion
+  val scalaCheck          = "org.scalatestplus" %% "scalacheck-1-14" % scalaTestCheckVersion ::
+                            "org.scalacheck" %% "scalacheck" % scalaCheckVersion :: Nil
   val scalaLogging        = "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2" :: slf4j :: Nil
   val cats                = "org.typelevel" %% "cats-core" % catsVersion
 

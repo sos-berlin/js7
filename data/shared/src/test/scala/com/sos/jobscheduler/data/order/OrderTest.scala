@@ -18,14 +18,14 @@ import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.Json
 import io.circe.syntax.EncoderOps
 import org.scalactic.source
-import org.scalatest.FreeSpec
 import scala.collection.immutable.ListSet
 import scala.reflect.ClassTag
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class OrderTest extends FreeSpec
+final class OrderTest extends AnyFreeSpec
 {
   private val testOrder = Order(
     OrderId("ID"),

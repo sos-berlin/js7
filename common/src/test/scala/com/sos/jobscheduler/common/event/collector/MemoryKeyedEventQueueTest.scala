@@ -3,12 +3,12 @@ package com.sos.jobscheduler.common.event.collector
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.event.collector.MemoryKeyedEventQueueTest._
 import com.sos.jobscheduler.data.event.{EventId, KeyedEvent, NoKeyEvent, Stamped}
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class MemoryKeyedEventQueueTest extends FreeSpec {
+final class MemoryKeyedEventQueueTest extends AnyFreeSpec {
 
   private val queue = new MemoryKeyedEventQueue(3)
   private val stampeds = for (i <- 1 to 5) yield Stamped(EventId(i), Timestamp.Epoch, KeyedEvent(AEvent(i)))

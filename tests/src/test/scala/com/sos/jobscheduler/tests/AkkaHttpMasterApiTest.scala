@@ -17,12 +17,12 @@ import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
 import com.sos.jobscheduler.tests.AkkaHttpMasterApiTest._
 import com.sos.jobscheduler.tests.testenv.MasterAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class AkkaHttpMasterApiTest extends FreeSpec with MasterAgentForScalaTest {
+final class AkkaHttpMasterApiTest extends AnyFreeSpec with MasterAgentForScalaTest {
 
   protected val agentRefPaths = Nil
   protected val fileBased = TestWorkflow :: Nil

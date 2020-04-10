@@ -14,10 +14,11 @@ import com.sos.jobscheduler.data.crypt.{PgpSignature, SignerId}
 import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets.UTF_8
 import org.bouncycastle.openpgp.{PGPException, PGPSignature}
-import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
+import org.scalatest.matchers
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.freespec.AnyFreeSpec
 
-final class PgpTest extends FreeSpec
+final class PgpTest extends AnyFreeSpec
 {
   private lazy val verifier = new PgpSignatureVerifier(readPublicKeyRingCollection(publicKeyResource.asResource :: Nil), keyOrigin = "PgpTest")
 

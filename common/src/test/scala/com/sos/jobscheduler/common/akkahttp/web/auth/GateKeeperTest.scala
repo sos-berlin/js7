@@ -21,15 +21,15 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.typesafe.config.ConfigFactory
 import io.circe.Json
 import monix.execution.Scheduler
-import org.scalatest.FreeSpec
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.language.implicitConversions
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class GateKeeperTest extends FreeSpec with ScalatestRouteTest
+final class GateKeeperTest extends AnyFreeSpec with ScalatestRouteTest
 {
   import GateKeeperTest.ImplicitGateKeeper
 

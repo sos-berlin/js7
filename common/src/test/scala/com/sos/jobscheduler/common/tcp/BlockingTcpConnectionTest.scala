@@ -8,14 +8,15 @@ import com.sos.jobscheduler.common.scalautil.Futures._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import java.net.{InetAddress, InetSocketAddress, ServerSocket, Socket}
 import java.util.concurrent.TimeoutException
-import org.scalatest.Matchers._
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers._
 import scala.util.Random
 
 /**
  * @author Joacim Zschimmer
  */
-final class BlockingTcpConnectionTest extends FreeSpec with HasCloser with BeforeAndAfterAll {
+final class BlockingTcpConnectionTest extends AnyFreeSpec with HasCloser with BeforeAndAfterAll {
 
   private val localhost = InetAddress.getByName("127.0.0.1")
   private var listenSocket: ServerSocket = _

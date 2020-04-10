@@ -4,12 +4,12 @@ import com.google.common.io.MoreFiles.touch
 import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryDirectory
 import java.nio.file.Files.delete
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class PathSeqDifferTest extends FreeSpec
+final class PathSeqDifferTest extends AnyFreeSpec
 {
   "diff" in {
     withTemporaryDirectory("Z-") { dir =>

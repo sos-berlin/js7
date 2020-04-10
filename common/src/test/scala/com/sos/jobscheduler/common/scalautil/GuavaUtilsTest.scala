@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.common.scalautil
 
 import com.sos.jobscheduler.common.scalautil.GuavaUtils._
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class GuavaUtilsTest extends FreeSpec
+final class GuavaUtilsTest extends AnyFreeSpec
 {
   "stringToInputStream" in {
     val in = stringToInputStream("heiß")

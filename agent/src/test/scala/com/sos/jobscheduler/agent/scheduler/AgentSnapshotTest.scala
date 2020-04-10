@@ -6,12 +6,12 @@ import com.sos.jobscheduler.data.event.JournalId
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import java.util.UUID
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class AgentSnapshotTest extends FreeSpec {
+final class AgentSnapshotTest extends AnyFreeSpec {
 
   "JSON" in {
     implicit val codec = AgentSnapshot.jsonCodec

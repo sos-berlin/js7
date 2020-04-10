@@ -9,13 +9,13 @@ import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.common.akkahttp.ExceptionHandlingTest._
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.typesafe.config.ConfigFactory
-import org.scalatest.FreeSpec
 import scala.util.control.NoStackTrace
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ExceptionHandlingTest extends FreeSpec with ScalatestRouteTest with ExceptionHandling
+final class ExceptionHandlingTest extends AnyFreeSpec with ScalatestRouteTest with ExceptionHandling
 {
   protected val config = ConfigFactory.parseString("jobscheduler.webserver.verbose-error-messages = true")
   protected def isShuttingDown = false

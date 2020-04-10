@@ -5,12 +5,12 @@ import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
 import com.sos.jobscheduler.data.event.JournalPosition
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ClusterEventTest extends FreeSpec
+final class ClusterEventTest extends AnyFreeSpec
 {
   private val Id = ClusterNodeId
 

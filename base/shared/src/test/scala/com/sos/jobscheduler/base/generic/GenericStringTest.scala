@@ -3,12 +3,12 @@ package com.sos.jobscheduler.base.generic
 import com.sos.jobscheduler.base.generic.GenericString.EmptyStringProblem
 import com.sos.jobscheduler.base.generic.GenericStringTest._
 import com.sos.jobscheduler.base.problem.Problems.InvalidNameProblem
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class GenericStringTest extends FreeSpec
+final class GenericStringTest extends AnyFreeSpec
 {
   "NonEmpty.checked" in {
     assert(NonEmptyA.checked("") == Left(EmptyStringProblem("NonEmptyA")))

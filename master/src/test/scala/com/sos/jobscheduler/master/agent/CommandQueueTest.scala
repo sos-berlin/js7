@@ -20,15 +20,15 @@ import com.sos.jobscheduler.master.agent.CommandQueue.QueuedInputResponse
 import com.sos.jobscheduler.master.agent.CommandQueueTest._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers._
 import scala.collection.mutable
 import scala.language.reflectiveCalls
 
 /**
   * @author Joacim Zschimmer
   */
-final class CommandQueueTest extends FreeSpec {
+final class CommandQueueTest extends AnyFreeSpec {
 
   "test" in {
     val commandQueue = new CommandQueue(logger, batchSize = 3) {

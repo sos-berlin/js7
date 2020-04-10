@@ -10,12 +10,12 @@ import com.sos.jobscheduler.data.workflow.instructions.{Fail, Fork, ImplicitEnd}
 import com.sos.jobscheduler.data.workflow.position.BranchId.Then
 import com.sos.jobscheduler.data.workflow.position.{InstructionNr, Position, WorkflowPosition}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowId, WorkflowPath}
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class FailExecutorTest extends FreeSpec
+final class FailExecutorTest extends AnyFreeSpec
 {
   private lazy val context = new OrderContext {
     val idToOrder = Map(TestOrder.id -> TestOrder, ForkedOrder.id -> ForkedOrder, Carrot.id -> Carrot, Lemon.id -> Lemon)

@@ -7,12 +7,12 @@ import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.provider.scheduledorder.oldruntime.OldSchedule.EveryDay
 import com.sos.jobscheduler.provider.scheduledorder.oldruntime.{OldSchedule, PeriodSeq, RepeatPeriod}
 import java.time.ZoneId
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ScheduledOrderGeneratorXmlParserTest extends FreeSpec {
+final class ScheduledOrderGeneratorXmlParserTest extends AnyFreeSpec {
 
   "parse" in {
     val id = ScheduledOrderGeneratorPath("/TEST") ~ "VERSION"

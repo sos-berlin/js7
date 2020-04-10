@@ -6,13 +6,13 @@ import com.sos.jobscheduler.base.problem.ProblemTest._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.Decoder
-import org.scalatest.FreeSpec
 import scala.util.Try
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ProblemTest extends FreeSpec
+final class ProblemTest extends AnyFreeSpec
 {
   "JSON" - {
     "without ProblemCode" - {

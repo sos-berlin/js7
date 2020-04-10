@@ -2,12 +2,12 @@ package com.sos.jobscheduler.provider.scheduledorder.oldruntime
 
 import com.sos.jobscheduler.common.time.JavaTime._
 import java.time.LocalTime
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class RepeatPeriodTest extends FreeSpec {
+final class RepeatPeriodTest extends AnyFreeSpec {
 
   "nextLocalTime" - {
     "Easy case" in {

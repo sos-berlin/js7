@@ -2,12 +2,12 @@ package com.sos.jobscheduler.base.utils
 
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.DecimalPrefixes.{toInt, toLong}
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class DecimalPrefixesTest extends FreeSpec
+final class DecimalPrefixesTest extends AnyFreeSpec
 {
   "toInt" in {
     assert(toInt("") == Left(Problem("NumberFormatException: For input string: \"\"")))

@@ -4,13 +4,13 @@ import com.sos.jobscheduler.base.utils.Base64UUID.{base64ToUUID, uuidToBase64}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import java.util.UUID
 import org.scalacheck.Gen
-import org.scalatest.FreeSpec
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class Base64UUIDTest extends FreeSpec
+final class Base64UUIDTest extends AnyFreeSpec
 {
   "JSON" in {
     testJson(Base64UUID(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")), """"ABEiM0RVZneImaq7zN3u_w"""")

@@ -11,13 +11,13 @@ import java.io.IOException
 import java.lang.ProcessBuilder.Redirect.PIPE
 import java.nio.file.Files.exists
 import java.nio.file.Paths
-import org.scalatest.FreeSpec
 import scala.jdk.CollectionConverters._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class ProcessesTest extends FreeSpec {
+final class ProcessesTest extends AnyFreeSpec {
 
   "processToPidOption, toShellCommandArguments" in {
     if (isWindows) {

@@ -7,9 +7,9 @@ import com.sos.jobscheduler.data.cluster.ClusterCommand._
 import com.sos.jobscheduler.data.cluster.ClusterState.FailedOver
 import com.sos.jobscheduler.data.event.JournalPosition
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
-final class ClusterCommandTest extends FreeSpec
+final class ClusterCommandTest extends AnyFreeSpec
 {
   "ClusterStartBackupNode" in {
     testJson[ClusterCommand](

@@ -3,13 +3,13 @@ package com.sos.jobscheduler.base.circeutils
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.circeutils.ScalaJsonCodecs._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import org.scalatest.FreeSpec
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ScalaJsonCodecsTest extends FreeSpec
+final class ScalaJsonCodecsTest extends AnyFreeSpec
 {
   "FiniteDuration" - {
     "1s" in {

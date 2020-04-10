@@ -5,12 +5,12 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryFile
 import com.sos.jobscheduler.master.cluster.ClusterCommon._
 import java.nio.file.Files.{delete, size}
 import java.nio.file.Paths
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ClusterCommonTest extends FreeSpec
+final class ClusterCommonTest extends AnyFreeSpec
 {
   "truncateFile" in {
     withTemporaryFile("ClusterCommonTest", ".tmp") { file =>

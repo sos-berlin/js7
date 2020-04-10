@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.base.auth
 
 import com.sos.jobscheduler.base.generic.SecretString
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class SimpleUserTest extends FreeSpec
+final class SimpleUserTest extends AnyFreeSpec
 {
   "Anonymous" in {
     assert(SimpleUser.TestAnonymous.hashedPassword equalsClearText SecretString(""))

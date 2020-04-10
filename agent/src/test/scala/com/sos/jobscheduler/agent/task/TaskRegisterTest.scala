@@ -24,17 +24,18 @@ import com.sos.jobscheduler.data.job.JobKey
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.io
 import scala.jdk.CollectionConverters._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class TaskRegisterTest extends FreeSpec with HasCloser with BeforeAndAfterAll with TestAgentDirectoryProvider {
+final class TaskRegisterTest extends AnyFreeSpec with HasCloser with BeforeAndAfterAll with TestAgentDirectoryProvider {
 
   private implicit val timeout = Timeout(99.seconds)
   private implicit lazy val actorSystem = newAgentActorSystem("TaskRegisterTest",

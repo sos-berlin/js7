@@ -5,12 +5,12 @@ import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.data.event.KeyedEventTest._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.Json
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class KeyedEventTest extends FreeSpec {
+final class KeyedEventTest extends AnyFreeSpec {
 
   "KeyedEvent apply 1" in {
     val e = KeyedEvent[StringEvent](100, StringEvent("HUNDRED"))

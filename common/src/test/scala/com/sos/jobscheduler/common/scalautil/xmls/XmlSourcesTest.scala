@@ -8,13 +8,14 @@ import javax.xml.namespace.QName
 import javax.xml.stream.XMLInputFactory
 import javax.xml.stream.events.{EndDocument, StartDocument}
 import javax.xml.transform.Source
-import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
+import org.scalatest.matchers
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class XmlSourcesTest extends FreeSpec {
+final class XmlSourcesTest extends AnyFreeSpec {
 
   "stringToSource" in {
     check("<A B='1'/>")

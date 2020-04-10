@@ -1,13 +1,13 @@
 package com.sos.jobscheduler.common.scalautil
 
 import com.sos.jobscheduler.common.scalautil.ScalaThreadLocal.threadLocal
-import org.scalatest.FreeSpec
 import org.scalatest.concurrent.Waiters.Waiter
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class ScalaThreadLocalTest extends FreeSpec {
+final class ScalaThreadLocalTest extends AnyFreeSpec {
 
   "ScalaThreadLocal" in {
     @volatile var count = 0

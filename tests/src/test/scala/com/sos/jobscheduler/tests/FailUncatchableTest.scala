@@ -14,12 +14,12 @@ import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.tests.FailUncatchableTest._
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
+import org.scalatest.freespec.AnyFreeSpec
 
-final class FailUncatchableTest extends FreeSpec
+final class FailUncatchableTest extends AnyFreeSpec
 {
   "fail" in {
     checkEvents[OrderFailed]("""

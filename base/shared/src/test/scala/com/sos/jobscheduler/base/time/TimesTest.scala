@@ -1,13 +1,13 @@
 package com.sos.jobscheduler.base.time
 
 import com.sos.jobscheduler.base.time.Times._
-import org.scalatest.FreeSpec
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class TimesTest extends FreeSpec
+final class TimesTest extends AnyFreeSpec
 {
   "FiniteDuration toBigDecimalSeconds" in {
     assert(FiniteDuration(1234, NANOSECONDS).toBigDecimalSeconds == BigDecimal("0.000001234"))

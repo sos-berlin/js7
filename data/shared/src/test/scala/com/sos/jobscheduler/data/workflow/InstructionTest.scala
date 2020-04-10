@@ -2,12 +2,12 @@ package com.sos.jobscheduler.data.workflow
 
 import com.sos.jobscheduler.data.workflow.Instruction._
 import com.sos.jobscheduler.data.workflow.instructions.ExplicitEnd
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class InstructionTest extends FreeSpec {
+final class InstructionTest extends AnyFreeSpec {
 
   "@:" in {
     assert("LABEL" @: ExplicitEnd() == Instruction.Labeled(Some("LABEL"), ExplicitEnd()))

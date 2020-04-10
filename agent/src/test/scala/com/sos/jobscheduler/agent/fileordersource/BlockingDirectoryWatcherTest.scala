@@ -8,15 +8,15 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.touchAndDeleteWithCloser
 import com.sos.jobscheduler.common.scalautil.Futures.blockingThreadFuture
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import java.nio.file.Files.{createTempDirectory, delete}
-import org.scalatest.FreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class BlockingDirectoryWatcherTest extends FreeSpec {
+final class BlockingDirectoryWatcherTest extends AnyFreeSpec {
 
   "waitForNextChange" in {
     withCloser { implicit closer =>

@@ -6,13 +6,14 @@ import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodecTest._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowableEither
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.syntax.EncoderOps
-import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
+import org.scalatest.matchers
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class TypedJsonCodecTest extends FreeSpec
+final class TypedJsonCodecTest extends AnyFreeSpec
 {
   "encode and decode" in {
     testJson[A](A0     , json"""{ "TYPE": "A0" }""")

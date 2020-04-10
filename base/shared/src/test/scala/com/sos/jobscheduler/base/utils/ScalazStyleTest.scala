@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.base.utils
 
 import com.sos.jobscheduler.base.utils.ScalazStyle._
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class ScalazStyleTest extends FreeSpec {
+final class ScalazStyleTest extends AnyFreeSpec {
 
   "Boolean.option" in {
     assert((true option 7: Option[Int]) == Some(7))

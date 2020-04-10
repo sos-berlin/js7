@@ -1,12 +1,13 @@
 package com.sos.jobscheduler.agent.data
 
-import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers
+import org.scalatest.matchers.should.Matchers._
 
 /**
  * @author Joacim Zschimmer
  */
-final class AgentTaskIdTest extends FreeSpec {
+final class AgentTaskIdTest extends AnyFreeSpec {
 
   "toString" in {
     assert(AgentTaskId(123, 789).toString == "AgentTaskId(123-789)")

@@ -4,12 +4,13 @@ import akka.util.ByteString
 import com.sos.jobscheduler.common.scalautil.FileUtils.syntax.RichPath
 import java.io.IOException
 import java.nio.file.Files.{createTempDirectory, createTempFile, delete}
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class FileJsonWriterTest extends FreeSpec with BeforeAndAfterAll
+final class FileJsonWriterTest extends AnyFreeSpec with BeforeAndAfterAll
 {
   private lazy val file = createTempFile("FileJsonWriterTest-", ".tmp")
   private lazy val writer = new FileJsonWriter(file)

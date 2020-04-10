@@ -3,12 +3,12 @@ package com.sos.jobscheduler.common.system
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.data.system.JavaInformation
 import io.circe.syntax.EncoderOps
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class JavaInformationsTest extends FreeSpec {
+final class JavaInformationsTest extends AnyFreeSpec {
 
   "JSON" in {
     val javaInformation = JavaInformations.javaInformation

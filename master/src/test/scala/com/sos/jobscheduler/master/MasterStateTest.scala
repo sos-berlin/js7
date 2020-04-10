@@ -24,12 +24,12 @@ import com.sos.jobscheduler.master.data.MasterSnapshots.MasterMetaState
 import com.sos.jobscheduler.master.data.agent.AgentSnapshot
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class MasterStateTest extends FreeSpec
+final class MasterStateTest extends AnyFreeSpec
 {
   private val masterState = MasterState(
     EventId(1001),

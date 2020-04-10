@@ -1,11 +1,11 @@
 package com.sos.jobscheduler.common.utils
 
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class UntilNoneIteratorTest extends FreeSpec {
+final class UntilNoneIteratorTest extends AnyFreeSpec {
 
   "test" in {
     assert(!untilNoneIterator[Int](None).hasNext)

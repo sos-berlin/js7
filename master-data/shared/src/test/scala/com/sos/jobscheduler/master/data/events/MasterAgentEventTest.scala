@@ -7,12 +7,12 @@ import com.sos.jobscheduler.data.event.{JournalId, KeyedEvent}
 import com.sos.jobscheduler.master.data.events.MasterAgentEvent.{AgentCouplingFailed, AgentReady, AgentRegisteredMaster}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import java.util.UUID
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class MasterAgentEventTest extends FreeSpec
+final class MasterAgentEventTest extends AnyFreeSpec
 {
   "JSON" - {
     "AgentCouplingFailed" in {

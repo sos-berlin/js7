@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.common.scalautil
 
 import com.sos.jobscheduler.base.utils.DuplicateKeyException
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class ScalaConcurrentHashSetTest extends FreeSpec {
+final class ScalaConcurrentHashSetTest extends AnyFreeSpec {
 
   private val m = new ScalaConcurrentHashSet[Int]
 

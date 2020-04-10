@@ -14,12 +14,12 @@ import com.sos.jobscheduler.data.workflow.position.BranchId.try_
 import com.sos.jobscheduler.data.workflow.position._
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class TryExecutorTest extends FreeSpec
+final class TryExecutorTest extends AnyFreeSpec
 {
   private lazy val context = new OrderContext {
     def idToOrder = Map(AOrder.id -> AOrder)

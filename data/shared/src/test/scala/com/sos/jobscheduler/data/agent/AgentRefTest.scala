@@ -3,12 +3,12 @@ package com.sos.jobscheduler.data.agent
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class AgentRefTest extends FreeSpec
+final class AgentRefTest extends AnyFreeSpec
 {
   "JSON, anonymous" in {
     testJson(AgentRef(AgentRefPath.NoId, Uri("http://127.0.0.1")),

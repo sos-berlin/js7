@@ -2,12 +2,12 @@ package com.sos.jobscheduler.agent.data.web
 
 import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.base.web.Uri
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class AgentUrisTest extends FreeSpec
+final class AgentUrisTest extends AnyFreeSpec
 {
   private val agentUris = AgentUris(Uri("https://example.com:9999/testPrefix"))
 

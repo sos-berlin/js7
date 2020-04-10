@@ -2,16 +2,16 @@ package com.sos.jobscheduler.base.utils
 
 import com.sos.jobscheduler.base.utils.AutoClosing._
 import com.sos.jobscheduler.base.utils.AutoClosingTest._
-import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers._
 
-final class AutoClosingTest extends FreeSpec
+final class AutoClosingTest extends AnyFreeSpec
 {
   "autoClosing" - {
     "without Exception" in {
       val a = new A
       autoClosing(a) { _ => }
-      a shouldBe 'closed
+      a shouldBe Symbol("closed")
     }
 
     "with Exception" in {
@@ -21,7 +21,7 @@ final class AutoClosingTest extends FreeSpec
           throw new AException
         }
       } .getSuppressed shouldBe empty
-      a shouldBe 'closed
+      a shouldBe Symbol("closed")
     }
 
     "with second Exception in close" in {

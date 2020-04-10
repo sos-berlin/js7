@@ -208,7 +208,8 @@ lazy val tester = crossProject(JSPlatform, JVMPlatform)
       "io.circe" %%% "circe-core" % circeVersion ++
       "io.circe" %%% "circe-parser" % circeVersion ++
       "io.circe" %%% "circe-generic" % circeVersion ++
-      "org.scalatest" %%% "scalatest" % scalaTestVersion
+      "org.scalatest" %%% "scalatest" % scalaTestVersion /*++
+      "org.scalatest" %%% "scalatest-freespec" % scalaTestVersion*/
   }
 
 lazy val base = crossProject(JSPlatform, JVMPlatform)
@@ -234,7 +235,9 @@ lazy val base = crossProject(JSPlatform, JVMPlatform)
       "com.outr" %%% "scribe" % scribeVersion ++
       findbugs % "compile" ++
       "org.scalatest" %%% "scalatest" % scalaTestVersion % "test" ++
-      "org.scalacheck" %% "scalacheck" % scalaCheckVersion % "test"
+    //"org.scalatest" %%% "scalatest-freespec" % scalaTestVersion % "test" ++
+      "org.scalatestplus" %%% "scalacheck-1-14" % scalaTestCheckVersion % "test" ++
+      "org.scalacheck" %%% "scalacheck" % scalaCheckVersion % "test"
   }
 
 lazy val data = crossProject(JSPlatform, JVMPlatform)
@@ -248,6 +251,7 @@ lazy val data = crossProject(JSPlatform, JVMPlatform)
       "io.circe" %%% "circe-generic-extras" % circeVersion ++
       "com.lihaoyi" %%% "fastparse" % fastparseVersion ++
       "org.scalatest" %%% "scalatest" % scalaTestVersion % "test" ++
+    //"org.scalatest" %%% "scalatest-freespec" % scalaTestVersion % "test" ++
       "org.typelevel" %%% "cats-laws" % catsVersion % "test" ++
       "org.typelevel" %%% "discipline-core" % disciplineVersion % "test" ++
       "org.typelevel" %%% "discipline-scalatest" % disciplineVersion % "test" ++
@@ -298,7 +302,7 @@ lazy val `common-http` = crossProject(JSPlatform, JVMPlatform)
   .settings(commonSettings)
   .settings {
     import Dependencies._
-    libraryDependencies += scalaTest % "test"
+    libraryDependencies ++= scalaTest % "test"
     libraryDependencies += "io.monix" %%% "monix-eval" % monixVersion
   }
   .jvmSettings {
@@ -346,10 +350,10 @@ lazy val `master-data` = crossProject(JSPlatform, JVMPlatform)
   .settings(commonSettings)
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(
-    libraryDependencies ++= {
+    libraryDependencies += {
       import Dependencies._
-      Seq(
-        "org.scalatest" %%% "scalatest" % scalaTestVersion % "test")
+      "org.scalatest" %%% "scalatest" % scalaTestVersion % "test" /*++
+      "org.scalatest" %%% "scalatest-freespec" % scalaTestVersion % "test"*/
     })
 
 lazy val `master-client` = crossProject(JSPlatform, JVMPlatform)
@@ -359,10 +363,10 @@ lazy val `master-client` = crossProject(JSPlatform, JVMPlatform)
   .settings(commonSettings)
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(
-    libraryDependencies ++= {
+    libraryDependencies += {
       import Dependencies._
-      Seq(
-        "org.scalatest" %%% "scalatest" % scalaTestVersion % "test")
+      "org.scalatest" %%% "scalatest" % scalaTestVersion % "test" /*++
+      "org.scalatest" %%% "scalatest-freespec" % scalaTestVersion % "test"*/
     })
   .jvmSettings(
     libraryDependencies ++= {

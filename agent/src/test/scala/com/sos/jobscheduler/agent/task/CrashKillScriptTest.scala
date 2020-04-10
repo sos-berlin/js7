@@ -11,14 +11,15 @@ import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.data.job.TaskId
 import java.nio.file.Files.{delete, exists, size}
 import java.nio.file.{Files, Paths}
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * JS-1551.
   *
   * @author Joacim Zschimmer
   */
-final class CrashKillScriptTest extends FreeSpec with HasCloser with BeforeAndAfterAll {
+final class CrashKillScriptTest extends AnyFreeSpec with HasCloser with BeforeAndAfterAll {
 
   override protected def afterAll() = closer.close()
 

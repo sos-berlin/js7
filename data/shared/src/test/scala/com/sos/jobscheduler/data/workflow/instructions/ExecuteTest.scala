@@ -8,12 +8,12 @@ import com.sos.jobscheduler.data.workflow.Instruction
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.tester.CirceJsonTester
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ExecuteTest extends FreeSpec
+final class ExecuteTest extends AnyFreeSpec
 {
   "JSON" - {
     "Named with defaults" in {

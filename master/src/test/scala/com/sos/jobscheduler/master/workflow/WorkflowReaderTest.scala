@@ -13,13 +13,13 @@ import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import io.circe.syntax.EncoderOps
-import org.scalatest.FreeSpec
 import scala.collection.mutable
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class WorkflowReaderTest extends FreeSpec {
+final class WorkflowReaderTest extends AnyFreeSpec {
 
   "Different Workflow file formats" in {
     FileUtils.withTemporaryDirectory("WorkflowReaderTest-") { dir =>

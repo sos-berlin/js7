@@ -11,14 +11,15 @@ import com.sos.jobscheduler.common.guice.ScalaAbstractModule
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.sos.jobscheduler.core.command.CommandMeta
 import monix.eval.Task
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 import scala.concurrent.duration._
 
 /**
  * @author Joacim Zschimmer
  */
-final class AgentClientMainTest extends FreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider {
+final class AgentClientMainTest extends AnyFreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider {
 
   override def afterAll() = closer closeThen super.afterAll()
 

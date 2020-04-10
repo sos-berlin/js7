@@ -10,14 +10,14 @@ import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.MasterCommand.{Batch, CancelOrder, ReleaseEvents, NoOperation, Response}
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
 import scala.concurrent.duration._
 import scala.language.reflectiveCalls
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class MasterCommandExecutorTest extends FreeSpec
+final class MasterCommandExecutorTest extends AnyFreeSpec
 {
   private val cancelOrder = CancelOrder(OrderId("ORDER-ID"), CancelMode.NotStarted)
   private val meta = CommandMeta(SimpleUser(UserId("USER")))

@@ -6,13 +6,13 @@ import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.data.event.{EventId, JournalId}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import java.util.UUID
-import org.scalatest.FreeSpec
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class JournalHeaderTest extends FreeSpec
+final class JournalHeaderTest extends AnyFreeSpec
 {
   "JSON" in {
     testJson[JournalHeader](

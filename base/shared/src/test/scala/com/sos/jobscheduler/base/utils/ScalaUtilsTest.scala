@@ -5,12 +5,12 @@ import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicits._
 import java.util.concurrent.atomic.AtomicBoolean
-import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers._
 import scala.reflect.ClassTag
 import scala.util.control.NoStackTrace
 
-final class ScalaUtilsTest extends FreeSpec
+final class ScalaUtilsTest extends AnyFreeSpec
 {
   "reuseIfEqual" in {
     case class A(number: Int)

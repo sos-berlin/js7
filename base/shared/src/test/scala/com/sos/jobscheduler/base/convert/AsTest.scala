@@ -1,13 +1,13 @@
 package com.sos.jobscheduler.base.convert
 
 import com.sos.jobscheduler.base.convert.As.StringAsIntOrUnlimited
-import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers._
 
 /**
   * @author Joacim Zschimmer
   */
-final class AsTest extends FreeSpec {
+final class AsTest extends AnyFreeSpec {
 
   "StringAsInt" in {
     val conv = implicitly[As[String, Int]]

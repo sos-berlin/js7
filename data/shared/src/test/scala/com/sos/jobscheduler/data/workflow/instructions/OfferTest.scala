@@ -6,13 +6,13 @@ import com.sos.jobscheduler.data.source.SourcePos
 import com.sos.jobscheduler.data.workflow.Instruction
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import org.scalatest.FreeSpec
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class OfferTest extends FreeSpec {
+final class OfferTest extends AnyFreeSpec {
 
   "JSON" in {
     testJson[Instruction.Labeled](

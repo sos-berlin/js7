@@ -16,12 +16,12 @@ import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.tests.FileBasedsTest._
 import java.nio.file.Files.{createDirectories, createTempDirectory}
 import java.nio.file.Path
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class FileBasedsTest extends FreeSpec
+final class FileBasedsTest extends AnyFreeSpec
 {
   "diffFileBaseds" - {
     "empty"  in {

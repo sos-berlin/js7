@@ -7,11 +7,12 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.typesafe.config.ConfigFactory
 import monix.execution.atomic.{AtomicBoolean, AtomicInt}
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Promise
 import scala.util.control.NoStackTrace
 
-final class ActorTest extends FreeSpec with BeforeAndAfterAll with ProvideActorSystem
+final class ActorTest extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem
 {
   protected def config = ConfigFactory.empty
 

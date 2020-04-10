@@ -7,16 +7,16 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import java.util.concurrent.ArrayBlockingQueue
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
 import scala.concurrent.duration._
 import scala.util.Random
 import scodec.bits.ByteVector
 import scodec.interop.cats._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class GrowingFileObservableTest extends FreeSpec
+final class GrowingFileObservableTest extends AnyFreeSpec
 {
   "GrowingFileObservable, not growing" in {
     withTemporaryFile("GrowingFileObservableTest", ".tmp") { file =>

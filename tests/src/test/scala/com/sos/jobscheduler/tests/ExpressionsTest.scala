@@ -17,9 +17,9 @@ import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.tests.ExpressionsTest._
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
-final class ExpressionsTest extends FreeSpec
+final class ExpressionsTest extends AnyFreeSpec
 {
   "test" in {
     autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, fileBased = TestWorkflow :: Nil, testName = Some("ExpressionsTest"))) { directoryProvider =>

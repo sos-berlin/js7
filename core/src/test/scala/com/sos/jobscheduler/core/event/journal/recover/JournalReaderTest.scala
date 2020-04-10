@@ -19,12 +19,12 @@ import io.circe.Encoder
 import io.circe.syntax.EncoderOps
 import java.nio.file.Files.delete
 import java.util.UUID
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class JournalReaderTest extends FreeSpec with TestJournalMixin
+final class JournalReaderTest extends AnyFreeSpec with TestJournalMixin
 {
   private val journalId = JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))
 

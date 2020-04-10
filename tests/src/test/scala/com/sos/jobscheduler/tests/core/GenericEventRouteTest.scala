@@ -31,13 +31,14 @@ import java.net.{InetAddress, InetSocketAddress}
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import org.scalatest.BeforeAndAfterAll
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.reflect.runtime.universe._
+import org.scalatest.freespec.AnyFreeSpec
 
-final class GenericEventRouteTest extends FreeSpec with BeforeAndAfterAll with ProvideActorSystem with GenericEventRoute
+final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with GenericEventRoute
 {
   protected type Session = SimpleSession
 

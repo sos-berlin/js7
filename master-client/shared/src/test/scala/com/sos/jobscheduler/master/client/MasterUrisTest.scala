@@ -7,13 +7,13 @@ import com.sos.jobscheduler.data.fatevent.OrderFatEvent
 import com.sos.jobscheduler.data.filebased.RepoEvent.FileBasedEvent
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import org.scalatest.FreeSpec
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class MasterUrisTest extends FreeSpec
+final class MasterUrisTest extends AnyFreeSpec
 {
   private val masterUris = MasterUris(Uri("http://example.com/master"))
 

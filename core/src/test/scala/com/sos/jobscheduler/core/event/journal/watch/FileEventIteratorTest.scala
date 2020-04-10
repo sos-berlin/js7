@@ -11,13 +11,13 @@ import com.sos.jobscheduler.core.event.journal.watch.TestData.{AEvent, TestKeyed
 import com.sos.jobscheduler.data.event.{EventId, Stamped}
 import io.circe.syntax.EncoderOps
 import java.nio.file.Files
-import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers._
 
 /**
   * @author Joacim Zschimmer
   */
-final class FileEventIteratorTest extends FreeSpec
+final class FileEventIteratorTest extends AnyFreeSpec
 {
   "FileEventIterator" in {
     FileUtils.withTemporaryDirectory("FileEventIteratorPoolTest-") { dir =>

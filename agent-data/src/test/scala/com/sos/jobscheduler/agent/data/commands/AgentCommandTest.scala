@@ -11,13 +11,13 @@ import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.test.TestSetting.SimpleTestWorkflow
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.Json
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.DurationInt
 
 /**
   * @author Joacim Zschimmer
   */
-final class AgentCommandTest extends FreeSpec
+final class AgentCommandTest extends AnyFreeSpec
 {
   "Batch" in {
     check(AgentCommand.Batch(List(AgentCommand.NoOperation, AgentCommand.EmergencyStop())),

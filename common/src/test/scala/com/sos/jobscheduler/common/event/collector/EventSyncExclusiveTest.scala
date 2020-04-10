@@ -6,15 +6,15 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.data.event.EventId
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
 import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class EventSyncExclusiveTest extends FreeSpec
+final class EventSyncExclusiveTest extends AnyFreeSpec
 {
   "test" in {
     val sync = new EventSync(initial = EventId.BeforeFirst, EventId.toString)

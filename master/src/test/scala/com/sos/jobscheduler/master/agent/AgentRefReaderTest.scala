@@ -9,13 +9,13 @@ import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPat
 import com.sos.jobscheduler.core.filebased.TypedSourceReader
 import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
 import io.circe.syntax.EncoderOps
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 
 /**
   * @author Joacim Zschimmer
   */
-final class AgentRefReaderTest extends FreeSpec {
+final class AgentRefReaderTest extends AnyFreeSpec {
 
   "Different AgentRef file formats" in {
     withTemporaryDirectory("AgentRefReaderTest-") { dir =>

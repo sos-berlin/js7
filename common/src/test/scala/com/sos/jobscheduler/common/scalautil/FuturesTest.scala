@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.common.scalautil
 
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.{FutureNotSucceededException, catchInFuture, namedThreadFuture, promiseFuture}
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch.measureTime
 import java.util.concurrent.TimeoutException
-import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future, Promise}
@@ -15,8 +15,8 @@ import scala.util.Failure
 /**
  * @author Joacim Zschimmer
  */
-final class FuturesTest extends FreeSpec {
-
+final class FuturesTest extends AnyFreeSpec
+{
   "successValue" in {
     val promise = Promise[Int]()
     val future = promise.future
@@ -85,7 +85,7 @@ final class FuturesTest extends FreeSpec {
   }
 
   private def stackTraceContainsCreationsStackTrace(body: => Int): Boolean =
-    intercept[TestException] { body } .getStackTrace exists { _.toString contains classOf[FreeSpec].getName }
+    intercept[TestException] { body } .getStackTrace exists { _.toString contains classOf[AnyFreeSpec].getName }
 
   private class TestException extends Exception
 }

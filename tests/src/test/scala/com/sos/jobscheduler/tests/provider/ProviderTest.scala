@@ -35,14 +35,14 @@ import java.nio.file.Files.{createDirectories, delete}
 import java.nio.file.{Files, Paths}
 import java.util.concurrent._
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ProviderTest extends FreeSpec with MasterAgentForScalaTest
+final class ProviderTest extends AnyFreeSpec with MasterAgentForScalaTest
 {
   override protected def suppressRepoInitialization = true
   protected val agentRefPaths = agentRefPath :: Nil

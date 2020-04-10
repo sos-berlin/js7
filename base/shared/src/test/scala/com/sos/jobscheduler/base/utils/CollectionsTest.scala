@@ -4,12 +4,12 @@ import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.Collections._
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.CollectionsTest._
-import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers._
 import scala.collection.mutable
 import scala.language.reflectiveCalls
 
-final class CollectionsTest extends FreeSpec
+final class CollectionsTest extends AnyFreeSpec
 {
   "IndexSeq#get" in {
     assert(Vector.empty.get(0) == None)
@@ -154,7 +154,7 @@ final class CollectionsTest extends FreeSpec
   "requireUniqueness" in {
     def r(o: Seq[A]) = o requireUniqueness { _.i }
 
-    r(Seq[A]()) shouldBe 'empty
+    r(Seq[A]()) shouldBe Symbol("empty")
     intercept[DuplicateKeyException] { r(Seq(a1, a2)) }
 
     Nil.requireUniqueness

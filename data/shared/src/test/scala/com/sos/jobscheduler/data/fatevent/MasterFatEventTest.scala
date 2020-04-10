@@ -4,12 +4,12 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.data.fatevent.MasterFatEvent._
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class MasterFatEventTest extends FreeSpec
+final class MasterFatEventTest extends AnyFreeSpec
 {
   "MasterReadyFat" in {
     testJson[MasterFatEvent](MasterReadyFat(MasterId("MASTER"), "Europe/Berlin"),

@@ -2,12 +2,12 @@ package com.sos.jobscheduler.data.order
 
 import com.sos.jobscheduler.base.generic.GenericString.EmptyStringProblem
 import com.sos.jobscheduler.base.problem.Problem
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class OrderIdTest extends FreeSpec {
+final class OrderIdTest extends AnyFreeSpec {
 
   "officialSyntaxChecked" in {
     assert(OrderId.checked("") == Left(EmptyStringProblem("OrderId")))

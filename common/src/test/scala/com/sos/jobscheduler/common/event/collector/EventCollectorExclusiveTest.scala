@@ -7,15 +7,16 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, TearableEventSeq}
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class EventCollectorExclusiveTest extends FreeSpec with BeforeAndAfterAll {
+final class EventCollectorExclusiveTest extends AnyFreeSpec with BeforeAndAfterAll {
 
   private implicit val eventIdGenerator = new EventIdGenerator
 

@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.base.utils
 
 import com.sos.jobscheduler.base.utils.JavaCollections.syntax._
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class JavaCollectionsTest extends FreeSpec
+final class JavaCollectionsTest extends AnyFreeSpec
 {
   "java.util.stream.Stream.asScala" in {
     for ((a, b) <- java.util.stream.Stream.of(1, 2, 3).asScala zip Iterator(1, 2, 3))

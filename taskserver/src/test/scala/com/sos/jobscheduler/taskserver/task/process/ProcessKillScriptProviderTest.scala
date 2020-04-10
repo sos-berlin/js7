@@ -9,14 +9,15 @@ import java.nio.file.Files
 import java.nio.file.Files._
 import java.nio.file.attribute.PosixFileAttributes
 import java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * JS-1558 Agent includes kill scripts
   *
   * @author Joacim Zschimmer
   */
-final class ProcessKillScriptProviderTest extends FreeSpec with BeforeAndAfterAll {
+final class ProcessKillScriptProviderTest extends AnyFreeSpec with BeforeAndAfterAll {
 
   private lazy val tmp = createTempDirectory("test-")
   private val expectedFile = tmp / s"kill_task$ShellFileExtension"

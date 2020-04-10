@@ -16,12 +16,12 @@ import com.sos.jobscheduler.data.system.JavaInformation
 import io.circe.Json
 import monix.eval.Task
 import monix.execution.Scheduler
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class RootWebServiceTest extends FreeSpec with WebServiceTest with RootWebService
+final class RootWebServiceTest extends AnyFreeSpec with WebServiceTest with RootWebService
 {
   protected def isShuttingDown = false
   protected def scheduler = Scheduler.global

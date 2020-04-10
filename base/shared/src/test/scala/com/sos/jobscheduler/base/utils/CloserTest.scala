@@ -3,15 +3,15 @@ package com.sos.jobscheduler.base.utils
 import com.sos.jobscheduler.base.utils.CloserTest._
 import java.util.concurrent.ConcurrentLinkedQueue
 import monix.execution.atomic.AtomicBoolean
-import org.scalatest.FreeSpec
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 import scala.util.control.NoStackTrace
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class CloserTest extends FreeSpec
+final class CloserTest extends AnyFreeSpec
 {
   "TestCloseable" in {
     val ctx = new Context

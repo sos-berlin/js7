@@ -14,11 +14,11 @@ import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.tests.FailTest._
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
+import org.scalatest.freespec.AnyFreeSpec
 
-final class FailTest extends FreeSpec
+final class FailTest extends AnyFreeSpec
 {
   "fail" in {
     runUntil[OrderFailed]("""

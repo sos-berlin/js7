@@ -32,15 +32,16 @@ import com.sos.jobscheduler.tests.testenv.DirectoryProvider.{StdoutOutput, scrip
 import com.typesafe.config.ConfigFactory
 import java.nio.file.Path
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
+import org.scalatest.matchers.should.Matchers._
 import scala.collection.mutable
 import scala.util.control.NonFatal
+import org.scalatest.matchers
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class RecoveryTest extends FreeSpec
+final class RecoveryTest extends AnyFreeSpec
 {
   // TODO Starte Master und Agenten in eigenen Prozessen, die wir abbrechen können.
 

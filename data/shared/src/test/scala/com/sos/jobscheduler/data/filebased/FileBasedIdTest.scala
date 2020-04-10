@@ -2,12 +2,12 @@ package com.sos.jobscheduler.data.filebased
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class FileBasedIdTest extends FreeSpec {
+final class FileBasedIdTest extends AnyFreeSpec {
 
   "JSON" in {
     testJson[FileBasedId[APath]](

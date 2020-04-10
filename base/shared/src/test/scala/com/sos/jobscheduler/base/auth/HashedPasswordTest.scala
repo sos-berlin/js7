@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.base.auth
 
 import com.sos.jobscheduler.base.generic.SecretString
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class HashedPasswordTest extends FreeSpec {
+final class HashedPasswordTest extends AnyFreeSpec {
 
   "equalsClearText" in {
     val a = HashedPassword(SecretString("321"), _.reverse)

@@ -2,13 +2,13 @@ package com.sos.jobscheduler.common.time
 
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import java.time.Duration
-import org.scalatest.FreeSpec
 import scala.concurrent.duration._
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class JavaTimeConvertersTest extends FreeSpec
+final class JavaTimeConvertersTest extends AnyFreeSpec
 {
   "toScala" in {
     assert(Duration.ofMillis(1234).toScala == 1234.millis)

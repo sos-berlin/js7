@@ -6,13 +6,13 @@ import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Json, JsonObject}
-import org.scalatest.FreeSpec
 import scala.collection.immutable.ListMap
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class CirceUtilsTest extends FreeSpec
+final class CirceUtilsTest extends AnyFreeSpec
 {
   private case class A(a: Int, b: B)
   private case class B(string: String, array: Seq[Int], empty: Seq[Int])

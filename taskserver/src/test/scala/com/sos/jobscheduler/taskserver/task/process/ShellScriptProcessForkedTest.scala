@@ -8,13 +8,13 @@ import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.taskserver.task.process.ShellScriptProcess.startShellScript
 import java.util.concurrent.ForkJoinPool
-import org.scalatest.FreeSpec
 import scala.concurrent.{ExecutionContext, Future}
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ShellScriptProcessForkedTest extends FreeSpec {
+final class ShellScriptProcessForkedTest extends AnyFreeSpec {
 
   private val n = 1000
   private val threadCount = 10 * sys.runtime.availableProcessors

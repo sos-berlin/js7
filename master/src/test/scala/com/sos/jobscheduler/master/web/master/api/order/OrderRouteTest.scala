@@ -19,12 +19,12 @@ import com.sos.jobscheduler.master.web.master.api.order.OrderRouteTest._
 import com.sos.jobscheduler.master.web.master.api.test.RouteTester
 import monix.eval.Task
 import monix.execution.Scheduler
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class OrderRouteTest extends FreeSpec with RouteTester with OrderRoute
+final class OrderRouteTest extends AnyFreeSpec with RouteTester with OrderRoute
 {
   protected def isShuttingDown = false
   protected implicit def scheduler: Scheduler = Scheduler.global

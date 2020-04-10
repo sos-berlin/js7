@@ -11,12 +11,12 @@ import com.sos.jobscheduler.data.workflow.position.BranchId.{Else, Then}
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class IfTest extends FreeSpec
+final class IfTest extends AnyFreeSpec
 {
   private val if_ = If(
     GreaterOrEqual(LastReturnCode, NumericConstant(3)),

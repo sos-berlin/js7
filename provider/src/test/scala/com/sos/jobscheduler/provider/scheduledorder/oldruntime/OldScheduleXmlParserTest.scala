@@ -5,12 +5,12 @@ import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
 import com.sos.jobscheduler.common.time.JavaTime._
 import java.time.DayOfWeek._
 import java.time.{LocalTime, ZoneId}
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class OldScheduleXmlParserTest extends FreeSpec {
+final class OldScheduleXmlParserTest extends AnyFreeSpec {
 
   private val timeZone = ZoneId.of("Europe/Berlin")
 

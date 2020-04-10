@@ -15,15 +15,16 @@ import java.net.ServerSocket
 import java.nio.charset.StandardCharsets.UTF_8
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.concurrent.{Await, TimeoutException}
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class AkkaHttpClientTest extends FreeSpec with BeforeAndAfterAll
+final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll
 {
   private lazy val actorSystem = ActorSystem("AkkaHttpClientTest")
 

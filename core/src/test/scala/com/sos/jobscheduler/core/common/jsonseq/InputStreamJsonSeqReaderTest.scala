@@ -9,14 +9,14 @@ import com.sos.jobscheduler.core.message.ProblemCodeMessages
 import io.circe.Json
 import java.io.{ByteArrayInputStream, InputStream}
 import java.nio.charset.StandardCharsets.{US_ASCII, UTF_8}
-import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers._
 import scala.language.reflectiveCalls
 
 /**
   * @author Joacim Zschimmer
   */
-final class InputStreamJsonSeqReaderTest extends FreeSpec
+final class InputStreamJsonSeqReaderTest extends AnyFreeSpec
 {
   ProblemCodeMessages.initialize()
 

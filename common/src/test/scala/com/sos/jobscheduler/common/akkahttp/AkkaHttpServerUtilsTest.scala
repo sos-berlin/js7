@@ -4,12 +4,12 @@ import akka.http.scaladsl.model.Uri
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils._
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class AkkaHttpServerUtilsTest extends FreeSpec with ScalatestRouteTest {
+final class AkkaHttpServerUtilsTest extends AnyFreeSpec with ScalatestRouteTest {
 
   "Path" - {
     import Uri.Path

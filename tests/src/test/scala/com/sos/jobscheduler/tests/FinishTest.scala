@@ -16,11 +16,11 @@ import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.tests.FinishTest._
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
+import org.scalatest.freespec.AnyFreeSpec
 
-final class FinishTest extends FreeSpec
+final class FinishTest extends AnyFreeSpec
 {
   "finish" in {
     checkEvents[OrderFinished]("""

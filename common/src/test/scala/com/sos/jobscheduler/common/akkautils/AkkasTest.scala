@@ -9,14 +9,14 @@ import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import com.typesafe.config.ConfigFactory
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
 import scala.concurrent.duration._
 import scala.util.Random
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class AkkasTest extends FreeSpec
+final class AkkasTest extends AnyFreeSpec
 {
   "maximumTimeout" in {
     val millis = Int.MaxValue * 10L - 2000

@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.data.job
 
 import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class ReturnCodeTest extends FreeSpec {
+final class ReturnCodeTest extends AnyFreeSpec {
 
   "Int ReturnCode" in {
     assert(ReturnCode(0).isSuccess)

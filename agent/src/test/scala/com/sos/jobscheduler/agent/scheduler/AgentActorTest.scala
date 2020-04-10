@@ -18,12 +18,12 @@ import com.sos.jobscheduler.data.order.{HistoricOutcome, Order, OrderEvent, Orde
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class AgentActorTest extends FreeSpec {
+final class AgentActorTest extends AnyFreeSpec {
 
   private implicit val askTimeout = Timeout(60.s)
 
