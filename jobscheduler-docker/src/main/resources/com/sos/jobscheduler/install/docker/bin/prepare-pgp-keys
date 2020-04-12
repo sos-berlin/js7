@@ -6,8 +6,7 @@ cd "$(cd "$(realpath "${0%/*}")"/../../build/bin/../.. && pwd)"
 homedir="$(pwd)/gnupg"
 privateKeyFile=volumes/provider/config/private/private-pgp-key.asc
 masterPublicKeyFile=volumes/master/config/private/trusted-pgp-keys/test.asc
-agent1PublicKeyFile=volumes/agent-1/config/private/trusted-pgp-keys/test.asc
-agent2PublicKeyFile=volumes/agent-2/config/private/trusted-pgp-keys/test.asc
+passphrase="PGP-PASSWORD"
 
 mkdir -p volumes/master/config/private/trusted-pgp-keys
 mkdir -p volumes/backup-master/config/private/trusted-pgp-keys
@@ -23,6 +22,7 @@ else
     echo "Missing gpg (GnuPG)"
     exit 1
   }
+  echo "🔸 Exporting secret PGP key. If you are being asked for a passphrase, type each time: $passphrase"
   if [ -d "$homedir" ]; then
     gpg --homedir "$homedir" --export-secret-keys --armor --output="$privateKeyFile"
     gpg --homedir "$homedir" --export --armor --output="$masterPublicKeyFile"
@@ -32,7 +32,7 @@ else
   else
     mkdir -p gnupg
     chmod go-rwx gnupg
-    gpg-agent --homedir="$homedir" --quiet || gpg-agent --homedir="$homedir" --daemon  # How to terminate???
+    gpg-agent --homedir="$homedir" --quiet || gpg-agent --homedir="$homedir" --daemon || true  # How to terminate gpg-agent?
     gpg --homedir="$homedir" --gen-key --batch <<EOF
       Key-Type: DSA
       Key-Length: 1024
@@ -42,7 +42,7 @@ else
       Name-Comment: demonstration only
       Name-Email: jobscheduler@example.com
       Expire-Date: 0
-      Passphrase: PGP-PASSWORD
+      Passphrase: $passphrase
 EOF
     gpg --homedir "$homedir" --export-secret-keys --armor --output="$privateKeyFile"
     gpg --homedir "$homedir" --export --armor --output="$masterPublicKeyFile"

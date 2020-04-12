@@ -477,7 +477,7 @@ lazy val tests = project.dependsOn(master, agent, `agent-client`, provider, test
   .settings(
     commonSettings,
     skip in publish := true,
-    Keys.description := "JobScheduler Tests")
+    description := "JobScheduler Tests")
   .settings {
     import Dependencies._
     libraryDependencies ++=
