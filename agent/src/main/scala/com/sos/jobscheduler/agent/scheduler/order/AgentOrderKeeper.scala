@@ -250,8 +250,8 @@ extends MainJournalingActor[Event] with Stash {
         if (!workflow.isDefinedAt(order.position))
           Future.successful(Left(Problem.pure(s"Unknown Position ${order.workflowPosition}")))
         else if (orderRegister contains order.id) {
-          // May occur after Master restart when Master is not sure about order has been attached previously.
-          logger.debug(s"Ignoring duplicate AttachOrder(${workflow.id})")
+          // Some interference with other Actor messages?
+          logger.debug(s"Ignoring duplicate AttachOrder(${order.id}), detected while ContinueAttachOrder")
           Future.successful(Right(Response.Accepted))
         } else if (shuttingDown)
           Future.successful(Left(AgentIsShuttingDownProblem))
@@ -283,27 +283,33 @@ extends MainJournalingActor[Event] with Stash {
           workflowVerifier.verify(signedWorkflowString) match {
             case Left(problem) => Future.successful(Left(problem))
             case Right(verified) =>
-              val workflow = verified.signedFileBased.value.reduceForAgent(agentRefPath)
-              (workflowRegister.get(order.workflowId) match {
-                case None =>
-                  logger.info(verified.toString)
-                  persist(WorkflowAttached(workflow)) { stampedEvent =>
-                    workflowRegister.handleEvent(stampedEvent.value)
-                    startJobActors(workflow)
-                    Right(workflow)
-                  }
-                case Some(registeredWorkflow) if registeredWorkflow.withoutSource == workflow.withoutSource =>
-                  Future.successful(Right(registeredWorkflow))
-                case Some(_) =>
-                  Future.successful(Left(Problem.pure(s"Changed ${order.workflowId}")))
-              })
-              .flatMap {
-                case Left(problem) => Future.successful(Left(problem))
-                case Right(registeredWorkflow) =>
-                  // Reuse registeredWorkflow to reduce memory usage!
-                  promiseFuture[Checked[AgentCommand.Response.Accepted]] { promise =>
-                    self ! Internal.ContinueAttachOrder(order, registeredWorkflow, promise)
-                  }
+              if (orderRegister contains order.id) {
+                // May occur after Master restart when Master is not sure about order has been attached previously.
+                logger.debug(s"Ignoring duplicate AttachOrder(${order.id})")
+                Future.successful(Right(Response.Accepted))
+              } else {
+                val workflow = verified.signedFileBased.value.reduceForAgent(agentRefPath)
+                (workflowRegister.get(order.workflowId) match {
+                  case None =>
+                    logger.info(verified.toString)
+                    persist(WorkflowAttached(workflow)) { stampedEvent =>
+                      workflowRegister.handleEvent(stampedEvent.value)
+                      startJobActors(workflow)
+                      Right(workflow)
+                    }
+                  case Some(registeredWorkflow) if registeredWorkflow.withoutSource == workflow.withoutSource =>
+                    Future.successful(Right(registeredWorkflow))
+                  case Some(_) =>
+                    Future.successful(Left(Problem.pure(s"Changed ${order.workflowId}")))
+                })
+                .flatMap {
+                  case Left(problem) => Future.successful(Left(problem))
+                  case Right(registeredWorkflow) =>
+                    // Reuse registeredWorkflow to reduce memory usage!
+                    promiseFuture[Checked[AgentCommand.Response.Accepted]] { promise =>
+                      self ! Internal.ContinueAttachOrder(order, registeredWorkflow, promise)
+                    }
+                }
               }
           }
       }
