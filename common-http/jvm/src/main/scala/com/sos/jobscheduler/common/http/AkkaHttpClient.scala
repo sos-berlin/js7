@@ -20,6 +20,7 @@ import com.sos.jobscheduler.base.exceptions.HasIsIgnorableStackTrace
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.session.HasSessionToken
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.Lazy
 import com.sos.jobscheduler.base.utils.MonixAntiBlocking.executeOn
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichThrowable, RichThrowableEither}
@@ -37,6 +38,7 @@ import monix.eval.Task
 import monix.execution.Cancelable
 import monix.reactive.Observable
 import scala.concurrent.Future
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success}
@@ -139,21 +141,28 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
       val req = encodeGzip(request.withHeaders(headers ++: request.headers ++: standardHeaders))
       loggingTimerResource(request, logData).use { _ =>
         @volatile var canceled = false
+        var since = now
         var responseFuture: Future[HttpResponse] = null
         Task.deferFutureAction { implicit s =>
-          logRequest(req, logData)
+          logger.trace(s"$toString: send ${requestToString(req, logData)}")
+          since = now
           if (closed) throw new IllegalStateException(s"$toString has been closed")
           val httpsContext = if (request.uri.scheme == "https") httpsConnectionContext else http.defaultClientHttpsContext
           responseFuture = http.singleRequest(req, httpsContext)
           responseFuture.recover {
             case t if canceled =>
               logger.debug(s"Error after cancel: ${t.toStringWithCauses}")
-              // Fake response to avoid completing Future with a Failure, which is logger by thread's reportFailure
+              // Fake response to avoid completing Future with a Failure, which is logged by thread's reportFailure
+              // TODO Akka's max-open-requests may be exceeded when new requests are opened
+              //  while many canceled request are still not completed by Akka until some Akka (connection) timeout.
+              //  Anyway, the caller's code should be fault-tolerant.
               HttpResponse(
                 StatusCodes.GatewayTimeout,
                 entity = HttpEntity.Strict(`text/plain(UTF-8)`, ByteString("Canceled in AkkaHttpClient")))
           }
-        } .guaranteeCase(exitCase => Task { logger.trace(s"$toString: $exitCase ${requestToString(request, logData)}") })
+        } .guaranteeCase(exitCase => Task {
+            logger.trace(s"$toString: recv ${requestToString(request, logData)} ${since.elapsed.pretty} => $exitCase")
+          })
           .doOnCancel(Task.defer {
             // TODO Canceling does not cancel the ongoing Akka operation. Akka is not freeing the connection.
             canceled = true
@@ -181,7 +190,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
     else
       Task.fromFuture(responseFuture)
         .map[Unit] { response =>
-          logger.debug(s"$toString discardEntityBytes() ${requestToString(request, logData)}")
+          logger.debug(s"$toString: discardEntityBytes() ${requestToString(request, logData)}")
           response.discardEntityBytes()
         }
         .onErrorHandle(_ => ())  // Do not log lost exceptions
@@ -249,15 +258,8 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
       Left(Problem(s"URI '$uri' does not match $baseUri$uriPrefixPath"))
   }
 
-  private def logRequest(request: HttpRequest, logData: => Option[String]): Unit =
-    logger.whenTraceEnabled {
-      logger.trace(requestToString(request, logData))
-    }
-
   private def requestToString(request: HttpRequest, logData: => Option[String]): String = {
     val b = new StringBuilder(200)
-    b.append(toString)
-    b.append(' ')
     b.append(request.method.value)
     b.append(' ')
     b.append(request.uri)
