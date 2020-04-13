@@ -106,7 +106,7 @@ final case class Repo private(
     currentSignedFileBaseds.map(_.value)
 
   def currentSignedFileBaseds: Iterable[Signed[FileBased]] =
-    currentVersion.values.toImmutableIterable
+    currentVersion.values
 
   def applyEvents(events: Seq[RepoEvent]): Checked[Repo] = {
     var result = Checked(this)
@@ -263,9 +263,9 @@ object Repo
   //  val addedPaths = a.keySet -- b.keySet
   //  val deletedPaths = b.keySet -- a.keySet
   //  val changedPaths = (a.keySet intersect b.keySet) filter (path => a(path) != b(path))
-  //  deletedPaths.toImmutableSeq.map(FileBasedDeleted.apply) ++
-  //    addedPaths.toImmutableSeq.map(a).map(o => FileBasedAdded(o.withoutVersion)) ++
-  //    changedPaths.toImmutableSeq.map(a).map(o => FileBasedChanged(o.withoutVersion))
+  //  deletedPaths.toSeq.map(FileBasedDeleted.apply) ++
+  //    addedPaths.toSeq.map(a).map(o => FileBasedAdded(o.withoutVersion)) ++
+  //    changedPaths.toSeq.map(a).map(o => FileBasedChanged(o.withoutVersion))
   //}
 
   private implicit class RichVersionToFileBasedOption(private val versionToFileBasedOption: Map[VersionId, Option[Signed[FileBased]]])

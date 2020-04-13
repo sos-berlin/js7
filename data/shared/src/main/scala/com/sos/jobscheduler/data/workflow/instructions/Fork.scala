@@ -23,7 +23,7 @@ extends Instruction
 {
   // TODO Fork.checked(..): Checked[Fork]
   for (dups <- branches.duplicateKeys(_.id))
-    throw DuplicatedBranchIdsInForkProblem(dups.keys.toImmutableSeq).throwable.appendCurrentStackTrace
+    throw DuplicatedBranchIdsInForkProblem(dups.keys.toSeq).throwable.appendCurrentStackTrace
   for (idAndScript <- branches) Fork.validateBranch(idAndScript).orThrow
 
   def withoutSourcePos = copy(

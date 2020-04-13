@@ -5,7 +5,6 @@ import javax.annotation.Nullable
 import scala.annotation.tailrec
 import scala.collection.immutable.VectorBuilder
 import scala.collection.{BufferedIterator, mutable}
-import scala.jdk.CollectionConverters._
 
 object Collections
 {
@@ -15,19 +14,8 @@ object Collections
         if (underlying.indices contains i) Some(underlying(i)) else None
     }
 
-    implicit final class RichTraversableOnce[A](private val delegate: IterableOnce[A]) extends AnyVal {
-      def toImmutableSeq: Seq[A] =
-        delegate match {
-          case o: Seq[A] => o
-          case _ => Vector.empty ++ delegate
-        }
-
-      def toImmutableIterable: Iterable[A] =
-        delegate match {
-          case o: Iterable[A] => o
-          case _ => Iterable() ++ delegate
-        }
-
+    implicit final class RichTraversableOnce[A](private val delegate: IterableOnce[A]) extends AnyVal
+    {
       def countEquals: Map[A, Int] =
         delegate.iterator.to(Iterable) groupBy identity map { case (k, v) => k -> v.size }
 
@@ -35,7 +23,8 @@ object Collections
         compareIteratorsElementWise(delegate.iterator, other.iterator)
     }
 
-    implicit final class RichSeq[A](private val delegate: collection.Iterable[A]) extends AnyVal {
+    implicit final class RichSeq[A](private val delegate: collection.Iterable[A]) extends AnyVal
+    {
       /**
         * Like `fold` but uses `neutral` only when `operation` cannot be applied, that is size &lt; 2.
         *
@@ -48,22 +37,8 @@ object Collections
       }
     }
 
-    implicit final class RichArray[A](private val delegate: Array[A]) extends AnyVal {
-      def toImmutableSeq: Seq[A] =
-        Vector.empty ++ delegate
-    }
-
-    implicit final class RichJavaIterable[A](private val delegate: java.lang.Iterable[A]) extends AnyVal {
-      def toImmutableSeq: Seq[A] =
-        Vector.empty ++ delegate.asScala
-    }
-
-    implicit final class RichJavaIterator[A](private val delegate: java.util.Iterator[A]) extends AnyVal {
-      def toImmutableSeq: Seq[A] =
-        Vector.empty ++ delegate.asScala
-    }
-
-    implicit final class RichTraversable[F[x] <: Iterable[x], A](private val delegate: F[A]) extends AnyVal {
+    implicit final class RichTraversable[F[x] <: Iterable[x], A](private val delegate: F[A]) extends AnyVal
+    {
       def toKeyedMap[K](toKey: A => K): Map[K, A] = (delegate map { o => toKey(o) -> o }).uniqueToMap
 
       def toKeyedMap[K](toKey: A => K, ifNot: Iterable[K] => Nothing): Map[K, A] = (delegate map { o => toKey(o) -> o }).uniqueToMap(ifNot)
@@ -147,7 +122,7 @@ object Collections
       }
 
       def toSeqMultiMap: Map[A, Seq[B]] =
-        delegate groupBy { _._1 } map { case (key, seq) => key -> (seq map { _._2 }).toImmutableSeq }
+        delegate groupBy { _._1 } map { case (key, seq) => key -> (seq map { _._2 }).toSeq }
     }
 
     implicit final class InsertableMutableMap[K, V](private val delegate: mutable.Map[K, V]) extends AnyVal {

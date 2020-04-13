@@ -8,8 +8,8 @@ import org.scalatest.freespec.AnyFreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class CirceJsonTesterTest extends FreeSpec {
-
+final class CirceJsonTesterTest extends AnyFreeSpec
+{
   "Case class" in {
     testJson(a, JsonString)
   }

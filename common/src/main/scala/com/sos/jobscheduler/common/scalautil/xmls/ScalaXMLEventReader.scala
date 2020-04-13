@@ -2,7 +2,6 @@ package com.sos.jobscheduler.common.scalautil.xmls
 
 import com.sos.jobscheduler.base.convert.ConvertiblePartialFunction
 import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils.{cast, implicitClass}
 import com.sos.jobscheduler.common.scalautil.AssignableFrom.assignableFrom
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaStax.{RichStartElement, getCommonXMLInputFactory}
@@ -268,7 +267,7 @@ object ScalaXMLEventReader {
     def requireAllAttributesRead(): Unit = {
       if (keySet != readAttributes) {
         val names = keySet.toSet -- readAttributes
-        if (names.nonEmpty) throw new UnparsedAttributesException(names.toImmutableSeq)
+        if (names.nonEmpty) throw new UnparsedAttributesException(names.toSeq)
       }
     }
   }

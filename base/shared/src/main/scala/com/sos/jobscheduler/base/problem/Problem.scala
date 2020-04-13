@@ -3,7 +3,6 @@ package com.sos.jobscheduler.base.problem
 import cats.syntax.semigroup._
 import cats.{Eq, Semigroup}
 import com.sos.jobscheduler.base.problem.Problem._
-import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, RichThrowable}
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.base.utils.StackTraces._
@@ -147,12 +146,6 @@ object Problem
     protected def rawMessage = messageFunction
     override final def hashCode = super.hashCode  // Derived case class should not override
   }
-
-  def set(problems: String*): Combined =
-    combined(problems.toSet)
-
-  def combined(problems: String*): Combined =
-    combined(problems.toImmutableSeq)
 
   def combined(problems: Iterable[String]): Combined =
     Combined(problems.map(o => new Lazy(o)))

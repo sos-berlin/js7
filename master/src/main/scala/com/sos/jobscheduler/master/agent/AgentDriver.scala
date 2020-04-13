@@ -9,7 +9,6 @@ import com.sos.jobscheduler.base.generic.{Completed, SecretString}
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.problem.Problems.InvalidSessionTokenProblem
-import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversableOnce
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.utils.SetOnce
 import com.sos.jobscheduler.base.web.Uri
@@ -314,7 +313,7 @@ with ReceiveLoggingActor.WithStash
         conf.eventBufferDelay max conf.commitDelay,
         maxCount = conf.eventBufferSize)  // ticks
       .filter(_.nonEmpty)   // Ignore empty ticks
-      .map(_.toImmutableSeq)
+      .map(_.toSeq)
       .mapEval(stampedEvents =>
         promiseTask[Completed] { promise =>
           self ! Internal.FetchedEvents(stampedEvents, promise)

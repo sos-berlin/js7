@@ -2,7 +2,6 @@ package com.sos.jobscheduler.master
 
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.core.event.journal.BabyJournaledState
@@ -135,9 +134,9 @@ extends JournaledState[MasterState, Event]
 
   def clusterState = babyJournaledState.clusterState
 
-  def agents = pathToAgent.values.toImmutableSeq
+  def agents = pathToAgent.values.toSeq
 
-  def orders = idToOrder.values.toImmutableSeq
+  def orders = idToOrder.values.toSeq
 
   override def toString =
     s"MasterState(${EventId.toString(eventId)} ${idToOrder.size} orders, Repo(${repo.currentVersion.size} objects, ...))"

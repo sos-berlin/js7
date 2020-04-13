@@ -16,8 +16,8 @@ import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.generic.JsonCodec
 import monix.eval.Coeval
-import scala.util.{Failure, Success}
 import org.scalatest.freespec.AnyFreeSpec
+import scala.util.{Failure, Success}
 
 /**
   * @author Joacim Zschimmer
@@ -239,7 +239,7 @@ final class CheckedTest extends AnyFreeSpec
   "traverseAndCombineProblems" in {
     assert(List(Right(1), Right(2)).traverseAndCombineProblems(i => Right(i * 11)) == Right(Seq(11, 22)))
     assert(List(Left(Problem("ONE")), Right(2), Left(Problem("TWO"))).traverseAndCombineProblems(i => Right(i * 11)) ==
-      Left(Problem.combined("ONE", "TWO")))
+      Left(Problem.combined(List("ONE", "TWO"))))
   }
 
   "failFastMap" - {

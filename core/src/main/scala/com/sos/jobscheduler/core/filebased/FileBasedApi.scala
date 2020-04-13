@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.core.filebased
 
 import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversableOnce
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
 import com.sos.jobscheduler.data.event.Stamped
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedsOverview, TypedPath}
@@ -29,13 +28,13 @@ object FileBasedApi {
   def forTest(pathToFileBased: Map[_ <: TypedPath, FileBased]) =
     new FileBasedApi {
       def overview[A <: FileBased: FileBased.Companion](implicit O: FileBasedsOverview.Companion[A]): Task[Stamped[O.Overview]] =
-        Task(Stamped(1, O.fileBasedsToOverview(pathTo.values.toImmutableSeq)))
+        Task(Stamped(1, O.fileBasedsToOverview(pathTo.values.toSeq)))
 
       def idTo[A <: FileBased: FileBased.Companion](id: A#Id) =
         throw new NotImplementedError
 
       def fileBaseds[A <: FileBased: FileBased.Companion] =
-        Task(Stamped(2, pathTo[A].values.toImmutableSeq))
+        Task(Stamped(2, pathTo[A].values.toSeq))
 
       def pathToCurrentFileBased[A <: FileBased: FileBased.Companion](path: A#Path) =
         Task(

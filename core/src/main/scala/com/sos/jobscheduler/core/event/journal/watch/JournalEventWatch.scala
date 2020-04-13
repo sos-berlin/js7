@@ -210,7 +210,7 @@ with JournalingObserver
 
   def fileEventIds: Seq[EventId] =
     synchronized {
-      afterEventIdToHistoric.keys.toImmutableSeq.sorted ++ currentEventReaderOption.map(_.tornEventId)
+      afterEventIdToHistoric.keys.toSeq.sorted ++ currentEventReaderOption.map(_.tornEventId)
     }
 
   def observeFile(fileEventId: Option[EventId], position: Option[Long], timeout: FiniteDuration, markEOF: Boolean, onlyLastOfChunk: Boolean)
