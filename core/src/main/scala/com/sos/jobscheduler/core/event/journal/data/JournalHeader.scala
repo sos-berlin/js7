@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.core.event.journal.data
 
 import cats.syntax.semigroup._
+import com.sos.jobscheduler.base.BuildInfo
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.circeutils.ScalaJsonCodecs._
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
@@ -9,7 +10,6 @@ import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
-import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.journal.data.JournalHeader._
 import com.sos.jobscheduler.data.event.{EventId, JournalId}

@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.provider
 
+import com.sos.jobscheduler.base.BuildInfo
 import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.log.ScribeUtils.coupleScribeWithSlf4j
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.IOExecutor.Implicits.globalIOX

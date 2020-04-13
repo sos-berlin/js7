@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.agent.configuration
 
+import com.sos.jobscheduler.base.BuildInfo
 import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.common.BuildInfo
 
 /**
  * @author Joacim Zschimmer

@@ -1,9 +1,9 @@
 package com.sos.jobscheduler.core.event.journal.test
 
 import akka.pattern.ask
+import com.sos.jobscheduler.base.BuildInfo
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.Futures.blockingThreadFuture
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
@@ -13,11 +13,10 @@ import com.sos.jobscheduler.core.event.journal.files.JournalFiles.listJournalFil
 import com.sos.jobscheduler.core.event.journal.test.JournalTest._
 import com.typesafe.config.ConfigFactory
 import java.nio.file.Files.{delete, deleteIfExists}
-import org.scalatest.matchers.should.Matchers._
 import org.scalatest.BeforeAndAfterAll
-import scala.concurrent.ExecutionContext.Implicits.global
-import org.scalatest.matchers
 import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers._
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
   * @author Joacim Zschimmer

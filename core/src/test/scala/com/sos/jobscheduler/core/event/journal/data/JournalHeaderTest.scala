@@ -1,13 +1,13 @@
 package com.sos.jobscheduler.core.event.journal.data
 
+import com.sos.jobscheduler.base.BuildInfo
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.data.event.{EventId, JournalId}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import java.util.UUID
-import scala.concurrent.duration._
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer

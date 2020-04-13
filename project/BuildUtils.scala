@@ -7,6 +7,7 @@ import java.time.{Instant, OffsetDateTime}
 import java.util.{Base64, UUID}
 import sbt.Keys.version
 import sbt.{Def, ModuleID}
+import scala.collection.immutable.ListMap
 
 object BuildUtils
 {
@@ -14,6 +15,8 @@ object BuildUtils
   val isMac = sys.props("os.name") startsWith "Mac OS"
 
   private val CommitHashLength = 7
+
+  private val toUrlBase64 = Base64.getUrlEncoder.withoutPadding.encodeToString _
 
   if (sys.props("java.runtime.version") startsWith "1.8.0_15") {  // Special for Java 8u151 or Java 8u152 (delete this)
     Security.setProperty("crypto.policy", "unlimited")
@@ -52,7 +55,7 @@ object BuildUtils
         // "2.0.0-M1"
         version.value)
 
-  val prettyVersion: Def.Initialize[String] =
+  private val prettyVersion: Def.Initialize[String] =
     Def.setting {
       val sb = new StringBuilder
       sb ++= version.value
@@ -71,12 +74,6 @@ object BuildUtils
       sb.toString.trim
     }
 
-  private val instantFormatter = new DateTimeFormatterBuilder().append(ISO_LOCAL_DATE_TIME).appendPattern("XX").toFormatter
-
-  /** Parses 2019-01-14T12:00:00Z and 2019-01-14T13:00:00+01:00. */
-  private def parseInstant(s: String) = OffsetDateTime.parse(s, instantFormatter).toInstant
-  private val toUrlBase64 = Base64.getUrlEncoder.withoutPadding.encodeToString _
-
   val buildId: String = {
     val uuid = UUID.randomUUID
     val buffer = ByteBuffer.wrap(new Array[Byte](16))
@@ -84,6 +81,20 @@ object BuildUtils
     buffer.putLong(uuid.getLeastSignificantBits)
     toUrlBase64(buffer.array)
   }
+
+  val buildInfoMap = Def.setting(ListMap[String, Any](
+    "buildTime" -> System.currentTimeMillis,
+    "buildId" -> buildId,
+    "version" -> version.value,
+    "longVersion" -> BuildUtils.longVersion.value,
+    "prettyVersion" -> BuildUtils.prettyVersion.value,
+    "commitId" -> git.gitHeadCommit.value,
+    "commitMessage" -> git.gitHeadMessage.value))
+
+  private val instantFormatter = new DateTimeFormatterBuilder().append(ISO_LOCAL_DATE_TIME).appendPattern("XX").toFormatter
+
+  /** Parses 2019-01-14T12:00:00Z and 2019-01-14T13:00:00+01:00. */
+  private def parseInstant(s: String) = OffsetDateTime.parse(s, instantFormatter).toInstant
 
   implicit def singleModuleIDToList(o: sbt.ModuleID): List[ModuleID] = o :: Nil
 

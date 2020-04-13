@@ -24,6 +24,8 @@
 import BuildUtils._
 import java.nio.file.Paths
 import sbt.Keys.testOptions
+import sbt.file
+import scala.collection.immutable.ListMap
 // shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
 
@@ -154,10 +156,11 @@ lazy val jobscheduler = (project in file("."))
     `agent-data`,
     taskserver,
     provider,
-    tests)
+    tests,
+    `build-info`)
   .settings(skip in publish := true)
 
-lazy val jobschedulerJS = (project in file("target/jobschedulerJS-dummy"))
+lazy val jobschedulerJS = (project in file("target/project-jobschedulerJS"))
   .aggregate(
     base.js,
     `common-http`.js,
@@ -166,7 +169,7 @@ lazy val jobschedulerJS = (project in file("target/jobschedulerJS-dummy"))
     `master-data`.js)
   .settings(skip in publish := true)
 
-lazy val all = (project in file("target/all-dummy"))  // Not the default project
+lazy val all = (project in file("target/project-all"))  // Not the default project
   .aggregate(jobscheduler, jobschedulerJS)
 
 lazy val `jobscheduler-install` = project
@@ -244,6 +247,31 @@ lazy val base = crossProject(JSPlatform, JVMPlatform)
       "org.scalatestplus" %%% "scalacheck-1-14" % scalaTestCheckVersion % "test" ++
       "org.scalacheck" %%% "scalacheck" % scalaCheckVersion % "test"
   }
+  .enablePlugins(BuildInfoPlugin)
+  .settings(
+    buildInfoPackage := "com.sos.jobscheduler.base",
+    buildInfoKeys := buildInfoMap.value.map(BuildInfoKey.constant(_)).toSeq)
+
+/** build-info provides version info in a Scala-free jar. */
+lazy val `build-info` = (project in file("target/project-build-info"))
+  .settings(commonSettings)
+  .settings(
+    crossPaths := false,
+    autoScalaLibrary := false)
+  .settings(
+    Compile / resourceGenerators += Def.task {
+      val file = (Compile / resourceManaged).value / "com/sos/jobscheduler/build-info/build-info.properties"
+      IO.write(
+        file,
+        buildInfoMap.value
+          .mapValues {
+            case v: Option[_] => v.fold("")(_.toString)
+            case v => v.toString
+          }
+          .map { case (k, v) => s"$k=${v.trim.replace('\n', '⏎')}\n"}
+          .mkString)
+      Seq(file)
+    }.taskValue)
 
 lazy val data = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
@@ -288,17 +316,6 @@ lazy val common = project.dependsOn(`common-http`.jvm, base.jvm, data.jvm, teste
       log4j % "test"
     }
   .enablePlugins(GitVersioning)
-  .enablePlugins(BuildInfoPlugin)
-  .settings(
-    buildInfoPackage := "com.sos.jobscheduler.common",
-    buildInfoKeys := BuildInfoKey.ofN(
-      "buildTime" -> System.currentTimeMillis,
-      "buildId" -> buildId,
-      "version" -> version.value,
-      "longVersion" -> BuildUtils.longVersion.value,
-      "prettyVersion" -> BuildUtils.prettyVersion.value,
-      "commitId" -> git.gitHeadCommit.value,
-      "commitMessage" -> git.gitHeadMessage.value))
 
 lazy val `common-http` = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
@@ -514,4 +531,4 @@ def isStandardTest(name: String): Boolean = !isExclusiveTest(name) && !isForkedT
 def isExclusiveTest(name: String): Boolean = name endsWith "ExclusiveTest"
 def isForkedTest(name: String): Boolean = name endsWith "ForkedTest"
 
-def doNotInstallJar(name: String) = false
+def doNotInstallJar(path: String) = false

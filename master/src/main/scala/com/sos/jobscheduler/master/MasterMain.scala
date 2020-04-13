@@ -1,9 +1,9 @@
 package com.sos.jobscheduler.master
 
+import com.sos.jobscheduler.base.BuildInfo
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.base.utils.Strings._
-import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.configutils.Configs.logConfig
 import com.sos.jobscheduler.common.log.ScribeUtils

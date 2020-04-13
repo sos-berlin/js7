@@ -4,9 +4,9 @@ import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.AgentTermination
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.ShutDown
+import com.sos.jobscheduler.base.BuildInfo
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.configutils.Configs.logConfig
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
