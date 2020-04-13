@@ -2,10 +2,9 @@ package com.sos.jobscheduler.base.time
 
 import com.sos.jobscheduler.base.convert.As
 import com.sos.jobscheduler.base.time.ScalaTime._
+import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
 import scala.concurrent.duration._
-import org.scalatest.matchers
-import org.scalatest.freespec.AnyFreeSpec
 
 final class ScalaTimeTest extends AnyFreeSpec
 {
@@ -44,7 +43,7 @@ final class ScalaTimeTest extends AnyFreeSpec
       .foreach { case (bigDecimal, duration) =>
         assert(bigDecimal.s == duration)
         assert(bigDecimalToDuration(bigDecimal) == duration)
-        assert(duration.toBigDecimal == bigDecimal)
+        assert(duration.toBigDecimalSeconds == bigDecimal)
       }
       intercept[ArithmeticException] {
         bigDecimalToDuration(BigDecimal("0.1112223334"))
@@ -248,6 +247,25 @@ final class ScalaTimeTest extends AnyFreeSpec
       assert(-1.s.withMillis(0) == -1.s)
       assert(123999999.µs.withMillis(456) == 123456.ms)
       assert(-123999999.µs.withMillis(456) == -123456.ms)
+    }
+
+    "toBigDecimalSeconds" in {
+      assert(FiniteDuration(1234, NANOSECONDS).toBigDecimalSeconds == BigDecimal("0.000001234"))
+      assert(FiniteDuration(-1234, NANOSECONDS).toBigDecimalSeconds == BigDecimal("-0.000001234"))
+      assert(FiniteDuration(1234, MICROSECONDS).toBigDecimalSeconds == BigDecimal("0.001234"))
+      assert(FiniteDuration(-1234, MICROSECONDS).toBigDecimalSeconds == BigDecimal("-0.001234"))
+      assert(FiniteDuration(1234, MILLISECONDS).toBigDecimalSeconds == BigDecimal("1.234"))
+      assert(FiniteDuration(-1234, MILLISECONDS).toBigDecimalSeconds == BigDecimal("-1.234"))
+      assert(FiniteDuration(1234, SECONDS).toBigDecimalSeconds == BigDecimal("1234"))
+      assert(FiniteDuration(-1234, SECONDS).toBigDecimalSeconds == BigDecimal("-1234"))
+      assert(FiniteDuration(1, MINUTES).toBigDecimalSeconds == BigDecimal("60"))
+      assert(FiniteDuration(-1, MINUTES).toBigDecimalSeconds == BigDecimal("-60"))
+      assert(FiniteDuration(1, HOURS).toBigDecimalSeconds == BigDecimal("3600"))
+      assert(FiniteDuration(-1, HOURS).toBigDecimalSeconds == BigDecimal("-3600"))
+      assert(FiniteDuration(1, DAYS).toBigDecimalSeconds == BigDecimal("86400"))
+      assert(FiniteDuration(-1, DAYS).toBigDecimalSeconds == BigDecimal("-86400"))
+
+      assert(FiniteDuration(Long.MaxValue, NANOSECONDS).toBigDecimalSeconds == BigDecimal("9223372036.854775807"))
     }
 
     "roundUpToNext" in {

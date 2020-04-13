@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.data.workflow
 
 import cats.Show
-import com.sos.jobscheduler.base.time.Times._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.data.job.{ExecutablePath, ExecutableScript}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob

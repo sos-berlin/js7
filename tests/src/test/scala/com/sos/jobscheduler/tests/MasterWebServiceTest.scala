@@ -569,7 +569,7 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
           "eventId": 1002,
           "TYPE": "MasterReady",
           "timezone": "${ZoneId.systemDefault.getId}",
-          "totalRunningTime": ${totalRunningTime.toBigDecimal}
+          "totalRunningTime": ${totalRunningTime.toBigDecimalSeconds}
         }, {
           "eventId": 1003,
           "TYPE": "VersionAdded",

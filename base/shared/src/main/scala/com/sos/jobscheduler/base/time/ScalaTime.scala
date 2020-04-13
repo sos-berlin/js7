@@ -107,11 +107,8 @@ object ScalaTime
   implicit final class RichDuration(private val delegate: Duration) extends AnyVal with Ordered[RichDuration]
   {
     def unary_- = Duration.Zero - delegate
-    def *(o: BigDecimal): Duration = bigDecimalToDuration(delegate.toBigDecimal * o)
-    def /(o: BigDecimal): Duration = bigDecimalToDuration(delegate.toBigDecimal / o)
     def min(o: Duration): Duration = if (this <= o) delegate else o
     def max(o: Duration): Duration = if (this > o) delegate else o
-    def toBigDecimal = BigDecimal(delegate.toNanos) / 1000000000
     override def toString = pretty  // For ScalaTest
 
     def msPretty: String = {
@@ -182,23 +179,36 @@ object ScalaTime
     def compare(o: RichDuration) = delegate compareTo o.delegate
   }
 
-  implicit final class RichFiniteDuration(private val delegate: FiniteDuration) extends AnyVal
+  implicit final class RichFiniteDuration(private val underlying: FiniteDuration) extends AnyVal
   {
+    def *(o: BigDecimal): FiniteDuration = bigDecimalToDuration(toBigDecimalSeconds * o)
+    def /(o: BigDecimal): FiniteDuration = bigDecimalToDuration(toBigDecimalSeconds / o)
+
     def withMillis(milliseconds: Int) =
-      if (delegate >= Duration.Zero)
-        Duration(delegate.toSeconds, SECONDS) + milliseconds.ms
+      if (underlying >= Duration.Zero)
+        Duration(underlying.toSeconds, SECONDS) + milliseconds.ms
       else
-        Duration(delegate.toSeconds, SECONDS) - milliseconds.ms
+        Duration(underlying.toSeconds, SECONDS) - milliseconds.ms
 
     def roundUpToNext(granularity: FiniteDuration): FiniteDuration = {
-      val nanos = delegate.toNanos
+      val nanos = underlying.toNanos
       val sgn = if (nanos >= 0) 1 else -1
       val gran = granularity.toNanos
       Duration((nanos + (gran - 1) * sgn) / gran * gran, NANOSECONDS).toCoarsest
     }
 
+    def toBigDecimalSeconds = underlying.unit match {
+      case NANOSECONDS  => BigDecimal(underlying.length, 9)
+      case MICROSECONDS => BigDecimal(underlying.length, 6)
+      case MILLISECONDS => BigDecimal(underlying.length, 3)
+      case SECONDS      => BigDecimal(underlying.length, 0)
+      case MINUTES      => BigDecimal(underlying.length) * 60
+      case HOURS        => BigDecimal(underlying.length) * (60 * 60)
+      case DAYS         => BigDecimal(underlying.length) * (60 * 60 * 24)
+    }
+
     def toDecimalString: String =
-      delegate.toBigDecimal.bigDecimal.toPlainString
+      underlying.toBigDecimalSeconds.bigDecimal.toPlainString
   }
 
   implicit final class RichFiniteDurationCompanion(private val underlying: FiniteDuration.type) extends AnyVal
