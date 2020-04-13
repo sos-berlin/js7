@@ -39,10 +39,28 @@ final class MonixBaseTest extends AsyncFreeSpec
       .runToFuture
   }
 
-  "materializeIntoChecked" in {
-    assert(Task.pure(Checked(1)).materializeIntoChecked.runSyncUnsafe() == Checked(1))
-    assert(Task.pure(Left(Problem("PROBLEM"))).materializeIntoChecked.runSyncUnsafe() == Left(Problem("PROBLEM")))
-    assert(Task(sys.error("ERROR")).materializeIntoChecked.runSyncUnsafe() == Checked.catchNonFatal(sys.error("ERROR")))
+  "materializeIntoChecked Right(value)" in {
+    Task.pure(Checked(1))
+      .materializeIntoChecked
+      .runToFuture
+      .map(o =>
+        assert(o == Checked(1)))
+  }
+
+  "materializeIntoChecked Left(problem)" in {
+    Task.pure(Left(Problem("PROBLEM")): Checked[Int])
+      .materializeIntoChecked
+      .runToFuture
+      .map(o =>
+        assert(o == Left(Problem("PROBLEM"))))
+  }
+
+  "materializeIntoChecked exception" in {
+    Task(sys.error("ERROR"): Checked[Int])
+      .materializeIntoChecked
+      .runToFuture
+      .map(o =>
+        assert(o == Checked.catchNonFatal(sys.error("ERROR"))))
   }
 
   "closeableIteratorToObservable" in {
