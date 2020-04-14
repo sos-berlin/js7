@@ -30,21 +30,21 @@ object ClusterCommand
   extends ClusterCommand {
     type Response = Response.Accepted
     assertThat(activeId != passiveId)
-    override def toString = s"ClusterPrepareCoupling(activeId=$passiveId passiveId=$activeId)"
+    override def toString = s"ClusterPrepareCoupling(activeId=$activeId passiveId=$passiveId)"
   }
 
   final case class ClusterCouple(activeId: ClusterNodeId, passiveId: ClusterNodeId)
   extends ClusterCommand {
     type Response = Response.Accepted
     assertThat(activeId != passiveId)
-    override def toString = s"ClusterCouple(activeId=$passiveId passiveId=$activeId)"
+    override def toString = s"ClusterCouple(activeId=$activeId passiveId=$passiveId)"
   }
 
   final case class ClusterRecouple(activeId: ClusterNodeId, passiveId: ClusterNodeId)
   extends ClusterCommand {
     type Response = Response.Accepted
     assertThat(activeId != passiveId)
-    override def toString = s"ClusterRecouple(activeId=$passiveId passiveId=$activeId)"
+    override def toString = s"ClusterRecouple(activeId=$activeId passiveId=$passiveId)"
   }
 
   final case class ClusterInhibitActivation(duration: FiniteDuration)
