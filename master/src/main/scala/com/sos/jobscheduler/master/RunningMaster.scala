@@ -345,7 +345,7 @@ object RunningMaster
           val terminationPromise = Promise[MasterTermination]()
           val actor = actorSystem.actorOf(
             Props {
-              new MasterOrderKeeper(terminationPromise, journalActor, cluster, recovered.eventWatch, masterConfiguration,
+              new MasterOrderKeeper(terminationPromise, journalActor, cluster, masterConfiguration,
                 signatureVerifier, testEventBus)
             },
             "MasterOrderKeeper")

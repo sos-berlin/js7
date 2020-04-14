@@ -32,7 +32,6 @@ import com.sos.jobscheduler.core.common.ActorRegister
 import com.sos.jobscheduler.core.crypt.SignatureVerifier
 import com.sos.jobscheduler.core.event.journal.data.JournalHeader
 import com.sos.jobscheduler.core.event.journal.recover.{JournalRecoverer, Recovered}
-import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.event.journal.{BabyJournaledState, JournalActor, MainJournalingActor}
 import com.sos.jobscheduler.core.filebased.{FileBasedVerifier, FileBaseds, Repo}
 import com.sos.jobscheduler.core.problems.{ReverseReleaseEventsProblem, UnknownOrderProblem}
@@ -85,7 +84,6 @@ final class MasterOrderKeeper(
   stopped: Promise[MasterTermination],
   protected val journalActor: ActorRef @@ JournalActor.type,
   cluster: Cluster,
-  eventWatch: JournalEventWatch,
   masterConfiguration: MasterConfiguration,
   signatureVerifier: SignatureVerifier,
   testEventBus: EventBus)
