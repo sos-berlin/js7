@@ -38,7 +38,7 @@ extends JournaledStateBuilder[MasterState, Event]
     idToOrder.clear()
     idToOrder ++= state.idToOrder
     pathToAgent.clear()
-    pathToAgent ++= state.pathToAgent
+    pathToAgent ++= state.pathToAgentSnapshot
   }
 
   protected def onAddSnapshot = {

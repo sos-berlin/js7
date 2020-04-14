@@ -53,7 +53,7 @@ private[fatevent] final class FatStateCache(masterId: MasterId, eventWatch: Even
         MasterState.fromIterator(snapshotObjectsCloseableIterator)
           .copy(eventId = eventId)
       }
-      FatState(masterId, masterState.eventId, masterState.repo, masterState.orders.map(o => o.id -> o).toMap)
+      FatState(masterId, masterState.eventId, masterState.repo, masterState.idToOrder)
     }
 
   final class Accessor(initialFatState: FatState, after: EventId)

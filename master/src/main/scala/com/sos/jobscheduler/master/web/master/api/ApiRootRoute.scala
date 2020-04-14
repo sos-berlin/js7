@@ -44,7 +44,7 @@ trait ApiRootRoute extends MasterRouteProvider
         buildId = BuildInfo.buildId,
         startedAt = checkedMasterState.toOption.map(_.masterMetaState.startedAt),
         totalRunningTime = totalRunningSince.elapsed roundUpToNext 1.ms,
-        orderCount = checkedMasterState.toOption.map(_.orders.size),
+        orderCount = checkedMasterState.toOption.map(_.idToOrder.size),
         system = systemInformation(),
         java = javaInformation)
 }

@@ -237,7 +237,7 @@ with MainJournalingActor[Event]
   protected def snapshots = Observable.fromTask(masterState)
     .flatMap(_.toSnapshotObservable)
     .flatMap {
-      case _: ClusterState.ClusterStateSnapshot => Observable.empty  // `Cluster.persistence` provides the snapshot
+      case _: ClusterState.ClusterStateSnapshot => Observable.empty  // TODO `Cluster.persistence` still provides the snapshot
       case o => Observable.pure(o)
     }
     .toListL.runToFuture
@@ -257,7 +257,7 @@ with MainJournalingActor[Event]
         BabyJournaledState(persistedEventId, journalState, clusterState),
         masterMetaState,
         repo,
-        pathToAgent = agentRegister.values.map(entry => entry.agentRefPath -> entry.toSnapshot).toMap,
+        pathToAgentSnapshot = agentRegister.values.map(entry => entry.agentRefPath -> entry.toSnapshot).toMap,
         orderRegister.view.mapValues(_.order).toMap)
     }
 
@@ -302,18 +302,17 @@ with MainJournalingActor[Event]
       masterMetaState = masterState.masterMetaState
       //masterMetaState = masterState.masterMetaState.copy(totalRunningTime = recovered.totalRunningTime)
       setRepo(masterState.repo)
-      val pathToAgentSnapshot = masterState.agents.toKeyedMap(_.agentRefPath)
       for (agentRef <- repo.currentFileBaseds collect { case o: AgentRef => o }) {
-        val agentSnapshot = pathToAgentSnapshot.checked(agentRef.path).orThrow
+        val agentSnapshot = masterState.pathToAgentSnapshot.checked(agentRef.path).orThrow
         val e = registerAgent(agentRef, agentSnapshot.agentRunId, eventId = agentSnapshot.eventId)
         // Send an extra RegisterMe here, to be sure JournalActor has registered the AgentDriver when a snapshot is taken
         // TODO Fix fundamentally the race condition with JournalActor.Input.RegisterMe
         journalActor.tell(JournalActor.Input.RegisterMe, e.actor)
       }
-      for (agentSnapshot <- masterState.agents) {
+      for (agentSnapshot <- masterState.pathToAgentSnapshot.values) {
         agentRegister(agentSnapshot.agentRefPath).lastAgentEventId = agentSnapshot.eventId
       }
-      for (order <- masterState.orders) {
+      for (order <- masterState.idToOrder.values) {
         orderRegister.insert(order.id -> new OrderEntry(order))
       }
       journalState = masterState.journalState

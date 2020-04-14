@@ -30,7 +30,7 @@ final case class MasterState(
   babyJournaledState: BabyJournaledState,
   masterMetaState: MasterMetaState,
   repo: Repo,
-  pathToAgent: Map[AgentRefPath, AgentSnapshot],
+  pathToAgentSnapshot: Map[AgentRefPath, AgentSnapshot],
   idToOrder: Map[OrderId, Order[Order.State]])
 extends JournaledState[MasterState, Event]
 {
@@ -40,8 +40,18 @@ extends JournaledState[MasterState, Event]
     babyJournaledState.toSnapshotObservable ++
     Observable.fromIterable(masterMetaState.isDefined ? masterMetaState) ++
     Observable.fromIterable(repo.eventsFor(MasterTypedPathCompanions)) ++
-    Observable.fromIterable(agents) ++
-    Observable.fromIterable(orders)
+    Observable.fromIterable(pathToAgentSnapshot.values) ++
+    Observable.fromIterable(idToOrder.values)
+
+  def journalState = babyJournaledState.journalState
+
+  def clusterState = babyJournaledState.clusterState
+
+  def withEventId(eventId: EventId) =
+    copy(
+      eventId = eventId,
+      babyJournaledState = babyJournaledState.copy(
+        eventId = eventId))
 
   def applyEvent(keyedEvent: KeyedEvent[Event]) = keyedEvent match {
     case KeyedEvent(_: NoKey, MasterEvent.MasterInitialized(masterId, startedAt)) =>
@@ -59,11 +69,11 @@ extends JournaledState[MasterState, Event]
     case KeyedEvent(agentRefPath: AgentRefPath, event: MasterAgentEvent) =>
       event match {
         case AgentRegisteredMaster(agentRunId) =>
-          if (pathToAgent contains agentRefPath)
+          if (pathToAgentSnapshot contains agentRefPath)
             Left(Problem(s"Duplicate '$agentRefPath'"))
           else
             Right(copy(
-              pathToAgent = pathToAgent +
+              pathToAgentSnapshot = pathToAgentSnapshot +
                 (agentRefPath -> AgentSnapshot(agentRefPath, Some(agentRunId), eventId = EventId.BeforeFirst))))
 
         case _: AgentReady | _: AgentCouplingFailed =>
@@ -72,8 +82,8 @@ extends JournaledState[MasterState, Event]
 
     case KeyedEvent(a: AgentRefPath, AgentEventIdEvent(agentEventId)) =>
       // Preceding AgentSnapshot is required (see recoverSnapshot)
-      for (o <- pathToAgent.checked(a)) yield
-        copy(pathToAgent = pathToAgent + (a -> o.copy(eventId = agentEventId)))
+      for (o <- pathToAgentSnapshot.checked(a)) yield
+        copy(pathToAgentSnapshot = pathToAgentSnapshot + (a -> o.copy(eventId = agentEventId)))
 
     case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
       event match {
@@ -123,20 +133,6 @@ extends JournaledState[MasterState, Event]
 
     case _ => eventNotApplicable(keyedEvent)
   }
-
-  def withEventId(eventId: EventId) =
-    copy(
-      eventId = eventId,
-      babyJournaledState = babyJournaledState.copy(
-        eventId = eventId))
-
-  def journalState = babyJournaledState.journalState
-
-  def clusterState = babyJournaledState.clusterState
-
-  def agents = pathToAgent.values.toSeq
-
-  def orders = idToOrder.values.toSeq
 
   override def toString =
     s"MasterState(${EventId.toString(eventId)} ${idToOrder.size} orders, Repo(${repo.currentVersion.size} objects, ...))"
