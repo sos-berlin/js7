@@ -34,7 +34,8 @@ trait JournalRoute extends MasterRouteProvider
   protected def eventWatch: EventWatch
   protected def scheduler: Scheduler
 
-  private lazy val defaultJsonSeqChunkTimeout = config.getDuration("jobscheduler.webserver.event.streaming.chunk-timeout").toFiniteDuration
+  private lazy val defaultJsonSeqChunkTimeout = config.getDuration("jobscheduler.webserver.services.event.streaming.chunk-timeout")
+    .toFiniteDuration
   private implicit def implicitScheduler = scheduler
 
   protected final def journalRoute: Route =

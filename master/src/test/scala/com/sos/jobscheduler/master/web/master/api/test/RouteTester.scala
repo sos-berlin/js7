@@ -15,7 +15,8 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-trait RouteTester extends ScalatestRouteTest with ExceptionHandling {
+trait RouteTester extends ScalatestRouteTest with ExceptionHandling
+{
   this: Suite =>
 
   ProblemCodeMessages.initialize()
@@ -34,9 +35,9 @@ trait RouteTester extends ScalatestRouteTest with ExceptionHandling {
   protected final lazy val sessionRegister =
     SessionRegister.start[SimpleSession](system, SimpleSession.apply, SessionRegister.TestConfig)
 
-  protected val config = ConfigFactory.parseString(
+  protected def config = ConfigFactory.parseString(
     """jobscheduler.webserver.verbose-error-messages = on
-      |jobscheduler.webserver.event.streaming.delay = 20ms
-      |jobscheduler.webserver.event.streaming.chunk-timeout = 1h
+      |jobscheduler.webserver.services.event.streaming.delay = 20ms
+      |jobscheduler.webserver.services.event.streaming.chunk-timeout = 1h
       |""".stripMargin)
 }

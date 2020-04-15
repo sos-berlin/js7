@@ -30,7 +30,7 @@ final class GrowingFileObservableTest extends AnyFreeSpec
   "GrowingFileObservable, growing" in {
     withTemporaryFile("GrowingFileObservableTest", ".tmp") { file =>
       val queue = new ArrayBlockingQueue[String](1)
-      new GrowingFileObservable(file, pollDelay = Some(10.ms))
+      new GrowingFileObservable(file, pollDuration = Some(10.ms))
         .foreach(o => queue.add(o.utf8String))
       for (_ <- 1 to 5) {
         val text = Random.nextString(1 + Random.nextInt(10))

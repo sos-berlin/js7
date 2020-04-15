@@ -64,10 +64,12 @@ final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll wit
        |      level = Debug
        |      response = on
        |    }
-       |    event {
-       |      streaming {
-       |        chunk-timeout = 24h
-       |        delay = 20ms
+       |    services {
+       |      event {
+       |        streaming {
+       |          chunk-timeout = 24h
+       |          delay = 20ms
+       |        }
        |      }
        |    }
        |  }

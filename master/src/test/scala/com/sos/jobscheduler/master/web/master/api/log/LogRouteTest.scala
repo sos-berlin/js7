@@ -13,6 +13,7 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryFile
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.master.web.master.api.test.RouteTester
+import com.typesafe.config.ConfigFactory
 import java.io.{FileOutputStream, OutputStreamWriter}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.delete
@@ -20,8 +21,8 @@ import java.nio.file.Path
 import java.util.Objects.requireNonNull
 import java.util.concurrent.ArrayBlockingQueue
 import monix.execution.Scheduler
-import scala.concurrent.duration._
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -30,6 +31,12 @@ final class LogRouteTest extends AnyFreeSpec with RouteTester with LogRoute
 {
   protected def isShuttingDown = false
   protected def currentLogFile = requireNonNull/*call lazily!*/(_currentLogFile)
+
+  override protected def config = ConfigFactory.parseString(
+    """jobscheduler.webserver.services.log.poll-interval = 1.ms
+      |""".stripMargin)
+    .withFallback(super.config)
+
   implicit protected def scheduler = Scheduler.global
   private implicit val routeTestTimeout = RouteTestTimeout(9.seconds)
 

@@ -8,12 +8,13 @@ import monix.reactive.observers.Subscriber
 import scala.concurrent.duration.FiniteDuration
 import scodec.bits.ByteVector
 
-final class GrowingFileObservable(file: Path, pollDelay: Option[FiniteDuration] = None)(implicit scheduler: Scheduler)
+final class GrowingFileObservable(file: Path, pollDuration: Option[FiniteDuration] = None)(implicit scheduler: Scheduler)
 extends Observable[ByteVector]
 {
   def unsafeSubscribeFn(subscriber: Subscriber[ByteVector]): Cancelable = {
     @volatile var canceled = false
-    val reader = new ByteVectorReader(file, fromEnd = pollDelay.isDefined)
+    val reader = new ByteVectorReader(file, fromEnd = pollDuration.isDefined)
+
     def continue(): Unit =
       if (canceled) {
         reader.close()
@@ -21,7 +22,7 @@ extends Observable[ByteVector]
         val chunk = reader.read()
         if (chunk.isEmpty) {
           // End of file reached
-          pollDelay match {
+          pollDuration match {
             case Some(delay) if chunk.isEmpty =>
               if (Files.exists(file)) {
                 scheduler.scheduleOnce(delay) {
