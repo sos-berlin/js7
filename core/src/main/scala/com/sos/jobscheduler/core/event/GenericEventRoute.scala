@@ -222,7 +222,7 @@ trait GenericEventRoute extends RouteProvider
               val req = lastEventIdHeader.fold(request)(header =>
                 request.copy[Event](after = toLastEventId(header)))
               val mutableJsonPrinter = CompactPrinter.copy(reuseWriters = true)
-              val source = logAkkaStreamErrorToWebLog(
+              val source = logAkkaStreamErrorToWebLogAndIgnore(
                 eventWatch.observe(req, predicate = isRelevantEvent)
                   .map(stamped => ServerSentEvent(
                     data = stamped.asJson.printWith(mutableJsonPrinter),

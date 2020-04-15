@@ -54,17 +54,21 @@ object StandardMarshallers
   def monixObservableToMarshallable[A: TypeTag](observable: Observable[A])
     (implicit s: Scheduler, q: Source[A, NotUsed] => ToResponseMarshallable)
   : ToResponseMarshallable =
-    logAkkaStreamErrorToWebLog(observable.toAkkaSource)
+    logAkkaStreamErrorToWebLogAndIgnore(observable.toAkkaSource)
 
-  def logAkkaStreamErrorToWebLog[A](source: Source[A, NotUsed]): Source[A, NotUsed] =
-    source.mapError { case throwable =>
-      val msg = s"Exception in Akka stream: ${throwable.toStringWithCauses}"
-      // This area the only messages logged
+  def logAkkaStreamErrorToWebLogAndIgnore[A: TypeTag](source: Source[A, NotUsed]): Source[A, NotUsed] =
+    source.recoverWithRetries(1, { case throwable =>
+      // These are the only messages logged
+      val msg = s"Terminating stream Source[${implicitly[TypeTag[A]].tpe.toString}] due to error: ${throwable.toStringWithCauses}"
       ExceptionHandling.webLogger.warn(msg)
       logger.debug(msg, throwable)
-      throwable
-      // HTTP client sees only: The request's encoding is corrupt: The connection closed with error: Connection reset by peer
-    }
+
+      // Letting the throwable pass would close the connection,
+      // and the HTTP client sees only: The request's encoding is corrupt:
+      // The connection closed with error: Connection reset by peer.
+      // => So it seems best to end the stream silently.
+      Source.empty
+    })
 
   implicit val problemToEntityMarshaller: ToEntityMarshaller[Problem] =
     Marshaller.oneOf(

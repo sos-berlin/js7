@@ -57,7 +57,7 @@ trait JournalRoute extends MasterRouteProvider
                             } yield {
                               val f = if (returnLength) toLength _ else toContent _
                               HttpEntity(JournalContentType,
-                                logAkkaStreamErrorToWebLog(
+                                logAkkaStreamErrorToWebLogAndIgnore(
                                   observable
                                     .takeWhile(_ => !isShuttingDown)
                                     .map(f)
