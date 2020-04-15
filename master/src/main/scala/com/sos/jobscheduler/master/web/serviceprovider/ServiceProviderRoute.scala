@@ -36,7 +36,7 @@ private[web] trait ServiceProviderRoute
       for ((_, p, r) <- servicePathRoutes) yield pathSegments(p)(r))
   }
 
-  protected def serviceProviderRoute: Route =
+  protected final def serviceProviderRoute: Route =
     requestContext => {
       if (lazyServiceProviderRoute.isEmpty) {
         logger.debug(s"Looking up RouteService for unhandled URI ${requestContext.request.uri.path}")

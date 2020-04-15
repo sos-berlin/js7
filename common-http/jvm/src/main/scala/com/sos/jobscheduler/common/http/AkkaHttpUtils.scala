@@ -62,7 +62,7 @@ object AkkaHttpUtils
       * May return a very big ByteString.
       */
     def byteStringFuture(timeout: FiniteDuration)(implicit mat: Materializer, ec: ExecutionContext): Future[ByteString] =
-      underlying.entity.byteStringFuture(99.seconds)
+      underlying.entity.byteStringFuture(timeout)
   }
 
   implicit final class ScodecByteString(private val underlying: ByteString) extends AnyVal {

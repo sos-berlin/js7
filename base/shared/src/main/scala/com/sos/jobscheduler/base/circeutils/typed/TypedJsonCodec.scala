@@ -48,7 +48,7 @@ extends Encoder.AsObject[A] with Decoder[A]
 
   def canDeserialize(json: Json): Boolean =
     json.asObject match {
-      case Some(o) => o.toMap.get(TypedJsonCodec.TypeFieldName) flatMap (_.asString) exists nameToDecoder.contains
+      case Some(o) => o.toMap.get(TypeFieldName) flatMap (_.asString) exists nameToDecoder.contains
       case _ => false
     }
 
