@@ -17,17 +17,22 @@ import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
+import com.sos.jobscheduler.master.RunningMaster
+import com.sos.jobscheduler.master.data.MasterCommand.ShutDown
 import com.sos.jobscheduler.tests.master.cluster.MasterClusterTester.{shellScript, _}
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider
 import com.typesafe.config.ConfigFactory
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
+import monix.eval.Task
+import monix.execution.Scheduler
 import org.scalatest.Assertions._
 import org.scalatest.freespec.AnyFreeSpec
 
 private[cluster] trait MasterClusterTester extends AnyFreeSpec
 {
   protected def configureClusterNodes = true
+  protected def removeObsoleteJournalFiles = true
 
   ScribeUtils.coupleScribeWithSlf4j()
   ProblemCodeMessages.initialize()
@@ -50,7 +55,8 @@ private[cluster] trait MasterClusterTester extends AnyFreeSpec
           jobscheduler.master.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"
           jobscheduler.auth.users.Master.password = "plain:BACKUP-MASTER-PASSWORD"
           jobscheduler.auth.users.TEST.password = "plain:TEST-PASSWORD"
-          jobscheduler.auth.cluster.password = "PRIMARY-MASTER-PASSWORD" """),
+          jobscheduler.auth.cluster.password = "PRIMARY-MASTER-PASSWORD"
+          jobscheduler.journal.remove-obsolete-files = $removeObsoleteJournalFiles """),
         agentPorts = agentPort :: Nil
       ).closeWithCloser
 
@@ -62,7 +68,8 @@ private[cluster] trait MasterClusterTester extends AnyFreeSpec
           jobscheduler.master.cluster.watches = [ "http://127.0.0.1:$agentPort" ]
           jobscheduler.master.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"
           jobscheduler.auth.users.Master.password = "plain:PRIMARY-MASTER-PASSWORD"
-          jobscheduler.auth.cluster.password = "BACKUP-MASTER-PASSWORD" """)
+          jobscheduler.auth.cluster.password = "BACKUP-MASTER-PASSWORD"
+          jobscheduler.journal.remove-obsolete-files = $removeObsoleteJournalFiles """),
       ).closeWithCloser
 
       // Replicate credentials required for agents
@@ -77,6 +84,13 @@ private[cluster] trait MasterClusterTester extends AnyFreeSpec
         body(primary, backup)
       }
     }
+
+  /** Simulate a kill via ShutDown(failOver) - still writes new snapshot. */
+  protected final def simulateKillActiveNode(master: RunningMaster)(implicit s: Scheduler): Task[Unit] =
+    master.executeCommandAsSystemUser(ShutDown(clusterAction = Some(ShutDown.ClusterAction.Failover)))
+      .map(_.orThrow)
+      .flatMap(_ => Task.deferFuture(master.terminated))
+      .map(_ => ())
 }
 
 object MasterClusterTester

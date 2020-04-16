@@ -3,6 +3,7 @@ package com.sos.jobscheduler.data
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.event.EventId
 
+// TODO Move to object Problems for better IntelliJ support
 /**
   * @author Joacim Zschimmer
   */

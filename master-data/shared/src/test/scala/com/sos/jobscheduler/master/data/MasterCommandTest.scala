@@ -202,6 +202,26 @@ final class MasterCommandTest extends AnyFreeSpec
           "restart": true
         }""")
     }
+
+    "clusterAction=Switchover" in {
+      testJson[MasterCommand](ShutDown(clusterAction = Some(ShutDown.ClusterAction.Switchover)),
+        json"""{
+          "TYPE": "ShutDown",
+          "clusterAction": {
+            "TYPE": "Switchover"
+          }
+        }""")
+    }
+
+    "clusterAction=Failover" in {
+      testJson[MasterCommand](ShutDown(clusterAction = Some(ShutDown.ClusterAction.Failover)),
+        json"""{
+          "TYPE": "ShutDown",
+          "clusterAction": {
+            "TYPE": "Failover"
+          }
+        }""")
+    }
   }
 
   "ClusterAppointNodes" in {

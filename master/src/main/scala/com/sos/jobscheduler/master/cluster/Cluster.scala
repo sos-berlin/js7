@@ -33,8 +33,8 @@ import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
 import com.sos.jobscheduler.core.problems.MissingPassiveClusterNodeHeartbeatProblem
 import com.sos.jobscheduler.core.startup.Halt.haltJava
 import com.sos.jobscheduler.data.cluster.ClusterCommand.{ClusterInhibitActivation, ClusterStartBackupNode}
-import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
-import com.sos.jobscheduler.data.cluster.ClusterState.{Coupled, Decoupled, Empty, FailedOver, HasNodes, NodesAppointed, PassiveLost, PreparedToBeCoupled}
+import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
+import com.sos.jobscheduler.data.cluster.ClusterState.{ActiveShutDown, Coupled, Decoupled, Empty, FailedOver, HasNodes, NodesAppointed, PassiveLost, PreparedToBeCoupled}
 import com.sos.jobscheduler.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeId, ClusterState}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped}
@@ -62,7 +62,7 @@ final class Cluster(
   persistence: JournaledStatePersistence[ClusterState, ClusterEvent],
   masterId: MasterId,
   journalConf: JournalConf,
-  clusterConf: ClusterConf,
+  val clusterConf: ClusterConf,
   config: Config,
   eventIdGenerator: EventIdGenerator,
   testEventBus: EventBus)
@@ -82,6 +82,7 @@ final class Cluster(
   @volatile
   private var stopRequested = false
   private val started = Promise[Unit]()
+  private var activated = false
   @volatile
   private var _currentClusterState: Task[ClusterState] = null
   private var remainingActiveAfterRestart = false
@@ -126,6 +127,7 @@ final class Cluster(
     started.success(())
     passiveState ->
       followUp.map(_.map { case (clusterState, followUp) =>
+        activated = followUp.isInstanceOf[ClusterFollowUp.BecomeActive[_, _]]
         _currentClusterState = persistence.currentState
         clusterWatchSynchronizer.scheduleHeartbeats(clusterState)
         persistence.start(clusterState)
@@ -149,12 +151,13 @@ final class Cluster(
           logger.info(s"Backup cluster node '$ownId', awaiting appointment from a primary node")
           val promise = Promise[ClusterStartBackupNode]()
           expectingStartBackupCommand := promise
-          val passiveTask = Task.deferFuture(promise.future)
+          val passiveClusterNode = Task.deferFuture(promise.future)
             .map(cmd => newPassiveClusterNode(cmd.idToUri, cmd.activeId, recovered))
             .memoize
-          passiveTask.flatMap(_.state.map(Some.apply)) ->
-            passiveTask.flatMap(passive => activationInhibitor.startPassive >>
-              passive.run(recoveredState))
+          passiveClusterNode.flatMap(_.state.map(Some.apply)) ->
+            passiveClusterNode.flatMap(passive =>
+              activationInhibitor.startPassive >>
+                passive.run(recoveredState))
         }
 
       case (recoveredClusterState: HasNodes, Some(recoveredJournalFile))
@@ -280,7 +283,7 @@ final class Cluster(
       otherFailedOver, journalConf, clusterConf, eventIdGenerator, common)
   }
 
-  def automaticallyAppointConfiguredBackupNode(): Task[Checked[Completed]] =
+  private def automaticallyAppointConfiguredBackupNode: Task[Checked[Completed]] =
     clusterConf.maybeIdToUri match {
       case Some(isToUri) =>
         persist {
@@ -416,7 +419,34 @@ final class Cluster(
           }
     }
 
-  def inhibitActivationOfPeer: Task[Option[FailedOver]] =
+  def beforeJournalingStarted: Task[Checked[Completed]] =
+    if (remainingActiveAfterRestart)
+      inhibitActivationOfPeer.map {
+        case Some(otherFailedOver) =>
+          Left(Problem.pure(s"While activating this node, the other node has failed-over: $otherFailedOver"))
+        case None =>
+          Right(Completed)
+      }
+    else
+      Task.pure(Right(Completed))
+
+  def afterJounalingStarted: Task[Checked[Completed]] =
+    ( for {
+        _ <- EitherT(automaticallyAppointConfiguredBackupNode)
+        x <- EitherT(onRestartActiveNode)
+      } yield x
+    ).value
+
+  private def onRestartActiveNode: Task[Checked[Completed]] =
+    persistence.currentState flatMap {
+      case state: ActiveShutDown if state.activeId == ownId =>
+        persist(_ => Right(ClusterActiveNodeRestarted :: Nil))
+          .map(_.toCompleted)
+      case _ =>
+        Task.pure(Right(Completed))
+    }
+
+  private def inhibitActivationOfPeer: Task[Option[FailedOver]] =
     _currentClusterState.flatMap {
       case clusterState: ClusterState.HasNodes if clusterState.activeId == ownId =>
         inhibitActivationOf(clusterState.passiveUri)
@@ -467,6 +497,21 @@ final class Cluster(
           case _ => Task.unit
         }
 
+  def shutDownThisNode: Task[Checked[Completed]] =
+    clusterWatchSynchronizer.stopHeartbeats() >>
+      persist {
+        case coupled: Coupled if coupled.activeId == ownId =>
+          Right(ClusterActiveNodeShutDown :: Nil)
+        case _ =>
+          Right(Nil)
+      } .map(_.map((_: (Seq[Stamped[_]], _)) => Completed))
+        .guaranteeCase {
+          case ExitCase.Error(_) =>
+            currentClusterState.flatMap(clusterState =>  // TODO Lock currentClusterState (instead in JournalStatePersistence)
+              Task { clusterWatchSynchronizer.scheduleHeartbeats(clusterState) })
+          case _ => Task.unit
+        }
+
   private def proceed(state: ClusterState, eventId: EventId): Unit =
     state match {
       case state: NodesAppointed if state.activeId == ownId =>
@@ -484,6 +529,7 @@ final class Cluster(
           fetchAndHandleAcknowledgedEventIds(state, eventId)
         } else
           sys.error(s"proceed: Unexpected ClusterState $state")
+
       case _ =>
     }
 
@@ -698,8 +744,15 @@ final class Cluster(
     } >>
       _currentClusterState
 
-  def isRemainingActiveAfterRestart =
-    remainingActiveAfterRestart
+  def isActive: Task[Boolean] =
+    Task.pure(activated)
+    // Blocks if passive ???
+    //currentClusterState.map {
+    //  case Empty =>
+    //    !clusterConf.isBackup
+    //  case o: HasNodes =>
+    //    o.activeId == clusterConf.ownId
+    //}
 
   // Used to RegisterMe actor in JournalActor
   def journalingActor = persistence.actor

@@ -33,6 +33,7 @@ import com.sos.jobscheduler.core.event.journal.JournalActor.Output
 import com.sos.jobscheduler.core.event.journal.recover.Recovered
 import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
 import com.sos.jobscheduler.core.problems.{ClusterNodeIsNotActiveProblem, ClusterNodeIsNotYetReadyProblem, JobSchedulerIsShuttingDownProblem}
+import com.sos.jobscheduler.data.Problems.PassiveClusterNodeShutdownNotAllowedProblem
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
 import com.sos.jobscheduler.data.event.{Event, EventRequest, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
@@ -50,7 +51,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Files.deleteIfExists
 import java.nio.file.Path
 import monix.eval.Task
-import monix.execution.{Cancelable, Scheduler}
+import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future, Promise, blocking}
@@ -235,7 +236,7 @@ object RunningMaster
 
       // clusterFollowUpFuture terminates when this cluster node becomes active or terminates
       // maybePassiveState accesses the current MasterState while this node is passive, otherwise it is None
-      val (currentPassiveMasterState, clusterFollowUpTask) = startCluster(journalActor, cluster, recovered)
+      val (currentPassiveMasterState, clusterFollowUpTask) = startCluster(cluster, recovered)
       val clusterFollowUpFuture = clusterFollowUpTask
         .executeWithOptions(_.enableAutoCancelableRunLoops)
         .runToFuture
@@ -269,8 +270,12 @@ object RunningMaster
         }
       }
       val commandExecutor = new MasterCommandExecutor(
-        new MyCommandExecutor(cluster, clusterFollowUpFuture, orderKeeperStarted.map(_.toOption),
-          onShutDownCommand = clusterStartupTermination = _))
+        new MyCommandExecutor(cluster,
+          onShutDownPassive = termination => Task {
+            clusterStartupTermination = termination
+            clusterFollowUpFuture.cancel()
+          },
+          orderKeeperStarted.map(_.toOption)))
       val fileBasedApi = new MainFileBasedApi(masterConfiguration, orderKeeperTask)
       val orderApi = new MainOrderApi(orderKeeperTask)
 
@@ -311,7 +316,6 @@ object RunningMaster
 
     /** @return Task(None) when canceled. */
     private def startCluster(
-      journalActor: ActorRef @@ JournalActor.type,
       cluster: Cluster,
       recovered: Recovered[MasterState, Event])
     : (Task[Option[MasterState]], Task[Either[MasterTermination.Terminate, ClusterFollowUp[MasterState, Event]]]) =
@@ -360,27 +364,34 @@ object RunningMaster
 
   private class MyCommandExecutor(
     cluster: Cluster,
-    startingClusterFuture: Cancelable,
-    orderKeeperStarted: Future[Option[ActorRef @@ MasterOrderKeeper]],
-    onShutDownCommand: MasterTermination.Terminate => Unit)
+    onShutDownPassive: MasterTermination.Terminate => Task[Unit],
+    orderKeeperStarted: Future[Option[ActorRef @@ MasterOrderKeeper]])
     (implicit timeout: Timeout)
   extends CommandExecutor[MasterCommand]
   {
     def executeCommand(command: MasterCommand, meta: CommandMeta): Task[Checked[command.Response]] =
       (command match {
         case command: MasterCommand.ShutDown =>
-          Task {
-            onShutDownCommand(MasterTermination.Terminate(restart = command.restart))
-            startingClusterFuture.cancel()
-          } >>
-          Task.deferFutureAction(implicit s =>
-            orderKeeperStarted flatMap {
-              case None =>  // MasterOrderKeeper does not start
-                Future.successful(Right(MasterCommand.Response.Accepted))
-              case Some(actor) =>
-                (actor ? MasterOrderKeeper.Command.Execute(command, meta))
-                  .mapTo[Checked[command.Response]]
-            })
+          cluster.isActive.flatMap(isActive =>
+            if (!isActive)
+              if (command.clusterAction.isEmpty)
+                onShutDownPassive(MasterTermination.Terminate(restart = command.restart))
+                  .map(_ => Right(MasterCommand.Response.Accepted))
+              else
+                Task.pure(Left(PassiveClusterNodeShutdownNotAllowedProblem))
+            else
+              Task.deferFutureAction(implicit s =>
+                orderKeeperStarted flatMap {
+                  case None =>  // MasterOrderKeeper does not start
+                    Future.successful(
+                      if (command.clusterAction.nonEmpty)
+                        Left(PassiveClusterNodeShutdownNotAllowedProblem)
+                      else
+                        Right(MasterCommand.Response.Accepted))
+                  case Some(actor) =>
+                    (actor ? MasterOrderKeeper.Command.Execute(command, meta))
+                      .mapTo[Checked[command.Response]]
+                }))
 
         case MasterCommand.ClusterAppointNodes(idToUri, activeId) =>
           cluster.appointNodes(idToUri, activeId)

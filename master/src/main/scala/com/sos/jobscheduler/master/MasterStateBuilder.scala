@@ -105,7 +105,7 @@ extends JournaledStateBuilder[MasterState, Event]
         case _: OrderStdWritten =>
       }
 
-    case Stamped(_, _, KeyedEvent(_, MasterShutDown)) =>
+    case Stamped(_, _, KeyedEvent(_, _: MasterShutDown)) =>
     case Stamped(_, _, KeyedEvent(_, MasterTestEvent)) =>
 
     case Stamped(_, _, keyedEvent @ KeyedEvent(_, _: JournalEvent | _: ClusterEvent)) =>

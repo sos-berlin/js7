@@ -3,8 +3,8 @@ package com.sos.jobscheduler.master.data.events
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.master.data.events.MasterEvent._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import scala.concurrent.duration._
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -21,7 +21,7 @@ final class MasterEventTest extends AnyFreeSpec
   }
 
   "MasterShutDown" in {
-    testJson[MasterEvent](MasterShutDown,
+    testJson[MasterEvent](MasterShutDown(),
       json"""{
         "TYPE": "MasterShutDown"
       }""")

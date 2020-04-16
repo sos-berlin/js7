@@ -20,7 +20,7 @@ import com.sos.jobscheduler.core.event.journal.files.JournalFiles._
 import com.sos.jobscheduler.core.event.journal.recover.{FileJournaledStateBuilder, JournalProgress, Recovered, RecoveredJournalFile}
 import com.sos.jobscheduler.core.event.state.JournaledStateBuilder
 import com.sos.jobscheduler.data.cluster.ClusterCommand.{ClusterCouple, ClusterPrepareCoupling, ClusterRecouple}
-import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
+import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
 import com.sos.jobscheduler.data.cluster.ClusterState.{Coupled, Decoupled, PreparedToBeCoupled}
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
 import com.sos.jobscheduler.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
@@ -399,7 +399,7 @@ import scodec.bits.ByteVector
                 Observable.pure(Right(()))
               } else if (json.toClass[ClusterEvent].isDefined)
                 json.as[ClusterEvent].orThrow match {
-                  case _: ClusterNodesAppointed | _: ClusterPassiveLost =>
+                  case _: ClusterNodesAppointed | _: ClusterPassiveLost | _: ClusterActiveNodeRestarted =>
                     Observable.fromTask(
                       sendClusterPrepareCoupling
                         .map(Right.apply))  // TODO Handle heartbeat timeout !

@@ -26,27 +26,22 @@ final class ReplicatingClusterTest extends MasterClusterTester
       val backupMaster = backup.startMaster(httpPort = Some(backupHttpPort)) await 99.s
       primaryMaster.eventWatch.await[ClusterEvent.ClusterCouplingPrepared]()
 
-      //assert(!primaryMaster.journalActorState.isRequiringClusterAcknowledgement)
-      //primaryMaster.executeCommandAsSystemUser(
-      //  ClusterAppointNodes(Uri(backupMaster.localUri), Uri(primaryMaster.localUri))
-      //).await(99.s).orThrow
-      //primaryMaster.eventWatch.await[ClusterEvent.NodesAppointed]()
       primaryMaster.eventWatch.await[ClusterEvent.ClusterCoupled]()
       assert(primaryMaster.journalActorState.isRequiringClusterAcknowledgement)
 
       primaryMaster.runOrder(FreshOrder(OrderId("🔷"), TestWorkflow.path))
 
-      assertEqualJournalFiles(primary.master, backup.master, 1)
+      assertEqualJournalFiles(primary.master, backup.master, n = 1)
 
       primaryMaster.executeCommandAsSystemUser(TakeSnapshot).await(99.s).orThrow
-      assertEqualJournalFiles(primary.master, backup.master, 1)
+      assertEqualJournalFiles(primary.master, backup.master, n = 1)
 
       primaryMaster.runOrder(FreshOrder(OrderId("🔵"), TestWorkflow.path))
-      assertEqualJournalFiles(primary.master, backup.master, 1)
+      assertEqualJournalFiles(primary.master, backup.master, n = 1)
 
-      primaryMaster.terminate() await 99.s
+      simulateKillActiveNode(primaryMaster) await 99.s
       backupMaster.terminate() await 99.s
-      assertEqualJournalFiles(primary.master, backup.master, 1)  // TODO Maybe "ShutDown" has not been replicated
+      assertEqualJournalFiles(primary.master, backup.master, n = 1)
 
       // RESTART
 

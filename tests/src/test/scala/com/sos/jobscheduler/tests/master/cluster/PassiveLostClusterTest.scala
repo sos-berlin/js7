@@ -37,7 +37,6 @@ final class PassiveLostClusterTest extends MasterClusterTester
       primaryMaster.eventWatch.await[OrderProcessingStarted](_.key == orderId)
       backupMaster.eventWatch.await[OrderProcessingStarted](_.key == orderId)
 
-      // KILL BACKUP
       backupMaster.terminate() await 99.s
       val passiveLost = primaryMaster.eventWatch.await[ClusterPassiveLost](_.key == NoKey).head.eventId
 

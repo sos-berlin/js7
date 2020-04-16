@@ -24,7 +24,6 @@ import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
-import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.Logger.ops._
 import com.sos.jobscheduler.core.command.CommandMeta
@@ -164,7 +163,7 @@ with MainJournalingActor[Event]
         if (snapshotTaken && !terminatingJournal) {
           // The event forces the cluster to acknowledge this event and the snapshot taken
           terminatingJournal = true
-          persistKeyedEventTask(NoKey <-: MasterShutDown)(_ => Completed)
+          persistKeyedEventTask(NoKey <-: MasterShutDown())(_ => Completed)
             .runToFuture.onComplete { tried =>
               tried match {
                 case Success(Completed) =>
@@ -180,7 +179,7 @@ with MainJournalingActor[Event]
   @volatile
   private var switchover: Option[Switchover] = None
 
-  private final class Switchover(promise: Promise[Checked[Completed]]) {
+  private final class Switchover(val restart: Boolean) {
     // 1) Issue SwitchedOver event
     // 2) Terminate JournalActor
     // 3) Stop MasterOrderKeeper includinge AgentDriver's
@@ -190,14 +189,12 @@ with MainJournalingActor[Event]
       logger.debug("Still switching over to the other cluster node")
     }
 
-    def start(): Unit =
-      promise.completeWith(
-        cluster.switchOver
-          .map(_.map { case Completed =>
-            journalActor ! JournalActor.Input.Terminate
-            Completed
-          })
-        .runToFuture)
+    def start(): Task[Checked[Completed]] =
+      cluster.switchOver   // Will terminate `cluster`, letting MasterOrderKeeper terminate
+        .map(_.map { case Completed =>
+          journalActor ! JournalActor.Input.Terminate
+          Completed
+        })
 
     def close() = stillSwitchingOverSchedule.cancel()
   }
@@ -230,7 +227,9 @@ with MainJournalingActor[Event]
       switchover foreach { _.close() }
     } finally {
       logger.debug("Stopped" + shutdown.since.fold("")(o => s" (terminated in ${o.elapsed.pretty})"))
-      stopped.success(if (switchover.isDefined) MasterTermination.Restart else MasterTermination.Terminate(restart = shutdown.restart))
+      stopped.success(
+        if (switchover.exists(_.restart)) MasterTermination.Restart
+        else MasterTermination.Terminate(restart = shutdown.restart))
       super.postStop()
     }
 
@@ -266,24 +265,16 @@ with MainJournalingActor[Event]
       assertActiveClusterState(recovered)
       recover(recovered)
 
-      if (cluster.isRemainingActiveAfterRestart) {
-        cluster.inhibitActivationOfPeer
-          .map {
-            case None => recovered
-            case Some(otherFailedOver) =>
-              // TODO Restart Master properly
-              // TODO inhibit activation while recovering a long time
-              throw new RuntimeException(s"While activating this node, the other node has failed-over: $otherFailedOver")
-          }
-          .materialize
-          .map(Internal.OtherClusterNodeActivationInhibited.apply)
-          .runToFuture
-          .pipeTo(self)
-      } else {
-        self ! Internal.OtherClusterNodeActivationInhibited(Success(recovered))
-      }
       become("inhibitingActivationOfOtherClusterNode")(inhibitingActivationOfOtherClusterNode)
       unstashAll()
+      // TODO Inhibit activation of peer while recovering a long time
+      cluster.beforeJournalingStarted
+        .map(_.orThrow)
+        .map((_: Completed) => recovered)
+        .materialize
+        .map(Internal.OtherClusterNodeActivationInhibited.apply)
+        .runToFuture
+        .pipeTo(self)
 
     case msg => notYetReady(msg)
   }
@@ -292,13 +283,15 @@ with MainJournalingActor[Event]
     for (clusterState <- recovered.recoveredState.map(_.clusterState)) {
       import masterConfiguration.clusterConf.ownId
       if (clusterState != ClusterState.Empty && !clusterState.isNonEmptyActive(ownId))
-        throw new IllegalStateException(s"Master has recovered from Journal but is not the active node in ClusterState: id=$ownId, failedOver=$clusterState")
+        throw new IllegalStateException(
+          s"Master has recovered from Journal but is not the active node in ClusterState: id=$ownId, failedOver=$clusterState")
     }
 
   private def recover(recovered: Recovered[MasterState, Event]): Unit = {
     for (masterState <- recovered.recoveredState) {
       if (masterState.masterMetaState.masterId != masterConfiguration.masterId)
-        throw Problem(s"Recovered masterId='${masterState.masterMetaState.masterId}' differs from configured masterId='${masterConfiguration.masterId}'").throwable
+        throw Problem(s"Recovered masterId='${masterState.masterMetaState.masterId}' differs from configured masterId='${masterConfiguration.masterId}'")
+          .throwable
       masterMetaState = masterState.masterMetaState
       //masterMetaState = masterState.masterMetaState.copy(totalRunningTime = recovered.totalRunningTime)
       setRepo(masterState.repo)
@@ -369,7 +362,7 @@ with MainJournalingActor[Event]
            case _ =>
          }
         testEventBus.publish(MasterReadyTestIncident)
-        cluster.automaticallyAppointConfiguredBackupNode()
+        cluster.afterJounalingStarted
           .materializeIntoChecked
           .runToFuture
           .map(Internal.Ready.apply)
@@ -548,6 +541,9 @@ with MainJournalingActor[Event]
     case JournalActor.Output.SnapshotTaken =>
       shutdown.onSnapshotTaken()
 
+    case Internal.ShutDown(shutDown) =>
+      shutdown.start(shutDown)
+
     case Internal.StillShuttingDown =>
       shutdown.onStillShuttingDown()
 
@@ -635,28 +631,28 @@ with MainJournalingActor[Event]
           .mapTo[JournalActor.Output.SnapshotTaken.type]
           .map(_ => Right(MasterCommand.Response.Accepted))
 
-      case MasterCommand.ClusterSwitchOver =>
-        if (switchover.isDefined)
-          Future.successful(Left(Problem("Already switching over")))
-        else
-          promiseFuture[Checked[Completed]] { promise =>
-            val so = new Switchover(promise)
-            switchover = Some(so)
-            so.start()
-            promise.future onComplete {
-              case Success(Right(Completed)) =>
-                // Keep switchover for postStop
-              case other =>
-                // asynchronous!
-                logger.debug(s"ClusterSwitchOver: $other")
-                switchover = None
-                so.close()
-            }
-          }.map(_.map((_: Completed) => MasterCommand.Response.Accepted))
+      case cmd @ MasterCommand.ClusterSwitchOver =>
+        clusterSwitchOver(restart = true)
 
       case shutDown: MasterCommand.ShutDown =>
-        shutdown.start(shutDown)
-        Future.successful(Right(MasterCommand.Response.Accepted))
+        shutDown.clusterAction match {
+          case Some(MasterCommand.ShutDown.ClusterAction.Switchover) =>
+            clusterSwitchOver(restart = shutDown.restart)
+
+          case Some(MasterCommand.ShutDown.ClusterAction.Failover) =>
+            // TODO ClusterState.Coupled !
+            shutdown.start(shutDown)
+            Future.successful(Right(MasterCommand.Response.Accepted))
+
+          case None =>
+            cluster.shutDownThisNode
+              .flatTap {
+                case Right(Completed) => Task { self ! Internal.ShutDown(shutDown) }
+                case _ => Task.unit
+              }
+              .map(_.map((_: Completed) => MasterCommand.Response.Accepted))
+              .runToFuture
+        }
 
       case MasterCommand.IssueTestEvent =>
         persist(MasterTestEvent, async = true)(_ =>
@@ -910,6 +906,26 @@ with MainJournalingActor[Event]
   private def instruction(workflowPosition: WorkflowPosition): Instruction =
     repo.idTo[Workflow](workflowPosition.workflowId).orThrow.instruction(workflowPosition.position)
 
+  private def clusterSwitchOver(restart: Boolean)
+  : Future[Checked[MasterCommand.Response.Accepted.type]] =
+    if (switchover.isDefined)
+      Future.successful(Left(Problem("Already switching over")))
+    else {
+      val so = new Switchover(restart = restart)
+      switchover = Some(so)
+      so.start()
+        .guaranteeCase { exitCase =>
+          Task {
+            logger.debug(s"Switchover => $exitCase")
+            // asynchronous!
+            switchover = None
+            so.close()
+          }
+        }
+        .map(_.map((_: Completed) => MasterCommand.Response.Accepted))
+        .runToFuture
+    }
+
   override def toString = "MasterOrderKeeper"
 }
 
@@ -947,6 +963,7 @@ private[master] object MasterOrderKeeper
     final case class Ready(outcome: Checked[Completed])
     case object AfterProceedEventsAdded
     case object StillShuttingDown extends DeadLetterSuppression
+    final case class ShutDown(shutdown: MasterCommand.ShutDown)
   }
 
   private class AgentRegister extends ActorRegister[AgentRefPath, AgentEntry](_.actor) {

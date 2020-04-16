@@ -15,7 +15,7 @@ import com.sos.jobscheduler.data.order.OrderEvent.{OrderFinished, OrderProcessin
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
 import com.sos.jobscheduler.master.cluster.PassiveClusterNode
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
-import com.sos.jobscheduler.master.data.MasterCommand.ClusterSwitchOver
+import com.sos.jobscheduler.master.data.MasterCommand.{ClusterSwitchOver, ShutDown}
 import com.sos.jobscheduler.tests.master.cluster.MasterClusterTester._
 import java.nio.file.Files.size
 import monix.execution.Scheduler.Implicits.global
@@ -43,7 +43,9 @@ final class FailoverClusterTest extends MasterClusterTester
       primaryMaster.eventWatch.await[OrderProcessingStarted](_.key == orderId)
       backupMaster.eventWatch.await[OrderProcessingStarted](_.key == orderId)
       // KILL PRIMARY
-      primaryMaster.terminate() await 99.s
+      primaryMaster.executeCommandAsSystemUser(ShutDown(clusterAction = Some(ShutDown.ClusterAction.Failover)))
+        .await(99.s).orThrow
+      primaryMaster.terminated await 99.s
       assert(now < t + sleepWhileFailing, "The shell script should run while Master fails")
 
       val Stamped(failedOverEventId, _, NoKey <-: failedOver) =
@@ -61,7 +63,7 @@ final class FailoverClusterTest extends MasterClusterTester
       primaryMaster = primary.startMaster(httpPort = Some(primaryHttpPort)) await 99.s
       primaryMaster.eventWatch.await[ClusterCoupled](after = failedOverEventId)
       backupMaster.eventWatch.await[ClusterCoupled](after = failedOverEventId)
-      assertEqualJournalFiles(primary.master, backup.master, 1)
+      assertEqualJournalFiles(primary.master, backup.master, n = 1)
 
       backupMaster.executeCommandForTest(ClusterSwitchOver).orThrow
       val recoupledEventId = backupMaster.eventWatch.await[ClusterSwitchedOver](after = failedOverEventId).head.eventId

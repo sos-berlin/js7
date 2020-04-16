@@ -7,7 +7,7 @@ import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.base.utils.Strings._
 import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
+import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
 import com.sos.jobscheduler.data.cluster.ClusterSetting.checkUris
 import com.sos.jobscheduler.data.cluster.ClusterSetting.syntax._
 import com.sos.jobscheduler.data.cluster.ClusterState._
@@ -49,6 +49,11 @@ extends JournaledState[ClusterState, ClusterEvent]
           if state.activeId == event.failedActiveId && state.passiveId == event.activatedId =>
           Right(FailedOver(state.idToUri, event.activatedId, event.failedAt))
 
+        case (state: Coupled, ClusterActiveNodeShutDown) =>
+          Right(ActiveShutDown(state.idToUri, state.activeId))
+
+        case (state: ActiveShutDown, ClusterActiveNodeRestarted) =>
+          Right(PassiveLost(state.idToUri, state.activeId))
 
         case (_, keyedEvent) => eventNotApplicable(keyedEvent)
       }
@@ -123,6 +128,17 @@ object ClusterState
     override def toString = s"Coupled($nodesString)"
   }
 
+  /** The active node has shut down and will continue to be active when restarted.
+      The passive node must not fail-over.
+    */
+  final case class ActiveShutDown(idToUri: Map[Id, Uri], activeId: Id)
+  extends Decoupled
+  {
+    assertIsValid()
+
+    override def toString = s"ActiveShutDown($nodesString)"
+  }
+
   final case class PassiveLost(idToUri: Map[Id, Uri], activeId: Id)
   extends Decoupled
   {
@@ -154,6 +170,7 @@ object ClusterState
     Subtype(deriveCodec[NodesAppointed]),
     Subtype(deriveCodec[PreparedToBeCoupled]),
     Subtype(deriveCodec[Coupled]),
+    Subtype(deriveCodec[ActiveShutDown]),
     Subtype(deriveCodec[PassiveLost]),
     Subtype(deriveCodec[SwitchedOver]),
     Subtype(deriveCodec[FailedOver]))

@@ -18,6 +18,7 @@ import com.sos.jobscheduler.data.master.MasterFileBaseds.typedPathJsonDecoder
 import com.sos.jobscheduler.data.order.OrderId
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json, JsonObject}
+
 /**
   * @author Joacim Zschimmer
   */
@@ -94,18 +95,33 @@ object MasterCommand extends CommonCommand.Companion
   }
 
   /** Shut down the Master properly. */
-  final case class ShutDown(restart: Boolean = false) extends MasterCommand {
+  final case class ShutDown(
+    restart: Boolean = false,
+    clusterAction: Option[ShutDown.ClusterAction] = None)
+  extends MasterCommand {
     type Response = Response.Accepted
   }
   object ShutDown {
+    sealed trait ClusterAction
+    object ClusterAction {
+      case object Switchover extends ClusterAction
+      case object Failover extends ClusterAction
+      implicit val jsonCodec: TypedJsonCodec[ClusterAction] = TypedJsonCodec[ClusterAction](
+        Subtype(Switchover),
+        Subtype(Failover))
+    }
+
     implicit val jsonEncoder: Encoder.AsObject[ShutDown] = o =>
       JsonObject.fromIterable(
-        (o.restart).thenList("restart" -> Json.True))
+        o.restart.thenList("restart" -> Json.True) :::
+        ("clusterAction" -> o.clusterAction.asJson) ::
+        Nil)
 
     implicit val jsonDecoder: Decoder[ShutDown] = c =>
       for {
-        restart <- c.get[Option[Boolean]]("restart") map (_ getOrElse false)
-      } yield ShutDown(restart)
+        restart <- c.get[Option[Boolean]]("restart").map(_ getOrElse false)
+        cluster <- c.get[Option[ClusterAction]]("clusterAction")
+      } yield ShutDown(restart, cluster)
   }
 
   case object TakeSnapshot extends MasterCommand {

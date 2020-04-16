@@ -24,14 +24,24 @@ object MasterEvent
   final case class MasterReady(timezone: String, totalRunningTime: FiniteDuration)
   extends MasterEvent
 
-  sealed trait MasterShutDown extends MasterEvent
-  case object MasterShutDown extends MasterShutDown
+  final case class MasterShutDown(clusterAction: Option[MasterShutDown.ClusterAction] = None)
+  extends MasterEvent
+  object MasterShutDown {
+    sealed trait ClusterAction
+    object ClusterAction {
+      case object Failover extends ClusterAction
+      case object CompleteShutdown extends ClusterAction
+      implicit val jsonCodec: TypedJsonCodec[ClusterAction] = TypedJsonCodec[ClusterAction](
+        Subtype(Failover),
+        Subtype(CompleteShutdown))
+    }
+  }
 
   case object MasterTestEvent extends MasterEvent
 
   implicit val jsonCodec: TypedJsonCodec[MasterEvent] = TypedJsonCodec(
     Subtype(deriveCodec[MasterInitialized]),
     Subtype(deriveCodec[MasterReady]),
-    Subtype(MasterShutDown),
+    Subtype(deriveCodec[MasterShutDown]),
     Subtype(MasterTestEvent))
 }
