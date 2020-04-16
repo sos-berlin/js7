@@ -80,8 +80,10 @@ import scodec.bits.ByteVector
       assertThat(!stopped)  // Single-use only
 
       // Delete obsolete journal files left by last run
-      eventWatch.releaseEvents(
-        recoveredState.journalState.toReleaseEventId(recovered.eventId, journalConf.releaseEventsUserIds))
+      if (journalConf.deleteObsoleteFiles) {
+        eventWatch.releaseEvents(
+          recoveredState.journalState.toReleaseEventId(recovered.eventId, journalConf.releaseEventsUserIds))
+      }
 
       for (o <- recovered.recoveredJournalFile) {
         cutJournalFile(o.file, o.length, o.eventId)
@@ -365,8 +367,10 @@ import scodec.bits.ByteVector
                   tornLengthAndEventId = PositionAnd(replicatedFileLength/*After EventHeader, before SnapshotTaken, */, continuation.fileEventId),
                   flushedLengthAndEventId = PositionAnd(fileLength, builder.eventId))
                   // ??? Unfortunately not comparable: ensureEqualState(continuation, builder.state)
-                eventWatch.releaseEvents(
-                  builder.journalState.toReleaseEventId(eventWatch.lastFileTornEventId, journalConf.releaseEventsUserIds))
+                if (journalConf.deleteObsoleteFiles) {
+                  eventWatch.releaseEvents(
+                    builder.journalState.toReleaseEventId(eventWatch.lastFileTornEventId, journalConf.releaseEventsUserIds))
+                }
               }
             }
             //assertThat(fileLength == out.size, s"fileLength=$fileLength, out.size=${out.size}")  // Maybe slow
@@ -388,8 +392,10 @@ import scodec.bits.ByteVector
                 eventWatch.onEventsCommitted(PositionAnd(fileLength, builder.eventId), 1)
                 Observable.pure(Right(()))
               } else if (journalMeta.eventJsonCodec.isOfType[JournalEventsReleased](json)) {
-                eventWatch.releaseEvents(
-                  builder.journalState.toReleaseEventId(eventWatch.lastFileTornEventId, journalConf.releaseEventsUserIds))
+                if (journalConf.deleteObsoleteFiles) {
+                  eventWatch.releaseEvents(
+                    builder.journalState.toReleaseEventId(eventWatch.lastFileTornEventId, journalConf.releaseEventsUserIds))
+                }
                 Observable.pure(Right(()))
               } else if (json.toClass[ClusterEvent].isDefined)
                 json.as[ClusterEvent].orThrow match {
