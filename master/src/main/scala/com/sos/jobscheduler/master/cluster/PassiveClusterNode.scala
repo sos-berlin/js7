@@ -69,7 +69,7 @@ import scodec.bits.ByteVector
     stateBuilderAndAccessor.state
 
   /**
-    * Runs the passive mode until being activated or terminated.
+    * Runs the passive node until activated or terminated.
     * Returns also a `Task` with the current ClusterState while being passive or active.
     */
   def run(recoveredState: S)
@@ -102,10 +102,10 @@ import scodec.bits.ByteVector
               common.tryEndlesslyToSendCommand(activeUri, ClusterCouple(activeId = activeId, passiveId = ownId))
             case _: Coupled =>
               // After a quick restart of this passive node, the active node may not yet have noticed the loss.
-              // So we send a ClusterRecouple command to force a PassiveLost event.
+              // So we send a ClusterRecouple command to force a ClusterPassiveLost event.
               // Then the active node couples again with this passive node,
               // and we are sure to be coupled and up-to-date and may properly fail-over in case of an active node.
-              // The active node ignores this command if it has issued an PassiveLost event.
+              // The active node ignores this command if it has issued an ClusterPassiveLost event.
               awaitingCoupledEvent = true
               common.tryEndlesslyToSendCommand(activeUri, ClusterRecouple(activeId = activeId, passiveId = ownId))
           }

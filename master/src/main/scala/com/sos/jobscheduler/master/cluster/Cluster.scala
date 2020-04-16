@@ -118,7 +118,7 @@ final class Cluster(
     if (recovered.clusterState != Empty) {
       logger.debug(s"recoveredClusterState=${recovered.clusterState}")
     }
-    val (passiveState, followUp) = startCluster(recovered, recoveredState, eventIdGenerator)
+    val (passiveState, followUp) = startCluster(recovered, recoveredState)
     _currentClusterState = passiveState flatMap {
       case None => persistence.currentState
       case Some(o) => Task.pure(o.clusterState)
@@ -135,8 +135,7 @@ final class Cluster(
 
   private def startCluster(
     recovered: Recovered[MasterState, Event],
-    recoveredState: MasterState,
-    eventIdGenerator: EventIdGenerator)
+    recoveredState: MasterState)
   : (Task[Option[MasterState]], Task[Checked[(ClusterState, ClusterFollowUp[MasterState, Event])]])
   = {
     (recovered.clusterState, recovered.recoveredJournalFile) match {

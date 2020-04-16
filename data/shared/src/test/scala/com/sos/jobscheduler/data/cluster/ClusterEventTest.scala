@@ -38,7 +38,7 @@ final class ClusterEventTest extends AnyFreeSpec
       }""")
   }
 
-  "Coupled" in {
+  "ClusterCoupled" in {
     testJson[ClusterEvent](ClusterCoupled(ClusterNodeId("A")),
       json"""{
         "TYPE": "ClusterCoupled",
@@ -46,7 +46,7 @@ final class ClusterEventTest extends AnyFreeSpec
       }""")
   }
 
-  "SwitchedOver" in {
+  "ClusterSwitchedOver" in {
     testJson[ClusterEvent](ClusterSwitchedOver(Id("B")),
       json"""{
         "TYPE": "ClusterSwitchedOver",
@@ -54,8 +54,8 @@ final class ClusterEventTest extends AnyFreeSpec
       }""")
   }
 
-  "FailedOver" in {
-    testJson[ClusterEvent](ClusterFailedOver(Id("A"), Id("B"), JournalPosition(0, 1234)),
+  "ClusterFailedOver" in {
+    testJson[ClusterEvent](ClusterFailedOver(Id("A"), Id("B"), JournalPosition(EventId(0), 1234)),
       json"""{
         "TYPE": "ClusterFailedOver",
         "failedActiveId": "A",
@@ -67,7 +67,7 @@ final class ClusterEventTest extends AnyFreeSpec
       }""")
   }
 
-  "PassiveLost" in {
+  "ClusterPassiveLost" in {
     testJson[ClusterEvent](ClusterPassiveLost(Id("B")),
       json"""{
         "TYPE": "ClusterPassiveLost",

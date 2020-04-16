@@ -39,20 +39,19 @@ object ClusterConf
           Right(None)
         else if (isBackup)
           Left(Problem(s"Backup cluster node must node have a '$key' configuration"))
-        else {
-          val vector: Vector[Checked[(ClusterNodeId, Uri)]]/*Scala 2.12 requires type*/ =
-            config.getObject(key)
-              .asScala.toVector
-              .map { case (k, v) =>
-                v.unwrapped match {
-                  case v: String => ClusterNodeId.checked(k).flatMap(id => Uri.checked(v).map(id -> _))
-                  case _ => Left(Problem("A cluster node URI is expected to be configured as a string"))
-                }
+        else
+          config.getObject(key)
+            .asScala
+            .map { case (k, v) =>
+              v.unwrapped match {
+                case v: String => ClusterNodeId.checked(k).flatMap(id => Uri.checked(v).map(id -> _))
+                case _ => Left(Problem("A cluster node URI is expected to be configured as a string"))
               }
-          vector.sequence
+            }
+            .toVector
+            .sequence
             .flatMap(idToUri =>
               ClusterSetting.checkUris(idToUri.toMap) map Some.apply)
-        }
       }
       userAndPassword <- config.checkedOptionAs[SecretString]("jobscheduler.auth.cluster.password")
         .map(_.map(UserAndPassword(userId, _)))

@@ -91,7 +91,7 @@ final class ClusterStateTest extends AnyFreeSpec
 
     "FailedOver" in {
       testJson[ClusterState](
-        FailedOver(idToUri, ClusterNodeId("A"), JournalPosition(0, 1234)),
+        FailedOver(idToUri, ClusterNodeId("A"), JournalPosition(EventId(0), 1234)),
         json"""{
           "TYPE": "FailedOver",
           "idToUri": {
