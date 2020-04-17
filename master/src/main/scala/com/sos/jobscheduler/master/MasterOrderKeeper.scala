@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master
 
 import akka.actor.{ActorRef, DeadLetterSuppression, Stash, Status, Terminated}
 import akka.pattern.{ask, pipe}
-import cats.effect.SyncIO
+import cats.effect.{ExitCase, SyncIO}
 import cats.instances.either._
 import cats.instances.future._
 import cats.instances.vector._
@@ -914,11 +914,15 @@ with MainJournalingActor[Event]
       val so = new Switchover(restart = restart)
       switchover = Some(so)
       so.start()
+        .materialize.flatTap {
+          case Success(Right(_)) => Task.unit  // this.switchover is left postStop
+          case _ => Task {
+            switchover = None  // Asynchronous!
+          }
+        }.dematerialize
         .guaranteeCase { exitCase =>
           Task {
             logger.debug(s"Switchover => $exitCase")
-            // asynchronous!
-            switchover = None
             so.close()
           }
         }
