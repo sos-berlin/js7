@@ -64,12 +64,12 @@ final class ForkTest extends AnyFreeSpec with MasterAgentForScalaTest
     assert(master.eventWatch.await[OrderBroken](_.key == order.id).head.value.event == expectedBroken)
 
     master.executeCommandAsSystemUser(CancelOrder(order.id, CancelMode.FreshOrStarted)).await(99.s).orThrow
-    master.eventWatch.await[OrderCanceled](_.key == order.id)
+    master.eventWatch.await[OrderCancelled](_.key == order.id)
     assert(master.eventWatch.keyedEvents[OrderEvent](order.id) == Vector(
       OrderAdded(TestWorkflow.id, None, order.arguments),
       OrderStarted,
       expectedBroken,
-      OrderCanceled))
+      OrderCancelled))
 
     master.terminate() await 99.s
     // Kill SLOW job

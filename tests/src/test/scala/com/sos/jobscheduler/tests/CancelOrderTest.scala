@@ -8,7 +8,7 @@ import com.sos.jobscheduler.core.problems.{CancelStartedOrderProblem, UnknownOrd
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancelationMarked, OrderCanceled, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancellationMarked, OrderCancelled, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.Execute
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
@@ -41,15 +41,15 @@ final class CancelOrderTest extends AnyFreeSpec with MasterAgentForScalaTest
     master.addOrderBlocking(order)
     master.eventWatch.await[OrderTransferredToAgent](_.key == order.id)
     master.executeCommandAsSystemUser(CancelOrder(order.id, CancelMode.NotStarted)).await(99.seconds).orThrow
-    master.eventWatch.await[OrderCanceled](_.key == order.id)
+    master.eventWatch.await[OrderCancelled](_.key == order.id)
     assert(master.eventWatch.keyedEvents[OrderEvent](order.id) == Vector(
       OrderAdded(SingleJobWorkflow.id, order.scheduledFor),
       OrderAttachable(TestAgentRefPath),
       OrderTransferredToAgent(TestAgentRefPath),
-      OrderCancelationMarked(CancelMode.NotStarted),
+      OrderCancellationMarked(CancelMode.NotStarted),
       OrderDetachable,
       OrderTransferredToMaster,
-      OrderCanceled))
+      OrderCancelled))
   }
 
   "Cancel a finishing order" in {
@@ -64,7 +64,7 @@ final class CancelOrderTest extends AnyFreeSpec with MasterAgentForScalaTest
       OrderTransferredToAgent(TestAgentRefPath),
       OrderStarted,
       OrderProcessingStarted,
-      OrderCancelationMarked(CancelMode.FreshOrStarted),
+      OrderCancellationMarked(CancelMode.FreshOrStarted),
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(1)),
       OrderDetachable,
@@ -72,7 +72,7 @@ final class CancelOrderTest extends AnyFreeSpec with MasterAgentForScalaTest
       OrderFinished))
   }
 
-  "Canceling (mode=NotStarted) a started order is not possible" in {
+  "Cancelling (mode=NotStarted) a started order is not possible" in {
     val order = FreshOrder(OrderId("❌"), TwoJobsWorkflow.id.path)
     master.addOrderBlocking(order)
     master.eventWatch.await[OrderProcessingStarted](_.key == order.id)
@@ -86,19 +86,19 @@ final class CancelOrderTest extends AnyFreeSpec with MasterAgentForScalaTest
     master.addOrderBlocking(order)
     master.eventWatch.await[OrderProcessingStarted](_.key == order.id)
     master.executeCommandAsSystemUser(CancelOrder(order.id, CancelMode.FreshOrStarted)).await(99.seconds).orThrow
-    master.eventWatch.await[OrderCanceled](_.key == order.id)
+    master.eventWatch.await[OrderCancelled](_.key == order.id)
     assert(master.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
       OrderAdded(TwoJobsWorkflow.id, order.scheduledFor),
       OrderAttachable(TestAgentRefPath),
       OrderTransferredToAgent(TestAgentRefPath),
       OrderStarted,
       OrderProcessingStarted,
-      OrderCancelationMarked(CancelMode.FreshOrStarted),
+      OrderCancellationMarked(CancelMode.FreshOrStarted),
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(1)),
       OrderDetachable,
       OrderTransferredToMaster,
-      OrderCanceled))
+      OrderCancelled))
   }
 
   "Cancel unknown order" in {
@@ -112,7 +112,7 @@ final class CancelOrderTest extends AnyFreeSpec with MasterAgentForScalaTest
     for (o <- orders) master.eventWatch.await[OrderTransferredToAgent](_.key == o.id)
     val response = master.executeCommandAsSystemUser(Batch(for (o <- orders) yield CancelOrder(o.id, CancelMode.NotStarted))).await(99.seconds).orThrow
     assert(response == Batch.Response(Vector.fill(orders.length)(Right(Response.Accepted))))
-    for (o <- orders) master.eventWatch.await[OrderCanceled](_.key == o.id)
+    for (o <- orders) master.eventWatch.await[OrderCancelled](_.key == o.id)
   }
 }
 

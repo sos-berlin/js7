@@ -13,7 +13,7 @@ import com.sos.jobscheduler.data.event.{Event, EventId, JournalEvent, JournaledS
 import com.sos.jobscheduler.data.filebased.RepoEvent
 import com.sos.jobscheduler.data.master.MasterFileBaseds
 import com.sos.jobscheduler.data.master.MasterFileBaseds.MasterTypedPathCompanions
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCanceled, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderStdWritten}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.master.data.MasterSnapshots.MasterMetaState
 import com.sos.jobscheduler.master.data.agent.{AgentEventIdEvent, AgentSnapshot}
@@ -93,7 +93,7 @@ extends JournaledState[MasterState, Event]
           else
             Right(copy(idToOrder = idToOrder + (orderId -> Order.fromOrderAdded(orderId, event))))
 
-        case OrderFinished | OrderCanceled =>
+        case OrderFinished | OrderCancelled =>
           Right(copy(idToOrder = idToOrder - orderId))
 
         case event: OrderCoreEvent =>

@@ -81,7 +81,7 @@ extends KeyedJournalingActor[OrderEvent]
 
     case command: Command =>
       command match {
-        case Command.Attach(attached @ Order(`orderId`, workflowPosition, state: Order.IsFreshOrReady, arguments, historicOutcomes, Some(Order.Attached(agentRefPath)), parent, cancelationMarked/*???*/)) =>
+        case Command.Attach(attached @ Order(`orderId`, workflowPosition, state: Order.IsFreshOrReady, arguments, historicOutcomes, Some(Order.Attached(agentRefPath)), parent, cancellationMarked/*???*/)) =>
           becomeAsStateOf(attached, force = true)
           persist(OrderAttached(arguments, workflowPosition, state, historicOutcomes, parent, agentRefPath)) { event =>
             update(event)
@@ -222,7 +222,7 @@ extends KeyedJournalingActor[OrderEvent]
 
       case Right(updated) =>
         becomeAsStateOf(updated)
-        if (event.isInstanceOf[OrderCancelationMarked] && updated == order)  // Duplicate, already canceling with same CancelMode?
+        if (event.isInstanceOf[OrderCancellationMarked] && updated == order)  // Duplicate, already cancelling with same CancelMode?
           Future.successful(Completed)
         else
           persist(event) { event =>
@@ -251,7 +251,7 @@ extends KeyedJournalingActor[OrderEvent]
         case _: Order.FailedWhileFresh => become("stoppedWhileFresh")(failedOrBroken)
         case _: Order.FailedInFork => become("failedInFork")(failedOrBroken)
         case _: Order.Broken     => become("broken")(failedOrBroken)
-        case _: Order.Awaiting | _: Order.Finished | Order.Canceled =>
+        case _: Order.Awaiting | _: Order.Finished | Order.Cancelled =>
           sys.error(s"Order is expected to be on Master, not on Agent: ${order.state}")   // A Finished order must be at Master
       }
     }

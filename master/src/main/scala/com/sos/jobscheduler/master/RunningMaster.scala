@@ -314,23 +314,23 @@ object RunningMaster
       closer onClose { deleteIfExists(sessionTokenFile) }
     }
 
-    /** @return Task(None) when canceled. */
+    /** @return Task(None) when cancelled. */
     private def startCluster(
       cluster: Cluster,
       recovered: Recovered[MasterState, Event])
     : (Task[Option[MasterState]], Task[Either[MasterTermination.Terminate, ClusterFollowUp[MasterState, Event]]]) =
     {
-      class StartingClusterCanceledException extends NoStackTrace
+      class StartingClusterCancelledException extends NoStackTrace
       val recoveredState = recovered.recoveredState getOrElse MasterState.Undefined
       val (passiveState, followUpTask) = cluster.start(recovered, recoveredState)
       passiveState ->
         followUpTask
           .doOnCancel(Task { logger.debug("Cancel Cluster") })
-          .onCancelRaiseError(new StartingClusterCanceledException)
+          .onCancelRaiseError(new StartingClusterCancelledException)
           .map(_.orThrow)
           .map(Right.apply)
           .onErrorRecoverWith {
-            case _: StartingClusterCanceledException => Task { Left(clusterStartupTermination) }
+            case _: StartingClusterCancelledException => Task { Left(clusterStartupTermination) }
           }
     }
 

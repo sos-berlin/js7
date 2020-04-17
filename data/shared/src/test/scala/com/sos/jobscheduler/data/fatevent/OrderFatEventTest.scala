@@ -136,12 +136,12 @@ final class OrderFatEventTest extends AnyFreeSpec {
     )
   }
 
-  "OrderCanceledFat" in {
+  "OrderCancelledFat" in {
     testJson[OrderFatEvent](
-      OrderCanceledFat(
+      OrderCancelledFat(
         (WorkflowPath("/WORKFLOW") ~ "VERSION") /: Position(99)),
       json"""{
-        "TYPE": "OrderCanceledFat",
+        "TYPE": "OrderCancelledFat",
         "workflowPosition": {
           "workflowId": {
             "path": "/WORKFLOW",

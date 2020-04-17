@@ -23,12 +23,12 @@ final class MasterCommandExecutorTest extends AnyFreeSpec
   private val meta = CommandMeta(SimpleUser(UserId("USER")))
 
   private val otherCommandExecutor = new CommandExecutor[MasterCommand] {
-    var canceled = 0
+    var cancelled = 0
 
     def executeCommand(command: MasterCommand, meta: CommandMeta): Task[Either[Problem, command.Response]] =
       (command, meta) match {
         case (`cancelOrder`, `meta`) =>
-          canceled += 1
+          cancelled += 1
           Task.pure(Right(Response.Accepted.asInstanceOf[command.Response]))
         case (NoOperation, `meta`) =>
           Task.pure(Right(Response.Accepted.asInstanceOf[command.Response]))
@@ -45,13 +45,13 @@ final class MasterCommandExecutorTest extends AnyFreeSpec
 
   "CancelOrder" in {
     assert(commandExecutor.executeCommand(cancelOrder, meta).await(99.seconds) == Right(Response.Accepted))
-    assert(otherCommandExecutor.canceled == 1)
+    assert(otherCommandExecutor.cancelled == 1)
   }
 
   "Batch" in {
     assert(commandExecutor.executeCommand(Batch(NoOperation :: ReleaseEvents(999) :: cancelOrder :: Nil), meta).await(99.seconds) ==
       Right(Batch.Response(Right(Response.Accepted) :: Left(Problem("COMMAND NOT IMPLEMENTED")) :: Right(Response.Accepted) :: Nil)))
-    assert(otherCommandExecutor.canceled == 2)
+    assert(otherCommandExecutor.cancelled == 2)
   }
 
   "detailed" in {

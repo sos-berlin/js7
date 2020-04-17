@@ -9,7 +9,7 @@ import com.sos.jobscheduler.core.problems.{CancelChildOrderProblem, CancelStarte
 import com.sos.jobscheduler.core.workflow.instructions.{ForkExecutor, InstructionExecutor}
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderDetachable, OrderFailed, OrderFailedCatchable, OrderFailedInFork, OrderMoved}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCatched, OrderDetachable, OrderFailed, OrderFailedCatchable, OrderFailedInFork, OrderMoved}
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.{End, Fork, Goto, IfFailedGoto, Retry, TryInstruction}
 import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
@@ -53,7 +53,7 @@ final class OrderEventSource(
     joinedEvent(order) flatMap {
       case Some(o) => Right(Some(o))
       case None =>
-        awokeEvent(order) orElse canceledEvent(order) match {
+        awokeEvent(order) orElse cancelledEvent(order) match {
           case Some(event) => Right(Some(order.id <-: event))
           case None => checkedNextEvent2(order)
         }
@@ -128,14 +128,14 @@ final class OrderEventSource(
     order.ifState[Order.DelayedAfterError]
       .map(_ => OrderAwoke)  // AgentOrderKeeper has already checked time
 
-  /** Returns `Some(OrderDetachable | OrderCanceled)` iff order is marked as cancelable and order is in a cancelable state. */
-  private def canceledEvent(order: Order[Order.State]): Option[OrderActorEvent] =
+  /** Returns `Some(OrderDetachable | OrderCancelled)` iff order is marked as cancelable and order is in a cancelable state. */
+  private def cancelledEvent(order: Order[Order.State]): Option[OrderActorEvent] =
     if (isOrderCancelable(order))
-      (order.isAttached ? OrderDetachable) orElse (order.isDetached ? OrderCanceled)
+      (order.isAttached ? OrderDetachable) orElse (order.isDetached ? OrderCancelled)
     else
       None
 
-  /** Returns a `Right(Some(OrderCanceled | OrderCancelationMarked))` iff order is not already marked as cancelable. */
+  /** Returns a `Right(Some(OrderCancelled | OrderCancellationMarked))` iff order is not already marked as cancelable. */
   def cancel(orderId: OrderId, mode: CancelMode, isAgent: Boolean): Checked[Option[OrderActorEvent]] =
     idToOrder.checked(orderId) flatMap (order =>
       if (order.parent.isDefined)
@@ -143,16 +143,16 @@ final class OrderEventSource(
       else if (mode == CancelMode.NotStarted && order.isStarted)
         Left(CancelStartedOrderProblem(orderId))
       else if (order.cancel.nonEmpty)
-        Right(None)  // Already marked as being canceled
+        Right(None)  // Already marked as being cancelled
       else if (isAgent)
         if (isOrderCancelable(order, mode))
           Right(Some(OrderDetachable))
         else
-          Right(Some(OrderCancelationMarked(mode)))
+          Right(Some(OrderCancellationMarked(mode)))
       else if (order.isDetached && isOrderCancelable(order, mode))
-        Right(Some(OrderCanceled))
+        Right(Some(OrderCancelled))
       else
-        Right(Some(OrderCancelationMarked(mode))))
+        Right(Some(OrderCancellationMarked(mode))))
 
   def isOrderCancelable(order: Order[Order.State]): Boolean =
     order.cancel match {
@@ -170,7 +170,7 @@ final class OrderEventSource(
     ) &&
       (order.isDetached || order.isAttached) &&
       order.parent.isEmpty &&
-      !instruction(order.workflowPosition).isInstanceOf[End]  // End reached? Then normal OrderFinished (not OrderCanceled)
+      !instruction(order.workflowPosition).isInstanceOf[End]  // End reached? Then normal OrderFinished (not OrderCancelled)
 
   private def applyMoveInstructions(orderId: OrderId, orderMoved: OrderMoved): Checked[KeyedEvent[OrderMoved]] =
     for (pos <- applyMoveInstructions(idToOrder(orderId).withPosition(orderMoved.to)))

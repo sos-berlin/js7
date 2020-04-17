@@ -12,11 +12,11 @@ final class GrowingFileObservable(file: Path, pollDuration: Option[FiniteDuratio
 extends Observable[ByteVector]
 {
   def unsafeSubscribeFn(subscriber: Subscriber[ByteVector]): Cancelable = {
-    @volatile var canceled = false
+    @volatile var cancelled = false
     val reader = new ByteVectorReader(file, fromEnd = pollDuration.isDefined)
 
     def continue(): Unit =
-      if (canceled) {
+      if (cancelled) {
         reader.close()
       } else {
         val chunk = reader.read()
@@ -47,6 +47,6 @@ extends Observable[ByteVector]
 
     continue()
 
-    () => canceled = true
+    () => cancelled = true
   }
 }

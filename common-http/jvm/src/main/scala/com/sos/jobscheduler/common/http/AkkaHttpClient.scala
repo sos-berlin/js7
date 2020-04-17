@@ -140,7 +140,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
       val headers = if (suppressSessionToken) None else sessionToken map (token => RawHeader(SessionToken.HeaderName, token.secret.string))
       val req = encodeGzip(request.withHeaders(headers ++: request.headers ++: standardHeaders))
       loggingTimerResource(request, logData).use { _ =>
-        @volatile var canceled = false
+        @volatile var cancelled = false
         var since = now
         var responseFuture: Future[HttpResponse] = null
         Task.deferFutureAction { implicit s =>
@@ -150,22 +150,22 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
           val httpsContext = if (request.uri.scheme == "https") httpsConnectionContext else http.defaultClientHttpsContext
           responseFuture = http.singleRequest(req, httpsContext)
           responseFuture.recover {
-            case t if canceled =>
+            case t if cancelled =>
               logger.debug(s"Error after cancel: ${t.toStringWithCauses}")
               // Fake response to avoid completing Future with a Failure, which is logged by thread's reportFailure
               // TODO Akka's max-open-requests may be exceeded when new requests are opened
-              //  while many canceled request are still not completed by Akka until some Akka (connection) timeout.
+              //  while many cancelled request are still not completed by Akka until some Akka (connection) timeout.
               //  Anyway, the caller's code should be fault-tolerant.
               HttpResponse(
                 StatusCodes.GatewayTimeout,
-                entity = HttpEntity.Strict(`text/plain(UTF-8)`, ByteString("Canceled in AkkaHttpClient")))
+                entity = HttpEntity.Strict(`text/plain(UTF-8)`, ByteString("Cancelled in AkkaHttpClient")))
           }
         } .guaranteeCase(exitCase => Task {
             logger.trace(s"$toString: recv ${requestToString(request, logData)} ${since.elapsed.pretty} => $exitCase")
           })
           .doOnCancel(Task.defer {
-            // TODO Canceling does not cancel the ongoing Akka operation. Akka is not freeing the connection.
-            canceled = true
+            // TODO Cancelling does not cancel the ongoing Akka operation. Akka is not freeing the connection.
+            cancelled = true
             discardResponse(request, logData, responseFuture)
           })
           .materialize.map { tried =>

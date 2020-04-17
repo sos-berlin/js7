@@ -184,9 +184,9 @@ with ReceiveLoggingActor.WithStash
     case Input.StartFetchingEvents | Internal.FetchEvents =>
       assert(currentFetchedFuture.isEmpty, "Duplicate fetchEvents")
       currentFetchedFuture = Some(
-        observeAndConsumeEventsUntilCanceled
+        observeAndConsumeEventsUntilCancelled
           .executeWithOptions(_.enableAutoCancelableRunLoops)
-          .onCancelRaiseError(CanceledMarker)
+          .onCancelRaiseError(CancelledMarker)
           .runToFuture
           .andThen {
             case tried => self ! Internal.FetchFinished(tried)
@@ -248,7 +248,7 @@ with ReceiveLoggingActor.WithStash
       ).runToFuture
         .onComplete { _ =>
           tried match {
-            case Failure(CanceledMarker) =>  // Internal.UriChanged handles this case
+            case Failure(CancelledMarker) =>  // Internal.UriChanged handles this case
             case _ => self ! Internal.FetchEvents
           }
         }
@@ -270,9 +270,9 @@ with ReceiveLoggingActor.WithStash
         context.parent ! Output.OrdersDetached(detachedOrderIds.toSet)
       }
 
-      val canceledOrderIds = succeededInputs collect { case o: Input.CancelOrder => o.orderId }
-      if (canceledOrderIds.nonEmpty) {
-        context.parent ! Output.OrdersCancelationMarked(canceledOrderIds.toSet)
+      val cancelledOrderIds = succeededInputs collect { case o: Input.CancelOrder => o.orderId }
+      if (cancelledOrderIds.nonEmpty) {
+        context.parent ! Output.OrdersCancelationMarked(cancelledOrderIds.toSet)
       }
 
       val releaseEvents = succeededInputs collect { case o: ReleaseEventsQueueable => o }
@@ -306,7 +306,7 @@ with ReceiveLoggingActor.WithStash
           }
     }
 
-  protected def observeAndConsumeEventsUntilCanceled: Task[Completed] =
+  protected def observeAndConsumeEventsUntilCancelled: Task[Completed] =
     eventFetcher.observe(client, after = lastEventId)
       //.map { a => logEvent(a); a }
       .bufferTimedAndCounted(
@@ -413,5 +413,5 @@ private[master] object AgentDriver
     final case class UriChanged(uri: Uri) extends DeadLetterSuppression
   }
 
-  private object CanceledMarker extends Exception with NoStackTrace
+  private object CancelledMarker extends Exception with NoStackTrace
 }

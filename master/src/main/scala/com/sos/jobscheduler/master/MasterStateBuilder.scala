@@ -12,7 +12,7 @@ import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, JournalEvent, JournalState, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.RepoEvent
 import com.sos.jobscheduler.data.master.MasterFileBaseds
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCanceled, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderStdWritten}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.master.data.MasterSnapshots.MasterMetaState
@@ -95,7 +95,7 @@ extends JournaledStateBuilder[MasterState, Event]
         case event: OrderAdded =>
           idToOrder.insert(orderId -> Order.fromOrderAdded(orderId, event))
 
-        case OrderFinished | OrderCanceled =>
+        case OrderFinished | OrderCancelled =>
           idToOrder -= orderId
 
         case event: OrderCoreEvent =>

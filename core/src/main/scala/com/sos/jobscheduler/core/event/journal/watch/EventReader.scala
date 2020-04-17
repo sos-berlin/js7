@@ -106,7 +106,7 @@ extends AutoCloseable
         iteratorAtomic.get match {
           case null =>
             logger.debug(JsonSeqFileClosedProblem(iteratorName).toString)
-            eof = true  // EOF to avoid exception logging (when closed (canceled) asynchronously before hasNext, but not before `next`).
+            eof = true  // EOF to avoid exception logging (when closed (cancelled) asynchronously before hasNext, but not before `next`).
             false
           case iterator =>
             val has = iterator.hasNext

@@ -161,13 +161,13 @@ object OrderEvent {
   type OrderFinished = OrderFinished.type
   case object OrderFinished extends OrderActorEvent with OrderTerminated
 
-  /** A OrderCancelationMarked on Agent is different from same Event on Master.
-    * Master will ignore the Agent's OrderCancelationMarked.
+  /** A OrderCancellationMarked on Agent is different from same Event on Master.
+    * Master will ignore the Agent's OrderCancellationMarked.
     * Master should have issued the event independendly. **/
-  final case class OrderCancelationMarked(mode: CancelMode) extends OrderActorEvent
+  final case class OrderCancellationMarked(mode: CancelMode) extends OrderActorEvent
 
-  type OrderCanceled = OrderCanceled.type
-  case object OrderCanceled extends OrderActorEvent with OrderTerminated
+  type OrderCancelled = OrderCancelled.type
+  case object OrderCancelled extends OrderActorEvent with OrderTerminated
 
   implicit val jsonCodec = TypedJsonCodec[OrderEvent](
     Subtype[OrderAdded],
@@ -187,8 +187,8 @@ object OrderEvent {
     Subtype(OrderFinished),
     Subtype(deriveCodec[OrderFailed]),
     Subtype(deriveCodec[OrderFailedInFork]),
-    Subtype(deriveCodec[OrderCancelationMarked]),
-    Subtype(OrderCanceled),
+    Subtype(deriveCodec[OrderCancellationMarked]),
+    Subtype(OrderCancelled),
     Subtype(deriveCodec[OrderTransferredToAgent]),
     Subtype(OrderTransferredToMaster),
     Subtype(deriveCodec[OrderAttached]),

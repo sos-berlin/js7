@@ -589,7 +589,7 @@ final class Cluster(
       future.onComplete {
         case Success(Left(_: MissingPassiveClusterNodeHeartbeatProblem)) =>
         case tried =>
-          // Completes only when not canceled and then it is a failure
+          // Completes only when not cancelled and then it is a failure
           fetchingAcksTerminatedUnexpectedlyPromise.complete(tried)
       }
     }

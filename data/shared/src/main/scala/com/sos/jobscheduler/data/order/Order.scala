@@ -180,14 +180,14 @@ final case class Order[+S <: Order.State](
                               isState[FailedWhileFresh] || isState[Failed] || isState[FailedInFork] || isState[Broken]),
           copy(attachedState = None))
 
-      case OrderCancelationMarked(mode) =>
+      case OrderCancellationMarked(mode) =>
         check(!isState[IsFinal] && !isDetaching,
           copy(cancel = Some(mode)))
 
-      case OrderCanceled =>
+      case OrderCancelled =>
         check((isState[IsFreshOrReady] || isState[DelayedAfterError] || isState[FailedWhileFresh] || isState[Failed] || isState[Broken])
             && isDetached,
-          copy(state = Canceled))
+          copy(state = Cancelled))
     }
   }
 
@@ -363,8 +363,8 @@ object Order
   type Finished = Finished.type
   case object Finished extends IsStarted with IsFinal
 
-  type Canceled = Canceled.type
-  case object Canceled extends IsFinal
+  type Cancelled = Cancelled.type
+  case object Cancelled extends IsFinal
 
   implicit val FreshOrReadyJsonCodec: TypedJsonCodec[IsFreshOrReady] = TypedJsonCodec[IsFreshOrReady](
     Subtype(deriveCodec[Fresh]),
@@ -382,7 +382,7 @@ object Order
     Subtype(deriveCodec[Failed]),
     Subtype(deriveCodec[FailedInFork]),
     Subtype(Finished),
-    Subtype(Canceled),
+    Subtype(Cancelled),
     Subtype(deriveCodec[Broken]))
 
   implicit val jsonEncoder: Encoder.AsObject[Order[State]] = order =>

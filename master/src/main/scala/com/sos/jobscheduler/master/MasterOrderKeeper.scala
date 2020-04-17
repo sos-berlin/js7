@@ -45,7 +45,7 @@ import com.sos.jobscheduler.data.event.{<-:, Event, EventId, JournalState, Keyed
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
 import com.sos.jobscheduler.data.filebased.{FileBased, RepoEvent, TypedPath}
 import com.sos.jobscheduler.data.master.MasterFileBaseds
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderBroken, OrderCancelationMarked, OrderCoreEvent, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderBroken, OrderCancellationMarked, OrderCoreEvent, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.problems.UserIsNotEnabledToReleaseEventsProblem
 import com.sos.jobscheduler.data.workflow.instructions.Execute
@@ -483,7 +483,7 @@ with MainJournalingActor[Event]
             // TODO Event vor dem Speichern mit Order.applyEvent ausprobieren! Bei Fehler ignorieren?
             lastAgentEventId = Some(agentEventId)
             keyedEvent match {
-              case KeyedEvent(_, _: OrderCancelationMarked) =>  // We (the Master) issue our own OrderCancelationMarked
+              case KeyedEvent(_, _: OrderCancellationMarked) =>  // We (the Master) issue our own OrderCancellationMarked
                 None
 
               case KeyedEvent(orderId: OrderId, event: OrderEvent) =>

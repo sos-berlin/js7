@@ -8,8 +8,8 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Canceled, DelayedAfterError, Detaching, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, IsFreshOrReady, Offering, Processed, Processing, Ready, State}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Cancelled, DelayedAfterError, Detaching, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, IsFreshOrReady, Offering, Processed, Processing, Ready, State}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.instructions.Fork
 import com.sos.jobscheduler.data.workflow.position.BranchId.Then
@@ -245,8 +245,8 @@ final class OrderTest extends AnyFreeSpec
       OrderFailedInFork(Outcome.Failed(ReturnCode(1))),
       OrderFinished,
 
-      OrderCancelationMarked(CancelMode.NotStarted),
-      OrderCanceled,
+      OrderCancellationMarked(CancelMode.NotStarted),
+      OrderCancelled,
       OrderBroken(Problem("Problem")),
 
       OrderDetachable,
@@ -267,8 +267,8 @@ final class OrderTest extends AnyFreeSpec
           case (_: OrderMoved            , `detached` | `attached`              ) => _.isInstanceOf[Fresh]
           case (_: OrderFailed           , `detached` | `attached`)               => _.isInstanceOf[FailedWhileFresh]  // Expression error
           case (_: OrderStarted          , `detached` | `attached`              ) => _.isInstanceOf[Ready]
-          case (_: OrderCancelationMarked, `detached` | `attaching` | `attached`) => _.isInstanceOf[Fresh]
-          case (OrderCanceled            , `detached`                           ) => _.isInstanceOf[Canceled]
+          case (_: OrderCancellationMarked, `detached` | `attaching` | `attached`) => _.isInstanceOf[Fresh]
+          case (OrderCancelled           , `detached`                           ) => _.isInstanceOf[Cancelled]
           case (_: OrderBroken           , _                                    ) => _.isInstanceOf[Broken]
         })
     }
@@ -288,7 +288,7 @@ final class OrderTest extends AnyFreeSpec
           case (_: OrderFailed           , `detached` | `attached`) => _.isInstanceOf[Failed]
           case (_: OrderRetrying         , `detached` | `attached`) => _.isInstanceOf[Ready]
           case (_: OrderFinished         , `detached`             ) => _.isInstanceOf[Finished]
-          case (OrderCanceled            , `detached`             ) => _.isInstanceOf[Canceled]
+          case (OrderCancelled           , `detached`             ) => _.isInstanceOf[Cancelled]
           case (_: OrderBroken           , _                      ) => _.isInstanceOf[Broken]
         })
     }
@@ -318,7 +318,7 @@ final class OrderTest extends AnyFreeSpec
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Failed(ReturnCode(1))) :: Nil),
         detachingAllowed[FailedWhileFresh] orElse
         cancelationMarkingAllowed[FailedWhileFresh] orElse {
-          case (OrderCanceled , `detached`) => _.isInstanceOf[Canceled]
+          case (OrderCancelled, `detached`) => _.isInstanceOf[Cancelled]
           case (_: OrderBroken, _         ) => _.isInstanceOf[Broken]
         })
     }
@@ -328,7 +328,7 @@ final class OrderTest extends AnyFreeSpec
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Failed(ReturnCode(1))) :: Nil),
         detachingAllowed[Failed] orElse
         cancelationMarkingAllowed[Failed] orElse {
-          case (OrderCanceled , `detached`) => _.isInstanceOf[Canceled]
+          case (OrderCancelled, `detached`) => _.isInstanceOf[Cancelled]
           case (_: OrderBroken, _         ) => _.isInstanceOf[Broken]
         })
     }
@@ -343,7 +343,7 @@ final class OrderTest extends AnyFreeSpec
       checkAllEvents(Order(orderId, workflowId, DelayedAfterError(Timestamp("2019-03-07T12:00:00Z"))),
         cancelationMarkingAllowed[DelayedAfterError] orElse {
           case (OrderAwoke    , `attached`) => _.isInstanceOf[Order.Ready]
-          case (OrderCanceled , `detached`) => _.isInstanceOf[Canceled]
+          case (OrderCancelled, `detached`) => _.isInstanceOf[Cancelled]
           case (_: OrderBroken, _         ) => _.isInstanceOf[Broken]
         })
     }
@@ -352,7 +352,7 @@ final class OrderTest extends AnyFreeSpec
       checkAllEvents(Order(orderId, workflowId, Broken(Problem("PROBLEM"))),
         detachingAllowed[Broken] orElse
         cancelationMarkingAllowed[Broken] orElse {
-          case (OrderCanceled , `detached`) => _.isInstanceOf[Canceled]
+          case (OrderCancelled, `detached`) => _.isInstanceOf[Cancelled]
           case (_: OrderBroken, _         ) => _.isInstanceOf[Broken]
         })
     }
@@ -390,7 +390,7 @@ final class OrderTest extends AnyFreeSpec
     type ToPredicate = PartialFunction[(OrderEvent, Option[AttachedState]), State => Boolean]
 
     def cancelationMarkingAllowed[S <: Order.State: ClassTag]: ToPredicate = {
-      case (_: OrderCancelationMarked, `detached` | `attaching` | `attached`) => implicitClass[S] isAssignableFrom _.getClass
+      case (_: OrderCancellationMarked, `detached` | `attaching` | `attached`) => implicitClass[S] isAssignableFrom _.getClass
     }
 
     def attachingAllowed[S <: Order.State: ClassTag]: ToPredicate = {
