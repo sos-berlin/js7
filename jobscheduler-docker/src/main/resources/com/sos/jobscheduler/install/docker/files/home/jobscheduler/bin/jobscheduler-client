@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -e
+
+data=/var/opt/jobscheduler/master/data
+
+exec /opt/jobscheduler/bin/jobscheduler-client -data-directory="$data" "$@"
