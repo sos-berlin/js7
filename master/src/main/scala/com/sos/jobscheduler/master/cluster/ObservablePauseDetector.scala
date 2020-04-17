@@ -14,7 +14,7 @@ private[cluster] object ObservablePauseDetector
         Observable.intervalWithFixedDelay(notShorterThan, notShorterThan).map(_ => Tick)
       ).merge
         .scan[Element[A]](Tick) {
-          case (Tick, Tick) => Expired
+          case (Tick | Expired, Tick) => Expired
           case (_, Tick) => Tick
           case (_, data: Data[A @unchecked]) => data
         }
