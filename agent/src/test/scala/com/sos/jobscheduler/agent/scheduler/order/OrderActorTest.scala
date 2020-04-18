@@ -3,6 +3,7 @@ package com.sos.jobscheduler.agent.scheduler.order
 import akka.actor.{Actor, ActorRef, PoisonPill, Props, Terminated}
 import akka.pattern.{ask, pipe}
 import akka.util.Timeout
+import com.sos.jobscheduler.agent.AgentState
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newAgentActorSystem
 import com.sos.jobscheduler.agent.data.AgentTaskId
@@ -45,11 +46,11 @@ import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Assertions._
 import org.scalatest.BeforeAndAfterAll
+import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
@@ -161,7 +162,7 @@ private object OrderActorTest {
       dir / "data" / "state" / "agent")
 
     private val journalActor = actorOf(
-      JournalActor.props(journalMeta, JournalConf.fromConfig(config), new StampedKeyedEventBus, Scheduler.global, new EventIdGenerator),
+      JournalActor.props[AgentState](journalMeta, JournalConf.fromConfig(config), new StampedKeyedEventBus, Scheduler.global, new EventIdGenerator),
       "Journal")
     private val eventWatch = new JournalEventWatch(journalMeta, config)
     private val jobActor = actorOf(
@@ -179,7 +180,7 @@ private object OrderActorTest {
     private var orderDetached = false
     private var orderActorTerminated = false
 
-    (journalActor ? JournalActor.Input.StartWithoutRecovery(Some(eventWatch))) pipeTo self
+    (journalActor ? JournalActor.Input.StartWithoutRecovery(AgentState.empty, Some(eventWatch))) pipeTo self
     eventWatch.observe(EventRequest.singleClass[OrderEvent](timeout = Some(999.s))) foreach self.!
     val runningSince = now
 

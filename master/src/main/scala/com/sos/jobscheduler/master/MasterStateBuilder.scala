@@ -2,14 +2,13 @@ package com.sos.jobscheduler.master
 
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.utils.Collections.implicits._
-import com.sos.jobscheduler.core.event.journal.BabyJournaledState
 import com.sos.jobscheduler.core.event.state.JournaledStateBuilder
 import com.sos.jobscheduler.core.filebased.Repo
 import com.sos.jobscheduler.core.workflow.Recovering.followUpRecoveredSnapshots
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{Event, EventId, JournalEvent, JournalState, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{Event, EventId, JournalEvent, JournalState, JournaledState, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.RepoEvent
 import com.sos.jobscheduler.data.master.MasterFileBaseds
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderStdWritten}
@@ -25,7 +24,7 @@ import scala.collection.mutable
 final class MasterStateBuilder
 extends JournaledStateBuilder[MasterState, Event]
 {
-  private var babyJournaledState: BabyJournaledState = BabyJournaledState.empty
+  private var standards: JournaledState.Standards = JournaledState.Standards.empty
   private var masterMetaState = MasterMetaState.Undefined
   private var repo = Repo(MasterFileBaseds.jsonCodec)
   private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
@@ -33,7 +32,7 @@ extends JournaledStateBuilder[MasterState, Event]
 
   protected def onInitializeState(state: MasterState): Unit = {
     masterMetaState = state.masterMetaState
-    babyJournaledState = state.babyJournaledState
+    standards = state.standards
     repo = state.repo
     idToOrder.clear()
     idToOrder ++= state.idToOrder
@@ -55,10 +54,10 @@ extends JournaledStateBuilder[MasterState, Event]
       masterMetaState = o
 
     case o: JournalState =>
-      babyJournaledState = babyJournaledState.copy(journalState = o)
+      standards = standards.copy(journalState = o)
 
     case ClusterState.ClusterStateSnapshot(o) =>
-      babyJournaledState = babyJournaledState.copy(clusterState = o)
+      standards = standards.copy(clusterState = o)
   }
 
   def onOnAllSnapshotsAdded() = {
@@ -108,8 +107,13 @@ extends JournaledStateBuilder[MasterState, Event]
     case Stamped(_, _, KeyedEvent(_, _: MasterShutDown)) =>
     case Stamped(_, _, KeyedEvent(_, MasterTestEvent)) =>
 
-    case Stamped(_, _, keyedEvent @ KeyedEvent(_, _: JournalEvent | _: ClusterEvent)) =>
-      babyJournaledState = babyJournaledState.applyEvent(keyedEvent).orThrow
+    case Stamped(_, _, KeyedEvent(_: NoKey, event: JournalEvent)) =>
+      standards = standards.copy(
+        journalState = standards.journalState.applyEvent(event))
+
+    case Stamped(_, _, KeyedEvent(_: NoKey, event: ClusterEvent)) =>
+      standards = standards.copy(
+        clusterState = standards.clusterState.applyEvent(event).orThrow)
   }
 
   private def handleForkJoinEvent(orderId: OrderId, event: OrderCoreEvent): Unit =  // TODO Duplicate with Agent's OrderJournalRecoverer
@@ -134,14 +138,14 @@ extends JournaledStateBuilder[MasterState, Event]
   def state =
     MasterState(
       eventId = eventId,
-      babyJournaledState.copy(eventId = eventId),
+      standards,
       masterMetaState,
       repo,
       pathToAgent.toMap,
       idToOrder.toMap)
 
-  def journalState = babyJournaledState.journalState
+  def journalState = standards.journalState
 
-  def clusterState = babyJournaledState.clusterState
+  def clusterState = standards.clusterState
 }
 

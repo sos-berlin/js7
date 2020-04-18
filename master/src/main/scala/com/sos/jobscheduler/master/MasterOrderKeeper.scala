@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master
 
 import akka.actor.{ActorRef, DeadLetterSuppression, Stash, Status, Terminated}
 import akka.pattern.{ask, pipe}
-import cats.effect.{ExitCase, SyncIO}
+import cats.effect.SyncIO
 import cats.instances.either._
 import cats.instances.future._
 import cats.instances.vector._
@@ -31,7 +31,7 @@ import com.sos.jobscheduler.core.common.ActorRegister
 import com.sos.jobscheduler.core.crypt.SignatureVerifier
 import com.sos.jobscheduler.core.event.journal.data.JournalHeader
 import com.sos.jobscheduler.core.event.journal.recover.{JournalRecoverer, Recovered}
-import com.sos.jobscheduler.core.event.journal.{BabyJournaledState, JournalActor, MainJournalingActor}
+import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActor}
 import com.sos.jobscheduler.core.filebased.{FileBasedVerifier, FileBaseds, Repo}
 import com.sos.jobscheduler.core.problems.{ReverseReleaseEventsProblem, UnknownOrderProblem}
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
@@ -41,7 +41,7 @@ import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.data.crypt.Signed
 import com.sos.jobscheduler.data.event.JournalEvent.JournalEventsReleased
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{<-:, Event, EventId, JournalState, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{<-:, Event, EventId, JournalState, JournaledState, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
 import com.sos.jobscheduler.data.filebased.{FileBased, RepoEvent, TypedPath}
 import com.sos.jobscheduler.data.master.MasterFileBaseds
@@ -253,7 +253,7 @@ with MainJournalingActor[Event]
       logger.debug("masterState blocking read okay")
       MasterState(
         persistedEventId,
-        BabyJournaledState(persistedEventId, journalState, clusterState),
+        JournaledState.Standards(journalState, clusterState),
         masterMetaState,
         repo,
         pathToAgentSnapshot = agentRegister.values.map(entry => entry.agentRefPath -> entry.toSnapshot).toMap,
@@ -279,7 +279,7 @@ with MainJournalingActor[Event]
     case msg => notYetReady(msg)
   }
 
-  private def assertActiveClusterState(recovered: Recovered[MasterState, Event]): Unit =
+  private def assertActiveClusterState(recovered: Recovered[MasterState]): Unit =
     for (clusterState <- recovered.recoveredState.map(_.clusterState)) {
       import masterConfiguration.clusterConf.ownId
       if (clusterState != ClusterState.Empty && !clusterState.isNonEmptyActive(ownId))
@@ -287,7 +287,7 @@ with MainJournalingActor[Event]
           s"Master has recovered from Journal but is not the active node in ClusterState: id=$ownId, failedOver=$clusterState")
     }
 
-  private def recover(recovered: Recovered[MasterState, Event]): Unit = {
+  private def recover(recovered: Recovered[MasterState]): Unit = {
     for (masterState <- recovered.recoveredState) {
       if (masterState.masterMetaState.masterId != masterConfiguration.masterId)
         throw Problem(s"Recovered masterId='${masterState.masterMetaState.masterId}' differs from configured masterId='${masterConfiguration.masterId}'")
@@ -941,7 +941,7 @@ private[master] object MasterOrderKeeper
   private val logger = Logger(getClass)
 
   object Input {
-    final case class Start(recovered: Recovered[MasterState, Event])
+    final case class Start(recovered: Recovered[MasterState])
   }
 
   sealed trait Command
@@ -962,7 +962,7 @@ private[master] object MasterOrderKeeper
   }
 
   private object Internal {
-    final case class OtherClusterNodeActivationInhibited(recovered: Try[Recovered[MasterState, Event]])
+    final case class OtherClusterNodeActivationInhibited(recovered: Try[Recovered[MasterState]])
     final case class ClusterModuleTerminatedUnexpectedly(tried: Try[Checked[Completed]]) extends DeadLetterSuppression
     final case class Ready(outcome: Checked[Completed])
     case object AfterProceedEventsAdded

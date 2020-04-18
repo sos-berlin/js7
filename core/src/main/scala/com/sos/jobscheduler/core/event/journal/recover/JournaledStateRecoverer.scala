@@ -67,14 +67,15 @@ object JournaledStateRecoverer
 {
   private val logger = Logger(getClass)
 
-  def recover[S <: JournaledState[S, E], E <: Event](
+  def recover[S <: JournaledState[S, Event]](
     journalMeta: JournalMeta,
-    newStateBuilder: () => JournaledStateBuilder[S, E],
+    initialState: S,
+    newStateBuilder: () => JournaledStateBuilder[S, Event],
     config: Config,
     runningSince: Deadline = now)
-  : Recovered[S, E] = {
+  : Recovered[S] = {
     val file = JournalFiles.currentFile(journalMeta.fileBase).toOption
-    val fileJournaledStateBuilder = new FileJournaledStateBuilder[S, E](
+    val fileJournaledStateBuilder = new FileJournaledStateBuilder[S, Event](
       journalMeta,
       journalFileForInfo = file getOrElse journalMeta.file(EventId.BeforeFirst)/*the expected new filename*/,
       expectedJournalId = None,
@@ -87,8 +88,10 @@ object JournaledStateRecoverer
         recoverer.recoverAll()
         val calculatedJournalHeader = fileJournaledStateBuilder.calculatedJournalHeader
           .getOrElse(sys.error(s"Missing JournalHeader in file '${file.getFileName}'"))
+        val state = fileJournaledStateBuilder.state
         Recovered(
           journalMeta,
+          initialState,
           Some(RecoveredJournalFile(
             file,
             length = recoverer.position,
@@ -96,14 +99,14 @@ object JournaledStateRecoverer
             fileJournaledStateBuilder.fileJournalHeader getOrElse sys.error(s"Missing JournalHeader in file '${file.getFileName}'"),
             calculatedJournalHeader,
             firstEventPosition = recoverer.firstEventPosition getOrElse sys.error(s"Missing JournalHeader in file '${file.getFileName}'"),
-            fileJournaledStateBuilder.state)),
+            state)),
           totalRunningSince = runningSince - calculatedJournalHeader.totalRunningTime,
           newStateBuilder,
           eventWatch,
           config)
 
       case None =>
-        Recovered(journalMeta, None, runningSince, newStateBuilder, eventWatch, config)
+        Recovered(journalMeta, initialState, None, runningSince, newStateBuilder, eventWatch, config)
     }
   }
 }

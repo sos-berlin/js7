@@ -1,15 +1,12 @@
 package com.sos.jobscheduler.master
 
 import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
 import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.core.event.journal.BabyJournaledState
 import com.sos.jobscheduler.core.filebased.Repo
 import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.cluster.ClusterEvent
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{Event, EventId, JournalEvent, JournaledState, KeyedEvent}
+import com.sos.jobscheduler.data.event.{Event, EventId, JournaledState, KeyedEvent}
 import com.sos.jobscheduler.data.filebased.RepoEvent
 import com.sos.jobscheduler.data.master.MasterFileBaseds
 import com.sos.jobscheduler.data.master.MasterFileBaseds.MasterTypedPathCompanions
@@ -27,31 +24,25 @@ import monix.reactive.Observable
   */
 final case class MasterState(
   eventId: EventId,
-  babyJournaledState: BabyJournaledState,
+  standards: JournaledState.Standards,
   masterMetaState: MasterMetaState,
   repo: Repo,
   pathToAgentSnapshot: Map[AgentRefPath, AgentSnapshot],
   idToOrder: Map[OrderId, Order[Order.State]])
 extends JournaledState[MasterState, Event]
 {
-  assertThat(eventId == babyJournaledState.eventId)
-
   def toSnapshotObservable: Observable[Any] =
-    babyJournaledState.toSnapshotObservable ++
+    standards.toSnapshotObservable ++
     Observable.fromIterable(masterMetaState.isDefined ? masterMetaState) ++
     Observable.fromIterable(repo.eventsFor(MasterTypedPathCompanions)) ++
     Observable.fromIterable(pathToAgentSnapshot.values) ++
     Observable.fromIterable(idToOrder.values)
 
-  def journalState = babyJournaledState.journalState
-
-  def clusterState = babyJournaledState.clusterState
-
   def withEventId(eventId: EventId) =
-    copy(
-      eventId = eventId,
-      babyJournaledState = babyJournaledState.copy(
-        eventId = eventId))
+    copy(eventId = eventId)
+
+  def withStandards(standards: JournaledState.Standards) =
+    copy(standards = standards)
 
   def applyEvent(keyedEvent: KeyedEvent[Event]) = keyedEvent match {
     case KeyedEvent(_: NoKey, MasterEvent.MasterInitialized(masterId, startedAt)) =>
@@ -60,7 +51,13 @@ extends JournaledState[MasterState, Event]
         startedAt = startedAt)))
 
     case KeyedEvent(_: NoKey, _: MasterEvent.MasterReady) =>
-      Right(this)  // TODO MasterReady not handled ?
+      Right(this)
+
+    case KeyedEvent(_: NoKey, _: MasterEvent.MasterShutDown) =>
+      Right(this)
+
+    case KeyedEvent(_: NoKey, MasterEvent.MasterTestEvent) =>
+      Right(this)
 
     case KeyedEvent(_: NoKey, event: RepoEvent) =>
       for (o <- repo.applyEvent(event)) yield
@@ -111,6 +108,9 @@ extends JournaledState[MasterState, Event]
                   case forked: Order.Forked =>
                     Right(idToOrder -- forked.childOrderIds)
 
+                  case awaiting: Order.Awaiting =>
+                    Right(idToOrder - awaiting.offeredOrderId)
+
                   case state =>
                     Left(Problem(s"For event $event, $orderId must be in state Forked, not: $state"))
                 }
@@ -127,11 +127,7 @@ extends JournaledState[MasterState, Event]
     case KeyedEvent(_, MasterTestEvent) =>
       Right(this)
 
-    case KeyedEvent(_, _: JournalEvent | _: ClusterEvent) =>
-      for (o <- babyJournaledState.applyEvent(keyedEvent))
-        yield copy(babyJournaledState = o)
-
-    case _ => eventNotApplicable(keyedEvent)
+    case _ => applyStandardEvent(keyedEvent)
   }
 
   override def toString =
@@ -142,7 +138,7 @@ object MasterState
 {
   val Undefined = MasterState(
     EventId.BeforeFirst,
-    BabyJournaledState.empty,
+    JournaledState.Standards.empty,
     MasterMetaState.Undefined,
     Repo(MasterFileBaseds.jsonCodec),
     Map.empty,

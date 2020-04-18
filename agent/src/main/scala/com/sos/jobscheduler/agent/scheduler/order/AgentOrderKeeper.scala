@@ -3,6 +3,7 @@ package com.sos.jobscheduler.agent.scheduler.order
 import akka.actor.{DeadLetterSuppression, Stash, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
+import com.sos.jobscheduler.agent.AgentState
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, CancelOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, OrderCommand, ReleaseEvents, Response}
@@ -30,14 +31,14 @@ import com.sos.jobscheduler.common.utils.Exceptions.wrapException
 import com.sos.jobscheduler.core.crypt.SignatureVerifier
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
-import com.sos.jobscheduler.core.event.journal.{BabyJournaledState, JournalActor, MainJournalingActor}
+import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActor}
 import com.sos.jobscheduler.core.filebased.FileBasedVerifier
 import com.sos.jobscheduler.core.problems.ReverseReleaseEventsProblem
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderProcessor
 import com.sos.jobscheduler.core.workflow.Workflows.ExecutableWorkflow
 import com.sos.jobscheduler.data.event.JournalEvent.JournalEventsReleased
-import com.sos.jobscheduler.data.event.{<-:, Event, EventId, JournalState, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{<-:, Event, EventId, JournalState, JournaledState, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.job.JobKey
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderBroken, OrderDetached, OrderStarted}
@@ -78,7 +79,7 @@ extends MainJournalingActor[Event] with Stash {
   private var journalState = JournalState.empty
   private val workflowVerifier = new FileBasedVerifier(signatureVerifier, Workflow.topJsonDecoder)
   protected val journalActor = tag[JournalActor.type](watch(actorOf(
-    JournalActor.props(journalMeta, conf.journalConf, keyedEventBus, scheduler, eventIdGenerator),
+    JournalActor.props[AgentState](journalMeta, conf.journalConf, keyedEventBus, scheduler, eventIdGenerator),
     "Journal")))
   private val jobRegister = new JobRegister
   private val workflowRegister = new WorkflowRegister
@@ -184,7 +185,10 @@ extends MainJournalingActor[Event] with Stash {
       }
     recovered.startJournalAndFinishRecovery(
       journalActor = journalActor,
-      BabyJournaledState(recovered.eventId, journalState),
+      AgentState(recovered.eventId,
+        JournaledState.Standards.empty.copy(journalState = journalState),
+        orderRegister.values.view.map(o => o.order.id -> o.order).toMap,
+        workflowRegister.workflows.view.map(o => o.id -> o).toMap),
       orderRegister.recoveredJournalingActors)
     become("Recovering")(recovering)
   }

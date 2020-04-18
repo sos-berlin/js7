@@ -114,8 +114,8 @@ final class Cluster(
     * @return A pair of `Task`s with maybe the current `MasterState` of this passive node (if so)
     *         and ClusterFollowUp.
     */
-  def start(recovered: Recovered[MasterState, Event], recoveredState: MasterState)
-  : (Task[Option[MasterState]], Task[Checked[ClusterFollowUp[MasterState, Event]]]) = {
+  def start(recovered: Recovered[MasterState], recoveredState: MasterState)
+  : (Task[Option[MasterState]], Task[Checked[ClusterFollowUp[MasterState]]]) = {
     if (recovered.clusterState != Empty) {
       logger.debug(s"recoveredClusterState=${recovered.clusterState}")
     }
@@ -127,7 +127,7 @@ final class Cluster(
     started.success(())
     passiveState ->
       followUp.map(_.map { case (clusterState, followUp) =>
-        activated = followUp.isInstanceOf[ClusterFollowUp.BecomeActive[_, _]]
+        activated = followUp.isInstanceOf[ClusterFollowUp.BecomeActive[_]]
         _currentClusterState = persistence.currentState
         clusterWatchSynchronizer.scheduleHeartbeats(clusterState)
         persistence.start(clusterState)
@@ -136,9 +136,9 @@ final class Cluster(
   }
 
   private def startCluster(
-    recovered: Recovered[MasterState, Event],
+    recovered: Recovered[MasterState],
     recoveredState: MasterState)
-  : (Task[Option[MasterState]], Task[Checked[(ClusterState, ClusterFollowUp[MasterState, Event])]])
+  : (Task[Option[MasterState]], Task[Checked[(ClusterState, ClusterFollowUp[MasterState])]])
   = {
     (recovered.clusterState, recovered.recoveredJournalFile) match {
       case (Empty, _) =>
@@ -219,8 +219,8 @@ final class Cluster(
                   // TODO Recovering may be omitted because the new active node has written a snapshot immediately after failover
                   // May take a long time !!!
                   logger.debug("Recovering again due to shortend journal after failover")
-                  trunkRecovered = JournaledStateRecoverer.recover[MasterState, Event](
-                    journalMeta, recovered.newStateBuilder, config /*, runningSince=???*/)
+                  trunkRecovered = JournaledStateRecoverer.recover[MasterState](
+                    journalMeta, MasterState.Undefined, recovered.newStateBuilder, config /*, runningSince=???*/)
                   val truncatedRecoveredJournalFile = trunkRecovered.recoveredJournalFile
                     .getOrElse(sys.error(s"Unrecoverable journal file '${file.getFileName}''"))
                   assertThat(truncatedRecoveredJournalFile.state.clusterState == recoveredClusterState)
@@ -274,7 +274,7 @@ final class Cluster(
   private def newPassiveClusterNode(
     idToUri: Map[ClusterNodeId, Uri],
     activeId: ClusterNodeId,
-    recovered: Recovered[MasterState, Event],
+    recovered: Recovered[MasterState],
     otherFailedOver: Boolean = false)
   : PassiveClusterNode[MasterState]
   = {

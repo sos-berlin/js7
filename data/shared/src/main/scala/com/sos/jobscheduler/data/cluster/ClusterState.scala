@@ -20,44 +20,47 @@ extends JournaledState[ClusterState, ClusterEvent]
 {
   def isNonEmptyActive(id: ClusterNodeId): Boolean
 
-  // ClusterState should be included in MasterState, which provides journalState ???
-  def journalState = throw new NotImplementedError
-  def clusterState = this
+  // TODO standards functions: ClusterState should not be a JournaledState
+  override def standards =
+    throw new NotImplementedError("ClusterState.standards")
 
-  def applyEvent(keyedEvent: KeyedEvent[ClusterEvent]): Checked[ClusterState] = {
-    val event = keyedEvent.event
-    if (!keyedEvent.key.isInstanceOf[NoKey])
-      eventNotApplicable(keyedEvent)
-    else
-      (this, event) match {
-        case (Empty, ClusterNodesAppointed(idToUris, activeId)) =>
-          Right(NodesAppointed(idToUris, activeId))
+  override protected def withStandards(o: JournaledState.Standards) =
+    throw new NotImplementedError("ClusterState.standards")
 
-        case (state: Decoupled, ClusterCouplingPrepared(activeId)) if state.activeId == activeId =>
-          Right(PreparedToBeCoupled(state.idToUri, state.activeId))
+  def applyEvent(keyedEvent: KeyedEvent[ClusterEvent]): Checked[ClusterState] =
+    keyedEvent match {
+      case KeyedEvent(_: NoKey, event) =>
+        (this, event) match {
+          case (Empty, ClusterNodesAppointed(idToUris, activeId)) =>
+            Right(NodesAppointed(idToUris, activeId))
 
-        case (state: PreparedToBeCoupled, ClusterCoupled(activeId)) if state.activeId == activeId =>
-          Right(Coupled(state.idToUri, state.activeId))
+          case (state: Decoupled, ClusterCouplingPrepared(activeId)) if state.activeId == activeId =>
+            Right(PreparedToBeCoupled(state.idToUri, state.activeId))
 
-        case (state: Coupled, ClusterSwitchedOver(id)) if state.passiveId == id =>
-          Right(SwitchedOver(state.idToUri, state.passiveId))
+          case (state: PreparedToBeCoupled, ClusterCoupled(activeId)) if state.activeId == activeId =>
+            Right(Coupled(state.idToUri, state.activeId))
 
-        case (state: Coupled, ClusterPassiveLost(id)) if state.passiveId == id =>
-          Right(PassiveLost(state.idToUri, state.activeId))
+          case (state: Coupled, ClusterSwitchedOver(id)) if state.passiveId == id =>
+            Right(SwitchedOver(state.idToUri, state.passiveId))
 
-        case (state: Coupled, event: ClusterFailedOver)
-          if state.activeId == event.failedActiveId && state.passiveId == event.activatedId =>
-          Right(FailedOver(state.idToUri, event.activatedId, event.failedAt))
+          case (state: Coupled, ClusterPassiveLost(id)) if state.passiveId == id =>
+            Right(PassiveLost(state.idToUri, state.activeId))
 
-        case (state: Coupled, ClusterActiveNodeShutDown) =>
-          Right(ActiveShutDown(state.idToUri, state.activeId))
+          case (state: Coupled, event: ClusterFailedOver)
+            if state.activeId == event.failedActiveId && state.passiveId == event.activatedId =>
+            Right(FailedOver(state.idToUri, event.activatedId, event.failedAt))
 
-        case (state: ActiveShutDown, ClusterActiveNodeRestarted) =>
-          Right(PassiveLost(state.idToUri, state.activeId))
+          case (state: Coupled, ClusterActiveNodeShutDown) =>
+            Right(ActiveShutDown(state.idToUri, state.activeId))
 
-        case (_, keyedEvent) => eventNotApplicable(keyedEvent)
-      }
-  }
+          case (state: ActiveShutDown, ClusterActiveNodeRestarted) =>
+            Right(PassiveLost(state.idToUri, state.activeId))
+
+          case (_, keyedEvent) => eventNotApplicable(keyedEvent)
+        }
+
+      case _ => eventNotApplicable(keyedEvent)
+    }
 
   def withEventId(eventId: EventId) =
     this  // EventId brauchen wir nicht ???

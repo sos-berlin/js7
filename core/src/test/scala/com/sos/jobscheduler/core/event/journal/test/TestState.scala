@@ -2,40 +2,61 @@ package com.sos.jobscheduler.core.event.journal.test
 
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.data.cluster.ClusterState
-import com.sos.jobscheduler.data.event.{EventId, JournalState, JournaledState, KeyedEvent}
+import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
+import com.sos.jobscheduler.data.event.{Event, EventId, JournalEvent, JournalState, JournaledState, KeyedEvent}
 import monix.reactive.Observable
 
 /**
   * @author Joacim Zschimmer
   */
 final case class TestState(
-  keyToAggregate: Map[String, TestAggregate],
-  journalState: JournalState = JournalState.empty,
-  clusterState: ClusterState = ClusterState.Empty)
-extends JournaledState[TestState, TestEvent]
+  standards: JournaledState.Standards = JournaledState.Standards.empty,
+  keyToAggregate: Map[String, TestAggregate])
+extends JournaledState[TestState, Event]
 {
-  def applySnapshot(aggregate: TestAggregate): TestState =
-    TestState(keyToAggregate + (aggregate.key -> aggregate))
+  override def toSnapshotObservable =
+    standards.toSnapshotObservable ++
+      Observable.fromIterable(keyToAggregate.values)
 
-  def applyEvent(keyedEvent: KeyedEvent[TestEvent]): Checked[TestState] = {
-    val KeyedEvent(key, event) = keyedEvent
-    event match {
-      case event: TestEvent.Added =>
-        assert(!keyToAggregate.contains(key))
-        import event._
-        Right(TestState(keyToAggregate + (key -> TestAggregate(key, string, a, b, c, d, e, f, g, h, i, k, l, m, n, o, p, q, r))))
+  def applySnapshot(snapshot: Any): TestState =
+    snapshot match {
+      case o: TestAggregate =>
+        copy(keyToAggregate =
+          keyToAggregate + (o.key -> o))
 
-      case TestEvent.Removed =>
-        Right(TestState(keyToAggregate - key))
-
-      case event: TestEvent =>
-        Right(TestState(keyToAggregate + (key -> keyToAggregate(key).applyEvent(event))))
+      case o: JournalState =>
+        copy(standards = standards.copy(
+          journalState = o))
     }
-  }
 
-  override def withEventId(eventId: EventId): TestState =
+  def applyEvent(keyedEvent: KeyedEvent[Event]): Checked[TestState] =
+    keyedEvent match {
+      case KeyedEvent(key: String, event: TestEvent.Added) =>
+        assert(!keyToAggregate.contains(key))
+        import event.{a, b, c, d, e, f, g, h, i, k, l, m, n, o, p, q, r, string}
+        Right(copy(
+          keyToAggregate = keyToAggregate + (key -> TestAggregate(key, string, a, b, c, d, e, f, g, h, i, k, l, m, n, o, p, q, r))))
+
+      case KeyedEvent(key: String, TestEvent.Removed) =>
+        Right(copy(
+          keyToAggregate = keyToAggregate - key))
+
+      case KeyedEvent(key: String, event: TestEvent) =>
+        Right(copy(
+          keyToAggregate = keyToAggregate + (key -> keyToAggregate(key).applyEvent(event))))
+
+      case keyedEvent =>
+        applyStandardEvent(keyedEvent)
+    }
+
+  def withEventId(eventId: EventId): TestState =
     throw new NotImplementedError("TestState.withEventId")  // ???
 
-  override def toSnapshotObservable =
-    Observable.fromIterable(keyToAggregate.values)
+  def withStandards(standards: JournaledState.Standards) =
+    copy(standards = standards)
+}
+
+object TestState
+{
+  val empty = TestState(JournaledState.Standards.empty, Map.empty)
 }

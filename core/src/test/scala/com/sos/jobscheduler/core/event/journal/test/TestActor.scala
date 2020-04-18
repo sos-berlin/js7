@@ -37,7 +37,7 @@ extends Actor with Stash
   override val supervisorStrategy = SupervisorStrategies.escalate
   private implicit val askTimeout = Timeout(99.seconds)
   private val journalActor = context.watch(context.actorOf(
-    JournalActor.props(journalMeta, JournalConf.fromConfig(config withFallback TestConfig), new StampedKeyedEventBus, Scheduler.global,
+    JournalActor.props[TestState](journalMeta, JournalConf.fromConfig(config withFallback TestConfig), new StampedKeyedEventBus, Scheduler.global,
       new EventIdGenerator(new EventIdClock.Fixed(currentTimeMillis = 1000/*EventIds start at 1000000*/)),
       journalStopped),
     "Journal"))

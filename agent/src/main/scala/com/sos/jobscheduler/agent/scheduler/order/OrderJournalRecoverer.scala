@@ -10,13 +10,13 @@ import com.sos.jobscheduler.base.utils.Closer.syntax._
 import com.sos.jobscheduler.base.utils.Collections.implicits.{InsertableMutableMap, RichTraversable}
 import com.sos.jobscheduler.base.utils.HasCloser
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
+import com.sos.jobscheduler.core.event.journal.JournalActor
 import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, RecoveredJournalingActors}
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
-import com.sos.jobscheduler.core.event.journal.{BabyJournaledState, JournalActor}
 import com.sos.jobscheduler.core.workflow.Recovering.followUpRecoveredSnapshots
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{JournalEvent, JournalId, JournalState, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{JournalEvent, JournalId, JournalState, JournaledState, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowEvent}
@@ -29,10 +29,9 @@ import shapeless.tag.@@
   */
 private final class OrderJournalRecoverer(
   protected val journalMeta: JournalMeta,
-  journalId: JournalId,
-  agentConfiguration: AgentConfiguration)
-extends JournalRecoverer {
-
+  journalId: JournalId)
+extends JournalRecoverer[AgentState]
+{
   protected val expectedJournalId = Some(journalId)
 
   private var journalState = JournalState.empty
@@ -109,7 +108,7 @@ extends JournalRecoverer {
 
   private def agentState = AgentState(
     lastRecoveredEventId,
-    journalState,
+    JournaledState.Standards.empty.copy(journalState = journalState),
     idToOrder.toMap,
     workflowRegister.workflows toKeyedMap (_.id))
 
@@ -119,7 +118,7 @@ extends JournalRecoverer {
 private[agent] object OrderJournalRecoverer
 {
   def recover(journalMeta: JournalMeta, journalId: JournalId, agentConfiguration: AgentConfiguration): Recovered = {
-    val recoverer = new OrderJournalRecoverer(journalMeta, journalId, agentConfiguration)
+    val recoverer = new OrderJournalRecoverer(journalMeta, journalId)
     recoverer.recoverAll()
     recoverer.result(agentConfiguration.config)
   }
@@ -140,7 +139,7 @@ private[agent] object OrderJournalRecoverer
 
     def startJournalAndFinishRecovery(
       journalActor: ActorRef @@ JournalActor.type,
-      journaledState: BabyJournaledState,
+      journaledState: AgentState,
       actors: RecoveredJournalingActors)
       (implicit arf: ActorRefFactory)
     =

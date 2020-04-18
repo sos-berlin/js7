@@ -8,8 +8,8 @@ sealed trait JournalEvent extends NoKeyEvent
 
 object JournalEvent
 {
-  sealed trait SnapshotTaken extends JournalEvent
-  case object SnapshotTaken extends SnapshotTaken
+  type SnapshotTaken = SnapshotTaken.type
+  case object SnapshotTaken extends JournalEvent
 
   final case class JournalEventsReleased(userId: UserId, untilEventId: EventId)
   extends JournalEvent

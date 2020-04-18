@@ -49,7 +49,7 @@ import scodec.bits.ByteVector
   idToUri: Map[ClusterNodeId, Uri],
   activeId: ClusterNodeId,
   journalMeta: JournalMeta,
-  recovered: Recovered[S, Event],
+  recovered: Recovered[S],
   otherFailed: Boolean,
   journalConf: JournalConf,
   clusterConf: ClusterConf,
@@ -73,7 +73,7 @@ import scodec.bits.ByteVector
     * Returns also a `Task` with the current ClusterState while being passive or active.
     */
   def run(recoveredState: S)
-  : Task[Checked[(ClusterState, ClusterFollowUp[S, Event])]] =
+  : Task[Checked[(ClusterState, ClusterFollowUp[S])]] =
     Task.deferAction { implicit s =>
       val recoveredClusterState = recoveredState.clusterState
       logger.debug(s"recoveredClusterState=$recoveredClusterState")
@@ -144,7 +144,7 @@ import scodec.bits.ByteVector
     common.tryEndlesslyToSendCommand(activeUri, ClusterCouple(activeId = activeId, passiveId = ownId))
 
   private def replicateJournalFiles(recoveredClusterState: ClusterState)
-  : Task[Checked[(ClusterState, ClusterFollowUp[S, Event])]] =
+  : Task[Checked[(ClusterState, ClusterFollowUp[S])]] =
     common.masterApi(activeUri, "journal")
       .use(activeMasterApi =>
         Task.tailRecM(
@@ -167,7 +167,8 @@ import scodec.bits.ByteVector
                 Right(Right((
                   continuation.clusterState,
                   ClusterFollowUp.BecomeActive(
-                    recovered.copy[S, Event](recoveredJournalFile = continuation.maybeRecoveredJournalFile)))))
+                    recovered.copy[S](
+                      recoveredJournalFile = continuation.maybeRecoveredJournalFile)))))
 
               case Right(continuation) =>
                 Left(continuation)

@@ -35,7 +35,7 @@ import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
 import com.sos.jobscheduler.core.problems.{ClusterNodeIsNotActiveProblem, ClusterNodeIsNotYetReadyProblem, JobSchedulerIsShuttingDownProblem}
 import com.sos.jobscheduler.data.Problems.PassiveClusterNodeShutdownNotAllowedProblem
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
-import com.sos.jobscheduler.data.event.{Event, EventRequest, Stamped}
+import com.sos.jobscheduler.data.event.{EventRequest, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent}
 import com.sos.jobscheduler.master.RunningMaster._
@@ -219,7 +219,7 @@ object RunningMaster
       val whenReady = testEventBus.when[MasterOrderKeeper.MasterReadyTestIncident.type]  // TODO Replace by a new StampedEventBus ?
       // Start-up some stuff while recovering
       val journalActor = tag[JournalActor.type](actorSystem.actorOf(
-        JournalActor.props(journalMeta, masterConfiguration.journalConf,
+        JournalActor.props[MasterState](journalMeta, masterConfiguration.journalConf,
           injector.instance[StampedKeyedEventBus], scheduler, injector.instance[EventIdGenerator]),
         "Journal"))
       signatureVerifier
@@ -317,8 +317,8 @@ object RunningMaster
     /** @return Task(None) when cancelled. */
     private def startCluster(
       cluster: Cluster,
-      recovered: Recovered[MasterState, Event])
-    : (Task[Option[MasterState]], Task[Either[MasterTermination.Terminate, ClusterFollowUp[MasterState, Event]]]) =
+      recovered: Recovered[MasterState])
+    : (Task[Option[MasterState]], Task[Either[MasterTermination.Terminate, ClusterFollowUp[MasterState]]]) =
     {
       class StartingClusterCancelledException extends NoStackTrace
       val recoveredState = recovered.recoveredState getOrElse MasterState.Undefined
@@ -337,7 +337,7 @@ object RunningMaster
     private def startMasterOrderKeeper(
       journalActor: ActorRef @@ JournalActor.type,
       cluster: Cluster,
-      followUp: ClusterFollowUp[MasterState, Event],
+      followUp: ClusterFollowUp[MasterState],
       testEventBus: EventBus)
     : Either[MasterTermination.Terminate, OrderKeeperStarted] = {
       logger.debug(s"startMasterOrderKeeper(clusterFollowUp=${followUp.getClass.simpleScalaName})")
@@ -345,7 +345,7 @@ object RunningMaster
         //case _: ClusterFollowUp.Terminate[MasterState, Event] =>
         //  Left(MasterTermination.Terminate(restart = false))
 
-        case ClusterFollowUp.BecomeActive(recovered: Recovered[MasterState @unchecked, Event]) =>
+        case ClusterFollowUp.BecomeActive(recovered: Recovered[MasterState @unchecked]) =>
           val terminationPromise = Promise[MasterTermination]()
           val actor = actorSystem.actorOf(
             Props {

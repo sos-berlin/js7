@@ -23,7 +23,9 @@ private[order] final class WorkflowRegister {
   def handleEvent(keyedEvent: KeyedEvent[WorkflowEvent]): Unit = {
     keyedEvent.event match {
       case WorkflowEvent.WorkflowAttached(workflow) =>
-        _idToWorkflow += workflow.id -> workflow   // Multiple orders with same Workflow may occur. TODO Every Order becomes its own copy of its Workflow? Workflow will never be removed.
+        // Multiple orders with same Workflow may occur
+        // TODO Every Order becomes its own copy of its Workflow? Workflow will never be removed
+        _idToWorkflow += workflow.id -> workflow
     }
   }
 

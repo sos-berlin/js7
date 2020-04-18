@@ -14,8 +14,8 @@ import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta,
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer._
 import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
-import com.sos.jobscheduler.core.event.journal.{BabyJournaledState, JournalActor, KeyedJournalingActor}
-import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.core.event.journal.{JournalActor, KeyedJournalingActor}
+import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, JournaledState, KeyedEvent, Stamped}
 import java.nio.file.{Files, Path}
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
@@ -25,7 +25,7 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-trait JournalRecoverer
+trait JournalRecoverer[S <: JournaledState[S, Event]]
 {
   protected def journalMeta: JournalMeta
   protected def expectedJournalId: Option[JournalId]
@@ -102,12 +102,12 @@ trait JournalRecoverer
   // TODO Use Recovered startJournalAndFinishRecoveryReplace instead
   final def startJournalAndFinishRecovery(
     journalActor: ActorRef,
-    journaledState: BabyJournaledState,
+    journaledState: JournaledState[S, Event],
     recoveredActors: RecoveredJournalingActors = RecoveredJournalingActors.Empty,
     journalingObserver: Option[JournalingObserver] = None)
     (implicit actorRefFactory: ActorRefFactory)
   =
-    JournalRecoverer.startJournalAndFinishRecovery[Event](journalActor,
+    JournalRecoverer.startJournalAndFinishRecovery[S](journalActor,
       journaledState, recoveredActors,
       journalingObserver, expectedJournalId, recoveredJournalHeader,
       totalRunningSince = now + recoveredJournalHeader.fold(Duration.Zero)(_.totalRunningTime))
@@ -141,9 +141,9 @@ trait JournalRecoverer
 object JournalRecoverer {
   private val logger = Logger(getClass)
 
-  private[recover] def startJournalAndFinishRecovery[E <: Event](
+  private[recover] def startJournalAndFinishRecovery[S <: JournaledState[S, Event]](
     journalActor: ActorRef,
-    journaledState: BabyJournaledState,
+    journaledState: JournaledState[S, Event],
     recoveredActors: RecoveredJournalingActors,
     observer: Option[JournalingObserver],
     expectedJournalId: Option[JournalId],

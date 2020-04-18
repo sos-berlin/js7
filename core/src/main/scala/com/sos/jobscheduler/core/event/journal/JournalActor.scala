@@ -25,10 +25,10 @@ import com.sos.jobscheduler.core.event.journal.files.JournalFiles.{JournalMetaOp
 import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
 import com.sos.jobscheduler.core.event.journal.write.{EventJournalWriter, ParallelExecutingPipeline, SnapshotJournalWriter}
 import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver}
-import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
+import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, JournalEvent, JournalId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, JournalEvent, JournalId, JournaledState, KeyedEvent, Stamped}
 import java.nio.file.Files.{delete, exists, move}
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
@@ -43,7 +43,7 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-final class JournalActor private(
+final class JournalActor[S <: JournaledState[S, Event]] private(
   journalMeta: JournalMeta,
   conf: JournalConf,
   keyedEventBus: StampedKeyedEventBus,
@@ -59,7 +59,9 @@ extends Actor with Stash
   private val snapshotRequesters = mutable.Set[ActorRef]()
   private var snapshotSchedule: Cancelable = null
 
-  private var journaledState =  BabyJournaledState.empty
+  private var _journaledState: Option[S] = None
+  private def journaledState = _journaledState getOrElse sys.error("JournaledState has not been set")
+  private def journaledState_=(s: S) = _journaledState = Some(s)
 
   /** Originates from `JournalValue`, calculated from recovered journal if not freshly initialized. */
   private var journalHeader: JournalHeader = null
@@ -103,8 +105,8 @@ extends Actor with Stash
   }
 
   def receive = {
-    case Input.Start(journaledState, RecoveredJournalingActors(keyToActor), observer_, header, totalRunningSince_) =>
-      this.journaledState = journaledState
+    case Input.Start(journaledState_, RecoveredJournalingActors(keyToActor), observer_, header, totalRunningSince_) =>
+      journaledState = journaledState_.asInstanceOf[S]
       requireClusterAcknowledgement = journaledState.clusterState.isInstanceOf[ClusterState.Coupled]
       journalingObserver := observer_
       journalHeader = header
@@ -129,7 +131,8 @@ extends Actor with Stash
         sender ! Output.Ready(journalHeader)
       }
 
-    case Input.StartWithoutRecovery(observer_) =>  // Testing only
+    case Input.StartWithoutRecovery(emptyState, observer_) =>  // Testing only
+      journaledState = emptyState.asInstanceOf[S]
       journalingObserver := observer_
       journalHeader = JournalHeader.initial(JournalId.random()).copy(generation = 1)
       eventWriter = newEventJsonWriter(after = EventId.BeforeFirst, withoutSnapshots = true)
@@ -347,17 +350,14 @@ extends Actor with Stash
         case _: AcceptEarlyWritten =>
         case written: NormallyWritten =>
           for (stamped <- written.stampedSeq) {
+            journaledState = journaledState.applyEvent(stamped.value).orThrow
             stamped.value match {
               case KeyedEvent(_: NoKey, SnapshotTaken) =>
                 releaseObsoleteEvents()
                 responseAfterSnapshotTaken()
 
-              case keyedEvent @ KeyedEvent(_, _: JournalEventsReleased) =>
-                journaledState = journaledState.applyEvent(keyedEvent).orThrow
+              case KeyedEvent(_, _: JournalEventsReleased) =>
                 releaseObsoleteEvents()
-
-              case keyedEvent @ KeyedEvent(_, _: ClusterEvent) =>
-                journaledState = journaledState.applyEvent(keyedEvent).orThrow
 
               case _ =>
             }
@@ -662,7 +662,7 @@ object JournalActor
 
   private val ClusterNodeHasBeenSwitchedOverProblem = Problem.pure("After switchover, this cluster node is no longer active")
 
-  def props[E <: Event](
+  def props[S <: JournaledState[S, Event]](
     journalMeta: JournalMeta,
     conf: JournalConf,
     keyedEventBus: StampedKeyedEventBus,
@@ -670,7 +670,7 @@ object JournalActor
     eventIdGenerator: EventIdGenerator,
     stopped: Promise[Stopped] = Promise())
   =
-    Props { new JournalActor(journalMeta, conf, keyedEventBus, scheduler, eventIdGenerator, stopped) }
+    Props { new JournalActor[S](journalMeta, conf, keyedEventBus, scheduler, eventIdGenerator, stopped) }
       .withDispatcher(DispatcherName)
 
   private def toSnapshotTemporary(file: Path) = file.resolveSibling(s"${file.getFileName}$TmpSuffix")
@@ -678,13 +678,13 @@ object JournalActor
   private[journal] trait CallersItem
 
   object Input {
-    private[journal] final case class Start(
-      journaledState: BabyJournaledState,
+    private[journal] final case class Start[S <: JournaledState[S, Event]](
+      journaledState: JournaledState[S, Event],
       recoveredJournalingActors: RecoveredJournalingActors,
       journalingObserver: Option[JournalingObserver],
       recoveredJournalHeader: JournalHeader,
       totalRunningSince: Deadline)
-    final case class StartWithoutRecovery(journalingObserver: Option[JournalingObserver] = None)
+    final case class StartWithoutRecovery[S <: JournaledState[S, Event]](emptyState: S, journalingObserver: Option[JournalingObserver] = None)
     /*private[journal] due to race condition when starting AgentDriver*/ case object RegisterMe
     private[journal] final case class Store(
       timestamped: Seq[Timestamped],

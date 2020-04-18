@@ -8,10 +8,9 @@ import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
-import com.sos.jobscheduler.core.event.journal.BabyJournaledState
 import com.sos.jobscheduler.core.filebased.Repo
 import com.sos.jobscheduler.data.cluster.ClusterState
-import com.sos.jobscheduler.data.event.{EventId, JournalState}
+import com.sos.jobscheduler.data.event.{EventId, JournalState, JournaledState}
 import com.sos.jobscheduler.data.master.{MasterFileBaseds, MasterId}
 import com.sos.jobscheduler.master.MasterState
 import com.sos.jobscheduler.master.data.MasterOverview
@@ -33,8 +32,7 @@ final class ApiRootRouteTest extends AnyFreeSpec with RouteTester with ApiRootRo
   protected implicit def scheduler: Scheduler = Scheduler.global
   protected def masterState = Task.pure(Right(MasterState(
     EventId(1001),
-    BabyJournaledState(
-      EventId(1001),
+    JournaledState.Standards(
       JournalState(Map(UserId("A") -> EventId(1000))),
       ClusterState.Empty),
     MasterMetaState(MasterId("MASTER-ID"), Timestamp("2019-05-24T12:00:00Z")),

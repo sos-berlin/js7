@@ -33,11 +33,11 @@ import java.util.concurrent.Executors
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.scalatest.BeforeAndAfterAll
+import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 import shapeless.tag
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
@@ -131,20 +131,21 @@ final class JournaledStatePersistenceTest extends AnyFreeSpec with BeforeAndAfte
   }
 
   private class RunningPersistence {
-    private var journaledStatePersistence: JournaledStatePersistence[TestState, TestEvent] = null
+    private var journaledStatePersistence: JournaledStatePersistence[TestState, Event] = null
     private lazy val journalStopped = Promise[JournalActor.Stopped]()
 
     private lazy val journalActor = tag[JournalActor.type](
       actorSystem.actorOf(
-        JournalActor.props(journalMeta, JournalConf.fromConfig(config), new StampedKeyedEventBus, Scheduler.global,
+        JournalActor.props[TestState](journalMeta, JournalConf.fromConfig(config), new StampedKeyedEventBus, Scheduler.global,
           new EventIdGenerator(new EventIdClock.Fixed(currentTimeMillis = 1000/*EventIds start at 1000000*/)),
           journalStopped)))
 
     def start() = {
-      val recovered = JournaledStateRecoverer.recover(journalMeta, () => new TestStateBuilder, JournalEventWatch.TestConfig)
+      val recovered = JournaledStateRecoverer.recover(journalMeta,
+        TestState.empty, () => new TestStateBuilder, JournalEventWatch.TestConfig)
       recovered.startJournalAndFinishRecovery(journalActor)(actorSystem)
       implicit val a = actorSystem
-      journaledStatePersistence = new JournaledStatePersistence[TestState, TestEvent](journalActor)
+      journaledStatePersistence = new JournaledStatePersistence[TestState, Event](journalActor)
       journaledStatePersistence.start(recovered.recoveredState getOrElse TestState.empty)
       journaledStatePersistence
     }
@@ -170,7 +171,7 @@ private object JournaledStatePersistenceTest
      |jobscheduler.journal.dispatcher.type = PinnedDispatcher
      |""".stripMargin))
 
-  private class TestStateBuilder extends JournaledStateBuilder[TestState, TestEvent]
+  private class TestStateBuilder extends JournaledStateBuilder[TestState, Event]
   {
     private val numberThings = mutable.Map[NumberKey, NumberThing]()
     private var _state = TestState.empty
@@ -225,9 +226,8 @@ private object JournaledStatePersistenceTest
   final case class TestState(
     eventId: EventId,
     numberThingCollection: NumberThingCollection,
-    journalState: JournalState = JournalState.empty,
-    clusterState: ClusterState = ClusterState.Empty)
-  extends JournaledState[TestState, TestEvent]
+    standards: JournaledState.Standards = JournaledState.Standards.empty)
+  extends JournaledState[TestState, Event]
   {
     protected type Self = NumberThingCollection
     protected type Snapshot = NumberThing
@@ -236,12 +236,17 @@ private object JournaledStatePersistenceTest
     def withEventId(eventId: EventId) =
       copy(eventId = eventId)
 
-    def applyEvent(keyedEvent: KeyedEvent[TestEvent]) = keyedEvent match {
-      case KeyedEvent(key: NumberKey, event: NumberEvent) =>
-        for (o <- numberThingCollection.applyEvent(key <-: event)) yield
-          copy(numberThingCollection = o)
-      case _ => eventNotApplicable(keyedEvent)
-    }
+    def withStandards(standards: JournaledState.Standards) =
+      copy(standards = standards)
+
+    def applyEvent(keyedEvent: KeyedEvent[Event]) =
+      keyedEvent match {
+        case KeyedEvent(key: NumberKey, event: NumberEvent) =>
+          for (o <- numberThingCollection.applyEvent(key <-: event)) yield
+            copy(numberThingCollection = o)
+
+        case keyedEvent => applyStandardEvent(keyedEvent)
+      }
 
     def toSnapshotObservable = Observable.fromIterable(numberThingCollection.numberThings.values)
   }

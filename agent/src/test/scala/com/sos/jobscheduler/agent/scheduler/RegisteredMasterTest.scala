@@ -11,14 +11,14 @@ import org.scalatest.freespec.AnyFreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class AgentSnapshotTest extends AnyFreeSpec {
-
+final class RegisteredMasterTest extends AnyFreeSpec
+{
   "JSON" in {
-    implicit val codec = AgentSnapshot.jsonCodec
+    implicit val codec = AgentServerJsonCodecs.jsonCodec
     testJson[Any](
-      AgentSnapshot.Master(MasterId("MASTER"), AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")))),
+      RegisteredMaster(MasterId("MASTER"), AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")))),
       json""" {
-        "TYPE": "Master",
+        "TYPE": "RegisteredMaster",
         "masterId": "MASTER",
         "agentRunId": "ABEiM0RVZneImaq7zN3u_w"
       }""")

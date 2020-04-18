@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.core.event.journal.recover
 
 import akka.actor.{ActorRef, ActorRefFactory}
-import com.sos.jobscheduler.core.event.journal.BabyJournaledState
 import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, RecoveredJournalingActors}
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.event.state.JournaledStateBuilder
@@ -10,12 +9,13 @@ import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, JournaledStat
 import com.typesafe.config.Config
 import scala.concurrent.duration.Deadline
 
-final case class Recovered[S <: JournaledState[S, E], E <: Event](
+final case class Recovered[S <: JournaledState[S, Event]](
   journalMeta: JournalMeta,
-  recoveredJournalFile: Option[RecoveredJournalFile[S, E]],
+  initialState: S,
+  recoveredJournalFile: Option[RecoveredJournalFile[S, Event]],
   totalRunningSince: Deadline,
   /** The recovered state */
-  newStateBuilder: () => JournaledStateBuilder[S, E],
+  newStateBuilder: () => JournaledStateBuilder[S, Event],
   eventWatch: JournalEventWatch,
   config: Config)
 extends AutoCloseable
@@ -28,12 +28,11 @@ extends AutoCloseable
 
   def journalId: Option[JournalId] = recoveredJournalFile.map(_.journalId)
 
-  def babyJournaledState: BabyJournaledState =
-    recoveredJournalFile.fold(BabyJournaledState.empty)(o =>
-      BabyJournaledState(o.eventId, o.state.journalState, o.state.clusterState))
+  def state: JournaledState[S, Event] =
+    recoveredJournalFile.fold(initialState)(_.state)
 
   def clusterState: ClusterState =
-    babyJournaledState.clusterState
+    state.clusterState
 
   def recoveredState: Option[S] =
     recoveredJournalFile.map(_.state)
@@ -46,9 +45,9 @@ extends AutoCloseable
     recoveredActors: RecoveredJournalingActors = RecoveredJournalingActors.Empty)
     (implicit actorRefFactory: ActorRefFactory)
   =
-    JournalRecoverer.startJournalAndFinishRecovery[Event](
+    JournalRecoverer.startJournalAndFinishRecovery[S](
       journalActor,
-      babyJournaledState,
+      state,
       recoveredActors,
       Some(eventWatch),
       recoveredJournalFile.map(_.journalId),

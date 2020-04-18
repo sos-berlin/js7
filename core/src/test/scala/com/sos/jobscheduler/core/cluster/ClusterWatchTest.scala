@@ -7,10 +7,11 @@ import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import com.sos.jobscheduler.core.cluster.ClusterWatch._
+import com.sos.jobscheduler.core.message.ProblemCodeMessages
 import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver}
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
-import com.sos.jobscheduler.data.event.JournalPosition
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
+import com.sos.jobscheduler.data.event.{EventId, JournalPosition}
 import com.sos.jobscheduler.data.master.MasterId
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.schedulers.TestScheduler
@@ -21,12 +22,14 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class ClusterWatchTest extends AnyFreeSpec
 {
+  ProblemCodeMessages.initialize()
+
   private val aId = ClusterNodeId("A")
   private val bId = ClusterNodeId("B")
   private val aUri = Uri("http://A")
   private val bUri = Uri("http://B")
   private val idToUri = Map(aId -> aUri, bId -> bUri)
-  private val failedAt = JournalPosition(0, 0)
+  private val failedAt = JournalPosition(EventId(0), 0)
 
   "ClusterWatch" - {
     lazy val scheduler = TestScheduler()
@@ -47,7 +50,7 @@ final class ClusterWatchTest extends AnyFreeSpec
 
     "Coupling" in {
       scheduler.tick(11.s)
-      assert(applyEvent(aId, ClusterCouplingPrepared(aId) :: ClusterCoupled(aId) :: Nil) == Right(Completed))
+      assert(applyEvents(aId, ClusterCouplingPrepared(aId) :: ClusterCoupled(aId) :: Nil) == Right(Completed))
       assert(watch.isActive(aId).await(99.s).orThrow)
     }
 
@@ -89,14 +92,14 @@ final class ClusterWatchTest extends AnyFreeSpec
 
     "FailedOver before heartbeat loss is rejected" in {
       scheduler.tick(1.s)
-      assert(applyEvent(bId, ClusterFailedOver(aId, bId, failedAt) :: Nil) ==
+      assert(applyEvents(bId, ClusterFailedOver(aId, bId, failedAt) :: Nil) ==
         Left(ClusterWatchHeartbeatFromInactiveNodeProblem(bId, clusterState)))
       assert(watch.isActive(aId).await(99.s).orThrow)
     }
 
     "FailedOver after heartbeat loss" in {
       scheduler.tick(11.s)
-      assert(applyEvent(bId, ClusterFailedOver(aId, bId, failedAt) :: Nil) == Right(Completed))
+      assert(applyEvents(bId, ClusterFailedOver(aId, bId, failedAt) :: Nil) == Right(Completed))
       assert(watch.isActive(bId).await(99.s).orThrow)
     }
 
@@ -108,26 +111,26 @@ final class ClusterWatchTest extends AnyFreeSpec
     }
 
     "Coupled" in {
-      assert(applyEvent(bId, ClusterCouplingPrepared(bId) :: Nil) == Right(Completed))
-      assert(applyEvent(bId, ClusterCoupled(bId) :: Nil) == Right(Completed))
+      assert(applyEvents(bId, ClusterCouplingPrepared(bId) :: Nil) == Right(Completed))
+      assert(applyEvents(bId, ClusterCoupled(bId) :: Nil) == Right(Completed))
     }
 
     "SwitchedOver before heartbeat" in {
       scheduler.tick(1.s)
-      assert(applyEvent(bId, ClusterSwitchedOver(aId) :: Nil) == Right(Completed))
+      assert(applyEvents(bId, ClusterSwitchedOver(aId) :: Nil) == Right(Completed))
       assert(watch.isActive(aId).await(99.s).orThrow)
     }
 
     "SwitchedOver after heartbeat loss" in {
       scheduler.tick(11.s)
-      assert(applyEvent(aId, ClusterCouplingPrepared(aId) :: ClusterCoupled(aId) :: ClusterSwitchedOver(bId) :: Nil) == Right(Completed))
+      assert(applyEvents(aId, ClusterCouplingPrepared(aId) :: ClusterCoupled(aId) :: ClusterSwitchedOver(bId) :: Nil) == Right(Completed))
       assert(watch.isActive(bId).await(99.s).orThrow)
     }
 
     "SwitchedOver from inactive node" in {
-      assert(applyEvent(bId, ClusterCouplingPrepared(bId) :: ClusterCoupled(bId) :: Nil) == Right(Completed))
+      assert(applyEvents(bId, ClusterCouplingPrepared(bId) :: ClusterCoupled(bId) :: Nil) == Right(Completed))
       assert(watch.isActive(bId).await(99.s).orThrow)
-      assert(applyEvent(aId, ClusterSwitchedOver(aId) :: Nil) ==
+      assert(applyEvents(aId, ClusterSwitchedOver(aId) :: Nil) ==
         Left(ClusterWatchHeartbeatFromInactiveNodeProblem(aId, clusterState)))
     }
 
@@ -148,7 +151,7 @@ final class ClusterWatchTest extends AnyFreeSpec
       assert(watch.get.await(99.s) == Right(coupled))
     }
 
-    def applyEvent(from: ClusterNodeId, events: Seq[ClusterEvent]): Checked[Completed] = {
+    def applyEvents(from: ClusterNodeId, events: Seq[ClusterEvent]): Checked[Completed] = {
       val expectedClusterState = clusterState.applyEvents(events.map(NoKey <-: _)).orThrow
       val response = watch.applyEvents(from, events, expectedClusterState).await(99.s)
       for (_ <- response) {
