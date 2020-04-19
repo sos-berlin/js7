@@ -31,7 +31,7 @@ object StackTraces
       * Applicable for Throwables of another context, like from a `Future`.
       * Modifies the original `Throwable`.
       */
-    def appendCurrentStackTrace: delegate.type =
+    def appendCurrentStackTrace: T =
       appendStackTrace(new Exception().getStackTrace
         .dropWhile(_.getClassName startsWith "com.sos.jobscheduler.base.utils.StackTraces"))
 
