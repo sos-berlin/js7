@@ -32,10 +32,12 @@ extends FileBasedApi
       for (repo <- stamped) yield
         repo.currentTyped[A].values.toSeq.sortBy/*for determinstic tests*/(_.id: FileBasedId[TypedPath])
 
-  def pathToCurrentFileBased[A <: FileBased: FileBased.Companion](path: A#Path): Task[Checked[Stamped[A]]] =
+  def pathToCurrentFileBased[A <: FileBased: FileBased.Companion](path: A#Path): Task[Checked[Stamped[A]]] = {
+    implicit def x = implicitly[FileBased.Companion[A]].implicits.pathHasTypeInfo
     for (stamped <- stampedRepo; repo = stamped.value) yield
       for (a <- repo.currentTyped[A].checked(path)) yield
         stamped.copy(value = a)
+  }
 
   def stampedRepo: Task[Stamped[Repo]] = {
     import masterConfiguration.akkaAskTimeout  // TODO May timeout while Master recovers

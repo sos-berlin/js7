@@ -20,8 +20,8 @@ import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json, JsonObject}
 import java.nio.file.{Path, Paths}
 import scala.reflect.ClassTag
 
-trait TypedPath extends GenericString {
-
+trait TypedPath extends GenericString
+{
   def companion: Companion[_ <: TypedPath]
 
   final lazy val name: String = string.substring(string.lastIndexOf('/') + 1)
@@ -106,7 +106,7 @@ object TypedPath
       if (string == Anonymous.string)
         Problem(s"An anonymous $name is not allowed")
       else
-        check(string) flatMap (_ => super.checked(string))
+        check(string).flatMap(_ => super.checked(string))
 
     final private[TypedPath] def check(string: String): Checked[Unit] =
       if (!isEmptyAllowed && string.isEmpty)

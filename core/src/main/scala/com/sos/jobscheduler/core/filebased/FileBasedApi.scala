@@ -28,18 +28,20 @@ object FileBasedApi {
   def forTest(pathToFileBased: Map[_ <: TypedPath, FileBased]) =
     new FileBasedApi {
       def overview[A <: FileBased: FileBased.Companion](implicit O: FileBasedsOverview.Companion[A]): Task[Stamped[O.Overview]] =
-        Task(Stamped(1, O.fileBasedsToOverview(pathTo.values.toSeq)))
+        Task(Stamped(1L, O.fileBasedsToOverview(pathTo.values.toSeq)))
 
       def idTo[A <: FileBased: FileBased.Companion](id: A#Id) =
         throw new NotImplementedError
 
       def fileBaseds[A <: FileBased: FileBased.Companion] =
-        Task(Stamped(2, pathTo[A].values.toSeq))
+        Task(Stamped(2L, pathTo[A].values.toSeq))
 
-      def pathToCurrentFileBased[A <: FileBased: FileBased.Companion](path: A#Path) =
+      def pathToCurrentFileBased[A <: FileBased: FileBased.Companion](path: A#Path) = {
+        implicit def x = implicitly[FileBased.Companion[A]].implicits.pathHasTypeInfo
         Task(
           for (a <- pathTo[A].checked(path))
-            yield Stamped(3, a))
+            yield Stamped(3L, a))
+      }
 
       def pathTo[A <: FileBased] = pathToFileBased.asInstanceOf[Map[A#Path, A]]
     }

@@ -19,8 +19,8 @@ import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.data.MasterCommand.UpdateRepo
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
-import scala.util.Try
 import org.scalatest.freespec.AnyFreeSpec
+import scala.util.Try
 
 final class MasterRepoTest extends AnyFreeSpec {
   import MasterRepoTest._
@@ -75,7 +75,7 @@ final class MasterRepoTest extends AnyFreeSpec {
       def addWorkflowAndRunOrder(master: RunningMaster, versionId: VersionId, path: WorkflowPath, orderId: OrderId): Unit = {
         val order = FreshOrder(orderId, path)
         // Command will be rejected because workflow is not yet defined
-        assert(master.addOrder(order).runToFuture.await(99.s) == Left(Problem(s"No such key 'Workflow:${path.string}'")))
+        assert(master.addOrder(order).runToFuture.await(99.s) == Left(Problem(s"No such Workflow: Workflow:${path.string}")))
         defineWorkflowAndRunOrder(master, versionId, path, orderId)
       }
 

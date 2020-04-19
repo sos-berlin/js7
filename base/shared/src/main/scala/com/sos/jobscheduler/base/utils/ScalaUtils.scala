@@ -189,21 +189,28 @@ object ScalaUtils
     def switchOff(body: => Unit) = if (delegate.compareAndSet(true, false)) body
   }
 
-  implicit final class RichPartialFunction[A, B](private val underlying: PartialFunction[A, B]) extends AnyVal {
-    def checked(key: A): Checked[B] =
-      toChecked(key)
+  implicit final class RichPartialFunction[A, B](private val underlying: PartialFunction[A, B])
+  extends AnyVal
+  {
+    def checked(key: A)(implicit A: HasTypeInfo[A]): Checked[B] =
+      rightOr(key, Problem(s"No such ${A.typeName}: $key"))
 
-    def checked(key: A, notFound: => Problem): Checked[B] =
-      toChecked_(_ => notFound)(key)
+    def rightOr(key: A, notFound: => Problem): Checked[B] =
+      toChecked(_ => notFound)(key)
 
-    def toChecked: A => Checked[B] =
-      toChecked_(key => Problem(s"No such key '$key'"))
-
-    private def toChecked_(notFound: A => Problem): A => Checked[B] = {
+    private def toChecked(notFound: A => Problem): A => Checked[B] = {
       val lifted = underlying.lift
       key => lifted(key) match {
         case Some(b) => Right(b)
         case None => Left(notFound(key))
+      }
+    }
+
+    def noDuplicate(key: A)(implicit A: HasTypeInfo[A]): Checked[Unit] = {
+      val lifted = underlying.lift
+      lifted(key) match {
+        case Some(_) => Left(Problem(s"Duplicate ${A.typeName}: $key"))
+        case None => Right(())
       }
     }
 

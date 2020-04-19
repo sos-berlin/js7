@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.base.utils
 
 import com.sos.jobscheduler.base.exceptions.StandardPublicException
-import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicits._
 import java.util.concurrent.atomic.AtomicBoolean
@@ -182,59 +182,79 @@ final class ScalaUtilsTest extends AnyFreeSpec
     assert(r == 11)
   }
 
-  "PartialFunction.checked" in {
+  "RichPartialFunction" - {
     val pf: PartialFunction[Int, String] = {
-      case 1 => "1"
-    }
-    assert(pf.checked(1) == Right("1"))
-    assert(pf.checked(2) == Left(Problem("No such key '2'")))
-  }
-
-  "PartialFunction.toThrowableChecked" in {
-    val pf: PartialFunction[Int, String] = {
-      case 1 => "1"
-    }
-    assert(pf.toChecked(1) == Right("1"))
-    assert(pf.toChecked(2) == Left(Problem("No such key '2'")))
-  }
-
-  "PartialFunction.getOrElse" in {
-    val pf: PartialFunction[Int, String] = {
-      case 1 => "1"
-    }
-    assert(pf.getOrElse(1, "1") == "1")
-    assert(pf.getOrElse(2, "-") == "-")
-  }
-
-  "PartialFunction.callIfDefined" in {
-    var x = 0
-    val pf: PartialFunction[Int, Unit] = {
-      case 1 => x = 1
-    }
-    pf.callIfDefined(2)
-    assert(x == 0)
-    pf.callIfDefined(1)
-    assert(x == 1)
-  }
-
-  "PartialFunction map" in {
-    case class A(string: String)
-    val pf: PartialFunction[Int, A] = {
-      case 1 => A("one")
+      case 1 => "ONE"
     }
 
-    assert(pf(1) == A("one"))
-    assert(pf.isDefinedAt(1))
-    assert(!pf.isDefinedAt(2))
-    assert(pf.applyOrElse(1, (i: Int) => A(s"else $i")) == A("one"))
-    assert(pf.applyOrElse(2, (i: Int) => A(s"else $i")) == A("else 2"))
+    "PartialFunction.checked" in {
+      assert(pf.checked(1) == Right("ONE"))
+      assert(pf.checked(2) == Left(Problem("No such Int: 2")))
+    }
 
-    val mappedPf = pf map (_.string)
-    assert(mappedPf(1) == "one")
-    assert(mappedPf.isDefinedAt(1))
-    assert(!mappedPf.isDefinedAt(2))
-    assert(mappedPf.applyOrElse(1, (i: Int) => s"else $i") == "one")
-    assert(mappedPf.applyOrElse(2, (i: Int) => s"else $i") == "else 2")
+    "PartialFunction.checked as curried function" in {
+      val checked: Int => Checked[String] = pf.checked
+      assert(checked(1) == Right("ONE"))
+      assert(checked(2) == Left(Problem("No such Int: 2")))
+    }
+
+    "PartialFunction.checked with special HasTypeInfo" in {
+      case class K(number: Int)
+      object K {
+        implicit val hasTypeInfo: HasTypeInfo[K] = new HasTypeInfo[K] { def typeName = "My-K"}
+      }
+      val pf: PartialFunction[K, String] = {
+        case K(1) => "ONE"
+      }
+      assert(pf.checked(K(1)) == Right("ONE"))
+      assert(pf.checked(K(2)) == Left(Problem("No such My-K: K(2)")))
+    }
+
+    "PartialFunction.doNotContain" in {
+      assert(pf.noDuplicate(1) == Left(Problem("Duplicate Int: 1")))
+      assert(pf.noDuplicate(2) == Right(()))
+    }
+
+    "PartialFunction.toThrowableChecked" in {
+      assert(pf.checked(1) == Right("ONE"))
+      assert(pf.checked(2) == Left(Problem("No such Int: 2")))
+    }
+
+    "PartialFunction.getOrElse" in {
+      assert(pf.getOrElse(1, "DEFAULT") == "ONE")
+      assert(pf.getOrElse(2, "DEFAULT") == "DEFAULT")
+    }
+
+    "PartialFunction.callIfDefined" in {
+      var x = 0
+      val pf: PartialFunction[Int, Unit] = {
+        case 1 => x = 1
+      }
+      pf.callIfDefined(2)
+      assert(x == 0)
+      pf.callIfDefined(1)
+      assert(x == 1)
+    }
+
+    "PartialFunction map" in {
+      case class A(string: String)
+      val pf: PartialFunction[Int, A] = {
+        case 1 => A("one")
+      }
+
+      assert(pf(1) == A("one"))
+      assert(pf.isDefinedAt(1))
+      assert(!pf.isDefinedAt(2))
+      assert(pf.applyOrElse(1, (i: Int) => A(s"else $i")) == A("one"))
+      assert(pf.applyOrElse(2, (i: Int) => A(s"else $i")) == A("else 2"))
+
+      val mappedPf = pf map (_.string)
+      assert(mappedPf(1) == "one")
+      assert(mappedPf.isDefinedAt(1))
+      assert(!mappedPf.isDefinedAt(2))
+      assert(mappedPf.applyOrElse(1, (i: Int) => s"else $i") == "one")
+      assert(mappedPf.applyOrElse(2, (i: Int) => s"else $i") == "else 2")
+    }
   }
 
   "Either orElse" in {
