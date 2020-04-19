@@ -206,7 +206,7 @@ object ScalaUtils
       }
     }
 
-    def noDuplicate(key: A)(implicit A: HasTypeInfo[A]): Checked[Unit] = {
+    def checkNoDuplicate(key: A)(implicit A: HasTypeInfo[A]): Checked[Unit] = {
       val lifted = underlying.lift
       lifted(key) match {
         case Some(_) => Left(Problem(s"Duplicate ${A.typeName}: $key"))

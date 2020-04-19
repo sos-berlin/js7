@@ -211,8 +211,8 @@ final class ScalaUtilsTest extends AnyFreeSpec
     }
 
     "PartialFunction.doNotContain" in {
-      assert(pf.noDuplicate(1) == Left(Problem("Duplicate Int: 1")))
-      assert(pf.noDuplicate(2) == Right(()))
+      assert(pf.checkNoDuplicate(1) == Left(Problem("Duplicate Int: 1")))
+      assert(pf.checkNoDuplicate(2) == Right(()))
     }
 
     "PartialFunction.toThrowableChecked" in {
