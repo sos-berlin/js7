@@ -15,7 +15,7 @@ import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentCouplingFai
 import com.sos.jobscheduler.tests.CoupleMasterTest._
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider.script
 import com.sos.jobscheduler.tests.testenv.DirectoryProviderForScalaTest
-import java.nio.file.Files.move
+import java.nio.file.Files.{delete, move}
 import java.nio.file.Paths
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
@@ -75,6 +75,22 @@ final class CoupleMasterTest extends AnyFreeSpec with DirectoryProviderForScalaT
         .sorted
         .map(agentStateDir / _)
       for (o <- journalFiles.init) move(o, Paths.get(s"$o-MOVED"))
+      directoryProvider.runAgents() { _ =>
+        master.eventWatch.await[AgentCouplingFailed](after = master.eventWatch.lastFileTornEventId, predicate =
+          ke => ke.key == agentRefPath &&
+            ke.event.problem.codeOption.contains(UnknownEventIdProblem.code))
+      }
+      for (o <- journalFiles.init) move(Paths.get(s"$o-MOVED"), o)
+    }
+  }
+
+  "CoupleMaster command fails with UnknownEventIdProblem if Agent restarts without journal" in {
+    directoryProvider.runMaster() { master =>
+      val journalFiles = agentStateDir.directoryContents
+        .map(_.getFileName.toString)
+        .filter(_.startsWith("master-Master--"))
+        .map(agentStateDir / _)
+      journalFiles foreach delete
       directoryProvider.runAgents() { _ =>
         master.eventWatch.await[AgentCouplingFailed](after = master.eventWatch.lastFileTornEventId, predicate =
           ke => ke.key == agentRefPath &&
