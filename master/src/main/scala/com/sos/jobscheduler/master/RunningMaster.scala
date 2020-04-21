@@ -132,7 +132,7 @@ extends AutoCloseable
     val eventId = eventWatch.lastAddedEventId
     addOrderBlocking(order)
     eventWatch
-      .observe(EventRequest.singleClass[OrderEvent](eventId, Some(timeout - 1.s)))
+      .observe(EventRequest.singleClass[OrderEvent](eventId, Some(timeout + 9.s)))
       .takeWhile(_.value.key == order.id)
       .map(o => o.copy(value = o.value.event))
       .takeWhileInclusive(o => !o.value.isInstanceOf[OrderFinished])
