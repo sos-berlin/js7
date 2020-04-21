@@ -69,7 +69,7 @@ final class CoupleMasterTest extends AnyFreeSpec with DirectoryProviderForScalaT
   "CoupleMaster command fails with UnknownEventIdProblem if Agent misses last events" in {
     directoryProvider.runMaster() { master =>
       // REMOVE NEW AGENTS'S EVENTS THE MASTER HAS ALREADY READ => UnknownEventIdProblem
-      val journalFiles = agentStateDir.pathSet.toVector
+      val journalFiles = agentStateDir.directoryContents
         .map(_.getFileName.toString)
         .filter(_.startsWith("master-Master--"))
         .sorted

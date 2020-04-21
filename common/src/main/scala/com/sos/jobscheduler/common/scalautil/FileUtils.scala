@@ -121,14 +121,14 @@ object FileUtils
       /**
         * Returns the content of the directory denoted by `this`.
         */
-      def pathSet: Set[Path] =
-        autoClosing(Files.list(delegate)) { _.asScala.toSet }
+      def directoryContents: Seq[Path] =
+        directoryContentsAs(Vector)
 
       /**
         * Returns the content of the directory denoted by `this`.
         */
-      def pathSeq: Seq[Path] =
-        autoClosing(Files.list(delegate)) { _.asScala.toVector }
+      def directoryContentsAs[C](factory: collection.Factory[Path, C]): C =
+        autoClosing(Files.list(delegate)) { _.asScala.to(factory) }
     }
   }
 
@@ -181,7 +181,7 @@ object FileUtils
   }
 
   def deleteDirectoryContentRecursively(dir: Path): Unit = {
-    for (f <- dir.pathSet) {
+    for (f <- dir.directoryContents) {
       if (isDirectory(f) && !isSymbolicLink(f)) deleteDirectoryContentRecursively(f)
       delete(f)
     }

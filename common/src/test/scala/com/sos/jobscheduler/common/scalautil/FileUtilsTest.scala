@@ -115,14 +115,14 @@ final class FileUtilsTest extends AnyFreeSpec with BeforeAndAfterAll
       path.contentString(UTF_16BE) shouldEqual TestString + "X"
     }
 
-    "pathSet, pathSeq" in {
-      intercept[NotDirectoryException] { path.pathSet }
+    "directoryContentsAs" in {
+      intercept[NotDirectoryException] { path.directoryContentsAs(Set) }
       val dir = createTempDirectory("FileUtilsTest-")
-      assert(dir.pathSet.isEmpty)
+      assert(dir.directoryContentsAs(Set).isEmpty)
       val files = Set("a.tmp", "b.tmp") map dir.resolve
       files foreach { o => touch(o) }
-      assert(dir.pathSet == files)
-      assert(dir.pathSeq.toSet == files)
+      assert(dir.directoryContentsAs(Set) == files)
+      assert(dir.directoryContentsAs(Set) == files)
       files foreach delete
       delete(dir)
     }
