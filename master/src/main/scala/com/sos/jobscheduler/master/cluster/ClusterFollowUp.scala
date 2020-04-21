@@ -1,13 +1,13 @@
 package com.sos.jobscheduler.master.cluster
 
 import com.sos.jobscheduler.core.event.journal.recover.Recovered
-import com.sos.jobscheduler.data.event.{Event, JournaledState}
+import com.sos.jobscheduler.data.event.JournaledState
 
-sealed trait ClusterFollowUp[S <: JournaledState[S, Event]]
+sealed trait ClusterFollowUp[S <: JournaledState[S]]
 
 object ClusterFollowUp
 {
-  final case class BecomeActive[S <: JournaledState[S, Event]](
+  final case class BecomeActive[S <: JournaledState[S]](
     recovered: Recovered[S])
   extends ClusterFollowUp[S]
 

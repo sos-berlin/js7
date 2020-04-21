@@ -39,7 +39,7 @@ private object JournaledStateRecovererTest
 //{
 //  private val logger = com.sos.jobscheduler.common.scalautil.Logger(getClass)
 //
-//  private class TestStateBuilder extends JournaledStateBuilder[TestState, Event]
+//  private class TestStateBuilder extends JournaledStateBuilder[TestState]
 //  {
 //    private var _state = TestState(0)
 //

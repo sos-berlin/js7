@@ -18,8 +18,8 @@ import com.sos.jobscheduler.agent.scheduler.problems.AgentIsShuttingDownProblem
 import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.Closer.syntax._
 import com.sos.jobscheduler.base.utils.ScalaUtils._
@@ -59,7 +59,7 @@ private[agent] final class AgentActor @Inject private(
   eventIdGenerator: EventIdGenerator,
   keyedEventBus: StampedKeyedEventBus)
   (implicit closer: Closer, scheduler: Scheduler)
-extends MainJournalingActor[AgentEvent] {
+extends MainJournalingActor[AgentServerState, AgentEvent] {
 
   import agentConfiguration.{akkaAskTimeout, stateDirectory}
   import context.{actorOf, watch}
@@ -182,10 +182,11 @@ extends MainJournalingActor[AgentEvent] {
           case None =>
             val agentRunId = AgentRunId(JournalId.random())
             response completeWith
-              persist(AgentEvent.MasterRegistered(masterId, agentRunId)) { case Stamped(_, _, KeyedEvent(NoKey, event)) =>
-                update(event)
-                Right(AgentCommand.RegisterAsMaster.Response(agentRunId))
-              }
+              persist(AgentEvent.MasterRegistered(masterId, agentRunId)) {
+                case (Stamped(_, _, KeyedEvent(NoKey, event)), journaledState) =>
+                  update(event)
+                  Right(AgentCommand.RegisterAsMaster.Response(agentRunId))
+                }
 
           case Some(registeredMaster) =>
             response.completeWith(

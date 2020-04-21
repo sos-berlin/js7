@@ -19,11 +19,11 @@ import scala.collection.mutable.ArrayBuffer
 /**
   * @author Joacim Zschimmer
   */
-final class FileJournaledStateBuilder[S <: JournaledState[S, E], E <: Event](
+final class FileJournaledStateBuilder[S <: JournaledState[S]](
   journalMeta: JournalMeta,
   journalFileForInfo: Path,
   expectedJournalId: Option[JournalId],
-  newBuilder: () => JournaledStateBuilder[S, E])
+  newBuilder: () => JournaledStateBuilder[S])
 {
   private val builder = newBuilder()
   private var _progress: JournalProgress = JournalProgress.Initial
@@ -139,7 +139,7 @@ final class FileJournaledStateBuilder[S <: JournaledState[S, E], E <: Event](
 
   def logStatistics() = builder.logStatistics()
 
-  private def deserialize(json: Json): Stamped[KeyedEvent[E]] = {
+  private def deserialize(json: Json): Stamped[KeyedEvent[Event]] = {
     import journalMeta.eventJsonCodec
     json.as[Stamped[KeyedEvent[Event]]]
       .orThrow { t =>
@@ -147,7 +147,7 @@ final class FileJournaledStateBuilder[S <: JournaledState[S, E], E <: Event](
         logger.error(s"$msg: ${json.compactPrint}")
         new IllegalArgumentException(msg)
       }
-      .asInstanceOf[Stamped[KeyedEvent[E]]]
+      .asInstanceOf[Stamped[KeyedEvent[Event]]]
   }
 }
 

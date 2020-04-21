@@ -9,24 +9,24 @@ import com.sos.jobscheduler.core.event.state.StateJournalingActor._
 import com.sos.jobscheduler.data.event.{Event, JournaledState, KeyedEvent, Stamped}
 import monix.eval.Task
 import monix.execution.Scheduler
-import scala.concurrent.Promise
+import scala.concurrent.{Future, Promise}
 import scala.reflect.runtime.universe._
 import scala.util.{Failure, Success, Try}
 
-private[state] final class StateJournalingActor[S <: JournaledState[S, E], E <: Event](
+private[state] final class StateJournalingActor[S <: JournaledState[S], E <: Event](
   initialState: S,
   protected val journalActor: ActorRef,
   persistPromise: Promise[PersistFunction[S, E]],
   getStatePromise: Promise[Task[S]])
   (implicit S: TypeTag[S], s: Scheduler)
-extends MainJournalingActor[E]
+extends MainJournalingActor[S, E]
 {
   override def supervisorStrategy = SupervisorStrategies.escalate
 
   // Will be accesses asynchronously via `getStatePromise`
   @volatile private var state: S = initialState
 
-  protected def snapshots = state.toSnapshotObservable.toListL.runToFuture
+  protected def snapshots = Future.successful(Nil)
 
   override def preStart() = {
     super.preStart()
@@ -47,7 +47,7 @@ extends MainJournalingActor[E]
         case Success(Left(problem)) => promise.success(Left(problem))
         case Success(Right(keyedEvents)) =>
           promise.completeWith(
-            persistKeyedEvents(toTimestamped(keyedEvents), transaction = true, async = true) { stampedKeyedEvents =>
+            persistKeyedEvents(toTimestamped(keyedEvents), transaction = true, async = true) { (stampedKeyedEvents, journaledState) =>
               val updated = applyPersistedEvents(stampedKeyedEvents)
               state = updated
               Right(stampedKeyedEvents -> updated)
@@ -65,10 +65,10 @@ extends MainJournalingActor[E]
 
 private[state] object StateJournalingActor
 {
-  type StateToEvents[S <: JournaledState[S, E], E <: Event] = S => Checked[Seq[KeyedEvent[E]]]
-  type PersistFunction[S <: JournaledState[S, E], E <: Event] = StateToEvents[S, E] => Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]]
+  type StateToEvents[S <: JournaledState[S], E <: Event] = S => Checked[Seq[KeyedEvent[E]]]
+  type PersistFunction[S <: JournaledState[S], E <: Event] = StateToEvents[S, E] => Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]]
 
-  def props[S <: JournaledState[S, E], E <: Event](
+  def props[S <: JournaledState[S], E <: Event](
     initialState: S,
     journalActor: ActorRef,
     persistPromise: Promise[PersistFunction[S, E]],
@@ -77,7 +77,7 @@ private[state] object StateJournalingActor
   =
     Props { new StateJournalingActor(initialState, journalActor, persistPromise, getStatePromise) }
 
-  private def applyPersistedEvent[S <: JournaledState[S, E], E <: Event] (state: S, stampedKeyedEvent: Stamped[KeyedEvent[E]]): S =
+  private def applyPersistedEvent[S <: JournaledState[S], E <: Event] (state: S, stampedKeyedEvent: Stamped[KeyedEvent[E]]): S =
     state.withEventId(stampedKeyedEvent.eventId)
       .applyEvent(stampedKeyedEvent.value) match {
         case Left(problem) => throw new IllegalStateChangeWhilePersistingException(stampedKeyedEvent, problem)  // Serious problem !!!

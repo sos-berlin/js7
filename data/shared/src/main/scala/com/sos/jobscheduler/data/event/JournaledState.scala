@@ -8,15 +8,16 @@ import com.sos.jobscheduler.data.event.JournaledState._
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import monix.reactive.Observable
 
-trait JournaledState[Self <: JournaledState[Self, E], E <: Event]
+trait JournaledState[This <: JournaledState[This]]
+extends EventDrivenState[This, Event]
 {
-  self: Self =>
+  this: This =>
 
   def toSnapshotObservable: Observable[Any]
 
   protected def standards: Standards
 
-  protected def withStandards(standards: Standards): Self
+  protected def withStandards(standards: Standards): This
 
   final def journalState: JournalState =
     standards.journalState
@@ -24,27 +25,14 @@ trait JournaledState[Self <: JournaledState[Self, E], E <: Event]
   final def clusterState: ClusterState =
     standards.clusterState
 
-  def applyEvent(keyedEvent: KeyedEvent[E]): Checked[Self]
+  def applyEvent(keyedEvent: KeyedEvent[Event]): Checked[This]
 
-  def withEventId(eventId: EventId): Self
+  def withEventId(eventId: EventId): This
 
-  final def applyEvents(keyedEvents: Seq[KeyedEvent[E]]): Checked[Self] = {
-    var state = self
-    var problem: Problem = null
-    for (keyedEvent <- keyedEvents if problem == null) {
-      state.applyEvent(keyedEvent) match {
-        case Left(o) => problem = o
-        case Right(s) => state = s
-      }
-    }
-    if (problem != null) Left(problem)
-    else Right(state)
-  }
-
-  protected final def applyStandardEvent(keyedEvent: KeyedEvent[E]): Checked[Self] =
+  protected final def applyStandardEvent(keyedEvent: KeyedEvent[Event]): Checked[This] =
     keyedEvent match {
       case KeyedEvent(_: NoKey, _: SnapshotTaken) =>
-        Right(self)
+        Right(this)
 
       case KeyedEvent(_: NoKey, event: JournalEventsReleased) =>
         Right(withStandards(standards.copy(
@@ -58,8 +46,6 @@ trait JournaledState[Self <: JournaledState[Self, E], E <: Event]
       case _ => eventNotApplicable(keyedEvent)
     }
 
-  protected final def eventNotApplicable(keyedEvent: KeyedEvent[E]) =
-    Left(EventNotApplicableProblem(keyedEvent, this))
 }
 
 object JournaledState

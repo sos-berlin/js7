@@ -1,9 +1,7 @@
 package com.sos.jobscheduler.core.event.journal.test
 
 import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.data.cluster.ClusterState
-import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{Event, EventId, JournalEvent, JournalState, JournaledState, KeyedEvent}
+import com.sos.jobscheduler.data.event.{Event, EventId, JournalState, JournaledState, KeyedEvent}
 import monix.reactive.Observable
 
 /**
@@ -12,7 +10,7 @@ import monix.reactive.Observable
 final case class TestState(
   standards: JournaledState.Standards = JournaledState.Standards.empty,
   keyToAggregate: Map[String, TestAggregate])
-extends JournaledState[TestState, Event]
+extends JournaledState[TestState]
 {
   override def toSnapshotObservable =
     standards.toSnapshotObservable ++

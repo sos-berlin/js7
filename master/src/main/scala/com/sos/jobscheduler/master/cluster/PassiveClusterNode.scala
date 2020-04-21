@@ -25,7 +25,7 @@ import com.sos.jobscheduler.data.cluster.ClusterState.{Coupled, Decoupled, Prepa
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
 import com.sos.jobscheduler.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{Event, EventId, JournalEvent, JournalId, JournalPosition, JournaledState, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{EventId, JournalEvent, JournalId, JournalPosition, JournaledState, KeyedEvent, Stamped}
 import com.sos.jobscheduler.master.client.HttpMasterApi
 import com.sos.jobscheduler.master.cluster.ObservablePauseDetector.RichPauseObservable
 import com.sos.jobscheduler.master.cluster.PassiveClusterNode._
@@ -44,7 +44,7 @@ import monix.reactive.Observable
 import scala.concurrent.TimeoutException
 import scodec.bits.ByteVector
 
-/*private[cluster]*/ final class PassiveClusterNode[S <: JournaledState[S, Event]](
+/*private[cluster]*/ final class PassiveClusterNode[S <: JournaledState[S]](
   ownId: ClusterNodeId,
   idToUri: Map[ClusterNodeId, Uri],
   activeId: ClusterNodeId,
@@ -60,7 +60,7 @@ import scodec.bits.ByteVector
   import recovered.eventWatch
   private val activeUri = idToUri(activeId)
 
-  private val stateBuilderAndAccessor = new StateBuilderAndAccessor[S, Event](recovered.newStateBuilder)
+  private val stateBuilderAndAccessor = new StateBuilderAndAccessor[S](recovered.newStateBuilder)
   private var dontActivateBecauseOtherFailedOver = otherFailed
   @volatile var awaitingCoupledEvent = false
   @volatile private var stopped = false
@@ -176,7 +176,7 @@ import scodec.bits.ByteVector
 
   private def replicateJournalFile(
     continuation: Continuation.Replicatable,
-    newStateBuilder: () => JournaledStateBuilder[S, Event],
+    newStateBuilder: () => JournaledStateBuilder[S],
     activeMasterApi: HttpMasterApi)
   : Task[Checked[Continuation.Replicatable]] =
     Task.defer {
@@ -201,7 +201,7 @@ import scodec.bits.ByteVector
       var replicatedFileLength = continuation.fileLength
       var lastProperEventPosition = continuation.lastProperEventPosition
       var _eof = false
-      val builder = new FileJournaledStateBuilder[S, Event](journalMeta, journalFileForInfo = file.getFileName,
+      val builder = new FileJournaledStateBuilder[S](journalMeta, journalFileForInfo = file.getFileName,
         continuation.maybeJournalId, newStateBuilder)
 
       continuation match {
@@ -523,13 +523,13 @@ import scodec.bits.ByteVector
       def firstEventPosition: Option[Long]
       def lastProperEventPosition: Long
       def maybeJournalId: Option[JournalId]
-      def maybeRecoveredJournalFile: Option[RecoveredJournalFile[S, Event]]
+      def maybeRecoveredJournalFile: Option[RecoveredJournalFile[S]]
       final lazy val file = journalMeta.file(fileEventId)
     }
 
     private[PassiveClusterNode] sealed trait HasRecoveredJournalFile
     extends Continuation.Replicatable {
-      def recoveredJournalFile: RecoveredJournalFile[S, Event]
+      def recoveredJournalFile: RecoveredJournalFile[S]
       def clusterState = recoveredJournalFile.state.clusterState
       final def maybeJournalId = Some(recoveredJournalFile.journalId)
       final def maybeRecoveredJournalFile = Some(recoveredJournalFile)
@@ -547,7 +547,7 @@ import scodec.bits.ByteVector
     def maybeRecoveredJournalFile = None
   }
 
-  private sealed case class FirstPartialFile(recoveredJournalFile: RecoveredJournalFile[S, Event])
+  private sealed case class FirstPartialFile(recoveredJournalFile: RecoveredJournalFile[S])
   extends Continuation.Replicatable with Continuation.HasRecoveredJournalFile {
     assertThat(recoveredJournalFile.file == file)
     def fileLength = recoveredJournalFile.length
@@ -557,7 +557,7 @@ import scodec.bits.ByteVector
     override def toString = s"FirstPartialFile($fileEventId,$fileLength,${recoveredJournalFile.eventId})"
   }
 
-  private sealed case class NextFile(recoveredJournalFile: RecoveredJournalFile[S, Event])
+  private sealed case class NextFile(recoveredJournalFile: RecoveredJournalFile[S])
   extends Continuation.Replicatable with Continuation.HasRecoveredJournalFile {
     /** The next file is initially empty. */
     def fileLength = 0

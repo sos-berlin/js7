@@ -11,23 +11,17 @@ import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterActiveNodeRestarte
 import com.sos.jobscheduler.data.cluster.ClusterSetting.checkUris
 import com.sos.jobscheduler.data.cluster.ClusterSetting.syntax._
 import com.sos.jobscheduler.data.cluster.ClusterState._
+import com.sos.jobscheduler.data.event.JournaledState.EventNotApplicableProblem
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{EventId, JournalPosition, JournaledState, KeyedEvent}
+import com.sos.jobscheduler.data.event.{EventDrivenState, JournalPosition, KeyedEvent}
 import monix.reactive.Observable
 
 sealed trait ClusterState
-extends JournaledState[ClusterState, ClusterEvent]
+extends EventDrivenState[ClusterState, ClusterEvent]
 {
   def isNonEmptyActive(id: ClusterNodeId): Boolean
 
-  // TODO standards functions: ClusterState should not be a JournaledState
-  override def standards =
-    throw new NotImplementedError("ClusterState.standards")
-
-  override protected def withStandards(o: JournaledState.Standards) =
-    throw new NotImplementedError("ClusterState.standards")
-
-  def applyEvent(keyedEvent: KeyedEvent[ClusterEvent]): Checked[ClusterState] =
+  final def applyEvent(keyedEvent: KeyedEvent[ClusterEvent]): Checked[ClusterState] =
     keyedEvent match {
       case KeyedEvent(_: NoKey, event) =>
         (this, event) match {
@@ -56,14 +50,13 @@ extends JournaledState[ClusterState, ClusterEvent]
           case (state: ActiveShutDown, ClusterActiveNodeRestarted) =>
             Right(PassiveLost(state.idToUri, state.activeId))
 
-          case (_, keyedEvent) => eventNotApplicable(keyedEvent)
+          case (_, keyedEvent) =>
+            Left(EventNotApplicableProblem(keyedEvent, this))
         }
 
-      case _ => eventNotApplicable(keyedEvent)
+      case _ =>
+        Left(EventNotApplicableProblem(keyedEvent, this))
     }
-
-  def withEventId(eventId: EventId) =
-    this  // EventId brauchen wir nicht ???
 
   def toSnapshotObservable =
     Observable.fromIterable((this != Empty) ? ClusterStateSnapshot(this))

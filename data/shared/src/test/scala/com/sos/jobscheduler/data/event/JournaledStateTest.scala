@@ -43,7 +43,7 @@ private object JournaledStateTest
     primaryNodeId -> Uri("http://PRIMARY"),
     ClusterNodeId("Backup") -> Uri("http://BACKUP"))
 
-  private case class MyState(standards: JournaledState.Standards) extends JournaledState[MyState, Event]
+  private case class MyState(standards: JournaledState.Standards) extends JournaledState[MyState]
   {
     def toSnapshotObservable = standards.toSnapshotObservable
 

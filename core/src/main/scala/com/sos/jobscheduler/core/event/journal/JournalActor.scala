@@ -28,28 +28,30 @@ import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFa
 import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, JournalEvent, JournalId, JournaledState, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, EventId, JournalEvent, JournalId, JournaledState, KeyedEvent, Stamped}
 import java.nio.file.Files.{delete, exists, move}
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
+import monix.eval.Task
 import monix.execution.cancelables.SerialCancelable
 import monix.execution.{Cancelable, Scheduler}
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, Duration, FiniteDuration}
-import scala.concurrent.{Promise, blocking}
+import scala.concurrent.{Await, Promise, blocking}
 import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
   */
-final class JournalActor[S <: JournaledState[S, Event]] private(
+final class JournalActor[S <: JournaledState[S]] private(
   journalMeta: JournalMeta,
   conf: JournalConf,
   keyedEventBus: StampedKeyedEventBus,
   scheduler: Scheduler,
   eventIdGenerator: EventIdGenerator,
-  stopped: Promise[Stopped])
+  stopped: Promise[Stopped],
+  useJournaledStateAsSnapshot: Boolean)
 extends Actor with Stash
 {
   import context.{become, stop, watch}
@@ -59,9 +61,7 @@ extends Actor with Stash
   private val snapshotRequesters = mutable.Set[ActorRef]()
   private var snapshotSchedule: Cancelable = null
 
-  private var _journaledState: Option[S] = None
-  private def journaledState = _journaledState getOrElse sys.error("JournaledState has not been set")
-  private def journaledState_=(s: S) = _journaledState = Some(s)
+  private var journaledState: S = null.asInstanceOf[S]
 
   /** Originates from `JournalValue`, calculated from recovered journal if not freshly initialized. */
   private var journalHeader: JournalHeader = null
@@ -175,6 +175,7 @@ extends Actor with Stash
         if (acceptEarly && !requireClusterAcknowledgement/*? irrelevant because acceptEarly is not used in a Cluster for now*/) {
           reply(sender(), replyTo, Output.Accepted(callersItem))
           writtenBuffer += AcceptEarlyWritten(stampedEvents.size, now_, lastFileLengthAndEventId, sender())
+          // acceptEarly-events will not update journaledState !!!
           // Ergibt falsche Reihenfolge mit dem anderen Aufruf: logCommitted(flushed = false, synced = false, stampedEvents)
         } else {
           writtenBuffer += NormallyWritten(totalEventCount + 1, stampedEvents, now_, lastFileLengthAndEventId, replyTo, sender(), callersItem)
@@ -334,9 +335,15 @@ extends Actor with Stash
 
   private def onCommitAcknowledged(n: Int): Unit = {
     val ackWritten = writtenBuffer take n
-    updateState(ackWritten)
-    notifyEventWatchAndContinueCaller(ackWritten)
+    val normallyWritten = ackWritten.view collect { case o: NormallyWritten => o }
+    logCommitted(ack = requireClusterAcknowledgement, normallyWritten.iterator)
+    for (lastFileLengthAndEventId <- ackWritten.view.flatMap(_.lastFileLengthAndEventId).lastOption) {
+      lastAcknowledgedEventId = lastFileLengthAndEventId.value
+      eventWriter.onCommitted(lastFileLengthAndEventId, n = ackWritten.iterator.map(_.eventCount).sum)
+    }
+    normallyWritten foreach updateStateAndContinueCallers
     writtenBuffer.remove(0, n)
+
     assertThat((lastAcknowledgedEventId == lastWrittenEventId) == writtenBuffer.isEmpty)
     if (lastAcknowledgedEventId == lastWrittenEventId) {
       waitingForAcknowledgeTimer := Cancelable.empty
@@ -344,42 +351,27 @@ extends Actor with Stash
     }
   }
 
-  private def updateState(writtenSeq: collection.Seq[Written]): Unit =
-    for (written <- writtenSeq) {
-      written match {
-        case _: AcceptEarlyWritten =>
-        case written: NormallyWritten =>
-          for (stamped <- written.stampedSeq) {
-            journaledState.applyEvent(stamped.value) match {
-              case Left(problem) => sys.error(s"Event $stamped cannot be applied: $problem")  // TODO throw!
-              case Right(o) => journaledState = o
-            }
-            stamped.value match {
-              case KeyedEvent(_: NoKey, SnapshotTaken) =>
-                releaseObsoleteEvents()
-                responseAfterSnapshotTaken()
-
-              case KeyedEvent(_, _: JournalEventsReleased) =>
-                releaseObsoleteEvents()
-
-              case _ =>
-            }
-          }
-      }
+  private def updateStateAndContinueCallers(written: NormallyWritten): Unit = {
+    journaledState = journaledState.applyEvents(written.stampedSeq.view.map(_.value))
+      .orThrow/*crashes JournalActor !!!*/
+    written.stampedSeq foreach handleJournalEvents
+    if (written.replyTo != Actor.noSender) {
+      // Continue caller
+      reply(written.sender, written.replyTo, Output.Stored(written.stampedSeq, journaledState, written.callersItem))
     }
+    written.stampedSeq foreach keyedEventBus.publish
+  }
 
-  private def notifyEventWatchAndContinueCaller(writtenSeq: collection.Seq[Written]): Unit = {
-    logCommitted(ack = requireClusterAcknowledgement, writtenSeq.iterator.collect { case o: NormallyWritten => o })
-    for (lastFileLengthAndEventId <- writtenSeq.flatMap(_.lastFileLengthAndEventId).lastOption) {
-      lastAcknowledgedEventId = lastFileLengthAndEventId.value
-      eventWriter.onCommitted(lastFileLengthAndEventId, n = writtenSeq.iterator.map(_.eventCount).sum)
-    }
-    // AcceptEarlyWritten has already been replied.
-    for (NormallyWritten(_, keyedEvents, _, _, replyTo, sender, item) <- writtenSeq) {
-      if (replyTo != Actor.noSender) {
-        reply(sender, replyTo, Output.Stored(keyedEvents, item))
-      }
-      keyedEvents foreach keyedEventBus.publish
+  private def handleJournalEvents(stamped: Stamped[AnyKeyedEvent]): Unit = {
+    stamped.value match {
+      case KeyedEvent(_: NoKey, SnapshotTaken) =>
+        releaseObsoleteEvents()
+        responseAfterSnapshotTaken()
+
+      case KeyedEvent(_, _: JournalEventsReleased) =>
+        releaseObsoleteEvents()
+
+      case _ =>
     }
   }
 
@@ -411,7 +403,7 @@ extends Actor with Stash
       //unhandled(msg)
 
     case Input.GetState =>
-      sender() ! Output.State(
+      sender() ! Output.JournalActorState(
         isFlushed = eventWriter != null && eventWriter.isFlushed,
         isSynced = eventWriter != null && eventWriter.isSynced,
         isRequiringClusterAcknowledgement = requireClusterAcknowledgement)
@@ -504,7 +496,21 @@ extends Actor with Stash
       () => onSnapshotFinished(snapshotTaken, since, () => andThen(journalHeader)))
   }
 
-  private def takeSnapshotNow(snapshotWriter: SnapshotJournalWriter, journalingActors: Set[ActorRef], andThen: () => Unit): Unit =
+  private def takeSnapshotNow(snapshotWriter: SnapshotJournalWriter, journalingActors: Set[ActorRef], andThen: () => Unit): Unit = {
+    if (useJournaledStateAsSnapshot) {
+      val future = journaledState.toSnapshotObservable
+        .mapParallelOrdered(sys.runtime.availableProcessors)(snapshotObject =>
+          Task {
+            // TODO Crash with SerializationException like EventSnapshotWriter
+            val json = journalMeta.snapshotJsonCodec(snapshotObject)
+            snapshotObject -> ByteString(json.compactPrint)
+          })
+        .foreach { case (snapshotObject, byteString) =>
+          snapshotWriter.writeSnapshot(byteString)
+          logger.trace(s"Snapshot $snapshotObject")
+        }(scheduler)
+      Await.result(future, 999.s)  // TODO Do not block the thread
+    }
     if (journalingActors.isEmpty) {
       andThen()
     } else {
@@ -560,6 +566,7 @@ extends Actor with Stash
         }
       }
     }
+  }
 
   private def onSnapshotFinished(
     snapshotTaken: Stamped[KeyedEvent[JournalEvent.SnapshotTaken]],
@@ -665,15 +672,16 @@ object JournalActor
 
   private val ClusterNodeHasBeenSwitchedOverProblem = Problem.pure("After switchover, this cluster node is no longer active")
 
-  def props[S <: JournaledState[S, Event]](
+  def props[S <: JournaledState[S]](
     journalMeta: JournalMeta,
     conf: JournalConf,
     keyedEventBus: StampedKeyedEventBus,
     scheduler: Scheduler,
     eventIdGenerator: EventIdGenerator,
-    stopped: Promise[Stopped] = Promise())
+    stopped: Promise[Stopped] = Promise(),
+    useJournaledStateAsSnapshot: Boolean = false)
   =
-    Props { new JournalActor[S](journalMeta, conf, keyedEventBus, scheduler, eventIdGenerator, stopped) }
+    Props { new JournalActor[S](journalMeta, conf, keyedEventBus, scheduler, eventIdGenerator, stopped, useJournaledStateAsSnapshot) }
       .withDispatcher(DispatcherName)
 
   private def toSnapshotTemporary(file: Path) = file.resolveSibling(s"${file.getFileName}$TmpSuffix")
@@ -681,13 +689,13 @@ object JournalActor
   private[journal] trait CallersItem
 
   object Input {
-    private[journal] final case class Start[S <: JournaledState[S, Event]](
-      journaledState: JournaledState[S, Event],
+    private[journal] final case class Start[S <: JournaledState[S]](
+      journaledState: JournaledState[S],
       recoveredJournalingActors: RecoveredJournalingActors,
       journalingObserver: Option[JournalingObserver],
       recoveredJournalHeader: JournalHeader,
       totalRunningSince: Deadline)
-    final case class StartWithoutRecovery[S <: JournaledState[S, Event]](emptyState: S, journalingObserver: Option[JournalingObserver] = None)
+    final case class StartWithoutRecovery[S <: JournaledState[S]](emptyState: S, journalingObserver: Option[JournalingObserver] = None)
     /*private[journal] due to race condition when starting AgentDriver*/ case object RegisterMe
     private[journal] final case class Store(
       timestamped: Seq[Timestamped],
@@ -696,7 +704,7 @@ object JournalActor
       transaction: Boolean,
       delay: FiniteDuration,
       alreadyDelayed: FiniteDuration,
-      item: CallersItem)
+      callersItem: CallersItem)
     final case object TakeSnapshot
     final case class PassiveNodeAcknowledged(eventId: EventId)
     final case object Terminate
@@ -712,12 +720,18 @@ object JournalActor
   sealed trait Output
   object Output {
     final case class Ready(journalHeader: JournalHeader)
-    private[journal] final case class Stored(stamped: Seq[Stamped[AnyKeyedEvent]], item: CallersItem) extends Output
-    private[journal] final case class Accepted(item: CallersItem) extends Output
+
+    private[journal] final case class Stored[S <: JournaledState[S]](
+      stamped: Seq[Stamped[AnyKeyedEvent]],
+      journaledState: S,
+      callersItem: CallersItem)
+    extends Output
+
+    private[journal] final case class Accepted(callersItem: CallersItem) extends Output
     //final case class SerializationFailure(throwable: Throwable) extends Output
     final case class StoreFailure(throwable: Throwable) extends Output
     final case object SnapshotTaken
-    final case class State(isFlushed: Boolean, isSynced: Boolean, isRequiringClusterAcknowledgement: Boolean)
+    final case class JournalActorState(isFlushed: Boolean, isSynced: Boolean, isRequiringClusterAcknowledgement: Boolean)
   }
 
   final case class Stopped(keyedEventJournalingActorCount: Int)
@@ -751,7 +765,7 @@ object JournalActor
     lastFileLengthAndEventId: Option[PositionAnd[EventId]],
     replyTo: ActorRef,
     sender: ActorRef,
-    item: CallersItem)
+    callersItem: CallersItem)
   extends Written with LoggableWritten
   {
     /** For logging: last stamped has been flushed */

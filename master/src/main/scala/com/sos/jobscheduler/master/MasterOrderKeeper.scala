@@ -88,7 +88,7 @@ final class MasterOrderKeeper(
   testEventBus: EventBus)
   (implicit scheduler: Scheduler)
 extends Stash
-with MainJournalingActor[Event]
+with MainJournalingActor[MasterState, Event]
 {
   import context.{actorOf, watch}
   import masterConfiguration.config
@@ -163,7 +163,7 @@ with MainJournalingActor[Event]
         if (snapshotTaken && !terminatingJournal) {
           // The event forces the cluster to acknowledge this event and the snapshot taken
           terminatingJournal = true
-          persistKeyedEventTask(NoKey <-: MasterShutDown())(_ => Completed)
+          persistKeyedEventTask(NoKey <-: MasterShutDown())((_, _) => Completed)
             .runToFuture.onComplete { tried =>
               tried match {
                 case Success(Completed) =>
@@ -212,8 +212,9 @@ with MainJournalingActor[Event]
 
     def persistThenHandleEvents(): Unit = {
       // Eliminate duplicate events like OrderJoined, which may be issued by parent and child orders when recovering
-      persistMultiple(events.distinct)(
-        _ foreach handleOrderEvent)
+      persistMultiple(events.distinct) { (stampedEvents, journaledState) =>
+        stampedEvents foreach handleOrderEvent
+      }
       events.clear()
     }
   }
@@ -235,11 +236,8 @@ with MainJournalingActor[Event]
 
   protected def snapshots = Observable.fromTask(masterState)
     .flatMap(_.toSnapshotObservable)
-    .flatMap {
-      case _: ClusterState.ClusterStateSnapshot => Observable.empty  // TODO `Cluster.persistence` still provides the snapshot
-      case o => Observable.pure(o)
-    }
-    .toListL.runToFuture
+    .toListL
+    .runToFuture
 
   private def masterState: Task[MasterState] =
     Task.pure {
@@ -355,7 +353,7 @@ with MainJournalingActor[Event]
         (!masterMetaState.isDefined ?
           (NoKey <-: MasterEvent.MasterInitialized(masterConfiguration.masterId, journalHeader.startedAt))
         ) ++ Some(NoKey <-: MasterEvent.MasterReady(ZoneId.systemDefault.getId, totalRunningTime = journalHeader.totalRunningTime))
-      ) { stampedEvents =>
+      ) { (stampedEvents, journaledState) =>
         stampedEvents.map(_.value) foreach {
            case KeyedEvent(NoKey, MasterEvent.MasterInitialized(masterId, startedAt)) =>
              masterMetaState = masterMetaState.copy(masterId = masterId, startedAt = startedAt)
@@ -504,21 +502,22 @@ with MainJournalingActor[Event]
       }
       masterStamped ++= lastAgentEventId.map(agentEventId => Timestamped(agentRefPath <-: AgentEventIdEvent(agentEventId)))
 
-      persistTransactionTimestamped(masterStamped, async = true, alreadyDelayed = agentDriverConfiguration.eventBufferDelay) { stampedEvents =>
-        // Inhibit OrderAdded, OrderFinished, OrderJoined(?), OrderAttachable and others ???
-        //  Agent does not send these events, but just in case.
-        stampedEvents.map(_.value)
-          .foreach {
-            case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
-              handleOrderEvent(orderId, event)
+      persistTransactionTimestamped(masterStamped, async = true, alreadyDelayed = agentDriverConfiguration.eventBufferDelay) {
+        (stampedEvents, journaledState) =>
+          // Inhibit OrderAdded, OrderFinished, OrderJoined(?), OrderAttachable and others ???
+          //  Agent does not send these events, but just in case.
+          stampedEvents.map(_.value)
+            .foreach {
+              case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
+                handleOrderEvent(orderId, event)
 
-            case KeyedEvent(_, AgentEventIdEvent(agentEventId)) =>
-              assert(agentEntry.lastAgentEventId < agentEventId)
-              agentEntry.lastAgentEventId = agentEventId
+              case KeyedEvent(_, AgentEventIdEvent(agentEventId)) =>
+                assert(agentEntry.lastAgentEventId < agentEventId)
+                agentEntry.lastAgentEventId = agentEventId
 
-            case _ =>
-          }
-        completedPromise.success(Completed)
+              case _ =>
+            }
+          completedPromise.success(Completed)
       }
 
     case AgentDriver.Output.OrdersDetached(orderIds) =>
@@ -526,8 +525,9 @@ with MainJournalingActor[Event]
       if (unknown.nonEmpty) {
         logger.error(s"Response to AgentCommand.DetachOrder from Agent for unknown orders: "+ unknown.mkString(", "))
       }
-      persistMultipleAsync(orderIds -- unknown map (_ <-: OrderTransferredToMaster))(
-        _ foreach handleOrderEvent)
+      persistMultipleAsync(orderIds -- unknown map (_ <-: OrderTransferredToMaster)) { (stampedEvents, journaledState) =>
+        stampedEvents foreach handleOrderEvent
+      }
 
     case AgentDriver.Output.OrdersCancelationMarked(orderIds) =>
       val unknown = orderIds -- orderRegister.keySet
@@ -580,7 +580,7 @@ with MainJournalingActor[Event]
               case Right(None) =>
                 Future.successful(Right(MasterCommand.Response.Accepted))
               case Right(Some(event)) =>
-                persist(orderId <-: event) { stamped =>  // Event may be inserted between events coming from Agent
+                persist(orderId <-: event) { (stamped, journaledState) =>  // Event may be inserted between events coming from Agent
                   handleOrderEvent(stamped)
                   Right(MasterCommand.Response.Accepted)
                 }
@@ -596,9 +596,10 @@ with MainJournalingActor[Event]
           if (untilEventId < current)
             Future(Left(ReverseReleaseEventsProblem(requestedUntilEventId = untilEventId, currentUntilEventId = current)))
           else
-            persist(JournalEventsReleased(userId, untilEventId)) { case Stamped(_,_, _ <-: event) =>
-              journalState = journalState.applyEvent(event)
-              Right(MasterCommand.Response.Accepted)
+            persist(JournalEventsReleased(userId, untilEventId)) {
+              case (Stamped(_,_, _ <-: event), journaledState) =>
+                journalState = journalState.applyEvent(event)
+                Right(MasterCommand.Response.Accepted)
             }
         }
 
@@ -655,7 +656,7 @@ with MainJournalingActor[Event]
         }
 
       case MasterCommand.IssueTestEvent =>
-        persist(MasterTestEvent, async = true)(_ =>
+        persist(MasterTestEvent, async = true)((_, _) =>
           Right(MasterCommand.Response.Accepted))
 
       case _ =>
@@ -694,7 +695,7 @@ with MainJournalingActor[Event]
       foldedSideEffects <- checkedSideEffects.toVector.sequence map (_.fold(SyncIO.unit)(_ >> _))  // One problem invalidates all side effects
     } yield
       SyncIO {
-        persistTransaction(events map (e => KeyedEvent(e))) { _ =>
+        persistTransaction(events.map(KeyedEvent(_))) { (_, _) =>
           setRepo(changedRepo)
           events foreach logRepoEvent
           foldedSideEffects.unsafeRunSync()
@@ -752,7 +753,7 @@ with MainJournalingActor[Event]
         repo.idTo[Workflow](order.workflowId) match {
           case Left(problem) => Future.successful(Left(problem))
           case Right(workflow) =>
-            persist/*Async?*/(order.id <-: OrderAdded(workflow.id, order.state.scheduledFor, order.arguments)) { stamped =>
+            persist/*Async?*/(order.id <-: OrderAdded(workflow.id, order.state.scheduledFor, order.arguments)) { (stamped, journaledState) =>
               handleOrderEvent(stamped)
               Right(true)
             }
@@ -770,8 +771,8 @@ with MainJournalingActor[Event]
         .map { ordersAndWorkflows =>
           val events = for ((order, workflow) <- ordersAndWorkflows) yield
             order.id <-: OrderAdded(workflow.id/*reuse*/, order.state.scheduledFor, order.arguments)
-          persistMultiple(events) { stamped =>
-            for (o <- stamped) handleOrderEvent(o)
+          persistMultiple(events) { (stampedEvents, journaledState) =>
+            for (o <- stampedEvents) handleOrderEvent(o)
             Completed
           }
         })
@@ -879,7 +880,7 @@ with MainJournalingActor[Event]
   private def tryAttachOrderToAgent(order: Order[Order.IsFreshOrReady]): Unit =
     for ((signedWorkflow, job, agentEntry) <- checkedWorkflowJobAndAgentEntry(order).onProblem(p => logger.error(p))) {  // TODO OrderBroken on error?
       if (order.isDetached && !orderProcessor.isOrderCancelable(order))
-        persist(order.id <-: OrderAttachable(agentEntry.agentRefPath)) { stamped =>
+        persist(order.id <-: OrderAttachable(agentEntry.agentRefPath)) { (stamped, journaledState) =>
           handleOrderEvent(stamped)
         }
       else if (order.isAttaching) {

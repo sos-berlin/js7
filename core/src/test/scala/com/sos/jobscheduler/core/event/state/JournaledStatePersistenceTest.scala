@@ -79,7 +79,8 @@ final class JournaledStatePersistenceTest extends AnyFreeSpec with BeforeAndAfte
 
     "persistKeyedEvent with simple KeyedEvent" in {
       assert(persistence.persistKeyedEvent(NumberKey("ONE") <-: NumberAdded).runSyncUnsafe().isRight)
-      assert(persistence.persistKeyedEvent(NumberKey("ONE") <-: NumberAdded).runSyncUnsafe() == Left(Problem("Duplicate NumberThing: ONE")))
+      assert(persistence.persistKeyedEvent(NumberKey("ONE") <-: NumberAdded).runSyncUnsafe() ==
+        Left(Problem("Event 'ONE <-: NumberAdded' cannot be applied: Duplicate NumberThing: ONE")))
       intercept[MatchError] { persistence.persistKeyedEvent(NumberKey("ONE") <-: NumberUnhandled).runSyncUnsafe() }
     }
 
@@ -131,21 +132,22 @@ final class JournaledStatePersistenceTest extends AnyFreeSpec with BeforeAndAfte
   }
 
   private class RunningPersistence {
-    private var journaledStatePersistence: JournaledStatePersistence[TestState, Event] = null
+    private var journaledStatePersistence: JournaledStatePersistence[TestState] = null
     private lazy val journalStopped = Promise[JournalActor.Stopped]()
 
     private lazy val journalActor = tag[JournalActor.type](
       actorSystem.actorOf(
         JournalActor.props[TestState](journalMeta, JournalConf.fromConfig(config), new StampedKeyedEventBus, Scheduler.global,
           new EventIdGenerator(new EventIdClock.Fixed(currentTimeMillis = 1000/*EventIds start at 1000000*/)),
-          journalStopped)))
+          journalStopped,
+          useJournaledStateAsSnapshot = true)))
 
     def start() = {
       val recovered = JournaledStateRecoverer.recover(journalMeta,
         TestState.empty, () => new TestStateBuilder, JournalEventWatch.TestConfig)
       recovered.startJournalAndFinishRecovery(journalActor)(actorSystem)
       implicit val a = actorSystem
-      journaledStatePersistence = new JournaledStatePersistence[TestState, Event](journalActor)
+      journaledStatePersistence = new JournaledStatePersistence[TestState](journalActor)
       journaledStatePersistence.start(recovered.recoveredState getOrElse TestState.empty)
       journaledStatePersistence
     }
@@ -171,7 +173,7 @@ private object JournaledStatePersistenceTest
      |jobscheduler.journal.dispatcher.type = PinnedDispatcher
      |""".stripMargin))
 
-  private class TestStateBuilder extends JournaledStateBuilder[TestState, Event]
+  private class TestStateBuilder extends JournaledStateBuilder[TestState]
   {
     private val numberThings = mutable.Map[NumberKey, NumberThing]()
     private var _state = TestState.empty
@@ -227,7 +229,7 @@ private object JournaledStatePersistenceTest
     eventId: EventId,
     numberThingCollection: NumberThingCollection,
     standards: JournaledState.Standards = JournaledState.Standards.empty)
-  extends JournaledState[TestState, Event]
+  extends JournaledState[TestState]
   {
     protected type Self = NumberThingCollection
     protected type Snapshot = NumberThing

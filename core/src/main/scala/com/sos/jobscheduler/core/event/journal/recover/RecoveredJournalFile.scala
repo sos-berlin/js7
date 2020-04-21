@@ -2,10 +2,10 @@ package com.sos.jobscheduler.core.event.journal.recover
 
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.core.event.journal.data.JournalHeader
-import com.sos.jobscheduler.data.event.{Event, JournalPosition, JournaledState}
+import com.sos.jobscheduler.data.event.{JournalPosition, JournaledState}
 import java.nio.file.Path
 
-final case class RecoveredJournalFile[S <: JournaledState[S, E], E <: Event](
+final case class RecoveredJournalFile[S <: JournaledState[S]](
   file: Path,
   length: Long,
   /** Last position in events section, but not in a transaction. */

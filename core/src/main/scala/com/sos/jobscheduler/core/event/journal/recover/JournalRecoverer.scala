@@ -25,7 +25,7 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-trait JournalRecoverer[S <: JournaledState[S, Event]]
+trait JournalRecoverer[S <: JournaledState[S]]
 {
   protected def journalMeta: JournalMeta
   protected def expectedJournalId: Option[JournalId]
@@ -102,7 +102,7 @@ trait JournalRecoverer[S <: JournaledState[S, Event]]
   // TODO Use Recovered startJournalAndFinishRecoveryReplace instead
   final def startJournalAndFinishRecovery(
     journalActor: ActorRef,
-    journaledState: JournaledState[S, Event],
+    journaledState: JournaledState[S],
     recoveredActors: RecoveredJournalingActors = RecoveredJournalingActors.Empty,
     journalingObserver: Option[JournalingObserver] = None)
     (implicit actorRefFactory: ActorRefFactory)
@@ -141,9 +141,9 @@ trait JournalRecoverer[S <: JournaledState[S, Event]]
 object JournalRecoverer {
   private val logger = Logger(getClass)
 
-  private[recover] def startJournalAndFinishRecovery[S <: JournaledState[S, Event]](
+  private[recover] def startJournalAndFinishRecovery[S <: JournaledState[S]](
     journalActor: ActorRef,
-    journaledState: JournaledState[S, Event],
+    journaledState: JournaledState[S],
     recoveredActors: RecoveredJournalingActors,
     observer: Option[JournalingObserver],
     expectedJournalId: Option[JournalId],

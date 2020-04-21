@@ -8,7 +8,7 @@ import com.sos.jobscheduler.core.workflow.Recovering.followUpRecoveredSnapshots
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{Event, EventId, JournalEvent, JournalState, JournaledState, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{EventId, JournalEvent, JournalState, JournaledState, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.RepoEvent
 import com.sos.jobscheduler.data.master.MasterFileBaseds
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderStdWritten}
@@ -22,7 +22,7 @@ import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
 import scala.collection.mutable
 
 final class MasterStateBuilder
-extends JournaledStateBuilder[MasterState, Event]
+extends JournaledStateBuilder[MasterState]
 {
   private var standards: JournaledState.Standards = JournaledState.Standards.empty
   private var masterMetaState = MasterMetaState.Undefined

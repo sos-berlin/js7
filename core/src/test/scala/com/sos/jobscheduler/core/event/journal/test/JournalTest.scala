@@ -81,16 +81,16 @@ final class JournalTest extends AnyFreeSpec with BeforeAndAfterAll with TestJour
 
   "acceptEarly" in {
     withTestActor() { (actorSystem, actor) =>
-      def journalState = (actor ? TestActor.Input.GetJournalState).mapTo[JournalActor.Output.State] await 99.s
+      def journalState = (actor ? TestActor.Input.GetJournalState).mapTo[JournalActor.Output.JournalActorState] await 99.s
 
       execute(actorSystem, actor, "TEST-E", TestAggregateActor.Command.Add("A")) await 99.s
-      assert(journalState == JournalActor.Output.State(isFlushed = true, isSynced = true, isRequiringClusterAcknowledgement = false))
+      assert(journalState == JournalActor.Output.JournalActorState(isFlushed = true, isSynced = true, isRequiringClusterAcknowledgement = false))
 
       execute(actorSystem, actor, "TEST-E", TestAggregateActor.Command.AcceptEarly) await 99.s
-      //assert(journalState == JournalActor.Output.State(isFlushed = true, isSynced = true))
+      //assert(journalState == JournalActor.Output.JournalActorState(isFlushed = true, isSynced = true))
 
       execute(actorSystem, actor, "TEST-E", TestAggregateActor.Command.Append("Cc")) await 99.s
-      assert(journalState == JournalActor.Output.State(isFlushed = true, isSynced = true, isRequiringClusterAcknowledgement = false))
+      assert(journalState == JournalActor.Output.JournalActorState(isFlushed = true, isSynced = true, isRequiringClusterAcknowledgement = false))
       ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet shouldEqual Set(
         TestAggregate("TEST-C", "(C.Add)"),
         TestAggregate("TEST-D", "DDD"),

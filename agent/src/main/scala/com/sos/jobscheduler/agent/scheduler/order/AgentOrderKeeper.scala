@@ -69,7 +69,8 @@ final class AgentOrderKeeper(
   keyedEventBus: StampedKeyedEventBus,
   conf: AgentConfiguration)(
   implicit scheduler: Scheduler)
-extends MainJournalingActor[Event] with Stash {
+extends MainJournalingActor[AgentState, Event]
+with Stash {
 
   import context.{actorOf, watch}
 
@@ -204,11 +205,12 @@ extends MainJournalingActor[Event] with Stash {
         // Automatically add Master's UserId to list of users allowed to release events,
         // to avoid deletion of journal files due to an empty list, becore master has read the events.
         // The master has to send ReleaseEvents commands to release obsolete journal files.
-        persist(JournalEventsReleased(masterId.toUserId, EventId.BeforeFirst)) { case Stamped(_,_, _ <-: event) =>
-          journalState = journalState.applyEvent(event)
+        persist(JournalEventsReleased(masterId.toUserId, EventId.BeforeFirst)) {
+          case (Stamped(_,_, _ <-: event), journaledState) =>
+            journalState = journalState.applyEvent(event)
         }
       }
-      persist(AgentReadyForMaster(ZoneId.systemDefault.getId, totalRunningTime = journalHeader.totalRunningTime)) { _ =>
+      persist(AgentReadyForMaster(ZoneId.systemDefault.getId, totalRunningTime = journalHeader.totalRunningTime)) { (_, _) =>
         become("ready")(ready)
         unstashAll()
         logger.info("Ready")
@@ -296,7 +298,7 @@ extends MainJournalingActor[Event] with Stash {
                 (workflowRegister.get(order.workflowId) match {
                   case None =>
                     logger.info(verified.toString)
-                    persist(WorkflowAttached(workflow)) { stampedEvent =>
+                    persist(WorkflowAttached(workflow)) { (stampedEvent, journaledState) =>
                       workflowRegister.handleEvent(stampedEvent.value)
                       startJobActors(workflow)
                       Right(workflow)
@@ -373,10 +375,11 @@ extends MainJournalingActor[Event] with Stash {
       if (after < current)
         Future(Left(ReverseReleaseEventsProblem(requestedUntilEventId = after, currentUntilEventId = current)))
       else
-        persist(JournalEventsReleased(userId, after)) { case Stamped(_,_, _ <-: event) =>
-          journalState = journalState.applyEvent(event)
-          Right(AgentCommand.Response.Accepted)
-        }
+        persist(JournalEventsReleased(userId, after)) {
+          case (Stamped(_,_, _ <-: event), journaledState) =>
+            journalState = journalState.applyEvent(event)
+            Right(AgentCommand.Response.Accepted)
+          }
 
     case _ if shuttingDown =>
       Future.failed(AgentIsShuttingDownProblem.throwable)

@@ -18,7 +18,7 @@ final case class AgentState(
   standards: JournaledState.Standards,
   idToOrder: Map[OrderId, Order[Order.State]],
   idToWorkflow: Map[WorkflowId, Workflow])
-extends JournaledState[AgentState, Event]
+extends JournaledState[AgentState]
 {
   def toSnapshotObservable =
     journalState.toSnapshotObservable ++

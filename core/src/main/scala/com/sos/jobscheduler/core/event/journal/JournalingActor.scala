@@ -12,7 +12,7 @@ import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.MonixUtils.promiseTask
 import com.sos.jobscheduler.core.event.journal.JournalingActor._
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, JournaledState, KeyedEvent, Stamped}
 import monix.eval.Task
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.concurrent.{Future, Promise}
@@ -22,7 +22,8 @@ import scala.util.{Failure, Success}
 /**
   * @author Joacim Zschimmer
   */
-trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging with ReceiveLoggingActor
+trait JournalingActor[S <: JournaledState[S], E <: Event]
+extends Actor with Stash with ActorLogging with ReceiveLoggingActor
 {
   protected def journalActor: ActorRef
   protected def snapshots: Future[Iterable[Any]]
@@ -59,11 +60,12 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
     stashingCount = Inhibited
   }
 
-  protected final def persistKeyedEventTask[A](keyedEvent: KeyedEvent[E])(callback: Stamped[KeyedEvent[E]] => A): Task[A] =
+  protected final def persistKeyedEventTask[A](keyedEvent: KeyedEvent[E])(callback: (Stamped[KeyedEvent[E]], S) => A): Task[A] =
     promiseTask[A] { promise =>
       self ! Persist(keyedEvent, callback, promise)
     }
 
+  /** Fast lane for events not affecting the journaled state. */
   protected final def persistKeyedEventAcceptEarly[EE <: E](
     keyedEvent: KeyedEvent[EE],
     timestamp: Option[Timestamp] = None,
@@ -82,11 +84,11 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
     keyedEvent: KeyedEvent[EE],
     timestamp: Option[Timestamp] = None,
     async: Boolean = false)(
-    callback: Stamped[KeyedEvent[EE]] => A)
+    callback: (Stamped[KeyedEvent[EE]], S) => A)
   : Future[A] =
-    persistKeyedEvents(Timestamped(keyedEvent, timestamp) :: Nil, async = async) { events =>
+    persistKeyedEvents(Timestamped(keyedEvent, timestamp) :: Nil, async = async) { (events, journaledState) =>
       assert(events.size == 1)
-      callback(events.head)
+      callback(events.head, journaledState)
     }
 
   protected final def persistKeyedEvents[EE <: E, A](
@@ -95,7 +97,7 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
     delay: FiniteDuration = Duration.Zero,
     alreadyDelayed: FiniteDuration = Duration.Zero,
     async: Boolean = false)(
-    callback: Seq[Stamped[KeyedEvent[EE]]] => A)
+    callback: (Seq[Stamped[KeyedEvent[EE]]], S) => A)
   : Future[A] =
     promiseFuture[A] { promise =>
       start(async = async)
@@ -104,10 +106,10 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
       journalActor.forward(
         JournalActor.Input.Store(timestamped, self, acceptEarly = false, transaction = transaction,
           delay = delay, alreadyDelayed = alreadyDelayed,
-          EventsCallback(
+          EventsCallback[S](
             async = async,
-            stampedSeq => promise.complete(
-              try Success(callback(stampedSeq.asInstanceOf[Seq[Stamped[KeyedEvent[EE]]]]))
+            (stampedSeq, journaledState) => promise.complete(
+              try Success(callback(stampedSeq.asInstanceOf[Seq[Stamped[KeyedEvent[EE]]]], journaledState))
               catch { case NonFatal(t) =>
                 // TODO Ein Fehler sollte zum Abbruch führen? Aber dann?
                 logger.error(s"“$toString” ${t.toStringWithCauses}\n" + s"persistKeyedEvents(${timestamped.map(_.keyedEvent)})", t)
@@ -142,7 +144,7 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
       promise.completeWith(
         persistKeyedEvent(keyedEvent)(callback))
 
-    case JournalActor.Output.Stored(stampedSeq, item: Item) =>
+    case JournalActor.Output.Stored(stampedSeq, journaledState, item: Item) =>
       // sender() is from persistKeyedEvent or deferAsync
       stampedSeq.lastOption foreach { last =>
         _persistedEventId = last.eventId
@@ -151,10 +153,10 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
         endStashing(stampedSeq)
       }
       (stampedSeq, item) match {
-        case (stamped, EventsCallback(_, callback)) =>
-          if (TraceLog && logger.underlying.isTraceEnabled) for (st <- stamped)
+        case (_, eventsCallback: EventsCallback[S]) =>
+          if (TraceLog && logger.underlying.isTraceEnabled) for (st <- stampedSeq)
             logger.trace(s"“$toString” Stored ${EventId.toString(st.eventId)} ${st.value.key} <-: ${typeName(st.value.event.getClass)}$stashingCountRemaining")
-          callback(stamped.asInstanceOf[Seq[Stamped[KeyedEvent[E]]]])
+          eventsCallback.callback(stampedSeq.asInstanceOf[Seq[Stamped[KeyedEvent[E]]]], journaledState.asInstanceOf[S])
 
         case (Nil, Deferred(_, callback)) =>
           if (TraceLog) logger.trace(s"“$toString” Stored (no event)$stashingCountRemaining")
@@ -231,7 +233,10 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
   protected final def Timestamped[EE <: E](keyedEvent: KeyedEvent[EE], timestamp: Option[Timestamp] = None) =
     JournalingActor.Timestamped(keyedEvent, timestamp)
 
-  private case class EventsCallback(async: Boolean, callback: Seq[Stamped[KeyedEvent[E]]] => Unit) extends Item {
+  private case class EventsCallback[S <: JournaledState[S]](
+    async: Boolean,
+    callback: (Seq[Stamped[KeyedEvent[E]]], S) => Unit)
+  extends Item {
     override def toString = s"EventsCallback(${if (async) "async" else ""})"
   }
 
@@ -239,7 +244,7 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
     override def toString = s"Deferred${if (async) "async" else ""}"
   }
 
-  private case class Persist[A](keyedEvent: KeyedEvent[E], callback: Stamped[KeyedEvent[E]] => A, promise: Promise[A])
+  private case class Persist[A](keyedEvent: KeyedEvent[E], callback: (Stamped[KeyedEvent[E]], S) => A, promise: Promise[A])
 }
 
 object JournalingActor

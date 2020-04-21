@@ -21,15 +21,15 @@ import shapeless.tag.@@
 //  JournaledStatePersistence stellt dazu LockKeeper bereit
 //  Wir werden vielleicht mehrere Schlüssel auf einmal sperren wollen (für fork/join?)
 
-final class JournaledStatePersistence[S <: JournaledState[S, E], E <: Event](
+final class JournaledStatePersistence[S <: JournaledState[S]](
   val/*???*/ journalActor: ActorRef @@ JournalActor.type)
   (implicit S: TypeTag[S], s: Scheduler, actorRefFactory: ActorRefFactory)
 extends AutoCloseable
 {
-  private val lockKeeper = new LockKeeper[E#Key]  // TODO Should the caller be responsible for sequential key updates? We could allow parallel, independent(!) updates
-  private val persistPromise = Promise[PersistFunction[S, E]]()
+  private val lockKeeper = new LockKeeper[Any]  // TODO Should the caller be responsible for sequential key updates? We could allow parallel, independent(!) updates
+  private val persistPromise = Promise[PersistFunction[S, Event]]()
   private val getStatePromise = Promise[Task[S]]()
-  private val persistTask: Task[PersistFunction[S, E]] = Task.fromFuture(persistPromise.future)
+  private val persistTask: Task[PersistFunction[S, Event]] = Task.fromFuture(persistPromise.future)
   val currentState: Task[S] = Task.fromFuture(getStatePromise.future).flatten
 
   private val actorSetOnce = SetOnce[ActorRef]
@@ -41,32 +41,32 @@ extends AutoCloseable
 
   def start(state: S): Unit =
     actorSetOnce := actorRefFactory.actorOf(
-      StateJournalingActor.props[S, E](state, journalActor, persistPromise, getStatePromise),
+      StateJournalingActor.props[S, Event](state, journalActor, persistPromise, getStatePromise),
       encodeAsActorName("StateJournalingActor-" + S.tpe.toString))
 
-  def persistKeyedEvent[E1 <: E](keyedEvent: KeyedEvent[E1]): Task[Checked[(Stamped[KeyedEvent[E1]], S)]] = {
+  def persistKeyedEvent[E <: Event](keyedEvent: KeyedEvent[E]): Task[Checked[(Stamped[KeyedEvent[E]], S)]] = {
     requireStarted()
     persistEvent(key = keyedEvent.key)(_ => Right(keyedEvent.event))
   }
 
-  def persistEvent[E1 <: E](key: E1#Key): (S => Checked[E1]) => Task[Checked[(Stamped[KeyedEvent[E1]], S)]] = {
+  def persistEvent[E <: Event](key: E#Key): (S => Checked[E]) => Task[Checked[(Stamped[KeyedEvent[E]], S)]] = {
     requireStarted()
     stateToEvent => lockKeeper.lock(key).use(_ =>
       persistEventUnlocked(
         stateToEvent.andThen(_.map(KeyedEvent(key, _)))))
   }
 
-  private def persistEventUnlocked[E1 <: E](stateToEvent: S => Checked[KeyedEvent[E1]]): Task[Checked[(Stamped[KeyedEvent[E1]], S)]] =
+  private def persistEventUnlocked[E <: Event](stateToEvent: S => Checked[KeyedEvent[E]]): Task[Checked[(Stamped[KeyedEvent[E]], S)]] =
     persistTask.flatMap(
       _(state => stateToEvent(state).map(_ :: Nil))
     ).map(_ map {
       case (stampedKeyedEvents, state) =>
         assertThat(stampedKeyedEvents.length == 1)
-        stampedKeyedEvents.head.asInstanceOf[Stamped[KeyedEvent[E1]]] -> state
+        stampedKeyedEvents.head.asInstanceOf[Stamped[KeyedEvent[E]]] -> state
     })
 
   /** Persist multiple events in a transaction. */
-  def persistTransaction(key: E#Key): (S => Checked[Seq[E]]) => Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] = {
+  def persistTransaction[E <: Event](key: E#Key): (S => Checked[Seq[E]]) => Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] = {
     requireStarted()
     stateToEvents =>
       lockKeeper.lock(key).use(_ =>
@@ -75,7 +75,7 @@ extends AutoCloseable
             .map(_.map(KeyedEvent[E](key, _)))))
   }
 
-  private def persistTransactionUnlocked(stateToEvents: StateToEvents[S, E]): Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] = {
+  private def persistTransactionUnlocked[E <: Event](stateToEvents: StateToEvents[S, E]): Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] = {
     requireStarted()
     persistTask.flatMap(
       _(stateToEvents)
@@ -86,7 +86,7 @@ extends AutoCloseable
   private def requireStarted() =
     if (actorSetOnce.isEmpty) throw new IllegalStateException(s"$toString has not yet been started")
 
-  def waitUntilStarted: Task[JournaledStatePersistence[S, E]] =
+  def waitUntilStarted: Task[JournaledStatePersistence[S]] =
     Task.deferFuture {
       val f = actorSetOnce.future
       if (!f.isCompleted) logger.debug(s"$toString waitUntilStarted ...")

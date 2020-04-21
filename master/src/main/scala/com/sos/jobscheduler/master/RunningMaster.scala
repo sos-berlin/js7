@@ -3,6 +3,7 @@ package com.sos.jobscheduler.master
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.pattern.ask
 import akka.util.Timeout
+import cats.syntax.flatMap._
 import com.google.inject.Stage.{DEVELOPMENT, PRODUCTION}
 import com.google.inject.util.Modules
 import com.google.inject.util.Modules.EMPTY_MODULE
@@ -34,7 +35,7 @@ import com.sos.jobscheduler.core.event.journal.recover.Recovered
 import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
 import com.sos.jobscheduler.core.problems.{ClusterNodeIsNotActiveProblem, ClusterNodeIsNotYetReadyProblem, JobSchedulerIsShuttingDownProblem}
 import com.sos.jobscheduler.data.Problems.PassiveClusterNodeShutdownNotAllowedProblem
-import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
+import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.data.event.{EventRequest, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent}
@@ -159,9 +160,9 @@ extends AutoCloseable
     } closeWithCloser closer
 
   @TestOnly
-  def journalActorState: Output.State =
+  def journalActorState: Output.JournalActorState =
     (actorSystem.actorSelection("user/Journal") ? JournalActor.Input.GetState)(Timeout(99.s))
-      .mapTo[JournalActor.Output.State]
+      .mapTo[JournalActor.Output.JournalActorState]
       .await(99.s)
 
   def close() = closer.close()
@@ -223,9 +224,10 @@ object RunningMaster
           injector.instance[StampedKeyedEventBus], scheduler, injector.instance[EventIdGenerator]),
         "Journal"))
       signatureVerifier
+      val persistence = new JournaledStatePersistence[MasterState](journalActor).closeWithCloser
       val cluster = new Cluster(
         journalMeta,
-        new JournaledStatePersistence[ClusterState, ClusterEvent](journalActor).closeWithCloser,
+        persistence,
         masterConfiguration.masterId,
         masterConfiguration.journalConf,
         masterConfiguration.clusterConf,
@@ -238,6 +240,11 @@ object RunningMaster
       // maybePassiveState accesses the current MasterState while this node is passive, otherwise it is None
       val (currentPassiveMasterState, clusterFollowUpTask) = startCluster(cluster, recovered)
       val clusterFollowUpFuture = clusterFollowUpTask
+        .flatTap {
+          case Right(ClusterFollowUp.BecomeActive(recovered)) =>
+            Task { persistence.start(recovered.state) }
+          case _ => Task.unit
+        }
         .executeWithOptions(_.enableAutoCancelableRunLoops)
         .runToFuture
       val (orderKeeperStarted, orderKeeperTerminated) = {

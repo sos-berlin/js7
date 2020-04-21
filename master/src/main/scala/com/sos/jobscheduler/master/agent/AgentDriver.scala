@@ -25,6 +25,7 @@ import com.sos.jobscheduler.data.crypt.Signed
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, Stamped}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow
+import com.sos.jobscheduler.master.MasterState
 import com.sos.jobscheduler.master.agent.AgentDriver._
 import com.sos.jobscheduler.master.agent.CommandQueue.QueuedInputResponse
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
@@ -53,7 +54,7 @@ final class AgentDriver private(agentRefPath: AgentRefPath,
   masterConfiguration: MasterConfiguration,
   protected val journalActor: ActorRef)
   (implicit scheduler: Scheduler)
-extends KeyedJournalingActor[MasterAgentEvent]
+extends KeyedJournalingActor[MasterState, MasterAgentEvent]
 with ReceiveLoggingActor.WithStash
 {
   private val logger = Logger.withPrefix[this.type](agentRefPath.string)
@@ -208,7 +209,7 @@ with ReceiveLoggingActor.WithStash
           lastProblem = Some(problem)
           logger.warn(s"Coupling failed: $problem")
           for (t <- problem.throwableOption if t.getStackTrace.nonEmpty) logger.debug(s"Coupling failed: $problem", t)
-          persist(MasterAgentEvent.AgentCouplingFailed(problem), async = true) { _ =>
+          persist(MasterAgentEvent.AgentCouplingFailed(problem), async = true) { (_, _) =>
             Completed
           }
         })
@@ -329,7 +330,7 @@ with ReceiveLoggingActor.WithStash
       client.commandExecute(AgentCommand.RegisterAsMaster)
         .map(_.map(_.agentRunId).orThrowWithoutStacktrace/*TODO Safe original Problem, package in special ProblemException and let something like Problem.pure don't _wrap_ the Problem?*/)
         .flatMap(agentRunId =>
-          persistTask(AgentRegisteredMaster(agentRunId)) { _ =>
+          persistTask(AgentRegisteredMaster(agentRunId)) { (_, journaledState) =>
             // asynchronous
             agentRunIdOnce := agentRunId
             parent ! Output.RegisteredAtAgent(agentRunId)

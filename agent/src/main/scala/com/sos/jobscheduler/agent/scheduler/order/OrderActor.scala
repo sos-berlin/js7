@@ -2,6 +2,7 @@ package com.sos.jobscheduler.agent.scheduler.order
 
 import akka.actor.{ActorRef, DeadLetterSuppression, Props, Status, Terminated}
 import akka.pattern.pipe
+import com.sos.jobscheduler.agent.AgentState
 import com.sos.jobscheduler.agent.scheduler.job.JobActor
 import com.sos.jobscheduler.agent.scheduler.job.task.{TaskStepFailed, TaskStepSucceeded}
 import com.sos.jobscheduler.agent.scheduler.order.OrderActor._
@@ -30,7 +31,7 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
   */
 final class OrderActor private(orderId: OrderId, protected val journalActor: ActorRef, conf: Conf)
   (implicit scheduler: Scheduler)
-extends KeyedJournalingActor[OrderEvent]
+extends KeyedJournalingActor[AgentState, OrderEvent]
 {
   private val logger = Logger.withPrefix[this.type](orderId.toString)
   import conf.{charBufferSize, stdoutCommitDelay}
@@ -83,7 +84,7 @@ extends KeyedJournalingActor[OrderEvent]
       command match {
         case Command.Attach(attached @ Order(`orderId`, workflowPosition, state: Order.IsFreshOrReady, arguments, historicOutcomes, Some(Order.Attached(agentRefPath)), parent, cancellationMarked/*???*/)) =>
           becomeAsStateOf(attached, force = true)
-          persist(OrderAttached(arguments, workflowPosition, state, historicOutcomes, parent, agentRefPath)) { event =>
+          persist(OrderAttached(arguments, workflowPosition, state, historicOutcomes, parent, agentRefPath)) { (event, state) =>
             update(event)
             Completed
           } pipeTo sender()
@@ -117,7 +118,7 @@ extends KeyedJournalingActor[OrderEvent]
           () => (stdoutWriter.isRelevant || stderrWriter.isRelevant) option s"stdout: $stdoutWriter, stderr: $stderrWriter"))
         context.watch(jobActor)
         val orderStarted = order.isState[Order.Fresh] thenList OrderStarted  // OrderStarted automatically with first OrderProcessingStarted
-        persistTransaction(orderStarted :+ OrderProcessingStarted) { events =>
+        persistTransaction(orderStarted :+ OrderProcessingStarted) { (events, state) =>
           events foreach update
           jobActor ! JobActor.Command.ProcessOrder(
             jobKey,
@@ -225,7 +226,7 @@ extends KeyedJournalingActor[OrderEvent]
         if (event.isInstanceOf[OrderCancellationMarked] && updated == order)  // Duplicate, already cancelling with same CancelMode?
           Future.successful(Completed)
         else
-          persist(event) { event =>
+          persist(event) { (event, state) =>
             update(event)
             if (terminating) {
               context.stop(self)
@@ -274,7 +275,7 @@ extends KeyedJournalingActor[OrderEvent]
 
   private def writeStdouterr(t: StdoutOrStderr, chunk: String): Future[Accepted] =
     if (stdoutCommitDelay == Duration.Zero)  // slow
-      persist(OrderStdWritten(t)(chunk)) { _ =>
+      persist(OrderStdWritten(t)(chunk)) { (_, _) =>
         Accepted
       }
     else

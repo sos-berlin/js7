@@ -13,7 +13,7 @@ import scala.util.{Failure, Success}
   * @author Joacim Zschimmer
   */
 private[test] final class TestAggregateActor(protected val key: String, val journalActor: ActorRef)
-extends KeyedJournalingActor[TestEvent] {
+extends KeyedJournalingActor[TestState, TestEvent] {
 
   import context.dispatcher
 
@@ -43,7 +43,7 @@ extends KeyedJournalingActor[TestEvent] {
 
         case Command.Add(string) =>
           val before = persistedEventId
-          persist(TestEvent.Added(string)) { e =>
+          persist(TestEvent.Added(string)) { (e, s) =>
             assert(before < persistedEventId)
             update(e)
             sender() ! Done
@@ -51,20 +51,22 @@ extends KeyedJournalingActor[TestEvent] {
 
         case Command.Remove =>
           val before = persistedEventId
-          persist(TestEvent.Removed) { e =>
+          persist(TestEvent.Removed) { (e, s) =>
             assert(before < persistedEventId)
             update(e)
             sender() ! Response.Completed(disturbance)
           }
 
         case Command.Append(string) =>
-          persistTransaction(string map TestEvent.Appended.apply)(es => es foreach update)
+          persistTransaction(string map TestEvent.Appended.apply) { (es, journaledState) =>
+            es foreach update
+          }
           defer {
             sender() ! Response.Completed(disturbance)
           }
 
         case Command.AppendEmpty =>
-          persistKeyedEvents(Nil) { seq =>
+          persistKeyedEvents(Nil) { (seq, journaledState) =>
             assert(seq.isEmpty)
             sender() ! Response.Completed(disturbance)
           }
@@ -83,9 +85,9 @@ extends KeyedJournalingActor[TestEvent] {
         case Command.AppendAsync(string) =>
           for (c <- string) {
             val before = persistedEventId
-            persist(TestEvent.Appended(c), async = true) { event =>
+            persist(TestEvent.Appended(c), async = true) { (e, s) =>
               assert(before < persistedEventId)
-              update(event)
+              update(e)
             }
           }
           deferAsync {
@@ -95,7 +97,7 @@ extends KeyedJournalingActor[TestEvent] {
         case Command.AppendNested(string) =>
           def append(string: List[Char]): Unit = string match {
             case char :: tail =>
-              persist(TestEvent.Appended(char)) { e =>
+              persist(TestEvent.Appended(char)) { (e, s) =>
                 update(e)
                 append(tail)
               }
@@ -107,7 +109,7 @@ extends KeyedJournalingActor[TestEvent] {
         case Command.AppendNestedAsync(string) =>
           def append(string: List[Char]): Unit = string match {
             case char :: tail =>
-              persist(TestEvent.Appended(char), async = true) { e =>
+              persist(TestEvent.Appended(char), async = true) { (e, s) =>
                 update(e)
                 append(tail)
               }

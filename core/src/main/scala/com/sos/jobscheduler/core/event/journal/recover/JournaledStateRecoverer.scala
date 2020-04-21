@@ -13,17 +13,17 @@ import com.sos.jobscheduler.core.event.journal.recover.JournalProgress.{AfterSna
 import com.sos.jobscheduler.core.event.journal.recover.JournaledStateRecoverer._
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.event.state.JournaledStateBuilder
-import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, JournaledState}
+import com.sos.jobscheduler.data.event.{EventId, JournalId, JournaledState}
 import com.typesafe.config.Config
 import java.nio.file.{Files, Path}
 import scala.concurrent.duration.Deadline
 import scala.concurrent.duration.Deadline.now
 
-private final class JournaledStateRecoverer[S <: JournaledState[S, E], E <: Event](
+private final class JournaledStateRecoverer[S <: JournaledState[S]](
   protected val file: Path,
   expectedJournalId: Option[JournalId],
   journalMeta: JournalMeta,
-  newfileJournaledStateBuilder: () => FileJournaledStateBuilder[S, E])
+  newfileJournaledStateBuilder: () => FileJournaledStateBuilder[S])
 {
   private val fileJournaledStateBuilder = newfileJournaledStateBuilder()
 
@@ -67,15 +67,15 @@ object JournaledStateRecoverer
 {
   private val logger = Logger(getClass)
 
-  def recover[S <: JournaledState[S, Event]](
+  def recover[S <: JournaledState[S]](
     journalMeta: JournalMeta,
     initialState: S,
-    newStateBuilder: () => JournaledStateBuilder[S, Event],
+    newStateBuilder: () => JournaledStateBuilder[S],
     config: Config,
     runningSince: Deadline = now)
   : Recovered[S] = {
     val file = JournalFiles.currentFile(journalMeta.fileBase).toOption
-    val fileJournaledStateBuilder = new FileJournaledStateBuilder[S, Event](
+    val fileJournaledStateBuilder = new FileJournaledStateBuilder[S](
       journalMeta,
       journalFileForInfo = file getOrElse journalMeta.file(EventId.BeforeFirst)/*the expected new filename*/,
       expectedJournalId = None,

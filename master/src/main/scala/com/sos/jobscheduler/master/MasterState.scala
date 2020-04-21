@@ -29,7 +29,7 @@ final case class MasterState(
   repo: Repo,
   pathToAgentSnapshot: Map[AgentRefPath, AgentSnapshot],
   idToOrder: Map[OrderId, Order[Order.State]])
-extends JournaledState[MasterState, Event]
+extends JournaledState[MasterState]
 {
   def toSnapshotObservable: Observable[Any] =
     standards.toSnapshotObservable ++

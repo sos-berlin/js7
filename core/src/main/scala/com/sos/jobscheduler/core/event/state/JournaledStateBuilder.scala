@@ -15,7 +15,7 @@ import scala.concurrent.Promise
 import scala.concurrent.duration.Duration
 import scala.util.control.NonFatal
 
-trait JournaledStateBuilder[S <: JournaledState[S, E], E <: Event]
+trait JournaledStateBuilder[S <: JournaledState[S]]
 {
   private val stopwatch = new Stopwatch
   private var _snapshotCount = 0L

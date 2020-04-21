@@ -59,7 +59,7 @@ import scala.util.{Failure, Success}
 
 final class Cluster(
   journalMeta: JournalMeta,
-  persistence: JournaledStatePersistence[ClusterState, ClusterEvent],
+  persistence: JournaledStatePersistence[MasterState],
   masterId: MasterId,
   journalConf: JournalConf,
   val clusterConf: ClusterConf,
@@ -121,16 +121,15 @@ final class Cluster(
     }
     val (passiveState, followUp) = startCluster(recovered, recoveredState)
     _currentClusterState = passiveState flatMap {
-      case None => persistence.currentState
+      case None => persistence.currentState.map(_.clusterState)
       case Some(o) => Task.pure(o.clusterState)
     }
     started.success(())
     passiveState ->
       followUp.map(_.map { case (clusterState, followUp) =>
         activated = followUp.isInstanceOf[ClusterFollowUp.BecomeActive[_]]
-        _currentClusterState = persistence.currentState
+        _currentClusterState = persistence.currentState.map(_.clusterState)
         clusterWatchSynchronizer.scheduleHeartbeats(clusterState)
-        persistence.start(clusterState)
         followUp
       })
   }
@@ -438,7 +437,7 @@ final class Cluster(
     ).value
 
   private def onRestartActiveNode: Task[Checked[Completed]] =
-    persistence.currentState flatMap {
+    persistence.currentState.map(_.clusterState).flatMap {
       case state: ActiveShutDown if state.activeId == ownId =>
         persist(_ => Right(ClusterActiveNodeRestarted :: Nil))
           .map(_.toCompleted)
@@ -547,7 +546,7 @@ final class Cluster(
               // FIXME Exklusiver Zugriff (Lock) wegen parallelen ClusterCommand.ClusterRecouple, das ein EventLost auslöst,
               //  mit ClusterCouplingPrepared infolge. Dann können wir kein PassiveLost ausgeben.
               //  JournaledStatePersistence Lock in die Anwendungsebene (hier) heben
-              persistence.currentState/*???*/.flatMap {
+              persistence.currentState/*???*/.map(_.clusterState).flatMap {
                 case clusterState: Coupled =>
                   common.ifClusterWatchAllowsActivation(clusterState, passiveLost,
                     persist(
@@ -649,14 +648,15 @@ final class Cluster(
   private def persist(toEvents: ClusterState => Checked[Seq[ClusterEvent]], suppressClusterWatch: Boolean = false)
   : Task[Checked[(Seq[Stamped[KeyedEvent[ClusterEvent]]], ClusterState)]] =
     (for {
-      persisted <- EitherT(persistence.persistTransaction(NoKey)(toEvents))
-      (stampedEvents, clusterState) = persisted
+      persisted <- EitherT(persistence.persistTransaction[ClusterEvent](NoKey)(masterState => toEvents(masterState.clusterState)))
+      (stampedEvents, masterState) = persisted
+      clusterState = masterState.clusterState
       _ <- EitherT(
         if (suppressClusterWatch || stampedEvents.isEmpty)
           Task.pure(Right(Completed))
         else
           clusterWatchSynchronizer.applyEvents(stampedEvents.map(_.value.event), clusterState))
-    } yield persisted).value
+    } yield (stampedEvents, clusterState)).value
 
   private object clusterWatchSynchronizer
   {

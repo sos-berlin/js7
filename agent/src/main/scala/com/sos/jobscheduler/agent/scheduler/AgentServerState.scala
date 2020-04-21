@@ -10,7 +10,7 @@ import monix.reactive.Observable
 final case class AgentServerState(
   standards: JournaledState.Standards,
   idToMaster: Map[MasterId, RegisteredMaster])
-extends JournaledState[AgentServerState, Event]
+extends JournaledState[AgentServerState]
 {
   def withEventId(eventId: EventId) = this  // ???
 
