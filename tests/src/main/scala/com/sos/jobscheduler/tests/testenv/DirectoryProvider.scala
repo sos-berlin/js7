@@ -79,44 +79,32 @@ extends HasCloser
       })
 
   val master = new MasterTree(directory / "master",
-    mutualHttps = masterHttpsMutual, masterConfig, clientCertificate = masterClientCertificate)
+    mutualHttps = masterHttpsMutual, clientCertificate = masterClientCertificate)
   val agentToTree: Map[AgentRefPath, AgentTree] =
     agentRefPaths
       .zip(agentPorts ++ Vector.fill(agentRefPaths.size - agentPorts.size)(findFreeTcpPort()))
       .map { case (agentRefPath, port) => agentRefPath ->
         new AgentTree(directory, agentRefPath,
           testName.fold("")(_ + "-") ++ agentRefPath.name,
-          agentConfig,
           port = port,
           https = agentHttps,
           mutualHttps = agentHttpsMutual,
           provideHttpsCertificate = provideAgentHttpsCertificate,
-          provideClientCertificate = provideAgentClientCertificate)
-      }.toMap
+          provideClientCertificate = provideAgentClientCertificate,
+          agentConfig)
+      }
+      .toMap
   val agents: Vector[AgentTree] = agentToTree.values.toVector
-  lazy val agentRefs: Vector[AgentRef] = for (a <- agents) yield AgentRef(a.agentRefPath, uri = a.conf.localUri)
+  lazy val agentRefs: Vector[AgentRef] = for (a <- agents) yield AgentRef(a.agentRefPath, uri = a.agentConfiguration.localUri)
   private val filebasedHasBeenAdded = AtomicBoolean(false)
 
   closeOnError(this) {
     master.createDirectoriesAndFiles()
-    for (a <- agents) {
-      a.createDirectoriesAndFiles()
-      (a.configDir / "private" / "private.conf").append(s"""
-         |jobscheduler.auth.users {
-         |  Master = ${quoteString("plain:" + a.password.string)}
-         |}
-         |jobscheduler.https.keystore {
-         |  store-password = "jobscheduler"
-         |  key-password = "jobscheduler"
-         |}
-         |""".stripMargin)
-    }
-    useSignatureVerifier(signer.toVerifier)
+    writeTrustedSignatureKeys(signer.toVerifier, master.configDir, "master.conf")
+    agents foreach prepareAgentFiles
+
+    // Agent configurations have already been written by a.createDirectoriesAndFiles()
     (master.configDir / "private" / "private.conf").append(
-      agents.map(a =>
-        "jobscheduler.auth.agents." + quoteString(a.agentRefPath.string) + " = " + quoteString(a.password.string) + "\n" +
-        "jobscheduler.auth.agents." + quoteString(a.localUri.toString) + " = " + quoteString(a.password.string) + "\n"
-      ).mkString +
       s"""jobscheduler.https.keystore {
          |  store-password = "jobscheduler"
          |  key-password = "jobscheduler"
@@ -183,7 +171,7 @@ extends HasCloser
     }
 
   def runAgents[A]()(body: IndexedSeq[RunningAgent] => A): A =
-    multipleAutoClosing(agents map (_.conf) map RunningAgent.startForTest await 99.s) { agents =>
+    multipleAutoClosing(agents map (_.agentConfiguration) map RunningAgent.startForTest await 99.s) { agents =>
       val a = body(agents)
       agents map (_.terminate()) await 99.s
       a
@@ -193,7 +181,7 @@ extends HasCloser
     Future.sequence(agents map (_.agentRefPath) map startAgent)
 
   def startAgent(agentRefPath: AgentRefPath): Future[RunningAgent] =
-    RunningAgent.startForTest(agentToTree(agentRefPath).conf)
+    RunningAgent.startForTest(agentToTree(agentRefPath).agentConfiguration)
 
   def updateRepo(
     master: RunningMaster,
@@ -209,21 +197,10 @@ extends HasCloser
 
   private def masterName = testName.fold(MasterConfiguration.DefaultName)(_ + "-Master")
 
-  private def useSignatureVerifier(verifier: SignatureVerifier): Unit = {
-    val dir = "private/" + verifier.companion.recommendedKeyDirectoryName
-    for (config <- master.configDir +: agents.map(_.configDir)) {
-      createDirectory(config / dir )
-      for ((key, i) <- verifier.keys.zipWithIndex) {
-        config / dir / (s"key-${i+1}." + verifier.companion.typeName.toLowerCase(Locale.ROOT)) := key
-      }
-    }
-    for (conf <- master.configDir / "master.conf" +: agents.map(_.configDir / "agent.conf")) {
-      conf ++=
-        s"""jobscheduler.configuration.trusted-signature-keys {
-           |  ${verifier.companion.typeName} = $${jobscheduler.config-directory}"/$dir"
-           |}
-           |""".stripMargin
-    }
+  def prepareAgentFiles(agentTree: AgentTree): Unit = {
+    agentTree.createDirectoriesAndFiles()
+    master.writeAgentAuthentication(agentTree)
+    agentTree.writeTrustedSignatureKeys(signer.toVerifier)
   }
 }
 
@@ -247,7 +224,7 @@ object DirectoryProvider
     }
   }
 
-  final class MasterTree(val directory: Path, mutualHttps: Boolean, config: Config, clientCertificate: Option[JavaResource]) extends Tree {
+  final class MasterTree(val directory: Path, mutualHttps: Boolean, clientCertificate: Option[JavaResource]) extends Tree {
     def provideHttpsCertificate(): Unit = {
       // Keystore
       (configDir / "private/https-keystore.p12") := MasterKeyStoreResource.contentBytes
@@ -262,23 +239,32 @@ object DirectoryProvider
       for (o <- clientCertificate) importKeyStore(trustStore, o)
       // KeyStore passwords has been provided
     }
+
+    def writeAgentAuthentication(agentTree: AgentTree): Unit = {
+      (configDir / "private" / "private.conf") ++=
+        "jobscheduler.auth.agents." + quoteString(agentTree.agentRefPath.string) + " = " + quoteString(agentTree.password.string) + "\n" +
+        "jobscheduler.auth.agents." + quoteString(agentTree.localUri.toString) + " = " + quoteString(agentTree.password.string) + "\n"
+    }
   }
 
-  final class AgentTree(rootDirectory: Path, val agentRefPath: AgentRefPath, name: String, config: Config,
-    port: Int, https: Boolean, mutualHttps: Boolean, provideHttpsCertificate: Boolean, provideClientCertificate: Boolean)
+  final class AgentTree(rootDirectory: Path, val agentRefPath: AgentRefPath, name: String,
+    port: Int,
+    https: Boolean = false, mutualHttps: Boolean = false,
+    provideHttpsCertificate: Boolean = false, provideClientCertificate: Boolean = false,
+    config: Config = ConfigFactory.empty)
   extends Tree {
     val directory = rootDirectory / agentRefPath.name
-    lazy val conf = AgentConfiguration.forTest(directory,
+    lazy val agentConfiguration = (AgentConfiguration.forTest(directory,
         config,
         httpPort = !https ? port,
         httpsPort = https ? port,
-        mutualHttps = mutualHttps)
+        mutualHttps = mutualHttps))
       .copy(name = name)
     lazy val localUri = Uri((if (https) "https://localhost" else "http://127.0.0.1") + ":" + port)
     lazy val password = SecretString(Array.fill(8)(Random.nextPrintableChar()).mkString)
     lazy val executables = configDir / "executables"
 
-    override private[DirectoryProvider] def createDirectoriesAndFiles(): Unit = {
+    override def createDirectoriesAndFiles(): Unit = {
       super.createDirectoriesAndFiles()
       createDirectory(executables)
       if (provideHttpsCertificate) {
@@ -290,9 +276,20 @@ object DirectoryProvider
             |}""".stripMargin)
           (configDir / "private/https-truststore.p12") := MasterTrustStoreResource.contentBytes
         }
-        // KeyStore passwords has been provided by DirectoryProvider (must happen early)
       }
+      (configDir / "private" / "private.conf").append(s"""
+         |jobscheduler.auth.users {
+         |  Master = ${quoteString("plain:" + password.string)}
+         |}
+         |jobscheduler.https.keystore {
+         |  store-password = "jobscheduler"
+         |  key-password = "jobscheduler"
+         |}
+         |""".stripMargin)
     }
+
+    def writeTrustedSignatureKeys(verifier: SignatureVerifier): Unit =
+      DirectoryProvider.writeTrustedSignatureKeys(verifier, configDir, "agent.conf")
 
     def writeExecutable(path: ExecutablePath, string: String): Unit =
       path.toFile(executables).writeExecutable(string)
@@ -313,10 +310,23 @@ object DirectoryProvider
           resultVariable.fold("")(o => s"""|echo "result=SCRIPT-VARIABLE-$$SCHEDULER_PARAM_${o.toUpperCase}" >>"$$SCHEDULER_RETURN_VALUES"""")
       ).stripMargin
 
+  private def writeTrustedSignatureKeys(verifier: SignatureVerifier, configDir: Path, confFilename: String): Unit = {
+    val dir = "private/" + verifier.companion.recommendedKeyDirectoryName
+    createDirectory(configDir / dir)
+    for ((key, i) <- verifier.keys.zipWithIndex) {
+      configDir / dir / (s"key-${i+1}." + verifier.companion.typeName.toLowerCase(Locale.ROOT)) := key
+    }
+    configDir / confFilename ++=
+      s"""jobscheduler.configuration.trusted-signature-keys {
+         |  ${verifier.companion.typeName} = $${jobscheduler.config-directory}"/$dir"
+         |}
+         |""".stripMargin
+  }
+
   // Following resources have been generated with the command line:
   // common/src/main/resources/com/sos/jobscheduler/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=master -config-directory=tests/src/test/resources/com/sos/jobscheduler/tests/master/config
   val MasterKeyStoreResource = JavaResource("com/sos/jobscheduler/tests/master/config/private/https-keystore.p12")
-  val MasterTrustStoreResource       = JavaResource("com/sos/jobscheduler/tests/master/config/export/https-truststore.p12")
+  val MasterTrustStoreResource = JavaResource("com/sos/jobscheduler/tests/master/config/export/https-truststore.p12")
 
   // Following resources have been generated with the command line:
   // common/src/main/resources/com/sos/jobscheduler/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=agent -config-directory=tests/src/test/resources/com/sos/jobscheduler/tests/agent/config

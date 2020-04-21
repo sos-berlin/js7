@@ -32,11 +32,10 @@ import com.sos.jobscheduler.tests.testenv.DirectoryProvider.{StdoutOutput, scrip
 import com.typesafe.config.ConfigFactory
 import java.nio.file.Path
 import monix.execution.Scheduler.Implicits.global
+import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
 import scala.collection.mutable
 import scala.util.control.NonFatal
-import org.scalatest.matchers
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
@@ -123,7 +122,7 @@ final class RecoveryTest extends AnyFreeSpec
     }
 
   private def runAgents(directoryProvider: DirectoryProvider)(body: IndexedSeq[RunningAgent] => Unit): Unit =
-    multipleAutoClosing(directoryProvider.agents map (_.conf) map RunningAgent.startForTest await 10.s) { agents =>
+    multipleAutoClosing(directoryProvider.agents map (_.agentConfiguration) map RunningAgent.startForTest await 10.s) { agents =>
       body(agents)
       logger.info("🔥🔥🔥 TERMINATE AGENTS 🔥🔥🔥")
       // Kill Agents ActorSystems
