@@ -12,6 +12,9 @@ sealed trait WebServerPort {
 
 object WebServerPort
 {
+  def localhost(port: Int): Http =
+    Http(new InetSocketAddress("127.0.0.1", port))
+
   final case class Http(address: InetSocketAddress) extends WebServerPort {
     def scheme = WebServerBinding.Http
     override def toString = s"http://${address.getAddress.getHostAddress}:${address.getPort}"

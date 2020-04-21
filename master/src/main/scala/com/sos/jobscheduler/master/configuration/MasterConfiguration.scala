@@ -76,7 +76,7 @@ object MasterConfiguration
       name = name)
     .copy(
       webServerPorts =
-        httpPort.map(o => WebServerPort.Http(new InetSocketAddress("127.0.0.1", o))) ++:
+        httpPort.map(o => WebServerPort.localhost(o)) ++:
         httpsPort.map(o => WebServerPort.Https(new InetSocketAddress("127.0.0.1", o), mutual = mutualHttps)).toList)
   }
 

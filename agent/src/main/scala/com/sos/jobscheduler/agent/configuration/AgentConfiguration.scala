@@ -180,7 +180,7 @@ object AgentConfiguration {
         config)
       .copy(
         webServerPorts  =
-          httpPort.map(port => WebServerPort.Http(new InetSocketAddress("127.0.0.1", port))) ++:
+          httpPort.map(port => WebServerPort.localhost(port)) ++:
           httpsPort.map(port => WebServerPort.Https(new InetSocketAddress("127.0.0.1", port), mutual = mutualHttps)).toList,
         jobJavaOptions =
           s"-Dlog4j.configurationFile=${TaskServerLog4jResource.path}" ::
