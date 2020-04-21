@@ -18,7 +18,7 @@ import com.sos.jobscheduler.agent.scheduler.problems.AgentIsShuttingDownProblem
 import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.Closer.syntax._
@@ -213,7 +213,8 @@ extends MainJournalingActor[AgentEvent] {
 
   private def checkMaster(masterId: MasterId, requiredAgentRunId: Option[AgentRunId], eventId: EventId): Future[Checked[Response.Accepted]] =
     for {
-      checkedMaster <- Future.successful(state.idToMaster.checked(masterId))
+      checkedMaster <- Future.successful(state.idToMaster.rightOr(masterId,
+        Problem.pure(s"Agent does not know MasterId: $masterId")))
       checkedEntry <- Future.successful(masterToOrderKeeper.checked(masterId))
       checkedEventWatch <- checkedEntry.traverse(_.eventWatch.whenStarted)
     } yield {

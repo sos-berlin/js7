@@ -350,7 +350,10 @@ extends Actor with Stash
         case _: AcceptEarlyWritten =>
         case written: NormallyWritten =>
           for (stamped <- written.stampedSeq) {
-            journaledState = journaledState.applyEvent(stamped.value).orThrow
+            journaledState.applyEvent(stamped.value) match {
+              case Left(problem) => sys.error(s"Event $stamped cannot be applied: $problem")  // TODO throw!
+              case Right(o) => journaledState = o
+            }
             stamped.value match {
               case KeyedEvent(_: NoKey, SnapshotTaken) =>
                 releaseObsoleteEvents()

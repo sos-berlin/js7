@@ -66,10 +66,8 @@ extends JournaledState[MasterState, Event]
     case KeyedEvent(agentRefPath: AgentRefPath, event: MasterAgentEvent) =>
       event match {
         case AgentRegisteredMaster(agentRunId) =>
-          if (pathToAgentSnapshot contains agentRefPath)
-            Left(Problem(s"Duplicate '$agentRefPath'"))
-          else
-            Right(copy(
+          pathToAgentSnapshot.checkNoDuplicate(agentRefPath).map(_ =>
+            copy(
               pathToAgentSnapshot = pathToAgentSnapshot +
                 (agentRefPath -> AgentSnapshot(agentRefPath, Some(agentRunId), eventId = EventId.BeforeFirst))))
 
@@ -85,10 +83,8 @@ extends JournaledState[MasterState, Event]
     case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
       event match {
         case event: OrderAdded =>
-          if (idToOrder contains orderId)
-            Left(Problem(s"Duplicate '$orderId'"))
-          else
-            Right(copy(idToOrder = idToOrder + (orderId -> Order.fromOrderAdded(orderId, event))))
+          idToOrder.checkNoDuplicate(orderId).map(_ =>
+            copy(idToOrder = idToOrder + (orderId -> Order.fromOrderAdded(orderId, event))))
 
         case OrderFinished | OrderCancelled =>
           Right(copy(idToOrder = idToOrder - orderId))

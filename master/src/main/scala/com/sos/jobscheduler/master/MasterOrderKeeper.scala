@@ -680,8 +680,9 @@ with MainJournalingActor[Event]
           }
         })
 
-    def deletionNotSupported[P <: TypedPath, A <: FileBased](diff: FileBaseds.Diff[P, A]): Seq[Left[Problem, Nothing]] =
-      diff.deleted.map(o => Left(Problem(s"Deletion of these configuration objects is not supported: $o")))
+    def deletionNotSupported[P <: TypedPath, A <: FileBased](diff: FileBaseds.Diff[P, A])
+      (implicit A: FileBased.Companion[A]): Seq[Left[Problem, Nothing]] =
+      diff.deleted.map(o => Left(Problem.pure(s"Deletion of ${A.name} configuration objects is not supported: $o")))
 
     //def changeNotSupported[P <: TypedPath, A <: FileBased](diff: FileBaseds.Diff[P, A]): Seq[Left[Problem]] =
     //  diff.updated.map(o => Left(Problem(s"Change of these configuration objects is not supported: ${o.path}")))
