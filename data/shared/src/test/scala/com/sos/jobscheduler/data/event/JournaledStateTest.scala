@@ -6,11 +6,12 @@ import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId, ClusterSt
 import com.sos.jobscheduler.data.event.JournaledState.EventNotApplicableProblem
 import com.sos.jobscheduler.data.event.JournaledStateTest.{MyState, _}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
+import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class JournaledStateTest extends org.scalatest.FreeSpec
+final class JournaledStateTest extends AnyFreeSpec
 {
   private var s = MyState.empty
 

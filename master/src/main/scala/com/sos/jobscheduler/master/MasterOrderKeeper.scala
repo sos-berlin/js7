@@ -464,7 +464,7 @@ with MainJournalingActor[Event]
     case Command.GetState =>
       masterState.runToFuture pipeTo sender()
 
-    case AgentDriver.Output.RegisteredAtAgent(agentRunId)=>
+    case AgentDriver.Output.RegisteredAtAgent(agentRunId) =>
       val agentEntry = agentRegister(sender())
       if (agentEntry.agentRunId.isEmpty) {
         agentEntry.agentRunId := agentRunId
