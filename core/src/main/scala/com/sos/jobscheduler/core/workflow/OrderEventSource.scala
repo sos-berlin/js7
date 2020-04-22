@@ -44,7 +44,7 @@ final class OrderEventSource(
   def nextEvent(orderId: OrderId): Option[KeyedEvent[OrderActorEvent]] = {
     val order = idToOrder(orderId)
     if (order.isState[Order.Broken])
-      None  // Avoid issuing a second OrderBroken (will be a loop)
+      None  // Avoid issuing a second OrderBroken (would be a loop)
     else
       invalidToEvent(order, checkedNextEvent(order))
   }

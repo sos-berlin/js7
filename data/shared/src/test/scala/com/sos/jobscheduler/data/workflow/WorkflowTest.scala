@@ -329,11 +329,11 @@ final class WorkflowTest extends AnyFreeSpec {
 
   "jobOption" in {
     assert(TestWorkflow.checkedExecute(Position(0)) == Right(AExecute))
-    assert(TestWorkflow.checkedExecute(Position(1)) == Left(Problem("Expected 'Execute' at workflow position 1 (not: If)")))
-    assert(TestWorkflow.checkedExecute(Position(2)) == Left(Problem("Expected 'Execute' at workflow position 2 (not: Fork)")))
+    assert(TestWorkflow.checkedExecute(Position(1)) == Left(Problem("Expected 'Execute' statement at workflow position 1 (not: If)")))
+    assert(TestWorkflow.checkedExecute(Position(2)) == Left(Problem("Expected 'Execute' statement at workflow position 2 (not: Fork)")))
     assert(TestWorkflow.checkedExecute(Position(3)) == Right(BExecute))
-    assert(TestWorkflow.checkedExecute(Position(4)) == Left(Problem("Expected 'Execute' at workflow position 4 (not: ImplicitEnd)")))
-    assert(TestWorkflow.checkedExecute(Position(999)) == Left(Problem("Expected 'Execute' at workflow position 999 (not: Gap)")))
+    assert(TestWorkflow.checkedExecute(Position(4)) == Left(Problem("Expected 'Execute' statement at workflow position 4 (not: ImplicitEnd)")))
+    assert(TestWorkflow.checkedExecute(Position(999)) == Left(Problem("Expected 'Execute' statement at workflow position 999 (not: Gap)")))
   }
 
   "workflowOption" in {

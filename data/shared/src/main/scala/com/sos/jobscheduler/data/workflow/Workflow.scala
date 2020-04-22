@@ -321,7 +321,7 @@ extends FileBased
   def checkedExecute(position: Position): Checked[Execute] =
     instruction(position) match {
       case o: Execute => Right(o)
-      case o => Left(Problem(s"Expected 'Execute' at workflow position $position (not: ${o.getClass.simpleScalaName})"))
+      case o => Left(Problem(s"Expected 'Execute' statement at workflow position $position (not: ${o.getClass.simpleScalaName})"))
     }
 
   /** Find catch instruction and return position of the first instruction. */
