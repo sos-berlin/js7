@@ -161,7 +161,7 @@ extends AutoCloseable
 
   @TestOnly
   def journalActorState: Output.JournalActorState =
-    (actorSystem.actorSelection("user/Journal") ? JournalActor.Input.GetState)(Timeout(99.s))
+    (actorSystem.actorSelection("user/Journal") ? JournalActor.Input.GetJournalActorState)(Timeout(99.s))
       .mapTo[JournalActor.Output.JournalActorState]
       .await(99.s)
 

@@ -402,11 +402,14 @@ extends Actor with Stash
       logger.error(s"Unknown actor has terminated: ${a.path.pretty}")
       //unhandled(msg)
 
-    case Input.GetState =>
+    case Input.GetJournalActorState =>
       sender() ! Output.JournalActorState(
         isFlushed = eventWriter != null && eventWriter.isFlushed,
         isSynced = eventWriter != null && eventWriter.isSynced,
         isRequiringClusterAcknowledgement = requireClusterAcknowledgement)
+
+    //case Input.GetJournaledState =>
+    //  sender() ! journaledState
   }
 
   private val syncOrFlushString: String =
@@ -709,7 +712,8 @@ object JournalActor
     final case class PassiveNodeAcknowledged(eventId: EventId)
     final case object Terminate
     final case object AwaitAndTerminate
-    case object GetState
+    case object GetJournalActorState
+    //case object GetJournaledState
   }
 
   private[journal] trait Timestamped {

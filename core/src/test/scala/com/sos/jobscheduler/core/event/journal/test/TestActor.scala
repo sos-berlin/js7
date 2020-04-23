@@ -133,7 +133,7 @@ extends Actor with Stash
       (journalActor ? JournalActor.Input.TakeSnapshot).mapTo[JournalActor.Output.SnapshotTaken.type] pipeTo sender()
 
     case Input.GetJournalState =>
-      journalActor.forward(JournalActor.Input.GetState)
+      journalActor.forward(JournalActor.Input.GetJournalActorState)
 
     case Input.Terminate =>
       terminator = sender()
