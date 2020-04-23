@@ -60,7 +60,7 @@ import scodec.bits.ByteVector
   import recovered.eventWatch
   private val activeUri = idToUri(activeId)
 
-  private val stateBuilderAndAccessor = new StateBuilderAndAccessor[S](recovered.newStateBuilder)
+  private val stateBuilderAndAccessor = new StateBuilderAndAccessor[S](recovered.state, recovered.newStateBuilder)
   private var dontActivateBecauseOtherFailedOver = otherFailed
   @volatile var awaitingCoupledEvent = false
   @volatile private var stopped = false

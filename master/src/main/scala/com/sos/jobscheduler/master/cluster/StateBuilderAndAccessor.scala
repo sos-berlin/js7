@@ -11,17 +11,19 @@ import monix.execution.Scheduler
 import scala.util.{Failure, Success}
 
 private final class StateBuilderAndAccessor[S <: JournaledState[S]](
+  initialState: S,
   originalNewStateBuilder: () => JournaledStateBuilder[S])
 {
-  private val getStateMVarTask = MVar.empty[Task, Task[S]]().memoize
+  private val getStateMVarTask = MVar.of[Task, Task[S]](Task.pure(initialState)).memoize
   val state: Task[S] = getStateMVarTask.flatMap(_.read.flatten)
 
   def newStateBuilder()(implicit s: Scheduler): JournaledStateBuilder[S] = {
     val builder = originalNewStateBuilder()
     (for {
         mVar <- getStateMVarTask
-        _ <- mVar.tryTake
-        _ <- mVar.put(builder.synchronizedStateTask)
+        s <- Task.fromFuture(builder.synchronizedStateFuture)  // May wait, but getStateMVarTask has a value anyway
+        _ <- mVar.take
+        _ <- mVar.put(s)
       } yield ()
     ).runToFuture  // Asynchronous ???
       .onComplete {

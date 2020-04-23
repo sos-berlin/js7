@@ -68,11 +68,11 @@ import java.time.ZoneId
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.cancelables.SerialCancelable
-import monix.reactive.Observable
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise, blocking}
+import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 import shapeless.tag.@@
 
@@ -234,29 +234,25 @@ with MainJournalingActor[MasterState, Event]
       super.postStop()
     }
 
-  protected def snapshots = Observable.fromTask(masterState)
-    .flatMap(_.toSnapshotObservable)
-    .toListL
-    .runToFuture
+  protected def snapshots = masterState.toSnapshotObservable.toListL.runToFuture
 
-  private def masterState: Task[MasterState] =
-    Task.pure {
-      // FIXME Blockiert, damit ClusterState vom selben Zeitpunkt ist. EventId des ClusterState kann abweichen!
-      // TODO Einheitliches MasterState halten, also einheitliches JournaledStatePersistence
-      logger.debug("masterState blocking read ...")
-      val clusterState = blocking {
-        cluster.currentClusterState
-          .runSyncUnsafe(masterConfiguration.akkaAskTimeout.duration)
-      }
-      logger.debug("masterState blocking read okay")
-      MasterState(
-        persistedEventId,
-        JournaledState.Standards(journalState, clusterState),
-        masterMetaState,
-        repo,
-        pathToAgentSnapshot = agentRegister.values.map(entry => entry.agentRefPath -> entry.toSnapshot).toMap,
-        orderRegister.view.mapValues(_.order).toMap)
+  private def masterState: MasterState = {
+    // FIXME Blockiert, damit ClusterState vom selben Zeitpunkt ist. EventId des ClusterState kann abweichen!
+    // TODO Einheitliches MasterState halten, also einheitliches JournaledStatePersistence
+    logger.debug("masterState blocking read ...")
+    val clusterState = blocking {
+      cluster.currentClusterState
+        .runSyncUnsafe(masterConfiguration.akkaAskTimeout.duration)
     }
+    logger.debug("masterState blocking read okay")
+    MasterState(
+      persistedEventId,
+      JournaledState.Standards(journalState, clusterState),
+      masterMetaState,
+      repo,
+      pathToAgentSnapshot = agentRegister.values.map(entry => entry.agentRefPath -> entry.toSnapshot).toMap,
+      orderRegister.view.mapValues(_.order).toMap)
+  }
 
   def receive = {
     case Input.Start(recovered) =>
@@ -460,7 +456,11 @@ with MainJournalingActor[MasterState, Event]
       sender() ! (orderRegister.size: Int)
 
     case Command.GetState =>
-      masterState.runToFuture pipeTo sender()
+      sender() ! (
+        try masterState
+        catch { case NonFatal(t) =>  // Maybe Akka ask timeout
+          sender() ! Status.Failure(t)
+        })
 
     case AgentDriver.Output.RegisteredAtAgent(agentRunId) =>
       val agentEntry = agentRegister(sender())

@@ -6,7 +6,7 @@ import com.sos.jobscheduler.base.utils.Closer.syntax._
 import com.sos.jobscheduler.base.utils.Closer.withCloser
 import com.sos.jobscheduler.base.utils.Strings._
 import com.sos.jobscheduler.common.auth.SecretStringGenerator
-import com.sos.jobscheduler.common.log.ScribeUtils
+import com.sos.jobscheduler.common.log.ScribeUtils.coupleScribeWithSlf4j
 import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
@@ -14,6 +14,7 @@ import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.listJournalFiles
 import com.sos.jobscheduler.core.message.ProblemCodeMessages
 import com.sos.jobscheduler.data.agent.AgentRefPath
+import com.sos.jobscheduler.data.cluster.ClusterNodeId
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
@@ -33,13 +34,17 @@ private[cluster] trait MasterClusterTester extends AnyFreeSpec
 {
   protected def configureClusterNodes = true
   protected def removeObsoleteJournalFiles = true
+  protected final val primaryId = ClusterNodeId("Primary")
+  protected final val backupId = ClusterNodeId("Backup")
 
-  ScribeUtils.coupleScribeWithSlf4j()
+  coupleScribeWithSlf4j()
   ProblemCodeMessages.initialize()
   protected final val testHeartbeatLossPropertyKey = "jobscheduler.TEST." + SecretStringGenerator.randomString()
   sys.props(testHeartbeatLossPropertyKey) = "false"
 
-  protected[cluster] final def withMasterAndBackup(primaryHttpPort: Int, backupHttpPort: Int)(body: (DirectoryProvider, DirectoryProvider) => Unit): Unit =
+  protected[cluster] final def withMasterAndBackup(primaryHttpPort: Int, backupHttpPort: Int)
+    (body: (DirectoryProvider, DirectoryProvider) => Unit)
+  : Unit =
     withCloser { implicit closer =>
       val testName = MasterClusterTester.this.getClass.getSimpleName
       val agentPort = findFreeTcpPort()
@@ -68,6 +73,7 @@ private[cluster] trait MasterClusterTester extends AnyFreeSpec
           jobscheduler.master.cluster.watches = [ "http://127.0.0.1:$agentPort" ]
           jobscheduler.master.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"
           jobscheduler.auth.users.Master.password = "plain:PRIMARY-MASTER-PASSWORD"
+          jobscheduler.auth.users.TEST.password = "plain:TEST-PASSWORD"
           jobscheduler.auth.cluster.password = "BACKUP-MASTER-PASSWORD"
           jobscheduler.journal.remove-obsolete-files = $removeObsoleteJournalFiles """),
       ).closeWithCloser

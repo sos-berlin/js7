@@ -11,8 +11,8 @@ import com.sos.jobscheduler.core.event.state.JournaledStateBuilder._
 import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.data.event.{Event, EventId, JournalState, JournaledState, KeyedEvent, Stamped}
 import monix.eval.Task
-import scala.concurrent.Promise
 import scala.concurrent.duration.Duration
+import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 
 trait JournaledStateBuilder[S <: JournaledState[S]]
@@ -73,7 +73,7 @@ trait JournaledStateBuilder[S <: JournaledState[S]]
     })
 
   final def addEvent(stamped: Stamped[KeyedEvent[Event]]) =
-    synchronized {  // synchronize with asynchronous execution of synchronizedStateTask
+    synchronized {  // synchronize with asynchronous execution of synchronizedStateFuture
       if (stamped.eventId <= _eventId) {
         throw new IllegalArgumentException(s"EventId out of order: ${EventId.toString(_eventId)} ≥ ${stamped.toString.truncateWithEllipsis(100)}")
       }
@@ -100,8 +100,8 @@ trait JournaledStateBuilder[S <: JournaledState[S]]
     }
   }
 
-  def synchronizedStateTask: Task[S] =
-    Task.fromFuture(getStatePromise.future).flatten
+  def synchronizedStateFuture: Future[Task[S]] =
+    getStatePromise.future
 
   /** Journal file's JournalHeader. */
   final def fileJournalHeader = _journalHeader.toOption
