@@ -5,8 +5,8 @@ import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import monix.eval.Task
 import monix.reactive.Observable
-import scala.concurrent.TimeoutException
 import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.{Future, TimeoutException}
 
 object MonixBase
 {
@@ -69,6 +69,23 @@ object MonixBase
         underlying.materialize.map(Checked.flattenTryChecked)
     }
   }
+
+  //def deferFutureAndLog[A](f: => Future[A])(implicit A: TypeTag[A]): Task[A] =
+  //  deferFutureAndLog(s"Future[${A.tpe.toString}]", f)
+
+  def deferFutureAndLog[A](name: => String, f: => Future[A]): Task[A] =
+    Task.deferFutureAction { implicit s =>
+      val future = f
+      if (future.isCompleted)
+        future
+      else {
+        scribe.debug(s"Waiting for Future '$name' ...")
+        future.transform { o =>
+          scribe.debug(s"Future $name completed")
+          o
+        }
+      }
+    }
 
   def autoCloseableToObservable[A <: AutoCloseable](newA: => A): Observable[A] =
     Observable.fromResource(Resource.fromAutoCloseable(Task(newA)))
