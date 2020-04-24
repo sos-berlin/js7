@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.agent.scheduler.order
 
+import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.Order
@@ -37,7 +38,7 @@ private[order] final class WorkflowRegister {
     if (order.workflowPosition eq wp)
       order
     else {
-      assert(order.workflowPosition == wp)
+      assertThat(order.workflowPosition == wp)
       order.copy(workflowPosition = wp)
     }
   }

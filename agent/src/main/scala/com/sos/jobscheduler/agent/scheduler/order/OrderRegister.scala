@@ -5,6 +5,7 @@ import com.sos.jobscheduler.agent.scheduler.order.OrderRegister._
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax.RichScheduler
 import com.sos.jobscheduler.core.common.ActorRegister
 import com.sos.jobscheduler.data.event.KeyedEvent
@@ -60,7 +61,7 @@ private[order] object OrderRegister
     def order = _order
 
     def order_=(o: Order[Order.State]) = {
-      assert(_order.workflowId == o.workflowId)
+      assertThat(_order.workflowId == o.workflowId)
       _order = o
     }
 

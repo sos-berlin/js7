@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.core.workflow.instructions
 
+import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.core.workflow.OrderContext
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.order.OrderEvent.OrderMoved
@@ -14,7 +15,7 @@ object TryExecutor extends PositionInstructionExecutor with EventInstructionExec
   type Instr = TryInstruction
 
   def nextPosition(context: OrderContext, order: Order[Order.State], instruction: TryInstruction) = {
-    assert(order == context.idToOrder(order.id).withPosition(order.position))
+    assertThat(order == context.idToOrder(order.id).withPosition(order.position))
     Right(Some(nextPos(order)))
   }
 

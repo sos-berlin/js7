@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.master.web.master.api.fatevent
 
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.common.event.EventWatch
@@ -64,7 +65,7 @@ private[fatevent] final class FatStateCache(masterId: MasterId, eventWatch: Even
     def eventId = fatState.eventId
 
     def skipIgnoredEventIds(eventId: EventId): Unit = {
-      assert(fatState.eventId <= eventId)
+      assertThat(fatState.eventId <= eventId)
       fatState = fatState.copy(eventId = eventId)
       lastDelivered = Some(fatState)
     }

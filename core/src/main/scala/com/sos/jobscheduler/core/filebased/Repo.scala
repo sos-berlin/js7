@@ -5,6 +5,7 @@ import cats.instances.vector._
 import cats.syntax.traverse._
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.Collections._
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils._
@@ -25,7 +26,7 @@ final case class Repo private(
   idToSignedFileBased: Map[FileBasedId_, Option[Signed[FileBased]]],
   fileBasedVerifier: FileBasedVerifier[FileBased])
 {
-  assert(versions.nonEmpty || idToSignedFileBased.isEmpty)
+  assertThat(versions.nonEmpty || idToSignedFileBased.isEmpty)
 
   /** `fileBasedVerifier` is not compared - for testing only. */
   override def equals(o: Any) = o match {

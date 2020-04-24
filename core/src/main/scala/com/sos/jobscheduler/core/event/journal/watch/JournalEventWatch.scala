@@ -4,6 +4,7 @@ import akka.util.ByteString
 import com.sos.jobscheduler.base.problem.Checked.{CheckedOption, Ops}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.utils.{CloseableIterator, SetOnce}
@@ -191,7 +192,7 @@ with JournalingObserver
             CloseableIterator.empty
           else {  // Continue with next HistoricEventReader or CurrentEventReader
             logger.debug(s"Continue with next HistoricEventReader or CurrentEventReader, last=$last after=$after")
-            assert(last > after, s"last=$last ≤ after=$after ?")
+            assertThat(last > after, s"last=$last ≤ after=$after ?")
             eventsAfter(last) getOrElse CloseableIterator.empty  // Should never be torn here because last > after
           })
       }

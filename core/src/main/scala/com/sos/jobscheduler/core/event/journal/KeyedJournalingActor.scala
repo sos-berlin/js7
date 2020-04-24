@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.core.event.journal
 
 import com.sos.jobscheduler.base.generic.Accepted
+import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor._
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, JournaledState, KeyedEvent, Stamped}
@@ -47,7 +48,7 @@ extends JournalingActor[S, E]
       recoverFromSnapshot(o)
 
     case Input.RecoverFromEvent(Stamped(_, _, KeyedEvent(k, event))) =>
-      assert(k == key)
+      assertThat(k == key)
       recoverFromEvent(event.asInstanceOf[E])
 
     case Input.FinishRecovery =>

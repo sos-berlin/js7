@@ -2,6 +2,7 @@ package com.sos.jobscheduler.core.filebased
 
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
 import java.io.File.separator
 import java.nio.file.Path
@@ -15,7 +16,7 @@ object TypedPaths
     fileToTypedPathAndSourceType(companions, directory, file) map (_._1)
 
   def fileToTypedPathAndSourceType(companions: Iterable[TypedPath.AnyCompanion], directory: Path, file: Path): Checked[(TypedPath, SourceType)] = {
-    assert(file startsWith directory)
+    assertThat(file startsWith directory)
     val relativePath = file.subpath(directory.getNameCount, file.getNameCount)
     val string = TypedPath.fileToString(relativePath)
     companions.iterator

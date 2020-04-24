@@ -2,6 +2,7 @@ package com.sos.jobscheduler.core.workflow
 
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.base.utils.Strings.RichString
@@ -65,7 +66,7 @@ final class OrderEventSource(
         applyMoveInstructions(oId, moved) map Some.apply
 
       case Right(Some(oId <-: OrderFailedCatchable(outcome))) =>  // OrderFailedCatchable is used internally only
-        assert(oId == order.id)
+        assertThat(oId == order.id)
         findCatchPosition(order) match {
           case Some(firstCatchPos) if !isMaxRetriesReached(order, firstCatchPos) =>
             applyMoveInstructions(order.withPosition(firstCatchPos))

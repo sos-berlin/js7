@@ -161,7 +161,7 @@ final class Cluster(
 
       case (recoveredClusterState: HasNodes, Some(recoveredJournalFile))
         if recoveredClusterState.activeId == ownId =>
-        assert(recoveredClusterState == recoveredJournalFile.state.clusterState)
+        assertThat(recoveredClusterState == recoveredJournalFile.state.clusterState)
         recoveredClusterState match {
           case recoveredClusterState: Coupled =>
             import recoveredClusterState.{passiveId, passiveUri}
@@ -537,7 +537,7 @@ final class Cluster(
           .flatMap {
             case Left(missingHeartbeatProblem @ MissingPassiveClusterNodeHeartbeatProblem(id)) =>
               logger.warn("No heartbeat from passive cluster node - continuing as single active cluster node")
-              assert(id != ownId)
+              assertThat(id != ownId)
               val passiveLost = ClusterPassiveLost(id)
               val common = new ClusterCommon(activationInhibitor, clusterWatch, clusterConf, testEventBus)
               // FIXME Exklusiver Zugriff (Lock) wegen parallelen ClusterCommand.ClusterRecouple, das ein EventLost auslöst,

@@ -15,6 +15,7 @@ import com.sos.jobscheduler.base.monixutils.MonixBase.syntax._
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichPartialFunction, RichThrowable}
@@ -512,7 +513,7 @@ with MainJournalingActor[MasterState, Event]
                 handleOrderEvent(orderId, event)
 
               case KeyedEvent(_, AgentEventIdEvent(agentEventId)) =>
-                assert(agentEntry.lastAgentEventId < agentEventId)
+                assertThat(agentEntry.lastAgentEventId < agentEventId)
                 agentEntry.lastAgentEventId = agentEventId
 
               case _ =>

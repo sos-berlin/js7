@@ -5,6 +5,7 @@ import com.sos.jobscheduler.base.auth.{SessionToken, User}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.Problems.InvalidSessionTokenProblem
+import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
 import com.sos.jobscheduler.common.akkahttp.web.session.SessionActor._
 import com.sos.jobscheduler.common.auth.SecretStringGenerator
@@ -40,7 +41,7 @@ extends Actor {
       val user = _user.asInstanceOf[S#User]
       for (t <- tokenOption) delete(t, reason = "second login")
       val token = SessionToken(SecretStringGenerator.newSecretString())
-      assert(!tokenToSession.contains(token), s"Duplicate generated SessionToken")  // Must not happen
+      assertThat(!tokenToSession.contains(token), s"Duplicate generated SessionToken")  // Must not happen
       val session = newSession(SessionInit(numberIterator.next(), token, user))
       if (!isEternalSession) {
         session.touch(sessionTimeout)

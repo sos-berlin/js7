@@ -4,6 +4,7 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.Problems.UnknownKeyProblem
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.Collections.emptyToNone
 import com.sos.jobscheduler.base.utils.Collections.implicits.{RichIndexedSeq, RichPairTraversable}
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, reuseIfEqual}
@@ -43,7 +44,7 @@ extends FileBased
     case _ => false
   }
 
-  assert(isCorrectlyEnded(rawLabeledInstructions), "Missing implicit end instruction")
+  assertThat(isCorrectlyEnded(rawLabeledInstructions), "Missing implicit end instruction")
 
   type Self = Workflow
 

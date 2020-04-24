@@ -3,6 +3,7 @@ package com.sos.jobscheduler.data.event
 import com.sos.jobscheduler.base.circeutils.CirceObjectCodec
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.data.event.EventSeq.{Empty, NonEmpty}
 import io.circe.syntax.EncoderOps
@@ -50,7 +51,7 @@ sealed trait EventSeq[+M[_], +E] extends TearableEventSeq[M, E]
 object EventSeq {
   final case class NonEmpty[M[_] <: IterableOnce[_], E](stamped: M[Stamped[E]])
   extends EventSeq[M, E] {
-    assert(stamped.knownSize != 0)
+    assertThat(stamped.knownSize != 0)
 
     override def toString = s"EventSeq.NonEmpty(" + (if (stamped.knownSize >= 0) s"${stamped.knownSize} events" else "lazy") + ")"
   }

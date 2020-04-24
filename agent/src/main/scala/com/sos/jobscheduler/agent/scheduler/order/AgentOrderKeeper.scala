@@ -420,7 +420,7 @@ with Stash {
     for (followUps <- checkedFollowUps onProblem (p => logger.error(p))) {
       followUps foreach {
         case FollowUp.Processed(jobKey) =>
-          //TODO assert(orderEntry.jobOption exists (_.jobPath == job.jobPath))
+          //TODO assertThat(orderEntry.jobOption exists (_.jobPath == job.jobPath))
           for (jobEntry <- jobRegister.checked(jobKey) onProblem (p => logger.error(p withKey order.id))) {
             jobEntry.queue -= order.id
           }
@@ -516,7 +516,7 @@ with Stash {
       case o: Execute.Named => o.defaultArguments
       case _ => Map.empty[String, String]
     }
-    //assert(job.jobPath == jobEntry.jobPath)
+    //assertThat(job.jobPath == jobEntry.jobPath)
     jobEntry.waitingForOrder = false
     orderEntry.actor ! OrderActor.Input.StartProcessing(jobKey, job, jobEntry.actor, defaultArguments)
   }

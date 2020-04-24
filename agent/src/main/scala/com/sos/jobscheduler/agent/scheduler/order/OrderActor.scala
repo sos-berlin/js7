@@ -10,6 +10,7 @@ import com.sos.jobscheduler.agent.scheduler.order.StdouterrToEvent.Stdouterr
 import com.sos.jobscheduler.base.generic.{Accepted, Completed}
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.ScalaUtils.cast
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -49,14 +50,14 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
   }
 
   protected def recoverFromSnapshot(snapshot: Any) = {
-    assert(order == null)
+    assertThat(order == null)
     order = cast[Order[Order.State]](snapshot)
   }
 
   protected def recoverFromEvent(event: OrderEvent) = throw new NotImplementedError
 
   override protected def finishRecovery() = {
-    assert(order != null, "No Order")
+    assertThat(order != null, "No Order")
     order.state match {
       case Order.Processing => handleEvent(OrderProcessed(Outcome.RecoveryGeneratedOutcome))
       case _ => becomeAsStateOf(order, force = true)
@@ -67,16 +68,16 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
 
   def receive = {
     case Input.Recover(o) =>
-      assert(order == null)
+      assertThat(order == null)
       order = o
 
     case Input.AddChild(o) =>
-      assert(order == null)
+      assertThat(order == null)
       order = o
       becomeAsStateOf(order, force = true)
 
     case Input.AddOffering(o) =>
-      assert(order == null)
+      assertThat(order == null)
       order = o
       becomeAsStateOf(order, force = true)
 
@@ -110,7 +111,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
   private def startable: Receive =
     receiveEvent orElse {
       case Input.StartProcessing(jobKey, workflowJob, jobActor, defaultArguments) =>
-        assert(stdouterr == null)
+        assertThat(stdouterr == null)
         stdouterr = new StdouterrToEvent(context, conf.stdouterrToEventConf, writeStdouterr)
         val stdoutWriter = new StatisticalWriter(stdouterr.writers(Stdout))
         val stderrWriter = new StatisticalWriter(stdouterr.writers(Stderr))

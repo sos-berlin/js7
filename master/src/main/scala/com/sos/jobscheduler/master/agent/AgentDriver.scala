@@ -9,6 +9,7 @@ import com.sos.jobscheduler.base.generic.{Completed, SecretString}
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.problem.Problems.InvalidSessionTokenProblem
+import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.utils.SetOnce
 import com.sos.jobscheduler.base.web.Uri
@@ -183,7 +184,7 @@ with ReceiveLoggingActor.WithStash
       stopIfTerminated()
 
     case Input.StartFetchingEvents | Internal.FetchEvents =>
-      assert(currentFetchedFuture.isEmpty, "Duplicate fetchEvents")
+      assertThat(currentFetchedFuture.isEmpty, "Duplicate fetchEvents")
       currentFetchedFuture = Some(
         observeAndConsumeEventsUntilCancelled
           .executeWithOptions(_.enableAutoCancelableRunLoops)
@@ -215,7 +216,7 @@ with ReceiveLoggingActor.WithStash
         })
 
     case Internal.FetchedEvents(stampedEvents, promise) =>
-      assert(stampedEvents.nonEmpty)
+      assertThat(stampedEvents.nonEmpty)
       val newStampedEvents = stampedEvents dropWhile { stamped =>
         val drop = stamped.eventId <= lastEventId
         if (drop) logger.debug(s"Dropped duplicate received event: $stamped")

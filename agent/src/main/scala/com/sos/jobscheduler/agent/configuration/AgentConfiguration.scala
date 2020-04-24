@@ -4,6 +4,7 @@ import akka.util.Timeout
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration._
 import com.sos.jobscheduler.agent.data.{KillScriptConf, ProcessKillScript}
 import com.sos.jobscheduler.base.convert.AsJava.asAbsolutePath
+import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerPort
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.configutils.Configs
@@ -80,7 +81,7 @@ extends CommonConfiguration
       createDirectory(stateDirectory)
     }
     if (!exists(temporaryDirectory)) {
-      assert(temporaryDirectory == dataDirectory / "tmp")
+      assertThat(temporaryDirectory == dataDirectory / "tmp")
       createDirectory(temporaryDirectory)
     }
     this

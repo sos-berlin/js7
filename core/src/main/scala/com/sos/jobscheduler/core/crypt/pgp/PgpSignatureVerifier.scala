@@ -3,6 +3,7 @@ package com.sos.jobscheduler.core.crypt.pgp
 import cats.effect.{Resource, SyncIO}
 import cats.syntax.show._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.SyncResource.syntax._
 import com.sos.jobscheduler.common.scalautil.GuavaUtils.stringToInputStreamResource
@@ -83,7 +84,7 @@ object PgpSignatureVerifier extends SignatureVerifier.Companion
     ).left.map(o => Problem(s"Error when reading public key '$origin'", cause = Some(o)))
 
   def genericSignatureToSignature(signature: GenericSignature): PgpSignature = {
-    assert(signature.typeName == typeName)
+    assertThat(signature.typeName == typeName)
     PgpSignature(signature.signatureString)
   }
 

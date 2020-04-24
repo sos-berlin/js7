@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.common.tcp
 
 import akka.util.ByteString
+import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.tcp.BlockingTcpConnection._
 import java.net.InetSocketAddress
@@ -38,7 +39,7 @@ extends AutoCloseable with BlockingMessageConnection {
 
   private def receiveBuffer(buffer: ByteBuffer) = {
     do channel.read(buffer) while (buffer.position() > 0 && buffer.position() < buffer.limit())
-    assert(buffer.position() == 0 || buffer.position() == buffer.limit())
+    assertThat(buffer.position() == 0 || buffer.position() == buffer.limit())
   }
 
   def sendMessage(data: ByteString): Unit = sendMessage(data.asByteBuffers, data.size)
@@ -65,7 +66,7 @@ object BlockingTcpConnection{
     val channel = SocketChannel.open()
     channel.connect(peerAddress)
     logger.debug(s"Connected own ${channel.getLocalAddress} with remote $peerAddress")
-    assert(channel.isBlocking)
+    assertThat(channel.isBlocking)
     new BlockingTcpConnection(channel)
   }
 

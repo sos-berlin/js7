@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.core.workflow.instructions
 
+import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.core.workflow.OrderContext
 import com.sos.jobscheduler.data.order.Order
@@ -22,7 +23,7 @@ object IfExecutor extends EventInstructionExecutor with PositionInstructionExecu
         .map(_ map (o => order.id <-: OrderMoved(o)))
 
   def nextPosition(context: OrderContext, order: Order[Order.State], instruction: If) = {
-    assert(order == context.idToOrder(order.id).withPosition(order.position))
+    assertThat(order == context.idToOrder(order.id).withPosition(order.position))
     context.makeScope(order).evalBoolean(instruction.predicate)
       .map {
         case true => Some(Then)

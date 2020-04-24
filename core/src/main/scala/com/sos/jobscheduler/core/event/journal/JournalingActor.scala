@@ -5,6 +5,7 @@ import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec.typeName
 import com.sos.jobscheduler.base.generic.Accepted
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import com.sos.jobscheduler.common.akkautils.ReceiveLoggingActor
@@ -87,7 +88,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
     callback: (Stamped[KeyedEvent[EE]], S) => A)
   : Future[A] =
     persistKeyedEvents(Timestamped(keyedEvent, timestamp) :: Nil, async = async) { (events, journaledState) =>
-      assert(events.size == 1)
+      assertThat(events.sizeIs == 1)
       callback(events.head, journaledState)
     }
 

@@ -2,6 +2,7 @@ package com.sos.jobscheduler.core.event.journal.watch
 
 import akka.util.ByteString
 import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.AutoClosing.closeOnError
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichIterator
@@ -127,7 +128,7 @@ extends AutoCloseable
         case iterator =>
           _lastUsed = Timestamp.currentTimeMillis
           val stamped = iterator.next()
-          assert(stamped.eventId >= after, s"${stamped.eventId} ≥ $after")
+          assertThat(stamped.eventId >= after, s"${stamped.eventId} ≥ $after")
           if (isHistoric) {
             if (eof/*freezed*/) sys.error(s"FileEventIterator: !hasNext but next() returns a value, eventId=${stamped.eventId} position=${iterator.position}")
             journalIndex.tryAddAfter(stamped.eventId, iterator.position)

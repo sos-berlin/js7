@@ -4,6 +4,7 @@ import akka.util.ByteString
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.common.http.CirceToYaml.yamlToJson
 import com.sos.jobscheduler.core.filebased.FileBasedReader._
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, FileBasedId_, SourceType, TypedPath}
@@ -23,7 +24,7 @@ trait FileBasedReader
   def convertFromJson(json: Json): Checked[ThisFileBased]
 
   private[filebased] def readUntyped(id: FileBasedId_, byteString: ByteString, sourceType: SourceType): Checked[ThisFileBased] = {
-    assert(id.path.companion eq typedPathCompanion, "FileBasedReader readUntyped")
+    assertThat(id.path.companion eq typedPathCompanion, "FileBasedReader readUntyped")
     val result: Checked[ThisFileBased] = read(id.asInstanceOf[FileBasedId[ThisTypedPath]], byteString).applyOrElse(sourceType,
       (_: SourceType) => Problem(s"Unrecognized SourceType '$sourceType' for path '$id'"))
     result.mapProblem(p => SourceProblem(id.path, sourceType, p))

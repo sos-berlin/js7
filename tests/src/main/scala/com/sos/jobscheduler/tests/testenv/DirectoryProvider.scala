@@ -7,6 +7,7 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.AutoClosing.{closeOnError, multipleAutoClosing}
 import com.sos.jobscheduler.base.utils.Closer.syntax.RichClosersAny
 import com.sos.jobscheduler.base.utils.HasCloser
@@ -351,8 +352,8 @@ object DirectoryProvider
     p.redirectError(INHERIT)
     val process = p.start()
     val finished = process.waitFor(99, SECONDS)
-    assert(finished, "Command 'keytool' takes longer than 99 seconds")
-    assert(process.exitValue == 0, s"Command 'keytool' returns with exit code ${process.exitValue}")
+    assertThat(finished, "Command 'keytool' takes longer than 99 seconds")
+    assertThat(process.exitValue == 0, s"Command 'keytool' returns with exit code ${process.exitValue}")
   }
 
   final def defaultSigner = pgpSigner

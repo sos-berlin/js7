@@ -7,6 +7,7 @@ import com.sos.jobscheduler.agent.scheduler.job.task.{TaskConfiguration, TaskRun
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
+import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.process.Processes.ShellFileAttributes
@@ -96,8 +97,8 @@ extends Actor with Stash {
                 case Failure(t) =>
                   sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Problem.pure(s"Executable '$executable': $t")))  // Exception.toString is published !!!
                 case Success(executableFile) =>
-                  assert(taskCount < workflowJob.taskLimit, "Task limit exceeded")
-                  assert(executable.isTemporary || executableFile.startsWith(conf.executablesDirectory.toRealPath(NOFOLLOW_LINKS)),
+                  assertThat(taskCount < workflowJob.taskLimit, "Task limit exceeded")
+                  assertThat(executable.isTemporary || executableFile.startsWith(conf.executablesDirectory.toRealPath(NOFOLLOW_LINKS)),
                     s"Executable directory '${conf.executablesDirectory}' does not contain file '$executableFile' ")
                   val sender = this.sender()
                   processOrder(cmd, executableFile)

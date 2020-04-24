@@ -3,6 +3,7 @@ package com.sos.jobscheduler.core.common.jsonseq
 import akka.util.ByteString
 import com.google.common.base.Ascii
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.core.common.jsonseq.OutputStreamJsonSeqWriter._
 import io.circe.Json
 import java.io.{BufferedOutputStream, OutputStream}
@@ -37,7 +38,7 @@ final class OutputStreamJsonSeqWriter(out: OutputStream, withRS: Boolean = false
     }
     byteString.copyToArray(array)
     if (withRS) buffered.write(Ascii.RS)
-    assert(!array.contains('\n'), "OutputStreamJsonSeqWriter: JSON contains a forbidden LF")
+    assertThat(!array.contains('\n'), "OutputStreamJsonSeqWriter: JSON contains a forbidden LF")
     buffered.write(array, 0, byteString.length)
     buffered.write('\n')
     _written += byteString.length + extraLength

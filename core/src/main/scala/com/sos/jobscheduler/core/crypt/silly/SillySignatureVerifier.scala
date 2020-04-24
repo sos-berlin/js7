@@ -2,6 +2,7 @@ package com.sos.jobscheduler.core.crypt.silly
 
 import cats.effect.{Resource, SyncIO}
 import com.google.common.io.ByteStreams.toByteArray
+import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.SyncResource.syntax.RichResource
 import com.sos.jobscheduler.core.crypt.SignatureVerifier
 import com.sos.jobscheduler.core.problems.TamperedWithSignedMessageProblem
@@ -51,7 +52,7 @@ object SillySignatureVerifier extends SignatureVerifier.Companion
         keyOrigin = keyOrigin))
 
   def genericSignatureToSignature(signature: GenericSignature) = {
-    assert(signature.typeName == typeName)
+    assertThat(signature.typeName == typeName)
     SillySignature(signature.signatureString)
   }
 }

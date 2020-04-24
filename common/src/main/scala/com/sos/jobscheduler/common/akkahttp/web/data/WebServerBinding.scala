@@ -4,6 +4,7 @@ import akka.http.scaladsl.model.{Uri => AkkaUri}
 import cats.syntax.either._
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.CatsUtils._
 import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
@@ -70,7 +71,7 @@ object WebServerBinding {
             address.getAddress.getHostAddress
 
         case WebServerBinding.Https =>
-          assert(InetAddress.getByName("localhost").getHostAddress == "127.0.0.1")  // Check file /etc/host
+          assertThat(InetAddress.getByName("localhost").getHostAddress == "127.0.0.1")  // Check file /etc/host
           "localhost"  // To match TLS host name verification
       }
       val host = address.getAddress.getHostAddress match {
