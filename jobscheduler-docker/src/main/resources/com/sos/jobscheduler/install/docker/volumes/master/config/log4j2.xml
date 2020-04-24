@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration status="WARN" shutdownHook="disable" monitorInterval="10">
+  <properties>
+    <property name="logDirectory">${sys:jobscheduler.log4j.directory:-logs}</property>
+  </properties>
   <appenders>
     <console name="stderr" target="SYSTEM_ERR">
       <patternLayout pattern="%highlight{%d{DEFAULT} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message}{INFO=blue,WARN=red bold}%n"/>
     </console>
     <rollingRandomAccessFile name="file"
-                             fileName="${sys:jobscheduler.log4j.directory:-logs}/master.log"
-                             filePattern="${sys:jobscheduler.log4j.directory:-logs}/master-%d{yyyy-MM-dd}-%i.log.gz"
+                             fileName="${logDirectory}/master.log"
+                             filePattern="${logDirectory}/master-%d{yyyy-MM-dd}-%i.log.gz"
                              immediateFlush="${sys:jobscheduler.log4j.immediateFlush:-true}">
       <patternLayout pattern="%d{DEFAULT_MICROS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message%n"
                      charset="UTF-8"/>
@@ -15,11 +18,19 @@
         <timeBasedTriggeringPolicy/>
         <sizeBasedTriggeringPolicy size="1GB"/>
       </policies>
-      <defaultRolloverStrategy fileIndex="nomax"/>
+      <defaultRolloverStrategy fileIndex="nomax">
+        <delete basePath="${logDirectory}">
+          <ifFileName glob="master-*.log.gz"/>
+          <ifAny>
+            <ifLastModified age="8d"/>
+            <ifAccumulatedFileSize exceeds="2GB"/>
+          </ifAny>
+        </delete>
+      </defaultRolloverStrategy>
     </rollingRandomAccessFile>
     <rollingRandomAccessFile name="jobscheduler.web.log"
-                             fileName="${sys:jobscheduler.log4j.directory:-logs}/web.log"
-                             filePattern="${sys:jobscheduler.log4j.directory:-logs}/web-%d{yyyy-MM-dd}-%i.log.gz"
+                             fileName="${logDirectory}/web.log"
+                             filePattern="${logDirectory}/web-%d{yyyy-MM-dd}-%i.log.gz"
                              immediateFlush="${sys:jobscheduler.log4j.immediateFlush:-true}">
       <patternLayout pattern="%d{EE HH:mm:ss.SSS} %message%n"
                      charset="UTF-8"/>
@@ -28,7 +39,15 @@
         <timeBasedTriggeringPolicy/>
         <sizeBasedTriggeringPolicy size="1GB"/>
       </policies>
-      <defaultRolloverStrategy fileIndex="nomax"/>
+      <defaultRolloverStrategy fileIndex="nomax">
+        <delete basePath="${logDirectory}">
+          <ifFileName glob="web-*.log.gz" />
+          <ifAny>
+            <ifLastModified age="8d"/>
+            <ifAccumulatedFileSize exceeds="2GB"/>
+          </ifAny>
+        </delete>
+      </defaultRolloverStrategy>
     </rollingRandomAccessFile>
   </appenders>
   <loggers>

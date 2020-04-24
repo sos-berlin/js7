@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration status="WARN" shutdownHook="disable">
+  <properties>
+    <property name="logDirectory">${sys:jobscheduler.log4j.directory:-logs}</property>
+  </properties>
   <appenders>
     <console name="stderr" target="SYSTEM_ERR">
       <patternLayout pattern="%highlight{%d{DEFAULT} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message}{INFO=blue,WARN=red bold}%n"/>
     </console>
     <rollingRandomAccessFile name="file"
-                             fileName="${sys:jobscheduler.log4j.directory:-logs}/test.log"
-                             filePattern="${sys:jobscheduler.log4j.directory:-logs}/test-%d{yyyy-MM-dd}-%i.log.gz">
+                             fileName="${logDirectory)/test.log"
+                             filePattern="${logDirectory)/test-%d{yyyy-MM-dd}-%i.log.gz">
     <patternLayout pattern="%d{EE HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message%n"
                    charset="UTF-8"/>
     <policies>
