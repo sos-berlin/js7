@@ -7,10 +7,12 @@ import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
+import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import com.sos.jobscheduler.data.Problems.PassiveClusterNodeShutdownNotAllowedProblem
 import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver}
 import com.sos.jobscheduler.data.cluster.ClusterState
+import com.sos.jobscheduler.data.cluster.ClusterState.{Coupled, FailedOver}
 import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.master.data.MasterCommand.ShutDown
 import com.sos.jobscheduler.master.data.MasterCommand.ShutDown.ClusterAction
@@ -50,6 +52,7 @@ final class ShutDownClusterTest extends MasterClusterTester
             val activeRestarted = primaryMaster.eventWatch.await[ClusterActiveNodeRestarted](
               after = activeNodeShutDown).head.eventId
             primaryMaster.eventWatch.await[ClusterCoupled](after = activeRestarted)
+            assert(primaryMaster.clusterState.await(99.s) == Coupled(idToUri, primaryId))
           }
         }
       }
@@ -73,6 +76,9 @@ final class ShutDownClusterTest extends MasterClusterTester
 
     "ShutDown active node with failover (for testing)" in {
       withMasterAndBackup(primaryHttpPort, backupHttpPort) { (primary, backup) =>
+        val idToUri = Map(
+          primaryId -> Uri(s"http://127.0.0.1:$primaryHttpPort"),
+          backupId -> Uri(s"http://127.0.0.1:$backupHttpPort"))
         backup.runMaster(httpPort = Some(backupHttpPort), dontWaitUntilReady = true) { backupMaster =>
           primary.runMaster(httpPort = Some(primaryHttpPort)) { primaryMaster =>
             primaryMaster.eventWatch.await[ClusterCoupled]()
@@ -81,6 +87,42 @@ final class ShutDownClusterTest extends MasterClusterTester
               .await(99.s).orThrow
             primaryMaster.terminated.await(99.s)
             backupMaster.eventWatch.await[ClusterFailedOver]()
+            waitForCondition(3.s, 10.ms)(backupMaster.clusterState.await(99.s).isInstanceOf[FailedOver])
+            assert(backupMaster.clusterState.await(99.s).asInstanceOf[FailedOver].activeId == backupId)
+          }
+          primary.runMaster(httpPort = Some(primaryHttpPort), dontWaitUntilReady = true) { primaryMaster =>
+            // Restarted Primary should have become passive
+            primaryMaster.eventWatch.await[ClusterCoupled](after = primaryMaster.eventWatch.lastFileTornEventId)
+            waitForCondition(3.s, 10.ms)(primaryMaster.clusterState.await(99.s).isInstanceOf[Coupled])
+            assert(primaryMaster.clusterState.await(99.s) == backupMaster.clusterState.await(99.s))
+            assert(primaryMaster.clusterState.await(99.s) == Coupled(idToUri, backupId))
+
+            backupMaster.executeCommandAsSystemUser(ShutDown()).await(99.s).orThrow
+            backupMaster.terminated await 99.s
+          }
+        }
+      }
+    }
+
+    "ShutDown active node with failover requested (for testing), but immediate restart of the shut down node" in {
+      withMasterAndBackup(primaryHttpPort, backupHttpPort) { (primary, backup) =>
+        val idToUri = Map(
+          primaryId -> Uri(s"http://127.0.0.1:$primaryHttpPort"),
+          backupId -> Uri(s"http://127.0.0.1:$backupHttpPort"))
+        backup.runMaster(httpPort = Some(backupHttpPort), dontWaitUntilReady = true) { backupMaster =>
+          primary.runMaster(httpPort = Some(primaryHttpPort)) { primaryMaster =>
+            primaryMaster.eventWatch.await[ClusterCoupled]()
+
+            primaryMaster.executeCommandAsSystemUser(ShutDown(clusterAction = Some(ClusterAction.Failover)))
+              .await(99.s).orThrow
+            primaryMaster.terminated.await(99.s)
+          }
+          primary.runMaster(httpPort = Some(primaryHttpPort), dontWaitUntilReady = true) { primaryMaster =>
+            assert(primaryMaster.clusterState.await(99.s) == backupMaster.clusterState.await(99.s))
+            assert(primaryMaster.clusterState.await(99.s) == Coupled(idToUri, primaryId))
+
+            backupMaster.executeCommandAsSystemUser(ShutDown()).await(99.s).orThrow
+            backupMaster.terminated await 99.s
           }
         }
       }
@@ -125,7 +167,7 @@ final class ShutDownClusterTest extends MasterClusterTester
       }
     }
 
-    "ShutDown passive node with switchcover or failover is rejected" in {
+    "ShutDown passive node with switchover or failover is rejected" in {
       withMasterAndBackup(primaryHttpPort, backupHttpPort) { (primary, backup) =>
         backup.runMaster(httpPort = Some(backupHttpPort), dontWaitUntilReady = true) { backupMaster =>
           primary.runMaster(httpPort = Some(primaryHttpPort)) { primaryMaster =>

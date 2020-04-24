@@ -386,15 +386,18 @@ final class Cluster(
             })
 
       case ClusterCommand.ClusterRecouple(activeId, passiveId) =>
-        persistence.waitUntilStarted >>
-          persist {
-            case s: Coupled
-              if s.activeId == activeId && s.passiveId == passiveId =>
-              Right(ClusterPassiveLost(passiveId) :: Nil)
+        (if (activeId != ownId)
+          Task.pure(Right(Problem.pure("ClusterRecouple command may only be directed to the active node")))
+        else
+          persistence.waitUntilStarted >>
+            persist {
+              case s: Coupled if s.activeId == activeId && s.passiveId == passiveId =>
+                Right(ClusterPassiveLost(passiveId) :: Nil)
 
-            case _ =>
-              Right(Nil)
-          }.map(_.map(_ => ClusterCommand.Response.Accepted))
+              case _ =>
+                Right(Nil)
+            }
+        ).map(_.map(_ => ClusterCommand.Response.Accepted))
 
       case ClusterCommand.ClusterInhibitActivation(duration) =>
         import ClusterCommand.ClusterInhibitActivation.Response
