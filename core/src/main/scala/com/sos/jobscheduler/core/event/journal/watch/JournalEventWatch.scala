@@ -148,7 +148,7 @@ with JournalingObserver
     }
 
   def onEventsCommitted(positionAndEventId: PositionAnd[EventId], n: Int): Unit = {
-    currentEventReader.onEventsCommitted(positionAndEventId, n = n)
+    checkedCurrentEventReader.orThrow.onEventsCommitted(positionAndEventId, n = n)
     onEventsCommitted(positionAndEventId.value)
   }
 
@@ -301,8 +301,6 @@ with JournalingObserver
 
     override def toString = file.getFileName.toString
   }
-
-  private def currentEventReader = checkedCurrentEventReader.orThrow
 
   private def checkedCurrentEventReader: Checked[CurrentEventReader] =
     currentEventReaderOption.toChecked(JournalIsNotYetReadyProblem(journalMeta.fileBase))
