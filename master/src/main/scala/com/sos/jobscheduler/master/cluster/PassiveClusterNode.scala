@@ -103,8 +103,8 @@ import scodec.bits.ByteVector
               // After a quick restart of this passive node, the active node may not yet have noticed the loss.
               // So we send a ClusterRecouple command to force a ClusterPassiveLost event.
               // Then the active node couples again with this passive node,
-              // and we are sure to be coupled and up-to-date and may properly fail-over in case of an active node.
-              // The active node ignores this command if it has issued an ClusterPassiveLost event.
+              // and we are sure to be coupled and up-to-date and may properly fail-over in case of active node loss.
+              // The active node ignores this command if it has emitted a ClusterPassiveLost event.
               awaitingCoupledEvent = true
               common.tryEndlesslyToSendCommand(activeUri, ClusterRecouple(activeId = activeId, passiveId = ownId))
           }

@@ -96,11 +96,11 @@ final class MastersEventRouteTest extends AnyFreeSpec with AgentTester
   }
 
   "Recoupling with Master's last events deleted fails" in {
-    val newerEventId = eventId + 1  // Assuming that no further Event has been issued
+    val newerEventId = eventId + 1  // Assuming that no further Event has been emitted
     assert(agentClient.commandExecute(CoupleMaster(agentRunId, newerEventId)).await(99.s) ==
       Left(UnknownEventIdProblem(newerEventId)))
 
-    val unknownEventId = EventId(1)  // Assuming this is EventId has not been issued
+    val unknownEventId = EventId(1)  // Assuming this is EventId has not been emitted
     assert(agentClient.commandExecute(CoupleMaster(agentRunId, unknownEventId)).await(99.s) ==
       Left(UnknownEventIdProblem(unknownEventId)))
   }

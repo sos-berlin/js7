@@ -158,12 +158,12 @@ final class FatEventsTest extends AnyFreeSpec
           assert(stamped.map(_.value.event) ==
             Vector.fill(2)(MasterReadyFat(MasterId("Master"), ZoneId.systemDefault.getId)))  // Only MasterReady, nothing else happened
 
-          locally { // Test a bug: Start a new journal file, then KeepEvent, then fetch fat events, while lean events invisible for fat events are issued
+          locally { // Test a bug: Start a new journal file, then KeepEvent, then fetch fat events, while lean events invisible for fat events are emitted
             assert(listJournalFiles.size == 4)
             val EventSeq.Empty(eventId1) = master.httpApi.fatEvents(EventRequest.singleClass[FatEvent](after = stamped.last.eventId, timeout = Some(0.s))) await 99.s
 
-            // Issue an event ignored by FatState
-            master.httpApi.executeCommand(MasterCommand.IssueTestEvent) await 99.s
+            // Emit an event ignored by FatState
+            master.httpApi.executeCommand(MasterCommand.EmitTestEvent) await 99.s
 
             // FatState should advance to the EventId returned as EventSeq.Empty (skipIgnoredEventIds)
             val EventSeq.Empty(eventId2) = master.httpApi.fatEvents(EventRequest.singleClass[FatEvent](after = eventId1, timeout = Some(0.s))) await 99.s
@@ -176,13 +176,13 @@ final class FatEventsTest extends AnyFreeSpec
             // Should not return Torn:
             val EventSeq.Empty(_) = master.httpApi.fatEvents(EventRequest.singleClass[FatEvent](after = eventId2, timeout = Some(0.s))) await 99.s
 
-            // Again, issue an ignored event. Then fetch fatEvents again after=eventId2 the second time
-            master.httpApi.executeCommand(MasterCommand.IssueTestEvent) await 99.s
+            // Again, emit an ignored event. Then fetch fatEvents again after=eventId2 the second time
+            master.httpApi.executeCommand(MasterCommand.EmitTestEvent) await 99.s
             val EventSeq.Empty(eventId3) = master.httpApi.fatEvents(EventRequest.singleClass[FatEvent](after = eventId2, timeout = Some(0.s))) await 99.s
             assert(eventId3 > eventId2)
 
-            // Again, issue an ignored event. Then fetch fatEvents again after=eventId2 the third time
-            master.httpApi.executeCommand(MasterCommand.IssueTestEvent) await 99.s
+            // Again, emit an ignored event. Then fetch fatEvents again after=eventId2 the third time
+            master.httpApi.executeCommand(MasterCommand.EmitTestEvent) await 99.s
             val EventSeq.Empty(eventId4) = master.httpApi.fatEvents(EventRequest.singleClass[FatEvent](after = eventId2, timeout = Some(0.s))) await 99.s
             assert(eventId4 > eventId2)
           }

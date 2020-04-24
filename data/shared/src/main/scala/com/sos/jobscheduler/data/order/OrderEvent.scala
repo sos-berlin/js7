@@ -163,7 +163,7 @@ object OrderEvent {
 
   /** A OrderCancellationMarked on Agent is different from same Event on Master.
     * Master will ignore the Agent's OrderCancellationMarked.
-    * Master should have issued the event independendly. **/
+    * Master should have emitted the event independendly. **/
   final case class OrderCancellationMarked(mode: CancelMode) extends OrderActorEvent
 
   type OrderCancelled = OrderCancelled.type

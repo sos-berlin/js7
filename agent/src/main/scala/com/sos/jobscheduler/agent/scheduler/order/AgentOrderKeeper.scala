@@ -240,7 +240,7 @@ with Stash {
       if (!shuttingDown) {
         handleOrderEvent(order, event)
         (event, orderRegister(order.id).instruction) match {
-          case (_: OrderStarted, _: Execute) =>  // Special for OrderActor: it issues immediately an OrderProcessingStarted
+          case (_: OrderStarted, _: Execute) =>  // Special for OrderActor: it emits immediately an OrderProcessingStarted
           case _ =>
             proceedWithOrder(order.id)
         }

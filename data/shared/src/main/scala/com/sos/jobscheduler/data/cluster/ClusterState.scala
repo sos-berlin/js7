@@ -49,6 +49,7 @@ extends EventDrivenState[ClusterState, ClusterEvent]
 
           case (state: ActiveShutDown, ClusterActiveNodeRestarted) =>
             Right(PassiveLost(state.idToUri, state.activeId))
+            // Passive node may recouple now
 
           case (_, keyedEvent) =>
             Left(EventNotApplicableProblem(keyedEvent, this))
@@ -77,6 +78,8 @@ object ClusterState
 
   sealed trait HasNodes extends ClusterState
   {
+    this: Product =>
+
     protected final def assertIsValid(): Unit =
       checkUris(idToUri, activeId).orThrow
 
@@ -88,13 +91,19 @@ object ClusterState
     final def passiveUri = idToUri(passiveId)
 
     protected final def nodesString =
-      (for ((id, uri) <- idToUri) yield s"$id ($uri)${(activeId == id) ?: " active"}")
+      (for ((id, uri) <- idToUri) yield s"$id${(activeId == id) ?: " is active"}: $uri")
         .mkString(", ")
+
+    override def toString = s"$productPrefix($nodesString)"
   }
 
-  sealed trait CoupledOrDecoupled extends HasNodes
+  sealed trait CoupledOrDecoupled extends HasNodes {
+    this: Product =>
+  }
 
-  sealed trait Decoupled extends CoupledOrDecoupled
+  sealed trait Decoupled extends CoupledOrDecoupled {
+    this: Product =>
+  }
 
   final case class NodesAppointed(idToUri: Map[Id, Uri], activeId: Id)
   extends Decoupled
@@ -107,8 +116,6 @@ object ClusterState
   extends HasNodes
   {
     assertIsValid()
-
-    override def toString = s"PreparedToBeCoupled($nodesString)"
   }
 
   /** An active node is coupled with a passive node. */
@@ -116,10 +123,6 @@ object ClusterState
   extends CoupledOrDecoupled
   {
     assertIsValid()
-
-    override def isCoupledPassiveRole(id: Id) = id == passiveId
-
-    override def toString = s"Coupled($nodesString)"
   }
 
   /** The active node has shut down and will continue to be active when restarted.
@@ -129,24 +132,18 @@ object ClusterState
   extends Decoupled
   {
     assertIsValid()
-
-    override def toString = s"ActiveShutDown($nodesString)"
   }
 
   final case class PassiveLost(idToUri: Map[Id, Uri], activeId: Id)
   extends Decoupled
   {
     assertIsValid()
-
-    override def toString = s"PassiveLost($nodesString)"
   }
 
   final case class SwitchedOver(idToUri: Map[Id, Uri], activeId: Id)
   extends Decoupled
   {
     assertIsValid()
-
-    override def toString = s"PassiveLost($nodesString)"
   }
 
   /** Decoupled after failover.

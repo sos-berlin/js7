@@ -69,7 +69,7 @@ final case class Position(branchPath: BranchPath, nr: InstructionNr)
         }
       case Some((parent, BranchId.Then | BranchId.Else, _)) =>
         parent.nextRetryBranchPath
-      case _ => Left(NoTryBlockProblem) // For example, Fork is a barrier. Retry may not be issued inside a Fork for a Try outside the Fork
+      case _ => Left(NoTryBlockProblem) // For example, Fork is a barrier. Retry may not be emitted inside a Fork for a Try outside the Fork
     }
 
   def isInFork = forkPosition.isDefined

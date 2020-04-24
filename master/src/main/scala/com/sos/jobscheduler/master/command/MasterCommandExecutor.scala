@@ -23,19 +23,22 @@ extends CommandExecutor[MasterCommand]
   def executeCommand(command: MasterCommand, meta: CommandMeta): Task[Checked[command.Response]] =
     executeCommand(command, meta, None)
 
-  private def executeCommand(command: MasterCommand, meta: CommandMeta, batchId: Option[InternalCommandId]): Task[Checked[command.Response]] = {
+  private def executeCommand(command: MasterCommand, meta: CommandMeta, batchId: Option[InternalCommandId])
+  : Task[Checked[command.Response]] = {
     val run = register.add(meta.user.id, command, batchId)
     logCommand(run)
     executeCommand2(command, meta, run.internalId, batchId)
       .map { checkedResponse =>
         if (run.batchInternalId.isEmpty || checkedResponse != Right(MasterCommand.Response.Accepted)) {
-          logger.debug(s"Response to ${run.idString} ${MasterCommand.jsonCodec.classToName(run.command.getClass)} (${run.runningSince.elapsed.pretty}): $checkedResponse")
+          logger.debug(s"Response to ${run.idString} ${MasterCommand.jsonCodec.classToName(run.command.getClass)}" +
+            s" (${run.runningSince.elapsed.pretty}): $checkedResponse")
         }
+        for (problem <- checkedResponse.left) logger.warn(s"$run rejected: $problem")
         checkedResponse.map(_.asInstanceOf[command.Response])
       }
       .doOnFinish(maybeThrowable => Task {
         for (t <- maybeThrowable if run.batchInternalId.isEmpty) {
-          logger.warn(s"Command $run failed with ${t.toStringWithCauses}")
+          logger.warn(s"$run failed: ${t.toStringWithCauses}")
         }
         register.remove(run.internalId)
       })

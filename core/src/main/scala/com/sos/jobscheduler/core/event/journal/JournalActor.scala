@@ -210,7 +210,7 @@ extends Actor with Stash
       else if (level < writtenBuffer.length) {
         // writtenBuffer has grown? Queue again to coalesce two commits (and flushs and maybe syncs)
         forwardCommit()
-      } else if (level == writtenBuffer.length) {  // writtenBuffer has not grown since last issued Commit
+      } else if (level == writtenBuffer.length) {  // writtenBuffer has not grown since last emitted Commit
         commit()
       } else if (writtenBuffer.nonEmpty) {
         logger.trace(s"Commit($level) but writtenBuffer.length=${writtenBuffer.length}")

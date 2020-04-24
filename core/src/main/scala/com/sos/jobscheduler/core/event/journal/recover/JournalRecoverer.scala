@@ -89,7 +89,7 @@ trait JournalRecoverer[S <: JournaledState[S]]
     }
     if (eventCount > 0) {
       val age = (Timestamp.now - EventId.toTimestamp(_lastEventId)).withMillis(0).pretty
-      logger.info(s"Recovered last EventId is ${EventId.toString(_lastEventId)}, issued $age ago " +
+      logger.info(s"Recovered last EventId is ${EventId.toString(_lastEventId)}, emitted $age ago " +
         s"($snapshotCount snapshot elements and $eventCount events read in ${stopwatch.duration.pretty})")
     }
   }

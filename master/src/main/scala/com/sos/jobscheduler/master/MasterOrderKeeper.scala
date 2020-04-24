@@ -181,7 +181,7 @@ with MainJournalingActor[MasterState, Event]
   private var switchover: Option[Switchover] = None
 
   private final class Switchover(val restart: Boolean) {
-    // 1) Issue SwitchedOver event
+    // 1) Emit SwitchedOver event
     // 2) Terminate JournalActor
     // 3) Stop MasterOrderKeeper includinge AgentDriver's
     // Do not terminate AgentDrivers properly because we do not want any events.
@@ -212,7 +212,7 @@ with MainJournalingActor[MasterState, Event]
     }
 
     def persistThenHandleEvents(): Unit = {
-      // Eliminate duplicate events like OrderJoined, which may be issued by parent and child orders when recovering
+      // Eliminate duplicate events like OrderJoined, which may be emitted by parent and child orders when recovering
       persistMultiple(events.distinct) { (stampedEvents, journaledState) =>
         stampedEvents foreach handleOrderEvent
       }
@@ -482,7 +482,7 @@ with MainJournalingActor[MasterState, Event]
             // TODO Event vor dem Speichern mit Order.applyEvent ausprobieren! Bei Fehler ignorieren?
             lastAgentEventId = Some(agentEventId)
             keyedEvent match {
-              case KeyedEvent(_, _: OrderCancellationMarked) =>  // We (the Master) issue our own OrderCancellationMarked
+              case KeyedEvent(_, _: OrderCancellationMarked) =>  // We (the Master) emit our own OrderCancellationMarked
                 None
 
               case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
@@ -656,7 +656,7 @@ with MainJournalingActor[MasterState, Event]
               .runToFuture
         }
 
-      case MasterCommand.IssueTestEvent =>
+      case MasterCommand.EmitTestEvent =>
         persist(MasterTestEvent, async = true)((_, _) =>
           Right(MasterCommand.Response.Accepted))
 
@@ -865,7 +865,7 @@ with MainJournalingActor[MasterState, Event]
       case _ =>
     }
 
-    // When recovering, proceedWithOrderOnMaster may issue the same event multiple times,
+    // When recovering, proceedWithOrderOnMaster may emit the same event multiple times,
     // for example OrderJoined for each parent and child order.
     // These events are collected and with actor message Internal.AfterProceedEventsAdded reduced to one.
     for (keyedEvent <- orderProcessor.nextEvent(order.id)) {

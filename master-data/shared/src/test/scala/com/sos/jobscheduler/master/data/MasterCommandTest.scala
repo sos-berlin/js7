@@ -173,10 +173,10 @@ final class MasterCommandTest extends AnyFreeSpec
       }""")
   }
 
-  "IssueTestEvent" in {  // For tests only
-    testJson[MasterCommand](IssueTestEvent,
+  "EmitTestEvent" in {  // For tests only
+    testJson[MasterCommand](EmitTestEvent,
       json"""{
-        "TYPE": "IssueTestEvent"
+        "TYPE": "EmitTestEvent"
       }""")
   }
 

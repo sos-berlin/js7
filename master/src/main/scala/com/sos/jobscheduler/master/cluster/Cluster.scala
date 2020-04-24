@@ -37,7 +37,7 @@ import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterActiveNodeRestarte
 import com.sos.jobscheduler.data.cluster.ClusterState.{ActiveShutDown, Coupled, Decoupled, Empty, FailedOver, HasNodes, NodesAppointed, PassiveLost, PreparedToBeCoupled}
 import com.sos.jobscheduler.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeId, ClusterState}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.master.MasterState
 import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
@@ -117,7 +117,7 @@ final class Cluster(
   def start(recovered: Recovered[MasterState], recoveredState: MasterState)
   : (Task[Option[MasterState]], Task[Checked[ClusterFollowUp[MasterState]]]) = {
     if (recovered.clusterState != Empty) {
-      logger.debug(s"recoveredClusterState=${recovered.clusterState}")
+      logger.info(s"Recovered ClusterState is ${recovered.clusterState}")
     }
     val (passiveState, followUp) = startCluster(recovered, recoveredState)
     _currentClusterState = passiveState flatMap {
@@ -364,7 +364,7 @@ final class Cluster(
           persist {
             case s: PassiveLost if s.activeId == activeId && s.passiveId == passiveId =>
               // Happens when this active node has restarted just before the passive one
-              // and has already issued an PassiveLost event
+              // and has already emitted a PassiveLost event
               // We ignore this.
               // The passive node will replicate PassiveLost event and recouple
               Right(Nil)
@@ -644,16 +644,25 @@ final class Cluster(
 
   private def persist(toEvents: ClusterState => Checked[Seq[ClusterEvent]], suppressClusterWatch: Boolean = false)
   : Task[Checked[(Seq[Stamped[KeyedEvent[ClusterEvent]]], ClusterState)]] =
-    (for {
-      persisted <- EitherT(persistence.persistTransaction[ClusterEvent](NoKey)(masterState => toEvents(masterState.clusterState)))
-      (stampedEvents, masterState) = persisted
-      clusterState = masterState.clusterState
-      _ <- EitherT(
-        if (suppressClusterWatch || stampedEvents.isEmpty)
-          Task.pure(Right(Completed))
-        else
-          clusterWatchSynchronizer.applyEvents(stampedEvents.map(_.value.event), clusterState))
-    } yield (stampedEvents, clusterState)).value
+    ( for {
+        persisted <- EitherT(persistence.persistTransaction[ClusterEvent](NoKey)(state => toEvents(state.clusterState)))
+        _ <- EitherT(logPersisted(persisted._1, persisted._2))
+        (stampedEvents, masterState) = persisted
+        clusterState = masterState.clusterState
+        _ <- EitherT(
+          if (suppressClusterWatch || stampedEvents.isEmpty)
+            Task.pure(Right(Completed))
+          else
+            clusterWatchSynchronizer.applyEvents(stampedEvents.map(_.value.event), clusterState))
+      } yield (stampedEvents, clusterState)
+    ).value
+
+  private def logPersisted(stampedEvents: Seq[Stamped[AnyKeyedEvent]], state: MasterState) =
+    Task {
+      for (e <- stampedEvents) logger.info(s"ClusterEvent: ${e.value.event}")
+      logger.info(s"ClusterState is ${state.clusterState}")
+      Checked(())
+    }
 
   private object clusterWatchSynchronizer
   {

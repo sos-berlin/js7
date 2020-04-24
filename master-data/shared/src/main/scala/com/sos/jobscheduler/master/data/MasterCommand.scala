@@ -65,9 +65,9 @@ object MasterCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
-  sealed trait IssueTestEvent extends MasterCommand
+  type EmitTestEvent = EmitTestEvent.type
   /** For tests only. */
-  case object IssueTestEvent extends IssueTestEvent {
+  case object EmitTestEvent extends MasterCommand {
     type Response = Response.Accepted
   }
 
@@ -186,7 +186,7 @@ object MasterCommand extends CommonCommand.Companion
     Subtype(deriveCodec[ReplaceRepo]),
     Subtype(deriveCodec[UpdateRepo]),
     Subtype(NoOperation),
-    Subtype(IssueTestEvent),
+    Subtype(EmitTestEvent),
     Subtype[EmergencyStop],
     Subtype(deriveCodec[ReleaseEvents]),
     Subtype[ShutDown],

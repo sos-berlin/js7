@@ -58,7 +58,7 @@ final class ReplicatingClusterTest extends MasterClusterTester
 
           // Check acknowledgement of empty event list
           primaryMaster.httpApi.login(Some(UserId("TEST") -> SecretString("TEST-PASSWORD"))).await(99.s)
-          primaryMaster.httpApi.addOrders(Nil).await(99.s)  // Issues no events
+          primaryMaster.httpApi.addOrders(Nil).await(99.s)  // Emits no events
         }
       }
     }
