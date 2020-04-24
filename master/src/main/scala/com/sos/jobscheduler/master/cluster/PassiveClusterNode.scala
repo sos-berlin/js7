@@ -72,8 +72,7 @@ import scodec.bits.ByteVector
     * Runs the passive node until activated or terminated.
     * Returns also a `Task` with the current ClusterState while being passive or active.
     */
-  def run(recoveredState: S)
-  : Task[Checked[(ClusterState, ClusterFollowUp[S])]] =
+  def run(recoveredState: S): Task[Checked[(ClusterState, ClusterFollowUp[S])]] =
     Task.deferAction { implicit s =>
       val recoveredClusterState = recoveredState.clusterState
       logger.debug(s"recoveredClusterState=$recoveredClusterState")

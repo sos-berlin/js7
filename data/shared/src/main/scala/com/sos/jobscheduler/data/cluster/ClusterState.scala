@@ -60,8 +60,6 @@ extends EventDrivenState[ClusterState, ClusterEvent]
 
   def toSnapshotObservable =
     Observable.fromIterable((this != Empty) ? ClusterStateSnapshot(this))
-
-  def isCoupledPassiveRole(id: ClusterNodeId) = false
 }
 
 object ClusterState

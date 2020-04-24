@@ -256,7 +256,7 @@ final class Cluster(
 
       case (state: HasNodes, Some(_)) if state.passiveId == ownId =>
         logger.info(
-          if (state.isCoupledPassiveRole(ownId))
+          if (state.isInstanceOf[Coupled])
             s"Remaining a passive cluster node following the active node '${state.activeId}'"
           else
             s"Remaining a passive cluster node trying to follow the active node '${state.activeId}'")
@@ -362,21 +362,18 @@ final class Cluster(
       case ClusterCommand.ClusterCouple(activeId, passiveId) =>
         persistence.waitUntilStarted >>
           persist {
-            case s: PassiveLost
-              if s.activeId == activeId && s.passiveId == passiveId =>
+            case s: PassiveLost if s.activeId == activeId && s.passiveId == passiveId =>
               // Happens when this active node has restarted just before the passive one
               // and has already issued an PassiveLost event
               // We ignore this.
               // The passive node will replicate PassiveLost event and recouple
               Right(Nil)
 
-            case s: PreparedToBeCoupled
-              if s.activeId == activeId && s.passiveId == passiveId =>
+            case s: PreparedToBeCoupled if s.activeId == activeId && s.passiveId == passiveId =>
               // This is the normally expected ClusterState
               Right(ClusterCoupled(activeId) :: Nil)
 
-            case s: Coupled
-              if s.activeId == activeId && s.passiveId == passiveId =>
+            case s: Coupled if s.activeId == activeId && s.passiveId == passiveId =>
               // Already coupled
               Right(Nil)
 
