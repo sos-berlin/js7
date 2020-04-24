@@ -5,7 +5,6 @@ import com.sos.jobscheduler.base.convert.As
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.standards.NameValidator
-import com.sos.jobscheduler.base.utils.HasTypeInfo
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import io.circe.{Decoder, Encoder, Json, KeyDecoder, KeyEncoder}
 import javax.annotation.Nullable
@@ -38,8 +37,6 @@ object GenericString
     implicit val ordering: Ordering[A] = Ordering by { _.string }
 
     implicit def self: Companion[A] = this
-
-    implicit val hasTypeInfo = HasTypeInfo[A](getClass.simpleScalaName)
   }
 
   trait Checked_[A <: GenericString] extends Companion[A]

@@ -100,11 +100,11 @@ object TypedJsonCodec
   }
 
   final class UnknownClassForJsonException(subclass: Class[_], superclass: Class[_])
-    extends NoSuchElementException(s"Class ${subclass.getName} is not registered with TypedJsonCodec[${superclass.getName}]")
+    extends NoSuchElementException(s"Class ${subclass.getName} is not registered with TypedJsonCodec[${superclass.shortClassName}]")
 
   final class UnknownJsonTypeException(typeName: String, superclass: Class[_])
-    extends RuntimeException(s"""Unexpected JSON {"$TypeFieldName": "$typeName"} for class '${superclass.simpleName}'""")
+    extends RuntimeException(s"""Unexpected JSON {"$TypeFieldName": "$typeName"} for class '${superclass.shortClassName}'""")
 
   final def unknownJsonTypeFailure(typeName: String, superclass: Class[_]): DecodingFailure =
-    DecodingFailure(s"""Unexpected JSON {"$TypeFieldName": "$typeName"} for class '${superclass.simpleScalaName}'""", Nil)
+    DecodingFailure(s"""Unexpected JSON {"$TypeFieldName": "$typeName"} for class '${superclass.shortClassName}'""", Nil)
 }

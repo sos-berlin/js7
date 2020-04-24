@@ -161,18 +161,15 @@ final case class Repo private(
   //}
 
   /** Returns the current FileBased to a Path. */
-  def pathTo[A <: FileBased](path: A#Path)(implicit A: FileBased.Companion[A]): Checked[A] = {
-    import A.implicits.pathHasTypeInfo
+  def pathTo[A <: FileBased](path: A#Path)(implicit A: FileBased.Companion[A]): Checked[A] =
     currentTyped[A].checked(path)  // TODO Slow!
-  }
 
   /** Returns the FileBased to a FileBasedId. */
   def idTo[A <: FileBased](id: FileBasedId[A#Path])(implicit A: FileBased.Companion[A]): Checked[A] =
     idToSigned[A](id) map (_.value)
 
   /** Returns the FileBased to a FileBasedId. */
-  def idToSigned[A <: FileBased](id: FileBasedId[A#Path])(implicit A: FileBased.Companion[A]): Checked[Signed[A]] = {
-    import A.implicits.typedPathHasTypeInfo
+  def idToSigned[A <: FileBased](id: FileBasedId[A#Path])(implicit A: FileBased.Companion[A]): Checked[Signed[A]] =
     for {
       versionToSignedFileBased <- pathToVersionToSignedFileBased.checked(id.path)
       fileBasedOption <- versionToSignedFileBased.checked(id.versionId) orElse (
@@ -182,7 +179,6 @@ final case class Repo private(
         } yield fb): Checked[Option[Signed[FileBased]]]
       signedFileBased <- fileBasedOption.toChecked(DeletedProblem(id))
     } yield signedFileBased.copy(signedFileBased.value.cast[A])
-  }
 
   /** Converts the Repo to an event sequence, regarding only a given type. */
   def eventsFor(is: TypedPath.AnyCompanion => Boolean): Seq[RepoEvent] =

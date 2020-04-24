@@ -63,6 +63,14 @@ final class ScalaUtilsTest extends AnyFreeSpec
     assert(simpleClassName("aa.B$CC") == "CC")
   }
 
+  "shortClassName" in {
+    assert(ScalaUtilsTest.getClass.shortClassName == "ScalaUtilsTest")
+    assert((new ScalaUtilsTest.Inner).getClass.shortClassName == "ScalaUtilsTest.Inner")
+    class Local
+    assert((new Local).getClass.shortClassName == "ScalaUtilsTest$Local.1")
+    assert(7.getClass.shortClassName == "Int")
+  }
+
   "Function1.withToString" in {
     def function(o: Int) = 2*o
     val f = function _
@@ -198,18 +206,6 @@ final class ScalaUtilsTest extends AnyFreeSpec
       assert(checked(2) == Left(Problem("No such Int: 2")))
     }
 
-    "PartialFunction.checked with special HasTypeInfo" in {
-      case class K(number: Int)
-      object K {
-        implicit val hasTypeInfo: HasTypeInfo[K] = new HasTypeInfo[K] { def typeName = "My-K"}
-      }
-      val pf: PartialFunction[K, String] = {
-        case K(1) => "ONE"
-      }
-      assert(pf.checked(K(1)) == Right("ONE"))
-      assert(pf.checked(K(2)) == Left(Problem("No such My-K: K(2)")))
-    }
-
     "PartialFunction.doNotContain" in {
       assert(pf.checkNoDuplicate(1) == Left(Problem("Duplicate Int: 1")))
       assert(pf.checkNoDuplicate(2) == Right(()))
@@ -321,3 +317,6 @@ final class ScalaUtilsTest extends AnyFreeSpec
 }
 
 object ScalaUtilsTest
+{
+  private final class Inner
+}

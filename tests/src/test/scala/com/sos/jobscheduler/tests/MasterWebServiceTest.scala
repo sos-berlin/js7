@@ -341,7 +341,7 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
         httpClient.get[Json](Uri(s"$uri/master/api/agent-proxy/UNKNOWN"), headers) await 99.s
       }
       assert(e.status.intValue == 400/*BadRequest*/)
-      assert(e.problem == Some(Problem("No such AgentRef: AgentRef:/UNKNOWN")))
+      assert(e.problem == Some(Problem("No such TypedPath: AgentRef:/UNKNOWN")))
     }
 
     "/master/api/agent-proxy/FOLDER%2F/AGENT-A/NOT-FOUND returns 404" in {
@@ -373,8 +373,8 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
           httpClient.postWithHeaders[Json, Json](Uri(s"$uri/master/api/order"), order, headers) await 99.s
         }
         assert(exception.status.intValue == 400/*BadRequest*/)
-        assert(exception.dataAsString contains "No such Workflow: Workflow:/MISSING")  // Or similar
-        assert(exception.problem == Some(Problem("No such Workflow: Workflow:/MISSING")))
+        assert(exception.dataAsString contains "No such TypedPath: Workflow:/MISSING")  // Or similar
+        assert(exception.problem == Some(Problem("No such TypedPath: Workflow:/MISSING")))
       }
 
       val order = json"""{

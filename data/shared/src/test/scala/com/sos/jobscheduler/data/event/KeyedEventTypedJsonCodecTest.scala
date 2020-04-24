@@ -10,15 +10,14 @@ import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.DecodingFailure
 import io.circe.generic.JsonCodec
 import io.circe.syntax.EncoderOps
-import org.scalatest.matchers
-import org.scalatest.matchers.should.Matchers._
 import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers._
 
 /**
   * @author Joacim Zschimmer
   */
-final class KeyedEventTypedJsonCodecTest extends AnyFreeSpec {
-
+final class KeyedEventTypedJsonCodecTest extends AnyFreeSpec
+{
   "encode and decode" in {
     testJson[KeyedEvent[TestEvent]](NoKey <-: E0,      json"""{ "TYPE": "E0" }""")
     testJson[KeyedEvent[TestEvent]]("A"   <-: E1(7),   json"""{ "TYPE": "E1", "key": "A", "int": 7 }""")
@@ -30,12 +29,12 @@ final class KeyedEventTypedJsonCodecTest extends AnyFreeSpec {
     intercept[UnknownClassForJsonException] {
       (KeyedEvent(NotRegistered(1)): KeyedEvent[TestEvent]).asJson
     }.getMessage should include (
-      "Class com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodecTest$NotRegistered is not registered with TypedJsonCodec[com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodecTest$TestEvent]")
+      "Class com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodecTest$NotRegistered is not registered with TypedJsonCodec[KeyedEventTypedJsonCodecTest.TestEvent]")
   }
 
   "decode unknown subclass" in {
     assert("""{ "TYPE": "UNKNOWN" }""".parseJsonOrThrow.as[KeyedEvent[TestEvent]] ==
-    Left(DecodingFailure("""Unexpected JSON {"TYPE": "UNKNOWN"} for class 'TestEvent'""", Nil)))
+    Left(DecodingFailure("""Unexpected JSON {"TYPE": "UNKNOWN"} for class 'KeyedEventTypedJsonCodecTest.TestEvent'""", Nil)))
   }
 
   "Union" in {
@@ -56,7 +55,8 @@ final class KeyedEventTypedJsonCodecTest extends AnyFreeSpec {
 
     testJson[KeyedEvent[E0.type]](NoKey <-: E0,      json"""{ "TYPE": "E0" }""")
     assert(json"""{ "TYPE": "E0" }""".as[KeyedEvent[E0.type]].isRight)
-    assert(json"""{ "TYPE": "UNKNOWN" }""".as[KeyedEvent[E0.type]] == Left(DecodingFailure("""Unexpected JSON {"TYPE": "UNKNOWN"} for class 'E0'""", Nil)))
+    assert(json"""{ "TYPE": "UNKNOWN" }""".as[KeyedEvent[E0.type]] == Left(DecodingFailure(
+      """Unexpected JSON {"TYPE": "UNKNOWN"} for class 'KeyedEventTypedJsonCodecTest.E0'""", Nil)))
   }
 
   "typenameToClassOption" in {
@@ -74,7 +74,8 @@ final class KeyedEventTypedJsonCodecTest extends AnyFreeSpec {
   }
 }
 
-object KeyedEventTypedJsonCodecTest {
+object KeyedEventTypedJsonCodecTest
+{
   sealed trait TestEvent extends Event
 
   case object E0 extends TestEvent with NoKeyEvent

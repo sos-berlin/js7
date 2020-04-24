@@ -22,7 +22,8 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.util.Try
 
-final class MasterRepoTest extends AnyFreeSpec {
+final class MasterRepoTest extends AnyFreeSpec
+{
   import MasterRepoTest._
 
   "test" in {
@@ -75,7 +76,7 @@ final class MasterRepoTest extends AnyFreeSpec {
       def addWorkflowAndRunOrder(master: RunningMaster, versionId: VersionId, path: WorkflowPath, orderId: OrderId): Unit = {
         val order = FreshOrder(orderId, path)
         // Command will be rejected because workflow is not yet defined
-        assert(master.addOrder(order).runToFuture.await(99.s) == Left(Problem(s"No such Workflow: Workflow:${path.string}")))
+        assert(master.addOrder(order).runToFuture.await(99.s) == Left(Problem(s"No such TypedPath: Workflow:${path.string}")))
         defineWorkflowAndRunOrder(master, versionId, path, orderId)
       }
 
@@ -109,7 +110,8 @@ final class MasterRepoTest extends AnyFreeSpec {
   }
 }
 
-object MasterRepoTest {
+object MasterRepoTest
+{
   private val AWorkflowPath = WorkflowPath("/A")
   private val BWorkflowPath = WorkflowPath("/B")
   private val CWorkflowPath = WorkflowPath("/C")

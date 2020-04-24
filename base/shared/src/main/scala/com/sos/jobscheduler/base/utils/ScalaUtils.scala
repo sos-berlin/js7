@@ -25,7 +25,10 @@ object ScalaUtils
 
   def implicitClass[A : ClassTag]: Class[A] = implicitly[ClassTag[A]].runtimeClass.asInstanceOf[Class[A]]
 
-  implicit final class RichJavaClass[A](private val underlying: Class[A]) {
+  private val removePackageRegex = """^([a-z0-9]*\.)*""".r
+
+  implicit final class RichJavaClass[A](private val underlying: Class[A])
+  {
     def scalaName: String = underlying.getName stripSuffix "$"
 
     def simpleScalaName: String = simpleName stripSuffix "$"
@@ -37,6 +40,18 @@ object ScalaUtils
       */
     def simpleName: String =
       simpleClassName(underlying.getName)
+
+    /** Simple class name prefixed by maybe outer class name. */
+    def shortClassName: String =
+      if (underlying.isPrimitive)
+        underlying.getName.capitalize
+      else {
+        // Change '$' inner class concationation character to '.'
+        val simpleName = underlying.simpleScalaName
+        val prefix = underlying.scalaName stripSuffix simpleName
+        val name = (if (prefix endsWith "$") prefix.init + '.' else prefix) + simpleName
+        removePackageRegex.replaceFirstIn(name, "")
+      }
   }
 
   private[utils] def simpleClassName[A](name: String): String = {
@@ -192,8 +207,8 @@ object ScalaUtils
   implicit final class RichPartialFunction[A, B](private val underlying: PartialFunction[A, B])
   extends AnyVal
   {
-    def checked(key: A)(implicit A: HasTypeInfo[A]): Checked[B] =
-      rightOr(key, Problem(s"No such ${A.typeName}: $key"))
+    def checked(key: A)(implicit A: ClassTag[A]): Checked[B] =
+      rightOr(key, Problem(s"No such ${A.runtimeClass.shortClassName}: $key"))
 
     def rightOr(key: A, notFound: => Problem): Checked[B] =
       toChecked(_ => notFound)(key)
@@ -206,10 +221,10 @@ object ScalaUtils
       }
     }
 
-    def checkNoDuplicate(key: A)(implicit A: HasTypeInfo[A]): Checked[Unit] = {
+    def checkNoDuplicate(key: A)(implicit A: ClassTag[A]): Checked[Unit] = {
       val lifted = underlying.lift
       lifted(key) match {
-        case Some(_) => Left(Problem(s"Duplicate ${A.typeName}: $key"))
+        case Some(_) => Left(Problem(s"Duplicate ${A.runtimeClass.shortClassName}: $key"))
         case None => Right(())
       }
     }

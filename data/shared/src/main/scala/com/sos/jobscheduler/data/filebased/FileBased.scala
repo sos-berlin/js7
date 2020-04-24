@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.filebased
 
-import com.sos.jobscheduler.base.utils.HasTypeInfo
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 
 /**
@@ -46,12 +45,6 @@ object FileBased {
     def typedPathCompanion: TypedPath.Companion[Path]
 
     implicit def self: Companion[A] = this
-    implicit val hasTypeInfo = HasTypeInfo[A](name)
-
-    object implicits {
-      implicit val pathHasTypeInfo = HasTypeInfo[A#Path](name)
-      implicit val typedPathHasTypeInfo = HasTypeInfo[TypedPath](name)
-    }
 
     override def toString = name
   }

@@ -27,7 +27,7 @@ final class RepoTest extends AnyFreeSpec
     assert(emptyRepo.historyBefore(v("UNKNOWN")) == Left(Problem("No such 'version UNKNOWN'")))
 
     assert(emptyRepo.idTo[AFileBased](APath("/UNKNOWN-PATH") ~ "UNKNOWN-VERSION") ==
-      Left(Problem("No such AFileBased: A:/UNKNOWN-PATH")))
+      Left(Problem("No such TypedPath: A:/UNKNOWN-PATH")))
 
     assert(emptyRepo.applyEvent(FileBasedAdded(a1.path, SignedString(a1.asJson.compactPrint, GenericSignature("SILLY", "SIGNED")))) ==
       Left(Problem("Missing initial VersionAdded event for Repo")))
@@ -39,10 +39,10 @@ final class RepoTest extends AnyFreeSpec
     assert(repo.historyBefore(v("UNKNOWN")) == Left(Problem("No such 'version UNKNOWN'")))
 
     assert(repo.idTo[AFileBased](APath("/UNKNOWN") ~ "INITIAL") ==
-      Left(Problem("No such AFileBased: A:/UNKNOWN")))
+      Left(Problem("No such TypedPath: A:/UNKNOWN")))
 
     assert(repo.idTo[AFileBased](APath("/UNKNOWN-PATH") ~ "UNKNOWN-VERSION") ==
-      Left(Problem("No such AFileBased: A:/UNKNOWN-PATH")))
+      Left(Problem("No such TypedPath: A:/UNKNOWN-PATH")))
 
     assert(repo.applyEvent(VersionAdded(v("INITIAL"))) ==
       Left(Repo.DuplicateVersionProblem(v("INITIAL"))))
@@ -50,7 +50,7 @@ final class RepoTest extends AnyFreeSpec
 
   "Event input" in {
     assert(testRepo.idTo[AFileBased](APath("/A") ~ "4") == Left(Problem("No such 'version 4'")))
-    assert(testRepo.idTo[AFileBased](APath("/X") ~ V1) == Left(Problem("No such AFileBased: A:/X")))
+    assert(testRepo.idTo[AFileBased](APath("/X") ~ V1) == Left(Problem("No such TypedPath: A:/X")))
     assert(testRepo.idTo[BFileBased](BPath("/Bx") ~ V1) == Left(Problem("No such 'B:/Bx~1'")))
     assert(testRepo.idTo[BFileBased](BPath("/Bx") ~ V3) == Left(Problem("Has been deleted: B:/Bx~3")))
     assert(testRepo.idTo[AFileBased](APath("/A") ~ V1) == Right(a1))

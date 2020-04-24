@@ -36,12 +36,10 @@ object FileBasedApi {
       def fileBaseds[A <: FileBased: FileBased.Companion] =
         Task(Stamped(2L, pathTo[A].values.toSeq))
 
-      def pathToCurrentFileBased[A <: FileBased: FileBased.Companion](path: A#Path) = {
-        implicit def x = implicitly[FileBased.Companion[A]].implicits.pathHasTypeInfo
+      def pathToCurrentFileBased[A <: FileBased: FileBased.Companion](path: A#Path) =
         Task(
           for (a <- pathTo[A].checked(path))
             yield Stamped(3L, a))
-      }
 
       def pathTo[A <: FileBased] = pathToFileBased.asInstanceOf[Map[A#Path, A]]
     }

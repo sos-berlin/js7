@@ -6,9 +6,8 @@ import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodecTest._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowableEither
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.syntax.EncoderOps
-import org.scalatest.matchers
-import org.scalatest.matchers.should.Matchers._
 import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers._
 
 /**
   * @author Joacim Zschimmer
@@ -25,13 +24,13 @@ final class TypedJsonCodecTest extends AnyFreeSpec
     intercept[UnknownClassForJsonException] {
       (NotRegistered(1): A).asJson(AJsonCodec)
     }.getMessage should include (
-      "Class com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodecTest$NotRegistered is not registered with TypedJsonCodec[com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodecTest$A]")
+      "Class com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodecTest$NotRegistered is not registered with TypedJsonCodec[TypedJsonCodecTest.A]")
   }
 
   "decode unknown subclass" in {
     intercept[UnknownJsonTypeException] {
       json"""{ "TYPE": "UNKNOWN" }""".as[A].orThrow
-    }.getMessage should include ("""Unexpected JSON {"TYPE": "UNKNOWN"} for class 'A'""")
+    }.getMessage should include ("""Unexpected JSON {"TYPE": "UNKNOWN"} for class 'TypedJsonCodecTest.A'""")
   }
 
   "Nested TypedJsonCodec" in {
