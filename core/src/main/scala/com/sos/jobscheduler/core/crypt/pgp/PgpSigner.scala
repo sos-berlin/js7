@@ -122,7 +122,7 @@ object PgpSigner extends MessageSigner.Companion
       .map(o => o.getSecretKey(o.getPublicKey/*the master key*/.getFingerprint))
       .toVector
     if (keys.isEmpty) throw new NoSuchElementException("No master key in secret key ring")
-    if (keys.size > 1) throw new IllegalArgumentException(s"More than one master key in secret key ring: " + keys.mkString_("", ", ", ""))
+    if (keys.sizeIs > 1) throw new IllegalArgumentException(s"More than one master key in secret key ring: " + keys.mkString_("", ", ", ""))
     keys.head
   }
 }

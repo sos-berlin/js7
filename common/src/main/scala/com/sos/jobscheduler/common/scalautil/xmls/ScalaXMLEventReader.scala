@@ -288,7 +288,7 @@ object ScalaXMLEventReader {
 
     def option[B <: A : ClassTag](elementName: String): Option[B] = {
       val result = byName[B](elementName)
-      require(result.length <= 1, s"Element <$elementName> is allowed only once")
+      require(result.lengthIs <= 1, s"Element <$elementName> is allowed only once")
       result.headOption map cast[B]
     }
 

@@ -15,7 +15,7 @@ object Strings
     def truncateWithEllipsis(n: Int, showLength: Boolean = false): String = {
       val suffix = if (showLength) s"$Ellipsis(length ${underlying.length})" else Ellipsis
       val nn = max(suffix.length, n)
-      if (underlying.length <= nn)
+      if (underlying.lengthIs <= nn)
         underlying
       else
         underlying.take(nn - suffix.length) + suffix

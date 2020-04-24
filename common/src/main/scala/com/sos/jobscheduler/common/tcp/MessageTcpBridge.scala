@@ -33,7 +33,7 @@ extends Actor {
   private def running: Receive = {
     case m @ SendMessage(message) =>
       logger.trace(s"$m")
-      if (message.size > MessageSizeMaximum) {
+      if (message.sizeIs > MessageSizeMaximum) {
         parent ! Failed(newTooBigException(message.size))
       } else {
         tcp ! Tcp.Write(intToBytesString(message.size) ++ message)

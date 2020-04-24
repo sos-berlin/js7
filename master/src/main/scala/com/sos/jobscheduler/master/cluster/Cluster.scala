@@ -187,7 +187,7 @@ final class Cluster(
                 val journalFile =
                   if (journalFiles.last.afterEventId == failedAt.fileEventId)
                     journalFiles.last
-                  else if (journalFiles.length == 2 &&
+                  else if (journalFiles.lengthIs == 2 &&
                     journalFiles.head.afterEventId == failedAt.fileEventId &&
                     journalFiles.last.afterEventId > failedAt.fileEventId)
                   {

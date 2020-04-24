@@ -61,7 +61,7 @@ extends AutoCloseable
       _(state => stateToEvent(state).map(_ :: Nil))
     ).map(_ map {
       case (stampedKeyedEvents, state) =>
-        assertThat(stampedKeyedEvents.length == 1)
+        assertThat(stampedKeyedEvents.lengthIs == 1)
         stampedKeyedEvents.head.asInstanceOf[Stamped[KeyedEvent[E]]] -> state
     })
 

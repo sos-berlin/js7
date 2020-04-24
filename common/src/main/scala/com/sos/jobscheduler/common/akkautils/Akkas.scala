@@ -52,7 +52,7 @@ object Akkas
   }
 
   def byteStringToTruncatedString(byteString: ByteString, size: Int = 100, name: String = "ByteString") =
-    s"${byteString.size} bytes " + (byteString take size map { c => f"$c%02x" } mkString " ") + (if (byteString.size > size) " ..." else "")
+    s"${byteString.size} bytes " + (byteString take size map { c => f"$c%02x" } mkString " ") + (if (byteString.sizeIs > size) " ..." else "")
 
   final class DummyCancellable extends Cancellable {
     private var _isCancelled = false

@@ -31,7 +31,7 @@ object PeriodSeq {
     PeriodSeq(List(period))
 
   private def requireOrderedAndNotOverlapping(orderedPeriods: Iterable[Period]): Unit = {
-    if (orderedPeriods.size > 2) {
+    if (orderedPeriods.sizeIs > 2) {
       for (Seq(a, b) <- orderedPeriods sliding 2) {
         require(a.end <= b.begin, s"Periods overlap: $a and $b")
       }

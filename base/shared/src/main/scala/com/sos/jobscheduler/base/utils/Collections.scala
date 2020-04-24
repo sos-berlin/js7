@@ -68,11 +68,11 @@ object Collections
         }
 
       def duplicates: Iterable[A] =
-        delegate groupBy identity collect { case (k, v) if v.size > 1 => k }
+        delegate groupBy identity collect { case (k, v) if v.sizeIs > 1 => k }
 
       /** Liefert die Duplikate, also Listenelemente, deren Schlüssel mehr als einmal vorkommt. */
       def duplicateKeys[K](key: A => K): Option[Map[K, Iterable[A]]] =
-        delegate groupBy key filter { _._2.size > 1 } match {
+        delegate groupBy key filter { _._2.sizeIs > 1 } match {
           case o if o.isEmpty => None
           case o => Some(o)
         }

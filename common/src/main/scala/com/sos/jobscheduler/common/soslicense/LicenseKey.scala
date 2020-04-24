@@ -63,13 +63,13 @@ object LicenseKey {
       val parts = key.normalizedString split '-'
       val mainParts = parts dropRight 1
       val securityPart = parts.last
-      require(securityPart.length == 7)
+      require(securityPart.lengthIs == 7)
       val issuer = parts(0)
       val customer = parts(1)
       val serialNumber = parts(2).toInt
       val issuedAt = {
         val s = parts(3)
-        require(s.length == 3)
+        require(s.lengthIs == 3)
         LocalDate.of(1990 + charToInt(s(0)), charToInt(s(1)), charToInt(s(2)))
       }
       val settings = for (i <- 4 until parts.length - 1) yield parseSetting(parts(i))
