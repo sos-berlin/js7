@@ -19,8 +19,8 @@ import scala.concurrent.duration._
 /**
  * @author Joacim Zschimmer
  */
-final class AgentClientMainTest extends AnyFreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider {
-
+final class AgentClientMainTest extends AnyFreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider
+{
   override def afterAll() = closer closeThen super.afterAll()
 
   override protected def extraAgentModule = new ScalaAbstractModule {

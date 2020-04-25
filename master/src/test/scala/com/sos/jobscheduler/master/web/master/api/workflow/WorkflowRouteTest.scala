@@ -4,10 +4,10 @@ import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.OK
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
+import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.core.filebased.FileBasedApi
-import com.sos.jobscheduler.data.event.Stamped
 import com.sos.jobscheduler.data.filebased.FileBasedsOverview
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
@@ -19,8 +19,8 @@ import org.scalatest.freespec.AnyFreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class WorkflowRouteTest extends AnyFreeSpec with RouteTester with WorkflowRoute {
-
+final class WorkflowRouteTest extends AnyFreeSpec with RouteTester with WorkflowRoute
+{
   protected def isShuttingDown = false
   protected implicit def scheduler: Scheduler = Scheduler.global
   protected val fileBasedApi = FileBasedApi.forTest(pathToWorkflow)
@@ -44,8 +44,7 @@ final class WorkflowRouteTest extends AnyFreeSpec with RouteTester with Workflow
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
         assert(status == OK)
-        val Stamped(_, _, workflows) = responseAs[Stamped[Seq[WorkflowPath]]]
-        assert(workflows == pathToWorkflow.keys.toList)
+        assert(responseAs[Checked[Seq[WorkflowPath]]] == Right(pathToWorkflow.keys.toList))
       }
     }
   }
@@ -56,8 +55,7 @@ final class WorkflowRouteTest extends AnyFreeSpec with RouteTester with Workflow
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
         assert(status == OK)
-        val Stamped(_, _, workflows) = responseAs[Stamped[Seq[Workflow]]]
-        assert(workflows == pathToWorkflow.values.toVector)
+        assert(responseAs[Checked[Seq[Workflow]]] == Right(pathToWorkflow.values.toList))
       }
     }
   }

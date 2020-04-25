@@ -5,12 +5,11 @@ import akka.http.scaladsl.model.StatusCodes.{Conflict, Created, OK}
 import akka.http.scaladsl.model.headers.{Accept, Location}
 import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
-import com.sos.jobscheduler.data.event.Stamped
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId, OrdersOverview}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.position.Position
@@ -28,13 +27,12 @@ final class OrderRouteTest extends AnyFreeSpec with RouteTester with OrderRoute
 {
   protected def isShuttingDown = false
   protected implicit def scheduler: Scheduler = Scheduler.global
-  protected val eventIdGenerator = new EventIdGenerator
   protected val orderApi = new OrderApi.WithCommands {
     def addOrder(order: FreshOrder) = Task(Right(order.id != DuplicateOrderId))
     def addOrders(orders: Seq[FreshOrder]) = Task(Right(Completed))
-    def order(orderId: OrderId) = Task(TestOrders.get(orderId))
-    def orders = Task(eventIdGenerator.stamp(TestOrders.values.toVector))
-    def orderCount = Task(TestOrders.values.size)
+    def order(orderId: OrderId) = Task(Right(TestOrders.get(orderId)))
+    def orders = Task(Right(TestOrders.values.toVector))
+    def orderCount = Task(Right(TestOrders.values.size))
   }
 
   private def route: Route =
@@ -53,7 +51,7 @@ final class OrderRouteTest extends AnyFreeSpec with RouteTester with OrderRoute
   for (uri <- List("/master/api/order/")) {
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
-        val Stamped(_, _, orders) = responseAs[Stamped[Seq[OrderId]]]
+        val Right(orders) = responseAs[Checked[Seq[OrderId]]]
         assert(status == OK && orders == TestOrders.values.map(_.id).toList)
       }
     }
@@ -63,7 +61,7 @@ final class OrderRouteTest extends AnyFreeSpec with RouteTester with OrderRoute
   for (uri <- List("/master/api/order/?return=Order")) {
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
-        val Stamped(_, _, orders) = responseAs[Stamped[Seq[Order[Order.State]]]]
+        val Right(orders) = responseAs[Checked[Seq[Order[Order.State]]]]
         assert(status == OK && orders == TestOrders.values.toList)
       }
     }

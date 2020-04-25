@@ -39,10 +39,10 @@ trait GraphqlRoute extends MasterRouteProvider
   private implicit def implicitScheduler: Scheduler = scheduler
 
   private val context = new QueryContext {
-    def executionContext = scheduler
+    def scheduler = GraphqlRoute.this.scheduler
 
     def order(orderId: OrderId) =
-      orderApi.order(orderId).runToFuture
+      orderApi.order(orderId)
 
     def orders(selector: QueryContext.OrderFilter) = {
       val idMatches: Order[Order.State] => Boolean =
@@ -58,11 +58,11 @@ trait GraphqlRoute extends MasterRouteProvider
 
       def matches(order: Order[Order.State]) = workflowMatches(order) && idMatches(order)
 
-      orderApi.orders.map(_.value filter matches take selector.limit).runToFuture
+      orderApi.orders.map(_.map(_.view.filter(matches).take(selector.limit).toSeq))
     }
 
     def idTo[A <: FileBased: FileBased.Companion](id: A#Id) =
-      fileBasedApi.idTo[A](id).map(_.value).runToFuture
+      fileBasedApi.idTo[A](id)
   }
 
   final val graphqlRoute: Route =

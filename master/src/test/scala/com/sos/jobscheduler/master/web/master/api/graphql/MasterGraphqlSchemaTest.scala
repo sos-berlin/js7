@@ -17,13 +17,15 @@ import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.web.master.api.graphql.MasterGraphqlSchemaTest._
 import io.circe.Json
+import monix.eval.Task
+import monix.execution.Scheduler
+import org.scalatest.freespec.AnyFreeSpec
 import sangria.ast.Document
 import sangria.execution.Executor
 import sangria.macros._
 import sangria.marshalling.circe._
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{ExecutionContext, Future}
-import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.Future
 
 /**
   * @author Joacim Zschimmer
@@ -498,7 +500,7 @@ object MasterGraphqlSchemaTest
   private object TestContext extends TestContext
 
   private trait TestContext extends QueryContext {
-    def executionContext = ExecutionContext.global
+    def scheduler = Scheduler.global
     private val agentRefPath = AgentRefPath("/AGENT")
     private val fresh = Order.Fresh(Some(Timestamp.parse("2018-04-16T11:22:33Z")))
     private val attached = Some(Order.Attached(agentRefPath))
@@ -527,12 +529,12 @@ object MasterGraphqlSchemaTest
         Order(OrderId("24"), (WorkflowPath("/B-WORKFLOW") ~ "1") /: Position(2), Order.Broken(Problem("PROBLEM")))
       ).toKeyedMap(_.id)
 
-    def order(orderId: OrderId) = Future.successful(idToOrder.get(orderId))
+    def order(orderId: OrderId) = Task.pure(Right(idToOrder.get(orderId)))
 
-    def orders(filter: QueryContext.OrderFilter) = Future.successful(idToOrder.values.toVector take filter.limit)
+    def orders(filter: QueryContext.OrderFilter) = Task.pure(Right(idToOrder.values.toVector take filter.limit))
 
     def idTo[A <: FileBased: FileBased.Companion](id: A#Id) =
-      Future.successful(id match {
+      Task.pure(id match {
         case FileBasedId(_: WorkflowPath, VersionId("1")) =>
           Right(Workflow(
             WorkflowPath.NoId,

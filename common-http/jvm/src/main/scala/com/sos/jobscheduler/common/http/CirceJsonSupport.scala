@@ -22,8 +22,11 @@ object CirceJsonSupport
     }
 
   implicit final def unmarshaller[A: Decoder]: FromEntityUnmarshaller[A] =
-    jsonUnmarshaller map (json =>
-      implicitly[Decoder[A]].decodeJson(json).toChecked/*renders message*/.orThrowWithoutStacktrace)
+    jsonUnmarshaller.map(json =>
+      implicitly[Decoder[A]]
+        .decodeJson(json)
+        .toChecked/*renders message*/
+        .orThrowWithoutStacktrace)
 
   implicit final val jsonUnmarshaller: FromEntityUnmarshaller[Json] =
     Unmarshaller.byteStringUnmarshaller

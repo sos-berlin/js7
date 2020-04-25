@@ -406,9 +406,6 @@ with MainJournalingActor[MasterState, Event]
           case Success(response) => sender ! response
         }
 
-    case Command.GetRepo =>
-      sender() ! Stamped(persistedEventId, repo)
-
     case Command.AddOrder(order) =>
       if (shuttingDown)
         sender() ! Status.Failure(MasterIsShuttingDownProblem.throwable)
@@ -424,15 +421,6 @@ with MainJournalingActor[MasterState, Event]
         sender() ! Status.Failure(MasterIsSwitchingOverProblem.throwable)
       else
         addOrders(orders).pipeTo(sender())
-
-    case Command.GetOrder(orderId) =>
-      sender() ! (orderRegister.get(orderId) map { _.order })
-
-    case Command.GetOrders =>
-      sender() ! Stamped[Vector[Order[Order.State]]](persistedEventId, orderRegister.values.map(_.order).toVector)
-
-    case Command.GetOrderCount =>
-      sender() ! (orderRegister.size: Int)
 
     case AgentDriver.Output.EventsFromAgent(stampeds, completedPromise) =>
       val agentEntry = agentRegister(sender())
@@ -924,12 +912,8 @@ private[master] object MasterOrderKeeper
   sealed trait Command
   object Command {
     final case class Execute(command: MasterCommand, meta: CommandMeta) extends Command
-    final case object GetRepo extends Command
     final case class AddOrder(order: FreshOrder) extends Command
     final case class AddOrders(order: Seq[FreshOrder]) extends Command
-    final case class GetOrder(orderId: OrderId) extends Command
-    final case object GetOrders extends Command
-    final case object GetOrderCount extends Command
   }
 
   sealed trait Reponse

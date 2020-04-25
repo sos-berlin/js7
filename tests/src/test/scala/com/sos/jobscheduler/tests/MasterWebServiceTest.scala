@@ -225,26 +225,21 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
     testGet("master/api/workflow",
       RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
       json"""{
-        "eventId": ${master.eventWatch.lastAddedEventId},
         "count": 2
       }""")
 
     testGet("master/api/workflow/",
       RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
-      json"""{
-        "eventId": ${master.eventWatch.lastAddedEventId},
-        "array": [
-          "/FOLDER/WORKFLOW-2",
-          "/WORKFLOW"
-        ]
-      }""")
+      json"""[
+        "/FOLDER/WORKFLOW-2",
+        "/WORKFLOW"
+      ]""")
 
     testGets("master/api/workflow/FOLDER/WORKFLOW-2"::
              "master/api/workflow//FOLDER/WORKFLOW-2"::
              "master/api/workflow/%2FFOLDER%2FWORKFLOW-2":: Nil,
       RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
       json"""{
-        "eventId": ${master.eventWatch.lastAddedEventId},
         "path": "/FOLDER/WORKFLOW-2",
         "versionId": "VERSION-1",
         "instructions": [
@@ -277,25 +272,19 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
     testGet("master/api/agent",
       RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
       json"""{
-        "eventId": ${master.eventWatch.lastAddedEventId},
         "count": 2
       }""")
 
     testGet("master/api/agent/",
       RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
-      json"""{
-        "eventId": ${master.eventWatch.lastAddedEventId},
-        "array": [
-          "/AGENT",
-          "/FOLDER/AGENT-A"
-        ]
-      }""")
+      json"""[
+        "/AGENT",
+        "/FOLDER/AGENT-A"
+      ]""")
 
     testGet("master/api/agent/?return=AgentRef",
       RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
-      json"""{
-        "eventId": ${master.eventWatch.lastAddedEventId},
-        "array": [
+      json"""[
           {
             "path": "/AGENT",
             "versionId": "INITIAL",
@@ -305,13 +294,11 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
             "versionId": "INITIAL",
             "uri": "$agent2Uri"
           }
-        ]
-      }""")
+        ]""")
 
     testGet("master/api/agent/FOLDER/AGENT-A?return=AgentRef",
       RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
       json"""{
-        "eventId": ${master.eventWatch.lastAddedEventId},
         "path": "/FOLDER/AGENT-A",
         "versionId": "INITIAL",
         "uri": "$agent2Uri"
@@ -320,7 +307,6 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
     testGet("master/api/agent/%2FFOLDER%2FAGENT-A?return=AgentRef",
       RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
       json"""{
-        "eventId": ${master.eventWatch.lastAddedEventId},
         "path": "/FOLDER/AGENT-A",
         "versionId": "INITIAL",
         "uri": "$agent2Uri"
@@ -455,17 +441,12 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
 
     testGet("master/api/order/",
       RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
-      json"""{
-        "array": [
-          "ORDER-ID"
-        ]
-      }""",
-      _.remove("eventId"))
+      json"""[ "ORDER-ID" ]""")
 
     "master/api/order/?return=Order" in {
       val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Accept(`application/json`) :: Nil
       val response = httpClient.get[Json](Uri(s"$uri/master/api/order/?return=Order"), headers) await 99.s
-      val orders = response.fieldOrThrow("array").asArray.get
+      val orders = response.asArray.get
       assert(orders.length == 1)
       assert(orders(0).fieldOrThrow("id").stringOrThrow == "ORDER-ID")
     }
@@ -942,21 +923,21 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
     }
   }
 
-  private def testGets(suburis: Iterable[String], headers: => List[HttpHeader], expected: => Json, manipulateResponse: JsonObject => JsonObject = identity): Unit =
+  private def testGets(suburis: Iterable[String], headers: => List[HttpHeader], expected: => Json, manipulateResponse: Json => Json = identity): Unit =
     for (suburi <- suburis) testGet(suburi, headers, expected, manipulateResponse)
 
-  private def testGet(suburi: String, headers: => List[HttpHeader], expected: => Json, manipulateResponse: JsonObject => JsonObject = identity): Unit =
+  private def testGet(suburi: String, headers: => List[HttpHeader], expected: => Json, manipulateResponse: Json => Json = identity): Unit =
     suburi - {
       "JSON" in {
         testJson(
-          manipulateResponse(httpClient.get[JsonObject](Uri(s"$uri/$suburi"), Duration.Inf, headers) await 99.s),
+          manipulateResponse(httpClient.get[Json](Uri(s"$uri/$suburi"), Duration.Inf, headers) await 99.s),
           expected)
       }
 
       "YAML" in {
         val yamlString = httpClient.get_[String](Uri(s"$uri/$suburi"), headers ::: Accept(`text/plain`) :: Nil) await 99.s
-        assert(yamlString.head.isLetter)  // A YAML object starts with the first field name
-        testJson(manipulateResponse(yamlToJson(yamlString).orThrow.asObject.get), expected)
+        assert(yamlString.head.isLetter || yamlString.head == '-')  // A YAML object starts with the first field name or an array entry
+        testJson(manipulateResponse(yamlToJson(yamlString).orThrow), expected)
       }
     }
 }

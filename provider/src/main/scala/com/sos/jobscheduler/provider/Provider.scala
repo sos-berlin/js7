@@ -172,9 +172,10 @@ extends HasCloser with Observing
       delete = diff.deleted)
 
   private def fetchMasterFileBasedSeq: Task[Seq[FileBased]] =
-    Task.parMap2(masterApi.agents, masterApi.workflows) {
-      _.value ++ _.value
-    }
+    Task.parMap2(
+      masterApi.agents.map(_.orThrow),
+      masterApi.workflows.map(_.orThrow)
+    )(_ ++ _)
 
   private def readDirectory: Vector[DirectoryReader.Entry] =
     DirectoryReader.entries(conf.liveDirectory).toVector

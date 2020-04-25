@@ -2,6 +2,7 @@ package com.sos.jobscheduler.master.client
 
 import com.sos.jobscheduler.base.exceptions.HasIsIgnorableStackTrace
 import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.session.HttpSessionApi
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.web.{HttpClient, Uri}
@@ -59,8 +60,9 @@ trait HttpMasterApi extends MasterApi with HttpSessionApi with HasIsIgnorableSta
   final def ordersOverview: Task[OrdersOverview] =
     httpClient.get[OrdersOverview](uris.order.overview)
 
-  final def orders: Task[Stamped[Seq[Order[Order.State]]]] =
-    httpClient.get[Stamped[Seq[Order[Order.State]]]](uris.order.list[Order[Order.State]])
+  final def orders: Task[Checked[Seq[Order[Order.State]]]] =
+    httpClient.liftProblem(
+      httpClient.get[Seq[Order[Order.State]]](uris.order.list[Order[Order.State]]))
 
   final def events[E <: Event: ClassTag](request: EventRequest[E])(implicit kd: Decoder[KeyedEvent[E]], ke: Encoder.AsObject[KeyedEvent[E]])
   : Task[TearableEventSeq[Seq, KeyedEvent[E]]] =
@@ -101,15 +103,18 @@ trait HttpMasterApi extends MasterApi with HttpSessionApi with HasIsIgnorableSta
       uris.fatEvents[E](request),
       timeout = request.timeout.map(_ + ToleratedEventDelay) getOrElse Duration.Inf)
 
-  final def workflows: Task[Stamped[Seq[Workflow]]] =
-    httpClient.get[Stamped[Seq[Workflow]]](uris.workflow.list[Workflow])
+  final def workflows: Task[Checked[Seq[Workflow]]] =
+    httpClient.liftProblem(
+      httpClient.get[Seq[Workflow]](uris.workflow.list[Workflow]))
 
-  final def agents: Task[Stamped[Seq[AgentRef]]] =
-    httpClient.get[Stamped[Seq[AgentRef]]](uris.agent.list[AgentRef])
+  final def agents: Task[Checked[Seq[AgentRef]]] =
+    httpClient.liftProblem(
+      httpClient.get[Seq[AgentRef]](uris.agent.list[AgentRef]))
 
-  final def snapshot: Task[Stamped[Seq[Any]]] = {
+  final def snapshot: Task[Checked[Stamped[Seq[Any]]]] = {
     implicit val x = MasterSnapshots.SnapshotJsonCodec
-    httpClient.get[Stamped[Seq[Any]]](uris.snapshot.list)
+    httpClient.liftProblem(
+      httpClient.get[Stamped[Seq[Any]]](uris.snapshot.list))
   }
 
   //override def toString = s"HttpMasterApi($baseUri)"

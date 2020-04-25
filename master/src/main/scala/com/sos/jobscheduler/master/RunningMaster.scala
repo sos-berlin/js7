@@ -284,17 +284,18 @@ object RunningMaster
             clusterFollowUpFuture.cancel()
           },
           orderKeeperStarted.map(_.toOption)))
-      val fileBasedApi = new MainFileBasedApi(masterConfiguration, orderKeeperTask)
-      val orderApi = new MainOrderApi(orderKeeperTask)
+      val masterState = Task.defer {
+        if (persistence.isStarted)
+          persistence.currentState map Right.apply
+        else
+          currentPassiveMasterState.map(_.toChecked(ClusterNodeIsNotYetReadyProblem))
+      }
+      val fileBasedApi = new MainFileBasedApi(masterState)
+      val orderApi = new MainOrderApi(masterState, orderKeeperTask)
 
       val webServer = injector.instance[MasterWebServer.Factory].apply(fileBasedApi, orderApi, commandExecutor,
         cluster.currentClusterState,
-        masterState = Task.defer {
-          if (persistence.isStarted)
-            persistence.currentState map Right.apply
-          else
-            currentPassiveMasterState.map(_.toChecked(ClusterNodeIsNotYetReadyProblem))
-        },
+        masterState,
         recovered.totalRunningSince,  // Maybe different from JournalHeader
         recovered.eventWatch
       ).closeWithCloser

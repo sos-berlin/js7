@@ -89,12 +89,12 @@ trait OrderRoute extends MasterRouteProvider
 
   private def singleOrder(orderId: OrderId): Route =
     completeTask(
-      orderApi.order(orderId).map {
+      orderApi.order(orderId).map(_.map {
         case Some(o) =>
           o: ToResponseMarshallable
         case None =>
           Problem.pure(s"Does not exist: $orderId"): ToResponseMarshallable
-      })
+      }))
 }
 
 object OrderRoute {

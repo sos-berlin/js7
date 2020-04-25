@@ -27,10 +27,10 @@ import com.sos.jobscheduler.tests.master.commands.UpdateRepoTest._
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider.Vinitial
 import com.sos.jobscheduler.tests.testenv.MasterAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
+import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
@@ -100,18 +100,18 @@ final class UpdateRepoTest extends AnyFreeSpec with MasterAgentForScalaTest
     // First, add two workflows
     executeCommand(UpdateRepo(V4, sign(workflow4) :: sign(otherWorkflow4) :: Nil)).orThrow
     locally {
-      val repo = master.fileBasedApi.stampedRepo.await(99.s).value
-      assert(repo.versions == V4 :: V3 :: V2 :: V1 :: Vinitial :: Nil)
-      assert(repo.currentFileBaseds.toSet
-        == Set(workflow4 withVersion V4, otherWorkflow4 withVersion V4) ++ directoryProvider.agentRefs.map(_ withVersion Vinitial))
+      val checkedRepo = master.fileBasedApi.checkedRepo.await(99.s)
+      assert(checkedRepo.map(_.versions) == Right(V4 :: V3 :: V2 :: V1 :: Vinitial :: Nil))
+      assert(checkedRepo.map(_.currentFileBaseds.toSet) ==
+        Right(Set(workflow4 withVersion V4, otherWorkflow4 withVersion V4) ++ directoryProvider.agentRefs.map(_ withVersion Vinitial)))
     }
 
     // Now replace: delete one workflow and change the other
     executeCommand(ReplaceRepo(V5, otherWorkflow5 +: Nil/*directoryProvider.agentRefs.map(_ withVersion V5)*/ map sign)).orThrow
-    val repo = master.fileBasedApi.stampedRepo.await(99.s).value
-    assert(repo.versions == V5 :: V4 :: V3 :: V2 :: V1 :: Vinitial :: Nil)
-    assert(repo.currentFileBaseds.toSet
-      == Set(otherWorkflow5 withVersion V5) ++ directoryProvider.agentRefs.map(_ withVersion V5))
+    val checkedRepo = master.fileBasedApi.checkedRepo.await(99.s)
+    assert(checkedRepo.map(_.versions) == Right(V5 :: V4 :: V3 :: V2 :: V1 :: Vinitial :: Nil))
+    assert(checkedRepo.map(_.currentFileBaseds.toSet) ==
+      Right(Set(otherWorkflow5 withVersion V5) ++ directoryProvider.agentRefs.map(_ withVersion V5)))
 
     val orderId = OrderId("⭕️")
     master.addOrderBlocking(FreshOrder(orderId, otherWorkflow5.path))

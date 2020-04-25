@@ -15,12 +15,12 @@ import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichAkkaUri
 import com.sos.jobscheduler.core.filebased.FileBasedApi
 import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
-import com.sos.jobscheduler.data.event.Stamped
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import com.sos.jobscheduler.master.web.master.api.AgentProxyRoute._
 import monix.eval.Task
 import monix.execution.Scheduler
+
 /**
   * @author Joacim Zschimmer
   */
@@ -40,21 +40,20 @@ trait AgentProxyRoute extends MasterRouteProvider
             completeTask(
               for {
                 checkedAgent <- fileBasedApi.pathToCurrentFileBased[AgentRef](AgentRefPath(s"/$pathString"))
-                checkedResponse <- checkedAgent.map(stampedAgent => forward(stampedAgent, request)).evert
+                checkedResponse <- checkedAgent.map(forward(_, request)).evert
               } yield checkedResponse)
           }
         }
       }
     }
 
-  private def forward(stampedAgent: Stamped[AgentRef], request: HttpRequest): Task[HttpResponse] = {
-    val agent = stampedAgent.value
-    val agentUri = agent.uri
+  private def forward(agentRef: AgentRef, request: HttpRequest): Task[HttpResponse] = {
+    val agentUri = agentRef.uri
     val uri = agentUri
       .asAkka.copy(
         path = AkkaUri.Path((agentUri.asAkka.path ?/ "agent" / "api").toString),
         rawQueryString = request.uri.rawQueryString)
-    forwardTo(agent.uri, uri, request.headers)
+    forwardTo(agentRef.uri, uri, request.headers)
   }
 
   private def forwardTo(agentUri: Uri, forwardUri: AkkaUri, headers: Seq[HttpHeader]): Task[HttpResponse] = {

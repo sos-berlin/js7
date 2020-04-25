@@ -22,8 +22,8 @@ import org.scalatest.freespec.AnyFreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class AkkaHttpMasterApiTest extends AnyFreeSpec with MasterAgentForScalaTest {
-
+final class AkkaHttpMasterApiTest extends AnyFreeSpec with MasterAgentForScalaTest
+{
   protected val agentRefPaths = Nil
   protected val fileBased = TestWorkflow :: Nil
 
@@ -55,11 +55,11 @@ final class AkkaHttpMasterApiTest extends AnyFreeSpec with MasterAgentForScalaTe
   }
 
   "orders" in {
-    assert(api.orders.await(99.s).value == List(TestOrder))
+    assert(api.orders.await(99.s) == Right(List(TestOrder)))
   }
 
   "workflow" in {
-    assert(api.workflows.await(99.s).value == List(TestWorkflow))
+    assert(api.workflows.await(99.s) == Right(List(TestWorkflow)))
   }
 }
 

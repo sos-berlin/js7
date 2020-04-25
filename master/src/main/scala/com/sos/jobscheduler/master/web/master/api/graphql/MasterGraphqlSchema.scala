@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.master.web.master.api.graphql
 
 import com.sos.jobscheduler.base.generic.{GenericInt, GenericString}
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.base.utils.ScalazStyle._
@@ -210,10 +211,10 @@ private[graphql] object MasterGraphqlSchema
       Field("workflowId", WorkflowIdType, resolve = _.value.workflowId),
       Field("position", PositionType, resolve = _.value.position.asSeq,
         description = "An array of a instruction number (starting with 0) followed by nested positions"),
-      Field("instruction", OptionType(InstructionType), resolve = ctx => {
-        import ctx.ctx.executionContext
-        ctx.ctx.idTo[Workflow](ctx.value.workflowId) map (_.toOption flatMap (_.instruction(ctx.value.position)))
-      })))
+      Field("instruction", OptionType(InstructionType), resolve = ctx =>
+        ctx.ctx.idTo[Workflow](ctx.value.workflowId)
+          .map(_.toOption.flatMap(_.instruction(ctx.value.position)))
+          .runToFuture(ctx.ctx.scheduler))))
 
   private implicit val StringStringMapType = ScalarType[Map[String, String]](
     "StringMap",
@@ -347,19 +348,18 @@ private[graphql] object MasterGraphqlSchema
     fields[QueryContext, Unit](
       Field("order", OptionType(OrderType),
         arguments = OrderIdArg :: Nil,
-        resolve = ctx => ctx.ctx.order(ctx.arg(OrderIdArg)),
+        resolve = ctx => ctx.ctx.order(ctx.arg(OrderIdArg)).map(_.orThrow).runToFuture(ctx.ctx.scheduler),
         description = "A single order identified by its OrderId"),
       Field("orders", ListType(OrderType),
         arguments = LimitArg :: WorkflowPathArg :: OrderIdPatternArg :: Nil,
         description = "The list of all orders, optionally filtered by some arguments",
-        resolve = ctx => {
-          import ctx.ctx.executionContext
+        resolve = ctx =>
           ctx.ctx.orders(QueryContext.OrderFilter(
             limit = ctx.arg(LimitArg) getOrElse Int.MaxValue,
             idPattern = ctx.arg(OrderIdPatternArg),
             workflowPath = ctx.arg(WorkflowPathArg)
-          )) map (_.sortBy(_.id))
-        })))
+          )).map(_.orThrow.sortBy(_.id))
+          .runToFuture(ctx.ctx.scheduler))))
 
   val schema: Schema[QueryContext, Unit] = Schema(
     OrderQuery,

@@ -5,12 +5,11 @@ import akka.pattern.ask
 import akka.util.Timeout
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.data.event.Stamped
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId}
 import monix.eval.Task
 import shapeless.tag.@@
 
-private[master] class MainOrderApi(orderKeeper: Task[ActorRef @@ MasterOrderKeeper])
+private[master] class MainOrderApi(masterState: Task[Checked[MasterState]], orderKeeper: Task[ActorRef @@ MasterOrderKeeper])
   (implicit akkaAskTimeout: Timeout)
 extends OrderApi.WithCommands
 {
@@ -25,18 +24,15 @@ extends OrderApi.WithCommands
       Task.deferFuture(
         (actor ? MasterOrderKeeper.Command.AddOrders(order)).mapTo[Checked[Completed]]))
 
-  def order(orderId: OrderId): Task[Option[Order[Order.State]]] =
-    orderKeeper.flatMap(actor =>
-      Task.deferFuture(
-        (actor ? MasterOrderKeeper.Command.GetOrder(orderId)).mapTo[Option[Order[Order.State]]]))
+  def order(orderId: OrderId): Task[Checked[Option[Order[Order.State]]]] =
+    masterState.map(_.map(_.idToOrder.get(orderId)))
 
-  def orders: Task[Stamped[Seq[Order[Order.State]]]] =
-    orderKeeper.flatMap(actor =>
-      Task.deferFuture(
-        (actor ? MasterOrderKeeper.Command.GetOrders).mapTo[Stamped[Seq[Order[Order.State]]]]))
+  def orders: Task[Checked[Iterable[Order[Order.State]]]] =
+    masterState.map(_.map(_.idToOrder.values))
+
+  override def orderIds: Task[Checked[Iterable[OrderId]]] =
+    masterState.map(_.map(_.idToOrder.keys))
 
   def orderCount =
-    orderKeeper.flatMap(actor =>
-      Task.deferFuture(
-        (actor ? MasterOrderKeeper.Command.GetOrderCount).mapTo[Int]))
+    masterState.map(_.map(_.idToOrder.size))
 }

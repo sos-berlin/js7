@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master.client
 
+import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.data.agent.AgentRef
 import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.data.event.{Event, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
@@ -14,8 +15,8 @@ import scala.reflect.ClassTag
 /**
   * @author Joacim Zschimmer
   */
-trait MasterApi {
-
+trait MasterApi
+{
   def executeCommand(command: MasterCommand): Task[command.Response]
 
   def overview: Task[MasterOverview]
@@ -30,11 +31,11 @@ trait MasterApi {
 
   def ordersOverview: Task[OrdersOverview]
 
-  def orders: Task[Stamped[Seq[Order[Order.State]]]]
+  def orders: Task[Checked[Seq[Order[Order.State]]]]
 
-  def workflows: Task[Stamped[Seq[Workflow]]]
+  def workflows: Task[Checked[Seq[Workflow]]]
 
-  def agents: Task[Stamped[Seq[AgentRef]]]
+  def agents: Task[Checked[Seq[AgentRef]]]
 
-  def snapshot: Task[Stamped[Seq[Any]]]
+  def snapshot: Task[Checked[Stamped[Seq[Any]]]]
 }

@@ -2,7 +2,6 @@ package com.sos.jobscheduler.core.filebased
 
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
-import com.sos.jobscheduler.data.event.Stamped
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedsOverview, TypedPath}
 import monix.eval.Task
 
@@ -11,36 +10,37 @@ import monix.eval.Task
   */
 trait FileBasedApi
 {
-  def overview[A <: FileBased: FileBased.Companion](implicit O: FileBasedsOverview.Companion[A]): Task[Stamped[O.Overview]]
+  def overview[A <: FileBased: FileBased.Companion](implicit O: FileBasedsOverview.Companion[A]): Task[Checked[O.Overview]]
 
-  def idTo[A <: FileBased: FileBased.Companion](id: A#Id): Task[Stamped[Checked[A]]]
+  def idTo[A <: FileBased: FileBased.Companion](id: A#Id): Task[Checked[A]]
 
-  def pathToCurrentFileBased[A <: FileBased: FileBased.Companion](path: A#Path): Task[Checked[Stamped[A]]]
+  def pathToCurrentFileBased[A <: FileBased: FileBased.Companion](path: A#Path): Task[Checked[A]]
 
-  def fileBaseds[A <: FileBased: FileBased.Companion]: Task[Stamped[Seq[A]]]
+  def fileBaseds[A <: FileBased: FileBased.Companion]: Task[Checked[Seq[A]]]
 
-  def paths[A <: FileBased: FileBased.Companion]: Task[Stamped[Seq[A#Path]]] =
+  def paths[A <: FileBased: FileBased.Companion]: Task[Checked[Seq[A#Path]]] =
     for (o <- fileBaseds) yield
       o map (_ map (_.path))
 }
 
-object FileBasedApi {
+object FileBasedApi
+{
   def forTest(pathToFileBased: Map[_ <: TypedPath, FileBased]) =
-    new FileBasedApi {
-      def overview[A <: FileBased: FileBased.Companion](implicit O: FileBasedsOverview.Companion[A]): Task[Stamped[O.Overview]] =
-        Task(Stamped(1L, O.fileBasedsToOverview(pathTo.values.toSeq)))
+    new FileBasedApi
+    {
+      def overview[A <: FileBased: FileBased.Companion](implicit O: FileBasedsOverview.Companion[A]): Task[Checked[O.Overview]] =
+        Task(Right(O.fileBasedsToOverview(pathTo.values.toSeq)))
 
       def idTo[A <: FileBased: FileBased.Companion](id: A#Id) =
         throw new NotImplementedError
 
       def fileBaseds[A <: FileBased: FileBased.Companion] =
-        Task(Stamped(2L, pathTo[A].values.toSeq))
+        Task(Right(pathTo[A].values.toSeq))
 
       def pathToCurrentFileBased[A <: FileBased: FileBased.Companion](path: A#Path) =
-        Task(
-          for (a <- pathTo[A].checked(path))
-            yield Stamped(3L, a))
+        Task(pathTo[A].checked(path))
 
-      def pathTo[A <: FileBased] = pathToFileBased.asInstanceOf[Map[A#Path, A]]
+      def pathTo[A <: FileBased] =
+        pathToFileBased.asInstanceOf[Map[A#Path, A]]
     }
 }

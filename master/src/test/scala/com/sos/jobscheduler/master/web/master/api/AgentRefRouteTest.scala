@@ -4,17 +4,18 @@ import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.OK
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
+import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.core.filebased.FileBasedApi
 import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
-import com.sos.jobscheduler.data.event.Stamped
 import com.sos.jobscheduler.data.filebased.FileBasedsOverview
 import com.sos.jobscheduler.master.web.master.api.AgentRefRouteTest._
 import com.sos.jobscheduler.master.web.master.api.test.RouteTester
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
+
 /**
   * @author Joacim Zschimmer
   */
@@ -43,8 +44,7 @@ final class AgentRefRouteTest extends AnyFreeSpec with RouteTester with AgentRef
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
         assert(status == OK)
-        val Stamped(_, _, agents) = responseAs[Stamped[Seq[AgentRefPath]]]
-        assert(agents == pathToAgent.keys.toList)
+        assert(responseAs[Checked[Seq[AgentRefPath]]] == Right(pathToAgent.keys.toList))
       }
     }
   }
@@ -55,8 +55,7 @@ final class AgentRefRouteTest extends AnyFreeSpec with RouteTester with AgentRef
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
         assert(status == OK)
-        val Stamped(_, _, agents) = responseAs[Stamped[Seq[AgentRef]]]
-        assert(agents == pathToAgent.values.toVector)
+        assert(responseAs[Checked[Seq[AgentRef]]] == Right(pathToAgent.values.toVector))
       }
     }
   }

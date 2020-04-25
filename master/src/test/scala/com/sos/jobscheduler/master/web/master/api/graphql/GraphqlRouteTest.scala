@@ -11,7 +11,6 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
@@ -25,8 +24,8 @@ import com.sos.jobscheduler.master.web.master.api.test.RouteTester
 import io.circe.Json
 import monix.eval.Task
 import monix.execution.Scheduler
-import scala.concurrent.duration._
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -38,11 +37,10 @@ final class GraphqlRouteTest extends AnyFreeSpec with RouteTester with GraphqlRo
 
   protected implicit def scheduler: Scheduler = Scheduler.Implicits.global
   protected val fileBasedApi = FileBasedApi.forTest(Map.empty)
-  private val eventIdGenerator = new EventIdGenerator
   protected val orderApi = new OrderApi {
-    def order(orderId: OrderId) = Task(TestOrders.get(orderId))
-    def orders = Task(eventIdGenerator.stamp(TestOrders.values.toVector))
-    def orderCount = Task(TestOrders.values.size)
+    def order(orderId: OrderId) = Task(Right(TestOrders.get(orderId)))
+    def orders = Task(Right(TestOrders.values.toVector))
+    def orderCount = Task(Right(TestOrders.values.size))
   }
 
   private def route = Route.seal {

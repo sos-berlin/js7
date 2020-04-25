@@ -4,7 +4,7 @@ import cats.syntax.option._
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowableEither
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
@@ -35,9 +35,9 @@ import java.nio.file.Files.{createDirectories, delete}
 import java.nio.file.{Files, Paths}
 import java.util.concurrent._
 import monix.execution.Scheduler.Implicits.global
+import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
@@ -110,7 +110,7 @@ final class ProviderTest extends AnyFreeSpec with MasterAgentForScalaTest
     }
 
     "Initially, JobScheduler's Repo is empty" in {
-      assert(repo.idToSignedFileBased.isEmpty)
+      assert(checkedRepo.map(_.idToSignedFileBased.isEmpty) == Right(true))
     }
 
     "Start with one AgentRef and two workflows" in {
@@ -124,11 +124,11 @@ final class ProviderTest extends AnyFreeSpec with MasterAgentForScalaTest
         added = agentRef :: TestWorkflow.withId(AWorkflowPath) :: TestWorkflow.withId(BWorkflowPath) :: Nil))
 
       provider.initiallyUpdateMasterConfiguration(V1.some).await(99.seconds).orThrow
-      assert(master.fileBasedApi.stampedRepo.await(99.seconds).value.idToSignedFileBased == Map(
+      assert(master.fileBasedApi.checkedRepo.await(99.seconds).map(_.idToSignedFileBased) == Right(Map(
         (agentRef.path ~ V1) -> Some(toSigned(agentRef withVersion V1)),
         (AWorkflowPath ~ V1) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1))),
         (AWorkflowPath ~ V1) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1))),
-        (BWorkflowPath ~ V1) -> Some(toSigned(TestWorkflow.withId(BWorkflowPath ~ V1)))))
+        (BWorkflowPath ~ V1) -> Some(toSigned(TestWorkflow.withId(BWorkflowPath ~ V1))))))
 
       assert(provider.testMasterDiff.await(99.seconds).orThrow.isEmpty)
     }
@@ -159,25 +159,25 @@ final class ProviderTest extends AnyFreeSpec with MasterAgentForScalaTest
       delete(live / "ERROR-1.workflow.json")
       delete(live / "ERROR-2.workflow.json")
       provider.updateMasterConfiguration(V2.some).await(99.seconds).orThrow
-      assert(master.fileBasedApi.stampedRepo.await(99.seconds).value.idToSignedFileBased == Map(
+      assert(master.fileBasedApi.checkedRepo.await(99.seconds).map(_.idToSignedFileBased) == Right(Map(
         (agentRef.path ~ V1) -> Some(toSigned(agentRef withVersion V1)),
         (AWorkflowPath ~ V1) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1))),
         (AWorkflowPath ~ V2) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V2))),
         (BWorkflowPath ~ V1) -> Some(toSigned(TestWorkflow.withId(BWorkflowPath ~ V1))),
-        (CWorkflowPath ~ V2) -> Some(toSigned(TestWorkflow.withId(CWorkflowPath ~ V2)))))
+        (CWorkflowPath ~ V2) -> Some(toSigned(TestWorkflow.withId(CWorkflowPath ~ V2))))))
     }
 
     "Delete a Workflow" in {
       delete(live / "B.workflow.json")
       provider.updateMasterConfiguration(V3.some).await(99.seconds).orThrow
-      assert(repo.versions == V3 :: V2 :: V1 :: Nil)
-      assert(repo.idToSignedFileBased == Map(
+      assert(checkedRepo.map(_.versions) == Right(V3 :: V2 :: V1 :: Nil))
+      assert(checkedRepo.map(_.idToSignedFileBased) == Right(Map(
         (agentRef.path ~ V1) -> Some(toSigned(agentRef withVersion V1)),
         (AWorkflowPath ~ V1) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1))),
         (AWorkflowPath ~ V2) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V2))),
         (BWorkflowPath ~ V1) -> Some(toSigned(TestWorkflow.withId(BWorkflowPath ~ V1))),
         (BWorkflowPath ~ V3) -> None,
-        (CWorkflowPath ~ V2) -> Some(toSigned(TestWorkflow.withId(CWorkflowPath ~ V2)))))
+        (CWorkflowPath ~ V2) -> Some(toSigned(TestWorkflow.withId(CWorkflowPath ~ V2))))))
     }
 
     "Workflow notation (including a try-instruction)" in {
@@ -285,7 +285,8 @@ final class ProviderTest extends AnyFreeSpec with MasterAgentForScalaTest
     }
   }
 
-  private def repo: Repo = master.fileBasedApi.stampedRepo.await(99.seconds).value
+  private def checkedRepo: Checked[Repo] =
+    master.fileBasedApi.checkedRepo.await(99.seconds)
 
   private def writeWorkflowFile(workflowPath: WorkflowPath): Unit =
     live.resolve(workflowPath.toFile(SourceType.Json)) := TestWorkflowJson
