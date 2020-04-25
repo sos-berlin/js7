@@ -8,8 +8,8 @@
       <patternLayout pattern="%highlight{%d{DEFAULT} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message}{INFO=blue,WARN=red bold}%n"/>
     </console>
     <rollingRandomAccessFile name="file"
-                             fileName="${logDirectory)/test.log"
-                             filePattern="${logDirectory)/test-%d{yyyy-MM-dd}-%i.log.gz">
+                             fileName="${logDirectory}/test.log"
+                             filePattern="${logDirectory}/test-%d{yyyy-MM-dd}-%i.log.gz">
     <patternLayout pattern="%d{EE HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message%n"
                    charset="UTF-8"/>
     <policies>
