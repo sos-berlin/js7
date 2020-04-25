@@ -1,13 +1,14 @@
 package com.sos.jobscheduler.core.event.state
 
 import akka.actor.{ActorRef, ActorRefFactory}
+import akka.pattern.ask
+import com.sos.jobscheduler.base.monixutils.MonixBase.deferFutureAndLog
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.SetOnce
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.journal.JournalActor
-import com.sos.jobscheduler.core.event.state.JournaledStatePersistence._
 import com.sos.jobscheduler.core.event.state.StateJournalingActor.{PersistFunction, StateToEvents}
 import com.sos.jobscheduler.data.event.{Event, JournaledState, KeyedEvent, Stamped}
 import monix.eval.Task
@@ -23,14 +24,12 @@ import shapeless.tag.@@
 
 final class JournaledStatePersistence[S <: JournaledState[S]](
   val/*???*/ journalActor: ActorRef @@ JournalActor.type)
-  (implicit S: TypeTag[S], s: Scheduler, actorRefFactory: ActorRefFactory)
+  (implicit S: TypeTag[S], s: Scheduler, actorRefFactory: ActorRefFactory, timeout: akka.util.Timeout)
 extends AutoCloseable
 {
   private val lockKeeper = new LockKeeper[Any]  // TODO Should the caller be responsible for sequential key updates? We could allow parallel, independent(!) updates
   private val persistPromise = Promise[PersistFunction[S, Event]]()
-  private val getStatePromise = Promise[Task[S]]()
   private val persistTask: Task[PersistFunction[S, Event]] = Task.fromFuture(persistPromise.future)
-  val currentState: Task[S] = Task.fromFuture(getStatePromise.future).flatten
 
   private val actorSetOnce = SetOnce[ActorRef]
 
@@ -41,7 +40,7 @@ extends AutoCloseable
 
   def start(state: S): Unit =
     actorSetOnce := actorRefFactory.actorOf(
-      StateJournalingActor.props[S, Event](state, journalActor, persistPromise, getStatePromise),
+      StateJournalingActor.props[S, Event](state, journalActor, persistPromise),
       encodeAsActorName("StateJournalingActor-" + S.tpe.toString))
 
   def persistKeyedEvent[E <: Event](keyedEvent: KeyedEvent[E]): Task[Checked[(Stamped[KeyedEvent[E]], S)]] = {
@@ -83,15 +82,20 @@ extends AutoCloseable
           stampedKeyedEvents.asInstanceOf[Seq[Stamped[KeyedEvent[E]]]] -> state }))
   }
 
+  def isStarted = actorSetOnce.nonEmpty
+
   private def requireStarted() =
     if (actorSetOnce.isEmpty) throw new IllegalStateException(s"$toString has not yet been started")
 
   def waitUntilStarted: Task[JournaledStatePersistence[S]] =
-    Task.deferFuture {
-      val f = actorSetOnce.future
-      if (!f.isCompleted) logger.debug(s"$toString waitUntilStarted ...")
-      f
-    }.map(_ => this)
+    deferFutureAndLog(s"ActorRef for $toString", actorSetOnce.future)
+      .map(_ => this)
+
+  def currentState: Task[S] =
+    waitUntilStarted >>
+    Task.deferFuture(
+      (journalActor ? JournalActor.Input.GetJournaledState).mapTo[JournaledState[S]]
+    ).map(_.asInstanceOf[S])
 
   override def toString = s"JournaledStatePersistence[${S.tpe}]"
 }

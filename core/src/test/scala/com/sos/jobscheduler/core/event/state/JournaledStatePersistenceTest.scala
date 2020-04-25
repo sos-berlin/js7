@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.core.event.state
 
 import akka.pattern.ask
+import akka.util.Timeout
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.GenericString
@@ -123,7 +124,7 @@ final class JournaledStatePersistenceTest extends AnyFreeSpec with BeforeAndAfte
     }
 
     "currentState" in {
-      assert(persistence.currentState.await(99.s) == TestState(eventId = 1000000 + 3 + keys.size * (1 + n), expectedThingCollection))
+      assert(persistence.currentState.await(99.s) == TestState(eventId = 1000000 + 4 + keys.size * (1 + n), expectedThingCollection))
     }
 
     "Stop" in {
@@ -147,6 +148,7 @@ final class JournaledStatePersistenceTest extends AnyFreeSpec with BeforeAndAfte
         TestState.empty, () => new TestStateBuilder, JournalEventWatch.TestConfig)
       recovered.startJournalAndFinishRecovery(journalActor)(actorSystem)
       implicit val a = actorSystem
+      implicit val timeout = Timeout(99.s)
       journaledStatePersistence = new JournaledStatePersistence[TestState](journalActor)
       journaledStatePersistence.start(recovered.recoveredState getOrElse TestState.empty)
       journaledStatePersistence

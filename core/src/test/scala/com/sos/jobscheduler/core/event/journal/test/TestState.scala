@@ -48,7 +48,7 @@ extends JournaledState[TestState]
     }
 
   def withEventId(eventId: EventId): TestState =
-    throw new NotImplementedError("TestState.withEventId")  // ???
+    this
 
   def withStandards(standards: JournaledState.Standards) =
     copy(standards = standards)

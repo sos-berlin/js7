@@ -25,6 +25,13 @@ extends EventDrivenState[This, Event]
   final def clusterState: ClusterState =
     standards.clusterState
 
+  override def applyStampedEvents(stampedEvents: Iterable[Stamped[KeyedEvent[Event]]]): Checked[This] =
+    if (stampedEvents.isEmpty)
+      Right(this)
+    else
+      super.applyStampedEvents(stampedEvents)
+        .map(_.withEventId(stampedEvents.last.eventId))
+
   def applyEvent(keyedEvent: KeyedEvent[Event]): Checked[This]
 
   def withEventId(eventId: EventId): This

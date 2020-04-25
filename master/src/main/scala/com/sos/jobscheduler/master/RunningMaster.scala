@@ -221,7 +221,8 @@ object RunningMaster
       // Start-up some stuff while recovering
       val journalActor = tag[JournalActor.type](actorSystem.actorOf(
         JournalActor.props[MasterState](journalMeta, masterConfiguration.journalConf,
-          injector.instance[StampedKeyedEventBus], scheduler, injector.instance[EventIdGenerator]),
+          injector.instance[StampedKeyedEventBus], scheduler, injector.instance[EventIdGenerator],
+          useJournaledStateAsSnapshot = true),
         "Journal"))
       signatureVerifier
       val persistence = new JournaledStatePersistence[MasterState](journalActor).closeWithCloser
@@ -289,15 +290,10 @@ object RunningMaster
       val webServer = injector.instance[MasterWebServer.Factory].apply(fileBasedApi, orderApi, commandExecutor,
         cluster.currentClusterState,
         masterState = Task.defer {
-          orderKeeperStarted.value/*Future completed?*/ match {
-            case None => currentPassiveMasterState.map(_.toChecked(ClusterNodeIsNotYetReadyProblem))
-            case Some(Failure(t)) => Task.raiseError(t)
-            case Some(Success(Left(_))) => Task.pure(Left(JobSchedulerIsShuttingDownProblem))
-            case Some(Success(Right(actor))) =>
-              Task.deferFuture(
-                (actor ? MasterOrderKeeper.Command.GetState).mapTo[MasterState]
-              ).map(Right.apply)
-          }
+          if (persistence.isStarted)
+            persistence.currentState map Right.apply
+          else
+            currentPassiveMasterState.map(_.toChecked(ClusterNodeIsNotYetReadyProblem))
         },
         recovered.totalRunningSince,  // Maybe different from JournalHeader
         recovered.eventWatch

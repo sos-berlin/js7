@@ -41,7 +41,7 @@ final case class Order[+S <: Order.State](
         attachedState,
         parent = Some(id))
 
-  def newPublishedOrder(event: OrderOffered): Order[Offering] = copy(
+  def newOfferedOrder(event: OrderOffered): Order[Offering] = copy(
     event.orderId,
     state = Offering(event.until),
     parent = None)

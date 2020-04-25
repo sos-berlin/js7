@@ -41,7 +41,7 @@ import com.sos.jobscheduler.data.event.JournalEvent.JournalEventsReleased
 import com.sos.jobscheduler.data.event.{<-:, Event, EventId, JournalState, JournaledState, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.job.JobKey
 import com.sos.jobscheduler.data.master.MasterId
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderBroken, OrderDetached, OrderStarted}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderBroken, OrderDetached}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.data.workflow.WorkflowEvent.WorkflowAttached
@@ -236,14 +236,10 @@ with Stash {
     case JournalActor.Output.SnapshotTaken =>
       shutdown.onSnapshotTaken()
 
-    case OrderActor.Output.OrderChanged(order, event) if orderRegister contains order.id =>
+    case OrderActor.Output.OrderChanged(order, events) if orderRegister contains order.id =>
       if (!shuttingDown) {
-        handleOrderEvent(order, event)
-        (event, orderRegister(order.id).instruction) match {
-          case (_: OrderStarted, _: Execute) =>  // Special for OrderActor: it emits immediately an OrderProcessingStarted
-          case _ =>
-            proceedWithOrder(order.id)
-        }
+        for (event <- events) handleOrderEvent(order, event)
+        proceedWithOrder(order.id)
       }
 
     case JobActor.Output.ReadyForOrder if jobRegister contains sender() =>

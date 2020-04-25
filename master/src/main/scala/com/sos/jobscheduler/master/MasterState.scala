@@ -10,7 +10,7 @@ import com.sos.jobscheduler.data.event.{Event, EventId, JournaledState, KeyedEve
 import com.sos.jobscheduler.data.filebased.RepoEvent
 import com.sos.jobscheduler.data.master.MasterFileBaseds
 import com.sos.jobscheduler.data.master.MasterFileBaseds.MasterTypedPathCompanions
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderStdWritten}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderOffered, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.master.data.MasterSnapshots.MasterMetaState
 import com.sos.jobscheduler.master.data.agent.{AgentEventIdEvent, AgentSnapshot}
@@ -91,30 +91,37 @@ extends JournaledState[MasterState]
 
         case event: OrderCoreEvent =>
           for {
-            previous <- idToOrder.checked(orderId)
-            updated <- previous.update(event)
+            previousOrder <- idToOrder.checked(orderId)
+            updatedOrder <- previousOrder.update(event)
             childOrdersAddedOrRemoved <- event match {
               case event: OrderForked =>
                 Right(idToOrder ++ (
-                  for (childOrder <- idToOrder(orderId).newForkedOrders(event)) yield
+                  for (childOrder <- previousOrder.newForkedOrders(event)) yield
                     childOrder.id -> childOrder))
 
               case event: OrderJoined =>
-                idToOrder(orderId).state match {
+                previousOrder.state match {
                   case forked: Order.Forked =>
                     Right(idToOrder -- forked.childOrderIds)
 
                   case awaiting: Order.Awaiting =>
-                    Right(idToOrder - awaiting.offeredOrderId)
+                    // Offered order is being kept ???
+                    //Right(idToOrder - awaiting.offeredOrderId)
+                    Right(idToOrder)
 
                   case state =>
-                    Left(Problem(s"For event $event, $orderId must be in state Forked, not: $state"))
+                    Left(Problem(s"For event $event, $orderId must be in state Forked or Awaiting, not: $state"))
                 }
+
+              case event: OrderOffered =>
+                val offered = previousOrder.newOfferedOrder(event)
+                for (_ <- idToOrder.checkNoDuplicate(offered.id)) yield
+                  idToOrder + (offered.id -> offered)
 
               case _ => Right(idToOrder)
             }
           } yield
-            copy(idToOrder = childOrdersAddedOrRemoved + (updated.id -> updated))
+            copy(idToOrder = childOrdersAddedOrRemoved + (updatedOrder.id -> updatedOrder))
 
         case _: OrderStdWritten =>
           Right(this)

@@ -120,15 +120,11 @@ final class Cluster(
       logger.info(s"Recovered ClusterState is ${recovered.clusterState}")
     }
     val (passiveState, followUp) = startCluster(recovered, recoveredState)
-    _currentClusterState = passiveState flatMap {
-      case None => persistence.currentState.map(_.clusterState)
-      case Some(o) => Task.pure(o.clusterState)
-    }
+    _currentClusterState = passiveState.map(_.fold(recovered.clusterState)(_.clusterState))
     started.success(())
     passiveState ->
       followUp.map(_.map { case (clusterState, followUp) =>
         activated = followUp.isInstanceOf[ClusterFollowUp.BecomeActive[_]]
-        _currentClusterState = persistence.currentState.map(_.clusterState)
         clusterWatchSynchronizer.scheduleHeartbeats(clusterState)
         followUp
       })
@@ -430,11 +426,14 @@ final class Cluster(
       Task.pure(Right(Completed))
 
   def afterJounalingStarted: Task[Checked[Completed]] =
-    ( for {
-        _ <- EitherT(automaticallyAppointConfiguredBackupNode)
-        x <- EitherT(onRestartActiveNode)
-      } yield x
-    ).value
+    Task {
+      _currentClusterState = persistence.currentState.map(_.clusterState)
+    } >>
+      ( for {
+          _ <- EitherT(automaticallyAppointConfiguredBackupNode)
+          x <- EitherT(onRestartActiveNode)
+        } yield x
+      ).value
 
   private def onRestartActiveNode: Task[Checked[Completed]] =
     persistence.currentState.map(_.clusterState).flatMap {

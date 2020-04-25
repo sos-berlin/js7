@@ -50,7 +50,7 @@ object Recovering
       order.id <-: OrderForked(order.state.children))
     //.orElse(
     //  order.ifState[Order.Offering].map(order =>
-    //    Right(FollowUp.AddOffered(order.newPublishedOrder(event)) :: Nil)))
+    //    Right(FollowUp.AddOffered(order.newOfferedOrder(event)) :: Nil)))
     //.orElse(
     //  order.ifState[Order.Awaiting].map(order =>   TODO Missing?
     //  )

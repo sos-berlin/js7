@@ -17,6 +17,7 @@ import com.sos.jobscheduler.tests.OfferAndAwaitOrderTest._
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
+
 /**
   * @author Joacim Zschimmer
   */
@@ -30,7 +31,7 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
           await orderId = "OFFERED-ORDER-ID";
           execute executable="/executable$sh", agent="AGENT";
         }""").orThrow,
-      WorkflowParser.parse(PublishingWorkflowId, s"""
+      WorkflowParser.parse(OfferingWorkflowId, s"""
         define workflow {
           execute executable="/executable$sh", agent="AGENT";
           offer orderId = "OFFERED-ORDER-ID", timeout = 60;
@@ -44,7 +45,7 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
 
         checkEventSeq(master.eventWatch.all[OrderEvent],
           expectedOffering = Vector(
-              OrderAdded(PublishingWorkflowId),
+              OrderAdded(OfferingWorkflowId),
               OrderAttachable(TestAgentRefPath),
               OrderTransferredToAgent(TestAgentRefPath),
               OrderStarted,
@@ -53,7 +54,7 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
               OrderMoved(Position(1)),
               OrderDetachable,
               OrderTransferredToMaster,
-              OrderOffered(OrderId("OFFERED-ORDER-ID"), TestPublishedUntil),
+              OrderOffered(OrderId("OFFERED-ORDER-ID"), TestOfferedUntil),
               OrderMoved(Position(2)),
               OrderAttachable(TestAgentRefPath),
               OrderTransferredToAgent(TestAgentRefPath),
@@ -94,7 +95,7 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
         define workflow {
           await orderId = "OFFERED-ORDER-ID";
         }""").orThrow,
-      WorkflowParser.parse(PublishingWorkflowId, s"""
+      WorkflowParser.parse(OfferingWorkflowId, s"""
         define workflow {
           offer orderId = "OFFERED-ORDER-ID", timeout = 60;
         }""").orThrow)
@@ -106,9 +107,9 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
 
         checkEventSeq(master.eventWatch.all[OrderEvent],
           expectedOffering = Vector(
-              OrderAdded(PublishingWorkflowId),
+              OrderAdded(OfferingWorkflowId),
               OrderStarted,
-              OrderOffered(OrderId("OFFERED-ORDER-ID"), TestPublishedUntil),
+              OrderOffered(OrderId("OFFERED-ORDER-ID"), TestOfferedUntil),
               OrderMoved(Position(1)),
               OrderFinished),
           expectedAwaiting = Vector(
@@ -128,7 +129,7 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
     master.eventWatch.await[OrderAwaiting](_.key == JoinBefore1Order.id)
     master.eventWatch.await[OrderAwaiting](_.key == JoinBefore2Order.id)
 
-    master.addOrderBlocking(OfferedOrder)
+    master.addOrderBlocking(OfferingOrder)
     master.eventWatch.await[OrderJoined]  (_.key == JoinBefore1Order.id)
     master.eventWatch.await[OrderJoined]  (_.key == JoinBefore2Order.id)
     master.eventWatch.await[OrderFinished](_.key == JoinBefore1Order.id)
@@ -146,30 +147,28 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
         for (orderId <- Array(JoinBefore1Order.id, JoinBefore2Order.id, JoinAfterOrder.id)) {
           assert(keyedEvents.collect { case `orderId` <-: event => event } == expectedAwaiting, s" - $orderId")
         }
-        assert(keyedEvents.collect { case OfferedOrderId <-: event => event }.map(cleanPublishedUntil) == expectedOffering)
+        assert(keyedEvents.collect { case OfferingOrder.id <-: event => event }.map(cleanOfferedUntil) == expectedOffering)
       case o =>
         fail(s"Unexpected EventSeq received: $o")
     }
 }
 
-object OfferAndAwaitOrderTest {
+object OfferAndAwaitOrderTest
+{
   private val TestAgentRefPath = AgentRefPath("/AGENT")
   private val JoiningWorkflowId = WorkflowPath("/A") ~ "INITIAL"
-  private val PublishingWorkflowId = WorkflowPath("/B") ~ "INITIAL"
+  private val OfferingWorkflowId = WorkflowPath("/B") ~ "INITIAL"
 
-  private val OfferedOrderId = OrderId("🔵")
   private val JoinBefore1Order = FreshOrder(OrderId("🥕"), JoiningWorkflowId.path)
   private val JoinBefore2Order = FreshOrder(OrderId("🍋"), JoiningWorkflowId.path)
-  private val JoinAfterOrderId = OrderId("🍭")
-  private val JoinAfterOrder = FreshOrder(JoinAfterOrderId, JoiningWorkflowId.path)
-  private val OfferedOrder = FreshOrder(OfferedOrderId, PublishingWorkflowId.path)
+  private val JoinAfterOrder = FreshOrder(OrderId("🍭"), JoiningWorkflowId.path)
+  private val OfferingOrder = FreshOrder(OrderId("🔵"), OfferingWorkflowId.path)
 
+  private val TestOfferedUntil = Timestamp.ofEpochMilli(777)
 
-  private val TestPublishedUntil = Timestamp.ofEpochMilli(777)
-
-  private def cleanPublishedUntil(event: OrderEvent): OrderEvent =
+  private def cleanOfferedUntil(event: OrderEvent): OrderEvent =
     event match {
-      case OrderOffered(o, _) => OrderOffered(o, TestPublishedUntil)
+      case OrderOffered(o, _) => OrderOffered(o, TestOfferedUntil)
       case o => o
     }
 }

@@ -33,7 +33,7 @@ import com.sos.jobscheduler.core.crypt.SignatureVerifier
 import com.sos.jobscheduler.core.event.journal.data.JournalHeader
 import com.sos.jobscheduler.core.event.journal.recover.{JournalRecoverer, Recovered}
 import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActor}
-import com.sos.jobscheduler.core.filebased.{FileBasedVerifier, FileBaseds, Repo}
+import com.sos.jobscheduler.core.filebased.{FileBasedVerifier, FileBaseds}
 import com.sos.jobscheduler.core.problems.{ReverseReleaseEventsProblem, UnknownOrderProblem}
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderProcessor
@@ -42,7 +42,7 @@ import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.data.crypt.Signed
 import com.sos.jobscheduler.data.event.JournalEvent.JournalEventsReleased
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{<-:, Event, EventId, JournalState, JournaledState, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
 import com.sos.jobscheduler.data.filebased.{FileBased, RepoEvent, TypedPath}
 import com.sos.jobscheduler.data.master.MasterFileBaseds
@@ -58,8 +58,7 @@ import com.sos.jobscheduler.master.agent.{AgentDriver, AgentDriverConfiguration}
 import com.sos.jobscheduler.master.cluster.Cluster
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.data.MasterSnapshots.MasterMetaState
-import com.sos.jobscheduler.master.data.agent.{AgentEventIdEvent, AgentSnapshot}
+import com.sos.jobscheduler.master.data.agent.AgentEventIdEvent
 import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentReady
 import com.sos.jobscheduler.master.data.events.MasterEvent
 import com.sos.jobscheduler.master.data.events.MasterEvent.{MasterShutDown, MasterTestEvent}
@@ -72,8 +71,7 @@ import monix.execution.cancelables.SerialCancelable
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
-import scala.concurrent.{Future, Promise, blocking}
-import scala.util.control.NonFatal
+import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success, Try}
 import shapeless.tag.@@
 
@@ -97,8 +95,7 @@ with MainJournalingActor[MasterState, Event]
   override val supervisorStrategy = SupervisorStrategies.escalate
 
   private val agentDriverConfiguration = AgentDriverConfiguration.fromConfig(config, masterConfiguration.journalConf).orThrow
-  private var masterMetaState = MasterMetaState.Undefined
-  private var repo = Repo(MasterFileBaseds.jsonCodec)
+  private var masterState: MasterState = MasterState.Undefined
   private val repoCommandExecutor = new RepoCommandExecutor(new FileBasedVerifier(signatureVerifier, MasterFileBaseds.jsonCodec))
   private val agentRegister = new AgentRegister
   private object orderRegister extends mutable.HashMap[OrderId, OrderEntry] {
@@ -106,10 +103,13 @@ with MainJournalingActor[MasterState, Event]
   }
   private val idToOrder = orderRegister mapPartialFunction (_.order)
   private var orderProcessor = new OrderProcessor(PartialFunction.empty, idToOrder)
-  private var journalState = JournalState.empty
   private val recoveredJournalHeader = SetOnce[JournalHeader]
+  private val checkMasterState = config.getBoolean("jobscheduler.master.slow-check-master-state")
+  if (checkMasterState) logger.warn("Slowing down due to jobscheduler.master.slow-check-master-state = true")
   private val suppressOrderIdCheckFor = config.optionAs[String]("jobscheduler.TEST-ONLY.suppress-order-id-check-for")
   private val testAddOrderDelay = config.optionAs[FiniteDuration]("jobscheduler.TEST-ONLY.add-order-delay").fold(Task.unit)(Task.sleep)
+
+  private def repo = masterState.repo
 
   private object shutdown {
     val since = SetOnce[Deadline]
@@ -213,8 +213,11 @@ with MainJournalingActor[MasterState, Event]
 
     def persistThenHandleEvents(): Unit = {
       // Eliminate duplicate events like OrderJoined, which may be emitted by parent and child orders when recovering
-      persistMultiple(events.distinct) { (stampedEvents, journaledState) =>
+      persistMultiple(events.distinct) { (stampedEvents, updatedState) =>
+        masterState = updatedState
         stampedEvents foreach handleOrderEvent
+        checkForEqualOrdersState()
+        //checkForEqualOrdersState(stampedEvents.map(_.value.key).distinct)
       }
       events.clear()
     }
@@ -235,25 +238,7 @@ with MainJournalingActor[MasterState, Event]
       super.postStop()
     }
 
-  protected def snapshots = masterState.toSnapshotObservable.toListL.runToFuture
-
-  private def masterState: MasterState = {
-    // FIXME Blockiert, damit ClusterState vom selben Zeitpunkt ist. EventId des ClusterState kann abweichen!
-    // TODO Einheitliches MasterState halten, also einheitliches JournaledStatePersistence
-    logger.debug("masterState blocking read ...")
-    val clusterState = blocking {
-      cluster.currentClusterState
-        .runSyncUnsafe(masterConfiguration.akkaAskTimeout.duration)
-    }
-    logger.debug("masterState blocking read okay")
-    MasterState(
-      persistedEventId,
-      JournaledState.Standards(journalState, clusterState),
-      masterMetaState,
-      repo,
-      pathToAgentSnapshot = agentRegister.values.map(entry => entry.agentRefPath -> entry.toSnapshot).toMap,
-      orderRegister.view.mapValues(_.order).toMap)
-  }
+  protected def snapshots = Future.successful(Nil)
 
   def receive = {
     case Input.Start(recovered) =>
@@ -287,9 +272,9 @@ with MainJournalingActor[MasterState, Event]
       if (masterState.masterMetaState.masterId != masterConfiguration.masterId)
         throw Problem(s"Recovered masterId='${masterState.masterMetaState.masterId}' differs from configured masterId='${masterConfiguration.masterId}'")
           .throwable
-      masterMetaState = masterState.masterMetaState
+      this.masterState = masterState
       //masterMetaState = masterState.masterMetaState.copy(totalRunningTime = recovered.totalRunningTime)
-      setRepo(masterState.repo)
+      updateRepo()
       for (agentRef <- repo.currentFileBaseds collect { case o: AgentRef => o }) {
         val agentSnapshot = masterState.pathToAgentSnapshot.checked(agentRef.path).orThrow
         val e = registerAgent(agentRef, agentSnapshot.agentRunId, eventId = agentSnapshot.eventId)
@@ -297,13 +282,10 @@ with MainJournalingActor[MasterState, Event]
         // TODO Fix fundamentally the race condition with JournalActor.Input.RegisterMe
         journalActor.tell(JournalActor.Input.RegisterMe, e.actor)
       }
-      for (agentSnapshot <- masterState.pathToAgentSnapshot.values) {
-        agentRegister(agentSnapshot.agentRefPath).lastAgentEventId = agentSnapshot.eventId
-      }
+
       for (order <- masterState.idToOrder.values) {
         orderRegister.insert(order.id -> new OrderEntry(order))
       }
-      journalState = masterState.journalState
       persistedEventId = masterState.eventId
     }
   }
@@ -347,15 +329,11 @@ with MainJournalingActor[MasterState, Event]
       become("becomingReady")(becomingReady)  // `become` must be called early, before any persist!
 
       persistMultiple(
-        (!masterMetaState.isDefined ?
+        (!masterState.masterMetaState.isDefined ?
           (NoKey <-: MasterEvent.MasterInitialized(masterConfiguration.masterId, journalHeader.startedAt))
         ) ++ Some(NoKey <-: MasterEvent.MasterReady(ZoneId.systemDefault.getId, totalRunningTime = journalHeader.totalRunningTime))
-      ) { (stampedEvents, journaledState) =>
-        stampedEvents.map(_.value) foreach {
-           case KeyedEvent(NoKey, MasterEvent.MasterInitialized(masterId, startedAt)) =>
-             masterMetaState = masterMetaState.copy(masterId = masterId, startedAt = startedAt)
-           case _ =>
-         }
+      ) { (_, updatedMasterState) =>
+        masterState = updatedMasterState
         testEventBus.publish(MasterReadyTestIncident)
         cluster.afterJounalingStarted
           .materializeIntoChecked
@@ -456,55 +434,38 @@ with MainJournalingActor[MasterState, Event]
     case Command.GetOrderCount =>
       sender() ! (orderRegister.size: Int)
 
-    case Command.GetState =>
-      sender() ! (
-        try masterState
-        catch { case NonFatal(t) =>  // Maybe Akka ask timeout
-          sender() ! Status.Failure(t)
-        })
-
-    case AgentDriver.Output.RegisteredAtAgent(agentRunId) =>
-      val agentEntry = agentRegister(sender())
-      if (agentEntry.agentRunId.isEmpty) {
-        agentEntry.agentRunId := agentRunId
-      }
-
     case AgentDriver.Output.EventsFromAgent(stampeds, completedPromise) =>
       val agentEntry = agentRegister(sender())
       import agentEntry.agentRefPath
       var lastAgentEventId: Option[EventId] = None
       var masterStamped: Seq[Timestamped[Event]] = stampeds.flatMap {
-        case stamped @ Stamped(agentEventId, timestamp, keyedEvent) =>
-          if (agentEventId <= lastAgentEventId.getOrElse(agentEntry.lastAgentEventId)) {
-            logger.debug(s"AgentDriver ${agentEntry.agentRefPath} has returned old (<= ${lastAgentEventId.getOrElse(agentEntry.lastAgentEventId)}) event: $stamped")
-            None
-          } else {
-            // TODO Event vor dem Speichern mit Order.applyEvent ausprobieren! Bei Fehler ignorieren?
-            lastAgentEventId = Some(agentEventId)
-            keyedEvent match {
-              case KeyedEvent(_, _: OrderCancellationMarked) =>  // We (the Master) emit our own OrderCancellationMarked
-                None
+        case Stamped(agentEventId, timestamp, keyedEvent) =>
+          // TODO Event vor dem Speichern mit Order.applyEvent ausprobieren! Bei Fehler ignorieren?
+          lastAgentEventId = Some(agentEventId)
+          keyedEvent match {
+            case KeyedEvent(_, _: OrderCancellationMarked) =>  // We (the Master) emit our own OrderCancellationMarked
+              None
 
-              case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
-                val ownEvent = event match {
-                  case _: OrderEvent.OrderAttached => OrderTransferredToAgent(agentRefPath) // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
-                  case _ => event
-                }
-                Some(Timestamped(orderId <-: ownEvent, Some(timestamp)))
+            case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
+              val ownEvent = event match {
+                case _: OrderEvent.OrderAttached => OrderTransferredToAgent(agentRefPath) // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
+                case _ => event
+              }
+              Some(Timestamped(orderId <-: ownEvent, Some(timestamp)))
 
-              case KeyedEvent(_: NoKey, AgentMasterEvent.AgentReadyForMaster(timezone, _)) =>
-                Some(Timestamped(agentEntry.agentRefPath <-: AgentReady(timezone), Some(timestamp)))
+            case KeyedEvent(_: NoKey, AgentMasterEvent.AgentReadyForMaster(timezone, _)) =>
+              Some(Timestamped(agentEntry.agentRefPath <-: AgentReady(timezone), Some(timestamp)))
 
-              case _ =>
-                logger.warn(s"Unknown event received from ${agentEntry.agentRefPath}: $keyedEvent")
-                None
-            }
+            case _ =>
+              logger.warn(s"Unknown event received from ${agentEntry.agentRefPath}: $keyedEvent")
+              None
           }
       }
       masterStamped ++= lastAgentEventId.map(agentEventId => Timestamped(agentRefPath <-: AgentEventIdEvent(agentEventId)))
 
       persistTransactionTimestamped(masterStamped, async = true, alreadyDelayed = agentDriverConfiguration.eventBufferDelay) {
-        (stampedEvents, journaledState) =>
+        (stampedEvents, updatedState) =>
+          masterState = updatedState
           // Inhibit OrderAdded, OrderFinished, OrderJoined(?), OrderAttachable and others ???
           //  Agent does not send these events, but just in case.
           stampedEvents.map(_.value)
@@ -512,12 +473,9 @@ with MainJournalingActor[MasterState, Event]
               case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
                 handleOrderEvent(orderId, event)
 
-              case KeyedEvent(_, AgentEventIdEvent(agentEventId)) =>
-                assertThat(agentEntry.lastAgentEventId < agentEventId)
-                agentEntry.lastAgentEventId = agentEventId
-
               case _ =>
             }
+          checkForEqualOrdersState()
           completedPromise.success(Completed)
       }
 
@@ -526,8 +484,10 @@ with MainJournalingActor[MasterState, Event]
       if (unknown.nonEmpty) {
         logger.error(s"Response to AgentCommand.DetachOrder from Agent for unknown orders: "+ unknown.mkString(", "))
       }
-      persistMultipleAsync(orderIds -- unknown map (_ <-: OrderTransferredToMaster)) { (stampedEvents, journaledState) =>
+      persistMultipleAsync(orderIds -- unknown map (_ <-: OrderTransferredToMaster)) { (stampedEvents, updatedState) =>
+        masterState = updatedState
         stampedEvents foreach handleOrderEvent
+        checkForEqualOrdersState()
       }
 
     case AgentDriver.Output.OrdersCancelationMarked(orderIds) =>
@@ -581,8 +541,10 @@ with MainJournalingActor[MasterState, Event]
               case Right(None) =>
                 Future.successful(Right(MasterCommand.Response.Accepted))
               case Right(Some(event)) =>
-                persist(orderId <-: event) { (stamped, journaledState) =>  // Event may be inserted between events coming from Agent
+                persist(orderId <-: event) { (stamped, updatedState) =>  // Event may be inserted between events coming from Agent
+                  masterState = updatedState
                   handleOrderEvent(stamped)
+                  checkForEqualOrdersState()
                   Right(MasterCommand.Response.Accepted)
                 }
             }
@@ -593,14 +555,13 @@ with MainJournalingActor[MasterState, Event]
         if (!masterConfiguration.journalConf.releaseEventsUserIds.contains(userId))
           Future(Left(UserIsNotEnabledToReleaseEventsProblem))
         else {
-          val current = journalState.userIdToReleasedEventId.getOrElse(userId, EventId.BeforeFirst)
+          val current = masterState.journalState.userIdToReleasedEventId.getOrElse(userId, EventId.BeforeFirst)
           if (untilEventId < current)
             Future(Left(ReverseReleaseEventsProblem(requestedUntilEventId = untilEventId, currentUntilEventId = current)))
           else
-            persist(JournalEventsReleased(userId, untilEventId)) {
-              case (Stamped(_,_, _ <-: event), journaledState) =>
-                journalState = journalState.applyEvent(event)
-                Right(MasterCommand.Response.Accepted)
+            persist(JournalEventsReleased(userId, untilEventId)) { (_, updatedState) =>
+              masterState = updatedState
+              Right(MasterCommand.Response.Accepted)
             }
         }
 
@@ -657,8 +618,10 @@ with MainJournalingActor[MasterState, Event]
         }
 
       case MasterCommand.EmitTestEvent =>
-        persist(MasterTestEvent, async = true)((_, _) =>
-          Right(MasterCommand.Response.Accepted))
+        persist(MasterTestEvent, async = true) { (_, updatedState) =>
+          masterState = updatedState
+          Right(MasterCommand.Response.Accepted)
+        }
 
       case _ =>
         // Handled by MasterCommandExecutor
@@ -696,8 +659,9 @@ with MainJournalingActor[MasterState, Event]
       foldedSideEffects <- checkedSideEffects.toVector.sequence map (_.fold(SyncIO.unit)(_ >> _))  // One problem invalidates all side effects
     } yield
       SyncIO {
-        persistTransaction(events.map(KeyedEvent(_))) { (_, _) =>
-          setRepo(changedRepo)
+        persistTransaction(events.map(KeyedEvent(_))) { (_, updatedState) =>
+          masterState = updatedState
+          updateRepo()
           events foreach logRepoEvent
           foldedSideEffects.unsafeRunSync()
           Completed
@@ -713,10 +677,8 @@ with MainJournalingActor[MasterState, Event]
       case FileBasedDeleted(path)    => logger.info(s"Deleted $path")
     }
 
-  private def setRepo(o: Repo): Unit = {
-    repo = o
+  private def updateRepo(): Unit =
     orderProcessor = new OrderProcessor(repo.idTo[Workflow], idToOrder)
-  }
 
   private def registerAgent(agent: AgentRef, agentRunId: Option[AgentRunId], eventId: EventId): AgentEntry = {
     val actor = watch(actorOf(
@@ -724,9 +686,6 @@ with MainJournalingActor[MasterState, Event]
         journalActor = journalActor),
       encodeAsActorName("Agent-" + agent.path.withoutStartingSlash)))
     val entry = AgentEntry(agent, actor)
-    agentRunId foreach { o =>
-      entry.agentRunId := o
-    }
     agentRegister.insert(agent.path -> entry)
     entry
   }
@@ -754,8 +713,10 @@ with MainJournalingActor[MasterState, Event]
         repo.idTo[Workflow](order.workflowId) match {
           case Left(problem) => Future.successful(Left(problem))
           case Right(workflow) =>
-            persist/*Async?*/(order.id <-: OrderAdded(workflow.id, order.state.scheduledFor, order.arguments)) { (stamped, journaledState) =>
+            persist/*Async?*/(order.id <-: OrderAdded(workflow.id, order.state.scheduledFor, order.arguments)) { (stamped, updatedState) =>
+              masterState = updatedState
               handleOrderEvent(stamped)
+              checkForEqualOrdersState()
               Right(true)
             }
             .flatMap(o => testAddOrderDelay.runToFuture.map(_ => o))  // test only
@@ -772,8 +733,10 @@ with MainJournalingActor[MasterState, Event]
         .map { ordersAndWorkflows =>
           val events = for ((order, workflow) <- ordersAndWorkflows) yield
             order.id <-: OrderAdded(workflow.id/*reuse*/, order.state.scheduledFor, order.arguments)
-          persistMultiple(events) { (stampedEvents, journaledState) =>
+          persistMultiple(events) { (stampedEvents, updatedState) =>
+            masterState = updatedState
             for (o <- stampedEvents) handleOrderEvent(o)
+            checkForEqualOrdersState()
             Completed
           }
         })
@@ -881,8 +844,10 @@ with MainJournalingActor[MasterState, Event]
   private def tryAttachOrderToAgent(order: Order[Order.IsFreshOrReady]): Unit =
     for ((signedWorkflow, job, agentEntry) <- checkedWorkflowJobAndAgentEntry(order).onProblem(p => logger.error(p))) {  // TODO OrderBroken on error?
       if (order.isDetached && !orderProcessor.isOrderCancelable(order))
-        persist(order.id <-: OrderAttachable(agentEntry.agentRefPath)) { (stamped, journaledState) =>
+        persist(order.id <-: OrderAttachable(agentEntry.agentRefPath)) { (stamped, updatedState) =>
+          masterState = updatedState
           handleOrderEvent(stamped)
+          checkForEqualOrdersState()
         }
       else if (order.isAttaching) {
         agentEntry.actor ! AgentDriver.Input.AttachOrder(order, agentEntry.agentRefPath, signedWorkflow)  // OutOfMemoryError when Agent is unreachable !!!
@@ -933,6 +898,15 @@ with MainJournalingActor[MasterState, Event]
         .runToFuture
     }
 
+  private def checkForEqualOrdersState(): Unit =
+    if (checkMasterState) {
+      assertThat(masterState.idToOrder.size == orderRegister.size)
+      masterState.idToOrder.keysIterator foreach checkForEqualOrderState
+    }
+
+  private def checkForEqualOrderState(orderId: OrderId): Unit =
+    assertThat(masterState.idToOrder.get(orderId) == orderRegister.get(orderId).map(_.order), orderId.toString)
+
   override def toString = "MasterOrderKeeper"
 }
 
@@ -956,7 +930,6 @@ private[master] object MasterOrderKeeper
     final case class GetOrder(orderId: OrderId) extends Command
     final case object GetOrders extends Command
     final case object GetOrderCount extends Command
-    final case object GetState extends Command
   }
 
   sealed trait Reponse
@@ -988,14 +961,9 @@ private[master] object MasterOrderKeeper
   private case class AgentEntry(
     agentRef: AgentRef,
     actor: ActorRef,
-    var lastAgentEventId: EventId = EventId.BeforeFirst,
-    agentRunId: SetOnce[AgentRunId] = SetOnce[AgentRunId],
     var actorTerminated: Boolean = false)
   {
     def agentRefPath = agentRef.path
-
-    def toSnapshot =
-      AgentSnapshot(agentRefPath, agentRunId.toOption, lastAgentEventId)
 
     def reconnect()(implicit sender: ActorRef): Unit =
       actor ! AgentDriver.Input.ChangeUri(uri = agentRef.uri)

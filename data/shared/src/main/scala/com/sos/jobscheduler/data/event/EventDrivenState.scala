@@ -9,6 +9,18 @@ trait EventDrivenState[This <: EventDrivenState[This, E], E <: Event]
 
   def applyEvent(keyedEvent: KeyedEvent[E]): Checked[This]
 
+  def applyStampedEvents(stampedEvents: Iterable[Stamped[KeyedEvent[E]]]): Checked[This] = {
+    var state = this
+    var problem: Problem = null
+    for (stamped <- stampedEvents.iterator if problem == null) {
+      state.applyEvent(stamped.value) match {
+        case Left(o) => problem = o withPrefix s"Event '$stamped' cannot be applied:"
+        case Right(s) => state = s
+      }
+    }
+    if (problem != null) Left(problem) else Right(state)
+  }
+
   def applyEvents(keyedEvents: IterableOnce[KeyedEvent[E]]): Checked[This] = {
     var state = this
     var problem: Problem = null
@@ -18,8 +30,7 @@ trait EventDrivenState[This <: EventDrivenState[This, E], E <: Event]
         case Right(s) => state = s
       }
     }
-    if (problem != null) Left(problem)
-    else Right(state)
+    if (problem != null) Left(problem) else Right(state)
   }
 
   protected final def eventNotApplicable(keyedEvent: KeyedEvent[Event]) =

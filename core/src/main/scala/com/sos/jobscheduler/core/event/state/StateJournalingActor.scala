@@ -16,22 +16,19 @@ import scala.util.{Failure, Success, Try}
 private[state] final class StateJournalingActor[S <: JournaledState[S], E <: Event](
   initialState: S,
   protected val journalActor: ActorRef,
-  persistPromise: Promise[PersistFunction[S, E]],
-  getStatePromise: Promise[Task[S]])
+  persistPromise: Promise[PersistFunction[S, E]])
   (implicit S: TypeTag[S], s: Scheduler)
 extends MainJournalingActor[S, E]
 {
   override def supervisorStrategy = SupervisorStrategies.escalate
 
-  // Will be accesses asynchronously via `getStatePromise`
-  @volatile private var state: S = initialState
+  private var state: S = initialState
 
   protected def snapshots = Future.successful(Nil)
 
   override def preStart() = {
     super.preStart()
     persistPromise.success(stateToEvent => persistStateToEvents(stateToEvent))
-    getStatePromise.success(Task { state })
   }
 
   private def persistStateToEvents(stateToEvents: StateToEvents[S, E]): Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
@@ -71,11 +68,10 @@ private[state] object StateJournalingActor
   def props[S <: JournaledState[S], E <: Event](
     initialState: S,
     journalActor: ActorRef,
-    persistPromise: Promise[PersistFunction[S, E]],
-    getStatePromise: Promise[Task[S]])
+    persistPromise: Promise[PersistFunction[S, E]])
     (implicit S: TypeTag[S], s: Scheduler)
   =
-    Props { new StateJournalingActor(initialState, journalActor, persistPromise, getStatePromise) }
+    Props { new StateJournalingActor(initialState, journalActor, persistPromise) }
 
   private def applyPersistedEvent[S <: JournaledState[S], E <: Event] (state: S, stampedKeyedEvent: Stamped[KeyedEvent[E]]): S =
     state.withEventId(stampedKeyedEvent.eventId)

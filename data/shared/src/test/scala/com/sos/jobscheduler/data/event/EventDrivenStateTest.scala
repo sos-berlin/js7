@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.data.event
 
 import com.sos.jobscheduler.base.problem.Checked.Ops
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.data.event.EventDrivenStateTest._
 import com.sos.jobscheduler.data.event.JournaledState.EventNotApplicableProblem
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
@@ -14,25 +15,37 @@ final class EventDrivenStateTest extends AnyFreeSpec
   private var s = TestState("")
 
   "applyEvents" in {
-    s = s.applyEvents(
-      (NoKey <-: AddEvent("(")) ::
-      (NoKey <-: AddEvent("ADDED")) ::
-      (NoKey <-: AddEvent(")")) ::
+    val stampedEvents =
+      Stamped(1000L, Timestamp.ofEpochMilli(1), (NoKey <-: Added("("))) ::
+      Stamped(2000L, Timestamp.ofEpochMilli(2), (NoKey <-: Added("ADDED"))) ::
+      Stamped(3000L, Timestamp.ofEpochMilli(3), (NoKey <-: Added(")"))) ::
       Nil
-    ).orThrow
+
+    assert(s.applyStampedEvents(stampedEvents) == s.applyEvents(stampedEvents.map(_.value)))
+    s = s.applyStampedEvents(stampedEvents).orThrow
 
     assert(s == TestState("(ADDED)"))
   }
 
   "EventNotApplicableProblem" in {
     assert(s.applyEvent(InvalidEvent) == Left(EventNotApplicableProblem(InvalidEvent, s)))
+
+    val stampedEvents =
+      Stamped(4000L, Timestamp.ofEpochMilli(4), (NoKey <-: Added("MORE"))) ::
+      Stamped(5000L, Timestamp.ofEpochMilli(5), (NoKey <-: InvalidEvent)) ::
+      Nil
+
+    assert(s.applyStampedEvents(stampedEvents) ==
+      Left(
+        EventNotApplicableProblem(InvalidEvent, TestState("(ADDED)MORE"))
+          withPrefix "Event 'Stamped(5000 1970-01-01T00:00:00.005Z InvalidEvent)' cannot be applied:"))
   }
 }
 
 private object EventDrivenStateTest
 {
   private sealed trait TestEvent extends NoKeyEvent
-  private case class AddEvent(string: String) extends TestEvent
+  private case class Added(string: String) extends TestEvent
   private case object InvalidEvent extends TestEvent
 
   private case class TestState(string: String)
@@ -40,7 +53,7 @@ private object EventDrivenStateTest
   {
     def applyEvent(keyedEvent: KeyedEvent[TestEvent]) =
       keyedEvent match {
-        case KeyedEvent(NoKey, AddEvent(s)) =>
+        case KeyedEvent(NoKey, Added(s)) =>
           Right(copy(string = string + s))
         case _ =>
           eventNotApplicable(keyedEvent)

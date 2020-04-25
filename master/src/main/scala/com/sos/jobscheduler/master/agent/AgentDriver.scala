@@ -326,18 +326,17 @@ with ReceiveLoggingActor.WithStash
   private def registerAsMasterIfNeeded: Task[Completed] =
     if (agentRunIdOnce.nonEmpty)
       Task.pure(Completed)
-    else {
-      val parent = context.parent
+    else
       client.commandExecute(AgentCommand.RegisterAsMaster)
         .map(_.map(_.agentRunId).orThrowWithoutStacktrace/*TODO Safe original Problem, package in special ProblemException and let something like Problem.pure don't _wrap_ the Problem?*/)
-        .flatMap(agentRunId =>
-          persistTask(AgentRegisteredMaster(agentRunId)) { (_, journaledState) =>
+        .flatMap { agentRunId =>
+          val event = AgentRegisteredMaster(agentRunId)
+          persistTask(event) { (_, _) =>
             // asynchronous
             agentRunIdOnce := agentRunId
-            parent ! Output.RegisteredAtAgent(agentRunId)
             Completed
-          })
-    }
+          }
+        }
 
   private object logEvent {
     // This object is used asynchronously
@@ -394,7 +393,6 @@ private[master] object AgentDriver
   }
 
   object Output {
-    final case class RegisteredAtAgent(agentRunId: AgentRunId)
     final case class EventsFromAgent(stamped: Seq[Stamped[AnyKeyedEvent]], promise: Promise[Completed])
     final case class OrdersDetached(orderIds: Set[OrderId])
     final case class OrdersCancelationMarked(orderIds: Set[OrderId])

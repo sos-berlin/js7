@@ -85,8 +85,8 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
       command match {
         case Command.Attach(attached @ Order(`orderId`, workflowPosition, state: Order.IsFreshOrReady, arguments, historicOutcomes, Some(Order.Attached(agentRefPath)), parent, cancellationMarked/*???*/)) =>
           becomeAsStateOf(attached, force = true)
-          persist(OrderAttached(arguments, workflowPosition, state, historicOutcomes, parent, agentRefPath)) { (event, state) =>
-            update(event)
+          persist(OrderAttached(arguments, workflowPosition, state, historicOutcomes, parent, agentRefPath)) { (event, updatedState) =>
+            update(event :: Nil, updatedState)
             Completed
           } pipeTo sender()
 
@@ -119,8 +119,8 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
           () => (stdoutWriter.isRelevant || stderrWriter.isRelevant) option s"stdout: $stdoutWriter, stderr: $stderrWriter"))
         context.watch(jobActor)
         val orderStarted = order.isState[Order.Fresh] thenList OrderStarted  // OrderStarted automatically with first OrderProcessingStarted
-        persistTransaction(orderStarted :+ OrderProcessingStarted) { (events, state) =>
-          events foreach update
+        persistTransaction(orderStarted :+ OrderProcessingStarted) { (events, updatedState) =>
+          update(events, updatedState)
           jobActor ! JobActor.Command.ProcessOrder(
             jobKey,
             order.castState[Order.Processing],
@@ -227,8 +227,8 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
         if (event.isInstanceOf[OrderCancellationMarked] && updated == order)  // Duplicate, already cancelling with same CancelMode?
           Future.successful(Completed)
         else
-          persist(event) { (event, state) =>
-            update(event)
+          persist(event) { (event, updatedState) =>
+            update(event :: Nil, updatedState)
             if (terminating) {
               context.stop(self)
             }
@@ -283,10 +283,10 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
       persistAcceptEarly(OrderStdWritten(t)(chunk), delay = stdoutCommitDelay)
       // Don't wait for disk-sync. OrderStdWritten is followed by a OrderProcessed, then waiting for disk-sync.
 
-  private def update(event: OrderEvent) = {
-    updateOrder(event)
-    context.parent ! Output.OrderChanged(order, event)
-    if (event == OrderDetached) {
+  private def update(events: Seq[OrderEvent], updatedState: AgentState) = {
+    events foreach updateOrder
+    context.parent ! Output.OrderChanged(order, events)
+    if (events.last == OrderDetached) {
       logger.trace("Stopping after OrderDetached")
       order = null
       context.stop(self)
@@ -349,7 +349,7 @@ private[order] object OrderActor
 
   object Output {
     final case class RecoveryFinished(order: Order[Order.State])
-    final case class OrderChanged(order: Order[Order.State], event: OrderEvent)
+    final case class OrderChanged(order: Order[Order.State], events: Seq[OrderEvent])
   }
 
   final case class Conf(stdoutCommitDelay: FiniteDuration, charBufferSize: Int, stdouterrToEventConf: StdouterrToEvent.Conf)

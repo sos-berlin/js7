@@ -11,7 +11,7 @@ import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{EventId, JournalEvent, JournalState, JournaledState, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.RepoEvent
 import com.sos.jobscheduler.data.master.MasterFileBaseds
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderStdWritten}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderOffered, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.master.data.MasterSnapshots.MasterMetaState
@@ -128,9 +128,18 @@ extends JournaledStateBuilder[MasterState]
           case forked: Order.Forked =>
             idToOrder --= forked.childOrderIds
 
+          case awaiting: Order.Awaiting =>
+            // Offered order is being kept ???
+            //idToOrder -= awaiting.offeredOrderId
+
           case state =>
             sys.error(s"Event $event recovered, but $orderId is in state $state")
         }
+
+      case event: OrderOffered =>
+        val offered = idToOrder(orderId).newOfferedOrder(event)
+        idToOrder.insert(offered.id -> offered)
+        idToOrder(orderId) = idToOrder(orderId).update(event).orThrow
 
       case _ =>
     }

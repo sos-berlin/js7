@@ -52,15 +52,18 @@ final class OrderEventHandler(
             Right(o.childOrderIds map FollowUp.Remove.apply)
 
           case Order.Awaiting(_) =>
-            _offeredToAwaitingOrder -= previousOrder.castState[Order.Awaiting].state.offeredOrderId
-            Right(Nil)  // Offering order is being kept
+            val offeredOrderId = previousOrder.castState[Order.Awaiting].state.offeredOrderId
+            _offeredToAwaitingOrder -= offeredOrderId
+            // Offered order is being kept ???
+            //Right(FollowUp.Remove(offeredOrderId) :: Nil)
+            Right(Nil)
 
           case state =>
             Left(Problem(s"Event $joined, but Order is in state $state"))
         }
 
       case event: OrderOffered =>
-        Right(FollowUp.AddOffered(previousOrder.newPublishedOrder(event)) :: Nil)
+        Right(FollowUp.AddOffered(previousOrder.newOfferedOrder(event)) :: Nil)
 
       case OrderAwaiting(offeredOrderId) =>
         _offeredToAwaitingOrder(offeredOrderId) = _offeredToAwaitingOrder.getOrElse(offeredOrderId, Set.empty) + orderId

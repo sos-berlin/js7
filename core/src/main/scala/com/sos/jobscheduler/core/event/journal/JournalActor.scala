@@ -26,9 +26,10 @@ import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
 import com.sos.jobscheduler.core.event.journal.write.{EventJournalWriter, ParallelExecutingPipeline, SnapshotJournalWriter}
 import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver}
 import com.sos.jobscheduler.data.cluster.ClusterState
+import com.sos.jobscheduler.data.cluster.ClusterState.ClusterStateSnapshot
 import com.sos.jobscheduler.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, EventId, JournalEvent, JournalId, JournaledState, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, EventId, JournalEvent, JournalId, JournalState, JournaledState, KeyedEvent, Stamped}
 import java.nio.file.Files.{delete, exists, move}
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
@@ -352,9 +353,11 @@ extends Actor with Stash
   }
 
   private def updateStateAndContinueCallers(written: NormallyWritten): Unit = {
-    journaledState = journaledState.applyEvents(written.stampedSeq.view.map(_.value))
-      .orThrow/*crashes JournalActor !!!*/
-    written.stampedSeq foreach handleJournalEvents
+    if (written.stampedSeq.nonEmpty) {
+      journaledState = journaledState.applyStampedEvents(written.stampedSeq)
+        .orThrow/*crashes JournalActor !!!*/
+      written.stampedSeq foreach handleJournalEvents
+    }
     if (written.replyTo != Actor.noSender) {
       // Continue caller
       reply(written.sender, written.replyTo, Output.Stored(written.stampedSeq, journaledState, written.callersItem))
@@ -408,8 +411,8 @@ extends Actor with Stash
         isSynced = eventWriter != null && eventWriter.isSynced,
         isRequiringClusterAcknowledgement = requireClusterAcknowledgement)
 
-    //case Input.GetJournaledState =>
-    //  sender() ! journaledState
+    case Input.GetJournaledState =>
+      sender() ! journaledState
   }
 
   private val syncOrFlushString: String =
@@ -500,8 +503,13 @@ extends Actor with Stash
   }
 
   private def takeSnapshotNow(snapshotWriter: SnapshotJournalWriter, journalingActors: Set[ActorRef], andThen: () => Unit): Unit = {
-    if (useJournaledStateAsSnapshot) {
-      val future = journaledState.toSnapshotObservable
+    Await.result(
+      journaledState.toSnapshotObservable
+        .filter {
+          case _ if useJournaledStateAsSnapshot => true
+          case _: ClusterStateSnapshot | _: JournalState => true
+          case _ => false
+        }
         .mapParallelOrdered(sys.runtime.availableProcessors)(snapshotObject =>
           Task {
             // TODO Crash with SerializationException like EventSnapshotWriter
@@ -511,9 +519,9 @@ extends Actor with Stash
         .foreach { case (snapshotObject, byteString) =>
           snapshotWriter.writeSnapshot(byteString)
           logger.trace(s"Snapshot $snapshotObject")
-        }(scheduler)
-      Await.result(future, 999.s)  // TODO Do not block the thread
-    }
+        }(scheduler),
+      999.s)  // TODO Do not block the thread - Muss es ein Observable sein? Vielleicht LazyList oder Iterator?
+
     if (journalingActors.isEmpty) {
       andThen()
     } else {
@@ -713,7 +721,7 @@ object JournalActor
     final case object Terminate
     final case object AwaitAndTerminate
     case object GetJournalActorState
-    //case object GetJournaledState
+    case object GetJournaledState
   }
 
   private[journal] trait Timestamped {

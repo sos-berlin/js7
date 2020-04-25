@@ -266,12 +266,11 @@ private object OrderActorTest {
         }
       }
 
-    private def checkTermination(): Unit = {
-      if (orderDetached && orderActorTerminated && events.lastOption.contains(OrderDetached) && (orderChangeds.lastOption map { _.event } contains OrderDetached)) {
-        assert(events == (orderChangeds map { _.event }))
+    private def checkTermination(): Unit =
+      if (orderDetached && orderActorTerminated && events.lastOption.contains(OrderDetached) && orderChangeds.lastOption.map(_.events.last).contains(OrderDetached)) {
+        assert(events == orderChangeds.map(_.events.last))
         terminatedPromise.success(Result(events.toVector, stdoutStderr.view.mapValues(_.toString).toMap, runningSince.elapsed))
         context.stop(self)
       }
-    }
   }
 }
