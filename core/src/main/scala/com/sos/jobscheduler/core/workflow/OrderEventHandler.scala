@@ -26,8 +26,8 @@ final class OrderEventHandler(
   def handleEvent(keyedEvent: KeyedEvent[OrderEvent]): Checked[Seq[FollowUp]] = {
     val KeyedEvent(orderId, event) = keyedEvent
     for {
-      previousOrderId <- idToOrder.checked(orderId)
-      followUps <- handleEvent(previousOrderId, orderId, event)
+      previousOrder <- idToOrder.checked(orderId)
+      followUps <- handleEvent(previousOrder, orderId, event)
     } yield followUps
   }
 
