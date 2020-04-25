@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.core.event.journal.recover
 
+import cats.syntax.show.toShow
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowableEither
@@ -143,7 +144,7 @@ final class FileJournaledStateBuilder[S <: JournaledState[S]](
     import journalMeta.eventJsonCodec
     json.as[Stamped[KeyedEvent[Event]]]
       .orThrow { t =>
-        val msg = s"Unexpected JSON: ${(t: io.circe.DecodingFailure).message}"
+        val msg = s"Unexpected JSON: ${(t: io.circe.DecodingFailure).show}"
         logger.error(s"$msg: ${json.compactPrint}")
         new IllegalArgumentException(msg)
       }
