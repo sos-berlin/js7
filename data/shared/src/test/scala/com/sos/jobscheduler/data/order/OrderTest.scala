@@ -18,9 +18,9 @@ import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.Json
 import io.circe.syntax.EncoderOps
 import org.scalactic.source
+import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.immutable.ListSet
 import scala.reflect.ClassTag
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
@@ -385,6 +385,47 @@ final class OrderTest extends AnyFreeSpec
     "Finished" - {
       checkAllEvents(Order(orderId, workflowId, Finished),
         PartialFunction.empty)
+    }
+
+    "attachedState" - {
+      "attachedState=None" in {
+        val order = Order(orderId, workflowId, Ready, attachedState = None)
+        assert(order.update(OrderAttachable(agentRefPath)) == Right(order.copy(attachedState = Some(Attaching(agentRefPath)))))
+        assert(order.update(OrderTransferredToAgent(agentRefPath)).isLeft)
+        assert(order.update(OrderDetachable).isLeft)
+        assert(order.update(OrderDetached).isLeft)
+        assert(order.update(OrderTransferredToMaster).isLeft)
+      }
+
+      "attachedState=Attaching" in {
+        val order = Order(orderId, workflowId, Ready, attachedState = Some(Attaching(agentRefPath)))
+        assert(order.update(OrderAttachable(agentRefPath)).isLeft)
+        assert(order.update(OrderTransferredToAgent(agentRefPath)) == Right(order.copy(attachedState = Some(Attached(agentRefPath)))))
+        assert(order.update(OrderTransferredToAgent(AgentRefPath("/OTHER"))).isLeft)
+        assert(order.update(OrderDetachable).isLeft)
+        assert(order.update(OrderDetached).isLeft)
+        assert(order.update(OrderTransferredToMaster).isLeft)
+      }
+
+      "attachedState=Attached" in {
+        val order = Order(orderId, workflowId, Ready, attachedState = Some(Attached(agentRefPath)))
+        assert(order.update(OrderAttachable(agentRefPath)).isLeft)
+        assert(order.update(OrderTransferredToAgent(agentRefPath)).isLeft)
+        assert(order.update(OrderTransferredToAgent(AgentRefPath("/OTHER"))).isLeft)
+        assert(order.update(OrderDetachable) == Right(order.copy(attachedState = Some(Detaching(agentRefPath)))))
+        assert(order.update(OrderDetached).isLeft)
+        assert(order.update(OrderTransferredToMaster).isLeft)
+      }
+
+      "attachedState=Detaching" in {
+        val order = Order(orderId, workflowId, Ready, attachedState = Some(Detaching(agentRefPath)))
+        assert(order.update(OrderAttachable(agentRefPath)).isLeft)
+        assert(order.update(OrderTransferredToAgent(agentRefPath)).isLeft)
+        assert(order.update(OrderTransferredToAgent(AgentRefPath("/OTHER"))).isLeft)
+        assert(order.update(OrderDetachable).isLeft)
+        assert(order.update(OrderDetached) == Right(order.copy(attachedState = None)))
+        assert(order.update(OrderTransferredToMaster) == Right(order.copy(attachedState = None)))
+      }
     }
 
     type ToPredicate = PartialFunction[(OrderEvent, Option[AttachedState]), State => Boolean]

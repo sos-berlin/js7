@@ -15,7 +15,6 @@ import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
 import com.sos.jobscheduler.data.workflow.WorkflowId
 import com.sos.jobscheduler.data.workflow.instructions.Fork
 import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
-import io.circe.generic.JsonCodec
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 
@@ -104,8 +103,10 @@ object OrderEvent {
 
   final case class OrderForked(children: Seq[OrderForked.Child]) extends OrderActorEvent
   object OrderForked {
-    @JsonCodec
     final case class Child(branchId: Fork.Branch.Id, orderId: OrderId)
+    object Child {
+      implicit val jsonCodec = deriveCodec[Child]
+    }
   }
 
   final case class OrderJoined(outcome: Outcome)

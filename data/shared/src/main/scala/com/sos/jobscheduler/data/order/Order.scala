@@ -157,8 +157,12 @@ final case class Order[+S <: Order.State](
           copy(attachedState = Some(Attaching(agentRefPath))))
 
       case OrderTransferredToAgent(agentRefPath) =>
-        check(isAttaching && (isState[Fresh] || isState[Ready] || isState[Forked]),
-          copy(attachedState = Some(Attached(agentRefPath))))
+        attachedState match {
+          case Some(Attaching(`agentRefPath`)) =>
+            check(isAttaching && (isState[Fresh] || isState[Ready] || isState[Forked]),
+              copy(attachedState = Some(Attached(agentRefPath))))
+          case _ => inapplicable
+        }
 
       case OrderDetachable =>
         attachedState match {
