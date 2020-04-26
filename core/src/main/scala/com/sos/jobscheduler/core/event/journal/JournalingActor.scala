@@ -3,6 +3,7 @@ package com.sos.jobscheduler.core.event.journal
 import akka.actor.{Actor, ActorLogging, ActorRef, Cancellable, DeadLetterSuppression, Stash}
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec.typeName
 import com.sos.jobscheduler.base.generic.Accepted
+import com.sos.jobscheduler.base.problem.{Checked, ProblemException}
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
@@ -61,8 +62,8 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
     stashingCount = Inhibited
   }
 
-  protected final def persistKeyedEventTask[A](keyedEvent: KeyedEvent[E])(callback: (Stamped[KeyedEvent[E]], S) => A): Task[A] =
-    promiseTask[A] { promise =>
+  protected final def persistKeyedEventTask[A](keyedEvent: KeyedEvent[E])(callback: (Stamped[KeyedEvent[E]], S) => A): Task[Checked[A]] =
+    promiseTask[Checked[A]] { promise =>
       self ! Persist(keyedEvent, callback, promise)
     }
 
@@ -71,14 +72,14 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
     keyedEvent: KeyedEvent[EE],
     timestamp: Option[Timestamp] = None,
     delay: FiniteDuration = Duration.Zero)
-  : Future[Accepted] =
-    promiseFuture[Accepted] { promise =>
+  : Future[Checked[Accepted]] =
+    promiseFuture[Checked[Accepted]] { promise =>
       start(async = true)
       val timestamped = Timestamped(keyedEvent, timestamp) :: Nil
       journalActor.forward(
         JournalActor.Input.Store(timestamped, self, acceptEarly = true, transaction = false,
           delay = delay, alreadyDelayed = Duration.Zero,
-          Deferred(async = true, () => promise.success(Accepted))))
+          Deferred(async = true, checked => promise.success(checked))))
     }
 
   protected final def persistKeyedEvent[EE <: E, A](
@@ -128,7 +129,10 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
     start(async = async)
     journalActor.forward(JournalActor.Input.Store(Nil, self, acceptEarly = false, transaction = false,
       delay = Duration.Zero, alreadyDelayed = Duration.Zero,
-      Deferred(async = async, () => callback)))
+      Deferred(async = async, {
+        case Left(problem) => throw problem.throwable.appendCurrentStackTrace
+        case Right(Accepted) => callback
+      })))
   }
 
   private def start(async: Boolean): Unit = {
@@ -143,7 +147,12 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
   protected[journal] def journaling: Receive = {
     case Persist(keyedEvent, callback, promise) =>
       promise.completeWith(
-        persistKeyedEvent(keyedEvent)(callback))
+        persistKeyedEvent(keyedEvent)((stampedEvents, state) =>
+          try Right(callback(stampedEvents, state))
+          catch {
+            case ProblemException(problem) => Left(problem)
+            case t: Throwable => throw t.appendCurrentStackTrace
+          }))
 
     case JournalActor.Output.Stored(stampedSeq, journaledState, item: Item) =>
       // sender() is from persistKeyedEvent or deferAsync
@@ -161,7 +170,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
 
         case (Nil, Deferred(_, callback)) =>
           if (TraceLog) logger.trace(s"“$toString” Stored (no event)$stashingCountRemaining")
-          callback()
+          callback(Right(Accepted))
 
         case _ => sys.error(s"JournalActor.Output.Stored(${stampedSeq.length}×) message does not match item '$item'")
       }
@@ -174,10 +183,14 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
       item match {
         case Deferred(_, callback) =>
           if (TraceLog) logger.trace(s"“$toString” Stored (events are written, not flushed)$stashingCountRemaining")
-          callback()
+          callback(Right(Accepted))
 
         case _ => sys.error(s"JournalActor.Output.Accepted message does not match item '$item'")
       }
+
+    case JournalActor.Output.StoreFailure(problem, item) =>
+      // Let the calling Actor crash
+      throw problem.throwable.appendCurrentStackTrace
 
     case Input.GetSnapshot =>
       val sender = this.sender()
@@ -241,11 +254,14 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
     override def toString = s"EventsCallback(${if (async) "async" else ""})"
   }
 
-  private case class Deferred(async: Boolean, callback: () => Unit) extends Item {
+  private case class Deferred(async: Boolean, callback: Checked[Accepted] => Unit) extends Item {
     override def toString = s"Deferred${if (async) "async" else ""}"
   }
 
-  private case class Persist[A](keyedEvent: KeyedEvent[E], callback: (Stamped[KeyedEvent[E]], S) => A, promise: Promise[A])
+  private case class Persist[A](
+    keyedEvent: KeyedEvent[E],
+    callback: (Stamped[KeyedEvent[E]], S) => A,
+    promise: Promise[Checked[A]])
 }
 
 object JournalingActor

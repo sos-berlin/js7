@@ -335,7 +335,7 @@ with ReceiveLoggingActor.WithStash
             // asynchronous
             agentRunIdOnce := agentRunId
             Completed
-          }
+          }.map(_.orThrow)
         }
 
   private object logEvent {

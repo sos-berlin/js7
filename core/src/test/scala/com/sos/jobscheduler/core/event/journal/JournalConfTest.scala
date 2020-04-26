@@ -48,6 +48,7 @@ object JournalConfTest
        delay = 1ms
        sync-delay = 2ms
        event-buffer-size = 6
+       slow-check-journaled-state = false
        snapshot.log-period = 4s
        snapshot.log-actor-limit = 5
        snapshot.period = 7h

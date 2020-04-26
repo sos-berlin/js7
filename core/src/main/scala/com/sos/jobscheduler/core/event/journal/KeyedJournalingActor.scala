@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.core.event.journal
 
 import com.sos.jobscheduler.base.generic.Accepted
+import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor._
@@ -24,7 +25,7 @@ extends JournalingActor[S, E]
   protected final def snapshots: Future[Iterable[Any]] =
     Future.successful(snapshot.toList)
 
-  protected final def persistTask[A](event: E)(callback: (Stamped[KeyedEvent[E]], S) => A): Task[A] =
+  protected final def persistTask[A](event: E)(callback: (Stamped[KeyedEvent[E]], S) => A): Task[Checked[A]] =
     persistKeyedEventTask(KeyedEvent[E](key, event))(callback)
 
   protected final def persist[EE <: E, A](event: EE, async: Boolean = false)(callback: (EE, S) => A): Future[A] =
@@ -33,7 +34,7 @@ extends JournalingActor[S, E]
     }
 
   /** Fast lane for events not affecting the journaled state. */
-  protected final def persistAcceptEarly[EE <: E, A](event: EE, delay: FiniteDuration = Duration.Zero): Future[Accepted] =
+  protected final def persistAcceptEarly[EE <: E, A](event: EE, delay: FiniteDuration = Duration.Zero): Future[Checked[Accepted]] =
     super.persistKeyedEventAcceptEarly(KeyedEvent(key, event), delay = delay)
 
   protected final def persistTransaction[EE <: E, A](events: Seq[EE], async: Boolean = false)

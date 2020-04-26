@@ -104,8 +104,6 @@ with MainJournalingActor[MasterState, Event]
   private val idToOrder = orderRegister mapPartialFunction (_.order)
   private var orderProcessor = new OrderProcessor(PartialFunction.empty, idToOrder)
   private val recoveredJournalHeader = SetOnce[JournalHeader]
-  private val checkMasterState = config.getBoolean("jobscheduler.master.slow-check-master-state")
-  if (checkMasterState) logger.warn("Slowing down due to jobscheduler.master.slow-check-master-state = true")
   private val suppressOrderIdCheckFor = config.optionAs[String]("jobscheduler.TEST-ONLY.suppress-order-id-check-for")
   private val testAddOrderDelay = config.optionAs[FiniteDuration]("jobscheduler.TEST-ONLY.add-order-delay").fold(Task.unit)(Task.sleep)
 
@@ -167,7 +165,7 @@ with MainJournalingActor[MasterState, Event]
           persistKeyedEventTask(NoKey <-: MasterShutDown())((_, _) => Completed)
             .runToFuture.onComplete { tried =>
               tried match {
-                case Success(Completed) =>
+                case Success(Right(Completed)) =>
                 case other => logger.error(s"While shutting down: $other")
               }
               journalActor ! JournalActor.Input.Terminate
@@ -887,7 +885,7 @@ with MainJournalingActor[MasterState, Event]
     }
 
   private def checkForEqualOrdersState(): Unit =
-    if (checkMasterState) {
+    if (masterConfiguration.journalConf.slowCheckJournaledState) {
       assertThat(masterState.idToOrder.size == orderRegister.size)
       masterState.idToOrder.keysIterator foreach checkForEqualOrderState
     }

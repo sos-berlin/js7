@@ -281,6 +281,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
       }
     else
       persistAcceptEarly(OrderStdWritten(t)(chunk), delay = stdoutCommitDelay)
+        .map(_.orThrow)
       // Don't wait for disk-sync. OrderStdWritten is followed by a OrderProcessed, then waiting for disk-sync.
 
   private def update(events: Seq[OrderEvent], updatedState: AgentState) = {

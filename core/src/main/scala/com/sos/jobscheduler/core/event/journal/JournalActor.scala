@@ -63,6 +63,7 @@ extends Actor with Stash
   private var snapshotSchedule: Cancelable = null
 
   private var journaledState: S = null.asInstanceOf[S]
+  private var uncommittedJournaledState: S = null.asInstanceOf[S]
 
   /** Originates from `JournalValue`, calculated from recovered journal if not freshly initialized. */
   private var journalHeader: JournalHeader = null
@@ -108,6 +109,7 @@ extends Actor with Stash
   def receive = {
     case Input.Start(journaledState_, RecoveredJournalingActors(keyToActor), observer_, header, totalRunningSince_) =>
       journaledState = journaledState_.asInstanceOf[S]
+      uncommittedJournaledState = journaledState
       requireClusterAcknowledgement = journaledState.clusterState.isInstanceOf[ClusterState.Coupled]
       journalingObserver := observer_
       journalHeader = header
@@ -134,6 +136,7 @@ extends Actor with Stash
 
     case Input.StartWithoutRecovery(emptyState, observer_) =>  // Testing only
       journaledState = emptyState.asInstanceOf[S]
+      uncommittedJournaledState = journaledState
       journalingObserver := observer_
       journalHeader = JournalHeader.initial(JournalId.random()).copy(generation = 1)
       eventWriter = newEventJsonWriter(after = EventId.BeforeFirst, withoutSnapshots = true)
@@ -163,45 +166,53 @@ extends Actor with Stash
     case Input.Store(timestamped, replyTo, acceptEarly, transaction, delay, alreadyDelayed, callersItem) =>
       if (switchedOver) {
         logger.debug(s"Event rejected while active cluster node is switching over: ${timestamped.headOption.map(_.keyedEvent)}")
-        reply(sender(), replyTo, Output.StoreFailure(ClusterNodeHasBeenSwitchedOverProblem.throwable))
+        reply(sender(), replyTo, Output.StoreFailure(ClusterNodeHasBeenSwitchedOverProblem, callersItem))
       } else {
         val now_ = now
         val stampedEvents = for (t <- timestamped) yield eventIdGenerator.stamp(t.keyedEvent, t.timestamp)
-        eventWriter.writeEvents(stampedEvents, transaction = transaction)
-        val lastFileLengthAndEventId = stampedEvents.lastOption.map(o => PositionAnd(eventWriter.fileLength, o.eventId))
-        for (o <- lastFileLengthAndEventId) {
-          lastWrittenEventId = o.value
-        }
-        // TODO Handle serialization (but not I/O) error? writeEvents is not atomic.
-        if (acceptEarly && !requireClusterAcknowledgement/*? irrelevant because acceptEarly is not used in a Cluster for now*/) {
-          reply(sender(), replyTo, Output.Accepted(callersItem))
-          writtenBuffer += AcceptEarlyWritten(stampedEvents.size, now_, lastFileLengthAndEventId, sender())
-          // acceptEarly-events will not update journaledState !!!
-          // Ergibt falsche Reihenfolge mit dem anderen Aufruf: logCommitted(flushed = false, synced = false, stampedEvents)
-        } else {
-          writtenBuffer += NormallyWritten(totalEventCount + 1, stampedEvents, now_, lastFileLengthAndEventId, replyTo, sender(), callersItem)
-        }
-        totalEventCount += stampedEvents.size
-        stampedEvents.lastOption match {
-          case Some(Stamped(_, _, KeyedEvent(_, _: ClusterCoupled))) =>
-            // Commit now to let Coupled event take effect on following events (avoids deadlock)
-            commit()
-            logger.info(s"Coupled: Start requiring acknowledgements from passive cluster node")
-            requireClusterAcknowledgement = true
+        uncommittedJournaledState.applyStampedEvents(stampedEvents) match {
+          case Left(problem) =>
+            logger.error(problem.toString)
+            reply(sender(), replyTo, Output.StoreFailure(problem, callersItem))
+          case Right(updatedState) =>
+            uncommittedJournaledState = updatedState
 
-          case Some(Stamped(_, _, KeyedEvent(_, _: ClusterSwitchedOver))) =>
-            commit()
-            logger.debug("SwitchedOver: no more events are accepted")
-            switchedOver = true  // No more events are accepted
+            eventWriter.writeEvents(stampedEvents, transaction = transaction)
+            val lastFileLengthAndEventId = stampedEvents.lastOption.map(o => PositionAnd(eventWriter.fileLength, o.eventId))
+            for (o <- lastFileLengthAndEventId) {
+              lastWrittenEventId = o.value
+            }
+            // TODO Handle serialization (but not I/O) error? writeEvents is not atomic.
+            if (acceptEarly && !requireClusterAcknowledgement/*? irrelevant because acceptEarly is not used in a Cluster for now*/) {
+              reply(sender(), replyTo, Output.Accepted(callersItem))
+              writtenBuffer += AcceptEarlyWritten(stampedEvents.size, now_, lastFileLengthAndEventId, sender())
+              // acceptEarly-events will not update journaledState !!!
+              // Ergibt falsche Reihenfolge mit dem anderen Aufruf: logCommitted(flushed = false, synced = false, stampedEvents)
+            } else {
+              writtenBuffer += NormallyWritten(totalEventCount + 1, stampedEvents, now_, lastFileLengthAndEventId, replyTo, sender(), callersItem)
+            }
+            totalEventCount += stampedEvents.size
+            stampedEvents.lastOption match {
+              case Some(Stamped(_, _, KeyedEvent(_, _: ClusterCoupled))) =>
+                // Commit now to let Coupled event take effect on following events (avoids deadlock)
+                commit()
+                logger.info(s"Coupled: Start requiring acknowledgements from passive cluster node")
+                requireClusterAcknowledgement = true
 
-          case Some(Stamped(_, _, KeyedEvent(_, event @ (_: ClusterFailedOver | _: ClusterPassiveLost)))) =>
-            logger.debug(s"No more acknowledgments required due to $event event")
-            requireClusterAcknowledgement = false
-            waitingForAcknowledgeTimer := Cancelable.empty
-            commit()
+              case Some(Stamped(_, _, KeyedEvent(_, _: ClusterSwitchedOver))) =>
+                commit()
+                logger.debug("SwitchedOver: no more events are accepted")
+                switchedOver = true  // No more events are accepted
 
-          case _ => forwardCommit((delay max conf.delay) - alreadyDelayed)
-        }
+              case Some(Stamped(_, _, KeyedEvent(_, event @ (_: ClusterFailedOver | _: ClusterPassiveLost)))) =>
+                logger.debug(s"No more acknowledgments required due to $event event")
+                requireClusterAcknowledgement = false
+                waitingForAcknowledgeTimer := Cancelable.empty
+                commit()
+
+              case _ => forwardCommit((delay max conf.delay) - alreadyDelayed)
+            }
+          }
       }
 
     case Internal.Commit(level) =>
@@ -299,10 +310,10 @@ extends Actor with Stash
       try eventWriter.flush(sync = conf.syncOnCommit)
       catch { case NonFatal(t) if !terminating =>
         val tt = t.appendCurrentStackTrace
-        writtenBuffer foreach {
-          case w: NormallyWritten => reply(sender(), w.replyTo, Output.StoreFailure(tt))  // TODO Failing flush is fatal
-          case _: AcceptEarlyWritten =>  // TODO Error handling?
-        }
+        //writtenBuffer foreach {
+        //  case w: NormallyWritten => reply(sender(), w.replyTo, Output.StoreFailure(Problem.pure(tt), CALLERS_ITEM))  // TODO Failing flush is fatal
+        //  case _: AcceptEarlyWritten =>  // TODO Error handling?
+        //}
         throw tt;
       }
       for (w <- writtenBuffer.reverse collectFirst { case o: NormallyWritten => o }) {
@@ -347,17 +358,18 @@ extends Actor with Stash
 
     assertThat((lastAcknowledgedEventId == lastWrittenEventId) == writtenBuffer.isEmpty)
     if (lastAcknowledgedEventId == lastWrittenEventId) {
+      assertThat(writtenBuffer.isEmpty)
+      if (conf.slowCheckJournaledState) assertThat(journaledState == uncommittedJournaledState)
+      journaledState = uncommittedJournaledState  // Reduce duplicate allocated objects
       waitingForAcknowledgeTimer := Cancelable.empty
       maybeDoASnapshot()
     }
   }
 
   private def updateStateAndContinueCallers(written: NormallyWritten): Unit = {
-    if (written.stampedSeq.nonEmpty) {
-      journaledState = journaledState.applyStampedEvents(written.stampedSeq)
-        .orThrow/*crashes JournalActor !!!*/
-      written.stampedSeq foreach handleJournalEvents
-    }
+    journaledState = journaledState.applyStampedEvents(written.stampedSeq)
+      .orThrow/*crashes JournalActor !!!*/
+    written.stampedSeq foreach handleJournalEvents
     if (written.replyTo != Actor.noSender) {
       // Continue caller
       reply(written.sender, written.replyTo, Output.Stored(written.stampedSeq, journaledState, written.callersItem))
@@ -741,7 +753,7 @@ object JournalActor
 
     private[journal] final case class Accepted(callersItem: CallersItem) extends Output
     //final case class SerializationFailure(throwable: Throwable) extends Output
-    final case class StoreFailure(throwable: Throwable) extends Output
+    final case class StoreFailure(problem: Problem, callersItem: CallersItem) extends Output
     final case object SnapshotTaken
     final case class JournalActorState(isFlushed: Boolean, isSynced: Boolean, isRequiringClusterAcknowledgement: Boolean)
   }
