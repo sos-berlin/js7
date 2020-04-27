@@ -38,7 +38,7 @@ object Dependencies
                             /*jansi ::*/ Nil
 
   val scalaReflect        = "org.scala-lang" % "scala-reflect" % scalaVersion
-  val scalaXml            = "org.scala-lang.modules" %% "scala-xml" % "1.2.0"
+  val scalaXml            = "org.scala-lang.modules" %% "scala-xml" % "1.3.0"
   val scalaTest           = "org.scalatest" %% "scalatest" % scalaTestVersion ::
                             /*"org.scalatest" %% "scalatest-freespec" % scalaTestVersion ::*/ Nil
   val scalactic           = "org.scalactic" %% "scalactic" % scalaTestVersion
