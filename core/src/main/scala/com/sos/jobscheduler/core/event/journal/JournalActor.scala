@@ -165,8 +165,12 @@ extends Actor with Stash
 
     case Input.Store(timestamped, replyTo, acceptEarly, transaction, delay, alreadyDelayed, callersItem) =>
       if (switchedOver) {
-        logger.debug(s"Event rejected while active cluster node is switching over: ${timestamped.headOption.map(_.keyedEvent)}")
-        reply(sender(), replyTo, Output.StoreFailure(ClusterNodeHasBeenSwitchedOverProblem, callersItem))
+        logger.warn(s"Event ignored while active cluster node is switching over: ${timestamped.headOption.map(_.keyedEvent)}")
+        // We ignore the event and do not notify the caller,
+        // because it would crash and disturb the process of switching-over.
+        // (so AgentDriver with AgentReady event)
+        // TODO The caller should handle the error (persist method does not allow this for now)
+        //reply(sender(), replyTo, Output.StoreFailure(ClusterNodeHasBeenSwitchedOverProblem, callersItem))
       } else {
         val now_ = now
         val stampedEvents = for (t <- timestamped) yield eventIdGenerator.stamp(t.keyedEvent, t.timestamp)
