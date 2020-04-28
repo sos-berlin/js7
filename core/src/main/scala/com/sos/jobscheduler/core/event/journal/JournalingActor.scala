@@ -192,6 +192,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
 
     case JournalActor.Output.StoreFailure(problem, item) =>
       // Let the calling Actor crash
+      logger.warn(s"“$toString” Event could not be stored: $problem")
       throw problem.throwable.appendCurrentStackTrace
 
     case Input.GetSnapshot =>

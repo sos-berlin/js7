@@ -61,6 +61,12 @@ final class ReleaseEventsTest extends AnyFreeSpec with DirectoryProviderForScala
 
     def masterJournalFiles = listJournalFiles(directoryProvider.master.dataDir / "state" / "master")
     def agentJournalFiles = listJournalFiles(directoryProvider.agents(0).dataDir / "state" / "master-Master")
+
+    def assertMasterJournalFileCount(n: Int): Unit = {
+      waitForCondition(5.s, 10.ms) { masterJournalFiles.size == n }
+      assert(masterJournalFiles.size == n)
+    }
+
     assert(masterJournalFiles.size == 2)
     assert(agentJournalFiles.size == 2)
 
@@ -82,31 +88,32 @@ final class ReleaseEventsTest extends AnyFreeSpec with DirectoryProviderForScala
       }
 
       a.executeCommand(ReleaseEvents(finished.head.eventId)).await(99.s)
-      assert(masterJournalFiles.size == 3)
+      assertMasterJournalFileCount(3)
 
       b.executeCommand(ReleaseEvents(finished.head.eventId)).await(99.s)
-      assert(masterJournalFiles.size == 2)
+      assertMasterJournalFileCount(2)
 
       // Master sends ReleaseEvents after some events from Agent have arrived. So we start an order.
       master.executeCommandAsSystemUser(TakeSnapshot).await(99.s).orThrow
       val bAdded = master.runOrder(bOrder).head.eventId
-      assert(masterJournalFiles.size == 3)
+      assertMasterJournalFileCount(3)
 
       master.executeCommandAsSystemUser(TakeSnapshot).await(99.s).orThrow
-      assert(masterJournalFiles.size == 4)
+      assertMasterJournalFileCount(4)
 
       master.runOrder(cOrder)
       master.executeCommandAsSystemUser(TakeSnapshot).await(99.s).orThrow
-      assert(masterJournalFiles.size == 5)
+      assertMasterJournalFileCount(5)
 
       b.executeCommand(ReleaseEvents(bAdded)).await(99.s)
-      assert(masterJournalFiles.size == 5)
+      assertMasterJournalFileCount(5)
 
       a.executeCommand(ReleaseEvents(lastFileTornEventId)).await(99.s)
-      assert(masterJournalFiles.size == 3 && tornEventId <= bAdded)
+      assertMasterJournalFileCount(3)
+      assert(tornEventId <= bAdded)
 
       b.executeCommand(ReleaseEvents(lastFileTornEventId)).await(99.s)
-      assert(masterJournalFiles.size == 1)
+      assertMasterJournalFileCount(1)
 
       // TakeSnapshot and KeepSnapshot on last event written should tear this event
       master.executeCommandAsSystemUser(TakeSnapshot).await(99.s).orThrow
@@ -119,6 +126,7 @@ final class ReleaseEventsTest extends AnyFreeSpec with DirectoryProviderForScala
       // Agent's journal file count should be 1 after TakeSnapshot and after Master has read all events
       agent.executeCommand(AgentCommand.TakeSnapshot, CommandMeta(SimpleUser(UserId("Master"))))
         .await(99.s).orThrow
+      waitForCondition(5.s, 10.ms) { agentJournalFiles.size == 2 }
       assert(agentJournalFiles.size == 2)
       master.runOrder(dOrder)
       waitForCondition(5.s, 10.ms) { agentJournalFiles.size == 1 }

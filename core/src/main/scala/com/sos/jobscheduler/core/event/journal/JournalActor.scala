@@ -319,7 +319,7 @@ extends Actor with Stash
         //}
         throw tt;
       }
-      for (w <- writtenBuffer.reverse collectFirst { case o: NormallyWritten => o }) {
+      for (w <- writtenBuffer.view.reverse collectFirst { case o: NormallyWritten => o }) {
         w.isLastOfFlushedOrSynced = true  // For logging: This last Written (including all before) has been flushed or synced
       }
       if (!terminating) {
@@ -332,7 +332,7 @@ extends Actor with Stash
     if (!requireClusterAcknowledgement) {
       onCommitAcknowledged(writtenBuffer.length)
     } else {
-      val nonEventWrittenCount = writtenBuffer.takeWhile(_.isEmpty).size
+      val nonEventWrittenCount = writtenBuffer.iterator.takeWhile(_.isEmpty).size
       if (nonEventWrittenCount > 0) {
         // `Written` without events (Nil) are not being acknowledged, so we finish them now
         onCommitAcknowledged(nonEventWrittenCount)
@@ -349,35 +349,49 @@ extends Actor with Stash
     }
 
   private def onCommitAcknowledged(n: Int): Unit = {
-    val ackWritten = writtenBuffer take n
-    val normallyWritten = ackWritten.view collect { case o: NormallyWritten => o }
-    logCommitted(ack = requireClusterAcknowledgement, normallyWritten.iterator)
-    for (lastFileLengthAndEventId <- ackWritten.view.flatMap(_.lastFileLengthAndEventId).lastOption) {
-      lastAcknowledgedEventId = lastFileLengthAndEventId.value
-      eventWriter.onCommitted(lastFileLengthAndEventId, n = ackWritten.iterator.map(_.eventCount).sum)
-    }
-    normallyWritten foreach updateStateAndContinueCallers
-    writtenBuffer.remove(0, n)
-
-    assertThat((lastAcknowledgedEventId == lastWrittenEventId) == writtenBuffer.isEmpty)
+    finishCommitted(n)
     if (lastAcknowledgedEventId == lastWrittenEventId) {
-      assertThat(writtenBuffer.isEmpty)
-      if (conf.slowCheckJournaledState) assertThat(journaledState == uncommittedJournaledState)
-      journaledState = uncommittedJournaledState  // Reduce duplicate allocated objects
-      waitingForAcknowledgeTimer := Cancelable.empty
-      maybeDoASnapshot()
+      onAllCommitsFinished()
     }
+  }
+
+  private def finishCommitted(n: Int): Unit = {
+    val ackWritten = writtenBuffer.view.take(n)
+    val normallyWritten = ackWritten collect { case o: NormallyWritten => o }
+
+    logCommitted(ack = requireClusterAcknowledgement, normallyWritten.iterator)
+
+    for (lastFileLengthAndEventId <- ackWritten.flatMap(_.lastFileLengthAndEventId).lastOption) {
+      lastAcknowledgedEventId = lastFileLengthAndEventId.value
+      eventWriter.onCommitted(lastFileLengthAndEventId, n = ackWritten.map(_.eventCount).sum)
+    }
+
+    normallyWritten foreach updateStateAndContinueCallers
+
+    writtenBuffer.remove(0, n)
+    assertThat((lastAcknowledgedEventId == lastWrittenEventId) == writtenBuffer.isEmpty)
+  }
+
+  private def onAllCommitsFinished(): Unit = {
+    assertThat(lastAcknowledgedEventId == lastWrittenEventId)
+    assertThat(writtenBuffer.isEmpty)
+    if (conf.slowCheckJournaledState) assertThat(journaledState == uncommittedJournaledState)
+    journaledState = uncommittedJournaledState  // Reduce duplicate allocated objects
+    waitingForAcknowledgeTimer := Cancelable.empty
+    maybeDoASnapshot()
   }
 
   private def updateStateAndContinueCallers(written: NormallyWritten): Unit = {
     journaledState = journaledState.applyStampedEvents(written.stampedSeq)
       .orThrow/*crashes JournalActor !!!*/
-    written.stampedSeq foreach handleJournalEvents
     if (written.replyTo != Actor.noSender) {
       // Continue caller
       reply(written.sender, written.replyTo, Output.Stored(written.stampedSeq, journaledState, written.callersItem))
     }
-    written.stampedSeq foreach keyedEventBus.publish
+    for (stamped <- written.stampedSeq) {
+      keyedEventBus.publish(stamped)
+      handleJournalEvents(stamped)
+    }
   }
 
   private def handleJournalEvents(stamped: Stamped[AnyKeyedEvent]): Unit = {
