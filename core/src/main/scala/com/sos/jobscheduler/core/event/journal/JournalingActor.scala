@@ -16,6 +16,7 @@ import com.sos.jobscheduler.common.scalautil.MonixUtils.promiseTask
 import com.sos.jobscheduler.core.event.journal.JournalingActor._
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, JournaledState, KeyedEvent, Stamped}
 import monix.eval.Task
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
@@ -78,7 +79,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
       val timestamped = Timestamped(keyedEvent, timestamp) :: Nil
       journalActor.forward(
         JournalActor.Input.Store(timestamped, self, acceptEarly = true, transaction = false,
-          delay = delay, alreadyDelayed = Duration.Zero,
+          delay = delay, alreadyDelayed = Duration.Zero, since = now,
           Deferred(async = true, checked => promise.success(checked))))
     }
 
@@ -107,7 +108,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
         for (t <- timestamped) logger.trace(s"“$toString” Store ${t.keyedEvent.key} <-: ${typeName(t.keyedEvent.event.getClass)}")
       journalActor.forward(
         JournalActor.Input.Store(timestamped, self, acceptEarly = false, transaction = transaction,
-          delay = delay, alreadyDelayed = alreadyDelayed,
+          delay = delay, alreadyDelayed = alreadyDelayed, since = now,
           EventsCallback[S](
             async = async,
             (stampedSeq, journaledState) => promise.complete(
@@ -127,12 +128,13 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
 
   private def defer_(async: Boolean, callback: => Unit): Unit = {
     start(async = async)
-    journalActor.forward(JournalActor.Input.Store(Nil, self, acceptEarly = false, transaction = false,
-      delay = Duration.Zero, alreadyDelayed = Duration.Zero,
-      Deferred(async = async, {
-        case Left(problem) => throw problem.throwable.appendCurrentStackTrace
-        case Right(Accepted) => callback
-      })))
+    journalActor.forward(
+      JournalActor.Input.Store(Nil, self, acceptEarly = false, transaction = false,
+        delay = Duration.Zero, alreadyDelayed = Duration.Zero, since = now,
+        Deferred(async = async, {
+          case Left(problem) => throw problem.throwable.appendCurrentStackTrace
+          case Right(Accepted) => callback
+        })))
   }
 
   private def start(async: Boolean): Unit = {

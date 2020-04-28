@@ -163,7 +163,7 @@ extends Actor with Stash
     case Input.RegisterMe =>
       handleRegisterMe()
 
-    case Input.Store(timestamped, replyTo, acceptEarly, transaction, delay, alreadyDelayed, callersItem) =>
+    case Input.Store(timestamped, replyTo, acceptEarly, transaction, delay, alreadyDelayed, since, callersItem) =>
       if (switchedOver) {
         logger.warn(s"Event ignored while active cluster node is switching over: ${timestamped.headOption.map(_.keyedEvent)}")
         // We ignore the event and do not notify the caller,
@@ -172,7 +172,6 @@ extends Actor with Stash
         // TODO The caller should handle the error (persist method does not allow this for now)
         //reply(sender(), replyTo, Output.StoreFailure(ClusterNodeHasBeenSwitchedOverProblem, callersItem))
       } else {
-        val now_ = now
         val stampedEvents = for (t <- timestamped) yield eventIdGenerator.stamp(t.keyedEvent, t.timestamp)
         uncommittedJournaledState.applyStampedEvents(stampedEvents) match {
           case Left(problem) =>
@@ -189,11 +188,11 @@ extends Actor with Stash
             // TODO Handle serialization (but not I/O) error? writeEvents is not atomic.
             if (acceptEarly && !requireClusterAcknowledgement/*? irrelevant because acceptEarly is not used in a Cluster for now*/) {
               reply(sender(), replyTo, Output.Accepted(callersItem))
-              writtenBuffer += AcceptEarlyWritten(stampedEvents.size, now_, lastFileLengthAndEventId, sender())
+              writtenBuffer += AcceptEarlyWritten(stampedEvents.size, since, lastFileLengthAndEventId, sender())
               // acceptEarly-events will not update journaledState !!!
               // Ergibt falsche Reihenfolge mit dem anderen Aufruf: logCommitted(flushed = false, synced = false, stampedEvents)
             } else {
-              writtenBuffer += NormallyWritten(totalEventCount + 1, stampedEvents, now_, lastFileLengthAndEventId, replyTo, sender(), callersItem)
+              writtenBuffer += NormallyWritten(totalEventCount + 1, stampedEvents, since, lastFileLengthAndEventId, replyTo, sender(), callersItem)
             }
             totalEventCount += stampedEvents.size
             stampedEvents.lastOption match {
@@ -731,6 +730,7 @@ object JournalActor
       transaction: Boolean,
       delay: FiniteDuration,
       alreadyDelayed: FiniteDuration,
+      since: Deadline,
       callersItem: CallersItem)
     final case object TakeSnapshot
     final case class PassiveNodeAcknowledged(eventId: EventId)
