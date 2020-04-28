@@ -545,13 +545,14 @@ final class Cluster(
               // FIXME Exklusiver Zugriff (Lock) wegen parallelen ClusterCommand.ClusterRecouple, das ein EventLost auslöst,
               //  mit ClusterCouplingPrepared infolge. Dann können wir kein PassiveLost ausgeben.
               //  JournaledStatePersistence Lock in die Anwendungsebene (hier) heben
+              //  -- Nicht nötig durch die Abfrage auf initialState ?
               persistence.currentState/*???*/.map(_.clusterState).flatMap {
                 case clusterState: Coupled =>
                   common.ifClusterWatchAllowsActivation(clusterState, passiveLost,
                     persist(
                       {
-                        case _: PassiveLost => Right(Nil)
-                        case _ => Right(passiveLost :: Nil)
+                        case `initialState` => Right(passiveLost :: Nil)
+                        case _ => Right(Nil)  // Ignore when ClusterState has changed
                       },
                       suppressClusterWatch = true/*already notified*/
                     ) .map(_.toCompleted)
