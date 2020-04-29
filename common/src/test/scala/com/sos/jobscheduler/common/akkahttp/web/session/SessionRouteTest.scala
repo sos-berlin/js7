@@ -57,6 +57,7 @@ extends AnyFreeSpec with SessionRouteTester
         def onError(t: Throwable) = Task {
           count += 1
           logger.debug(s"count=$count " + t.toStringWithCauses)
+          true
         }
         val runningSince = now
         val whenLoggedIn = api.loginUntilReachable(
@@ -79,7 +80,7 @@ extends AnyFreeSpec with SessionRouteTester
 
     "authorized" in {
       withSessionApi() { api =>
-        api.loginUntilReachable(Some(AUserAndPassword), Iterator.continually(10.milliseconds), _ => Task.unit) await 99.s
+        api.loginUntilReachable(Some(AUserAndPassword), Iterator.continually(10.milliseconds), _ => Task.pure(true)) await 99.s
         requireAuthorizedAccess(api)
         api.logout() await 99.s
         requireAccessIsUnauthorizedOrPublic(api)

@@ -39,7 +39,7 @@ object SessionApi
     final def loginUntilReachable(
       userAndPassword: Option[UserAndPassword],
       delays: Iterator[FiniteDuration],
-      onError: Throwable => Task[Unit] = logThrowable,
+      onError: Throwable => Task[Boolean] = logThrowable,
       onlyIfNotLoggedIn: Boolean = false)
     : Task[Completed] =
       Task.defer {
@@ -48,20 +48,24 @@ object SessionApi
         else
           login(userAndPassword)
             .onErrorRestartLoop(()) { (throwable, _, retry) =>
-              onError(throwable) >>
-                (if (isUnreachable(throwable) && delays.hasNext)
-                  retry(()) delayExecution delays.next()
-                else
-                  Task.raiseError(throwable))
+              onError(throwable).flatMap {
+                case false => Task.raiseError(throwable)
+                case true =>
+                  (if (isUnreachable(throwable) && delays.hasNext)
+                    retry(()) delayExecution delays.next()
+                  else
+                    Task.raiseError(throwable))
+              }
             }
       }
 
-    protected def logThrowable(throwable: Throwable): Task[Unit] =
+    protected def logThrowable(throwable: Throwable): Task[Boolean] =
       Task {
         scribe.warn(s"$toString: ${throwable.toStringWithCauses}")
         if (throwable.getStackTrace.nonEmpty && throwable.getClass.scalaName != "akka.stream.StreamTcpException") {
           scribe.debug(s"$toString: ${throwable.toString}", throwable)
         }
+        true
       }
   }
 }

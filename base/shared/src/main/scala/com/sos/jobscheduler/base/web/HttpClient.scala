@@ -1,10 +1,12 @@
 package com.sos.jobscheduler.base.web
 
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import io.circe.{Decoder, Encoder}
 import monix.eval.Task
 import monix.reactive.Observable
 import scala.concurrent.duration.Duration
+import scala.util.{Failure, Success}
 import scodec.bits.ByteVector
 
 /**
@@ -23,11 +25,27 @@ trait HttpClient
   /** Returns the HTTP status code, discarding the response data. */
   def postDiscardResponse[A: Encoder](uri: Uri, data: A, allowedStatusCodes: Set[Int] = Set.empty): Task[/*StatusCode*/Int]
 
-  def liftProblem[A](task: Task[A]): Task[Checked[A]]
+  def liftProblem[A](task: Task[A]): Task[Checked[A]] =
+    HttpClient.liftProblem(task)
 }
 
 object HttpClient
 {
+  /** Lifts a Failure(HttpException#problem) to Success(Left(problem)). */
+  def liftProblem[A](task: Task[A]): Task[Checked[A]] =
+    task.materialize.map {
+      case Failure(t: HttpException) =>
+        t.problem match {
+          case None => Failure(t.appendCurrentStackTrace)
+          case Some(problem) => Success(Left(problem))
+        }
+      case Failure(t) =>
+        Failure(t.appendCurrentStackTrace)
+      case Success(a) =>
+        Success(Right(a))
+    }
+    .dematerialize
+
   abstract class HttpException(message: String) extends RuntimeException(message) {
     def statusInt: Int
     def problem: Option[Problem]

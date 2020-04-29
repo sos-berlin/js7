@@ -8,18 +8,19 @@ import akka.http.scaladsl.model.{HttpEntity, HttpResponse}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.web.HttpClient.liftProblem
 import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.http.AkkaHttpClient.{HttpException, liftProblem}
+import com.sos.jobscheduler.common.http.AkkaHttpClient.HttpException
 import com.sos.jobscheduler.common.http.AkkaHttpClientTest._
 import java.net.ServerSocket
 import java.nio.charset.StandardCharsets.UTF_8
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll
+import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.concurrent.{Await, TimeoutException}
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer

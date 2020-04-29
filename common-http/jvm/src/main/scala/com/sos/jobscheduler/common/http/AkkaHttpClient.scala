@@ -24,7 +24,6 @@ import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.Lazy
 import com.sos.jobscheduler.base.utils.MonixAntiBlocking.executeOn
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichThrowable, RichThrowableEither}
-import com.sos.jobscheduler.base.utils.StackTraces._
 import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.base.web.{HttpClient, Uri}
 import com.sos.jobscheduler.common.http.AkkaHttpClient._
@@ -272,9 +271,6 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
     b.toString
   }
 
-  final def liftProblem[A](task: Task[A]): Task[Checked[A]] =
-    AkkaHttpClient.liftProblem(task)
-
   override def isIgnorableStackTrace(throwable: Throwable) = throwable match {
     case _: akka.stream.StreamTcpException => false
     case _ => true
@@ -295,21 +291,6 @@ object AkkaHttpClient
       case t: HttpException if t.status == Unauthorized || t.status == Forbidden => true
       case _ => false
     }
-
-  /** Lifts a Failure(HttpException#problem) to Success(Left(problem)). */
-  def liftProblem[A](task: Task[A]): Task[Checked[A]] =
-    task.materialize.map {
-      case Failure(t: HttpException) =>
-        t.problem match {
-          case None => Failure(t.appendCurrentStackTrace)
-          case Some(problem) => Success(Left(problem))
-        }
-      case Failure(t) =>
-        Failure(t.appendCurrentStackTrace)
-      case Success(a) =>
-        Success(Right(a))
-    }
-    .dematerialize
 
   final class HttpException private[http](httpResponse: HttpResponse, val uri: Uri, val dataAsString: String)
   extends HttpClient.HttpException(s"${httpResponse.status}: $uri: ${dataAsString.truncateWithEllipsis(ErrorMessageLengthMaximum)}".trim)

@@ -17,10 +17,10 @@ import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.utils.{LockResource, SetOnce}
-import com.sos.jobscheduler.base.web.Uri
+import com.sos.jobscheduler.base.web.{HttpClient, Uri}
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.event.EventIdGenerator
-import com.sos.jobscheduler.common.http.{AkkaHttpClient, RecouplingStreamReader}
+import com.sos.jobscheduler.common.http.RecouplingStreamReader
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.cluster.ClusterWatch.ClusterWatchHeartbeatFromInactiveNodeProblem
 import com.sos.jobscheduler.core.cluster.HttpClusterWatch
@@ -637,7 +637,7 @@ final class Cluster(
         after = after,
         getObservable = (after: EventId) => {
           val eventRequest = EventRequest.singleClass[Event](after = after, timeout = None)
-          AkkaHttpClient.liftProblem(
+          HttpClient.liftProblem(
             api.eventIdObservable(eventRequest, heartbeat = Some(clusterConf.heartbeat)))
         },
         stopRequested = () => stopRequested)

@@ -7,9 +7,9 @@ import com.sos.jobscheduler.base.generic.{Completed, SecretString}
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.HasCloser
+import com.sos.jobscheduler.base.web.HttpClient
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.files.{DirectoryReader, PathSeqDiff, PathSeqDiffer}
-import com.sos.jobscheduler.common.http.AkkaHttpClient
 import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger}
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.sos.jobscheduler.core.crypt.generic.MessageSigners
@@ -72,7 +72,7 @@ extends HasCloser with Observing
       currentEntries = readDirectory
       checkedCommand = toReplaceRepoCommand(versionId getOrElse newVersionId(), currentEntries.map(_.file))
       response <- checkedCommand
-        .traverse(o => AkkaHttpClient.liftProblem(
+        .traverse(o => HttpClient.liftProblem(
           masterApi.executeCommand(o) map ((_: MasterCommand.Response) => Completed)))
         .map(_.flatten)
     } yield {
@@ -154,7 +154,7 @@ extends HasCloser with Observing
     else {
       val v = versionId getOrElse newVersionId()
       logUpdate(v, diff)
-      AkkaHttpClient.liftProblem(
+      HttpClient.liftProblem(
         masterApi.executeCommand(toUpdateRepo(v, diff)) map ((_: MasterCommand.Response) => Completed))
     }
 

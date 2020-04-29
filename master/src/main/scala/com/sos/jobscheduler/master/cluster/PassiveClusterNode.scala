@@ -10,9 +10,9 @@ import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.utils.ScodecUtils.RichByteVector
 import com.sos.jobscheduler.base.utils.SetOnce
-import com.sos.jobscheduler.base.web.Uri
+import com.sos.jobscheduler.base.web.{HttpClient, Uri}
 import com.sos.jobscheduler.common.event.{EventIdGenerator, PositionAnd}
-import com.sos.jobscheduler.common.http.{AkkaHttpClient, RecouplingStreamReader}
+import com.sos.jobscheduler.common.http.RecouplingStreamReader
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.journal.JournalConf
 import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, JournalSeparators}
@@ -225,7 +225,7 @@ import scodec.bits.ByteVector
         clusterConf.recouplingStreamReader)
       {
         protected def getObservable(api: HttpMasterApi, after: EventId) =
-          AkkaHttpClient.liftProblem(
+          HttpClient.liftProblem(
             api.journalObservable(
               fileEventId = continuation.fileEventId,
               position = after,
