@@ -15,7 +15,7 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.cast
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
-import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor
+import com.sos.jobscheduler.core.event.journal.{JournalActor, KeyedJournalingActor}
 import com.sos.jobscheduler.data.job.JobKey
 import com.sos.jobscheduler.data.order.OrderEvent._
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
@@ -26,11 +26,12 @@ import com.typesafe.config.Config
 import monix.execution.Scheduler
 import scala.concurrent.Future
 import scala.concurrent.duration.{Duration, FiniteDuration}
+import shapeless.tag.@@
 
 /**
   * @author Joacim Zschimmer
   */
-final class OrderActor private(orderId: OrderId, protected val journalActor: ActorRef, conf: Conf)
+final class OrderActor private(orderId: OrderId, protected val journalActor: ActorRef @@ JournalActor.type, conf: Conf)
   (implicit scheduler: Scheduler)
 extends KeyedJournalingActor[AgentState, OrderEvent]
 {
@@ -326,7 +327,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
 
 private[order] object OrderActor
 {
-  private[order] def props(orderId: OrderId, journalActor: ActorRef, conf: OrderActor.Conf)(implicit s: Scheduler) =
+  private[order] def props(orderId: OrderId, journalActor: ActorRef @@ JournalActor.type, conf: OrderActor.Conf)(implicit s: Scheduler) =
     Props { new OrderActor(orderId, journalActor = journalActor, conf) }
 
   sealed trait Command

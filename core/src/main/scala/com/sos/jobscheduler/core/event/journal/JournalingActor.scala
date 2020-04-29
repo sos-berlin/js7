@@ -21,6 +21,7 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
+import shapeless.tag.@@
 
 /**
   * @author Joacim Zschimmer
@@ -28,7 +29,7 @@ import scala.util.{Failure, Success}
 trait JournalingActor[S <: JournaledState[S], E <: Event]
 extends Actor with Stash with ActorLogging with ReceiveLoggingActor
 {
-  protected def journalActor: ActorRef
+  protected def journalActor: ActorRef @@ JournalActor.type
   protected def snapshots: Future[Iterable[Any]]
 
   private var stashingCount = 0

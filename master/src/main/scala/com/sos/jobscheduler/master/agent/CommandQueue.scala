@@ -4,12 +4,13 @@ import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Batch
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
+import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.master.agent.AgentDriver.{Input, Queueable, ReleaseEventsQueueable}
 import com.sos.jobscheduler.master.agent.CommandQueue._
 import com.typesafe.scalalogging.{Logger => ScalaLogger}
 import monix.eval.Task
 import monix.execution.Scheduler
-import scala.collection.mutable
+import scala.collection.{View, mutable}
 import scala.util.{Failure, Success}
 
 /**
@@ -22,14 +23,16 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
   protected def asyncOnBatchSucceeded(queuedInputResponses: Seq[QueuedInputResponse]): Unit
   protected def asyncOnBatchFailed(inputs: Vector[Queueable], problem: Problem): Unit
 
+  private val attachedOrderIds = mutable.Set[OrderId]()
   private val executingInputs = mutable.Set[Queueable]()
-  private var freshReconnected = true  // After connect, send a single command first. Start queueing first after one successful response.
+  private var isCoupled = false
+  private var freshlyCoupled = false
   private var openRequestCount = 0
   private var isTerminating = false
 
   private object queue {
     private val queue = mutable.Queue[Queueable]()
-    private val detachQueue = mutable.Queue[Queueable]()  // DetachOrder is sent to Agent prior any AttachOrder, to relieve the Agent
+    private val detachQueue = mutable.Queue[Queueable]()  // DetachOrder is sent to Agent before any AttachOrder, to relieve the Agent
 
     def enqueue(input: Queueable): Unit =
       input match {
@@ -42,19 +45,43 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
       detachQueue.dequeueAll(what)
     }
 
+    def removeAlreadyAttachedOrders(): Unit =
+      queue.removeAll {
+        case o: Input.AttachOrder if attachedOrderIds.contains(o.order.id) && !executingInputs.contains(o) =>
+          logger.trace(s"removeAlreadyAttachedOrders: ${o.order.id}")
+          true
+        case _ =>
+          false
+      }
+
     def size = queue.size + detachQueue.size
 
-    def iterator = detachQueue.iterator ++ queue.iterator
+    def view: View[Queueable] =
+      detachQueue.view ++ queue.view
   }
 
-  final def onCoupled() =
-    freshReconnected = true
+  final def onCoupled(attachedOrderIds: Set[OrderId]) = {
+    this.attachedOrderIds.clear()
+    this.attachedOrderIds ++= attachedOrderIds
+    queue.removeAlreadyAttachedOrders()
+    isCoupled = true
+    freshlyCoupled = true
+    maySend()
+  }
+
+  final def onDecoupled(): Unit =
+    isCoupled = false
 
   final def enqueue(input: Queueable): Unit = {
     assertThat(!isTerminating)
-    queue.enqueue(input)
-    if (queue.size == batchSize || freshReconnected) {
-      maySend()
+    input match {
+      case Input.AttachOrder(order, _, _) if attachedOrderIds contains order.id =>
+        logger.trace(s"AttachOrder(${order.id} ignored because Order is already attached to Agent")
+      case _ =>
+        queue.enqueue(input)
+        if (queue.size == batchSize || freshlyCoupled) {
+          maySend()
+        }
     }
   }
 
@@ -68,10 +95,16 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
   final def isTerminated =
     isTerminating && executingInputs.isEmpty
 
-  final def maySend(): Unit =
-    if (!isTerminating) {
-      lazy val inputs = queue.iterator.filterNot(executingInputs).take(batchSize).toVector
-      if (openRequestCount < commandParallelism && (!freshReconnected || openRequestCount == 0) && inputs.nonEmpty) {
+  final def maySend(): Unit = {
+    logger.trace(s"maySend() isCoupled=$isCoupled freshlyCoupled=$freshlyCoupled openRequestCount=$openRequestCount" +
+      s" commandParallelism=$commandParallelism isTerminating=$isTerminated" +
+      s" attachedOrderIds.size=${attachedOrderIds.size} executingInput={${executingInputs.mkString(" ")}}")
+    if (isCoupled && !isTerminating) {
+      lazy val inputs = queue.view
+        .filterNot(executingInputs)
+        .take(if (freshlyCoupled) 1 else batchSize)  // if freshlyCoupled, send only command to try connection
+        .toVector
+      if (openRequestCount < commandParallelism && (!freshlyCoupled || openRequestCount == 0) && inputs.nonEmpty) {
         executingInputs ++= inputs
         openRequestCount += 1
         executeCommand(Batch(inputs map inputToAgentCommand))
@@ -87,6 +120,7 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
           }
       }
     }
+  }
 
   private def inputToAgentCommand(input: Queueable): AgentCommand =
     input match {
@@ -101,8 +135,11 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
     }
 
   final def handleBatchSucceeded(responses: Seq[QueuedInputResponse]): Seq[Queueable] = {
-    freshReconnected = false
+    freshlyCoupled = false
     val inputs = responses.map(_.input).toSet
+    attachedOrderIds --= inputs collect { case Input.DetachOrder(orderId) => orderId }
+    attachedOrderIds ++= inputs collect { case Input.AttachOrder(order, _, _) => order.id }
+    logger.trace(s"attachedOrderIds=${attachedOrderIds.toSeq.sorted.mkString(" ")}")
     queue.dequeueAll(inputs)  // Including rejected commands. The corresponding orders are ignored henceforth.
     onQueuedInputsResponded(inputs)
     responses.flatMap {

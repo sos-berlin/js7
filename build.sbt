@@ -25,7 +25,6 @@ import BuildUtils._
 import java.nio.file.Paths
 import sbt.Keys.testOptions
 import sbt.file
-import scala.collection.immutable.ListMap
 // shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
 
@@ -403,6 +402,7 @@ lazy val core = project.dependsOn(common, tester.jvm % "test")
   .settings {
     import Dependencies._
     libraryDependencies ++=
+      shapeless ++
       bouncyCastle ++
       akkaHttpTestkit % "test" ++
       scalaTest % "test" ++

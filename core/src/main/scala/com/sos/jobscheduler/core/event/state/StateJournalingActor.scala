@@ -4,7 +4,7 @@ import akka.actor.{ActorRef, Props}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.scalautil.MonixUtils.promiseTask
-import com.sos.jobscheduler.core.event.journal.MainJournalingActor
+import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActor}
 import com.sos.jobscheduler.core.event.state.StateJournalingActor._
 import com.sos.jobscheduler.data.event.{Event, JournaledState, KeyedEvent, Stamped}
 import monix.eval.Task
@@ -12,10 +12,11 @@ import monix.execution.Scheduler
 import scala.concurrent.{Future, Promise}
 import scala.reflect.runtime.universe._
 import scala.util.{Failure, Success, Try}
+import shapeless.tag.@@
 
 private[state] final class StateJournalingActor[S <: JournaledState[S], E <: Event](
   initialState: S,
-  protected val journalActor: ActorRef,
+  protected val journalActor: ActorRef @@ JournalActor.type,
   persistPromise: Promise[PersistFunction[S, E]])
   (implicit S: TypeTag[S], s: Scheduler)
 extends MainJournalingActor[S, E]
@@ -67,7 +68,7 @@ private[state] object StateJournalingActor
 
   def props[S <: JournaledState[S], E <: Event](
     initialState: S,
-    journalActor: ActorRef,
+    journalActor: ActorRef @@ JournalActor.type,
     persistPromise: Promise[PersistFunction[S, E]])
     (implicit S: TypeTag[S], s: Scheduler)
   =

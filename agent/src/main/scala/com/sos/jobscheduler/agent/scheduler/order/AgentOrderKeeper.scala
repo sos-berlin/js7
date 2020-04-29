@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.agent.scheduler.order
 
-import akka.actor.{DeadLetterSuppression, Stash, Terminated}
+import akka.actor.{ActorRef, DeadLetterSuppression, Stash, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
 import com.sos.jobscheduler.agent.AgentState
@@ -8,6 +8,7 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, CancelOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, OrderCommand, ReleaseEvents, Response}
 import com.sos.jobscheduler.agent.data.event.AgentMasterEvent.AgentReadyForMaster
+import com.sos.jobscheduler.agent.data.problems.AgentDuplicateOrderProblem
 import com.sos.jobscheduler.agent.scheduler.job.JobActor
 import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
 import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper._
@@ -23,15 +24,14 @@ import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.utils.SetOnce
 import com.sos.jobscheduler.common.akkautils.Akkas.{encodeAsActorName, uniqueActorName}
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
-import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.Logger.ops._
 import com.sos.jobscheduler.common.utils.Exceptions.wrapException
 import com.sos.jobscheduler.core.crypt.SignatureVerifier
-import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
 import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActor}
+import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
 import com.sos.jobscheduler.core.filebased.FileBasedVerifier
 import com.sos.jobscheduler.core.problems.ReverseReleaseEventsProblem
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
@@ -64,9 +64,8 @@ final class AgentOrderKeeper(
   recovered_ : OrderJournalRecoverer.Recovered,
   signatureVerifier: SignatureVerifier,
   newTaskRunner: TaskRunner.Factory,
+  persistence: JournaledStatePersistence[AgentState],
   implicit private val askTimeout: Timeout,
-  eventIdGenerator: EventIdGenerator,
-  keyedEventBus: StampedKeyedEventBus,
   conf: AgentConfiguration)(
   implicit scheduler: Scheduler)
 extends MainJournalingActor[AgentState, Event]
@@ -76,12 +75,10 @@ with Stash {
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 
-  private val journalMeta = recovered_.journalMeta
+  protected val journalActor = tag[JournalActor.type](persistence.journalActor: ActorRef)
+
   private var journalState = JournalState.empty
   private val workflowVerifier = new FileBasedVerifier(signatureVerifier, Workflow.topJsonDecoder)
-  protected val journalActor = tag[JournalActor.type](watch(actorOf(
-    JournalActor.props[AgentState](journalMeta, conf.journalConf, keyedEventBus, scheduler, eventIdGenerator),
-    "Journal")))
   private val jobRegister = new JobRegister
   private val workflowRegister = new WorkflowRegister
   private val orderActorConf = OrderActor.Conf(conf.config)
@@ -149,6 +146,7 @@ with Stash {
   }
   import shutdown.shuttingDown
 
+  watch(journalActor)
   self ! Internal.Recover(recovered_)
   // Do not use recovered_ after here to allow release of the big object
 
@@ -184,12 +182,14 @@ with Stash {
         orderRegister.recover(order, workflow, actor)
         actor ! OrderActor.Input.Recover(order)
       }
+    val agentState = AgentState(recovered.eventId,
+      JournaledState.Standards.empty.copy(journalState = journalState),
+      orderRegister.values.view.map(o => o.order.id -> o.order).toMap,
+      workflowRegister.workflows.view.map(o => o.id -> o).toMap)
+    persistence.start(agentState)
     recovered.startJournalAndFinishRecovery(
       journalActor = journalActor,
-      AgentState(recovered.eventId,
-        JournaledState.Standards.empty.copy(journalState = journalState),
-        orderRegister.values.view.map(o => o.order.id -> o.order).toMap,
-        workflowRegister.workflows.view.map(o => o.id -> o).toMap),
+      agentState,
       orderRegister.recoveredJournalingActors)
     become("Recovering")(recovering)
   }
@@ -251,11 +251,9 @@ with Stash {
       promise completeWith {
         if (!workflow.isDefinedAt(order.position))
           Future.successful(Left(Problem.pure(s"Unknown Position ${order.workflowPosition}")))
-        else if (orderRegister contains order.id) {
-          // Some interference with other Actor messages?
-          logger.debug(s"Ignoring duplicate AttachOrder(${order.id}), detected while ContinueAttachOrder")
-          Future.successful(Right(Response.Accepted))
-        } else if (shuttingDown)
+        else if (orderRegister contains order.id)
+          Future.successful(Left(AgentDuplicateOrderProblem(order.id)))
+        else if (shuttingDown)
           Future.successful(Left(AgentIsShuttingDownProblem))
         else
           attachOrder(workflowRegister.reuseMemory(order), workflow)
@@ -285,11 +283,9 @@ with Stash {
           workflowVerifier.verify(signedWorkflowString) match {
             case Left(problem) => Future.successful(Left(problem))
             case Right(verified) =>
-              if (orderRegister contains order.id) {
-                // May occur after Master restart when Master is not sure about order has been attached previously.
-                logger.debug(s"Ignoring duplicate AttachOrder(${order.id})")
-                Future.successful(Right(Response.Accepted))
-              } else {
+              if (orderRegister contains order.id)
+                Future.successful(Left(AgentDuplicateOrderProblem(order.id)))
+              else {
                 val workflow = verified.signedFileBased.value.reduceForAgent(agentRefPath)
                 (workflowRegister.get(order.workflowId) match {
                   case None =>

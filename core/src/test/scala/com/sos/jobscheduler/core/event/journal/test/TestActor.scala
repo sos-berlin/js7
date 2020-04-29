@@ -25,6 +25,7 @@ import monix.execution.Scheduler
 import scala.collection.mutable
 import scala.concurrent.Promise
 import scala.concurrent.duration.DurationInt
+import shapeless.tag
 
 /**
   * @author Joacim Zschimmer
@@ -36,11 +37,11 @@ extends Actor with Stash
 
   override val supervisorStrategy = SupervisorStrategies.escalate
   private implicit val askTimeout = Timeout(99.seconds)
-  private val journalActor = context.watch(context.actorOf(
+  private val journalActor = tag[JournalActor.type](context.watch(context.actorOf(
     JournalActor.props[TestState](journalMeta, JournalConf.fromConfig(config withFallback TestConfig), new StampedKeyedEventBus, Scheduler.global,
       new EventIdGenerator(new EventIdClock.Fixed(currentTimeMillis = 1000/*EventIds start at 1000000*/)),
       journalStopped),
-    "Journal"))
+    "Journal")))
   private val keyToAggregate = mutable.Map[String, ActorRef]()
   private var terminator: ActorRef = null
 

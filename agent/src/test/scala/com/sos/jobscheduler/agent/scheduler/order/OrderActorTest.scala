@@ -51,6 +51,7 @@ import scala.collection.mutable
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
+import shapeless.tag
 
 /**
   * @author Joacim Zschimmer
@@ -161,9 +162,9 @@ private object OrderActorTest {
       eventJsonCodec = KeyedEvent.typedJsonCodec[Event](KeyedSubtype[OrderEvent]),
       dir / "data" / "state" / "agent")
 
-    private val journalActor = actorOf(
+    private val journalActor = tag[JournalActor.type](actorOf(
       JournalActor.props[AgentState](journalMeta, JournalConf.fromConfig(config), new StampedKeyedEventBus, Scheduler.global, new EventIdGenerator),
-      "Journal")
+      "Journal"))
     private val eventWatch = new JournalEventWatch(journalMeta, config)
     private val jobActor = actorOf(
       JobActor.props(JobActor.Conf(jobKey, workflowJob, taskRunnerFactory,

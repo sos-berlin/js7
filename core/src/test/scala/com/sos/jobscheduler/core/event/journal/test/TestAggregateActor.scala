@@ -5,14 +5,15 @@ import akka.actor.{ActorRef, Status}
 import com.sos.jobscheduler.base.generic.Accepted
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichThrowable, cast}
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor
 import com.sos.jobscheduler.core.event.journal.test.TestAggregateActor._
+import com.sos.jobscheduler.core.event.journal.{JournalActor, KeyedJournalingActor}
 import scala.util.{Failure, Success}
+import shapeless.tag.@@
 
 /**
   * @author Joacim Zschimmer
   */
-private[test] final class TestAggregateActor(protected val key: String, val journalActor: ActorRef)
+private[test] final class TestAggregateActor(protected val key: String, val journalActor: ActorRef @@ JournalActor.type)
 extends KeyedJournalingActor[TestState, TestEvent] {
 
   import context.dispatcher
@@ -76,7 +77,10 @@ extends KeyedJournalingActor[TestState, TestEvent] {
           val event = TestEvent.NothingDone
           persistAcceptEarly(event) onComplete {
             // persistAcceptEarly does not update persistedEventId
-            case Success(_: Accepted) => sender ! Response.Completed(disturbance)
+            case Success(Right(_: Accepted)) => sender ! Response.Completed(disturbance)
+            case Success(Left(problem)) =>
+              logger.error(problem.toString)
+              sender ! Status.Failure(problem.throwable)
             case Failure(t) =>
               logger.error(t.toStringWithCauses, t)
               sender ! Status.Failure(t)

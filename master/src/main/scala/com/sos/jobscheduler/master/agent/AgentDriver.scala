@@ -3,12 +3,12 @@ package com.sos.jobscheduler.master.agent
 import akka.actor.{ActorRef, DeadLetterSuppression, Props}
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{CoupleMaster, RegisterAsMaster}
 import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
 import com.sos.jobscheduler.base.auth.UserAndPassword
 import com.sos.jobscheduler.base.generic.{Completed, SecretString}
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.problem.Problems.InvalidSessionTokenProblem
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.utils.SetOnce
@@ -19,7 +19,7 @@ import com.sos.jobscheduler.common.http.RecouplingStreamReader
 import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.MonixUtils.promiseTask
-import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor
+import com.sos.jobscheduler.core.event.journal.{JournalActor, KeyedJournalingActor}
 import com.sos.jobscheduler.data.agent.{AgentRefPath, AgentRunId}
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.crypt.Signed
@@ -41,6 +41,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NoStackTrace
 import scala.util.{Failure, Success, Try}
+import shapeless.tag.@@
 
 /**
   * Couples to an Agent, sends orders, and fetches events.
@@ -53,7 +54,7 @@ final class AgentDriver private(agentRefPath: AgentRefPath,
   initialEventId: EventId,
   conf: AgentDriverConfiguration,
   masterConfiguration: MasterConfiguration,
-  protected val journalActor: ActorRef)
+  protected val journalActor: ActorRef @@ JournalActor.type)
   (implicit scheduler: Scheduler)
 extends KeyedJournalingActor[MasterState, MasterAgentEvent]
 with ReceiveLoggingActor.WithStash
@@ -77,10 +78,16 @@ with ReceiveLoggingActor.WithStash
   private val eventFetcher = new RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], AgentClient](
     _.eventId, agentUserAndPassword, conf.recouplingStreamReader)
   {
+    private var attachedOrderIds: Set[OrderId] = null
+
     override protected def couple(eventId: EventId) =
       registerAsMasterIfNeeded >>
-        client.commandExecute(AgentCommand.CoupleMaster(agentRunIdOnce.orThrow, eventId = eventId))
-          .map(_.map((_: AgentCommand.Response.Accepted) => Completed))
+        client.commandExecute(CoupleMaster(agentRunIdOnce.orThrow, eventId = eventId))
+          .map(_.map { case CoupleMaster.Response(orderIds) =>
+            logger.trace(s"CoupleMaster returned attached OrderIds={${orderIds.toSeq.sorted.mkString(" ")}}")
+            attachedOrderIds = orderIds
+            Completed
+          })
 
     protected def getObservable(api: AgentClient, after: EventId) =
       Task { logger.debug(s"getObservable(after=$after)") } >>
@@ -94,11 +101,15 @@ with ReceiveLoggingActor.WithStash
     override protected def onCoupled(api: AgentClient, after: EventId) =
       promiseTask[Completed] { promise =>
         logger.info(s"Coupled with $api after=${EventId.toString(after)}")
-        self ! Internal.OnCoupled(promise)
+        assertThat(attachedOrderIds != null)
+        self ! Internal.OnCoupled(promise, attachedOrderIds)
+        attachedOrderIds = null
       }
 
-    //override protected def logEvent(stampedEvent: Stamped[AnyKeyedEvent]) =
-    //  AgentDriver.this.logEvent(stampedEvent)
+    override protected def onDecoupled() = Task {
+      self ! Internal.OnDecoupled
+      Completed
+    }
 
     protected def stopRequested = false
   }
@@ -116,16 +127,19 @@ with ReceiveLoggingActor.WithStash
     protected def asyncOnBatchSucceeded(queuedInputResponses: Seq[QueuedInputResponse]) =
       self ! Internal.BatchSucceeded(queuedInputResponses)
 
-    protected def asyncOnBatchFailed(inputs: Vector[Queueable], problem: Problem) = {
-      if (problem == InvalidSessionTokenProblem) {
-        // Force recoupling with new login
-        eventFetcher.invalidateCoupledApi
-          .foreach { _ =>  // Asynchronous
-            currentFetchedFuture foreach (_.cancel())
+    protected def asyncOnBatchFailed(inputs: Vector[Queueable], problem: Problem) =
+      (eventFetcher.invalidateCoupledApi
+        .map { o =>
+          currentFetchedFuture foreach (_.cancel())
+          o
+        } >>
+          cancelObservationAndAwaitTermination >>
+          eventFetcher.decouple >>
+          Task {
+            self ! Internal.BatchFailed(inputs, problem)
+            self ! Internal.FetchEvents
           }
-      }
-      self ! Internal.BatchFailed(inputs, problem)
-    }
+      ).runToFuture
   }
 
   protected def key = agentRefPath  // Only one version is active at any time
@@ -187,18 +201,17 @@ with ReceiveLoggingActor.WithStash
       assertThat(currentFetchedFuture.isEmpty, "Duplicate fetchEvents")
       currentFetchedFuture = Some(
         observeAndConsumeEventsUntilCancelled
-          .executeWithOptions(_.enableAutoCancelableRunLoops)
           .onCancelRaiseError(CancelledMarker)
+          .executeWithOptions(_.enableAutoCancelableRunLoops)
           .runToFuture
           .andThen {
             case tried => self ! Internal.FetchFinished(tried)
           })
 
-    case Internal.OnCoupled(promise) =>
+    case Internal.OnCoupled(promise, agentOrderIds) =>
       lastProblem = None
       delayNextReleaseEvents = false
-      commandQueue.onCoupled()
-      commandQueue.maySend()
+      commandQueue.onCoupled(agentOrderIds)
       promise.success(Completed)
 
     case Internal.OnCouplingFailed(problem, promise) =>
@@ -214,6 +227,9 @@ with ReceiveLoggingActor.WithStash
             Completed
           }
         })
+
+    case Internal.OnDecoupled =>
+      commandQueue.onDecoupled()
 
     case Internal.FetchedEvents(stampedEvents, promise) =>
       assertThat(stampedEvents.nonEmpty)
@@ -274,7 +290,7 @@ with ReceiveLoggingActor.WithStash
 
       val cancelledOrderIds = succeededInputs collect { case o: Input.CancelOrder => o.orderId }
       if (cancelledOrderIds.nonEmpty) {
-        context.parent ! Output.OrdersCancelationMarked(cancelledOrderIds.toSet)
+        context.parent ! Output.OrdersCancellationMarked(cancelledOrderIds.toSet)
       }
 
       val releaseEvents = succeededInputs collect { case o: ReleaseEventsQueueable => o }
@@ -287,7 +303,7 @@ with ReceiveLoggingActor.WithStash
     case Internal.BatchFailed(inputs, problem) =>
       problem match {
         case RecouplingStreamReader.TerminatedProblem =>
-         logger.debug(s"Command batch failed: $problem")
+          logger.debug(s"Command batch failed: $problem")
         case _ =>
           logger.warn(s"Command batch failed: $problem")
       }
@@ -327,7 +343,7 @@ with ReceiveLoggingActor.WithStash
     if (agentRunIdOnce.nonEmpty)
       Task.pure(Completed)
     else
-      client.commandExecute(AgentCommand.RegisterAsMaster)
+      client.commandExecute(RegisterAsMaster)
         .map(_.map(_.agentRunId).orThrowWithoutStacktrace/*TODO Safe original Problem, package in special ProblemException and let something like Problem.pure don't _wrap_ the Problem?*/)
         .flatMap { agentRunId =>
           val event = AgentRegisteredMaster(agentRunId)
@@ -363,7 +379,7 @@ private[master] object AgentDriver
 
   def props(agentRefPath: AgentRefPath, uri: Uri, agentRunId: Option[AgentRunId], eventId: EventId,
     agentDriverConfiguration: AgentDriverConfiguration, masterConfiguration: MasterConfiguration,
-    journalActor: ActorRef)(implicit s: Scheduler)
+    journalActor: ActorRef @@ JournalActor.type)(implicit s: Scheduler)
   =
     Props { new AgentDriver(agentRefPath, uri, agentRunId, eventId, agentDriverConfiguration, masterConfiguration, journalActor) }
 
@@ -395,7 +411,7 @@ private[master] object AgentDriver
   object Output {
     final case class EventsFromAgent(stamped: Seq[Stamped[AnyKeyedEvent]], promise: Promise[Completed])
     final case class OrdersDetached(orderIds: Set[OrderId])
-    final case class OrdersCancelationMarked(orderIds: Set[OrderId])
+    final case class OrdersCancellationMarked(orderIds: Set[OrderId])
   }
 
   private object Internal {
@@ -407,7 +423,8 @@ private[master] object AgentDriver
       extends DeadLetterSuppression
     final case class FetchFinished(tried: Try[Completed]) extends DeadLetterSuppression
     final case class OnCouplingFailed(problem: Problem, promise: Promise[Completed]) extends DeadLetterSuppression
-    final case class OnCoupled(promise: Promise[Completed]) extends DeadLetterSuppression
+    final case class OnCoupled(promise: Promise[Completed], orderIds: Set[OrderId]) extends DeadLetterSuppression
+    final case object OnDecoupled extends DeadLetterSuppression
     final case class EventsAccepted(agentEventId: EventId, promise: Promise[Completed]) extends DeadLetterSuppression
     final case object ReleaseEvents extends DeadLetterSuppression
     final case class UriChanged(uri: Uri) extends DeadLetterSuppression

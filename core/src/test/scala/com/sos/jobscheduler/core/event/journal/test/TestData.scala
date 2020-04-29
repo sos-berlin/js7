@@ -19,7 +19,7 @@ private[event] object TestData
      |jobscheduler.journal.snapshot.log-period = 10ms
      |jobscheduler.journal.snapshot.log-actor-limit = 1
      |jobscheduler.journal.event-buffer-size = 1000
-     |jobscheduler.journal.slow-check-journaled-state = false
+     |jobscheduler.journal.slow-check-journaled-state = true
      |jobscheduler.journal.snapshot.period = 1h
      |jobscheduler.journal.snapshot.when-bigger-than = 1G
      |jobscheduler.journal.ack-warn-duration = 10s

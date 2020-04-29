@@ -52,6 +52,9 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
   protected def onCoupled(api: Api, after: I): Task[Completed] =
     Task.pure(Completed)
 
+  protected def onDecoupled(): Task[Completed] =
+    Task.pure(Completed)
+
   protected def eof(index: I) = false
 
   protected def idleTimeout = conf.timeout
@@ -83,7 +86,9 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
     coupledApiVar.tryTake
       .flatMap {
         case None => Task.pure(Completed)
-        case Some(api) => api.logoutOrTimeout(idleTimeout)
+        case Some(api) =>
+          onDecoupled() >>
+            api.logoutOrTimeout(idleTimeout)
       }
 
   final def invalidateCoupledApi: Task[Completed] =
@@ -139,13 +144,14 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
                 case Left(problem) =>
                   (problem match {
                     case InvalidSessionTokenProblem =>
-                      scribe.debug(s"$api: $InvalidSessionTokenProblem")
-                      decouple
+                      Task { scribe.debug(s"$api: $InvalidSessionTokenProblem") }
                     case _ =>
-                      onCouplingFailed(api, problem) >> decouple
+                      onCouplingFailed(api, problem)
                   }) >>
+                    decouple >>
                     pauseBeforeRecoupling >>
                     Task.pure(Left(()))
+
                 case Right(observable) =>
                   Task.pure(Right(observable))
               })

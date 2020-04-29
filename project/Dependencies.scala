@@ -26,6 +26,7 @@ object Dependencies
   val scalaJsDomVersion = "0.9.7"
   val sangriaVersion = "2.0.0-M4"
   val sangriaCirceVersion = "1.3.0"
+  val shapelessVersion = "2.3.3"
 
   val slf4j               = "org.slf4j" % "slf4j-api"    % slf4jVersion
   val slf4jNop            = "org.slf4j" % "slf4j-nop"    % slf4jVersion
@@ -46,6 +47,7 @@ object Dependencies
                             "org.scalacheck" %% "scalacheck" % scalaCheckVersion :: Nil
   val scalaLogging        = "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2" :: slf4j :: Nil
   val cats                = "org.typelevel" %% "cats-core" % catsVersion
+  val shapeless           = "com.chuusai" %% "shapeless" % shapelessVersion
 
   val javaxInject         = "javax.inject" % "javax.inject" % "1"
   val guice               = ("com.google.inject" % "guice" % "4.2.2" classifier "no_aop") :: javaxInject :: Nil

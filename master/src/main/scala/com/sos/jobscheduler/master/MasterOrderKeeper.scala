@@ -340,8 +340,9 @@ with MainJournalingActor[MasterState, Event]
           .pipeTo(self)
       }
 
+      // Proceed order before starting AgentDrivers, so AgentDrivers may match recovered OrderIds with Agent's OrderIds
       for (order <- orderRegister.values.toVector/*copy*/) {  // Any ordering when continuing orders???
-        proceedWithOrder(order)  // May persist events! May send AttachOrder to AgentDriver!
+        proceedWithOrder(order)  // May persist events!
       }
       afterProceedEvents.persistThenHandleEvents()  // Persist and handle before Internal.Ready
       if (persistedEventId > EventId.BeforeFirst) {  // Recovered?
@@ -476,7 +477,7 @@ with MainJournalingActor[MasterState, Event]
         checkForEqualOrdersState()
       }
 
-    case AgentDriver.Output.OrdersCancelationMarked(orderIds) =>
+    case AgentDriver.Output.OrdersCancellationMarked(orderIds) =>
       val unknown = orderIds -- orderRegister.keySet
       if (unknown.nonEmpty) {
         logger.error(s"Response to AgentCommand.CancelOrder from Agent for unknown orders: "+ unknown.mkString(", "))
@@ -508,8 +509,13 @@ with MainJournalingActor[MasterState, Event]
       context.stop(self)
 
     case Internal.ClusterModuleTerminatedUnexpectedly(tried) =>
-      // Stacktrace is being debug-logged by Cluster
-      logger.error(s"Cluster module terminated unexpectedly with $tried ")
+      // Stacktrace has been debug-logged by Cluster
+      val msg = tried match {
+        case Success(Right(Completed)) => "Completed"
+        case Success(Left(problem)) => problem
+        case Failure(t) => t
+      }
+      logger.error(s"Cluster module terminated unexpectedly: $msg ")
       context.stop(self)
   }
 

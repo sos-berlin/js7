@@ -3,14 +3,16 @@ package com.sos.jobscheduler.agent.data.commands
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Batch, DetachOrder, NoOperation, ShutDown}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.TestCodeProblem
-import com.sos.jobscheduler.data.agent.AgentRefPath
+import com.sos.jobscheduler.data.agent.{AgentRefPath, AgentRunId}
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.crypt.{GenericSignature, SignedString}
+import com.sos.jobscheduler.data.event.JournalId
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.test.TestSetting.SimpleTestWorkflow
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.Json
+import java.util.UUID
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.DurationInt
 
@@ -34,7 +36,7 @@ final class AgentCommandTest extends AnyFreeSpec
     testJson[AgentCommand.Response](
       AgentCommand.Batch.Response(Right(AgentCommand.Response.Accepted) :: Left(TestCodeProblem(Map("ARG" -> "VALUE"))) :: Nil),
       json"""{
-        "TYPE": "BatchResponse",
+        "TYPE": "Batch.Response",
         "responses": [
           { "TYPE": "Accepted" },
           {
@@ -76,7 +78,7 @@ final class AgentCommandTest extends AnyFreeSpec
   }
 
   "ReleaseEvents" in {
-    check(AgentCommand.ReleaseEvents(123),
+    check(AgentCommand.ReleaseEvents(123L),
       json"""{
         "TYPE": "ReleaseEvents",
         "untilEventId": 123
@@ -94,6 +96,33 @@ final class AgentCommandTest extends AnyFreeSpec
     check(AgentCommand.RegisterAsMaster,
       json"""{
         "TYPE": "RegisterAsMaster"
+      }""")
+  }
+
+  "RegisterAsMaster.Response" in {
+    testJson[AgentCommand.Response](
+      AgentCommand.RegisterAsMaster.Response(AgentRunId(JournalId(UUID.fromString("11111111-2222-3333-4444-555555555555")))),
+      json"""{
+        "TYPE": "RegisterAsMaster.Response",
+        "agentRunId": "ERERESIiMzNERFVVVVVVVQ"
+      }""")
+  }
+
+  "CoupleMaster" in {
+    check(AgentCommand.CoupleMaster(AgentRunId(JournalId(UUID.fromString("11111111-2222-3333-4444-555555555555"))), 1000L),
+      json"""{
+        "TYPE": "CoupleMaster",
+        "agentRunId": "ERERESIiMzNERFVVVVVVVQ",
+        "eventId": 1000
+      }""")
+  }
+
+  "CoupleMaster.Response" in {
+    testJson[AgentCommand.Response](
+      AgentCommand.CoupleMaster.Response(Set(OrderId("ORDER"))),
+      json"""{
+        "TYPE": "CoupleMaster.Response",
+        "orderIds": [ "ORDER" ]
       }""")
   }
 

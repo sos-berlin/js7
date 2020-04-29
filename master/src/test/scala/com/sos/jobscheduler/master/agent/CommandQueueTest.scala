@@ -28,8 +28,8 @@ import scala.language.reflectiveCalls
 /**
   * @author Joacim Zschimmer
   */
-final class CommandQueueTest extends AnyFreeSpec {
-
+final class CommandQueueTest extends AnyFreeSpec
+{
   "test" in {
     val commandQueue = new CommandQueue(logger, batchSize = 3) {
       val succeeded = mutable.Buffer[Seq[QueuedInputResponse]]()
@@ -49,7 +49,7 @@ final class CommandQueueTest extends AnyFreeSpec {
 
     val expected = mutable.Buffer[Seq[QueuedInputResponse]]()
 
-    commandQueue.onCoupled()
+    commandQueue.onCoupled(Set.empty)
 
     // The first Input is sent alone to the Agent regardless of commandBatchSize.
     val aOrder = toOrder("A")

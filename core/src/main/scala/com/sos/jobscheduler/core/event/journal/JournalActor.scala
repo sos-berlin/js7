@@ -624,6 +624,7 @@ extends Actor with Stash
       Some(PositionAnd(snapshotWriter.fileLength, snapshotTaken.eventId)), Actor.noSender, null, null)
     snapshotWriter.flush(sync = conf.syncOnCommit)
     lastWrittenEventId = snapshotTaken.eventId
+    uncommittedJournaledState = uncommittedJournaledState.applyStampedEvents(snapshotTaken :: Nil).orThrow
     if (!requireClusterAcknowledgement) {
       lastAcknowledgedEventId = lastWrittenEventId  // We do not care for the acknowledgement of SnapshotTaken only, to ease shutdown ???
     }

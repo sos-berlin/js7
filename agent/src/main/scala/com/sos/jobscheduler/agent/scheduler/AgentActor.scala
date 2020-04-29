@@ -2,13 +2,14 @@ package com.sos.jobscheduler.agent.scheduler
 
 import akka.actor.{ActorRef, PoisonPill, Props, Terminated}
 import akka.pattern.{ask, pipe}
-import cats.instances.future._
+import cats.data.EitherT
+import com.sos.jobscheduler.agent.AgentState
 import com.sos.jobscheduler.agent.configuration.{AgentConfiguration, AgentStartInformation}
 import com.sos.jobscheduler.agent.data.AgentTermination
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.Response
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.CoupleMaster
 import com.sos.jobscheduler.agent.data.event.KeyedEventJsonFormats.AgentKeyedEventJsonCodec
-import com.sos.jobscheduler.agent.data.problems.MasterAgentMismatchProblem
+import com.sos.jobscheduler.agent.data.problems.{MasterAgentMismatchProblem, UnknownMasterProblem}
 import com.sos.jobscheduler.agent.data.views.AgentOverview
 import com.sos.jobscheduler.agent.scheduler.AgentActor._
 import com.sos.jobscheduler.agent.scheduler.job.JobActor
@@ -18,11 +19,10 @@ import com.sos.jobscheduler.agent.scheduler.problems.AgentIsShuttingDownProblem
 import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.Closer.syntax._
-import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.utils.{Closer, SetOnce}
 import com.sos.jobscheduler.common.akkautils.{Akkas, SupervisorStrategies}
 import com.sos.jobscheduler.common.event.EventIdGenerator
@@ -37,7 +37,7 @@ import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActor}
-import com.sos.jobscheduler.core.problems.NoSuchMasterProblem
+import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
 import com.sos.jobscheduler.data.agent.AgentRunId
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{EventId, JournalEvent, JournalId, JournalState, KeyedEvent, Stamped}
@@ -45,6 +45,7 @@ import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.workflow.Workflow
 import javax.inject.{Inject, Singleton}
+import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.{Future, Promise}
 import shapeless.tag
@@ -89,7 +90,7 @@ extends MainJournalingActor[AgentServerState, AgentEvent] {
   override def postStop() = {
     for (m <- masterToOrderKeeper.values) m.eventWatch.close()
     super.postStop()
-    terminatePromise.success(AgentTermination.Terminate(restart = shutDownCommand.fold(false)(_.restart)))
+    terminatePromise.trySuccess(AgentTermination.Terminate(restart = shutDownCommand.fold(false)(_.restart)))
     logger.debug("Stopped")
   }
 
@@ -191,13 +192,20 @@ extends MainJournalingActor[AgentServerState, AgentEvent] {
           case Some(registeredMaster) =>
             response.completeWith(
               checkMaster(masterId, None, EventId.BeforeFirst)
-                .map(_.map(_ => AgentCommand.RegisterAsMaster.Response(registeredMaster.agentRunId))))
+                .map(_.map((_: MasterRegister.Entry) => AgentCommand.RegisterAsMaster.Response(registeredMaster.agentRunId)))
+                .runToFuture)
         }
 
       case AgentCommand.CoupleMaster(agentRunId, eventId) if !terminating =>
         // Command does not change state. It only checks the coupling (for now)
         response.completeWith(
-          checkMaster(masterId, Some(agentRunId), eventId))
+          ( for {
+              entry <- EitherT(checkMaster(masterId, Some(agentRunId), eventId))
+              response <- EitherT(entry.persistence.currentState
+                .map(state => Checked(CoupleMaster.Response(state.idToOrder.keySet))))
+            } yield response
+          ).value
+            .runToFuture)
 
       case command @ (_: AgentCommand.OrderCommand | _: AgentCommand.TakeSnapshot.type) =>
         masterToOrderKeeper.checked(masterId) match {
@@ -212,22 +220,20 @@ extends MainJournalingActor[AgentServerState, AgentEvent] {
     }
   }
 
-  private def checkMaster(masterId: MasterId, requiredAgentRunId: Option[AgentRunId], eventId: EventId): Future[Checked[Response.Accepted]] =
-    for {
-      checkedMaster <- Future.successful(state.idToMaster.rightOr(masterId,
-        Problem.pure(s"Agent does not know MasterId: $masterId")))
-      checkedEntry <- Future.successful(masterToOrderKeeper.checked(masterId))
-      checkedEventWatch <- checkedEntry.traverse(_.eventWatch.whenStarted)
-    } yield {
-      for {
-        _ <- checkedMaster
-          .flatMap { registeredMaster =>
-            assertThat(checkedEntry.map(_.agentRunId) == Right(registeredMaster.agentRunId))
+  private def checkMaster(masterId: MasterId, requiredAgentRunId: Option[AgentRunId], eventId: EventId): Task[Checked[MasterRegister.Entry]] = {
+    def pure[A](a: Checked[A]) = EitherT(Task.pure(a))
+    ( for {
+        registeredMaster <- pure(state.idToMaster.get(masterId).toChecked(UnknownMasterProblem(masterId)))
+        entry <- pure(masterToOrderKeeper.checked(masterId))
+        eventWatch <- EitherT(Task.fromFuture(entry.eventWatch.whenStarted) map Checked.apply)
+        _ <- pure {
+            assertThat(entry.agentRunId == registeredMaster.agentRunId)
             Checked.cond(requiredAgentRunId.forall(_ == registeredMaster.agentRunId), (), MasterAgentMismatchProblem)
           }
-        _ <- checkedEventWatch.flatMap(_.checkEventId(eventId))
-      } yield AgentCommand.Response.Accepted
-    }
+        _ <- pure(eventWatch.checkEventId(eventId))
+      } yield entry
+    ).value
+  }
 
   private def continueTermination(): Unit =
     if (terminating && masterToOrderKeeper.isEmpty) {
@@ -252,6 +258,10 @@ extends MainJournalingActor[AgentServerState, AgentEvent] {
     val journalMeta = JournalMeta(SnapshotJsonFormat, AgentKeyedEventJsonCodec, stateDirectory / s"master-$masterId")
     val recovered = OrderJournalRecoverer.recover(journalMeta, agentRunId.journalId, agentConfiguration)  // May take minutes !!!
     recovered.closeWithCloser
+    val journalActor = tag[JournalActor.type](actorOf(
+      JournalActor.props[AgentState](journalMeta, agentConfiguration.journalConf, keyedEventBus, scheduler, eventIdGenerator),
+      Akkas.encodeAsActorName(s"JournalActor-for-$masterId")))
+    val persistence = new JournaledStatePersistence[AgentState](journalActor)
     val actor = actorOf(
       Props {
         new AgentOrderKeeper(
@@ -259,13 +269,12 @@ extends MainJournalingActor[AgentServerState, AgentEvent] {
           recovered,
           signatureVerifier,
           newTaskRunner,
+          persistence,
           askTimeout = akkaAskTimeout,
-          eventIdGenerator,
-          keyedEventBus,
           agentConfiguration)
         },
       Akkas.encodeAsActorName(s"AgentOrderKeeper-for-$masterId"))
-    masterToOrderKeeper.insert(masterId -> MasterRegister.Entry(masterId, agentRunId, recovered.eventWatch, actor))
+    masterToOrderKeeper.insert(masterId -> MasterRegister.Entry(masterId, agentRunId, persistence, actor, recovered.eventWatch))
     watch(actor)
   }
 
@@ -295,14 +304,19 @@ object AgentActor
   }
 
   private final class MasterRegister extends ActorRegister[MasterId, MasterRegister.Entry](_.actor) {
-    override protected def noSuchKeyProblem(masterId: MasterId) = NoSuchMasterProblem(masterId)
+    override protected def noSuchKeyProblem(masterId: MasterId) = UnknownMasterProblem(masterId)
 
     override def insert(kv: (MasterId, MasterRegister.Entry)) = super.insert(kv)
 
     override def -=(a: ActorRef) = super.-=(a)
   }
   object MasterRegister {
-    final case class Entry(masterId: MasterId, agentRunId: AgentRunId, eventWatch: JournalEventWatch, actor: ActorRef)
+    final case class Entry(
+      masterId: MasterId,
+      agentRunId: AgentRunId,
+      persistence: JournaledStatePersistence[AgentState],
+      actor: ActorRef,
+      eventWatch: JournalEventWatch)
   }
 
   @Singleton

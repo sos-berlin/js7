@@ -1,9 +1,9 @@
 package com.sos.jobscheduler.agent.web.master
 
 import com.sos.jobscheduler.agent.client.AgentClient
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{CoupleMaster, ReleaseEvents, RegisterAsMaster, TakeSnapshot}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{CoupleMaster, RegisterAsMaster, ReleaseEvents, TakeSnapshot}
 import com.sos.jobscheduler.agent.data.event.AgentMasterEvent.AgentReadyForMaster
-import com.sos.jobscheduler.agent.data.problems.MasterAgentMismatchProblem
+import com.sos.jobscheduler.agent.data.problems.{MasterAgentMismatchProblem, UnknownMasterProblem}
 import com.sos.jobscheduler.agent.tests.AgentTester
 import com.sos.jobscheduler.agent.tests.TestAgentDirectoryProvider._
 import com.sos.jobscheduler.base.problem.Checked._
@@ -11,7 +11,6 @@ import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.Closer.syntax._
 import com.sos.jobscheduler.common.guice.GuiceImplicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.core.problems.NoSuchMasterProblem
 import com.sos.jobscheduler.data.agent.AgentRunId
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, JournalEvent, JournalId, TearableEventSeq}
 import com.sos.jobscheduler.data.master.MasterId
@@ -39,7 +38,7 @@ final class MastersEventRouteTest extends AnyFreeSpec with AgentTester
 
   "Requesting events of unregistered Master" in {
     assert(agentClient.mastersEvents(EventRequest.singleClass[Event](after = 1)).await(99.s) ==
-      Left(NoSuchMasterProblem(MasterId.fromUserId(TestUserAndPassword.userId))))
+      Left(UnknownMasterProblem(MasterId.fromUserId(TestUserAndPassword.userId))))
   }
 
   "(RegisterAsMaster)" in {

@@ -99,7 +99,11 @@ object AgentCommand extends CommonCommand.Companion
   /** Couples the registered Master identified by current User.
     * @param agentRunId Must be the value returned by `RegisterAsMaster`. */
   final case class CoupleMaster(agentRunId: AgentRunId, eventId: EventId) extends AgentCommand {
-    type Response = Response.Accepted
+    type Response = CoupleMaster.Response
+  }
+  object CoupleMaster {
+    final case class Response(orderIds: Set[OrderId])
+    extends AgentCommand.Response
   }
 
   case object TakeSnapshot extends AgentCommand {
@@ -194,9 +198,10 @@ object AgentCommand extends CommonCommand.Companion
 
   implicit val responseJsonCodec: TypedJsonCodec[AgentCommand.Response] =
     TypedJsonCodec[AgentCommand.Response](
-      Subtype.named(deriveCodec[Batch.Response], "BatchResponse"),
+      Subtype.named(deriveCodec[CoupleMaster.Response], "CoupleMaster.Response"),
+      Subtype.named(deriveCodec[Batch.Response], "Batch.Response"),
       Subtype(Response.Accepted),
-      Subtype.named(deriveCodec[RegisterAsMaster.Response], "RegisterAsMasterResponse"))
+      Subtype.named(deriveCodec[RegisterAsMaster.Response], "RegisterAsMaster.Response"))
 
   intelliJuseImport((checkedJsonEncoder[Int], checkedJsonDecoder[Int]))
 }

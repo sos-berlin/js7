@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -e
+
+while true; do
+  docker-compose kill agent-1 || true
+  docker-compose start agent-1 || true
+  sleep $((RANDOM / 500))
+done
