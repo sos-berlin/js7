@@ -111,11 +111,10 @@ trait JournaledStateBuilder[S <: JournaledState[S]]
     _journalHeader.map(_.copy(
       eventId = eventId,
       totalEventCount = totalEventCount,
-      totalRunningTime = if (eventId == EventId.BeforeFirst) Duration.Zero
-        else _journalHeader.fold(Duration.Zero) { header =>
-          val lastJournalDuration = EventId.toTimestamp(_eventId) - EventId.toTimestamp(_firstEventId)
-          header.totalRunningTime + lastJournalDuration roundUpToNext 1.ms
-        },
+      totalRunningTime = _journalHeader.fold(Duration.Zero) { header =>
+        val lastJournalDuration = EventId.toTimestamp(_eventId) - EventId.toTimestamp(_firstEventId)
+        header.totalRunningTime + lastJournalDuration roundUpToNext 1.ms
+      },
       timestamp = lastEventIdTimestamp))
 
   final def eventId = _eventId

@@ -110,7 +110,7 @@ trait JournalRecoverer[S <: JournaledState[S]]
     JournalRecoverer.startJournalAndFinishRecovery[S](journalActor,
       journaledState, recoveredActors,
       journalingObserver, expectedJournalId, recoveredJournalHeader,
-      totalRunningSince = now + recoveredJournalHeader.fold(Duration.Zero)(_.totalRunningTime))
+      totalRunningSince = now - recoveredJournalHeader.fold(Duration.Zero)(_.totalRunningTime))
 
   final def journalId = maybeJournalHeader.map(_.journalId)
 
@@ -125,11 +125,10 @@ trait JournalRecoverer[S <: JournaledState[S]]
     maybeJournalHeader.map(_.copy(
       eventId = _lastEventId,
       totalEventCount = _totalEventCount,
-      totalRunningTime = if (_lastEventId == EventId.BeforeFirst) Duration.Zero
-        else maybeJournalHeader.fold(Duration.Zero) { header =>
-          val lastJournalDuration = EventId.toTimestamp(_lastEventId) - EventId.toTimestamp(_firstEventId)
-          header.totalRunningTime + lastJournalDuration roundUpToNext 1.ms
-        },
+      totalRunningTime = maybeJournalHeader.fold(Duration.Zero) { header =>
+        val lastJournalDuration = EventId.toTimestamp(_lastEventId) - EventId.toTimestamp(_firstEventId)
+        header.totalRunningTime + lastJournalDuration roundUpToNext 1.ms
+      },
       timestamp = lastTimestamp))
 
   final def lastRecoveredEventId = _lastEventId
