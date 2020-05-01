@@ -9,6 +9,7 @@ import com.sos.jobscheduler.base.utils.Collections.emptyToNone
 import com.sos.jobscheduler.base.utils.Collections.implicits.{RichIndexedSeq, RichPairTraversable}
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, reuseIfEqual}
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
+import com.sos.jobscheduler.base.utils.Strings._
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.expression.PositionSearch
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId}
@@ -369,7 +370,7 @@ extends FileBased
         instruction = labeled.instruction.withoutSourcePos)))
   )
 
-  override def toString = (if (path != WorkflowPath.Anonymous) s"$id " else "") +
+  override def toString = ((path != WorkflowPath.Anonymous) ?: s"$id ") +
     s"{ ${labeledInstructions.mkString("; ")} ${nameToJob.map { case (k, v) => s"define job $k { $v }" }.mkString(" ")} }"
 }
 

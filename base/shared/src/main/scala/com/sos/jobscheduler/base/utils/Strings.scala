@@ -36,7 +36,7 @@ object Strings
       underlying.substring(0, i)
     }
 
-    def ?:(condition: Boolean): String =
+    @inline def ?:(condition: Boolean): String =
       when(condition)
 
     @inline def when(condition: Boolean): String =

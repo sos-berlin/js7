@@ -104,7 +104,7 @@ object ScalaUtils
 
     def toStringWithCausesAndStackTrace: String =
       delegate.toStringWithCauses +
-        (if (delegate.getStackTrace.isEmpty) "" else "\n" + delegate.stackTraceAsString)
+        (delegate.getStackTrace.nonEmpty ?: ("\n" + delegate.stackTraceAsString))
 
     def toStringWithCauses: String = {
       val strings = mutable.Buffer[String]()

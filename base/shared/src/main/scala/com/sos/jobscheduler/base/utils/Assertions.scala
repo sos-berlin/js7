@@ -1,4 +1,5 @@
 package com.sos.jobscheduler.base.utils
+import com.sos.jobscheduler.base.utils.Strings._
 
 object Assertions
 {
@@ -13,6 +14,6 @@ object Assertions
     if (!predicate.value) {
       val c = clue
       throw new IllegalStateException(s"assertThat(${predicate.source}) failed in " +
-        s"${fullName.value}, ${filename.value}:${line.value}${if (c.isEmpty) "" else s", $c"}")
+        s"${fullName.value}, ${filename.value}:${line.value}${c.nonEmpty ?: s", $c"}")
     }
 }
