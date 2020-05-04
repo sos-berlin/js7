@@ -712,7 +712,7 @@ object JournalActor
   private val TmpSuffix = ".tmp"  // Duplicate in PassiveClusterNode
   private val DispatcherName = "jobscheduler.journal.dispatcher"  // Config setting; name is used for thread names
 
-  private val ClusterNodeHasBeenSwitchedOverProblem = Problem.pure("After switchover, this cluster node is no longer active")
+  //private val ClusterNodeHasBeenSwitchedOverProblem = Problem.pure("After switchover, this cluster node is no longer active")
 
   def props[S <: JournaledState[S]](
     journalMeta: JournalMeta,

@@ -55,8 +55,8 @@ object MonixBase
         * @param timeout the window of silence that must pass in order for the
         *        observable to start echoing the last item
         */
-      final def beatOnSlowUpstream(timeout: FiniteDuration, heartbeatValue: A): Observable[A] =
-        new BeatOnSlowUpstream[A](
+      final def insertHeartbeatsOnSlowUpstream(timeout: FiniteDuration, heartbeatValue: A): Observable[A] =
+        new InsertHeartbeatsOnSlowUpstream[A](
           heartbeatValue +: underlying,   // Insert heartbeats from start
           timeout, onlyOnce = false, heartbeatValue
         ).drop(1)  // Remove inserted initial heartbeat

@@ -450,21 +450,22 @@ with MainJournalingActor[MasterState, Event]
       }
       masterStamped ++= lastAgentEventId.map(agentEventId => Timestamped(agentRefPath <-: AgentEventIdEvent(agentEventId)))
 
-      persistTransactionTimestamped(masterStamped, async = true, alreadyDelayed = agentDriverConfiguration.eventBufferDelay) {
-        (stampedEvents, updatedState) =>
-          masterState = updatedState
-          // Inhibit OrderAdded, OrderFinished, OrderJoined(?), OrderAttachable and others ???
-          //  Agent does not send these events, but just in case.
-          stampedEvents.map(_.value)
-            .foreach {
-              case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
-                handleOrderEvent(orderId, event)
+      completedPromise.completeWith(
+        persistTransactionTimestamped(masterStamped, async = true, alreadyDelayed = agentDriverConfiguration.eventBufferDelay) {
+          (stampedEvents, updatedState) =>
+            masterState = updatedState
+            // Inhibit OrderAdded, OrderFinished, OrderJoined(?), OrderAttachable and others ???
+            //  Agent does not send these events, but just in case.
+            stampedEvents.map(_.value)
+              .foreach {
+                case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
+                  handleOrderEvent(orderId, event)
 
-              case _ =>
-            }
-          checkForEqualOrdersState()
-          completedPromise.success(Completed)
-      }
+                case _ =>
+              }
+            checkForEqualOrdersState()
+            Completed
+        })
 
     case AgentDriver.Output.OrdersDetached(orderIds) =>
       val unknown = orderIds -- orderRegister.keySet

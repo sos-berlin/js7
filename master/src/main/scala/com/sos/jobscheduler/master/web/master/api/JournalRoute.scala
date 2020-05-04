@@ -62,7 +62,7 @@ trait JournalRoute extends MasterRouteProvider
                                   observable
                                     .takeWhile(_ => !isShuttingDown)
                                     .map(f)
-                                    .pipe(o => heartbeat.fold(o)(o.beatOnSlowUpstream(_, HeartbeatMarker)))
+                                    .pipe(o => heartbeat.fold(o)(o.insertHeartbeatsOnSlowUpstream(_, HeartbeatMarker)))
                                     .toAkkaSource))
                             })
                         }

@@ -28,7 +28,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 import scala.util.Success
 
-private[monixutils] final class BeatOnSlowUpstream[+A](source: Observable[A], timeout: FiniteDuration,
+private[monixutils] final class InsertHeartbeatsOnSlowUpstream[+A](source: Observable[A], timeout: FiniteDuration,
   onlyOnce: Boolean, intersperseValue: A)
   extends Observable[A] {
 
