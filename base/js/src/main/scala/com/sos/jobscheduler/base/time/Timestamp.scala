@@ -61,7 +61,7 @@ final case class Timestamp private(toEpochMilli: Long) extends GenericTimestamp[
   def toLocaleString = toJsDate.toLocaleString
 
   def toJsDate: js.Date =
-    new js.Date(toEpochMilli)
+    new js.Date(toEpochMilli.toDouble)
 
   def copy(epochMilli: Long): Timestamp =
     Timestamp.ofEpochMilli(epochMilli)
