@@ -10,8 +10,8 @@ object Dependencies
   val akkaHttpVersion = "10.1.11"
   val slf4jVersion = "1.7.30"  // See also plugins.sbt
   val log4jVersion = "2.13.1"  // See also plugins.sbt
-  val catsVersion = "2.1.0"
-  val catsEffectVersion = catsVersion
+  val catsVersion = "2.1.1"
+  val catsEffectVersion = "2.1.3"
   val kittensVersion = "1.2.1"
   val fastparseVersion = "2.2.4"
   val circeVersion = "0.13.0"
@@ -20,7 +20,7 @@ object Dependencies
   val scalaCheckVersion= "1.14.3"
   val simulacrumVersion = "0.19.0"
   val disciplineVersion = "1.0.1"
-  val monixVersion = "3.1.0"
+  val monixVersion = "3.2.1"
   val monocleVersion = "1.5.0"
   val scribeVersion = "2.7.10"
   val scalaJsDomVersion = "0.9.7"
