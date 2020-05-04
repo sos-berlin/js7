@@ -83,6 +83,9 @@ object GenericTimestamp {
     def ofEpochSecond(o: Long): A =
       ofEpochMilli(o * 1000)
 
+    def ofDeadline(deadline: Deadline): A =
+      now + deadline.timeLeft
+
     def parse(string: String): A
 
     final def now: A = ofEpochMilli(currentTimeMillis)

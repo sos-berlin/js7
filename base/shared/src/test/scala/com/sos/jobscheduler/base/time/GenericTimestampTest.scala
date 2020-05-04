@@ -12,8 +12,8 @@ import org.scalatest.freespec.AnyFreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class GenericTimestampTest extends AnyFreeSpec {
-
+final class GenericTimestampTest extends AnyFreeSpec
+{
   private val isoString = "2017-12-04T11:22:33.456Z"
   private val millis = 1512386553456L
   private val timestamp = Timestamp.parse(isoString)
@@ -83,6 +83,13 @@ final class GenericTimestampTest extends AnyFreeSpec {
   "pretty" in {
     assert(Timestamp.parse("2018-11-21T12:34:56Z").pretty == "2018-11-21 12:34:56Z")
     assert(Timestamp.parse("2018-11-21T12:34:56.987Z").pretty == "2018-11-21 12:34:56.987Z")
+  }
+
+  "ofDeadline" in {
+    val a = Deadline.now + 10.seconds
+    val ts = Timestamp.ofDeadline(a)
+    assert(ts >= Timestamp.now + 9.seconds &&
+           ts <= Timestamp.now + 11.seconds)
   }
 
   if (sys.props contains "test.speed")
