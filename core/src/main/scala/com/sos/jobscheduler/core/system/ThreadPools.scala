@@ -4,6 +4,7 @@ import com.sos.jobscheduler.base.convert.As
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.core.startup.Halt.haltJava
 import com.typesafe.config.Config
 import java.lang.Thread.currentThread
 import monix.execution.schedulers.ExecutorScheduler
@@ -28,6 +29,11 @@ object ThreadPools
       throwable.nullIfNoStackTrace)
     throwable match {
       case NonFatal(_) =>
+      case throwable: OutOfMemoryError =>
+        // Writes to stderr:
+        UncaughtExceptionReporter.default.reportFailure(throwable)
+        haltJava(s"HALT DUE TO $throwable", restart = true)
+
       case throwable =>
         // Writes to stderr:
         UncaughtExceptionReporter.default.reportFailure(throwable)
