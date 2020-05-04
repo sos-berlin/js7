@@ -176,6 +176,7 @@ extends Actor with Stash
         uncommittedJournaledState.applyStampedEvents(stampedEvents) match {
           case Left(problem) =>
             logger.error(problem.toString)
+            for (stamped <- stampedEvents) logger.error(stamped.toString)
             reply(sender(), replyTo, Output.StoreFailure(problem, callersItem))
           case Right(updatedState) =>
             uncommittedJournaledState = updatedState

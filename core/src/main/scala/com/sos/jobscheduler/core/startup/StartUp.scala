@@ -45,5 +45,5 @@ object StartUp
   }
 
   def printlnWithClock(line: String) =
-    println(s"${LocalDateTime.now.toString.replace('T', ' ')} $line")
+    System.err.println(s"${LocalDateTime.now.toString.replace('T', ' ')} $line")
 }

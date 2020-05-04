@@ -98,7 +98,7 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
   final def maySend(): Unit = {
     logger.trace(s"maySend() isCoupled=$isCoupled freshlyCoupled=$freshlyCoupled openRequestCount=$openRequestCount" +
       s" commandParallelism=$commandParallelism isTerminating=$isTerminated" +
-      s" attachedOrderIds.size=${attachedOrderIds.size} executingInput={${executingInputs.mkString(" ")}}")
+      s" attachedOrderIds.size=${attachedOrderIds.size} executingInput={${executingInputs.map(_.toShortString).mkString(" ")}}")
     if (isCoupled && !isTerminating) {
       lazy val inputs = queue.view
         .filterNot(executingInputs)
@@ -149,7 +149,7 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
         sys.error(s"Unexpected response from Agent: $o")
       case QueuedInputResponse(input, Left(problem)) =>
         // CancelOrder(NotStarted) fails if order has started !!!
-        logger.error(s"Agent has rejected the command ${input.toShortString}: $problem")
+        logger.error(s"Agent has rejected ${input.toShortString}: $problem")
         // Agent's state does not match master's state ???
         // TODO: But "Agent is shutting down" is okay
         None

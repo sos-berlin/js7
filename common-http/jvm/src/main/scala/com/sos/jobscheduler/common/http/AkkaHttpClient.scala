@@ -23,7 +23,7 @@ import com.sos.jobscheduler.base.session.HasSessionToken
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.Lazy
 import com.sos.jobscheduler.base.utils.MonixAntiBlocking.executeOn
-import com.sos.jobscheduler.base.utils.ScalaUtils.{RichThrowable, RichThrowableEither}
+import com.sos.jobscheduler.base.utils.ScalaUtils.{RichAny, RichThrowable, RichThrowableEither}
 import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.base.web.{HttpClient, Uri}
 import com.sos.jobscheduler.common.http.AkkaHttpClient._
@@ -33,8 +33,10 @@ import com.sos.jobscheduler.common.http.JsonStreamingSupport.StreamingJsonHeader
 import com.sos.jobscheduler.common.http.StreamingSupport._
 import com.typesafe.scalalogging.Logger
 import io.circe.{Decoder, Encoder}
+import java.util.Locale
 import monix.eval.Task
 import monix.execution.Cancelable
+import monix.execution.atomic.AtomicLong
 import monix.reactive.Observable
 import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
@@ -58,6 +60,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
   private val materializerLazy = Lazy(ActorMaterializer()(actorSystem))
   private lazy val baseAkkaUri = AkkaUri(baseUri.string)
   @volatile private var closed = false
+  private val counter = AtomicLong(0)
 
   implicit final def materializer = materializerLazy()
 
@@ -66,6 +69,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
   private lazy val httpsConnectionContext = httpsConnectionContextOption getOrElse http.defaultClientHttpsContext
 
   def close() = {
+    logger.trace(s"$toString: close")
     closed = true
     for (o <- materializerLazy) {
       logger.debug(s"$toString: ActorMaterializer shutdown")
@@ -136,21 +140,23 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
 
   final def sendReceive(request: HttpRequest, suppressSessionToken: Boolean = false, logData: => Option[String] = None): Task[HttpResponse] =
     withCheckedAgentUri(request) { request =>
+      val number = counter.incrementAndGet()
       val headers = if (suppressSessionToken) None else sessionToken map (token => RawHeader(SessionToken.HeaderName, token.secret.string))
       val req = encodeGzip(request.withHeaders(headers ++: request.headers ++: standardHeaders))
-      loggingTimerResource(request, logData).use { _ =>
+      var since = now
+      def responseLogPrefix = s"$toString: #$number ${requestToString(req, logData, isResponse = true)} ${since.elapsed.pretty}"
+      loggingTimerResource(responseLogPrefix).use { _ =>
         @volatile var cancelled = false
-        var since = now
         var responseFuture: Future[HttpResponse] = null
         Task.deferFutureAction { implicit s =>
-          logger.trace(s"$toString: send ${requestToString(req, logData)}")
+          logger.trace(s"$toString: #$number ${requestToString(req, logData)}")
           since = now
           if (closed) throw new IllegalStateException(s"$toString has been closed")
           val httpsContext = if (request.uri.scheme == "https") httpsConnectionContext else http.defaultClientHttpsContext
           responseFuture = http.singleRequest(req, httpsContext)
           responseFuture.recover {
             case t if cancelled =>
-              logger.debug(s"Error after cancel: ${t.toStringWithCauses}")
+              logger.debug(s"$responseLogPrefix => Error after cancel: ${t.toStringWithCauses}")
               // Fake response to avoid completing Future with a Failure, which is logged by thread's reportFailure
               // TODO Akka's max-open-requests may be exceeded when new requests are opened
               //  while many cancelled request are still not completed by Akka until some Akka (connection) timeout.
@@ -160,19 +166,19 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
                 entity = HttpEntity.Strict(`text/plain(UTF-8)`, ByteString("Cancelled in AkkaHttpClient")))
           }
         } .guaranteeCase(exitCase => Task {
-            logger.trace(s"$toString: recv ${requestToString(request, logData)} ${since.elapsed.pretty} => $exitCase")
+            logger.trace(s"$responseLogPrefix => $exitCase")
           })
           .doOnCancel(Task.defer {
             // TODO Cancelling does not cancel the ongoing Akka operation. Akka is not freeing the connection.
             cancelled = true
-            discardResponse(request, logData, responseFuture)
+            discardResponse(responseLogPrefix, responseFuture)
           })
           .materialize.map { tried =>
             tried match {
               case Failure(t) =>
-                logger.debug(s"$toString: ${requestToString(req, logData)} failed with ${t.toStringWithCauses}")
+                logger.debug(s"$responseLogPrefix => failed with ${t.toStringWithCauses}")
               case Success(response) if response.status.isFailure =>
-                logger.debug(s"$toString: ${requestToString(req, logData)} failed with HTTP status ${response.status.intValue}")
+                logger.debug(s"$responseLogPrefix => failed with HTTP status ${response.status.intValue}")
               case _ =>
             }
             tried
@@ -182,30 +188,30 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
       }
     }
 
-  private def discardResponse(request: HttpRequest, logData: => Option[String], responseFuture: Future[HttpResponse])
-  : Task[Unit] =
+  private def discardResponse(logPrefix: => String, responseFuture: Future[HttpResponse]): Task[Unit] =
     if (responseFuture == null)
       Task.unit
     else
       Task.fromFuture(responseFuture)
         .map[Unit] { response =>
-          logger.debug(s"$toString: discardEntityBytes() ${requestToString(request, logData)}")
+          logger.debug(s"$logPrefix: discardEntityBytes()")
           response.discardEntityBytes()
         }
         .onErrorHandle(_ => ())  // Do not log lost exceptions
 
   private val emptyLoggingTimerResource = Resource.make(Task.pure(Cancelable.empty))(_ => Task.unit)
 
-  private def loggingTimerResource[A](request: HttpRequest, logData: => Option[String]): Resource[Task, Cancelable] =
+  private def loggingTimerResource[A](logPrefix: => String): Resource[Task, Cancelable] =
     if (logger.underlying.isDebugEnabled)
       Resource.make(
         Task.deferAction(scheduler => Task {
-          lazy val timer: Cancelable = scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
+          var timer: Cancelable = null
+          timer = scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
             if (closed) {
-              logger.debug(s"$toString: Closed while waiting for response to request: ${requestToString(request, logData)}")
-              timer.cancel()
+              logger.debug(s"$logPrefix => Closed while waiting for response")
+              if (timer != null) timer.cancel()
             } else
-              logger.debug(s"$toString: Still waiting for response to request: ${requestToString(request, logData)}")
+              logger.debug(s"$logPrefix => Still waiting for response")
           }
           timer
         })
@@ -257,9 +263,9 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
       Left(Problem(s"URI '$uri' does not match $baseUri$uriPrefixPath"))
   }
 
-  private def requestToString(request: HttpRequest, logData: => Option[String]): String = {
+  private def requestToString(request: HttpRequest, logData: => Option[String], isResponse: Boolean = false): String = {
     val b = new StringBuilder(200)
-    b.append(request.method.value)
+    b.append(request.method.value.pipeIf(isResponse, _.toLowerCase(Locale.ROOT)))
     b.append(' ')
     b.append(request.uri)
     if (!request.entity.isKnownEmpty) {

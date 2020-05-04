@@ -398,7 +398,7 @@ private[master] object AgentDriver
     final case class AttachOrder(order: Order[Order.IsFreshOrReady], agentRefPath: AgentRefPath, signedWorkflow: Signed[Workflow])
     extends Input with Queueable {
       def orderId = order.id
-      override def toShortString = s"AttachOrder($orderId)"
+      override def toShortString = s"AttachOrder(${orderId.string})"
     }
 
     final case class DetachOrder(orderId: OrderId) extends Input with Queueable
