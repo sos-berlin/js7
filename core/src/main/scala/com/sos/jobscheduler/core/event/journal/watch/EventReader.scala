@@ -150,6 +150,7 @@ extends AutoCloseable
         val until = now + timeout
         jsonSeqReader.seek(position)
 
+        // Memory leak due to https://github.com/monix/monix/issues/791 ???
         Observable.tailRecM(position)(position =>
           Observable.fromTask(whenDataAvailableAfterPosition(position, until))
             .flatMap {

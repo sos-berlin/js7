@@ -251,9 +251,11 @@ import scodec.bits.ByteVector
           logger.debug(s"observeJournalFile($activeMasterApi, fileEventId=${continuation.fileEventId}, " +
             s"position=${continuation.fileLength}) failed with ${t.toStringWithCauses}", t)
         })
-        .mapParallelOrdered(sys.runtime.availableProcessors) { case PositionAnd(fileLength, line) =>
-          Task((fileLength, line, line.parseJson.orThrow))
-        }
+        // detectPauses here ???
+        //.mapParallelOrdered(sys.runtime.availableProcessors) { case PositionAnd(fileLength, line) =>
+        //  Task((fileLength, line, line.parseJson.orThrow))
+        //} (OverflowStrategy.BackPressure(bufferSize = 2/*minimum*/))
+        .map { case PositionAnd(fileLength, line) => (fileLength, line, line.parseJson.orThrow) }
         .filter(testHeartbeatSuppressor) // for testing
         .detectPauses(clusterConf.heartbeat + clusterConf.failAfter)
         .flatMap[Checked[Unit]] {

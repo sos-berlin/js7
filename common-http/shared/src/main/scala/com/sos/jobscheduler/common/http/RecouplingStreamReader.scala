@@ -52,7 +52,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
   protected def onCoupled(api: Api, after: I): Task[Completed] =
     Task.pure(Completed)
 
-  protected def onDecoupled(): Task[Completed] =
+  protected def onDecoupled: Task[Completed] =
     Task.pure(Completed)
 
   protected def eof(index: I) = false
@@ -70,14 +70,40 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
   /** Observes endlessly, recoupling and repeating when needed. */
   final def observe(api: Api, after: I): Observable[V] = {
     scribe.debug(s"$api: observe(after=$after)")
-    if (inUse.getAndSet(true)) throw new IllegalStateException("RecouplingStreamReader can not be used concurrently")
-    Observable.fromTask(decouple) >>
+    Observable.fromTask(
+      waitUntilNotInUse(api) >> decouple
+    ) >>
       new ForApi(api, after)
         .observeAgainAndAgain
         .guarantee(Task {
+          scribe.trace(s"$api: inUse := false")
           inUse := false
         })
   }
+
+  /** Wait until `inUse` has finally set to false.
+    * `inUse := false` may be executed lately,
+    * due to Monix's asynchronous cancel/guarantee processing?
+    * We simply wait for it.
+    */
+  private def waitUntilNotInUse(api: Api): Task[Unit] =
+    Task.defer(
+      if (!inUse.getAndSet(true))
+        Task.unit
+      else
+        Task.tailRecM(0)(i =>
+          if (inUse.getAndSet(true))
+            Task {
+              if (i % 50 == 0) scribe.warn(s"RecouplingStreamReader.observe($api) is still inUse ...")
+              else scribe.debug(s"observe($api): still inUse ...")
+            } >>
+              Task.sleep(100.ms)
+                .map(_ => Left(i + 1))
+          else
+            Task {
+              scribe.debug(s"RecouplingStreamReader.observe($api) is continuing")
+              Right(())
+            }))
 
   final def terminate: Task[Completed] =
     decouple >> coupledApiVar.terminate
@@ -87,15 +113,15 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
       .flatMap {
         case None => Task.pure(Completed)
         case Some(api) =>
-          onDecoupled() >>
+          onDecoupled >>
             api.logoutOrTimeout(idleTimeout)
       }
 
   final def invalidateCoupledApi: Task[Completed] =
     coupledApiVar.invalidate
 
-  final def coupledApi: Task[Api] =
-    coupledApiVar.read
+  final def coupledApi: Task[Option[Api]] =
+    coupledApiVar.tryRead
 
   final def pauseBeforeNextTry(delay: FiniteDuration): Task[Unit] =
     Task.defer {
@@ -134,7 +160,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
     /** Retries until web request returns an Observable. */
     private def tryEndlesslyToGetObservable(after: I): Task[Observable[V]] =
       Task.tailRecM(())(_ =>
-        if ((stopRequested || coupledApiVar.isStopped) || !inUse.get)
+        if (stopRequested || coupledApiVar.isStopped || !inUse.get)
           Task.pure(Right(Observable.raiseError(new IllegalStateException(s"RecouplingStreamReader($api) has been stopped"))))
         else
           coupleIfNeeded(after = after) >>
@@ -202,7 +228,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
 
               case Right(Completed) =>
                 for {
-                  _ <- coupledApiVar.tryPut(api)
+                  _ <- coupledApiVar.put(api)
                   _ <- Task { recouplingPause.onCouplingSucceeded() }
                   completed <- onCoupled(api, after)
                 } yield Right(completed)
@@ -215,6 +241,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
 object RecouplingStreamReader
 {
   val TerminatedProblem = Problem.pure("RecouplingStreamReader has been stopped")
+
   private val PauseGranularity = 500.ms
 
   def observe[@specialized(Long/*EventId or file position*/) I, V, Api <: SessionApi with HasIsIgnorableStackTrace](

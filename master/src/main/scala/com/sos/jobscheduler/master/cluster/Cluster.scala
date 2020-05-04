@@ -542,8 +542,9 @@ final class Cluster(
               assertThat(id != ownId)
               val passiveLost = ClusterPassiveLost(id)
               val common = new ClusterCommon(activationInhibitor, clusterWatch, clusterConf, testEventBus)
-              // FIXME Exklusiver Zugriff (Lock) wegen parallelen ClusterCommand.ClusterRecouple, das ein EventLost auslöst,
-              //  mit ClusterCouplingPrepared infolge. Dann können wir kein PassiveLost ausgeben.
+              // FIXME Exklusiver Zugriff (Lock) wegen parallelen ClusterCommand.ClusterRecouple,
+              //  das ein ClusterPassiveLost auslöst, mit ClusterCouplingPrepared infolge.
+              //  Dann können wir kein ClusterPassiveLost ausgeben.
               //  JournaledStatePersistence Lock in die Anwendungsebene (hier) heben
               //  -- Nicht nötig durch die Abfrage auf initialState ?
               persistence.currentState/*???*/.map(_.clusterState).flatMap {
@@ -602,18 +603,32 @@ final class Cluster(
           AkkaHttpMasterApi.resource(passiveUri, name = "acknowledgements")(actorSystem))
         .flatMap(api =>
           observeEventIds(api, after = after)
+            .map { eventId => logger.trace(s"$eventId acknowledged"); eventId }
             .whileBusyBuffer(OverflowStrategy.DropOld(bufferSize = 2))
             .detectPauses(clusterConf.heartbeat + clusterConf.failAfter)
             .takeWhile(_ => !switchoverAcknowledged)  // Race condition: may be set too late
             .mapEval {
-              case None => Task.pure(Left(MissingPassiveClusterNodeHeartbeatProblem(passiveId)))
+              case None/*pause*/ =>
+                val problem = MissingPassiveClusterNodeHeartbeatProblem(passiveId)
+                logger.trace(problem.toString)
+                Task.pure(Left(problem))
+
               case Some(eventId) =>
                 Task.deferFuture {
                   // Possible dead letter when `switchoverAcknowledged` is detected too late,
                   // because after JournalActor has committed SwitchedOver (after ack), JournalActor stops.
-                  (journalActor ? JournalActor.Input.PassiveNodeAcknowledged(eventId = eventId)).mapTo[Completed]
-                    .map(Right.apply)
+                  (journalActor ? JournalActor.Input.PassiveNodeAcknowledged(eventId = eventId))
+                    .mapTo[Completed]
+                    //.map(Right.apply)
+                    .map(completed => Right(eventId))
                 }
+            }
+            .map { checked =>
+              assertThat(!api.isClosed)
+              checked match {
+                case Right(eventId) => logger.trace(s"$eventId ACKNOWLEDGED"); Right(eventId)
+                case o => logger.trace(s"Acknowledged => $o"); o
+              }
             }
             .collect {
               case Left(problem) => problem

@@ -14,7 +14,8 @@ import scala.concurrent.duration.Duration
   * With `Left(TerminatedProblem)` the read operations fail with `ProblemException`.
   * Commands (`executeCommand`) waiting for coupling will be completed with `ProblemException`.
   */
-private[http] final class CoupledApiVar[Api <: SessionApi] {
+private[http] final class CoupledApiVar[Api <: SessionApi]
+{
   // The only Left value is TerminatedProblem
   private val coupledApiMVar = MVar.empty[Task, Checked[Api]]().memoize
   @volatile private var stopped = false
@@ -55,7 +56,7 @@ private[http] final class CoupledApiVar[Api <: SessionApi] {
       .tryTake
       .map(_.map(_.orThrow)))
 
-  def tryPut(api: Api): Task[Boolean] =
-    coupledApiMVar.flatMap(_.tryPut(Right(api)))
+  def put(api: Api): Task[Unit] =
+    coupledApiMVar.flatMap(_.put(Right(api)))
 }
 

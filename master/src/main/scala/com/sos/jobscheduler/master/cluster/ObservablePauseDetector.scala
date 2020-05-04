@@ -1,10 +1,14 @@
 package com.sos.jobscheduler.master.cluster
 
-import monix.reactive.Observable
+import com.sos.jobscheduler.common.scalautil.Logger
+import monix.reactive.{Observable, OverflowStrategy}
 import scala.concurrent.duration.FiniteDuration
 
 private[cluster] object ObservablePauseDetector
 {
+  private val logger = Logger(getClass)
+  private implicit val overflowStrategy = OverflowStrategy.BackPressure(bufferSize = 2/*minimum*/)
+
   implicit final class RichPauseObservable[A](private val underlying: Observable[A]) extends AnyVal
   {
     /** Returns Some[A], or None for each pause (only one None per pause). */
@@ -29,7 +33,7 @@ private[cluster] object ObservablePauseDetector
   }
 
   private sealed trait Element[+A]
-  private sealed trait Ticking extends Element[Nothing]
+  private sealed trait Ticking extends Element[Nothing] with Product
   private sealed trait Expirable extends Element[Nothing]
 
   private case object Tick extends Ticking

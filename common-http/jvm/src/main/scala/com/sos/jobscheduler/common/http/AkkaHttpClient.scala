@@ -77,6 +77,8 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
     }
   }
 
+  def isClosed = closed
+
   final def getDecodedLinesObservable[A: Decoder](uri: Uri) =
     getRawLinesObservable(uri)
       .map(_.map(_.decodeUtf8.orThrow.parseJsonCheckedAs[A].orThrow))
