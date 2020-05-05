@@ -13,7 +13,7 @@ import akka.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshal}
 import akka.http.scaladsl.{Http, HttpsConnectionContext}
 import akka.stream.ActorMaterializer
 import akka.util.ByteString
-import cats.effect.Resource
+import cats.effect.{ExitCase, Resource}
 import com.sos.jobscheduler.base.auth.SessionToken
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
 import com.sos.jobscheduler.base.exceptions.HasIsIgnorableStackTrace
@@ -169,11 +169,19 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
           }
         } .guaranteeCase(exitCase => Task {
             logger.trace(s"$responseLogPrefix => $exitCase")
+            if (exitCase != ExitCase.Canceled) {
+              responseFuture = null  // Release memory
+            }
           })
           .doOnCancel(Task.defer {
             // TODO Cancelling does not cancel the ongoing Akka operation. Akka is not freeing the connection.
             cancelled = true
-            discardResponse(responseLogPrefix, responseFuture)
+            responseFuture match {
+              case null => Task.unit
+              case r =>
+                responseFuture = null
+                discardResponse(responseLogPrefix, r)
+            }
           })
           .materialize.map { tried =>
             tried match {
@@ -191,15 +199,12 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
     }
 
   private def discardResponse(logPrefix: => String, responseFuture: Future[HttpResponse]): Task[Unit] =
-    if (responseFuture == null)
-      Task.unit
-    else
-      Task.fromFuture(responseFuture)
-        .map[Unit] { response =>
-          logger.debug(s"$logPrefix: discardEntityBytes()")
-          response.discardEntityBytes()
-        }
-        .onErrorHandle(_ => ())  // Do not log lost exceptions
+    Task.fromFuture(responseFuture)
+      .map[Unit] { response =>
+        logger.debug(s"$logPrefix: discardEntityBytes()")
+        response.discardEntityBytes()
+      }
+      .onErrorHandle(_ => ())  // Do not log lost exceptions
 
   private val emptyLoggingTimerResource = Resource.make(Task.pure(Cancelable.empty))(_ => Task.unit)
 
