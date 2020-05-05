@@ -10,6 +10,7 @@ import com.sos.jobscheduler.base.auth.UserAndPassword
 import com.sos.jobscheduler.base.eventbus.EventBus
 import com.sos.jobscheduler.base.generic.{Completed, SecretString}
 import com.sos.jobscheduler.base.monixutils.MonixBase.syntax._
+import com.sos.jobscheduler.base.monixutils.MonixDeadline
 import com.sos.jobscheduler.base.monixutils.MonixDeadline.now
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
@@ -687,16 +688,12 @@ final class Cluster(
     private val heartbeatSender = SerialCancelable()
     // TODO Queue not more than one ClusterWatchMessage (with limited Observable?)
     private val lock = LockResource()
-    @volatile private var stopped = false
 
-    def stop(): Unit = {
-      stopped = true
+    def stop(): Unit =
       heartbeatSender.cancel()
-    }
 
     def stopHeartbeats(): Task[Unit] =
       lock.use(_ => Task {
-        stopped = true
         heartbeatSender := Cancelable.empty
       })
 
@@ -706,7 +703,6 @@ final class Cluster(
       else
         lock.use(_ =>
           Task {
-            stopped = true
             heartbeatSender := Cancelable.empty
           } >>
             clusterWatch.applyEvents(from = ownId, events, clusterState)
@@ -716,16 +712,11 @@ final class Cluster(
               }))
 
     def scheduleHeartbeats(clusterState: ClusterState): Unit = {
-      stopped = false
       heartbeatSender := (clusterState match {
         case clusterState: HasNodes if clusterState.activeId == ownId =>
           val future = sendHeartbeats.runToFuture
           future onComplete {
-            case Success(Right(Completed)) =>
-            case Success(Left(problem)) if problem.codeOption contains ClusterWatchHeartbeatFromInactiveNodeProblem.code =>
-              haltJava(s"EMERGENCY STOP due to: $problem", restart = true)  // TODO How to test?
-            case Success(problem) =>
-              logger.warn(s"Error when sending heartbeat to ClusterWatch: $problem")
+            case Success(Completed) =>
             case Failure(t) =>
               logger.warn(s"Error when sending heartbeat to ClusterWatch: ${t.toStringWithCauses}")
               logger.debug(s"Error when sending heartbeat to ClusterWatch: $t", t)
@@ -736,26 +727,57 @@ final class Cluster(
       })
     }
 
-    private def sendHeartbeats: Task[Checked[Completed]] =
-      Task.tailRecM(())(_ =>
-        lock.use(_ =>
-          currentClusterState.flatMap {
-            case clusterState: ClusterState.HasNodes if clusterState.activeId == ownId && !stopped =>  // check again
-              Task(now).flatMap(since =>
-                clusterWatch.heartbeat(from = ownId, clusterState)
-                  .materializeIntoChecked
-                  .map { checked =>
-                    for (problem <- checked.left) logger.warn(s"ClusterWatch heartbeat: $problem")
-                    Left(since)  // Ignore error and continue
-                  })
+    private def sendHeartbeats: Task[Completed] = {
+      @volatile var cancelled = false
 
-            case _ =>
-              Task.pure(Right(Right(Completed)))
-          })
-        .flatMap {
-          case Left(since) => Task.sleep(clusterConf.heartbeat - since.elapsed).map(_ => Left(()))
-          case Right(o) => Task.pure(Right(o))
-        })
+      Task.deferFutureAction { implicit scheduler =>
+        val promise = Promise[Completed]()
+
+        def doAHeartbeat: Task[Option[MonixDeadline]] =
+          lock.use(_ =>
+            currentClusterState.flatMap {
+              case clusterState: ClusterState.HasNodes if clusterState.activeId == ownId && !cancelled =>
+                Task(now).flatMap(since =>
+                  clusterWatch.heartbeat(from = ownId, clusterState)
+                    .materializeIntoChecked
+                    .flatMap { checked =>
+                      Task.now {
+                        for (problem <- checked.left) {
+                          handleProblem(problem)
+                        }
+                        Some(since)  // Continue
+                      }
+                    })
+              case _ => Task.pure(None)  // Terminate
+            }
+          )
+
+        def handleProblem(problem: Problem): Unit = {
+          if (problem.codeOption contains ClusterWatchHeartbeatFromInactiveNodeProblem.code) {
+            haltJava(s"EMERGENCY STOP due to: $problem", restart = true)  // TODO How to test
+          }
+          // Ignore other errors and continue
+          logger.warn(s"ClusterWatch heartbeat: $problem")
+        }
+
+        def go: Task[Unit] =
+          doAHeartbeat.map {
+            case Some(since) =>
+              scheduler.scheduleOnce(clusterConf.heartbeat - since.elapsed) {
+                go.runAsyncAndForget
+              }
+
+            case None =>
+              promise.success(Completed)
+          }
+
+        go.runAsyncAndForget
+        promise.future
+      }.doOnCancel(Task {
+        logger.debug("sendHeartbeats cancelled")
+        cancelled = true
+      })
+    }
   }
 
   /** Returns the current or at start the recovered ClusterState.
