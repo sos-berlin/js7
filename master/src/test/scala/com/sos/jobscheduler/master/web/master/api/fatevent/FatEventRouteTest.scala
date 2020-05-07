@@ -39,11 +39,11 @@ import java.nio.file.Files
 import java.util.UUID.randomUUID
 import monix.execution.Scheduler
 import org.scalatest.Args
+import org.scalatest.freespec.AnyFreeSpec
 import scala.annotation.tailrec
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
@@ -274,7 +274,7 @@ object FatEventRouteTest
   private val TestWorkflow = Workflow.of(
     WorkflowPath("/test") ~ TestVersionId,
     Execute(WorkflowJob(TestAgentRefId.path, ExecutablePath("/executable"))))
-  private val masterMetaState = MasterMetaState(MasterId("FatEventRouteTest"), Timestamp.now)
+  private val masterMetaState = MasterMetaState(MasterId("FatEventRouteTest"), Timestamp.now, timezone = "Europe/Berlin")
   private val InitialEvents =
     //Stamped(EventId(1), NoKey <-: MasterReady("UTC", 0.s)) ::  // Not required
     Stamped(EventId(2), NoKey <-: VersionAdded(TestVersionId)) ::

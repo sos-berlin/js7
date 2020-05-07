@@ -477,7 +477,8 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
       {
         "TYPE": "MasterMetaState",
         "masterId": "Master",
-        "startedAt": ${masterMetaState.startedAt.toEpochMilli}
+        "startedAt": ${masterMetaState.startedAt.toEpochMilli},
+        "timezone": "${masterMetaState.timezone}"
       }, {
         "TYPE": "VersionAdded",
         "versionId": "INITIAL"

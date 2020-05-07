@@ -50,8 +50,9 @@ extends JournaledState[MasterState]
         masterId = masterId,
         startedAt = startedAt)))
 
-    case KeyedEvent(_: NoKey, _: MasterEvent.MasterReady) =>
-      Right(this)
+    case KeyedEvent(_: NoKey, event: MasterEvent.MasterReady) =>
+      Right(copy(masterMetaState = masterMetaState.copy(
+        timezone = event.timezone)))
 
     case KeyedEvent(_: NoKey, _: MasterEvent.MasterShutDown) =>
       Right(this)

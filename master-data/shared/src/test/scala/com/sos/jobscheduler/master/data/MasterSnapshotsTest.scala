@@ -13,12 +13,14 @@ import org.scalatest.freespec.AnyFreeSpec
 final class MasterSnapshotsTest extends AnyFreeSpec
 {
   "MasterMetaState" in {
+    java.time.ZoneId.of("Europe/Berlin")  // Proper timezone
     implicit val x = MasterSnapshots.SnapshotJsonCodec
-    testJson[Any](MasterMetaState(MasterId("MASTER-ID"), Timestamp("2019-05-24T12:00:00Z")),
+    testJson[Any](MasterMetaState(MasterId("MASTER-ID"), Timestamp("2019-05-24T12:00:00Z"), "Europe/Berlin"),
       json"""{
         "TYPE": "MasterMetaState",
         "masterId": "MASTER-ID",
-        "startedAt": 1558699200000
+        "startedAt": 1558699200000,
+        "timezone": "Europe/Berlin"
       }""")
   }
 }

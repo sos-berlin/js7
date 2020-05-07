@@ -21,13 +21,13 @@ object MasterSnapshots
 {
   intelliJuseImport(FiniteDurationJsonEncoder)
 
-  final case class MasterMetaState(masterId: MasterId, startedAt: Timestamp)
+  final case class MasterMetaState(masterId: MasterId, startedAt: Timestamp, timezone: String)
   {
     def isDefined = this != MasterMetaState.Undefined
   }
 
   object MasterMetaState {
-    val Undefined = MasterMetaState(MasterId("UNDEFINED-MASTER-ID"), Timestamp.ofEpochMilli(0))
+    val Undefined = MasterMetaState(MasterId("UNDEFINED-MASTER-ID"), Timestamp.ofEpochMilli(0), timezone = "UTC")
   }
 
   val SnapshotJsonCodec: TypedJsonCodec[Any] =
@@ -36,7 +36,7 @@ object MasterSnapshots
       Subtype(deriveCodec[ClusterState.ClusterStateSnapshot]),
       Subtype(deriveCodec[MasterMetaState]),
       Subtype[RepoEvent],  // These events describe complete objects
-      Subtype[AgentSnapshot],  // TODO case class AgentState(eventId: EventId)
+      Subtype[AgentSnapshot],
       Subtype[AgentRegisteredMaster],  // These events describe complete objects
       Subtype[Order[Order.State]])
 }

@@ -39,7 +39,7 @@ final class MasterStateTest extends AnyFreeSpec
           ClusterNodeId("A") -> Uri("http://A"),
           ClusterNodeId("B") -> Uri("http://B")),
         ClusterNodeId("A"))),
-    MasterMetaState(MasterId("MASTER-ID"), Timestamp("2019-05-24T12:00:00Z")),
+    MasterMetaState(MasterId("MASTER-ID"), Timestamp("2019-05-24T12:00:00Z"), timezone = "Europe/Berlin"),
     Repo(MasterFileBaseds.jsonCodec).applyEvent(VersionAdded(VersionId("1.0"))).orThrow,
     (AgentSnapshot(AgentRefPath("/AGENT"), None, EventId(7)) :: Nil).toKeyedMap(_.agentRefPath),
     (Order(OrderId("ORDER"), WorkflowPath("/WORKFLOW") /: Position(1), Order.Fresh(None)) :: Nil).toKeyedMap(_.id))
@@ -76,7 +76,8 @@ final class MasterStateTest extends AnyFreeSpec
         }, {
           "TYPE": "MasterMetaState",
           "masterId": "MASTER-ID",
-          "startedAt": 1558699200000
+          "startedAt": 1558699200000,
+          "timezone": "Europe/Berlin"
         }, {
           "TYPE": "VersionAdded",
           "versionId": "1.0"

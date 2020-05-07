@@ -35,7 +35,7 @@ final class ApiRootRouteTest extends AnyFreeSpec with RouteTester with ApiRootRo
     JournaledState.Standards(
       JournalState(Map(UserId("A") -> EventId(1000))),
       ClusterState.Empty),
-    MasterMetaState(MasterId("MASTER-ID"), Timestamp("2019-05-24T12:00:00Z")),
+    MasterMetaState(MasterId("MASTER-ID"), Timestamp("2019-05-24T12:00:00Z"), timezone = "Europe/Berlin"),
     Repo(MasterFileBaseds.jsonCodec),
     Map.empty,
     Map.empty)))
