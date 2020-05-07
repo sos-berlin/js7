@@ -103,4 +103,27 @@ object MonixBase
         }
       }
   }
+
+  /** Like Observable tailRecM, but limits the memory leak.
+    * After a number of `Left` retured by `f`, the returned `Observable` is truncated.
+    *
+    * @see see Monix 3.2.1, https://github.com/monix/monix/issues/791
+    */
+  def memoryLeakLimitedObservableTailRecM[A, B](a: A, limit: Int)(f: A => Observable[Either[A, B]]): Observable[B] =
+    Observable.defer {
+      var leftCounter = 0
+      Observable.tailRecM(a)(a =>
+        f(a).flatMap {
+          case o @ Left(_) =>
+            if (leftCounter >= limit) {
+              scribe.debug(s"Limit Observable.tailRecM after $leftCounter× Left to reduce memory leakage")
+              Observable.empty
+            } else {
+              leftCounter += 1
+              Observable.pure(o)
+            }
+
+          case o => Observable.pure(o)
+        })
+    }
 }

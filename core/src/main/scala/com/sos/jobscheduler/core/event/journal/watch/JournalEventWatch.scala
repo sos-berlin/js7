@@ -320,5 +320,6 @@ object JournalEventWatch
      |jobscheduler.journal.watch.index-factor = 10
      |jobscheduler.journal.remove-obsolete-files = true
      |jobscheduler.journal.users-allowed-to-release-events = []
+     |jobscheduler.monix.tailrecm-limit = 1000
     """.stripMargin)
 }

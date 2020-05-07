@@ -146,7 +146,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
               .onErrorHandleWith { _ => Observable.empty }
           )) ++
             (Observable.fromTask(pauseBeforeNextTry(conf.delay)) >>
-              Observable.delay(Left(lastIndex)))
+              Observable.delay(Left(lastIndex)/*FIXME Observable.tailRecM: Left leaks memory, https://github.com/monix/monix/issues/791*/))
       }.flatten
 
     private def observe(after: I): Observable[V] =

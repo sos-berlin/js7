@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
 import akka.util.ByteString
+import com.sos.jobscheduler.base.monixutils.MonixBase.memoryLeakLimitedObservableTailRecM
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.AutoClosing.closeOnError
@@ -49,6 +50,7 @@ extends AutoCloseable
   protected lazy val journalIndex = new JournalIndex(PositionAnd(tornPosition, tornEventId),
     size = config.getInt("jobscheduler.journal.watch.index-size"))
   private lazy val journalIndexFactor = config.getInt("jobscheduler.journal.watch.index-factor")
+  private lazy val limitTailRecM = config.getInt("jobscheduler.monix.tailrecm-limit")
   protected final lazy val iteratorPool = new FileEventIteratorPool(journalMeta, expectedJournalId, journalFile, tornEventId, () => committedLength)
   @volatile
   private var _closeAfterUse = false
@@ -150,8 +152,7 @@ extends AutoCloseable
         val until = now + timeout
         jsonSeqReader.seek(position)
 
-        // Memory leak due to https://github.com/monix/monix/issues/791 ???
-        Observable.tailRecM(position)(position =>
+        memoryLeakLimitedObservableTailRecM(position, limit = limitTailRecM)(position =>
           Observable.fromTask(whenDataAvailableAfterPosition(position, until))
             .flatMap {
               case false =>  // Timeout
