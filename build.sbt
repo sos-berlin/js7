@@ -86,7 +86,9 @@ ThisBuild / scalacOptions ++= Seq(
   "-deprecation",
   "-feature")
 
-val scalaTestArguments = Tests.Argument(TestFrameworks.ScalaTest, "-oNCLPQF", "-W", "30", "30")  // http://www.scalatest.org/user_guide/using_scalatest_with_sbt
+// http://www.scalatest.org/user_guide/using_scalatest_with_sbt
+val scalaTestArguments = Tests.Argument(TestFrameworks.ScalaTest,
+  (if (testParallelization > 1) "-oNCLPQF" :: Nil else Nil) ::: List("-W", "30", "30"): _*)
 
 val publishSettings = Seq(
   publishArtifact in (Compile, packageDoc) := false,
