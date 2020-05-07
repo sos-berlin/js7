@@ -112,6 +112,7 @@ with ReceiveLoggingActor.WithStash
       }
 
     override protected def onDecoupled = Task {
+      logger.debug("onDecoupled")
       sessionNumber += 1
       self ! Internal.OnDecoupled
       Completed
@@ -124,7 +125,7 @@ with ReceiveLoggingActor.WithStash
     protected def commandParallelism = conf.commandParallelism
 
     protected def executeCommand(command: AgentCommand.Batch) = {
-      val n: Int = sessionNumber.get
+      val expectedSessionNumber: Int = sessionNumber.get
       for {
         _ <- Task.defer {
           val delay = delayCommandExecutionAfterErrorUntil.timeLeft
@@ -137,10 +138,10 @@ with ReceiveLoggingActor.WithStash
             // Fail on recoupling, later read restarted Agent's attached OrderIds before issuing again AttachOrder
             api <- EitherT(Task.pure(checkedApi))
             response <- EitherT(
-              if (n != sessionNumber.get)
+              if (sessionNumber.get != expectedSessionNumber)
                 Task.pure(Left(DecoupledProblem))
               else
-                // Still a small possibility for race-condition? May log a AgentDuplicateOrderProblem
+                // TODO Still a small possibility for race-condition? May log a AgentDuplicateOrderProblem
                 api.commandExecute(command))
           } yield response).value
       } yield response

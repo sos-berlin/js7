@@ -47,7 +47,7 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
 
     def removeAlreadyAttachedOrders(): Unit =
       queue.removeAll {
-        case o: Input.AttachOrder if attachedOrderIds.contains(o.order.id) && !executingInputs.contains(o) =>
+        case o: Input.AttachOrder if attachedOrderIds.contains(o.order.id) =>
           logger.trace(s"removeAlreadyAttachedOrders: ${o.order.id}")
           true
         case _ =>
