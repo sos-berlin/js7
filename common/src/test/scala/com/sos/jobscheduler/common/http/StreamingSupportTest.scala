@@ -7,8 +7,8 @@ import com.sos.jobscheduler.common.http.StreamingSupport._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
-import scala.concurrent.Await
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.Await
 
 /**
   * @author Joacim Zschimmer

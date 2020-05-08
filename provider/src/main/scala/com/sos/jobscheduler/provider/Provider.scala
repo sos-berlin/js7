@@ -8,6 +8,7 @@ import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.HasCloser
 import com.sos.jobscheduler.base.web.HttpClient
+import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.files.{DirectoryReader, PathSeqDiff, PathSeqDiffer}
 import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger}
@@ -40,9 +41,10 @@ import scala.jdk.CollectionConverters._
   * @author Joacim Zschimmer
   */
 final class Provider(val fileBasedSigner: FileBasedSigner[FileBased], val conf: ProviderConfiguration)(implicit val s: Scheduler)
-extends HasCloser with Observing
+extends HasCloser with Observing with ProvideActorSystem
 {
-  protected val masterApi = new AkkaHttpMasterApi(conf.masterUri, config = conf.config)
+  protected val masterApi = AkkaHttpMasterApi(conf.masterUri, actorSystem, conf.config)
+  protected def config = conf.config
 
   protected val userAndPassword: Option[UserAndPassword] = for {
       userName <- conf.config.optionAs[String]("jobscheduler.provider.master.user")

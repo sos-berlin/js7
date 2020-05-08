@@ -8,7 +8,9 @@ import akka.http.scaladsl.model.{HttpEntity, HttpHeader, Uri => AkkaUri}
 import com.google.inject.{AbstractModule, Provides}
 import com.sos.jobscheduler.agent.data.views.AgentOverview
 import com.sos.jobscheduler.base.BuildInfo
+import com.sos.jobscheduler.base.auth.SessionToken
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.ScalaTime._
@@ -71,6 +73,8 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
     .closeWithCloser
 
   private var sessionToken: String = "INVALID"
+
+  private implicit def implicitSessionToken = Some(SessionToken(SecretString(sessionToken)))
 
   override val masterModule = new AbstractModule {
     @Provides @Singleton def eventIdClock(): EventIdClock = new EventIdClock.Fixed(1000)

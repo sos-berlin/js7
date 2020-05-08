@@ -5,6 +5,7 @@ import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.Closer.syntax.RichClosersAutoCloseable
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
+import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
 import com.sos.jobscheduler.common.scalautil.FileUtils.syntax.RichPath
 import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
@@ -17,33 +18,36 @@ import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
 import com.sos.jobscheduler.tests.https.HttpsTestBase._
 import com.sos.jobscheduler.tests.testenv.{DirectoryProvider, MasterAgentForScalaTest}
+import com.typesafe.config.ConfigFactory
 import com.typesafe.config.ConfigUtil.quoteString
 import java.nio.file.Files.{createTempFile, delete}
 import org.scalatest.BeforeAndAfterAll
-import scala.concurrent.duration._
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.duration._
 
 /**
   * Master and Agent with server-side HTTPS.
   *
   * @author Joacim Zschimmer
   */
-private[https] trait HttpsTestBase extends AnyFreeSpec with BeforeAndAfterAll with MasterAgentForScalaTest {
-
+private[https] trait HttpsTestBase extends AnyFreeSpec with BeforeAndAfterAll with MasterAgentForScalaTest with ProvideActorSystem
+{
   override protected final def provideAgentHttpsCertificate = true
   protected def provideMasterClientCertificate = false
 
   override protected final lazy val masterHttpPort = None
   override protected final lazy val masterHttpsPort = Some(findFreeTcpPort())
   override protected final def masterClientCertificate = provideMasterClientCertificate ? ClientTrustStoreResource
+  protected val config = ConfigFactory.empty
 
   private lazy val keyStore = createTempFile(getClass.getSimpleName + "-keystore-", ".p12")
   private lazy val trustStore = createTempFile(getClass.getSimpleName + "-truststore-", ".p12")
 
-  protected lazy val masterApi = new AkkaHttpMasterApi(master.localUri,
-      keyStoreRef = Some(KeyStoreRef(keyStore.toUri.toURL, storePassword = SecretString("jobscheduler"), keyPassword = SecretString("jobscheduler"))),
-      trustStoreRef = Some(TrustStoreRef(trustStore.toUri.toURL, storePassword = SecretString("jobscheduler"))))
-    .closeWithCloser
+  protected lazy val masterApi = AkkaHttpMasterApi(
+    master.localUri, actorSystem, config,
+    keyStoreRef = Some(KeyStoreRef(keyStore.toUri.toURL, storePassword = SecretString("jobscheduler"), keyPassword = SecretString("jobscheduler"))),
+    trustStoreRef = Some(TrustStoreRef(trustStore.toUri.toURL, storePassword = SecretString("jobscheduler"))),
+  ).closeWithCloser
 
   override protected def agentHttps = true
   protected val agentRefPaths = AgentRefPath("/TEST-AGENT") :: Nil
@@ -65,8 +69,9 @@ private[https] trait HttpsTestBase extends AnyFreeSpec with BeforeAndAfterAll wi
   }
 
   override def afterAll() = {
-    super.afterAll()
+    close()
     delete(keyStore)
+    super.afterAll()
   }
 }
 

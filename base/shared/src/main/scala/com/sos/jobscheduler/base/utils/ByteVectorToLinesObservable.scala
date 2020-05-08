@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.http
+package com.sos.jobscheduler.base.utils
 
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.ScodecUtils._

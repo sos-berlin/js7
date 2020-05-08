@@ -21,18 +21,18 @@ import scala.concurrent.duration._
 import scala.reflect.ClassTag
 import scodec.bits.ByteVector
 
-trait HttpMasterApi extends MasterApi with HttpSessionApi with HasIsIgnorableStackTrace
+trait HttpMasterApi
+extends MasterApi with HttpSessionApi with HasIsIgnorableStackTrace
 {
-  /** Host URI or empty for addressing base on "master/". */
-  protected def baseUri: Uri
+  def httpClient: HttpClient
+  /** Host URI or empty for addressing base on "master/" */
+  def baseUri: Uri
 
-  protected def uriPrefixPath = "/master"
-
-  protected def httpClient: HttpClient
+  protected final def uriPrefixPath = "/master"
 
   protected final def sessionUri = uris.session
 
-  lazy val uris = MasterUris(
+  final lazy val uris = MasterUris(
     masterUri =
       if (baseUri.isEmpty) baseUri
       else Uri(baseUri.string.stripSuffix("/") + "/master"))
@@ -117,7 +117,7 @@ trait HttpMasterApi extends MasterApi with HttpSessionApi with HasIsIgnorableSta
       httpClient.get[Stamped[Seq[Any]]](uris.snapshot.list))
   }
 
-  //override def toString = s"HttpMasterApi($baseUri)"
+  override def toString = s"HttpMasterApi($baseUri)"
 }
 
 object HttpMasterApi {

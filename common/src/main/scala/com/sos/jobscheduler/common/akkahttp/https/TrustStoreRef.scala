@@ -8,7 +8,7 @@ import com.typesafe.config.Config
 import java.net.URL
 import java.nio.file.Path
 
-/**
+/** To trust the server's certificate.
   * @author Joacim Zschimmer
   */
 final case class TrustStoreRef(

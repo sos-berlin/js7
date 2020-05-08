@@ -19,19 +19,23 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
 import com.sos.jobscheduler.base.exceptions.HasIsIgnorableStackTrace
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.session.HasSessionToken
 import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.Lazy
 import com.sos.jobscheduler.base.utils.MonixAntiBlocking.executeOn
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichAny, RichThrowable, RichThrowableEither}
+import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.base.utils.Strings.RichString
+import com.sos.jobscheduler.base.utils.{ByteVectorToLinesObservable, Lazy}
 import com.sos.jobscheduler.base.web.{HttpClient, Uri}
+import com.sos.jobscheduler.common.akkahttp.https.AkkaHttps.loadHttpsConnectionContext
+import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
+import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
 import com.sos.jobscheduler.common.http.AkkaHttpClient._
 import com.sos.jobscheduler.common.http.AkkaHttpUtils.{RichAkkaAsUri, RichAkkaUri, decodeResponse, encodeGzip}
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.http.JsonStreamingSupport.StreamingJsonHeaders
 import com.sos.jobscheduler.common.http.StreamingSupport._
-import com.typesafe.scalalogging.Logger
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.typesafe.config.{Config, ConfigFactory}
 import io.circe.{Decoder, Encoder}
 import java.util.Locale
 import monix.eval.Task
@@ -48,7 +52,7 @@ import scodec.bits.ByteVector
 /**
   * @author Joacim Zschimmer
   */
-trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken with HasIsIgnorableStackTrace
+trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableStackTrace
 {
   protected def actorSystem: ActorSystem
   protected def baseUri: Uri
@@ -64,7 +68,11 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
 
   implicit final def materializer = materializerLazy()
 
-  protected def httpsConnectionContextOption: Option[HttpsConnectionContext] = None
+  protected def keyStoreRef: Option[KeyStoreRef]
+  protected def trustStoreRef: Option[TrustStoreRef]
+
+  protected final lazy val httpsConnectionContextOption: Option[HttpsConnectionContext] =
+    (keyStoreRef.nonEmpty || trustStoreRef.nonEmpty) ? loadHttpsConnectionContext(keyStoreRef, trustStoreRef)  // TODO None means HttpsConnectionContext? Or empty context?
 
   private lazy val httpsConnectionContext = httpsConnectionContextOption getOrElse http.defaultClientHttpsContext
 
@@ -79,11 +87,11 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
 
   def isClosed = closed
 
-  final def getDecodedLinesObservable[A: Decoder](uri: Uri) =
+  final def getDecodedLinesObservable[A: Decoder](uri: Uri)(implicit s: Option[SessionToken]) =
     getRawLinesObservable(uri)
       .map(_.map(_.decodeUtf8.orThrow.parseJsonCheckedAs[A].orThrow))
 
-  final def getRawLinesObservable(uri: Uri): Task[Observable[ByteVector]] =
+  final def getRawLinesObservable(uri: Uri)(implicit s: Option[SessionToken]): Task[Observable[ByteVector]] =
     get_[HttpResponse](uri, StreamingJsonHeaders)
       .map(_.entity.withoutSizeLimit.dataBytes
         .toObservable
@@ -91,36 +99,48 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
         .flatMap(new ByteVectorToLinesObservable))
 
   /** HTTP Get with Accept: application/json. */
-  final def get[A: Decoder](uri: Uri): Task[A] =
+  final def get[A: Decoder](uri: Uri)(implicit s: Option[SessionToken]): Task[A] =
     get[A](uri, Duration.Inf, Nil)
 
   /** HTTP Get with Accept: application/json. */
-  final def get[A: Decoder](uri: Uri, timeout: Duration): Task[A] =
+  final def get[A: Decoder](uri: Uri, timeout: Duration)(implicit s: Option[SessionToken]): Task[A] =
     get[A](uri, timeout, Nil)
 
   /** HTTP Get with Accept: application/json. */
-  final def get[A: Decoder](uri: Uri, headers: List[HttpHeader]): Task[A] =
+  final def get[A: Decoder](uri: Uri, headers: List[HttpHeader])
+    (implicit s: Option[SessionToken])
+  : Task[A] =
     get[A](uri, Duration.Inf, headers)
 
   /** HTTP Get with Accept: application/json. */
-  final def get[A: Decoder](uri: Uri, timeout: Duration, headers: List[HttpHeader]): Task[A] =
+  final def get[A: Decoder](uri: Uri, timeout: Duration, headers: List[HttpHeader])
+    (implicit s: Option[SessionToken])
+  : Task[A] =
     get_[A](uri, headers ::: Accept(`application/json`) :: Nil)
 
-  final def get_[A: FromResponseUnmarshaller](uri: Uri, headers: List[HttpHeader] = Nil): Task[A] =
+  final def get_[A: FromResponseUnmarshaller](uri: Uri, headers: List[HttpHeader] = Nil)
+    (implicit s: Option[SessionToken])
+  : Task[A] =
     sendReceive(HttpRequest(GET, AkkaUri(uri.string), headers ::: `Cache-Control`(`no-cache`, `no-store`) :: Nil))
       .flatMap(unmarshal[A](GET, uri))
 
-  final def post[A: Encoder, B: Decoder](uri: Uri, data: A, suppressSessionToken: Boolean): Task[B] =
-    post2[A, B](uri, data, Nil, suppressSessionToken = suppressSessionToken)
+  final def post[A: Encoder, B: Decoder](uri: Uri, data: A)(implicit s: Option[SessionToken]): Task[B] =
+    post2[A, B](uri, data, Nil)
 
-  final def postWithHeaders[A: Encoder, B: Decoder](uri: Uri, data: A, headers: List[HttpHeader]): Task[B] =
-    post2[A, B](uri, data, headers, suppressSessionToken = false)
+  final def postWithHeaders[A: Encoder, B: Decoder](uri: Uri, data: A, headers: List[HttpHeader])
+    (implicit s: Option[SessionToken])
+  : Task[B] =
+    post2[A, B](uri, data, headers)
 
-  private def post2[A: Encoder, B: Decoder](uri: Uri, data: A, headers: List[HttpHeader], suppressSessionToken: Boolean): Task[B] =
-    post_[A](uri, data, headers ::: Accept(`application/json`) :: Nil, suppressSessionToken = suppressSessionToken)
+  private def post2[A: Encoder, B: Decoder](uri: Uri, data: A, headers: List[HttpHeader])
+    (implicit s: Option[SessionToken])
+  : Task[B] =
+    post_[A](uri, data, headers ::: Accept(`application/json`) :: Nil)
       .flatMap(unmarshal[B](POST, uri))
 
-  final def postDiscardResponse[A: Encoder](uri: Uri, data: A, allowedStatusCodes: Set[Int] = Set.empty): Task[Int] =
+  final def postDiscardResponse[A: Encoder](uri: Uri, data: A, allowedStatusCodes: Set[Int] = Set.empty)
+    (implicit s: Option[SessionToken])
+  : Task[Int] =
     post_[A](uri, data, Accept(`application/json`) :: Nil) map { httpResponse =>
       httpResponse.discardEntityBytes()
       if (!httpResponse.status.isSuccess && !allowedStatusCodes(httpResponse.status.intValue))
@@ -128,22 +148,27 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken 
       httpResponse.status.intValue
     }
 
-  final def post_[A: Encoder](uri: Uri, data: A, headers: List[HttpHeader], suppressSessionToken: Boolean = false): Task[HttpResponse] =
+  final def post_[A: Encoder](uri: Uri, data: A, headers: List[HttpHeader])
+    (implicit s: Option[SessionToken])
+  : Task[HttpResponse] =
     for {
       entity <- Task.deferFuture(executeOn(materializer.executionContext)(implicit ec => Marshal(data).to[RequestEntity]))
       response <- sendReceive(
         HttpRequest(POST, uri.asAkka, headers, entity),
-        suppressSessionToken = suppressSessionToken,
         logData = Some(data.toString))
     } yield response
 
-  final def postRaw(uri: Uri, headers: List[HttpHeader], entity: RequestEntity): Task[HttpResponse] =
+  final def postRaw(uri: Uri, headers: List[HttpHeader], entity: RequestEntity)
+    (implicit s: Option[SessionToken])
+  : Task[HttpResponse] =
     sendReceive(HttpRequest(POST, uri.asAkka, headers, entity))
 
-  final def sendReceive(request: HttpRequest, suppressSessionToken: Boolean = false, logData: => Option[String] = None): Task[HttpResponse] =
+  final def sendReceive(request: HttpRequest, logData: => Option[String] = None)
+    (implicit sessionToken: Option[SessionToken])
+  : Task[HttpResponse] =
     withCheckedAgentUri(request) { request =>
       val number = counter.incrementAndGet()
-      val headers = if (suppressSessionToken) None else sessionToken map (token => RawHeader(SessionToken.HeaderName, token.secret.string))
+      val headers = sessionToken.map(token => RawHeader(SessionToken.HeaderName, token.secret.string))
       val req = encodeGzip(request.withHeaders(headers ++: request.headers ++: standardHeaders))
       var since = now
       def responseLogPrefix = s"$toString: #$number ${requestToString(req, logData, isResponse = true)} ${since.elapsed.pretty}"
@@ -297,7 +322,47 @@ object AkkaHttpClient
   private val ErrorMessageLengthMaximum = 10000
   private val HttpErrorContentSizeMaximum = ErrorMessageLengthMaximum + 100
   private val FailureTimeout = 10.seconds
-  private val logger = Logger(getClass.getName stripSuffix "$" replaceFirst("^com[.]sos[.]jobscheduler", "jobscheduler"))  // TODO Use Logger adapter (unreachable in module common-http)
+  private val logger = Logger(getClass)
+
+  def apply(
+    baseUri: Uri,
+    uriPrefixPath: String,
+    actorSystem: ActorSystem,
+    /** To provide a client certificate to server. */
+    keyStoreRef: Option[KeyStoreRef] = None,
+    /** To trust the server's certificate. */
+    trustStoreRef: Option[TrustStoreRef] = None,
+    name: String)
+  : AkkaHttpClient =
+    new Standard(baseUri, uriPrefixPath, actorSystem, keyStoreRef, trustStoreRef, name)
+
+  private final class Standard(
+    protected val baseUri: Uri,
+    protected val uriPrefixPath: String,
+    protected val actorSystem: ActorSystem,
+    /** To provide a client certificate to server. */
+    protected val keyStoreRef: Option[KeyStoreRef] = None,
+    /** To trust the server's certificate. */
+    protected val trustStoreRef: Option[TrustStoreRef] = None,
+    protected val name: String = "")
+  extends AkkaHttpClient
+
+  final class WithAkka(
+    protected val baseUri: Uri,
+    protected val uriPrefixPath: String,
+    /** To provide a client certificate to server. */
+    protected val keyStoreRef: Option[KeyStoreRef] = None,
+    /** To trust the server's certificate. */
+    protected val trustStoreRef: Option[TrustStoreRef] = None,
+    protected val config: Config = ConfigFactory.empty,
+    protected val name: String = "")
+  extends ProvideActorSystem
+  with AkkaHttpClient
+  {
+    override def close() =
+      try super[AkkaHttpClient].close()
+      finally super[ProvideActorSystem].close()
+  }
 
   def sessionMayBeLost(t: Throwable): Boolean =
     t match {

@@ -4,8 +4,8 @@ import akka.http.scaladsl.model.{Uri => AkkaUri}
 import akka.util.ByteString
 import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.http.AkkaHttpUtils._
-import scodec.bits.ByteVector
 import org.scalatest.freespec.AnyFreeSpec
+import scodec.bits.ByteVector
 
 /**
   * @author Joacim Zschimmer

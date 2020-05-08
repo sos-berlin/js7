@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.tests.core
 
-import com.sos.jobscheduler.base.auth.SimpleUser
+import com.sos.jobscheduler.base.auth.{SessionToken, SimpleUser}
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.web.Uri
@@ -32,11 +32,11 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.scalatest.BeforeAndAfterAll
+import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.reflect.runtime.universe._
-import org.scalatest.freespec.AnyFreeSpec
 
 final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with GenericEventRoute
 {
@@ -102,8 +102,11 @@ final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll wit
     protected val baseUri = server.localUri
     protected val name = "GenericEventRouteTest"
     protected val uriPrefixPath = ""
-    protected val sessionToken = None
+    protected def keyStoreRef = None
+    protected def trustStoreRef = None
   }
+
+  private implicit val noSessionToken: Option[SessionToken] = None
 
   override def beforeAll() = {
     super.beforeAll()
@@ -214,7 +217,7 @@ final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll wit
         val t = intercept[HttpException] {
           getDecodedLinesObservable[EventId](Uri(s"/event?eventIdOnly=true&timeout=1&after=$unknown"))
         }
-        assert(t.problem contains EventSeqTornProblem(unknown, 0))
+        assert(t.problem contains EventSeqTornProblem(unknown, 0L))
       }
     }
 

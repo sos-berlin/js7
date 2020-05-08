@@ -7,7 +7,7 @@ import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.session.HttpSessionApi
 import com.sos.jobscheduler.base.utils.HasCloser
 import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.akkahttp.https.{AkkaHttps, TrustStoreRef}
+import com.sos.jobscheduler.common.akkahttp.https.TrustStoreRef
 import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
 import com.sos.jobscheduler.common.configutils.Configs.{ConvertibleConfig, parseConfigIfExists}
 import com.sos.jobscheduler.common.http.{AkkaHttpClient, TextApi}
@@ -31,17 +31,15 @@ extends HasCloser with ProvideActorSystem with TextApi with HttpSessionApi with 
 
   private val agentUris = AgentUris(agentUri)
 
-  protected override lazy val httpsConnectionContextOption = {
-    configDirectory.flatMap { configDir =>
-      // Use Master's keystore as truststore for client access, using also Master's store-password
-      val mastersConfig = configDirectoryConfig(configDir)
-      mastersConfig.optionAs[String]("jobscheduler.https.keystore.store-password").flatMap { storePassword =>
-        val file = mastersConfig.optionAs[Path]("jobscheduler.https.keystore.file") getOrElse configDir / "private/https-keystore.p12"
-        val config = ConfigFactory.parseMap(Map("jobscheduler.https.truststore.store-password" -> storePassword).asJava)
-        TrustStoreRef.fromConfig(config, default = file).onProblem(o => logger.debug(s"No keystore: $o"))
-      }
-      .map(trustStoreRef =>
-        AkkaHttps.loadHttpsConnectionContext(trustStoreRef = Some(trustStoreRef)))
+  protected def keyStoreRef = None
+
+  protected lazy val trustStoreRef = configDirectory.flatMap { configDir =>
+    // Use Master's keystore as truststore for client access, using also Master's store-password
+    val mastersConfig = configDirectoryConfig(configDir)
+    mastersConfig.optionAs[String]("jobscheduler.https.keystore.store-password").flatMap { storePassword =>
+      val file = mastersConfig.optionAs[Path]("jobscheduler.https.keystore.file") getOrElse configDir / "private/https-keystore.p12"
+      val config = ConfigFactory.parseMap(Map("jobscheduler.https.truststore.store-password" -> storePassword).asJava)
+      TrustStoreRef.fromConfig(config, default = file).onProblem(o => logger.debug(s"No keystore: $o"))
     }
   }
 

@@ -7,7 +7,7 @@ import akka.http.scaladsl.model.{HttpHeader, HttpRequest, HttpResponse, headers,
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.agent.client.AgentClient
-import com.sos.jobscheduler.base.auth.ValidUserPermission
+import com.sos.jobscheduler.base.auth.{SessionToken, ValidUserPermission}
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.completeTask
@@ -61,6 +61,7 @@ trait AgentProxyRoute extends MasterRouteProvider
       agentUri,
       masterConfiguration.keyStoreRefOption,
       masterConfiguration.trustStoreRefOption)
+    implicit val sessionToken: Option[SessionToken] = None
     agentClient
       .sendReceive(HttpRequest(GET,  forwardUri, headers = headers filter { h => isForwardableHeaderClass(h.getClass) }))
       .map(response => response.withHeaders(response.headers filterNot { h => IsIgnoredAgentHeader(h.getClass) }))

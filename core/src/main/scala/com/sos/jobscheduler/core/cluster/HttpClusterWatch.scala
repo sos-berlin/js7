@@ -28,6 +28,9 @@ extends ClusterWatchApi with AkkaHttpClient with HttpSessionApi with HttpAutoRel
 
   protected val sessionUri = Uri(s"$baseUri/agent/api/session")
 
+  protected def trustStoreRef = None
+  protected def keyStoreRef = None
+
   protected def name = "ClusterWatch"
 
   private val clusterUri = Uri(s"$baseUri/agent/api/master/cluster")

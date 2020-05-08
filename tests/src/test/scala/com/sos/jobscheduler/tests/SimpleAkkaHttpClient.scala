@@ -15,6 +15,8 @@ final class SimpleAkkaHttpClient(
   protected val uriPrefixPath: String) extends AkkaHttpClient
 {
   protected val name = label
+  protected def keyStoreRef = None
+  protected def trustStoreRef = None
   protected val actorSystem = newActorSystem(label)
 
   protected def userAndPassword = None

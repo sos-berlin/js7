@@ -1,8 +1,9 @@
 package com.sos.jobscheduler.common.http
 
+import com.sos.jobscheduler.base.auth.SessionToken
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
-import com.sos.jobscheduler.base.web.Uri
+import com.sos.jobscheduler.base.web.{HttpClient, Uri}
 import com.sos.jobscheduler.common.http.CirceToYaml._
 import io.circe.Json
 import monix.execution.Scheduler.Implicits.global
@@ -19,7 +20,8 @@ trait TextApi
   protected def sessionUri: Uri
   protected def commandUri: Uri
   protected def apiUri(tail: String): Uri
-  protected def httpClient: AkkaHttpClient
+  protected def httpClient: HttpClient
+  implicit protected def sessionToken: Option[SessionToken]
 
   def executeCommand(command: String): Unit = {
     val response = awaitResult(

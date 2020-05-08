@@ -51,10 +51,12 @@ trait HttpSessionApi extends SessionApi.LoginUntilReachable with HasSessionToken
       }
     }
 
-  private def executeSessionCommand(command: SessionCommand, suppressSessionToken: Boolean = false): Task[command.Response] =
+  private def executeSessionCommand(command: SessionCommand, suppressSessionToken: Boolean = false): Task[command.Response] = {
+    implicit def implicitSessionToken = (if (suppressSessionToken) None else sessionToken)
     Task { scribe.debug(s"$toString: $command") } >>
-    httpClient.post[SessionCommand, SessionCommand.Response](sessionUri, command, suppressSessionToken = suppressSessionToken)
+    httpClient.post[SessionCommand, SessionCommand.Response](sessionUri, command)
       .map(_.asInstanceOf[command.Response])
+  }
 
   final def clearSession(): Unit =
     sessionTokenRef := None
@@ -65,4 +67,7 @@ trait HttpSessionApi extends SessionApi.LoginUntilReachable with HasSessionToken
   // Used by AkkaHttpClient and JsHttpClient
   final def sessionToken: Option[SessionToken] =
     sessionTokenRef.get
+
+  implicit def implicitSessionToken: Option[SessionToken] =
+    sessionToken
 }

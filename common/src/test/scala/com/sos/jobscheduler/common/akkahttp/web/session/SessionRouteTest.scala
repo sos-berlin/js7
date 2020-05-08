@@ -23,11 +23,10 @@ import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
-import org.scalatest.matchers
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
@@ -53,6 +52,7 @@ extends AnyFreeSpec with SessionRouteTester
   "loginUntilReachable" - {
     "invalid authorization" in {
       withSessionApi() { api =>
+        import api.implicitSessionToken
         @volatile var count = 0
         def onError(t: Throwable) = Task {
           count += 1
@@ -80,6 +80,7 @@ extends AnyFreeSpec with SessionRouteTester
 
     "authorized" in {
       withSessionApi() { api =>
+        import api.implicitSessionToken
         api.loginUntilReachable(Some(AUserAndPassword), Iterator.continually(10.milliseconds), _ => Task.pure(true)) await 99.s
         requireAuthorizedAccess(api)
         api.logout() await 99.s
@@ -90,6 +91,7 @@ extends AnyFreeSpec with SessionRouteTester
 
   "Login without credentials is accepted as Anonymous but access is nevertheless unauthorized if not public" in {
     withSessionApi() { api =>
+      import api.implicitSessionToken
       api.login(None) await 99.s
       requireAccessIsUnauthorizedOrPublic(api)
     }
@@ -97,6 +99,7 @@ extends AnyFreeSpec with SessionRouteTester
 
   "Login without credentials and with wrong Authorization header is rejected with 401 Unauthorized and delayed" in {
     withSessionApi(Authorization(BasicHttpCredentials("A-USER", "")) :: Nil) { api =>
+      import api.implicitSessionToken
       val runningSince = now
       val exception = intercept[AkkaHttpClient.HttpException] {
         api.login(None) await 99.s
@@ -111,6 +114,7 @@ extends AnyFreeSpec with SessionRouteTester
 
   "Login without credentials and with Anonymous Authorization header is rejected and delayed" in {
     withSessionApi(Authorization(BasicHttpCredentials(UserId.Anonymous.string, "")) :: Nil) { api =>
+      import api.implicitSessionToken
       val runningSince = now
       val exception = intercept[AkkaHttpClient.HttpException] {
         api.login(None) await 99.s
@@ -125,6 +129,7 @@ extends AnyFreeSpec with SessionRouteTester
 
   "Login with credentials and with Authorization header is rejected" in {
     withSessionApi(Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil) { api =>
+      import api.implicitSessionToken
       requireAuthorizedAccess(api)
       val exception = intercept[AkkaHttpClient.HttpException] {
         api.login(Some(AUserAndPassword)) await 99.s
@@ -137,6 +142,7 @@ extends AnyFreeSpec with SessionRouteTester
 
   "Login without credentials but with Authorization header is accepted" in {
     withSessionApi(Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil) { api =>
+      import api.implicitSessionToken
       api.login(None) await 99.s
       assert(api.hasSession)
       requireAuthorizedAccess(api)
@@ -145,6 +151,7 @@ extends AnyFreeSpec with SessionRouteTester
 
   "Login as 'Anonymous' is rejected" in {
     withSessionApi() { api =>
+      import api.implicitSessionToken
       val exception = intercept[AkkaHttpClient.HttpException] {
         api.login(Some(UserId.Anonymous -> SecretString(""))) await 99.s
       }
@@ -158,6 +165,7 @@ extends AnyFreeSpec with SessionRouteTester
 
   "Login with invalid credentials is rejected with 403 Unauthorized and delayed" in {
     withSessionApi() { api =>
+      import api.implicitSessionToken
       val runningSince = now
       val exception = intercept[AkkaHttpClient.HttpException] {
         api.login(Some(UserId("A-USER") -> SecretString(""))) await 99.s
@@ -174,11 +182,12 @@ extends AnyFreeSpec with SessionRouteTester
 
   "Login and Logout" in {
     withSessionApi() { api =>
+      import api.implicitSessionToken
       assert(!api.hasSession)
 
       if (isPublic) {
           // Access without Login (Session) is allowed
-          api.get_[String](Uri(s"$localUri/authorizedUser")) await 99.s
+        api.get_[String](Uri(s"$localUri/authorizedUser")) await 99.s
       } else {
         // Access without Login (Session) is rejected
         intercept[HttpException] {
@@ -216,6 +225,7 @@ extends AnyFreeSpec with SessionRouteTester
     // With Unauthorized or Forbidden, stateful SessionApi learns about the invalid session.
     withSessionApi() { api =>
       api.setSessionToken(SessionToken(SecretString("DISCARDED")))
+      import api.implicitSessionToken
       val exception = requireAccessIsForbidden(api)
       assert(AkkaHttpClient.sessionMayBeLost(exception))
       assert(api.hasSession)
@@ -248,6 +258,7 @@ extends AnyFreeSpec with SessionRouteTester
         withSessionApi() { otherClient =>
           // Using old SessionToken is Unauthorized
           otherClient.setSessionToken(firstSessionToken)
+          import otherClient.implicitSessionToken
           val exception = intercept[AkkaHttpClient.HttpException] {
             otherClient.get_[String](Uri(s"$localUri/authorizedUser")) await 99.s
           }
@@ -280,6 +291,8 @@ extends AnyFreeSpec with SessionRouteTester
       def baseUri = localUri
       def uriPrefixPath = ""
       override val standardHeaders = headers ::: super.standardHeaders
+      def keyStoreRef = None
+      def trustStoreRef = None
     }
     autoClosing(api) {
       body

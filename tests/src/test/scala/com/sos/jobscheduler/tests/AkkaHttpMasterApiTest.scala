@@ -27,7 +27,7 @@ final class AkkaHttpMasterApiTest extends AnyFreeSpec with MasterAgentForScalaTe
   protected val agentRefPaths = Nil
   protected val fileBased = TestWorkflow :: Nil
 
-  private lazy val api = new AkkaHttpMasterApi(master.localUri)
+  private lazy val api = AkkaHttpMasterApi(master.localUri, master.actorSystem)
     .closeWithCloser
 
   override def beforeAll() = {

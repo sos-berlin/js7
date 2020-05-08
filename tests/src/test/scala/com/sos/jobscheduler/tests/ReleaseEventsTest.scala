@@ -83,7 +83,7 @@ final class ReleaseEventsTest extends AnyFreeSpec with DirectoryProviderForScala
 
       locally {
         val x = new TestApi(master, xUserAndPassword)
-        val result = x.liftProblem(x.executeCommand(ReleaseEvents(finished.head.eventId))).await(99.s)
+        val result = x.httpClient.liftProblem(x.executeCommand(ReleaseEvents(finished.head.eventId))).await(99.s)
         assert(result.left.toOption.flatMap(_.codeOption) contains UserIsNotEnabledToReleaseEventsProblem.code)
       }
 
@@ -150,12 +150,9 @@ private object ReleaseEventsTest
   private val dOrder = FreshOrder(OrderId("🔺"), TestWorkflow.id.path)
 
   private class TestApi(master: RunningMaster, protected val credentials: UserAndPassword)
-  extends AkkaHttpMasterApi.CommonAkka with HttpAutoRelogin {
+  extends AkkaHttpMasterApi.Standard(master.localUri, master.actorSystem, name = "RunningMaster")
+  with HttpAutoRelogin {
     protected val userAndPassword = Some(credentials)
-    protected val baseUri = master.localUri
-    protected val name = "RunningMaster"
-    protected def actorSystem = master.actorSystem
-
     relogin await 99.s
   }
 }

@@ -3,7 +3,7 @@ package com.sos.jobscheduler.master.client
 import com.sos.jobscheduler.base.session.HttpSessionApi
 import com.sos.jobscheduler.base.utils.HasCloser
 import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.akkahttp.https.{AkkaHttps, TrustStoreRef}
+import com.sos.jobscheduler.common.akkahttp.https.TrustStoreRef
 import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
 import com.sos.jobscheduler.common.configutils.Configs.parseConfigIfExists
 import com.sos.jobscheduler.common.http.{AkkaHttpClient, TextApi}
@@ -19,8 +19,8 @@ private[master] final class AkkaHttpMasterTextApi(
   protected val baseUri: Uri,
   protected val print: String => Unit,
   configDirectory: Option[Path] = None)
-extends HasCloser with ProvideActorSystem with TextApi with HttpSessionApi with AkkaHttpClient {
-
+extends HasCloser with ProvideActorSystem with TextApi with HttpSessionApi with AkkaHttpClient
+{
   protected val config = ConfigFactory.empty
 
   protected val name = "AkkaHttpMasterTextApi"
@@ -39,12 +39,11 @@ extends HasCloser with ProvideActorSystem with TextApi with HttpSessionApi with 
 
   protected def apiUri(tail: String) = masterUris.api(tail)
 
-  protected override lazy val httpsConnectionContextOption =
-    for {
-      configDir <- configDirectory
-      trustStoreRef <- TrustStoreRef.fromConfig(configDirectoryConfig(configDir), default = configDir / "private/https-keystore.p12").toOption
-    } yield
-      AkkaHttps.loadHttpsConnectionContext(trustStoreRef = Some(trustStoreRef))
+  protected def keyStoreRef = None
+
+  protected lazy val trustStoreRef = configDirectory.flatMap(configDir =>
+    TrustStoreRef.fromConfig(configDirectoryConfig(configDir), default = configDir / "private/https-keystore.p12")
+      .toOption)
 
   closer.onClose { super.close() }
 

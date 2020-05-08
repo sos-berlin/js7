@@ -8,7 +8,7 @@ import com.typesafe.config.Config
 import java.net.URL
 import java.nio.file.Path
 
-/**
+/** To provide a client certificate to server.
   * @author Joacim Zschimmer
   */
 final case class KeyStoreRef(

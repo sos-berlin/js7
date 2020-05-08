@@ -153,11 +153,8 @@ extends AutoCloseable
   val localUri = webServer.localUri
 
   @TestOnly
-  lazy val httpApi: HttpMasterApi = new AkkaHttpMasterApi.CommonAkka {
-      protected val baseUri = localUri
-      protected val name = "RunningMaster"
-      protected def actorSystem = RunningMaster.this.actorSystem
-    } closeWithCloser closer
+  lazy val httpApi: HttpMasterApi = AkkaHttpMasterApi(localUri, actorSystem, config)
+    .closeWithCloser(closer)
 
   @TestOnly
   def journalActorState: Output.JournalActorState =

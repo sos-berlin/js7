@@ -33,19 +33,20 @@ import com.sos.jobscheduler.tests.testenv.MasterAgentForScalaTest
 import com.typesafe.config.ConfigFactory
 import java.nio.file.Files
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.matchers.should.Matchers._
 import org.scalatest.BeforeAndAfterAll
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers._
 import scala.collection.mutable
 import scodec.bits.ByteVector
-import org.scalatest.matchers
-import org.scalatest.freespec.AnyFreeSpec
 
 final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with MasterAgentForScalaTest
 {
   protected val agentRefPaths = agentRefPath :: Nil
   protected val fileBased = workflow :: Nil
   private lazy val uri = master.localUri
-  private lazy val masterApi = AkkaHttpMasterApi(uri)(master.actorSystem).closeWithCloser
+  private lazy val masterApi = AkkaHttpMasterApi(uri, master.actorSystem).closeWithCloser
+  private lazy val httpClient = masterApi.httpClient
+  private implicit def sessionToken = masterApi.sessionToken
 
   override def beforeAll() = {
     super.beforeAll()
@@ -62,7 +63,7 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
 
   "/master/api/journal requires authentication" in {
     val e = intercept[HttpException] {
-      masterApi.getDecodedLinesObservable[String](Uri(s"$uri/master/api/journal?file=0&position=0")) await 99.s
+      httpClient.getDecodedLinesObservable[String](Uri(s"$uri/master/api/journal?file=0&position=0")) await 99.s
     }
     assert(e.status == Unauthorized)
   }
@@ -75,12 +76,12 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
     var replicated = ByteVector.empty
     master.eventWatch.await[AgentReady](_ => true)  // Await last event
 
-    val whenReplicated = masterApi.getRawLinesObservable(Uri(s"$uri/master/api/journal?markEOF=true&file=0&position=0"))
+    val whenReplicated = httpClient.getRawLinesObservable(Uri(s"$uri/master/api/journal?markEOF=true&file=0&position=0"))
       .await(99.s)
       .foreach { replicated ++= _ }
 
     val observedLengths = mutable.Buffer[String]()
-    val whenLengthsObserved = masterApi.getRawLinesObservable(Uri(s"$uri/master/api/journal?markEOF=true&file=0&position=0&return=length"))
+    val whenLengthsObserved = httpClient.getRawLinesObservable(Uri(s"$uri/master/api/journal?markEOF=true&file=0&position=0&return=length"))
       .await(99.s)
       .foreach(o => observedLengths += o.utf8String)
 
@@ -111,7 +112,7 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
   }
 
   "Timeout" in {
-    val lines = masterApi.getRawLinesObservable(Uri(s"$uri/master/api/journal?timeout=0&markEOF=true"))
+    val lines = httpClient.getRawLinesObservable(Uri(s"$uri/master/api/journal?timeout=0&markEOF=true"))
       .await(99.s)
       .map(_.utf8String)
       .toListL
@@ -124,11 +125,11 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
     val heartbeatLines = mutable.Buffer[String]()
     val fileAfter = master.eventWatch.lastFileTornEventId
     val u = Uri(s"$uri/master/api/journal?markEOF=true&file=$fileAfter&position=0")
-    masterApi.getRawLinesObservable(u).await(99.s)
+    httpClient.getRawLinesObservable(u).await(99.s)
       .foreach {
         lines += _.decodeUtf8.orThrow
       }
-    masterApi.getRawLinesObservable(Uri(u.string + "&heartbeat=0.1")).await(99.s)
+    httpClient.getRawLinesObservable(Uri(u.string + "&heartbeat=0.1")).await(99.s)
       .timeoutOnSlowUpstream(200.ms)  // Check heartbeat
       .foreach {
         heartbeatLines += _.decodeUtf8.orThrow

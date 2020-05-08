@@ -32,9 +32,12 @@ final class HttpAutoReloginTest extends AnyFreeSpec with SessionRouteTester
         def baseUri = server.localUri
         def uriPrefixPath = ""
         protected val userAndPassword = Some(UserAndPassword(UserId("A-USER"), SecretString("A-PASSWORD")))
+        protected def keyStoreRef = None
+        protected def trustStoreRef = None
       }
     }).use(api =>
       api.retryUntilReachable {
+        import api.implicitSessionToken
         progress.flatMap(mvar =>
           Task.defer {
             loopCounter += 1
