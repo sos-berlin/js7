@@ -1,13 +1,13 @@
 package com.sos.jobscheduler.common.concurrent
 
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.time.Stopwatch.measureTime
+import com.sos.jobscheduler.base.time.Stopwatch.measureTime
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import java.util.concurrent.Executors.newFixedThreadPool
 import org.scalatest.BeforeAndAfterAll
+import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Random
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer

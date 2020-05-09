@@ -15,8 +15,7 @@ import com.sos.jobscheduler.common.http.AkkaHttpUtils.AkkaByteVector
 import com.sos.jobscheduler.common.http.JsonStreamingSupport.`application/x-ndjson`
 import com.sos.jobscheduler.common.http.StreamingSupport._
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
-import com.sos.jobscheduler.core.event.journal.data.JournalSeparators
-import com.sos.jobscheduler.data.event.EventId
+import com.sos.jobscheduler.data.event.{EventId, JournalSeparators}
 import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import com.sos.jobscheduler.master.web.master.api.JournalRoute._
 import monix.execution.Scheduler

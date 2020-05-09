@@ -2,13 +2,12 @@ package com.sos.jobscheduler.core.common.jsonseq
 
 import com.google.common.io.MoreFiles.touch
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
-import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.time.{Stopwatch, Timestamp}
 import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowableEither
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryFile
-import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.core.common.jsonseq.FileJsonSeqTest._
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
 import io.circe.Json

@@ -10,10 +10,10 @@ import com.sos.jobscheduler.common.event.PositionAnd
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.untilNoneIterator
 import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader
-import com.sos.jobscheduler.core.event.journal.data.JournalSeparators.{Commit, EventHeader, SnapshotFooter, SnapshotHeader, Transaction}
-import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta}
+import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.JournalReader._
-import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.JournalSeparators.{Commit, EventHeader, SnapshotFooter, SnapshotHeader, Transaction}
+import com.sos.jobscheduler.data.event.{Event, EventId, JournalHeader, JournalId, KeyedEvent, Stamped}
 import io.circe.Json
 import java.nio.file.Path
 import scala.annotation.tailrec

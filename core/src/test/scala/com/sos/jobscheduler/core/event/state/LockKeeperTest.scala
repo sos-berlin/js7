@@ -1,16 +1,16 @@
 package com.sos.jobscheduler.core.event.state
 
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.time.Stopwatch
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.core.event.state.LockKeeperTest._
 import java.util.concurrent.ConcurrentHashMap
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
+import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
 import scala.jdk.CollectionConverters._
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer

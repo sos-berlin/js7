@@ -16,10 +16,10 @@ import com.sos.jobscheduler.common.event.EventWatch
 import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.core.filebased.FileBasedApi
 import com.sos.jobscheduler.data.cluster.ClusterState
+import com.sos.jobscheduler.master.OrderApi
 import com.sos.jobscheduler.master.command.MasterCommandExecutor
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
-import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.{MasterState, OrderApi}
+import com.sos.jobscheduler.master.data.{MasterCommand, MasterState}
 import com.typesafe.config.Config
 import java.nio.file.Path
 import javax.inject.{Inject, Singleton}

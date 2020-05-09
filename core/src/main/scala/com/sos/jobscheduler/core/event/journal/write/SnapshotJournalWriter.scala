@@ -5,9 +5,9 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.core.event.journal.data.JournalSeparators.{SnapshotFooter, SnapshotHeader}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles._
 import com.sos.jobscheduler.data.event.EventId
+import com.sos.jobscheduler.data.event.JournalSeparators.{SnapshotFooter, SnapshotHeader}
 import java.nio.file.Path
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._

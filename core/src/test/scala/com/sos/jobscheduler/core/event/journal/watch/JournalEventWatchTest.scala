@@ -15,15 +15,15 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryDirectory
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
-import com.sos.jobscheduler.core.event.journal.data.JournalHeader.JournalIdMismatchProblem
-import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta, JournalSeparators}
+import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatchTest._
 import com.sos.jobscheduler.core.event.journal.watch.TestData.{writeJournal, writeJournalSnapshot}
 import com.sos.jobscheduler.core.event.journal.write.EventJournalWriter
+import com.sos.jobscheduler.data.event.JournalHeader.JournalIdMismatchProblem
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, JournalEvent, JournalId, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
+import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, JournalEvent, JournalHeader, JournalId, JournalSeparators, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
 import io.circe._
 import io.circe.syntax._
 import java.nio.file.Files
@@ -83,26 +83,26 @@ final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
 
         writer.onCommitted(writer.fileLengthAndEventId, MyEvents2.length)
         assert(when(EventId.BeforeFirst) == EventSeq.NonEmpty(MyEvents1 ++ MyEvents2))
-        assert(when(110) == EventSeq.NonEmpty(MyEvents1.tail ++ MyEvents2))
-        assert(when(120) == EventSeq.NonEmpty(MyEvents2))
-        assert(when(210) == EventSeq.NonEmpty(MyEvents2.tail))
-        assert(eventWatch.when(EventRequest.singleClass[MyEvent](after = 220, timeout = Some(10.ms))).await(99.s).strict == EventSeq.Empty(220))
+        assert(when(110L) == EventSeq.NonEmpty(MyEvents1.tail ++ MyEvents2))
+        assert(when(120L) == EventSeq.NonEmpty(MyEvents2))
+        assert(when(210L) == EventSeq.NonEmpty(MyEvents2.tail))
+        assert(eventWatch.when(EventRequest.singleClass[MyEvent](after = 220L, timeout = Some(10.ms))).await(99.s).strict == EventSeq.Empty(220L))
 
-        eventWatch.releaseEvents(untilEventId = 0)
-        assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(0), journalMeta.file(120)))
+        eventWatch.releaseEvents(untilEventId = 0L)
+        assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(0L), journalMeta.file(120L)))
         assert(when(EventId.BeforeFirst) == EventSeq.NonEmpty(MyEvents1 ++ MyEvents2))
 
-        eventWatch.releaseEvents(untilEventId = 110)
-        assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(0), journalMeta.file(120)))
+        eventWatch.releaseEvents(untilEventId = 110L)
+        assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(0L), journalMeta.file(120L)))
         assert(when(EventId.BeforeFirst) == EventSeq.NonEmpty(MyEvents1 ++ MyEvents2))
 
-        eventWatch.releaseEvents(untilEventId = 120)
-        assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(120)))
-        assert(when(EventId.BeforeFirst) == TearableEventSeq.Torn(120))
+        eventWatch.releaseEvents(untilEventId = 120L)
+        assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(120L)))
+        assert(when(EventId.BeforeFirst) == TearableEventSeq.Torn(120L))
 
-        eventWatch.releaseEvents(untilEventId = 220)
-        assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(120)))
-        assert(when(EventId.BeforeFirst) == TearableEventSeq.Torn(120))
+        eventWatch.releaseEvents(untilEventId = 220L)
+        assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(120L)))
+        assert(when(EventId.BeforeFirst) == TearableEventSeq.Torn(120L))
       }
     }
   }
@@ -112,7 +112,7 @@ final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
       withJournalEventWatch(lastEventId = EventId.BeforeFirst) { (writer, eventWatch) =>
         assert(eventWatch.eventsAfter(after = EventId.BeforeFirst).get.strict.isEmpty)
 
-        val events = Stamped(1, "1" <-: A1) :: Stamped(2, "2" <-: A1) :: Nil
+        val events = Stamped(1L, "1" <-: A1) :: Stamped(2L, "2" <-: A1) :: Nil
         writer.writeEvents(events)
         assert(eventWatch.eventsAfter(after = EventId.BeforeFirst).get.strict.isEmpty)  // Not flushed, so nothing has been read
 
@@ -131,51 +131,51 @@ final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
     "eventWatch.when with torn event stream" in {
       withJournalEventWatch(lastEventId = EventId(1000)) { (writer, eventWatch) =>
         assert(eventWatch.eventsAfter(after = EventId.BeforeFirst) == None)
-        assert(eventWatch.eventsAfter(after = 999) == None)
-        assert(eventWatch.eventsAfter(after = 1000).map(_.toVector) == Some(Nil))
+        assert(eventWatch.eventsAfter(after = 999L) == None)
+        assert(eventWatch.eventsAfter(after = 1000L).map(_.toVector) == Some(Nil))
 
         assert(eventWatch.when(EventRequest.singleClass[MyEvent](timeout = Some(30.s))).await(99.s).strict ==
-          TearableEventSeq.Torn(after = 1000))
+          TearableEventSeq.Torn(after = 1000L))
 
-        val anyFuture = eventWatch.when(EventRequest.singleClass[MyEvent](after = 1000, timeout = Some(30.s))).runToFuture
-        writer.writeEvents(Stamped(1001, "1" <-: A1) :: Nil)
+        val anyFuture = eventWatch.when(EventRequest.singleClass[MyEvent](after = 1000L, timeout = Some(30.s))).runToFuture
+        writer.writeEvents(Stamped(1001L, "1" <-: A1) :: Nil)
         writer.flush(sync = false)
         writer.onCommitted(writer.fileLengthAndEventId, 1)
         val EventSeq.NonEmpty(anyEvents) = anyFuture.await(99.s).strict
-        assert(anyEvents == Stamped(1001, "1" <-: A1) :: Nil)
+        assert(anyEvents == Stamped(1001L, "1" <-: A1) :: Nil)
       }
     }
 
     "eventWatch.when for selected event subclasses" in {
       withJournalEventWatch(lastEventId = EventId(1000)) { (writer, eventWatch) =>
-        val anyFuture = eventWatch.when(EventRequest.singleClass[MyEvent](after = 1000, timeout = Some(30.s))).runToFuture
-        val bFuture = eventWatch.when(EventRequest.singleClass[BEvent](after = 1000, timeout = Some(30.s))).runToFuture
+        val anyFuture = eventWatch.when(EventRequest.singleClass[MyEvent](after = 1000L, timeout = Some(30.s))).runToFuture
+        val bFuture = eventWatch.when(EventRequest.singleClass[BEvent](after = 1000L, timeout = Some(30.s))).runToFuture
 
-        writer.writeEvents(Stamped(1001, "1" <-: A1) :: Nil)
+        writer.writeEvents(Stamped(1001L, "1" <-: A1) :: Nil)
         writer.flush(sync = false)
         writer.onCommitted(writer.fileLengthAndEventId, 1)
         val EventSeq.NonEmpty(anyEvents) = anyFuture.await(99.s).strict
-        assert(anyEvents == Stamped(1001, "1" <-: A1) :: Nil)
+        assert(anyEvents == Stamped(1001L, "1" <-: A1) :: Nil)
 
-        writer.writeEvents(Stamped(1002, "2" <-: B1) :: Nil)
+        writer.writeEvents(Stamped(1002L, "2" <-: B1) :: Nil)
         writer.flush(sync = false)
         writer.onCommitted(writer.fileLengthAndEventId, 1)
         val EventSeq.NonEmpty(bEventsIterator) = bFuture.await(99.s).strict
-        assert(bEventsIterator == Stamped(1002, "2" <-: B1) :: Nil)
+        assert(bEventsIterator == Stamped(1002L, "2" <-: B1) :: Nil)
 
         assert(eventWatch.when(EventRequest.singleClass[MyEvent](after = 1000, timeout = Some(30.s))).await(99.s).strict ==
-          EventSeq.NonEmpty(Stamped(1001, "1" <-: A1) :: Stamped(1002, "2" <-: B1) :: Nil))
+          EventSeq.NonEmpty(Stamped(1001L, "1" <-: A1) :: Stamped(1002L, "2" <-: B1) :: Nil))
       }
     }
 
     "eventWatch.whenKey, whenKeyedEvent" in {
       withJournalEventWatch(lastEventId = EventId.BeforeFirst) { (writer, eventWatch) =>
         val stampedSeq =
-          Stamped(1, "1" <-: A1) ::
-          Stamped(2, "1" <-: B1) ::
-          Stamped(3, "1" <-: A2) ::
-          Stamped(4, "2" <-: A2) ::
-          Stamped(5, "1" <-: B2) :: Nil
+          Stamped(1L, "1" <-: A1) ::
+          Stamped(2L, "1" <-: B1) ::
+          Stamped(3L, "1" <-: A2) ::
+          Stamped(4L, "2" <-: A2) ::
+          Stamped(5L, "1" <-: B2) :: Nil
         writer.writeEvents(stampedSeq)
         writer.flush(sync = false)
         writer.onCommitted(writer.fileLengthAndEventId, stampedSeq.length)
@@ -203,9 +203,9 @@ final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
             writer.beginEventSection(sync = false)
             writer.onJournalingStarted()
             val stampedSeq =
-              Stamped(1, "1" <-: A1) ::
-              Stamped(2, "1" <-: B1) ::
-              Stamped(3, "1" <-: A2) :: Nil
+              Stamped(1L, "1" <-: A1) ::
+              Stamped(2L, "1" <-: B1) ::
+              Stamped(3L, "1" <-: A2) :: Nil
             writer.writeEvents(stampedSeq)
             writer.flush(sync = false)
             writer.onCommitted(writer.fileLengthAndEventId, stampedSeq.length)
@@ -217,8 +217,8 @@ final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
             writer.beginEventSection(sync = false)
             writer.onJournalingStarted()
             val stampedSeq =
-              Stamped(4, "2" <-: A2) ::
-              Stamped(5, "1" <-: B2) :: Nil
+              Stamped(4L, "2" <-: A2) ::
+              Stamped(5L, "1" <-: B2) :: Nil
             writer.writeEvents(stampedSeq)
             writer.flush(sync = false)
             writer.onCommitted(writer.fileLengthAndEventId, stampedSeq.length)
@@ -236,18 +236,18 @@ final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
           .foreach(stampeds += _)
         assert(stampeds.isEmpty)
 
-        val stampedSeq = Stamped(1, "1" <-: A1) :: Stamped(2, "2" <-: B1) :: Stamped(3, "3" <-: A1) :: Nil
+        val stampedSeq = Stamped(1L, "1" <-: A1) :: Stamped(2L, "2" <-: B1) :: Stamped(3L, "3" <-: A1) :: Nil
         writer.writeEvents(stampedSeq)
         writer.flush(sync = false)
         writer.onCommitted(writer.fileLengthAndEventId, stampedSeq.length)
         waitForCondition(99.s, 10.ms) { stampeds.size == 2 }
-        assert(stampeds == Stamped(1, "1" <-: A1) :: Stamped(3, "3" <-: A1) :: Nil)
+        assert(stampeds == Stamped(1L, "1" <-: A1) :: Stamped(3L, "3" <-: A1) :: Nil)
 
-        writer.writeEvents(Stamped(4, "4" <-: A1) :: Nil)
+        writer.writeEvents(Stamped(4L, "4" <-: A1) :: Nil)
         writer.flush(sync = false)
         writer.onCommitted(writer.fileLengthAndEventId, 1)
         waitForCondition(99.s, 10.ms) { stampeds.size == 3 }
-        assert(stampeds == Stamped(1, "1" <-: A1) :: Stamped(3, "3" <-: A1) :: Stamped(4, "4" <-: A1) :: Nil)
+        assert(stampeds == Stamped(1L, "1" <-: A1) :: Stamped(3L, "3" <-: A1) :: Stamped(4L, "4" <-: A1) :: Nil)
 
         // limit=3 reached
         observed await 99.s
@@ -314,17 +314,17 @@ final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
           iterator.close()
         }
         locally {
-          val Some((eventId, iterator)) = eventWatch.snapshotObjectsFor(99)
+          val Some((eventId, iterator)) = eventWatch.snapshotObjectsFor(99L)
           assert(eventId == EventId.BeforeFirst && iterator.toVector.map(_.isInstanceOf[JournalHeader]) == Vector(true))  // Contains only JournalHeader
           iterator.close()
         }
         locally {
-          val Some((eventId, iterator)) = eventWatch.snapshotObjectsFor(100)
+          val Some((eventId, iterator)) = eventWatch.snapshotObjectsFor(100L)
           assert(eventId == 100 && iterator.filterNot(_.isInstanceOf[JournalHeader]).toList == snapshotObjects)
           iterator.close()
         }
         locally {
-          val Some((eventId, iterator)) = eventWatch.snapshotObjectsFor(101)
+          val Some((eventId, iterator)) = eventWatch.snapshotObjectsFor(101L)
           assert(eventId == 100 && iterator.filterNot(_.isInstanceOf[JournalHeader]).toList == snapshotObjects)
           iterator.close()
         }
@@ -353,18 +353,18 @@ final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
       assert(jsons(0).as[JournalHeader].orThrow.softwareVersion == BuildInfo.version)
       assert(jsons(1) == JournalSeparators.EventHeader)
 
-      writer.writeEvents(Stamped(1, "1" <-: A1) :: Stamped(2, "2" <-: B1) :: Nil)
+      writer.writeEvents(Stamped(1L, "1" <-: A1) :: Stamped(2L, "2" <-: B1) :: Nil)
       writer.flush(sync = false)  // TODO Flush sollte hier nicht erforderlich sein!
       writer.onCommitted(writer.fileLengthAndEventId, n = 2)
       waitForCondition(99.s, 10.ms) { jsons.size == 4 }
-      assert(jsons(2).as[Stamped[KeyedEvent[Event]]] == Right(Stamped(1, "1" <-: A1)))
-      assert(jsons(3).as[Stamped[KeyedEvent[Event]]] == Right(Stamped(2, "2" <-: B1)))
+      assert(jsons(2).as[Stamped[KeyedEvent[Event]]] == Right(Stamped(1L, "1" <-: A1)))
+      assert(jsons(3).as[Stamped[KeyedEvent[Event]]] == Right(Stamped(2L, "2" <-: B1)))
 
-      writer.writeEvents(Stamped(3, "3" <-: A1) :: Nil)
+      writer.writeEvents(Stamped(3L, "3" <-: A1) :: Nil)
       writer.flush(sync = false)  // TODO Flush sollte hier nicht erforderlich sein!
       writer.onCommitted(writer.fileLengthAndEventId, 1)
       waitForCondition(99.s, 10.ms) { jsons.size == 5 }
-      assert(jsons(4).as[Stamped[KeyedEvent[Event]]] == Right(Stamped(3, "3" <-: A1)))
+      assert(jsons(4).as[Stamped[KeyedEvent[Event]]] == Right(Stamped(3L, "3" <-: A1)))
     }
   }
 
@@ -400,13 +400,13 @@ private object JournalEventWatchTest
   private val journalId = JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))
 
   private val MyEvents1: List[Stamped[KeyedEvent[Event]]] =
-    Stamped(110, "A1" <-: A1) ::
-    Stamped(120, "A2" <-: A2) ::
+    Stamped(110L, "A1" <-: A1) ::
+    Stamped(120L, "A2" <-: A2) ::
     Nil
 
   private val MyEvents2: List[Stamped[KeyedEvent[Event]]] =
-    Stamped(210, "B1" <-: B1) ::
-    Stamped(220, "B2" <-: B2) ::
+    Stamped(210L, "B1" <-: B1) ::
+    Stamped(220L, "B2" <-: B2) ::
     Nil
 
   private sealed trait MyEvent extends Event

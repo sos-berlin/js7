@@ -10,8 +10,7 @@ import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
 import com.sos.jobscheduler.common.system.JavaInformations.javaInformation
 import com.sos.jobscheduler.common.system.SystemInformations.systemInformation
 import com.sos.jobscheduler.data.master.MasterId
-import com.sos.jobscheduler.master.MasterState
-import com.sos.jobscheduler.master.data.MasterOverview
+import com.sos.jobscheduler.master.data.{MasterOverview, MasterState}
 import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import monix.eval.Task
 import monix.execution.Scheduler

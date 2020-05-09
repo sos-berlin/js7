@@ -2,21 +2,21 @@ package com.sos.jobscheduler.core.crypt.pgp
 
 import cats.effect.{Resource, SyncIO}
 import cats.syntax.show._
+import com.sos.jobscheduler.base.Problems.{MessageSignedByUnknownProblem, TamperedWithSignedMessageProblem}
+import com.sos.jobscheduler.base.crypt.{GenericSignature, PgpSignature, SignatureVerifier, SignerId}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.SyncResource.syntax._
 import com.sos.jobscheduler.common.scalautil.GuavaUtils.stringToInputStreamResource
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.crypt.SignatureVerifier
-import com.sos.jobscheduler.core.crypt.pgp.PgpCommons.{RichPGPPublicKeyRingCollection, _}
-import com.sos.jobscheduler.core.problems.{MessageSignedByUnknownProblem, TamperedWithSignedMessageProblem}
-import com.sos.jobscheduler.data.crypt.{GenericSignature, PgpSignature, SignerId}
+import com.sos.jobscheduler.core.crypt.pgp.PgpCommons._
 import java.io.InputStream
 import org.bouncycastle.openpgp.jcajce.JcaPGPObjectFactory
 import org.bouncycastle.openpgp.operator.jcajce.JcaPGPContentVerifierBuilderProvider
 import org.bouncycastle.openpgp.{PGPPublicKey, PGPPublicKeyRingCollection, PGPSignature, PGPSignatureList, PGPUtil}
 import scala.jdk.CollectionConverters._
+
 /**
   * @author Joacim Zschimmer
   */

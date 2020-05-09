@@ -15,9 +15,9 @@ import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger}
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.sos.jobscheduler.core.crypt.generic.MessageSigners
 import com.sos.jobscheduler.core.filebased.FileBaseds.diffFileBaseds
-import com.sos.jobscheduler.core.filebased.{FileBasedSigner, FileBaseds, TypedPaths, TypedSourceReader}
+import com.sos.jobscheduler.core.filebased.{FileBaseds, TypedPaths, TypedSourceReader}
 import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.filebased.{FileBased, TypedPath, VersionId}
+import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedSigner, TypedPath, VersionId}
 import com.sos.jobscheduler.data.master.MasterFileBaseds
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.agent.AgentRefReader

@@ -1,9 +1,8 @@
 package com.sos.jobscheduler.master.agent
 
 import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.common.http.configuration.RecouplingStreamReaderConf
+import com.sos.jobscheduler.common.http.configuration.{RecouplingStreamReaderConf, RecouplingStreamReaderConfs}
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
-import com.sos.jobscheduler.core.configuration.RecouplingStreamReaderConfs
 import com.sos.jobscheduler.core.event.journal.JournalConf
 import com.typesafe.config.Config
 import scala.concurrent.duration._

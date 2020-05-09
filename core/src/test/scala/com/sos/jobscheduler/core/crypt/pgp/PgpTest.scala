@@ -1,6 +1,8 @@
 package com.sos.jobscheduler.core.crypt.pgp
 
 import cats.syntax.show._
+import com.sos.jobscheduler.base.Problems.{MessageSignedByUnknownProblem, TamperedWithSignedMessageProblem}
+import com.sos.jobscheduler.base.crypt.{PgpSignature, SignerId}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.SyncResource.syntax._
@@ -9,14 +11,11 @@ import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.core.crypt.pgp.PgpCommons.{readPublicKeyRingCollection, toPublicKeyRingCollection, writePublicKeyAsAscii, _}
 import com.sos.jobscheduler.core.crypt.pgp.PgpSigner.readSecretKey
 import com.sos.jobscheduler.core.crypt.pgp.PgpTest._
-import com.sos.jobscheduler.core.problems.{MessageSignedByUnknownProblem, TamperedWithSignedMessageProblem}
-import com.sos.jobscheduler.data.crypt.{PgpSignature, SignerId}
 import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets.UTF_8
 import org.bouncycastle.openpgp.{PGPException, PGPSignature}
-import org.scalatest.matchers
-import org.scalatest.matchers.should.Matchers._
 import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers._
 
 final class PgpTest extends AnyFreeSpec
 {

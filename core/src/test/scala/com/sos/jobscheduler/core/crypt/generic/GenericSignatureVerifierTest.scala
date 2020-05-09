@@ -1,11 +1,11 @@
 package com.sos.jobscheduler.core.crypt.generic
 
+import com.sos.jobscheduler.base.Problems.TamperedWithSignedMessageProblem
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryDirectory
 import com.sos.jobscheduler.core.crypt.pgp.PgpSigner.readSecretKey
 import com.sos.jobscheduler.core.crypt.pgp.{PgpSigner, PgpTest}
-import com.sos.jobscheduler.core.problems.TamperedWithSignedMessageProblem
 import com.typesafe.config.ConfigFactory
 import org.scalatest.freespec.AnyFreeSpec
 

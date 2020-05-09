@@ -3,19 +3,21 @@ package com.sos.jobscheduler.tester
 import io.circe.parser.parse
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json, Printer}
+import org.scalatest.Assertion
 import org.scalatest.Assertions._
 
 /**
   * @author Joacim Zschimmer
   */
-object CirceJsonTester {
+object CirceJsonTester
+{
   private val printer = Printer.noSpaces.copy(dropNullValues = true/*drops None*/)
   private val prettyPrinter = Printer.spaces2.copy(colonLeft = "", lrbracketsEmpty = "")
 
-  def testJson[A: Encoder: Decoder](a: A, jsonString: String): Unit =
+  def testJson[A: Encoder: Decoder](a: A, jsonString: String): Assertion =
     testJson(a, parseJson(jsonString))
 
-  def testJson[A: Encoder: Decoder](a: A, json: => Json): Unit = {
+  def testJson[A: Encoder: Decoder](a: A, json: => Json): Assertion = {
     // Do a.asJson first to get the JSON string, then evaluate lazy json (which may have syntax errors during development).
     val asJson: Json = removeJNull(a.asJson)  // Circe converts None to JNull which we remove here (like Printer dropNullValues = true)
     if (asJson != json) fail(s"${prettyPrinter.print(normalize(asJson))} did not equal ${prettyPrinter.print(normalize(json))}")

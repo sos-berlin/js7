@@ -1,11 +1,11 @@
 package com.sos.jobscheduler.core.crypt.generic
 
+import com.sos.jobscheduler.base.crypt.MessageSigner
+import com.sos.jobscheduler.base.crypt.silly.SillySigner
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections._
 import com.sos.jobscheduler.base.utils.Collections.implicits._
-import com.sos.jobscheduler.core.crypt.MessageSigner
 import com.sos.jobscheduler.core.crypt.pgp.PgpSigner
-import com.sos.jobscheduler.core.crypt.silly.SillySigner
 
 /**
   * @author Joacim Zschimmer

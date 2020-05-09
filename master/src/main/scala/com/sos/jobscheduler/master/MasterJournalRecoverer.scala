@@ -2,6 +2,7 @@ package com.sos.jobscheduler.master
 
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.{JournaledStateRecoverer, Recovered}
+import com.sos.jobscheduler.master.data.{MasterState, MasterStateBuilder}
 import com.typesafe.config.Config
 import scala.concurrent.duration.Deadline
 import scala.concurrent.duration.Deadline.now

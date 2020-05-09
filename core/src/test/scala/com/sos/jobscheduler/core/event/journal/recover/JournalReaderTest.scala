@@ -8,13 +8,12 @@ import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.core.event.journal.JournalActor
-import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalSeparators}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles
 import com.sos.jobscheduler.core.event.journal.test.{TestActor, TestAggregate, TestAggregateActor, TestEvent, TestJournalMixin}
 import com.sos.jobscheduler.core.event.journal.write.{EventJournalWriter, FileJsonWriter, SnapshotJournalWriter}
 import com.sos.jobscheduler.data.event.JournalEvent.SnapshotTaken
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{EventId, JournalEvent, JournalId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{EventId, JournalEvent, JournalHeader, JournalId, JournalSeparators, KeyedEvent, Stamped}
 import io.circe.Encoder
 import io.circe.syntax.EncoderOps
 import java.nio.file.Files.delete
@@ -33,7 +32,7 @@ final class JournalReaderTest extends AnyFreeSpec with TestJournalMixin
     val file = currentFile
     autoClosing(new JournalReader(journalMeta, Some(journalId), file)) { journalReader =>
       assert(journalReader.nextSnapshots().toList == journalReader.journalHeader :: Nil)
-      assert(journalReader.nextEvents().toList == Stamped(1000000, (NoKey <-: JournalEvent.SnapshotTaken)) :: Nil)
+      assert(journalReader.nextEvents().toList == Stamped(1000000L, (NoKey <-: JournalEvent.SnapshotTaken)) :: Nil)
       assert(journalReader.eventId == 1000000)
       assert(journalReader.totalEventCount == 1)
     }
@@ -47,11 +46,11 @@ final class JournalReaderTest extends AnyFreeSpec with TestJournalMixin
       writer.beginSnapshotSection()
       writer.endSnapshotSection()
       writer.beginEventSection(sync = false)
-      writer.writeEvent(Stamped(1000, NoKey <-: SnapshotTaken))
+      writer.writeEvent(Stamped(1000L, NoKey <-: SnapshotTaken))
     }
     autoClosing(new JournalReader(journalMeta, Some(journalId), JournalFiles.currentFile(journalMeta.fileBase).orThrow)) { journalReader =>
       assert(journalReader.nextSnapshots().toList == journalReader.journalHeader :: Nil)
-      assert(journalReader.nextEvents().toList == Stamped(1000, (NoKey <-: JournalEvent.SnapshotTaken)) :: Nil)
+      assert(journalReader.nextEvents().toList == Stamped(1000L, (NoKey <-: JournalEvent.SnapshotTaken)) :: Nil)
       assert(journalReader.eventId == 1000)
       assert(journalReader.totalEventCount == 1)
     }
@@ -65,17 +64,17 @@ final class JournalReaderTest extends AnyFreeSpec with TestJournalMixin
       writer.beginSnapshotSection()
       writer.endSnapshotSection()
       writer.beginEventSection(sync = false)
-      writer.writeEvent(Stamped(1000, NoKey <-: SnapshotTaken))
+      writer.writeEvent(Stamped(1000L, NoKey <-: SnapshotTaken))
     }
-    autoClosing(new EventJournalWriter(journalMeta, file, after = 1000, journalId, observer = None, simulateSync = None)) { writer =>
-      writer.writeEvents(Stamped(1001, "X" <-: TestEvent.Removed) :: Nil)
+    autoClosing(new EventJournalWriter(journalMeta, file, after = 1000L, journalId, observer = None, simulateSync = None)) { writer =>
+      writer.writeEvents(Stamped(1001L, "X" <-: TestEvent.Removed) :: Nil)
       //Without: writer.endEventSection(sync = false)
     }
     autoClosing(new JournalReader(journalMeta, Some(journalId), JournalFiles.currentFile(journalMeta.fileBase).orThrow)) { journalReader =>
       assert(journalReader.tornEventId == 0)
       assert(journalReader.eventId == EventId.BeforeFirst)
       assert(journalReader.nextSnapshots().toList == journalReader.journalHeader :: Nil)
-      assert(journalReader.nextEvents().toList == Stamped(1000, NoKey <-: SnapshotTaken) :: Stamped(1001, "X" <-: TestEvent.Removed) :: Nil)
+      assert(journalReader.nextEvents().toList == Stamped(1000L, NoKey <-: SnapshotTaken) :: Stamped(1001L, "X" <-: TestEvent.Removed) :: Nil)
       assert(journalReader.eventId == 1001)
       assert(journalReader.totalEventCount == 2)
     }
@@ -94,25 +93,25 @@ final class JournalReaderTest extends AnyFreeSpec with TestJournalMixin
         TestAggregate("TEST-A","(A.Add)(A.Append)(A.AppendAsync)(A.AppendNested)(A.AppendNestedAsync)"),
         TestAggregate("TEST-C","(C.Add)")))
       assert(journalReader.nextEvents().toList == List(
-        Stamped(1000067, NoKey <-: SnapshotTaken),
-        Stamped(1000068, "X" <-: TestEvent.Added("(X)")),
-        Stamped(1000069, "Y" <-: TestEvent.Added("(Y)"))))
+        Stamped(1000067L, NoKey <-: SnapshotTaken),
+        Stamped(1000068L, "X" <-: TestEvent.Added("(X)")),
+        Stamped(1000069L, "Y" <-: TestEvent.Added("(Y)"))))
       assert(journalReader.eventId == 1000069)
       assert(journalReader.totalEventCount == 72)
     }
   }
 
   "Transactions" - {
-    val first = Stamped(1000, "A" <-: TestEvent.Removed)
-    val ta = Stamped(1001, "KEY" <-: TestEvent.Appended('a')) ::
-             Stamped(1002, "KEY" <-: TestEvent.Appended('b')) ::
-             Stamped(1003, "KEY" <-: TestEvent.Appended('c')) :: Nil
-    val last = Stamped(1004, "Z" <-: TestEvent.Removed)
+    val first = Stamped(1000L, "A" <-: TestEvent.Removed)
+    val ta = Stamped(1001L, "KEY" <-: TestEvent.Appended('a')) ::
+             Stamped(1002L, "KEY" <-: TestEvent.Appended('b')) ::
+             Stamped(1003L, "KEY" <-: TestEvent.Appended('c')) :: Nil
+    val last = Stamped(1004L, "Z" <-: TestEvent.Removed)
 
     "Committed transaction" in {
       val file = currentFile
       delete(file)  // File of last test
-      autoClosing(new EventJournalWriter(journalMeta, file, after = 0, journalId, observer = None, simulateSync = None, withoutSnapshots = true)) { writer =>
+      autoClosing(new EventJournalWriter(journalMeta, file, after = 0L, journalId, observer = None, simulateSync = None, withoutSnapshots = true)) { writer =>
         writer.writeHeader(JournalHeader.forTest(journalId, eventId = EventId.BeforeFirst))
         writer.beginEventSection(sync = false)
         writer.writeEvents(first :: Nil)

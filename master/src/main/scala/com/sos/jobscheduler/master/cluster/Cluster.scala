@@ -40,12 +40,12 @@ import com.sos.jobscheduler.data.cluster.{ClusterCommand, ClusterEvent, ClusterN
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.master.MasterId
-import com.sos.jobscheduler.master.MasterState
 import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
 import com.sos.jobscheduler.master.cluster.Cluster._
 import com.sos.jobscheduler.master.cluster.ClusterCommon.truncateFile
 import com.sos.jobscheduler.master.cluster.ObservablePauseDetector._
 import com.sos.jobscheduler.master.data.MasterCommand.InternalClusterCommand
+import com.sos.jobscheduler.master.data.MasterState
 import com.typesafe.config.{Config, ConfigUtil}
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, Paths}

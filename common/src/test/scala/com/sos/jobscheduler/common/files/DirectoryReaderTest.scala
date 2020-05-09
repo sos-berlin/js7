@@ -2,6 +2,7 @@ package com.sos.jobscheduler.common.files
 
 import com.google.common.io.MoreFiles.touch
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.time.Stopwatch.measureTime
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.files.DirectoryReader.Entry
 import com.sos.jobscheduler.common.files.DirectoryReaderTest._
@@ -9,12 +10,11 @@ import com.sos.jobscheduler.common.scalautil.FileUtils._
 import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
-import com.sos.jobscheduler.common.time.Stopwatch.measureTime
 import java.nio.file.Files.createDirectory
 import java.nio.file.Paths
 import java.util.Comparator
-import scala.util.Random
 import org.scalatest.freespec.AnyFreeSpec
+import scala.util.Random
 
 /**
   * @author Joacim Zschimmer

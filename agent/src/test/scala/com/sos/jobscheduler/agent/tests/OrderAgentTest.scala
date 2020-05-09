@@ -9,22 +9,22 @@ import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, Batch, DetachOrder, RegisterAsMaster}
 import com.sos.jobscheduler.agent.tests.OrderAgentTest._
 import com.sos.jobscheduler.agent.tests.TestAgentDirectoryProvider.{TestUserAndPassword, provideAgentDirectory}
+import com.sos.jobscheduler.base.Problems.TamperedWithSignedMessageProblem
+import com.sos.jobscheduler.base.crypt.SignedString
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.time.Stopwatch
 import com.sos.jobscheduler.base.utils.Closer.syntax._
 import com.sos.jobscheduler.base.utils.Closer.withCloser
 import com.sos.jobscheduler.common.http.AkkaHttpClient
 import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
-import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.core.crypt.pgp.PgpSigner
-import com.sos.jobscheduler.core.filebased.FileBasedSigner
-import com.sos.jobscheduler.core.problems.TamperedWithSignedMessageProblem
 import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.crypt.SignedString
 import com.sos.jobscheduler.data.event.{Event, EventRequest, EventSeq, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.filebased.FileBasedSigner
 import com.sos.jobscheduler.data.order.OrderEvent.OrderDetachable
 import com.sos.jobscheduler.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.Workflow
@@ -32,11 +32,10 @@ import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
 import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler.Implicits.global
+import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
 import scala.collection.mutable
 import scala.concurrent.duration._
-import org.scalatest.matchers
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer

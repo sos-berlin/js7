@@ -8,11 +8,10 @@ import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
-import com.sos.jobscheduler.core.filebased.Repo
 import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.data.event.{EventId, JournalState, JournaledState}
+import com.sos.jobscheduler.data.filebased.Repo
 import com.sos.jobscheduler.data.master.{MasterFileBaseds, MasterId}
-import com.sos.jobscheduler.master.MasterState
 import com.sos.jobscheduler.master.data.MasterOverview
 import com.sos.jobscheduler.master.data.MasterSnapshots.MasterMetaState
 import com.sos.jobscheduler.master.web.master.api.test.RouteTester
@@ -30,13 +29,13 @@ final class ApiRootRouteTest extends AnyFreeSpec with RouteTester with ApiRootRo
   protected val masterId = MasterId("TEST-MASTER")
   protected def isShuttingDown = false
   protected implicit def scheduler: Scheduler = Scheduler.global
-  protected def masterState = Task.pure(Right(MasterState(
+  protected def masterState = Task.pure(Right(com.sos.jobscheduler.master.data.MasterState(
     EventId(1001),
     JournaledState.Standards(
       JournalState(Map(UserId("A") -> EventId(1000))),
       ClusterState.Empty),
     MasterMetaState(MasterId("MASTER-ID"), Timestamp("2019-05-24T12:00:00Z"), timezone = "Europe/Berlin"),
-    Repo(MasterFileBaseds.jsonCodec),
+    Repo.ofJsonDecoder(MasterFileBaseds.jsonCodec),
     Map.empty,
     Map.empty)))
   protected def totalRunningSince = now - 1.hour

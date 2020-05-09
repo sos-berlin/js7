@@ -2,8 +2,7 @@ package com.sos.jobscheduler.master.cluster
 
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.event.state.JournaledStateBuilder
-import com.sos.jobscheduler.data.event.JournaledState
+import com.sos.jobscheduler.data.event.{JournaledState, JournaledStateBuilder}
 import com.sos.jobscheduler.master.cluster.StateBuilderAndAccessor._
 import monix.catnap.MVar
 import monix.eval.Task

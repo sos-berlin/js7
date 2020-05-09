@@ -3,12 +3,12 @@ package com.sos.jobscheduler.core.event.journal.watch
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
 import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils._
-import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta}
+import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
 import com.sos.jobscheduler.core.event.journal.watch.HistoricEventReaderTest._
 import com.sos.jobscheduler.core.event.journal.watch.TestData.{AEvent, BEvent, TestKeyedEventJsonCodec, journalId}
 import com.sos.jobscheduler.core.event.journal.write.EventJournalWriter
-import com.sos.jobscheduler.data.event.Stamped
+import com.sos.jobscheduler.data.event.{JournalHeader, Stamped}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

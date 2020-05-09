@@ -2,7 +2,7 @@ package com.sos.jobscheduler.data.filebased
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
-import com.sos.jobscheduler.data.crypt.{GenericSignature, SignedString}
+import com.sos.jobscheduler.base.crypt.{GenericSignature, SignedString}
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
 import com.sos.jobscheduler.data.filebased.RepoEventTest._
 import com.sos.jobscheduler.data.master.MasterFileBaseds._

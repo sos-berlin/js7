@@ -2,8 +2,9 @@ package com.sos.jobscheduler.master
 
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
-import com.sos.jobscheduler.core.filebased.{FileBasedApi, Repo}
-import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, FileBasedsOverview, TypedPath}
+import com.sos.jobscheduler.core.filebased.FileBasedApi
+import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, FileBasedsOverview, Repo, TypedPath}
+import com.sos.jobscheduler.master.data.MasterState
 import monix.eval.Task
 
 private[master] final class MainFileBasedApi(masterState: Task[Checked[MasterState]])

@@ -1,19 +1,5 @@
 package com.sos.jobscheduler.core.event.journal.recover
 
-import JournaledStateRecovererTest._
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.common.scalautil.FileUtils
-import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.core.event.state.JournaledStateBuilder
-import com.sos.jobscheduler.data.cluster.ClusterState
-import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{Event, EventId, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, NoKeyEvent, Stamped}
-import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import com.typesafe.config.ConfigFactory
-import java.nio.file.Paths
-import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

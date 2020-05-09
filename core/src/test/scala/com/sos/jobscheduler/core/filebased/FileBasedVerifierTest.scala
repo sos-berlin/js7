@@ -1,16 +1,17 @@
 package com.sos.jobscheduler.core.filebased
 
+import com.sos.jobscheduler.base.Problems.TamperedWithSignedMessageProblem
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import com.sos.jobscheduler.base.crypt.{Signed, SignedString, SignerId}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.CatsUtils.bytesToInputStreamResource
 import com.sos.jobscheduler.core.crypt.pgp.PgpCommons.RichPGPPublicKey
 import com.sos.jobscheduler.core.crypt.pgp.{PgpKeyGenerator, PgpSignatureVerifier, PgpSigner}
 import com.sos.jobscheduler.core.filebased.FileBasedVerifierTest._
-import com.sos.jobscheduler.core.problems.TamperedWithSignedMessageProblem
-import com.sos.jobscheduler.data.crypt.{Signed, SignedString, SignerId}
-import com.sos.jobscheduler.data.filebased.FileBased
+import com.sos.jobscheduler.data.crypt.FileBasedVerifier
+import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedSigner}
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import io.circe.syntax.EncoderOps

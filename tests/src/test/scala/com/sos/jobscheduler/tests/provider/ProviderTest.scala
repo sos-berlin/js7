@@ -2,6 +2,7 @@ package com.sos.jobscheduler.tests.provider
 
 import cats.syntax.option._
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.base.crypt.silly.SillySigner
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
@@ -14,13 +15,12 @@ import com.sos.jobscheduler.common.scalautil.IOExecutor.Implicits.globalIOX
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits._
 import com.sos.jobscheduler.common.system.OperatingSystem.isMac
-import com.sos.jobscheduler.core.crypt.silly.SillySigner
-import com.sos.jobscheduler.core.filebased.{FileBasedReader, FileBaseds, Repo, TypedPaths}
+import com.sos.jobscheduler.core.filebased.{FileBasedReader, FileBaseds, TypedPaths}
 import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
 import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, FileBasedEvent, VersionAdded}
-import com.sos.jobscheduler.data.filebased.{SourceType, VersionId}
+import com.sos.jobscheduler.data.filebased.{Repo, SourceType, VersionId}
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderEvent.OrderAdded
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser

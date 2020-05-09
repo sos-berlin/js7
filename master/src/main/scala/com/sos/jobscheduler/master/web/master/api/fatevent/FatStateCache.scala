@@ -9,7 +9,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.fatevent.FatEvent
 import com.sos.jobscheduler.data.master.MasterId
-import com.sos.jobscheduler.master.MasterState
+import com.sos.jobscheduler.master.data.MasterState
 import com.sos.jobscheduler.master.web.master.api.fatevent.FatStateCache._
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._

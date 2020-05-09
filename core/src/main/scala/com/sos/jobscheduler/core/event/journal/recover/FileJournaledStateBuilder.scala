@@ -6,12 +6,11 @@ import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowableEither
 import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.event.journal.data.JournalSeparators.{Commit, EventHeader, SnapshotFooter, SnapshotHeader, Transaction}
-import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta}
+import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.FileJournaledStateBuilder._
 import com.sos.jobscheduler.core.event.journal.recover.JournalProgress.{AfterHeader, AfterSnapshotSection, InCommittedEventsSection, InSnapshotSection, InTransaction, Initial}
-import com.sos.jobscheduler.core.event.state.JournaledStateBuilder
-import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, JournaledState, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.JournalSeparators.{Commit, EventHeader, SnapshotFooter, SnapshotHeader, Transaction}
+import com.sos.jobscheduler.data.event.{Event, EventId, JournalHeader, JournalId, JournaledState, JournaledStateBuilder, KeyedEvent, Stamped}
 import io.circe.Json
 import java.nio.file.Path
 import scala.collection.mutable

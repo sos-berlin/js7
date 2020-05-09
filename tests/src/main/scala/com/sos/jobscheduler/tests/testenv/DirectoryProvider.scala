@@ -4,6 +4,7 @@ import com.google.inject.Module
 import com.google.inject.util.Modules.EMPTY_MODULE
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
+import com.sos.jobscheduler.base.crypt.{MessageSigner, SignatureVerifier, SignedString}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.time.ScalaTime._
@@ -25,11 +26,8 @@ import com.sos.jobscheduler.common.utils.Exceptions.repeatUntilNoException
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.core.crypt.pgp.PgpSigner
-import com.sos.jobscheduler.core.crypt.{MessageSigner, SignatureVerifier}
-import com.sos.jobscheduler.core.filebased.FileBasedSigner
 import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
-import com.sos.jobscheduler.data.crypt.SignedString
-import com.sos.jobscheduler.data.filebased.{FileBased, TypedPath, VersionId}
+import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedSigner, TypedPath, VersionId}
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.master.MasterFileBaseds
 import com.sos.jobscheduler.master.RunningMaster

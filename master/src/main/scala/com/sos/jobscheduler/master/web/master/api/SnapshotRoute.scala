@@ -9,8 +9,8 @@ import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.completeTask
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers.monixObservableToMarshallable
 import com.sos.jobscheduler.common.http.CirceJsonSupport.jsonMarshaller
 import com.sos.jobscheduler.core.web.StampedStreamingSupport.stampedCirceStreamingSupport
-import com.sos.jobscheduler.master.MasterState
 import com.sos.jobscheduler.master.data.MasterSnapshots.SnapshotJsonCodec
+import com.sos.jobscheduler.master.data.MasterState
 import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import monix.eval.Task
 import monix.execution.Scheduler

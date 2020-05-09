@@ -2,14 +2,14 @@ package com.sos.jobscheduler.master.agent
 
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Batch
+import com.sos.jobscheduler.base.crypt.Signed
+import com.sos.jobscheduler.base.crypt.silly.{SillySignature, SillySigner}
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
-import com.sos.jobscheduler.core.crypt.silly.{SillySignature, SillySigner}
-import com.sos.jobscheduler.core.filebased.FileBasedSigner
 import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.crypt.Signed
+import com.sos.jobscheduler.data.filebased.FileBasedSigner
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.Execute

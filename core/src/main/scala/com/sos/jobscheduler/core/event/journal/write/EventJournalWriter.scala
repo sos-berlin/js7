@@ -6,10 +6,10 @@ import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.common.event.PositionAnd
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.core.event.journal.data.JournalSeparators.{Commit, Transaction}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles._
 import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
 import com.sos.jobscheduler.core.event.journal.write.EventJournalWriter._
+import com.sos.jobscheduler.data.event.JournalSeparators.{Commit, Transaction}
 import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
 import io.circe.syntax.EncoderOps
 import java.nio.file.Path

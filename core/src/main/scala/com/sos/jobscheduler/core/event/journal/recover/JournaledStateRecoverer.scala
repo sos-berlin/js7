@@ -12,8 +12,7 @@ import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
 import com.sos.jobscheduler.core.event.journal.recover.JournalProgress.{AfterSnapshotSection, InCommittedEventsSection}
 import com.sos.jobscheduler.core.event.journal.recover.JournaledStateRecoverer._
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
-import com.sos.jobscheduler.core.event.state.JournaledStateBuilder
-import com.sos.jobscheduler.data.event.{EventId, JournalId, JournaledState}
+import com.sos.jobscheduler.data.event.{EventId, JournalId, JournaledState, JournaledStateBuilder}
 import com.typesafe.config.Config
 import java.nio.file.{Files, Path}
 import scala.concurrent.duration.Deadline

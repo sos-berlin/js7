@@ -14,9 +14,9 @@ import com.sos.jobscheduler.core.event.journal.JournalActor
 import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, RecoveredJournalingActors}
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
-import com.sos.jobscheduler.core.workflow.Recovering.followUpRecoveredSnapshots
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{JournalEvent, JournalId, JournalState, JournaledState, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.execution.workflow.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowEvent}
@@ -50,7 +50,7 @@ extends JournalRecoverer[AgentState]
   }
 
   override protected def onAllSnapshotRecovered() = {
-    val (added, removed) = followUpRecoveredSnapshots(workflowRegister.idToWorkflow.checked, idToOrder.toMap)
+    val (added, removed) = followUpRecoveredWorkflowsAndOrders(workflowRegister.idToWorkflow.checked, idToOrder.toMap)
     idToOrder ++= added.map(o => o.id -> o)
     idToOrder --= removed
   }

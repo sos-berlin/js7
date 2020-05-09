@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.tests.master.commands
 
+import com.sos.jobscheduler.base.Problems.TamperedWithSignedMessageProblem
 import com.sos.jobscheduler.base.auth.User.UserDoesNotHavePermissionProblem
 import com.sos.jobscheduler.base.auth.{UpdateRepoPermission, UserAndPassword, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
@@ -11,10 +12,9 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.RichFutures
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax.RichTask
 import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem.sleepingShellScript
-import com.sos.jobscheduler.core.filebased.Repo.ObjectVersionDoesNotMatchProblem
-import com.sos.jobscheduler.core.problems.TamperedWithSignedMessageProblem
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.{EventRequest, EventSeq}
+import com.sos.jobscheduler.data.filebased.Repo.ObjectVersionDoesNotMatchProblem
 import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished

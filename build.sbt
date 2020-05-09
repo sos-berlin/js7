@@ -157,6 +157,7 @@ lazy val jobscheduler = (project in file("."))
     `agent-data`,
     taskserver,
     provider,
+    proxy.jvm,
     tests,
     `build-info`)
   .settings(skip in publish := true)
@@ -167,7 +168,8 @@ lazy val jobschedulerJS = (project in file("target/project-jobschedulerJS"))
     `common-http`.js,
     data.js,
     `master-client`.js,
-    `master-data`.js)
+    `master-data`.js,
+    proxy.js)
   .settings(skip in publish := true)
 
 lazy val all = (project in file("target/project-all"))  // Not the default project
@@ -236,6 +238,7 @@ lazy val base = crossProject(JSPlatform, JVMPlatform)
       "io.circe" %%% "circe-core" % circeVersion ++
       "io.circe" %%% "circe-parser" % circeVersion ++
       "io.circe" %%% "circe-generic" % circeVersion ++
+      "io.circe" %%% "circe-generic-extras" % circeVersion ++
       "io.monix" %%% "monix-eval" % monixVersion ++
       "io.monix" %%% "monix-reactive" % monixVersion ++
       "org.scodec" %%% "scodec-bits" % "1.1.12" ++
@@ -243,6 +246,7 @@ lazy val base = crossProject(JSPlatform, JVMPlatform)
       "com.lihaoyi" %%% "sourcecode" % "0.1.9" ++
       "com.outr" %%% "scribe" % scribeVersion ++
       findbugs % "compile" ++
+      intelliJAnnotations % "compile" ++
       "org.scalatest" %%% "scalatest" % scalaTestVersion % "test" ++
     //"org.scalatest" %%% "scalatest-freespec" % scalaTestVersion % "test" ++
       "org.scalatestplus" %%% "scalacheck-1-14" % scalaTestCheckVersion % "test" ++
@@ -282,7 +286,6 @@ lazy val data = crossProject(JSPlatform, JVMPlatform)
   .settings {
     import Dependencies._
     libraryDependencies ++=
-      "io.circe" %%% "circe-generic-extras" % circeVersion ++
       "com.lihaoyi" %%% "fastparse" % fastparseVersion ++
       "org.scalatest" %%% "scalatest" % scalaTestVersion % "test" ++
     //"org.scalatest" %%% "scalatest-freespec" % scalaTestVersion % "test" ++
@@ -292,7 +295,7 @@ lazy val data = crossProject(JSPlatform, JVMPlatform)
       "com.github.mpilquist" %% "simulacrum" % simulacrumVersion
   }
 
-lazy val common = project.dependsOn(`common-http`.jvm, base.jvm, data.jvm, tester.jvm % "test")
+lazy val common = project.dependsOn(base.jvm, data.jvm, tester.jvm % "test")
   .settings(commonSettings)
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings {
@@ -310,7 +313,7 @@ lazy val common = project.dependsOn(`common-http`.jvm, base.jvm, data.jvm, teste
       akkaActor ++
       akkaSlf4j ++
       guava ++
-      intelliJAnnotations % "compile" ++
+      snakeYaml ++
       findbugs % "compile" ++
       scalaTest % "test" ++
       mockito % "test" ++
@@ -321,6 +324,7 @@ lazy val common = project.dependsOn(`common-http`.jvm, base.jvm, data.jvm, teste
 lazy val `common-http` = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
   .dependsOn(data, base, tester % "test")
+  .jvmConfigure(_.dependsOn(common))
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings {
@@ -366,6 +370,25 @@ lazy val provider = project.dependsOn(`master-data`.jvm, master, `master-client`
       scalaTest % "test" ++
       log4j % "test"
   }
+
+lazy val proxy = crossProject(JSPlatform, JVMPlatform)
+  .withoutSuffixFor(JVMPlatform)
+  .dependsOn(`master-client`, tester % "test")
+  //.jvmConfigure(_.dependsOn(common))
+  .settings(commonSettings)
+  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
+  .settings(
+    libraryDependencies += {
+      import Dependencies._
+      "org.scalatest" %%% "scalatest" % scalaTestVersion % "test" /*++
+      "org.scalatest" %%% "scalatest-freespec" % scalaTestVersion % "test"*/
+    })
+  .jvmSettings(
+    libraryDependencies ++= {
+      import Dependencies._
+      akkaHttp ++
+      log4j % "test"
+    })
 
 lazy val `master-data` = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
@@ -491,7 +514,7 @@ lazy val taskserver = project
       log4j % "test"
   }
 
-lazy val tests = project.dependsOn(master, agent, `agent-client`, provider, tester.jvm % "test", `jobscheduler-docker` % "test")
+lazy val tests = project.dependsOn(master, agent, proxy.jvm, `agent-client`, provider, tester.jvm % "test", `jobscheduler-docker` % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(
     commonSettings,

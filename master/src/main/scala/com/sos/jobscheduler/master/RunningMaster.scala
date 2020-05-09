@@ -45,7 +45,7 @@ import com.sos.jobscheduler.master.cluster.{Cluster, ClusterFollowUp}
 import com.sos.jobscheduler.master.command.MasterCommandExecutor
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
-import com.sos.jobscheduler.master.data.MasterCommand
+import com.sos.jobscheduler.master.data.{MasterCommand, MasterState}
 import com.sos.jobscheduler.master.problems.MasterIsNotYetReadyProblem
 import com.sos.jobscheduler.master.web.MasterWebServer
 import com.typesafe.config.{Config, ConfigFactory}

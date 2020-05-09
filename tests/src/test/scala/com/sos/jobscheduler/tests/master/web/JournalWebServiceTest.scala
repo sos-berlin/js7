@@ -14,9 +14,9 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
-import com.sos.jobscheduler.core.event.journal.data.JournalSeparators
-import com.sos.jobscheduler.core.event.journal.data.JournalSeparators.EndOfJournalFileMarker
 import com.sos.jobscheduler.data.agent.AgentRefPath
+import com.sos.jobscheduler.data.event.JournalSeparators
+import com.sos.jobscheduler.data.event.JournalSeparators.EndOfJournalFileMarker
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}

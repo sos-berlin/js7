@@ -4,10 +4,9 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils.{RichCirceString, RichJso
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.core.event.journal.data.JournalHeader
-import com.sos.jobscheduler.core.event.journal.data.JournalHeader.JournalIdMismatchProblem
 import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.JournalHeader.JournalIdMismatchProblem
+import com.sos.jobscheduler.data.event.{Event, EventId, JournalHeader, JournalId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}

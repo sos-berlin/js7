@@ -2,6 +2,7 @@ package com.sos.jobscheduler.tests
 
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
+import com.sos.jobscheduler.base.crypt.silly.{SillySignature, SillySigner}
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.web.Uri
@@ -10,10 +11,8 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryDirectory
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder
-import com.sos.jobscheduler.core.crypt.silly.{SillySignature, SillySigner}
-import com.sos.jobscheduler.core.filebased.FileBasedSigner
 import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
-import com.sos.jobscheduler.data.filebased.VersionId
+import com.sos.jobscheduler.data.filebased.{FileBasedSigner, VersionId}
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.master.MasterFileBaseds
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
@@ -28,8 +27,8 @@ import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentCouplingFai
 import com.sos.jobscheduler.tests.MasterAgentWithoutAuthenticationTest._
 import java.nio.file.Files.{createDirectories, createDirectory}
 import monix.execution.Scheduler.Implicits.global
-import scala.concurrent.duration._
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer

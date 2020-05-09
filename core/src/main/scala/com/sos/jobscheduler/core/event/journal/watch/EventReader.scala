@@ -13,11 +13,11 @@ import com.sos.jobscheduler.common.http.AkkaHttpUtils.AkkaByteVector
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.UntilNoneIterator
 import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader
-import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, JournalSeparators}
+import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.JournalReader
 import com.sos.jobscheduler.core.event.journal.watch.EventReader._
 import com.sos.jobscheduler.core.problems.JsonSeqFileClosedProblem
-import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, JournalSeparators, KeyedEvent, Stamped}
 import com.typesafe.config.Config
 import java.nio.file.Path
 import monix.eval.Task

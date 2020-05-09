@@ -2,13 +2,13 @@ package com.sos.jobscheduler.master.repo
 
 import com.sos.jobscheduler.base.auth.User.UserDoesNotHavePermissionProblem
 import com.sos.jobscheduler.base.auth.{SimpleUser, UpdateRepoPermission, UserId}
+import com.sos.jobscheduler.base.crypt.silly.{SillySignature, SillySigner}
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.core.command.CommandMeta
-import com.sos.jobscheduler.core.crypt.silly.{SillySignature, SillySigner}
-import com.sos.jobscheduler.core.filebased.{FileBasedSigner, FileBasedVerifier, Repo}
 import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
-import com.sos.jobscheduler.data.filebased.{FileBased, VersionId}
+import com.sos.jobscheduler.data.crypt.FileBasedVerifier
+import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedSigner, Repo, VersionId}
 import com.sos.jobscheduler.data.master.MasterFileBaseds
 import com.sos.jobscheduler.data.workflow.instructions.Fail
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
@@ -33,7 +33,7 @@ final class RepoCommandExecutorTest extends AnyFreeSpec
   private val workflow3 = workflow2 withVersion v3
   private val commandMeta = CommandMeta(SimpleUser(UserId("PROVIDER")).copy(grantedPermissions = Set(UpdateRepoPermission)))
 
-  private var repo = Repo(MasterFileBaseds.jsonCodec)
+  private var repo = Repo.ofJsonDecoder(MasterFileBaseds.jsonCodec)
 
   "replaceRepoCommandToEvents requires UpdateRepo permission" in {
     val commandMeta = CommandMeta(SimpleUser(UserId("HACKER")))

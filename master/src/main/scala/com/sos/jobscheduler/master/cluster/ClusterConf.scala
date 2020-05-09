@@ -6,9 +6,8 @@ import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.configutils.Configs._
-import com.sos.jobscheduler.common.http.configuration.RecouplingStreamReaderConf
+import com.sos.jobscheduler.common.http.configuration.{RecouplingStreamReaderConf, RecouplingStreamReaderConfs}
 import com.sos.jobscheduler.common.time.JavaTimeConverters.AsScalaDuration
-import com.sos.jobscheduler.core.configuration.RecouplingStreamReaderConfs
 import com.sos.jobscheduler.data.cluster.{ClusterNodeId, ClusterSetting}
 import com.typesafe.config.Config
 import scala.concurrent.duration.FiniteDuration

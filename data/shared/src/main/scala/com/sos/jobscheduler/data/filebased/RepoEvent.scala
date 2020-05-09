@@ -2,7 +2,7 @@ package com.sos.jobscheduler.data.filebased
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.data.crypt.SignedString
+import com.sos.jobscheduler.base.crypt.SignedString
 import com.sos.jobscheduler.data.event.NoKeyEvent
 import io.circe.syntax._
 import io.circe.{Decoder, DecodingFailure, Encoder, JsonObject}

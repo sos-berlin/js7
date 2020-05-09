@@ -1,15 +1,16 @@
 package com.sos.jobscheduler.master.repo
 
 import com.sos.jobscheduler.base.auth.UpdateRepoPermission
+import com.sos.jobscheduler.base.crypt.{Signed, SignedString}
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.command.CommandMeta
-import com.sos.jobscheduler.core.filebased.{FileBasedVerifier, Repo}
-import com.sos.jobscheduler.data.crypt.{Signed, SignedString}
-import com.sos.jobscheduler.data.filebased.{FileBased, RepoEvent}
+import com.sos.jobscheduler.data.crypt.FileBasedVerifier
+import com.sos.jobscheduler.data.filebased.{FileBased, Repo, RepoEvent}
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.repo.RepoCommandExecutor._
+
 /**
   * @author Joacim Zschimmer
   */

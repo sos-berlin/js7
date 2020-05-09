@@ -2,6 +2,7 @@ package com.sos.jobscheduler.agent.tests
 
 import com.sos.jobscheduler.agent.tests.TestAgentDirectoryProvider._
 import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
+import com.sos.jobscheduler.base.crypt.silly.{SillySignature, SillySigner}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
@@ -12,8 +13,7 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.Exceptions.repeatUntilNoException
 import com.sos.jobscheduler.common.utils.JavaResource
-import com.sos.jobscheduler.core.crypt.silly.{SillySignature, SillySigner}
-import com.sos.jobscheduler.core.filebased.FileBasedSigner
+import com.sos.jobscheduler.data.filebased.FileBasedSigner
 import com.sos.jobscheduler.data.workflow.Workflow
 import java.nio.file.Files.{createDirectories, createDirectory, createTempDirectory, delete}
 import java.nio.file.Path

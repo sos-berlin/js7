@@ -104,7 +104,7 @@ trait AkkaWebServer extends AutoCloseable
       }
     }
 
-  private def terminate(): Future[Completed.type] = {
+  def terminate(): Future[Completed.type] = {
     materializer.shutdown()
     if (activeBindings == null)
       Future.successful(Completed)

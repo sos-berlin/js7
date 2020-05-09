@@ -4,11 +4,11 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
 import com.sos.jobscheduler.common.event.PositionAnd
 import com.sos.jobscheduler.common.scalautil.FileUtils
-import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, JournalSeparators}
+import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
 import com.sos.jobscheduler.core.event.journal.watch.FileEventIteratorTest._
 import com.sos.jobscheduler.core.event.journal.watch.TestData.{AEvent, TestKeyedEventJsonCodec, journalId, writeJournal}
-import com.sos.jobscheduler.data.event.{EventId, Stamped}
+import com.sos.jobscheduler.data.event.{EventId, JournalSeparators, Stamped}
 import io.circe.syntax.EncoderOps
 import java.nio.file.Files
 import org.scalatest.freespec.AnyFreeSpec

@@ -1,15 +1,14 @@
 package com.sos.jobscheduler.common.scalautil.xmls
 
 import com.sos.jobscheduler.base.convert.ConvertiblePartialFunctions._
+import com.sos.jobscheduler.base.time.Stopwatch.measureTime
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReaderTest._
 import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
-import com.sos.jobscheduler.common.time.Stopwatch.measureTime
 import javax.xml.transform.Source
-import org.scalatest.matchers
-import org.scalatest.matchers.should.Matchers._
 import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers._
 
 /**
  * @author Joacim Zschimmer

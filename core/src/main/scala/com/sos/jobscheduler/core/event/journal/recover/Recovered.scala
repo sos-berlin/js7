@@ -3,9 +3,8 @@ package com.sos.jobscheduler.core.event.journal.recover
 import akka.actor.{ActorRef, ActorRefFactory}
 import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, RecoveredJournalingActors}
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
-import com.sos.jobscheduler.core.event.state.JournaledStateBuilder
 import com.sos.jobscheduler.data.cluster.ClusterState
-import com.sos.jobscheduler.data.event.{EventId, JournalId, JournaledState}
+import com.sos.jobscheduler.data.event.{EventId, JournalId, JournaledState, JournaledStateBuilder}
 import com.typesafe.config.Config
 import scala.concurrent.duration.Deadline
 
