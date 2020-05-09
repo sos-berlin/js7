@@ -5,6 +5,7 @@ import com.sos.jobscheduler.base.time.ScalaTime._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AsyncFreeSpec
+
 /**
   * @author Joacim Zschimmer
   */
@@ -41,6 +42,6 @@ final class LockResourceTest extends AsyncFreeSpec
         }
       }
     })
-    Task.gather(tasks)
+    Task.parSequence(tasks)
   }
 }
