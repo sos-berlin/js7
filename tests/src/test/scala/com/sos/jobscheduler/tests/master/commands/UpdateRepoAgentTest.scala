@@ -26,8 +26,8 @@ import com.sos.jobscheduler.master.data.MasterCommand.UpdateRepo
 import com.sos.jobscheduler.tests.master.commands.UpdateRepoAgentTest._
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
-import scala.concurrent.duration._
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -52,7 +52,7 @@ final class UpdateRepoAgentTest extends AnyFreeSpec
       val agent1 = provider.startAgents().await(99.seconds).head
       var agent2: RunningAgent = null
       provider.runMaster() { master =>
-        master.httpApi.login(Some(UserAndPassword(UserId("UpdateRepoAgentTest"), SecretString("TEST-PASSWORD")))) await 99.seconds
+        master.httpApi.login_(Some(UserAndPassword(UserId("UpdateRepoAgentTest"), SecretString("TEST-PASSWORD")))) await 99.seconds
         runOrder(master, OrderId("🔺"))
         agent1.terminate() await 99.seconds
 

@@ -59,6 +59,7 @@ trait AgentProxyRoute extends MasterRouteProvider
   private def forwardTo(agentUri: Uri, forwardUri: AkkaUri, headers: Seq[HttpHeader]): Task[HttpResponse] = {
     val agentClient = AgentClient(  // TODO Reuse AgentClient of AgentDriver
       agentUri,
+      userAndPassword = None,
       masterConfiguration.keyStoreRefOption,
       masterConfiguration.trustStoreRefOption)
     implicit val sessionToken: Option[SessionToken] = None

@@ -9,8 +9,8 @@ import com.sos.jobscheduler.common.http.configuration.RecouplingStreamReaderConf
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
-import scala.concurrent.Await
 import org.scalatest.freespec.AsyncFreeSpec
+import scala.concurrent.Await
 
 /**
   * @author Joacim Zschimmer
@@ -47,7 +47,6 @@ final class RecouplingStreamReaderTest extends AsyncFreeSpec
       RecouplingStreamReader.observe[Long, String, TestSessionApi](
         toIndex = _.toLong,
         api,
-        Some(userAndPassword),
         recouplingStreamReaderConf,
         after = 0L,
         getObservable = getUnderlyingObservable)

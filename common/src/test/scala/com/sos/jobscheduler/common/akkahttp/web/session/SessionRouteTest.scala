@@ -40,10 +40,10 @@ extends AnyFreeSpec with SessionRouteTester
   import gateKeeper.invalidAuthenticationDelay
 
   "login fails if server is unreachable" in {
-    withSessionApi() { api =>
+    withSessionApi(None) { api =>
       // In the rare case of an already used TCP port (alien software) akka.http.scaladsl.model.IllegalResponseException may be returned, crashing the test.
       val exception = intercept[akka.stream.StreamTcpException] {
-        api.login(None) await 99.s
+        api.login() await 99.s
       }
       assert(exception.getMessage contains "java.net.ConnectException")
     }
@@ -51,7 +51,7 @@ extends AnyFreeSpec with SessionRouteTester
 
   "loginUntilReachable" - {
     "invalid authorization" in {
-      withSessionApi() { api =>
+      withSessionApi(Some(UserId("INVALID") -> SecretString("INVALID"))) { api =>
         import api.implicitSessionToken
         @volatile var count = 0
         def onError(t: Throwable) = Task {
@@ -61,9 +61,8 @@ extends AnyFreeSpec with SessionRouteTester
         }
         val runningSince = now
         val whenLoggedIn = api.loginUntilReachable(
-          Some(UserId("INVALID") -> SecretString("INVALID")),
           Iterator.continually(10.milliseconds),
-          onError
+          onError = onError
         ).runToFuture
         // Akka delays 100ms, 200ms, 400ms: "Connection attempt failed. Backing off new connection attempts for at least 100 milliseconds"
         waitForCondition(99.seconds, 10.milliseconds)(count >= 3)
@@ -79,9 +78,9 @@ extends AnyFreeSpec with SessionRouteTester
     }
 
     "authorized" in {
-      withSessionApi() { api =>
+      withSessionApi(Some(AUserAndPassword)) { api =>
         import api.implicitSessionToken
-        api.loginUntilReachable(Some(AUserAndPassword), Iterator.continually(10.milliseconds), _ => Task.pure(true)) await 99.s
+        api.loginUntilReachable(Iterator.continually(10.milliseconds), _ => Task.pure(true)) await 99.s
         requireAuthorizedAccess(api)
         api.logout() await 99.s
         requireAccessIsUnauthorizedOrPublic(api)
@@ -90,19 +89,19 @@ extends AnyFreeSpec with SessionRouteTester
   }
 
   "Login without credentials is accepted as Anonymous but access is nevertheless unauthorized if not public" in {
-    withSessionApi() { api =>
+    withSessionApi(None) { api =>
       import api.implicitSessionToken
-      api.login(None) await 99.s
+      api.login() await 99.s
       requireAccessIsUnauthorizedOrPublic(api)
     }
   }
 
   "Login without credentials and with wrong Authorization header is rejected with 401 Unauthorized and delayed" in {
-    withSessionApi(Authorization(BasicHttpCredentials("A-USER", "")) :: Nil) { api =>
+    withSessionApi(None, Authorization(BasicHttpCredentials("A-USER", "")) :: Nil) { api =>
       import api.implicitSessionToken
       val runningSince = now
       val exception = intercept[AkkaHttpClient.HttpException] {
-        api.login(None) await 99.s
+        api.login() await 99.s
       }
       assert(exception.status == Unauthorized)
       assert(exception.header[`WWW-Authenticate`] ==
@@ -113,11 +112,11 @@ extends AnyFreeSpec with SessionRouteTester
   }
 
   "Login without credentials and with Anonymous Authorization header is rejected and delayed" in {
-    withSessionApi(Authorization(BasicHttpCredentials(UserId.Anonymous.string, "")) :: Nil) { api =>
+    withSessionApi(None, Authorization(BasicHttpCredentials(UserId.Anonymous.string, "")) :: Nil) { api =>
       import api.implicitSessionToken
       val runningSince = now
       val exception = intercept[AkkaHttpClient.HttpException] {
-        api.login(None) await 99.s
+        api.login() await 99.s
       }
       assert(exception.status == Unauthorized)
       assert(exception.header[`WWW-Authenticate`] ==
@@ -128,11 +127,11 @@ extends AnyFreeSpec with SessionRouteTester
   }
 
   "Login with credentials and with Authorization header is rejected" in {
-    withSessionApi(Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil) { api =>
+    withSessionApi(Some(AUserAndPassword), Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil) { api =>
       import api.implicitSessionToken
       requireAuthorizedAccess(api)
       val exception = intercept[AkkaHttpClient.HttpException] {
-        api.login(Some(AUserAndPassword)) await 99.s
+        api.login() await 99.s
       }
       assert(exception.status == BadRequest)
       assert(exception.dataAsString.parseJsonOrThrow.as[Problem] == Right(Problem("Both command Login and HTTP header authentication?")))
@@ -141,19 +140,19 @@ extends AnyFreeSpec with SessionRouteTester
   }
 
   "Login without credentials but with Authorization header is accepted" in {
-    withSessionApi(Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil) { api =>
+    withSessionApi(None, Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil) { api =>
       import api.implicitSessionToken
-      api.login(None) await 99.s
+      api.login() await 99.s
       assert(api.hasSession)
       requireAuthorizedAccess(api)
     }
   }
 
   "Login as 'Anonymous' is rejected" in {
-    withSessionApi() { api =>
+    withSessionApi(Some(UserId.Anonymous -> SecretString(""))) { api =>
       import api.implicitSessionToken
       val exception = intercept[AkkaHttpClient.HttpException] {
-        api.login(Some(UserId.Anonymous -> SecretString(""))) await 99.s
+        api.login() await 99.s
       }
       assert(exception.status == Unauthorized)
       assert(exception.header[`WWW-Authenticate`] ==
@@ -164,11 +163,11 @@ extends AnyFreeSpec with SessionRouteTester
   }
 
   "Login with invalid credentials is rejected with 403 Unauthorized and delayed" in {
-    withSessionApi() { api =>
+    withSessionApi(Some(UserId("A-USER") -> SecretString(""))) { api =>
       import api.implicitSessionToken
       val runningSince = now
       val exception = intercept[AkkaHttpClient.HttpException] {
-        api.login(Some(UserId("A-USER") -> SecretString(""))) await 99.s
+        api.login() await 99.s
       }
       assert(exception.status == Unauthorized)
       assert(exception.header[`WWW-Authenticate`] ==
@@ -181,7 +180,7 @@ extends AnyFreeSpec with SessionRouteTester
   }
 
   "Login and Logout" in {
-    withSessionApi() { api =>
+    withSessionApi(Some(AUserAndPassword)) { api =>
       import api.implicitSessionToken
       assert(!api.hasSession)
 
@@ -197,7 +196,7 @@ extends AnyFreeSpec with SessionRouteTester
       }
 
       // Login and Logout
-      api.login(Some(AUserAndPassword)) await 99.s
+      api.login() await 99.s
       val Some(sessionToken) = api.sessionToken
       assert(api.hasSession)
       requireAuthorizedAccess(api)
@@ -213,7 +212,7 @@ extends AnyFreeSpec with SessionRouteTester
   }
 
   "Logout without SessionToken is short-circuited" in {
-    withSessionApi() { api =>
+    withSessionApi(None) { api =>
       assert(!api.hasSession)
       api.logout() await 99.s shouldEqual Completed
       assert(!api.hasSession)
@@ -223,7 +222,7 @@ extends AnyFreeSpec with SessionRouteTester
   "Use of discarded SessionToken is Forbidden, clearSession" in {
     // This applies to all commands, also Login and Logout.
     // With Unauthorized or Forbidden, stateful SessionApi learns about the invalid session.
-    withSessionApi() { api =>
+    withSessionApi(Some(AUserAndPassword)) { api =>
       api.setSessionToken(SessionToken(SecretString("DISCARDED")))
       import api.implicitSessionToken
       val exception = requireAccessIsForbidden(api)
@@ -231,14 +230,14 @@ extends AnyFreeSpec with SessionRouteTester
       assert(api.hasSession)
 
       api.clearSession()
-      api.login(Some(AUserAndPassword)) await 99.s
+      api.login() await 99.s
       assert(api.hasSession)
       api.logout() await 99.s
     }
   }
 
   "logout clears SessionToken even if unknown" in {
-    withSessionApi() { api =>
+    withSessionApi(None) { api =>
       api.setSessionToken(SessionToken(SecretString("DISCARDED")))
       assert(api.hasSession)
       api.logout() await 99.s
@@ -248,14 +247,14 @@ extends AnyFreeSpec with SessionRouteTester
 
   "Login with SessionToken" - {
     "Known SessionToken is invalidated" in {
-      withSessionApi() { api =>
-        api.login(Some(AUserAndPassword)) await 99.s
+      withSessionApi(None) { api =>
+        api.login_(Some(AUserAndPassword)) await 99.s
         val Some(firstSessionToken) = api.sessionToken
         assert(api.hasSession)
-        api.login(Some(BUserAndPassword)) await 99.s
+        api.login_(Some(BUserAndPassword)) await 99.s
         assert(api.hasSession)
 
-        withSessionApi() { otherClient =>
+        withSessionApi(None) { otherClient =>
           // Using old SessionToken is Unauthorized
           otherClient.setSessionToken(firstSessionToken)
           import otherClient.implicitSessionToken
@@ -272,19 +271,24 @@ extends AnyFreeSpec with SessionRouteTester
     }
 
     "Unknown SessionToken is ignored" in {
-      withSessionApi() { api =>
+      withSessionApi(Some(AUserAndPassword)) { api =>
         val unknown = SessionToken(SecretString("UNKNKOWN"))
         api.setSessionToken(unknown)
-        api.login(Some(AUserAndPassword)) await 99.s
+        api.login() await 99.s
         assert(api.sessionToken.exists(_ != unknown))
         api.logout() await 99.s shouldEqual Completed
       }
     }
   }
 
-  private def withSessionApi(headers: List[HttpHeader] = Nil)(body: HttpSessionApi with AkkaHttpClient => Unit): Unit = {
+  private def withSessionApi(
+    userAndPassword_ : Option[UserAndPassword],
+    headers: List[HttpHeader] = Nil)(
+    body: HttpSessionApi with AkkaHttpClient => Unit)
+  : Unit = {
     val api = new HttpSessionApi with AkkaHttpClient {
       protected val name = "SessionRouteTest"
+      protected def userAndPassword = userAndPassword_
       def httpClient = this: AkkaHttpClient
       def sessionUri = Uri(s"$baseUri/session")
       val actorSystem = SessionRouteTest.this.system

@@ -45,7 +45,7 @@ extends AnyFreeSpec with ScalaFutures with AgentTester {
     }
   }
   override implicit val patienceConfig = PatienceConfig(timeout = 10.s)
-  private lazy val client = new SimpleAgentClient(agent.localUri).closeWithCloser
+  private lazy val client = new SimpleAgentClient(agent.localUri, None).closeWithCloser
     .sideEffect(_.setSessionToken(agent.sessionToken))
 
   List[(AgentCommand, Checked[AgentCommand.Response])](

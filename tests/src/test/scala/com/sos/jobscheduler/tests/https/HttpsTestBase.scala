@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.tests.https
 
+import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.Closer.syntax.RichClosersAutoCloseable
@@ -44,7 +45,10 @@ private[https] trait HttpsTestBase extends AnyFreeSpec with BeforeAndAfterAll wi
   private lazy val trustStore = createTempFile(getClass.getSimpleName + "-truststore-", ".p12")
 
   protected lazy val masterApi = AkkaHttpMasterApi(
-    master.localUri, actorSystem, config,
+    master.localUri,
+    Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD")),
+    actorSystem,
+    config,
     keyStoreRef = Some(KeyStoreRef(keyStore.toUri.toURL, storePassword = SecretString("jobscheduler"), keyPassword = SecretString("jobscheduler"))),
     trustStoreRef = Some(TrustStoreRef(trustStore.toUri.toURL, storePassword = SecretString("jobscheduler"))),
   ).closeWithCloser

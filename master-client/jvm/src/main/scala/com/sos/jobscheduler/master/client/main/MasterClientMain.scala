@@ -36,7 +36,7 @@ object MasterClientMain {
   def run(args: Seq[String], print: String => Unit): Int = {
     val (masterUri, configDir, dataDir, operations) = parseArgs(args)
     val sessionToken = SessionToken(SecretString(Files.readAllLines(dataDir resolve "state/session-token").asScala mkString ""))
-    autoClosing(new AkkaHttpMasterTextApi(masterUri, print, configDir)) { textApi =>
+    autoClosing(new AkkaHttpMasterTextApi(masterUri, None, print, configDir)) { textApi =>
       textApi.setSessionToken(sessionToken)
       if (operations.isEmpty)
         if (textApi.checkIsResponding()) 0 else 1

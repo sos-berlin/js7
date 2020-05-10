@@ -27,13 +27,13 @@ final class MastersEventRouteTest extends AnyFreeSpec with AgentTester
 
   implicit private lazy val scheduler = agent.injector.instance[Scheduler]
   implicit private lazy val actorSystem = agent.actorSystem
-  private val agentClient = AgentClient(agent.localUri).closeWithCloser
+  private val agentClient = AgentClient(agent.localUri, Some(TestUserAndPassword)).closeWithCloser
   private var agentRunId: AgentRunId = _
   private var eventId = EventId.BeforeFirst
   private var snapshotEventId = EventId.BeforeFirst
 
   "(Login)"  in {
-    agentClient.login(Some(TestUserAndPassword)).await(99.s)
+    agentClient.login().await(99.s)
   }
 
   "Requesting events of unregistered Master" in {
@@ -65,7 +65,7 @@ final class MastersEventRouteTest extends AnyFreeSpec with AgentTester
 
   "Login again"  in {
     agentClient.logout().await(99.s)
-    agentClient.login(Some(TestUserAndPassword)).await(99.s)
+    agentClient.login().await(99.s)
   }
 
   "Recoupling with changed AgentRunId fails" in {

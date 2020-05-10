@@ -12,14 +12,14 @@ import monix.execution.atomic.AtomicAny
 /**
   * @author Joacim Zschimmer
   */
-trait HttpSessionApi extends SessionApi.LoginUntilReachable with HasSessionToken
+trait HttpSessionApi extends SessionApi.HasUserAndPassword with HasSessionToken
 {
   protected def httpClient: HttpClient
   protected def sessionUri: Uri
 
   private val sessionTokenRef = AtomicAny[Option[SessionToken]](None)
 
-  final def login(userAndPassword: Option[UserAndPassword], onlyIfNotLoggedIn: Boolean = false): Task[Completed] =
+  final def login_(userAndPassword: Option[UserAndPassword], onlyIfNotLoggedIn: Boolean = false): Task[Completed] =
     Task.defer {
       if (onlyIfNotLoggedIn && hasSession)
         Task.pure(Completed)
@@ -30,9 +30,9 @@ trait HttpSessionApi extends SessionApi.LoginUntilReachable with HasSessionToken
         }
     }
 
-  protected def isUnreachable(throwable: Throwable) =
+  protected def isTemporaryUnreachable(throwable: Throwable) =
     throwable match {
-      case e: HttpClient.HttpException => e.isUnreachable
+      case e: HttpClient.HttpException => e.isTemporaryUnreachable
       case _ => true  // May be a TCP exception
     }
 

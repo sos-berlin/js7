@@ -4,7 +4,7 @@ import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.base.auth.{SimpleUser, UserAndPassword, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.session.HttpAutoRelogin
+import com.sos.jobscheduler.base.session.SessionApi
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
 import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
@@ -150,9 +150,8 @@ private object ReleaseEventsTest
   private val dOrder = FreshOrder(OrderId("🔺"), TestWorkflow.id.path)
 
   private class TestApi(master: RunningMaster, protected val credentials: UserAndPassword)
-  extends AkkaHttpMasterApi.Standard(master.localUri, master.actorSystem, name = "RunningMaster")
-  with HttpAutoRelogin {
-    protected val userAndPassword = Some(credentials)
-    relogin await 99.s
+  extends AkkaHttpMasterApi.Standard(master.localUri, Some(credentials), master.actorSystem, name = "RunningMaster")
+  with SessionApi.HasUserAndPassword {
+    loginUntilReachable() await 99.s
   }
 }

@@ -4,7 +4,7 @@ import cats.effect.Resource
 import cats.syntax.flatMap._
 import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.session.{HttpAutoRelogin, HttpSessionApi}
+import com.sos.jobscheduler.base.session.HttpSessionApi
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.http.AkkaHttpClient
@@ -14,21 +14,20 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
 
-final class HttpAutoReloginTest extends AnyFreeSpec with SessionRouteTester
+final class HasUserAndPasswordTest extends AnyFreeSpec with SessionRouteTester
 {
   protected implicit def scheduler = Scheduler.global
 
-  "HttpAutoRelogin retryUntilReachable repeats body after server loss" in {
+  "HasUserAndPassword retryUntilReachable repeats body after server loss" in {
     val progress = MVar[Task].empty[String]().memoize
     @volatile var loopCounter = 0
 
     val apiTask = Resource.fromAutoCloseable(Task {
-      new HttpSessionApi with HttpAutoRelogin with AkkaHttpClient {
-        protected def scheduler = Scheduler.global
-        protected val name = "HttpAutoReloginTest"
+      new HttpSessionApi with AkkaHttpClient {
+        protected val name = "HasUserAndPasswordTest"
         def httpClient = this
         def sessionUri = Uri(s"$baseUri/session")
-        val actorSystem = HttpAutoReloginTest.this.system
+        val actorSystem = HasUserAndPasswordTest.this.system
         def baseUri = server.localUri
         def uriPrefixPath = ""
         protected val userAndPassword = Some(UserAndPassword(UserId("A-USER"), SecretString("A-PASSWORD")))

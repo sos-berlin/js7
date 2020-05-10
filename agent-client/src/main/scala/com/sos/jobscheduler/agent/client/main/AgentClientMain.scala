@@ -16,8 +16,8 @@ import scala.util.control.NonFatal
 /**
  * @author Joacim Zschimmer
  */
-object AgentClientMain {
-
+object AgentClientMain
+{
   private val logger = Logger(getClass)
 
   def main(args: Array[String]): Unit =
@@ -36,7 +36,7 @@ object AgentClientMain {
   def run(args: Seq[String], print: String => Unit): Int = {
     val (agentUri, configDirectory, dataDir, operations) = parseArgs(args)
     val sessionToken = SessionToken(SecretString(Files.readAllLines(dataDir resolve "state/session-token").asScala mkString ""))
-    autoClosing(new AkkaHttpAgentTextApi(agentUri, print, configDirectory)) { textApi =>
+    autoClosing(new AkkaHttpAgentTextApi(agentUri, None, print, configDirectory)) { textApi =>
       textApi.setSessionToken(sessionToken)
       if (operations.isEmpty)
         if (textApi.checkIsResponding()) 0 else 1

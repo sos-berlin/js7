@@ -4,7 +4,7 @@ import akka.actor.ActorSystem
 import com.sos.jobscheduler.base.auth.UserAndPassword
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.session.{HttpAutoRelogin, HttpSessionApi}
+import com.sos.jobscheduler.base.session.HttpSessionApi
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.web.HttpClient.HttpException
 import com.sos.jobscheduler.base.web.Uri
@@ -20,7 +20,7 @@ final class HttpClusterWatch(
   protected val baseUri: Uri,
   protected val userAndPassword: Option[UserAndPassword],
   protected val actorSystem: ActorSystem)
-extends ClusterWatchApi with AkkaHttpClient with HttpSessionApi with HttpAutoRelogin
+extends ClusterWatchApi with AkkaHttpClient with HttpSessionApi
 {
   protected def httpClient = this
 
@@ -48,7 +48,7 @@ extends ClusterWatchApi with AkkaHttpClient with HttpSessionApi with HttpAutoRel
             case _ =>
               val delays = loginDelays()
               Task.sleep(delays.next()) >>
-                loginUntilReachable(userAndPassword, delays, onlyIfNotLoggedIn = true) >>
+                loginUntilReachable(delays, onlyIfNotLoggedIn = true) >>
                 retry(())
           }
         }

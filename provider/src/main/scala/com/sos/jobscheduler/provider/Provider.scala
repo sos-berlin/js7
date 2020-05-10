@@ -43,13 +43,13 @@ import scala.jdk.CollectionConverters._
 final class Provider(val fileBasedSigner: FileBasedSigner[FileBased], val conf: ProviderConfiguration)(implicit val s: Scheduler)
 extends HasCloser with Observing with ProvideActorSystem
 {
-  protected val masterApi = AkkaHttpMasterApi(conf.masterUri, actorSystem, conf.config)
-  protected def config = conf.config
-
   protected val userAndPassword: Option[UserAndPassword] = for {
       userName <- conf.config.optionAs[String]("jobscheduler.provider.master.user")
       password <- conf.config.optionAs[String]("jobscheduler.provider.master.password")
     } yield UserAndPassword(UserId(userName), SecretString(password))
+  protected val masterApi = AkkaHttpMasterApi(conf.masterUri, userAndPassword, actorSystem = actorSystem, config = conf.config)
+  protected def config = conf.config
+
   private val firstRetryLoginDurations = conf.config.getDurationList("jobscheduler.provider.master.login-retry-delays")
     .asScala.map(_.toFiniteDuration)
   private val typedSourceReader = new TypedSourceReader(conf.liveDirectory, readers)
@@ -143,7 +143,7 @@ extends HasCloser with Observing with ProvideActorSystem
       if (masterApi.hasSession)
         Task.pure(Completed)
       else
-        masterApi.loginUntilReachable(userAndPassword, retryLoginDurations)
+        masterApi.loginUntilReachable(retryLoginDurations)
           .map { completed =>
             logger.info("Logged-in at Master")
             completed

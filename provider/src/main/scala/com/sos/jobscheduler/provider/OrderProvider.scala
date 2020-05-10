@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.provider
 
-import com.sos.jobscheduler.base.auth.UserAndPassword
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.utils.HasCloser
@@ -21,7 +20,6 @@ trait OrderProvider extends HasCloser
 {
   protected def conf: ProviderConfiguration
   protected def masterApi: HttpMasterApi
-  protected def userAndPassword: Option[UserAndPassword]
   protected def retryUntilNoError[A](body: => Task[Checked[A]]): Task[A]
 
   private lazy val typedSourceReader = new TypedSourceReader(conf.orderGeneratorsDirectory,
@@ -34,7 +32,7 @@ trait OrderProvider extends HasCloser
 
   private def addOrders(orders: Seq[FreshOrder]): Task[Completed] =
     retryUntilNoError {
-      masterApi.login(userAndPassword, onlyIfNotLoggedIn = true) >>
+      masterApi.login(onlyIfNotLoggedIn = true) >>
         masterApi.addOrders(orders)
           .map(Right.apply)
     }

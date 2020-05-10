@@ -8,16 +8,17 @@ import com.google.inject.Stage.{DEVELOPMENT, PRODUCTION}
 import com.google.inject.util.Modules
 import com.google.inject.util.Modules.EMPTY_MODULE
 import com.google.inject.{Guice, Injector, Module}
-import com.sos.jobscheduler.base.auth.SimpleUser
+import com.sos.jobscheduler.base.auth.{SimpleUser, UserAndPassword}
 import com.sos.jobscheduler.base.eventbus.EventBus
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.base.utils.Closer
 import com.sos.jobscheduler.base.utils.Closer.syntax.RichClosersAutoCloseable
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, RichThrowable}
+import com.sos.jobscheduler.base.utils.{Closer, SetOnce}
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.event.{EventIdGenerator, StrictEventWatch}
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
@@ -152,9 +153,26 @@ extends AutoCloseable
   @TestOnly
   val localUri = webServer.localUri
 
+  private val httpApiUserAndPassword = SetOnce[Option[UserAndPassword]]
+  private val _httpApi = SetOnce[HttpMasterApi]
+
   @TestOnly
-  lazy val httpApi: HttpMasterApi = AkkaHttpMasterApi(localUri, actorSystem, config)
-    .closeWithCloser(closer)
+  def httpApiDefaultLogin(userAndPassword: Option[UserAndPassword]): Unit = {
+    assertThat(_httpApi.isEmpty)
+    httpApiUserAndPassword := userAndPassword
+    httpApi
+  }
+
+  @TestOnly
+  lazy val httpApi: HttpMasterApi = {
+    if (_httpApi.isEmpty) {
+      httpApiUserAndPassword.trySet(None)
+      _httpApi := AkkaHttpMasterApi(localUri, httpApiUserAndPassword.get, actorSystem = actorSystem, config = config)
+        .closeWithCloser(closer)
+    }
+    _httpApi.get
+  }
+
 
   @TestOnly
   def journalActorState: Output.JournalActorState =

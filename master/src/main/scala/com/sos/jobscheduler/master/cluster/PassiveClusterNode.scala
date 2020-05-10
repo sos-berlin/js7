@@ -219,8 +219,6 @@ import scodec.bits.ByteVector
 
       val recouplingStreamReader = new RecouplingStreamReader[Long/*file position*/, PositionAnd[ByteVector], HttpMasterApi](
         toIndex = _.position,
-        //api,
-        clusterConf.userAndPassword,
         clusterConf.recouplingStreamReader)
       {
         protected def getObservable(api: HttpMasterApi, after: EventId) =

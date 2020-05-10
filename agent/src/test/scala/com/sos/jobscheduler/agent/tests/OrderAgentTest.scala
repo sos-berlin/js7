@@ -57,11 +57,11 @@ final class OrderAgentTest extends AnyFreeSpec {
       RunningAgent.run(agentConf, timeout = Some(99.s)) { agent =>
         withCloser { implicit closer =>
           implicit val actorSystem = newAgentActorSystem(getClass.getSimpleName)
-          val agentClient = AgentClient(agent.localUri).closeWithCloser
+          val agentClient = AgentClient(agent.localUri, Some(TestUserAndPassword)).closeWithCloser
           intercept[AkkaHttpClient.HttpException] {  // Login is required
             agentClient.commandExecute(RegisterAsMaster).await(99.s).orThrow
           } .status shouldEqual Unauthorized
-          agentClient.login(Some(TestUserAndPassword)) await 99.s
+          agentClient.login() await 99.s
           assert(agentClient.commandExecute(RegisterAsMaster).await(99.s).toOption.get  // Without Login, this registers all anonymous clients
             .isInstanceOf[RegisterAsMaster.Response])
 
@@ -105,8 +105,8 @@ final class OrderAgentTest extends AnyFreeSpec {
       RunningAgent.run(agentConf, timeout = Some(timeout)) { agent =>
         withCloser { implicit closer =>
           implicit val actorSystem = newAgentActorSystem(getClass.getSimpleName)
-          val agentClient = AgentClient(agent.localUri).closeWithCloser
-          agentClient.login(Some(TestUserAndPassword)) await 99.s
+          val agentClient = AgentClient(agent.localUri, Some(TestUserAndPassword)).closeWithCloser
+          agentClient.login() await 99.s
           assert(agentClient.commandExecute(RegisterAsMaster).await(99.s) == Right(AgentCommand.Response.Accepted))
 
           val orders = for (i <- 1 to n) yield

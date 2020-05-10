@@ -52,10 +52,10 @@ object HttpClient
   abstract class HttpException(message: String) extends RuntimeException(message) {
     def statusInt: Int
     def problem: Option[Problem]
-    def isUnreachable = isUnreachableStatus(statusInt)
+    def isTemporaryUnreachable = isTemporaryUnreachableStatus(statusInt)
   }
 
-  private val isUnreachableStatus = Set[Int](
+  private val isTemporaryUnreachableStatus = Set[Int](
     408, // Request Timeout
     429, // Too Many Requests
     //? 449, // Retry With

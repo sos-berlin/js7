@@ -27,8 +27,11 @@ final class AkkaHttpMasterApiTest extends AnyFreeSpec with MasterAgentForScalaTe
   protected val agentRefPaths = Nil
   protected val fileBased = TestWorkflow :: Nil
 
-  private lazy val api = AkkaHttpMasterApi(master.localUri, master.actorSystem)
-    .closeWithCloser
+  private lazy val api = AkkaHttpMasterApi(
+    master.localUri,
+    Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))),
+    actorSystem = master.actorSystem
+  ).closeWithCloser
 
   override def beforeAll() = {
     directoryProvider.master.configDir / "private" / "private.conf" ++= """
@@ -38,7 +41,7 @@ final class AkkaHttpMasterApiTest extends AnyFreeSpec with MasterAgentForScalaTe
   }
 
   "login" in {
-    api.login(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))) await 99.s
+    api.login() await 99.s
   }
 
   "POST order" in {

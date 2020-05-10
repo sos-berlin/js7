@@ -31,11 +31,11 @@ final class ShutDownClusterTest extends MasterClusterTester
           backupId -> Uri(s"http://127.0.0.1:$backupHttpPort"))
 
         backup.runMaster(httpPort = Some(backupHttpPort), dontWaitUntilReady = true) { backupMaster =>
-          backupMaster.httpApi.login(Some(UserAndPassword(UserId("TEST"), SecretString("TEST-PASSWORD")))).await(99.s)
+          backupMaster.httpApi.login_(Some(UserAndPassword(UserId("TEST"), SecretString("TEST-PASSWORD")))).await(99.s)
 
           primary.runMaster(httpPort = Some(primaryHttpPort)) { primaryMaster =>
             primaryMaster.eventWatch.await[ClusterCoupled]()
-            primaryMaster.httpApi.login(Some(UserAndPassword(UserId("TEST"), SecretString("TEST-PASSWORD")))).await(99.s)
+            primaryMaster.httpApi.login_(Some(UserAndPassword(UserId("TEST"), SecretString("TEST-PASSWORD")))).await(99.s)
             val coupled = primaryMaster.httpApi.clusterState.await(99.s)
             assert(coupled.isInstanceOf[ClusterState.Coupled])
 

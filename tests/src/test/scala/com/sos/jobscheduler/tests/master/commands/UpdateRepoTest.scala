@@ -59,11 +59,11 @@ final class UpdateRepoTest extends AnyFreeSpec with MasterAgentForScalaTest
   }
 
   "User requires permission 'UpdateRepo'" in {
-    master.httpApi.login(Some(UserAndPassword(UserId("without-permission"), SecretString("TEST-PASSWORD")))) await 99.s
+    master.httpApi.login_(Some(UserAndPassword(UserId("without-permission"), SecretString("TEST-PASSWORD")))) await 99.s
     assert(executeCommand(UpdateRepo(V1, sign(workflow1) :: Nil)) ==
       Left(UserDoesNotHavePermissionProblem(UserId("without-permission"), UpdateRepoPermission)))
 
-    master.httpApi.login(Some(UserAndPassword(UserId("UpdateRepoTest"), SecretString("TEST-PASSWORD")))) await 99.s
+    master.httpApi.login_(Some(UserAndPassword(UserId("UpdateRepoTest"), SecretString("TEST-PASSWORD")))) await 99.s
   }
 
   "MasterCommand.UpdateRepo" in {

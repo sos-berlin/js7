@@ -8,11 +8,13 @@ import monix.eval.Task
 import monix.execution.atomic.{AtomicAny, AtomicLong}
 
 final class TestSessionApi(expectedUserAndPassword: Option[UserAndPassword] = None)
-extends SessionApi.LoginUntilReachable with HasIsIgnorableStackTrace
+extends SessionApi.HasUserAndPassword with HasIsIgnorableStackTrace
 {
+  protected def userAndPassword = expectedUserAndPassword
+
   private val sessionTokenRef = AtomicAny[Option[SessionToken]](None)
 
-  def login(userAndPassword: Option[UserAndPassword], onlyIfNotLoggedIn: Boolean) =
+  def login_(userAndPassword: Option[UserAndPassword], onlyIfNotLoggedIn: Boolean) =
     Task {
       if (userAndPassword == expectedUserAndPassword) {
         sessionTokenRef := Some(sessionTokenGenerator.next())
@@ -31,7 +33,7 @@ extends SessionApi.LoginUntilReachable with HasIsIgnorableStackTrace
 
   def hasSession = sessionTokenRef.get.isDefined
 
-  protected def isUnreachable(throwable: Throwable) = false
+  protected def isTemporaryUnreachable(throwable: Throwable) = false
 
   override def toString = "TestSessionApi"
 }

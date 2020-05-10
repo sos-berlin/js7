@@ -70,9 +70,9 @@ private[cluster] final class ClusterCommon(
   }
 
   def masterApi(uri: Uri, name: String): Resource[Task, HttpMasterApi] =
-    AkkaHttpMasterApi.resource(baseUri = uri, name = name)
+    AkkaHttpMasterApi.resource(baseUri = uri, clusterConf.userAndPassword, name = name)
       .map(identity[HttpMasterApi])
-      .evalTap(_.loginUntilReachable(clusterConf.userAndPassword, Iterator.continually(1.s/*TODO*/)))
+      .evalTap(_.loginUntilReachable())
 }
 
 private[cluster] object ClusterCommon

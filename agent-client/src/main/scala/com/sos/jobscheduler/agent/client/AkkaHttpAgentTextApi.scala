@@ -2,6 +2,7 @@ package com.sos.jobscheduler.agent.client
 
 import com.sos.jobscheduler.agent.client.AkkaHttpAgentTextApi._
 import com.sos.jobscheduler.agent.data.web.AgentUris
+import com.sos.jobscheduler.base.auth.UserAndPassword
 import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.session.HttpSessionApi
@@ -22,6 +23,7 @@ import scala.jdk.CollectionConverters._
   */
 private[agent] final class AkkaHttpAgentTextApi(
   agentUri: Uri,
+  protected val userAndPassword: Option[UserAndPassword],
   protected val print: String => Unit,
   configDirectory: Option[Path] = None)
 extends HasCloser with ProvideActorSystem with TextApi with HttpSessionApi with AkkaHttpClient

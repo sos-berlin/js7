@@ -457,10 +457,9 @@ final class Cluster(
   private def inhibitActivationOf(uri: Uri): Task[Option[FailedOver]] =
     Task.defer {
       val retryDelay = 5.s  // TODO
-      val retryDelays = Iterator.single(1.s/*TODO*/) ++ Iterator.continually(retryDelay)
-      AkkaHttpMasterApi.resource(uri, name = "ClusterInhibitActivation")
+      AkkaHttpMasterApi.resource(uri, clusterConf.userAndPassword, name = "ClusterInhibitActivation")
         .use(otherNode =>
-          otherNode.loginUntilReachable(clusterConf.userAndPassword, retryDelays) >>
+          otherNode.loginUntilReachable() >>
             otherNode.executeCommand(
               InternalClusterCommand(
                 ClusterInhibitActivation(2 * clusterConf.failAfter/*TODO*/))
@@ -601,7 +600,7 @@ final class Cluster(
     } >>
       Observable
         .fromResource(
-          AkkaHttpMasterApi.resource(passiveUri, name = "acknowledgements")(actorSystem))
+          AkkaHttpMasterApi.resource(passiveUri, clusterConf.userAndPassword, name = "acknowledgements")(actorSystem))
         .flatMap(api =>
           observeEventIds(api, after = after)
             .map { eventId => logger.trace(s"$eventId acknowledged"); eventId }
@@ -645,7 +644,6 @@ final class Cluster(
       .observe[EventId, EventId, HttpMasterApi](
         toIndex = identity,
         api,
-        clusterConf.userAndPassword,
         clusterConf.recouplingStreamReader,
         after = after,
         getObservable = (after: EventId) => {

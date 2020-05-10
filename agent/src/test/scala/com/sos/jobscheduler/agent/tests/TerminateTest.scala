@@ -21,9 +21,9 @@ import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
 import javax.inject.Singleton
 import monix.execution.Scheduler.Implicits.global
+import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
 import scala.concurrent.duration._
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
@@ -43,8 +43,8 @@ final class TerminateTest extends AnyFreeSpec with AgentTester {
     implicit val actorSystem = newAgentActorSystem("TerminateTest")
     closer onClose actorSystem.terminate()
 
-    val client = AgentClient(agentUri = agent.localUri)
-    client.login(Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD"))) await 99.s
+    val client = AgentClient(agentUri = agent.localUri, Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD")))
+    client.login() await 99.s
     client.commandExecute(RegisterAsMaster) await 99.s
 
     val eventCollector = newEventCollector(agent.injector)

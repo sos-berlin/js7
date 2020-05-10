@@ -9,7 +9,7 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.tests.AkkaHttpAgentTextApiTest._
 import com.sos.jobscheduler.agent.tests.TestAgentDirectoryProvider.TestUserAndPassword
-import com.sos.jobscheduler.base.auth.{HashedPassword, SimpleUser}
+import com.sos.jobscheduler.base.auth.{HashedPassword, SimpleUser, UserAndPassword}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.time.ScalaTime._
@@ -26,9 +26,9 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Assertions._
 import org.scalatest.BeforeAndAfterAll
+import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 import scala.concurrent.duration._
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
@@ -71,7 +71,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider
   override def afterAll() = closer closeThen { super.afterAll() }
 
   "Unauthorized when credentials are missing" in {
-    autoClosing(newTextAgentClient(_ => ())) { client =>
+    autoClosing(newTextAgentClient(None)(_ => ())) { client =>
       interceptUnauthorized {
         client.executeCommand("""{ TYPE: ShutDown, sigtermProcesses: true, sigkillProcessesAfter: 10 }""")
       }
@@ -79,9 +79,9 @@ extends AnyFreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider
   }
 
   "Unauthorized when credentials are wrong" in {
-    autoClosing(newTextAgentClient(_ => ())) { client =>
+    autoClosing(newTextAgentClient(Some(TestUserId -> SecretString("WRONG-PASSWORD")))(_ => ())) { client =>
       val e = intercept[AkkaHttpClient.HttpException] {
-        client.login(Some(TestUserId -> SecretString("WRONG-PASSWORD"))) await 99.s
+        client.login() await 99.s
       }
       assert(e.status == Unauthorized)
       assert(e.dataAsString contains "Login: unknown user or invalid password")
@@ -90,8 +90,8 @@ extends AnyFreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider
 
   "AgentCommand" in {
     val output = mutable.Buffer[String]()
-    autoClosing(newTextAgentClient(output += _)) { client =>
-      client.login(Some(TestUserId -> Password)) await 99.s
+    autoClosing(newTextAgentClient(Some(TestUserId -> Password))(output += _)) { client =>
+      client.login() await 99.s
       client.executeCommand("""{ TYPE: ShutDown, sigtermProcesses: true, sigkillProcessesAfter: 10 }""")
       client.getApi("")
     }
@@ -104,13 +104,13 @@ extends AnyFreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider
 
   "requireIsResponding" in {
     val output = mutable.Buffer[String]()
-    autoClosing(newTextAgentClient(output += _)) { client =>
-      client.login(Some(TestUserId -> Password)) await 99.s
+    autoClosing(newTextAgentClient(Some(TestUserId -> Password))(output += _)) { client =>
+      client.login() await 99.s
       client.requireIsResponding()
     }
     assert(output == List("JobScheduler Agent Server is responding"))
     val agentUri = Uri(s"http://127.0.0.1:${findFreeTcpPort()}")
-    autoClosing(new AkkaHttpAgentTextApi(agentUri, _ => ())) { client =>
+    autoClosing(new AkkaHttpAgentTextApi(agentUri, None, _ => ())) { client =>
       val t = intercept[Exception] {
         client.requireIsResponding()
       }
@@ -118,8 +118,9 @@ extends AnyFreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider
     }
   }
 
-  private def newTextAgentClient(output: String => Unit) =
-    new AkkaHttpAgentTextApi(agentUri = agent.localUri, output, configDirectory = Some(configDirectory))
+  private def newTextAgentClient(userAndPassword: Option[UserAndPassword])(output: String => Unit) =
+    new AkkaHttpAgentTextApi(agentUri = agent.localUri, userAndPassword, output,
+      configDirectory = Some(configDirectory))
 }
 
 private object AkkaHttpAgentTextApiTest {

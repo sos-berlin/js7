@@ -47,7 +47,7 @@ extends MasterApi with HttpSessionApi with HasIsIgnorableStackTrace
   final def clusterState: Task[ClusterState] =
     httpClient.get[ClusterState](uris.clusterState)
 
-  final def addOrder(order: FreshOrder): Task[Boolean]  = {
+  final def addOrder(order: FreshOrder): Task[Boolean] = {
     val uri = uris.order.add
     httpClient.postDiscardResponse(uri, order, allowedStatusCodes = Set(409))
       .map(_ == 201/*Created*/)
@@ -64,17 +64,20 @@ extends MasterApi with HttpSessionApi with HasIsIgnorableStackTrace
     httpClient.liftProblem(
       httpClient.get[Seq[Order[Order.State]]](uris.order.list[Order[Order.State]]))
 
-  final def events[E <: Event: ClassTag](request: EventRequest[E])(implicit kd: Decoder[KeyedEvent[E]], ke: Encoder.AsObject[KeyedEvent[E]])
+  final def events[E <: Event: ClassTag](request: EventRequest[E])
+    (implicit kd: Decoder[KeyedEvent[E]], ke: Encoder.AsObject[KeyedEvent[E]])
   : Task[TearableEventSeq[Seq, KeyedEvent[E]]] =
     httpClient.get[TearableEventSeq[Seq, KeyedEvent[E]]](
       uris.events[E](request),
       timeout = request.timeout.map(_ + ToleratedEventDelay) getOrElse Duration.Inf)
 
-  final def eventObservable[E <: Event: ClassTag](request: EventRequest[E])(implicit kd: Decoder[KeyedEvent[E]], ke: Encoder.AsObject[KeyedEvent[E]])
-    : Task[Observable[Stamped[KeyedEvent[E]]]] =
+  final def eventObservable[E <: Event: ClassTag](request: EventRequest[E])
+    (implicit kd: Decoder[KeyedEvent[E]], ke: Encoder.AsObject[KeyedEvent[E]])
+  : Task[Observable[Stamped[KeyedEvent[E]]]] =
     httpClient.getDecodedLinesObservable[Stamped[KeyedEvent[E]]](uris.events(request))
 
-  final def eventIdObservable[E <: Event: ClassTag](request: EventRequest[E], heartbeat: Option[FiniteDuration] = None): Task[Observable[EventId]] =
+  final def eventIdObservable[E <: Event: ClassTag](request: EventRequest[E], heartbeat: Option[FiniteDuration] = None)
+  : Task[Observable[EventId]] =
     httpClient.getDecodedLinesObservable[EventId](uris.events(request, heartbeat = heartbeat, eventIdOnly = true, onlyLastOfChunk = true))
 
   /** Observable for a journal file.

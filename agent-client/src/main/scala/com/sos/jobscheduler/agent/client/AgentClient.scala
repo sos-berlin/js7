@@ -7,6 +7,7 @@ import com.sos.jobscheduler.agent.data.event.KeyedEventJsonFormats.keyedEventJso
 import com.sos.jobscheduler.agent.data.views.{AgentOverview, TaskOverview, TaskRegisterOverview}
 import com.sos.jobscheduler.agent.data.web.AgentUris
 import com.sos.jobscheduler.agent.data.{AgentApi, AgentTaskId}
+import com.sos.jobscheduler.base.auth.UserAndPassword
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.session.HttpSessionApi
 import com.sos.jobscheduler.base.web.Uri
@@ -82,10 +83,12 @@ trait AgentClient extends AgentApi with HttpSessionApi with AkkaHttpClient
 
 object AgentClient
 {
-  def apply(agentUri: Uri, keyStoreRef: => Option[KeyStoreRef] = None, trustStoreRef: => Option[TrustStoreRef] = None)
+  def apply(agentUri: Uri, userAndPassword: Option[UserAndPassword],
+    keyStoreRef: => Option[KeyStoreRef] = None, trustStoreRef: => Option[TrustStoreRef] = None)
     (implicit actorSystem: ActorSystem)
   : AgentClient = {
     val a = actorSystem
+    val up = userAndPassword
     def k = keyStoreRef    // lazy, to avoid reference when not needed (needed only for http)
     def t = trustStoreRef  // lazy, to avoid reference when not needed (needed only for http)
     new AgentClient {
@@ -94,6 +97,7 @@ object AgentClient
       protected val name = "Agent"
       protected def keyStoreRef = k
       protected def trustStoreRef = t
+      protected def userAndPassword = up
     }
   }
 }

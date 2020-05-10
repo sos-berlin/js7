@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.common.http
 
 import cats.syntax.flatMap._
-import com.sos.jobscheduler.base.auth.UserAndPassword
 import com.sos.jobscheduler.base.exceptions.HasIsIgnorableStackTrace
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Problems.InvalidSessionTokenProblem
@@ -21,9 +20,12 @@ import scala.concurrent.duration._
 import scala.util.control.NoStackTrace
 
 /** Logs in, couples and fetches objects from a (HTTP) stream, and recouples after error. */
-abstract class RecouplingStreamReader[@specialized(Long/*EventId or file position*/) I, V, Api <: SessionApi with HasIsIgnorableStackTrace](
+abstract class RecouplingStreamReader[
+  @specialized(Long/*EventId or file position*/) I,
+  V,
+  Api <: SessionApi.HasUserAndPassword with HasIsIgnorableStackTrace
+](
   toIndex: V => I,
-  maybeUserAndPassword: Option[UserAndPassword],
   conf: RecouplingStreamReaderConf)
 {
   protected def couple(index: I): Task[Checked[Completed]] =
@@ -214,7 +216,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
             otherCoupledClient <- coupledApiVar.tryRead
             _ <- otherCoupledClient.fold(Task.unit)(_ => Task.raiseError(new IllegalStateException("Coupling while already coupled")))
             _ <- Task { recouplingPause.onCouple() }
-            _ <- api.login(maybeUserAndPassword, onlyIfNotLoggedIn = true).timeout(idleTimeout)
+            _ <- api.login(onlyIfNotLoggedIn = true).timeout(idleTimeout)
             checkedCompleted <- couple(index = lastIndex)
           } yield checkedCompleted)
             .materialize.map(o => Checked.flattenTryChecked(o))  // materializeIntoChecked
@@ -244,10 +246,9 @@ object RecouplingStreamReader
 
   private val PauseGranularity = 500.ms
 
-  def observe[@specialized(Long/*EventId or file position*/) I, V, Api <: SessionApi with HasIsIgnorableStackTrace](
+  def observe[@specialized(Long/*EventId or file position*/) I, V, Api <: SessionApi.HasUserAndPassword with HasIsIgnorableStackTrace](
     toIndex: V => I,
     api: Api,
-    maybeUserAndPassword: Option[UserAndPassword],
     conf: RecouplingStreamReaderConf,
     after: I,
     getObservable: I => Task[Checked[Observable[V]]],
@@ -258,7 +259,7 @@ object RecouplingStreamReader
     val eof_ = eof
     val getObservable_ = getObservable
     val stopRequested_ = stopRequested
-    new RecouplingStreamReader[I, V, Api](toIndex, maybeUserAndPassword, conf) {
+    new RecouplingStreamReader[I, V, Api](toIndex, conf) {
       def getObservable(api: Api, after: I) = getObservable_(after)
       override def eof(index: I) = eof_(index)
       def stopRequested = stopRequested_()

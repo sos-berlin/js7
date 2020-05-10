@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master.client
 
+import com.sos.jobscheduler.base.auth.UserAndPassword
 import com.sos.jobscheduler.base.session.HttpSessionApi
 import com.sos.jobscheduler.base.utils.HasCloser
 import com.sos.jobscheduler.base.web.Uri
@@ -17,6 +18,7 @@ import java.nio.file.Path
   */
 private[master] final class AkkaHttpMasterTextApi(
   protected val baseUri: Uri,
+  protected val userAndPassword: Option[UserAndPassword],
   protected val print: String => Unit,
   configDirectory: Option[Path] = None)
 extends HasCloser with ProvideActorSystem with TextApi with HttpSessionApi with AkkaHttpClient

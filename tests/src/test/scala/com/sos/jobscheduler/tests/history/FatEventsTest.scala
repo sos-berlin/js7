@@ -34,9 +34,9 @@ import com.sos.jobscheduler.tests.testenv.DirectoryProvider
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider.StdoutOutput
 import java.time.ZoneId
 import monix.execution.Scheduler.Implicits.global
+import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 import scala.language.implicitConversions
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
@@ -60,7 +60,7 @@ final class FatEventsTest extends AnyFreeSpec
 
       provider.runAgents() { runningAgents =>
         provider.runMaster() { master =>
-          master.httpApi.login(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))) await 99.s
+          master.httpApi.login_(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))) await 99.s
           master.addOrderBlocking(TestOrder)
           master.eventWatch.await[OrderFinished](_.key == TestOrder.id)
           assert(listJournalFiles == Vector("master--0.journal"))
@@ -79,7 +79,7 @@ final class FatEventsTest extends AnyFreeSpec
         var lastAddedEventId = EventId.BeforeFirst
         val fatEvents = mutable.Buffer[KeyedEvent[FatEvent]]()
         provider.runMaster() { master =>
-          master.httpApi.login(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))) await 99.s
+          master.httpApi.login_(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))) await 99.s
           val history = new InMemoryHistory
           var lastEventId = EventId.BeforeFirst
           var finished = false
@@ -155,7 +155,7 @@ final class FatEventsTest extends AnyFreeSpec
           // Test recovering FatState from snapshot stored in journal file
           assertJournalFileCount(4)
           assert( !listJournalFiles.contains("master--0.journal"))  // First file deleted
-          master.httpApi.login(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))) await 99.s
+          master.httpApi.login_(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))) await 99.s
 
           master.waitUntilReady()
 

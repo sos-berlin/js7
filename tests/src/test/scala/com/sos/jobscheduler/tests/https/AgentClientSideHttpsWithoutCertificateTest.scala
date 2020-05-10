@@ -1,7 +1,5 @@
 package com.sos.jobscheduler.tests.https
 
-import com.sos.jobscheduler.base.auth.UserId
-import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
@@ -23,7 +21,7 @@ final class AgentClientSideHttpsWithoutCertificateTest extends HttpsTestBase
   override protected def provideAgentClientCertificate = false
 
   "Login" in {
-    masterApi.login(Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD"))) await 99.s
+    masterApi.login() await 99.s
   }
 
   "Run a job" in {

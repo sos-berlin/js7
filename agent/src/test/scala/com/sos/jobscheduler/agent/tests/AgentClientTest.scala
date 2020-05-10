@@ -18,7 +18,7 @@ final class AgentClientTest extends AnyFreeSpec with ScalaFutures with AgentTest
 
   override lazy val agentConfiguration = newAgentConfiguration()
   private implicit lazy val actorSystem = Akkas.newAgentActorSystem("AgentClientTest")(closer)
-  private lazy val client = AgentClient(agentUri = agent.localUri)
+  private lazy val client = AgentClient(agentUri = agent.localUri, userAndPassword = None)
 
   "get /" in {
     val overview = client.overview await 99.s

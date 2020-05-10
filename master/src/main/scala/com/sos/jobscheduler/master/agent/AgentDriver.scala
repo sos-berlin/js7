@@ -80,7 +80,7 @@ with ReceiveLoggingActor.WithStash
   private val sessionNumber = AtomicInt(0)
 
   private val eventFetcher = new RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], AgentClient](
-    _.eventId, agentUserAndPassword, conf.recouplingStreamReader)
+    _.eventId, conf.recouplingStreamReader)
   {
     private var attachedOrderIds: Set[OrderId] = null
 
@@ -182,7 +182,8 @@ with ReceiveLoggingActor.WithStash
   }
 
   private def newAgentClient(uri: Uri): AgentClient =
-    AgentClient(uri, masterConfiguration.keyStoreRefOption, masterConfiguration.trustStoreRefOption)(context.system)
+    AgentClient(uri, agentUserAndPassword,
+      masterConfiguration.keyStoreRefOption, masterConfiguration.trustStoreRefOption)(context.system)
 
   def receive = {
     case input: Input with Queueable if sender() == context.parent && !isTerminating =>

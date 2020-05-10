@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.agent.client
 
+import com.sos.jobscheduler.base.auth.UserAndPassword
 import com.sos.jobscheduler.base.utils.Closer.syntax.RichClosersAny
 import com.sos.jobscheduler.base.utils.HasCloser
 import com.sos.jobscheduler.base.web.Uri
@@ -15,6 +16,7 @@ import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
  */
 final class SimpleAgentClient(
   val baseUri: Uri,
+  protected val userAndPassword: Option[UserAndPassword],
   protected val keyStoreRef: Option[KeyStoreRef] = None,
   protected val trustStoreRef: Option[TrustStoreRef] = None)
 extends HasCloser with AgentClient
