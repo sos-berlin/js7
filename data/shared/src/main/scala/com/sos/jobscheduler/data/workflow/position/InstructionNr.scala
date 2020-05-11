@@ -21,9 +21,17 @@ final case class InstructionNr(number: Int) extends GenericInt
 
 object InstructionNr extends GenericInt.Companion[InstructionNr]
 {
+  private val predefined = (0 to 999).map(i => new InstructionNr(i)).toVector
   private val FirstInt = 0
   val First = InstructionNr(FirstInt)
   val Prefix = ":"
 
-  implicit def fromInt(nr: Int): InstructionNr = new InstructionNr(nr)
+  def apply(number: Int): InstructionNr =
+    if (number >= 0 && number < predefined.size)
+      predefined(number)
+    else
+      new InstructionNr(number)
+
+  implicit def fromInt(nr: Int): InstructionNr =
+    apply(nr)
 }
