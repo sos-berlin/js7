@@ -18,9 +18,8 @@ import org.scalatest.freespec.AnyFreeSpec
 final class RealEventWatchTest extends AnyFreeSpec
 {
   "tornOlder" in {
-    val events = Stamped(1, 1 <-: TestEvent(1)) :: Nil  // Event 1 = 1970-01-01, very old
+    val events = Stamped(1, 1L <-: TestEvent(1)) :: Nil  // Event 1 = 1970-01-01, very old
     val eventWatch = new RealEventWatch {
-      protected def scheduler = Scheduler.global
       def fileEventIds = EventId.BeforeFirst :: Nil
       protected def eventsAfter(after: EventId) = Some(CloseableIterator.fromIterator(events.iterator dropWhile (_.eventId <= after)))
       def snapshotObjectsFor(after: EventId) = None
