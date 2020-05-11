@@ -69,7 +69,8 @@ with ReceiveLoggingActor.WithStash
   private val agentRunIdOnce = SetOnce.fromOption(initialAgentRunId)
   private var client = newAgentClient(initialUri)
   /** Only filled when coupled */
-  private var lastEventId = initialEventId
+  private var lastFetchedEventId = initialEventId
+  private var lastCommittedEventId = initialEventId
   private var lastProblem: Option[Problem] = None
   private var currentFetchedFuture: Option[CancelableFuture[Completed]] = None
   private var releaseEventsCancelable: Option[Cancelable] = None
@@ -266,23 +267,25 @@ with ReceiveLoggingActor.WithStash
     case Internal.FetchedEvents(stampedEvents, promise) =>
       assertThat(stampedEvents.nonEmpty)
       val reducedStampedEvents = stampedEvents dropWhile { stamped =>
-        val drop = stamped.eventId <= lastEventId
+        val drop = stamped.eventId <= lastFetchedEventId
         if (drop) logger.debug(s"Drop duplicate received event: $stamped")
         drop
       }
 
       // The events must be journaled and handled by MasterOrderKeeper
-      lastEventId = stampedEvents.last.eventId
+      val lastEventId = stampedEvents.last.eventId
+      lastFetchedEventId = lastEventId
 
       promiseFuture[Completed] { p =>
         context.parent ! Output.EventsFromAgent(reducedStampedEvents, p)
       } onComplete {
         case Success(Completed) =>
-          self ! Internal.EventsAccepted(promise)
+          self ! Internal.EventsAccepted(lastEventId, promise)
         case o => promise.complete(o)
       }
 
-    case Internal.EventsAccepted(promise) =>
+    case Internal.EventsAccepted(lastEventId, promise) =>
+      lastCommittedEventId = lastEventId
       if (releaseEventsCancelable.isEmpty) {
         val delay = if (delayNextReleaseEvents) conf.releaseEventsPeriod else Duration.Zero
         releaseEventsCancelable = Some(scheduler.scheduleOnce(delay) {
@@ -313,7 +316,7 @@ with ReceiveLoggingActor.WithStash
 
     case Internal.ReleaseEvents =>
       if (!isTerminating) {
-        commandQueue.enqueue(ReleaseEventsQueueable(lastEventId))
+        commandQueue.enqueue(ReleaseEventsQueueable(lastCommittedEventId))
       }
 
     case Internal.CommandQueueReady =>
@@ -367,7 +370,7 @@ with ReceiveLoggingActor.WithStash
     }
 
   protected def observeAndConsumeEvents: Task[Completed] =
-    eventFetcher.observe(client, after = lastEventId)
+    eventFetcher.observe(client, after = lastFetchedEventId)
       //.map { a => logEvent(a); a }
       .bufferTimedAndCounted(
         conf.eventBufferDelay max conf.commitDelay,
@@ -468,7 +471,7 @@ private[master] object AgentDriver
     final case class OnCouplingFailed(problem: Problem, promise: Promise[Completed]) extends DeadLetterSuppression
     final case class OnCoupled(promise: Promise[Completed], orderIds: Set[OrderId]) extends DeadLetterSuppression
     final case object OnDecoupled extends DeadLetterSuppression
-    final case class EventsAccepted(promise: Promise[Completed]) extends DeadLetterSuppression
+    final case class EventsAccepted(lastEventId: EventId, promise: Promise[Completed]) extends DeadLetterSuppression
     final case object ReleaseEvents extends DeadLetterSuppression
     final case object UriChanged extends DeadLetterSuppression
   }

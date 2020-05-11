@@ -17,10 +17,6 @@ private[cluster] object ObservablePauseDetector
         underlying map Data.apply,
         Observable.intervalWithFixedDelay(notShorterThan, notShorterThan).map(_ => Tick)
       ).merge
-        .map { o =>
-          logger.trace(o.productPrefix)
-          o
-        }
         .scan[Element[A]](Tick) {
           case (Tick | Expired, Tick) => Expired
           case (_, Tick) => Tick
