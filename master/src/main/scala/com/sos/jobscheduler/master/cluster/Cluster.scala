@@ -35,7 +35,7 @@ import com.sos.jobscheduler.core.problems.MissingPassiveClusterNodeHeartbeatProb
 import com.sos.jobscheduler.core.startup.Halt.haltJava
 import com.sos.jobscheduler.data.cluster.ClusterCommand.{ClusterInhibitActivation, ClusterStartBackupNode}
 import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
-import com.sos.jobscheduler.data.cluster.ClusterState.{ActiveShutDown, Coupled, Decoupled, Empty, FailedOver, HasNodes, NodesAppointed, PassiveLost, PreparedToBeCoupled}
+import com.sos.jobscheduler.data.cluster.ClusterState.{Coupled, CoupledActiveShutDown, Decoupled, Empty, FailedOver, HasNodes, NodesAppointed, PassiveLost, PreparedToBeCoupled}
 import com.sos.jobscheduler.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeId, ClusterState}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
@@ -438,7 +438,7 @@ final class Cluster(
 
   private def onRestartActiveNode: Task[Checked[Completed]] =
     persistence.currentState.map(_.clusterState).flatMap {
-      case state: ActiveShutDown if state.activeId == ownId =>
+      case state: CoupledActiveShutDown if state.activeId == ownId =>
         persist(_ => Right(ClusterActiveNodeRestarted :: Nil))
           .map(_.toCompleted)
       case _ =>

@@ -45,9 +45,9 @@ extends EventDrivenState[ClusterState, ClusterEvent]
             Right(FailedOver(state.idToUri, event.activatedId, event.failedAt))
 
           case (state: Coupled, ClusterActiveNodeShutDown) =>
-            Right(ActiveShutDown(state.idToUri, state.activeId))
+            Right(CoupledActiveShutDown(state.idToUri, state.activeId))
 
-          case (state: ActiveShutDown, ClusterActiveNodeRestarted) =>
+          case (state: CoupledActiveShutDown, ClusterActiveNodeRestarted) =>
             Right(PassiveLost(state.idToUri, state.activeId))
             // Passive node may recouple now
 
@@ -125,10 +125,11 @@ object ClusterState
     assertIsValid()
   }
 
-  /** The active node has shut down and will continue to be active when restarted.
+  /** The active node has shut down while `Coupled` and will continue to be active when restarted.
       The passive node must not fail-over.
+      After restart, the active node will stil be active.
     */
-  final case class ActiveShutDown(idToUri: Map[Id, Uri], activeId: Id)
+  final case class CoupledActiveShutDown(idToUri: Map[Id, Uri], activeId: Id)
   extends Decoupled
   {
     assertIsValid()
@@ -161,7 +162,7 @@ object ClusterState
     Subtype(deriveCodec[NodesAppointed]),
     Subtype(deriveCodec[PreparedToBeCoupled]),
     Subtype(deriveCodec[Coupled]),
-    Subtype(deriveCodec[ActiveShutDown]),
+    Subtype(deriveCodec[CoupledActiveShutDown]),
     Subtype(deriveCodec[PassiveLost]),
     Subtype(deriveCodec[SwitchedOver]),
     Subtype(deriveCodec[FailedOver]))

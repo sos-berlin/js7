@@ -2,7 +2,7 @@ package com.sos.jobscheduler.data.cluster
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.data.cluster.ClusterState.{ActiveShutDown, Coupled, Empty, FailedOver, NodesAppointed, PassiveLost, PreparedToBeCoupled, SwitchedOver}
+import com.sos.jobscheduler.data.cluster.ClusterState.{Coupled, CoupledActiveShutDown, Empty, FailedOver, NodesAppointed, PassiveLost, PreparedToBeCoupled, SwitchedOver}
 import com.sos.jobscheduler.data.event.{EventId, JournalPosition}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
@@ -63,11 +63,11 @@ final class ClusterStateTest extends AnyFreeSpec
         }""")
     }
 
-    "ActiveShutDown" in {
+    "CoupledActiveShutDown" in {
       testJson[ClusterState](
-        ActiveShutDown(idToUri, ClusterNodeId("A")),
+        CoupledActiveShutDown(idToUri, ClusterNodeId("A")),
         json"""{
-          "TYPE": "ActiveShutDown",
+          "TYPE": "CoupledActiveShutDown",
           "idToUri": {
             "A": "http://A",
             "B": "http://B"

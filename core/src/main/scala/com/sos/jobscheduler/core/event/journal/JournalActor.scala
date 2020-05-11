@@ -674,8 +674,9 @@ extends Actor with Stash
 
   private def releaseObsoleteEvents(): Unit =
     if (conf.deleteObsoleteFiles &&
-      (journaledState.clusterState == ClusterState.Empty/*???*/ ||
-        journaledState.clusterState.isInstanceOf[ClusterState.Coupled] &&
+      (journaledState.clusterState == ClusterState.Empty ||
+        (journaledState.clusterState.isInstanceOf[ClusterState.Coupled] ||
+         journaledState.clusterState.isInstanceOf[ClusterState.CoupledActiveShutDown]) &&
           requireClusterAcknowledgement/*ClusterPassiveLost after SnapshotTaken in the same commit chunk
            has reset requireClusterAcknowledgement. We must not delete the file when cluster is being decoupled.*/))
     {

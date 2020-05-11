@@ -46,7 +46,7 @@ final class ShutDownClusterTest extends MasterClusterTester
 
           val activeNodeShutDown = backupMaster.eventWatch.await[ClusterActiveNodeShutDown](after = EventId.BeforeFirst).head.eventId
 
-          assert(backupMaster.httpApi.clusterState.await(99.s) == ClusterState.ActiveShutDown(idToUri, primaryId))
+          assert(backupMaster.httpApi.clusterState.await(99.s) == ClusterState.CoupledActiveShutDown(idToUri, primaryId))
 
           primary.runMaster(httpPort = Some(primaryHttpPort)) { primaryMaster =>
             val activeRestarted = primaryMaster.eventWatch.await[ClusterActiveNodeRestarted](
