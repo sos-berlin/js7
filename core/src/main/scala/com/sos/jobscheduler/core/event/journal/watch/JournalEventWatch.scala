@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
-import akka.util.ByteString
 import com.sos.jobscheduler.base.problem.Checked.{CheckedOption, Ops}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.Timestamp
@@ -26,6 +25,7 @@ import scala.collection.immutable.SortedMap
 import scala.concurrent.Promise
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NoStackTrace
+import scodec.bits.ByteVector
 
 /**
   * Watches a complete journal consisting of n `JournalFile`.
@@ -187,7 +187,7 @@ with JournalingObserver
       historicJournalFile.eventReader.eventsAfter(after) map { events =>
         events.tapEach { stamped =>
           last = stamped.eventId
-        } ++  // ++ is lazy, so last contains last read eventId
+        } ++  // ++ is lazy, so last element will contain last read eventId
           (if (last == after)  // Nothing read
             CloseableIterator.empty
           else {  // Continue with next HistoricEventReader or CurrentEventReader
@@ -215,7 +215,7 @@ with JournalingObserver
     }
 
   def observeFile(fileEventId: Option[EventId], position: Option[Long], timeout: FiniteDuration, markEOF: Boolean, onlyLastOfChunk: Boolean)
-  : Checked[Observable[PositionAnd[ByteString]]] =
+  : Checked[Observable[PositionAnd[ByteVector]]] =
     checkedCurrentEventReader  // TODO Implement for historic journal files, too
       .flatMap(current =>
         // Use defaults for manual request of the current journal file stream, just to show something
@@ -227,7 +227,7 @@ with JournalingObserver
           onlyLastOfChunk = onlyLastOfChunk))
 
   private def observeFile(fileEventId: EventId, position: Long, timeout: FiniteDuration, markEOF: Boolean, onlyLastOfChunk: Boolean)
-  : Checked[Observable[PositionAnd[ByteString]]] =
+  : Checked[Observable[PositionAnd[ByteVector]]] =
     (nextEventReaderPromise match {
       case Some((`fileEventId`, promise)) =>
         logger.debug(s"observeFile($fileEventId): waiting for this new journal file")

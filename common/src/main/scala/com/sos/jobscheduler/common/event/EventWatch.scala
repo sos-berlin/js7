@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.common.event
 
-import akka.util.ByteString
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.base.utils.ScalaUtils.function1WithToString
@@ -14,6 +13,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
+import scodec.bits.ByteVector
 
 /**
   * @author Joacim Zschimmer
@@ -60,7 +60,7 @@ trait EventWatch
   /** Returns None as last element iff timeout has been elapsed. */
   def observeFile(fileEventId: Option[EventId], position: Option[Long], timeout: FiniteDuration,
     markEOF: Boolean = false, onlyLastOfChunk: Boolean = false)
-  : Checked[Observable[PositionAnd[ByteString]]]
+  : Checked[Observable[PositionAnd[ByteVector]]]
 
   def snapshotObjectsFor(after: EventId): Option[(EventId, CloseableIterator[Any])]
 

@@ -1,10 +1,11 @@
 package com.sos.jobscheduler.core.common.jsonseq
 
-import akka.util.ByteString
 import cats.effect.Resource
-import com.google.common.base.Ascii.{LF, RS}
 import com.sos.jobscheduler.base.problem.ProblemException
+import com.sos.jobscheduler.base.utils.Ascii.{LF, RS}
 import com.sos.jobscheduler.base.utils.ScalazStyle._
+import com.sos.jobscheduler.base.utils.ScodecUtils.RichByteVector
+import com.sos.jobscheduler.base.utils.Strings._
 import com.sos.jobscheduler.common.event.PositionAnd
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.UntilNoneIterator
@@ -15,6 +16,7 @@ import java.io.IOException
 import java.nio.file.Path
 import monix.eval.Task
 import monix.execution.atomic.AtomicAny
+import scodec.bits.ByteVector
 
 /**
   * MIME media type application/json-seq, RFC 7464 "JavaScript Object Notation (JSON) Text Sequences".
@@ -26,7 +28,11 @@ import monix.execution.atomic.AtomicAny
   * @see https://tools.ietf.org/html/rfc7464
   * @see http://ndjson.org/
   */
-final class InputStreamJsonSeqReader(inputStream_ : SeekableInputStream, name: String, blockSize: Int = BlockSize, withRS: Boolean = false)
+final class InputStreamJsonSeqReader(
+  inputStream_ : SeekableInputStream,
+  name: String,
+  blockSize: Int = BlockSize,
+  withRS: Boolean = false)
 extends AutoCloseable
 {
   private val inAtomic = AtomicAny(inputStream_)
@@ -34,7 +40,7 @@ extends AutoCloseable
   private var blockPos = 0L
   private var blockLength = 0
   private var blockRead = 0
-  private val byteStringBuilder = ByteString.newBuilder
+  private var byteVectorBuffer = ByteVector.empty
   private var lineNumber: Long = 1  // -1 for unknown line number after seek
   lazy val iterator: Iterator[PositionAnd[Json]] = UntilNoneIterator(read())
 
@@ -58,22 +64,28 @@ extends AutoCloseable
       val blockPos_ = blockPos
       val blockRead_ = blockRead
       val pos = position
-      readRaw() map (o =>
-        io.circe.parser.parse(o.utf8String) match {
-          case Left(failure) =>
-            val lineNr = lineNumber - 1
-            val extra = failure.message.replace(" (line 1, ", " (").replace("\n", "\\n")
-            logger.warn(s"JSON sequence read from '$name' is corrupt at " +
-              (if (lineNr >= 0) s"line $lineNr, " else "") +
-              s"file position $pos (blockPos=${blockPos_} blockRead=${blockRead_}): $extra: ${o.utf8String}")  // Do not expose JSON content with exception
-            throwCorrupt2(lineNr, pos, extra)
-          case Right(json) =>
-            logger.trace(s"blockPos=${blockPos_} blockRead=${blockRead_} " + o.utf8String.trim)
-            PositionAnd(pos, json)
-        })
+      readRaw()
+        .map(bytes => bytes.decodeUtf8
+          .flatMap(io.circe.parser.parse) match {
+            case Left(throwable) =>
+              val lineNr = lineNumber - 1
+              val extra = throwable match {
+                case failure: io.circe.ParsingFailure =>
+                  failure.message.replace(" (line 1, ", " (").replace("\n", "\\n")
+                case t => t.toString
+              }
+              logger.warn(s"JSON sequence read from '$name' is corrupt at " +
+                ((lineNr >= 0) ?: s"line $lineNr, ") +
+                s"file position $pos (blockPos=${blockPos_} blockRead=${blockRead_}): " +
+                s"$extra: ${bytes.utf8StringTruncateAt(200)}")  // Do not expose JSON content with exception
+              throwCorrupt2(lineNr, pos, extra)
+            case Right(json) =>
+              logger.trace(s"blockPos=${blockPos_} blockRead=${blockRead_} " + bytes.utf8StringTruncateAt(200).trim)
+              PositionAnd(pos, json)
+          })
     }
 
-  def readRaw(): Option[ByteString] = {
+  def readRaw(): Option[ByteVector] = {
     val startPosition = position
     var rsReached = false
     var lfReached = false
@@ -93,20 +105,20 @@ extends AutoCloseable
       }
       val start = blockRead
       while (blockRead < blockLength && (block(blockRead) != LF || { lfReached = true; false })) { blockRead += 1 }
-      byteStringBuilder.putBytes(block, start, blockRead - start + (if (lfReached) 1 else 0))
+      byteVectorBuffer ++= ByteVector(block, start, blockRead - start + (if (lfReached) 1 else 0))
       if (lfReached) {
         blockRead += 1
       }
     }
-    if ((!withRS && byteStringBuilder.nonEmpty || rsReached) && !lfReached) {
-      logger.warn(s"Discarding truncated last record in '$name': ${byteStringBuilder.result().utf8String} (terminating LF is missing)")
-      byteStringBuilder.clear()
+    if ((!withRS && byteVectorBuffer.nonEmpty || rsReached) && !lfReached) {
+      logger.warn(s"Discarding truncated last record in '$name': ${byteVectorBuffer.utf8String} (terminating LF is missing)")
+      byteVectorBuffer = ByteVector.empty
       seek(startPosition)  // Keep a proper file position at start of record
     }
     lfReached ? {
       if (lineNumber != -1) lineNumber += 1
-      val result = byteStringBuilder.result()
-      byteStringBuilder.clear()
+      val result = byteVectorBuffer.unbuffer
+      byteVectorBuffer = ByteVector.empty
       result
     }
   }

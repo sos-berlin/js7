@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
-import akka.util.ByteString
 import com.sos.jobscheduler.base.monixutils.MonixBase.memoryLeakLimitedObservableTailRecM
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
@@ -9,15 +8,14 @@ import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichIterator
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.event.PositionAnd
-import com.sos.jobscheduler.common.http.AkkaHttpUtils.AkkaByteVector
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.UntilNoneIterator
 import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.JournalReader
-import com.sos.jobscheduler.core.event.journal.watch.EventReader._
 import com.sos.jobscheduler.core.problems.JsonSeqFileClosedProblem
-import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, JournalSeparators, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.JournalSeparators.EndOfJournalFileMarker
+import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
 import com.typesafe.config.Config
 import java.nio.file.Path
 import monix.eval.Task
@@ -25,6 +23,7 @@ import monix.execution.atomic.AtomicAny
 import monix.reactive.Observable
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, FiniteDuration}
+import scodec.bits.ByteVector
 
 /**
   * @author Joacim Zschimmer
@@ -146,7 +145,7 @@ extends AutoCloseable
 
   /** Observes a journal file lines and length. */
   final def observeFile(position: Long, timeout: FiniteDuration, markEOF: Boolean = false, onlyLastOfChunk: Boolean)
-  : Observable[PositionAnd[ByteString]] =
+  : Observable[PositionAnd[ByteVector]] =
     Observable.fromResource(InputStreamJsonSeqReader.resource(journalFile))
       .flatMap { jsonSeqReader =>
         val until = now + timeout
@@ -168,7 +167,7 @@ extends AutoCloseable
                 if (onlyLastOfChunk) {
                   // TODO Optimierung: Bei onlyLastOfChunk interessiert nur die geschriebene Dateilänge.
                   //  Dann brauchen wir die Datei nicht zu lesen, sondern nur die geschriebene Dateilänge zurückzugeben.
-                  var last = null.asInstanceOf[PositionAnd[ByteString]]
+                  var last = null.asInstanceOf[PositionAnd[ByteVector]]
                   iterator.foreach(last = _)
                   iterator = Option(last).iterator
                 }
@@ -197,5 +196,4 @@ extends AutoCloseable
 object EventReader
 {
   final class TimeoutException private[EventReader] extends scala.concurrent.TimeoutException
-  private val EndOfJournalFileMarker = JournalSeparators.EndOfJournalFileMarker.toByteString
 }

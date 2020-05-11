@@ -9,6 +9,7 @@ import com.sos.jobscheduler.base.problem.{Problem, ProblemException}
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowableEither
+import com.sos.jobscheduler.base.utils.ScodecUtils.RichByteVector
 import com.sos.jobscheduler.common.event.{PositionAnd, TornException}
 import com.sos.jobscheduler.common.scalautil.FileUtils.syntax.RichPath
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryDirectory
@@ -163,7 +164,7 @@ final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
         val EventSeq.NonEmpty(bEventsIterator) = bFuture.await(99.s).strict
         assert(bEventsIterator == Stamped(1002L, "2" <-: B1) :: Nil)
 
-        assert(eventWatch.when(EventRequest.singleClass[MyEvent](after = 1000, timeout = Some(30.s))).await(99.s).strict ==
+        assert(eventWatch.when(EventRequest.singleClass[MyEvent](after = 1000L, timeout = Some(30.s))).await(99.s).strict ==
           EventSeq.NonEmpty(Stamped(1001L, "1" <-: A1) :: Stamped(1002L, "2" <-: B1) :: Nil))
       }
     }
@@ -213,7 +214,7 @@ final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
           }
           assert(eventWatch.fileEventIds == EventId.BeforeFirst :: Nil)
 
-          autoClosing(EventJournalWriter.forTest(journalMeta, after = 3, journalId, Some(eventWatch))) { writer =>
+          autoClosing(EventJournalWriter.forTest(journalMeta, after = 3L, journalId, Some(eventWatch))) { writer =>
             writer.beginEventSection(sync = false)
             writer.onJournalingStarted()
             val stampedSeq =
@@ -339,7 +340,7 @@ final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
 
   "observeFile" in {
     withJournalEventWatch(lastEventId = EventId.BeforeFirst) { (writer, eventWatch) =>
-      assert(eventWatch.observeFile(fileEventId = Some(123), position = Some(0), timeout = 99.s)
+      assert(eventWatch.observeFile(fileEventId = Some(123L), position = Some(0), timeout = 99.s)
         == Left(Problem("Unknown journal file=123")))
 
       val jsons = mutable.Buffer[Json]()

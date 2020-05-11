@@ -7,6 +7,7 @@ import com.sos.jobscheduler.core.event.journal.watch.JournalIndex._
 import com.sos.jobscheduler.data.event.EventId
 import java.util.Arrays.binarySearch
 import org.jetbrains.annotations.TestOnly
+
 /**
   * @author Joacim Zschimmer
   */

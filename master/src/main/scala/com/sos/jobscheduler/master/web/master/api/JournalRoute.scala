@@ -3,11 +3,10 @@ package com.sos.jobscheduler.master.web.master.api
 import akka.http.scaladsl.model.HttpEntity
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import akka.util.ByteString
 import com.sos.jobscheduler.base.auth.ValidUserPermission
 import com.sos.jobscheduler.base.monixutils.MonixBase.syntax._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichAny
+import com.sos.jobscheduler.base.utils.ScalaUtils.{RichAny, RichThrowableEither}
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.accept
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.common.event.{EventWatch, PositionAnd}
@@ -15,11 +14,13 @@ import com.sos.jobscheduler.common.http.AkkaHttpUtils.AkkaByteVector
 import com.sos.jobscheduler.common.http.JsonStreamingSupport.`application/x-ndjson`
 import com.sos.jobscheduler.common.http.StreamingSupport._
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
-import com.sos.jobscheduler.data.event.{EventId, JournalSeparators}
+import com.sos.jobscheduler.data.event.EventId
+import com.sos.jobscheduler.data.event.JournalSeparators.{EndOfJournalFileMarker, HeartbeatMarker}
 import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import com.sos.jobscheduler.master.web.master.api.JournalRoute._
 import monix.execution.Scheduler
 import scala.concurrent.duration.FiniteDuration
+import scodec.bits.ByteVector
 
 /** Returns the content of an old or currently written journal file as a live stream.
   * Additional to EventRoute this web service returns the complete file including
@@ -62,6 +63,7 @@ trait JournalRoute extends MasterRouteProvider
                                     .takeWhile(_ => !isShuttingDown)
                                     .map(f)
                                     .pipe(o => heartbeat.fold(o)(o.insertHeartbeatsOnSlowUpstream(_, HeartbeatMarker)))
+                                    .map(_.toByteString)
                                     .toAkkaSource))
                             })
                         }
@@ -76,12 +78,12 @@ trait JournalRoute extends MasterRouteProvider
       }
     }
 
-  private def toContent(o: PositionAnd[ByteString]) =
+  private def toContent(o: PositionAnd[ByteVector]) =
     o.value
 
-  private def toLength(o: PositionAnd[ByteString]): ByteString =
+  private def toLength(o: PositionAnd[ByteVector]): ByteVector =
     if (o.value != EndOfJournalFileMarker)
-      ByteString(o.position.toString + '\n')
+      ByteVector.encodeUtf8(o.position.toString + '\n').orThrow
     else
       o.value
 }
@@ -89,8 +91,6 @@ trait JournalRoute extends MasterRouteProvider
 object JournalRoute
 {
   private val JournalContentType = `application/x-ndjson`
-  private val HeartbeatMarker = JournalSeparators.HeartbeatMarker.toByteString
-  private val EndOfJournalFileMarker = JournalSeparators.EndOfJournalFileMarker.toByteString
 
   private def parseReturnParameter(returnType: String): Checked[Boolean] =
     returnType match {
