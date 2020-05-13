@@ -5,6 +5,7 @@ import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.utils.AutoClosing.closeOnError
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalaUtils._
+import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.common.event.PositionAnd
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -47,42 +48,49 @@ extends AutoCloseable
     private var buffer: ArrayBuffer[PositionAnd[Stamped[KeyedEvent[Event]]]] = null
     private var next = 0
 
-    def begin(): Unit = {
-      require(!isInTransaction)
-      buffer = new mutable.ArrayBuffer[PositionAnd[Stamped[KeyedEvent[Event]]]]
-    }
+    def begin(): Unit =
+      synchronized {
+        require(!isInTransaction)
+        buffer = new mutable.ArrayBuffer[PositionAnd[Stamped[KeyedEvent[Event]]]]
+      }
 
-    def add(positionAndStamped: PositionAnd[Stamped[KeyedEvent[Event]]]): Unit = {
-      require(isInTransaction)
-      buffer += positionAndStamped
-    }
+    def add(positionAndStamped: PositionAnd[Stamped[KeyedEvent[Event]]]): Unit =
+      synchronized {
+        require(isInTransaction)
+        buffer += positionAndStamped
+      }
 
-    def commit(): Unit = {
-      require(isInTransaction)
-      next = 0
-      if (buffer.isEmpty) buffer = null
-    }
+    def commit(): Unit =
+      synchronized {
+        require(isInTransaction)
+        next = 0
+        if (buffer.isEmpty) buffer = null
+      }
 
     def clear(): Unit =
       buffer = null
 
-    def readNext(): Stamped[KeyedEvent[Event]] = {
-      require(isInTransaction)
-      val stamped = buffer(next).value
-      if (next > 1) buffer(next - 1) = null  // Keep last event for positionAndEventId, free older entry
-      next += 1
-      if (next == buffer.length) {
-        buffer = null
+    def readNext(): Option[Stamped[KeyedEvent[Event]]] =
+      synchronized {
+        isInTransaction ? {
+          val stamped = buffer(next).value
+          if (next > 1) buffer(next - 1) = null  // Keep last event for positionAndEventId, free older entry
+          next += 1
+          if (next == buffer.length) {
+            buffer = null
+          }
+          stamped
+        }
       }
-      stamped
-    }
 
-    def positionAndEventId: PositionAnd[EventId] = {
-      require(isInTransaction)
-      // buffer contains >= 2 elements
-      PositionAnd(buffer(next).position, buffer(next - 1).value.eventId)
-    }
+    /** May be called concurrently. */
+    def positionAndEventId: Option[PositionAnd[EventId]] =
+      synchronized {
+        (buffer != null && next >= 1) ?
+          PositionAnd(buffer(next).position, buffer(next - 1).value.eventId)
+      }
 
+    // Do not use concurrently!
     def isInTransaction = buffer != null
 
     def length = buffer.length
@@ -150,11 +158,7 @@ extends AutoCloseable
     untilNoneIterator(nextEvent())
 
   def nextEvent(): Option[Stamped[KeyedEvent[Event]]] = {
-    val result =
-      if (transaction.isInTransaction)
-        Some(readNextCommitted())
-      else
-        nextEvent2()
+    val result = transaction.readNext() orElse nextEvent2()
     for (stamped <- result) {
       _eventId = stamped.eventId
     }
@@ -212,11 +216,13 @@ extends AutoCloseable
                   loop()
               }
             loop()
-            if (transaction.isInTransaction) {
-              if (_totalEventCount != -1) _totalEventCount += transaction.length
-              Some(readNextCommitted())
-            } else
-              nextEvent3()
+            transaction.readNext() match {
+              case Some(stamped) =>
+                if (_totalEventCount != -1) _totalEventCount += transaction.length
+                Some(stamped)
+              case None =>
+                nextEvent3()
+            }
 
           case Commit =>  // Only after seek into a transaction
             nextEvent3()
@@ -224,9 +230,6 @@ extends AutoCloseable
           case _ => throw new CorruptJournalException(s"Unexpected JSON record", journalFile, positionAndJson)
         }
     }
-
-  private def readNextCommitted(): Stamped[KeyedEvent[Event]] =
-    transaction.readNext()
 
   private def deserialize(json: Json) = {
     import journalMeta.eventJsonCodec
@@ -239,10 +242,8 @@ extends AutoCloseable
   def position = positionAndEventId.position
 
   def positionAndEventId: PositionAnd[EventId] =
-    if (transaction.isInTransaction)
-      transaction.positionAndEventId
-    else
-      PositionAnd(jsonReader.position, _eventId)
+    transaction.positionAndEventId
+      .getOrElse(PositionAnd(jsonReader.position, _eventId))
 
   def totalEventCount = _totalEventCount
 }
