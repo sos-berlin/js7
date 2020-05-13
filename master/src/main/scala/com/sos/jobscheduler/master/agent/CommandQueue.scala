@@ -96,9 +96,9 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
     isTerminating && executingInputs.isEmpty
 
   final def maySend(): Unit = {
-    logger.trace(s"maySend() isCoupled=$isCoupled freshlyCoupled=$freshlyCoupled openRequestCount=$openRequestCount" +
-      s" commandParallelism=$commandParallelism isTerminating=$isTerminated" +
-      s" attachedOrderIds.size=${attachedOrderIds.size} executingInput={${executingInputs.map(_.toShortString).mkString(" ")}}")
+    //logger.trace(s"maySend() isCoupled=$isCoupled freshlyCoupled=$freshlyCoupled openRequestCount=$openRequestCount" +
+    //  s" commandParallelism=$commandParallelism isTerminating=$isTerminated" +
+    //  s" attachedOrderIds.size=${attachedOrderIds.size} executingInput={${executingInputs.map(_.toShortString).mkString(" ")}}")
     if (isCoupled && !isTerminating) {
       lazy val inputs = queue.view
         .filterNot(executingInputs)

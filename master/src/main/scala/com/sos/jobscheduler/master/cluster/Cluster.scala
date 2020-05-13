@@ -623,10 +623,10 @@ final class Cluster(
                     .map(completed => Right(eventId))
                 }
             }
-            .map {
-              case Right(eventId) => logger.trace(s"$eventId ACKNOWLEDGED"); Right(eventId)
-              case o => logger.trace(s"Acknowledged => $o"); o
-            }
+            //.map {
+            //  case Right(eventId) => logger.trace(s"$eventId ACKNOWLEDGED"); Right(eventId)
+            //  case o => logger.trace(s"Acknowledged => $o"); o
+            //}
             .collect {
               case Left(problem) => problem
               //case Right(Completed) => (ignore)
