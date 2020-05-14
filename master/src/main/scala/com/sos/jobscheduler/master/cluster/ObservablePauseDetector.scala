@@ -1,12 +1,10 @@
 package com.sos.jobscheduler.master.cluster
 
-import com.sos.jobscheduler.common.scalautil.Logger
 import monix.reactive.{Observable, OverflowStrategy}
 import scala.concurrent.duration.FiniteDuration
 
 private[cluster] object ObservablePauseDetector
 {
-  private val logger = Logger(getClass)
   private implicit val overflowStrategy = OverflowStrategy.BackPressure(bufferSize = 2/*minimum*/)
 
   implicit final class RichPauseObservable[A](private val underlying: Observable[A]) extends AnyVal

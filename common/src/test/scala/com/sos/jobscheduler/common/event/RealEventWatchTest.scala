@@ -6,11 +6,10 @@ import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.common.event.RealEventWatchTest._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped}
-import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
+import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 import scala.concurrent.duration.FiniteDuration
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
