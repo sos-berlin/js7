@@ -7,7 +7,7 @@ import cats.data.EitherT
 import cats.effect.ExitCase
 import cats.syntax.flatMap._
 import com.sos.jobscheduler.base.auth.UserAndPassword
-import com.sos.jobscheduler.base.eventbus.EventBus
+import com.sos.jobscheduler.base.eventbus.EventPublisher
 import com.sos.jobscheduler.base.generic.{Completed, SecretString}
 import com.sos.jobscheduler.base.monixutils.MonixBase.syntax._
 import com.sos.jobscheduler.base.monixutils.MonixDeadline
@@ -66,7 +66,7 @@ final class Cluster(
   val clusterConf: ClusterConf,
   config: Config,
   eventIdGenerator: EventIdGenerator,
-  testEventBus: EventBus)
+  testEventPublisher: EventPublisher[Any])
   (implicit journalActorAskTimeout: Timeout,
     scheduler: Scheduler,
     actorSystem: ActorSystem)
@@ -274,7 +274,7 @@ final class Cluster(
     otherFailedOver: Boolean = false)
   : PassiveClusterNode[MasterState]
   = {
-    val common = new ClusterCommon(activationInhibitor, clusterWatch, clusterConf, testEventBus)
+    val common = new ClusterCommon(activationInhibitor, clusterWatch, clusterConf, testEventPublisher)
     new PassiveClusterNode(ownId, idToUri, activeId, journalMeta, recovered,
       otherFailedOver, journalConf, clusterConf, eventIdGenerator, common)
   }
@@ -513,7 +513,7 @@ final class Cluster(
   private def proceed(state: ClusterState, eventId: EventId): Unit =
     state match {
       case state: NodesAppointed if state.activeId == ownId =>
-        val common = new ClusterCommon(activationInhibitor, clusterWatch, clusterConf, testEventBus)
+        val common = new ClusterCommon(activationInhibitor, clusterWatch, clusterConf, testEventPublisher)
         common.tryEndlesslyToSendCommand(
           state.passiveUri,
           ClusterStartBackupNode(state.idToUri, activeId = ownId)
@@ -541,7 +541,7 @@ final class Cluster(
               logger.warn("No heartbeat from passive cluster node - continuing as single active cluster node")
               assertThat(id != ownId)
               val passiveLost = ClusterPassiveLost(id)
-              val common = new ClusterCommon(activationInhibitor, clusterWatch, clusterConf, testEventBus)
+              val common = new ClusterCommon(activationInhibitor, clusterWatch, clusterConf, testEventPublisher)
               // FIXME Exklusiver Zugriff (Lock) wegen parallelen ClusterCommand.ClusterRecouple,
               //  das ein ClusterPassiveLost auslöst, mit ClusterCouplingPrepared infolge.
               //  Dann können wir kein ClusterPassiveLost ausgeben.

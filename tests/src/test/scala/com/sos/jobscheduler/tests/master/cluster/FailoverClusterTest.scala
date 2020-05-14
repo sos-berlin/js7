@@ -79,8 +79,8 @@ final class FailoverClusterTest extends MasterClusterTester
       assert(primaryMaster.clusterState.await(99.s) == stillCoupled)
       assert(backupMaster.clusterState.await(99.s) == stillCoupled)
 
-      val whenAgentAgrees = backupMaster.testEventBus.when[PassiveClusterNode.ClusterWatchAgreesToActivation.type]
-      val whenAgentDoesNotAgree = backupMaster.testEventBus.when[PassiveClusterNode.ClusterWatchDisagreeToActivation.type]
+      val whenAgentAgrees = backupMaster.testEventBus.when[PassiveClusterNode.ClusterWatchAgreesToActivation.type].runToFuture
+      val whenAgentDoesNotAgree = backupMaster.testEventBus.when[PassiveClusterNode.ClusterWatchDisagreeToActivation.type].runToFuture
       sys.props(testHeartbeatLossPropertyKey) = "true"
       whenAgentDoesNotAgree await 99.s
       assert(!whenAgentAgrees.isCompleted)

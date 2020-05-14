@@ -10,7 +10,7 @@ import cats.syntax.flatMap._
 import cats.syntax.traverse._
 import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
 import com.sos.jobscheduler.base.crypt.{SignatureVerifier, Signed}
-import com.sos.jobscheduler.base.eventbus.EventBus
+import com.sos.jobscheduler.base.eventbus.EventPublisher
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.monixutils.MonixBase.syntax._
 import com.sos.jobscheduler.base.problem.Checked._
@@ -84,7 +84,7 @@ final class MasterOrderKeeper(
   cluster: Cluster,
   masterConfiguration: MasterConfiguration,
   signatureVerifier: SignatureVerifier,
-  testEventBus: EventBus)
+  testEventPublisher: EventPublisher[Any])
   (implicit scheduler: Scheduler)
 extends Stash
 with MainJournalingActor[MasterState, Event]
@@ -332,7 +332,7 @@ with MainJournalingActor[MasterState, Event]
         ) ++ Some(NoKey <-: MasterEvent.MasterReady(ZoneId.systemDefault.getId, totalRunningTime = journalHeader.totalRunningTime))
       ) { (_, updatedMasterState) =>
         masterState = updatedMasterState
-        testEventBus.publish(MasterReadyTestIncident)
+        testEventPublisher.publish(MasterReadyTestIncident)
         cluster.afterJounalingStarted
           .materializeIntoChecked
           .runToFuture

@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master.cluster
 
 import akka.actor.ActorSystem
 import cats.effect.Resource
-import com.sos.jobscheduler.base.eventbus.EventBus
+import com.sos.jobscheduler.base.eventbus.EventPublisher
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.time.ScalaTime._
@@ -28,7 +28,7 @@ private[cluster] final class ClusterCommon(
   activationInhibitor: ActivationInhibitor,
   val clusterWatch: ClusterWatchApi,
   clusterConf: ClusterConf,
-  testEventBus: EventBus)
+  testEventPublisher: EventPublisher[Any])
   (implicit actorSystem: ActorSystem)
 {
   private[cluster] def ifClusterWatchAllowsActivation[A](clusterState: ClusterState, event: ClusterEvent, body: Task[Checked[Boolean]])
@@ -44,14 +44,14 @@ private[cluster] final class ClusterCommon(
               case Left(problem) =>
                 if (problem.codeOption contains ClusterWatchHeartbeatFromInactiveNodeProblem.code) {
                   logger.info(s"ClusterWatch did not agree to $eventName: $problem")
-                  testEventBus.publish(ClusterWatchDisagreeToActivation)
+                  testEventPublisher.publish(ClusterWatchDisagreeToActivation)
                   Task.pure(Right(false))  // Ignore heartbeat loss
                 } else
                   Task.pure(Left(problem))
 
               case Right(Completed) =>
                 logger.info(s"ClusterWatch agreed to $eventName")
-                testEventBus.publish(ClusterWatchAgreesToActivation)
+                testEventPublisher.publish(ClusterWatchAgreesToActivation)
                 body
             }
         })
@@ -70,7 +70,7 @@ private[cluster] final class ClusterCommon(
   }
 
   def masterApi(uri: Uri, name: String): Resource[Task, HttpMasterApi] =
-    AkkaHttpMasterApi.resource(baseUri = uri, clusterConf.userAndPassword, name = name)
+    AkkaHttpMasterApi.resource(uri, clusterConf.userAndPassword, name = name)
       .map(identity[HttpMasterApi])
       .evalTap(_.loginUntilReachable())
 }

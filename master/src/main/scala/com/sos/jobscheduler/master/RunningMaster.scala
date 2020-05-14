@@ -9,7 +9,7 @@ import com.google.inject.util.Modules
 import com.google.inject.util.Modules.EMPTY_MODULE
 import com.google.inject.{Guice, Injector, Module}
 import com.sos.jobscheduler.base.auth.{SimpleUser, UserAndPassword}
-import com.sos.jobscheduler.base.eventbus.EventBus
+import com.sos.jobscheduler.base.eventbus.{EventPublisher, StandardEventBus}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked._
@@ -78,7 +78,7 @@ final class RunningMaster private(
   commandExecutor: MasterCommandExecutor,
   whenReady: Future[MasterOrderKeeper.MasterReadyTestIncident.type],
   terminated1: Future[MasterTermination],
-  val testEventBus: EventBus,
+  val testEventBus: StandardEventBus[Any],
   closer: Closer,
   val injector: Injector)
 extends AutoCloseable
@@ -231,8 +231,8 @@ object RunningMaster
       val whenRecovered = Future {  // May take minutes !!!
         MasterJournalRecoverer.recover(journalMeta, masterConfiguration.config)
       }
-      val testEventBus = injector.instance[EventBus]
-      val whenReady = testEventBus.when[MasterOrderKeeper.MasterReadyTestIncident.type]  // TODO Replace by a new StampedEventBus ?
+      val testEventBus = injector.instance[StandardEventBus[Any]]
+      val whenReady = testEventBus.when[MasterOrderKeeper.MasterReadyTestIncident.type].runToFuture  // TODO Replace by a new StampedEventBus ?
       // Start-up some stuff while recovering
       val journalActor = tag[JournalActor.type](actorSystem.actorOf(
         JournalActor.props[MasterState](journalMeta, masterConfiguration.journalConf,
@@ -358,7 +358,7 @@ object RunningMaster
       journalActor: ActorRef @@ JournalActor.type,
       cluster: Cluster,
       followUp: ClusterFollowUp[MasterState],
-      testEventBus: EventBus)
+      testEventPublisher: EventPublisher[Any])
     : Either[MasterTermination.Terminate, OrderKeeperStarted] = {
       logger.debug(s"startMasterOrderKeeper(clusterFollowUp=${followUp.getClass.simpleScalaName})")
       followUp match {
@@ -370,7 +370,7 @@ object RunningMaster
           val actor = actorSystem.actorOf(
             Props {
               new MasterOrderKeeper(terminationPromise, journalActor, cluster, masterConfiguration,
-                signatureVerifier, testEventBus)
+                signatureVerifier, testEventPublisher)
             },
             "MasterOrderKeeper")
           actor ! MasterOrderKeeper.Input.Start(recovered)

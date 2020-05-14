@@ -1,23 +1,23 @@
 package com.sos.jobscheduler.base.eventbus
 
-import com.sos.jobscheduler.base.eventbus.EventBusTest._
+import com.sos.jobscheduler.base.eventbus.StandardEventBusTest._
+import monix.execution.Scheduler.Implicits.global
+import org.scalatest.freespec.AsyncFreeSpec
 import scala.collection.mutable
-import scala.util.Success
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class EventBusTest extends AnyFreeSpec
+final class StandardEventBusTest extends AsyncFreeSpec
 {
   "subscribe" in {
     val events = mutable.Buffer[AnyRef]()
-    val eventBus = new EventBus
+    val eventBus = new StandardEventBus[Any]
     eventBus.publish("ignored")
 
     val stringSubscription = eventBus.subscribeToClass(classOf[String])(events += _)
     val bStringSubscription = eventBus.subscribe[String] { events += _ + "-B" }
-    val aSubscription = eventBus.subscribe { a: A => events += a }
+    val aSubscription = eventBus.subscribe[A] { events += _ }
     eventBus.publish("1")
     eventBus.publish(A("2"))
     bStringSubscription.close()
@@ -26,7 +26,7 @@ final class EventBusTest extends AnyFreeSpec
     eventBus.publish("4")
     eventBus.publish(A("5"))
 
-    assert(events.toList == List("1", "1-B", A("2"), ("3"), "4", A("5")))
+    assert(events.toList == List("1", "1-B", A("2"), "3", "4", A("5")))
 
     assert(!eventBus.isEmpty)
     stringSubscription.close()
@@ -35,9 +35,10 @@ final class EventBusTest extends AnyFreeSpec
   }
 
   "oneShot" in {
-    val events = mutable.Buffer[AnyRef]()
-    val eventBus = new EventBus
-    eventBus.oneShot[String](events += _)
+    type Event = String
+    val events = mutable.Buffer[Event]()
+    val eventBus = new StandardEventBus[Event]
+    eventBus.oneShot[Event](events += _)
     assert(!eventBus.isEmpty)
     eventBus.publish("ONE")
     assert(eventBus.isEmpty)
@@ -46,18 +47,20 @@ final class EventBusTest extends AnyFreeSpec
   }
 
   "when" in {
-    val eventBus = new EventBus
-    val future = eventBus.when[String]
+    val eventBus = new StandardEventBus[Any]
+    val future = eventBus.when[String].runToFuture
     assert(!future.isCompleted)
     assert(!eventBus.isEmpty)
     eventBus.publish("ONE")
-    assert(future.isCompleted)
-    assert(future.value == Some(Success("ONE")))
-    assert(eventBus.isEmpty)
+    eventBus.publish("ONE")
+    for (string <- future) yield {
+      assert(string == "ONE")
+      assert(eventBus.isEmpty)
+    }
   }
 }
 
-private object EventBusTest
+private object StandardEventBusTest
 {
   private case class A(string: String)
 }
