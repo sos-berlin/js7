@@ -146,7 +146,7 @@ object RunningAgent {
     }
     closer onClose { deleteIfExists(sessionTokenFile) }
 
-    for  {
+    for {
       ready <- mainActorReadyPromise.future
       api = ready.api
       _ <- webServer.start(api)

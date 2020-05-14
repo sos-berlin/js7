@@ -24,9 +24,10 @@ import java.nio.file.Files.{createDirectory, createTempDirectory}
 import javax.net.ssl.SSLHandshakeException
 import monix.execution.Scheduler
 import org.scalatest.BeforeAndAfterAll
-import scala.concurrent.ExecutionContext.Implicits.global
+import Scheduler.Implicits.global
 import scala.concurrent.duration._
 import org.scalatest.freespec.AnyFreeSpec
+import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 
 /**
   * @author Joacim Zschimmer

@@ -12,7 +12,7 @@ import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.data.event.{EventId, JournalState, JournaledState}
 import com.sos.jobscheduler.data.filebased.Repo
 import com.sos.jobscheduler.data.master.{MasterFileBaseds, MasterId}
-import com.sos.jobscheduler.master.data.MasterOverview
+import com.sos.jobscheduler.master.data.{MasterOverview, MasterState}
 import com.sos.jobscheduler.master.data.MasterSnapshots.MasterMetaState
 import com.sos.jobscheduler.master.web.master.api.test.RouteTester
 import monix.eval.Task
@@ -29,7 +29,7 @@ final class ApiRootRouteTest extends AnyFreeSpec with RouteTester with ApiRootRo
   protected val masterId = MasterId("TEST-MASTER")
   protected def isShuttingDown = false
   protected implicit def scheduler: Scheduler = Scheduler.global
-  protected def masterState = Task.pure(Right(com.sos.jobscheduler.master.data.MasterState(
+  protected def masterState = Task.pure(Right(MasterState(
     EventId(1001),
     JournaledState.Standards(
       JournalState(Map(UserId("A") -> EventId(1000))),

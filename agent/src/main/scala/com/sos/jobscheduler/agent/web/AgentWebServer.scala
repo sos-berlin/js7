@@ -35,7 +35,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri
 
   def start(api: CommandMeta => DirectAgentApi): Future[Completed] = {
     this.apiOnce := api
-    super.start()
+    super.start().runToFuture
   }
 
   private def api = apiOnce.orThrow

@@ -308,14 +308,15 @@ object RunningMaster
       val fileBasedApi = new MainFileBasedApi(masterState)
       val orderApi = new MainOrderApi(masterState, orderKeeperTask)
 
-      val webServer = injector.instance[MasterWebServer.Factory].apply(fileBasedApi, orderApi, commandExecutor,
-        cluster.currentClusterState,
-        masterState,
-        recovered.totalRunningSince,  // Maybe different from JournalHeader
-        recovered.eventWatch
-      ).closeWithCloser
+      val webServer = injector.instance[MasterWebServer.Factory]
+        .apply(fileBasedApi, orderApi, commandExecutor,
+          cluster.currentClusterState,
+          masterState,
+          recovered.totalRunningSince,  // Maybe different from JournalHeader
+          recovered.eventWatch
+        ).closeWithCloser
 
-      for (_ <- webServer.start()) yield {
+      for (_ <- webServer.start().runToFuture) yield {
         createSessionTokenFile(injector.instance[SessionRegister[SimpleSession]])
         masterConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", o => s"$o/master")
         new RunningMaster(recovered.eventWatch.strict, webServer, fileBasedApi, orderApi, cluster.currentClusterState,
