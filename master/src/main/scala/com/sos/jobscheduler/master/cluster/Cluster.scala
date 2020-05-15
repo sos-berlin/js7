@@ -550,17 +550,27 @@ final class Cluster(
               persistence.currentState/*???*/.map(_.clusterState).flatMap {
                 case clusterState: Coupled =>
                   common.ifClusterWatchAllowsActivation(clusterState, passiveLost,
-                    persist(
-                      {
-                        case `initialState` => Right(passiveLost :: Nil)
-                        case _ => Right(Nil)  // Ignore when ClusterState has changed
-                      },
-                      suppressClusterWatch = true/*already notified*/
-                    ) .map(_.toCompleted)
-                      .map(_.map { (_: Completed) =>
-                        fetchingAcks := false  // Allow fetching acknowledgements again when recoupling
-                        true
-                      })
+                    Task {
+                      // If a concurrent persist-operation has not been completed,
+                      // the persistence lock blocks us to write the ClusterPassiveLost event,
+                      // resulting in a deadlock.
+                      // With this message we notify about the following ClusterPassiveLost event,
+                      // JournalActor commits and complete the concurrent persist operation,
+                      // and the lock will be released.
+                      logger.debug(s"JournalActor.Input.PassiveLost($passiveLost)")
+                      journalActor ! JournalActor.Input.PassiveLost(passiveLost)
+                    } >>
+                      persist(
+                        {
+                          case `initialState` => Right(passiveLost :: Nil)
+                          case _ => Right(Nil)  // Ignore when ClusterState has changed
+                        },
+                        suppressClusterWatch = true/*already notified*/
+                      ) .map(_.toCompleted)
+                        .map(_.map { (_: Completed) =>
+                          fetchingAcks := false  // Allow fetching acknowledgements again when recoupling
+                          true
+                        })
                   ).map(_.flatMap { allowed =>
                     if (!allowed) {
                       // Should not happen

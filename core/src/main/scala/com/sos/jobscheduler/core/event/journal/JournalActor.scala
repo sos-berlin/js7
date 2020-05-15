@@ -25,8 +25,8 @@ import com.sos.jobscheduler.core.event.journal.files.JournalFiles.{JournalMetaOp
 import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
 import com.sos.jobscheduler.core.event.journal.write.{EventJournalWriter, ParallelExecutingPipeline, SnapshotJournalWriter}
 import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver}
-import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.data.cluster.ClusterState.ClusterStateSnapshot
+import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
 import com.sos.jobscheduler.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, EventId, JournalEvent, JournalHeader, JournalId, JournalState, JournaledState, KeyedEvent, Stamped}
@@ -81,6 +81,7 @@ extends Actor with Stash
   private var totalEventCount = 0L
   private var requireClusterAcknowledgement = false
   private val waitingForAcknowledgeTimer = SerialCancelable()
+  private var waitingForAcknowledgeSince = now
   private var switchedOver = false
 
   logger.debug(s"fileBase=${journalMeta.fileBase}")
@@ -208,11 +209,11 @@ extends Actor with Stash
                 logger.debug("SwitchedOver: no more events are accepted")
                 switchedOver = true  // No more events are accepted
 
-              case Some(Stamped(_, _, KeyedEvent(_, event @ (_: ClusterFailedOver | _: ClusterPassiveLost)))) =>
-                logger.debug(s"No more acknowledgments required due to $event event")
-                requireClusterAcknowledgement = false
-                waitingForAcknowledgeTimer := Cancelable.empty
-                commit()
+              case Some(Stamped(_, _, KeyedEvent(_, event: ClusterFailedOver))) =>
+                commitWithoutAcknowledgement(event)
+
+              case Some(Stamped(_, _, KeyedEvent(_, event: ClusterPassiveLost))) =>
+                commitWithoutAcknowledgement(event)
 
               case _ => forwardCommit((delay max conf.delay) - alreadyDelayed)
             }
@@ -254,6 +255,12 @@ extends Actor with Stash
       // We take only complete Written bundles as acknowledged.
       onCommitAcknowledged(n = writtenBuffer.iterator.takeWhile(_.lastStamped.forall(_.eventId <= ack)).length)
 
+    case Input.PassiveLost(passiveLost) =>
+      // Side channel for Cluster to circumvent the ClusterEvent synchronization lock
+      // in case of a concurrent open persist operation.
+      // Must be followed by a ClusterPassiveLost event.
+      commitWithoutAcknowledgement(passiveLost)
+
     case Input.Terminate =>
       if (!switchedOver) {
         commit(terminating = true)
@@ -280,7 +287,8 @@ extends Actor with Stash
           .takeWhile(_.since.elapsed >= conf.ackWarnDuration)
         val n = writtenBuffer.map(_.eventCount).sum
         if (n > 0) {
-          logger.warn(s"Still waiting for acknowledgement from passive cluster node" +
+          logger.warn(s"Since ${waitingForAcknowledgeSince.elapsed.pretty}" +
+            s" waiting for acknowledgement from passive cluster node" +
             s" for $n events (in ${writtenBuffer.size} commits) starting with " +
             notAckSeq.flatMap(_.stampedSeq).headOption.fold("(unknown)")(_.toString.truncateWithEllipsis(200)) +
             s", lastAcknowledgedEventId=${EventId.toString(lastAcknowledgedEventId)}")
@@ -344,10 +352,20 @@ extends Actor with Stash
 
   private def startWaitingForAcknowledgeTimer(): Unit =
     if (requireClusterAcknowledgement && lastAcknowledgedEventId < lastWrittenEventId) {
+      waitingForAcknowledgeSince = now
       waitingForAcknowledgeTimer := scheduler.scheduleAtFixedRate(conf.ackWarnDuration, 2 * conf.ackWarnDuration) {
         self ! Internal.StillWaitingForAcknowledge
       }
     }
+
+  private def commitWithoutAcknowledgement(event: ClusterEvent) {
+    if (requireClusterAcknowledgement) {
+      logger.debug(s"No more acknowledgments required due to $event event")
+      requireClusterAcknowledgement = false
+      waitingForAcknowledgeTimer := Cancelable.empty
+    }
+    commit()
+  }
 
   private def onCommitAcknowledged(n: Int): Unit = {
     finishCommitted(n)
@@ -751,6 +769,7 @@ object JournalActor
       callersItem: CallersItem)
     final case object TakeSnapshot
     final case class PassiveNodeAcknowledged(eventId: EventId)
+    final case class PassiveLost(passiveLost: ClusterPassiveLost)
     final case object Terminate
     final case object AwaitAndTerminate
     case object GetJournalActorState
