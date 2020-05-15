@@ -20,10 +20,14 @@ final class ExpressionParserTest extends AnyFreeSpec
 
   "NamedValue" - {
     "$ with impossible names" in {
-      assert(parse("$var/1", dollarNamedValue(_)) == Parsed.Success(NamedValue.last("var"), 4))
-      assert(parse("$var.1", dollarNamedValue(_)) == Parsed.Success(NamedValue.last("var"), 4))
-      assert(parse("$var-1", dollarNamedValue(_)) == Parsed.Success(NamedValue.last("var"), 4))
-      assert(parse("$var_1", dollarNamedValue(_)) == Parsed.Success(NamedValue.last("var_1"), 6))
+      assert(parse("$var/1", dollarNamedValue(_)) ==
+        Parsed.Success(NamedValue.last("var"), 4))
+      assert(parse("$var.1", dollarNamedValue(_)) ==
+        Parsed.Success(NamedValue.last("var"), 4))
+      assert(parse("$var-1", dollarNamedValue(_)) ==
+        Parsed.Success(NamedValue.last("var"), 4))
+      assert(parse("$var_1", dollarNamedValue(_)) ==
+        Parsed.Success(NamedValue.last("var_1"), 6))
     }
 
     testExpression("""$key""", NamedValue.last("key"))
@@ -37,24 +41,31 @@ final class ExpressionParserTest extends AnyFreeSpec
     //testExpression("""${A.SOME-KEY}""", NamedValue(NamedValue.LastOccurredByPrefix("A"), NamedValue.KeyValue("SOME-KEY")))
 
     "variable()" in {
-      assert(checkedParse("""variable("clé")""", expression(_)) == Right(NamedValue.last("clé")))
-      assert(checkedParse("""variable ( "clé", default = "DEFAULT" )""", expression(_)) == Right(NamedValue.last("clé", StringConstant("DEFAULT"))))
-      assert(checkedParse("""variable(key="clé", label=LABEL)""", expression(_)) == Right(NamedValue(NamedValue.ByLabel("LABEL"), NamedValue.KeyValue("clé"))))
-      assert(checkedParse("""variable(key="clé", job=JOB)""", expression(_)) == Right(NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), NamedValue.KeyValue("clé"))))
+      assert(checkedParse("""variable("clé")""", expression(_)) ==
+        Right(NamedValue.last("clé")))
+      assert(checkedParse("""variable ( "clé", default = "DEFAULT" )""", expression(_)) ==
+        Right(NamedValue.last("clé", StringConstant("DEFAULT"))))
+      assert(checkedParse("""variable(key="clé", label=LABEL)""", expression(_)) ==
+        Right(NamedValue(NamedValue.ByLabel("LABEL"), NamedValue.KeyValue("clé"))))
+      assert(checkedParse("""variable(key="clé", job=JOB)""", expression(_)) ==
+        Right(NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), NamedValue.KeyValue("clé"))))
     }
 
     "argument()" in {
-      assert(checkedParse("""argument("clé")""", expression(_))
-        == Right(NamedValue(NamedValue.Argument, NamedValue.KeyValue("clé"))))
-      assert(checkedParse("""argument ( "clé", default = "DEFAULT" )""", expression(_))
-        == Right(NamedValue(NamedValue.Argument, NamedValue.KeyValue("clé"), Some(StringConstant("DEFAULT")))))
+      assert(checkedParse("""argument("clé")""", expression(_)) ==
+        Right(NamedValue(NamedValue.Argument, NamedValue.KeyValue("clé"))))
+      assert(checkedParse("""argument ( "clé", default = "DEFAULT" )""", expression(_)) ==
+        Right(NamedValue(NamedValue.Argument, NamedValue.KeyValue("clé"), Some(StringConstant("DEFAULT")))))
     }
   }
 
   "returnCode" - {
-    testExpression("returnCode", LastReturnCode)
-    testExpression("returnCode(label=LABEL)", NamedValue(NamedValue.ByLabel("LABEL"), NamedValue.ReturnCode))
-    testExpression("returnCode(job=JOB)", NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), NamedValue.ReturnCode))
+    testExpression("returnCode",
+      LastReturnCode)
+    testExpression("returnCode(label=LABEL)",
+      NamedValue(NamedValue.ByLabel("LABEL"), NamedValue.ReturnCode))
+    testExpression("returnCode(job=JOB)",
+      NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), NamedValue.ReturnCode))
   }
 
   testExpression("catchCount", OrderCatchCount)
@@ -85,10 +96,14 @@ final class ExpressionParserTest extends AnyFreeSpec
   //  """Expected Expression is not of type String: '1' < 1:1:8, found """"")
 
   "Comparison" - {
-    testBooleanExpression("returnCode != 7", NotEqual(LastReturnCode, NumericConstant(7)))
-    testBooleanExpression("returnCode > 7", GreaterThan(LastReturnCode, NumericConstant(7)))
-    testBooleanExpression("""variable("A") == "X"""", Equal(NamedValue.last("A"), StringConstant("X")))
-    testBooleanExpression("""$A == "X"""", Equal(NamedValue.last("A"), StringConstant("X")))
+    testBooleanExpression("returnCode != 7",
+      NotEqual(LastReturnCode, NumericConstant(7)))
+    testBooleanExpression("returnCode > 7",
+      GreaterThan(LastReturnCode, NumericConstant(7)))
+    testBooleanExpression("""variable("A") == "X"""",
+      Equal(NamedValue.last("A"), StringConstant("X")))
+    testBooleanExpression("""$A == "X"""",
+      Equal(NamedValue.last("A"), StringConstant("X")))
 
     testBooleanExpression("returnCode > 0 && returnCode < 9",
       And(
@@ -160,14 +175,18 @@ final class ExpressionParserTest extends AnyFreeSpec
 
   "Unknown numeric function" in {
     def parser[_: P] = expression ~ End
-    assert(checkedParse(""""123".toNumber""", parser(_)) == Right(ToNumber(StringConstant("123"))))
-    assert(checkedParse(""""123".UNKNOWN""", parser(_)) == Left(Problem("""Expected known function: .UNKNOWN:1:14, found """"")))
+    assert(checkedParse(""""123".toNumber""", parser(_)) ==
+      Right(ToNumber(StringConstant("123"))))
+    assert(checkedParse(""""123".UNKNOWN""", parser(_)) ==
+      Left(Problem("""Expected known function: .UNKNOWN:1:14, found """"")))
   }
 
   "Unknown boolean function" in {
     def parser[_: P] = expression ~ End
-    assert(checkedParse(""""true".toBoolean""", parser(_)) == Right(ToBoolean(StringConstant("true"))))
-    assert(checkedParse(""""true".UNKNOWN""", parser(_)) == Left(Problem("""Expected known function: .UNKNOWN:1:15, found """"")))
+    assert(checkedParse(""""true".toBoolean""", parser(_)) ==
+      Right(ToBoolean(StringConstant("true"))))
+    assert(checkedParse(""""true".UNKNOWN""", parser(_)) ==
+      Left(Problem("""Expected known function: .UNKNOWN:1:15, found """"")))
   }
 
   private def testBooleanExpression(exprString: String, expr: BooleanExpression)(implicit pos: source.Position) =
