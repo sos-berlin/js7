@@ -44,7 +44,7 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
   protected val agentRefPaths = agentRefPath :: Nil
   protected val fileBased = workflow :: Nil
   private lazy val uri = master.localUri
-  private lazy val masterApi = AkkaHttpMasterApi(
+  private lazy val masterApi = new AkkaHttpMasterApi(
     uri,
     Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))),
     master.actorSystem

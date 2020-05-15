@@ -16,6 +16,7 @@ import java.nio.file.Files.{createFile, deleteIfExists}
 import java.nio.file.Path
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.jetbrains.annotations.TestOnly
 import scala.concurrent.{Future, Promise}
 
 /**
@@ -51,7 +52,8 @@ final class SessionRegister[S <: Session] private[session](actor: ActorRef, impl
   private[session] def sessionFuture(user: Option[Session#User], sessionToken: SessionToken): Future[Checked[S]] =
     (actor ? SessionActor.Command.Get(sessionToken, user)).mapTo[Checked[S]]
 
-  private[session] def count: Task[Int] =
+  @TestOnly
+  private[jobscheduler] def count: Task[Int] =
     Task.deferFuture(
       (actor ? SessionActor.Command.GetCount).mapTo[Int])
 }

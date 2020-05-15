@@ -91,8 +91,8 @@ object SessionApi
   {
     protected def userAndPassword: Option[UserAndPassword]
 
-    protected def loginDelays(): Iterator[FiniteDuration] =
-      defaultLoginDelays()
+    protected val loginDelays: () => Iterator[FiniteDuration] =
+      () => defaultLoginDelays()
 
     final def retryUntilReachable[A](body: => Task[A]): Task[A] =
       Task.defer {

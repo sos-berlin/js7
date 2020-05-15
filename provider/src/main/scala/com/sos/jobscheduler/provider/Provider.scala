@@ -47,7 +47,7 @@ extends HasCloser with Observing with ProvideActorSystem
       userName <- conf.config.optionAs[String]("jobscheduler.provider.master.user")
       password <- conf.config.optionAs[String]("jobscheduler.provider.master.password")
     } yield UserAndPassword(UserId(userName), SecretString(password))
-  protected val masterApi = AkkaHttpMasterApi(conf.masterUri, userAndPassword, actorSystem = actorSystem, config = conf.config)
+  protected val masterApi = new AkkaHttpMasterApi(conf.masterUri, userAndPassword, actorSystem = actorSystem, config = conf.config)
   protected def config = conf.config
 
   private val firstRetryLoginDurations = conf.config.getDurationList("jobscheduler.provider.master.login-retry-delays")

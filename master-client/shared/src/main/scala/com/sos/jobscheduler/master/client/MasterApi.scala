@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master.client
 
+import com.sos.jobscheduler.base.exceptions.HasIsIgnorableStackTrace
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.session.SessionApi
 import com.sos.jobscheduler.data.agent.AgentRef
@@ -19,7 +20,7 @@ import scodec.bits.ByteVector
 /**
   * @author Joacim Zschimmer
   */
-trait MasterApi extends SessionApi.HasUserAndPassword
+trait MasterApi extends SessionApi.HasUserAndPassword with HasIsIgnorableStackTrace
 {
   def executeCommand(command: MasterCommand): Task[command.Response]
 

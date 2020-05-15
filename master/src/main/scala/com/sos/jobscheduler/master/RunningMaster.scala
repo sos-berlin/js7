@@ -167,7 +167,7 @@ extends AutoCloseable
   lazy val httpApi: HttpMasterApi = {
     if (_httpApi.isEmpty) {
       httpApiUserAndPassword.trySet(None)
-      _httpApi := AkkaHttpMasterApi(localUri, httpApiUserAndPassword.get, actorSystem = actorSystem, config = config)
+      _httpApi := new AkkaHttpMasterApi(localUri, httpApiUserAndPassword.get, actorSystem = actorSystem, config = config)
         .closeWithCloser(closer)
     }
     _httpApi.get

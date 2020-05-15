@@ -44,7 +44,7 @@ private[https] trait HttpsTestBase extends AnyFreeSpec with BeforeAndAfterAll wi
   private lazy val keyStore = createTempFile(getClass.getSimpleName + "-keystore-", ".p12")
   private lazy val trustStore = createTempFile(getClass.getSimpleName + "-truststore-", ".p12")
 
-  protected lazy val masterApi = AkkaHttpMasterApi(
+  protected lazy val masterApi = new AkkaHttpMasterApi(
     master.localUri,
     Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD")),
     actorSystem,

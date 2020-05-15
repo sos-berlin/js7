@@ -22,7 +22,10 @@ sealed trait WebServerBinding {
   def toWebServerPort: WebServerPort
 }
 
-object WebServerBinding {
+object WebServerBinding
+{
+  def http(port: Int): Http =
+    WebServerBinding.Http(new InetSocketAddress("0.0.0.0", port))
 
   sealed trait Scheme
 

@@ -1,9 +1,11 @@
 package com.sos.jobscheduler.master.client
 
+import cats.effect.Resource
+import com.sos.jobscheduler.base.auth.UserAndPassword
 import com.sos.jobscheduler.base.exceptions.HasIsIgnorableStackTrace
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.session.HttpSessionApi
+import com.sos.jobscheduler.base.session.{HttpSessionApi, SessionApi}
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.web.{HttpClient, Uri}
 import com.sos.jobscheduler.data.agent.AgentRef
@@ -28,7 +30,7 @@ extends MasterApi with HttpSessionApi with HasIsIgnorableStackTrace
   /** Host URI or empty for addressing base on "master/" */
   def baseUri: Uri
 
-  protected final def uriPrefixPath = "/master"
+  protected final def uriPrefixPath = UriPrefixPath
 
   protected final def sessionUri = uris.session
 
@@ -123,6 +125,29 @@ extends MasterApi with HttpSessionApi with HasIsIgnorableStackTrace
   override def toString = s"HttpMasterApi($baseUri)"
 }
 
-object HttpMasterApi {
+object HttpMasterApi
+{
+  val UriPrefixPath = "/master"
   private val ToleratedEventDelay = 30.seconds
+
+  /** Logs out when the resource is being released. */
+  def resource(
+    uri: Uri,
+    userAndPassword: Option[UserAndPassword],
+    httpClient: HttpClient,
+    loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays)
+  : Resource[Task, HttpMasterApi] =
+    Resource.make(
+      acquire = Task(new HttpMasterApi.Standard(uri, userAndPassword, httpClient, loginDelays))
+    )(release = api =>
+      api.logout()
+        .map(_ => ())
+        .onErrorHandle(_ => ()))
+
+  private class Standard(
+    val baseUri: Uri,
+    protected final val userAndPassword: Option[UserAndPassword],
+    final val httpClient: HttpClient,
+    override protected final val loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays)
+  extends HttpMasterApi
 }

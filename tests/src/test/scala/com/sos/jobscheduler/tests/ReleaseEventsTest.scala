@@ -150,7 +150,7 @@ private object ReleaseEventsTest
   private val dOrder = FreshOrder(OrderId("🔺"), TestWorkflow.id.path)
 
   private class TestApi(master: RunningMaster, protected val credentials: UserAndPassword)
-  extends AkkaHttpMasterApi.Standard(master.localUri, Some(credentials), master.actorSystem, name = "RunningMaster")
+  extends AkkaHttpMasterApi(master.localUri, Some(credentials), master.actorSystem, name = "RunningMaster")
   with SessionApi.HasUserAndPassword {
     loginUntilReachable() await 99.s
   }

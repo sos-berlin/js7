@@ -16,6 +16,7 @@ import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
 import com.sos.jobscheduler.tests.AkkaHttpMasterApiTest._
 import com.sos.jobscheduler.tests.testenv.MasterAgentForScalaTest
+import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -27,7 +28,7 @@ final class AkkaHttpMasterApiTest extends AnyFreeSpec with MasterAgentForScalaTe
   protected val agentRefPaths = Nil
   protected val fileBased = TestWorkflow :: Nil
 
-  private lazy val api = AkkaHttpMasterApi(
+  private lazy val api = new AkkaHttpMasterApi(
     master.localUri,
     Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))),
     actorSystem = master.actorSystem
@@ -63,6 +64,17 @@ final class AkkaHttpMasterApiTest extends AnyFreeSpec with MasterAgentForScalaTe
 
   "workflow" in {
     assert(api.workflows.await(99.s) == Right(List(TestWorkflow)))
+  }
+
+  "resource" in {
+    AkkaHttpMasterApi.separateAkkaResource(master.localUri, userAndPassword = None)
+      .use(api => Task {
+        api.login() await 99.s
+        assert(master.sessionRegister.count == 1)
+        assert(api.orders.await(99.s) == Right(List(TestOrder)))
+      })
+      .map(_ => master.sessionRegister.count == 0)
+      .runToFuture
   }
 }
 

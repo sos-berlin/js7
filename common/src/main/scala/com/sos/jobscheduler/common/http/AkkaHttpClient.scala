@@ -28,14 +28,12 @@ import com.sos.jobscheduler.base.utils.{ByteVectorToLinesObservable, Lazy}
 import com.sos.jobscheduler.base.web.{HttpClient, Uri}
 import com.sos.jobscheduler.common.akkahttp.https.AkkaHttps.loadHttpsConnectionContext
 import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
-import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
 import com.sos.jobscheduler.common.http.AkkaHttpClient._
 import com.sos.jobscheduler.common.http.AkkaHttpUtils.{RichAkkaAsUri, RichAkkaUri, decodeResponse, encodeGzip}
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.http.JsonStreamingSupport.StreamingJsonHeaders
 import com.sos.jobscheduler.common.http.StreamingSupport._
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.typesafe.config.{Config, ConfigFactory}
 import io.circe.{Decoder, Encoder}
 import java.util.Locale
 import monix.eval.Task
@@ -324,19 +322,7 @@ object AkkaHttpClient
   private val FailureTimeout = 10.seconds
   private val logger = Logger(getClass)
 
-  def apply(
-    baseUri: Uri,
-    uriPrefixPath: String,
-    actorSystem: ActorSystem,
-    /** To provide a client certificate to server. */
-    keyStoreRef: Option[KeyStoreRef] = None,
-    /** To trust the server's certificate. */
-    trustStoreRef: Option[TrustStoreRef] = None,
-    name: String)
-  : AkkaHttpClient =
-    new Standard(baseUri, uriPrefixPath, actorSystem, keyStoreRef, trustStoreRef, name)
-
-  private final class Standard(
+  final class Standard(
     protected val baseUri: Uri,
     protected val uriPrefixPath: String,
     protected val actorSystem: ActorSystem,
@@ -346,23 +332,6 @@ object AkkaHttpClient
     protected val trustStoreRef: Option[TrustStoreRef] = None,
     protected val name: String = "")
   extends AkkaHttpClient
-
-  final class WithAkka(
-    protected val baseUri: Uri,
-    protected val uriPrefixPath: String,
-    /** To provide a client certificate to server. */
-    protected val keyStoreRef: Option[KeyStoreRef] = None,
-    /** To trust the server's certificate. */
-    protected val trustStoreRef: Option[TrustStoreRef] = None,
-    protected val config: Config = ConfigFactory.empty,
-    protected val name: String = "")
-  extends ProvideActorSystem
-  with AkkaHttpClient
-  {
-    override def close() =
-      try super[AkkaHttpClient].close()
-      finally super[ProvideActorSystem].close()
-  }
 
   def sessionMayBeLost(t: Throwable): Boolean =
     t match {
