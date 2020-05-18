@@ -23,7 +23,7 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class FatStateTest extends AnyFreeSpec
 {
-  private val sign = new FileBasedSigner(new SillySigner, MasterFileBaseds.jsonCodec).sign _
+  private val sign = new FileBasedSigner(SillySigner.Default, MasterFileBaseds.jsonCodec).sign _
   private val repo = Repo.signatureVerifying(new FileBasedVerifier(new SillySignatureVerifier, MasterFileBaseds.jsonCodec))
   private val eventIds = Iterator.from(1)
   private var fatState = FatState(MasterId("MASTER-ID"), eventIds.next(), repo, Map.empty)

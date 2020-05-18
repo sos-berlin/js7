@@ -39,6 +39,7 @@ object SillySignatureVerifier extends SignatureVerifier.Companion
   protected type MySignature = SillySignature
   protected type MySignatureVerifier = SillySignatureVerifier
 
+  val Default = new SillySignatureVerifier(SillySignature.Default :: Nil, "SillySignatureVerifier.Default")
   val typeName = SillySignature.TypeName
   val recommendedKeyDirectoryName = "trusted-silly-signature-keys"
 

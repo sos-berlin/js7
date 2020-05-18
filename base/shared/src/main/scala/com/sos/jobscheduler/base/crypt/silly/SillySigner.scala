@@ -10,8 +10,6 @@ import java.nio.charset.StandardCharsets.UTF_8
   */
 final class SillySigner(signature: SillySignature) extends MessageSigner
 {
-  def this() = this(SillySignature.Default)
-
   protected type MySignature = SillySignature
 
   def companion = SillySigner
@@ -31,6 +29,8 @@ object SillySigner extends MessageSigner.Companion
 {
   protected type MySignature = SillySignature
   protected type MyMessageSigner = SillySigner
+
+  val Default = new SillySigner(SillySignature.Default)
 
   def typeName = SillySignature.TypeName
 

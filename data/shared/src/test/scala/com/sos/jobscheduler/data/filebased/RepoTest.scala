@@ -8,7 +8,8 @@ import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.crypt.FileBasedVerifier
-import com.sos.jobscheduler.data.filebased.Repo.{Changed, Deleted, DuplicateVersionProblem, ObjectVersionDoesNotMatchProblem}
+import com.sos.jobscheduler.data.filebased.Repo.testOnly.{Changed, Deleted, OpRepo}
+import com.sos.jobscheduler.data.filebased.Repo.{DuplicateVersionProblem, ObjectVersionDoesNotMatchProblem}
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
 import com.sos.jobscheduler.data.filebased.RepoTest._
 import io.circe.syntax.EncoderOps
@@ -149,13 +150,15 @@ final class RepoTest extends AnyFreeSpec
     "More" in {
       var repo = emptyRepo
       repo = repo.fileBasedToEvents(V1, toSigned(a1) :: toSigned(b1) :: Nil).flatMap(repo.applyEvents).orThrow
-      assert(repo == Repo(V1 :: Nil, Changed(toSigned(a1)) :: Changed(toSigned(b1)) :: Nil, fileBasedVerifier))
+      assert(repo == Repo.fromOp(V1 :: Nil, Changed(toSigned(a1)) :: Changed(toSigned(b1)) :: Nil, fileBasedVerifier))
 
       val events = repo.fileBasedToEvents(V2, toSigned(a2) :: toSigned(bx2) :: Nil, deleted = b1.path :: Nil).orThrow
       assert(events == VersionAdded(V2) :: FileBasedDeleted(b1.path) :: FileBasedChanged(a2.path, sign(a2)) :: FileBasedAdded(bx2.path, sign(bx2)) :: Nil)
 
       repo = repo.applyEvents(events).orThrow
-      assert(repo == Repo(V2 :: V1 :: Nil, Changed(toSigned(a1)) :: Changed(toSigned(a2)) :: Changed(toSigned(b1)) :: Deleted(b1.path ~ V2) :: Changed(toSigned(bx2)) :: Nil, fileBasedVerifier))
+      assert(repo == Repo.fromOp(V2 :: V1 :: Nil,
+        Changed(toSigned(a1)) :: Changed(toSigned(a2)) :: Changed(toSigned(b1)) :: Deleted(b1.path ~ V2) :: Changed(toSigned(bx2)) :: Nil,
+        fileBasedVerifier))
 
       assert(repo.applyEvents(events) == Left(DuplicateVersionProblem(VersionId("2"))))
     }
@@ -188,7 +191,7 @@ object RepoTest {
     Subtype[AFileBased],
     Subtype[BFileBased])
 
-  private val fileBasedSigner = new FileBasedSigner(new SillySigner, fileBasedJsonCodec)
+  private val fileBasedSigner = new FileBasedSigner(SillySigner.Default, fileBasedJsonCodec)
   private val fileBasedVerifier = new FileBasedVerifier(new SillySignatureVerifier, fileBasedJsonCodec)
   private val emptyRepo = Repo.signatureVerifying(fileBasedVerifier)
 

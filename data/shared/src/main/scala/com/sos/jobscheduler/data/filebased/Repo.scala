@@ -239,17 +239,21 @@ object Repo
     new Repo(Nil, Map.empty, fileBasedVerifier)
 
   @TestOnly
-  private[filebased] def apply(versionIds: Seq[VersionId], fileBased: Iterable[Entry], fileBasedVerifier: FileBasedVerifier[FileBased]) =
-    new Repo(versionIds.toList, fileBased.map(_.fold(o => o.value.id -> Some(o), _ -> None)).uniqueToMap, fileBasedVerifier)
+  private[filebased] object testOnly {
+    implicit final class OpRepo(private val underlying: Repo.type) extends AnyVal {
+      def fromOp(versionIds: Seq[VersionId], fileBased: Iterable[Operation], fileBasedVerifier: FileBasedVerifier[FileBased]) =
+        new Repo(versionIds.toList, fileBased.map(_.fold(o => o.value.id -> Some(o), _ -> None)).uniqueToMap, fileBasedVerifier)
+    }
 
-  private[filebased] sealed trait Entry {
-    def fold[A](whenChanged: Signed[FileBased] => A, whenDeleted: FileBasedId_ => A): A
-  }
-  private[filebased] final case class Changed(fileBased: Signed[FileBased]) extends Entry {
-    def fold[A](whenChanged: Signed[FileBased] => A, whenDeleted: FileBasedId_ => A) = whenChanged(fileBased)
-  }
-  private[filebased] final case class Deleted(id: FileBasedId_) extends Entry {
-    def fold[A](whenChanged: Signed[FileBased] => A, whenDeleted: FileBasedId_ => A) = whenDeleted(id)
+    sealed trait Operation {
+      def fold[A](whenChanged: Signed[FileBased] => A, whenDeleted: FileBasedId_ => A): A
+    }
+    final case class Changed(fileBased: Signed[FileBased]) extends Operation {
+      def fold[A](whenChanged: Signed[FileBased] => A, whenDeleted: FileBasedId_ => A) = whenChanged(fileBased)
+    }
+    final case class Deleted(id: FileBasedId_) extends Operation {
+      def fold[A](whenChanged: Signed[FileBased] => A, whenDeleted: FileBasedId_ => A) = whenDeleted(id)
+    }
   }
 
   ///** Computes `a` - `b`, ignoring VersionId, and returning `Seq[RepoEvent.FileBasedEvent]`.

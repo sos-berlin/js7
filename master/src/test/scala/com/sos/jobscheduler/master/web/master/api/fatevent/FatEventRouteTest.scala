@@ -266,7 +266,7 @@ final class FatEventRouteTest extends AnyFreeSpec with RouteTester with FatEvent
 object FatEventRouteTest
 {
   private val logger = Logger(getClass)
-  private val sign = new FileBasedSigner(new SillySigner, MasterFileBaseds.jsonCodec).sign _
+  private val sign = new FileBasedSigner(SillySigner.Default, MasterFileBaseds.jsonCodec).sign _
   private val TestVersionId = VersionId("VERSION")
   private val TestAgentRefId = AgentRefPath("/AGENT") ~ TestVersionId
   private val TestWorkflow = Workflow.of(
