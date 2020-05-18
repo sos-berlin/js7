@@ -3,11 +3,12 @@
   <properties>
     <property name="logDirectory">${sys:jobscheduler.log4j.directory:-logs}</property>
   </properties>
+
   <appenders>
     <console name="stderr" target="SYSTEM_ERR">
       <patternLayout pattern="%highlight{%d{DEFAULT} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message}{INFO=blue,WARN=red bold}%n"/>
     </console>
-    <rollingRandomAccessFile name="file"
+    <rollingRandomAccessFile name="file-info"
                              fileName="${logDirectory}/provider.log"
                              filePattern="${logDirectory}/provider-%d{yyyy-MM-dd}-%i.log.gz"
                              immediateFlush="${sys:jobscheduler.log4j.immediateFlush:-true}">
@@ -28,13 +29,47 @@
         </delete>
       </defaultRolloverStrategy>
     </rollingRandomAccessFile>
+
+    <rollingRandomAccessFile name="file-debug"
+                             fileName="${logDirectory}/provider-debug.log"
+                             filePattern="${logDirectory}/provider-%d{yyyy-MM-dd}-debug-%i.log.gz"
+                             immediateFlush="${sys:jobscheduler.log4j.immediateFlush:-true}">
+      <patternLayout pattern="%d{DEFAULT_MICROS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message%n"
+                     charset="UTF-8"/>
+      <policies>
+        <onStartupTriggeringPolicy/>
+        <timeBasedTriggeringPolicy/>
+        <sizeBasedTriggeringPolicy size="1GB"/>
+      </policies>
+      <defaultRolloverStrategy fileIndex="nomax">
+        <delete basePath="${logDirectory}">
+          <ifFileName glob="provider-debug-*.log.gz"/>
+          <ifAny>
+            <ifLastModified age="8d"/>
+            <ifAccumulatedFileSize exceeds="2GB"/>
+          </ifAny>
+        </delete>
+      </defaultRolloverStrategy>
+    </rollingRandomAccessFile>
   </appenders>
+
   <loggers>
     <root level="info">
-      <appenderRef level="info"  ref="stderr"/>
-      <appenderRef level="trace" ref="file"/>
+      <appenderRef level="warn"  ref="stderr"/>
+      <appenderRef level="info"  ref="file-info"/>
+      <appenderRef level="trace" ref="file-debug"/>
     </root>
+    <logger level="debug" name="jobscheduler.web">
+      <appenderRef ref="jobscheduler.web.log"/>
+    </logger>
     <logger level="warn" name="akka.event.slf4j.Slf4jLogger"/>
     <logger level="debug" name="jobscheduler"/>
+
+    <!--
+    <logger level="trace" name="jobscheduler.core.event.journal.JournalActor"/>
+    <logger level="trace" name="jobscheduler.common.http.AkkaHttpClient"/>
+    <logger level="trace" name="jobscheduler.master.agent"/>
+    <logger level="trace" name="jobscheduler.master.cluster"/>
+    -->
   </loggers>
 </configuration>
