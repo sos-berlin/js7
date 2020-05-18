@@ -11,6 +11,7 @@ import com.sos.jobscheduler.base.crypt.Signed
 import com.sos.jobscheduler.base.generic.{Completed, SecretString}
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.problem.Problems.InvalidSessionTokenProblem
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.ScalaUtils._
@@ -346,6 +347,7 @@ with ReceiveLoggingActor.WithStash
     case Internal.BatchFailed(inputs, problem) =>
       problem match {
         case DecoupledProblem |
+             InvalidSessionTokenProblem |
              RecouplingStreamReader.TerminatedProblem =>
           logger.debug(s"Command batch failed: $problem")
         case _ =>
