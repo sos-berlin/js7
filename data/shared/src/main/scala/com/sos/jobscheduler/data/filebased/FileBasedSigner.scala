@@ -2,6 +2,7 @@ package com.sos.jobscheduler.data.filebased
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.crypt.{MessageSigner, Signed, SignedString}
+import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged}
 import io.circe.Encoder
 
 /**
@@ -16,4 +17,10 @@ final class FileBasedSigner[A <: FileBased](val signer: MessageSigner, jsonEncod
     val string = jsonEncoder(fileBased).compactPrint
     SignedString(string, signer.sign(string).toGenericSignature)
   }
+
+  def toAddedEvent(fileBased: A): FileBasedAdded =
+    FileBasedAdded(fileBased.path, sign(fileBased))
+
+  def toChangedEvent(fileBased: A): FileBasedChanged =
+    FileBasedChanged(fileBased.path, sign(fileBased))
 }

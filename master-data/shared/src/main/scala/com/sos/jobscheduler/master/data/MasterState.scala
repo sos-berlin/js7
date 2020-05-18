@@ -14,8 +14,8 @@ import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.master.data.MasterSnapshots.MasterMetaState
 import com.sos.jobscheduler.master.data.agent.{AgentEventIdEvent, AgentSnapshot}
 import com.sos.jobscheduler.master.data.events.MasterAgentEvent.{AgentCouplingFailed, AgentReady, AgentRegisteredMaster}
-import com.sos.jobscheduler.master.data.events.MasterEvent.MasterTestEvent
-import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
+import com.sos.jobscheduler.master.data.events.MasterEvent.{MasterShutDown, MasterTestEvent}
+import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent, MasterKeyedEventJsonCodec}
 import monix.reactive.Observable
 
 /**
@@ -127,6 +127,9 @@ extends JournaledState[MasterState]
           Right(this)
       }
 
+    case KeyedEvent(_, _: MasterShutDown) =>
+      Right(this)
+
     case KeyedEvent(_, MasterTestEvent) =>
       Right(this)
 
@@ -147,8 +150,20 @@ object MasterState
     Map.empty,
     Map.empty)
 
-  def fromIterator(snapshotObjects: Iterator[Any])
-  : MasterState = {
+  implicit val journaledStateCompanion: JournaledState.Companion[MasterState] =
+    new JournaledState.Companion[MasterState] {
+      def fromIterable(snapshotObjects: Iterable[Any]) =
+        MasterState.fromIterable(snapshotObjects)
+
+      implicit def snapshotObjectJsonCodec = MasterSnapshots.SnapshotJsonCodec
+
+      implicit val keyedEventJsonDecoder = MasterKeyedEventJsonCodec
+    }
+
+  def fromIterable(snapshotObjects: Iterable[Any]): MasterState =
+    fromIterator(snapshotObjects.iterator)
+
+  def fromIterator(snapshotObjects: Iterator[Any]): MasterState = {
     val builder = new MasterStateBuilder
     snapshotObjects foreach builder.addSnapshot
     builder.state

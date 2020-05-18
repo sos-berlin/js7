@@ -74,7 +74,7 @@ extends MasterApi with HttpSessionApi with HasIsIgnorableStackTrace
       timeout = request.timeout.map(_ + ToleratedEventDelay) getOrElse Duration.Inf)
 
   final def eventObservable[E <: Event: ClassTag](request: EventRequest[E])
-    (implicit kd: Decoder[KeyedEvent[E]], ke: Encoder.AsObject[KeyedEvent[E]])
+    (implicit kd: Decoder[KeyedEvent[E]])
   : Task[Observable[Stamped[KeyedEvent[E]]]] =
     httpClient.getDecodedLinesObservable[Stamped[KeyedEvent[E]]](uris.events(request))
 
