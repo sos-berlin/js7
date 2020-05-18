@@ -21,7 +21,7 @@ import com.sos.jobscheduler.data.workflow.instructions.Execute
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
-import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
+import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
 import com.sos.jobscheduler.master.data.MasterCommand.{ReleaseEvents, TakeSnapshot}
 import com.sos.jobscheduler.master.data.events.MasterEvent
 import com.sos.jobscheduler.tests.ReleaseEventsTest._
@@ -78,11 +78,11 @@ final class ReleaseEventsTest extends AnyFreeSpec with DirectoryProviderForScala
       assert(masterJournalFiles.size == 3)
       assert(agentJournalFiles.size <= 3)
 
-      val a = new TestApi(master, aUserAndPassword)
-      val b = new TestApi(master, bUserAndPassword)
+      val a = newApi(master, aUserAndPassword)
+      val b = newApi(master, bUserAndPassword)
 
       locally {
-        val x = new TestApi(master, xUserAndPassword)
+        val x = newApi(master, xUserAndPassword)
         val result = x.httpClient.liftProblem(x.executeCommand(ReleaseEvents(finished.head.eventId))).await(99.s)
         assert(result.left.toOption.flatMap(_.codeOption) contains UserIsNotEnabledToReleaseEventsProblem.code)
       }
@@ -149,9 +149,13 @@ private object ReleaseEventsTest
   private val cOrder = FreshOrder(OrderId("⭕️"), TestWorkflow.id.path)
   private val dOrder = FreshOrder(OrderId("🔺"), TestWorkflow.id.path)
 
+  private def newApi(master: RunningMaster, credentials: UserAndPassword): HttpMasterApi = {
+    val api = new TestApi(master, credentials)
+    api.loginUntilReachable() await 99.s
+    api
+  }
+
   private class TestApi(master: RunningMaster, protected val credentials: UserAndPassword)
   extends AkkaHttpMasterApi(master.localUri, Some(credentials), master.actorSystem, name = "RunningMaster")
-  with SessionApi.HasUserAndPassword {
-    loginUntilReachable() await 99.s
-  }
+  with SessionApi.HasUserAndPassword
 }

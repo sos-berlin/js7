@@ -28,11 +28,8 @@ final class AkkaHttpMasterApiTest extends AnyFreeSpec with MasterAgentForScalaTe
   protected val agentRefPaths = Nil
   protected val fileBased = TestWorkflow :: Nil
 
-  private lazy val api = new AkkaHttpMasterApi(
-    master.localUri,
-    Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))),
-    actorSystem = master.actorSystem
-  ).closeWithCloser
+  private lazy val api = new AkkaHttpMasterApi(master.localUri, Some(userAndPassword), actorSystem = master.actorSystem)
+    .closeWithCloser
 
   override def beforeAll() = {
     directoryProvider.master.configDir / "private" / "private.conf" ++= """
@@ -42,7 +39,11 @@ final class AkkaHttpMasterApiTest extends AnyFreeSpec with MasterAgentForScalaTe
   }
 
   "login" in {
+    assert(master.sessionRegister.count.await(99.s) == 1)
     api.login() await 99.s
+    assert(master.sessionRegister.count.await(99.s) == 2)
+    api.login() await 99.s
+    assert(master.sessionRegister.count.await(99.s) == 2)
   }
 
   "POST order" in {
@@ -66,20 +67,27 @@ final class AkkaHttpMasterApiTest extends AnyFreeSpec with MasterAgentForScalaTe
     assert(api.workflows.await(99.s) == Right(List(TestWorkflow)))
   }
 
+  "logout" in {
+    assert(master.sessionRegister.count.await(99.s) == 2)
+    api.logout() await 99.s
+    assert(master.sessionRegister.count.await(99.s) == 1)
+  }
+
   "resource" in {
-    AkkaHttpMasterApi.separateAkkaResource(master.localUri, userAndPassword = None)
+    AkkaHttpMasterApi.separateAkkaResource(master.localUri, userAndPassword = Some(userAndPassword))
       .use(api => Task {
         api.login() await 99.s
-        assert(master.sessionRegister.count == 1)
+        assert(master.sessionRegister.count.await(99.s) == 2)
         assert(api.orders.await(99.s) == Right(List(TestOrder)))
       })
-      .map(_ => master.sessionRegister.count == 0)
-      .runToFuture
+      .map(_ => master.sessionRegister.count.await(99.s) == 1)
+      .await(99.s)
   }
 }
 
 private object AkkaHttpMasterApiTest
 {
+  private val userAndPassword = UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))
   private val TestWorkflow = Workflow.of(WorkflowPath("/WORKFLOW") ~ "INITIAL",
     Execute(WorkflowJob(AgentRefPath("/MISSING"), ExecutablePath("/MISSING"))))
   private val TestOrder = Order(OrderId("ORDER-ID"), TestWorkflow.id, Order.Fresh.StartImmediately)
