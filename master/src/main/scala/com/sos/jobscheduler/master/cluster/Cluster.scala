@@ -38,7 +38,7 @@ import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterActiveNodeRestarte
 import com.sos.jobscheduler.data.cluster.ClusterState.{Coupled, CoupledActiveShutDown, Decoupled, Empty, FailedOver, HasNodes, NodesAppointed, PassiveLost, PreparedToBeCoupled}
 import com.sos.jobscheduler.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeId, ClusterState}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeqTornProblem, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
 import com.sos.jobscheduler.master.cluster.Cluster._
@@ -657,9 +657,17 @@ final class Cluster(
         clusterConf.recouplingStreamReader,
         after = after,
         getObservable = (after: EventId) => {
-          val eventRequest = EventRequest.singleClass[Event](after = after, timeout = None)
-          HttpClient.liftProblem(
-            api.eventIdObservable(eventRequest, heartbeat = Some(clusterConf.heartbeat)))
+          Task.tailRecM(after)(after2 =>
+            HttpClient.liftProblem(
+              api.eventIdObservable(
+                EventRequest.singleClass[Event](after = after2, timeout = None),
+                heartbeat = Some(clusterConf.heartbeat))
+            ).flatMap {
+              case Left(torn: EventSeqTornProblem) =>
+                logger.debug(s"observeEventIds: $torn")
+                Task.pure(Left(torn.tornEventId)).delayExecution(1.s/*!!!*/)  // Repeat with last avaiable EventId
+              case o => Task.pure(Right(o))
+            })
         },
         stopRequested = () => stopRequested)
 
