@@ -35,4 +35,6 @@ extends SignatureVerifier with SignatureVerifier.Companion  // Both Verifier and
   def genericSignatureToSignature(signature: GenericSignature) = DoNotVerifySignature
 
   override def toString = "DoNotVerifySignatureVerifier"
+
+  def trustedKeysToString = typeName
 }

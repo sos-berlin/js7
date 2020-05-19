@@ -38,6 +38,8 @@ extends SignatureVerifier
       .flatMap(verifier => verifier.verify(message, signature))
 
   def isEmpty = typeToVerifier.isEmpty
+
+  override def trustedKeysToString = "GenericSignatureVerifier#trustedKeysToString"
 }
 
 object GenericSignatureVerifier extends SignatureVerifier.Companion
@@ -82,8 +84,7 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion
           Left(Problem.pure(s"No trusted signature keys - Configure one with $configPath!"))
         else {
           for (verifier <- typeToVerifier.values.toVector.sortBy(_.companion.typeName)) {
-            logger.info("Using trusted key for the signature type " +
-              s"${verifier.companion.typeName}: $verifier")
+            logger.info(s"Trusting signature keys: ${verifier.trustedKeysToString}")
           }
           Right(
             new GenericSignatureVerifier(

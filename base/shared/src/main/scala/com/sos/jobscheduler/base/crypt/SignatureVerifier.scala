@@ -17,6 +17,8 @@ trait SignatureVerifier
 
   def keyOrigin: String
 
+  def trustedKeysToString: String
+
   protected def verify(message: String, signature: MySignature): Checked[Seq[SignerId]]
 
   final def verify(signed: SignedString): Checked[Seq[SignerId]] =

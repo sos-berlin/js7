@@ -32,6 +32,8 @@ extends SignatureVerifier
       Right(SillySignerId :: Nil)
 
   override def toString = s"SillySignatureVerifer(origin=$keyOrigin)"
+
+  def trustedKeysToString = s"$typeName(origin=$keyOrigin)"
 }
 
 object SillySignatureVerifier extends SignatureVerifier.Companion

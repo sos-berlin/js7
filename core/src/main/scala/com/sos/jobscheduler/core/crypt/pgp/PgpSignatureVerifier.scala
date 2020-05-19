@@ -66,6 +66,8 @@ extends SignatureVerifier
   }
 
   override def toString = s"PgpSignatureVerifier(origin=$keyOrigin, ${publicKeyRingCollection.show})"
+
+  def trustedKeysToString = s"$typeName(origin=$keyOrigin, ${publicKeyRingCollection.show})"
 }
 
 object PgpSignatureVerifier extends SignatureVerifier.Companion
