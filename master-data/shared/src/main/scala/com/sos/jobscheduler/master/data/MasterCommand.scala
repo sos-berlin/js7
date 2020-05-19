@@ -15,7 +15,7 @@ import com.sos.jobscheduler.data.command.{CancelMode, CommonCommand}
 import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.data.filebased.{TypedPath, VersionId}
 import com.sos.jobscheduler.data.master.MasterFileBaseds.typedPathJsonDecoder
-import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json, JsonObject}
 
@@ -42,6 +42,14 @@ object MasterCommand extends CommonCommand.Companion
     extends MasterCommand.Response with CommonBatch.Response {
       override def productPrefix = "BatchResponse"
     }
+  }
+
+  final case class AddOrder(order: FreshOrder) extends MasterCommand {
+    type Response = AddOrder.Response
+  }
+  object AddOrder {
+    final case class Response(ignoredBecauseDuplicate: Boolean)
+    extends MasterCommand.Response
   }
 
   final case class CancelOrder(orderId: OrderId, mode: CancelMode) extends MasterCommand {
@@ -176,12 +184,14 @@ object MasterCommand extends CommonCommand.Companion
 
     implicit val ResponseJsonCodec: TypedJsonCodec[Response] = TypedJsonCodec[Response](
       Subtype(Accepted),
+      Subtype.named(deriveCodec[AddOrder.Response], "AddOrder.Response"),
       Subtype.named(deriveCodec[Batch.Response], "BatchResponse"),
       Subtype.named(deriveCodec[com.sos.jobscheduler.master.data.MasterCommand.InternalClusterCommand.Response], "InternalClusterCommand.Response"))
   }
 
   implicit val jsonCodec: TypedJsonCodec[MasterCommand] = TypedJsonCodec[MasterCommand](
     Subtype(deriveCodec[Batch]),
+    Subtype(deriveCodec[AddOrder]),
     Subtype[CancelOrder],
     Subtype(deriveCodec[ReplaceRepo]),
     Subtype(deriveCodec[UpdateRepo]),

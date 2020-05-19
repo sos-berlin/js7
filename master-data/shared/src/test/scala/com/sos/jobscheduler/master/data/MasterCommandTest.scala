@@ -8,7 +8,7 @@ import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.cluster.{ClusterCommand, ClusterNodeId}
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.filebased.VersionId
-import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.data.MasterCommand._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -52,6 +52,27 @@ final class MasterCommandTest extends AnyFreeSpec
       val threeResponses = Right(Response.Accepted) :: Left(Problem("PROBLEM")) :: Right(Response.Accepted) :: Nil
       assert(Batch.Response(threeResponses).toString == "BatchResponse(2 succeeded and 1 failed)")
       assert(Batch.Response(threeResponses ::: Right(Response.Accepted) :: Nil).toString == "BatchResponse(3 succeeded and 1 failed)")
+    }
+  }
+
+  "AddOrder" - {
+    "AddOrder" in {
+      testJson[MasterCommand](AddOrder(FreshOrder(OrderId("ORDER"), WorkflowPath("/WORKFLOW"))),
+        json"""{
+          "TYPE": "AddOrder",
+          "order": {
+            "id": "ORDER",
+            "workflowPath": "/WORKFLOW"
+          }
+        }""")
+    }
+
+    "AddOrder.Response" in {
+      testJson[MasterCommand.Response](AddOrder.Response(true),
+        json"""{
+          "TYPE": "AddOrder.Response",
+          "ignoredBecauseDuplicate": true
+        }""")
     }
   }
 

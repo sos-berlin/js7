@@ -522,6 +522,16 @@ with MainJournalingActor[MasterState, Event]
 
   private def executeMasterCommand(command: MasterCommand, commandMeta: CommandMeta): Future[Checked[MasterCommand.Response]] =
     command match {
+      case MasterCommand.AddOrder(order) =>
+        if (shuttingDown)
+          Future.successful(Left(MasterIsShuttingDownProblem))
+        else if (switchover.isDefined)
+          Future.successful(Left(MasterIsSwitchingOverProblem))
+        else
+          addOrder(order)
+            .map(_.map(added => MasterCommand.AddOrder.Response(ignoredBecauseDuplicate = !added)))
+            .pipeTo(sender())
+
       case MasterCommand.CancelOrder(orderId, mode) =>
         orderRegister.checked(orderId) map (_.order) match {
           case Left(problem) =>
