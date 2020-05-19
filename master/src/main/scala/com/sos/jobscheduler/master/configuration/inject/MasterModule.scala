@@ -3,6 +3,7 @@ package com.sos.jobscheduler.master.configuration.inject
 import akka.actor.{ActorRefFactory, ActorSystem}
 import com.google.inject.{AbstractModule, Provides}
 import com.sos.jobscheduler.base.auth.{Permission, SimpleUser, UpdateRepoPermission}
+import com.sos.jobscheduler.base.eventbus.StandardEventBus
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.Closer
 import com.sos.jobscheduler.base.utils.ScalazStyle._
@@ -80,6 +81,10 @@ final class MasterModule(configuration: MasterConfiguration) extends AbstractMod
     DeadLetterActor.subscribe(actorSystem)
     actorSystem
   }
+
+  @Provides @Singleton
+  def testEventBus(): StandardEventBus[Any] =
+    new StandardEventBus[Any]
 
   @Provides @Singleton
   def config(): Config =

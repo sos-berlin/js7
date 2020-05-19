@@ -73,4 +73,5 @@ object Dependencies
   val findbugs            = "com.google.code.findbugs" % "jsr305" % "3.0.2"
   val guava               = "com.google.guava" % "guava" % "28.0-jre"
   val bouncyCastle        = "org.bouncycastle" % "bcpg-jdk15on" % "1.62"
+  val hamcrest            = "org.hamcrest" % "hamcrest" % "2.2"
 }

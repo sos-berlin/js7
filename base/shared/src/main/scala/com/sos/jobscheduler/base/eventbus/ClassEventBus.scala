@@ -12,23 +12,28 @@ trait ClassEventBus[E] extends EventPublisher[E]
 {
   protected type Classifier
   protected type ClassifierToEvent[C <: Classifier] <: E
+  private type Cls = Class[_ <: Classifier]
 
-  protected def classify(event: E): Class[_ <: Classifier]
+  protected def classifierSuperclass: Class[Classifier]
+  protected def classify(event: E): Cls
 
-  private val register = new ConcurrentHashMap[Class[_ <: Classifier], Vector[EventSubscription]]
+  private val register = new ConcurrentHashMap[Cls, Vector[EventSubscription]]
+  private val superclassCache = new SuperclassCache(classifierSuperclass)
 
   private[eventbus] def isEmpty = register.isEmpty
 
   final def publish(event: E): Unit =
-    register.get(classify(event)) match {
-      case null =>
-      case subscriptions =>
-        for (subscription <- subscriptions) {
-          try subscription.call(event)
-          catch { case NonFatal(t) =>
-            scribe.warn(s"Error in event handler ignored: $t", t)
+    for (cls <- superclassCache.assignableClasses(classify(event))) {   // Optimizable in addSubscription ???
+      register.get(cls) match {
+        case null =>
+        case subscriptions =>
+          for (subscription <- subscriptions) {
+            try subscription.call(event)
+            catch { case NonFatal(t) =>
+              scribe.warn(s"Error in event handler ignore d: $t", t)
+            }
           }
-        }
+      }
     }
 
   final def addSubscription(subscription: EventSubscription): Unit =
@@ -96,10 +101,13 @@ trait ClassEventBus[E] extends EventPublisher[E]
     new EventSubscription(Set(eventClass), handle.asInstanceOf[E => Unit])
 
   final class EventSubscription(
-    private[ClassEventBus] val classes: Set[Class[_ <: Classifier]],
+    private[ClassEventBus] val classes: Set[Cls],
     private[ClassEventBus] val call: E => Unit)
   extends AutoCloseable
   {
+    //val assignableClasses: Set[Cls] = classes.asInstanceOf[Set[Cls]]
+    //  .flatMap(c => superclassCache.assignableClasses(c).asInstanceOf[Set[Cls]])
+
     def close() = removeSubscription(this)
   }
 }
