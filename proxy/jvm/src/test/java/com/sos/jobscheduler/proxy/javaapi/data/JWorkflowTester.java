@@ -47,15 +47,15 @@ class JWorkflowTester
     }
 
     private void testJson() {
-        String jsonString = workflow.toJsonString();
-        assertThat(jsonString, startsWith("{"));
-        assertThat(jsonString, endsWith("}"));
-        assertThat(jsonString, containsString("\"path\":\"/A-WORKFLOW\""));
+        String json = workflow.toJson();
+        assertThat(json, startsWith("{"));
+        assertThat(json, endsWith("}"));
+        assertThat(json, containsString("\"path\":\"/A-WORKFLOW\""));
 
-        JWorkflow decodedOrder = getOrThrowProblem(JWorkflow.fromJsonString(jsonString));
+        JWorkflow decodedOrder = getOrThrowProblem(JWorkflow.fromJson(json));
         assertThat(decodedOrder, equalTo(workflow));
 
-        assertThat(getOrThrowProblem(JWorkflow.fromJsonString(jsonString)),
+        assertThat(getOrThrowProblem(JWorkflow.fromJson(json)),
             equalTo(workflow));
     }
 

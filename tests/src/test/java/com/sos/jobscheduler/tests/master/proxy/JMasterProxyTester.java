@@ -4,6 +4,7 @@ import com.sos.jobscheduler.data.event.KeyedEvent;
 import com.sos.jobscheduler.data.event.Stamped;
 import com.sos.jobscheduler.data.order.OrderEvent;
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished$;
+import com.sos.jobscheduler.data.order.OrderEvent.OrderMoved;
 import com.sos.jobscheduler.data.order.OrderEvent.OrderStarted$;
 import com.sos.jobscheduler.data.order.OrderId;
 import com.sos.jobscheduler.data.workflow.WorkflowPath;
@@ -15,10 +16,12 @@ import com.sos.jobscheduler.proxy.javaapi.data.JMasterState;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import static com.sos.jobscheduler.proxy.javaapi.data.JKeyedEvent.keyedEventToJson;
 import static com.sos.jobscheduler.proxy.javaapi.utils.VavrUtils.getOrThrowProblem;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 /**
@@ -35,7 +38,7 @@ final class JMasterProxyTester
         this.proxy = proxy;
 
         proxy.eventBus().subscribe(
-            asList(OrderStarted$.class, OrderFinished$.class),
+            asList(OrderStarted$.class, OrderMoved.class, OrderFinished$.class),
             this::onOrderEvent);
     }
 
@@ -77,13 +80,22 @@ final class JMasterProxyTester
                         WorkflowPath.of("/WORKFLOW"),
                         java.util.Optional.empty(),
                         java.util.Collections.emptyMap())
-                ).toJsonString()
+                ).toJson()
             ).get(99, SECONDS));
         assertThat(responseJson, equalTo(
             "{\"TYPE\":\"AddOrder.Response\",\"ignoredBecauseDuplicate\":false}"));
 
         finished.get(99, SECONDS);
-        assert events.get(0).equals(KeyedEvent.apply(orderId, OrderStarted$.MODULE$));
-        assert events.get(1).equals(KeyedEvent.apply(orderId, OrderFinished$.MODULE$));
+        assertThat(events.get(0).key(), equalTo(orderId));
+        assertThat(events.get(0).event(), instanceOf(OrderStarted$.class));
+        assertThat(keyedEventToJson(events.get(0)), equalTo("{\"key\":\"TEST-ORDER\",\"TYPE\":\"OrderStarted\"}"));
+
+        assertThat(events.get(1).key(), equalTo(orderId));
+        assertThat(events.get(1).event(), instanceOf(OrderMoved.class));
+        assertThat(keyedEventToJson(events.get(1)), equalTo("{\"key\":\"TEST-ORDER\",\"TYPE\":\"OrderMoved\",\"to\":[1]}"));
+
+        assertThat(events.get(2).key(), equalTo(orderId));
+        assertThat(events.get(2).event(), instanceOf(OrderFinished$.class));
+        assertThat(keyedEventToJson(events.get(2)), equalTo("{\"key\":\"TEST-ORDER\",\"TYPE\":\"OrderFinished\"}"));
     }
 }

@@ -16,7 +16,7 @@ trait JJsonable[A <: JJsonable[A]] extends JavaWrapper
 
   protected def companion: JJsonable.Companion[A]
 
-  final def toJsonString: String = {
+  final def toJson: String = {
     val companion = this.companion
     val u = underlying.asInstanceOf[companion.Underlying]
     companion.jsonEncoder.apply(u).compactPrint
@@ -35,7 +35,7 @@ object JJsonable
     implicit def jsonEncoder: Encoder[A#Underlying]
     implicit def jsonDecoder: Decoder[A#Underlying]
 
-    def fromJsonString(jsonString: String): VEither[Problem, A] =
+    def fromJson(jsonString: String): VEither[Problem, A] =
       io.circe.parser.parse(jsonString).toChecked
         .flatMap(_.as[A#Underlying].toChecked map apply)
         .asVavr

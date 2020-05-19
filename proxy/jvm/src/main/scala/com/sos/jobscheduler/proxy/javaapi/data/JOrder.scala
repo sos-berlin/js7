@@ -23,8 +23,8 @@ extends JJsonable[JOrder]
 @javaApi
 object JOrder extends JJsonable.Companion[JOrder]
 {
-  override def fromJsonString(jsonString: String): VEither[Problem, JOrder] =
-    super.fromJsonString(jsonString)
+  override def fromJson(jsonString: String): VEither[Problem, JOrder] =
+    super.fromJson(jsonString)
 
   val jsonEncoder = Order.jsonEncoder
   val jsonDecoder = Order.jsonDecoder

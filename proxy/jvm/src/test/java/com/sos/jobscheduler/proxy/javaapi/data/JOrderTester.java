@@ -13,7 +13,7 @@ import static org.hamcrest.Matchers.equalTo;
  */
 public class JOrderTester
 {
-    static final String aOrderJsonString =
+    static final String aOrderJson =
        "{" +
        "  \"id\":\"A-ORDER\"," +
        "  \"workflowPosition\": {\n" +
@@ -29,8 +29,8 @@ public class JOrderTester
        "  \"arguments\": {},\n" +
        "  \"historicOutcomes\": []\n" +
        "}";
-    static final JOrder aOrder = getOrThrowProblem(JOrder.fromJsonString(aOrderJsonString));
-    static final String bOrderJsonString =
+    static final JOrder aOrder = getOrThrowProblem(JOrder.fromJson(aOrderJson));
+    static final String bOrderJson =
        "{" +
        "  \"id\":\"B-ORDER\"," +
        "  \"workflowPosition\": {\n" +
@@ -49,7 +49,7 @@ public class JOrderTester
        "  },\n" +
        "  \"historicOutcomes\": []\n" +
        "}";
-    static final JOrder bOrder = getOrThrowProblem(JOrder.fromJsonString(bOrderJsonString));
+    static final JOrder bOrder = getOrThrowProblem(JOrder.fromJson(bOrderJson));
 
     private final JOrder order;
 
@@ -74,15 +74,15 @@ public class JOrderTester
     }
 
     private void testJson() {
-        String jsonString = order.toJsonString();
-        assertThat(jsonString, startsWith("{"));
-        assertThat(jsonString, endsWith("}"));
-        assertThat(jsonString, containsString("\"id\":\"A-ORDER\""));
+        String json = order.toJson();
+        assertThat(json, startsWith("{"));
+        assertThat(json, endsWith("}"));
+        assertThat(json, containsString("\"id\":\"A-ORDER\""));
 
-        JOrder decodedOrder = getOrThrowProblem(JOrder.fromJsonString(jsonString));
+        JOrder decodedOrder = getOrThrowProblem(JOrder.fromJson(json));
         assertThat(decodedOrder, equalTo(order));
 
-        assertThat(getOrThrowProblem(JOrder.fromJsonString(aOrderJsonString)),
+        assertThat(getOrThrowProblem(JOrder.fromJson(aOrderJson)),
             equalTo(order));
     }
 }

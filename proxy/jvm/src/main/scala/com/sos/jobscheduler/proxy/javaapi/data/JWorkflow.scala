@@ -19,8 +19,8 @@ extends JFileBased[JWorkflow, WorkflowPath]
 @javaApi
 object JWorkflow extends JJsonable.Companion[JWorkflow]
 {
-  override def fromJsonString(jsonString: String): VEither[Problem, JWorkflow] =
-    super.fromJsonString(jsonString)
+  override def fromJson(jsonString: String): VEither[Problem, JWorkflow] =
+    super.fromJson(jsonString)
 
   def jsonEncoder = Workflow.jsonEncoder
   def jsonDecoder = Workflow.jsonDecoder

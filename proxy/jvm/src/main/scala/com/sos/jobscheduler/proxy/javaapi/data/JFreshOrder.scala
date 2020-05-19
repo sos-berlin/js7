@@ -33,8 +33,8 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]
     scheduledFor.toScala.map(o => Timestamp.ofEpochMilli(o.toEpochMilli)),
     arguments.asScala.toMap))
 
-  override def fromJsonString(jsonString: String): VEither[Problem, JFreshOrder] =
-    super.fromJsonString(jsonString)
+  override def fromJson(jsonString: String): VEither[Problem, JFreshOrder] =
+    super.fromJson(jsonString)
 
   def jsonEncoder = implicitly[Encoder[FreshOrder]]
 

@@ -21,8 +21,8 @@ object JMasterCommand extends JJsonable.Companion[JMasterCommand]
   def addOrder(jFreshOrder: JFreshOrder): JMasterCommand =
     JMasterCommand(MasterCommand.AddOrder(jFreshOrder.underlying))
 
-  override def fromJsonString(jsonString: String): VEither[Problem, JMasterCommand] =
-    super.fromJsonString(jsonString)
+  override def fromJson(jsonString: String): VEither[Problem, JMasterCommand] =
+    super.fromJson(jsonString)
 
   def jsonDecoder = implicitly[Decoder[MasterCommand]]
 
