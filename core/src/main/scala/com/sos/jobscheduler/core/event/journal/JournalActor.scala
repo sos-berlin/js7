@@ -444,7 +444,7 @@ extends Actor with Stash
   private def reply(sender: ActorRef, replyTo: ActorRef, msg: Any): Unit =
     replyTo.!(msg)(sender)
 
-  private def receiveTerminatedOrGet: Receive = {
+  private def receiveTerminatedOrGet: Receive = receiveGet orElse {
     case Terminated(a) if journalingActors contains a =>
       onJournalingActorTerminated(a)
 
@@ -453,6 +453,17 @@ extends Actor with Stash
       logger.error(s"Unknown actor has terminated: ${a.path.pretty}")
       //unhandled(msg)
 
+    case Input.GetJournalActorState =>
+      sender() ! Output.JournalActorState(
+        isFlushed = eventWriter != null && eventWriter.isFlushed,
+        isSynced = eventWriter != null && eventWriter.isSynced,
+        isRequiringClusterAcknowledgement = requireClusterAcknowledgement)
+
+    case Input.GetJournaledState =>
+      sender() ! journaledState
+  }
+
+  private def receiveGet: Receive = {
     case Input.GetJournalActorState =>
       sender() ! Output.JournalActorState(
         isFlushed = eventWriter != null && eventWriter.isFlushed,
@@ -583,7 +594,7 @@ extends Actor with Stash
       for (a <- journalingActors) {
         a ! JournalingActor.Input.GetSnapshot  // DeadLetter when actor just now terminates (a terminating JournalingActor must not have a snapshot)
       }
-      context.become {
+      become(receiveGet orElse {
         case JournalingActor.Output.GotSnapshot(snapshots) =>
           try blocking {  // blockingAdd blocks
             for (snapshot <- snapshots) {
@@ -613,7 +624,7 @@ extends Actor with Stash
           }
 
         case _ => stash()
-      }
+      })
 
       def onDone(actor: ActorRef): Unit = {
         remaining -= actor
