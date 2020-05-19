@@ -99,7 +99,7 @@ object Futures {
           case Failure(t) => throw t.appendCurrentStackTrace
         }
 
-      def await(duration: FiniteDuration)(implicit A: TypeTag[A]): A = {
+      def await(duration: FiniteDuration)(implicit A: WeakTypeTag[A]): A = {
         try Await.ready(delegate, duration)
         catch { case _: TimeoutException =>
           throw new TimeoutException(s"await(${duration.pretty}): Future[${A.tpe.toString}] has not been completed in time")

@@ -39,6 +39,9 @@ extends MasterApi with HttpSessionApi with HasIsIgnorableStackTrace
       if (baseUri.isEmpty) baseUri
       else Uri(baseUri.string.stripSuffix("/") + "/master"))
 
+  final def post[A: Encoder, B: Decoder](uriTail: String, data: A): Task[B] =
+    httpClient.post[A, B](Uri(baseUri.string.stripSuffix("/") + "/" + uriTail.stripPrefix("/")), data)
+
   final def executeCommand(command: MasterCommand): Task[command.Response] =
     httpClient.post[MasterCommand, MasterCommand.Response](uris.command, command)
       .map(_.asInstanceOf[command.Response])

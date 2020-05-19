@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.data.order
 
+import com.sos.jobscheduler.base.annotation.javaApi
 import com.sos.jobscheduler.base.generic.GenericString
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 
@@ -38,6 +39,10 @@ object OrderId extends GenericString.NonEmpty[OrderId]
   private val ReservedCharacters = Set('/')
 
   protected def unchecked(string: String) = new OrderId(string)
+
+  @javaApi @throws[RuntimeException]("on invalid syntax")
+  def of(validOrderId: String) =
+    apply(validOrderId)
 
   final case class ChildId private(string: String) extends GenericString
   object ChildId extends GenericString.NonEmpty[ChildId] {

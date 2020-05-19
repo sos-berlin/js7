@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.data.filebased
 
+import com.sos.jobscheduler.base.annotation.javaApi
 import com.sos.jobscheduler.base.circeutils.CirceUtils.CirceUtilsChecked
 import com.sos.jobscheduler.base.generic.GenericString
 import com.sos.jobscheduler.base.problem.Checked._
@@ -55,4 +56,8 @@ object VersionId extends GenericString.NonEmpty[VersionId]
         case o => o
       }
     } yield versionId
+
+  @javaApi @throws[RuntimeException]("on invalid syntax")
+  def of(validVersionId: String): VersionId =
+    apply(validVersionId)
 }

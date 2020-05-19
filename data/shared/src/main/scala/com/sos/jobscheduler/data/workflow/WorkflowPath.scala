@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.data.workflow
 
+import com.sos.jobscheduler.base.annotation.javaApi
 import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
 
 final case class WorkflowPath private(string: String)
@@ -17,4 +18,8 @@ object WorkflowPath extends TypedPath.Companion[WorkflowPath]
     SourceType.Xml -> ".job_chain.xml")
 
   protected def unchecked(string: String) = new WorkflowPath(string)
+
+  @javaApi @throws[RuntimeException]("on invalid syntax")
+  def of(validWorkflowPath: String): WorkflowPath =
+    apply(validWorkflowPath)
 }

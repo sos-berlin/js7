@@ -4,12 +4,13 @@ import cats.syntax.flatMap._
 import com.sos.jobscheduler.base.exceptions.HasIsIgnorableStackTrace
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Problems.InvalidSessionTokenProblem
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.problem.{Checked, Problem, ProblemException}
 import com.sos.jobscheduler.base.session.SessionApi
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.http.RecouplingStreamReader._
 import com.sos.jobscheduler.common.http.configuration.RecouplingStreamReaderConf
+import com.sos.jobscheduler.data.event.EventSeqTornProblem
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean
 import monix.execution.exceptions.UpstreamTimeoutException
@@ -145,7 +146,11 @@ abstract class RecouplingStreamReader[
           Observable.pure(Right(
             observe(after)
               .doOnError(t => onCouplingFailed(api, Problem.pure(t)).void)
-              .onErrorHandleWith { _ => Observable.empty }
+              .onErrorRecoverWith {
+                case t: ProblemException if t.problem.codeOption contains EventSeqTornProblem.code =>
+                  Observable.raiseError(t)
+                case _ => Observable.empty
+              }
           )) ++
             (Observable.fromTask(pauseBeforeNextTry(conf.delay)) >>
               Observable.delay(Left(lastIndex)/*FIXME Observable.tailRecM: Left leaks memory, https://github.com/monix/monix/issues/791*/))
@@ -163,12 +168,16 @@ abstract class RecouplingStreamReader[
     private def tryEndlesslyToGetObservable(after: I): Task[Observable[V]] =
       Task.tailRecM(())(_ =>
         if (stopRequested || coupledApiVar.isStopped || !inUse.get)
-          Task.pure(Right(Observable.raiseError(new IllegalStateException(s"RecouplingStreamReader($api) has been stopped"))))
+          Task.pure(Right(Observable.raiseError(
+            new IllegalStateException(s"RecouplingStreamReader($api) has been stopped"))))
         else
           coupleIfNeeded(after = after) >>
             getObservableX(after = after)
               .materialize.map(Checked.flattenTryChecked)
               .flatMap {
+                case Left(problem) if problem.codeOption contains EventSeqTornProblem.code =>
+                  Task.raiseError(problem.throwable)
+
                 case Left(problem) =>
                   (problem match {
                     case InvalidSessionTokenProblem =>

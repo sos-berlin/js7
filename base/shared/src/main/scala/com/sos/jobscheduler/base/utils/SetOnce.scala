@@ -83,6 +83,8 @@ object SetOnce
 
   def apply[A](implicit A: TypeTag[A]) = new SetOnce[A](A.tpe.toString)
 
+  def apply[A](name: String) = new SetOnce[A](name)
+
   def fromOption[A](option: Option[A])(implicit A: TypeTag[A]) = {
     val setOnce = new SetOnce[A](A.tpe.toString)
     option foreach setOnce.:=

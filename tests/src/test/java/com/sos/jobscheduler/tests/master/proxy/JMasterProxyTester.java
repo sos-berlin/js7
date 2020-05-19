@@ -1,0 +1,89 @@
+package com.sos.jobscheduler.tests.master.proxy;
+
+import com.sos.jobscheduler.data.event.KeyedEvent;
+import com.sos.jobscheduler.data.event.Stamped;
+import com.sos.jobscheduler.data.order.OrderEvent;
+import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished$;
+import com.sos.jobscheduler.data.order.OrderEvent.OrderStarted$;
+import com.sos.jobscheduler.data.order.OrderId;
+import com.sos.jobscheduler.data.workflow.WorkflowPath;
+import com.sos.jobscheduler.proxy.javaapi.JCredentials;
+import com.sos.jobscheduler.proxy.javaapi.JMasterProxy;
+import com.sos.jobscheduler.proxy.javaapi.data.JFreshOrder;
+import com.sos.jobscheduler.proxy.javaapi.data.JMasterCommand;
+import com.sos.jobscheduler.proxy.javaapi.data.JMasterState;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import static com.sos.jobscheduler.proxy.javaapi.utils.VavrUtils.getOrThrowProblem;
+import static java.util.Arrays.asList;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
+
+/**
+ * @author Joacim Zschimmer
+ */
+final class JMasterProxyTester
+{
+    private static final OrderId orderId = OrderId.of("TEST-ORDER");
+    private final JMasterProxy proxy;
+    private final List<KeyedEvent<OrderEvent>> events = new ArrayList<>();
+    private final CompletableFuture<Void> finished = new CompletableFuture<>();
+
+    JMasterProxyTester(JMasterProxy proxy) {
+        this.proxy = proxy;
+
+        proxy.eventBus().subscribe(
+            asList(OrderStarted$.class, OrderFinished$.class),
+            this::onOrderEvent);
+    }
+
+    private void onOrderEvent(Stamped<KeyedEvent<OrderEvent>> stampedEvent, JMasterState masterState) {
+        if (stampedEvent.value().key().equals(orderId)) {
+            events.add(stampedEvent.value());
+            if (stampedEvent.value().event() instanceof OrderFinished$) {
+                finished.complete(null);
+            }
+        }
+    }
+
+    static CompletableFuture<JMasterProxyTester> start(String uri, JCredentials credentials) {
+        return
+            JMasterProxy.start(uri, credentials)
+                .thenApply(JMasterProxyTester::new);
+    }
+
+    CompletableFuture<Void> stop() {
+        return proxy.stop();
+    }
+
+    void test() throws Exception {
+        //MasterCommand.AddOrder.Response addOrderResponse = (MasterCommand.AddOrder.Response)
+        //    proxy.executeCommand(
+        //        JMasterCommand.addOrder(
+        //            JFreshOrder.of(
+        //                orderId,
+        //                WorkflowPath.of("/WORKFLOW"),
+        //                java.util.Optional.empty(),
+        //                java.util.Collections.emptyMap())))
+        //        .get()
+        //        .get();
+        String responseJson = getOrThrowProblem(
+            proxy.executeCommandJson(
+                JMasterCommand.addOrder(
+                    JFreshOrder.of(
+                        orderId,
+                        WorkflowPath.of("/WORKFLOW"),
+                        java.util.Optional.empty(),
+                        java.util.Collections.emptyMap())
+                ).toJsonString()
+            ).get(99, SECONDS));
+        assertThat(responseJson, equalTo(
+            "{\"TYPE\":\"AddOrder.Response\",\"ignoredBecauseDuplicate\":false}"));
+
+        finished.get(99, SECONDS);
+        assert events.get(0).equals(KeyedEvent.apply(orderId, OrderStarted$.MODULE$));
+        assert events.get(1).equals(KeyedEvent.apply(orderId, OrderFinished$.MODULE$));
+    }
+}

@@ -62,7 +62,7 @@ addCommandAlias("quickPublishLocal", "; compile; publishLocal; project jobschedu
 //scalafixDependencies in ThisBuild += "org.scala-lang.modules" %% "scala-collection-migrations" % "2.1.4"
 //addCompilerPlugin(scalafixSemanticdb)
 //ThisBuild / scalacOptions ++= Seq("-P:semanticdb:synthetics:on", "-Yrangepos"/*required by SemanticDB compiler plugin*/)
-val enableWarnings =Seq(
+val enableWarnings = Seq(
   "-Wunused:imports",
   "-Wunused:privates",
   "-Wunused:locals",
@@ -110,7 +110,7 @@ val commonSettings = Seq(
     </developers>,
   scalaVersion := Dependencies.scalaVersion,
   javacOptions in Compile ++= Seq("-encoding", "UTF-8", "-source", jdkVersion),  // This is for javadoc, too
-  javacOptions in (Compile, compile) ++= Seq("-target", jdkVersion, "-deprecation", "-Xlint:all", "-Xlint:-serial"),
+  javacOptions in (Compile, compile) ++= Seq("-target", jdkVersion, "-deprecation", "-Xlint:all", "-Xlint:-serial", "-Xdiags:verbose"),
   dependencyOverrides ++= {
     if (sys.props.contains("evictionWarnings"))
       Nil
@@ -378,8 +378,9 @@ lazy val proxy = crossProject(JSPlatform, JVMPlatform)
   .settings(commonSettings)
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(
-    libraryDependencies += {
+    libraryDependencies ++= {
       import Dependencies._
+      "io.vavr" % "vavr" % "0.10.3" ++
       "org.scalatest" %%% "scalatest" % scalaTestVersion % "test" /*++
       "org.scalatest" %%% "scalatest-freespec" % scalaTestVersion % "test"*/
     })
@@ -387,6 +388,8 @@ lazy val proxy = crossProject(JSPlatform, JVMPlatform)
     libraryDependencies ++= {
       import Dependencies._
       akkaHttp ++
+      "org.scala-lang.modules" %% "scala-java8-compat" % "0.9.1" ++
+      hamcrest % "test" ++
       log4j % "test"
     })
 
@@ -526,6 +529,7 @@ lazy val tests = project.dependsOn(master, agent, proxy.jvm, `agent-client`, pro
       akkaHttpTestkit % "test" ++  // For IntelliJ IDEA 2018.2
       scalaTest % "test" ++
       mockito % "test" ++
+      hamcrest % "test" ++
       log4j % "test"
   }
 

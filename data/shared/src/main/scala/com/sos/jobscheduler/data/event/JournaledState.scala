@@ -6,6 +6,7 @@ import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
 import com.sos.jobscheduler.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import com.sos.jobscheduler.data.event.JournaledState._
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
+import io.circe.{Decoder, Encoder}
 import monix.reactive.Observable
 
 trait JournaledState[This <: JournaledState[This]]
@@ -72,5 +73,14 @@ object JournaledState
     def arguments = Map(
       "event" -> keyedEvent.toString.truncateWithEllipsis(100),
       "state" -> state.toString.truncateWithEllipsis(100))
+  }
+
+  trait Companion[S <: JournaledState[S]]
+  {
+    def fromIterable(snapshotObjects: Iterable[Any]): S
+
+    implicit def snapshotObjectJsonCodec: Encoder[Any]
+
+    implicit def keyedEventJsonDecoder: Decoder[KeyedEvent[Event]]
   }
 }
