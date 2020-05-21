@@ -146,15 +146,15 @@ final class ExpressionParserTest extends AnyFreeSpec
           NamedValue.last("result"),
           StringConstant("1"))))
 
-    testBooleanExpression("""returnCode==$expected.toNumber||$result=="1"||true&&returnCode>0""",
+    testBooleanExpression("""returnCode==$expected.toNumber||!($result=="1")||true&&returnCode>0""",
       Or(
         Or(
           Equal(
             LastReturnCode,
             ToNumber(NamedValue.last("expected"))),
-          Equal(
-            NamedValue.last("result"),
-            StringConstant("1"))),
+          Not(Equal(
+              NamedValue.last("result"),
+              StringConstant("1")))),
         And(
           BooleanConstant(true),
           GreaterThan(
