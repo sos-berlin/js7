@@ -58,9 +58,9 @@ private[cluster] trait MasterClusterTester extends AnyFreeSpec
           jobscheduler.master.cluster.fail-after = 5s
           jobscheduler.master.cluster.watches = [ "http://127.0.0.1:$agentPort" ]
           jobscheduler.master.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"
-          jobscheduler.auth.users.Master.password = "plain:BACKUP-MASTER-PASSWORD"
+          jobscheduler.auth.users.Master.password = "plain:PRIMARY-MASTER-PASSWORD"
           jobscheduler.auth.users.TEST.password = "plain:TEST-PASSWORD"
-          jobscheduler.auth.cluster.password = "PRIMARY-MASTER-PASSWORD"
+          jobscheduler.auth.cluster.password = "BACKUP-MASTER-PASSWORD"
           jobscheduler.journal.remove-obsolete-files = $removeObsoleteJournalFiles """),
         agentPorts = agentPort :: Nil
       ).closeWithCloser
@@ -72,9 +72,9 @@ private[cluster] trait MasterClusterTester extends AnyFreeSpec
           jobscheduler.master.cluster.fail-after = 5s
           jobscheduler.master.cluster.watches = [ "http://127.0.0.1:$agentPort" ]
           jobscheduler.master.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"
-          jobscheduler.auth.users.Master.password = "plain:PRIMARY-MASTER-PASSWORD"
+          jobscheduler.auth.users.Master.password = "plain:BACKUP-MASTER-PASSWORD"
           jobscheduler.auth.users.TEST.password = "plain:TEST-PASSWORD"
-          jobscheduler.auth.cluster.password = "BACKUP-MASTER-PASSWORD"
+          jobscheduler.auth.cluster.password = "PRIMARY-MASTER-PASSWORD"
           jobscheduler.journal.remove-obsolete-files = $removeObsoleteJournalFiles """),
       ).closeWithCloser
 
