@@ -65,6 +65,8 @@ abstract class RecouplingStreamReader[
   // TODO Genügt nicht `terminate` ?
   protected def stopRequested: Boolean
 
+  private def isStopped = stopRequested || coupledApiVar.isStopped || !inUse.get
+
   private val coupledApiVar = new CoupledApiVar[Api]
   private val recouplingPause = new RecouplingPause
   private val inUse = AtomicBoolean(false)
@@ -139,7 +141,7 @@ abstract class RecouplingStreamReader[
 
     def observeAgainAndAgain: Observable[V] =
       Observable.tailRecM(initialAfter) { after =>
-        if (eof(after) || stopRequested || coupledApiVar.isStopped || !inUse.get)
+        if (eof(after) || isStopped)
           Observable.pure(Right(Observable.empty))
         else
           // Memory leak due to https://github.com/monix/monix/issues/791 ???
@@ -147,7 +149,7 @@ abstract class RecouplingStreamReader[
             observe(after)
               .doOnError(t => onCouplingFailed(api, Problem.pure(t)).void)
               .onErrorRecoverWith {
-                case t: ProblemException if t.problem.codeOption contains EventSeqTornProblem.code =>
+                case t: ProblemException if t.problem is EventSeqTornProblem =>
                   Observable.raiseError(t)
                 case _ => Observable.empty
               }
@@ -167,7 +169,7 @@ abstract class RecouplingStreamReader[
     /** Retries until web request returns an Observable. */
     private def tryEndlesslyToGetObservable(after: I): Task[Observable[V]] =
       Task.tailRecM(())(_ =>
-        if (stopRequested || coupledApiVar.isStopped || !inUse.get)
+        if (isStopped)
           Task.pure(Right(Observable.raiseError(
             new IllegalStateException(s"RecouplingStreamReader($api) has been stopped"))))
         else
@@ -175,19 +177,21 @@ abstract class RecouplingStreamReader[
             getObservableX(after = after)
               .materialize.map(Checked.flattenTryChecked)
               .flatMap {
-                case Left(problem) if problem.codeOption contains EventSeqTornProblem.code =>
-                  Task.raiseError(problem.throwable)
-
                 case Left(problem) =>
-                  (problem match {
-                    case InvalidSessionTokenProblem =>
-                      Task { scribe.debug(s"$api: $InvalidSessionTokenProblem") }
-                    case _ =>
-                      onCouplingFailed(api, problem)
-                  }) >>
-                    decouple >>
-                    pauseBeforeRecoupling >>
-                    Task.pure(Left(()))
+                  if (isStopped)
+                    Task.pure(Left(()))  // Fail in next iteration
+                  else if (problem is EventSeqTornProblem)
+                    Task.raiseError(problem.throwable)
+                  else
+                    (problem match {
+                      case InvalidSessionTokenProblem =>
+                        Task { scribe.debug(s"$api: $InvalidSessionTokenProblem") }
+                      case _ =>
+                        onCouplingFailed(api, problem)
+                    }) >>
+                      decouple >>
+                      pauseBeforeRecoupling >>
+                      Task.pure(Left(()))
 
                 case Right(observable) =>
                   Task.pure(Right(observable))
@@ -218,7 +222,7 @@ abstract class RecouplingStreamReader[
 
     private def tryEndlesslyToCouple(after: I): Task[Completed] =
       Task.tailRecM(())(_ =>
-        if (stopRequested || coupledApiVar.isStopped || !inUse.get)
+        if (isStopped)
           Task.raiseError(new IllegalStateException(s"RecouplingStreamReader($api) has been stopped") with NoStackTrace)
         else
           (for {
@@ -231,11 +235,14 @@ abstract class RecouplingStreamReader[
             .materialize.map(o => Checked.flattenTryChecked(o))  // materializeIntoChecked
             .flatMap {
               case Left(problem) =>
-                for {
-                  _ <- api.logoutOrTimeout(idleTimeout)
-                  _ <- onCouplingFailed(api, problem)
-                  _ <- pauseBeforeRecoupling
-                } yield Left(())
+                if (isStopped)
+                  Task.pure(Left(()))  // Fail in next iteration
+                else
+                  for {
+                    _ <- api.logoutOrTimeout(idleTimeout)
+                    _ <- onCouplingFailed(api, problem)
+                    _ <- pauseBeforeRecoupling
+                  } yield Left(())
 
               case Right(Completed) =>
                 for {
