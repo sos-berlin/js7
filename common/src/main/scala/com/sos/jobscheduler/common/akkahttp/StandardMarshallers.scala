@@ -59,9 +59,10 @@ object StandardMarshallers
   def logAkkaStreamErrorToWebLogAndIgnore[A: TypeTag](source: Source[A, NotUsed]): Source[A, NotUsed] =
     source.recoverWithRetries(1, { case throwable =>
       // These are the only messages logged
-      val msg = s"Terminating stream Source[${implicitly[TypeTag[A]].tpe.toString}] due to error: ${throwable.toStringWithCauses}"
-      ExceptionHandling.webLogger.warn(msg)
-      logger.debug(msg, throwable)
+      val isDebug = throwable.isInstanceOf[akka.stream.AbruptTerminationException]
+      val msg = s"Terminating stream Source[${implicitly[TypeTag[A]].tpe}] due to error: ${throwable.toStringWithCauses}"
+      if (isDebug) ExceptionHandling.webLogger.debug(msg) else ExceptionHandling.webLogger.warn(msg)
+      if (throwable.getStackTrace.nonEmpty) logger.debug(msg, throwable)
 
       // Letting the throwable pass would close the connection,
       // and the HTTP client sees only: The request's encoding is corrupt:

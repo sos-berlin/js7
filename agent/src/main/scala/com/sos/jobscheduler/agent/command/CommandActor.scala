@@ -42,8 +42,9 @@ extends Actor {
       sender() ! register.detailed
 
     case Internal.Respond(run, promise, response) =>
-      if (run.batchInternalId.isEmpty || response != Success(Right(AgentCommand.Response.Accepted))) {
-        logger.debug(s"Response to ${run.idString} ${AgentCommand.jsonCodec.classToName(run.command.getClass)} (${run.runningSince.elapsed.pretty}): $response")
+      def msg = s"Response to ${run.idString} ${AgentCommand.jsonCodec.classToName(run.command.getClass)} (${run.runningSince.elapsed.pretty}): $response"
+      if (run.batchInternalId.isEmpty) {
+        if (response == Success(Right(AgentCommand.Response.Accepted))) logger.trace(msg) else logger.debug(msg)
       }
       register.remove(run.internalId)
       promise.complete(response)
@@ -62,7 +63,7 @@ extends Actor {
   private def logCommand(userId: UserId, run: CommandRun[AgentCommand]): Unit =
     run.command match {
       case Batch(_) =>  // Log only individual commands
-      case _ => logger.info(run.toString)
+      case _ => logger.debug(run.toString)
     }
 
   private def executeCommand2(batchId: Option[InternalCommandId], id: InternalCommandId, command: AgentCommand, meta: CommandMeta,

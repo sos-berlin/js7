@@ -94,7 +94,7 @@ object MonixBase
     closingIteratorToObservable(iterator.closeAtEnd)
 
   private def closingIteratorToObservable[A](iterator: CloseableIterator[A]): Observable[A] = {
-    scribe.trace(s"closeableIteratorToObservable($iterator)")
+    //scribe.trace(s"closeableIteratorToObservable($iterator)")
     Observable.fromIterator(Task(iterator))
       .guaranteeCase { exitCase =>
         Task {

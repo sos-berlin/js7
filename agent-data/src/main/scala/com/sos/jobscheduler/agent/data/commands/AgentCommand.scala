@@ -10,6 +10,7 @@ import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.Checked.implicits.{checkedJsonDecoder, checkedJsonEncoder}
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.data.agent.{AgentRefPath, AgentRunId}
 import com.sos.jobscheduler.data.command.{CancelMode, CommonCommand}
@@ -148,7 +149,7 @@ object AgentCommand extends CommonCommand.Companion
 
     type Response = Response.Accepted
 
-    override def toShortString = s"AttachOrder($order)"
+    override def toShortString = s"AttachOrder(${order.id.string}, ${order.workflowPosition}, ${order.state.getClass.simpleScalaName}))"
   }
   object AttachOrder {
     def apply(order: Order[Order.IsFreshOrReady], agentRefPath: AgentRefPath, signedWorkflow: SignedString) =

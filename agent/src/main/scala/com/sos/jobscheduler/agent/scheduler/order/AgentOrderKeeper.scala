@@ -526,7 +526,7 @@ with Stash {
       case Terminated(actorRef) if jobRegister contains actorRef =>
         val jobKey = jobRegister.actorToKey(actorRef)
         if (shuttingDown) {
-          logger.debug(s"Actor '$jobKey' stopped")
+          logger.trace(s"Actor '$jobKey' stopped")
         } else {
           logger.error(s"Actor '$jobKey' stopped unexpectedly")
         }

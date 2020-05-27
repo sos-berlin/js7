@@ -613,7 +613,7 @@ final class Cluster(
           AkkaHttpMasterApi.resource(passiveUri, clusterConf.userAndPassword, name = "acknowledgements")(actorSystem))
         .flatMap(api =>
           observeEventIds(api, after = after)
-            .map { eventId => logger.trace(s"$eventId acknowledged"); eventId }
+            //.map { eventId => logger.trace(s"$eventId acknowledged"); eventId }
             .whileBusyBuffer(OverflowStrategy.DropOld(bufferSize = 2))
             .detectPauses(clusterConf.heartbeat + clusterConf.failAfter)
             .takeWhile(_ => !switchoverAcknowledged)  // Race condition: may be set too late
@@ -772,7 +772,8 @@ final class Cluster(
             haltJava(s"EMERGENCY STOP due to: $problem", restart = true)  // TODO How to test
           }
           // Ignore other errors and continue
-          logger.warn(s"ClusterWatch heartbeat: $problem")
+          val msg = s"ClusterWatch heartbeat: $problem"
+          if (cancelled) logger.debug(msg) else logger.warn(msg)
         }
 
         def go: Task[Unit] =

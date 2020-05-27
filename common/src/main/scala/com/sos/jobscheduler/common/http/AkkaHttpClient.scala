@@ -340,7 +340,7 @@ object AkkaHttpClient
     }
 
   final class HttpException private[http](httpResponse: HttpResponse, val uri: Uri, val dataAsString: String)
-  extends HttpClient.HttpException(s"${httpResponse.status}: $uri: ${dataAsString.truncateWithEllipsis(ErrorMessageLengthMaximum)}".trim)
+  extends HttpClient.HttpException
   {
     def statusInt = status.intValue
 
@@ -349,17 +349,22 @@ object AkkaHttpClient
 
     def header[A >: Null <: HttpHeader: ClassTag]: Option[A] = httpResponse.header[A]
 
+    override def toString = s"HTTP $getMessage"
+
+    override def getMessage =
+      s"${httpResponse.status}: $uri: ${problem getOrElse shortDataString}"
+
+    private def shortDataString = dataAsString.truncateWithEllipsis(ErrorMessageLengthMaximum)
+
     lazy val problem: Option[Problem] =
       if (httpResponse.entity.contentType == ContentTypes.`application/json`)
         io.circe.parser.decode[Problem](dataAsString) match {
           case Left(error) =>
-            logger.debug(s"$toString: Problem cannot be parsed: $error")
+            logger.debug(s"$uri: HTTP ${httpResponse.status}, Problem cannot be parsed: $error - $dataAsString")
             None
           case Right(o) => Some(o)
         }
       else
         None
-
-    override def toString = s"HTTP $getMessage"
   }
 }
