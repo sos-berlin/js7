@@ -60,30 +60,32 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
       detachQueue.view ++ queue.view
   }
 
-  final def onCoupled(attachedOrderIds: Set[OrderId]) = {
-    this.attachedOrderIds.clear()
-    this.attachedOrderIds ++= attachedOrderIds
-    queue.removeAlreadyAttachedOrders()
-    isCoupled = true
-    freshlyCoupled = true
-    maySend()
-  }
+  final def onCoupled(attachedOrderIds: Set[OrderId]) =
+    synchronized/*for easier testing*/ {
+      this.attachedOrderIds.clear()
+      this.attachedOrderIds ++= attachedOrderIds
+      queue.removeAlreadyAttachedOrders()
+      isCoupled = true
+      freshlyCoupled = true
+      maySend()
+    }
 
   final def onDecoupled(): Unit =
     isCoupled = false
 
-  final def enqueue(input: Queueable): Unit = {
-    assertThat(!isTerminating)
-    input match {
-      case Input.AttachOrder(order, _, _) if attachedOrderIds contains order.id =>
-        logger.trace(s"AttachOrder(${order.id} ignored because Order is already attached to Agent")
-      case _ =>
-        queue.enqueue(input)
-        if (queue.size == batchSize || freshlyCoupled) {
-          maySend()
-        }
+  final def enqueue(input: Queueable): Unit =
+    synchronized {
+      assertThat(!isTerminating)
+      input match {
+        case Input.AttachOrder(order, _, _) if attachedOrderIds contains order.id =>
+          logger.trace(s"AttachOrder(${order.id} ignored because Order is already attached to Agent")
+        case _ =>
+          queue.enqueue(input)
+          if (queue.size == batchSize || freshlyCoupled) {
+            maySend()
+          }
+      }
     }
-  }
 
   final def terminate(): Unit = {
     if (executingInputs.nonEmpty) {
@@ -95,32 +97,33 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
   final def isTerminated =
     isTerminating && executingInputs.isEmpty
 
-  final def maySend(): Unit = {
-    //logger.trace(s"maySend() isCoupled=$isCoupled freshlyCoupled=$freshlyCoupled openRequestCount=$openRequestCount" +
-    //  s" commandParallelism=$commandParallelism isTerminating=$isTerminated" +
-    //  s" attachedOrderIds.size=${attachedOrderIds.size} executingInput={${executingInputs.map(_.toShortString).mkString(" ")}}")
-    if (isCoupled && !isTerminating) {
-      lazy val inputs = queue.view
-        .filterNot(executingInputs)
-        .take(if (freshlyCoupled) 1 else batchSize)  // if freshlyCoupled, send only command to try connection
-        .toVector
-      if (openRequestCount < commandParallelism && (!freshlyCoupled || openRequestCount == 0) && inputs.nonEmpty) {
-        executingInputs ++= inputs
-        openRequestCount += 1
-        executeCommand(Batch(inputs map inputToAgentCommand))
-          .materialize foreach {
-            case Success(Right(Batch.Response(responses))) =>
-              asyncOnBatchSucceeded(for ((i, r) <- inputs zip responses) yield QueuedInputResponse(i, r))
+  final def maySend(): Unit =
+    synchronized {
+      //logger.trace(s"maySend() isCoupled=$isCoupled freshlyCoupled=$freshlyCoupled openRequestCount=$openRequestCount" +
+      //  s" commandParallelism=$commandParallelism isTerminating=$isTerminated" +
+      //  s" attachedOrderIds.size=${attachedOrderIds.size} executingInput={${executingInputs.map(_.toShortString).mkString(" ")}}")
+      if (isCoupled && !isTerminating) {
+        lazy val inputs = queue.view
+          .filterNot(executingInputs)
+          .take(if (freshlyCoupled) 1 else batchSize)  // if freshlyCoupled, send only command to try connection
+          .toVector
+        if (openRequestCount < commandParallelism && (!freshlyCoupled || openRequestCount == 0) && inputs.nonEmpty) {
+          executingInputs ++= inputs
+          openRequestCount += 1
+          executeCommand(Batch(inputs map inputToAgentCommand))
+            .materialize foreach {
+              case Success(Right(Batch.Response(responses))) =>
+                asyncOnBatchSucceeded(for ((i, r) <- inputs zip responses) yield QueuedInputResponse(i, r))
 
-            case Success(Left(problem)) =>
-              asyncOnBatchFailed(inputs, problem)
+              case Success(Left(problem)) =>
+                asyncOnBatchFailed(inputs, problem)
 
-            case Failure(t) =>
-              asyncOnBatchFailed(inputs, Problem.pure(t))
-          }
+              case Failure(t) =>
+                asyncOnBatchFailed(inputs, Problem.pure(t))
+            }
+        }
       }
     }
-  }
 
   private def inputToAgentCommand(input: Queueable): AgentCommand =
     input match {
@@ -134,32 +137,34 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
         AgentCommand.ReleaseEvents(untilEventId)
     }
 
-  final def handleBatchSucceeded(responses: Seq[QueuedInputResponse]): Seq[Queueable] = {
-    freshlyCoupled = false
-    val inputs = responses.map(_.input).toSet
-    attachedOrderIds --= inputs collect { case Input.DetachOrder(orderId) => orderId }
-    attachedOrderIds ++= inputs collect { case Input.AttachOrder(order, _, _) => order.id }
-    logger.trace(s"attachedOrderIds=${attachedOrderIds.toSeq.sorted.mkString(" ")}")
-    queue.dequeueAll(inputs)  // Including rejected commands. The corresponding orders are ignored henceforth.
-    onQueuedInputsResponded(inputs)
-    responses.flatMap {
-      case QueuedInputResponse(input, Right(AgentCommand.Response.Accepted)) =>
-        Some(input)
-      case QueuedInputResponse(_, Right(o)) =>
-        sys.error(s"Unexpected response from Agent: $o")
-      case QueuedInputResponse(input, Left(problem)) =>
-        // CancelOrder(NotStarted) fails if order has started !!!
-        logger.error(s"Agent has rejected ${input.toShortString}: $problem")
-        // Agent's state does not match master's state ???
-        // TODO: But "Agent is shutting down" is okay
-        None
+  final def handleBatchSucceeded(responses: Seq[QueuedInputResponse]): Seq[Queueable] =
+    synchronized {
+      freshlyCoupled = false
+      val inputs = responses.map(_.input).toSet
+      attachedOrderIds --= inputs collect { case Input.DetachOrder(orderId) => orderId }
+      attachedOrderIds ++= inputs collect { case Input.AttachOrder(order, _, _) => order.id }
+      logger.trace(s"attachedOrderIds=${attachedOrderIds.toSeq.sorted.mkString(" ")}")
+      queue.dequeueAll(inputs)  // Including rejected commands. The corresponding orders are ignored henceforth.
+      onQueuedInputsResponded(inputs)
+      responses.flatMap {
+        case QueuedInputResponse(input, Right(AgentCommand.Response.Accepted)) =>
+          Some(input)
+        case QueuedInputResponse(_, Right(o)) =>
+          sys.error(s"Unexpected response from Agent: $o")
+        case QueuedInputResponse(input, Left(problem)) =>
+          // CancelOrder(NotStarted) fails if order has started !!!
+          logger.error(s"Agent has rejected ${input.toShortString}: $problem")
+          // Agent's state does not match master's state ???
+          // TODO: But "Agent is shutting down" is okay
+          None
+      }
     }
-  }
 
-  final def handleBatchFailed(inputs: Seq[Queueable]): Unit = {
-    // Don't remove from queue. Queued inputs will be processed again
-    onQueuedInputsResponded(inputs.toSet)
-  }
+  final def handleBatchFailed(inputs: Seq[Queueable]): Unit =
+    synchronized {
+      // Don't remove from queue. Queued inputs will be processed again
+      onQueuedInputsResponded(inputs.toSet)
+    }
 
   private def onQueuedInputsResponded(inputs: Set[Queueable]): Unit = {
     executingInputs --= inputs

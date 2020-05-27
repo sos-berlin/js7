@@ -378,7 +378,6 @@ with ReceiveLoggingActor.WithStash
         conf.eventBufferDelay max conf.commitDelay,
         maxCount = conf.eventBufferSize)  // ticks
       .filter(_.nonEmpty)   // Ignore empty ticks
-      .map(_.toSeq)
       .mapEval(stampedEvents =>
         promiseTask[Completed] { promise =>
           self ! Internal.FetchedEvents(stampedEvents, promise)
@@ -443,10 +442,11 @@ private[master] object AgentDriver
 
     final case class ChangeUri(uri: Uri)
 
-    final case class AttachOrder(order: Order[Order.IsFreshOrReady], agentRefPath: AgentRefPath, signedWorkflow: Signed[Workflow])
+    final case class AttachOrder(order: Order[Order.IsFreshOrReady], agentRefPath: AgentRefPath, signedWorkflow: Signed[Workflow]/*TODO Separate this*/)
     extends Input with Queueable {
       def orderId = order.id
-      override def toShortString = s"AttachOrder(${orderId.string})"
+      override lazy val hashCode = 31 * order.id.hashCode + signedWorkflow.value.id.hashCode  // Accelerate CommandQueue
+      override def toShortString = s"AttachOrder(${orderId.string}, ${order.workflowPosition}, ${order.state.getClass.simpleScalaName})"
     }
 
     final case class DetachOrder(orderId: OrderId) extends Input with Queueable
