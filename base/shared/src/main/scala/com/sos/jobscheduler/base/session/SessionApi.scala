@@ -101,12 +101,12 @@ object SessionApi
           .flatMap((_: Completed) =>
             body.onErrorRestartLoop(()) { (throwable, _, retry) =>
               (throwable match {
-                case e: HttpException if delays.hasNext && e.problem.exists(_.codeOption contains InvalidSessionTokenProblem.code) =>
-                  scribe.debug(e.toStringWithCauses)
+                case HttpException.HasProblem(problem) if problem.is(InvalidSessionTokenProblem) && delays.hasNext =>
+                  scribe.debug(problem.toString)
                   loginUntilReachable(delays)
 
-                case e: HttpException if delays.hasNext && isTemporaryUnreachable(e) =>
-                  scribe.warn(e.toStringWithCauses)
+                case e: HttpException if isTemporaryUnreachable(e) && delays.hasNext =>
+                  scribe.warn(s"$toString: ${e.toStringWithCauses}")
                   loginUntilReachable(delays, onlyIfNotLoggedIn = true)
 
                 case _ =>

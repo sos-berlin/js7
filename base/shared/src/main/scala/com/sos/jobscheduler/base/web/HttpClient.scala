@@ -49,10 +49,16 @@ object HttpClient
     }
     .dematerialize
 
-  abstract class HttpException(message: String) extends RuntimeException(message) {
+  abstract class HttpException(message: String = null) extends RuntimeException(message) {
     def statusInt: Int
     def problem: Option[Problem]
     def isTemporaryUnreachable = isTemporaryUnreachableStatus(statusInt)
+  }
+  object HttpException {
+    object HasProblem {
+      def unapply(e: HttpException): Option[Problem] =
+        e.problem
+    }
   }
 
   private val isTemporaryUnreachableStatus = Set[Int](
