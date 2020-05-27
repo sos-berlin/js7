@@ -33,7 +33,7 @@ trait HttpSessionApi extends SessionApi.HasUserAndPassword with HasSessionToken
   protected def isTemporaryUnreachable(throwable: Throwable) =
     throwable match {
       case e: HttpClient.HttpException => e.isTemporaryUnreachable
-      case _ => true  // May be a TCP exception
+      case _ => true  // Maybe a TCP exception
     }
 
   final def logout(): Task[Completed] =
@@ -52,10 +52,10 @@ trait HttpSessionApi extends SessionApi.HasUserAndPassword with HasSessionToken
     }
 
   private def executeSessionCommand(command: SessionCommand, suppressSessionToken: Boolean = false): Task[command.Response] = {
-    implicit def implicitSessionToken = (if (suppressSessionToken) None else sessionToken)
+    implicit def implicitSessionToken = if (suppressSessionToken) Task.pure(None) else Task(sessionToken)
     Task { scribe.debug(s"$toString: $command") } >>
-    httpClient.post[SessionCommand, SessionCommand.Response](sessionUri, command)
-      .map(_.asInstanceOf[command.Response])
+      httpClient.post[SessionCommand, SessionCommand.Response](sessionUri, command)
+        .map(_.asInstanceOf[command.Response])
   }
 
   final def clearSession(): Unit =
@@ -64,10 +64,9 @@ trait HttpSessionApi extends SessionApi.HasUserAndPassword with HasSessionToken
   final def setSessionToken(sessionToken: SessionToken): Unit =
     sessionTokenRef := Some(sessionToken)
 
-  // Used by AkkaHttpClient and JsHttpClient
   final def sessionToken: Option[SessionToken] =
     sessionTokenRef.get
 
-  implicit def implicitSessionToken: Option[SessionToken] =
-    sessionToken
+  implicit def implicitSessionToken: Task[Option[SessionToken]] =
+    Task(sessionToken)
 }

@@ -21,7 +21,7 @@ import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.MonixAntiBlocking.executeOn
-import com.sos.jobscheduler.base.utils.ScalaUtils.{RichAny, RichThrowable, RichThrowableEither}
+import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.base.utils.{ByteVectorToLinesObservable, Lazy}
@@ -85,11 +85,11 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
 
   def isClosed = closed
 
-  final def getDecodedLinesObservable[A: Decoder](uri: Uri)(implicit s: Option[SessionToken]) =
+  final def getDecodedLinesObservable[A: Decoder](uri: Uri)(implicit s: Task[Option[SessionToken]]) =
     getRawLinesObservable(uri)
       .map(_.map(_.decodeUtf8.orThrow.parseJsonCheckedAs[A].orThrow))
 
-  final def getRawLinesObservable(uri: Uri)(implicit s: Option[SessionToken]): Task[Observable[ByteVector]] =
+  final def getRawLinesObservable(uri: Uri)(implicit s: Task[Option[SessionToken]]): Task[Observable[ByteVector]] =
     get_[HttpResponse](uri, StreamingJsonHeaders)
       .map(_.entity.withoutSizeLimit.dataBytes
         .toObservable
@@ -97,47 +97,47 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
         .flatMap(new ByteVectorToLinesObservable))
 
   /** HTTP Get with Accept: application/json. */
-  final def get[A: Decoder](uri: Uri)(implicit s: Option[SessionToken]): Task[A] =
+  final def get[A: Decoder](uri: Uri)(implicit s: Task[Option[SessionToken]]): Task[A] =
     get[A](uri, Duration.Inf, Nil)
 
   /** HTTP Get with Accept: application/json. */
-  final def get[A: Decoder](uri: Uri, timeout: Duration)(implicit s: Option[SessionToken]): Task[A] =
+  final def get[A: Decoder](uri: Uri, timeout: Duration)(implicit s: Task[Option[SessionToken]]): Task[A] =
     get[A](uri, timeout, Nil)
 
   /** HTTP Get with Accept: application/json. */
   final def get[A: Decoder](uri: Uri, headers: List[HttpHeader])
-    (implicit s: Option[SessionToken])
+    (implicit s: Task[Option[SessionToken]])
   : Task[A] =
     get[A](uri, Duration.Inf, headers)
 
   /** HTTP Get with Accept: application/json. */
   final def get[A: Decoder](uri: Uri, timeout: Duration, headers: List[HttpHeader])
-    (implicit s: Option[SessionToken])
+    (implicit s: Task[Option[SessionToken]])
   : Task[A] =
     get_[A](uri, headers ::: Accept(`application/json`) :: Nil)
 
   final def get_[A: FromResponseUnmarshaller](uri: Uri, headers: List[HttpHeader] = Nil)
-    (implicit s: Option[SessionToken])
+    (implicit s: Task[Option[SessionToken]])
   : Task[A] =
     sendReceive(HttpRequest(GET, AkkaUri(uri.string), headers ::: `Cache-Control`(`no-cache`, `no-store`) :: Nil))
       .flatMap(unmarshal[A](GET, uri))
 
-  final def post[A: Encoder, B: Decoder](uri: Uri, data: A)(implicit s: Option[SessionToken]): Task[B] =
+  final def post[A: Encoder, B: Decoder](uri: Uri, data: A)(implicit s: Task[Option[SessionToken]]): Task[B] =
     post2[A, B](uri, data, Nil)
 
   final def postWithHeaders[A: Encoder, B: Decoder](uri: Uri, data: A, headers: List[HttpHeader])
-    (implicit s: Option[SessionToken])
+    (implicit s: Task[Option[SessionToken]])
   : Task[B] =
     post2[A, B](uri, data, headers)
 
   private def post2[A: Encoder, B: Decoder](uri: Uri, data: A, headers: List[HttpHeader])
-    (implicit s: Option[SessionToken])
+    (implicit s: Task[Option[SessionToken]])
   : Task[B] =
     post_[A](uri, data, headers ::: Accept(`application/json`) :: Nil)
       .flatMap(unmarshal[B](POST, uri))
 
   final def postDiscardResponse[A: Encoder](uri: Uri, data: A, allowedStatusCodes: Set[Int] = Set.empty)
-    (implicit s: Option[SessionToken])
+    (implicit s: Task[Option[SessionToken]])
   : Task[Int] =
     post_[A](uri, data, Accept(`application/json`) :: Nil) map { httpResponse =>
       httpResponse.discardEntityBytes()
@@ -147,7 +147,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
     }
 
   final def post_[A: Encoder](uri: Uri, data: A, headers: List[HttpHeader])
-    (implicit s: Option[SessionToken])
+    (implicit s: Task[Option[SessionToken]])
   : Task[HttpResponse] =
     for {
       entity <- Task.deferFuture(executeOn(materializer.executionContext)(implicit ec => Marshal(data).to[RequestEntity]))
@@ -157,69 +157,72 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
     } yield response
 
   final def postRaw(uri: Uri, headers: List[HttpHeader], entity: RequestEntity)
-    (implicit s: Option[SessionToken])
+    (implicit s: Task[Option[SessionToken]])
   : Task[HttpResponse] =
     sendReceive(HttpRequest(POST, uri.asAkka, headers, entity))
 
   final def sendReceive(request: HttpRequest, logData: => Option[String] = None)
-    (implicit sessionToken: Option[SessionToken])
+    (implicit sessionTokenTask: Task[Option[SessionToken]])
   : Task[HttpResponse] =
-    withCheckedAgentUri(request) { request =>
-      val number = counter.incrementAndGet()
-      val headers = sessionToken.map(token => RawHeader(SessionToken.HeaderName, token.secret.string))
-      val req = encodeGzip(request.withHeaders(headers ++: request.headers ++: standardHeaders))
-      var since = now
-      def responseLogPrefix = s"$toString: #$number ${requestToString(req, logData, isResponse = true)} ${since.elapsed.pretty}"
-      loggingTimerResource(responseLogPrefix).use { _ =>
-        @volatile var cancelled = false
-        var responseFuture: Future[HttpResponse] = null
-        Task.deferFutureAction { implicit s =>
-          logger.trace(s"$toString: #$number ${requestToString(req, logData)}")
-          since = now
-          if (closed) throw new IllegalStateException(s"$toString has been closed")
-          val httpsContext = if (request.uri.scheme == "https") httpsConnectionContext else http.defaultClientHttpsContext
-          responseFuture = http.singleRequest(req, httpsContext)
-          responseFuture.recover {
-            case t if cancelled =>
-              logger.debug(s"$responseLogPrefix => Error after cancel: ${t.toStringWithCauses}")
-              // Fake response to avoid completing Future with a Failure, which is logged by thread's reportFailure
-              // TODO Akka's max-open-requests may be exceeded when new requests are opened
-              //  while many cancelled request are still not completed by Akka until some Akka (connection) timeout.
-              //  Anyway, the caller's code should be fault-tolerant.
-              HttpResponse(
-                StatusCodes.GatewayTimeout,
-                entity = HttpEntity.Strict(`text/plain(UTF-8)`, ByteString("Cancelled in AkkaHttpClient")))
+    sessionTokenTask.flatMap(sessionToken =>
+      Task.defer {
+        withCheckedAgentUri(request) { request =>
+          val number = counter.incrementAndGet()
+          val headers = sessionToken.map(token => RawHeader(SessionToken.HeaderName, token.secret.string))
+          val req = encodeGzip(request.withHeaders(headers ++: request.headers ++: standardHeaders))
+          var since = now
+          def responseLogPrefix = s"$toString: #$number ${requestToString(req, logData, isResponse = true)} ${since.elapsed.pretty}"
+          loggingTimerResource(responseLogPrefix).use { _ =>
+            @volatile var cancelled = false
+            var responseFuture: Future[HttpResponse] = null
+            Task.deferFutureAction { implicit s =>
+              logger.trace(s"$toString: #$number ${requestToString(req, logData)}")
+              since = now
+              if (closed) throw new IllegalStateException(s"$toString has been closed")
+              val httpsContext = if (request.uri.scheme == "https") httpsConnectionContext else http.defaultClientHttpsContext
+              responseFuture = http.singleRequest(req, httpsContext)
+              responseFuture.recover {
+                case t if cancelled =>
+                  logger.debug(s"$responseLogPrefix => Error after cancel: ${t.toStringWithCauses}")
+                  // Fake response to avoid completing Future with a Failure, which is logged by thread's reportFailure
+                  // TODO Akka's max-open-requests may be exceeded when new requests are opened
+                  //  while many cancelled request are still not completed by Akka until some Akka (connection) timeout.
+                  //  Anyway, the caller's code should be fault-tolerant.
+                  HttpResponse(
+                    StatusCodes.GatewayTimeout,
+                    entity = HttpEntity.Strict(`text/plain(UTF-8)`, ByteString("Cancelled in AkkaHttpClient")))
+              }
+            } .guaranteeCase(exitCase => Task {
+                logger.trace(s"$responseLogPrefix => $exitCase")
+                if (exitCase != ExitCase.Canceled) {
+                  responseFuture = null  // Release memory
+                }
+              })
+              .doOnCancel(Task.defer {
+                // TODO Cancelling does not cancel the ongoing Akka operation. Akka is not freeing the connection.
+                cancelled = true
+                responseFuture match {
+                  case null => Task.unit
+                  case r =>
+                    responseFuture = null
+                    discardResponse(responseLogPrefix, r)
+                }
+              })
+              .materialize.map { tried =>
+                tried match {
+                  case Failure(t) =>
+                    logger.debug(s"$responseLogPrefix => failed with ${t.toStringWithCauses}")
+                  case Success(response) if response.status.isFailure =>
+                    logger.debug(s"$responseLogPrefix => failed with HTTP ${response.status}")
+                  case _ =>
+                }
+                tried
+              }
+              .dematerialize
+              .map(decodeResponse)/*decompress*/
           }
-        } .guaranteeCase(exitCase => Task {
-            logger.trace(s"$responseLogPrefix => $exitCase")
-            if (exitCase != ExitCase.Canceled) {
-              responseFuture = null  // Release memory
-            }
-          })
-          .doOnCancel(Task.defer {
-            // TODO Cancelling does not cancel the ongoing Akka operation. Akka is not freeing the connection.
-            cancelled = true
-            responseFuture match {
-              case null => Task.unit
-              case r =>
-                responseFuture = null
-                discardResponse(responseLogPrefix, r)
-            }
-          })
-          .materialize.map { tried =>
-            tried match {
-              case Failure(t) =>
-                logger.debug(s"$responseLogPrefix => failed with ${t.toStringWithCauses}")
-              case Success(response) if response.status.isFailure =>
-                logger.debug(s"$responseLogPrefix => failed with HTTP status ${response.status.intValue}")
-              case _ =>
-            }
-            tried
-          }
-          .dematerialize
-          .map(decodeResponse)/*decompress*/
-      }
-    }
+        }
+      })
 
   private def discardResponse(logPrefix: => String, responseFuture: Future[HttpResponse]): Task[Unit] =
     Task.fromFuture(responseFuture)

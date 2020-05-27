@@ -106,7 +106,7 @@ final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll wit
     protected def trustStoreRef = None
   }
 
-  private implicit val noSessionToken: Option[SessionToken] = None
+  private implicit val noSessionToken: Task[Option[SessionToken]] = Task.pure(None)
 
   override def beforeAll() = {
     super.beforeAll()

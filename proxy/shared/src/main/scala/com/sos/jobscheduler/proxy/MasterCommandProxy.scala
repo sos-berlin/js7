@@ -10,7 +10,7 @@ final class MasterCommandProxy(apiResource: Resource[Task, HttpMasterApi])
 {
   def execute(command: MasterCommand): Task[Checked[command.Response]] =
     apiResource.use(api =>
-      api.retryable(
+      api.retryUntilReachable(
         api.httpClient.liftProblem(
           api.executeCommand(command))))
 }

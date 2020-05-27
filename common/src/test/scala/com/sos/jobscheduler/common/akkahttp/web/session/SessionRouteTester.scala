@@ -18,6 +18,7 @@ import com.sos.jobscheduler.common.log.ScribeUtils
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import com.typesafe.config.ConfigFactory
+import monix.eval.Task
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.{BeforeAndAfterAll, Suite}
 
@@ -88,12 +89,12 @@ trait SessionRouteTester extends BeforeAndAfterAll with ScalatestRouteTest with 
     super.afterAll()
   }
 
-  protected final def requireAuthorizedAccess(client: AkkaHttpClient)(implicit s: Option[SessionToken]): Unit = {
+  protected final def requireAuthorizedAccess(client: AkkaHttpClient)(implicit s: Task[Option[SessionToken]]): Unit = {
     requireAccessToUnprotected(client)
     client.get_[String](Uri(s"$localUri/authorizedUser")) await 99.s shouldEqual "A-USER"
   }
 
-  protected final def requireAccessIsUnauthorizedOrPublic(client: AkkaHttpClient)(implicit s: Option[SessionToken]): Unit = {
+  protected final def requireAccessIsUnauthorizedOrPublic(client: AkkaHttpClient)(implicit s: Task[Option[SessionToken]]): Unit = {
     requireAccessToUnprotected(client)
     if (isPublic) {
       requireAccessIsPublic(client)
@@ -102,13 +103,13 @@ trait SessionRouteTester extends BeforeAndAfterAll with ScalatestRouteTest with 
     }
   }
 
-  protected final def requireAccessIsPublic(client: AkkaHttpClient)(implicit s: Option[SessionToken]): Unit = {
+  protected final def requireAccessIsPublic(client: AkkaHttpClient)(implicit s: Task[Option[SessionToken]]): Unit = {
     assert(isPublic)
     requireAccessToUnprotected(client)
     getViaAuthorizedUsed(client)
   }
 
-  protected final def requireAccessIsUnauthorized(client: AkkaHttpClient)(implicit s: Option[SessionToken]): HttpException = {
+  protected final def requireAccessIsUnauthorized(client: AkkaHttpClient)(implicit s: Task[Option[SessionToken]]): HttpException = {
     requireAccessToUnprotected(client)
     val exception = intercept[AkkaHttpClient.HttpException] {
       getViaAuthorizedUsed(client)
@@ -119,7 +120,7 @@ trait SessionRouteTester extends BeforeAndAfterAll with ScalatestRouteTest with 
     exception
   }
 
-  protected final def requireAccessIsForbidden(client: AkkaHttpClient)(implicit s: Option[SessionToken]): HttpException = {
+  protected final def requireAccessIsForbidden(client: AkkaHttpClient)(implicit s: Task[Option[SessionToken]]): HttpException = {
     requireAccessToUnprotected(client)
     val exception = intercept[AkkaHttpClient.HttpException] {
       getViaAuthorizedUsed(client)
@@ -129,9 +130,9 @@ trait SessionRouteTester extends BeforeAndAfterAll with ScalatestRouteTest with 
     exception
   }
 
-  private def getViaAuthorizedUsed(client: AkkaHttpClient)(implicit s: Option[SessionToken]) =
+  private def getViaAuthorizedUsed(client: AkkaHttpClient)(implicit s: Task[Option[SessionToken]]) =
     client.get_[String](Uri(s"$localUri/authorizedUser")) await 99.s
 
-  protected final def requireAccessToUnprotected(client: AkkaHttpClient)(implicit s: Option[SessionToken]): Unit =
+  protected final def requireAccessToUnprotected(client: AkkaHttpClient)(implicit s: Task[Option[SessionToken]]): Unit =
     client.get_[String](Uri(s"$localUri/unprotected")) await 99.s shouldEqual "THE RESPONSE"
 }

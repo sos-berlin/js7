@@ -718,7 +718,7 @@ final class Cluster(
           Task {
             heartbeatSender := Cancelable.empty
           } >>
-            clusterWatch.retryable(
+            clusterWatch.retryUntilReachable(
               clusterWatch.applyEvents(from = ownId, events, clusterState)
             ) .map(_.map { completed =>
                 scheduleHeartbeats(clusterState)
@@ -752,7 +752,7 @@ final class Cluster(
             currentClusterState.flatMap {
               case clusterState: ClusterState.HasNodes if clusterState.activeId == ownId && !cancelled =>
                 Task(now).flatMap(since =>
-                  clusterWatch.retryable(
+                  clusterWatch.retryUntilReachable(
                     clusterWatch.heartbeat(from = ownId, clusterState)
                   ) .materializeIntoChecked
                     .flatMap { checked =>

@@ -48,6 +48,7 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Json, JsonObject}
 import java.time.ZoneId
 import javax.inject.Singleton
+import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
@@ -74,7 +75,7 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
 
   private var sessionToken: String = "INVALID"
 
-  private implicit def implicitSessionToken = Some(SessionToken(SecretString(sessionToken)))
+  private implicit def implicitSessionToken = Task(Some(SessionToken(SecretString(sessionToken))))
 
   override val masterModule = new AbstractModule {
     @Provides @Singleton def eventIdClock(): EventIdClock = new EventIdClock.Fixed(1000)

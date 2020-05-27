@@ -97,7 +97,7 @@ object JournaledProxy
           Observable
             .fromTask(
               api.loginUntilReachable() >>
-                api.retryable(api.snapshot)
+                api.retryUntilReachable(api.snapshot)
                   .map(_.map(snapshot => snapshot.eventId -> S.fromIterable(snapshot.value).withEventId(snapshot.eventId))))
             .map(_.orThrow/*???*/)
             .flatMap { case (eventId, snapshotState) =>

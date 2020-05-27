@@ -50,7 +50,8 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
     master.actorSystem
   ).closeWithCloser
   private lazy val httpClient = masterApi.httpClient
-  private implicit def sessionToken = masterApi.sessionToken
+
+  import masterApi.implicitSessionToken
 
   override def beforeAll() = {
     super.beforeAll()

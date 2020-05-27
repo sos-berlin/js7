@@ -6,6 +6,7 @@ import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import com.sos.jobscheduler.base.web.{HttpClient, Uri}
 import com.sos.jobscheduler.common.http.CirceToYaml._
 import io.circe.Json
+import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
@@ -21,7 +22,9 @@ trait TextApi
   protected def commandUri: Uri
   protected def apiUri(tail: String): Uri
   protected def httpClient: HttpClient
-  implicit protected def sessionToken: Option[SessionToken]
+  protected def sessionToken: Option[SessionToken]
+
+  implicit private def implicitSessionToken = Task(sessionToken)
 
   def executeCommand(command: String): Unit = {
     val response = awaitResult(

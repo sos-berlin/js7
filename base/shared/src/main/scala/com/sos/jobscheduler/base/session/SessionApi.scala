@@ -22,7 +22,7 @@ trait SessionApi
   def clearSession(): Unit
 
   // overrideable
-  def retryable[A](body: => Task[A]): Task[A] =
+  def retryUntilReachable[A](body: => Task[A]): Task[A] =
     body
 
   final def logoutOrTimeout(timeout: FiniteDuration): Task[Completed] =
@@ -67,12 +67,10 @@ object SessionApi
           login_(userAndPassword)
             .onErrorRestartLoop(()) { (throwable, _, retry) =>
               onError(throwable).flatMap {
-                case false => Task.raiseError(throwable)
-                case true =>
-                  (if (isTemporaryUnreachable(throwable) && delays.hasNext)
-                    retry(()) delayExecution delays.next()
-                  else
-                    Task.raiseError(throwable))
+                case true if delays.hasNext && isTemporaryUnreachable(throwable) =>
+                  retry(()) delayExecution delays.next()
+                case _ =>
+                  Task.raiseError(throwable)
               }
             }
       }
@@ -94,7 +92,7 @@ object SessionApi
     protected val loginDelays: () => Iterator[FiniteDuration] =
       () => defaultLoginDelays()
 
-    final def retryUntilReachable[A](body: => Task[A]): Task[A] =
+    override final def retryUntilReachable[A](body: => Task[A]): Task[A] =
       Task.defer {
         val delays = loginDelays()
         loginUntilReachable(delays, onlyIfNotLoggedIn = true)
@@ -115,9 +113,6 @@ object SessionApi
                 retry(()).delayExecution(delays.next())
             })
       }
-
-    override def retryable[A](body: => Task[A]) =
-      retryUntilReachable(body)
 
     final def login(onlyIfNotLoggedIn: Boolean = false)
     : Task[Completed] =

@@ -49,7 +49,7 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll
     for ((uri, None) <- Setting) s"$uri" in {
       assert(httpClient.checkAgentUri(uri).isLeft)
       assert(httpClient.toCheckedAgentUri(uri).isLeft)
-      implicit val s = none[SessionToken]
+      implicit val s = Task.pure(none[SessionToken])
       assert(Await.result(httpClient.get_[HttpResponse](uri).runToFuture.failed, 99.seconds).getMessage
         contains "does not match")
     }
@@ -105,7 +105,7 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll
   "Operations after close are rejected" in {
     httpClient.close()
     val uri = Uri("https://example.com:9999/PREFIX")
-    implicit val s = none[SessionToken]
+    implicit val s = Task.pure(none[SessionToken])
     assert(Await.result(httpClient.get_[HttpResponse](uri).runToFuture.failed, 99.seconds).getMessage
       contains "»AkkaHttpClientTest« has been closed")
   }
@@ -133,7 +133,7 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll
       val httpClient = newHttpClient(99.s)
       try {
         val since = now
-        implicit val s = none[SessionToken]
+        implicit val s = Task.pure(none[SessionToken])
         val a = Await.ready(httpClient.get_(Uri(s"$uri/PREFIX/TEST")).runToFuture, 99.s - 1.s)
         duration = since.elapsed
         assert(a.value.get.isFailure)
@@ -147,7 +147,7 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll
       val httpClient = newHttpClient(duration - 1.s max 5.s)
       intercept[TimeoutException] {
         try {
-          implicit val s = none[SessionToken]
+          implicit val s = Task.pure(none[SessionToken])
           val a = Await.ready(httpClient.get_(Uri(s"$uri/PREFIX/TEST")).runToFuture, duration + 1.s)
           assert(a.value.get.isFailure)
         } finally httpClient.close()
