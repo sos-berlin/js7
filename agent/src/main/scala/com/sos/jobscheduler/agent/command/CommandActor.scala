@@ -83,6 +83,7 @@ extends Actor {
         response.success(Right(AgentCommand.Response.Accepted))
 
       case command @ (_: OrderCommand | _: RegisterAsMaster.type | _: CoupleMaster | _: TakeSnapshot.type | _: ShutDown) =>
+        // FIXME Delay CoupleMaster until all AttachOrder (extends OrderCommand) have been finished, to return a properly updated state
         agentHandle.executeCommand(command, meta.user.id, response)
 
       case EmergencyStop(restart) =>
