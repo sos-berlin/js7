@@ -1,13 +1,13 @@
 package com.sos.jobscheduler.common.log
 
-import org.slf4j.{Marker, Logger => ScalaLogger}
+import org.slf4j.{Marker, Logger => Slf4jLogger}
 
 /**
   * @author Joacim Zschimmer
   */
-trait ConvertingLogger extends ScalaLogger {
-
-  protected val delegate: ScalaLogger
+trait ConvertingLogger extends Slf4jLogger
+{
+  protected val delegate: Slf4jLogger
 
   def convertMessage(o: String): String
 
@@ -199,7 +199,7 @@ trait ConvertingLogger extends ScalaLogger {
 
 object ConvertingLogger
 {
-  final class Prefixed(prefix: String, protected val delegate: ScalaLogger) extends ConvertingLogger {
+  final class Prefixed(prefix: String, protected val delegate: Slf4jLogger) extends ConvertingLogger {
     protected val fullPrefix = s"“$prefix” "
     private val escapedPrefix = fullPrefix.replace("{}", "\\{}")
 

@@ -131,11 +131,9 @@ final class Cluster(
       })
   }
 
-  private def startCluster(
-    recovered: Recovered[MasterState],
-    recoveredState: MasterState)
+  private def startCluster(recovered: Recovered[MasterState], recoveredState: MasterState)
   : (Task[Option[MasterState]], Task[Checked[(ClusterState, ClusterFollowUp[MasterState])]])
-  = {
+  =
     (recovered.clusterState, recovered.recoveredJournalFile) match {
       case (Empty, _) =>
         if (!clusterConf.isBackup) {
@@ -265,7 +263,6 @@ final class Cluster(
         Task.pure(None) ->
           Task.pure(Left(Problem.pure(s"Unexpected clusterState=${recovered.clusterState} (id=$ownId)")))
     }
-  }
 
   private def newPassiveClusterNode(
     idToUri: Map[ClusterNodeId, Uri],

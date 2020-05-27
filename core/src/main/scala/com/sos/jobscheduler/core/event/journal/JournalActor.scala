@@ -358,7 +358,7 @@ extends Actor with Stash
       }
     }
 
-  private def commitWithoutAcknowledgement(event: ClusterEvent) {
+  private def commitWithoutAcknowledgement(event: ClusterEvent): Unit = {
     if (requireClusterAcknowledgement) {
       logger.debug(s"No more acknowledgments required due to $event event")
       requireClusterAcknowledgement = false

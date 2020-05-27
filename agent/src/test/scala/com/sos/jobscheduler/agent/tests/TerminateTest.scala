@@ -17,7 +17,8 @@ import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
 import com.sos.jobscheduler.core.event.ActorEventCollector
 import com.sos.jobscheduler.data.event.EventRequest
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
+import com.sos.jobscheduler.data.order.OrderEvent.OrderProcessed
+import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
 import javax.inject.Singleton
 import monix.execution.Scheduler.Implicits.global
@@ -28,8 +29,8 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class TerminateTest extends AnyFreeSpec with AgentTester {
-
+final class TerminateTest extends AnyFreeSpec with AgentTester
+{
   override def beforeAll() = {
     (agentDirectory / "config" / "private" / "private.conf") ++= """
         |jobscheduler.auth.users.TEST-USER = "plain:TEST-PASSWORD"
@@ -61,11 +62,11 @@ final class TerminateTest extends AnyFreeSpec with AgentTester {
         fileBasedSigner.sign(SimpleTestWorkflow)))
     ) await 99.s
 
-    val whenStepEnded: Future[Seq[OrderEvent.OrderProcessed]] =
+    val whenStepEnded: Future[Seq[OrderProcessed]] =
       Future.sequence(
         for (orderId <- orderIds) yield
-          eventCollector.whenKeyedEvent[OrderEvent.OrderProcessed](EventRequest.singleClass(timeout = Some(90.s)), orderId)
-            .runToFuture: Future[OrderEvent.OrderProcessed])
+          eventCollector.whenKeyedEvent[OrderProcessed](EventRequest.singleClass(timeout = Some(90.s)), orderId)
+            .runToFuture: Future[OrderProcessed])
     sleep(2.s)
     assert(!whenStepEnded.isCompleted)
 

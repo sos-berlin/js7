@@ -34,7 +34,7 @@ final class JMasterProxyTester
     private final List<KeyedEvent<OrderEvent>> events = new ArrayList<>();
     private final CompletableFuture<Void> finished = new CompletableFuture<>();
 
-    JMasterProxyTester(JMasterProxy proxy) {
+    private JMasterProxyTester(JMasterProxy proxy) {
         this.proxy = proxy;
 
         proxy.eventBus().subscribe(
