@@ -84,7 +84,7 @@ final class ReleaseEventsTest extends AnyFreeSpec with DirectoryProviderForScala
       locally {
         val x = newApi(master, xUserAndPassword)
         val result = x.httpClient.liftProblem(x.executeCommand(ReleaseEvents(finished.head.eventId))).await(99.s)
-        assert(result.left.toOption.flatMap(_.codeOption) contains UserIsNotEnabledToReleaseEventsProblem.code)
+        assert(result.left.toOption.exists(_ is UserIsNotEnabledToReleaseEventsProblem))
       }
 
       a.executeCommand(ReleaseEvents(finished.head.eventId)).await(99.s)

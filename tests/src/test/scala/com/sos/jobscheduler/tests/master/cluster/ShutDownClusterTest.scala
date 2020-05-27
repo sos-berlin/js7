@@ -174,9 +174,9 @@ final class ShutDownClusterTest extends MasterClusterTester
             primaryMaster.eventWatch.await[ClusterCoupled]()
 
             backupMaster.executeCommandAsSystemUser(ShutDown(clusterAction = Some(ClusterAction.Switchover)))
-              .await(99.s).left.map(_.codeOption contains PassiveClusterNodeShutdownNotAllowedProblem.code)
+              .await(99.s).left.map(_ is PassiveClusterNodeShutdownNotAllowedProblem)
             backupMaster.executeCommandAsSystemUser(ShutDown(clusterAction = Some(ClusterAction.Failover)))
-              .await(99.s).left.map(_.codeOption contains PassiveClusterNodeShutdownNotAllowedProblem.code)
+              .await(99.s).left.map(_ is PassiveClusterNodeShutdownNotAllowedProblem)
           }
         }
       }

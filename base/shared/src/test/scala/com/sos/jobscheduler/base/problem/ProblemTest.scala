@@ -6,8 +6,8 @@ import com.sos.jobscheduler.base.problem.ProblemTest._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.Decoder
-import scala.util.Try
 import org.scalatest.freespec.AnyFreeSpec
+import scala.util.Try
 
 /**
   * @author Joacim Zschimmer
@@ -43,6 +43,9 @@ final class ProblemTest extends AnyFreeSpec
           },
           "message": "$message"
         }""")
+      assert(problem == Problem.HasCode(ProblemCode("TestCode"), Map("argument" -> "ARGUMENT")))
+      assert(problem != Problem.HasCode(ProblemCode("TestCode"), Map("argument" -> "X")))
+      assert(problem != Problem.HasCode(ProblemCode("XXXXXXXX"), Map("argument" -> "ARGUMENT")))
     }
   }
 
@@ -181,6 +184,13 @@ final class ProblemTest extends AnyFreeSpec
     assert(Problem("TEST").withPrefix("PREFIX:") == Problem("PREFIX: TEST"))
     assert(Problem("TEST").wrapProblemWith("WRAP") == Problem("WRAP [TEST]"))
     assert(Problem("X") != Problem("Y"))
+  }
+
+  "is" in {
+    assert(!Problem.pure("PROBLEM").is(TestCodeProblem))
+    assert(Problem.HasCode(ProblemCode("TestCode"), Map("x" -> "y")).is(TestCodeProblem))
+    assert(TestCodeProblem(Map("x" -> "y")) is TestCodeProblem)
+    assert(!Problem.HasCode(ProblemCode("X"), Map.empty).is(TestCodeProblem))
   }
 
   "Problem.HasCode.unapply" in {

@@ -29,6 +29,9 @@ sealed trait Problem
 
   def withPrefix(prefix: String): Problem = Problem.pure(prefix) |+| this
 
+  final def is(companion: Coded.Companion): Boolean =
+    codeOption contains companion.code
+
   final def wrapProblemWith(message: String) = new Lazy(message, Some(this))
 
   override def equals(o: Any) = o match {
@@ -113,20 +116,30 @@ object Problem
     }
   }
   object HasCode {
+    def apply(code: ProblemCode, arguments: Map[String, String]) = {
+      val c = code
+      val a = arguments
+      new HasCode {
+        val code = c
+        val arguments = a
+      }
+    }
     def unapply(coded: HasCode) = Some((coded.code, coded.arguments))
   }
 
   trait Coded extends HasCode {
-    final val code = Coded.codeOf(getClass)
+    val code = Coded.codeOf(getClass)
   }
   object Coded {
     trait Companion {
       val code = codeOf(getClass)
     }
-    private[Coded] def codeOf(clas: Class[_]) = ProblemCode(clas.simpleScalaName stripSuffix "Problem")
+    private[problem] def codeOf(clas: Class[_]) =
+      ProblemCode(clas.simpleScalaName stripSuffix "Problem")
   }
 
-  trait ArgumentlessCoded extends Coded {
+  trait ArgumentlessCoded extends Coded with Coded.Companion {
+    override val code = Coded.codeOf(getClass)
     final def arguments = Map.empty
   }
 

@@ -51,7 +51,7 @@ final class CoupleMasterTest extends AnyFreeSpec with DirectoryProviderForScalaT
       directoryProvider.runAgents() { _ =>
         val event = master.eventWatch.await[AgentCouplingFailed](after = lastEventId, predicate =
           ke => ke.key == agentRefPath &&
-            ke.event.problem.codeOption.contains(UnknownEventIdProblem.code))
+            ke.event.problem.is(UnknownEventIdProblem))
         lastEventId = event.last.eventId
       }
       move(Paths.get(s"$firstJournalFile-MOVED"), firstJournalFile)
@@ -78,7 +78,7 @@ final class CoupleMasterTest extends AnyFreeSpec with DirectoryProviderForScalaT
       directoryProvider.runAgents() { _ =>
         master.eventWatch.await[AgentCouplingFailed](after = master.eventWatch.lastFileTornEventId, predicate =
           ke => ke.key == agentRefPath &&
-            ke.event.problem.codeOption.contains(UnknownEventIdProblem.code))
+            ke.event.problem.is(UnknownEventIdProblem))
       }
       for (o <- journalFiles.init) move(Paths.get(s"$o-MOVED"), o)
     }
@@ -94,7 +94,7 @@ final class CoupleMasterTest extends AnyFreeSpec with DirectoryProviderForScalaT
       directoryProvider.runAgents() { _ =>
         master.eventWatch.await[AgentCouplingFailed](after = master.eventWatch.lastFileTornEventId, predicate =
           ke => ke.key == agentRefPath &&
-            ke.event.problem.codeOption.contains(UnknownEventIdProblem.code))
+            ke.event.problem.is(UnknownEventIdProblem))
       }
     }
   }

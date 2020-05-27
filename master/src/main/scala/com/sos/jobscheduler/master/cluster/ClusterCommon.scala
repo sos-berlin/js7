@@ -42,7 +42,7 @@ private[cluster] final class ClusterCommon(
             val eventName = s"'${event.getClass.simpleScalaName}' event"
             clusterWatch.applyEvents(from = clusterConf.ownId, event :: Nil, updatedClusterState).flatMap {
               case Left(problem) =>
-                if (problem.codeOption contains ClusterWatchHeartbeatFromInactiveNodeProblem.code) {
+                if (problem is ClusterWatchHeartbeatFromInactiveNodeProblem) {
                   logger.info(s"ClusterWatch did not agree to $eventName: $problem")
                   testEventPublisher.publish(ClusterWatchDisagreeToActivation)
                   Task.pure(Right(false))  // Ignore heartbeat loss

@@ -768,7 +768,7 @@ final class Cluster(
           )
 
         def handleProblem(problem: Problem): Unit = {
-          if (problem.codeOption contains ClusterWatchHeartbeatFromInactiveNodeProblem.code) {
+          if (problem is ClusterWatchHeartbeatFromInactiveNodeProblem) {
             haltJava(s"EMERGENCY STOP due to: $problem", restart = true)  // TODO How to test
           }
           // Ignore other errors and continue
