@@ -19,8 +19,8 @@ import scala.concurrent.duration.DurationInt
 /**
  * @author Joacim Zschimmer
  */
-final class AgentConfigurationTest extends AnyFreeSpec  {
-
+final class AgentConfigurationTest extends AnyFreeSpec
+{
   private val shellExt = if (isWindows) "cmd" else "sh"
 
   "Shortest argument list" in {
@@ -35,7 +35,7 @@ final class AgentConfigurationTest extends AnyFreeSpec  {
         jobWorkingDirectory = WorkingDirectory,
         jobJavaOptions = Nil,
         killScript = Some(ProcessKillScript(data / "tmp" / s"kill_task.$shellExt")),
-        akkaAskTimeout = 60.seconds,
+        akkaAskTimeout = 1.hour,
         JournalConf.fromConfig(DefaultConfig),
         name = AgentConfiguration.DefaultName,
         DefaultConfig))

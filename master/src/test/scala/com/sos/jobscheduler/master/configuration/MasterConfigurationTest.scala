@@ -43,7 +43,7 @@ final class MasterConfigurationTest extends AnyFreeSpec with BeforeAndAfterAll
       configDirectory = (directory /"CONFIG").toAbsolutePath,
       webServerPorts = Nil,
       ZoneId.systemDefault,
-      akkaAskTimeout = 60.s,
+      akkaAskTimeout = 1.h,
       journalConf = JournalConf.fromConfig(DefaultConfig),
       clusterConf = ClusterConf(ClusterNodeId("Primary"), isBackup = false, None, None,
         RecouplingStreamReaderConf(
