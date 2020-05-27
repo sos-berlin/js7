@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.master.cluster
 
 import akka.actor.ActorSystem
-import akka.pattern.ask
+import akka.pattern.{AskTimeoutException, ask}
 import akka.util.Timeout
 import cats.data.EitherT
 import cats.effect.ExitCase
@@ -776,18 +776,28 @@ final class Cluster(
           if (cancelled) logger.debug(msg) else logger.warn(msg)
         }
 
-        def go: Task[Unit] =
-          doAHeartbeat.map {
-            case Some(since) =>
-              scheduler.scheduleOnce(clusterConf.heartbeat - since.elapsed) {
-                go.runAsyncAndForget
+        def go(): Unit =
+          doAHeartbeat
+            .map {
+              case Some(since) =>
+                scheduler.scheduleOnce(clusterConf.heartbeat - since.elapsed) {
+                  go()
+                }
+
+              case None =>
+                promise.success(Completed)
+            }
+            .runToFuture
+              .onComplete {
+                case Failure(t) =>
+                  if (!cancelled) {
+                    logger.warn(s"sendHeartbeats: ${t.toStringWithCauses}",
+                      if (t.isInstanceOf[AskTimeoutException]) null else t.nullIfNoStackTrace)
+                  }
+                case Success(_) =>
               }
 
-            case None =>
-              promise.success(Completed)
-          }
-
-        go.runAsyncAndForget
+        go()
         promise.future
       }.doOnCancel(Task {
         logger.debug("sendHeartbeats cancelled")
