@@ -59,7 +59,7 @@ object WebServerBinding
 
     final lazy val localHttpUri: Checked[Uri] = locallyUsableUri(WebServerBinding.Http)
     final lazy val localHttpsUri: Checked[Uri] = locallyUsableUri(WebServerBinding.Https)
-    final lazy val localUri: Uri = (localHttpUri.toValidated findValid localHttpsUri.toValidated).orThrow
+    final def localUri: Uri = (localHttpUri.toValidated findValid localHttpsUri.toValidated).orThrow
 
     final def locallyUsableUri(scheme: WebServerBinding.Scheme): Checked[Uri] =
       webServerPorts.collectFirst { case o if o.scheme == scheme => toLocallyUsableUri(scheme, o.address) }

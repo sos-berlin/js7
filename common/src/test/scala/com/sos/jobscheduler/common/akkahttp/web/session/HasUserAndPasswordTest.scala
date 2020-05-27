@@ -28,7 +28,7 @@ final class HasUserAndPasswordTest extends AnyFreeSpec with SessionRouteTester
         def httpClient = this
         def sessionUri = Uri(s"$baseUri/session")
         val actorSystem = HasUserAndPasswordTest.this.system
-        def baseUri = server.localUri
+        val baseUri = server.localUri
         def uriPrefixPath = ""
         protected val userAndPassword = Some(UserAndPassword(UserId("A-USER"), SecretString("A-PASSWORD")))
         protected def keyStoreRef = None

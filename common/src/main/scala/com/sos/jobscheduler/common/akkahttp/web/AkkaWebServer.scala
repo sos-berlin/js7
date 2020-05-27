@@ -7,7 +7,6 @@ import akka.http.scaladsl.{ConnectionContext, Http}
 import akka.stream.{ActorMaterializer, TLSClientAuth}
 import cats.effect.Resource
 import cats.instances.vector._
-import cats.syntax.flatMap._
 import cats.syntax.traverse._
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.time.ScalaTime._
@@ -136,7 +135,7 @@ object AkkaWebServer
 {
   private val logger = Logger(getClass)
 
-  final class Standard(
+  class Standard(
     protected val bindings: Seq[WebServerBinding],
     route: WebServerBinding => BoundRoute,
     protected val config: Config = ConfigFactory.empty)
@@ -151,7 +150,7 @@ object AkkaWebServer
     route: Route,
     config: Config = ConfigFactory.empty)
     (implicit actorSystem: ActorSystem)
-  : Resource[Task, AkkaWebServer] =
+  : Resource[Task, AkkaWebServer with HasUri] =
     resource(WebServerBinding.http(httpPort) :: Nil, _ => BoundRoute(route), config)
 
   def resource(
@@ -159,10 +158,12 @@ object AkkaWebServer
     route: WebServerBinding => BoundRoute,
     config: Config = ConfigFactory.empty)
     (implicit actorSystem: ActorSystem)
-  : Resource[Task, AkkaWebServer] =
+  : Resource[Task, AkkaWebServer with HasUri] =
     Resource.make(
-      Task { new Standard(bindings, route, config) }
-        .flatTap(_.start())
+      Task.defer {
+        val webServer = new Standard(bindings, route, config) with AkkaWebServer.HasUri
+        webServer.start().map(_ => webServer)
+      }
     )(_.terminate())
 
   trait HasUri extends WebServerBinding.HasLocalUris {

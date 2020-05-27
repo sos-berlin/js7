@@ -151,7 +151,7 @@ extends AutoCloseable
     whenReady await 99.s
 
   @TestOnly
-  val localUri = webServer.localUri
+  lazy val localUri = webServer.localUri
 
   private val httpApiUserAndPassword = SetOnce[Option[UserAndPassword]]
   private val _httpApi = SetOnce[HttpMasterApi]
