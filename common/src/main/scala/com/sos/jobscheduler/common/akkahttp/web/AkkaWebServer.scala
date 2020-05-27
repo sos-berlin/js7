@@ -59,8 +59,8 @@ trait AkkaWebServer extends AutoCloseable
       else {
         logger.debug(bindings mkString ", ")
         activeBindings = bindings map {
-          case o: WebServerBinding.Http => bindHttp(o)
-          case o: WebServerBinding.Https => bindHttps(o)
+          case o: WebServerBinding.Http => bindHttp(o).memoize
+          case o: WebServerBinding.Https => bindHttps(o).memoize
         }
         Task.sequence(activeBindings).map(_ => Completed)
       }
@@ -98,23 +98,22 @@ trait AkkaWebServer extends AutoCloseable
   }
 
   def close() =
-    if (shuttingDownPromise.trySuccess(Completed)) {
-      logger.debug("close")
-      // Now wait until (event) Observables has been closed?
-      try terminate().runToFuture(scheduler.get) await shutdownTimeout + 1.s
-      catch { case NonFatal(t) =>
-        // In RecoveryTest: IllegalStateException: IO Listener actor terminated unexpectedly for remote endpoint [..]
-        logger.debug(t.toStringWithCauses, t)
-      }
+    try terminate().runToFuture(scheduler.get) await shutdownTimeout + 1.s
+    catch { case NonFatal(t) =>
+      // In RecoveryTest: IllegalStateException: IO Listener actor terminated unexpectedly for remote endpoint [..]
+      logger.debug(s"$toString close(): " + t.toStringWithCauses, t.nullIfNoStackTrace)
     }
 
   def terminate(): Task[Unit] =
-    Task.sleep(500.ms) >> // Wait a short time to let event streams finish, to avoid connection reset
-      Task.defer {
-        materializer.shutdown()
-        if (activeBindings == null)
-          Task.pure(Completed)
-        else
+    Task.defer {
+      if (!shuttingDownPromise.trySuccess(Completed))
+        Task.unit
+      else if (activeBindings == null)
+        Task.unit
+      else
+        Task { logger.debug("terminate") } >>
+          Task.sleep(500.ms) >> // Wait a short time to let event streams finish, to avoid connection reset
+          // Now wait until (event) Observables has been closed?
           activeBindings.toVector.traverse(_.flatMap(binding =>
             Task.deferFuture(binding.terminate(hardDeadline = shutdownTimeout))
               .map { _: Http.HttpTerminated =>
@@ -122,7 +121,15 @@ trait AkkaWebServer extends AutoCloseable
                 Completed
               }))
             .map((_: Seq[Completed]) => ())
+    }.guarantee(Task {
+      logger.debug("materializer.shutdown()")
+      try materializer.shutdown()
+      catch { case NonFatal(t) =>
+        logger.warn(s"$toString close(): " + t.toStringWithCauses, t.nullIfNoStackTrace)
       }
+    })
+
+  override def toString = s"${getClass.simpleScalaName}"
 }
 
 object AkkaWebServer
