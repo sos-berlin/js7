@@ -69,11 +69,12 @@ extends ClusterWatchApi
       }
     ).map(_.toCompleted)
 
-  private def update(from: ClusterNodeId, force: Boolean, logLine: => String)(body: Option[State] => Checked[ClusterState]): Task[Checked[ClusterState]] =
+  private def update(from: ClusterNodeId, force: Boolean, logLine: => String)(body: Option[State] => Checked[ClusterState])
+  : Task[Checked[ClusterState]] =
     stateMVar.flatMap(mvar =>
       mvar.take.flatMap { current =>
         logger.trace(s"$toString, '$from' node: $logLine, after ${current.fold("—")(_.lastHeartbeat.elapsed.pretty)}")
-        mustBeStillActive(from, current)
+        mustBeStillActive(from, current, force)
           .left.flatMap(problem =>
             if (force) Right(Completed) else Left(problem))
           .flatMap(_ => body(current)) match {
@@ -89,12 +90,13 @@ extends ClusterWatchApi
           }
       })
 
-  private def mustBeStillActive(from: ClusterNodeId, state: Option[State]): Checked[Completed.type] =
+  private def mustBeStillActive(from: ClusterNodeId, state: Option[State], force: Boolean): Checked[Completed.type] =
     state match {
       case Some(State(clusterState, lastHeartbeat))
         if !clusterState.isNonEmptyActive(from) && (lastHeartbeat + timeout).hasTimeLeft =>
         val problem = ClusterWatchHeartbeatFromInactiveNodeProblem(from, clusterState)
-        logger.warn(s"$toString, '$from' node: $problem")
+        val msg = s"$toString, '$from' node: $problem"
+        if (force) logger.debug(msg) else logger.warn(msg)
         Left(problem)
       case _ =>
         Right(Completed)
@@ -102,7 +104,7 @@ extends ClusterWatchApi
 
   private def now = MonixDeadline.now(scheduler)
 
-  override def toString = s"ClusterWatch(masterId='$masterId')'"
+  override def toString = s"ClusterWatch(masterId=$masterId)"
 }
 
 object ClusterWatch
