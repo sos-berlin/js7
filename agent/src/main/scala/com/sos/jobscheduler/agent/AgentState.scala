@@ -21,7 +21,7 @@ final case class AgentState(
 extends JournaledState[AgentState]
 {
   def toSnapshotObservable =
-    journalState.toSnapshotObservable ++
+    standards.toSnapshotObservable ++
       Observable.fromIterable(idToWorkflow.values) ++
       Observable.fromIterable(idToOrder.values)
 

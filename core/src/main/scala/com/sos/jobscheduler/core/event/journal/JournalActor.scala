@@ -452,15 +452,6 @@ extends Actor with Stash
       // ??? Under JournalTest, Actor TEST-B, after removed, may send Terminated() twice since SnapshotTaker actor has been merged into JournalActor
       logger.error(s"Unknown actor has terminated: ${a.path.pretty}")
       //unhandled(msg)
-
-    case Input.GetJournalActorState =>
-      sender() ! Output.JournalActorState(
-        isFlushed = eventWriter != null && eventWriter.isFlushed,
-        isSynced = eventWriter != null && eventWriter.isSynced,
-        isRequiringClusterAcknowledgement = requireClusterAcknowledgement)
-
-    case Input.GetJournaledState =>
-      sender() ! journaledState
   }
 
   private def receiveGet: Receive = {
