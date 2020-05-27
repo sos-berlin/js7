@@ -84,7 +84,7 @@ extends MainJournalingActor[AgentServerState, AgentEvent] {
     super.preStart()
     val recoverer = new MyJournalRecoverer()
     recoverer.recoverAll()
-    recoverer.startJournalAndFinishRecovery(journalActor, AgentServerState.empty)
+    recoverer.startJournalAndFinishRecovery(journalActor, state)
   }
 
   override def postStop() = {

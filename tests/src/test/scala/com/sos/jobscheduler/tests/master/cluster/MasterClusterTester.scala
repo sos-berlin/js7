@@ -61,6 +61,7 @@ private[cluster] trait MasterClusterTester extends AnyFreeSpec
           jobscheduler.auth.users.Master.password = "plain:PRIMARY-MASTER-PASSWORD"
           jobscheduler.auth.users.TEST.password = "plain:TEST-PASSWORD"
           jobscheduler.auth.cluster.password = "BACKUP-MASTER-PASSWORD"
+          jobscheduler.journal.use-journaled-state-as-snapshot = true
           jobscheduler.journal.remove-obsolete-files = $removeObsoleteJournalFiles """),
         agentPorts = agentPort :: Nil
       ).closeWithCloser
@@ -75,6 +76,7 @@ private[cluster] trait MasterClusterTester extends AnyFreeSpec
           jobscheduler.auth.users.Master.password = "plain:BACKUP-MASTER-PASSWORD"
           jobscheduler.auth.users.TEST.password = "plain:TEST-PASSWORD"
           jobscheduler.auth.cluster.password = "PRIMARY-MASTER-PASSWORD"
+          jobscheduler.journal.use-journaled-state-as-snapshot = true
           jobscheduler.journal.remove-obsolete-files = $removeObsoleteJournalFiles """),
       ).closeWithCloser
 

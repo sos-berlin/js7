@@ -14,7 +14,7 @@ import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
 import com.sos.jobscheduler.master.RunningMaster
-import com.sos.jobscheduler.master.data.MasterCommand.{ClusterSwitchOver, TakeSnapshot}
+import com.sos.jobscheduler.master.data.MasterCommand.ClusterSwitchOver
 import com.sos.jobscheduler.tests.master.cluster.MasterClusterTester._
 import com.sos.jobscheduler.tests.master.cluster.SwitchOverClusterTest._
 import monix.execution.Scheduler.Implicits.global

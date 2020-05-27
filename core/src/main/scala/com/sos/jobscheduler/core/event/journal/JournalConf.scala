@@ -20,7 +20,8 @@ final case class JournalConf(
   ackWarnDuration: FiniteDuration,
   deleteObsoleteFiles: Boolean,
   releaseEventsUserIds: Set[UserId] = Set.empty,
-  slowCheckJournaledState: Boolean = false)
+  slowCheckJournaledState: Boolean = false,
+  useJournaledStateAsSnapshot: Boolean = false)
 
 object JournalConf
 {
@@ -45,6 +46,7 @@ object JournalConf
       ackWarnDuration = config.getDuration("jobscheduler.journal.ack-warn-duration").toFiniteDuration,
       deleteObsoleteFiles = config.getBoolean("jobscheduler.journal.remove-obsolete-files"),
       releaseEventsUserIds = config.seqAs[UserId]("jobscheduler.journal.users-allowed-to-release-events").toSet,
-      slowCheckJournaledState = checkJournaledState)
+      slowCheckJournaledState = checkJournaledState,
+      useJournaledStateAsSnapshot = config.getBoolean("jobscheduler.journal.use-journaled-state-as-snapshot"))
   }
 }

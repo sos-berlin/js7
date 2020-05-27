@@ -119,8 +119,10 @@ extends Actor with Stash
       lastAcknowledgedEventId = header.eventId  // FIXME Möglicherweise ist die EventId noch nicht bestätigt ?  optional header.acknowledgedEventId ?
       totalEventCount = header.totalEventCount
       eventIdGenerator.updateLastEventId(lastWrittenEventId)
-      journalingActors ++= keyToActor.values
-      journalingActors foreach watch
+      if (!useJournaledStateAsSnapshot) {
+        journalingActors ++= keyToActor.values
+        journalingActors foreach watch
+      }
       val sender = this.sender()
       locally {
         val file = toSnapshotTemporary(journalMeta.file(after = lastWrittenEventId))
@@ -723,8 +725,10 @@ extends Actor with Stash
   }
 
   private def handleRegisterMe() = {
-    journalingActors += sender()
-    watch(sender())
+    if (!useJournaledStateAsSnapshot) {
+      journalingActors += sender()
+      watch(sender())
+    }
   }
 
   private def eventLimitReached: Boolean = {
@@ -755,8 +759,10 @@ object JournalActor
     stopped: Promise[Stopped] = Promise(),
     useJournaledStateAsSnapshot: Boolean = false)
   =
-    Props { new JournalActor[S](journalMeta, conf, keyedEventBus, scheduler, eventIdGenerator, stopped, useJournaledStateAsSnapshot) }
-      .withDispatcher(DispatcherName)
+    Props {
+      new JournalActor[S](journalMeta, conf, keyedEventBus, scheduler, eventIdGenerator, stopped,
+        useJournaledStateAsSnapshot || conf.useJournaledStateAsSnapshot)
+    }.withDispatcher(DispatcherName)
 
   private def toSnapshotTemporary(file: Path) = file.resolveSibling(s"${file.getFileName}$TmpSuffix")
 
