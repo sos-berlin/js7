@@ -7,6 +7,7 @@ import com.sos.jobscheduler.base.crypt.SignedString
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.Checked.implicits.{checkedJsonDecoder, checkedJsonEncoder}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.utils.Big
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.base.web.Uri
@@ -34,12 +35,12 @@ object MasterCommand extends CommonCommand.Companion
   protected type Command = MasterCommand
 
   final case class Batch(commands: Seq[MasterCommand])
-  extends MasterCommand with CommonBatch {
+  extends MasterCommand with CommonBatch with Big {
     type Response = Batch.Response
   }
   object Batch {
     final case class Response(responses: Seq[Checked[MasterCommand.Response]])
-    extends MasterCommand.Response with CommonBatch.Response {
+    extends MasterCommand.Response with CommonBatch.Response with Big {
       override def productPrefix = "BatchResponse"
     }
   }
@@ -140,7 +141,7 @@ object MasterCommand extends CommonCommand.Companion
     versionId: VersionId,
     change: Seq[SignedString] = Nil,
     delete: Seq[TypedPath] = Nil)
-  extends MasterCommand {
+  extends MasterCommand with Big {
     type Response = Response.Accepted
 
     def isEmpty = change.isEmpty && delete.isEmpty
@@ -149,7 +150,7 @@ object MasterCommand extends CommonCommand.Companion
   }
 
   final case class ReplaceRepo(versionId: VersionId, objects: Seq[SignedString])
-  extends MasterCommand {
+  extends MasterCommand with Big {
     type Response = Response.Accepted
 
     override def toString = s"ReplaceRepo($versionId, ${objects.size} objects)"

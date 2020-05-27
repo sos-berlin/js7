@@ -9,6 +9,7 @@ import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.Checked.implicits.{checkedJsonDecoder, checkedJsonEncoder}
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.utils.Big
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.base.utils.ScalazStyle._
@@ -43,12 +44,12 @@ object AgentCommand extends CommonCommand.Companion
   }
 
   final case class Batch(commands: Seq[AgentCommand])
-  extends AgentCommand with CommonBatch {
+  extends AgentCommand with CommonBatch with Big {
     type Response = Batch.Response
   }
   object Batch {
     final case class Response(responses: Seq[Checked[AgentCommand.Response]])
-    extends AgentCommand.Response {
+    extends AgentCommand.Response with Big {
       override def toString = {
         val succeeded = responses count (_.isRight)
         s"Batch($succeeded succeeded and ${responses.size - succeeded} failed)"
@@ -104,7 +105,7 @@ object AgentCommand extends CommonCommand.Companion
   }
   object CoupleMaster {
     final case class Response(orderIds: Set[OrderId])
-    extends AgentCommand.Response
+    extends AgentCommand.Response with Big
   }
 
   case object TakeSnapshot extends AgentCommand {
@@ -143,7 +144,7 @@ object AgentCommand extends CommonCommand.Companion
   sealed trait AttachOrDetachOrder extends OrderCommand
 
   final case class AttachOrder(order: Order[Order.IsFreshOrReady], signedWorkflow: SignedString)
-  extends AttachOrDetachOrder {
+  extends AttachOrDetachOrder with Big {
     order.workflowId.requireNonAnonymous()
     order.attached.orThrow
 
@@ -173,11 +174,11 @@ object AgentCommand extends CommonCommand.Companion
   }
 
   case object GetOrderIds extends OrderCommand {
-    final case class Response(orderIds: Seq[OrderId]) extends AgentCommand.Response
+    final case class Response(orderIds: Seq[OrderId]) extends AgentCommand.Response with Big
   }
 
   case object GetOrders extends OrderCommand {
-    final case class Response(orders: Seq[Order[Order.State]]) extends AgentCommand.Response
+    final case class Response(orders: Seq[Order[Order.State]]) extends AgentCommand.Response with Big
   }
 
   implicit val jsonCodec: TypedJsonCodec[AgentCommand] =
