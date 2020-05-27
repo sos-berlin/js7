@@ -173,7 +173,7 @@ extends Actor with Stash
         // TODO The caller should handle the error (persist method does not allow this for now)
         //reply(sender(), replyTo, Output.StoreFailure(ClusterNodeHasBeenSwitchedOverProblem, callersItem))
       } else {
-        val stampedEvents = for (t <- timestamped) yield eventIdGenerator.stamp(t.keyedEvent, t.timestamp)
+        val stampedEvents = timestamped.view.map(t => eventIdGenerator.stamp(t.keyedEvent, t.timestamp)).toVector
         uncommittedJournaledState.applyStampedEvents(stampedEvents) match {
           case Left(problem) =>
             logger.error(problem.toString)
@@ -222,7 +222,7 @@ extends Actor with Stash
 
     case Internal.Commit(level) =>
       commitDeadline = null
-      if (writtenBuffer.iterator.map(_.eventCount).sum >= conf.eventLimit)
+      if (eventLimitReached)
         commit()
       else if (level < writtenBuffer.length) {
         // writtenBuffer has grown? Queue again to coalesce two commits (and flushs and maybe syncs)
@@ -734,6 +734,17 @@ extends Actor with Stash
   private def handleRegisterMe() = {
     journalingActors += sender()
     watch(sender())
+  }
+
+  private def eventLimitReached: Boolean = {
+    // Slow in Scala 2.13 (due to boxing?): writtenBuffer.iterator.map(_.eventCount) >= conf.eventLimit
+    // TODO For even better performance, use an updated counter in a seperate class WrittenBuffer
+    var remaining = conf.eventLimit
+    val iterator = writtenBuffer.iterator
+    while (remaining > 0 && iterator.hasNext) {
+      remaining -= iterator.next().eventCount
+    }
+    remaining <= 0
   }
 }
 

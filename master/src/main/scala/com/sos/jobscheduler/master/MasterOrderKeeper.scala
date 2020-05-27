@@ -425,29 +425,30 @@ with MainJournalingActor[MasterState, Event]
       val agentEntry = agentRegister(sender())
       import agentEntry.agentRefPath
       var lastAgentEventId: Option[EventId] = None
-      var masterStamped: Seq[Timestamped[Event]] = stampeds.flatMap {
-        case Stamped(agentEventId, timestamp, keyedEvent) =>
-          // TODO Event vor dem Speichern mit Order.applyEvent ausprobieren! Bei Fehler ignorieren?
-          lastAgentEventId = Some(agentEventId)
-          keyedEvent match {
-            case KeyedEvent(_, _: OrderCancellationMarked) =>  // We (the Master) emit our own OrderCancellationMarked
-              None
+      var masterStamped: Seq[Timestamped[Event]] =
+        stampeds.view.flatMap {
+          case Stamped(agentEventId, timestamp, keyedEvent) =>
+            // TODO Event vor dem Speichern mit Order.applyEvent ausprobieren! Bei Fehler ignorieren?
+            lastAgentEventId = Some(agentEventId)
+            keyedEvent match {
+              case KeyedEvent(_, _: OrderCancellationMarked) =>  // We (the Master) emit our own OrderCancellationMarked
+                None
 
-            case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
-              val ownEvent = event match {
-                case _: OrderEvent.OrderAttached => OrderTransferredToAgent(agentRefPath) // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
-                case _ => event
-              }
-              Some(Timestamped(orderId <-: ownEvent, Some(timestamp)))
+              case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
+                val ownEvent = event match {
+                  case _: OrderEvent.OrderAttached => OrderTransferredToAgent(agentRefPath) // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
+                  case _ => event
+                }
+                Some(Timestamped(orderId <-: ownEvent, Some(timestamp)))
 
-            case KeyedEvent(_: NoKey, AgentMasterEvent.AgentReadyForMaster(timezone, _)) =>
-              Some(Timestamped(agentEntry.agentRefPath <-: AgentReady(timezone), Some(timestamp)))
+              case KeyedEvent(_: NoKey, AgentMasterEvent.AgentReadyForMaster(timezone, _)) =>
+                Some(Timestamped(agentEntry.agentRefPath <-: AgentReady(timezone), Some(timestamp)))
 
-            case _ =>
-              logger.warn(s"Unknown event received from ${agentEntry.agentRefPath}: $keyedEvent")
-              None
-          }
-      }
+              case _ =>
+                logger.warn(s"Unknown event received from ${agentEntry.agentRefPath}: $keyedEvent")
+                None
+            }
+        }.toVector
       masterStamped ++= lastAgentEventId.map(agentEventId => Timestamped(agentRefPath <-: AgentEventIdEvent(agentEventId)))
 
       completedPromise.completeWith(

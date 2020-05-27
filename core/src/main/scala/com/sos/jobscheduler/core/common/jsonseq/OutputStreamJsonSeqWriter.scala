@@ -15,7 +15,8 @@ import org.jetbrains.annotations.TestOnly
   * @author Joacim Zschimmer
   * @see https://tools.ietf.org/html/rfc7464
   */
-final class OutputStreamJsonSeqWriter(out: OutputStream, withRS: Boolean = false) extends AutoCloseable
+final class OutputStreamJsonSeqWriter(out: OutputStream, withRS: Boolean = false)
+extends AutoCloseable
 {
   private val extraLength = if (withRS) 2 else 1
   private var _written = 0L
@@ -33,18 +34,16 @@ final class OutputStreamJsonSeqWriter(out: OutputStream, withRS: Boolean = false
     writeJson(ByteString.fromString(json.compactPrint))
 
   def writeJson(byteString: ByteString): Unit = {
-    if (array == null || array.length < byteString.length) {
-      array = new Array[Byte](byteString.length + Reserve)
+    if (withRS) buffered.write(Ascii.RS)
+    val length = byteString.length
+    if (array == null || array.length < length + 1) {
+      array = new Array[Byte](length + 1 + Reserve)
     }
     byteString.copyToArray(array)
-    if (withRS) buffered.write(Ascii.RS)
-    assertThat(!array.contains('\n'), "OutputStreamJsonSeqWriter: JSON contains a forbidden LF")
-    buffered.write(array, 0, byteString.length)
-    buffered.write('\n')
-    _written += byteString.length + extraLength
-    if (array.length > MaxBufferSize) {
-      array = null
-    }
+    array(length) = '\n'
+    assertThat(array.indexOf('\n') == length, "OutputStreamJsonSeqWriter: JSON contains a forbidden LF")
+    buffered.write(array, 0, length + 1)
+    _written += length + extraLength
   }
 
   def flush() = buffered.flush()
@@ -53,6 +52,5 @@ final class OutputStreamJsonSeqWriter(out: OutputStream, withRS: Boolean = false
 }
 
 object OutputStreamJsonSeqWriter {
-  private val Reserve = 1000
-  private val MaxBufferSize = 100000
+  private val Reserve = 4000
 }

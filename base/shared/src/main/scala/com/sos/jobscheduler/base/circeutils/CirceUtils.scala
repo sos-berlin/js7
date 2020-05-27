@@ -41,7 +41,10 @@ object CirceUtils
       def apply(c: HCursor) = implicitly[Decoder[A]].apply(c)
     }
 
-  val CompactPrinter = Printer.noSpaces.copy(dropNullValues = true/*Suppress None*/)
+  val CompactPrinter = Printer.noSpaces.copy(
+    dropNullValues = true/*Suppress None*/,
+    //reuseWriters = true,  // Remember StringBuilder in thread local
+    predictSize = true)
   val PrettyPrinter = Printer.spaces2.copy(dropNullValues = true/*Suppress None*/, colonLeft = "", lrbracketsEmpty = "")
 
   object implicits {
@@ -141,7 +144,7 @@ object CirceUtils
   }
 
   implicit final class CirceUtilsChecked[A](private val underlying: Checked[A]) extends AnyVal {
-    def toDecoderResult(history: List[CursorOp]): Decoder.Result[A] =
+    def toDecoderResult(history: => List[CursorOp]): Decoder.Result[A] =
       underlying match {
         case Right(o) => Right(o)
         case Left(o) => Left(DecodingFailure(o.toString, history))  // Ignoring stacktrace ???
