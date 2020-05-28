@@ -36,6 +36,7 @@ import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import monix.eval.Task
 import monix.execution.cancelables.SerialCancelable
 import monix.execution.{Cancelable, Scheduler}
+import org.scalactic.Requirements._
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, Duration, FiniteDuration}
@@ -62,8 +63,8 @@ extends Actor with Stash
   private val snapshotRequesters = mutable.Set[ActorRef]()
   private var snapshotSchedule: Cancelable = null
 
-  private var journaledState: S = null.asInstanceOf[S]
   private var uncommittedJournaledState: S = null.asInstanceOf[S]
+  private var journaledState: S = null.asInstanceOf[S]
 
   /** Originates from `JournalValue`, calculated from recovered journal if not freshly initialized. */
   private var journalHeader: JournalHeader = null
@@ -109,8 +110,8 @@ extends Actor with Stash
 
   def receive = {
     case Input.Start(journaledState_, RecoveredJournalingActors(keyToActor), observer_, header, totalRunningSince_) =>
-      journaledState = journaledState_.asInstanceOf[S]
-      uncommittedJournaledState = journaledState
+      uncommittedJournaledState = journaledState_.asInstanceOf[S]
+      journaledState = uncommittedJournaledState
       requireClusterAcknowledgement = journaledState.clusterState.isInstanceOf[ClusterState.Coupled]
       journalingObserver := observer_
       journalHeader = header
@@ -138,8 +139,8 @@ extends Actor with Stash
       }
 
     case Input.StartWithoutRecovery(emptyState, observer_) =>  // Testing only
-      journaledState = emptyState.asInstanceOf[S]
-      uncommittedJournaledState = journaledState
+      uncommittedJournaledState = emptyState.asInstanceOf[S]
+      journaledState = uncommittedJournaledState
       journalingObserver := observer_
       journalHeader = JournalHeader.initial(JournalId.random()).copy(generation = 1)
       eventWriter = newEventJsonWriter(after = EventId.BeforeFirst, withoutSnapshots = true)
@@ -181,9 +182,9 @@ extends Actor with Stash
             logger.error(problem.toString)
             for (stamped <- stampedEvents) logger.error(stamped.toString)
             reply(sender(), replyTo, Output.StoreFailure(problem, callersItem))
+
           case Right(updatedState) =>
             uncommittedJournaledState = updatedState
-
             eventWriter.writeEvents(stampedEvents, transaction = transaction)
             val lastFileLengthAndEventId = stampedEvents.lastOption.map(o => PositionAnd(eventWriter.fileLength, o.eventId))
             for (o <- lastFileLengthAndEventId) {
@@ -389,6 +390,20 @@ extends Actor with Stash
 
     normallyWritten foreach updateStateAndContinueCallers
 
+    ackWritten.lastOption
+      .collect { case o: AcceptEarlyWritten => o }
+      .flatMap(_.lastFileLengthAndEventId)
+      .foreach { case PositionAnd(_, eventId) =>
+        journaledState = journaledState.withEventId(eventId)
+      }
+
+    //for (
+    //  written: AcceptEarlyWritten <- ackWritten.lastOption;
+    //  PositionAnd(_, eventId) <- written.lastFileLengthAndEventId
+    //) {
+    //  journaledState = journaledState.withEventId(eventId)
+    //}
+
     writtenBuffer.remove(0, n)
     assertThat((lastAcknowledgedEventId == lastWrittenEventId) == writtenBuffer.isEmpty)
   }
@@ -396,8 +411,8 @@ extends Actor with Stash
   private def onAllCommitsFinished(): Unit = {
     assertThat(lastAcknowledgedEventId == lastWrittenEventId)
     assertThat(writtenBuffer.isEmpty)
-    if (conf.slowCheckJournaledState) assertThat(journaledState == uncommittedJournaledState)
-    journaledState = uncommittedJournaledState  // Reduce duplicate allocated objects
+    if (conf.slowCheckJournaledState) requireState(journaledState == uncommittedJournaledState)
+    uncommittedJournaledState = journaledState    // Reduce duplicate allocated objects
     waitingForAcknowledgeTimer := Cancelable.empty
     maybeDoASnapshot()
   }

@@ -1,10 +1,10 @@
 package com.sos.jobscheduler.agent
 
 import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{Event, EventId, JournalState, JournaledState, KeyedEvent}
+import com.sos.jobscheduler.data.event.{Event, EventId, JournaledState, KeyedEvent}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowEvent, WorkflowId}
@@ -31,22 +31,6 @@ extends JournaledState[AgentState]
   def withStandards(standards: JournaledState.Standards) =
     copy(standards = standards)
 
-  @deprecated
-  def applySnapshot(snapshot: Any): Checked[AgentState] =
-    snapshot match {
-      case o: JournalState =>
-        Right(copy(standards = standards.copy(
-          journalState = o)))
-
-      case order: Order[Order.State] =>
-        Right(copy(
-          idToOrder = idToOrder + (order.id -> order)))
-
-      case workflow: Workflow =>
-        Right(copy(
-          idToWorkflow = idToWorkflow + (workflow.id -> workflow)))
-    }
-
   def applyEvent(keyedEvent: KeyedEvent[Event]) =
     keyedEvent match {
       case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
@@ -54,9 +38,9 @@ extends JournaledState[AgentState]
 
       case KeyedEvent(_: NoKey, WorkflowEvent.WorkflowAttached(workflow)) =>
         // Multiple orders with same Workflow may occur
-        // TODO Every Order becomes its own copy of its Workflow? Workflow will never be removed
-        Right(copy(
-          idToWorkflow = idToWorkflow + (workflow.id -> workflow)))
+        // FIXME Every Order becomes its own copy of its Workflow? Workflow will never be removed
+        Right(reuseIfEqual(this, copy(
+          idToWorkflow = idToWorkflow + (workflow.id -> workflow))))
 
       case KeyedEvent(_, _: AgentMasterEvent.AgentReadyForMaster) =>
         Right(this)

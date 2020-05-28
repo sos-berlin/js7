@@ -245,6 +245,7 @@ lazy val base = crossProject(JSPlatform, JVMPlatform)
       "org.scodec" %%% "scodec-cats" % "1.0.0" ++
       "com.lihaoyi" %%% "sourcecode" % "0.1.9" ++
       "com.outr" %%% "scribe" % scribeVersion ++
+      "org.scalactic" %%% "scalactic" % scalaTestVersion ++
       findbugs % "compile" ++
       intelliJAnnotations % "compile" ++
       "org.scalatest" %%% "scalatest" % scalaTestVersion % "test" ++

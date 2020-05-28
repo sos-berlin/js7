@@ -1,4 +1,5 @@
 package com.sos.jobscheduler.base.utils
+
 import com.sos.jobscheduler.base.utils.Strings._
 
 object Assertions
