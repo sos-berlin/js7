@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.tests
 
+import com.sos.jobscheduler.agent.data.Problems.SignedInjectionNotAllowed
 import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
@@ -33,8 +33,7 @@ final class ExecuteTest extends AnyFreeSpec
         val orderId = OrderId("❌")
         master.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
         val stampedSeq = master.eventWatch.await[OrderFailed](_.key == orderId)
-        assert(stampedSeq.head.value.event.outcome.asInstanceOf[Outcome.Disrupted].reason.problem
-          == Problem.pure("Agent does not allow signed script jobs"))
+        assert(stampedSeq.head.value.event.outcome.asInstanceOf[Outcome.Disrupted].reason.problem == SignedInjectionNotAllowed)
       }
     }
   }

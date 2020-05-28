@@ -2,9 +2,9 @@ package com.sos.jobscheduler.agent.scheduler
 
 import akka.pattern.ask
 import akka.util.Timeout
+import com.sos.jobscheduler.agent.data.Problems.AgentDuplicateOrder
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, CoupleMaster, DetachOrder, GetOrders, RegisterAsMaster}
-import com.sos.jobscheduler.agent.data.problems.AgentDuplicateOrderProblem
 import com.sos.jobscheduler.agent.scheduler.AgentActorTest._
 import com.sos.jobscheduler.agent.scheduler.order.TestAgentActorProvider
 import com.sos.jobscheduler.base.problem.Checked.Ops
@@ -48,7 +48,7 @@ final class AgentActorTest extends AnyFreeSpec
         assert(
           executeCommand(
             AttachOrder(TestOrder.copy(id = orderIds.head), TestAgentRefPath, provider.fileBasedSigner.sign(SimpleTestWorkflow))
-          ).await(99.s) == Left(AgentDuplicateOrderProblem(orderIds.head)))
+          ).await(99.s) == Left(AgentDuplicateOrder(orderIds.head)))
         assert(executeCommand(CoupleMaster(agentRunId, EventId.BeforeFirst)).await(99.s) ==
           Right(CoupleMaster.Response(orderIds.toSet)))
         for (orderId <- orderIds)

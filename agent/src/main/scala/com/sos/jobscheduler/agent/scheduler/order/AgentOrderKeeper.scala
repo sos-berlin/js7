@@ -5,10 +5,10 @@ import akka.pattern.ask
 import akka.util.Timeout
 import com.sos.jobscheduler.agent.AgentState
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
+import com.sos.jobscheduler.agent.data.Problems.AgentDuplicateOrder
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, CancelOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, OrderCommand, ReleaseEvents, Response}
 import com.sos.jobscheduler.agent.data.event.AgentMasterEvent.AgentReadyForMaster
-import com.sos.jobscheduler.agent.data.problems.AgentDuplicateOrderProblem
 import com.sos.jobscheduler.agent.scheduler.job.JobActor
 import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
 import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper._
@@ -252,7 +252,7 @@ with Stash {
         if (!workflow.isDefinedAt(order.position))
           Future.successful(Left(Problem.pure(s"Unknown Position ${order.workflowPosition}")))
         else if (orderRegister contains order.id)
-          Future.successful(Left(AgentDuplicateOrderProblem(order.id)))
+          Future.successful(Left(AgentDuplicateOrder(order.id)))
         else if (shuttingDown)
           Future.successful(Left(AgentIsShuttingDownProblem))
         else
@@ -284,7 +284,7 @@ with Stash {
             case Left(problem) => Future.successful(Left(problem))
             case Right(verified) =>
               if (orderRegister contains order.id)
-                Future.successful(Left(AgentDuplicateOrderProblem(order.id)))
+                Future.successful(Left(AgentDuplicateOrder(order.id)))
               else {
                 val workflow = verified.signedFileBased.value.reduceForAgent(agentRefPath)
                 (workflowRegister.get(order.workflowId) match {

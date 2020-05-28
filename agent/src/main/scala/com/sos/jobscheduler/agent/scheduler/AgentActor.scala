@@ -6,10 +6,10 @@ import cats.data.EitherT
 import com.sos.jobscheduler.agent.AgentState
 import com.sos.jobscheduler.agent.configuration.{AgentConfiguration, AgentStartInformation}
 import com.sos.jobscheduler.agent.data.AgentTermination
+import com.sos.jobscheduler.agent.data.Problems.{MasterAgentMismatchProblem, UnknownMaster}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.CoupleMaster
 import com.sos.jobscheduler.agent.data.event.KeyedEventJsonFormats.AgentKeyedEventJsonCodec
-import com.sos.jobscheduler.agent.data.problems.{MasterAgentMismatchProblem, UnknownMasterProblem}
 import com.sos.jobscheduler.agent.data.views.AgentOverview
 import com.sos.jobscheduler.agent.scheduler.AgentActor._
 import com.sos.jobscheduler.agent.scheduler.job.JobActor
@@ -223,7 +223,7 @@ extends MainJournalingActor[AgentServerState, AgentEvent] {
   private def checkMaster(masterId: MasterId, requiredAgentRunId: Option[AgentRunId], eventId: EventId): Task[Checked[MasterRegister.Entry]] = {
     def pure[A](a: Checked[A]) = EitherT(Task.pure(a))
     ( for {
-        registeredMaster <- pure(state.idToMaster.get(masterId).toChecked(UnknownMasterProblem(masterId)))
+        registeredMaster <- pure(state.idToMaster.get(masterId).toChecked(UnknownMaster(masterId)))
         entry <- pure(masterToOrderKeeper.checked(masterId))
         eventWatch <- EitherT(Task.fromFuture(entry.eventWatch.whenStarted) map Checked.apply)
         _ <- pure {
@@ -304,7 +304,7 @@ object AgentActor
   }
 
   private final class MasterRegister extends ActorRegister[MasterId, MasterRegister.Entry](_.actor) {
-    override protected def noSuchKeyProblem(masterId: MasterId) = UnknownMasterProblem(masterId)
+    override protected def noSuchKeyProblem(masterId: MasterId) = UnknownMaster(masterId)
 
     override def insert(kv: (MasterId, MasterRegister.Entry)) = super.insert(kv)
 

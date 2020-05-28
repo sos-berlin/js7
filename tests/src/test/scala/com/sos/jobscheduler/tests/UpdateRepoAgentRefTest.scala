@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.tests
 
 import com.sos.jobscheduler.agent.RunningAgent
-import com.sos.jobscheduler.agent.data.problems.UnknownMasterProblem
+import com.sos.jobscheduler.agent.data.Problems.UnknownMaster
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerPort
@@ -78,7 +78,7 @@ final class UpdateRepoAgentRefTest extends AnyFreeSpec with DirectoryProviderFor
     directoryProvider.updateRepo(master, v3, List(agentRef))
     master.addOrder(FreshOrder(OrderId("❌"), workflow.path)) await 99.s
     master.eventWatch.await[AgentCouplingFailed](
-      _.event.problem == UnknownMasterProblem(MasterId("Master")),
+      _.event.problem == UnknownMaster(MasterId("Master")),
       after = beforeUpdate)
     agent.terminate() await 99.s
   }

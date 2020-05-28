@@ -143,7 +143,7 @@ with ReceiveLoggingActor.WithStash
               if (sessionNumber.get != expectedSessionNumber)
                 Task.pure(Left(DecoupledProblem))
               else
-                // TODO Still a small possibility for race-condition? May log a AgentDuplicateOrderProblem
+                // TODO Still a small possibility for race-condition? May log a AgentDuplicateOrder
                 api.commandExecute(command))
           } yield response).value
       } yield response

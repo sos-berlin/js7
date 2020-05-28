@@ -2,6 +2,7 @@ package com.sos.jobscheduler.agent.scheduler.job
 
 import akka.actor.{Actor, DeadLetterSuppression, Props, Stash}
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
+import com.sos.jobscheduler.agent.data.Problems.SignedInjectionNotAllowed
 import com.sos.jobscheduler.agent.scheduler.job.JobActor._
 import com.sos.jobscheduler.agent.scheduler.job.task.{TaskConfiguration, TaskRunner, TaskStepEnded, TaskStepFailed}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
@@ -54,7 +55,7 @@ extends Actor with Stash {
 
     case script: ExecutableScript =>
       if (!conf.scriptInjectionAllowed)
-        Left(Problem.pure("Agent does not allow signed script jobs"))
+        Left(SignedInjectionNotAllowed)
       else
         Checked.catchNonFatal {
           val ext = if (isWindows) ".cmd" else ""
