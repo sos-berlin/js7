@@ -3,9 +3,9 @@ package com.sos.jobscheduler.agent.web
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.{OK, ServiceUnavailable}
 import akka.http.scaladsl.model.headers.Accept
+import com.sos.jobscheduler.agent.data.Problems.AgentIsShuttingDown
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand._
-import com.sos.jobscheduler.agent.scheduler.problems.AgentIsShuttingDownProblem
 import com.sos.jobscheduler.agent.web.CommandWebServiceTest._
 import com.sos.jobscheduler.agent.web.test.WebServiceTest
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
@@ -17,8 +17,8 @@ import io.circe.Json
 import io.circe.syntax.EncoderOps
 import monix.eval.Task
 import monix.execution.Scheduler
-import scala.concurrent.duration._
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.duration._
 
 /**
  * @author Joacim Zschimmer
@@ -33,7 +33,7 @@ final class CommandWebServiceTest extends AnyFreeSpec with WebServiceTest with C
     Task(
       command match {
         case TestCommand => Right(AgentCommand.Response.Accepted)
-        case TestCommandWhileShuttingDown => Left(AgentIsShuttingDownProblem)
+        case TestCommandWhileShuttingDown => Left(AgentIsShuttingDown)
         case _ => fail()
       })
 
@@ -70,6 +70,7 @@ final class CommandWebServiceTest extends AnyFreeSpec with WebServiceTest with C
       assert(responseEntity.toStrict(99.seconds).value.get.get.data.utf8String.parseJsonOrThrow ==
         json"""{
           "TYPE": "Problem",
+          "code": "AgentIsShuttingDown",
           "message": "Agent is shutting down"
          }""")
     }

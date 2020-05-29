@@ -15,7 +15,6 @@ import com.sos.jobscheduler.agent.scheduler.AgentActor._
 import com.sos.jobscheduler.agent.scheduler.job.JobActor
 import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
 import com.sos.jobscheduler.agent.scheduler.order.{AgentOrderKeeper, OrderJournalRecoverer}
-import com.sos.jobscheduler.agent.scheduler.problems.AgentIsShuttingDownProblem
 import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.Completed
@@ -216,7 +215,7 @@ extends MainJournalingActor[AgentServerState, AgentEvent] {
         }
 
       case _ if terminating =>
-        response.failure(AgentIsShuttingDownProblem.throwable)
+        response.failure(AgentIsShuttingDown.throwable)
     }
   }
 

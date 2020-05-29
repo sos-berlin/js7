@@ -9,6 +9,10 @@ import com.sos.jobscheduler.data.order.OrderId
   */
 object Problems
 {
+  case object AgentIsShuttingDown extends Problem.ArgumentlessCoded {
+    override def httpStatusCode = 503  // Service unavailable
+  }
+
   case object MasterAgentMismatchProblem extends Problem.ArgumentlessCoded
 
   final case class AgentDuplicateOrder(orderId: OrderId) extends Problem.Coded {

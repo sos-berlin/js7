@@ -12,6 +12,7 @@ import com.sos.jobscheduler.common.akkahttp.WebLogDirectives
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
+import com.sos.jobscheduler.core.message.ProblemCodeMessages
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import scala.concurrent.duration._
@@ -21,6 +22,8 @@ import scala.concurrent.duration._
   */
 trait WebServiceTest extends HasCloser with BeforeAndAfterAll with ScalatestRouteTest {
   this: AgentRouteProvider with Suite =>
+
+  ProblemCodeMessages.initialize()
 
   protected def uriPathPrefix = ""
 

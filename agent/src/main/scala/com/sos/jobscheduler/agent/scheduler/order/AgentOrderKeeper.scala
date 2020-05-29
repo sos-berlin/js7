@@ -14,7 +14,7 @@ import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
 import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper._
 import com.sos.jobscheduler.agent.scheduler.order.JobRegister.JobEntry
 import com.sos.jobscheduler.agent.scheduler.order.OrderRegister.OrderEntry
-import com.sos.jobscheduler.agent.scheduler.problems.AgentIsShuttingDownProblem
+import com.sos.jobscheduler.agent.data.Problems.AgentIsShuttingDown
 import com.sos.jobscheduler.base.crypt.SignatureVerifier
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked.Ops
@@ -256,7 +256,7 @@ with Stash {
         else if (orderRegister contains order.id)
           Future.successful(Left(AgentDuplicateOrder(order.id)))
         else if (shuttingDown)
-          Future.successful(Left(AgentIsShuttingDownProblem))
+          Future.successful(Left(AgentIsShuttingDown))
         else
           attachOrder(workflowRegister.reuseMemory(order), workflow)
             .map((_: Completed) => Right(Response.Accepted))
@@ -376,7 +376,7 @@ with Stash {
           }
 
     case _ if shuttingDown =>
-      Future.failed(AgentIsShuttingDownProblem.throwable)
+      Future.failed(AgentIsShuttingDown.throwable)
   }
 
   private def startJobActors(workflow: Workflow): Unit =
