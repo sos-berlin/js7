@@ -45,7 +45,7 @@ final class MasterAgentWithoutAuthenticationTest extends AnyFreeSpec
   "jobscheduler.webserver.auth.public = false" in {
     runMyTest(isPublic = false) { (master, agentPort) =>
       assert(master.eventWatch.await[AgentCouplingFailed]().head.value.event.problem
-        == Problem(s"HTTP 401 Unauthorized: http://127.0.0.1:$agentPort/agent/api/command: The resource requires authentication, which was not supplied with the request"))
+        == Problem(s"HTTP 401 Unauthorized: #2 POST http://127.0.0.1:$agentPort/agent/api/command => The resource requires authentication, which was not supplied with the request"))
     }
   }
 

@@ -7,7 +7,7 @@ import akka.http.scaladsl.model.HttpMethods.{GET, POST}
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
 import akka.http.scaladsl.model.headers.CacheDirectives.{`no-cache`, `no-store`}
-import akka.http.scaladsl.model.headers.{Accept, RawHeader, `Cache-Control`}
+import akka.http.scaladsl.model.headers.{Accept, CustomHeader, RawHeader, `Cache-Control`}
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpHeader, HttpMethod, HttpRequest, HttpResponse, RequestEntity, StatusCode, StatusCodes, Uri => AkkaUri}
 import akka.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshal}
 import akka.http.scaladsl.{Http, HttpsConnectionContext}
@@ -142,7 +142,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
     post_[A](uri, data, Accept(`application/json`) :: Nil) map { httpResponse =>
       httpResponse.discardEntityBytes()
       if (!httpResponse.status.isSuccess && !allowedStatusCodes(httpResponse.status.intValue))
-        throw new HttpException(httpResponse, uri, "")
+        throw new HttpException(POST, uri, httpResponse, "")
       httpResponse.status.intValue
     }
 
@@ -220,6 +220,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
               }
               .dematerialize
               .map(decodeResponse)/*decompress*/
+              .map(_.addHeader(InternalHeader(number)))
           }
         }
       })
@@ -265,7 +266,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
             }
         else
           httpResponse.entity.toStrict(FailureTimeout, maxBytes = HttpErrorContentSizeMaximum)
-            .map(entity => throw new HttpException(httpResponse, uri, entity.data.utf8String))
+            .map(entity => throw new HttpException(method, uri, httpResponse, entity.data.utf8String))
       })
 
   private def withCheckedAgentUri[A](request: HttpRequest)(body: HttpRequest => Task[A]): Task[A] =
@@ -342,7 +343,7 @@ object AkkaHttpClient
       case _ => false
     }
 
-  final class HttpException private[http](httpResponse: HttpResponse, val uri: Uri, val dataAsString: String)
+  final class HttpException private[http](method: HttpMethod, val uri: Uri, httpResponse: HttpResponse, val dataAsString: String)
   extends HttpClient.HttpException
   {
     def statusInt = status.intValue
@@ -352,10 +353,15 @@ object AkkaHttpClient
 
     def header[A >: Null <: HttpHeader: ClassTag]: Option[A] = httpResponse.header[A]
 
-    override def toString = s"HTTP $getMessage"
+    override def toString = getMessage
 
     override def getMessage =
-      s"${httpResponse.status}: $uri: ${problem getOrElse shortDataString}"
+      s"$prefixString => ${problem getOrElse shortDataString}"
+
+    private def prefixString = {
+      val number = httpResponse.header[InternalHeader].fold("")(o => s" #${o.value}")
+      s"HTTP ${httpResponse.status}:$number ${method.value} $uri"
+    }
 
     private def shortDataString = dataAsString.truncateWithEllipsis(ErrorMessageLengthMaximum)
 
@@ -363,11 +369,18 @@ object AkkaHttpClient
       if (httpResponse.entity.contentType == ContentTypes.`application/json`)
         io.circe.parser.decode[Problem](dataAsString) match {
           case Left(error) =>
-            logger.debug(s"$uri: HTTP ${httpResponse.status}, Problem cannot be parsed: $error - $dataAsString")
+            logger.debug(s"$uri: $prefixString, Problem cannot be parsed: $error - $dataAsString")
             None
           case Right(o) => Some(o)
         }
       else
         None
+  }
+
+  private final case class InternalHeader(number: Long) extends CustomHeader {
+    val name = "X-JobScheduler-Internal-Header"
+    val value = number.toString
+    def renderInRequests = false
+    def renderInResponses = false
   }
 }

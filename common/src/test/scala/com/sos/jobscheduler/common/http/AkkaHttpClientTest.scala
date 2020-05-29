@@ -2,6 +2,7 @@ package com.sos.jobscheduler.common.http
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.ContentTypes.{`application/json`, `text/plain(UTF-8)`}
+import akka.http.scaladsl.model.HttpMethods.POST
 import akka.http.scaladsl.model.StatusCodes.BadRequest
 import akka.http.scaladsl.model.headers.`Content-Type`
 import akka.http.scaladsl.model.{HttpEntity, HttpResponse}
@@ -71,8 +72,9 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll
       val problem = Problem.pure("PROBLEM")
       val jsonString = Problem.typedJsonEncoder.encodeObject(problem).compactPrint
       val e = new HttpException(
-        HttpResponse(BadRequest, entity = HttpEntity(`application/json`, jsonString.getBytes(UTF_8))),
+        POST,
         Uri("/URI"),
+        HttpResponse(BadRequest, entity = HttpEntity(`application/json`, jsonString.getBytes(UTF_8))),
         jsonString)
       assert(e.problem == Some(problem))
       assert(liftProblem(Task.raiseError(e)).runSyncUnsafe(99.seconds) == Left(problem))
@@ -81,8 +83,9 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll
     "HttpException with broken problem" in {
       val jsonString = "{}"
       val e = new HttpException(
-        HttpResponse(BadRequest, entity = HttpEntity(`application/json`, jsonString.getBytes(UTF_8))),
+        POST,
         Uri("/URI"),
+        HttpResponse(BadRequest, entity = HttpEntity(`application/json`, jsonString.getBytes(UTF_8))),
         jsonString)
       assert(e.problem.isEmpty)
       assert(liftProblem(Task.raiseError(e)).failed.runSyncUnsafe(99.seconds) eq e)
@@ -90,8 +93,9 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll
 
     "HttpException with string response" in {
       val e = new HttpException(
-        HttpResponse(BadRequest, `Content-Type`(`text/plain(UTF-8)`) :: Nil),
+        POST,
         Uri("/URI"),
+        HttpResponse(BadRequest, `Content-Type`(`text/plain(UTF-8)`) :: Nil),
         "{}")
       assert(liftProblem(Task.raiseError(e)).failed.runSyncUnsafe(99.seconds) eq e)
     }
