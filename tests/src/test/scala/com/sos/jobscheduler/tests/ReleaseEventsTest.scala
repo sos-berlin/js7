@@ -67,7 +67,7 @@ final class ReleaseEventsTest extends AnyFreeSpec with DirectoryProviderForScala
       assert(masterJournalFiles.size == n)
     }
 
-    assert(masterJournalFiles.size == 2)
+    assertMasterJournalFileCount(2)
     assert(agentJournalFiles.size == 2)
 
     directoryProvider.run { case (master, Seq(agent)) =>
@@ -75,7 +75,7 @@ final class ReleaseEventsTest extends AnyFreeSpec with DirectoryProviderForScala
 
       val finished = master.eventWatch.await[OrderFinished](predicate = _.key == aOrder.id)
       assert(finished.size == 1)
-      assert(masterJournalFiles.size == 3)
+      assertMasterJournalFileCount(3)
       assert(agentJournalFiles.size <= 3)
 
       val a = newApi(master, aUserAndPassword)
