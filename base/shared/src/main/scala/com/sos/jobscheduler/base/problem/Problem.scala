@@ -143,7 +143,7 @@ object Problem
     final def arguments = Map.empty
   }
 
-  private case class StaticMessage private[Problem](
+  private[problem] case class HasCodeAndMessage private[Problem](
     code: ProblemCode,
     arguments: Map[String, String],
     override val rawMessage: String)
@@ -258,16 +258,15 @@ object Problem
 
   implicit val jsonEncoder: Encoder.AsObject[Problem] = problem =>
     JsonObject.fromIterable(
-      ("message" -> Json.fromString(problem.messageWithCause/*Not value.message, JSON differs from Scala*/)) :: (
-        problem match {
-          case problem: HasCode =>
-            ("code" -> problem.code.asJson) ::
-            ("arguments" -> (problem.arguments.nonEmpty ? problem.arguments).asJson) ::
-            Nil
+      (problem match {
+        case problem: HasCode => Seq(
+          ("code" -> problem.code.asJson),
+          ("arguments" -> (problem.arguments.nonEmpty ? problem.arguments).asJson))
 
-          case _: Problem =>
-            Nil
-        }))
+        case _: Problem =>
+          Seq.empty
+      }) :+
+        ("message" -> Json.fromString(problem.messageWithCause/*Not value.message, JSON differs from Scala*/)))
 
   val typedJsonEncoder: Encoder.AsObject[Problem] = {
     val typeField = "TYPE" -> Json.fromString("Problem")
@@ -282,7 +281,7 @@ object Problem
     } yield
       maybeCode match {
         case None => Problem.pure(message)
-        case Some(code) => StaticMessage(code, arguments, message)
+        case Some(code) => HasCodeAndMessage(code, arguments, message)
       }
 
   object IsThrowable {

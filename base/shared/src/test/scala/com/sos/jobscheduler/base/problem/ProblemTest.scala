@@ -179,6 +179,13 @@ final class ProblemTest extends AnyFreeSpec
     assert((TestCodeProblem(Map.empty): Problem) != TestProblem(Map.empty))
     assert(TestCodeProblem(Map("a" -> "A")) == TestCodeProblem(Map("a" -> "A")))
     assert(TestCodeProblem(Map("a" -> "A")) != TestCodeProblem(Map("a" -> "X")))
+    locally {
+      val a: Problem = Problem.HasCodeAndMessage(TestCodeProblem.code, Map("a" -> "A"), "MSG")
+      val b = TestCodeProblem(Map("a" -> "A"))
+      assert(a == b)
+      assert(b == a)
+    }
+    assert((Problem.HasCodeAndMessage(TestCodeProblem.code, Map("a" -> "A"), "MSG"): Problem) == TestCodeProblem(Map("a" -> "A")))
     assert(Problem("TEST") == Problem("TEST"))
     assert(Problem("TEST").withPrefix("PREFIX") == Problem("PREFIX\n & TEST"))
     assert(Problem("TEST").withPrefix("PREFIX:") == Problem("PREFIX: TEST"))
