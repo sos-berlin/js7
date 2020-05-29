@@ -66,7 +66,4 @@ trait HttpSessionApi extends SessionApi.HasUserAndPassword with HasSessionToken
 
   final def sessionToken: Option[SessionToken] =
     sessionTokenRef.get
-
-  implicit def implicitSessionToken: Task[Option[SessionToken]] =
-    Task(sessionToken)
 }
