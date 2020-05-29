@@ -6,7 +6,7 @@ import cats.data.EitherT
 import com.sos.jobscheduler.agent.AgentState
 import com.sos.jobscheduler.agent.configuration.{AgentConfiguration, AgentStartInformation}
 import com.sos.jobscheduler.agent.data.AgentTermination
-import com.sos.jobscheduler.agent.data.Problems.{MasterAgentMismatchProblem, UnknownMaster}
+import com.sos.jobscheduler.agent.data.Problems.{AgentIsShuttingDown, DuplicateAgentRef, MasterAgentMismatch, UnknownMaster}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.CoupleMaster
 import com.sos.jobscheduler.agent.data.event.KeyedEventJsonFormats.AgentKeyedEventJsonCodec
@@ -37,7 +37,7 @@ import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActor}
 import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
-import com.sos.jobscheduler.data.agent.AgentRunId
+import com.sos.jobscheduler.data.agent.{AgentRefPath, AgentRunId}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{EventId, JournalEvent, JournalId, JournalState, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.master.MasterId
@@ -99,9 +99,9 @@ extends MainJournalingActor[AgentServerState, AgentEvent] {
     protected val expectedJournalId = None
 
     def recoverSnapshot = {
-      case snapshot @ RegisteredMaster(masterId, agentRunId) =>
+      case snapshot @ RegisteredMaster(masterId, agentRefPath, agentRunId) =>
         state = state.applySnapshot(snapshot).orThrow
-        addOrderKeeper(masterId, agentRunId)
+        addOrderKeeper(masterId, agentRefPath, agentRunId)
     }
 
     def recoverEvent = {
@@ -177,12 +177,12 @@ extends MainJournalingActor[AgentServerState, AgentEvent] {
           }
         }
 
-      case AgentCommand.RegisterAsMaster if !terminating =>
+      case AgentCommand.RegisterAsMaster(agentRefPath) if !terminating =>
         state.idToMaster.get(masterId) match {
           case None =>
             val agentRunId = AgentRunId(JournalId.random())
             response completeWith
-              persist(AgentEvent.MasterRegistered(masterId, agentRunId)) {
+              persist(AgentEvent.MasterRegistered(masterId, agentRefPath, agentRunId)) {
                 case (Stamped(_, _, KeyedEvent(NoKey, event)), journaledState) =>
                   update(event)
                   Right(AgentCommand.RegisterAsMaster.Response(agentRunId))
@@ -190,16 +190,16 @@ extends MainJournalingActor[AgentServerState, AgentEvent] {
 
           case Some(registeredMaster) =>
             response.completeWith(
-              checkMaster(masterId, None, EventId.BeforeFirst)
+              checkMaster(masterId, agentRefPath, None, EventId.BeforeFirst)
                 .map(_.map((_: MasterRegister.Entry) => AgentCommand.RegisterAsMaster.Response(registeredMaster.agentRunId)))
                 .runToFuture)
         }
 
-      case AgentCommand.CoupleMaster(agentRunId, eventId) if !terminating =>
+      case AgentCommand.CoupleMaster(agentRefPath, agentRunId, eventId) if !terminating =>
         // Command does not change state. It only checks the coupling (for now)
         response.completeWith(
           ( for {
-              entry <- EitherT(checkMaster(masterId, Some(agentRunId), eventId))
+              entry <- EitherT(checkMaster(masterId, agentRefPath, Some(agentRunId), eventId))
               response <- EitherT(entry.persistence.currentState
                 .map(state => Checked(CoupleMaster.Response(state.idToOrder.keySet))))
             } yield response
@@ -219,7 +219,8 @@ extends MainJournalingActor[AgentServerState, AgentEvent] {
     }
   }
 
-  private def checkMaster(masterId: MasterId, requiredAgentRunId: Option[AgentRunId], eventId: EventId): Task[Checked[MasterRegister.Entry]] = {
+  private def checkMaster(masterId: MasterId, requestedAgentRefPath: AgentRefPath, requestedAgentRunId: Option[AgentRunId], eventId: EventId)
+  : Task[Checked[MasterRegister.Entry]] = {
     def pure[A](a: Checked[A]) = EitherT(Task.pure(a))
     ( for {
         registeredMaster <- pure(state.idToMaster.get(masterId).toChecked(UnknownMaster(masterId)))
@@ -227,7 +228,12 @@ extends MainJournalingActor[AgentServerState, AgentEvent] {
         eventWatch <- EitherT(Task.fromFuture(entry.eventWatch.whenStarted) map Checked.apply)
         _ <- pure {
             assertThat(entry.agentRunId == registeredMaster.agentRunId)
-            Checked.cond(requiredAgentRunId.forall(_ == registeredMaster.agentRunId), (), MasterAgentMismatchProblem)
+            if (requestedAgentRefPath != registeredMaster.agentRefPath)
+              Left(DuplicateAgentRef(first = registeredMaster.agentRefPath, second = requestedAgentRefPath))
+            else if (!requestedAgentRunId.forall(_ == registeredMaster.agentRunId))
+              Left(MasterAgentMismatch(registeredMaster.agentRefPath))
+            else
+              Right(())
           }
         _ <- pure(eventWatch.checkEventId(eventId))
       } yield entry
@@ -248,12 +254,12 @@ extends MainJournalingActor[AgentServerState, AgentEvent] {
   private def update(event: AgentEvent): Unit = {
     state = state.applyEvent(event).orThrow
     event match {
-      case AgentEvent.MasterRegistered(masterId, agentRunId) =>
-        addOrderKeeper(masterId, agentRunId)
+      case AgentEvent.MasterRegistered(masterId, agentRefPath, agentRunId) =>
+        addOrderKeeper(masterId, agentRefPath, agentRunId)
     }
   }
 
-  private def addOrderKeeper(masterId: MasterId, agentRunId: AgentRunId): ActorRef = {
+  private def addOrderKeeper(masterId: MasterId, agentRefPath: AgentRefPath, agentRunId: AgentRunId): ActorRef = {
     val journalMeta = JournalMeta(SnapshotJsonFormat, AgentKeyedEventJsonCodec, stateDirectory / s"master-$masterId")
     val recovered = OrderJournalRecoverer.recover(journalMeta, agentRunId.journalId, agentConfiguration)  // May take minutes !!!
     recovered.closeWithCloser
@@ -265,6 +271,7 @@ extends MainJournalingActor[AgentServerState, AgentEvent] {
       Props {
         new AgentOrderKeeper(
           masterId,
+          agentRefPath,
           recovered,
           signatureVerifier,
           newTaskRunner,

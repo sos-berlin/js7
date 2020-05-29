@@ -25,8 +25,8 @@ extends JournalingActor[S, E]
   protected final def snapshots: Future[Iterable[Any]] =
     Future.successful(snapshot.toList)
 
-  protected final def persistTask[A](event: E)(callback: (Stamped[KeyedEvent[E]], S) => A): Task[Checked[A]] =
-    persistKeyedEventTask(KeyedEvent[E](key, event))(callback)
+  protected final def persistTask[A](event: E, async: Boolean = false)(callback: (Stamped[KeyedEvent[E]], S) => A): Task[Checked[A]] =
+    persistKeyedEventTask(KeyedEvent[E](key, event), async = async)(callback)
 
   protected final def persist[EE <: E, A](event: EE, async: Boolean = false)(callback: (EE, S) => A): Future[A] =
     super.persistKeyedEvent(KeyedEvent(key, event), async = async) { (stampedEvent, journaledState) =>

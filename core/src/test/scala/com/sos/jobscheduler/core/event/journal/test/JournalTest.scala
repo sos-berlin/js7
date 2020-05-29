@@ -185,7 +185,7 @@ object JournalTest {
       "totalRunningTime": 3600,
       "startedAt": "STARTED-AT",
       "timestamp": "TIMESTAMP",
-      "version": "0.28",
+      "version": "0.29",
       "softwareVersion": "2.0.0-SNAPSHOT",
       "buildId": "${BuildInfo.buildId}"
     }""",
@@ -269,7 +269,7 @@ object JournalTest {
   private val SecondJournal = Vector(
     json"""{
       "TYPE": "JobScheduler.Journal",
-      "version": "0.28",
+      "version": "0.29",
       "softwareVersion": "2.0.0-SNAPSHOT",
       "buildId": "${BuildInfo.buildId}",
       "journalId": "ABEiM0RVZneImaq7zN3u_w",

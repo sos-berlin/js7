@@ -15,6 +15,7 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.{EventId, EventRequest}
 import com.sos.jobscheduler.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.position.Position
@@ -38,7 +39,8 @@ final class AgentActorTest extends AnyFreeSpec
           file.writeExecutable(TestScript)
         }
         (provider.agentActor ? AgentActor.Input.Start).mapTo[AgentActor.Output.Ready.type] await 99.s
-        val agentRunId = executeCommand(RegisterAsMaster).await(99.s).orThrow.asInstanceOf[RegisterAsMaster.Response].agentRunId
+        val agentRunId = executeCommand(RegisterAsMaster(agentRefPath))
+          .await(99.s).orThrow.asInstanceOf[RegisterAsMaster.Response].agentRunId
         val stopwatch = new Stopwatch
         val orderIds = for (i <- 0 until n) yield OrderId(s"TEST-ORDER-$i")
         orderIds.map(orderId =>
@@ -49,7 +51,7 @@ final class AgentActorTest extends AnyFreeSpec
           executeCommand(
             AttachOrder(TestOrder.copy(id = orderIds.head), TestAgentRefPath, provider.fileBasedSigner.sign(SimpleTestWorkflow))
           ).await(99.s) == Left(AgentDuplicateOrder(orderIds.head)))
-        assert(executeCommand(CoupleMaster(agentRunId, EventId.BeforeFirst)).await(99.s) ==
+        assert(executeCommand(CoupleMaster(agentRefPath, agentRunId, EventId.BeforeFirst)).await(99.s) ==
           Right(CoupleMaster.Response(orderIds.toSet)))
         for (orderId <- orderIds)
           eventCollector.whenKeyedEvent[OrderEvent.OrderDetachable](EventRequest.singleClass(timeout = Some(90.s)), orderId) await 99.s
@@ -79,6 +81,7 @@ final class AgentActorTest extends AnyFreeSpec
 
 object AgentActorTest
 {
+  private val agentRefPath = AgentRefPath("/AGENT")
   private val TestScript =
     if (isWindows) """
       |@echo off

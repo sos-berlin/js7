@@ -14,6 +14,7 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.core.command.CommandMeta
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.order.OrderEvent.OrderProcessed
@@ -25,8 +26,8 @@ import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import java.nio.file.Files.createDirectory
 import java.nio.file.Path
 import monix.execution.Scheduler.Implicits.global
-import scala.concurrent.duration._
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -54,7 +55,7 @@ final class AgentTest extends AnyFreeSpec with AgentTester
           }
           RunningAgent.run(agentConf, timeout = Some(99.s)) { agent =>
             val agentApi = agent.api(CommandMeta(TestUser))
-            assert(agentApi.commandExecute(RegisterAsMaster).await(99.s).toOption.get
+            assert(agentApi.commandExecute(RegisterAsMaster(agentRefPath)).await(99.s).toOption.get
               .isInstanceOf[RegisterAsMaster.Response])
 
             val order = Order(OrderId("TEST"), TestWorkflow.id, Order.Ready)
@@ -73,6 +74,7 @@ final class AgentTest extends AnyFreeSpec with AgentTester
 object AgentTest {
   private val TestMasterId = MasterId("MASTER")
   private val TestUser = SimpleUser(TestMasterId.toUserId)
+  private val agentRefPath = AgentRefPath("/AGENT")
 
   private val TestScript =
     if (isWindows) """

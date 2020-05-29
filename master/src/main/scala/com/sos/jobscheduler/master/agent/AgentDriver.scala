@@ -10,8 +10,8 @@ import com.sos.jobscheduler.base.auth.UserAndPassword
 import com.sos.jobscheduler.base.crypt.Signed
 import com.sos.jobscheduler.base.generic.{Completed, SecretString}
 import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.problem.Problems.InvalidSessionTokenProblem
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.ScalaUtils._
@@ -39,9 +39,9 @@ import com.typesafe.config.ConfigUtil
 import monix.eval.Task
 import monix.execution.atomic.{AtomicInt, AtomicLong}
 import monix.execution.{Cancelable, CancelableFuture, Scheduler}
+import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
-import scala.concurrent.{Future, Promise}
 import scala.util.control.NoStackTrace
 import scala.util.{Failure, Success, Try}
 import shapeless.tag.@@
@@ -72,6 +72,7 @@ with ReceiveLoggingActor.WithStash
   /** Only filled when coupled */
   private var lastFetchedEventId = initialEventId
   private var lastCommittedEventId = initialEventId
+  @volatile
   private var lastProblem: Option[Problem] = None
   private var currentFetchedFuture: Option[CancelableFuture[Completed]] = None
   private var releaseEventsCancelable: Option[Cancelable] = None
@@ -87,21 +88,34 @@ with ReceiveLoggingActor.WithStash
     private var attachedOrderIds: Set[OrderId] = null
 
     override protected def couple(eventId: EventId) =
-      registerAsMasterIfNeeded >>
-        client.commandExecute(CoupleMaster(agentRunIdOnce.orThrow, eventId = eventId))
-          .map(_.map { case CoupleMaster.Response(orderIds) =>
-            logger.trace(s"CoupleMaster returned attached OrderIds={${orderIds.toSeq.sorted.mkString(" ")}}")
-            attachedOrderIds = orderIds
-            Completed
-          })
+      (for {
+        _ <- EitherT(registerAsMasterIfNeeded)
+        completed <- EitherT(
+          client.commandExecute(CoupleMaster(agentRefPath, agentRunIdOnce.orThrow, eventId = eventId))
+            .map(_.map { case CoupleMaster.Response(orderIds) =>
+              logger.trace(s"CoupleMaster returned attached OrderIds={${orderIds.toSeq.sorted.mkString(" ")}}")
+              attachedOrderIds = orderIds
+              Completed
+            }))
+      } yield completed).value
 
     protected def getObservable(api: AgentClient, after: EventId) =
       Task { logger.debug(s"getObservable(after=$after)") } >>
         api.mastersEventObservable(EventRequest[Event](EventClasses, after = after, timeout = Some(idleTimeout)))
 
     override protected def onCouplingFailed(api: AgentClient, problem: Problem) =
-      promiseTask[Completed] {
-        promise => self ! Internal.OnCouplingFailed(problem, promise)
+      Task.defer {
+        if (lastProblem.contains(problem)) {
+          logger.debug(s"Coupling failed: $problem")
+          Task.pure(Completed)
+        } else {
+          lastProblem = Some(problem)
+          logger.warn(s"Coupling failed: $problem")
+          for (t <- problem.throwableOption if t.getStackTrace.nonEmpty) logger.debug(s"Coupling failed: $problem", t)
+          persistTask(AgentCouplingFailed(problem), async = true) { (_, _) =>
+            Completed
+          }.map(_.orThrow)
+        }
       }
 
     override protected def onCoupled(api: AgentClient, after: EventId) =
@@ -248,20 +262,6 @@ with ReceiveLoggingActor.WithStash
       commandQueue.onCoupled(agentOrderIds)
       promise.success(Completed)
 
-    case Internal.OnCouplingFailed(problem, promise) =>
-      promise.completeWith(
-        if (lastProblem.contains(problem)) {
-          logger.debug(s"Coupling failed: $problem")
-          Future.successful(Completed)
-        } else {
-          lastProblem = Some(problem)
-          logger.warn(s"Coupling failed: $problem")
-          for (t <- problem.throwableOption if t.getStackTrace.nonEmpty) logger.debug(s"Coupling failed: $problem", t)
-          persist(AgentCouplingFailed(problem), async = true) { (_, _) =>
-            Completed
-          }
-        })
-
     case Internal.OnDecoupled =>
       commandQueue.onDecoupled()
 
@@ -385,20 +385,22 @@ with ReceiveLoggingActor.WithStash
       .completedL
       .map(_ => Completed)
 
-  private def registerAsMasterIfNeeded: Task[Completed] =
-    if (agentRunIdOnce.nonEmpty)
-      Task.pure(Completed)
-    else
-      client.commandExecute(RegisterAsMaster)
-        .map(_.map(_.agentRunId).orThrowWithoutStacktrace/*TODO Safe original Problem, package in special ProblemException and let something like Problem.pure don't _wrap_ the Problem?*/)
-        .flatMap { agentRunId =>
-          val event = AgentRegisteredMaster(agentRunId)
-          persistTask(event) { (_, _) =>
-            // asynchronous
-            agentRunIdOnce := agentRunId
-            Completed
-          }.map(_.orThrow)
-        }
+  private def registerAsMasterIfNeeded: Task[Checked[Completed]] =
+    Task.defer {
+      if (agentRunIdOnce.nonEmpty)
+        Task.pure(Right(Completed))
+      else
+        (for {
+          agentRunId <- EitherT(
+            client.commandExecute(RegisterAsMaster(agentRefPath)).map(_.map(_.agentRunId)))
+          completed <- EitherT(
+            persistTask(AgentRegisteredMaster(agentRunId), async = true) { (_, _) =>
+              // asynchronous
+              agentRunIdOnce := agentRunId
+              Completed
+            })
+        } yield completed).value
+    }
 
   private object logEvent {
     // This object is used asynchronously
@@ -470,7 +472,6 @@ private[master] object AgentDriver
     final case class FetchedEvents(events: Seq[Stamped[AnyKeyedEvent]], promise: Promise[Completed])
       extends DeadLetterSuppression
     final case class FetchFinished(tried: Try[Completed]) extends DeadLetterSuppression
-    final case class OnCouplingFailed(problem: Problem, promise: Promise[Completed]) extends DeadLetterSuppression
     final case class OnCoupled(promise: Promise[Completed], orderIds: Set[OrderId]) extends DeadLetterSuppression
     final case object OnDecoupled extends DeadLetterSuppression
     final case class EventsAccepted(lastEventId: EventId, promise: Promise[Completed]) extends DeadLetterSuppression

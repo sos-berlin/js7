@@ -12,6 +12,7 @@ object Problems
 {
   case object AgentIsShuttingDown extends Problem.ArgumentlessCoded {
     override def httpStatusCode = 503  // Service unavailable
+  }
 
   final case class MasterAgentMismatch(agentRefPath: AgentRefPath)
   extends Problem.Coded {
@@ -24,8 +25,6 @@ object Problems
       "first" -> first.string,
       "second" -> second.string)
   }
-
-  case object MasterAgentMismatchProblem extends Problem.ArgumentlessCoded
 
   final case class AgentDuplicateOrder(orderId: OrderId) extends Problem.Coded {
     def arguments = Map("orderId" -> orderId.string)

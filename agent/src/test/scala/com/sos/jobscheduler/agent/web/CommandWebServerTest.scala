@@ -18,7 +18,7 @@ import com.sos.jobscheduler.common.akkautils.Akkas.actorSystemResource
 import com.sos.jobscheduler.common.log.ScribeUtils.coupleScribeWithSlf4j
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.sos.jobscheduler.core.command.CommandMeta
-import com.sos.jobscheduler.data.agent.AgentRunId
+import com.sos.jobscheduler.data.agent.{AgentRefPath, AgentRunId}
 import com.sos.jobscheduler.data.event.{EventId, JournalId}
 import com.sos.jobscheduler.data.order.OrderId
 import com.typesafe.config.ConfigFactory
@@ -36,7 +36,7 @@ final class CommandWebServerTest extends AsyncFreeSpec
 
   private val n = 1_000 //1_000_000
   private lazy val orderIds = (for (i <- 1 to n) yield OrderId(s"A-MEDIUM-LONG-ORDER-$i")).toSet
-  private lazy val coupleMaster = CoupleMaster(AgentRunId(JournalId.random()), EventId.BeforeFirst)
+  private lazy val coupleMaster = CoupleMaster(AgentRefPath("/AGENT"), AgentRunId(JournalId.random()), EventId.BeforeFirst)
   private lazy val clientResource = for {
     as <- actorSystemResource("CommandWebServerTest", testConfig)
     webServer <- AkkaWebServer.resourceForHttp(findFreeTcpPort(), route(as), testConfig)(as)
@@ -76,7 +76,8 @@ final class CommandWebServerTest extends AsyncFreeSpec
     }
 }
 
-private object CommandWebServerTest {
+private object CommandWebServerTest
+{
   private val testConfig =
     ConfigFactory.parseString("""
        jobscheduler.webserver.auth.public = on

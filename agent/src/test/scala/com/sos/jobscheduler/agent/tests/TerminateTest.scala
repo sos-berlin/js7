@@ -16,6 +16,7 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
 import com.sos.jobscheduler.core.event.ActorEventCollector
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.EventRequest
 import com.sos.jobscheduler.data.order.OrderEvent.OrderProcessed
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
@@ -46,7 +47,7 @@ final class TerminateTest extends AnyFreeSpec with AgentTester
 
     val client = AgentClient(agentUri = agent.localUri, Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD")))
     client.login() await 99.s
-    client.commandExecute(RegisterAsMaster) await 99.s
+    client.commandExecute(RegisterAsMaster(agentRefPath)) await 99.s
 
     val eventCollector = newEventCollector(agent.injector)
 
@@ -78,7 +79,9 @@ final class TerminateTest extends AnyFreeSpec with AgentTester
   }
 }
 
-object TerminateTest {
+object TerminateTest
+{
+  private val agentRefPath = AgentRefPath("/AGENT")
   private val AScript = operatingSystem.sleepingShellScript(10.seconds)
 
   private def newEventCollector(injector: Injector): EventCollector =

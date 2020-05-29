@@ -93,9 +93,10 @@ final class AgentCommandTest extends AnyFreeSpec
   }
 
   "RegisterAsMaster" in {
-    check(AgentCommand.RegisterAsMaster,
+    check(AgentCommand.RegisterAsMaster(AgentRefPath("/AGENT")),
       json"""{
-        "TYPE": "RegisterAsMaster"
+        "TYPE": "RegisterAsMaster",
+        "agentRefPath": "/AGENT"
       }""")
   }
 
@@ -109,9 +110,14 @@ final class AgentCommandTest extends AnyFreeSpec
   }
 
   "CoupleMaster" in {
-    check(AgentCommand.CoupleMaster(AgentRunId(JournalId(UUID.fromString("11111111-2222-3333-4444-555555555555"))), 1000L),
+    check(
+      AgentCommand.CoupleMaster(
+        AgentRefPath("/AGENT"),
+        AgentRunId(JournalId(UUID.fromString("11111111-2222-3333-4444-555555555555"))),
+        1000L),
       json"""{
         "TYPE": "CoupleMaster",
+        "agentRefPath": "/AGENT",
         "agentRunId": "ERERESIiMzNERFVVVVVVVQ",
         "eventId": 1000
       }""")

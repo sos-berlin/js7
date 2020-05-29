@@ -40,8 +40,8 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class OrderAgentTest extends AnyFreeSpec {
-
+final class OrderAgentTest extends AnyFreeSpec
+{
   "AgentCommand AttachOrder" in {
     provideAgentDirectory { directory =>
       directory / "config" / "private" / "trusted-pgp-keys" / "test.asc" := signer.publicKey
@@ -59,10 +59,10 @@ final class OrderAgentTest extends AnyFreeSpec {
           implicit val actorSystem = newAgentActorSystem(getClass.getSimpleName)
           val agentClient = AgentClient(agent.localUri, Some(TestUserAndPassword)).closeWithCloser
           intercept[AkkaHttpClient.HttpException] {  // Login is required
-            agentClient.commandExecute(RegisterAsMaster).await(99.s).orThrow
+            agentClient.commandExecute(RegisterAsMaster(agentRefPath)).await(99.s).orThrow
           } .status shouldEqual Unauthorized
           agentClient.login() await 99.s
-          assert(agentClient.commandExecute(RegisterAsMaster).await(99.s).toOption.get  // Without Login, this registers all anonymous clients
+          assert(agentClient.commandExecute(RegisterAsMaster(agentRefPath)).await(99.s).toOption.get  // Without Login, this registers all anonymous clients
             .isInstanceOf[RegisterAsMaster.Response])
 
           val order = Order(OrderId("TEST-ORDER"), SimpleTestWorkflow.id, Order.Ready, Map("x" -> "X"))
@@ -107,7 +107,7 @@ final class OrderAgentTest extends AnyFreeSpec {
           implicit val actorSystem = newAgentActorSystem(getClass.getSimpleName)
           val agentClient = AgentClient(agent.localUri, Some(TestUserAndPassword)).closeWithCloser
           agentClient.login() await 99.s
-          assert(agentClient.commandExecute(RegisterAsMaster).await(99.s) == Right(AgentCommand.Response.Accepted))
+          assert(agentClient.commandExecute(RegisterAsMaster(agentRefPath)).await(99.s) == Right(AgentCommand.Response.Accepted))
 
           val orders = for (i <- 1 to n) yield
             Order(OrderId(s"TEST-ORDER-$i"), SimpleTestWorkflow.id, Order.Ready,
@@ -138,7 +138,9 @@ final class OrderAgentTest extends AnyFreeSpec {
   }
 }
 
-private object OrderAgentTest {
+private object OrderAgentTest
+{
+  private val agentRefPath = AgentRefPath("/AGENT")
   private val TestScript =
     if (isWindows) """
       |@echo off

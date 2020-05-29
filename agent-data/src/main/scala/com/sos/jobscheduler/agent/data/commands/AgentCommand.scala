@@ -92,7 +92,10 @@ object AgentCommand extends CommonCommand.Companion
     * The Agent Server starts a new Agent, dedicated to the Master.
     * Command may be given twice (in case of a sudden restart).
     */
-  case object RegisterAsMaster extends AgentCommand {
+  final case class RegisterAsMaster(agentRefPath: AgentRefPath) extends AgentCommand {
+    type Response = RegisterAsMaster.Response
+  }
+  object RegisterAsMaster {
     /**
       * @param agentRunId Use the value for `CoupleMaster`. */
     final case class Response(agentRunId: AgentRunId) extends AgentCommand.Response
@@ -100,7 +103,7 @@ object AgentCommand extends CommonCommand.Companion
 
   /** Couples the registered Master identified by current User.
     * @param agentRunId Must be the value returned by `RegisterAsMaster`. */
-  final case class CoupleMaster(agentRunId: AgentRunId, eventId: EventId) extends AgentCommand {
+  final case class CoupleMaster(agentRefPath: AgentRefPath, agentRunId: AgentRunId, eventId: EventId) extends AgentCommand {
     type Response = CoupleMaster.Response
   }
   object CoupleMaster {
@@ -188,7 +191,7 @@ object AgentCommand extends CommonCommand.Companion
       Subtype[EmergencyStop],
       Subtype(deriveCodec[ReleaseEvents]),
       Subtype(NoOperation),
-      Subtype(RegisterAsMaster),
+      Subtype(deriveCodec[RegisterAsMaster]),
       Subtype(deriveCodec[CoupleMaster]),
       Subtype[ShutDown],
       Subtype(deriveCodec[AttachOrder]),

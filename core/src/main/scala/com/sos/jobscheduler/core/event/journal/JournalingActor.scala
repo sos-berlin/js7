@@ -64,9 +64,11 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
     stashingCount = Inhibited
   }
 
-  protected final def persistKeyedEventTask[A](keyedEvent: KeyedEvent[E])(callback: (Stamped[KeyedEvent[E]], S) => A): Task[Checked[A]] =
+  protected final def persistKeyedEventTask[A](keyedEvent: KeyedEvent[E], async: Boolean = false)
+    (callback: (Stamped[KeyedEvent[E]], S) => A)
+  : Task[Checked[A]] =
     promiseTask[Checked[A]] { promise =>
-      self ! Persist(keyedEvent, callback, promise)
+      self ! Persist(keyedEvent, async = async, callback, promise)
     }
 
   /** Fast lane for events not affecting the journaled state. */
@@ -148,9 +150,9 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
   }
 
   protected[journal] def journaling: Receive = {
-    case Persist(keyedEvent, callback, promise) =>
+    case Persist(keyedEvent, async, callback, promise) =>
       promise.completeWith(
-        persistKeyedEvent(keyedEvent)((stampedEvents, state) =>
+        persistKeyedEvent(keyedEvent, async = async)((stampedEvents, state) =>
           try Right(callback(stampedEvents, state))
           catch {
             case ProblemException(problem) => Left(problem)
@@ -264,6 +266,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
 
   private case class Persist[A](
     keyedEvent: KeyedEvent[E],
+    async: Boolean = false,
     callback: (Stamped[KeyedEvent[E]], S) => A,
     promise: Promise[Checked[A]])
 }
