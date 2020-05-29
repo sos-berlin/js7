@@ -33,6 +33,7 @@ import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
 import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActor}
 import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
 import com.sos.jobscheduler.core.problems.ReverseReleaseEventsProblem
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.crypt.FileBasedVerifier
 import com.sos.jobscheduler.data.event.JournalEvent.JournalEventsReleased
 import com.sos.jobscheduler.data.event.{<-:, Event, EventId, JournalState, JournaledState, KeyedEvent, Stamped}
@@ -61,6 +62,7 @@ import shapeless.tag
   */
 final class AgentOrderKeeper(
   masterId: MasterId,
+  ownAgentRefPath: AgentRefPath,
   recovered_ : OrderJournalRecoverer.Recovered,
   signatureVerifier: SignatureVerifier,
   newTaskRunner: TaskRunner.Factory,
@@ -379,11 +381,13 @@ with Stash {
 
   private def startJobActors(workflow: Workflow): Unit =
     for ((jobKey, job) <- workflow.keyToJob) {
-      val jobActor = watch(actorOf(
-        JobActor.props(JobActor.Conf(jobKey, job, newTaskRunner, temporaryDirectory = conf.temporaryDirectory,
-          executablesDirectory = conf.executableDirectory, scriptInjectionAllowed = conf.scriptInjectionAllowed))
-        /*TODO name actor?*/))
-      jobRegister.insert(jobKey, jobActor)
+      if (job.agentRefPath == ownAgentRefPath) {
+        val jobActor = watch(actorOf(
+          JobActor.props(JobActor.Conf(jobKey, job, newTaskRunner, temporaryDirectory = conf.temporaryDirectory,
+            executablesDirectory = conf.executableDirectory, scriptInjectionAllowed = conf.scriptInjectionAllowed))
+          /*TODO name actor?*/))
+        jobRegister.insert(jobKey, jobActor)
+      }
     }
 
   private def executeCommandForOrderId(orderId: OrderId)(body: OrderEntry => Future[Response]): Future[Response] =
