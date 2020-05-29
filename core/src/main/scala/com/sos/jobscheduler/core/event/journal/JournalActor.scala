@@ -204,7 +204,7 @@ extends Actor with Stash
               case Some(Stamped(_, _, KeyedEvent(_, _: ClusterCoupled))) =>
                 // Commit now to let Coupled event take effect on following events (avoids deadlock)
                 commit()
-                logger.info(s"Coupled: Start requiring acknowledgements from passive cluster node")
+                logger.info(s"Cluster is coupled: Start requiring acknowledgements from passive cluster node")
                 requireClusterAcknowledgement = true
 
               case Some(Stamped(_, _, KeyedEvent(_, _: ClusterSwitchedOver))) =>
