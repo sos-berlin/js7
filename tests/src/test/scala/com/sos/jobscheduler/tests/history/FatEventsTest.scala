@@ -54,7 +54,7 @@ final class FatEventsTest extends AnyFreeSpec
       def listJournalFiles = JournalFiles.listJournalFiles(provider.master.dataDir / "state" / "master").map(_.file.getFileName.toString)
 
       def assertJournalFileCount(n: Int): Unit = {
-        waitForCondition(5.s, 10.ms) { listJournalFiles.size == n }
+        waitForCondition(9.s, 10.ms) { listJournalFiles.size == n }
         assert(listJournalFiles.size == n)
       }
 
