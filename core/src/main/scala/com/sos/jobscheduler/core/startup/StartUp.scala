@@ -1,10 +1,11 @@
 package com.sos.jobscheduler.core.startup
 
+import com.sos.jobscheduler.base.system.SystemInformation.totalPhysicalMemory
 import com.sos.jobscheduler.common.process.ProcessPidRetriever.maybeOwnPid
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.system.JavaInformations
 import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem.{cpuModel, distributionNameAndVersionOption, hostname}
-import com.sos.jobscheduler.common.utils.ByteUnits.toMB
+import com.sos.jobscheduler.common.utils.ByteUnits.toKiBGiB
 import java.io.File
 import java.nio.file.Path
 import java.time.LocalDateTime
@@ -24,9 +25,11 @@ object StartUp
   def logStartUp(configDir: Path, dataDir: Option[Path]): Unit = {
     logger.info(
       s"Java " + JavaInformations.implementationVersion + " " +
-      "(" + toMB(sys.runtime.maxMemory) + ") · " +
+      "(" + toKiBGiB(sys.runtime.maxMemory) + ") · " +
       sys.props("os.name") + distributionNameAndVersionOption.fold("")(o => s" ($o)") + " · " +
-      cpuModel.fold("")(o => s"$o ") + "(" + sys.runtime.availableProcessors + " threads) · " +
+      cpuModel.fold("")(o => s"$o ") + "(" + sys.runtime.availableProcessors + " threads)" +
+      totalPhysicalMemory.fold("")(o => " " + toKiBGiB(o)) +
+      " · " +
       (maybeOwnPid.fold("")(pid => s"pid=${pid.number} ")) +
       (if (hostname.nonEmpty) s"host=$hostname " else "") +
       s"config=$configDir " +
