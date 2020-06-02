@@ -31,16 +31,16 @@ extends AutoCloseable
   private val persistPromise = Promise[PersistFunction[S, Event]]()
   private val persistTask: Task[PersistFunction[S, Event]] = Task.fromFuture(persistPromise.future)
 
-  private val actorSetOnce = SetOnce[ActorRef]
+  private val actorOnce = SetOnce[ActorRef]
 
-  def actor = actorSetOnce.orThrow
+  def actor = actorOnce.orThrow
 
   def close(): Unit =
-    actorSetOnce.foreach(actorRefFactory.stop)
+    actorOnce.foreach(actorRefFactory.stop)
 
   def start(state: S): Unit =
-    actorSetOnce := actorRefFactory.actorOf(
-      StateJournalingActor.props[S, Event](state, journalActor, persistPromise),
+    actorOnce := actorRefFactory.actorOf(
+      StateJournalingActor.props[S, Event](state, journalActor, journalConf, persistPromise),
       encodeAsActorName("StateJournalingActor-" + S.tpe.toString))
 
   def persistKeyedEvent[E <: Event](keyedEvent: KeyedEvent[E]): Task[Checked[(Stamped[KeyedEvent[E]], S)]] = {
@@ -82,13 +82,13 @@ extends AutoCloseable
           stampedKeyedEvents.asInstanceOf[Seq[Stamped[KeyedEvent[E]]]] -> state }))
   }
 
-  def isStarted = actorSetOnce.nonEmpty
+  def isStarted = actorOnce.nonEmpty
 
   private def requireStarted() =
-    if (actorSetOnce.isEmpty) throw new IllegalStateException(s"$toString has not yet been started")
+    if (actorOnce.isEmpty) throw new IllegalStateException(s"$toString has not yet been started")
 
   def waitUntilStarted: Task[JournaledStatePersistence[S]] =
-    deferFutureAndLog(s"ActorRef for $toString", actorSetOnce.future)
+    deferFutureAndLog(s"ActorRef for $toString", actorOnce.future)
       .map(_ => this)
 
   def currentState: Task[S] =
