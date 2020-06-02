@@ -904,7 +904,7 @@ with MainJournalingActor[MasterState, Event]
     }
 
   private def checkForEqualOrdersState(): Unit =
-    if (masterConfiguration.journalConf.slowCheckJournaledState) {
+    if (masterConfiguration.journalConf.slowCheckState) {
       assertThat(masterState.idToOrder.size == orderRegister.size)
       masterState.idToOrder.keysIterator foreach checkForEqualOrderState
     }

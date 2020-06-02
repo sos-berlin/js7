@@ -412,7 +412,7 @@ extends Actor with Stash
   private def onAllCommitsFinished(): Unit = {
     assertThat(lastAcknowledgedEventId == lastWrittenEventId)
     assertThat(writtenBuffer.isEmpty)
-    if (conf.slowCheckJournaledState) requireState(journaledState == uncommittedJournaledState)
+    if (conf.slowCheckState) requireState(journaledState == uncommittedJournaledState)
     uncommittedJournaledState = journaledState    // Reduce duplicate allocated objects
     waitingForAcknowledgeTimer := Cancelable.empty
     maybeDoASnapshot()

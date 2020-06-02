@@ -49,7 +49,7 @@ object JournalConfTest
        sync-delay = 2ms
        event-buffer-size = 6
        use-journaled-state-as-snapshot = false
-       slow-check-journaled-state = false
+       slow-check-state = true  // Set by build.sbt, anyway
        snapshot.log-period = 4s
        snapshot.log-actor-limit = 5
        snapshot.period = 7h
@@ -71,5 +71,6 @@ object JournalConfTest
     snapshotLogProgressPeriod = 9.ms,
     snapshotLogProgressActorLimit = 11,
     ackWarnDurations = List(10.s, 15.s),
-    deleteObsoleteFiles = true)
+    deleteObsoleteFiles = true,
+    slowCheckState = true/*set by build.sbt*/)
 }

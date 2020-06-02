@@ -44,7 +44,8 @@ final class MasterConfigurationTest extends AnyFreeSpec with BeforeAndAfterAll
       webServerPorts = Nil,
       ZoneId.systemDefault,
       akkaAskTimeout = 1.h,
-      journalConf = JournalConf.fromConfig(DefaultConfig),
+      journalConf = JournalConf.fromConfig(DefaultConfig)
+        .copy(slowCheckState = true/*set by build.sbt*/),
       clusterConf = ClusterConf(ClusterNodeId("Primary"), isBackup = false, None, None,
         RecouplingStreamReaderConf(
           timeout = 6500.ms,  // Between 3s and 10s

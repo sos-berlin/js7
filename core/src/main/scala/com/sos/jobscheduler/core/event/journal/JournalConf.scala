@@ -21,19 +21,19 @@ final case class JournalConf(
   ackWarnDurations: Seq[FiniteDuration],
   deleteObsoleteFiles: Boolean,
   releaseEventsUserIds: Set[UserId] = Set.empty,
-  slowCheckJournaledState: Boolean = false,
+  slowCheckState: Boolean = false,
   useJournaledStateAsSnapshot: Boolean = false)
 
 object JournalConf
 {
   private val logger = Logger(getClass)
-  private val checkStateKey = "jobscheduler.journal.slow-check-journaled-state"
+  private val checkStateKey = "jobscheduler.journal.slow-check-state"
 
   def fromConfig(config: Config) = {
     val syncOnCommit = config.getBoolean("jobscheduler.journal.sync")
     val delay = config.getDuration("jobscheduler.journal.delay").toFiniteDuration
     lazy val syncDelay = config.getDuration("jobscheduler.journal.sync-delay").toFiniteDuration
-    val checkJournaledState = config.getBoolean(checkStateKey)
+    val checkJournaledState = config.getBoolean(checkStateKey) || sys.props.contains("TEST")
     if (checkJournaledState) logger.warn(s"Slowing down due to $checkStateKey = true")
     new JournalConf(
       syncOnCommit = syncOnCommit,
@@ -48,7 +48,7 @@ object JournalConf
         .asScala.toSeq.map(_.toFiniteDuration),
       deleteObsoleteFiles = config.getBoolean("jobscheduler.journal.remove-obsolete-files"),
       releaseEventsUserIds = config.seqAs[UserId]("jobscheduler.journal.users-allowed-to-release-events").toSet,
-      slowCheckJournaledState = checkJournaledState,
+      slowCheckState = checkJournaledState,
       useJournaledStateAsSnapshot = config.getBoolean("jobscheduler.journal.use-journaled-state-as-snapshot"))
   }
 }

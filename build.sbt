@@ -90,6 +90,10 @@ ThisBuild / scalacOptions ++= Seq(
 val scalaTestArguments = Tests.Argument(TestFrameworks.ScalaTest,
   (if (testParallelization > 1) "-oNCLPQF" :: Nil else Nil) ::: List("-W", "30", "30"): _*)
 
+val _dummy_ = {
+  sys.props("TEST") = "true"
+}
+
 val publishSettings = Seq(
   publishArtifact in (Compile, packageDoc) := false,
   credentials ++= publishRepositoryCredentialsFile.map(o => Credentials(o)),
