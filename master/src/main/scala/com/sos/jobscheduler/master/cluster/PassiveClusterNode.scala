@@ -26,6 +26,7 @@ import com.sos.jobscheduler.data.event.JournalEvent.{JournalEventsReleased, Snap
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{EventId, JournalEvent, JournalId, JournalPosition, JournalSeparators, JournaledState, JournaledStateBuilder, KeyedEvent, Stamped}
 import com.sos.jobscheduler.master.client.HttpMasterApi
+import com.sos.jobscheduler.master.cluster.ClusterCommon.clusterEventAndStateToString
 import com.sos.jobscheduler.master.cluster.ObservablePauseDetector.RichPauseObservable
 import com.sos.jobscheduler.master.cluster.PassiveClusterNode._
 import io.circe.Json
@@ -365,7 +366,6 @@ import scodec.bits.ByteVector
                 eventWatch.onJournalingStarted(file, journalId,
                   tornLengthAndEventId = PositionAnd(replicatedFileLength/*After EventHeader, before SnapshotTaken, */, continuation.fileEventId),
                   flushedLengthAndEventId = PositionAnd(fileLength, builder.eventId))
-                  // ??? Unfortunately not comparable: ensureEqualState(continuation, builder.state)
                 if (journalConf.deleteObsoleteFiles) {
                   eventWatch.releaseEvents(
                     builder.journalState.toReleaseEventId(eventWatch.lastFileTornEventId, journalConf.releaseEventsUserIds))
@@ -396,8 +396,10 @@ import scodec.bits.ByteVector
                     builder.journalState.toReleaseEventId(eventWatch.lastFileTornEventId, journalConf.releaseEventsUserIds))
                 }
                 Observable.pure(Right(()))
-              } else if (json.toClass[ClusterEvent].isDefined)
-                json.as[ClusterEvent].orThrow match {
+              } else if (json.toClass[ClusterEvent].isDefined) {
+                val clusterEvent = json.as[ClusterEvent].orThrow
+                logger.info(clusterEventAndStateToString(clusterEvent, builder.clusterState))
+                clusterEvent match {
                   case _: ClusterNodesAppointed | _: ClusterPassiveLost | _: ClusterActiveNodeRestarted =>
                     Observable.fromTask(
                       sendClusterPrepareCoupling
@@ -438,7 +440,7 @@ import scodec.bits.ByteVector
                   case _ =>
                     Observable.pure(Right(()))
                 }
-              else
+              } else
                 Observable.pure(Right(()))
             }
         }

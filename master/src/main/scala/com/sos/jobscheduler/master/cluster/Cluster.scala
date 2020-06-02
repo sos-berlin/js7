@@ -38,11 +38,11 @@ import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterActiveNodeRestarte
 import com.sos.jobscheduler.data.cluster.ClusterState.{Coupled, CoupledActiveShutDown, Decoupled, Empty, FailedOver, HasNodes, NodesAppointed, PassiveLost, PreparedToBeCoupled}
 import com.sos.jobscheduler.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeId, ClusterState}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeqTornProblem, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeqTornProblem, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
 import com.sos.jobscheduler.master.cluster.Cluster._
-import com.sos.jobscheduler.master.cluster.ClusterCommon.truncateFile
+import com.sos.jobscheduler.master.cluster.ClusterCommon.{clusterEventAndStateToString, truncateFile}
 import com.sos.jobscheduler.master.cluster.ObservablePauseDetector._
 import com.sos.jobscheduler.master.data.MasterCommand.InternalClusterCommand
 import com.sos.jobscheduler.master.data.MasterState
@@ -296,12 +296,12 @@ final class Cluster(
   def appointNodes(idToUri: Map[ClusterNodeId, Uri], activeId: ClusterNodeId): Task[Checked[Completed]] =
     persist {
       case Empty =>
-        ClusterNodesAppointed.checked(idToUri, activeId).map(_ :: Nil)
+        ClusterNodesAppointed.checked(idToUri, activeId).map(Some.apply)
       case NodesAppointed(`idToUri`, `activeId`) =>
-        Right(Nil)
+        Right(None)
       case clusterState: HasNodes =>
         if (clusterState.idToUri == idToUri)
-          Right(Nil)
+          Right(None)
         else
           Left(Problem(s"Different Cluster Nodes have already been appointed"))
     }.map(_.map { case (stampedEvents, state) =>
@@ -334,17 +334,17 @@ final class Cluster(
           persist {
             case clusterState: Decoupled
               if clusterState.activeId == activeId && clusterState.passiveId == passiveId =>
-              Right(ClusterCouplingPrepared(activeId) :: Nil)
+              Right(Some(ClusterCouplingPrepared(activeId)))
 
             case clusterState: PreparedToBeCoupled
               if clusterState.activeId == activeId  && clusterState.passiveId == passiveId =>
               logger.debug(s"PreparedToBeCoupled ignored in clusterState=$clusterState")
-              Right(Nil)
+              Right(None)
 
             case clusterState: Coupled
               if clusterState.activeId == activeId && clusterState.passiveId == passiveId =>
               logger.debug(s"ClusterPrepareCoupling ignored in clusterState=$clusterState")
-              Right(Nil)
+              Right(None)
 
             case state =>
               Left(Problem.pure(s"$command command rejected due to inappropriate cluster state $state"))
@@ -361,15 +361,15 @@ final class Cluster(
               // and has already emitted a PassiveLost event
               // We ignore this.
               // The passive node will replicate PassiveLost event and recouple
-              Right(Nil)
+              Right(None)
 
             case s: PreparedToBeCoupled if s.activeId == activeId && s.passiveId == passiveId =>
               // This is the normally expected ClusterState
-              Right(ClusterCoupled(activeId) :: Nil)
+              Right(Some(ClusterCoupled(activeId)))
 
             case s: Coupled if s.activeId == activeId && s.passiveId == passiveId =>
               // Already coupled
-              Right(Nil)
+              Right(None)
 
             case s =>
               Left(Problem.pure(s"$command command rejected due to inappropriate cluster state $s"))
@@ -386,10 +386,10 @@ final class Cluster(
           persistence.waitUntilStarted >>
             persist {
               case s: Coupled if s.activeId == activeId && s.passiveId == passiveId =>
-                Right(ClusterPassiveLost(passiveId) :: Nil)
+                Right(Some(ClusterPassiveLost(passiveId)))
 
               case _ =>
-                Right(Nil)
+                Right(None)
             }
         ).map(_.map(_ => ClusterCommand.Response.Accepted))
 
@@ -436,7 +436,7 @@ final class Cluster(
   private def onRestartActiveNode: Task[Checked[Completed]] =
     persistence.currentState.map(_.clusterState).flatMap {
       case state: CoupledActiveShutDown if state.activeId == ownId =>
-        persist(_ => Right(ClusterActiveNodeRestarted :: Nil))
+        persist(_ => Right(Some(ClusterActiveNodeRestarted)))
           .map(_.toCompleted)
       case _ =>
         Task.pure(Right(Completed))
@@ -477,7 +477,7 @@ final class Cluster(
     clusterWatchSynchronizer.stopHeartbeats() >>
       persist {
         case coupled: Coupled if coupled.activeId == ownId =>
-          Right(ClusterSwitchedOver(coupled.passiveId) :: Nil)
+          Right(Some(ClusterSwitchedOver(coupled.passiveId)))
         case state =>
           Left(Problem.pure(s"Switchover is possible only for the active cluster node," +
             s" but cluster state is: $state"))
@@ -496,9 +496,9 @@ final class Cluster(
     clusterWatchSynchronizer.stopHeartbeats() >>
       persist {
         case coupled: Coupled if coupled.activeId == ownId =>
-          Right(ClusterActiveNodeShutDown :: Nil)
+          Right(Some(ClusterActiveNodeShutDown))
         case _ =>
-          Right(Nil)
+          Right(None)
       } .map(_.map((_: (Seq[Stamped[_]], _)) => Completed))
         .guaranteeCase {
           case ExitCase.Error(_) =>
@@ -559,8 +559,8 @@ final class Cluster(
                     } >>
                       persist(
                         {
-                          case `initialState` => Right(passiveLost :: Nil)
-                          case _ => Right(Nil)  // Ignore when ClusterState has changed
+                          case `initialState` => Right(Some(passiveLost))
+                          case _ => Right(None)  // Ignore when ClusterState has changed
                         },
                         suppressClusterWatch = true/*already notified*/
                       ) .map(_.toCompleted)
@@ -671,11 +671,11 @@ final class Cluster(
   def onTerminatedUnexpectedly: Task[Checked[Completed]] =
     Task.fromFuture(fetchingAcksTerminatedUnexpectedlyPromise.future)
 
-  private def persist(toEvents: ClusterState => Checked[Seq[ClusterEvent]], suppressClusterWatch: Boolean = false)
+  private def persist(toEvents: ClusterState => Checked[Option[ClusterEvent]], suppressClusterWatch: Boolean = false)
   : Task[Checked[(Seq[Stamped[KeyedEvent[ClusterEvent]]], ClusterState)]] =
     ( for {
-        persisted <- EitherT(persistence.persistTransaction[ClusterEvent](NoKey)(state => toEvents(state.clusterState)))
-        _ <- EitherT(logPersisted(persisted._1, persisted._2))
+        persisted <- EitherT(persistence.persistTransaction[ClusterEvent](NoKey)(state => toEvents(state.clusterState).map(_.toSeq)))
+        _ <- EitherT.right(logPersisted(persisted._1.lastOption, persisted._2.clusterState))
         (stampedEvents, masterState) = persisted
         clusterState = masterState.clusterState
         _ <- EitherT(
@@ -686,11 +686,11 @@ final class Cluster(
       } yield (stampedEvents, clusterState)
     ).value
 
-  private def logPersisted(stampedEvents: Seq[Stamped[AnyKeyedEvent]], state: MasterState) =
+  private def logPersisted(maybeStampedEvent: Option[Stamped[KeyedEvent[ClusterEvent]]], clusterState: ClusterState) =
     Task {
-      for (e <- stampedEvents) logger.info(s"ClusterEvent: ${e.value.event}")
-      logger.info(s"ClusterState is ${state.clusterState}")
-      Checked(())
+      for (stamped <- maybeStampedEvent) {
+        logger.info(clusterEventAndStateToString(stamped.value.event, clusterState))
+      }
     }
 
   private object clusterWatchSynchronizer

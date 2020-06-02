@@ -103,4 +103,7 @@ private[cluster] object ClusterCommon
       buffer.flip()
     }
   }
+
+  def clusterEventAndStateToString(event: ClusterEvent, state: ClusterState): String =
+    s"ClusterEvent: $event --> $state"
 }
