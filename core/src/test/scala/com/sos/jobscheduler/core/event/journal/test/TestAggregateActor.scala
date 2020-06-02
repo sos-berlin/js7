@@ -6,17 +6,18 @@ import com.sos.jobscheduler.base.generic.Accepted
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichThrowable, cast}
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.journal.test.TestAggregateActor._
-import com.sos.jobscheduler.core.event.journal.{JournalActor, KeyedJournalingActor}
+import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalConf, KeyedJournalingActor}
+import monix.execution.Scheduler
 import scala.util.{Failure, Success}
 import shapeless.tag.@@
 
 /**
   * @author Joacim Zschimmer
   */
-private[test] final class TestAggregateActor(protected val key: String, val journalActor: ActorRef @@ JournalActor.type)
+private[test] final class TestAggregateActor(protected val key: String, val journalActor: ActorRef @@ JournalActor.type,
+  protected val journalConf: JournalConf)
+  (implicit protected val scheduler: Scheduler)
 extends KeyedJournalingActor[TestState, TestEvent] {
-
-  import context.dispatcher
 
   private var aggregate: TestAggregate = null
   private var disturbance = 0

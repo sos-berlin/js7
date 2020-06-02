@@ -1,15 +1,13 @@
 package com.sos.jobscheduler.common.scalautil
 
-import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import monix.eval.Task
-import monix.execution.{Cancelable, Scheduler}
+import monix.execution.Scheduler
 import scala.collection.BuildFrom
 import scala.concurrent.Promise
 import scala.concurrent.duration._
 import scala.reflect.runtime.universe._
-import scala.util.{Failure, Success, Try}
 
 /**
   * @author Joacim Zschimmer
@@ -33,17 +31,6 @@ object MonixUtils
 
       def awaitInfinite(implicit s: Scheduler, cbf: BuildFrom[M[Task[A]], A, M[A]]): M[A] =
         Task.sequence(underlying)(cbf).runToFuture.awaitInfinite
-    }
-
-    implicit final class RichScheduler(private val underlying: Scheduler) extends AnyVal
-    {
-      def scheduleFor(timestamp: Timestamp)(action: => Unit): Cancelable = {
-        val nw = Timestamp.now
-        Try(if (timestamp <= nw) Duration.Zero else timestamp - nw) match {
-          case Success(delay) => underlying.scheduleOnce(delay)(action)
-          case Failure(_) => Cancelable.empty  // More than 292 years
-        }
-      }
     }
   }
 

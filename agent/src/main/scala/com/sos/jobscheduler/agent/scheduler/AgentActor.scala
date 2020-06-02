@@ -58,13 +58,14 @@ private[agent] final class AgentActor @Inject private(
   newTaskRunner: TaskRunner.Factory,
   eventIdGenerator: EventIdGenerator,
   keyedEventBus: StampedKeyedEventBus)
-  (implicit closer: Closer, scheduler: Scheduler)
+  (implicit closer: Closer, protected val scheduler: Scheduler)
 extends MainJournalingActor[AgentServerState, AgentEvent] {
 
   import agentConfiguration.{akkaAskTimeout, stateDirectory}
   import context.{actorOf, watch}
 
   override val supervisorStrategy = SupervisorStrategies.escalate
+  protected def journalConf = agentConfiguration.journalConf
 
   private val journalMeta = JournalMeta(AgentServerJsonCodecs.jsonCodec, AgentEvent.KeyedEventJsonCodec, stateDirectory / "agent")
   protected val journalActor = tag[JournalActor.type](watch(actorOf(
@@ -266,7 +267,7 @@ extends MainJournalingActor[AgentServerState, AgentEvent] {
     val journalActor = tag[JournalActor.type](actorOf(
       JournalActor.props[AgentState](journalMeta, agentConfiguration.journalConf, keyedEventBus, scheduler, eventIdGenerator),
       Akkas.encodeAsActorName(s"JournalActor-for-$masterId")))
-    val persistence = new JournaledStatePersistence[AgentState](journalActor)
+    val persistence = new JournaledStatePersistence[AgentState](journalActor, agentConfiguration.journalConf)
     val actor = actorOf(
       Props {
         new AgentOrderKeeper(

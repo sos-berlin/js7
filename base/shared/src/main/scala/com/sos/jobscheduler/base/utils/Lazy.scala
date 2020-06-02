@@ -33,11 +33,12 @@ final class Lazy[A] private(eval: => A)
 
   def isEmpty = cache.isEmpty
 
-  //def map[B](f: A => B): Option[B] =
-  //  cache map f
-
   def foreach(f: A => Unit): Unit =
     cache foreach f
+
+  /** To allow `for (x <- myLazy if predicate(x)) {...}` .*/
+  def withFilter(predicate: A => Boolean): Option[A]#WithFilter =
+    toOption withFilter predicate
 }
 
 object Lazy

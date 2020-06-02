@@ -85,7 +85,7 @@ final class MasterOrderKeeper(
   masterConfiguration: MasterConfiguration,
   signatureVerifier: SignatureVerifier,
   testEventPublisher: EventPublisher[Any])
-  (implicit scheduler: Scheduler)
+  (implicit protected val scheduler: Scheduler)
 extends Stash
 with MainJournalingActor[MasterState, Event]
 {
@@ -93,6 +93,7 @@ with MainJournalingActor[MasterState, Event]
   import masterConfiguration.config
 
   override val supervisorStrategy = SupervisorStrategies.escalate
+  protected def journalConf = masterConfiguration.journalConf
 
   private val agentDriverConfiguration = AgentDriverConfiguration.fromConfig(config, masterConfiguration.journalConf).orThrow
   private var masterState: MasterState = MasterState.Undefined
@@ -126,7 +127,7 @@ with MainJournalingActor[MasterState, Event]
       if (!shuttingDown) {
         since := now
         this.shutDown := shutDown
-        stillShuttingDownCancelable := scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
+        stillShuttingDownCancelable := scheduler.scheduleAtFixedRates(masterConfiguration.journalConf.ackWarnDurations/*?*/) {
           self ! Internal.StillShuttingDown
         }
         journalActor ! JournalActor.Input.TakeSnapshot  // Take snapshot before OrderActors are stopped
@@ -184,7 +185,7 @@ with MainJournalingActor[MasterState, Event]
     // 3) Stop MasterOrderKeeper includinge AgentDriver's
     // Do not terminate AgentDrivers properly because we do not want any events.
 
-    private val stillSwitchingOverSchedule = scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
+    private val stillSwitchingOverSchedule = scheduler.scheduleAtFixedRates(masterConfiguration.journalConf.ackWarnDurations) {
       logger.debug("Still switching over to the other cluster node")
     }
 

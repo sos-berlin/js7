@@ -172,7 +172,7 @@ private object OrderActorTest {
         executablesDirectory = (dir / "config" / "executables").toRealPath(),
         scriptInjectionAllowed = false)))
     private val orderActor = watch(actorOf(
-      OrderActor.props(TestOrder.id, journalActor = journalActor, OrderActor.Conf(config)),
+      OrderActor.props(TestOrder.id, journalActor = journalActor, OrderActor.Conf(config, JournalConf.fromConfig(config))),
       s"Order-${TestOrder.id.string}"))
 
     private val orderChangeds = mutable.Buffer[OrderActor.Output.OrderChanged]()

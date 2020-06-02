@@ -2,11 +2,16 @@ package com.sos.jobscheduler.base.monixutils
 
 import cats.effect.Resource
 import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.base.time.Timestamp
+import MonixDeadline.syntax._
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import monix.eval.Task
+import monix.execution.{Cancelable, Scheduler}
+import monix.execution.cancelables.MultiAssignCancelable
 import monix.reactive.Observable
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.duration._
 import scala.concurrent.{Future, TimeoutException}
+import scala.util.{Failure, Success, Try}
 
 object MonixBase
 {
@@ -67,6 +72,39 @@ object MonixBase
       /** Converts a failed Task into a `Task[Left[Throwable]]`. */
       def materializeIntoChecked: Task[Checked[A]] =
         underlying.materialize.map(Checked.flattenTryChecked)
+    }
+
+    implicit final class RichScheduler(private val underlying: Scheduler) extends AnyVal
+    {
+      def scheduleFor(timestamp: Timestamp)(action: => Unit): Cancelable = {
+        val nw = Timestamp.ofEpochMilli(underlying.clockRealTime(MILLISECONDS))
+        Try(if (timestamp <= nw) Duration.Zero else timestamp - nw) match {
+          case Success(delay) => underlying.scheduleOnce(delay)(action)
+          case Failure(_) => Cancelable.empty  // More than 292 years
+        }
+      }
+
+      def scheduleAtFixedRates(durations: IterableOnce[FiniteDuration])(body: => Unit): Cancelable = {
+        val cancelable = MultiAssignCancelable()
+        val iterator = durations.iterator
+        def loop(last: MonixDeadline): Unit = {
+          val nextDuration = iterator.next()
+          val next = last + nextDuration
+          val delay = next - underlying.now
+          cancelable := (
+            if (iterator.hasNext)
+              underlying.scheduleOnce(delay) {
+                body
+                loop(next)
+              }
+            else
+              underlying.scheduleAtFixedRate(delay, nextDuration)(body))
+        }
+        if (iterator.hasNext) {
+          loop(underlying.now)
+        }
+        cancelable
+      }
     }
   }
 

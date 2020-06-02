@@ -56,7 +56,7 @@ object JournalConfTest
        snapshot.when-bigger-than = 8G
        snapshot.log-period = 9ms
        snapshot.log-actor-limit = 11
-       ack-warn-duration = 12s
+       ack-warn-durations = [ 10s, 15s ]
        remove-obsolete-files = true
        users-allowed-to-release-events = []
      }""")
@@ -70,6 +70,6 @@ object JournalConfTest
     snapshotSizeLimit = 8*1000*1000*1000L,
     snapshotLogProgressPeriod = 9.ms,
     snapshotLogProgressActorLimit = 11,
-    ackWarnDuration = 12.s,
+    ackWarnDurations = List(10.s, 15.s),
     deleteObsoleteFiles = true)
 }

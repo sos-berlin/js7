@@ -6,6 +6,7 @@ import com.sos.jobscheduler.common.configutils.Configs._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.typesafe.config.Config
+import scala.jdk.CollectionConverters._
 import scala.concurrent.duration._
 
 final case class JournalConf(
@@ -17,7 +18,7 @@ final case class JournalConf(
   snapshotSizeLimit: Long,
   snapshotLogProgressPeriod: FiniteDuration,
   snapshotLogProgressActorLimit: Int,
-  ackWarnDuration: FiniteDuration,
+  ackWarnDurations: Seq[FiniteDuration],
   deleteObsoleteFiles: Boolean,
   releaseEventsUserIds: Set[UserId] = Set.empty,
   slowCheckJournaledState: Boolean = false,
@@ -43,7 +44,8 @@ object JournalConf
       snapshotSizeLimit = config.as("jobscheduler.journal.snapshot.when-bigger-than")(StringAsByteCountWithDecimalPrefix),
       snapshotLogProgressPeriod = config.getDuration("jobscheduler.journal.snapshot.log-period").toFiniteDuration,
       snapshotLogProgressActorLimit = config.getInt("jobscheduler.journal.snapshot.log-actor-limit"),
-      ackWarnDuration = config.getDuration("jobscheduler.journal.ack-warn-duration").toFiniteDuration,
+      ackWarnDurations = config.getDurationList("jobscheduler.journal.ack-warn-durations")
+        .asScala.toSeq.map(_.toFiniteDuration),
       deleteObsoleteFiles = config.getBoolean("jobscheduler.journal.remove-obsolete-files"),
       releaseEventsUserIds = config.seqAs[UserId]("jobscheduler.journal.users-allowed-to-release-events").toSet,
       slowCheckJournaledState = checkJournaledState,

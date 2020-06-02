@@ -4,7 +4,7 @@ import akka.actor.{ActorRef, Props}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.scalautil.MonixUtils.promiseTask
-import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActor}
+import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalConf, MainJournalingActor}
 import com.sos.jobscheduler.core.event.state.StateJournalingActor._
 import com.sos.jobscheduler.data.event.{Event, JournaledState, KeyedEvent, Stamped}
 import monix.eval.Task
@@ -17,8 +17,9 @@ import shapeless.tag.@@
 private[state] final class StateJournalingActor[S <: JournaledState[S], E <: Event](
   initialState: S,
   protected val journalActor: ActorRef @@ JournalActor.type,
+  protected val journalConf: JournalConf,
   persistPromise: Promise[PersistFunction[S, E]])
-  (implicit S: TypeTag[S], s: Scheduler)
+  (implicit S: TypeTag[S], protected val scheduler: Scheduler)
 extends MainJournalingActor[S, E]
 {
   override def supervisorStrategy = SupervisorStrategies.escalate
@@ -69,10 +70,11 @@ private[state] object StateJournalingActor
   def props[S <: JournaledState[S], E <: Event](
     initialState: S,
     journalActor: ActorRef @@ JournalActor.type,
+    journalConf: JournalConf,
     persistPromise: Promise[PersistFunction[S, E]])
     (implicit S: TypeTag[S], s: Scheduler)
   =
-    Props { new StateJournalingActor(initialState, journalActor, persistPromise) }
+    Props { new StateJournalingActor(initialState, journalActor, journalConf, persistPromise) }
 
   private def applyPersistedEvent[S <: JournaledState[S], E <: Event] (state: S, stampedKeyedEvent: Stamped[KeyedEvent[E]]): S =
     state.withEventId(stampedKeyedEvent.eventId)

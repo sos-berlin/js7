@@ -4,13 +4,17 @@ import com.sos.jobscheduler.base.monixutils.MonixBase._
 import com.sos.jobscheduler.base.monixutils.MonixBase.syntax._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import monix.eval.Task
+import monix.execution.Cancelable
 import monix.execution.Scheduler.Implicits.global
-import scala.concurrent.TimeoutException
-import scala.concurrent.duration.Duration
-import scala.language.reflectiveCalls
+import monix.execution.atomic.AtomicInt
+import monix.execution.schedulers.TestScheduler
 import org.scalatest.freespec.AsyncFreeSpec
+import scala.concurrent.TimeoutException
+import scala.concurrent.duration._
+import scala.language.reflectiveCalls
 
 /**
   * @author Joacim Zschimmer
@@ -77,6 +81,49 @@ final class MonixBaseTest extends AsyncFreeSpec
         assert(result == List(1, 2, 3))
         assert(iterator.closed)
       }
+  }
+
+  "Scheduler convenience methods" - {
+    "scheduleFor far future" in {
+      val scheduler = TestScheduler()
+      var called = false
+      var cancelable = scheduler.scheduleFor(Timestamp("2500-01-01T00:00:00Z")) { called = true }
+      assert(cancelable.isInstanceOf[Cancelable.IsDummy])
+      scheduler.tick()
+      cancelable.cancel()
+      assert(!called)
+    }
+
+    "scheduleFor near future" in {
+      val scheduler = TestScheduler()
+      var called = false
+      scheduler.scheduleFor(Timestamp.ofEpochMilli(scheduler.clockRealTime(MILLISECONDS)) + 1.s) { called = true }
+      scheduler.tick()
+      assert(!called)
+      scheduler.tick(1.s)
+      assert(called)
+    }
+
+    "scheduleFor past" in {
+      val scheduler = TestScheduler()
+      var called = false
+      scheduler.scheduleFor(Timestamp("1500-01-01T00:00:00Z")) { called = true }
+      scheduler.tick()
+      assert(called)
+    }
+
+    "scheduleAtFixedRates" in {
+      val scheduler = TestScheduler()
+      val i = AtomicInt(0)
+      val cancelable = scheduler.scheduleAtFixedRates(Array(2.s, 3.s, 4.s)) { i += 1 }
+      for (expected <- Array(0, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6)) {
+        scheduler.tick(1.s)
+        assert(i.get == expected)
+      }
+      cancelable.cancel()
+      scheduler.tick(100.s)
+      assert(i.get == 6)
+    }
   }
 
   //"takeUntil memory leak" in {

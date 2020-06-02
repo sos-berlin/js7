@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.base.monixutils
 
+import com.sos.jobscheduler.base.monixutils.MonixDeadline._
 import monix.execution.Scheduler
 import scala.concurrent.duration.{Duration, FiniteDuration, NANOSECONDS}
-import MonixDeadline._
 
 /** Like Scala's `scala.concurrent.duration.Deadline` but based on Monix' clock. */
 final case class MonixDeadline private(nanos: Long)(implicit scheduler: Scheduler)
@@ -91,5 +91,14 @@ object MonixDeadline
    */
   implicit object MonixDeadlineIsOrdered extends Ordering[MonixDeadline] {
     def compare(a: MonixDeadline, b: MonixDeadline) = a compare b
+  }
+
+  object syntax
+  {
+    implicit final class DeadlineSchedule(private val underlying: Scheduler) extends AnyVal
+    {
+      def now: MonixDeadline =
+        MonixDeadline.now(underlying)
+    }
   }
 }

@@ -22,6 +22,7 @@ import com.sos.jobscheduler.data.event.{JournalId, KeyedEvent, Stamped}
 import com.typesafe.config.Config
 import java.util.UUID
 import monix.execution.Scheduler
+import monix.execution.Scheduler.Implicits.global
 import scala.collection.mutable
 import scala.concurrent.Promise
 import scala.concurrent.duration.DurationInt
@@ -33,12 +34,11 @@ import shapeless.tag
 private[journal] final class TestActor(config: Config, journalMeta: JournalMeta, journalStopped: Promise[JournalActor.Stopped])
 extends Actor with Stash
 {
-  private implicit val executionContext = context.dispatcher
-
   override val supervisorStrategy = SupervisorStrategies.escalate
   private implicit val askTimeout = Timeout(99.seconds)
+  private val journalConf = JournalConf.fromConfig(config withFallback TestConfig)
   private val journalActor = tag[JournalActor.type](context.watch(context.actorOf(
-    JournalActor.props[TestState](journalMeta, JournalConf.fromConfig(config withFallback TestConfig), new StampedKeyedEventBus, Scheduler.global,
+    JournalActor.props[TestState](journalMeta, journalConf, new StampedKeyedEventBus, Scheduler.global,
       new EventIdGenerator(new EventIdClock.Fixed(currentTimeMillis = 1000/*EventIds start at 1000000*/)),
       journalStopped),
     "Journal")))
@@ -158,7 +158,7 @@ extends Actor with Stash
 
   private def newAggregateActor(key: String): ActorRef =
     context.watch(context.actorOf(
-      Props { new TestAggregateActor(key, journalActor) },
+      Props { new TestAggregateActor(key, journalActor, journalConf) },
       s"Test-$key"))
 }
 

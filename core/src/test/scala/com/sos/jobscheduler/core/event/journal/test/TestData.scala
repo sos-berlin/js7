@@ -23,7 +23,7 @@ private[event] object TestData
      |jobscheduler.journal.slow-check-journaled-state = true
      |jobscheduler.journal.snapshot.period = 1h
      |jobscheduler.journal.snapshot.when-bigger-than = 1G
-     |jobscheduler.journal.ack-warn-duration = 10s
+     |jobscheduler.journal.ack-warn-durations = [ 10s ]
      |jobscheduler.journal.remove-obsolete-files = false  # DIFFERS FROM DEFAULT TO ALLOW AWAITNG FOR OLD EVENTS !
      |jobscheduler.journal.users-allowed-to-release-events = []
      |""".stripMargin)

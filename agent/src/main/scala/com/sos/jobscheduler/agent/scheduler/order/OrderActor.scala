@@ -15,7 +15,7 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.cast
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
-import com.sos.jobscheduler.core.event.journal.{JournalActor, KeyedJournalingActor}
+import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalConf, KeyedJournalingActor}
 import com.sos.jobscheduler.data.job.JobKey
 import com.sos.jobscheduler.data.order.OrderEvent._
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
@@ -32,12 +32,13 @@ import shapeless.tag.@@
   * @author Joacim Zschimmer
   */
 final class OrderActor private(orderId: OrderId, protected val journalActor: ActorRef @@ JournalActor.type, conf: Conf)
-  (implicit scheduler: Scheduler)
+  (implicit protected val scheduler: Scheduler)
 extends KeyedJournalingActor[AgentState, OrderEvent]
 {
   private val logger = Logger.withPrefix[this.type](orderId.toString)
   import conf.{charBufferSize, stdoutCommitDelay}
 
+  protected def journalConf = conf.journalConf
   private var order: Order[Order.State] = null
   private var stdouterr: StdouterrToEvent = null
   private var terminating = false
@@ -354,11 +355,13 @@ private[order] object OrderActor
     final case class OrderChanged(order: Order[Order.State], events: Seq[OrderEvent])
   }
 
-  final case class Conf(stdoutCommitDelay: FiniteDuration, charBufferSize: Int, stdouterrToEventConf: StdouterrToEvent.Conf)
+  final case class Conf(stdoutCommitDelay: FiniteDuration, charBufferSize: Int, stdouterrToEventConf: StdouterrToEvent.Conf,
+    journalConf: JournalConf)
   object Conf {
-    def apply(config: Config) = new Conf(
+    def apply(config: Config, journalConf: JournalConf) = new Conf(
       stdoutCommitDelay = config.getDuration("jobscheduler.order.stdout-stderr.commit-delay").toFiniteDuration,
       charBufferSize    = config.getInt     ("jobscheduler.order.stdout-stderr.char-buffer-size"),
-      stdouterrToEventConf = StdouterrToEvent.Conf(config))
+      stdouterrToEventConf = StdouterrToEvent.Conf(config),
+      journalConf)
   }
 }

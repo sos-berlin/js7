@@ -1,10 +1,10 @@
 package com.sos.jobscheduler.core.event.journal
 
-import akka.actor.{Actor, ActorLogging, ActorRef, Cancellable, DeadLetterSuppression, Stash}
+import akka.actor.{Actor, ActorLogging, ActorRef, DeadLetterSuppression, Stash}
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec.typeName
 import com.sos.jobscheduler.base.generic.Accepted
+import com.sos.jobscheduler.base.monixutils.MonixBase.syntax.RichScheduler
 import com.sos.jobscheduler.base.problem.{Checked, ProblemException}
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
@@ -16,6 +16,8 @@ import com.sos.jobscheduler.common.scalautil.MonixUtils.promiseTask
 import com.sos.jobscheduler.core.event.journal.JournalingActor._
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, JournaledState, KeyedEvent, Stamped}
 import monix.eval.Task
+import monix.execution.cancelables.SerialCancelable
+import monix.execution.{Cancelable, Scheduler}
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.concurrent.{Future, Promise}
@@ -30,11 +32,13 @@ trait JournalingActor[S <: JournaledState[S], E <: Event]
 extends Actor with Stash with ActorLogging with ReceiveLoggingActor
 {
   protected def journalActor: ActorRef @@ JournalActor.type
+  protected def journalConf: JournalConf
   protected def snapshots: Future[Iterable[Any]]
+  protected def scheduler: Scheduler
 
   private var stashingCount = 0
   private var _persistedEventId = EventId.BeforeFirst
-  private var journalingTimer: Cancellable = Cancellable.alreadyCancelled
+  private var journalingTimer = SerialCancelable()
 
   import context.dispatcher
 
@@ -220,9 +224,8 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
       logBecome("journaling")
       context.become(journaling, discardOld = false)
       logger.whenDebugEnabled {
-        journalingTimer.cancel()
-        journalingTimer = context.system.scheduler.schedule(5.s, 10.s) {
-          logger.debug(s"“$toString” still waiting for JournalActor")
+        journalingTimer := scheduler.scheduleAtFixedRates(journalConf.ackWarnDurations) {
+          logger.debug(s"“$toString” is still waiting for JournalActor")
         }
       }
     }
@@ -236,7 +239,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
     }
     stashingCount -= 1
     if (stashingCount == 0) {
-      journalingTimer.cancel()
+      journalingTimer := Cancelable.empty
       logger.trace(s"“$toString” unbecome")
       context.unbecome()
       unstashAll()

@@ -7,7 +7,7 @@ import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.SetOnce
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
-import com.sos.jobscheduler.core.event.journal.JournalActor
+import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalConf}
 import com.sos.jobscheduler.core.event.state.StateJournalingActor.{PersistFunction, StateToEvents}
 import com.sos.jobscheduler.data.event.{Event, JournaledState, KeyedEvent, Stamped}
 import monix.eval.Task
@@ -22,7 +22,8 @@ import shapeless.tag.@@
 //  Wir werden vielleicht mehrere Schlüssel auf einmal sperren wollen (für fork/join?)
 
 final class JournaledStatePersistence[S <: JournaledState[S]](
-  val/*???*/ journalActor: ActorRef @@ JournalActor.type)
+  val/*???*/ journalActor: ActorRef @@ JournalActor.type,
+  journalConf: JournalConf)
   (implicit S: TypeTag[S], s: Scheduler, actorRefFactory: ActorRefFactory, timeout: akka.util.Timeout)
 extends AutoCloseable
 {

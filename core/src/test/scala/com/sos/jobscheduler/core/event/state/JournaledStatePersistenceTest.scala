@@ -149,7 +149,7 @@ final class JournaledStatePersistenceTest extends AnyFreeSpec with BeforeAndAfte
       recovered.startJournalAndFinishRecovery(journalActor)(actorSystem)
       implicit val a = actorSystem
       implicit val timeout = Timeout(99.s)
-      journaledStatePersistence = new JournaledStatePersistence[TestState](journalActor)
+      journaledStatePersistence = new JournaledStatePersistence[TestState](journalActor, JournalConf.fromConfig(TestConfig))
       journaledStatePersistence.start(recovered.recoveredState getOrElse TestState.empty)
       journaledStatePersistence
     }

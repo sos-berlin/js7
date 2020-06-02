@@ -4,6 +4,7 @@ import akka.actor.{Actor, ActorRef, DeadLetterSuppression, Props, Stash, Termina
 import akka.util.ByteString
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.monixutils.MonixBase.syntax.RichScheduler
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.ScalaTime._
@@ -287,7 +288,7 @@ extends Actor with Stash
     case Internal.StillWaitingForAcknowledge =>
       if (requireClusterAcknowledgement && lastAcknowledgedEventId < lastWrittenEventId) {
         val notAckSeq = writtenBuffer.collect { case o: LoggableWritten => o }
-          .takeWhile(_.since.elapsed >= conf.ackWarnDuration)
+          .takeWhile(_.since.elapsed >= conf.ackWarnDurations.headOption.getOrElse(FiniteDuration.MaxValue))
         val n = writtenBuffer.map(_.eventCount).sum
         if (n > 0) {
           logger.warn(s"Since ${waitingForAcknowledgeSince.elapsed.pretty}" +
@@ -356,7 +357,7 @@ extends Actor with Stash
   private def startWaitingForAcknowledgeTimer(): Unit =
     if (requireClusterAcknowledgement && lastAcknowledgedEventId < lastWrittenEventId) {
       waitingForAcknowledgeSince = now
-      waitingForAcknowledgeTimer := scheduler.scheduleAtFixedRate(conf.ackWarnDuration, 2 * conf.ackWarnDuration) {
+      waitingForAcknowledgeTimer := scheduler.scheduleAtFixedRates(conf.ackWarnDurations) {
         self ! Internal.StillWaitingForAcknowledge
       }
     }

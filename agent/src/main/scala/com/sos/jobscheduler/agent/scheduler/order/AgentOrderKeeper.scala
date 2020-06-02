@@ -69,7 +69,7 @@ final class AgentOrderKeeper(
   persistence: JournaledStatePersistence[AgentState],
   implicit private val askTimeout: Timeout,
   conf: AgentConfiguration)(
-  implicit scheduler: Scheduler)
+  implicit protected val scheduler: Scheduler)
 extends MainJournalingActor[AgentState, Event]
 with Stash {
 
@@ -78,12 +78,13 @@ with Stash {
   override val supervisorStrategy = SupervisorStrategies.escalate
 
   protected val journalActor = tag[JournalActor.type](persistence.journalActor: ActorRef)
+  protected def journalConf = conf.journalConf
 
   private var journalState = JournalState.empty
   private val workflowVerifier = new FileBasedVerifier(signatureVerifier, Workflow.topJsonDecoder)
   private val jobRegister = new JobRegister
   private val workflowRegister = new WorkflowRegister
-  private val orderActorConf = OrderActor.Conf(conf.config)
+  private val orderActorConf = OrderActor.Conf(conf.config, conf.journalConf)
   private val orderRegister = new OrderRegister
   private val orderProcessor = new OrderProcessor(workflowRegister.idToWorkflow.checked, orderRegister.idToOrder)
 
