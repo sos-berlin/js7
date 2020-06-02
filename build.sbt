@@ -433,6 +433,7 @@ lazy val core = project.dependsOn(common, tester.jvm % "test")
     libraryDependencies ++=
       shapeless ++
       bouncyCastle ++
+      diffx ++
       akkaHttpTestkit % "test" ++
       scalaTest % "test" ++
       scalaCheck % "test" ++

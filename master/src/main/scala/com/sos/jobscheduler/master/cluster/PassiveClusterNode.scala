@@ -41,10 +41,10 @@ import java.nio.file.{Path, Paths}
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
-import scala.concurrent.TimeoutException
 import scodec.bits.ByteVector
+import com.softwaremill.diffx._
 
-/*private[cluster]*/ final class PassiveClusterNode[S <: JournaledState[S]](
+/*private[cluster]*/ final class PassiveClusterNode[S <: JournaledState[S]: Diff](
   ownId: ClusterNodeId,
   idToUri: Map[ClusterNodeId, Uri],
   activeId: ClusterNodeId,
@@ -177,6 +177,7 @@ import scodec.bits.ByteVector
     continuation: Continuation.Replicatable,
     newStateBuilder: () => JournaledStateBuilder[S],
     activeMasterApi: HttpMasterApi)
+    (implicit s: Scheduler)
   : Task[Checked[Continuation.Replicatable]] =
     Task.defer {
       import continuation.file
@@ -348,8 +349,12 @@ import scodec.bits.ByteVector
           case Some((fileLength, line, json)) =>
             out.write(line.toByteBuffer)
             logger.trace(s"Replicated ${continuation.fileEventId}:$fileLength ${line.utf8StringTruncateAt(200).trim}")
+            val isSnapshotTaken = isReplicatingHeadOfFile && json.isOfType[JournalEvent, SnapshotTaken.type]
+            if (isSnapshotTaken) {
+              ensureEqualState(continuation, builder.state)
+            }
             builder.put(json)  // throws on invalid event
-            if (isReplicatingHeadOfFile && json.isOfType[JournalEvent, SnapshotTaken.type]) {
+            if (isSnapshotTaken) {
               for (tmpFile <- maybeTmpFile) {
                 val journalId = builder.fileJournalHeader.map(_.journalId) getOrElse
                   sys.error(s"Missing JournalHeader in replicated journal file '$file'")
@@ -494,14 +499,7 @@ import scodec.bits.ByteVector
     for (recoveredJournalFile <- continuation.maybeRecoveredJournalFile if recoveredJournalFile.state != snapshot) {
       val msg = s"State from recovered journal file ${recoveredJournalFile.fileEventId} does not match snapshot in next journal file"
       logger.error(msg)
-      logger.info("Recovered state:")
-      try {
-        for (snapshotObject <- recoveredJournalFile.state.toSnapshotObservable.toListL.runSyncUnsafe(30.s))
-          logger.info("  " + snapshotObject)
-        logger.info("Replicated snapshot state:")
-        for (snapshotObject <- snapshot.toSnapshotObservable.toListL.runSyncUnsafe(30.s))
-          logger.info("  " + snapshotObject)
-      } catch { case t: TimeoutException => logger.error(t.toStringWithCauses) }
+      logger.info(compare(recoveredJournalFile.state, snapshot).show)
       sys.error(msg)
     }
 

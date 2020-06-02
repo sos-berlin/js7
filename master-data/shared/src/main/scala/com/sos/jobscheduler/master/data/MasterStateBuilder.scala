@@ -70,7 +70,9 @@ extends JournaledStateBuilder[MasterState]
         masterId = masterId,
         startedAt = startedAt)
 
-    case Stamped(_, _, KeyedEvent(_: NoKey, _: MasterEvent.MasterReady)) =>
+    case Stamped(_, _, KeyedEvent(_: NoKey, event: MasterEvent.MasterReady)) =>
+      masterMetaState = masterMetaState.copy(
+        timezone = event.timezone)
 
     case Stamped(_, _, KeyedEvent(_: NoKey, event: RepoEvent)) =>
       repo = repo.applyEvent(event).orThrow

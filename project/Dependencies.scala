@@ -48,6 +48,7 @@ object Dependencies
   val scalaLogging        = "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2" :: slf4j :: Nil
   val cats                = "org.typelevel" %% "cats-core" % catsVersion
   val shapeless           = "com.chuusai" %% "shapeless" % shapelessVersion
+  val diffx               = "com.softwaremill.diffx" %% "diffx-core" % "0.3.28"
 
   val javaxInject         = "javax.inject" % "javax.inject" % "1"
   val guice               = ("com.google.inject" % "guice" % "4.2.2" classifier "no_aop") :: javaxInject :: Nil
