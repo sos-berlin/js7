@@ -5,7 +5,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import com.sos.jobscheduler.agent.AgentState
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.data.Problems.AgentDuplicateOrder
+import com.sos.jobscheduler.agent.data.Problems.{AgentDuplicateOrder, AgentIsShuttingDown}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, CancelOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, OrderCommand, ReleaseEvents, Response}
 import com.sos.jobscheduler.agent.data.event.AgentMasterEvent.AgentReadyForMaster
@@ -14,7 +14,6 @@ import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
 import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper._
 import com.sos.jobscheduler.agent.scheduler.order.JobRegister.JobEntry
 import com.sos.jobscheduler.agent.scheduler.order.OrderRegister.OrderEntry
-import com.sos.jobscheduler.agent.data.Problems.AgentIsShuttingDown
 import com.sos.jobscheduler.base.crypt.SignatureVerifier
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked.Ops
@@ -53,6 +52,7 @@ import monix.execution.{Cancelable, Scheduler}
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
+import scala.util.{Failure, Success}
 import shapeless.tag
 
 /**
@@ -130,7 +130,7 @@ with Stash {
         if (snapshotTaken) {
           if (!terminatingOrders) {
             terminatingOrders = true
-            for (o <- orderRegister.values if !o.detaching) {
+            for (o <- orderRegister.values if !o.isDetaching) {
               o.actor ! OrderActor.Input.Terminate(terminate.sigtermProcesses, terminate.sigkillProcessesAfter)
             }
           }
@@ -323,10 +323,18 @@ with Stash {
           orderEntry.order.detaching match {
             case Left(problem) => Future.failed(problem.throwable)
             case Right(_) =>
-              orderEntry.detaching = true  // OrderActor is isTerminating
+              val promise = Promise[Unit]()
+              orderEntry.detachResponses ::= promise
               (orderEntry.actor ? OrderActor.Command.HandleEvent(OrderDetached))
                 .mapTo[Completed]
-                .map(_ => Right(AgentCommand.Response.Accepted))
+                .onComplete {
+                  case Failure(t) => promise.tryFailure(t)
+                  case Success(Completed) =>
+                    // Ignore this and instead await OrderActor termination and removal from orderRegister.
+                    // Otherwise in case of a quick Master restart, CoupleMaster would response with this OrderId
+                    // and the Master will try again to DetachOrder, while the original DetachOrder is still in progress.
+                }
+              promise.future.map(_ => Right(AgentCommand.Response.Accepted))
           }
         case None =>
           // May occur after Master restart when Master is not sure about order has been detached previously.
@@ -339,7 +347,7 @@ with Stash {
         case Left(problem) =>
           Future.failed(problem.throwable)
         case Right(orderEntry) =>
-          if (orderEntry.detaching)
+          if (orderEntry.isDetaching)
             Future.successful(Right(AgentCommand.Response.Accepted))
           else
             orderProcessor.cancel(orderId, mode, isAgent = true) match {
@@ -539,9 +547,11 @@ with Stash {
         shutdown.continue()
 
       case Terminated(actorRef) if orderRegister contains actorRef =>
-        val orderId = orderRegister(actorRef).order.id
+        val orderEntry = orderRegister(actorRef)
+        val orderId = orderEntry.order.id
         logger.debug(s"Actor '$orderId' stopped")
-        orderRegister.onActorTerminated(actorRef)
+        for (p <- orderEntry.detachResponses) p.trySuccess(())
+        orderRegister.onActorTerminated(actorRef)  // Remove the OrderEntry
         shutdown.continue()
 
       case Terminated(`journalActor`) if shuttingDown =>

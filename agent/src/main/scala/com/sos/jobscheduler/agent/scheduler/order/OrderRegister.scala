@@ -14,6 +14,7 @@ import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import monix.execution.{Cancelable, Scheduler}
+import scala.concurrent.Promise
 
 /**
   * @author Joacim Zschimmer
@@ -55,8 +56,10 @@ private[order] object OrderRegister
     val workflow: Workflow,
     val actor: ActorRef)
   {
-    var detaching: Boolean = false
     @volatile private[OrderRegister] var timer: Option[Cancelable] = None
+    var detachResponses: List[Promise[Unit]] = Nil
+
+    def isDetaching = detachResponses.nonEmpty
 
     def order = _order
 
