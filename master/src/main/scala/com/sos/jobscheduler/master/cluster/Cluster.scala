@@ -529,7 +529,9 @@ final class Cluster(
     }
 
   private def fetchAndHandleAcknowledgedEventIds(initialState: Coupled, eventId: EventId): Unit =
-    if (!fetchingAcks.getAndSet(true)) {
+    if (fetchingAcks.getAndSet(true)) {
+      logger.debug("fetchAndHandleAcknowledgedEventIds: already fetchingAcks")
+    } else {
       def msg = s"observeEventIds(${initialState.passiveUri}, after=$eventId, userAndPassword=${clusterConf.userAndPassword})"
       val future: CancelableFuture[Checked[Completed]] =
         fetchAndHandleAcknowledgedEventIds(initialState.passiveId, initialState.passiveUri, after = eventId)
@@ -564,10 +566,7 @@ final class Cluster(
                         },
                         suppressClusterWatch = true/*already notified*/
                       ) .map(_.toCompleted)
-                        .map(_.map { (_: Completed) =>
-                          fetchingAcks := false  // Allow fetching acknowledgements again when recoupling
-                          true
-                        })
+                        .map(_.map((_: Completed) => true))
                   ).map(_.flatMap { allowed =>
                     if (!allowed) {
                       // Should not happen
@@ -590,6 +589,10 @@ final class Cluster(
               logger.error(s"$msg failed with ${t.toStringWithCauses}", t)
           }})
           .dematerialize
+          .guarantee(Task {
+            logger.debug("fetchingAcks := false")
+            fetchingAcks := false
+          })
           .executeWithOptions(_.enableAutoCancelableRunLoops)
           .runToFuture
         fetchingAcksCancelable := future
@@ -718,25 +721,25 @@ final class Cluster(
             clusterWatch.retryUntilReachable(
               clusterWatch.applyEvents(from = ownId, events, clusterState)
             ) .map(_.map { completed =>
-                scheduleHeartbeats(clusterState)
+                scheduleHeartbeats(clusterState, delay = true)
                 completed
               }))
 
-    def scheduleHeartbeats(clusterState: ClusterState): Unit = {
+    def scheduleHeartbeats(clusterState: ClusterState, delay: Boolean = false): Unit =
       heartbeatSender := (clusterState match {
         case clusterState: HasNodes if clusterState.activeId == ownId =>
-          val future = sendHeartbeats.runToFuture
-          future onComplete {
-            case Success(Completed) =>
-            case Failure(t) =>
-              logger.warn(s"Error when sending heartbeat to ClusterWatch: ${t.toStringWithCauses}")
-              logger.debug(s"Error when sending heartbeat to ClusterWatch: $t", t)
-          }
-          future
+          sendHeartbeats
+            .delayExecution(if (delay) clusterConf.heartbeat else Duration.Zero)
+            .runToFuture
+            .andThen {
+              case Success(Completed) =>
+              case Failure(t) =>
+                logger.warn(s"Error when sending heartbeat to ClusterWatch: ${t.toStringWithCauses}")
+                logger.debug(s"Error when sending heartbeat to ClusterWatch: $t", t)
+            }
         case _ =>
           Cancelable.empty
       })
-    }
 
     private def sendHeartbeats: Task[Completed] = {
       @volatile var cancelled = false
