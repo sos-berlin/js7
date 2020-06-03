@@ -15,31 +15,34 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import io.circe.Json
 import monix.execution.Scheduler
+import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.concurrent.{Future, blocking}
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
 final class ConcurrentRequestLimiterExclusiveTest extends AnyFreeSpec with ScalatestRouteTest
 {
+  private val t = 20.ms
+  implicit private val routeTestTimeout = RouteTestTimeout(99.s)
   private val concurrentProblem = Problem.pure("CONCURRENT")
   private val testResponse = HttpEntity.Strict(ContentTypes.`text/plain(UTF-8)`, ByteString("RESPONSE"))
 
-  private def sleepingRoute(duration: Duration): Route = complete {
-    Future {
-      blocking {
-        Thread.sleep(duration.toMillis)
-        testResponse
+  private def sleepingRoute(duration: Duration): Route =
+    complete {
+      Future {
+        blocking {
+          Thread.sleep(duration.toMillis)
+          testResponse
+        }
       }
     }
-  }
 
   "limit=0 reject all (also warm-up for next test)" in {
     val zeroLimiter = new ConcurrentRequestLimiter(limit = 0, concurrentProblem)(Scheduler.global)
-    Get() ~> zeroLimiter(sleepingRoute(0.millis)) ~> check {
+    Get() ~> zeroLimiter(sleepingRoute(0.s)) ~> check {
       assert(status == TooManyRequests)
     }
   }
@@ -48,18 +51,18 @@ final class ConcurrentRequestLimiterExclusiveTest extends AnyFreeSpec with Scala
     implicit val limiter = new ConcurrentRequestLimiter(limit = 1, concurrentProblem)(Scheduler.global)
 
     "One request" in {
-      executeRequest(0.millis, OK)
-      executeRequest(0.millis, OK)
-      executeRequest(0.millis, OK)
+      executeRequest(0.s, OK)
+      executeRequest(0.s, OK)
+      executeRequest(0.s, OK)
     }
 
     "Two concurrent requests" in {
-      val a = Future { blocking { executeRequest(100.millis, OK) } }
-      waitForCondition(1.s, 1.ms)(limiter.isBusy)
+      val a = Future { blocking { executeRequest(10*t, OK) } }
+      waitForCondition(9.s, 1.ms)(limiter.isBusy)
       assert(limiter.isBusy)
-      executeRequest(0.millis, TooManyRequests)
+      executeRequest(0.s, TooManyRequests)
       assert(limiter.isBusy)
-      a await 99.seconds
+      a await 99.s
       assert(!limiter.isBusy)
     }
 
@@ -67,7 +70,7 @@ final class ConcurrentRequestLimiterExclusiveTest extends AnyFreeSpec with Scala
       implicit val x = JsonSeqStreamingSupport
       implicit val y = jsonSeqMarshaller[Json]
       val n = 10
-      val duration = 30.millis
+      val duration = 3*t
       val source: Source[Json, NotUsed] = Source(1 to n) map { o => sleep(duration); Json.fromInt(o) }
       val route = complete(source)
 
@@ -78,55 +81,53 @@ final class ConcurrentRequestLimiterExclusiveTest extends AnyFreeSpec with Scala
           assert(runningSince.elapsed < n * duration)
 
           assert(status == OK)  // Seems to wait for response
-          response.discardEntityBytes().future await 99.seconds
+          response.discardEntityBytes().future await 99.s
           assert(runningSince.elapsed >= n * duration)
-          waitForCondition(9.seconds, 10.millis)(!limiter.isBusy)
+          waitForCondition(9.s, 1*t)(!limiter.isBusy)
           assert(!limiter.isBusy)
         }
       }
-      waitForCondition(1.s, 1.ms)(limiter.isBusy)
+      waitForCondition(9.s, 1.ms)(limiter.isBusy)
       assert(limiter.isBusy)
-      executeRequest(0.millis, TooManyRequests)
+      executeRequest(0.s, TooManyRequests)
 
-      sleep(20.ms)
-      executeRequest(0.millis, TooManyRequests)
+      sleep(2*t)
+      executeRequest(0.s, TooManyRequests)
       assert(limiter.isBusy)
 
-      longRequest await 99.seconds
+      longRequest await 99.s
       assert(!limiter.isBusy)
-      executeRequest(0.millis, OK)
+      executeRequest(0.s, OK)
     }
   }
 
   "limit=1 with timeout > 0s" - {
-    implicit val limiter = new ConcurrentRequestLimiter(limit = 1, concurrentProblem, timeout = 210.millis, queueSize = 9)(Scheduler.global)
+    implicit val limiter = new ConcurrentRequestLimiter(limit = 1, concurrentProblem, timeout = 21*t, queueSize = 9)(Scheduler.global)
 
     "Second concurrent request is delayed" in {
       val runningSince = now
-      val a = Future { blocking { executeRequest(100.millis, OK) } }  // running from 0 till 100
-      assert(waitForCondition(1.s, 1.ms)(limiter.isBusy))
-      val b = Future { blocking { executeRequest(100.millis, OK) } }  // waits 100ms, running from 100 till 200
-      sleep(30.millis)
-      val c = Future { blocking { executeRequest(100.millis, OK) } }  // waits 170ms, running from 200 till 300
-      sleep(30.millis)
-      val d = Future { blocking { executeRequest(100.millis, TooManyRequests) } }   // should wait 240ms but times out after 210ms
-      a await 99.seconds
+      val a = Future { blocking { executeRequest(10*t, OK) } }  // running from 0 till 100
+      assert(waitForCondition(9.s, 1.ms)(limiter.isBusy))
+      val b = Future { blocking { executeRequest(10*t, OK) } }  // waits 100ms, running from 100 till 200
+      sleep(3*t)
+      val c = Future { blocking { executeRequest(10*t, OK) } }  // waits 170ms, running from 200 till 300
+      sleep(3*t)
+      val d = Future { blocking { executeRequest(10*t, TooManyRequests) } }   // should wait 240ms but times out after 210ms
+      a await 99.s
       assert(limiter.isBusy)
-      b await 99.seconds
-      assert(runningSince.elapsed >= 190.millis)
-      c await 99.seconds
-      assert(runningSince.elapsed >= 290.millis)
-      d await 99.seconds
+      b await 99.s
+      assert(runningSince.elapsed >= 19*t)
+      c await 99.s
+      assert(runningSince.elapsed >= 29*t)
+      d await 99.s
     }
   }
 
-  private def executeRequest(duration: Duration, expectedStatus: StatusCode)(implicit limiter: ConcurrentRequestLimiter): Unit = {
-    implicit val t = RouteTestTimeout(99.seconds)
+  private def executeRequest(duration: Duration, expectedStatus: StatusCode)(implicit limiter: ConcurrentRequestLimiter): Unit =
     Get() ~> limiter(sleepingRoute(duration)) ~> check {
       assert(status == expectedStatus)
       if (expectedStatus == OK) {
         assert(responseAs[String] == "RESPONSE")
       }
     }
-  }
 }
