@@ -32,23 +32,26 @@ final class PassiveLostClusterTest extends MasterClusterTester
       ).await(99.s).orThrow
       primaryMaster.eventWatch.await[ClusterEvent.ClusterCoupled]()
 
-      var orderId = OrderId("🔺")
-      primaryMaster.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path))
-      primaryMaster.eventWatch.await[OrderProcessingStarted](_.key == orderId)
-      backupMaster.eventWatch.await[OrderProcessingStarted](_.key == orderId)
+      val firstOrderId = OrderId("🔺")
+      locally {
+        primaryMaster.addOrderBlocking(FreshOrder(firstOrderId, TestWorkflow.id.path))
+        primaryMaster.eventWatch.await[OrderProcessingStarted](_.key == firstOrderId)
+        backupMaster.eventWatch.await[OrderProcessingStarted](_.key == firstOrderId)
+      }
 
-      backupMaster.terminate() await 99.s
-      val passiveLost = primaryMaster.eventWatch.await[ClusterPassiveLost](_.key == NoKey).head.eventId
+      for (orderId <- Array(OrderId("🔸"), OrderId("🔶"))) {
+        backupMaster.terminate() await 99.s
+        val passiveLost = primaryMaster.eventWatch.await[ClusterPassiveLost]().head.eventId
 
-      primaryMaster.eventWatch.await[OrderFinished](_.key == orderId, after = passiveLost)
+        primaryMaster.eventWatch.await[OrderFinished](_.key == firstOrderId, after = passiveLost)
 
-      backupMaster = backup.startMaster(httpPort = Some(backupHttpPort)) await 99.s
-      primaryMaster.eventWatch.await[ClusterCoupled](_.key == NoKey).head.eventId
+        backupMaster = backup.startMaster(httpPort = Some(backupHttpPort)) await 99.s
+        primaryMaster.eventWatch.await[ClusterCoupled]().head.eventId
 
-      orderId = OrderId("🔸")
-      primaryMaster.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path))
-      primaryMaster.eventWatch.await[OrderFinished](_.key == orderId, after = passiveLost)
-      backupMaster.eventWatch.await[OrderFinished](_.key == orderId, after = passiveLost)
+        primaryMaster.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path))
+        primaryMaster.eventWatch.await[OrderFinished](_.key == orderId, after = passiveLost)
+        backupMaster.eventWatch.await[OrderFinished](_.key == orderId, after = passiveLost)
+      }
 
       primaryMaster.terminate() await 99.s
       backupMaster.terminate() await 99.s
