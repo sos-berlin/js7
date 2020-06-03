@@ -221,7 +221,7 @@ abstract class RecouplingStreamReader[
       }
 
     private def tryEndlesslyToCouple(after: I): Task[Completed] =
-      Task.tailRecM(())(_ =>
+      Task.tailRecM(())(_ => Task.defer(
         if (isStopped)
           Task.raiseError(new IllegalStateException(s"RecouplingStreamReader($api) has been stopped") with NoStackTrace)
         else
@@ -250,7 +250,8 @@ abstract class RecouplingStreamReader[
                   _ <- Task { recouplingPause.onCouplingSucceeded() }
                   completed <- onCoupled(api, after)
                 } yield Right(completed)
-            })}
+            }))
+  }
 
   private val pauseBeforeRecoupling =
     Task.defer(pauseBeforeNextTry(recouplingPause.nextPause()))
