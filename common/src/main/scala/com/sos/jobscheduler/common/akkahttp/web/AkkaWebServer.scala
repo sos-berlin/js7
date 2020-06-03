@@ -12,7 +12,7 @@ import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.base.utils.SetOnce
+import com.sos.jobscheduler.base.utils.{Lazy, SetOnce}
 import com.sos.jobscheduler.common.akkahttp.https.Https.loadSSLContext
 import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer._
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
@@ -41,7 +41,8 @@ trait AkkaWebServer extends AutoCloseable
   private val shuttingDownPromise = Promise[Completed]()
   protected final def isShuttingDown = shuttingDownPromise.future.isCompleted
   private lazy val akkaHttp = Http(actorSystem)
-  private implicit lazy val materializer = ActorMaterializer()
+  private val materializerLazy = Lazy { ActorMaterializer() }
+  private implicit def materializer = materializerLazy()
   private lazy val shutdownTimeout = config.getDuration("jobscheduler.webserver.shutdown-timeout").toFiniteDuration
   private val scheduler = SetOnce[Scheduler]
 
@@ -113,18 +114,21 @@ trait AkkaWebServer extends AutoCloseable
         Task { logger.debug("terminate") } >>
           Task.sleep(500.ms) >> // Wait a short time to let event streams finish, to avoid connection reset
           // Now wait until (event) Observables has been closed?
-          activeBindings.toVector.traverse(_.flatMap(binding =>
-            Task.deferFuture(binding.terminate(hardDeadline = shutdownTimeout))
-              .map { _: Http.HttpTerminated =>
-                logger.debug(s"$binding terminated")
-                Completed
-              }))
+          activeBindings.toVector
+            .traverse(_.flatMap(binding =>
+              Task.deferFuture(binding.terminate(hardDeadline = shutdownTimeout))
+                .map { _: Http.HttpTerminated =>
+                  logger.debug(s"$binding terminated")
+                  Completed
+                }))
             .map((_: Seq[Completed]) => ())
     }.guarantee(Task {
-      logger.debug("materializer.shutdown()")
-      try materializer.shutdown()
-      catch { case NonFatal(t) =>
-        logger.warn(s"$toString close(): " + t.toStringWithCauses, t.nullIfNoStackTrace)
+      for (materializer <- materializerLazy if !materializer.isShutdown) {
+        logger.debug("materializer.shutdown()")
+        try materializer.shutdown()
+        catch { case NonFatal(t) =>
+          logger.warn(s"$toString close(): " + t.toStringWithCauses, t.nullIfNoStackTrace)
+        }
       }
     })
 
