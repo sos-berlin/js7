@@ -1,4 +1,4 @@
-FROM openjdk:14
+FROM openjdk:15
 
 # UID of the 'jobscheduler'. The mounted volume /var/opt/jobscheduler must be rwx for this UID
 # Used as group ID, too.
