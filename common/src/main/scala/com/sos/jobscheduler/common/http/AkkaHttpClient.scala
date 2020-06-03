@@ -199,7 +199,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
                 }
               })
               .doOnCancel(Task.defer {
-                // TODO Cancelling does not cancel the ongoing Akka operation. Akka is not freeing the connection.
+                // TODO Cancelling does not cancel the ongoing Akka operation. Akka does not free the connection.
                 cancelled = true
                 responseFuture match {
                   case null => Task.unit
