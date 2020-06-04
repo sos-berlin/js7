@@ -6,6 +6,7 @@ import com.sos.jobscheduler.base.crypt.silly.{SillySignatureVerifier, SillySigne
 import com.sos.jobscheduler.base.crypt.{GenericSignature, SignedString}
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.time.Stopwatch
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.crypt.FileBasedVerifier
 import com.sos.jobscheduler.data.filebased.Repo.testOnly.{Changed, Deleted, OpRepo}
@@ -164,6 +165,23 @@ final class RepoTest extends AnyFreeSpec
     }
   }
 
+  locally {
+    val n = sys.props.get("RepoTest").map(_.toInt) getOrElse 2000
+    s"Add many $n versions" in {
+      // MasterCommand.UpdateRepo calls fileBasedToEvents
+      val a = AFileBased(APath("/A"), "A")
+      var repo = emptyRepo
+      val stopwatch = new Stopwatch
+      for (i <- 1 to n) {
+        val v = VersionId(i.toString)
+        val events = repo.fileBasedToEvents(v, toSigned(a withVersion v) :: Nil).orThrow
+        repo = repo.applyEvents(events).orThrow
+        if (i % 1000 == 0) scribe.info(stopwatch.itemsPerSecondString(i, "versions"))
+      }
+      info(stopwatch.itemsPerSecondString(n, "versions"))
+    }
+  }
+
   //"diff" in {
   //  // NOT USED ?
   //  assert(Repo.diff(a1 :: b1  :: Nil, a1 :: b1  :: Nil) == Nil)
@@ -173,10 +191,10 @@ final class RepoTest extends AnyFreeSpec
   //  assert(Repo.diff(a1 ::        Nil, a1 :: b1  :: Nil) == FileBasedDeleted(b1.path) :: Nil)
   //  assert(Repo.diff(a1 :: by2 :: Nil, a1 :: bx2 :: Nil) == FileBasedDeleted(bx2.path) :: FileBasedAdded(by2.withoutVersion) :: Nil)
   //}
-
 }
 
-object RepoTest {
+object RepoTest
+{
   private val V1 = VersionId("1")
   private val V2 = VersionId("2")
   private val V3 = VersionId("3")

@@ -110,7 +110,7 @@ final class ProviderTest extends AnyFreeSpec with MasterAgentForScalaTest
     }
 
     "Initially, JobScheduler's Repo is empty" in {
-      assert(checkedRepo.map(_.idToSignedFileBased.isEmpty) == Right(true))
+      assert(checkedRepo.map(_.pathToVersionToSignedFileBased.isEmpty) == Right(true))
     }
 
     "Start with one AgentRef and two workflows" in {
@@ -124,11 +124,15 @@ final class ProviderTest extends AnyFreeSpec with MasterAgentForScalaTest
         added = agentRef :: TestWorkflow.withId(AWorkflowPath) :: TestWorkflow.withId(BWorkflowPath) :: Nil))
 
       provider.initiallyUpdateMasterConfiguration(V1.some).await(99.seconds).orThrow
-      assert(master.fileBasedApi.checkedRepo.await(99.seconds).map(_.idToSignedFileBased) == Right(Map(
-        (agentRef.path ~ V1) -> Some(toSigned(agentRef withVersion V1)),
-        (AWorkflowPath ~ V1) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1))),
-        (AWorkflowPath ~ V1) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1))),
-        (BWorkflowPath ~ V1) -> Some(toSigned(TestWorkflow.withId(BWorkflowPath ~ V1))))))
+      assert(master.fileBasedApi.checkedRepo.await(99.seconds).map(_.pathToVersionToSignedFileBased) == Right(Map(
+        agentRef.path -> Map(
+          V1 -> Some(toSigned(agentRef withVersion V1))),
+        AWorkflowPath -> Map(
+          V1 -> Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1)))),
+        AWorkflowPath -> Map(
+          V1 -> Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1)))),
+        BWorkflowPath -> Map(
+          V1 -> Some(toSigned(TestWorkflow.withId(BWorkflowPath ~ V1)))))))
 
       assert(provider.testMasterDiff.await(99.seconds).orThrow.isEmpty)
     }
@@ -159,25 +163,33 @@ final class ProviderTest extends AnyFreeSpec with MasterAgentForScalaTest
       delete(live / "ERROR-1.workflow.json")
       delete(live / "ERROR-2.workflow.json")
       provider.updateMasterConfiguration(V2.some).await(99.seconds).orThrow
-      assert(master.fileBasedApi.checkedRepo.await(99.seconds).map(_.idToSignedFileBased) == Right(Map(
-        (agentRef.path ~ V1) -> Some(toSigned(agentRef withVersion V1)),
-        (AWorkflowPath ~ V1) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1))),
-        (AWorkflowPath ~ V2) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V2))),
-        (BWorkflowPath ~ V1) -> Some(toSigned(TestWorkflow.withId(BWorkflowPath ~ V1))),
-        (CWorkflowPath ~ V2) -> Some(toSigned(TestWorkflow.withId(CWorkflowPath ~ V2))))))
+      assert(master.fileBasedApi.checkedRepo.await(99.seconds).map(_.pathToVersionToSignedFileBased) == Right(Map(
+        agentRef.path -> Map(
+          V1 -> Some(toSigned(agentRef withVersion V1))),
+        AWorkflowPath -> Map(
+          V1 -> Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1))),
+          V2 -> Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V2)))),
+        BWorkflowPath -> Map(
+          V1 -> Some(toSigned(TestWorkflow.withId(BWorkflowPath ~ V1)))),
+        CWorkflowPath -> Map(
+          V2 -> Some(toSigned(TestWorkflow.withId(CWorkflowPath ~ V2)))))))
     }
 
     "Delete a Workflow" in {
       delete(live / "B.workflow.json")
       provider.updateMasterConfiguration(V3.some).await(99.seconds).orThrow
       assert(checkedRepo.map(_.versions) == Right(V3 :: V2 :: V1 :: Nil))
-      assert(checkedRepo.map(_.idToSignedFileBased) == Right(Map(
-        (agentRef.path ~ V1) -> Some(toSigned(agentRef withVersion V1)),
-        (AWorkflowPath ~ V1) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1))),
-        (AWorkflowPath ~ V2) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V2))),
-        (BWorkflowPath ~ V1) -> Some(toSigned(TestWorkflow.withId(BWorkflowPath ~ V1))),
-        (BWorkflowPath ~ V3) -> None,
-        (CWorkflowPath ~ V2) -> Some(toSigned(TestWorkflow.withId(CWorkflowPath ~ V2))))))
+      assert(checkedRepo.map(_.pathToVersionToSignedFileBased) == Right(Map(
+        agentRef.path -> Map(
+          V1 -> Some(toSigned(agentRef withVersion V1))),
+        AWorkflowPath -> Map(
+          V1 -> Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1))),
+          V2 -> Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V2)))),
+        BWorkflowPath -> Map(
+          V1 -> Some(toSigned(TestWorkflow.withId(BWorkflowPath ~ V1))),
+          V3 -> None),
+        CWorkflowPath -> Map(
+          V2 -> Some(toSigned(TestWorkflow.withId(CWorkflowPath ~ V2)))))))
     }
 
     "Workflow notation (including a try-instruction)" in {

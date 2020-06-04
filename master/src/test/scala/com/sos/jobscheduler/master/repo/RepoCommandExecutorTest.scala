@@ -49,25 +49,26 @@ final class RepoCommandExecutorTest extends AnyFreeSpec
 
   "replaceRepoCommandToEvents" in {
     repo = executeReplace(ReplaceRepo(v1, fileBasedSigner.sign(agentRef1) :: Nil))
-    assert(repo.idToSignedFileBased == Map(
-      agentRef1.id -> Some(fileBasedSigner.toSigned(agentRef1))))
+    assert(repo.pathToVersionToSignedFileBased == Map(
+      agentRef1.id.path -> Map(agentRef1.id.versionId -> Some(fileBasedSigner.toSigned(agentRef1)))))
   }
 
   "updateRepoCommandToEvents" in {
     repo = executeUpdate(UpdateRepo(v2, fileBasedSigner.sign(workflow2) :: Nil))
-    assert(repo.idToSignedFileBased == Map(
-      agentRef1.id -> Some(fileBasedSigner.toSigned(agentRef1)),
-      workflow2.id -> Some(fileBasedSigner.toSigned(workflow2))))
+    assert(repo.pathToVersionToSignedFileBased == Map(
+      agentRef1.id.path -> Map(agentRef1.id.versionId -> Some(fileBasedSigner.toSigned(agentRef1))),
+      workflow2.id.path -> Map(workflow2.id.versionId -> Some(fileBasedSigner.toSigned(workflow2)))))
   }
 
   "replaceRepoCommandToEvents #2" in {
     repo = executeReplace(ReplaceRepo(v3, fileBasedSigner.sign(workflow3) :: Nil))
-    assert(repo.idToSignedFileBased == Map(
-      agentRef1.id -> Some(fileBasedSigner.toSigned(agentRef1)),
-      agentRef1.path ~ v3 -> None,
-      workflow2.id -> Some(fileBasedSigner.toSigned(workflow2)),
-      workflow2.path ~ v3 -> None,
-      workflow3.id -> Some(fileBasedSigner.toSigned(workflow3))))
+    assert(repo.pathToVersionToSignedFileBased == Map(
+      agentRef1.id.path -> Map(
+        v1 -> Some(fileBasedSigner.toSigned(agentRef1)),
+        v3 -> None),
+      workflow2.id.path -> Map(
+        v2 -> Some(fileBasedSigner.toSigned(workflow2)),
+        v3 -> Some(fileBasedSigner.toSigned(workflow3)))))
   }
 
   private def executeReplace(replaceRepo: ReplaceRepo): Repo =
