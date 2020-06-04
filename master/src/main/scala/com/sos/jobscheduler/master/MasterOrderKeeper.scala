@@ -333,7 +333,6 @@ with MainJournalingActor[MasterState, Event]
         ) ++ Some(NoKey <-: MasterEvent.MasterReady(ZoneId.systemDefault.getId, totalRunningTime = journalHeader.totalRunningTime))
       ) { (_, updatedMasterState) =>
         masterState = updatedMasterState
-        testEventPublisher.publish(MasterReadyTestIncident)
         cluster.afterJounalingStarted
           .materializeIntoChecked
           .runToFuture
@@ -379,6 +378,7 @@ with MainJournalingActor[MasterState, Event]
 
     case Internal.Ready(Right(Completed)) =>
       logger.info("Ready")
+      testEventPublisher.publish(MasterReadyTestIncident)
       cluster.onTerminatedUnexpectedly.runToFuture onComplete { tried =>
         self ! Internal.ClusterModuleTerminatedUnexpectedly(tried)
       }
