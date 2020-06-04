@@ -72,10 +72,13 @@ object Collections
 
       /** Liefert die Duplikate, also Listenelemente, deren Schlüssel mehr als einmal vorkommt. */
       def duplicateKeys[K](key: A => K): Option[Map[K, Iterable[A]]] =
-        delegate groupBy key filter { _._2.sizeIs > 1 } match {
-          case o if o.isEmpty => None
-          case o => Some(o)
-        }
+        if (delegate.sizeIs == delegate.view.map(key).toSet.size)
+          None
+        else
+          delegate.groupBy(key).filter(_._2.sizeIs > 1) match {
+            case o if o.isEmpty => None
+            case o => Some(o)
+          }
 
       /**
         * Like `groupBy`, but returns a `Vector[(K, Vector[A])] ` retaining the original key order (of every first occurrence),
