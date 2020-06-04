@@ -1,10 +1,14 @@
 package com.sos.jobscheduler.tests
 
+import com.sos.jobscheduler.base.auth.UserId
+import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.time.Stopwatch
 import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.data.agent.AgentRefPath
@@ -21,6 +25,7 @@ import com.sos.jobscheduler.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.util.Try
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 
 final class MasterRepoTest extends AnyFreeSpec
 {
@@ -30,6 +35,12 @@ final class MasterRepoTest extends AnyFreeSpec
     autoClosing(new DirectoryProvider(List(TestAgentRefPath), testName = Some("MasterRepoTest"))) { provider =>
       for (v <- 1 to 4)  // For each version, we use a dedicated job which echos the VersionId
         provider.agents.head.writeExecutable(ExecutablePath(s"/EXECUTABLE-V$v$sh"), (if (isWindows) "@" else "") + s"echo /VERSION-$v/")
+      provider.master.configDir / "master.conf" ++=
+        """jobscheduler.auth.users.TEST-USER {
+          |  password = "plain:TEST-PASSWORD"
+          |  permissions = [ UpdateRepo ]
+          |}
+          |""".stripMargin
 
       provider.runAgents() { _ =>
         provider.runMaster() { master =>
@@ -70,6 +81,8 @@ final class MasterRepoTest extends AnyFreeSpec
           // AWorkflowPath is still version V3
           runOrder(master, AWorkflowPath ~ V3, OrderId("A-3"))
           runOrder(master, BWorkflowPath ~ V2, OrderId("B-2"))
+
+          testSpeed(master)
         }
       }
 
@@ -106,12 +119,27 @@ final class MasterRepoTest extends AnyFreeSpec
         assert(written.chunk contains s"/VERSION-${workflowId.versionId.string}/")
         master.eventWatch.await[OrderFinished](_.key == orderId)
       }
+
+      def testSpeed(master: RunningMaster): Unit = {
+        val n = sys.props.get("MasterRepoTest").map(_.toInt) getOrElse 1
+        master.httpApi.login_(Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD"))).await(99.s)
+        val stopwatch = new Stopwatch
+        for (i <- 1 to n) {
+          val v = VersionId(s"SPEED-$i")
+          val workflow = testWorkflow(v).withId(WorkflowPath("/WORKFLOW") ~ v)
+          master.httpApi.executeCommand(UpdateRepo(v, provider.sign(workflow) :: Nil)).await(99.s)
+          if (i % 1000 == 0) logger.info(stopwatch.itemsPerSecondString(i, "UpdateRepos"))
+        }
+        info(stopwatch.itemsPerSecondString(n, "UpdateRepos"))
+      }
     }
   }
 }
 
 object MasterRepoTest
 {
+  private val logger = Logger(getClass)
+
   private val AWorkflowPath = WorkflowPath("/A")
   private val BWorkflowPath = WorkflowPath("/B")
   private val CWorkflowPath = WorkflowPath("/C")
