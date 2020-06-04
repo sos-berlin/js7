@@ -63,7 +63,7 @@ final class ReleaseEventsTest extends AnyFreeSpec with DirectoryProviderForScala
     def agentJournalFiles = listJournalFiles(directoryProvider.agents(0).dataDir / "state" / "master-Master")
 
     def assertMasterJournalFileCount(n: Int): Unit = {
-      waitForCondition(5.s, 10.ms) { masterJournalFiles.size == n }
+      waitForCondition(9.s, 10.ms) { masterJournalFiles.size == n }
       assert(masterJournalFiles.size == n)
     }
 
