@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.core.event
 
+import akka.NotUsed
 import akka.http.scaladsl.common.JsonEntityStreamingSupport
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.marshalling.sse.EventStreamMarshalling._
@@ -10,9 +11,10 @@ import akka.http.scaladsl.model.headers.`Last-Event-ID`
 import akka.http.scaladsl.model.sse.ServerSentEvent
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive1, ExceptionHandler, Route}
+import akka.stream.scaladsl.Source
 import com.sos.jobscheduler.base.BuildInfo
 import com.sos.jobscheduler.base.auth.ValidUserPermission
-import com.sos.jobscheduler.base.circeutils.CirceUtils.CompactPrinter
+import com.sos.jobscheduler.base.circeutils.CirceUtils.{CompactPrinter, RichJson}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
@@ -32,7 +34,6 @@ import com.sos.jobscheduler.common.event.EventWatch
 import com.sos.jobscheduler.common.event.collector.EventDirectives
 import com.sos.jobscheduler.common.event.collector.EventDirectives.eventRequest
 import com.sos.jobscheduler.common.http.JsonStreamingSupport._
-import com.sos.jobscheduler.common.http.StreamingSupport._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.JavaTimeConverters.AsScalaDuration
 import com.sos.jobscheduler.core.event.GenericEventRoute._
@@ -44,6 +45,7 @@ import monix.execution.Scheduler
 import monix.reactive.Observable
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
+import scala.reflect.runtime.universe._
 import scala.util.control.NonFatal
 
 /**
@@ -131,7 +133,7 @@ trait GenericEventRoute extends RouteProvider
 
             case EventSeq.NonEmpty(events) =>
               implicit val x = NonEmptyEventSeqJsonStreamingSupport
-              closeableIteratorToMarshallable(events)
+              closeableIteratorToMarshallable(events.takeWhile(_ => !isShuttingDown))
           })
       }
 
@@ -160,12 +162,12 @@ trait GenericEventRoute extends RouteProvider
                       maybeHeartbeat match {
                         case None =>
                           implicit val x = jsonSeqMarshaller[Unit]
-                          monixObservableToMarshallable(
+                          observableToMarshallable(
                             Observable.empty[Unit])
                         case Some(heartbeat) =>  // No event arrived until first heartbeat
                           assertThat(eventIdOnly)
                           implicit val x = jsonSeqMarshaller[EventId]
-                          monixObservableToMarshallable(
+                          observableToMarshallable(
                             (eventWatch.lastAddedEventId/*start heartbeating after this immediately returned value*/ +:
                               observe(request, predicate, onlyLastOfChunk, eventWatch).map(_.eventId)
                             ).echoRepeated(heartbeat))
@@ -185,11 +187,11 @@ trait GenericEventRoute extends RouteProvider
                       if (eventIdOnly) {
                         val eventIds = observable.map(_.eventId)
                         implicit val x = jsonSeqMarshaller[EventId]
-                        monixObservableToMarshallable(
+                        observableToMarshallable(
                           eventIds.pipe(o => maybeHeartbeat.fold(o)(o.echoRepeated)))
                       } else {
                         implicit val x = jsonSeqMarshaller[Stamped[KeyedEvent[Event]]]
-                        monixObservableToMarshallable(observable)
+                        observableToMarshallable(observable)
                       }
                     })
               }
@@ -205,12 +207,10 @@ trait GenericEventRoute extends RouteProvider
           request,
           predicate,
           onlyLastOfChunk = onlyLastOfChunk)
-        .takeWhile(_ => !isShuttingDown)
         .onErrorRecoverWith { case NonFatal(e) =>
           logger.warn(e.toStringWithCauses)
           Observable.empty  // The streaming event web service doesn't have an error channel, so we simply end the tail
         }
-
 
     private def serverSentEvents(eventWatch: EventWatch): Route =
       parameter("v" ? BuildInfo.buildId) { requestedBuildId =>
@@ -223,14 +223,12 @@ trait GenericEventRoute extends RouteProvider
             optionalHeaderValueByType[`Last-Event-ID`](()) { lastEventIdHeader =>
               val req = lastEventIdHeader.fold(request)(header =>
                 request.copy[Event](after = toLastEventId(header)))
-              val mutableJsonPrinter = CompactPrinter.copy(reuseWriters = true)
-              val source = logAkkaStreamErrorToWebLogAndIgnore(
-                eventWatch.observe(req, predicate = isRelevantEvent)
-                  .map(stamped => ServerSentEvent(
-                    data = stamped.asJson.printWith(mutableJsonPrinter),
-                    id = Some(stamped.eventId.toString)))
-                  .toAkkaSource)
-              complete(source)
+              complete(
+                observableToMarshallable(
+                  eventWatch.observe(req, predicate = isRelevantEvent)
+                    .map(stamped => ServerSentEvent(
+                      data = stamped.asJson.compactPrint,
+                      id = Some(stamped.eventId.toString)))))
             }
           }
       }
@@ -250,6 +248,16 @@ trait GenericEventRoute extends RouteProvider
           .apply(eventRequest => inner(Tuple1(eventRequest)))
       }
   }
+
+  private def observableToMarshallable[A: TypeTag](observable: Observable[A])
+    (implicit q: Source[A, NotUsed] => ToResponseMarshallable)
+  : ToResponseMarshallable =
+    monixObservableToMarshallable(
+      Observable.defer(
+        if (isShuttingDown)
+          Observable.empty
+        else
+          observable.takeWhile(_ => !isShuttingDown)))
 }
 
 object GenericEventRoute
