@@ -9,6 +9,7 @@ import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.data.cluster.ClusterSetting.syntax._
 import com.sos.jobscheduler.data.command.CommonCommand
+import com.sos.jobscheduler.data.event.EventId
 import scala.concurrent.duration.FiniteDuration
 
 sealed trait ClusterCommand extends CommonCommand {
@@ -17,7 +18,7 @@ sealed trait ClusterCommand extends CommonCommand {
 
 object ClusterCommand
 {
-  final case class ClusterStartBackupNode(idToUri: Map[ClusterNodeId, Uri], activeId: ClusterNodeId)
+  final case class ClusterStartBackupNode(idToUri: Map[ClusterNodeId, Uri], activeId: ClusterNodeId, fileEventId: EventId)
   extends ClusterCommand {
     type Response = Response.Accepted
     ClusterSetting.checkUris(idToUri, activeId).orThrow

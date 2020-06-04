@@ -17,14 +17,16 @@ final class ClusterCommandTest extends AnyFreeSpec
         Map(
           ClusterNodeId("A") -> Uri("http://A"),
           ClusterNodeId("B") -> Uri("http://B")),
-        ClusterNodeId("A")),
+        ClusterNodeId("A"),
+        1000L),
       json"""{
         "TYPE": "ClusterStartBackupNode",
         "idToUri": {
           "A": "http://A",
           "B": "http://B"
         },
-        "activeId": "A"
+        "activeId": "A",
+        "fileEventId": 1000
       }""")
   }
 
@@ -72,7 +74,7 @@ final class ClusterCommandTest extends AnyFreeSpec
         ClusterNodeId("A") -> Uri("http://A"),
         ClusterNodeId("B") -> Uri("http://B")),
       activeId = ClusterNodeId("A"),
-      JournalPosition(0, 1000)))),
+      JournalPosition(0L, 1000)))),
       json"""{
         "TYPE": "ClusterInhibitActivation.Response",
         "failedOver": {

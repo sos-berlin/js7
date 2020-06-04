@@ -49,6 +49,8 @@ import com.softwaremill.diffx._
   idToUri: Map[ClusterNodeId, Uri],
   activeId: ClusterNodeId,
   journalMeta: JournalMeta,
+  /** For backup initialization, only when ClusterState.Empty. */
+  initialFileEventId: Option[EventId],
   recovered: Recovered[S],
   otherFailed: Boolean,
   journalConf: JournalConf,
@@ -57,6 +59,8 @@ import com.softwaremill.diffx._
   common: ClusterCommon)
 {
   assertThat(activeId != ownId)
+  assertThat(initialFileEventId.isDefined == (recovered.clusterState == ClusterState.Empty))
+
   import recovered.eventWatch
   private val activeUri = idToUri(activeId)
 
@@ -150,8 +154,9 @@ import com.softwaremill.diffx._
           (recovered.recoveredJournalFile match {
             case None =>
               assertThat(recoveredClusterState == ClusterState.Empty)
-              NoLocalJournal
-            case Some(recoveredJournalFile) => FirstPartialFile(recoveredJournalFile/*, recoveredClusterState*/)
+              NoLocalJournal(initialFileEventId.get)
+            case Some(recoveredJournalFile) =>
+              FirstPartialFile(recoveredJournalFile/*, recoveredClusterState*/)
           }): Continuation.Replicatable
         )(continuation =>
           Task.deferAction(implicit scheduler =>
@@ -183,7 +188,7 @@ import com.softwaremill.diffx._
       import continuation.file
 
       val maybeTmpFile = continuation match {
-        case NoLocalJournal | _: NextFile =>
+        case _: NoLocalJournal | _: NextFile =>
           val tmp = Paths.get(file.toString + TmpSuffix)
           logger.debug(s"Replicating snapshot into temporary journal file ${tmp.getFileName()}")
           Some(tmp)
@@ -534,11 +539,10 @@ import com.softwaremill.diffx._
     }
   }
 
-  private case object NoLocalJournal
+  private case class NoLocalJournal(fileEventId: EventId)
   extends Continuation.Replicatable {
     def clusterState = ClusterState.Empty
     def fileLength = 0
-    def fileEventId = EventId.BeforeFirst
     def firstEventPosition = None
     def lastProperEventPosition = -1L  // Invalid value
     def maybeJournalId = None

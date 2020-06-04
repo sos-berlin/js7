@@ -35,4 +35,6 @@ package object problems
   final case class MissingPassiveClusterNodeHeartbeatProblem(passiveId: ClusterNodeId) extends Problem.Coded {
     override def arguments = Map("passiveId" -> passiveId.toString)
   }
+
+  final case object ClusterNodesAlreadyAppointed extends Problem.ArgumentlessCoded
 }

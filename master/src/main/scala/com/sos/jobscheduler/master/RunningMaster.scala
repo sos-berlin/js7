@@ -240,17 +240,18 @@ object RunningMaster
           useJournaledStateAsSnapshot = true),
         "Journal"))
       signatureVerifier
-      val persistence = new JournaledStatePersistence[MasterState](journalActor).closeWithCloser
+      val persistence = new JournaledStatePersistence[MasterState](journalActor, masterConfiguration.journalConf).closeWithCloser
+      val recovered = Await.result(whenRecovered, Duration.Inf).closeWithCloser
       val cluster = new Cluster(
         journalMeta,
         persistence,
+        recovered.eventWatch,
         masterConfiguration.masterId,
         masterConfiguration.journalConf,
         masterConfiguration.clusterConf,
         masterConfiguration.config,
         injector.instance[EventIdGenerator],
         testEventBus)
-      val recovered = Await.result(whenRecovered, Duration.Inf).closeWithCloser
 
       // clusterFollowUpFuture terminates when this cluster node becomes active or terminates
       // maybePassiveState accesses the current MasterState while this node is passive, otherwise it is None

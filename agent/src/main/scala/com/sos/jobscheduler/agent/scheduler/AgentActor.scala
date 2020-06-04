@@ -226,7 +226,7 @@ extends MainJournalingActor[AgentServerState, AgentEvent] {
     ( for {
         registeredMaster <- pure(state.idToMaster.get(masterId).toChecked(UnknownMaster(masterId)))
         entry <- pure(masterToOrderKeeper.checked(masterId))
-        eventWatch <- EitherT(Task.fromFuture(entry.eventWatch.whenStarted) map Checked.apply)
+        eventWatch <- EitherT(entry.eventWatch.started map Checked.apply)
         _ <- pure {
             assertThat(entry.agentRunId == registeredMaster.agentRunId)
             if (requestedAgentRefPath != registeredMaster.agentRefPath)

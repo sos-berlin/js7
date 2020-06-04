@@ -20,6 +20,9 @@ import scodec.bits.ByteVector
   */
 trait EventWatch
 {
+  def started: Task[this.type] =
+    Task.fromFuture(whenStarted).memoize.asInstanceOf[Task[this.type]]
+
   def whenStarted: Future[this.type] = Future.successful(this)
 
   def strict: StrictEventWatch = new StrictEventWatch(this)

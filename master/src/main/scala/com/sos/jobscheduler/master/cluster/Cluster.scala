@@ -20,7 +20,7 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.utils.{LockResource, SetOnce}
 import com.sos.jobscheduler.base.web.{HttpClient, Uri}
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
-import com.sos.jobscheduler.common.event.EventIdGenerator
+import com.sos.jobscheduler.common.event.{EventIdGenerator, RealEventWatch}
 import com.sos.jobscheduler.common.http.RecouplingStreamReader
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.cluster.ClusterWatch.ClusterWatchHeartbeatFromInactiveNodeProblem
@@ -31,7 +31,7 @@ import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
 import com.sos.jobscheduler.core.event.journal.recover.{JournaledStateRecoverer, Recovered}
 import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalConf}
 import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
-import com.sos.jobscheduler.core.problems.MissingPassiveClusterNodeHeartbeatProblem
+import com.sos.jobscheduler.core.problems.{ClusterNodesAlreadyAppointed, MissingPassiveClusterNodeHeartbeatProblem}
 import com.sos.jobscheduler.core.startup.Halt.haltJava
 import com.sos.jobscheduler.data.cluster.ClusterCommand.{ClusterInhibitActivation, ClusterStartBackupNode}
 import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
@@ -61,6 +61,7 @@ import scala.util.{Failure, Success}
 final class Cluster(
   journalMeta: JournalMeta,
   persistence: JournaledStatePersistence[MasterState],
+  eventWatch: RealEventWatch,
   masterId: MasterId,
   journalConf: JournalConf,
   val clusterConf: ClusterConf,
@@ -78,6 +79,7 @@ final class Cluster(
   private val fetchingAcks = AtomicBoolean(false)
   private val fetchingAcksCancelable = SerialCancelable()
   private val fetchingAcksTerminatedUnexpectedlyPromise = Promise[Checked[Completed]]()
+  private val startingBackupNode = AtomicBoolean(false)
   @volatile
   private var switchoverAcknowledged = false
   @volatile
@@ -146,7 +148,8 @@ final class Cluster(
           val promise = Promise[ClusterStartBackupNode]()
           expectingStartBackupCommand := promise
           val passiveClusterNode = Task.deferFuture(promise.future)
-            .map(cmd => newPassiveClusterNode(cmd.idToUri, cmd.activeId, recovered))
+            .map(cmd => newPassiveClusterNode(cmd.idToUri, cmd.activeId, recovered,
+              initialFileEventId = Some(cmd.fileEventId)))
             .memoize
           passiveClusterNode.flatMap(_.state.map(Some.apply)) ->
             passiveClusterNode.flatMap(passive =>
@@ -166,7 +169,7 @@ final class Cluster(
                 // The other node has not failed-over
                 logger.info(s"The other cluster node '$passiveId' is still passive, so this node remains the active cluster node")
                 remainingActiveAfterRestart = true
-                proceed(recoveredClusterState, recovered.eventId)
+                proceedCoupled(recoveredClusterState, recovered.eventId)
                 None
 
               case Some(otherFailedOver) =>
@@ -268,28 +271,22 @@ final class Cluster(
     idToUri: Map[ClusterNodeId, Uri],
     activeId: ClusterNodeId,
     recovered: Recovered[MasterState],
-    otherFailedOver: Boolean = false)
+    otherFailedOver: Boolean = false,
+    initialFileEventId: Option[EventId] = None)
   : PassiveClusterNode[MasterState]
   = {
     val common = new ClusterCommon(activationInhibitor, clusterWatch, clusterConf, testEventPublisher)
-    new PassiveClusterNode(ownId, idToUri, activeId, journalMeta, recovered,
+    new PassiveClusterNode(ownId, idToUri, activeId, journalMeta, initialFileEventId, recovered,
       otherFailedOver, journalConf, clusterConf, eventIdGenerator, common)
   }
 
   private def automaticallyAppointConfiguredBackupNode: Task[Checked[Completed]] =
     clusterConf.maybeIdToUri match {
-      case Some(isToUri) =>
-        persist {
-          case Empty =>
-            ClusterNodesAppointed.checked(isToUri, ownId).map(_ :: Nil)
-          case _ =>
-            Right(Nil)
-        }.map(_.map { case (stampedEvents, state) =>
-          for (last <- stampedEvents.lastOption) {
-            proceed(state, last.eventId)
-          }
-          Completed
-        })
+      case Some(idToUri) =>
+        appointNodes(idToUri, ownId).map {
+          case Left(ClusterNodesAlreadyAppointed) => Right(Completed)
+          case o => o
+        }
       case _ => Task.pure(Right(Completed))
     }
 
@@ -303,12 +300,13 @@ final class Cluster(
         if (clusterState.idToUri == idToUri)
           Right(None)
         else
-          Left(Problem(s"Different Cluster Nodes have already been appointed"))
-    }.map(_.map { case (stampedEvents, state) =>
-      for (last <- stampedEvents.lastOption) {
-        proceed(state, last.eventId)
-      }
-      Completed
+          Left(ClusterNodesAlreadyAppointed)
+    }.map(_.map {
+      case (stampedEvents, state: NodesAppointed) if stampedEvents.nonEmpty =>
+        proceedNodesAppointed(state)
+        Completed
+      case _ =>
+        Completed
     })
 
   def executeCommand(command: ClusterCommand): Task[Checked[ClusterCommand.Response]] =
@@ -510,22 +508,32 @@ final class Cluster(
   private def proceed(state: ClusterState, eventId: EventId): Unit =
     state match {
       case state: NodesAppointed if state.activeId == ownId =>
-        val common = new ClusterCommon(activationInhibitor, clusterWatch, clusterConf, testEventPublisher)
-        common.tryEndlesslyToSendCommand(
-          state.passiveUri,
-          ClusterStartBackupNode(state.idToUri, activeId = ownId)
-        ) .onErrorRecover { case t: Throwable =>
-            logger.warn(s"Sending Cluster command to other node failed: $t", t)
-          }
-          .runAsyncAndForget
+        proceedNodesAppointed(state)
 
       case state: Coupled =>
-        if (state.activeId == ownId) {
-          fetchAndHandleAcknowledgedEventIds(state, eventId)
-        } else
-          sys.error(s"proceed: Unexpected ClusterState $state")
+        proceedCoupled(state, eventId)
 
       case _ =>
+    }
+
+    private def proceedNodesAppointed(state: ClusterState.NodesAppointed): Unit =
+      if (state.activeId == ownId && !startingBackupNode.getAndSet(true)) {
+        val common = new ClusterCommon(activationInhibitor, clusterWatch, clusterConf, testEventPublisher)
+        eventWatch.started.flatMap(_ =>
+          common.tryEndlesslyToSendCommand(
+            state.passiveUri,
+            ClusterStartBackupNode(state.idToUri, activeId = ownId, fileEventId = eventWatch.lastFileTornEventId)
+          ) .onErrorRecover { case t: Throwable =>
+              logger.warn(s"Sending Cluster command to other node failed: $t", t)
+            }
+        ).runAsyncAndForget
+    }
+
+    private def proceedCoupled(state: Coupled, eventId: EventId): Unit = {
+      if (state.activeId == ownId) {
+        fetchAndHandleAcknowledgedEventIds(state, eventId)
+      } else
+        sys.error(s"proceed: Unexpected ClusterState $state")
     }
 
   private def fetchAndHandleAcknowledgedEventIds(initialState: Coupled, eventId: EventId): Unit =
@@ -629,7 +637,6 @@ final class Cluster(
                   // because after JournalActor has committed SwitchedOver (after ack), JournalActor stops.
                   (journalActor ? JournalActor.Input.PassiveNodeAcknowledged(eventId = eventId))
                     .mapTo[Completed]
-                    //.map(Right.apply)
                     .map(completed => Right(eventId))
                 }
             }
