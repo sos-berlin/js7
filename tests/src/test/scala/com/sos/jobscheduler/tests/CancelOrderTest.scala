@@ -76,7 +76,8 @@ final class CancelOrderTest extends AnyFreeSpec with MasterAgentForScalaTest
     val order = FreshOrder(OrderId("❌"), TwoJobsWorkflow.id.path)
     master.addOrderBlocking(order)
     master.eventWatch.await[OrderProcessingStarted](_.key == order.id)
-    // Master knows the order has started
+    sleep(100.ms)  // MasterOrderKeeper may take some time to update its state
+    // Master knows, the order has started
     assert(master.executeCommandAsSystemUser(CancelOrder(order.id, CancelMode.NotStarted)).await(99.seconds) ==
       Left(CancelStartedOrderProblem(OrderId("❌"))))
   }
