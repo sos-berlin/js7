@@ -24,17 +24,24 @@ object ThreadPools
   }
 
   private val uncaughtExceptionReporter: UncaughtExceptionReporter = { throwable =>
-    logger.error(
-      s"Uncaught exception in thread ${currentThread.getId} '${currentThread.getName}': ${throwable.toStringWithCauses}",
-      throwable.nullIfNoStackTrace)
+    def msg = s"Uncaught exception in thread ${currentThread.getId} '${currentThread.getName}': ${throwable.toStringWithCauses}"
     throwable match {
+      case throwable: akka.http.scaladsl.model.EntityStreamException =>
+        // TODO Not sure how to handle or ignore an unexpectedly closed connection while reading a stream.
+        // "Entity stream truncation. The HTTP parser was receiving an entity when the underlying connection was closed unexpectedly."
+        logger.warn(msg, throwable.nullIfNoStackTrace)
+
       case NonFatal(_) =>
+        logger.error(msg, throwable.nullIfNoStackTrace)
+
       case throwable: OutOfMemoryError =>
+        logger.error(msg, throwable.nullIfNoStackTrace)
         // Writes to stderr:
         UncaughtExceptionReporter.default.reportFailure(throwable)
         haltJava(s"HALT DUE TO $throwable", restart = true)
 
       case throwable =>
+        logger.error(msg, throwable.nullIfNoStackTrace)
         // Writes to stderr:
         UncaughtExceptionReporter.default.reportFailure(throwable)
     }
