@@ -38,7 +38,7 @@ final class TypedPathsTest extends AnyFreeSpec {
   }
 
   if (sys.props contains "test.speed") "speed" in {
-    val dir = Paths.get("/TEST/JOBSCHEDULER/PROVIDER/CONFIG/LIVE")
+    val dir = Paths.get("/TEST/JS7/PROVIDER/CONFIG/LIVE")
     val path = dir / "folder/test.workflow.json"
     for (_ <- 1 to 5) info(
       measureTime(100000, "fileToTypedPathAndSourceType") {

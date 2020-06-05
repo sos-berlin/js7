@@ -52,7 +52,7 @@ extends CommandExecutor[MasterCommand]
         Task.sequence(tasks) map (checkedResponses => Right(Batch.Response(checkedResponses)))
 
       case EmergencyStop(restart) =>
-        Halt.haltJava("Command EmergencyStop received: JOBSCHEDULER MASTER STOPS NOW", restart = restart)
+        Halt.haltJava("Command EmergencyStop received: JS7 MASTER STOPS NOW", restart = restart)
 
       case _ =>
         otherCommandExecutor.executeCommand(command, meta)

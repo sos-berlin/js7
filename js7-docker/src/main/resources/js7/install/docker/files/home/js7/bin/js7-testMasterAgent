@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -e
 
-export JOBSCHEDULER_HOME=/opt/js7
-. "$JOBSCHEDULER_HOME"/bin/internal/set-context.sh
+export JS7_HOME=/opt/js7
+. "$JS7_HOME"/bin/internal/set-context.sh
 declare classpathString java
 
 directory=/var/opt/js7/testMasterAgent

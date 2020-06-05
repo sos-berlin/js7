@@ -101,7 +101,7 @@ val publishSettings = Seq(
 
 maintainer := "Joacim Zschimmer <jogit@zschimmer.com>"
 val commonSettings = Seq(
-  organization := "sh.js7.engine",
+  organization := "com.sos-berlin.js7.engine",
   organizationName := "SOS Berlin",
   organizationHomepage := Some(url("https://js7.sh")),
   pomExtra :=
@@ -163,7 +163,7 @@ lazy val js7 = (project in file("."))
     `js7-provider`,
     `js7-proxy`.jvm,
     `js7-tests`,
-    `build-info`)
+    `js7-build-info`)
   .settings(skip in publish := true)
 
 lazy val js7JS = (project in file("target/project-js7JS"))
@@ -262,8 +262,8 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
     buildInfoPackage := "js7.base",
     buildInfoKeys := buildInfoMap.value.map(BuildInfoKey.constant(_)).toSeq)
 
-/** build-info provides version info in a Scala-free jar. */
-lazy val `build-info` = (project in file("target/project-build-info"))
+/** js7-build-info provides version info in a Scala-free jar. */
+lazy val `js7-build-info` = (project in file("target/project-js7-build-info"))
   .settings(commonSettings)
   .settings(
     crossPaths := false,

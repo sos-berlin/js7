@@ -1,5 +1,5 @@
 # Set variables
-# - JOBSCHEDULER_HOME
+# - JS7_HOME
 # - JAVA_HOME
 # - java
 # - pathSeparator
@@ -25,22 +25,22 @@ toSystemPath() {
   fi
 }
 
-if [ -z "$JOBSCHEDULER_HOME" ]; then :
-  JOBSCHEDULER_HOME="$(cd "${0%/*}/../bin/.." && pwd)"
-  export JOBSCHEDULER_HOME
+if [ -z "$JS7_HOME" ]; then :
+  JS7_HOME="$(cd "${0%/*}/../bin/.." && pwd)"
+  export JS7_HOME
 fi
 
 declare JAVA_HOME
 declare -a classpath=()
 if isWindows; then
   pathSeparator=";"
-  classpath+=("$(cygpath -w "$JOBSCHEDULER_HOME/lib")/*")
+  classpath+=("$(cygpath -w "$JS7_HOME/lib")/*")
   javaHome=""
   [ -n "$JAVA_HOME" ] && javaHome="$(cygpath "$JAVA_HOME")"
   #unused javaHome=$(dirname $(dirname $(readlink --canonicalize $(which java))))
 else
   pathSeparator=":"
-  classpath+=("$JOBSCHEDULER_HOME/lib/*")
+  classpath+=("$JS7_HOME/lib/*")
   javaHome="$JAVA_HOME"
 fi
 
