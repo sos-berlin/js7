@@ -37,7 +37,7 @@ object Logger
 
   /** Removes '$' from Scalas companion object class. */
   def normalizeClassName(c: Class[_]): String =
-    c.getName stripSuffix "$" replaceFirst("^com[.]sos[.]jobscheduler", "jobscheduler")
+    c.getName stripSuffix "$"
 
   object ops {
     implicit final class RichScalaLogger(private val underlying: ScalaLogger) extends AnyVal

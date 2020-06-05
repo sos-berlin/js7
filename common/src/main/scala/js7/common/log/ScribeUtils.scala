@@ -52,7 +52,5 @@ object ScribeUtils
   }
 
   private def classToLoggerName(className: String) =
-    className
-      .replaceFirst("""^com\.sos\.jobscheduler\.""", "jobscheduler.")
-      .replaceFirst("""\.\$.*""", "")   // Cut off ".$anonfun"
+    className.replaceFirst("""\.\$.*""", "")   // Cut off ".$anonfun"
 }

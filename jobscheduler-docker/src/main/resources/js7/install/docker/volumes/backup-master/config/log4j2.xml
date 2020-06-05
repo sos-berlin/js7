@@ -53,7 +53,7 @@
       </defaultRolloverStrategy>
     </rollingRandomAccessFile>
 
-    <rollingRandomAccessFile name="jobscheduler.web.log"
+    <rollingRandomAccessFile name="js7.web.log"
                              fileName="${logDirectory}/web.log"
                              filePattern="${logDirectory}/web-%d{yyyy-MM-dd}-%i.log.gz"
                              immediateFlush="${sys:jobscheduler.log4j.immediateFlush:-true}">
@@ -82,17 +82,17 @@
       <appenderRef level="info"  ref="file-info"/>
       <appenderRef level="trace" ref="file-debug"/>
     </root>
-    <logger level="debug" name="jobscheduler.web">
+    <logger level="debug" name="js7.web">
       <appenderRef ref="jobscheduler.web.log"/>
     </logger>
     <logger level="warn" name="akka.event.slf4j.Slf4jLogger"/>
-    <logger level="debug" name="jobscheduler"/>
+    <logger level="debug" name="js7"/>
 
     <!--
-    <logger level="trace" name="jobscheduler.core.event.journal.JournalActor"/>
-    <logger level="trace" name="jobscheduler.common.http.AkkaHttpClient"/>
-    <logger level="trace" name="jobscheduler.master.agent"/>
-    <logger level="trace" name="jobscheduler.master.cluster"/>
+    <logger level="trace" name="js7.core.event.journal.JournalActor"/>
+    <logger level="trace" name="js7.common.http.AkkaHttpClient"/>
+    <logger level="trace" name="js7.master.agent"/>
+    <logger level="trace" name="js7.master.cluster"/>
     -->
   </loggers>
 </configuration>
