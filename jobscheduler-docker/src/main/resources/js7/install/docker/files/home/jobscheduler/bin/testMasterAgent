@@ -6,7 +6,7 @@ export JOBSCHEDULER_HOME=/opt/jobscheduler
 declare classpathString java
 
 directory=/var/opt/jobscheduler/testMasterAgent
-log4jXml="com/sos/jobscheduler/tests/log4j2.xml"   # Java resource
+log4jXml="js7/tests/log4j2.xml"   # Java resource
 javaOptions=()
 args=()
 

@@ -82,9 +82,9 @@ private[https] trait HttpsTestBase extends AnyFreeSpec with BeforeAndAfterAll wi
 private[https] object HttpsTestBase
 {
   // Following resources have been generated with the command line:
-  // common/src/main/resources/com/sos/jobscheduler/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=client -config-directory=tests/src/test/resources/com/sos/jobscheduler/tests/client
-  private val ClientKeyStoreResource = JavaResource("com/sos/jobscheduler/tests/client/private/https-keystore.p12")
-  private val ClientTrustStoreResource = JavaResource("com/sos/jobscheduler/tests/client/export/https-truststore.p12")
+  // common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=client -config-directory=tests/src/test/resources/js7/tests/client
+  private val ClientKeyStoreResource = JavaResource("js7/tests/client/private/https-keystore.p12")
+  private val ClientTrustStoreResource = JavaResource("js7/tests/client/export/https-truststore.p12")
 
   private val TestWorkflow = WorkflowParser.parse(WorkflowPath("/TEST-WORKFLOW"), s"""
     define workflow {

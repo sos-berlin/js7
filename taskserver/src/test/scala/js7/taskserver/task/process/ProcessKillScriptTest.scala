@@ -89,8 +89,8 @@ private object ProcessKillScriptTest {
   private val logger = Logger(getClass)
   private val TestAgentTaskId = AgentTaskId("1-TEST")
   private def Script =
-    (if (isWindows) JavaResource("com/sos/jobscheduler/taskserver/task/process/scripts/windows/test.cmd")
-               else JavaResource("com/sos/jobscheduler/taskserver/task/process/scripts/unix/test.sh"))
+    (if (isWindows) JavaResource("js7/taskserver/task/process/scripts/windows/test.cmd")
+               else JavaResource("js7/taskserver/task/process/scripts/unix/test.sh"))
     .asUTF8String
   private val SIGKILLexitValue = if (isWindows) 1 else if (isSolaris) SIGKILL.value else 128 + SIGKILL.value
 

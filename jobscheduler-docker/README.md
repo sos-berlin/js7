@@ -3,4 +3,4 @@
 
 Builds target/universal/jobscheduler-docker-_version_.tgz.
 
-For usage, <a href="src/main/resources/com/sos/jobscheduler/install/docker/README.md">please read here.</a>
+For usage, <a href="src/main/resources/js7/install/docker/README.md">please read here.</a>

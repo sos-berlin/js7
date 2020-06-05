@@ -54,7 +54,7 @@ object TestDockerExample
     val env = new TestEnvironment(TestAgentRefPaths, directory)
     def provide(path: String) = {
       val dir = if (path.startsWith("master")) directory else env.agentsDir
-      JavaResource(s"com/sos/jobscheduler/install/docker/volumes/$path").copyToFile(dir / path)
+      JavaResource(s"js7/install/docker/volumes/$path").copyToFile(dir / path)
       if (path contains "/executables/") setPosixFilePermissions(dir / path, PosixFilePermissions.fromString("rwx------"))
     }
     provide("master/config/private/private.conf")

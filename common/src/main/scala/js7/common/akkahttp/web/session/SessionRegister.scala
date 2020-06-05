@@ -53,7 +53,7 @@ final class SessionRegister[S <: Session] private[session](actor: ActorRef, impl
     (actor ? SessionActor.Command.Get(sessionToken, user)).mapTo[Checked[S]]
 
   @TestOnly
-  private[jobscheduler] def count: Task[Int] =
+  private[js7] def count: Task[Int] =
     Task.deferFuture(
       (actor ? SessionActor.Command.GetCount).mapTo[Int])
 }

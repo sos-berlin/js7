@@ -323,14 +323,14 @@ object DirectoryProvider
   }
 
   // Following resources have been generated with the command line:
-  // common/src/main/resources/com/sos/jobscheduler/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=master -config-directory=tests/src/test/resources/com/sos/jobscheduler/tests/master/config
-  val MasterKeyStoreResource = JavaResource("com/sos/jobscheduler/tests/master/config/private/https-keystore.p12")
-  val MasterTrustStoreResource = JavaResource("com/sos/jobscheduler/tests/master/config/export/https-truststore.p12")
+  // common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=master -config-directory=tests/src/test/resources/js7/tests/master/config
+  val MasterKeyStoreResource = JavaResource("js7/tests/master/config/private/https-keystore.p12")
+  val MasterTrustStoreResource = JavaResource("js7/tests/master/config/export/https-truststore.p12")
 
   // Following resources have been generated with the command line:
-  // common/src/main/resources/com/sos/jobscheduler/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=agent -config-directory=tests/src/test/resources/com/sos/jobscheduler/tests/agent/config
-  private val AgentKeyStoreResource   = JavaResource("com/sos/jobscheduler/tests/agent/config/private/https-keystore.p12")
-  private val AgentTrustStoreResource = JavaResource("com/sos/jobscheduler/tests/agent/config/export/https-truststore.p12")
+  // common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=agent -config-directory=tests/src/test/resources/js7/tests/agent/config
+  private val AgentKeyStoreResource   = JavaResource("js7/tests/agent/config/private/https-keystore.p12")
+  private val AgentTrustStoreResource = JavaResource("js7/tests/agent/config/export/https-truststore.p12")
 
   private def importKeyStore(keyStore: Path, add: JavaResource): Unit =
     FileUtils.withTemporaryFile("test-", ".p12") { file =>

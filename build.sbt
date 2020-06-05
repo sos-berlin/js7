@@ -193,10 +193,10 @@ lazy val `jobscheduler-install` = project
     topLevelDirectory in Universal := Some(s"jobscheduler-${version.value}"),
     mappings in Universal :=
       (((mappings in Universal).value filter { case (_, path) => (path startsWith "lib/") && !doNotInstallJar(path stripPrefix "lib/") }) ++
-        NativePackagerHelper.contentOf((master / Compile / classDirectory).value / "com/sos/jobscheduler/master/installation") ++
-        NativePackagerHelper.contentOf((provider / Compile / classDirectory).value / "com/sos/jobscheduler/provider/installation") ++
-        NativePackagerHelper.contentOf((agent  / Compile / classDirectory).value / "com/sos/jobscheduler/agent/installation") ++
-        NativePackagerHelper.contentOf((core   / Compile / classDirectory).value / "com/sos/jobscheduler/core/installation")
+        NativePackagerHelper.contentOf((master / Compile / classDirectory).value / "js7/master/installation") ++
+        NativePackagerHelper.contentOf((provider / Compile / classDirectory).value / "js7/provider/installation") ++
+        NativePackagerHelper.contentOf((agent  / Compile / classDirectory).value / "js7/agent/installation") ++
+        NativePackagerHelper.contentOf((core   / Compile / classDirectory).value / "js7/core/installation")
       ).toVector.sortBy(_._2))
 
 lazy val `jobscheduler-docker` = project
@@ -210,7 +210,7 @@ lazy val `jobscheduler-docker` = project
     universalPluginSettings,
     topLevelDirectory in Universal := None,
     mappings in Universal :=
-      NativePackagerHelper.contentOf(baseDirectory.value / "src/main/resources/com/sos/jobscheduler/install/docker/")
+      NativePackagerHelper.contentOf(baseDirectory.value / "src/main/resources/js7/install/docker/")
         .map { case (file, dest) => file -> ("build/" + dest) })
 
 lazy val tester = crossProject(JSPlatform, JVMPlatform)
@@ -270,7 +270,7 @@ lazy val `build-info` = (project in file("target/project-build-info"))
     autoScalaLibrary := false)
   .settings(
     Compile / resourceGenerators += Def.task {
-      val file = (Compile / resourceManaged).value / "com/sos/jobscheduler/build-info/build-info.properties"
+      val file = (Compile / resourceManaged).value / "js7/build-info/build-info.properties"
       IO.write(
         file,
         buildInfoMap.value
@@ -445,7 +445,7 @@ lazy val core = project.dependsOn(common, tester.jvm % "test")
   }
   .settings(
     resourceGenerators in Compile += Def.task {
-      val versionFile = (resourceManaged in Compile).value / "com/sos/jobscheduler/core/installation/VERSION"
+      val versionFile = (resourceManaged in Compile).value / "js7/core/installation/VERSION"
       IO.write(versionFile, BuildUtils.longVersion.value + "\n")
       Seq(versionFile)
     }.taskValue)

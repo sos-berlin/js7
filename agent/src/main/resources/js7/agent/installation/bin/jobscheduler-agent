@@ -130,7 +130,7 @@ while true; do
       "$JOBSCHEDULER_HOME"/bin/jobscheduler-client -data-directory="$data" "$terminateCommand" &
     else
       "$java" -Xmx50m \
-        -Dlog4j.configurationFile=com/sos/jobscheduler/agent/client/main/log4j2.xml \
+        -Dlog4j.configurationFile=js7/agent/client/main/log4j2.xml \
         -classpath "$classpathString" \
         js7.agent.client.main.AgentClientMain \
         -data-directory="$data" \

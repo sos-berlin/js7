@@ -10,7 +10,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 /**
   * For tests only.
   */
-private[jobscheduler] object TestSetting
+private[js7] object TestSetting
 {
   val TestAgentRefPath = AgentRefPath("/AGENT")
   val AJobName = WorkflowJob.Name("A")

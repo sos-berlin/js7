@@ -28,7 +28,7 @@ final case class ProviderConfiguration(
 
 object ProviderConfiguration
 {
-  private lazy val DefaultConfigResource = JavaResource("com/sos/jobscheduler/provider/configuration/provider.conf")
+  private lazy val DefaultConfigResource = JavaResource("js7/provider/configuration/provider.conf")
 
   def fromCommandLine(args: Seq[String], addConfig: Config = ConfigFactory.empty): ProviderConfiguration =
     CommandLineArguments.parse(args) { a =>

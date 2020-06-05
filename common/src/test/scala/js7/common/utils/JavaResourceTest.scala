@@ -106,10 +106,10 @@ final class JavaResourceTest extends AnyFreeSpec
 
 object JavaResourceTest
 {
-  private val dirPath = "com/sos/jobscheduler/common/utils"
-  private val path = "com/sos/jobscheduler/common/utils/test.txt"
+  private val dirPath = "js7/common/utils"
+  private val path = "js7/common/utils/test.txt"
   private val expectedString = "TEST CONTENT IN -> UTF-8\n"
-  private val nonExistentPath = "com/sos/jobscheduler/common/utils/non-existent"
+  private val nonExistentPath = "js7/common/utils/non-existent"
   private val javaResource = JavaResource(getClass.getClassLoader, path)
   private val nonExistentJavaResource = JavaResource(getClass.getClassLoader, nonExistentPath)
 }

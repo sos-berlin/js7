@@ -129,7 +129,7 @@ while true; do
       "$JOBSCHEDULER_HOME/bin/jobscheduler-client" -data-directory="$data" '{ "TYPE": "ShutDown" }' &
     else
       "$java" -Xmx50m \
-        -Dlog4j.configurationFile=com/sos/jobscheduler/master/client/main/log4j2.xml \
+        -Dlog4j.configurationFile=js7/master/client/main/log4j2.xml \
         -classpath "$classpathString" \
         js7.master.client.main.MasterClientMain \
         -data-directory="$data" \

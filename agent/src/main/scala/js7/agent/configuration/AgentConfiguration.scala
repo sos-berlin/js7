@@ -114,7 +114,7 @@ object AgentConfiguration {
   private[configuration] val DefaultName = if (isTest) "Agent" else "JobScheduler"
   private val DelayUntilFinishKillScript = ProcessKillScript(EmptyPath)  // Marker for finish
   lazy val DefaultConfig = Configs.loadResource(
-    JavaResource("com/sos/jobscheduler/agent/configuration/agent.conf"),
+    JavaResource("js7/agent/configuration/agent.conf"),
     internal = true)
 
   def fromCommandLine(arguments: CommandLineArguments, extraDefaultConfig: Config = ConfigFactory.empty) = {
@@ -166,7 +166,7 @@ object AgentConfiguration {
   private def defaultLogDirectory(data: Path) = data / "logs"
 
   object forTest {
-    private val TaskServerLog4jResource = JavaResource("com/sos/jobscheduler/taskserver/configuration/log4j2.xml")
+    private val TaskServerLog4jResource = JavaResource("js7/taskserver/configuration/log4j2.xml")
 
     def apply(
       configAndData: Path,

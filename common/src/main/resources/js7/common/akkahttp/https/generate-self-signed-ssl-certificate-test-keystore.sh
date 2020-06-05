@@ -5,8 +5,8 @@ set -e
 # Tested only with -host=localhost.
 
 # The source code test keystores has been generated with:
-#   common/src/main/resources/com/sos/jobscheduler/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=test -config-directory=common/src/test/resources/com/sos/jobscheduler/common/akkahttp/https
-#   common/src/main/resources/com/sos/jobscheduler/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=agent -config-directory=agent/src/test/resources/com/sos/jobscheduler/agent/test/config
+#   common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=test -config-directory=common/src/test/resources/js7/common/akkahttp/https
+#   common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=agent -config-directory=agent/src/test/resources/js7/agent/test/config
 
 configDirectory=
 host=

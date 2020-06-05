@@ -159,5 +159,5 @@ trait GraphqlRoute extends MasterRouteProvider
 
 object GraphqlRoute
 {
-  private val GraphiqlResource = JavaResource("com/sos/jobscheduler/master/web/master/api/graphql/graphiql.html")
+  private val GraphiqlResource = JavaResource("js7/master/web/master/api/graphql/graphiql.html")
 }

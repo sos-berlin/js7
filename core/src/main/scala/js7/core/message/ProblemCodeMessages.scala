@@ -11,7 +11,7 @@ import scala.util.Try
   */
 object ProblemCodeMessages
 {
-  private val resource = JavaResource("com/sos/jobscheduler/core/message/messages-en.conf")
+  private val resource = JavaResource("js7/core/message/messages-en.conf")
   private val config = Configs.loadResource(resource, internal = true)
 
   private[message] val problemCodeToPattern: ProblemCode => Option[String] =

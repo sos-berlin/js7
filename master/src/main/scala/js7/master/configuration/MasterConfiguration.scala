@@ -81,7 +81,7 @@ object MasterConfiguration
   }
 
   lazy val DefaultConfig = Configs.loadResource(
-    JavaResource("com/sos/jobscheduler/master/configuration/master.conf"),
+    JavaResource("js7/master/configuration/master.conf"),
     internal = true)
 
   def fromCommandLine(commandLineArguments: CommandLineArguments, config: Config = ConfigFactory.empty) = {
