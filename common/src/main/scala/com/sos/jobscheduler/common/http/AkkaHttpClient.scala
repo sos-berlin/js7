@@ -139,12 +139,19 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
   final def postDiscardResponse[A: Encoder](uri: Uri, data: A, allowedStatusCodes: Set[Int] = Set.empty)
     (implicit s: Task[Option[SessionToken]])
   : Task[Int] =
-    post_[A](uri, data, Accept(`application/json`) :: Nil) map { httpResponse =>
-      httpResponse.discardEntityBytes()
-      if (!httpResponse.status.isSuccess && !allowedStatusCodes(httpResponse.status.intValue))
-        throw new HttpException(POST, uri, httpResponse, "")
-      httpResponse.status.intValue
-    }
+    post_[A](uri, data, Accept(`application/json`) :: Nil)
+      .flatMap { httpResponse =>
+        Task.defer {
+          if (!httpResponse.status.isSuccess && !allowedStatusCodes(httpResponse.status.intValue)) {
+            Task.deferFuture(httpResponse.entity.toStrict(FailureTimeout, maxBytes = HttpErrorContentSizeMaximum))
+              .flatMap(entity =>
+                Task.raiseError(throw new HttpException(POST, uri, httpResponse, entity.data.utf8String)))
+          } else
+            Task.pure(httpResponse.status.intValue)
+        }.guarantee(Task {
+          httpResponse.discardEntityBytes()
+        })
+      }
 
   final def post_[A: Encoder](uri: Uri, data: A, headers: List[HttpHeader])
     (implicit s: Task[Option[SessionToken]])
