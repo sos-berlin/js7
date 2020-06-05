@@ -51,14 +51,16 @@ object CirceUtils
     implicit val CompactPrinter = CirceUtils.CompactPrinter
   }
 
+  implicit final class RichCirceError[R](private val underlying: io.circe.Error) extends AnyVal
+  {
+    def toProblem = Problem.pure("JSON " + underlying.show)
+  }
+
   implicit final class RichCirceEither[R](private val underlying: Either[io.circe.Error, R]) extends AnyVal
   {
     /** Converts to Checked with rendered error message. */
     def toChecked: Checked[R] =
-      underlying match {
-        case Left(t) => Left(Problem.pure("JSON " + t.show))
-        case Right(o) => Right(o)
-      }
+      underlying.left.map(_.toProblem)
   }
 
   implicit final class RichJsonObject(private val underlying: JsonObject) extends AnyVal

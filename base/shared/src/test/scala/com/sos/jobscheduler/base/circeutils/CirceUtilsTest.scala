@@ -6,8 +6,8 @@ import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Json, JsonObject}
-import scala.collection.immutable.SeqMap
 import org.scalatest.freespec.AnyFreeSpec
+import scala.collection.immutable.SeqMap
 
 /**
   * @author Joacim Zschimmer
@@ -97,6 +97,12 @@ final class CirceUtilsTest extends AnyFreeSpec
 
   "JsonObject ++ JsonObject" in {
     assert(JsonObject("a" -> 1.asJson) ++ JsonObject("b" -> 2.asJson) == JsonObject("a" -> 1.asJson, "b" -> 2.asJson))
+  }
+
+  "toProblem decoding error" in {
+    case class A(number: Int)
+    val decoder: Decoder[A] = _.get[Int]("number") map A.apply
+    assert(decoder.decodeJson(json"""{ "number": true }""").left.map(_.toProblem) == Left(Problem("JSON DecodingFailure at .number: Int")))
   }
 
   "toChecked decoding error" in {
