@@ -36,7 +36,7 @@ val publishRepositoryUri             = sys.props.get("publishRepository.uri")
 // BuildUtils reads more properties.
 val isForDevelopment                 = sys.props contains "dev"
 
-addCommandAlias("clean-all"      , "; clean; js7JS/clean; tester/clean")
+addCommandAlias("clean-all"      , "; clean; js7JS/clean; js7-tester/clean")
 addCommandAlias("clean-publish"  , "; clean-all; build; publish-all")
 addCommandAlias("clean-build"    , "; clean-all; build")
 addCommandAlias("clean-build-only", "; clean-all; build-only")
@@ -57,7 +57,7 @@ addCommandAlias("test-all",
 addCommandAlias("pack"           , "universal:packageZipTarball")
 addCommandAlias("publish-all"    , "universal:publish")  // Publishes artifacts too
 addCommandAlias("publish-install", "; install/universal:publish; install-docker:universal:publish")
-addCommandAlias("TestMasterAgent", "tests/runMain js7.tests.TestMasterAgent -agents=2 -nodes-per-agent=3 -tasks=3 -job-duration=1.5s -period=10.s")
+addCommandAlias("TestMasterAgent", "js7-tests/runMain js7.tests.TestMasterAgent -agents=2 -nodes-per-agent=3 -tasks=3 -job-duration=1.5s -period=10.s")
 addCommandAlias("quickPublishLocal", "; compile; publishLocal; project js7JS; compile; publishLocal")
 //scalafixDependencies in ThisBuild += "org.scala-lang.modules" %% "scala-collection-migrations" % "2.1.4"
 //addCompilerPlugin(scalafixSemanticdb)
@@ -101,9 +101,9 @@ val publishSettings = Seq(
 
 maintainer := "Joacim Zschimmer <jogit@zschimmer.com>"
 val commonSettings = Seq(
-  organization := "com.sos-berlin.js7.engine2",
+  organization := "sh.js7.engine",
   organizationName := "SOS Berlin",
-  organizationHomepage := Some(url("https://www.sos-berlin.com")),
+  organizationHomepage := Some(url("https://js7.sh")),
   pomExtra :=
     <developers>
       <developer>
@@ -146,41 +146,41 @@ resolvers += Resolver.mavenLocal
 
 lazy val js7 = (project in file("."))
   .aggregate(
-    agent,
-    base.jvm,
-    common,
-    `common-http`.jvm,
-    core,
-    data.jvm,
+    `js7-agent`,
+    `js7-base`.jvm,
+    `js7-common`,
+    `js7-common-http`.jvm,
+    `js7-core`,
+    `js7-data`.jvm,
     `js7-docker`,
     `js7-install`,
-    master,
-    `master-client`.jvm,
-    `master-data`.jvm,
-    `agent-client`,
-    `agent-data`,
-    taskserver,
-    provider,
-    proxy.jvm,
-    tests,
+    `js7-master`,
+    `js7-master-client`.jvm,
+    `js7-master-data`.jvm,
+    `js7-agent-client`,
+    `js7-agent-data`,
+    `js7-taskserver`,
+    `js7-provider`,
+    `js7-proxy`.jvm,
+    `js7-tests`,
     `build-info`)
   .settings(skip in publish := true)
 
 lazy val js7JS = (project in file("target/project-js7JS"))
   .aggregate(
-    base.js,
-    `common-http`.js,
-    data.js,
-    `master-client`.js,
-    `master-data`.js,
-    proxy.js)
+    `js7-base`.js,
+    `js7-common-http`.js,
+    `js7-data`.js,
+    `js7-master-client`.js,
+    `js7-master-data`.js,
+    `js7-proxy`.js)
   .settings(skip in publish := true)
 
 lazy val all = (project in file("target/project-all"))  // Not the default project
   .aggregate(js7, js7JS)
 
 lazy val `js7-install` = project
-  .dependsOn(master, provider, agent)
+  .dependsOn(`js7-master`, `js7-provider`, `js7-agent`)
   .settings(commonSettings)
   .enablePlugins(JavaAppPackaging, UniversalDeployPlugin)
   .settings {
@@ -193,10 +193,10 @@ lazy val `js7-install` = project
     topLevelDirectory in Universal := Some(s"js7-${version.value}"),
     mappings in Universal :=
       (((mappings in Universal).value filter { case (_, path) => (path startsWith "lib/") && !doNotInstallJar(path stripPrefix "lib/") }) ++
-        NativePackagerHelper.contentOf((master / Compile / classDirectory).value / "js7/master/installation") ++
-        NativePackagerHelper.contentOf((provider / Compile / classDirectory).value / "js7/provider/installation") ++
-        NativePackagerHelper.contentOf((agent  / Compile / classDirectory).value / "js7/agent/installation") ++
-        NativePackagerHelper.contentOf((core   / Compile / classDirectory).value / "js7/core/installation")
+        NativePackagerHelper.contentOf((`js7-master` / Compile / classDirectory).value / "js7/master/installation") ++
+        NativePackagerHelper.contentOf((`js7-provider` / Compile / classDirectory).value / "js7/provider/installation") ++
+        NativePackagerHelper.contentOf((`js7-agent`  / Compile / classDirectory).value / "js7/agent/installation") ++
+        NativePackagerHelper.contentOf((`js7-core`   / Compile / classDirectory).value / "js7/core/installation")
       ).toVector.sortBy(_._2))
 
 lazy val `js7-docker` = project
@@ -213,7 +213,7 @@ lazy val `js7-docker` = project
       NativePackagerHelper.contentOf(baseDirectory.value / "src/main/resources/js7/install/docker/")
         .map { case (file, dest) => file -> ("build/" + dest) })
 
-lazy val tester = crossProject(JSPlatform, JVMPlatform)
+lazy val `js7-tester` = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
   .settings(commonSettings)
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
@@ -227,9 +227,9 @@ lazy val tester = crossProject(JSPlatform, JVMPlatform)
       "org.scalatest" %%% "scalatest-freespec" % scalaTestVersion*/
   }
 
-lazy val base = crossProject(JSPlatform, JVMPlatform)
+lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
-  .dependsOn(tester % "test")
+  .dependsOn(`js7-tester` % "test")
   .settings(commonSettings)
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings {
@@ -283,9 +283,9 @@ lazy val `build-info` = (project in file("target/project-build-info"))
       Seq(file)
     }.taskValue)
 
-lazy val data = crossProject(JSPlatform, JVMPlatform)
+lazy val `js7-data` = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
-  .dependsOn(base, tester % "test")
+  .dependsOn(`js7-base`, `js7-tester` % "test")
   .settings(commonSettings)
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings {
@@ -300,7 +300,7 @@ lazy val data = crossProject(JSPlatform, JVMPlatform)
       "com.github.mpilquist" %% "simulacrum" % simulacrumVersion
   }
 
-lazy val common = project.dependsOn(base.jvm, data.jvm, tester.jvm % "test")
+lazy val `js7-common` = project.dependsOn(`js7-base`.jvm, `js7-data`.jvm, `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings {
@@ -326,10 +326,10 @@ lazy val common = project.dependsOn(base.jvm, data.jvm, tester.jvm % "test")
     }
   .enablePlugins(GitVersioning)
 
-lazy val `common-http` = crossProject(JSPlatform, JVMPlatform)
+lazy val `js7-common-http` = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
-  .dependsOn(data, base, tester % "test")
-  .jvmConfigure(_.dependsOn(common))
+  .dependsOn(`js7-data`, `js7-base`, `js7-tester` % "test")
+  .jvmConfigure(_.dependsOn(`js7-common`))
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings {
@@ -348,7 +348,7 @@ lazy val `common-http` = crossProject(JSPlatform, JVMPlatform)
   .jsSettings(
     libraryDependencies += "org.scala-js" %%% "scalajs-dom" % Dependencies.scalaJsDomVersion)
 
-lazy val master = project.dependsOn(`master-data`.jvm, `master-client`.jvm, core, common, `agent-client`, tester.jvm % "test")
+lazy val `js7-master` = project.dependsOn(`js7-master-data`.jvm, `js7-master-client`.jvm, `js7-core`, `js7-common`, `js7-agent-client`, `js7-tester`.jvm % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings(
@@ -364,7 +364,7 @@ lazy val master = project.dependsOn(`master-data`.jvm, `master-client`.jvm, core
       log4j % "test"
   }
 
-lazy val provider = project.dependsOn(`master-data`.jvm, master, `master-client`.jvm, core, common, tester.jvm % "test")
+lazy val `js7-provider` = project.dependsOn(`js7-master-data`.jvm, `js7-master`, `js7-master-client`.jvm, `js7-core`, `js7-common`, `js7-tester`.jvm % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings(
@@ -376,10 +376,10 @@ lazy val provider = project.dependsOn(`master-data`.jvm, master, `master-client`
       log4j % "test"
   }
 
-lazy val proxy = crossProject(JSPlatform, JVMPlatform)
+lazy val `js7-proxy` = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
-  .dependsOn(`master-client`, tester % "test")
-  //.jvmConfigure(_.dependsOn(common))
+  .dependsOn(`js7-master-client`, `js7-tester` % "test")
+  //.jvmConfigure(_.dependsOn(`js7-common`))
   .settings(commonSettings)
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(
@@ -398,9 +398,9 @@ lazy val proxy = crossProject(JSPlatform, JVMPlatform)
       log4j % "test"
     })
 
-lazy val `master-data` = crossProject(JSPlatform, JVMPlatform)
+lazy val `js7-master-data` = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
-  .dependsOn(data, tester % "test")
+  .dependsOn(`js7-data`, `js7-tester` % "test")
   .settings(commonSettings)
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(
@@ -410,10 +410,10 @@ lazy val `master-data` = crossProject(JSPlatform, JVMPlatform)
       "org.scalatest" %%% "scalatest-freespec" % scalaTestVersion % "test"*/
     })
 
-lazy val `master-client` = crossProject(JSPlatform, JVMPlatform)
+lazy val `js7-master-client` = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
-  .dependsOn(`master-data`, `common-http`, tester % "test")
-  .jvmConfigure(_.dependsOn(common))
+  .dependsOn(`js7-master-data`, `js7-common-http`, `js7-tester` % "test")
+  .jvmConfigure(_.dependsOn(`js7-common`))
   .settings(commonSettings)
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(
@@ -429,7 +429,7 @@ lazy val `master-client` = crossProject(JSPlatform, JVMPlatform)
       log4j % "test"
     })
 
-lazy val core = project.dependsOn(common, tester.jvm % "test")
+lazy val `js7-core` = project.dependsOn(`js7-common`, `js7-tester`.jvm % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings {
@@ -450,7 +450,7 @@ lazy val core = project.dependsOn(common, tester.jvm % "test")
       Seq(versionFile)
     }.taskValue)
 
-lazy val agent = project.dependsOn(`agent-data`, core, common, data.jvm, taskserver, `agent-client` % "test", tester.jvm % "test")
+lazy val `js7-agent` = project.dependsOn(`js7-agent-data`, `js7-core`, `js7-common`, `js7-data`.jvm, `js7-taskserver`, `js7-agent-client` % "test", `js7-tester`.jvm % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings {
@@ -472,7 +472,7 @@ lazy val agent = project.dependsOn(`agent-data`, core, common, data.jvm, taskser
       log4j % "test"
   }
 
-lazy val `agent-client` = project.dependsOn(data.jvm, `common-http`.jvm, common, `agent-data`, tester.jvm % "test")
+lazy val `js7-agent-client` = project.dependsOn(`js7-data`.jvm, `js7-common-http`.jvm, `js7-common`, `js7-agent-data`, `js7-tester`.jvm % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings(description := "JS7 Agent - Client")
@@ -487,7 +487,7 @@ lazy val `agent-client` = project.dependsOn(data.jvm, `common-http`.jvm, common,
       log4j % "test"
   }
 
-lazy val `agent-data` = project.dependsOn(common, data.jvm, tester.jvm % "test")
+lazy val `js7-agent-data` = project.dependsOn(`js7-common`, `js7-data`.jvm, `js7-tester`.jvm % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings(description := "JS7 Agent - Value Classes")
@@ -502,12 +502,12 @@ lazy val `agent-data` = project.dependsOn(common, data.jvm, tester.jvm % "test")
       log4j % "test"
   }
 
-lazy val taskserver = project
+lazy val `js7-taskserver` = project
   .dependsOn(
-    `agent-data`,
-    common,
-    data.jvm,
-    tester.jvm % "test")
+    `js7-agent-data`,
+    `js7-common`,
+    `js7-data`.jvm,
+    `js7-tester`.jvm % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings {
@@ -523,7 +523,7 @@ lazy val taskserver = project
       log4j % "test"
   }
 
-lazy val tests = project.dependsOn(master, agent, proxy.jvm, `agent-client`, provider, tester.jvm % "test", `js7-docker` % "test")
+lazy val `js7-tests` = project.dependsOn(`js7-master`, `js7-agent`, `js7-proxy`.jvm, `js7-agent-client`, `js7-provider`, `js7-tester`.jvm % "test", `js7-docker` % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(
     commonSettings,
