@@ -7,6 +7,7 @@ import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Stopwatch
 import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
+import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
@@ -25,7 +26,6 @@ import com.sos.jobscheduler.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.util.Try
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
 
 final class MasterRepoTest extends AnyFreeSpec
 {
@@ -44,6 +44,7 @@ final class MasterRepoTest extends AnyFreeSpec
 
       provider.runAgents() { _ =>
         provider.runMaster() { master =>
+          master.httpApi.login_(Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD"))).await(99.s)
           // Add Workflow
           addWorkflowAndRunOrder(master, V1, AWorkflowPath, OrderId("A"))
 
@@ -59,6 +60,7 @@ final class MasterRepoTest extends AnyFreeSpec
         }
         // Recovery
         provider.runMaster() { master =>
+          master.httpApi.login_(Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD"))).await(99.s)
           // V2
           // Previously defined workflow is still known
           runOrder(master, BWorkflowPath ~ V2, OrderId("B-AGAIN"))
@@ -102,13 +104,13 @@ final class MasterRepoTest extends AnyFreeSpec
         val order = FreshOrder(orderId, path)
         // Add Workflow
         provider.updateRepo(master, versionId, workflow.withId(path) :: Nil)
-        master.addOrderBlocking(order)
+        master.httpApi.addOrders(order :: Nil).await(99.s)
         awaitOrder(master, order.id, path ~ versionId)
       }
 
       def runOrder(master: RunningMaster, workflowId: WorkflowId, orderId: OrderId): Unit = {
         val order = FreshOrder(orderId, workflowId.path)
-        master.addOrderBlocking(order)
+        master.httpApi.addOrder(order).await(99.s)
         awaitOrder(master, orderId, workflowId)
       }
 
@@ -121,7 +123,7 @@ final class MasterRepoTest extends AnyFreeSpec
       }
 
       def testSpeed(master: RunningMaster): Unit = {
-        val n = sys.props.get("MasterRepoTest").map(_.toInt) getOrElse 1
+        val n = sys.props.get("MasterRepoTest").map(_.toInt) getOrElse 3
         master.httpApi.login_(Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD"))).await(99.s)
         val stopwatch = new Stopwatch
         for (i <- 1 to n) {

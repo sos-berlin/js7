@@ -51,7 +51,8 @@ final class RepoTest extends AnyFreeSpec
   }
 
   "Event input" in {
-    assert(testRepo.idTo[AFileBased](APath("/A") ~ "4") == Left(Problem("No such 'version 4'")))
+    assert(testRepo.idTo[AFileBased](APath("/A") ~ "UNKNOWN") == Left(Problem("No such 'version UNKNOWN'")))
+    assert(testRepo.idTo[AFileBased](APath("/X") ~ V1) == Left(Problem("No such TypedPath: A:/X")))
     assert(testRepo.idTo[AFileBased](APath("/X") ~ V1) == Left(Problem("No such TypedPath: A:/X")))
     assert(testRepo.idTo[BFileBased](BPath("/Bx") ~ V1) == Left(Problem("No such 'B:/Bx~1'")))
     assert(testRepo.idTo[BFileBased](BPath("/Bx") ~ V3) == Left(Problem("Has been deleted: B:/Bx~3")))

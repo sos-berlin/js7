@@ -707,17 +707,17 @@ with MainJournalingActor[MasterState, Event]
         }
     }
 
-  private def addOrderWithUncheckedId(freshOrder: FreshOrder): Future[Checked[Boolean]] = {
-    val order = freshOrder.toOrder(repo.versionId)
-    orderRegister.get(order.id) match {
+  private def addOrderWithUncheckedId(freshOrder: FreshOrder): Future[Checked[Boolean]] =
+    orderRegister.get(freshOrder.id) match {
       case Some(_) =>
         logger.debug(s"Discarding duplicate added Order: $freshOrder")
         Future.successful(Right(false))
 
       case None =>
-        repo.idTo[Workflow](order.workflowId) match {
+        repo.pathTo[Workflow](freshOrder.workflowPath) match {
           case Left(problem) => Future.successful(Left(problem))
           case Right(workflow) =>
+            val order = freshOrder.toOrder(workflow.id.versionId)
             persist/*Async?*/(order.id <-: OrderAdded(workflow.id, order.state.scheduledFor, order.arguments)) { (stamped, updatedState) =>
               masterState = updatedState
               handleOrderEvent(stamped)
@@ -727,25 +727,21 @@ with MainJournalingActor[MasterState, Event]
             .flatMap(o => testAddOrderDelay.runToFuture.map(_ => o))  // test only
         }
     }
-  }
 
   private def addOrders(freshOrders: Seq[FreshOrder]): Future[Checked[Completed]] =
-    freshOrders.toVector.traverse[Checked, FreshOrder](order => order.id.checkedNameSyntax.map(_ => order))
-      .flatMap(_
-        .filterNot(o => orderRegister.contains(o.id))  // Ignore known orders
-        .map(_.toOrder(repo.versionId))
-        .traverse[Checked, (Order[Order.Fresh], Workflow)](order => repo.idTo[Workflow](order.workflowId).map(order -> _))
-        .map { ordersAndWorkflows =>
-          val events = for ((order, workflow) <- ordersAndWorkflows) yield
-            order.id <-: OrderAdded(workflow.id/*reuse*/, order.state.scheduledFor, order.arguments)
-          persistMultiple(events) { (stampedEvents, updatedState) =>
-            masterState = updatedState
-            for (o <- stampedEvents) handleOrderEvent(o)
-            checkForEqualOrdersState()
-            Completed
-          }
-        })
-      .evert
+    freshOrders.toVector
+      .filterNot(o => orderRegister.contains(o.id))  // Ignore known orders
+      .traverse(o => repo.pathTo[Workflow](o.workflowPath).map(o.->))
+      .traverse { ordersAndWorkflows =>
+        val events = for ((order, workflow) <- ordersAndWorkflows) yield
+          order.id <-: OrderAdded(workflow.id/*reuse*/, order.scheduledFor, order.arguments)
+        persistMultiple(events) { (stampedEvents, updatedState) =>
+          masterState = updatedState
+          for (o <- stampedEvents) handleOrderEvent(o)
+          checkForEqualOrdersState()
+          Completed
+        }
+      }
 
   private def handleOrderEvent(stamped: Stamped[KeyedEvent[OrderEvent]]): Unit =
     handleOrderEvent(stamped.value.key, stamped.value.event)

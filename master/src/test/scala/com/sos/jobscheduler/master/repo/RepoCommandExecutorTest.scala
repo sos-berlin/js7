@@ -8,6 +8,7 @@ import com.sos.jobscheduler.base.web.Uri
 import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
 import com.sos.jobscheduler.data.crypt.FileBasedVerifier
+import com.sos.jobscheduler.data.filebased.Repo.Entry
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedSigner, Repo, VersionId}
 import com.sos.jobscheduler.data.master.MasterFileBaseds
 import com.sos.jobscheduler.data.workflow.instructions.Fail
@@ -50,25 +51,25 @@ final class RepoCommandExecutorTest extends AnyFreeSpec
   "replaceRepoCommandToEvents" in {
     repo = executeReplace(ReplaceRepo(v1, fileBasedSigner.sign(agentRef1) :: Nil))
     assert(repo.pathToVersionToSignedFileBased == Map(
-      agentRef1.id.path -> Map(agentRef1.id.versionId -> Some(fileBasedSigner.toSigned(agentRef1)))))
+      agentRef1.id.path -> List(Entry(agentRef1.id.versionId, Some(fileBasedSigner.toSigned(agentRef1))))))
   }
 
   "updateRepoCommandToEvents" in {
     repo = executeUpdate(UpdateRepo(v2, fileBasedSigner.sign(workflow2) :: Nil))
     assert(repo.pathToVersionToSignedFileBased == Map(
-      agentRef1.id.path -> Map(agentRef1.id.versionId -> Some(fileBasedSigner.toSigned(agentRef1))),
-      workflow2.id.path -> Map(workflow2.id.versionId -> Some(fileBasedSigner.toSigned(workflow2)))))
+      agentRef1.id.path -> List(Entry(agentRef1.id.versionId, Some(fileBasedSigner.toSigned(agentRef1)))),
+      workflow2.id.path -> List(Entry(workflow2.id.versionId, Some(fileBasedSigner.toSigned(workflow2))))))
   }
 
   "replaceRepoCommandToEvents #2" in {
     repo = executeReplace(ReplaceRepo(v3, fileBasedSigner.sign(workflow3) :: Nil))
     assert(repo.pathToVersionToSignedFileBased == Map(
-      agentRef1.id.path -> Map(
-        v1 -> Some(fileBasedSigner.toSigned(agentRef1)),
-        v3 -> None),
-      workflow2.id.path -> Map(
-        v2 -> Some(fileBasedSigner.toSigned(workflow2)),
-        v3 -> Some(fileBasedSigner.toSigned(workflow3)))))
+      agentRef1.id.path -> List(
+        Entry(v3, None),
+        Entry(v1, Some(fileBasedSigner.toSigned(agentRef1)))),
+      workflow2.id.path -> List(
+        Entry(v3, Some(fileBasedSigner.toSigned(workflow3))),
+        Entry(v2, Some(fileBasedSigner.toSigned(workflow2))))))
   }
 
   private def executeReplace(replaceRepo: ReplaceRepo): Repo =

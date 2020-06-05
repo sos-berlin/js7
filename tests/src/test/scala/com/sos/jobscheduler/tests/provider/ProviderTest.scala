@@ -19,6 +19,7 @@ import com.sos.jobscheduler.core.filebased.{FileBasedReader, FileBaseds, TypedPa
 import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
 import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
+import com.sos.jobscheduler.data.filebased.Repo.Entry
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, FileBasedEvent, VersionAdded}
 import com.sos.jobscheduler.data.filebased.{Repo, SourceType, VersionId}
 import com.sos.jobscheduler.data.job.ExecutablePath
@@ -125,14 +126,14 @@ final class ProviderTest extends AnyFreeSpec with MasterAgentForScalaTest
 
       provider.initiallyUpdateMasterConfiguration(V1.some).await(99.seconds).orThrow
       assert(master.fileBasedApi.checkedRepo.await(99.seconds).map(_.pathToVersionToSignedFileBased) == Right(Map(
-        agentRef.path -> Map(
-          V1 -> Some(toSigned(agentRef withVersion V1))),
-        AWorkflowPath -> Map(
-          V1 -> Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1)))),
-        AWorkflowPath -> Map(
-          V1 -> Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1)))),
-        BWorkflowPath -> Map(
-          V1 -> Some(toSigned(TestWorkflow.withId(BWorkflowPath ~ V1)))))))
+        agentRef.path -> List(
+          Entry(V1, Some(toSigned(agentRef withVersion V1)))),
+        AWorkflowPath -> List(
+          Entry(V1, Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1))))),
+        AWorkflowPath -> List(
+          Entry(V1, Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1))))),
+        BWorkflowPath -> List(
+          Entry(V1, Some(toSigned(TestWorkflow.withId(BWorkflowPath ~ V1))))))))
 
       assert(provider.testMasterDiff.await(99.seconds).orThrow.isEmpty)
     }
@@ -164,15 +165,15 @@ final class ProviderTest extends AnyFreeSpec with MasterAgentForScalaTest
       delete(live / "ERROR-2.workflow.json")
       provider.updateMasterConfiguration(V2.some).await(99.seconds).orThrow
       assert(master.fileBasedApi.checkedRepo.await(99.seconds).map(_.pathToVersionToSignedFileBased) == Right(Map(
-        agentRef.path -> Map(
-          V1 -> Some(toSigned(agentRef withVersion V1))),
-        AWorkflowPath -> Map(
-          V1 -> Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1))),
-          V2 -> Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V2)))),
-        BWorkflowPath -> Map(
-          V1 -> Some(toSigned(TestWorkflow.withId(BWorkflowPath ~ V1)))),
-        CWorkflowPath -> Map(
-          V2 -> Some(toSigned(TestWorkflow.withId(CWorkflowPath ~ V2)))))))
+        agentRef.path -> List(
+          Entry(V1, Some(toSigned(agentRef withVersion V1)))),
+        AWorkflowPath -> List(
+          Entry(V2, Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V2)))),
+          Entry(V1, Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1))))),
+        BWorkflowPath -> List(
+          Entry(V1, Some(toSigned(TestWorkflow.withId(BWorkflowPath ~ V1))))),
+        CWorkflowPath -> List(
+          Entry(V2, Some(toSigned(TestWorkflow.withId(CWorkflowPath ~ V2))))))))
     }
 
     "Delete a Workflow" in {
@@ -180,16 +181,16 @@ final class ProviderTest extends AnyFreeSpec with MasterAgentForScalaTest
       provider.updateMasterConfiguration(V3.some).await(99.seconds).orThrow
       assert(checkedRepo.map(_.versions) == Right(V3 :: V2 :: V1 :: Nil))
       assert(checkedRepo.map(_.pathToVersionToSignedFileBased) == Right(Map(
-        agentRef.path -> Map(
-          V1 -> Some(toSigned(agentRef withVersion V1))),
-        AWorkflowPath -> Map(
-          V1 -> Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1))),
-          V2 -> Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V2)))),
-        BWorkflowPath -> Map(
-          V1 -> Some(toSigned(TestWorkflow.withId(BWorkflowPath ~ V1))),
-          V3 -> None),
-        CWorkflowPath -> Map(
-          V2 -> Some(toSigned(TestWorkflow.withId(CWorkflowPath ~ V2)))))))
+        agentRef.path -> List(
+          Entry(V1, Some(toSigned(agentRef withVersion V1)))),
+        AWorkflowPath -> List(
+          Entry(V2, Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V2)))),
+          Entry(V1, Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1))))),
+        BWorkflowPath -> List(
+          Entry(V3, None),
+          Entry(V1, Some(toSigned(TestWorkflow.withId(BWorkflowPath ~ V1))))),
+        CWorkflowPath -> List(
+          Entry(V2, Some(toSigned(TestWorkflow.withId(CWorkflowPath ~ V2))))))))
     }
 
     "Workflow notation (including a try-instruction)" in {

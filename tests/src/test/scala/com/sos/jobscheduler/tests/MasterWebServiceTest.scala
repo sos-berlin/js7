@@ -354,18 +354,52 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
 
   "/master/api/order" - {
     "POST" - {
-      "Order with missing workflow is rejected" in {
-        val order = json"""{
-          "id": "ORDER-ID",
-          "workflowPath": "/MISSING"
-        }"""
+      val orderWithMissingWorkflow = json"""{
+        "id": "ORDER-ID",
+        "workflowPath": "/MISSING"
+      }"""
+
+      "Order with missing workflow is rejected (single order)" in {
         val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
         val exception = intercept[HttpException] {
-          httpClient.postWithHeaders[Json, Json](Uri(s"$uri/master/api/order"), order, headers) await 99.s
+          httpClient.postWithHeaders[Json, Json](Uri(s"$uri/master/api/order"), orderWithMissingWorkflow, headers) await 99.s
         }
         assert(exception.status.intValue == 400/*BadRequest*/)
         assert(exception.dataAsString contains "No such TypedPath: Workflow:/MISSING")  // Or similar
         assert(exception.problem == Some(Problem("No such TypedPath: Workflow:/MISSING")))
+      }
+
+      "Order with missing workflow is rejected (order array)" in {
+        val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
+        val orders = Json.fromValues(orderWithMissingWorkflow :: Nil)
+        val exception = intercept[HttpException] {
+          httpClient.postWithHeaders[Json, Json](Uri(s"$uri/master/api/order"), orders, headers) await 99.s
+        }
+        assert(exception.status.intValue == 400/*BadRequest*/)
+        assert(exception.dataAsString contains "No such TypedPath: Workflow:/MISSING")  // Or similar
+        assert(exception.problem == Some(Problem("No such TypedPath: Workflow:/MISSING")))
+      }
+
+      "Invalid OrderId is rejected (single order)" in {
+        val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
+        val order = json"""{ "id": "ORDER/ID", "workflowPath": "/MISSING" }"""
+        val exception = intercept[HttpException] {
+          httpClient.postWithHeaders[Json, Json](Uri(s"$uri/master/api/order"), order, headers) await 99.s
+        }
+        assert(exception.status.intValue == 400/*BadRequest*/)
+        assert(exception.dataAsString contains "OrderId must not contain reserved characters /")
+        assert(exception.problem == Some(Problem("JSON DecodingFailure at : OrderId must not contain reserved characters /")))
+      }
+
+      "Invalid OrderId is rejected (order array)" in {
+        val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
+        val orders = Json.fromValues(json"""{ "id": "ORDER/ID", "workflowPath": "/MISSING" }""" :: Nil)
+        val exception = intercept[HttpException] {
+          httpClient.postWithHeaders[Json, Json](Uri(s"$uri/master/api/order"), orders, headers) await 99.s
+        }
+        assert(exception.status.intValue == 400/*BadRequest*/)
+        assert(exception.dataAsString contains "OrderId must not contain reserved characters /")
+        assert(exception.problem == Some(Problem("JSON DecodingFailure at [0]: OrderId must not contain reserved characters /")))
       }
 
       val order = json"""{
@@ -399,7 +433,7 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
         val response = httpClient.post_[Json](Uri(s"$uri/master/api/order"), order, headers) await 99.s
         assert(response.status.intValue == 400/*BadRequest*/)
         assert(response.utf8StringFuture.await(99.seconds).parseJsonCheckedAs[Problem]
-          == Right(Problem("OrderId must not contain reserved characters /")))
+          == Right(Problem("JSON DecodingFailure at : OrderId must not contain reserved characters /")))
         assert(response.header[Location].isEmpty)
       }
 
@@ -434,7 +468,7 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
         assert(response.status.intValue == 400/*BadRequest*/)
         assert(response.header[Location].isEmpty)
         assert(response.utf8StringFuture.await(99.seconds).parseJsonCheckedAs[Problem]
-          == Right(Problem("OrderId must not contain reserved characters /")))
+          == Right(Problem("JSON DecodingFailure at [0]: OrderId must not contain reserved characters /")))
       }
     }
 

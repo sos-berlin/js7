@@ -13,6 +13,7 @@ import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.Memoizer
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.data.crypt.FileBasedVerifier
+import com.sos.jobscheduler.data.filebased.Repo.Entry
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedAddedOrChanged, FileBasedChanged, FileBasedDeleted, FileBasedEvent, VersionAdded}
 import io.circe.Decoder
 import org.jetbrains.annotations.TestOnly
@@ -25,7 +26,7 @@ import org.jetbrains.annotations.TestOnly
 final case class Repo private(
   versions: List[VersionId],
   versionSet: Set[VersionId],
-  pathToVersionToSignedFileBased: Map[TypedPath, Map[VersionId, Option[Signed[FileBased]]]],
+  pathToVersionToSignedFileBased: Map[TypedPath, List[Entry]],
   fileBasedVerifier: FileBasedVerifier[FileBased])
 {
   assertThat(versions.nonEmpty || pathToVersionToSignedFileBased.isEmpty)
@@ -41,11 +42,10 @@ final case class Repo private(
   lazy val versionId: VersionId = versions.headOption getOrElse VersionId.Anonymous
 
   lazy val currentVersion: Map[TypedPath, Signed[FileBased]] =
-    for {
+    (for {
       (path, versionToFileBased) <- pathToVersionToSignedFileBased
-      fileBasedOption <- versionToFileBased.fileBasedOption(versions)
-      fileBased <- fileBasedOption
-    } yield path -> fileBased
+      fileBased <- versionToFileBased.head.maybeSignedFileBased
+    } yield path -> fileBased)
 
   private lazy val typeToPathToCurrentFileBased: FileBased.Companion_ => Map[TypedPath, Signed[FileBased]] =
     Memoizer.nonStrict { companion: FileBased.Companion_ =>
@@ -93,7 +93,7 @@ final case class Repo private(
 
   def typedCount[A <: FileBased](implicit A: FileBased.Companion[A]): Int =
     pathToVersionToSignedFileBased.values.view.flatten.count {
-      case (_, Some(signed)) if signed.value.companion == A => true
+      case Entry(_, Some(signed)) if signed.value.companion == A => true
       case _ => false
     }
 
@@ -148,14 +148,23 @@ final case class Repo private(
 
   private def addEntry(path: TypedPath, fileBasedOption: Option[Signed[FileBased]]): Repo = {
     val version = versions.head
-    copy(pathToVersionToSignedFileBased = pathToVersionToSignedFileBased + (path ->
-        (pathToVersionToSignedFileBased.getOrElse(path, Map.empty)
-           + (version -> fileBasedOption))))
+    copy(pathToVersionToSignedFileBased =
+      pathToVersionToSignedFileBased +
+        (path ->
+          (Entry(version,fileBasedOption) :: (pathToVersionToSignedFileBased.getOrElse(path, Nil)))))
   }
 
   /** Returns the current FileBased to a Path. */
   def pathTo[A <: FileBased](path: A#Path)(implicit A: FileBased.Companion[A]): Checked[A] =
-    currentTyped[A].checked(path)  // TODO Slow!
+    pathToVersionToSignedFileBased
+      .checked(path)
+      .flatMap { entries =>
+        val entry = entries.head
+        entry
+          .maybeSignedFileBased
+          .toChecked(DeletedProblem(path ~ entry.versionId))
+          .map(_.value.asInstanceOf[A])
+      }
 
   /** Returns the FileBased to a FileBasedId. */
   def idTo[A <: FileBased](id: FileBasedId[A#Path])(implicit A: FileBased.Companion[A]): Checked[A] =
@@ -165,11 +174,15 @@ final case class Repo private(
   def idToSigned[A <: FileBased](id: FileBasedId[A#Path])(implicit A: FileBased.Companion[A]): Checked[Signed[A]] =
     for {
       versionToSignedFileBased <- pathToVersionToSignedFileBased.checked(id.path)
-      fileBasedOption <- versionToSignedFileBased.checked(id.versionId) orElse (
-        for {
-          history <- historyBefore(id.versionId)
-          fb <- versionToSignedFileBased.fileBasedOption(history) toChecked Problem(s"No such '$id'")
-        } yield fb): Checked[Option[Signed[FileBased]]]
+      fileBasedOption <- versionToSignedFileBased
+        .collectFirst { case Entry(id.versionId, o) => o }
+        .toChecked(Problem(s"No such '$id'"))
+        .orElse(
+          for {
+            history <- historyBefore(id.versionId)
+            fb <- versionToSignedFileBased.fileBasedOption(history) toChecked Problem(s"No such '$id'")
+          } yield fb
+        ): Checked[Option[Signed[FileBased]]]
       signedFileBased <- fileBasedOption.toChecked(DeletedProblem(id))
     } yield signedFileBased.copy(signedFileBased.value.cast[A])
 
@@ -185,7 +198,8 @@ final case class Repo private(
     val versionToFileBasedOptions: Map[VersionId, Seq[Either[Signed[FileBased/*added/updated*/], TypedPath/*deleted*/]]] =
       pathToVersionToSignedFileBased.toVector.sortBy(_._1)/*for testing*/
         .flatMap { case (path, versionToFileBasedOpt) =>
-          versionToFileBasedOpt map { case (v, opt) => v -> (opt map Left.apply getOrElse Right(path)) }
+          versionToFileBasedOpt
+            .map(entry => entry.versionId -> entry.maybeSignedFileBased.map(Left.apply).getOrElse(Right(path)))
         }
         .groupBy(_._1).view.mapValues(_ map (_._2))
         .toMap
@@ -223,7 +237,7 @@ final case class Repo private(
       .keys.toSeq.sorted
       .map(path =>
         pathToVersionToSignedFileBased(path)
-          .map { case (v, maybeSigned) => maybeSigned.fold(s"$v deleted")(_ => s"$v added") }
+          .map(entry => entry.maybeSignedFileBased.fold(s"${entry.versionId} deleted")(_ => s"${entry.versionId} added"))
       ) + ")"
 }
 
@@ -242,9 +256,9 @@ object Repo
         new Repo(
           versionIds.toList,
           versionIds.toSet,
-          operations.map(_.fold(o => (o.value.id.path, o.value.id.versionId -> Some(o)), o => (o.path, o.versionId -> None)))
+          operations.toVector.view.reverse.map(_.fold(o => (o.value.id.path, o.value.id.versionId -> Some(o)), o => (o.path, o.versionId -> None)))
             .groupMap(_._1)(_._2)
-            .mapValuesStrict(_.toMap),
+            .mapValuesStrict(_.map(o => Entry(o._1, o._2)).toList),
           fileBasedVerifier)
     }
 
@@ -259,11 +273,13 @@ object Repo
     }
   }
 
-  private implicit class RichVersionToFileBasedOption(private val versionToFileBasedOption: Map[VersionId, Option[Signed[FileBased]]])
+  final case class Entry private(versionId: VersionId, maybeSignedFileBased:  Option[Signed[FileBased]])
+
+  private implicit class RichVersionToFileBasedOption(private val versionToFileBasedOption: List[Entry])
   extends AnyVal {
     /** None: no such version; Some(None): deleted */
     def fileBasedOption(history: List[VersionId]): Option[Option[Signed[FileBased]]] =
-      history.collectFirst { case v if versionToFileBasedOption contains v => versionToFileBasedOption(v) }
+      history.map(v => versionToFileBasedOption.collectFirst { case Entry(`v`, o) => o }).headOption.flatten
   }
 
   final case class DeletedProblem private[Repo](id: FileBasedId_)
