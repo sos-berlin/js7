@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.common.system
+package js7.common.system
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
-import com.sos.jobscheduler.data.system.JavaInformation
+import js7.base.circeutils.CirceUtils.RichJson
+import js7.data.system.JavaInformation
 import io.circe.syntax.EncoderOps
 import org.scalatest.freespec.AnyFreeSpec
 

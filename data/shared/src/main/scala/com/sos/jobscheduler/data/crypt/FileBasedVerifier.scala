@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.data.crypt
+package js7.data.crypt
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.{RichCirceString, _}
-import com.sos.jobscheduler.base.crypt.{SignatureVerifier, Signed, SignedString, SignerId}
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.data.crypt.FileBasedVerifier.Verified
-import com.sos.jobscheduler.data.filebased.FileBased
+import js7.base.circeutils.CirceUtils.{RichCirceString, _}
+import js7.base.crypt.{SignatureVerifier, Signed, SignedString, SignerId}
+import js7.base.problem.Checked
+import js7.data.crypt.FileBasedVerifier.Verified
+import js7.data.filebased.FileBased
 import io.circe.Decoder
 
 /**

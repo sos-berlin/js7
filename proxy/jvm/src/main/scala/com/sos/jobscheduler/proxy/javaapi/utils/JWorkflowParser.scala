@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.proxy.javaapi.utils
+package js7.proxy.javaapi.utils
 
-import com.sos.jobscheduler.base.annotation.javaApi
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
-import com.sos.jobscheduler.proxy.javaapi.data.{JWorkflow, JWorkflowId}
-import com.sos.jobscheduler.proxy.javaapi.utils.VavrConversions._
+import js7.base.annotation.javaApi
+import js7.base.problem.Problem
+import js7.data.workflow.parser.WorkflowParser
+import js7.proxy.javaapi.data.{JWorkflow, JWorkflowId}
+import js7.proxy.javaapi.utils.VavrConversions._
 import io.vavr.control.{Either => VEither}
 
 @javaApi

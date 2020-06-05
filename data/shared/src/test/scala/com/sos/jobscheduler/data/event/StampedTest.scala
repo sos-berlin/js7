@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.data.event
+package js7.data.event
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import js7.base.circeutils.CirceUtils._
+import js7.base.time.Timestamp
+import js7.tester.CirceJsonTester.testJson
 import io.circe.syntax.EncoderOps
 import org.scalatest.freespec.AnyFreeSpec
 

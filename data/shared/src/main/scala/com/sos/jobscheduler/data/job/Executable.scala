@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.data.job
+package js7.data.job
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.base.generic.GenericString
-import com.sos.jobscheduler.base.generic.GenericString.EmptyStringProblem
-import com.sos.jobscheduler.base.problem.Problems.InvalidNameProblem
+import js7.base.circeutils.CirceUtils.deriveCodec
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.generic.GenericString
+import js7.base.generic.GenericString.EmptyStringProblem
+import js7.base.problem.Problems.InvalidNameProblem
 import java.nio.file.Path
 
 sealed trait Executable

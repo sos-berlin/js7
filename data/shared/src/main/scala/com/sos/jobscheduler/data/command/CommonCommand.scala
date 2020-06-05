@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.data.command
+package js7.data.command
 
-import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
-import com.sos.jobscheduler.base.problem.Checked
+import js7.base.circeutils.typed.TypedJsonCodec
+import js7.base.problem.Checked
 import scala.collection.mutable
 
 /**

@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.taskserver.task.process
+package js7.taskserver.task.process
 
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.IOExecutor.Implicits.globalIOX
-import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
-import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.taskserver.task.process.ShellScriptProcess.startShellScript
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.IOExecutor.Implicits.globalIOX
+import js7.common.system.OperatingSystem.isWindows
+import js7.base.time.ScalaTime._
+import js7.common.time.WaitForCondition.waitForCondition
+import js7.data.job.ReturnCode
+import js7.taskserver.task.process.ShellScriptProcess.startShellScript
 import java.util.concurrent.ForkJoinPool
 import scala.concurrent.{ExecutionContext, Future}
 import org.scalatest.freespec.AnyFreeSpec

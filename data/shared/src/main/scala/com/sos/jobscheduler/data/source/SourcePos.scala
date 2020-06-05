@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.data.source
+package js7.data.source
 
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, DecodingFailure, Encoder, Json}

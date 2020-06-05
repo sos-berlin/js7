@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.common.soslicense
+package js7.common.soslicense
 
-import com.sos.jobscheduler.common.soslicense.LicenseKey.Parameter
+import js7.common.soslicense.LicenseKey.Parameter
 
 /**
  * @author Joacim Zschimmer

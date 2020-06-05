@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.common.auth
+package js7.common.auth
 
-import com.sos.jobscheduler.base.generic.SecretString
+import js7.base.generic.SecretString
 import java.security.SecureRandom
 import java.util.Base64
 

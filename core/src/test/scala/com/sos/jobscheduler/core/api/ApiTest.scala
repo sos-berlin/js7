@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.core.api
+package js7.core.api
 
-import com.sos.jobscheduler.core.api.Api.quoteString
-import com.sos.jobscheduler.data.workflow.parser.{ExpressionParser, Parsers}
+import js7.core.api.Api.quoteString
+import js7.data.workflow.parser.{ExpressionParser, Parsers}
 import fastparse.NoWhitespace._
 import fastparse.{End, P}
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks._

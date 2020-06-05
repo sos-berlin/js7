@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.data.workflow.instructions
+package js7.data.workflow.instructions
 
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.data.workflow.Instruction
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.data.workflow.Instruction
 
 /**
   * @author Joacim Zschimmer

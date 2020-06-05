@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.provider
+package js7.provider
 
 import cats.Show
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.AutoClosing.closeOnError
-import com.sos.jobscheduler.common.scalautil.IOExecutor.ioFuture
-import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger}
-import com.sos.jobscheduler.provider.DirectoryWatcher._
+import js7.base.generic.Completed
+import js7.base.time.ScalaTime._
+import js7.base.utils.AutoClosing.closeOnError
+import js7.common.scalautil.IOExecutor.ioFuture
+import js7.common.scalautil.{IOExecutor, Logger}
+import js7.provider.DirectoryWatcher._
 import java.nio.file.StandardWatchEventKinds._
 import java.nio.file.{ClosedWatchServiceException, Path, WatchEvent}
 import monix.execution.atomic.AtomicBoolean

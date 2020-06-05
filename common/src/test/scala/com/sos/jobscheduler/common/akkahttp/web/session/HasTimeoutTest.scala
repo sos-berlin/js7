@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.akkahttp.web.session
+package js7.common.akkahttp.web.session
 
 import monix.execution.schedulers.TestScheduler
 import scala.concurrent.duration._

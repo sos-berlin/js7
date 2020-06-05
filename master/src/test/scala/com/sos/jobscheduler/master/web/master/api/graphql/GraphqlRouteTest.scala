@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.master.web.master.api.graphql
+package js7.master.web.master.api.graphql
 
 import akka.http.scaladsl.model.MediaTypes.{`application/json`, `text/html`, `text/plain`}
 import akka.http.scaladsl.model.StatusCodes.NotAcceptable
@@ -7,20 +7,20 @@ import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.RouteTestTimeout
 import akka.http.scaladsl.unmarshalling.Unmarshaller
 import akka.util.ByteString
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
-import com.sos.jobscheduler.common.http.CirceJsonSupport._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.core.filebased.FileBasedApi
-import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.data.workflow.position.Position
-import com.sos.jobscheduler.master.OrderApi
-import com.sos.jobscheduler.master.web.master.api.graphql.GraphqlRouteTest._
-import com.sos.jobscheduler.master.web.master.api.test.RouteTester
+import js7.base.circeutils.CirceUtils._
+import js7.base.time.ScalaTime._
+import js7.base.utils.Collections.implicits.RichTraversable
+import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
+import js7.common.http.AkkaHttpUtils.RichHttpResponse
+import js7.common.http.CirceJsonSupport._
+import js7.common.scalautil.Futures.implicits._
+import js7.core.filebased.FileBasedApi
+import js7.data.order.{Order, OrderId}
+import js7.data.workflow.WorkflowPath
+import js7.data.workflow.position.Position
+import js7.master.OrderApi
+import js7.master.web.master.api.graphql.GraphqlRouteTest._
+import js7.master.web.master.api.test.RouteTester
 import io.circe.Json
 import monix.eval.Task
 import monix.execution.Scheduler

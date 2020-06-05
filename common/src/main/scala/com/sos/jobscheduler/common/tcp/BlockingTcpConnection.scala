@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.common.tcp
+package js7.common.tcp
 
 import akka.util.ByteString
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.tcp.BlockingTcpConnection._
+import js7.base.utils.Assertions.assertThat
+import js7.common.scalautil.Logger
+import js7.common.tcp.BlockingTcpConnection._
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.{AsynchronousCloseException, ServerSocketChannel, SocketChannel}

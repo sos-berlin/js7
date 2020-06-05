@@ -1,18 +1,18 @@
-package com.sos.jobscheduler.core.crypt.generic
+package js7.core.crypt.generic
 
 import cats.Applicative
 import cats.effect.{Resource, SyncIO}
 import cats.instances.either._
 import cats.instances.vector._
 import cats.syntax.traverse._
-import com.sos.jobscheduler.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.base.utils.Collections._
-import com.sos.jobscheduler.base.utils.JavaCollections.syntax._
-import com.sos.jobscheduler.base.utils.ScalaUtils.checkedCast
-import com.sos.jobscheduler.common.scalautil.JavaSyncResources.fileAsResource
-import com.sos.jobscheduler.common.scalautil.Logger
+import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.Collections._
+import js7.base.utils.JavaCollections.syntax._
+import js7.base.utils.ScalaUtils.checkedCast
+import js7.common.scalautil.JavaSyncResources.fileAsResource
+import js7.common.scalautil.Logger
 import com.typesafe.config.Config
 import java.io.InputStream
 import java.nio.file.Files.exists

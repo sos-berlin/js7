@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.base.generic
+package js7.base.generic
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.CirceUtilsChecked
-import com.sos.jobscheduler.base.convert.As
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.standards.NameValidator
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
+import js7.base.circeutils.CirceUtils.CirceUtilsChecked
+import js7.base.convert.As
+import js7.base.problem.Checked.Ops
+import js7.base.problem.{Checked, Problem}
+import js7.base.standards.NameValidator
+import js7.base.utils.ScalaUtils.RichJavaClass
 import io.circe.{Decoder, Encoder, Json, KeyDecoder, KeyEncoder}
 import javax.annotation.Nullable
 

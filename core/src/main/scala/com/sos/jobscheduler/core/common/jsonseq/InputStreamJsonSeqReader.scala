@@ -1,16 +1,16 @@
-package com.sos.jobscheduler.core.common.jsonseq
+package js7.core.common.jsonseq
 
 import cats.effect.Resource
-import com.sos.jobscheduler.base.problem.ProblemException
-import com.sos.jobscheduler.base.utils.Ascii.{LF, RS}
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.base.utils.ScodecUtils.RichByteVector
-import com.sos.jobscheduler.base.utils.Strings._
-import com.sos.jobscheduler.common.event.PositionAnd
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.utils.UntilNoneIterator
-import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader._
-import com.sos.jobscheduler.core.problems.JsonSeqFileClosedProblem
+import js7.base.problem.ProblemException
+import js7.base.utils.Ascii.{LF, RS}
+import js7.base.utils.ScalazStyle._
+import js7.base.utils.ScodecUtils.RichByteVector
+import js7.base.utils.Strings._
+import js7.common.event.PositionAnd
+import js7.common.scalautil.Logger
+import js7.common.utils.UntilNoneIterator
+import js7.core.common.jsonseq.InputStreamJsonSeqReader._
+import js7.core.problems.JsonSeqFileClosedProblem
 import io.circe.Json
 import java.io.IOException
 import java.nio.file.Path

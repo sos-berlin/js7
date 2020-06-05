@@ -1,14 +1,14 @@
-package com.sos.jobscheduler.provider
+package js7.provider
 
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.common.http.AkkaHttpClient
-import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger}
-import com.sos.jobscheduler.common.time.JavaTimeConverters._
-import com.sos.jobscheduler.provider.Observing._
+import js7.base.generic.Completed
+import js7.base.problem.Checked
+import js7.base.problem.Checked._
+import js7.base.utils.ScalaUtils.RichThrowable
+import js7.base.utils.ScalazStyle._
+import js7.common.http.AkkaHttpClient
+import js7.common.scalautil.{IOExecutor, Logger}
+import js7.common.time.JavaTimeConverters._
+import js7.provider.Observing._
 import java.nio.file.Files.exists
 import java.nio.file.Path
 import monix.eval.Task

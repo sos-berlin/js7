@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.data.command
+package js7.data.command
 
-import com.sos.jobscheduler.base.generic.GenericString
-import com.sos.jobscheduler.base.problem.Problem
+import js7.base.generic.GenericString
+import js7.base.problem.Problem
 import scala.util.{Failure, Success, Try}
 
 /**

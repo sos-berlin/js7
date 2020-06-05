@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.core.event.journal.write
+package js7.core.event.journal.write
 
 import akka.util.ByteString
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
-import com.sos.jobscheduler.common.utils.ByteUnits.toMB
-import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.core.event.journal.write.EventJournalWriter.SerializationException
-import com.sos.jobscheduler.data.event.JournalSeparators.EventHeader
-import com.sos.jobscheduler.data.event.{Event, EventId, JournalHeader, KeyedEvent, Stamped}
+import js7.base.circeutils.CirceUtils.RichJson
+import js7.common.utils.ByteUnits.toMB
+import js7.core.event.journal.data.JournalMeta
+import js7.core.event.journal.write.EventJournalWriter.SerializationException
+import js7.data.event.JournalSeparators.EventHeader
+import js7.data.event.{Event, EventId, JournalHeader, KeyedEvent, Stamped}
 import io.circe.syntax.EncoderOps
 import java.nio.file.{Files, Path}
 import scala.concurrent.duration.FiniteDuration

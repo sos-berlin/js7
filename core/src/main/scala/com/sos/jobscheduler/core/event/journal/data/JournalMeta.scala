@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.core.event.journal.data
+package js7.core.event.journal.data
 
-import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
-import com.sos.jobscheduler.data.event.{Event, KeyedEventTypedJsonCodec}
+import js7.base.circeutils.typed.TypedJsonCodec
+import js7.data.event.{Event, KeyedEventTypedJsonCodec}
 import java.nio.file.Path
 
 /**

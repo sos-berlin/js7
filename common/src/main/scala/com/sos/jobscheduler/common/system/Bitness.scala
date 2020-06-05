@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.system
+package js7.common.system
 
 import scala.sys.error
 

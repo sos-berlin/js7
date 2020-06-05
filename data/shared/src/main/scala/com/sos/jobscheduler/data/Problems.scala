@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.data
+package js7.data
 
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.data.order.OrderId
+import js7.base.problem.Problem
+import js7.data.order.OrderId
 
 object Problems
 {

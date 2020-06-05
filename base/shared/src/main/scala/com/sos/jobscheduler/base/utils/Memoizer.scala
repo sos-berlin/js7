@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.base.utils
+package js7.base.utils
 
 /**
   * Memoizes all computed results - fast, but in case of concurrent calls, results may be computed twice.

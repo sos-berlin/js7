@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.master.data
+package js7.master.data
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.data.master.MasterId
-import com.sos.jobscheduler.master.data.MasterSnapshots.MasterMetaState
-import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import js7.base.circeutils.CirceUtils._
+import js7.base.time.Timestamp
+import js7.data.master.MasterId
+import js7.master.data.MasterSnapshots.MasterMetaState
+import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

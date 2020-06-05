@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.data.event
+package js7.data.event
 
-import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
-import com.sos.jobscheduler.data.event.EventRequest._
+import js7.base.utils.ScalaUtils.implicitClass
+import js7.data.event.EventRequest._
 import scala.annotation.tailrec
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}

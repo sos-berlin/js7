@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.agent.web.common
+package js7.agent.web.common
 
-import com.sos.jobscheduler.common.akkahttp.web.session.{RouteProvider, SimpleSession}
+import js7.common.akkahttp.web.session.{RouteProvider, SimpleSession}
 
 /**
  * Standard trait for Agent web services.

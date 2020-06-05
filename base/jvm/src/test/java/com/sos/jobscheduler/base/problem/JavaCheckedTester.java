@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.base.problem;
+package js7.base.problem;
 
 import scala.util.Left;
 import scala.util.Right;

@@ -1,35 +1,35 @@
-package com.sos.jobscheduler.tests.master.web
+package js7.tests.master.web
 
 import akka.http.scaladsl.model.StatusCodes.Unauthorized
-import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.Closer.syntax._
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowableEither
-import com.sos.jobscheduler.base.utils.ScodecUtils._
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
-import com.sos.jobscheduler.common.http.AkkaHttpClient.HttpException
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.event.JournalSeparators
-import com.sos.jobscheduler.data.event.JournalSeparators.EndOfJournalFileMarker
-import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
-import com.sos.jobscheduler.data.workflow.instructions.Execute
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
-import com.sos.jobscheduler.master.configuration.MasterConfiguration
-import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentReady
-import com.sos.jobscheduler.tests.master.web.JournalWebServiceTest._
-import com.sos.jobscheduler.tests.testenv.DirectoryProvider.script
-import com.sos.jobscheduler.tests.testenv.MasterAgentForScalaTest
+import js7.base.auth.{UserAndPassword, UserId}
+import js7.base.generic.SecretString
+import js7.base.time.ScalaTime._
+import js7.base.utils.Closer.syntax._
+import js7.base.utils.ScalaUtils.RichThrowableEither
+import js7.base.utils.ScodecUtils._
+import js7.base.web.Uri
+import js7.common.guice.GuiceImplicits.RichInjector
+import js7.common.http.AkkaHttpClient.HttpException
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.common.time.WaitForCondition.waitForCondition
+import js7.data.agent.AgentRefPath
+import js7.data.event.JournalSeparators
+import js7.data.event.JournalSeparators.EndOfJournalFileMarker
+import js7.data.job.ExecutablePath
+import js7.data.order.OrderEvent.OrderFinished
+import js7.data.order.{FreshOrder, OrderId}
+import js7.data.workflow.instructions.Execute
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.master.client.AkkaHttpMasterApi
+import js7.master.configuration.MasterConfiguration
+import js7.master.data.MasterCommand
+import js7.master.data.events.MasterAgentEvent.AgentReady
+import js7.tests.master.web.JournalWebServiceTest._
+import js7.tests.testenv.DirectoryProvider.script
+import js7.tests.testenv.MasterAgentForScalaTest
 import com.typesafe.config.ConfigFactory
 import java.nio.file.Files
 import monix.execution.Scheduler.Implicits.global

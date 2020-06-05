@@ -1,15 +1,15 @@
-package com.sos.jobscheduler.agent.task
+package js7.agent.task
 
 import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.util.Timeout
-import com.sos.jobscheduler.agent.data.AgentTaskId
-import com.sos.jobscheduler.agent.data.views.{TaskOverview, TaskRegisterOverview}
-import com.sos.jobscheduler.agent.task.TaskRegisterActor.Command
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.process.ProcessSignal
-import com.sos.jobscheduler.base.process.ProcessSignal.SIGTERM
-import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
+import js7.agent.data.AgentTaskId
+import js7.agent.data.views.{TaskOverview, TaskRegisterOverview}
+import js7.agent.task.TaskRegisterActor.Command
+import js7.base.generic.Completed
+import js7.base.process.ProcessSignal
+import js7.base.process.ProcessSignal.SIGTERM
+import js7.common.scalautil.Futures.promiseFuture
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.Future
 

@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.async.synchronizer
+package js7.common.async.synchronizer
 
 import akka.actor.ActorRef
 import scala.concurrent.{Future, Promise}

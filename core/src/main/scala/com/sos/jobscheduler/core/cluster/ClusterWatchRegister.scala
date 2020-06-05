@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.core.cluster
+package js7.core.cluster
 
-import com.sos.jobscheduler.data.master.MasterId
+import js7.data.master.MasterId
 import javax.inject.{Inject, Singleton}
 import monix.catnap.MVar
 import monix.eval.Task

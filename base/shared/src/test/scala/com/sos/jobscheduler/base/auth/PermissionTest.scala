@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.base.auth
+package js7.base.auth
 
-import com.sos.jobscheduler.base.auth.Permission._
-import com.sos.jobscheduler.base.auth.PermissionTest._
+import js7.base.auth.Permission._
+import js7.base.auth.PermissionTest._
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

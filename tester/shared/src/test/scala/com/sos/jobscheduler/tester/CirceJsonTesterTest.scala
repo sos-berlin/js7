@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.tester
+package js7.tester
 
-import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import com.sos.jobscheduler.tester.CirceJsonTesterTest._
+import js7.tester.CirceJsonTester.testJson
+import js7.tester.CirceJsonTesterTest._
 import io.circe.generic.JsonCodec
 import org.scalatest.freespec.AnyFreeSpec
 

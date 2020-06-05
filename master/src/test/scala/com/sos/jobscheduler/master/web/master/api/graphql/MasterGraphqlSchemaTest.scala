@@ -1,20 +1,20 @@
-package com.sos.jobscheduler.master.web.master.api.graphql
+package js7.master.web.master.api.graphql
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.{Stopwatch, Timestamp}
-import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, VersionId}
-import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
-import com.sos.jobscheduler.data.order.{HistoricOutcome, Order, OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{Execute, Fork}
-import com.sos.jobscheduler.data.workflow.position.Position
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.master.web.master.api.graphql.MasterGraphqlSchemaTest._
+import js7.base.circeutils.CirceUtils._
+import js7.base.problem.Problem
+import js7.base.time.ScalaTime._
+import js7.base.time.{Stopwatch, Timestamp}
+import js7.base.utils.Collections.implicits.RichTraversable
+import js7.common.scalautil.Futures.implicits._
+import js7.data.agent.AgentRefPath
+import js7.data.filebased.{FileBased, FileBasedId, VersionId}
+import js7.data.job.{ExecutablePath, ReturnCode}
+import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.instructions.{Execute, Fork}
+import js7.data.workflow.position.Position
+import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.master.web.master.api.graphql.MasterGraphqlSchemaTest._
 import io.circe.Json
 import monix.eval.Task
 import monix.execution.Scheduler

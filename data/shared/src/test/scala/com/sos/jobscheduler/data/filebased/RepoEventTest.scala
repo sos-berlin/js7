@@ -1,14 +1,14 @@
-package com.sos.jobscheduler.data.filebased
+package js7.data.filebased
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
-import com.sos.jobscheduler.base.crypt.{GenericSignature, SignedString}
-import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
-import com.sos.jobscheduler.data.filebased.RepoEventTest._
-import com.sos.jobscheduler.data.master.MasterFileBaseds._
-import com.sos.jobscheduler.data.workflow.instructions.Fail
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.typed.TypedJsonCodec
+import js7.base.crypt.{GenericSignature, SignedString}
+import js7.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
+import js7.data.filebased.RepoEventTest._
+import js7.data.master.MasterFileBaseds._
+import js7.data.workflow.instructions.Fail
+import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.tester.CirceJsonTester.testJson
 import io.circe.syntax.EncoderOps
 import org.scalatest.freespec.AnyFreeSpec
 

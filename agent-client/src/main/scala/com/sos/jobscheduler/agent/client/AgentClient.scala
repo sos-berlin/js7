@@ -1,20 +1,20 @@
-package com.sos.jobscheduler.agent.client
+package js7.agent.client
 
 import akka.actor.ActorSystem
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand._
-import com.sos.jobscheduler.agent.data.event.KeyedEventJsonFormats.keyedEventJsonCodec
-import com.sos.jobscheduler.agent.data.views.{AgentOverview, TaskOverview, TaskRegisterOverview}
-import com.sos.jobscheduler.agent.data.web.AgentUris
-import com.sos.jobscheduler.agent.data.{AgentApi, AgentTaskId}
-import com.sos.jobscheduler.base.auth.UserAndPassword
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.session.HttpSessionApi
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
-import com.sos.jobscheduler.common.http.AkkaHttpClient
-import com.sos.jobscheduler.data.event.{Event, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
-import com.sos.jobscheduler.data.order.{Order, OrderId}
+import js7.agent.data.commands.AgentCommand
+import js7.agent.data.commands.AgentCommand._
+import js7.agent.data.event.KeyedEventJsonFormats.keyedEventJsonCodec
+import js7.agent.data.views.{AgentOverview, TaskOverview, TaskRegisterOverview}
+import js7.agent.data.web.AgentUris
+import js7.agent.data.{AgentApi, AgentTaskId}
+import js7.base.auth.UserAndPassword
+import js7.base.problem.Checked
+import js7.base.session.HttpSessionApi
+import js7.base.web.Uri
+import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
+import js7.common.http.AkkaHttpClient
+import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
+import js7.data.order.{Order, OrderId}
 import monix.eval.Task
 import monix.reactive.Observable
 

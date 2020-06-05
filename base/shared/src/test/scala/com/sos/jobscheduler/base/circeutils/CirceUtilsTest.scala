@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.base.circeutils
+package js7.base.circeutils
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.generic.GenericString
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import js7.base.circeutils.CirceUtils._
+import js7.base.generic.GenericString
+import js7.base.problem.Problem
+import js7.tester.CirceJsonTester.testJson
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Json, JsonObject}
 import org.scalatest.freespec.AnyFreeSpec

@@ -1,13 +1,13 @@
-package com.sos.jobscheduler.core.event.journal.write
+package js7.core.event.journal.write
 
 import akka.util.ByteString
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.core.event.journal.files.JournalFiles._
-import com.sos.jobscheduler.data.event.EventId
-import com.sos.jobscheduler.data.event.JournalSeparators.{SnapshotFooter, SnapshotHeader}
+import js7.base.circeutils.CirceUtils._
+import js7.base.time.ScalaTime._
+import js7.common.scalautil.Logger
+import js7.core.event.journal.data.JournalMeta
+import js7.core.event.journal.files.JournalFiles._
+import js7.data.event.EventId
+import js7.data.event.JournalSeparators.{SnapshotFooter, SnapshotHeader}
 import java.nio.file.Path
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._

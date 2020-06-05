@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.master.tests
+package js7.master.tests
 
-import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryContentRecursively
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
-import com.sos.jobscheduler.data.folder.FolderPath
-import com.sos.jobscheduler.master.tests.TestEnvironment._
+import js7.common.scalautil.FileUtils.deleteDirectoryContentRecursively
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.Logger
+import js7.data.agent.AgentRefPath
+import js7.data.filebased.{SourceType, TypedPath}
+import js7.data.folder.FolderPath
+import js7.master.tests.TestEnvironment._
 import java.io.IOException
 import java.nio.file.Files.{createDirectories, createDirectory, deleteIfExists, exists}
 import java.nio.file.Path

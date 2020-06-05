@@ -1,16 +1,16 @@
-package com.sos.jobscheduler.common.akkahttp.web.session
+package js7.common.akkahttp.web.session
 
 import akka.http.scaladsl.model.StatusCodes.Unauthorized
 import akka.http.scaladsl.server.Directives._
-import com.sos.jobscheduler.base.auth.{SessionToken, UserAndPassword}
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.session.SessionCommand
-import com.sos.jobscheduler.base.session.SessionCommand.{Login, Logout}
-import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
-import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
-import com.sos.jobscheduler.common.akkahttp.web.session.SessionRoute._
+import js7.base.auth.{SessionToken, UserAndPassword}
+import js7.base.generic.Completed
+import js7.base.problem.Checked._
+import js7.base.problem.{Checked, Problem}
+import js7.base.session.SessionCommand
+import js7.base.session.SessionCommand.{Login, Logout}
+import js7.common.akkahttp.CirceJsonOrYamlSupport._
+import js7.common.akkahttp.StandardMarshallers._
+import js7.common.akkahttp.web.session.SessionRoute._
 import monix.eval.Task
 import monix.execution.Scheduler
 

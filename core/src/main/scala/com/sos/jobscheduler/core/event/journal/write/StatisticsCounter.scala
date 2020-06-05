@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.core.event.journal.write
+package js7.core.event.journal.write
 
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.Stopwatch
-import com.sos.jobscheduler.base.utils.Strings._
-import com.sos.jobscheduler.core.event.journal.write.StatisticsCounter._
+import js7.base.time.ScalaTime._
+import js7.base.time.Stopwatch
+import js7.base.utils.Strings._
+import js7.core.event.journal.write.StatisticsCounter._
 import java.lang.System.nanoTime
 import scala.concurrent.duration._
 

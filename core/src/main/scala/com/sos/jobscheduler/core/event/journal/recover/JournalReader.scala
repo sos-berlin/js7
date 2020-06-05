@@ -1,20 +1,20 @@
-package com.sos.jobscheduler.core.event.journal.recover
+package js7.core.event.journal.recover
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.utils.AutoClosing.closeOnError
-import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
-import com.sos.jobscheduler.base.utils.ScalaUtils._
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.base.utils.Strings.RichString
-import com.sos.jobscheduler.common.event.PositionAnd
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.utils.untilNoneIterator
-import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader
-import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.core.event.journal.recover.JournalReader._
-import com.sos.jobscheduler.data.event.JournalSeparators.{Commit, EventHeader, SnapshotFooter, SnapshotHeader, Transaction}
-import com.sos.jobscheduler.data.event.{Event, EventId, JournalHeader, JournalId, KeyedEvent, Stamped}
+import js7.base.circeutils.CirceUtils._
+import js7.base.problem.Checked._
+import js7.base.utils.AutoClosing.closeOnError
+import js7.base.utils.IntelliJUtils.intelliJuseImport
+import js7.base.utils.ScalaUtils._
+import js7.base.utils.ScalazStyle._
+import js7.base.utils.Strings.RichString
+import js7.common.event.PositionAnd
+import js7.common.scalautil.Logger
+import js7.common.utils.untilNoneIterator
+import js7.core.common.jsonseq.InputStreamJsonSeqReader
+import js7.core.event.journal.data.JournalMeta
+import js7.core.event.journal.recover.JournalReader._
+import js7.data.event.JournalSeparators.{Commit, EventHeader, SnapshotFooter, SnapshotHeader, Transaction}
+import js7.data.event.{Event, EventId, JournalHeader, JournalId, KeyedEvent, Stamped}
 import io.circe.Json
 import java.nio.file.Path
 import scala.annotation.tailrec

@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.core.crypt.pgp
+package js7.core.crypt.pgp
 
-import com.sos.jobscheduler.base.crypt.SignerId
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.common.scalautil.Logger
+import js7.base.crypt.SignerId
+import js7.base.generic.SecretString
+import js7.common.scalautil.Logger
 import java.math.BigInteger
 import java.security.SecureRandom
 import org.bouncycastle.bcpg.sig.{Features, KeyFlags}

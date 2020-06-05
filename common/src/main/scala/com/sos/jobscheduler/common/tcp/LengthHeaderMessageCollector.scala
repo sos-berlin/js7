@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.tcp
+package js7.common.tcp
 
 import akka.util.{ByteString, ByteStringBuilder}
 import java.nio.ByteOrder._

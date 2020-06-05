@@ -1,15 +1,15 @@
-package com.sos.jobscheduler.master.command
+package js7.master.command
 
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.command.{CommandExecutor, CommandMeta, CommandRegister, CommandRun}
-import com.sos.jobscheduler.core.startup.Halt
-import com.sos.jobscheduler.data.command.{CommandHandlerDetailed, CommandHandlerOverview, InternalCommandId}
-import com.sos.jobscheduler.master.command.MasterCommandExecutor._
-import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.data.MasterCommand.{Batch, EmergencyStop}
+import js7.base.problem.Checked
+import js7.base.time.ScalaTime._
+import js7.base.utils.ScalaUtils.RichThrowable
+import js7.common.scalautil.Logger
+import js7.core.command.{CommandExecutor, CommandMeta, CommandRegister, CommandRun}
+import js7.core.startup.Halt
+import js7.data.command.{CommandHandlerDetailed, CommandHandlerOverview, InternalCommandId}
+import js7.master.command.MasterCommandExecutor._
+import js7.master.data.MasterCommand
+import js7.master.data.MasterCommand.{Batch, EmergencyStop}
 import monix.eval.Task
 
 /**

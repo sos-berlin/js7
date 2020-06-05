@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.provider.scheduledorder.oldruntime
+package js7.provider.scheduledorder.oldruntime
 
 import java.time.{Duration, LocalTime}
 

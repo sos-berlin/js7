@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.common.event.collector
+package js7.common.event.collector
 
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.common.event.EventIdGenerator
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Stamped}
+import js7.base.time.Timestamp
+import js7.common.event.EventIdGenerator
+import js7.data.event.{AnyKeyedEvent, Stamped}
 
 /**
   * @author Joacim Zschimmer

@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.base.circeutils
+package js7.base.circeutils
 
 import cats.syntax.show._
-import com.sos.jobscheduler.base.circeutils.AnyJsonCodecs.anyToJson
-import com.sos.jobscheduler.base.generic.GenericString
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.ScalaUtils._
+import js7.base.circeutils.AnyJsonCodecs.anyToJson
+import js7.base.generic.GenericString
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.ScalaUtils._
 import io.circe.generic.decoding.DerivedDecoder
 import io.circe.generic.encoding.DerivedAsObjectEncoder
 import io.circe.syntax.EncoderOps

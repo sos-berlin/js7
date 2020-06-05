@@ -1,20 +1,20 @@
-package com.sos.jobscheduler.taskserver.task.process
+package js7.taskserver.task.process
 
-import com.sos.jobscheduler.agent.data.{AgentTaskId, ProcessKillScript}
-import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.Closer.withCloser
-import com.sos.jobscheduler.common.process.Processes.newTemporaryShellFile
-import com.sos.jobscheduler.common.scalautil.FileUtils.autoDeleting
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax.RichPath
-import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
-import com.sos.jobscheduler.common.scalautil.IOExecutor.Implicits.globalIOX
-import com.sos.jobscheduler.common.system.FileUtils._
-import com.sos.jobscheduler.common.system.OperatingSystem.{KernelSupportsNestedShebang, isMac, isSolaris, isUnix, isWindows}
-import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
-import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.data.system.Stdout
-import com.sos.jobscheduler.taskserver.task.process.ShellScriptProcess.startShellScript
+import js7.agent.data.{AgentTaskId, ProcessKillScript}
+import js7.base.process.ProcessSignal.{SIGKILL, SIGTERM}
+import js7.base.time.ScalaTime._
+import js7.base.utils.Closer.withCloser
+import js7.common.process.Processes.newTemporaryShellFile
+import js7.common.scalautil.FileUtils.autoDeleting
+import js7.common.scalautil.FileUtils.syntax.RichPath
+import js7.common.scalautil.Futures.implicits.SuccessFuture
+import js7.common.scalautil.IOExecutor.Implicits.globalIOX
+import js7.common.system.FileUtils._
+import js7.common.system.OperatingSystem.{KernelSupportsNestedShebang, isMac, isSolaris, isUnix, isWindows}
+import js7.common.time.WaitForCondition.waitForCondition
+import js7.data.job.ReturnCode
+import js7.data.system.Stdout
+import js7.taskserver.task.process.ShellScriptProcess.startShellScript
 import java.nio.file.Files._
 import scala.concurrent.ExecutionContext.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec

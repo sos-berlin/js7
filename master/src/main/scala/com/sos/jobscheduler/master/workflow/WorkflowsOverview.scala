@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.master.workflow
+package js7.master.workflow
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
-import com.sos.jobscheduler.data.filebased.FileBasedsOverview
-import com.sos.jobscheduler.data.workflow.Workflow
+import js7.base.circeutils.CirceUtils.deriveCodec
+import js7.data.filebased.FileBasedsOverview
+import js7.data.workflow.Workflow
 
 /**
   * @author Joacim Zschimmer

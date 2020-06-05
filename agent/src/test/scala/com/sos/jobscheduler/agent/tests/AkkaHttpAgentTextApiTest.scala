@@ -1,26 +1,26 @@
-package com.sos.jobscheduler.agent.tests
+package js7.agent.tests
 
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.directives.SecurityDirectives.Authenticator
 import com.google.inject.{AbstractModule, Provides}
-import com.sos.jobscheduler.agent.client.AkkaHttpAgentTextApi
-import com.sos.jobscheduler.agent.command.CommandHandler
-import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.tests.AkkaHttpAgentTextApiTest._
-import com.sos.jobscheduler.agent.tests.TestAgentDirectoryProvider.TestUserAndPassword
-import com.sos.jobscheduler.base.auth.{HashedPassword, SimpleUser, UserAndPassword}
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.base.utils.HasCloser
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.akkahttp.web.auth.OurMemoizingAuthenticator
-import com.sos.jobscheduler.common.http.AkkaHttpClient
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import com.sos.jobscheduler.core.command.CommandMeta
+import js7.agent.client.AkkaHttpAgentTextApi
+import js7.agent.command.CommandHandler
+import js7.agent.configuration.AgentConfiguration
+import js7.agent.data.commands.AgentCommand
+import js7.agent.tests.AkkaHttpAgentTextApiTest._
+import js7.agent.tests.TestAgentDirectoryProvider.TestUserAndPassword
+import js7.base.auth.{HashedPassword, SimpleUser, UserAndPassword}
+import js7.base.generic.SecretString
+import js7.base.problem.Checked
+import js7.base.time.ScalaTime._
+import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.HasCloser
+import js7.base.web.Uri
+import js7.common.akkahttp.web.auth.OurMemoizingAuthenticator
+import js7.common.http.AkkaHttpClient
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import js7.core.command.CommandMeta
 import javax.inject.Singleton
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global

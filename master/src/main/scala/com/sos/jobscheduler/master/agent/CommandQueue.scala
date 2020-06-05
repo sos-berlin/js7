@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.master.agent
+package js7.master.agent
 
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.Batch
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.data.order.OrderId
-import com.sos.jobscheduler.master.agent.AgentDriver.{Input, Queueable, ReleaseEventsQueueable}
-import com.sos.jobscheduler.master.agent.CommandQueue._
+import js7.agent.data.commands.AgentCommand
+import js7.agent.data.commands.AgentCommand.Batch
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.Assertions.assertThat
+import js7.data.order.OrderId
+import js7.master.agent.AgentDriver.{Input, Queueable, ReleaseEventsQueueable}
+import js7.master.agent.CommandQueue._
 import com.typesafe.scalalogging.{Logger => ScalaLogger}
 import monix.eval.Task
 import monix.execution.Scheduler

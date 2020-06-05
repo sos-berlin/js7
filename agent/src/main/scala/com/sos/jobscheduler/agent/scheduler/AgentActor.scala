@@ -1,48 +1,48 @@
-package com.sos.jobscheduler.agent.scheduler
+package js7.agent.scheduler
 
 import akka.actor.{ActorRef, PoisonPill, Props, Terminated}
 import akka.pattern.{ask, pipe}
 import cats.data.EitherT
-import com.sos.jobscheduler.agent.AgentState
-import com.sos.jobscheduler.agent.configuration.{AgentConfiguration, AgentStartInformation}
-import com.sos.jobscheduler.agent.data.AgentTermination
-import com.sos.jobscheduler.agent.data.Problems.{AgentIsShuttingDown, DuplicateAgentRef, MasterAgentMismatch, UnknownMaster}
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.CoupleMaster
-import com.sos.jobscheduler.agent.data.event.KeyedEventJsonFormats.AgentKeyedEventJsonCodec
-import com.sos.jobscheduler.agent.data.views.AgentOverview
-import com.sos.jobscheduler.agent.scheduler.AgentActor._
-import com.sos.jobscheduler.agent.scheduler.job.JobActor
-import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
-import com.sos.jobscheduler.agent.scheduler.order.{AgentOrderKeeper, OrderJournalRecoverer}
-import com.sos.jobscheduler.base.auth.UserId
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.base.utils.Closer.syntax._
-import com.sos.jobscheduler.base.utils.{Closer, SetOnce}
-import com.sos.jobscheduler.common.akkautils.{Akkas, SupervisorStrategies}
-import com.sos.jobscheduler.common.event.EventIdGenerator
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.system.JavaInformations.javaInformation
-import com.sos.jobscheduler.common.system.SystemInformations.systemInformation
-import com.sos.jobscheduler.core.common.ActorRegister
-import com.sos.jobscheduler.core.crypt.generic.GenericSignatureVerifier
-import com.sos.jobscheduler.core.event.StampedKeyedEventBus
-import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
-import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
-import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActor}
-import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
-import com.sos.jobscheduler.data.agent.{AgentRefPath, AgentRunId}
-import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{EventId, JournalEvent, JournalId, JournalState, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.master.MasterId
-import com.sos.jobscheduler.data.order.Order
-import com.sos.jobscheduler.data.workflow.Workflow
+import js7.agent.AgentState
+import js7.agent.configuration.{AgentConfiguration, AgentStartInformation}
+import js7.agent.data.AgentTermination
+import js7.agent.data.Problems.{AgentIsShuttingDown, DuplicateAgentRef, MasterAgentMismatch, UnknownMaster}
+import js7.agent.data.commands.AgentCommand
+import js7.agent.data.commands.AgentCommand.CoupleMaster
+import js7.agent.data.event.KeyedEventJsonFormats.AgentKeyedEventJsonCodec
+import js7.agent.data.views.AgentOverview
+import js7.agent.scheduler.AgentActor._
+import js7.agent.scheduler.job.JobActor
+import js7.agent.scheduler.job.task.TaskRunner
+import js7.agent.scheduler.order.{AgentOrderKeeper, OrderJournalRecoverer}
+import js7.base.auth.UserId
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.generic.Completed
+import js7.base.problem.Checked
+import js7.base.problem.Checked._
+import js7.base.utils.Assertions.assertThat
+import js7.base.utils.Closer.syntax._
+import js7.base.utils.{Closer, SetOnce}
+import js7.common.akkautils.{Akkas, SupervisorStrategies}
+import js7.common.event.EventIdGenerator
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.Logger
+import js7.common.system.JavaInformations.javaInformation
+import js7.common.system.SystemInformations.systemInformation
+import js7.core.common.ActorRegister
+import js7.core.crypt.generic.GenericSignatureVerifier
+import js7.core.event.StampedKeyedEventBus
+import js7.core.event.journal.data.JournalMeta
+import js7.core.event.journal.recover.JournalRecoverer
+import js7.core.event.journal.watch.JournalEventWatch
+import js7.core.event.journal.{JournalActor, MainJournalingActor}
+import js7.core.event.state.JournaledStatePersistence
+import js7.data.agent.{AgentRefPath, AgentRunId}
+import js7.data.event.KeyedEvent.NoKey
+import js7.data.event.{EventId, JournalEvent, JournalId, JournalState, KeyedEvent, Stamped}
+import js7.data.master.MasterId
+import js7.data.order.Order
+import js7.data.workflow.Workflow
 import javax.inject.{Inject, Singleton}
 import monix.eval.Task
 import monix.execution.Scheduler

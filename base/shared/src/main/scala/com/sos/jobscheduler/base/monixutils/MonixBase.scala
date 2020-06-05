@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.base.monixutils
+package js7.base.monixutils
 
 import cats.effect.Resource
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.time.Timestamp
+import js7.base.problem.Checked
+import js7.base.time.Timestamp
 import MonixDeadline.syntax._
-import com.sos.jobscheduler.base.utils.CloseableIterator
+import js7.base.utils.CloseableIterator
 import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
 import monix.execution.cancelables.MultiAssignCancelable

@@ -1,14 +1,14 @@
-package com.sos.jobscheduler.common.akkahttp
+package js7.common.akkahttp
 
 import akka.http.scaladsl.model.StatusCodes.TooManyRequests
 import akka.http.scaladsl.server.{Directive0, RequestContext, Route, RouteResult}
 import cats.syntax.show._
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.whenResponseTerminated
-import com.sos.jobscheduler.common.akkahttp.ConcurrentRequestLimiter._
-import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
-import com.sos.jobscheduler.common.scalautil.Logger
+import js7.base.problem.Problem
+import js7.base.time.ScalaTime._
+import js7.common.akkahttp.AkkaHttpServerUtils.whenResponseTerminated
+import js7.common.akkahttp.ConcurrentRequestLimiter._
+import js7.common.akkahttp.StandardMarshallers._
+import js7.common.scalautil.Logger
 import java.util.concurrent.ConcurrentLinkedQueue
 import monix.execution.atomic.AtomicInt
 import monix.execution.{Cancelable, Scheduler}

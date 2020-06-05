@@ -1,19 +1,19 @@
-package com.sos.jobscheduler.master
+package js7.master
 
-import com.sos.jobscheduler.base.BuildInfo
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.base.utils.Strings._
-import com.sos.jobscheduler.common.commandline.CommandLineArguments
-import com.sos.jobscheduler.common.configutils.Configs.logConfig
-import com.sos.jobscheduler.common.log.ScribeUtils
-import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.startup.JavaMain.withShutdownHooks
-import com.sos.jobscheduler.core.startup.JavaMainLockfileSupport.lockAndRunMain
-import com.sos.jobscheduler.core.startup.StartUp
-import com.sos.jobscheduler.core.startup.StartUp.printlnWithClock
-import com.sos.jobscheduler.master.configuration.MasterConfiguration
+import js7.base.BuildInfo
+import js7.base.time.Timestamp
+import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.Strings._
+import js7.common.commandline.CommandLineArguments
+import js7.common.configutils.Configs.logConfig
+import js7.common.log.ScribeUtils
+import js7.common.scalautil.Futures.implicits.SuccessFuture
+import js7.common.scalautil.Logger
+import js7.core.startup.JavaMain.withShutdownHooks
+import js7.core.startup.JavaMainLockfileSupport.lockAndRunMain
+import js7.core.startup.StartUp
+import js7.core.startup.StartUp.printlnWithClock
+import js7.master.configuration.MasterConfiguration
 import monix.execution.Scheduler
 import scala.concurrent.duration._
 

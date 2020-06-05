@@ -1,22 +1,22 @@
-package com.sos.jobscheduler.tests.master.cluster
+package js7.tests.master.cluster
 
-import com.sos.jobscheduler.base.auth.UserId
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPorts
-import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterCoupled, ClusterSwitchedOver}
-import com.sos.jobscheduler.data.event.EventId
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
-import com.sos.jobscheduler.master.RunningMaster
-import com.sos.jobscheduler.master.data.MasterCommand.ClusterSwitchOver
-import com.sos.jobscheduler.tests.master.cluster.MasterClusterTester._
-import com.sos.jobscheduler.tests.master.cluster.SwitchOverClusterTest._
+import js7.base.auth.UserId
+import js7.base.generic.SecretString
+import js7.base.problem.Checked._
+import js7.base.time.ScalaTime._
+import js7.base.time.Timestamp
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.Logger
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
+import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterSwitchedOver}
+import js7.data.event.EventId
+import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
+import js7.data.order.{FreshOrder, OrderId}
+import js7.master.RunningMaster
+import js7.master.data.MasterCommand.ClusterSwitchOver
+import js7.tests.master.cluster.MasterClusterTester._
+import js7.tests.master.cluster.SwitchOverClusterTest._
 import monix.execution.Scheduler.Implicits.global
 import scala.util.Try
 

@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.base.crypt
+package js7.base.crypt
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
-import com.sos.jobscheduler.base.utils.Strings._
+import js7.base.circeutils.CirceUtils.deriveCodec
+import js7.base.utils.Strings._
 
 /**
   * @author Joacim Zschimmer

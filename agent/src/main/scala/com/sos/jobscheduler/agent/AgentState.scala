@@ -1,13 +1,13 @@
-package com.sos.jobscheduler.agent
+package js7.agent
 
-import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.utils.ScalaUtils._
-import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{Event, EventId, JournaledState, KeyedEvent}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten}
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowEvent, WorkflowId}
+import js7.agent.data.event.AgentMasterEvent
+import js7.base.problem.Problem
+import js7.base.utils.ScalaUtils._
+import js7.data.event.KeyedEvent.NoKey
+import js7.data.event.{Event, EventId, JournaledState, KeyedEvent}
+import js7.data.order.OrderEvent.{OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten}
+import js7.data.order.{Order, OrderEvent, OrderId}
+import js7.data.workflow.{Workflow, WorkflowEvent, WorkflowId}
 import monix.reactive.Observable
 
 /**

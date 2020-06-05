@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.agent.fileordersource
+package js7.agent.fileordersource
 
-import com.sos.jobscheduler.agent.fileordersource.BlockingDirectoryWatcher._
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.Closer.syntax.RichClosersAutoCloseable
-import com.sos.jobscheduler.base.utils.HasCloser
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.system.OperatingSystem.isMac
+import js7.agent.fileordersource.BlockingDirectoryWatcher._
+import js7.base.time.ScalaTime._
+import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
+import js7.base.utils.HasCloser
+import js7.common.scalautil.Logger
+import js7.common.system.OperatingSystem.isMac
 import java.nio.file.StandardWatchEventKinds._
 import java.nio.file.{FileSystems, Path, WatchEvent}
 import scala.concurrent._

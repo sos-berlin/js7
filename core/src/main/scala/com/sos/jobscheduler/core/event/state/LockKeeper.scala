@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.core.event.state
+package js7.core.event.state
 
 import cats.effect.Resource
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.event.state.LockKeeper._
+import js7.common.scalautil.Logger
+import js7.core.event.state.LockKeeper._
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean
 import scala.collection.mutable

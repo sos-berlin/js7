@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.proxy.javaapi.data;
+package js7.proxy.javaapi.data;
 
-import com.sos.jobscheduler.data.filebased.VersionId;
-import com.sos.jobscheduler.data.workflow.WorkflowPath;
-import com.sos.jobscheduler.data.workflow.WorkflowPrinter;
-import com.sos.jobscheduler.proxy.javaapi.utils.JWorkflowParser;
-import static com.sos.jobscheduler.proxy.javaapi.utils.VavrUtils.getOrThrowProblem;
+import js7.data.filebased.VersionId;
+import js7.data.workflow.WorkflowPath;
+import js7.data.workflow.WorkflowPrinter;
+import js7.proxy.javaapi.utils.JWorkflowParser;
+import static js7.proxy.javaapi.utils.VavrUtils.getOrThrowProblem;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.endsWith;
 import static org.hamcrest.CoreMatchers.startsWith;

@@ -1,16 +1,16 @@
-package com.sos.jobscheduler.proxy
+package js7.proxy
 
 import cats.effect.Resource
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.base.utils.SetOnce
-import com.sos.jobscheduler.base.web.HttpClient
-import com.sos.jobscheduler.common.http.RecouplingStreamReader
-import com.sos.jobscheduler.common.http.configuration.RecouplingStreamReaderConf
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventApi, EventId, EventRequest, JournaledState, KeyedEvent, Stamped}
-import com.sos.jobscheduler.proxy.ProxyEvent.ProxyStarted
+import js7.base.problem.Checked.Ops
+import js7.base.time.ScalaTime._
+import js7.base.utils.Assertions.assertThat
+import js7.base.utils.ScalaUtils.RichThrowable
+import js7.base.utils.SetOnce
+import js7.base.web.HttpClient
+import js7.common.http.RecouplingStreamReader
+import js7.common.http.configuration.RecouplingStreamReaderConf
+import js7.data.event.{AnyKeyedEvent, Event, EventApi, EventId, EventRequest, JournaledState, KeyedEvent, Stamped}
+import js7.proxy.ProxyEvent.ProxyStarted
 import io.circe.Decoder
 import monix.eval.Task
 import monix.execution.CancelableFuture

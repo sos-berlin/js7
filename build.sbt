@@ -57,7 +57,7 @@ addCommandAlias("test-all",
 addCommandAlias("pack"           , "universal:packageZipTarball")
 addCommandAlias("publish-all"    , "universal:publish")  // Publishes artifacts too
 addCommandAlias("publish-install", "; install/universal:publish; install-docker:universal:publish")
-addCommandAlias("TestMasterAgent", "tests/runMain com.sos.jobscheduler.tests.TestMasterAgent -agents=2 -nodes-per-agent=3 -tasks=3 -job-duration=1.5s -period=10.s")
+addCommandAlias("TestMasterAgent", "tests/runMain js7.tests.TestMasterAgent -agents=2 -nodes-per-agent=3 -tasks=3 -job-duration=1.5s -period=10.s")
 addCommandAlias("quickPublishLocal", "; compile; publishLocal; project jobschedulerJS; compile; publishLocal")
 //scalafixDependencies in ThisBuild += "org.scala-lang.modules" %% "scala-collection-migrations" % "2.1.4"
 //addCompilerPlugin(scalafixSemanticdb)
@@ -259,7 +259,7 @@ lazy val base = crossProject(JSPlatform, JVMPlatform)
   }
   .enablePlugins(BuildInfoPlugin)
   .settings(
-    buildInfoPackage := "com.sos.jobscheduler.base",
+    buildInfoPackage := "js7.base",
     buildInfoKeys := buildInfoMap.value.map(BuildInfoKey.constant(_)).toSeq)
 
 /** build-info provides version info in a Scala-free jar. */

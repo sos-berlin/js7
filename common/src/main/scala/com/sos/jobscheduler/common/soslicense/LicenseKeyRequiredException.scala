@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.common.soslicense
+package js7.common.soslicense
 
-import com.sos.jobscheduler.base.exceptions.StandardPublicException
+import js7.base.exceptions.StandardPublicException
 
 /**
  * @author Joacim Zschimmer

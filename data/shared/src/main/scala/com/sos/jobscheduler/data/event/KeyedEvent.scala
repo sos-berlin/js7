@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.data.event
+package js7.data.event
 
-import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
-import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
+import js7.base.circeutils.typed.TypedJsonCodec
+import js7.data.event.KeyedEvent.NoKey
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder}
 import scala.reflect.ClassTag

@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.common.files
+package js7.common.files
 
-import com.sos.jobscheduler.base.utils.Collections.implicits._
-import com.sos.jobscheduler.common.files.DirectoryReader.Entry
+import js7.base.utils.Collections.implicits._
+import js7.common.files.DirectoryReader.Entry
 
 /**
   * @author Joacim Zschimmer

@@ -1,28 +1,28 @@
-package com.sos.jobscheduler.agent.scheduler.job.task
+package js7.agent.scheduler.job.task
 
 import com.google.inject.Guice
-import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.configuration.inject.AgentModule
-import com.sos.jobscheduler.agent.scheduler.job.ShellReturnValuesProvider
-import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunnerTest._
-import com.sos.jobscheduler.agent.tests.TestAgentDirectoryProvider
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.Stopwatch.measureTime
-import com.sos.jobscheduler.base.utils.Closer
-import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
-import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
-import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax.RichPath
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
-import com.sos.jobscheduler.common.system.OperatingSystem.{isUnix, isWindows}
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.job.{ExecutablePath, JobKey, ReturnCode}
-import com.sos.jobscheduler.data.order.{HistoricOutcome, Order, OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.position.Position
-import com.sos.jobscheduler.taskserver.task.process.{RichProcess, StdChannels}
+import js7.agent.configuration.AgentConfiguration
+import js7.agent.configuration.inject.AgentModule
+import js7.agent.scheduler.job.ShellReturnValuesProvider
+import js7.agent.scheduler.job.task.TaskRunnerTest._
+import js7.agent.tests.TestAgentDirectoryProvider
+import js7.base.time.ScalaTime._
+import js7.base.time.Stopwatch.measureTime
+import js7.base.utils.Closer
+import js7.common.guice.GuiceImplicits.RichInjector
+import js7.common.process.Processes.{ShellFileExtension => sh}
+import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
+import js7.common.scalautil.FileUtils.syntax.RichPath
+import js7.common.scalautil.Futures.implicits._
+import js7.common.system.FileUtils.temporaryDirectory
+import js7.common.system.OperatingSystem.{isUnix, isWindows}
+import js7.data.agent.AgentRefPath
+import js7.data.job.{ExecutablePath, JobKey, ReturnCode}
+import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
+import js7.data.workflow.WorkflowPath
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.position.Position
+import js7.taskserver.task.process.{RichProcess, StdChannels}
 import java.io.Writer
 import java.nio.file.Files.{createTempDirectory, setPosixFilePermissions}
 import java.nio.file.attribute.PosixFilePermissions

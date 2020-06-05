@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.master.web
+package js7.master.web
 
 import akka.http.scaladsl.model.StatusCodes.NotFound
 import akka.http.scaladsl.model.Uri

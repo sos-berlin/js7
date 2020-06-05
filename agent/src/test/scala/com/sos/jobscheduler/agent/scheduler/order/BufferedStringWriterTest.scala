@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.agent.scheduler.order
+package js7.agent.scheduler.order
 
-import com.sos.jobscheduler.agent.scheduler.order.BufferedStringWriterTest._
-import com.sos.jobscheduler.base.generic.Accepted
+import js7.agent.scheduler.order.BufferedStringWriterTest._
+import js7.base.generic.Accepted
 import java.io.IOException
 import monix.execution.Scheduler
 import scala.collection.mutable

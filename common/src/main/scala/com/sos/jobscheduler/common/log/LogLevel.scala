@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.common.log
+package js7.common.log
 
-import com.sos.jobscheduler.base.convert.As
+import js7.base.convert.As
 import com.typesafe.scalalogging.{Logger => ScalaLogger}
 import org.slf4j
 import org.slf4j.Marker

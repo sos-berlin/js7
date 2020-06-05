@@ -1,23 +1,23 @@
-package com.sos.jobscheduler.agent.web.views
+package js7.agent.web.views
 
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.headers.Accept
-import com.sos.jobscheduler.agent.data.AgentTaskId
-import com.sos.jobscheduler.agent.data.views.{TaskOverview, TaskRegisterOverview}
-import com.sos.jobscheduler.agent.task.{BaseAgentTask, TaskRegister, TaskRegisterActor}
-import com.sos.jobscheduler.agent.web.test.WebServiceTest
-import com.sos.jobscheduler.agent.web.views.TaskWebServiceTest._
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.process.ProcessSignal
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import com.sos.jobscheduler.common.http.CirceJsonSupport._
-import com.sos.jobscheduler.common.process.Processes.Pid
-import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
-import com.sos.jobscheduler.data.job.JobKey
-import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
+import js7.agent.data.AgentTaskId
+import js7.agent.data.views.{TaskOverview, TaskRegisterOverview}
+import js7.agent.task.{BaseAgentTask, TaskRegister, TaskRegisterActor}
+import js7.agent.web.test.WebServiceTest
+import js7.agent.web.views.TaskWebServiceTest._
+import js7.base.circeutils.CirceUtils._
+import js7.base.process.ProcessSignal
+import js7.base.time.ScalaTime._
+import js7.base.time.Timestamp
+import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
+import js7.common.http.CirceJsonSupport._
+import js7.common.process.Processes.Pid
+import js7.common.scalautil.Futures.implicits.SuccessFuture
+import js7.data.job.JobKey
+import js7.data.workflow.WorkflowPath
+import js7.data.workflow.instructions.executable.WorkflowJob
 import io.circe.Json
 import monix.execution.Scheduler
 import scala.concurrent.Promise

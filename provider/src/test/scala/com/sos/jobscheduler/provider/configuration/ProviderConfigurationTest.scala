@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.provider.configuration
+package js7.provider.configuration
 
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryDirectory
+import js7.base.web.Uri
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.FileUtils.withTemporaryDirectory
 import com.typesafe.config.ConfigFactory
 import org.scalatest.freespec.AnyFreeSpec
 

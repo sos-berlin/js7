@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.base.time
+package js7.base.time
 
 import cats.Show
-import com.sos.jobscheduler.base.convert.As
-import com.sos.jobscheduler.base.utils.Ascii.isAsciiDigit
+import js7.base.convert.As
+import js7.base.utils.Ascii.isAsciiDigit
 import scala.annotation.tailrec
 import scala.concurrent.blocking
 import scala.concurrent.duration._

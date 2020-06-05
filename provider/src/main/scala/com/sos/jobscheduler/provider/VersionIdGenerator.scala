@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.provider
+package js7.provider
 
-import com.sos.jobscheduler.data.filebased.VersionId
+import js7.data.filebased.VersionId
 import scala.collection.mutable
 
 /**

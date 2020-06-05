@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.agent.scheduler.job
+package js7.agent.scheduler.job
 
-import com.sos.jobscheduler.agent.scheduler.job.FilePool._
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.data.job.JobKey
-import com.sos.jobscheduler.taskserver.task.process.RichProcess.tryDeleteFiles
+import js7.agent.scheduler.job.FilePool._
+import js7.common.scalautil.Logger
+import js7.data.job.JobKey
+import js7.taskserver.task.process.RichProcess.tryDeleteFiles
 import java.nio.file.Path
 import scala.collection.mutable
 

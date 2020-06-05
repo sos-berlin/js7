@@ -1,13 +1,13 @@
-package com.sos.jobscheduler.core.filebased
+package js7.core.filebased
 
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.problem.Problems.InvalidNameProblem
-import com.sos.jobscheduler.base.time.Stopwatch.measureTime
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.core.filebased.TypedPaths._
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.filebased.SourceType
-import com.sos.jobscheduler.data.workflow.WorkflowPath
+import js7.base.problem.Problem
+import js7.base.problem.Problems.InvalidNameProblem
+import js7.base.time.Stopwatch.measureTime
+import js7.common.scalautil.FileUtils.syntax._
+import js7.core.filebased.TypedPaths._
+import js7.data.agent.AgentRefPath
+import js7.data.filebased.SourceType
+import js7.data.workflow.WorkflowPath
 import java.io.File.separator
 import java.nio.file.Paths
 import org.scalatest.freespec.AnyFreeSpec

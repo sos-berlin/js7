@@ -1,18 +1,18 @@
-package com.sos.jobscheduler.agent.web.views
+package js7.agent.web.views
 
 import akka.http.scaladsl.model.MediaTypes.{`application/json`, `text/plain`}
 import akka.http.scaladsl.model.headers.Accept
-import com.sos.jobscheduler.agent.data.views.AgentOverview
-import com.sos.jobscheduler.agent.web.test.WebServiceTest
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.system.SystemInformation
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
-import com.sos.jobscheduler.common.http.CirceJsonSupport._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.data.system.JavaInformation
+import js7.agent.data.views.AgentOverview
+import js7.agent.web.test.WebServiceTest
+import js7.base.circeutils.CirceUtils._
+import js7.base.system.SystemInformation
+import js7.base.time.ScalaTime._
+import js7.base.time.Timestamp
+import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
+import js7.common.http.AkkaHttpUtils.RichHttpResponse
+import js7.common.http.CirceJsonSupport._
+import js7.common.scalautil.Futures.implicits._
+import js7.data.system.JavaInformation
 import io.circe.Json
 import monix.eval.Task
 import monix.execution.Scheduler

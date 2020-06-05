@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.agent.scheduler.job
+package js7.agent.scheduler.job
 
-import com.sos.jobscheduler.agent.configuration.AgentConfiguration.FileEncoding
-import com.sos.jobscheduler.agent.scheduler.job.ShellReturnValuesProvider._
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
+import js7.agent.configuration.AgentConfiguration.FileEncoding
+import js7.agent.scheduler.job.ShellReturnValuesProvider._
+import js7.base.utils.AutoClosing.autoClosing
+import js7.common.scalautil.FileUtils.syntax._
 import java.nio.file.Files.createTempFile
 import java.nio.file.Path
 

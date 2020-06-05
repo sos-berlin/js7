@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.data.event
+package js7.data.event
 
 /**
   * An object's event.

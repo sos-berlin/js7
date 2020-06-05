@@ -1,13 +1,13 @@
-package com.sos.jobscheduler.master.command
+package js7.master.command
 
-import com.sos.jobscheduler.base.auth.{SimpleUser, UserId}
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.core.command.{CommandExecutor, CommandMeta}
-import com.sos.jobscheduler.data.command.CancelMode
-import com.sos.jobscheduler.data.order.OrderId
-import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.data.MasterCommand.{Batch, CancelOrder, ReleaseEvents, NoOperation, Response}
+import js7.base.auth.{SimpleUser, UserId}
+import js7.base.problem.Problem
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.core.command.{CommandExecutor, CommandMeta}
+import js7.data.command.CancelMode
+import js7.data.order.OrderId
+import js7.master.data.MasterCommand
+import js7.master.data.MasterCommand.{Batch, CancelOrder, ReleaseEvents, NoOperation, Response}
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.duration._

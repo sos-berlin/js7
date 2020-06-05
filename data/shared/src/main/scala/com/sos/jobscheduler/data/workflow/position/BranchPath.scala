@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.data.workflow.position
+package js7.data.workflow.position
 
-import com.sos.jobscheduler.base.utils.ScalazStyle._
+import js7.base.utils.ScalazStyle._
 import io.circe.{Decoder, DecodingFailure, Json}
 import scala.collection.mutable
 

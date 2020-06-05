@@ -1,25 +1,25 @@
-package com.sos.jobscheduler.tests.master.proxy
+package js7.tests.master.proxy
 
 import akka.http.scaladsl.server.Directives.{complete, get, pathSingleSlash}
-import com.sos.jobscheduler.base.BuildInfo
-import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
-import com.sos.jobscheduler.common.akkahttp.StandardMarshallers.monixObservableToMarshallable
-import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
-import com.sos.jobscheduler.common.akkautils.Akkas
-import com.sos.jobscheduler.common.commandline.CommandLineArguments
-import com.sos.jobscheduler.common.log.ScribeUtils
-import com.sos.jobscheduler.core.web.StampedStreamingSupport.stampedCirceStreamingSupport
-import com.sos.jobscheduler.data.event.{Event, EventId}
-import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
-import com.sos.jobscheduler.master.data.MasterSnapshots.SnapshotJsonCodec
-import com.sos.jobscheduler.master.data.MasterState
-import com.sos.jobscheduler.proxy.{JournaledProxy, ProxyEventBus}
-import com.sos.jobscheduler.tests.master.proxy.TestMasterProxy._
+import js7.base.BuildInfo
+import js7.base.auth.{UserAndPassword, UserId}
+import js7.base.generic.SecretString
+import js7.base.time.ScalaTime._
+import js7.base.web.Uri
+import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
+import js7.common.akkahttp.CirceJsonOrYamlSupport._
+import js7.common.akkahttp.StandardMarshallers.monixObservableToMarshallable
+import js7.common.akkahttp.web.AkkaWebServer
+import js7.common.akkautils.Akkas
+import js7.common.commandline.CommandLineArguments
+import js7.common.log.ScribeUtils
+import js7.core.web.StampedStreamingSupport.stampedCirceStreamingSupport
+import js7.data.event.{Event, EventId}
+import js7.master.client.AkkaHttpMasterApi
+import js7.master.data.MasterSnapshots.SnapshotJsonCodec
+import js7.master.data.MasterState
+import js7.proxy.{JournaledProxy, ProxyEventBus}
+import js7.tests.master.proxy.TestMasterProxy._
 import java.time.LocalDateTime
 import monix.eval.Task
 import monix.execution.Scheduler

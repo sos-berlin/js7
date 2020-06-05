@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.base.time
+package js7.base.time
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.utils.ScalaUtils._
-import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import js7.base.circeutils.CirceUtils._
+import js7.base.utils.ScalaUtils._
+import js7.tester.CirceJsonTester.testJson
 import io.circe.{Decoder, Encoder}
 import io.circe.syntax.EncoderOps
 import java.time.Instant

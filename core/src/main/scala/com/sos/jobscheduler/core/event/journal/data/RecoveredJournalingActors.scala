@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.core.event.journal.data
+package js7.core.event.journal.data
 
 import akka.actor.ActorRef
 

@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.agent.data.views
+package js7.agent.data.views
 
 import io.circe.generic.JsonCodec
 

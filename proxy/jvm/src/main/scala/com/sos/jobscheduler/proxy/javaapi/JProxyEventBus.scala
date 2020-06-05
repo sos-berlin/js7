@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.proxy.javaapi
+package js7.proxy.javaapi
 
-import com.sos.jobscheduler.base.annotation.javaApi
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Stamped}
-import com.sos.jobscheduler.master.data.MasterState
-import com.sos.jobscheduler.proxy.ProxyEventBus
-import com.sos.jobscheduler.proxy.javaapi.data.{JMasterState, JavaWrapper}
+import js7.base.annotation.javaApi
+import js7.base.utils.Assertions.assertThat
+import js7.data.event.{Event, KeyedEvent, Stamped}
+import js7.master.data.MasterState
+import js7.proxy.ProxyEventBus
+import js7.proxy.javaapi.data.{JMasterState, JavaWrapper}
 import scala.jdk.CollectionConverters._
 
 @javaApi

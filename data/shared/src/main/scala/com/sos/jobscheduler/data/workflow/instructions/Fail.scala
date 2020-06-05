@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.data.workflow.instructions
+package js7.data.workflow.instructions
 
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.data.expression.Expression
-import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.data.source.SourcePos
-import com.sos.jobscheduler.data.workflow.Instruction
+import js7.base.utils.ScalazStyle._
+import js7.data.expression.Expression
+import js7.data.job.ReturnCode
+import js7.data.source.SourcePos
+import js7.data.workflow.Instruction
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 

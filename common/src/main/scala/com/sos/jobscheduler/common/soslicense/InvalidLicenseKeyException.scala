@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.soslicense
+package js7.common.soslicense
 
 /**
  * @author Joacim Zschimmer

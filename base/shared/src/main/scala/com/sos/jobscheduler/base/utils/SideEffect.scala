@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.base.utils
+package js7.base.utils
 
 object SideEffect {
   implicit final class ImplicitSideEffect[A](private val any: A) extends AnyVal {

@@ -1,14 +1,14 @@
-package com.sos.jobscheduler.agent.task
+package js7.agent.task
 
 import com.google.common.base.StandardSystemProperty.LINE_SEPARATOR
-import com.sos.jobscheduler.agent.data.{AgentTaskId, ProcessKillScript}
-import com.sos.jobscheduler.agent.task.CrashKillScript._
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.log.LazyScalaLogger.AsLazyScalaLogger
-import com.sos.jobscheduler.common.process.Processes.Pid
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.utils.Exceptions.ignoreException
-import com.sos.jobscheduler.data.job.TaskId
+import js7.agent.data.{AgentTaskId, ProcessKillScript}
+import js7.agent.task.CrashKillScript._
+import js7.base.utils.AutoClosing.autoClosing
+import js7.common.log.LazyScalaLogger.AsLazyScalaLogger
+import js7.common.process.Processes.Pid
+import js7.common.scalautil.Logger
+import js7.common.utils.Exceptions.ignoreException
+import js7.data.job.TaskId
 import java.io.{BufferedWriter, FileOutputStream, OutputStreamWriter, Writer}
 import java.nio.charset.Charset.defaultCharset
 import java.nio.file.Files.{createFile, deleteIfExists, move}

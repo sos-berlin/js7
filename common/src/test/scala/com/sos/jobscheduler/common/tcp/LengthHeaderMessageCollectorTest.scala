@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.common.tcp
+package js7.common.tcp
 
 import akka.util.ByteString
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.tcp.LengthHeaderMessageCollector.intToBytesString
-import com.sos.jobscheduler.common.tcp.LengthHeaderMessageCollectorTest._
+import js7.base.time.ScalaTime._
+import js7.common.scalautil.Logger
+import js7.common.tcp.LengthHeaderMessageCollector.intToBytesString
+import js7.common.tcp.LengthHeaderMessageCollectorTest._
 import scala.concurrent.duration.Deadline.now
 import scala.util.Random
 import org.scalatest.freespec.AnyFreeSpec

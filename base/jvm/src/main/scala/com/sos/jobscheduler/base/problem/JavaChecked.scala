@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.base.problem
+package js7.base.problem
 
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
+import js7.base.problem.Checked.Ops
+import js7.base.utils.ScalaUtils.RichThrowable
 import java.util.Optional
 
 /**

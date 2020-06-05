@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.core.event.journal.test
+package js7.core.event.journal.test
 
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.data.event.Event
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.data.event.Event
 import io.circe.generic.JsonCodec
 
 /**

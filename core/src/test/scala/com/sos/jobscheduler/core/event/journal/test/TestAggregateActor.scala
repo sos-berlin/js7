@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.core.event.journal.test
+package js7.core.event.journal.test
 
 import akka.Done
 import akka.actor.{ActorRef, Status}
-import com.sos.jobscheduler.base.generic.Accepted
-import com.sos.jobscheduler.base.utils.ScalaUtils.{RichThrowable, cast}
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.event.journal.test.TestAggregateActor._
-import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalConf, KeyedJournalingActor}
+import js7.base.generic.Accepted
+import js7.base.utils.ScalaUtils.{RichThrowable, cast}
+import js7.common.scalautil.Logger
+import js7.core.event.journal.test.TestAggregateActor._
+import js7.core.event.journal.{JournalActor, JournalConf, KeyedJournalingActor}
 import monix.execution.Scheduler
 import scala.util.{Failure, Success}
 import shapeless.tag.@@

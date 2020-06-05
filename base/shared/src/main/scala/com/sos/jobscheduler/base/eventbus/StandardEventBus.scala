@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.base.eventbus
+package js7.base.eventbus
 
-import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
+import js7.base.utils.ScalaUtils.implicitClass
 import scala.reflect.ClassTag
 
 final class StandardEventBus[E: ClassTag] extends ClassEventBus[E]

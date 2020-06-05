@@ -1,30 +1,30 @@
-package com.sos.jobscheduler.tests.core
+package js7.tests.core
 
-import com.sos.jobscheduler.base.auth.{SessionToken, SimpleUser}
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
-import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
-import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
-import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
-import com.sos.jobscheduler.common.event.collector.EventCollector
-import com.sos.jobscheduler.common.http.AkkaHttpClient
-import com.sos.jobscheduler.common.http.AkkaHttpClient.HttpException
-import com.sos.jobscheduler.common.http.Uris.{encodePath, encodeQuery}
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import com.sos.jobscheduler.core.event.GenericEventRoute
-import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeqTornProblem, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.order.OrderEvent.OrderAdded
-import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
-import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.master.data.events.MasterKeyedEventJsonCodec
-import com.sos.jobscheduler.tests.core.GenericEventRouteTest._
+import js7.base.auth.{SessionToken, SimpleUser}
+import js7.base.time.ScalaTime._
+import js7.base.time.Timestamp
+import js7.base.web.Uri
+import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
+import js7.common.akkahttp.web.AkkaWebServer
+import js7.common.akkahttp.web.auth.GateKeeper
+import js7.common.akkahttp.web.data.WebServerBinding
+import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
+import js7.common.akkautils.ProvideActorSystem
+import js7.common.event.collector.EventCollector
+import js7.common.http.AkkaHttpClient
+import js7.common.http.AkkaHttpClient.HttpException
+import js7.common.http.Uris.{encodePath, encodeQuery}
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.common.time.WaitForCondition.waitForCondition
+import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import js7.core.event.GenericEventRoute
+import js7.data.event.{Event, EventId, EventRequest, EventSeqTornProblem, KeyedEvent, Stamped}
+import js7.data.order.OrderEvent.OrderAdded
+import js7.data.order.{OrderEvent, OrderId}
+import js7.data.workflow.WorkflowPath
+import js7.master.data.events.MasterKeyedEventJsonCodec
+import js7.tests.core.GenericEventRouteTest._
 import com.typesafe.config.ConfigFactory
 import io.circe.Decoder
 import java.net.{InetAddress, InetSocketAddress}

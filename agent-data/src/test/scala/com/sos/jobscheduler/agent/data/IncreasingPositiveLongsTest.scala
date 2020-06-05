@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.agent.data
+package js7.agent.data
 
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._

@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.common.scalautil
+package js7.common.scalautil
 
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.IOExecutor.ioFuture
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.IOExecutor.ioFuture
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import org.scalatest.freespec.AnyFreeSpec

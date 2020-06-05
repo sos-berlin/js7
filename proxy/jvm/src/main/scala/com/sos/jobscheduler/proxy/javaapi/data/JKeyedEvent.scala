@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.proxy.javaapi.data
+package js7.proxy.javaapi.data
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.data.event.{Event, KeyedEvent}
-import com.sos.jobscheduler.master.data.events.MasterKeyedEventJsonCodec
+import js7.base.circeutils.CirceUtils._
+import js7.data.event.{Event, KeyedEvent}
+import js7.master.data.events.MasterKeyedEventJsonCodec
 
 object JKeyedEvent
 {

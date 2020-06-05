@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.data.execution.workflow.instructions
+package js7.data.execution.workflow.instructions
 
-import com.sos.jobscheduler.data.execution.workflow.context.OrderContext
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderFailedCatchable, OrderMoved}
-import com.sos.jobscheduler.data.order.Outcome.Disrupted.JobSchedulerRestarted
-import com.sos.jobscheduler.data.order.{Order, Outcome}
-import com.sos.jobscheduler.data.workflow.instructions.Execute
+import js7.data.execution.workflow.context.OrderContext
+import js7.data.order.OrderEvent.{OrderFailedCatchable, OrderMoved}
+import js7.data.order.Outcome.Disrupted.JobSchedulerRestarted
+import js7.data.order.{Order, Outcome}
+import js7.data.workflow.instructions.Execute
 
 /**
   * @author Joacim Zschimmer

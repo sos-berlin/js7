@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.data.expression
+package js7.data.expression
 
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import js7.base.problem.{Checked, Problem}
 
 /**
   * @author Joacim Zschimmer

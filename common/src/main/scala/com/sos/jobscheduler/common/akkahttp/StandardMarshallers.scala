@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.akkahttp
+package js7.common.akkahttp
 
 import akka.NotUsed
 import akka.http.scaladsl.marshalling.{Marshaller, ToEntityMarshaller, ToResponseMarshallable, ToResponseMarshaller}
@@ -7,13 +7,13 @@ import akka.http.scaladsl.model.{ContentType, HttpEntity, HttpResponse, MediaTyp
 import akka.http.scaladsl.unmarshalling.{FromStringUnmarshaller, Unmarshaller}
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
-import com.sos.jobscheduler.base.monixutils.MonixBase.closeableIteratorToObservable
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.CloseableIterator
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.common.http.CirceJsonSupport.jsonMarshaller
-import com.sos.jobscheduler.common.http.StreamingSupport.AkkaObservable
-import com.sos.jobscheduler.common.scalautil.Logger
+import js7.base.monixutils.MonixBase.closeableIteratorToObservable
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.CloseableIterator
+import js7.base.utils.ScalaUtils.RichThrowable
+import js7.common.http.CirceJsonSupport.jsonMarshaller
+import js7.common.http.StreamingSupport.AkkaObservable
+import js7.common.scalautil.Logger
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import scala.concurrent.duration._

@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.akkahttp
+package js7.common.akkahttp
 
 import akka.http.scaladsl.model.DateTime
 import akka.http.scaladsl.model.Uri.Path
@@ -7,9 +7,9 @@ import akka.http.scaladsl.model.headers.{ETag, `Cache-Control`, `Last-Modified`}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.PathMatcher.{Matched, Unmatched}
 import akka.http.scaladsl.server.{Directive0, PathMatcher1, Route}
-import com.sos.jobscheduler.base.BuildInfo
-import com.sos.jobscheduler.base.problem.{Checked, CheckedString}
-import com.sos.jobscheduler.base.utils.Collections.implicits._
+import js7.base.BuildInfo
+import js7.base.problem.{Checked, CheckedString}
+import js7.base.utils.Collections.implicits._
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.{ExecutionContext, Future}

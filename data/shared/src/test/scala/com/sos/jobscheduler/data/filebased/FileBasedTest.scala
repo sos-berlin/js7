@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.data.filebased
+package js7.data.filebased
 
 import org.scalatest.freespec.AnyFreeSpec
 

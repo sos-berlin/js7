@@ -1,23 +1,23 @@
-package com.sos.jobscheduler.master.cluster
+package js7.master.cluster
 
 import akka.actor.ActorSystem
 import cats.effect.Resource
-import com.sos.jobscheduler.base.eventbus.EventPublisher
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.base.utils.ScalaUtils._
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.cluster.ClusterWatch.ClusterWatchHeartbeatFromInactiveNodeProblem
-import com.sos.jobscheduler.core.cluster.ClusterWatchApi
-import com.sos.jobscheduler.data.cluster.{ClusterCommand, ClusterEvent, ClusterState}
-import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
-import com.sos.jobscheduler.master.cluster.ClusterCommon._
-import com.sos.jobscheduler.master.cluster.PassiveClusterNode.{ClusterWatchAgreesToActivation, ClusterWatchDisagreeToActivation}
-import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.data.MasterCommand.InternalClusterCommand
+import js7.base.eventbus.EventPublisher
+import js7.base.generic.Completed
+import js7.base.problem.Checked
+import js7.base.time.ScalaTime._
+import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.ScalaUtils._
+import js7.base.web.Uri
+import js7.common.scalautil.Logger
+import js7.core.cluster.ClusterWatch.ClusterWatchHeartbeatFromInactiveNodeProblem
+import js7.core.cluster.ClusterWatchApi
+import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterState}
+import js7.master.client.{AkkaHttpMasterApi, HttpMasterApi}
+import js7.master.cluster.ClusterCommon._
+import js7.master.cluster.PassiveClusterNode.{ClusterWatchAgreesToActivation, ClusterWatchDisagreeToActivation}
+import js7.master.data.MasterCommand
+import js7.master.data.MasterCommand.InternalClusterCommand
 import java.nio.ByteBuffer
 import java.nio.channels.{FileChannel, GatheringByteChannel, ScatteringByteChannel}
 import java.nio.file.StandardOpenOption.{CREATE, READ, TRUNCATE_EXISTING, WRITE}

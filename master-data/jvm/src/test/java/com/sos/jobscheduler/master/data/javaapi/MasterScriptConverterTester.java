@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.master.data.javaapi;
+package js7.master.data.javaapi;
 
-import com.sos.jobscheduler.base.problem.JavaChecked;
-import com.sos.jobscheduler.base.problem.Problem;
+import js7.base.problem.JavaChecked;
+import js7.base.problem.Problem;
 import java.util.Optional;
 
 /**

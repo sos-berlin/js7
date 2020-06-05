@@ -1,31 +1,31 @@
-package com.sos.jobscheduler.core.event.state
+package js7.core.event.state
 
 import akka.pattern.ask
 import akka.util.Timeout
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.base.generic.GenericString
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.Collections.implicits._
-import com.sos.jobscheduler.base.utils.ScalaUtils._
-import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
-import com.sos.jobscheduler.common.event.{EventIdClock, EventIdGenerator}
-import com.sos.jobscheduler.common.log.ScribeUtils
-import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.core.event.StampedKeyedEventBus
-import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.core.event.journal.recover.JournaledStateRecoverer
-import com.sos.jobscheduler.core.event.journal.test.TestData
-import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
-import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalConf}
-import com.sos.jobscheduler.core.event.state.JournaledStatePersistenceTest._
-import com.sos.jobscheduler.data.cluster.ClusterState
-import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import com.sos.jobscheduler.data.event.{Event, EventId, JournalEvent, JournalState, JournaledState, JournaledStateBuilder, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
+import js7.base.circeutils.CirceUtils.deriveCodec
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.generic.GenericString
+import js7.base.problem.Checked._
+import js7.base.problem.{Checked, Problem}
+import js7.base.time.ScalaTime._
+import js7.base.utils.Collections.implicits._
+import js7.base.utils.ScalaUtils._
+import js7.common.akkautils.ProvideActorSystem
+import js7.common.event.{EventIdClock, EventIdGenerator}
+import js7.common.log.ScribeUtils
+import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.core.event.StampedKeyedEventBus
+import js7.core.event.journal.data.JournalMeta
+import js7.core.event.journal.recover.JournaledStateRecoverer
+import js7.core.event.journal.test.TestData
+import js7.core.event.journal.watch.JournalEventWatch
+import js7.core.event.journal.{JournalActor, JournalConf}
+import js7.core.event.state.JournaledStatePersistenceTest._
+import js7.data.cluster.ClusterState
+import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
+import js7.data.event.{Event, EventId, JournalEvent, JournalState, JournaledState, JournaledStateBuilder, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
 import com.typesafe.config.ConfigFactory
 import io.circe.generic.JsonCodec
 import java.nio.file.Files.createTempDirectory

@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.tests.https
+package js7.tests.https
 
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.tests.https.MasterClientSideHttpsWithoutCertificateTest._
+import js7.base.time.ScalaTime._
+import js7.common.scalautil.Logger
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.tests.https.MasterClientSideHttpsWithoutCertificateTest._
 import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.TimeoutException
 

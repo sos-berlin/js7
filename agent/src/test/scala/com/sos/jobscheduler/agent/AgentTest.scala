@@ -1,28 +1,28 @@
-package com.sos.jobscheduler.agent
+package js7.agent
 
-import com.sos.jobscheduler.agent.AgentTest._
-import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, RegisterAsMaster}
-import com.sos.jobscheduler.agent.tests.AgentTester
-import com.sos.jobscheduler.agent.tests.TestAgentDirectoryProvider.provideAgentDirectory
-import com.sos.jobscheduler.base.auth.SimpleUser
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
-import com.sos.jobscheduler.common.scalautil.FileUtils.WorkingDirectory
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
-import com.sos.jobscheduler.core.command.CommandMeta
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.master.MasterId
-import com.sos.jobscheduler.data.order.OrderEvent.OrderProcessed
-import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.instructions.Execute
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.test.TestSetting.TestAgentRefPath
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
+import js7.agent.AgentTest._
+import js7.agent.configuration.AgentConfiguration
+import js7.agent.data.commands.AgentCommand
+import js7.agent.data.commands.AgentCommand.{AttachOrder, RegisterAsMaster}
+import js7.agent.tests.AgentTester
+import js7.agent.tests.TestAgentDirectoryProvider.provideAgentDirectory
+import js7.base.auth.SimpleUser
+import js7.base.time.ScalaTime._
+import js7.common.process.Processes.{ShellFileExtension => sh}
+import js7.common.scalautil.FileUtils.WorkingDirectory
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.common.system.OperatingSystem.isWindows
+import js7.core.command.CommandMeta
+import js7.data.agent.AgentRefPath
+import js7.data.job.ExecutablePath
+import js7.data.master.MasterId
+import js7.data.order.OrderEvent.OrderProcessed
+import js7.data.order.{Order, OrderId, Outcome}
+import js7.data.workflow.instructions.Execute
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.test.TestSetting.TestAgentRefPath
+import js7.data.workflow.{Workflow, WorkflowPath}
 import java.nio.file.Files.createDirectory
 import java.nio.file.Path
 import monix.execution.Scheduler.Implicits.global

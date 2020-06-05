@@ -1,13 +1,13 @@
-package com.sos.jobscheduler.provider.scheduledorder
+package js7.provider.scheduledorder
 
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.JavaTimeConverters._
-import com.sos.jobscheduler.data.order.FreshOrder
-import com.sos.jobscheduler.provider.scheduledorder.OrderScheduleGenerator._
-import com.sos.jobscheduler.provider.scheduledorder.oldruntime.InstantInterval
+import js7.base.generic.Completed
+import js7.base.time.Timestamp
+import js7.base.utils.ScalaUtils.RichThrowable
+import js7.common.scalautil.Logger
+import js7.common.time.JavaTimeConverters._
+import js7.data.order.FreshOrder
+import js7.provider.scheduledorder.OrderScheduleGenerator._
+import js7.provider.scheduledorder.oldruntime.InstantInterval
 import com.typesafe.config.Config
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean

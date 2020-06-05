@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.common.event.collector
+package js7.common.event.collector
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import com.sos.jobscheduler.common.event.collector.EventDirectives.eventRequest
-import com.sos.jobscheduler.common.event.collector.EventDirectivesTest._
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, KeyedEvent}
+import js7.common.event.collector.EventDirectives.eventRequest
+import js7.common.event.collector.EventDirectivesTest._
+import js7.base.time.ScalaTime._
+import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
+import js7.data.event.{Event, EventId, EventRequest, KeyedEvent}
 import io.circe.generic.JsonCodec
 import scala.concurrent.duration._
 import org.scalatest.freespec.AnyFreeSpec

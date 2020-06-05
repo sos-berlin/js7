@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.master.data.agent
+package js7.master.data.agent
 
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.event.{Event, EventId}
+import js7.data.agent.AgentRefPath
+import js7.data.event.{Event, EventId}
 import io.circe.generic.JsonCodec
 
 /**

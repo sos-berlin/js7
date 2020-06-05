@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.agent.data.web
+package js7.agent.data.web
 
-import com.sos.jobscheduler.agent.data.AgentTaskId
-import com.sos.jobscheduler.base.web.Uri
+import js7.agent.data.AgentTaskId
+import js7.base.web.Uri
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

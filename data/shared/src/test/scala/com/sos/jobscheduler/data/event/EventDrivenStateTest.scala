@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.data.event
+package js7.data.event
 
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.data.event.EventDrivenStateTest._
-import com.sos.jobscheduler.data.event.JournaledState.EventNotApplicableProblem
-import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
+import js7.base.problem.Checked.Ops
+import js7.base.time.Timestamp
+import js7.data.event.EventDrivenStateTest._
+import js7.data.event.JournaledState.EventNotApplicableProblem
+import js7.data.event.KeyedEvent.NoKey
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.common.system
+package js7.common.system
 
-import com.sos.jobscheduler.base.system.SystemInformation
+import js7.base.system.SystemInformation
 import io.circe.syntax.EncoderOps
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -9,7 +9,7 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class SystemInformationsTest extends AnyFreeSpec {
 
-  // See also com.sos.jobscheduler.base.system.SystemInformationTest
+  // See also js7.base.system.SystemInformationTest
 
   "JSON" in {
     val o = SystemInformations.systemInformation()

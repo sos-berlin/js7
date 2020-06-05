@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.agent.main
+package js7.agent.main
 
-import com.sos.jobscheduler.agent.RunningAgent
-import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.tests.TestAgentDirectoryProvider
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import js7.agent.RunningAgent
+import js7.agent.configuration.AgentConfiguration
+import js7.agent.tests.TestAgentDirectoryProvider
+import js7.common.scalautil.Futures.implicits._
 
 /** For testing only.
   * @author Joacim Zschimmer

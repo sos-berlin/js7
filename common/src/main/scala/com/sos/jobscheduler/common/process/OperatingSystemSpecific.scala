@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.common.process
+package js7.common.process
 
-import com.sos.jobscheduler.common.process.OperatingSystemSpecific._
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.system.OperatingSystem._
-import com.sos.jobscheduler.data.system.StdoutOrStderr
+import js7.common.process.OperatingSystemSpecific._
+import js7.common.scalautil.Logger
+import js7.common.system.OperatingSystem._
+import js7.data.system.StdoutOrStderr
 import java.nio.file.Files._
 import java.nio.file.attribute.PosixFilePermissions._
 import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}

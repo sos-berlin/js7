@@ -1,13 +1,13 @@
-package com.sos.jobscheduler.core.startup
+package js7.core.startup
 
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
-import com.sos.jobscheduler.common.log.Log4j
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.JavaTimeConverters._
-import com.sos.jobscheduler.common.utils.JavaShutdownHook
-import com.sos.jobscheduler.core.message.ProblemCodeMessages
-import com.sos.jobscheduler.core.startup.StartUp.printlnWithClock
+import js7.base.utils.ScalaUtils.RichThrowable
+import js7.common.configutils.Configs.ConvertibleConfig
+import js7.common.log.Log4j
+import js7.common.scalautil.Logger
+import js7.common.time.JavaTimeConverters._
+import js7.common.utils.JavaShutdownHook
+import js7.core.message.ProblemCodeMessages
+import js7.core.startup.StartUp.printlnWithClock
 import com.typesafe.config.Config
 import scala.concurrent.duration.FiniteDuration
 

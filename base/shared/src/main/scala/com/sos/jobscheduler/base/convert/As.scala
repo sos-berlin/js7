@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.base.convert
+package js7.base.convert
 
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.utils.DecimalPrefixes
+import js7.base.problem.Checked.Ops
+import js7.base.utils.DecimalPrefixes
 
 /**
   * @author Joacim Zschimmer

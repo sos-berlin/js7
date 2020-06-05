@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.common.akkahttp
+package js7.common.akkahttp
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
-import com.sos.jobscheduler.common.http.CirceToYaml._
+import js7.base.circeutils.CirceUtils.deriveCodec
+import js7.common.http.CirceToYaml._
 import io.circe.{Json, JsonObject}
 import org.scalatest.freespec.AnyFreeSpec
 

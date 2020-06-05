@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.common.utils
+package js7.common.utils
 
-import com.sos.jobscheduler.common.utils.BeanPropertyReader.Keep
+import js7.common.utils.BeanPropertyReader.Keep
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

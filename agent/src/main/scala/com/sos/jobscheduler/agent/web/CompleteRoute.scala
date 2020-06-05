@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.agent.web
+package js7.agent.web
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.directives.CodingDirectives.{decodeRequest, encodeResponse}
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import com.sos.jobscheduler.common.akkahttp.WebLogDirectives
-import com.sos.jobscheduler.common.akkahttp.web.auth.CSRF.forbidCSRF
+import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
+import js7.common.akkahttp.WebLogDirectives
+import js7.common.akkahttp.web.auth.CSRF.forbidCSRF
 import com.typesafe.config.Config
 
 /**

@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.common.http
+package js7.common.http
 
-import com.sos.jobscheduler.common.http.Uris._
+import js7.common.http.Uris._
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

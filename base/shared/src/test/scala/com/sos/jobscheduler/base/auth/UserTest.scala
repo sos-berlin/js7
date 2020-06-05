@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.base.auth
+package js7.base.auth
 
-import com.sos.jobscheduler.base.auth.UserTest._
+import js7.base.auth.UserTest._
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

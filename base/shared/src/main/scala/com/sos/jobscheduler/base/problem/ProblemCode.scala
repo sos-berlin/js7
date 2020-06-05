@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.base.problem
+package js7.base.problem
 
-import com.sos.jobscheduler.base.generic.GenericString
+import js7.base.generic.GenericString
 
 /**
   * @author Joacim Zschimmer

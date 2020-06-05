@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.data.cluster
+package js7.data.cluster
 
 import cats.instances.either._
 import cats.syntax.flatMap._
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.web.Uri
+import js7.base.problem.{Checked, Problem}
+import js7.base.web.Uri
 
 object ClusterSetting
 {

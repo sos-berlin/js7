@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.data.event
+package js7.data.event
 
-import com.sos.jobscheduler.base.circeutils.CirceObjectCodec
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.base.utils.CloseableIterator
-import com.sos.jobscheduler.data.event.EventSeq.{Empty, NonEmpty}
+import js7.base.circeutils.CirceObjectCodec
+import js7.base.circeutils.CirceUtils.deriveCodec
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.utils.Assertions.assertThat
+import js7.base.utils.CloseableIterator
+import js7.data.event.EventSeq.{Empty, NonEmpty}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 

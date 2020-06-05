@@ -1,18 +1,18 @@
-package com.sos.jobscheduler.master.web.master.api
+package js7.master.web.master.api
 
 import akka.http.scaladsl.model.StatusCodes.NotFound
 import akka.http.scaladsl.model.headers.CacheDirectives.{`max-age`, `no-cache`, `no-store`}
 import akka.http.scaladsl.model.headers.`Cache-Control`
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import com.sos.jobscheduler.common.akkahttp.web.session.SessionRoute
-import com.sos.jobscheduler.master.web.common.MasterRouteProvider
-import com.sos.jobscheduler.master.web.master.api.ApiRoute._
-import com.sos.jobscheduler.master.web.master.api.fatevent.FatEventRoute
-import com.sos.jobscheduler.master.web.master.api.graphql.GraphqlRoute
-import com.sos.jobscheduler.master.web.master.api.log.LogRoute
-import com.sos.jobscheduler.master.web.master.api.order.OrderRoute
-import com.sos.jobscheduler.master.web.master.api.workflow.WorkflowRoute
+import js7.common.akkahttp.web.session.SessionRoute
+import js7.master.web.common.MasterRouteProvider
+import js7.master.web.master.api.ApiRoute._
+import js7.master.web.master.api.fatevent.FatEventRoute
+import js7.master.web.master.api.graphql.GraphqlRoute
+import js7.master.web.master.api.log.LogRoute
+import js7.master.web.master.api.order.OrderRoute
+import js7.master.web.master.api.workflow.WorkflowRoute
 
 /**
   * @author Joacim Zschimmer

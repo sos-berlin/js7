@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.data.workflow
+package js7.data.workflow
 
-import com.sos.jobscheduler.data.event.{Event, NoKeyEvent}
+import js7.data.event.{Event, NoKeyEvent}
 import io.circe.generic.JsonCodec
 
 /**

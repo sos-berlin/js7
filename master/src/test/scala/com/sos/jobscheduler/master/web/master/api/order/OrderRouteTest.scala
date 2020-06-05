@@ -1,24 +1,24 @@
-package com.sos.jobscheduler.master.web.master.api.order
+package js7.master.web.master.api.order
 
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, Conflict, Created, OK}
 import akka.http.scaladsl.model.headers.{Accept, Location}
 import akka.http.scaladsl.server.Route
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import com.sos.jobscheduler.common.http.AkkaHttpUtils._
-import com.sos.jobscheduler.common.http.CirceJsonSupport._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId, OrdersOverview}
-import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.data.workflow.position.Position
-import com.sos.jobscheduler.master.OrderApi
-import com.sos.jobscheduler.master.web.master.api.order.OrderRouteTest._
-import com.sos.jobscheduler.master.web.master.api.test.RouteTester
+import js7.base.generic.Completed
+import js7.base.problem.Checked
+import js7.base.time.ScalaTime._
+import js7.base.time.Timestamp
+import js7.base.utils.Collections.implicits.RichTraversable
+import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
+import js7.common.http.AkkaHttpUtils._
+import js7.common.http.CirceJsonSupport._
+import js7.common.scalautil.Futures.implicits._
+import js7.data.order.{FreshOrder, Order, OrderId, OrdersOverview}
+import js7.data.workflow.WorkflowPath
+import js7.data.workflow.position.Position
+import js7.master.OrderApi
+import js7.master.web.master.api.order.OrderRouteTest._
+import js7.master.web.master.api.test.RouteTester
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec

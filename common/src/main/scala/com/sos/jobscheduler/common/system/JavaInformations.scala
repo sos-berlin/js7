@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.common.system
+package js7.common.system
 
-import com.sos.jobscheduler.data.system.JavaInformation
-import com.sos.jobscheduler.data.system.JavaInformation.Memory
+import js7.data.system.JavaInformation
+import js7.data.system.JavaInformation.Memory
 
 /**
   * @author Joacim Zschimmer

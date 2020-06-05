@@ -1,30 +1,30 @@
-package com.sos.jobscheduler.tests.master.commands
+package js7.tests.master.commands
 
-import com.sos.jobscheduler.agent.RunningAgent
-import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.http.AkkaHttpClient.HttpException
-import com.sos.jobscheduler.common.log.ScribeUtils
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax.RichTask
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
-import com.sos.jobscheduler.data.filebased.VersionId
-import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
-import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
-import com.sos.jobscheduler.master.RunningMaster
-import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.data.MasterCommand.UpdateRepo
-import com.sos.jobscheduler.tests.master.commands.UpdateRepoAgentTest._
-import com.sos.jobscheduler.tests.testenv.DirectoryProvider
+import js7.agent.RunningAgent
+import js7.agent.configuration.AgentConfiguration
+import js7.base.auth.{UserAndPassword, UserId}
+import js7.base.generic.SecretString
+import js7.base.problem.Checked
+import js7.base.problem.Checked.Ops
+import js7.base.utils.AutoClosing.autoClosing
+import js7.common.http.AkkaHttpClient.HttpException
+import js7.common.log.ScribeUtils
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.MonixUtils.syntax.RichTask
+import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import js7.data.agent.{AgentRef, AgentRefPath}
+import js7.data.filebased.VersionId
+import js7.data.job.ExecutablePath
+import js7.data.order.OrderEvent.OrderFinished
+import js7.data.order.{FreshOrder, OrderId}
+import js7.data.workflow.WorkflowPath
+import js7.data.workflow.parser.WorkflowParser
+import js7.master.RunningMaster
+import js7.master.data.MasterCommand
+import js7.master.data.MasterCommand.UpdateRepo
+import js7.tests.master.commands.UpdateRepoAgentTest._
+import js7.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._

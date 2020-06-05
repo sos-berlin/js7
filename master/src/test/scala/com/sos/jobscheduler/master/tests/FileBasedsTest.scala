@@ -1,19 +1,19 @@
-package com.sos.jobscheduler.master.tests
+package js7.master.tests
 
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.core.filebased.FileBaseds
-import com.sos.jobscheduler.core.filebased.FileBaseds.diffFileBaseds
-import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
-import com.sos.jobscheduler.data.filebased.{FileBased, RepoChange, TypedPath, VersionId}
-import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{Execute, ExplicitEnd}
-import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.master.tests.FileBasedsTest._
+import js7.base.problem.Checked.Ops
+import js7.base.web.Uri
+import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
+import js7.common.scalautil.FileUtils.syntax._
+import js7.core.filebased.FileBaseds
+import js7.core.filebased.FileBaseds.diffFileBaseds
+import js7.data.agent.{AgentRef, AgentRefPath}
+import js7.data.filebased.{FileBased, RepoChange, TypedPath, VersionId}
+import js7.data.job.ExecutablePath
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.instructions.{Execute, ExplicitEnd}
+import js7.data.workflow.parser.WorkflowParser
+import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.master.tests.FileBasedsTest._
 import java.nio.file.Files.{createDirectories, createTempDirectory}
 import java.nio.file.Path
 import org.scalatest.freespec.AnyFreeSpec

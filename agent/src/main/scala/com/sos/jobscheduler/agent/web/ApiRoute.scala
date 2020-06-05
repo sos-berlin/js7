@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.agent.web
+package js7.agent.web
 
 import akka.http.scaladsl.model.StatusCodes.NotFound
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import com.sos.jobscheduler.agent.web.master.MasterRoute
-import com.sos.jobscheduler.agent.web.views.RootWebService
-import com.sos.jobscheduler.common.akkahttp.web.session.SessionRoute
+import js7.agent.web.master.MasterRoute
+import js7.agent.web.views.RootWebService
+import js7.common.akkahttp.web.session.SessionRoute
 
 /**
   * @author Joacim Zschimmer

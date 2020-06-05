@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.data.workflow.instructions
+package js7.data.workflow.instructions
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.jobscheduler.data.source.SourcePos
-import com.sos.jobscheduler.data.workflow.Instruction
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
+import js7.base.circeutils.CirceUtils.deriveCodec
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.utils.ScalazStyle.OptionRichBoolean
+import js7.data.source.SourcePos
+import js7.data.workflow.Instruction
+import js7.data.workflow.instructions.executable.WorkflowJob
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 

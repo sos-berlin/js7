@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.base.generic
+package js7.base.generic
 
 import cats.Monoid
 

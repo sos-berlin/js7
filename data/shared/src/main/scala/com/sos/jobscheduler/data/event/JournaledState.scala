@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.data.event
+package js7.data.event
 
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.Strings.RichString
-import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
-import com.sos.jobscheduler.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
-import com.sos.jobscheduler.data.event.JournaledState._
-import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.Strings.RichString
+import js7.data.cluster.{ClusterEvent, ClusterState}
+import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
+import js7.data.event.JournaledState._
+import js7.data.event.KeyedEvent.NoKey
 import io.circe.{Decoder, Encoder}
 import monix.reactive.Observable
 

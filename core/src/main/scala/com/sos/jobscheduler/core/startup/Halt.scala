@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.core.startup
+package js7.core.startup
 
-import com.sos.jobscheduler.common.log.Log4j
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.startup.StartUp.printlnWithClock
+import js7.common.log.Log4j
+import js7.common.scalautil.Logger
+import js7.core.startup.StartUp.printlnWithClock
 
 /**
   * @author Joacim Zschimmer

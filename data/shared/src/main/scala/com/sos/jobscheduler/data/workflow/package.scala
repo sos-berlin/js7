@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.data
+package js7.data
 
-import com.sos.jobscheduler.data.filebased.FileBasedId
+import js7.data.filebased.FileBasedId
 
 /**
   * @author Joacim Zschimmer

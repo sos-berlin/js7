@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.base.system
+package js7.base.system
 
-import com.sos.jobscheduler.base.circeutils.AnyJsonCodecs.implicits._
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
+import js7.base.circeutils.AnyJsonCodecs.implicits._
+import js7.base.circeutils.CirceUtils.deriveCodec
 import java.lang.management.ManagementFactory.getOperatingSystemMXBean
 
 final case class SystemInformation(

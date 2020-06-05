@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.data.command
+package js7.data.command
 
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 
 /**
   * @author Joacim Zschimmer

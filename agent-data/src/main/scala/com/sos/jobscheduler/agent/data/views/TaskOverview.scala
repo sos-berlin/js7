@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.agent.data.views
+package js7.agent.data.views
 
-import com.sos.jobscheduler.agent.data.AgentTaskId
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.common.process.Processes.Pid
-import com.sos.jobscheduler.data.job.JobKey
+import js7.agent.data.AgentTaskId
+import js7.base.time.Timestamp
+import js7.common.process.Processes.Pid
+import js7.data.job.JobKey
 import io.circe.generic.JsonCodec
 
 /**

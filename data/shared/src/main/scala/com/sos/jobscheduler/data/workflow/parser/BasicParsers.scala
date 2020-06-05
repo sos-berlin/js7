@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.data.workflow.parser
+package js7.data.workflow.parser
 
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.Collections.implicits._
-import com.sos.jobscheduler.base.utils.Identifier.{isIdentifierPart, isIdentifierStart}
-import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
-import com.sos.jobscheduler.data.filebased.TypedPath
-import com.sos.jobscheduler.data.folder.FolderPath
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.Collections.implicits._
+import js7.base.utils.Identifier.{isIdentifierPart, isIdentifierStart}
+import js7.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
+import js7.data.filebased.TypedPath
+import js7.data.folder.FolderPath
 import fastparse.NoWhitespace._
 import fastparse._
 import scala.reflect.ClassTag

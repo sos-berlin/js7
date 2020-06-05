@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.base.utils
+package js7.base.utils
 
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
+import js7.base.utils.AutoClosing.autoClosing
 import java.util.Objects.requireNonNull
 import java.util.concurrent.ConcurrentLinkedDeque
 import monix.execution.atomic.AtomicAny

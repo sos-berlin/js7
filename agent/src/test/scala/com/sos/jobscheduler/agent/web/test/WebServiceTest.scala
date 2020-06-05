@@ -1,18 +1,18 @@
-package com.sos.jobscheduler.agent.web.test
+package js7.agent.web.test
 
 import akka.actor.ActorRefFactory
 import akka.http.scaladsl.model.HttpHeader
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
-import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.web.common.AgentRouteProvider
-import com.sos.jobscheduler.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
-import com.sos.jobscheduler.base.utils.HasCloser
-import com.sos.jobscheduler.common.akkahttp.WebLogDirectives
-import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
-import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.core.message.ProblemCodeMessages
+import js7.agent.configuration.AgentConfiguration
+import js7.agent.web.common.AgentRouteProvider
+import js7.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
+import js7.base.utils.HasCloser
+import js7.common.akkahttp.WebLogDirectives
+import js7.common.akkahttp.web.auth.GateKeeper
+import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.core.message.ProblemCodeMessages
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import scala.concurrent.duration._

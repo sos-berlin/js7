@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.core.filebased
+package js7.core.filebased
 
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.core.filebased.TypedPaths.fileToTypedPathAndSourceType
-import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
+import js7.base.problem.{Checked, Problem}
+import js7.core.filebased.TypedPaths.fileToTypedPathAndSourceType
+import js7.data.filebased.{SourceType, TypedPath}
 import java.nio.file.Path
 
 /**

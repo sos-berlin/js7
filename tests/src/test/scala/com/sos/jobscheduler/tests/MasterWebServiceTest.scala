@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.tests
+package js7.tests
 
 import akka.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
 import akka.http.scaladsl.model.MediaTypes.{`application/json`, `text/plain`}
@@ -6,44 +6,44 @@ import akka.http.scaladsl.model.StatusCodes.{Forbidden, NotFound, OK}
 import akka.http.scaladsl.model.headers.{Accept, Location, RawHeader}
 import akka.http.scaladsl.model.{HttpEntity, HttpHeader, Uri => AkkaUri}
 import com.google.inject.{AbstractModule, Provides}
-import com.sos.jobscheduler.agent.data.views.AgentOverview
-import com.sos.jobscheduler.base.BuildInfo
-import com.sos.jobscheduler.base.auth.SessionToken
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.crypt.silly.{SillySignature, SillySigner}
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.Closer.syntax.RichClosersAutoCloseable
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowableEither
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.event.EventIdClock
-import com.sos.jobscheduler.common.http.AkkaHttpClient.HttpException
-import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
-import com.sos.jobscheduler.common.http.CirceToYaml.yamlToJson
-import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax.RichPath
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
-import com.sos.jobscheduler.common.time.WaitForCondition
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.event.{<-:, Event, EventId, KeyedEvent}
-import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderFinished, OrderMoved, OrderProcessed}
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
-import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.data.workflow.test.TestSetting.TestAgentRefPath
-import com.sos.jobscheduler.master.data.MasterSnapshots
-import com.sos.jobscheduler.master.data.MasterSnapshots.MasterMetaState
-import com.sos.jobscheduler.master.data.events.MasterAgentEvent
-import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentRegisteredMaster
-import com.sos.jobscheduler.master.data.events.MasterEvent.MasterReady
-import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import com.sos.jobscheduler.tests.MasterWebServiceTest._
-import com.sos.jobscheduler.tests.testenv.{DirectoryProvider, MasterAgentForScalaTest}
+import js7.agent.data.views.AgentOverview
+import js7.base.BuildInfo
+import js7.base.auth.SessionToken
+import js7.base.circeutils.CirceUtils._
+import js7.base.crypt.silly.{SillySignature, SillySigner}
+import js7.base.generic.SecretString
+import js7.base.problem.Checked.Ops
+import js7.base.problem.Problem
+import js7.base.time.ScalaTime._
+import js7.base.time.Timestamp
+import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
+import js7.base.utils.ScalaUtils.RichThrowableEither
+import js7.base.web.Uri
+import js7.common.event.EventIdClock
+import js7.common.http.AkkaHttpClient.HttpException
+import js7.common.http.AkkaHttpUtils.RichHttpResponse
+import js7.common.http.CirceToYaml.yamlToJson
+import js7.common.process.Processes.{ShellFileExtension => sh}
+import js7.common.scalautil.FileUtils.syntax.RichPath
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.common.system.OperatingSystem.operatingSystem
+import js7.common.time.WaitForCondition
+import js7.data.agent.AgentRefPath
+import js7.data.event.{<-:, Event, EventId, KeyedEvent}
+import js7.data.job.ExecutablePath
+import js7.data.order.OrderEvent.{OrderFinished, OrderMoved, OrderProcessed}
+import js7.data.order.{FreshOrder, OrderId}
+import js7.data.workflow.WorkflowPath
+import js7.data.workflow.test.TestSetting.TestAgentRefPath
+import js7.master.data.MasterSnapshots
+import js7.master.data.MasterSnapshots.MasterMetaState
+import js7.master.data.events.MasterAgentEvent
+import js7.master.data.events.MasterAgentEvent.AgentRegisteredMaster
+import js7.master.data.events.MasterEvent.MasterReady
+import js7.tester.CirceJsonTester.testJson
+import js7.tests.MasterWebServiceTest._
+import js7.tests.testenv.{DirectoryProvider, MasterAgentForScalaTest}
 import io.circe.syntax.EncoderOps
 import io.circe.{Json, JsonObject}
 import java.time.ZoneId
@@ -572,7 +572,7 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
     val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
     val eventsJson = httpClient.get[Json](Uri(s"$uri/master/api/event?after=0"), headers) await 99.s
     val keyedEvents: Seq[KeyedEvent[Event]] = {
-      import com.sos.jobscheduler.master.data.events.MasterKeyedEventJsonCodec
+      import js7.master.data.events.MasterKeyedEventJsonCodec
       eventsJson.asObject.get("stamped").get.asArray.get.map(_.as[KeyedEvent[Event]].orThrow)
     }
     val agentRunId = keyedEvents.collectFirst { case AgentRefPath("/AGENT") <-: (e: AgentRegisteredMaster) => e.agentRunId }.get

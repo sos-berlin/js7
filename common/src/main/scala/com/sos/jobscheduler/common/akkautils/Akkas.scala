@@ -1,14 +1,14 @@
-package com.sos.jobscheduler.common.akkautils
+package js7.common.akkautils
 
 import akka.actor.ActorSystem.Settings
 import akka.actor.{ActorContext, ActorPath, ActorSystem, Cancellable, ChildActorPath, RootActorPath}
 import akka.http.scaladsl.model.Uri
 import akka.util.{ByteString, Timeout}
 import cats.effect.Resource
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.configutils.Configs
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.utils.JavaResource
+import js7.base.time.ScalaTime._
+import js7.common.configutils.Configs
+import js7.common.scalautil.Logger
+import js7.common.utils.JavaResource
 import com.typesafe.config.{Config, ConfigFactory}
 import monix.eval.Task
 import scala.concurrent.duration.Deadline.now

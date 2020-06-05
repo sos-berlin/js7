@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.proxy
+package js7.proxy
 
-import com.sos.jobscheduler.base.eventbus.ClassEventBus
-import com.sos.jobscheduler.data.event.{Event, JournaledState}
+import js7.base.eventbus.ClassEventBus
+import js7.data.event.{Event, JournaledState}
 
 final class ProxyEventBus[S <: JournaledState[S]]
 extends ClassEventBus[EventAndState[Event, S]]

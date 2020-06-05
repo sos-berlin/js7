@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.data.workflow
+package js7.data.workflow
 
 import cats.Show
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.data.job.{ExecutablePath, ExecutableScript}
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Finish, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction}
+import js7.base.time.ScalaTime._
+import js7.base.utils.ScalazStyle._
+import js7.data.job.{ExecutablePath, ExecutableScript}
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Finish, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction}
 import scala.annotation.tailrec
 
 /**

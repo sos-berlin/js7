@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.data.expression
+package js7.data.expression
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.CirceUtilsChecked
-import com.sos.jobscheduler.base.utils.Identifier.isIdentifier
-import com.sos.jobscheduler.data.expression.Expression.NamedValue.{LastOccurred, ReturnCode}
-import com.sos.jobscheduler.data.workflow.Label
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.parser.ExpressionParser
-import com.sos.jobscheduler.data.workflow.parser.Parsers.checkedParse
+import js7.base.circeutils.CirceUtils.CirceUtilsChecked
+import js7.base.utils.Identifier.isIdentifier
+import js7.data.expression.Expression.NamedValue.{LastOccurred, ReturnCode}
+import js7.data.workflow.Label
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.parser.ExpressionParser
+import js7.data.workflow.parser.Parsers.checkedParse
 import fastparse.NoWhitespace._
 import io.circe.{Decoder, Encoder, Json}
 import java.lang.Character.{isUnicodeIdentifierPart, isUnicodeIdentifierStart}

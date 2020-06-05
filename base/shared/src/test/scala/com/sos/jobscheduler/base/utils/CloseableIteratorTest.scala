@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.base.utils
+package js7.base.utils
 
-import com.sos.jobscheduler.base.utils.CloseableIteratorTest._
+import js7.base.utils.CloseableIteratorTest._
 import scala.language.reflectiveCalls
 import org.scalatest.freespec.AnyFreeSpec
 

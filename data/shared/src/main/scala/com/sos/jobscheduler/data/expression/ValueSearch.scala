@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.data.expression
+package js7.data.expression
 
 /**
   * @author Joacim Zschimmer

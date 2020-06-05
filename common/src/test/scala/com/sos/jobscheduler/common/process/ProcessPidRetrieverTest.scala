@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.common.process
+package js7.common.process
 
-import com.sos.jobscheduler.common.process.ProcessPidRetriever._
+import js7.common.process.ProcessPidRetriever._
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

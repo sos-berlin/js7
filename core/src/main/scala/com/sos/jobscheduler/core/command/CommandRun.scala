@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.core.command
+package js7.core.command
 
-import com.sos.jobscheduler.base.auth.UserId
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.data.command.{CommandRunOverview, CommonCommand, InternalCommandId}
+import js7.base.auth.UserId
+import js7.base.time.ScalaTime._
+import js7.data.command.{CommandRunOverview, CommonCommand, InternalCommandId}
 import scala.concurrent.duration.Deadline
 
 /**

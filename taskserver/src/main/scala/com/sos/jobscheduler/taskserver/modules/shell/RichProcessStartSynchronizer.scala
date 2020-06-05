@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.taskserver.modules.shell
+package js7.taskserver.modules.shell
 
 import com.google.inject.ImplementedBy
-import com.sos.jobscheduler.common.scalautil.Futures.blockingThreadFuture
-import com.sos.jobscheduler.taskserver.task.process.RichProcess
+import js7.common.scalautil.Futures.blockingThreadFuture
+import js7.taskserver.task.process.RichProcess
 import scala.concurrent.Future
 
 /**

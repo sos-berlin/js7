@@ -1,15 +1,15 @@
-package com.sos.jobscheduler.core.event.state
+package js7.core.event.state
 
 import akka.actor.{ActorRef, ActorRefFactory}
 import akka.pattern.ask
-import com.sos.jobscheduler.base.monixutils.MonixBase.deferFutureAndLog
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.base.utils.SetOnce
-import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
-import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalConf}
-import com.sos.jobscheduler.core.event.state.StateJournalingActor.{PersistFunction, StateToEvents}
-import com.sos.jobscheduler.data.event.{Event, JournaledState, KeyedEvent, Stamped}
+import js7.base.monixutils.MonixBase.deferFutureAndLog
+import js7.base.problem.Checked
+import js7.base.utils.Assertions.assertThat
+import js7.base.utils.SetOnce
+import js7.common.akkautils.Akkas.encodeAsActorName
+import js7.core.event.journal.{JournalActor, JournalConf}
+import js7.core.event.state.StateJournalingActor.{PersistFunction, StateToEvents}
+import js7.data.event.{Event, JournaledState, KeyedEvent, Stamped}
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.Promise

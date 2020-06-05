@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.common.files
+package js7.common.files
 
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryFile
+import js7.base.utils.AutoClosing.autoClosing
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.FileUtils.withTemporaryFile
 import scala.util.Random
 import scodec.bits.ByteVector
 import org.scalatest.freespec.AnyFreeSpec

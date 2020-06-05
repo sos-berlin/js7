@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.data.workflow
+package js7.data.workflow
 
 import cats.Show
-import com.sos.jobscheduler.base.utils.ScalazStyle._
+import js7.base.utils.ScalazStyle._
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, DecodingFailure, Encoder, Json}
 

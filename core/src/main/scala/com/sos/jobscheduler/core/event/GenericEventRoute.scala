@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.core.event
+package js7.core.event
 
 import akka.NotUsed
 import akka.http.scaladsl.common.JsonEntityStreamingSupport
@@ -12,33 +12,33 @@ import akka.http.scaladsl.model.sse.ServerSentEvent
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive1, ExceptionHandler, Route}
 import akka.stream.scaladsl.Source
-import com.sos.jobscheduler.base.BuildInfo
-import com.sos.jobscheduler.base.auth.ValidUserPermission
-import com.sos.jobscheduler.base.circeutils.CirceUtils.{CompactPrinter, RichJson}
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
-import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, RichThrowable, _}
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.{accept, completeTask}
-import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
-import com.sos.jobscheduler.common.akkahttp.EventSeqStreamingSupport.NonEmptyEventSeqJsonStreamingSupport
-import com.sos.jobscheduler.common.akkahttp.HttpStatusCodeException
-import com.sos.jobscheduler.common.akkahttp.StandardDirectives.routeTask
-import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
-import com.sos.jobscheduler.common.akkahttp.html.HtmlDirectives.htmlPreferred
-import com.sos.jobscheduler.common.akkahttp.web.session.RouteProvider
-import com.sos.jobscheduler.common.event.EventWatch
-import com.sos.jobscheduler.common.event.collector.EventDirectives
-import com.sos.jobscheduler.common.event.collector.EventDirectives.eventRequest
-import com.sos.jobscheduler.common.http.JsonStreamingSupport._
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.JavaTimeConverters.AsScalaDuration
-import com.sos.jobscheduler.core.event.GenericEventRoute._
-import com.sos.jobscheduler.core.problems.JobSchedulerIsShuttingDownProblem
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, EventSeqTornProblem, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
+import js7.base.BuildInfo
+import js7.base.auth.ValidUserPermission
+import js7.base.circeutils.CirceUtils.{CompactPrinter, RichJson}
+import js7.base.problem.{Checked, Problem}
+import js7.base.time.ScalaTime._
+import js7.base.utils.Assertions.assertThat
+import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.IntelliJUtils.intelliJuseImport
+import js7.base.utils.ScalaUtils.{RichJavaClass, RichThrowable, _}
+import js7.base.utils.ScalazStyle._
+import js7.common.akkahttp.AkkaHttpServerUtils.{accept, completeTask}
+import js7.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
+import js7.common.akkahttp.EventSeqStreamingSupport.NonEmptyEventSeqJsonStreamingSupport
+import js7.common.akkahttp.HttpStatusCodeException
+import js7.common.akkahttp.StandardDirectives.routeTask
+import js7.common.akkahttp.StandardMarshallers._
+import js7.common.akkahttp.html.HtmlDirectives.htmlPreferred
+import js7.common.akkahttp.web.session.RouteProvider
+import js7.common.event.EventWatch
+import js7.common.event.collector.EventDirectives
+import js7.common.event.collector.EventDirectives.eventRequest
+import js7.common.http.JsonStreamingSupport._
+import js7.common.scalautil.Logger
+import js7.common.time.JavaTimeConverters.AsScalaDuration
+import js7.core.event.GenericEventRoute._
+import js7.core.problems.JobSchedulerIsShuttingDownProblem
+import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, EventSeqTornProblem, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
 import io.circe.syntax.EncoderOps
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -73,7 +73,7 @@ trait GenericEventRoute extends RouteProvider
     protected def defaultReturnType: Option[Class[_ <: Event]] = Some(classOf[Event])
 
     private val exceptionHandler = ExceptionHandler {
-      case t: com.sos.jobscheduler.core.event.journal.watch.ClosedException if t.getMessage != null =>
+      case t: js7.core.event.journal.watch.ClosedException if t.getMessage != null =>
         if (isShuttingDown)
           complete(ServiceUnavailable -> JobSchedulerIsShuttingDownProblem)
         else

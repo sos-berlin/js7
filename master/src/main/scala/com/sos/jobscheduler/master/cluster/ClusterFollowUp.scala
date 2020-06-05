@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.master.cluster
+package js7.master.cluster
 
-import com.sos.jobscheduler.core.event.journal.recover.Recovered
-import com.sos.jobscheduler.data.event.JournaledState
+import js7.core.event.journal.recover.Recovered
+import js7.data.event.JournaledState
 
 sealed trait ClusterFollowUp[S <: JournaledState[S]]
 

@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.master.data.javaapi
+package js7.master.data.javaapi
 
-import com.sos.jobscheduler.master.data.javaapi.MasterScriptConverterTester._
+import js7.master.data.javaapi.MasterScriptConverterTester._
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.tests
+package js7.tests
 
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
-import com.sos.jobscheduler.common.http.AkkaHttpClient
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import js7.base.time.ScalaTime._
+import js7.base.web.Uri
+import js7.common.akkautils.Akkas.newActorSystem
+import js7.common.http.AkkaHttpClient
+import js7.common.scalautil.Futures.implicits._
 
 /**
   * @author Joacim Zschimmer

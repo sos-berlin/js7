@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.base.crypt.silly
+package js7.base.crypt.silly
 
-import com.sos.jobscheduler.base.crypt.MessageSigner
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.problem.Problem
+import js7.base.crypt.MessageSigner
+import js7.base.generic.SecretString
+import js7.base.problem.Problem
 import java.nio.charset.StandardCharsets.UTF_8
 
 /**

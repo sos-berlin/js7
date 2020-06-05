@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.base.utils
+package js7.base.utils
 
-import com.sos.jobscheduler.base.utils.CloseableIterator._
+import js7.base.utils.CloseableIterator._
 import java.util.NoSuchElementException
 import scala.util.control.NonFatal
 

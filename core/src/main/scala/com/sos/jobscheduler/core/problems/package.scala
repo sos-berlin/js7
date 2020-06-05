@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.core
+package js7.core
 
 import akka.http.scaladsl.model.StatusCodes.ServiceUnavailable
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.data.cluster.ClusterNodeId
-import com.sos.jobscheduler.data.event.EventId
+import js7.base.problem.Problem
+import js7.data.cluster.ClusterNodeId
+import js7.data.event.EventId
 
 /**
   * @author Joacim Zschimmer

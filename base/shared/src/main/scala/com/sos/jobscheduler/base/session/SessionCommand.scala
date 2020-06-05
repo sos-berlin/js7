@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.base.session
+package js7.base.session
 
-import com.sos.jobscheduler.base.auth.{SessionToken, UserAndPassword}
-import com.sos.jobscheduler.base.circeutils.CirceCodec
-import com.sos.jobscheduler.base.circeutils.CirceUtils.{deriveCodec, singletonCodec}
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.base.generic.SecretString
+import js7.base.auth.{SessionToken, UserAndPassword}
+import js7.base.circeutils.CirceCodec
+import js7.base.circeutils.CirceUtils.{deriveCodec, singletonCodec}
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.generic.SecretString
 import io.circe.{Decoder, Encoder, Json, JsonObject}
 
 /**

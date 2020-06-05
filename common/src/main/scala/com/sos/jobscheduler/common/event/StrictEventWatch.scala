@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.common.event
+package js7.common.event
 
-import com.sos.jobscheduler.base.utils.CloseableIterator
-import com.sos.jobscheduler.common.event.EventWatch.Every
-import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
+import js7.base.utils.CloseableIterator
+import js7.common.event.EventWatch.Every
+import js7.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable

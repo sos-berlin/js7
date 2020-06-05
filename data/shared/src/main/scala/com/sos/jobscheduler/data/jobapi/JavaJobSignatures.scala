@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.data.jobapi
+package js7.data.jobapi
 
 /**
  * These method signatures for sos.spooler.Job_impl are used generally in C++.

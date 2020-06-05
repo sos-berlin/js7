@@ -1,14 +1,14 @@
-package com.sos.jobscheduler.data.execution.workflow.instructions
+package js7.data.execution.workflow.instructions
 
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.data.event.<-:
-import com.sos.jobscheduler.data.execution.workflow.context.OrderContext
-import com.sos.jobscheduler.data.execution.workflow.instructions.AwaitOrderExecutorTest._
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAwaiting, OrderOffered}
-import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Offer}
-import com.sos.jobscheduler.data.workflow.position.WorkflowPosition
-import com.sos.jobscheduler.data.workflow.{WorkflowId, WorkflowPath}
+import js7.base.time.Timestamp
+import js7.data.event.<-:
+import js7.data.execution.workflow.context.OrderContext
+import js7.data.execution.workflow.instructions.AwaitOrderExecutorTest._
+import js7.data.order.OrderEvent.{OrderAwaiting, OrderOffered}
+import js7.data.order.{Order, OrderId}
+import js7.data.workflow.instructions.{AwaitOrder, Offer}
+import js7.data.workflow.position.WorkflowPosition
+import js7.data.workflow.{WorkflowId, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
 

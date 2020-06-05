@@ -1,13 +1,13 @@
-package com.sos.jobscheduler.provider.scheduledorder
+package js7.provider.scheduledorder
 
-import com.sos.jobscheduler.base.convert.As
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader
-import com.sos.jobscheduler.core.common.VariablesXmlParser
-import com.sos.jobscheduler.data.filebased.FileBasedId
-import com.sos.jobscheduler.data.folder.FolderPath
-import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.provider.scheduledorder.oldruntime.{OldSchedule, OldScheduleXmlParser}
+import js7.base.convert.As
+import js7.base.problem.Checked
+import js7.common.scalautil.xmls.ScalaXMLEventReader
+import js7.core.common.VariablesXmlParser
+import js7.data.filebased.FileBasedId
+import js7.data.folder.FolderPath
+import js7.data.workflow.WorkflowPath
+import js7.provider.scheduledorder.oldruntime.{OldSchedule, OldScheduleXmlParser}
 import java.time.ZoneId
 import javax.xml.transform.Source
 

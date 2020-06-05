@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.agent.web.master
+package js7.agent.web.master
 
 import akka.http.scaladsl.server.RouteConcatenation._
-import com.sos.jobscheduler.base.auth.ValidUserPermission
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegment
-import com.sos.jobscheduler.core.cluster.MastersClusterRoute
-import com.sos.jobscheduler.data.master.MasterId
+import js7.base.auth.ValidUserPermission
+import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
+import js7.core.cluster.MastersClusterRoute
+import js7.data.master.MasterId
 
 trait MasterRoute extends MastersEventRoute with MastersClusterRoute
 {

@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.base.generic
+package js7.base.generic
 
-import com.sos.jobscheduler.base.convert.As
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
+import js7.base.convert.As
+import js7.base.utils.ScalaUtils.RichJavaClass
 import io.circe.{Decoder, Encoder, Json}
 
 /**

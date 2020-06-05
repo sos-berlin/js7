@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.core.filebased
+package js7.core.filebased
 
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
-import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedsOverview, TypedPath}
+import js7.base.problem.Checked
+import js7.base.utils.ScalaUtils.RichPartialFunction
+import js7.data.filebased.{FileBased, FileBasedsOverview, TypedPath}
 import monix.eval.Task
 
 /**

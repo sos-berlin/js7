@@ -1,14 +1,14 @@
-package com.sos.jobscheduler.core.event.journal.watch
+package js7.core.event.journal.watch
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
-import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
-import com.sos.jobscheduler.common.event.PositionAnd
-import com.sos.jobscheduler.common.scalautil.FileUtils
-import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
-import com.sos.jobscheduler.core.event.journal.watch.FileEventIteratorTest._
-import com.sos.jobscheduler.core.event.journal.watch.TestData.{AEvent, TestKeyedEventJsonCodec, journalId, writeJournal}
-import com.sos.jobscheduler.data.event.{EventId, JournalSeparators, Stamped}
+import js7.base.circeutils.CirceUtils.RichJson
+import js7.base.circeutils.typed.TypedJsonCodec
+import js7.common.event.PositionAnd
+import js7.common.scalautil.FileUtils
+import js7.core.event.journal.data.JournalMeta
+import js7.core.event.journal.files.JournalFiles.JournalMetaOps
+import js7.core.event.journal.watch.FileEventIteratorTest._
+import js7.core.event.journal.watch.TestData.{AEvent, TestKeyedEventJsonCodec, journalId, writeJournal}
+import js7.data.event.{EventId, JournalSeparators, Stamped}
 import io.circe.syntax.EncoderOps
 import java.nio.file.Files
 import org.scalatest.freespec.AnyFreeSpec

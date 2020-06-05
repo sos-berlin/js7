@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.core.event.journal.watch
+package js7.core.event.journal.watch
 
-import com.sos.jobscheduler.base.problem.{Problem, ProblemException}
+import js7.base.problem.{Problem, ProblemException}
 import java.nio.file.Path
 
 /**

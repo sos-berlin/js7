@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.data.workflow.position
+package js7.data.workflow.position
 
-import com.sos.jobscheduler.base.generic.GenericInt
+import js7.base.generic.GenericInt
 import scala.language.implicitConversions
 
 /**

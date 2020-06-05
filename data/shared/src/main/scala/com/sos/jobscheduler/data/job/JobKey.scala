@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.data.job
+package js7.data.job
 
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition, _}
-import com.sos.jobscheduler.data.workflow.{WorkflowId, WorkflowPath}
+import js7.base.utils.ScalazStyle._
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.position.{Position, WorkflowPosition, _}
+import js7.data.workflow.{WorkflowId, WorkflowPath}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 

@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.common.process
+package js7.common.process
 
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.common.process.Processes.Pid
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.system.OperatingSystem._
+import js7.base.utils.ScalaUtils.RichThrowable
+import js7.common.process.Processes.Pid
+import js7.common.scalautil.Logger
+import js7.common.system.OperatingSystem._
 import javax.lang.model.SourceVersion
 
 /**

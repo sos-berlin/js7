@@ -1,18 +1,18 @@
-package com.sos.jobscheduler.master.web.master.api.graphql
+package js7.master.web.master.api.graphql
 
-import com.sos.jobscheduler.base.generic.{GenericInt, GenericString}
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.filebased.{FileBasedId, TypedPath, VersionId}
-import com.sos.jobscheduler.data.job.{ExecutablePath, ExecutableScript, ReturnCode}
-import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, End, Execute, Fork, Gap, Goto, If, IfFailedGoto, Instructions, Offer, TryInstruction}
-import com.sos.jobscheduler.data.workflow.position.WorkflowPosition
-import com.sos.jobscheduler.data.workflow.{Instruction, Workflow, WorkflowPath}
+import js7.base.generic.{GenericInt, GenericString}
+import js7.base.problem.Checked.Ops
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.ScalaUtils.RichJavaClass
+import js7.base.utils.ScalazStyle._
+import js7.data.agent.AgentRefPath
+import js7.data.filebased.{FileBasedId, TypedPath, VersionId}
+import js7.data.job.{ExecutablePath, ExecutableScript, ReturnCode}
+import js7.data.order.{Order, OrderId, Outcome}
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.instructions.{AwaitOrder, End, Execute, Fork, Gap, Goto, If, IfFailedGoto, Instructions, Offer, TryInstruction}
+import js7.data.workflow.position.WorkflowPosition
+import js7.data.workflow.{Instruction, Workflow, WorkflowPath}
 import java.util.regex.Pattern
 import sangria.ast
 import sangria.marshalling.FromInput.CoercedScalaResult

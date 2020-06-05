@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.core.common
+package js7.core.common
 
-import com.sos.jobscheduler.base.time.Stopwatch.measureTime
-import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader
-import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
+import js7.base.time.Stopwatch.measureTime
+import js7.common.scalautil.xmls.ScalaXMLEventReader
+import js7.common.scalautil.xmls.XmlSources._
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

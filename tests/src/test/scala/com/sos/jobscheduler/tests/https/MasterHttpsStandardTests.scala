@@ -1,13 +1,13 @@
-package com.sos.jobscheduler.tests.https
+package js7.tests.https
 
-import com.sos.jobscheduler.base.BuildInfo
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
-import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.master.data.MasterCommand
+import js7.base.BuildInfo
+import js7.base.time.ScalaTime._
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.data.order.OrderEvent.OrderFinished
+import js7.data.order.{FreshOrder, OrderId}
+import js7.data.workflow.WorkflowPath
+import js7.master.data.MasterCommand
 import monix.execution.Scheduler.Implicits.global
 
 /**

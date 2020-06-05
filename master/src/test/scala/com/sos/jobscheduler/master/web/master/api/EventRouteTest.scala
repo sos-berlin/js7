@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.master.web.master.api
+package js7.master.web.master.api
 
 import akka.http.scaladsl.model.ContentType
 import akka.http.scaladsl.model.MediaTypes.{`application/json`, `text/event-stream`}
@@ -7,23 +7,23 @@ import akka.http.scaladsl.model.headers.{Accept, `Last-Event-ID`}
 import akka.http.scaladsl.testkit.RouteTestTimeout
 import akka.util.ByteString
 import com.google.common.base.Ascii
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowableEither
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import com.sos.jobscheduler.common.event.collector.{EventCollector, EventDirectives}
-import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
-import com.sos.jobscheduler.common.http.CirceJsonSupport._
-import com.sos.jobscheduler.common.http.JsonStreamingSupport.{`application/json-seq`, `application/x-ndjson`}
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderFinished}
-import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
-import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.master.web.master.api.EventRouteTest._
-import com.sos.jobscheduler.master.web.master.api.test.RouteTester
+import js7.base.circeutils.CirceUtils.RichCirceString
+import js7.base.problem.Problem
+import js7.base.time.ScalaTime._
+import js7.base.time.Timestamp
+import js7.base.utils.ScalaUtils.RichThrowableEither
+import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
+import js7.common.event.collector.{EventCollector, EventDirectives}
+import js7.common.http.AkkaHttpUtils.RichHttpResponse
+import js7.common.http.CirceJsonSupport._
+import js7.common.http.JsonStreamingSupport.{`application/json-seq`, `application/x-ndjson`}
+import js7.common.scalautil.Futures.implicits._
+import js7.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
+import js7.data.order.OrderEvent.{OrderAdded, OrderFinished}
+import js7.data.order.{OrderEvent, OrderId}
+import js7.data.workflow.WorkflowPath
+import js7.master.web.master.api.EventRouteTest._
+import js7.master.web.master.api.test.RouteTester
 import monix.execution.Scheduler
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._

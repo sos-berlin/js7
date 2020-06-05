@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.common.configutils
+package js7.common.configutils
 
-import com.sos.jobscheduler.base.convert.ConvertiblePartialFunctions.wrappedConvert
-import com.sos.jobscheduler.base.convert.{As, ConvertiblePartialFunction}
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.utils.JavaResource
+import js7.base.convert.ConvertiblePartialFunctions.wrappedConvert
+import js7.base.convert.{As, ConvertiblePartialFunction}
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.ScalazStyle.OptionRichBoolean
+import js7.common.scalautil.Logger
+import js7.common.utils.JavaResource
 import com.typesafe.config.ConfigRenderOptions.concise
 import com.typesafe.config.{Config, ConfigFactory, ConfigParseOptions, ConfigValue}
 import java.nio.file.Files.exists

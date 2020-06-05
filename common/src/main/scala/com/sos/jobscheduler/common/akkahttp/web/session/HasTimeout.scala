@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.common.akkahttp.web.session
+package js7.common.akkahttp.web.session
 
-import com.sos.jobscheduler.base.time.Timestamp
+import js7.base.time.Timestamp
 import monix.execution.Scheduler
 import scala.concurrent.duration._
 

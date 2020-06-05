@@ -1,14 +1,14 @@
-package com.sos.jobscheduler.agent.configuration
+package js7.agent.configuration
 
 import akka.actor.ActorSystem
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.Closer
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.base.utils.SideEffect._
-import com.sos.jobscheduler.common.akkautils.DeadLetterActor
-import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.JavaTimeConverters._
+import js7.base.time.ScalaTime._
+import js7.base.utils.Closer
+import js7.base.utils.ScalazStyle._
+import js7.base.utils.SideEffect._
+import js7.common.akkautils.DeadLetterActor
+import js7.common.scalautil.Futures.implicits.SuccessFuture
+import js7.common.scalautil.Logger
+import js7.common.time.JavaTimeConverters._
 import com.typesafe.config.{Config, ConfigFactory}
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Deadline.now

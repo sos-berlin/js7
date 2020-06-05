@@ -1,17 +1,17 @@
-package com.sos.jobscheduler.common.scalautil
+package js7.common.scalautil
 
 import akka.util.ByteString
 import com.google.common.io.FileWriteMode.APPEND
 import com.google.common.io.{Files => GuavaFiles}
-import com.sos.jobscheduler.base.circeutils.CirceUtils.CompactPrinter
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.base.utils.Closer
-import com.sos.jobscheduler.base.utils.Closer.syntax._
-import com.sos.jobscheduler.base.utils.Closer.withCloser
-import com.sos.jobscheduler.base.utils.JavaCollections.syntax._
-import com.sos.jobscheduler.common.system.OperatingSystem.isUnix
+import js7.base.circeutils.CirceUtils.CompactPrinter
+import js7.base.problem.Checked.Ops
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.Closer
+import js7.base.utils.Closer.syntax._
+import js7.base.utils.Closer.withCloser
+import js7.base.utils.JavaCollections.syntax._
+import js7.common.system.OperatingSystem.isUnix
 import io.circe.Encoder
 import java.io.{File, FileOutputStream}
 import java.nio.charset.Charset

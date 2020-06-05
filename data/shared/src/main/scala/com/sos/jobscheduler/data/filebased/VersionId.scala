@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.data.filebased
+package js7.data.filebased
 
-import com.sos.jobscheduler.base.annotation.javaApi
-import com.sos.jobscheduler.base.circeutils.CirceUtils.CirceUtilsChecked
-import com.sos.jobscheduler.base.generic.GenericString
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.time.Timestamp
+import js7.base.annotation.javaApi
+import js7.base.circeutils.CirceUtils.CirceUtilsChecked
+import js7.base.generic.GenericString
+import js7.base.problem.Checked._
+import js7.base.problem.{Checked, Problem}
+import js7.base.time.Timestamp
 import io.circe.{Decoder, Encoder, Json}
 
 /**

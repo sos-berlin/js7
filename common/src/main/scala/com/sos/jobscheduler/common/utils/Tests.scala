@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.utils
+package js7.common.utils
 
 import scala.jdk.CollectionConverters._
 

@@ -1,14 +1,14 @@
-package com.sos.jobscheduler.agent.tests
+package js7.agent.tests
 
 import com.google.inject.Module
 import com.google.inject.util.Modules
 import com.google.inject.util.Modules.EMPTY_MODULE
-import com.sos.jobscheduler.agent.RunningAgent
-import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.configuration.inject.AgentModule
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.Closer.syntax.RichClosersAutoCloseable
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import js7.agent.RunningAgent
+import js7.agent.configuration.AgentConfiguration
+import js7.agent.configuration.inject.AgentModule
+import js7.base.time.ScalaTime._
+import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
+import js7.common.scalautil.Futures.implicits._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 /**

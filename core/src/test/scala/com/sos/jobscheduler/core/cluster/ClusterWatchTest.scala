@@ -1,18 +1,18 @@
-package com.sos.jobscheduler.core.cluster
+package js7.core.cluster
 
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.core.cluster.ClusterWatch._
-import com.sos.jobscheduler.core.message.ProblemCodeMessages
-import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver}
-import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
-import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{EventId, JournalPosition}
-import com.sos.jobscheduler.data.master.MasterId
+import js7.base.generic.Completed
+import js7.base.problem.Checked
+import js7.base.problem.Checked._
+import js7.base.time.ScalaTime._
+import js7.base.web.Uri
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.core.cluster.ClusterWatch._
+import js7.core.message.ProblemCodeMessages
+import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver}
+import js7.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
+import js7.data.event.KeyedEvent.NoKey
+import js7.data.event.{EventId, JournalPosition}
+import js7.data.master.MasterId
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.schedulers.TestScheduler
 import org.scalatest.freespec.AnyFreeSpec

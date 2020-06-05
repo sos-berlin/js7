@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.data.execution.workflow
+package js7.data.execution.workflow
 
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.utils.ScalaUtils.reuseIfEqual
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.workflow.Instruction.{@:, Labeled}
-import com.sos.jobscheduler.data.workflow.Workflow
-import com.sos.jobscheduler.data.workflow.instructions.{End, Execute, Fail, Fork, Gap, Goto, If, IfFailedGoto, Retry, TryInstruction}
+import js7.base.problem.Checked.Ops
+import js7.base.utils.ScalaUtils.reuseIfEqual
+import js7.data.agent.AgentRefPath
+import js7.data.workflow.Instruction.{@:, Labeled}
+import js7.data.workflow.Workflow
+import js7.data.workflow.instructions.{End, Execute, Fail, Fork, Gap, Goto, If, IfFailedGoto, Retry, TryInstruction}
 
 /**
   * @author Joacim Zschimmer

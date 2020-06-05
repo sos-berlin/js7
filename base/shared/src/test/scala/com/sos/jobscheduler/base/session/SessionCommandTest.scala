@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.base.session
+package js7.base.session
 
-import com.sos.jobscheduler.base.auth.{SessionToken, UserAndPassword, UserId}
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import js7.base.auth.{SessionToken, UserAndPassword, UserId}
+import js7.base.circeutils.CirceUtils._
+import js7.base.generic.SecretString
+import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

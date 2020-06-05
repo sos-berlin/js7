@@ -1,36 +1,36 @@
-package com.sos.jobscheduler.core.event.journal
+package js7.core.event.journal
 
 import akka.actor.{Actor, ActorRef, DeadLetterSuppression, Props, Stash, Terminated}
 import akka.util.ByteString
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.monixutils.MonixBase.syntax.RichScheduler
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.base.utils.SetOnce
-import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
-import com.sos.jobscheduler.base.utils.Strings.RichString
-import com.sos.jobscheduler.common.akkautils.Akkas.RichActorPath
-import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
-import com.sos.jobscheduler.common.event.{EventIdGenerator, PositionAnd}
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
-import com.sos.jobscheduler.core.event.StampedKeyedEventBus
-import com.sos.jobscheduler.core.event.journal.JournalActor._
-import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, RecoveredJournalingActors}
-import com.sos.jobscheduler.core.event.journal.files.JournalFiles.{JournalMetaOps, listJournalFiles}
-import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
-import com.sos.jobscheduler.core.event.journal.write.{EventJournalWriter, ParallelExecutingPipeline, SnapshotJournalWriter}
-import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver}
-import com.sos.jobscheduler.data.cluster.ClusterState.ClusterStateSnapshot
-import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
-import com.sos.jobscheduler.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
-import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, EventId, JournalEvent, JournalHeader, JournalId, JournalState, JournaledState, KeyedEvent, Stamped}
+import js7.base.circeutils.CirceUtils._
+import js7.base.generic.Completed
+import js7.base.monixutils.MonixBase.syntax.RichScheduler
+import js7.base.problem.Checked._
+import js7.base.problem.Problem
+import js7.base.time.ScalaTime._
+import js7.base.time.Timestamp
+import js7.base.utils.Assertions.assertThat
+import js7.base.utils.ScalaUtils.RichThrowable
+import js7.base.utils.SetOnce
+import js7.base.utils.StackTraces.StackTraceThrowable
+import js7.base.utils.Strings.RichString
+import js7.common.akkautils.Akkas.RichActorPath
+import js7.common.akkautils.SupervisorStrategies
+import js7.common.event.{EventIdGenerator, PositionAnd}
+import js7.common.scalautil.Logger
+import js7.common.utils.ByteUnits.toKBGB
+import js7.core.event.StampedKeyedEventBus
+import js7.core.event.journal.JournalActor._
+import js7.core.event.journal.data.{JournalMeta, RecoveredJournalingActors}
+import js7.core.event.journal.files.JournalFiles.{JournalMetaOps, listJournalFiles}
+import js7.core.event.journal.watch.JournalingObserver
+import js7.core.event.journal.write.{EventJournalWriter, ParallelExecutingPipeline, SnapshotJournalWriter}
+import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver}
+import js7.data.cluster.ClusterState.ClusterStateSnapshot
+import js7.data.cluster.{ClusterEvent, ClusterState}
+import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
+import js7.data.event.KeyedEvent.NoKey
+import js7.data.event.{AnyKeyedEvent, EventId, JournalEvent, JournalHeader, JournalId, JournalState, JournaledState, KeyedEvent, Stamped}
 import java.nio.file.Files.{delete, exists, move}
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE

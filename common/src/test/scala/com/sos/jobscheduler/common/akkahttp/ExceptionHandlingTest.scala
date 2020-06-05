@@ -1,13 +1,13 @@
-package com.sos.jobscheduler.common.akkahttp
+package js7.common.akkahttp
 
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, InternalServerError}
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.common.akkahttp.ExceptionHandlingTest._
-import com.sos.jobscheduler.common.http.CirceJsonSupport._
+import js7.base.problem.Problem
+import js7.common.akkahttp.ExceptionHandlingTest._
+import js7.common.http.CirceJsonSupport._
 import com.typesafe.config.ConfigFactory
 import scala.util.control.NoStackTrace
 import org.scalatest.freespec.AnyFreeSpec
@@ -44,7 +44,7 @@ final class ExceptionHandlingTest extends AnyFreeSpec with ScalatestRouteTest wi
       } ~>
         check {
           assert(status == InternalServerError)
-          assert(entityAs[Problem] == Problem("com.sos.jobscheduler.common.akkahttp.ExceptionHandlingTest$TestException: MESSAGE"))
+          assert(entityAs[Problem] == Problem("js7.common.akkahttp.ExceptionHandlingTest$TestException: MESSAGE"))
         }
   }
 

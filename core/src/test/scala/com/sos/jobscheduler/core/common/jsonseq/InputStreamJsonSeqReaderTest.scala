@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.core.common.jsonseq
+package js7.core.common.jsonseq
 
 import com.google.common.base.Ascii.{LF, RS}
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.common.event.PositionAnd
-import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryFile
-import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReaderTest._
-import com.sos.jobscheduler.core.message.ProblemCodeMessages
+import js7.base.utils.ScalaUtils.RichThrowable
+import js7.common.event.PositionAnd
+import js7.common.scalautil.FileUtils.withTemporaryFile
+import js7.core.common.jsonseq.InputStreamJsonSeqReaderTest._
+import js7.core.message.ProblemCodeMessages
 import io.circe.Json
 import java.io.{ByteArrayInputStream, InputStream}
 import java.nio.charset.StandardCharsets.{US_ASCII, UTF_8}

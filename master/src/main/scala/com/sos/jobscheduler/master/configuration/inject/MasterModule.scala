@@ -1,22 +1,22 @@
-package com.sos.jobscheduler.master.configuration.inject
+package js7.master.configuration.inject
 
 import akka.actor.{ActorRefFactory, ActorSystem}
 import com.google.inject.{AbstractModule, Provides}
-import com.sos.jobscheduler.base.auth.{Permission, SimpleUser, UpdateRepoPermission}
-import com.sos.jobscheduler.base.eventbus.StandardEventBus
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.Closer
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
-import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import com.sos.jobscheduler.common.akkautils.DeadLetterActor
-import com.sos.jobscheduler.common.event.{EventIdClock, EventIdGenerator}
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.JavaTimeConverters._
-import com.sos.jobscheduler.core.system.ThreadPools
-import com.sos.jobscheduler.master.configuration.MasterConfiguration
-import com.sos.jobscheduler.master.configuration.inject.MasterModule._
+import js7.base.auth.{Permission, SimpleUser, UpdateRepoPermission}
+import js7.base.eventbus.StandardEventBus
+import js7.base.time.ScalaTime._
+import js7.base.utils.Closer
+import js7.base.utils.ScalazStyle._
+import js7.common.akkahttp.web.auth.GateKeeper
+import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
+import js7.common.akkautils.DeadLetterActor
+import js7.common.event.{EventIdClock, EventIdGenerator}
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.Logger
+import js7.common.time.JavaTimeConverters._
+import js7.core.system.ThreadPools
+import js7.master.configuration.MasterConfiguration
+import js7.master.configuration.inject.MasterModule._
 import com.typesafe.config.Config
 import javax.inject.Singleton
 import monix.execution.Scheduler

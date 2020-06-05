@@ -1,21 +1,21 @@
-package com.sos.jobscheduler.master.client
+package js7.master.client
 
 import cats.effect.Resource
-import com.sos.jobscheduler.base.auth.UserAndPassword
-import com.sos.jobscheduler.base.exceptions.HasIsIgnorableStackTrace
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.session.{HttpSessionApi, SessionApi}
-import com.sos.jobscheduler.base.utils.ScalaUtils._
-import com.sos.jobscheduler.base.web.{HttpClient, Uri}
-import com.sos.jobscheduler.data.agent.AgentRef
-import com.sos.jobscheduler.data.cluster.ClusterState
-import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
-import com.sos.jobscheduler.data.fatevent.FatEvent
-import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrdersOverview}
-import com.sos.jobscheduler.data.workflow.Workflow
-import com.sos.jobscheduler.master.client.HttpMasterApi._
-import com.sos.jobscheduler.master.data.{MasterCommand, MasterOverview, MasterSnapshots}
+import js7.base.auth.UserAndPassword
+import js7.base.exceptions.HasIsIgnorableStackTrace
+import js7.base.generic.Completed
+import js7.base.problem.Checked
+import js7.base.session.{HttpSessionApi, SessionApi}
+import js7.base.utils.ScalaUtils._
+import js7.base.web.{HttpClient, Uri}
+import js7.data.agent.AgentRef
+import js7.data.cluster.ClusterState
+import js7.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
+import js7.data.fatevent.FatEvent
+import js7.data.order.{FreshOrder, Order, OrdersOverview}
+import js7.data.workflow.Workflow
+import js7.master.client.HttpMasterApi._
+import js7.master.data.{MasterCommand, MasterOverview, MasterSnapshots}
 import io.circe.{Decoder, Encoder}
 import monix.eval.Task
 import monix.reactive.Observable

@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.data.job
+package js7.data.job
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowBranchPath}
-import com.sos.jobscheduler.tester.CirceJsonTester._
+import js7.base.circeutils.CirceUtils._
+import js7.data.workflow.WorkflowPath
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.position.{Position, WorkflowBranchPath}
+import js7.tester.CirceJsonTester._
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

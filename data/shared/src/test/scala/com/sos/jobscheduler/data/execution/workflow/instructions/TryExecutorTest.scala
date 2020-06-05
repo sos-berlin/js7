@@ -1,19 +1,19 @@
-package com.sos.jobscheduler.data.execution.workflow.instructions
+package js7.data.execution.workflow.instructions
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.execution.workflow.context.OrderContext
-import com.sos.jobscheduler.data.execution.workflow.instructions.TryExecutorTest._
-import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
-import com.sos.jobscheduler.data.order.OrderEvent.OrderMoved
-import com.sos.jobscheduler.data.order.{HistoricOutcome, Order, OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{Execute, TryInstruction}
-import com.sos.jobscheduler.data.workflow.position.BranchId.try_
-import com.sos.jobscheduler.data.workflow.position._
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowId, WorkflowPath}
-import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import js7.base.circeutils.CirceUtils._
+import js7.base.problem.Checked._
+import js7.data.agent.AgentRefPath
+import js7.data.execution.workflow.context.OrderContext
+import js7.data.execution.workflow.instructions.TryExecutorTest._
+import js7.data.job.{ExecutablePath, ReturnCode}
+import js7.data.order.OrderEvent.OrderMoved
+import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.instructions.{Execute, TryInstruction}
+import js7.data.workflow.position.BranchId.try_
+import js7.data.workflow.position._
+import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
+import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

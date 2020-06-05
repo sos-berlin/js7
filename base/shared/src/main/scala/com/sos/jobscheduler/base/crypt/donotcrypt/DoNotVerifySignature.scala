@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.base.crypt.donotcrypt
+package js7.base.crypt.donotcrypt
 
-import com.sos.jobscheduler.base.crypt.{GenericSignature, Signature}
+import js7.base.crypt.{GenericSignature, Signature}
 
 /**
   * @author Joacim Zschimmer

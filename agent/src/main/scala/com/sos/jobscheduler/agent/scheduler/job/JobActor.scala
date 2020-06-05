@@ -1,25 +1,25 @@
-package com.sos.jobscheduler.agent.scheduler.job
+package js7.agent.scheduler.job
 
 import akka.actor.{Actor, DeadLetterSuppression, Props, Stash}
-import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.data.Problems.SignedInjectionNotAllowed
-import com.sos.jobscheduler.agent.scheduler.job.JobActor._
-import com.sos.jobscheduler.agent.scheduler.job.task.{TaskConfiguration, TaskRunner, TaskStepEnded, TaskStepFailed}
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.process.ProcessSignal
-import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.common.process.Processes.ShellFileAttributes
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.system.OperatingSystem.{isUnix, isWindows}
-import com.sos.jobscheduler.data.job.{ExecutablePath, ExecutableScript, JobKey}
-import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.taskserver.task.process.RichProcess.tryDeleteFile
-import com.sos.jobscheduler.taskserver.task.process.StdChannels
+import js7.agent.configuration.AgentConfiguration
+import js7.agent.data.Problems.SignedInjectionNotAllowed
+import js7.agent.scheduler.job.JobActor._
+import js7.agent.scheduler.job.task.{TaskConfiguration, TaskRunner, TaskStepEnded, TaskStepFailed}
+import js7.base.problem.{Checked, Problem}
+import js7.base.process.ProcessSignal
+import js7.base.process.ProcessSignal.{SIGKILL, SIGTERM}
+import js7.base.utils.Assertions.assertThat
+import js7.base.utils.Collections.implicits.InsertableMutableMap
+import js7.base.utils.ScalaUtils.RichThrowable
+import js7.common.process.Processes.ShellFileAttributes
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.Logger
+import js7.common.system.OperatingSystem.{isUnix, isWindows}
+import js7.data.job.{ExecutablePath, ExecutableScript, JobKey}
+import js7.data.order.{Order, OrderId}
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.taskserver.task.process.RichProcess.tryDeleteFile
+import js7.taskserver.task.process.StdChannels
 import java.nio.file.Files.{createTempFile, exists, getPosixFilePermissions}
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.Path

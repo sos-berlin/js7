@@ -1,14 +1,14 @@
-package com.sos.jobscheduler.common.akkahttp.web.data
+package js7.common.akkahttp.web.data
 
 import akka.http.scaladsl.model.{Uri => AkkaUri}
 import cats.syntax.either._
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.base.utils.CatsUtils._
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
-import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichAkkaAsUri
+import js7.base.problem.Checked._
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.Assertions.assertThat
+import js7.base.utils.CatsUtils._
+import js7.base.web.Uri
+import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
+import js7.common.http.AkkaHttpUtils.RichAkkaAsUri
 import java.net.{InetAddress, InetSocketAddress}
 
 /**

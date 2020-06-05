@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.common.monixutils
+package js7.common.monixutils
 
-import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
+import js7.common.scalautil.Futures.promiseFuture
 import java.util.Objects.requireNonNull
 import monix.eval.Task
 import monix.execution.Scheduler

@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.core.api;
+package js7.core.api;
 
 public class JavaApi
 {

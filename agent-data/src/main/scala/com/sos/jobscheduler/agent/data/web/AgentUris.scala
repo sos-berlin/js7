@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.agent.data.web
+package js7.agent.data.web
 
 import akka.http.scaladsl.model.Uri.{Path, Query}
 import akka.http.scaladsl.model.{Uri => AkkaUri}
-import com.sos.jobscheduler.agent.data.AgentTaskId
-import com.sos.jobscheduler.agent.data.web.AgentUris._
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.data.event.{Event, EventRequest}
-import com.sos.jobscheduler.data.order.OrderId
+import js7.agent.data.AgentTaskId
+import js7.agent.data.web.AgentUris._
+import js7.base.web.Uri
+import js7.data.event.{Event, EventRequest}
+import js7.data.order.OrderId
 
 /**
  * URIs of the JobScheduler Agent Server.

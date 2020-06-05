@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.base.utils
+package js7.base.utils
 
-import com.sos.jobscheduler.base.utils.Identifier._
+import js7.base.utils.Identifier._
 import org.scalatest.freespec.AnyFreeSpec
 import scala.jdk.CollectionConverters._
 

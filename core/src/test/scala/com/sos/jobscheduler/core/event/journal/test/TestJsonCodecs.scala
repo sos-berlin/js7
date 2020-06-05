@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.core.event.journal.test
+package js7.core.event.journal.test
 
-import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import com.sos.jobscheduler.data.event.{Event, JournalEvent, KeyedEventTypedJsonCodec}
+import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
+import js7.data.event.{Event, JournalEvent, KeyedEventTypedJsonCodec}
 
 /**
   * @author Joacim Zschimmer

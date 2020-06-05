@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.core.event.state
+package js7.core.event.state
 
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.Stopwatch
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.event.state.LockKeeperTest._
+import js7.base.time.ScalaTime._
+import js7.base.time.Stopwatch
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.Logger
+import js7.core.event.state.LockKeeperTest._
 import java.util.concurrent.ConcurrentHashMap
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global

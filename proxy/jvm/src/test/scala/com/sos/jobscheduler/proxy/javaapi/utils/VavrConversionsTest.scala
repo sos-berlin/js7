@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.proxy.javaapi.utils
+package js7.proxy.javaapi.utils
 
-import com.sos.jobscheduler.base.annotation.javaApi
-import com.sos.jobscheduler.proxy.javaapi.utils.VavrConversions._
+import js7.base.annotation.javaApi
+import js7.proxy.javaapi.utils.VavrConversions._
 import io.vavr.control.{Either => VEither}
 import org.scalatest.freespec.AnyFreeSpec
 

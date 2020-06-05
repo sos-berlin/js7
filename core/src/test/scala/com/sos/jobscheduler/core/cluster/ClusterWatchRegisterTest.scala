@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.core.cluster
+package js7.core.cluster
 
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.data.master.MasterId
+import js7.base.time.ScalaTime._
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.data.master.MasterId
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec

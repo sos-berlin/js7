@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.data.agent
+package js7.data.agent
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.utils.ScalaUtils.reuseIfEqual
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId}
+import js7.base.circeutils.CirceUtils._
+import js7.base.utils.ScalaUtils.reuseIfEqual
+import js7.base.web.Uri
+import js7.data.filebased.{FileBased, FileBasedId}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json, JsonObject}
 

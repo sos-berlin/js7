@@ -1,20 +1,20 @@
-package com.sos.jobscheduler.core.event.journal.recover
+package js7.core.event.journal.recover
 
 import akka.actor.{Actor, ActorRef, ActorRefFactory, Props}
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.{Stopwatch, Timestamp}
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
-import com.sos.jobscheduler.common.event.PositionAnd
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
-import com.sos.jobscheduler.common.utils.Exceptions.wrapException
-import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, RecoveredJournalingActors}
-import com.sos.jobscheduler.core.event.journal.files.JournalFiles
-import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer._
-import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
-import com.sos.jobscheduler.core.event.journal.{JournalActor, KeyedJournalingActor}
-import com.sos.jobscheduler.data.event.{Event, EventId, JournalHeader, JournalId, JournaledState, KeyedEvent, Stamped}
+import js7.base.time.ScalaTime._
+import js7.base.time.{Stopwatch, Timestamp}
+import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.ScalaUtils.RichJavaClass
+import js7.common.event.PositionAnd
+import js7.common.scalautil.Logger
+import js7.common.utils.ByteUnits.toKBGB
+import js7.common.utils.Exceptions.wrapException
+import js7.core.event.journal.data.{JournalMeta, RecoveredJournalingActors}
+import js7.core.event.journal.files.JournalFiles
+import js7.core.event.journal.recover.JournalRecoverer._
+import js7.core.event.journal.watch.JournalingObserver
+import js7.core.event.journal.{JournalActor, KeyedJournalingActor}
+import js7.data.event.{Event, EventId, JournalHeader, JournalId, JournaledState, KeyedEvent, Stamped}
 import java.nio.file.{Files, Path}
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._

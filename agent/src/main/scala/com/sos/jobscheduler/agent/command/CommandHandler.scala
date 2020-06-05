@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.agent.command
+package js7.agent.command
 
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.core.command.CommandMeta
-import com.sos.jobscheduler.data.command.{CommandHandlerDetailed, CommandHandlerOverview}
+import js7.agent.data.commands.AgentCommand
+import js7.base.problem.Checked
+import js7.core.command.CommandMeta
+import js7.data.command.{CommandHandlerDetailed, CommandHandlerOverview}
 import monix.eval.Task
 
 /**

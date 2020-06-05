@@ -1,21 +1,21 @@
-package com.sos.jobscheduler.taskserver.task.process
+package js7.taskserver.task.process
 
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.process.ProcessSignal
-import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.HasCloser
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.common.log.LogLevel
-import com.sos.jobscheduler.common.log.LogLevel.LevelScalaLogger
-import com.sos.jobscheduler.common.process.Processes._
-import com.sos.jobscheduler.common.scalautil.IOExecutor.ioFuture
-import com.sos.jobscheduler.common.scalautil.{ClosedFuture, IOExecutor, Logger}
-import com.sos.jobscheduler.common.system.OperatingSystem._
-import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
-import com.sos.jobscheduler.taskserver.task.process.RichProcess._
+import js7.base.generic.Completed
+import js7.base.process.ProcessSignal
+import js7.base.process.ProcessSignal.{SIGKILL, SIGTERM}
+import js7.base.time.ScalaTime._
+import js7.base.time.Timestamp
+import js7.base.utils.HasCloser
+import js7.base.utils.ScalaUtils.RichThrowable
+import js7.common.log.LogLevel
+import js7.common.log.LogLevel.LevelScalaLogger
+import js7.common.process.Processes._
+import js7.common.scalautil.IOExecutor.ioFuture
+import js7.common.scalautil.{ClosedFuture, IOExecutor, Logger}
+import js7.common.system.OperatingSystem._
+import js7.data.job.ReturnCode
+import js7.data.system.{Stderr, Stdout, StdoutOrStderr}
+import js7.taskserver.task.process.RichProcess._
 import java.io.{BufferedOutputStream, OutputStream, OutputStreamWriter}
 import java.lang.ProcessBuilder.Redirect
 import java.lang.ProcessBuilder.Redirect.INHERIT

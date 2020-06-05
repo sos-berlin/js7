@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.data.event
+package js7.data.event
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec.UnknownClassForJsonException
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodecTest._
-import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.typed.TypedJsonCodec.UnknownClassForJsonException
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.data.event.KeyedEvent.NoKey
+import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
+import js7.data.event.KeyedEventTypedJsonCodecTest._
+import js7.tester.CirceJsonTester.testJson
 import io.circe.DecodingFailure
 import io.circe.generic.JsonCodec
 import io.circe.syntax.EncoderOps
@@ -29,7 +29,7 @@ final class KeyedEventTypedJsonCodecTest extends AnyFreeSpec
     intercept[UnknownClassForJsonException] {
       (KeyedEvent(NotRegistered(1)): KeyedEvent[TestEvent]).asJson
     }.getMessage should include (
-      "Class com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodecTest$NotRegistered is not registered with TypedJsonCodec[KeyedEventTypedJsonCodecTest.TestEvent]")
+      "Class js7.data.event.KeyedEventTypedJsonCodecTest$NotRegistered is not registered with TypedJsonCodec[KeyedEventTypedJsonCodecTest.TestEvent]")
   }
 
   "decode unknown subclass" in {

@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.master
+package js7.master
 
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId, OrdersOverview}
+import js7.base.generic.Completed
+import js7.base.problem.Checked
+import js7.data.order.{FreshOrder, Order, OrderId, OrdersOverview}
 import monix.eval.Task
 
 /**

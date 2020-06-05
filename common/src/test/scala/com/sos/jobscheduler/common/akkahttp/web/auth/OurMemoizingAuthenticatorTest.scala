@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.common.akkahttp.web.auth
+package js7.common.akkahttp.web.auth
 
 import akka.http.scaladsl.model.headers.BasicHttpCredentials
 import akka.http.scaladsl.server.directives.Credentials
-import com.sos.jobscheduler.base.auth.{HashedPassword, SimpleUser, UserAndPassword, UserId}
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.common.akkahttp.web.auth.OurMemoizingAuthenticatorTest._
+import js7.base.auth.{HashedPassword, SimpleUser, UserAndPassword, UserId}
+import js7.base.generic.SecretString
+import js7.common.akkahttp.web.auth.OurMemoizingAuthenticatorTest._
 import scala.collection.mutable
 import org.scalatest.freespec.AnyFreeSpec
 

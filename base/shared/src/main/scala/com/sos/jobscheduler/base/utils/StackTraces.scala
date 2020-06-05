@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.base.utils
+package js7.base.utils
 
 import scala.util.{Failure, Try}
 
@@ -33,7 +33,7 @@ object StackTraces
       */
     def appendCurrentStackTrace: T =
       appendStackTrace(new Exception().getStackTrace
-        .dropWhile(_.getClassName startsWith "com.sos.jobscheduler.base.utils.StackTraces"))
+        .dropWhile(_.getClassName startsWith "js7.base.utils.StackTraces"))
 
     /**
       * Applicable for Throwables of another context, like from a `Future`.

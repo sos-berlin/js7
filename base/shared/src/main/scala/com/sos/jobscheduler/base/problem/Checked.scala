@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.base.problem
+package js7.base.problem
 
 import cats.Applicative
 import cats.syntax.semigroup._
-import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.problem.Problem._
-import com.sos.jobscheduler.base.utils.ScalaUtils._
+import js7.base.circeutils.typed.TypedJsonCodec
+import js7.base.generic.Completed
+import js7.base.problem.Problem._
+import js7.base.utils.ScalaUtils._
 import io.circe.{Decoder, Encoder, Json}
 import scala.collection.immutable.VectorBuilder
 import scala.collection.mutable

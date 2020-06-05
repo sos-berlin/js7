@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.master
+package js7.master
 
-import com.sos.jobscheduler.base.problem.Problem
+import js7.base.problem.Problem
 
 /**
   * @author Joacim Zschimmer

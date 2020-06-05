@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.core.event.journal.watch
+package js7.core.event.journal.watch
 
-import com.sos.jobscheduler.base.utils.CloseableIterator
-import com.sos.jobscheduler.common.event.{EventSync, PositionAnd}
-import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
-import com.sos.jobscheduler.data.event.{EventId, JournalId}
+import js7.base.utils.CloseableIterator
+import js7.common.event.{EventSync, PositionAnd}
+import js7.core.event.journal.data.JournalMeta
+import js7.core.event.journal.files.JournalFiles.JournalMetaOps
+import js7.data.event.{EventId, JournalId}
 import com.typesafe.config.Config
 import scala.concurrent.duration.Deadline
 

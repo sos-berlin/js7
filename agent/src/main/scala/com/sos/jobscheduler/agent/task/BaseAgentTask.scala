@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.agent.task
+package js7.agent.task
 
-import com.sos.jobscheduler.agent.data.AgentTaskId
-import com.sos.jobscheduler.agent.data.views.TaskOverview
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.process.ProcessSignal
-import com.sos.jobscheduler.common.process.Processes.Pid
-import com.sos.jobscheduler.data.job.JobKey
+import js7.agent.data.AgentTaskId
+import js7.agent.data.views.TaskOverview
+import js7.base.generic.Completed
+import js7.base.process.ProcessSignal
+import js7.common.process.Processes.Pid
+import js7.data.job.JobKey
 import scala.concurrent.Future
 
 /**

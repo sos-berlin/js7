@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.master.agent
+package js7.master.agent
 
 import akka.util.ByteString
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.common.scalautil.xmls.XmlSources.simpleByteStringSource
-import com.sos.jobscheduler.core.filebased.FileBasedReader
-import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefId}
-import com.sos.jobscheduler.data.filebased.SourceType
+import js7.base.circeutils.CirceUtils._
+import js7.base.problem.Checked
+import js7.common.scalautil.xmls.XmlSources.simpleByteStringSource
+import js7.core.filebased.FileBasedReader
+import js7.data.agent.{AgentRef, AgentRefId}
+import js7.data.filebased.SourceType
 import io.circe.Json
 
 /**

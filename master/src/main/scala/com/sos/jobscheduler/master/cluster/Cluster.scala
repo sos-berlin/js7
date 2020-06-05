@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.master.cluster
+package js7.master.cluster
 
 import akka.actor.ActorSystem
 import akka.pattern.{AskTimeoutException, ask}
@@ -6,46 +6,46 @@ import akka.util.Timeout
 import cats.data.EitherT
 import cats.effect.ExitCase
 import cats.syntax.flatMap._
-import com.sos.jobscheduler.base.auth.UserAndPassword
-import com.sos.jobscheduler.base.eventbus.EventPublisher
-import com.sos.jobscheduler.base.generic.{Completed, SecretString}
-import com.sos.jobscheduler.base.monixutils.MonixBase.syntax._
-import com.sos.jobscheduler.base.monixutils.MonixDeadline
-import com.sos.jobscheduler.base.monixutils.MonixDeadline.now
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.base.utils.{LockResource, SetOnce}
-import com.sos.jobscheduler.base.web.{HttpClient, Uri}
-import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
-import com.sos.jobscheduler.common.event.{EventIdGenerator, RealEventWatch}
-import com.sos.jobscheduler.common.http.RecouplingStreamReader
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.cluster.ClusterWatch.ClusterWatchHeartbeatFromInactiveNodeProblem
-import com.sos.jobscheduler.core.cluster.HttpClusterWatch
-import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.core.event.journal.files.JournalFiles
-import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
-import com.sos.jobscheduler.core.event.journal.recover.{JournaledStateRecoverer, Recovered}
-import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalConf}
-import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
-import com.sos.jobscheduler.core.problems.{ClusterNodesAlreadyAppointed, MissingPassiveClusterNodeHeartbeatProblem}
-import com.sos.jobscheduler.core.startup.Halt.haltJava
-import com.sos.jobscheduler.data.cluster.ClusterCommand.{ClusterInhibitActivation, ClusterStartBackupNode}
-import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
-import com.sos.jobscheduler.data.cluster.ClusterState.{Coupled, CoupledActiveShutDown, Decoupled, Empty, FailedOver, HasNodes, NodesAppointed, PassiveLost, PreparedToBeCoupled}
-import com.sos.jobscheduler.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeId, ClusterState}
-import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeqTornProblem, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.master.MasterId
-import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
-import com.sos.jobscheduler.master.cluster.Cluster._
-import com.sos.jobscheduler.master.cluster.ClusterCommon.{clusterEventAndStateToString, truncateFile}
-import com.sos.jobscheduler.master.cluster.ObservablePauseDetector._
-import com.sos.jobscheduler.master.data.MasterCommand.InternalClusterCommand
-import com.sos.jobscheduler.master.data.MasterState
+import js7.base.auth.UserAndPassword
+import js7.base.eventbus.EventPublisher
+import js7.base.generic.{Completed, SecretString}
+import js7.base.monixutils.MonixBase.syntax._
+import js7.base.monixutils.MonixDeadline
+import js7.base.monixutils.MonixDeadline.now
+import js7.base.problem.Checked._
+import js7.base.problem.{Checked, Problem}
+import js7.base.time.ScalaTime._
+import js7.base.utils.Assertions.assertThat
+import js7.base.utils.ScalaUtils.RichThrowable
+import js7.base.utils.{LockResource, SetOnce}
+import js7.base.web.{HttpClient, Uri}
+import js7.common.configutils.Configs.ConvertibleConfig
+import js7.common.event.{EventIdGenerator, RealEventWatch}
+import js7.common.http.RecouplingStreamReader
+import js7.common.scalautil.Logger
+import js7.core.cluster.ClusterWatch.ClusterWatchHeartbeatFromInactiveNodeProblem
+import js7.core.cluster.HttpClusterWatch
+import js7.core.event.journal.data.JournalMeta
+import js7.core.event.journal.files.JournalFiles
+import js7.core.event.journal.files.JournalFiles.JournalMetaOps
+import js7.core.event.journal.recover.{JournaledStateRecoverer, Recovered}
+import js7.core.event.journal.{JournalActor, JournalConf}
+import js7.core.event.state.JournaledStatePersistence
+import js7.core.problems.{ClusterNodesAlreadyAppointed, MissingPassiveClusterNodeHeartbeatProblem}
+import js7.core.startup.Halt.haltJava
+import js7.data.cluster.ClusterCommand.{ClusterInhibitActivation, ClusterStartBackupNode}
+import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
+import js7.data.cluster.ClusterState.{Coupled, CoupledActiveShutDown, Decoupled, Empty, FailedOver, HasNodes, NodesAppointed, PassiveLost, PreparedToBeCoupled}
+import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeId, ClusterState}
+import js7.data.event.KeyedEvent.NoKey
+import js7.data.event.{Event, EventId, EventRequest, EventSeqTornProblem, KeyedEvent, Stamped}
+import js7.data.master.MasterId
+import js7.master.client.{AkkaHttpMasterApi, HttpMasterApi}
+import js7.master.cluster.Cluster._
+import js7.master.cluster.ClusterCommon.{clusterEventAndStateToString, truncateFile}
+import js7.master.cluster.ObservablePauseDetector._
+import js7.master.data.MasterCommand.InternalClusterCommand
+import js7.master.data.MasterState
 import com.typesafe.config.{Config, ConfigUtil}
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, Paths}

@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.agent.scheduler.order
+package js7.agent.scheduler.order
 
-import com.sos.jobscheduler.agent.scheduler.order.StatisticalWriter._
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
+import js7.agent.scheduler.order.StatisticalWriter._
+import js7.base.time.ScalaTime._
+import js7.common.utils.ByteUnits.toKBGB
 import java.io.Writer
 import java.lang.System.nanoTime
 import scala.concurrent.duration.Deadline.now

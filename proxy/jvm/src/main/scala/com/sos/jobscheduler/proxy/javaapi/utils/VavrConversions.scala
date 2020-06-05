@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.proxy.javaapi.utils
+package js7.proxy.javaapi.utils
 
-import com.sos.jobscheduler.base.annotation.javaApi
+import js7.base.annotation.javaApi
 import io.vavr.control.{Either => VEither}
 
 @javaApi

@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.tests
+package js7.tests
 
 /** Duplicates TestMasterAgent, to include a valid test logger in classpath. */
 object TestMasterAgentTest {

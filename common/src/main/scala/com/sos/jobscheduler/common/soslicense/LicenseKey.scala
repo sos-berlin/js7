@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.common.soslicense
+package js7.common.soslicense
 
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.soslicense.LicenseKey._
-import com.sos.jobscheduler.common.soslicense.Parameters._
-import com.sos.jobscheduler.common.soslicense.UnsignedInt32._
+import js7.common.scalautil.Logger
+import js7.common.soslicense.LicenseKey._
+import js7.common.soslicense.Parameters._
+import js7.common.soslicense.UnsignedInt32._
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter.BASIC_ISO_DATE
 import scala.util.control.NonFatal

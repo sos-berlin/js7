@@ -1,22 +1,22 @@
-package com.sos.jobscheduler.master.data
+package js7.master.data
 
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.utils.Collections.implicits._
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
-import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{EventId, JournalEvent, JournalState, JournaledState, JournaledStateBuilder, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.execution.workflow.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
-import com.sos.jobscheduler.data.filebased.{Repo, RepoEvent}
-import com.sos.jobscheduler.data.master.MasterFileBaseds
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderOffered, OrderStdWritten}
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
-import com.sos.jobscheduler.data.workflow.Workflow
-import com.sos.jobscheduler.master.data.MasterSnapshots.MasterMetaState
-import com.sos.jobscheduler.master.data.agent.{AgentEventIdEvent, AgentSnapshot}
-import com.sos.jobscheduler.master.data.events.MasterAgentEvent.{AgentCouplingFailed, AgentReady, AgentRegisteredMaster}
-import com.sos.jobscheduler.master.data.events.MasterEvent.{MasterShutDown, MasterTestEvent}
-import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
+import js7.base.problem.Checked._
+import js7.base.utils.Collections.implicits._
+import js7.data.agent.AgentRefPath
+import js7.data.cluster.{ClusterEvent, ClusterState}
+import js7.data.event.KeyedEvent.NoKey
+import js7.data.event.{EventId, JournalEvent, JournalState, JournaledState, JournaledStateBuilder, KeyedEvent, Stamped}
+import js7.data.execution.workflow.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
+import js7.data.filebased.{Repo, RepoEvent}
+import js7.data.master.MasterFileBaseds
+import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderOffered, OrderStdWritten}
+import js7.data.order.{Order, OrderEvent, OrderId}
+import js7.data.workflow.Workflow
+import js7.master.data.MasterSnapshots.MasterMetaState
+import js7.master.data.agent.{AgentEventIdEvent, AgentSnapshot}
+import js7.master.data.events.MasterAgentEvent.{AgentCouplingFailed, AgentReady, AgentRegisteredMaster}
+import js7.master.data.events.MasterEvent.{MasterShutDown, MasterTestEvent}
+import js7.master.data.events.{MasterAgentEvent, MasterEvent}
 import scala.collection.mutable
 
 final class MasterStateBuilder

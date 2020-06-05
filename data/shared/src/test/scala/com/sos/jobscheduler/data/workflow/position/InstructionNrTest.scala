@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.data.workflow.position
+package js7.data.workflow.position
 
 import org.scalatest.freespec.AnyFreeSpec
 

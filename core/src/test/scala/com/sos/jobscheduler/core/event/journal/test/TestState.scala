@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.core.event.journal.test
+package js7.core.event.journal.test
 
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.data.event.{Event, EventId, JournalState, JournaledState, KeyedEvent}
+import js7.base.problem.Checked
+import js7.data.event.{Event, EventId, JournalState, JournaledState, KeyedEvent}
 import monix.reactive.Observable
 
 /**

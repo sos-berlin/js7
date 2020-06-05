@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.base.circeutils
+package js7.base.circeutils
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.circeutils.JavaJsonCodecs._
-import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
-import com.sos.jobscheduler.base.utils.ScalaUtils._
-import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.JavaJsonCodecs._
+import js7.base.utils.IntelliJUtils.intelliJuseImport
+import js7.base.utils.ScalaUtils._
+import js7.tester.CirceJsonTester.testJson
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json}
 import java.io.File

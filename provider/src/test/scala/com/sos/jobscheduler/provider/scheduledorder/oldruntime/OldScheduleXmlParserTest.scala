@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.provider.scheduledorder.oldruntime
+package js7.provider.scheduledorder.oldruntime
 
-import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader
-import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
-import com.sos.jobscheduler.common.time.JavaTime._
+import js7.common.scalautil.xmls.ScalaXMLEventReader
+import js7.common.scalautil.xmls.XmlSources._
+import js7.common.time.JavaTime._
 import java.time.DayOfWeek._
 import java.time.{LocalTime, ZoneId}
 import org.scalatest.freespec.AnyFreeSpec

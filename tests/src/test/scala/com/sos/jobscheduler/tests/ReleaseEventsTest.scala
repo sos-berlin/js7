@@ -1,32 +1,32 @@
-package com.sos.jobscheduler.tests
+package js7.tests
 
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.base.auth.{SimpleUser, UserAndPassword, UserId}
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.session.SessionApi
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
-import com.sos.jobscheduler.core.command.CommandMeta
-import com.sos.jobscheduler.core.event.journal.files.JournalFiles.listJournalFiles
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
-import com.sos.jobscheduler.data.problems.UserIsNotEnabledToReleaseEventsProblem
-import com.sos.jobscheduler.data.workflow.instructions.Execute
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.master.RunningMaster
-import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
-import com.sos.jobscheduler.master.data.MasterCommand.{ReleaseEvents, TakeSnapshot}
-import com.sos.jobscheduler.master.data.events.MasterEvent
-import com.sos.jobscheduler.tests.ReleaseEventsTest._
-import com.sos.jobscheduler.tests.testenv.DirectoryProvider.script
-import com.sos.jobscheduler.tests.testenv.DirectoryProviderForScalaTest
+import js7.agent.data.commands.AgentCommand
+import js7.base.auth.{SimpleUser, UserAndPassword, UserId}
+import js7.base.generic.SecretString
+import js7.base.problem.Checked.Ops
+import js7.base.session.SessionApi
+import js7.base.time.ScalaTime._
+import js7.common.process.Processes.{ShellFileExtension => sh}
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.common.time.WaitForCondition.waitForCondition
+import js7.core.command.CommandMeta
+import js7.core.event.journal.files.JournalFiles.listJournalFiles
+import js7.data.agent.AgentRefPath
+import js7.data.job.ExecutablePath
+import js7.data.order.OrderEvent.OrderFinished
+import js7.data.order.{FreshOrder, OrderId}
+import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
+import js7.data.workflow.instructions.Execute
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.master.RunningMaster
+import js7.master.client.{AkkaHttpMasterApi, HttpMasterApi}
+import js7.master.data.MasterCommand.{ReleaseEvents, TakeSnapshot}
+import js7.master.data.events.MasterEvent
+import js7.tests.ReleaseEventsTest._
+import js7.tests.testenv.DirectoryProvider.script
+import js7.tests.testenv.DirectoryProviderForScalaTest
 import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec

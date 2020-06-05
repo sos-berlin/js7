@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.data.job
+package js7.data.job
 
-import com.sos.jobscheduler.base.generic.GenericInt
+import js7.base.generic.GenericInt
 
 final case class TaskId(number: Int) extends GenericInt {
 

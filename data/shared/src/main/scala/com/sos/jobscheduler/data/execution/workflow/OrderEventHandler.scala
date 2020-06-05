@@ -1,14 +1,14 @@
-package com.sos.jobscheduler.data.execution.workflow
+package js7.data.execution.workflow
 
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
-import com.sos.jobscheduler.data.event.KeyedEvent
-import com.sos.jobscheduler.data.execution.workflow.OrderEventHandler.FollowUp
-import com.sos.jobscheduler.data.job.JobKey
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAwaiting, OrderForked, OrderJoined, OrderOffered, OrderProcessed, OrderTerminated}
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.instructions.Execute
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowId}
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.ScalaUtils.RichPartialFunction
+import js7.data.event.KeyedEvent
+import js7.data.execution.workflow.OrderEventHandler.FollowUp
+import js7.data.job.JobKey
+import js7.data.order.OrderEvent.{OrderAwaiting, OrderForked, OrderJoined, OrderOffered, OrderProcessed, OrderTerminated}
+import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
+import js7.data.workflow.instructions.Execute
+import js7.data.workflow.{Workflow, WorkflowId}
 import scala.collection.mutable
 
 /**

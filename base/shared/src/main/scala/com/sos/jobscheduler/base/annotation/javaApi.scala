@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.base.annotation
+package js7.base.annotation
 
 /** For Java use only. */
 final class javaApi

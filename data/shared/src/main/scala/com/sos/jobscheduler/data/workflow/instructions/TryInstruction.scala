@@ -1,13 +1,13 @@
-package com.sos.jobscheduler.data.workflow.instructions
+package js7.data.workflow.instructions
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.circeutils.ScalaJsonCodecs._
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.data.source.SourcePos
-import com.sos.jobscheduler.data.workflow.instructions.TryInstruction._
-import com.sos.jobscheduler.data.workflow.position.{BranchId, CatchBranchId, TryBranchId, TryCatchBranchId}
-import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
+import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.ScalaJsonCodecs._
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.ScalazStyle._
+import js7.data.source.SourcePos
+import js7.data.workflow.instructions.TryInstruction._
+import js7.data.workflow.position.{BranchId, CatchBranchId, TryBranchId, TryCatchBranchId}
+import js7.data.workflow.{Instruction, Workflow}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 import scala.concurrent.duration.{Duration, FiniteDuration}

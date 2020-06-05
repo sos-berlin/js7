@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.base.utils
+package js7.base.utils
 
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.utils.ScodecUtils._
-import com.sos.jobscheduler.base.utils.Strings.RichString
+import js7.base.problem.Problem
+import js7.base.utils.ScodecUtils._
+import js7.base.utils.Strings.RichString
 import monix.reactive.Observable
 import scala.collection.mutable.ArrayBuffer
 import scodec.bits.ByteVector

@@ -1,24 +1,24 @@
-package com.sos.jobscheduler.tests
+package js7.tests
 
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.data.Problems.{CancelStartedOrderProblem, UnknownOrderProblem}
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.command.CancelMode
-import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancellationMarked, OrderCancelled, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.instructions.Execute
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.position.Position
-import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.TestExecutablePath
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.master.data.MasterCommand.{Batch, CancelOrder, Response}
-import com.sos.jobscheduler.tests.CancelOrderTest._
-import com.sos.jobscheduler.tests.testenv.DirectoryProvider.script
-import com.sos.jobscheduler.tests.testenv.MasterAgentForScalaTest
+import js7.base.problem.Checked.Ops
+import js7.base.time.ScalaTime._
+import js7.base.time.Timestamp
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.data.Problems.{CancelStartedOrderProblem, UnknownOrderProblem}
+import js7.data.agent.AgentRefPath
+import js7.data.command.CancelMode
+import js7.data.job.ExecutablePath
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancellationMarked, OrderCancelled, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
+import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.workflow.instructions.Execute
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.position.Position
+import js7.data.workflow.test.ForkTestSetting.TestExecutablePath
+import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.master.data.MasterCommand.{Batch, CancelOrder, Response}
+import js7.tests.CancelOrderTest._
+import js7.tests.testenv.DirectoryProvider.script
+import js7.tests.testenv.MasterAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._

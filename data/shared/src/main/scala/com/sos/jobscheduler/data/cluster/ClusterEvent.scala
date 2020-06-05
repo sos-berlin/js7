@@ -1,14 +1,14 @@
-package com.sos.jobscheduler.data.cluster
+package js7.data.cluster
 
 import cats.instances.either._
 import cats.syntax.flatMap._
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.data.cluster.ClusterSetting.checkUris
-import com.sos.jobscheduler.data.event.{JournalPosition, NoKeyEvent}
+import js7.base.circeutils.CirceUtils.deriveCodec
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.problem.Checked
+import js7.base.problem.Checked._
+import js7.base.web.Uri
+import js7.data.cluster.ClusterSetting.checkUris
+import js7.data.event.{JournalPosition, NoKeyEvent}
 
 sealed trait ClusterEvent extends NoKeyEvent
 

@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.data.execution.workflow.instructions
+package js7.data.execution.workflow.instructions
 
-import com.sos.jobscheduler.data.execution.workflow.context.OrderContext
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderDetachable, OrderFailed, OrderFailedCatchable, OrderFailedInFork, OrderStarted}
-import com.sos.jobscheduler.data.order.{Order, Outcome}
-import com.sos.jobscheduler.data.workflow.instructions.Fail
+import js7.data.execution.workflow.context.OrderContext
+import js7.data.order.OrderEvent.{OrderDetachable, OrderFailed, OrderFailedCatchable, OrderFailedInFork, OrderStarted}
+import js7.data.order.{Order, Outcome}
+import js7.data.workflow.instructions.Fail
 
 /**
   * @author Joacim Zschimmer

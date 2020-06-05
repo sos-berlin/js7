@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.common.soslicense
+package js7.common.soslicense
 
-import com.sos.jobscheduler.common.soslicense.UnsignedInt32._
+import js7.common.soslicense.UnsignedInt32._
 
 /**
  * @author Joacim Zschimmer

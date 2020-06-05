@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.common.time
+package js7.common.time
 
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.base.time.ScalaTime._
+import js7.base.time.Timestamp
+import js7.common.scalautil.Logger
+import js7.base.time.ScalaTime._
 import java.time.{Duration, Instant}
 import java.util.concurrent.TimeUnit.NANOSECONDS
 import scala.concurrent.duration.{FiniteDuration, Duration => ScalaDuration}

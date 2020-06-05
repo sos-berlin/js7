@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.base.circeutils.typed
+package js7.base.circeutils.typed
 
-import com.sos.jobscheduler.base.circeutils.CirceObjectCodec
-import com.sos.jobscheduler.base.circeutils.CirceUtils.singletonCodec
-import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec.{TypeFieldName, typeName}
-import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
+import js7.base.circeutils.CirceObjectCodec
+import js7.base.circeutils.CirceUtils.singletonCodec
+import js7.base.circeutils.typed.TypedJsonCodec.{TypeFieldName, typeName}
+import js7.base.utils.ScalaUtils.implicitClass
 import io.circe.{Decoder, Encoder, Json}
 import scala.reflect.ClassTag
 

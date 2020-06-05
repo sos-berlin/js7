@@ -1,24 +1,24 @@
-package com.sos.jobscheduler.core.event.journal.test
+package js7.core.event.journal.test
 
 import akka.Done
 import akka.actor.{Actor, ActorRef, Props, Stash, Terminated}
 import akka.pattern.{ask, pipe}
 import akka.util.Timeout
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
-import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
-import com.sos.jobscheduler.common.event.{EventIdClock, EventIdGenerator}
-import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.event.StampedKeyedEventBus
-import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
-import com.sos.jobscheduler.core.event.journal.test.TestActor._
-import com.sos.jobscheduler.core.event.journal.test.TestData.TestConfig
-import com.sos.jobscheduler.core.event.journal.test.TestJsonCodecs.TestKeyedEventJsonCodec
-import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
-import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalConf}
-import com.sos.jobscheduler.data.event.{JournalId, KeyedEvent, Stamped}
+import js7.base.time.ScalaTime._
+import js7.base.utils.IntelliJUtils.intelliJuseImport
+import js7.common.akkautils.SupervisorStrategies
+import js7.common.event.{EventIdClock, EventIdGenerator}
+import js7.common.scalautil.Futures.implicits.SuccessFuture
+import js7.common.scalautil.Logger
+import js7.core.event.StampedKeyedEventBus
+import js7.core.event.journal.data.JournalMeta
+import js7.core.event.journal.recover.JournalRecoverer
+import js7.core.event.journal.test.TestActor._
+import js7.core.event.journal.test.TestData.TestConfig
+import js7.core.event.journal.test.TestJsonCodecs.TestKeyedEventJsonCodec
+import js7.core.event.journal.watch.JournalEventWatch
+import js7.core.event.journal.{JournalActor, JournalConf}
+import js7.data.event.{JournalId, KeyedEvent, Stamped}
 import com.typesafe.config.Config
 import java.util.UUID
 import monix.execution.Scheduler

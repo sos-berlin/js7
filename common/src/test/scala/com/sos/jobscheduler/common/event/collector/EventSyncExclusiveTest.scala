@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.common.event.collector
+package js7.common.event.collector
 
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.Stopwatch
-import com.sos.jobscheduler.common.event.{EventIdGenerator, EventSync}
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.data.event.EventId
+import js7.base.time.ScalaTime._
+import js7.base.time.Stopwatch
+import js7.common.event.{EventIdGenerator, EventSync}
+import js7.common.scalautil.Futures.implicits._
+import js7.data.event.EventId
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future

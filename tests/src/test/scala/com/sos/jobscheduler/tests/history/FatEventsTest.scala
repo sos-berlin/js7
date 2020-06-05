@@ -1,37 +1,37 @@
-package com.sos.jobscheduler.tests.history
+package js7.tests.history
 
-import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax.RichPath
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
-import com.sos.jobscheduler.core.event.journal.files.JournalFiles
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
-import com.sos.jobscheduler.data.fatevent.AgentFatEvent.AgentReadyFat
-import com.sos.jobscheduler.data.fatevent.FatEvent
-import com.sos.jobscheduler.data.fatevent.MasterFatEvent.MasterReadyFat
-import com.sos.jobscheduler.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderFinishedFat, OrderForkedFat, OrderJoinedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStdoutWrittenFat}
-import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
-import com.sos.jobscheduler.data.master.MasterId
-import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
-import com.sos.jobscheduler.data.order.Outcome.Succeeded
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
-import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
-import com.sos.jobscheduler.data.workflow.position.Position
-import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.data.MasterCommand.NoOperation
-import com.sos.jobscheduler.tests.history.FatEventsTest._
-import com.sos.jobscheduler.tests.testenv.DirectoryProvider
-import com.sos.jobscheduler.tests.testenv.DirectoryProvider.StdoutOutput
+import js7.base.auth.{UserAndPassword, UserId}
+import js7.base.generic.SecretString
+import js7.base.problem.Checked.Ops
+import js7.base.time.ScalaTime._
+import js7.base.time.Timestamp
+import js7.base.utils.AutoClosing.autoClosing
+import js7.base.web.Uri
+import js7.common.process.Processes.{ShellFileExtension => sh}
+import js7.common.scalautil.FileUtils.syntax.RichPath
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.common.time.WaitForCondition.waitForCondition
+import js7.core.event.journal.files.JournalFiles
+import js7.data.agent.AgentRefPath
+import js7.data.event.KeyedEvent.NoKey
+import js7.data.event.{EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
+import js7.data.fatevent.AgentFatEvent.AgentReadyFat
+import js7.data.fatevent.FatEvent
+import js7.data.fatevent.MasterFatEvent.MasterReadyFat
+import js7.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderFinishedFat, OrderForkedFat, OrderJoinedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStdoutWrittenFat}
+import js7.data.job.{ExecutablePath, ReturnCode}
+import js7.data.master.MasterId
+import js7.data.order.OrderEvent.OrderFinished
+import js7.data.order.Outcome.Succeeded
+import js7.data.order.{FreshOrder, OrderId}
+import js7.data.workflow.WorkflowPath
+import js7.data.workflow.parser.WorkflowParser
+import js7.data.workflow.position.Position
+import js7.master.data.MasterCommand
+import js7.master.data.MasterCommand.NoOperation
+import js7.tests.history.FatEventsTest._
+import js7.tests.testenv.DirectoryProvider
+import js7.tests.testenv.DirectoryProvider.StdoutOutput
 import java.time.ZoneId
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec

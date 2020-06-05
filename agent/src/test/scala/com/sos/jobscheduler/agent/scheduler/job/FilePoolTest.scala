@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.agent.scheduler.job
+package js7.agent.scheduler.job
 
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
-import com.sos.jobscheduler.data.job.JobKey
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.system.FileUtils.temporaryDirectory
+import js7.data.job.JobKey
 import java.nio.file.Files.exists
 import org.scalatest.freespec.AnyFreeSpec
 

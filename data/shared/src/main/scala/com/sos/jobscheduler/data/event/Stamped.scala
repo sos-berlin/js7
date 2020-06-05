@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.data.event
+package js7.data.event
 
 import cats.{Eq, Functor}
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
-import com.sos.jobscheduler.data.event.Stamped._
+import js7.base.time.Timestamp
+import js7.base.utils.ScalaUtils.RichJavaClass
+import js7.data.event.Stamped._
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json, JsonObject}
 import scala.collection.mutable

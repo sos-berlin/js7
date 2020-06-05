@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.base.problem
+package js7.base.problem
 
 import cats.syntax.semigroup._
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.problem.ProblemTest._
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import js7.base.circeutils.CirceUtils._
+import js7.base.problem.ProblemTest._
+import js7.base.utils.ScalaUtils.RichThrowable
+import js7.tester.CirceJsonTester.testJson
 import io.circe.Decoder
 import org.scalatest.freespec.AnyFreeSpec
 import scala.util.Try

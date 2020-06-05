@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.base.problem
+package js7.base.problem
 
-import com.sos.jobscheduler.base.problem.JavaCheckedTester._
+import js7.base.problem.JavaCheckedTester._
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

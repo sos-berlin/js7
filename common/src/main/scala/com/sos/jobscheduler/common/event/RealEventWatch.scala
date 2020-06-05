@@ -1,16 +1,16 @@
-package com.sos.jobscheduler.common.event
+package js7.common.event
 
 import cats.syntax.option._
-import com.sos.jobscheduler.base.monixutils.MonixBase.closeableIteratorToObservable
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.CloseableIterator
-import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.common.event.RealEventWatch._
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
+import js7.base.monixutils.MonixBase.closeableIteratorToObservable
+import js7.base.time.ScalaTime._
+import js7.base.time.Timestamp
+import js7.base.utils.CloseableIterator
+import js7.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
+import js7.base.utils.ScalazStyle._
+import js7.common.event.RealEventWatch._
+import js7.common.scalautil.Logger
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import java.util.concurrent.TimeoutException
 import monix.eval.Task
 import monix.execution.Scheduler

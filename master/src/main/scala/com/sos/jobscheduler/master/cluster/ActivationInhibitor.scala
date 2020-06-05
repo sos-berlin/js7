@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.master.cluster
+package js7.master.cluster
 
 import cats.effect.ExitCase
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.master.cluster.ActivationInhibitor._
+import js7.base.problem.Checked
+import js7.common.scalautil.Logger
+import js7.master.cluster.ActivationInhibitor._
 import monix.catnap.MVar
 import monix.eval.Task
 import monix.execution.cancelables.SerialCancelable

@@ -1,24 +1,24 @@
-package com.sos.jobscheduler.tests.master.cluster
+package js7.tests.master.cluster
 
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPorts
-import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
-import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterSwitchedOver}
-import com.sos.jobscheduler.data.cluster.ClusterNodeId
-import com.sos.jobscheduler.data.cluster.ClusterState.{Coupled, FailedOver}
-import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event._
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
-import com.sos.jobscheduler.master.cluster.PassiveClusterNode
-import com.sos.jobscheduler.master.configuration.MasterConfiguration
-import com.sos.jobscheduler.master.data.MasterCommand.{ClusterSwitchOver, ShutDown}
-import com.sos.jobscheduler.tests.master.cluster.MasterClusterTester._
+import js7.base.problem.Checked.Ops
+import js7.base.time.ScalaTime._
+import js7.common.guice.GuiceImplicits.RichInjector
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.common.time.WaitForCondition.waitForCondition
+import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
+import js7.core.event.journal.files.JournalFiles.JournalMetaOps
+import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterSwitchedOver}
+import js7.data.cluster.ClusterNodeId
+import js7.data.cluster.ClusterState.{Coupled, FailedOver}
+import js7.data.event.KeyedEvent.NoKey
+import js7.data.event._
+import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
+import js7.data.order.{FreshOrder, OrderId}
+import js7.master.cluster.PassiveClusterNode
+import js7.master.configuration.MasterConfiguration
+import js7.master.data.MasterCommand.{ClusterSwitchOver, ShutDown}
+import js7.tests.master.cluster.MasterClusterTester._
 import java.nio.file.Files.size
 import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.duration.Deadline.now

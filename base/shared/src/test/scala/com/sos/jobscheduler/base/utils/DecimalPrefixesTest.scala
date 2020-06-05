@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.base.utils
+package js7.base.utils
 
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.utils.DecimalPrefixes.{toInt, toLong}
+import js7.base.problem.Problem
+import js7.base.utils.DecimalPrefixes.{toInt, toLong}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

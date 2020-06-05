@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.data.workflow.instructions
+package js7.data.workflow.instructions
 
-import com.sos.jobscheduler.base.circeutils.ScalaJsonCodecs._
-import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
-import com.sos.jobscheduler.data.order.OrderId
-import com.sos.jobscheduler.data.source.SourcePos
-import com.sos.jobscheduler.data.workflow.Instruction
+import js7.base.circeutils.ScalaJsonCodecs._
+import js7.base.utils.IntelliJUtils.intelliJuseImport
+import js7.data.order.OrderId
+import js7.data.source.SourcePos
+import js7.data.workflow.Instruction
 import io.circe.generic.JsonCodec
 import scala.concurrent.duration.FiniteDuration
 

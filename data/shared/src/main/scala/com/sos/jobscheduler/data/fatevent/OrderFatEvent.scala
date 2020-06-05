@@ -1,17 +1,17 @@
-package com.sos.jobscheduler.data.fatevent
+package js7.data.fatevent
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
-import com.sos.jobscheduler.base.utils.Strings.RichString
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.order.{OrderId, Outcome}
-import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
-import com.sos.jobscheduler.data.workflow.instructions.Fork
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.position.WorkflowPosition
+import js7.base.circeutils.CirceUtils.deriveCodec
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.time.Timestamp
+import js7.base.utils.ScalaUtils.RichJavaClass
+import js7.base.utils.Strings.RichString
+import js7.base.web.Uri
+import js7.data.agent.AgentRefPath
+import js7.data.order.{OrderId, Outcome}
+import js7.data.system.{Stderr, Stdout, StdoutOrStderr}
+import js7.data.workflow.instructions.Fork
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.position.WorkflowPosition
 import io.circe.generic.JsonCodec
 
 /**

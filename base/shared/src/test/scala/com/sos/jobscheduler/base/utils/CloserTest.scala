@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.base.utils
+package js7.base.utils
 
-import com.sos.jobscheduler.base.utils.CloserTest._
+import js7.base.utils.CloserTest._
 import java.util.concurrent.ConcurrentLinkedQueue
 import monix.execution.atomic.AtomicBoolean
 import scala.collection.mutable

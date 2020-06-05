@@ -1,14 +1,14 @@
-package com.sos.jobscheduler.master.web.master.api
+package js7.master.web.master.api
 
-import com.sos.jobscheduler.base.auth.SimpleUser
-import com.sos.jobscheduler.common.event.EventWatch
-import com.sos.jobscheduler.core.event.GenericEventRoute
-import com.sos.jobscheduler.data.cluster.ClusterEvent
-import com.sos.jobscheduler.data.event.{Event, KeyedEvent}
-import com.sos.jobscheduler.data.filebased.RepoEvent
-import com.sos.jobscheduler.data.order.OrderEvent
-import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent, MasterKeyedEventJsonCodec}
-import com.sos.jobscheduler.master.web.common.MasterRouteProvider
+import js7.base.auth.SimpleUser
+import js7.common.event.EventWatch
+import js7.core.event.GenericEventRoute
+import js7.data.cluster.ClusterEvent
+import js7.data.event.{Event, KeyedEvent}
+import js7.data.filebased.RepoEvent
+import js7.data.order.OrderEvent
+import js7.master.data.events.{MasterAgentEvent, MasterEvent, MasterKeyedEventJsonCodec}
+import js7.master.web.common.MasterRouteProvider
 import monix.eval.Task
 
 /**

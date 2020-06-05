@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.base.auth
+package js7.base.auth
 
-import com.sos.jobscheduler.base.utils.ScalaUtils._
-import com.sos.jobscheduler.base.utils.ScalazStyle._
+import js7.base.utils.ScalaUtils._
+import js7.base.utils.ScalazStyle._
 
 /**
   * @author Joacim Zschimmer

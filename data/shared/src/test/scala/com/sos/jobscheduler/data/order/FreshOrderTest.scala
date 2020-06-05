@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.data.order
+package js7.data.order
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import js7.base.circeutils.CirceUtils._
+import js7.base.problem.Problem
+import js7.base.time.Timestamp
+import js7.data.workflow.WorkflowPath
+import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

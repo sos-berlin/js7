@@ -1,23 +1,23 @@
-package com.sos.jobscheduler.core.cluster
+package js7.core.cluster
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import com.sos.jobscheduler.base.auth.SessionToken
-import com.sos.jobscheduler.base.generic.{Completed, SecretString}
-import com.sos.jobscheduler.base.session.SessionCommand
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.Closer.syntax._
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
-import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
-import com.sos.jobscheduler.common.http.CirceJsonSupport._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax.RichTask
-import com.sos.jobscheduler.core.cluster.HttpClusterWatchTest._
-import com.sos.jobscheduler.data.cluster.ClusterEvent.ClusterNodesAppointed
-import com.sos.jobscheduler.data.cluster.{ClusterNodeId, ClusterState}
-import com.sos.jobscheduler.data.master.MasterId
+import js7.base.auth.SessionToken
+import js7.base.generic.{Completed, SecretString}
+import js7.base.session.SessionCommand
+import js7.base.time.ScalaTime._
+import js7.base.utils.Closer.syntax._
+import js7.base.web.Uri
+import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
+import js7.common.akkahttp.web.AkkaWebServer
+import js7.common.akkautils.ProvideActorSystem
+import js7.common.http.CirceJsonSupport._
+import js7.common.scalautil.Futures.implicits.SuccessFuture
+import js7.common.scalautil.MonixUtils.syntax.RichTask
+import js7.core.cluster.HttpClusterWatchTest._
+import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
+import js7.data.cluster.{ClusterNodeId, ClusterState}
+import js7.data.master.MasterId
 import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global

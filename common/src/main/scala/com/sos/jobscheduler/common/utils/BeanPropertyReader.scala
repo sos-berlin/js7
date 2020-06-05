@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.common.utils
+package js7.common.utils
 
-import com.sos.jobscheduler.base.utils.ScalaUtils._
-import com.sos.jobscheduler.common.utils.BeanPropertyReader._
+import js7.base.utils.ScalaUtils._
+import js7.common.utils.BeanPropertyReader._
 import scala.reflect.ClassTag
 
 /**

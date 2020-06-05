@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.data.system
+package js7.data.system
 
-import com.sos.jobscheduler.base.generic.GenericString
+import js7.base.generic.GenericString
 import io.circe.{Decoder, DecodingFailure, Encoder, Json, KeyDecoder, KeyEncoder}
 
 /**

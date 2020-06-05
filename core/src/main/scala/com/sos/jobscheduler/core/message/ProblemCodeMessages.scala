@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.core.message
+package js7.core.message
 
-import com.sos.jobscheduler.base.problem.{CodedMessages, ProblemCode}
-import com.sos.jobscheduler.common.configutils.Configs
-import com.sos.jobscheduler.common.utils.JavaResource
+import js7.base.problem.{CodedMessages, ProblemCode}
+import js7.common.configutils.Configs
+import js7.common.utils.JavaResource
 import monix.execution.atomic.AtomicBoolean
 import scala.util.Try
 

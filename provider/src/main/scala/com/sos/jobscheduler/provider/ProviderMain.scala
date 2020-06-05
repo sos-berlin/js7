@@ -1,14 +1,14 @@
-package com.sos.jobscheduler.provider
+package js7.provider
 
-import com.sos.jobscheduler.base.BuildInfo
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.common.log.ScribeUtils.coupleScribeWithSlf4j
-import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
-import com.sos.jobscheduler.common.scalautil.IOExecutor.Implicits.globalIOX
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.startup.JavaMain.{runMain, withShutdownHooks}
-import com.sos.jobscheduler.core.startup.StartUp.logStartUp
-import com.sos.jobscheduler.provider.configuration.ProviderConfiguration
+import js7.base.BuildInfo
+import js7.base.problem.Checked.Ops
+import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
+import js7.common.scalautil.Futures.implicits.SuccessFuture
+import js7.common.scalautil.IOExecutor.Implicits.globalIOX
+import js7.common.scalautil.Logger
+import js7.core.startup.JavaMain.{runMain, withShutdownHooks}
+import js7.core.startup.StartUp.logStartUp
+import js7.provider.configuration.ProviderConfiguration
 import java.util.concurrent.CancellationException
 import monix.execution.CancelableFuture
 import monix.execution.Scheduler.Implicits.global

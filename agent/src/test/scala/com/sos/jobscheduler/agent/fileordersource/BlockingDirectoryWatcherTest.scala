@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.agent.fileordersource
+package js7.agent.fileordersource
 
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.Closer.syntax._
-import com.sos.jobscheduler.base.utils.Closer.withCloser
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.FileUtils.touchAndDeleteWithCloser
-import com.sos.jobscheduler.common.scalautil.Futures.blockingThreadFuture
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import js7.base.time.ScalaTime._
+import js7.base.utils.Closer.syntax._
+import js7.base.utils.Closer.withCloser
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.FileUtils.touchAndDeleteWithCloser
+import js7.common.scalautil.Futures.blockingThreadFuture
+import js7.common.scalautil.Futures.implicits._
 import java.nio.file.Files.{createTempDirectory, delete}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future

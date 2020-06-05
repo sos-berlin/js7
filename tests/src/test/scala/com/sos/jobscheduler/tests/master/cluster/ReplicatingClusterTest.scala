@@ -1,17 +1,17 @@
-package com.sos.jobscheduler.tests.master.cluster
+package js7.tests.master.cluster
 
-import com.sos.jobscheduler.base.auth.UserId
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPorts
-import com.sos.jobscheduler.data.cluster.ClusterEvent
-import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
-import com.sos.jobscheduler.master.data.MasterCommand.TakeSnapshot
-import com.sos.jobscheduler.tests.master.cluster.MasterClusterTester._
+import js7.base.auth.UserId
+import js7.base.generic.SecretString
+import js7.base.problem.Checked.Ops
+import js7.base.time.ScalaTime._
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.common.time.WaitForCondition.waitForCondition
+import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
+import js7.data.cluster.ClusterEvent
+import js7.data.order.OrderEvent.OrderFinished
+import js7.data.order.{FreshOrder, OrderId}
+import js7.master.data.MasterCommand.TakeSnapshot
+import js7.tests.master.cluster.MasterClusterTester._
 import monix.execution.Scheduler.Implicits.global
 
 final class ReplicatingClusterTest extends MasterClusterTester

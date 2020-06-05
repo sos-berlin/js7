@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.data.event
+package js7.data.event
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
+import js7.base.circeutils.CirceUtils.deriveCodec
 
 /** A byte-position in a journal consisting of multiple files.
   *

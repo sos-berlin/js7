@@ -1,26 +1,26 @@
-package com.sos.jobscheduler.common.akkahttp.web.session
+package js7.common.akkahttp.web.session
 
 import akka.http.scaladsl.model.HttpHeader
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, Unauthorized}
 import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials, HttpChallenges, `WWW-Authenticate`}
 import akka.http.scaladsl.testkit.RouteTestTimeout
-import com.sos.jobscheduler.base.auth.{SessionToken, UserAndPassword, UserId}
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
-import com.sos.jobscheduler.base.generic.{Completed, SecretString}
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.session.HttpSessionApi
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.akkahttp.web.session.SessionRouteTest._
-import com.sos.jobscheduler.common.http.AkkaHttpClient
-import com.sos.jobscheduler.common.http.AkkaHttpClient.HttpException
-import com.sos.jobscheduler.common.http.CirceJsonSupport._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
+import js7.base.auth.{SessionToken, UserAndPassword, UserId}
+import js7.base.circeutils.CirceUtils.RichCirceString
+import js7.base.generic.{Completed, SecretString}
+import js7.base.problem.Problem
+import js7.base.session.HttpSessionApi
+import js7.base.time.ScalaTime._
+import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.ScalaUtils.RichThrowable
+import js7.base.web.Uri
+import js7.common.akkahttp.web.session.SessionRouteTest._
+import js7.common.http.AkkaHttpClient
+import js7.common.http.AkkaHttpClient.HttpException
+import js7.common.http.CirceJsonSupport._
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.Logger
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.common.time.WaitForCondition.waitForCondition
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec

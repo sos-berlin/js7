@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.data.cluster
+package js7.data.cluster
 
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.data.cluster.ClusterSetting._
-import com.sos.jobscheduler.data.cluster.ClusterSetting.syntax._
+import js7.base.web.Uri
+import js7.data.cluster.ClusterSetting._
+import js7.data.cluster.ClusterSetting.syntax._
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

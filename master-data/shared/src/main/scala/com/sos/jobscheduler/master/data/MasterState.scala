@@ -1,21 +1,21 @@
-package com.sos.jobscheduler.master.data
+package js7.master.data
 
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{Event, EventId, JournaledState, KeyedEvent}
-import com.sos.jobscheduler.data.filebased.{Repo, RepoEvent}
-import com.sos.jobscheduler.data.master.MasterFileBaseds
-import com.sos.jobscheduler.data.master.MasterFileBaseds.MasterTypedPathCompanions
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderOffered, OrderStdWritten}
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
-import com.sos.jobscheduler.master.data.MasterSnapshots.MasterMetaState
-import com.sos.jobscheduler.master.data.agent.{AgentEventIdEvent, AgentSnapshot}
-import com.sos.jobscheduler.master.data.events.MasterAgentEvent.{AgentCouplingFailed, AgentReady, AgentRegisteredMaster}
-import com.sos.jobscheduler.master.data.events.MasterEvent.{MasterShutDown, MasterTestEvent}
-import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent, MasterKeyedEventJsonCodec}
+import js7.base.problem.Problem
+import js7.base.utils.ScalaUtils.RichPartialFunction
+import js7.base.utils.ScalazStyle._
+import js7.data.agent.AgentRefPath
+import js7.data.event.KeyedEvent.NoKey
+import js7.data.event.{Event, EventId, JournaledState, KeyedEvent}
+import js7.data.filebased.{Repo, RepoEvent}
+import js7.data.master.MasterFileBaseds
+import js7.data.master.MasterFileBaseds.MasterTypedPathCompanions
+import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderOffered, OrderStdWritten}
+import js7.data.order.{Order, OrderEvent, OrderId}
+import js7.master.data.MasterSnapshots.MasterMetaState
+import js7.master.data.agent.{AgentEventIdEvent, AgentSnapshot}
+import js7.master.data.events.MasterAgentEvent.{AgentCouplingFailed, AgentReady, AgentRegisteredMaster}
+import js7.master.data.events.MasterEvent.{MasterShutDown, MasterTestEvent}
+import js7.master.data.events.{MasterAgentEvent, MasterEvent, MasterKeyedEventJsonCodec}
 import monix.reactive.Observable
 
 /**

@@ -1,17 +1,17 @@
-package com.sos.jobscheduler.tests
+package js7.tests
 
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
-import com.sos.jobscheduler.data.job.ExecutableScript
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
-import com.sos.jobscheduler.data.workflow.instructions.Execute
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentCouplingFailed
-import com.sos.jobscheduler.tests.TerminateWithUnknownAgentTest._
-import com.sos.jobscheduler.tests.testenv.MasterAgentForScalaTest
+import js7.base.time.ScalaTime._
+import js7.base.web.Uri
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.data.agent.{AgentRef, AgentRefPath}
+import js7.data.job.ExecutableScript
+import js7.data.order.{FreshOrder, OrderId}
+import js7.data.workflow.instructions.Execute
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.master.data.events.MasterAgentEvent.AgentCouplingFailed
+import js7.tests.TerminateWithUnknownAgentTest._
+import js7.tests.testenv.MasterAgentForScalaTest
 import java.net.ServerSocket
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec

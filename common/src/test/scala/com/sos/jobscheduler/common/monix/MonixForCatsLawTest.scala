@@ -1,8 +1,8 @@
-//package com.sos.jobscheduler.base.monix
+//package js7.base.monix
 //
 //import cats.laws.discipline.ApplicativeTests
 //import cats.laws.discipline.SemigroupalTests.Isomorphisms
-//import com.sos.jobscheduler.base.monix.MonixForCats._
+//import js7.base.monix.MonixForCats._
 //import monix.eval.Task
 //import org.scalacheck.Arbitrary
 //import org.scalacheck.Arbitrary.arbitrary

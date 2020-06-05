@@ -1,16 +1,16 @@
-package com.sos.jobscheduler.core.event.journal.write
+package js7.core.event.journal.write
 
 import akka.util.ByteString
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.common.event.PositionAnd
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.core.event.journal.files.JournalFiles._
-import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
-import com.sos.jobscheduler.core.event.journal.write.EventJournalWriter._
-import com.sos.jobscheduler.data.event.JournalSeparators.{Commit, Transaction}
-import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
+import js7.base.circeutils.CirceUtils._
+import js7.base.utils.Assertions.assertThat
+import js7.common.event.PositionAnd
+import js7.common.scalautil.Logger
+import js7.core.event.journal.data.JournalMeta
+import js7.core.event.journal.files.JournalFiles._
+import js7.core.event.journal.watch.JournalingObserver
+import js7.core.event.journal.write.EventJournalWriter._
+import js7.data.event.JournalSeparators.{Commit, Transaction}
+import js7.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
 import io.circe.syntax.EncoderOps
 import java.nio.file.Path
 import scala.concurrent.duration.FiniteDuration

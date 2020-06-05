@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.common.auth
+package js7.common.auth
 
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.Stopwatch.measureTime
-import com.sos.jobscheduler.common.auth.SecretStringGenerator.newSecretString
-import com.sos.jobscheduler.common.auth.SecretStringGeneratorTest._
-import com.sos.jobscheduler.common.scalautil.Logger
+import js7.base.generic.SecretString
+import js7.base.time.ScalaTime._
+import js7.base.time.Stopwatch.measureTime
+import js7.common.auth.SecretStringGenerator.newSecretString
+import js7.common.auth.SecretStringGeneratorTest._
+import js7.common.scalautil.Logger
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

@@ -1,15 +1,15 @@
-package com.sos.jobscheduler.data.cluster
+package js7.data.cluster
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
-import com.sos.jobscheduler.base.circeutils.ScalaJsonCodecs._
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.data.cluster.ClusterSetting.syntax._
-import com.sos.jobscheduler.data.command.CommonCommand
-import com.sos.jobscheduler.data.event.EventId
+import js7.base.circeutils.CirceUtils.deriveCodec
+import js7.base.circeutils.ScalaJsonCodecs._
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.problem.Checked.Ops
+import js7.base.utils.Assertions.assertThat
+import js7.base.utils.IntelliJUtils.intelliJuseImport
+import js7.base.web.Uri
+import js7.data.cluster.ClusterSetting.syntax._
+import js7.data.command.CommonCommand
+import js7.data.event.EventId
 import scala.concurrent.duration.FiniteDuration
 
 sealed trait ClusterCommand extends CommonCommand {

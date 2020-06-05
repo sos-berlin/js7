@@ -1,23 +1,23 @@
-package com.sos.jobscheduler.master.agent
+package js7.master.agent
 
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.Batch
-import com.sos.jobscheduler.base.crypt.Signed
-import com.sos.jobscheduler.base.crypt.silly.{SillySignature, SillySigner}
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.filebased.FileBasedSigner
-import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.data.workflow.instructions.Execute
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.master.agent.AgentDriver.{Input, Queueable}
-import com.sos.jobscheduler.master.agent.CommandQueue.QueuedInputResponse
-import com.sos.jobscheduler.master.agent.CommandQueueTest._
+import js7.agent.data.commands.AgentCommand
+import js7.agent.data.commands.AgentCommand.Batch
+import js7.base.crypt.Signed
+import js7.base.crypt.silly.{SillySignature, SillySigner}
+import js7.base.problem.Problem
+import js7.base.time.ScalaTime._
+import js7.common.scalautil.Logger
+import js7.common.time.WaitForCondition.waitForCondition
+import js7.data.agent.AgentRefPath
+import js7.data.filebased.FileBasedSigner
+import js7.data.job.ExecutablePath
+import js7.data.order.{Order, OrderId}
+import js7.data.workflow.instructions.Execute
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.master.agent.AgentDriver.{Input, Queueable}
+import js7.master.agent.CommandQueue.QueuedInputResponse
+import js7.master.agent.CommandQueueTest._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec

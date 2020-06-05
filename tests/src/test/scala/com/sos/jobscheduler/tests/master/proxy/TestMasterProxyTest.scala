@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.tests.master.proxy
+package js7.tests.master.proxy
 
 /** Duplicates TestMasterProxy, to include a valid test logger in classpath. */
 object TestMasterProxyTest

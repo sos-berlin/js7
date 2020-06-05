@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.data.job
+package js7.data.job
 
-import com.sos.jobscheduler.base.generic.GenericInt
-import com.sos.jobscheduler.base.process.ProcessSignal
+import js7.base.generic.GenericInt
+import js7.base.process.ProcessSignal
 
 /**
  * @author Joacim Zschimmer

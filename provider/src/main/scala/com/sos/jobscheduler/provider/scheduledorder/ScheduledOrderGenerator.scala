@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.provider.scheduledorder
+package js7.provider.scheduledorder
 
-import com.sos.jobscheduler.base.utils.ScalaUtils.reuseIfEqual
-import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId}
-import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.provider.scheduledorder.oldruntime.OldSchedule
+import js7.base.utils.ScalaUtils.reuseIfEqual
+import js7.data.filebased.{FileBased, FileBasedId}
+import js7.data.workflow.WorkflowPath
+import js7.provider.scheduledorder.oldruntime.OldSchedule
 
 // FOR DEVELOPMENT ONLY !!!
 /**

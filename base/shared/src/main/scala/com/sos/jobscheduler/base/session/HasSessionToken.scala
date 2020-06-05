@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.base.session
+package js7.base.session
 
-import com.sos.jobscheduler.base.auth.SessionToken
+import js7.base.auth.SessionToken
 import monix.eval.Task
 
 /**

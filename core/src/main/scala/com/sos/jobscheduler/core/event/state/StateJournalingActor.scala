@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.core.event.state
+package js7.core.event.state
 
 import akka.actor.{ActorRef, Props}
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
-import com.sos.jobscheduler.common.scalautil.MonixUtils.promiseTask
-import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalConf, MainJournalingActor}
-import com.sos.jobscheduler.core.event.state.StateJournalingActor._
-import com.sos.jobscheduler.data.event.{Event, JournaledState, KeyedEvent, Stamped}
+import js7.base.problem.{Checked, Problem}
+import js7.common.akkautils.SupervisorStrategies
+import js7.common.scalautil.MonixUtils.promiseTask
+import js7.core.event.journal.{JournalActor, JournalConf, MainJournalingActor}
+import js7.core.event.state.StateJournalingActor._
+import js7.data.event.{Event, JournaledState, KeyedEvent, Stamped}
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.{Future, Promise}

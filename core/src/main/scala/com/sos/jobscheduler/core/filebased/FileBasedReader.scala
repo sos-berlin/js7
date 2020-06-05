@@ -1,13 +1,13 @@
-package com.sos.jobscheduler.core.filebased
+package js7.core.filebased
 
 import akka.util.ByteString
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.common.http.CirceToYaml.yamlToJson
-import com.sos.jobscheduler.core.filebased.FileBasedReader._
-import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, FileBasedId_, SourceType, TypedPath}
+import js7.base.circeutils.CirceUtils.RichCirceString
+import js7.base.problem.Checked.Ops
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.Assertions.assertThat
+import js7.common.http.CirceToYaml.yamlToJson
+import js7.core.filebased.FileBasedReader._
+import js7.data.filebased.{FileBased, FileBasedId, FileBasedId_, SourceType, TypedPath}
 import io.circe.Json
 
 /**

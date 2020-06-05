@@ -109,7 +109,7 @@ execute=(
   "$java" \
   "${javaOptions[@]}" \
   -classpath "$classpathString" \
-  com.sos.jobscheduler.agent.main.AgentMain "${agentOptions[@]}")
+  js7.agent.main.AgentMain "${agentOptions[@]}")
 
 while true; do
   (t=$(date +"%Y-%m-%d %H:%M:%S.%N"); echo -e "\n-------\n${t:0:23}" "${execute[@]}")
@@ -132,7 +132,7 @@ while true; do
       "$java" -Xmx50m \
         -Dlog4j.configurationFile=com/sos/jobscheduler/agent/client/main/log4j2.xml \
         -classpath "$classpathString" \
-        com.sos.jobscheduler.agent.client.main.AgentClientMain \
+        js7.agent.client.main.AgentClientMain \
         -data-directory="$data" \
         http://127.0.0.1:"$httpPort" \
         "$terminateCommand" \

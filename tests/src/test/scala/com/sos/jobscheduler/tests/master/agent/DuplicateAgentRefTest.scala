@@ -1,19 +1,19 @@
-package com.sos.jobscheduler.tests.master.agent
+package js7.tests.master.agent
 
-import com.sos.jobscheduler.agent.data.Problems.DuplicateAgentRef
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
-import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
-import com.sos.jobscheduler.data.workflow.instructions.Execute
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.TestExecutablePath
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.master.data.events.MasterAgentEvent.{AgentCouplingFailed, AgentReady}
-import com.sos.jobscheduler.tests.master.agent.DuplicateAgentRefTest._
-import com.sos.jobscheduler.tests.testenv.DirectoryProvider.script
-import com.sos.jobscheduler.tests.testenv.MasterAgentForScalaTest
+import js7.agent.data.Problems.DuplicateAgentRef
+import js7.base.time.ScalaTime._
+import js7.common.scalautil.FileUtils.syntax._
+import js7.data.agent.{AgentRef, AgentRefPath}
+import js7.data.job.ExecutablePath
+import js7.data.order.{FreshOrder, OrderId}
+import js7.data.workflow.instructions.Execute
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.test.ForkTestSetting.TestExecutablePath
+import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.master.data.events.MasterAgentEvent.{AgentCouplingFailed, AgentReady}
+import js7.tests.master.agent.DuplicateAgentRefTest._
+import js7.tests.testenv.DirectoryProvider.script
+import js7.tests.testenv.MasterAgentForScalaTest
 import com.typesafe.config.ConfigUtil.quoteString
 import org.scalatest.freespec.AnyFreeSpec
 

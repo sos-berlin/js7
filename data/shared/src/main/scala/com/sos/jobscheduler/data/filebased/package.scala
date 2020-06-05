@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.data
+package js7.data
 
 /**
   * @author Joacim Zschimmer

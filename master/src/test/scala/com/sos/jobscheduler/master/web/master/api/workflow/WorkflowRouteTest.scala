@@ -1,18 +1,18 @@
-package com.sos.jobscheduler.master.web.master.api.workflow
+package js7.master.web.master.api.workflow
 
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.OK
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import com.sos.jobscheduler.common.http.CirceJsonSupport._
-import com.sos.jobscheduler.core.filebased.FileBasedApi
-import com.sos.jobscheduler.data.filebased.FileBasedsOverview
-import com.sos.jobscheduler.data.workflow.test.ForkTestSetting
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.master.web.master.api.test.RouteTester
-import com.sos.jobscheduler.master.web.master.api.workflow.WorkflowRouteTest._
+import js7.base.problem.Checked
+import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
+import js7.common.http.CirceJsonSupport._
+import js7.core.filebased.FileBasedApi
+import js7.data.filebased.FileBasedsOverview
+import js7.data.workflow.test.ForkTestSetting
+import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.master.web.master.api.test.RouteTester
+import js7.master.web.master.api.workflow.WorkflowRouteTest._
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
 

@@ -1,27 +1,27 @@
-package com.sos.jobscheduler.tests
+package js7.tests
 
 import com.google.inject.Guice
-import com.sos.jobscheduler.agent.RunningAgent
-import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.ShutDown
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.Closer
-import com.sos.jobscheduler.base.utils.Closer.syntax.RichClosersAutoCloseable
-import com.sos.jobscheduler.base.utils.Closer.withCloser
-import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
-import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
-import com.sos.jobscheduler.common.log.Log4j
-import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryContentRecursively
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
-import com.sos.jobscheduler.common.utils.{JavaResource, JavaShutdownHook}
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.master.RunningMaster
-import com.sos.jobscheduler.master.configuration.MasterConfiguration
-import com.sos.jobscheduler.master.configuration.inject.MasterModule
-import com.sos.jobscheduler.master.tests.TestEnvironment
+import js7.agent.RunningAgent
+import js7.agent.configuration.AgentConfiguration
+import js7.agent.data.commands.AgentCommand
+import js7.agent.data.commands.AgentCommand.ShutDown
+import js7.base.time.ScalaTime._
+import js7.base.utils.Closer
+import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
+import js7.base.utils.Closer.withCloser
+import js7.base.utils.SideEffect.ImplicitSideEffect
+import js7.common.guice.GuiceImplicits.RichInjector
+import js7.common.log.Log4j
+import js7.common.scalautil.FileUtils.deleteDirectoryContentRecursively
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.Futures.implicits._
+import js7.common.system.FileUtils.temporaryDirectory
+import js7.common.utils.{JavaResource, JavaShutdownHook}
+import js7.data.agent.AgentRefPath
+import js7.master.RunningMaster
+import js7.master.configuration.MasterConfiguration
+import js7.master.configuration.inject.MasterModule
+import js7.master.tests.TestEnvironment
 import java.nio.file.Files.{createDirectory, setPosixFilePermissions}
 import java.nio.file.attribute.PosixFilePermissions
 import java.nio.file.{Files, Path}

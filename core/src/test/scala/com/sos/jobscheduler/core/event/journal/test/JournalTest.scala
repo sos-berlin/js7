@@ -1,16 +1,16 @@
-package com.sos.jobscheduler.core.event.journal.test
+package js7.core.event.journal.test
 
 import akka.pattern.ask
-import com.sos.jobscheduler.base.BuildInfo
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.Stopwatch
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.Futures.blockingThreadFuture
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.core.event.journal.JournalActor
-import com.sos.jobscheduler.core.event.journal.files.JournalFiles.listJournalFiles
-import com.sos.jobscheduler.core.event.journal.test.JournalTest._
+import js7.base.BuildInfo
+import js7.base.circeutils.CirceUtils._
+import js7.base.time.ScalaTime._
+import js7.base.time.Stopwatch
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.Futures.blockingThreadFuture
+import js7.common.scalautil.Futures.implicits._
+import js7.core.event.journal.JournalActor
+import js7.core.event.journal.files.JournalFiles.listJournalFiles
+import js7.core.event.journal.test.JournalTest._
 import com.typesafe.config.ConfigFactory
 import java.nio.file.Files.{delete, deleteIfExists}
 import org.scalatest.BeforeAndAfterAll

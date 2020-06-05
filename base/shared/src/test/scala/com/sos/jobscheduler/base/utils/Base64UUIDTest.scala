@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.base.utils
+package js7.base.utils
 
-import com.sos.jobscheduler.base.utils.Base64UUID.{base64ToUUID, uuidToBase64}
-import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import js7.base.utils.Base64UUID.{base64ToUUID, uuidToBase64}
+import js7.tester.CirceJsonTester.testJson
 import java.util.UUID
 import org.scalacheck.Gen
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks._

@@ -1,13 +1,13 @@
-package com.sos.jobscheduler.master.client
+package js7.master.client
 
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.data.agent.AgentRef
-import com.sos.jobscheduler.data.cluster.ClusterState
-import com.sos.jobscheduler.data.event.{Event, EventApi, EventId, EventRequest, KeyedEvent, TearableEventSeq}
-import com.sos.jobscheduler.data.fatevent.OrderFatEvent
-import com.sos.jobscheduler.data.order.{Order, OrdersOverview}
-import com.sos.jobscheduler.data.workflow.Workflow
-import com.sos.jobscheduler.master.data.{MasterCommand, MasterOverview}
+import js7.base.problem.Checked
+import js7.data.agent.AgentRef
+import js7.data.cluster.ClusterState
+import js7.data.event.{Event, EventApi, EventId, EventRequest, KeyedEvent, TearableEventSeq}
+import js7.data.fatevent.OrderFatEvent
+import js7.data.order.{Order, OrdersOverview}
+import js7.data.workflow.Workflow
+import js7.master.data.{MasterCommand, MasterOverview}
 import io.circe.{Decoder, Encoder}
 import monix.eval.Task
 import monix.reactive.Observable

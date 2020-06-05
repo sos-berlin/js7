@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.proxy.javaapi.data;
+package js7.proxy.javaapi.data;
 
-import com.sos.jobscheduler.data.order.OrderId;
-import static com.sos.jobscheduler.proxy.javaapi.utils.VavrUtils.getOrThrowProblem;
+import js7.data.order.OrderId;
+import static js7.proxy.javaapi.utils.VavrUtils.getOrThrowProblem;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.endsWith;
 import static org.hamcrest.CoreMatchers.startsWith;

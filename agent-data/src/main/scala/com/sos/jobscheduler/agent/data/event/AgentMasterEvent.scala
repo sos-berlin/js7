@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.agent.data.event
+package js7.agent.data.event
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
-import com.sos.jobscheduler.base.circeutils.ScalaJsonCodecs._
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
-import com.sos.jobscheduler.data.event.NoKeyEvent
+import js7.base.circeutils.CirceUtils.deriveCodec
+import js7.base.circeutils.ScalaJsonCodecs._
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.utils.IntelliJUtils.intelliJuseImport
+import js7.data.event.NoKeyEvent
 import scala.concurrent.duration.FiniteDuration
 
 /**

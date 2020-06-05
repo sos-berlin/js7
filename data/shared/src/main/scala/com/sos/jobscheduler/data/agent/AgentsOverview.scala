@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.data.agent
+package js7.data.agent
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
-import com.sos.jobscheduler.data.filebased.FileBasedsOverview
+import js7.base.circeutils.CirceUtils.deriveCodec
+import js7.data.filebased.FileBasedsOverview
 
 /**
   * @author Joacim Zschimmer

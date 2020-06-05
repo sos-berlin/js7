@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.scalautil.xmls
+package js7.common.scalautil.xmls
 
 import akka.util.ByteString
 import java.io.{ByteArrayInputStream, InputStream, StringReader}

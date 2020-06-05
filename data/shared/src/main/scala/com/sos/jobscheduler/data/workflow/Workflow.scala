@@ -1,25 +1,25 @@
-package com.sos.jobscheduler.data.workflow
+package js7.data.workflow
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.Problems.UnknownKeyProblem
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.base.utils.Collections.emptyToNone
-import com.sos.jobscheduler.base.utils.Collections.implicits.{RichIndexedSeq, RichPairTraversable}
-import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, reuseIfEqual}
-import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.jobscheduler.base.utils.Strings._
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.expression.PositionSearch
-import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId}
-import com.sos.jobscheduler.data.job.JobKey
-import com.sos.jobscheduler.data.workflow.Instruction.{@:, Labeled}
-import com.sos.jobscheduler.data.workflow.Workflow.isCorrectlyEnded
-import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{End, Execute, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, Retry, TryInstruction}
-import com.sos.jobscheduler.data.workflow.position.{BranchPath, InstructionNr, Position, WorkflowBranchPath, WorkflowPosition}
+import js7.base.circeutils.CirceUtils._
+import js7.base.problem.Checked._
+import js7.base.problem.Problems.UnknownKeyProblem
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.Assertions.assertThat
+import js7.base.utils.Collections.emptyToNone
+import js7.base.utils.Collections.implicits.{RichIndexedSeq, RichPairTraversable}
+import js7.base.utils.ScalaUtils.{RichJavaClass, reuseIfEqual}
+import js7.base.utils.ScalazStyle.OptionRichBoolean
+import js7.base.utils.Strings._
+import js7.data.agent.AgentRefPath
+import js7.data.expression.PositionSearch
+import js7.data.filebased.{FileBased, FileBasedId}
+import js7.data.job.JobKey
+import js7.data.workflow.Instruction.{@:, Labeled}
+import js7.data.workflow.Workflow.isCorrectlyEnded
+import js7.data.workflow.instructions.Instructions.jsonCodec
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.instructions.{End, Execute, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, Retry, TryInstruction}
+import js7.data.workflow.position.{BranchPath, InstructionNr, Position, WorkflowBranchPath, WorkflowPosition}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 import scala.annotation.tailrec

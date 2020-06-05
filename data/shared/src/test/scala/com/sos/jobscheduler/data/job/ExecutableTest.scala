@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.data.job
+package js7.data.job
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.generic.GenericString.EmptyStringProblem
-import com.sos.jobscheduler.base.problem.Problems.InvalidNameProblem
-import com.sos.jobscheduler.tester.CirceJsonTester._
+import js7.base.circeutils.CirceUtils._
+import js7.base.generic.GenericString.EmptyStringProblem
+import js7.base.problem.Problems.InvalidNameProblem
+import js7.tester.CirceJsonTester._
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

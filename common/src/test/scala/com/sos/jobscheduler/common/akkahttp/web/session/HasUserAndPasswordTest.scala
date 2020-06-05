@@ -1,14 +1,14 @@
-package com.sos.jobscheduler.common.akkahttp.web.session
+package js7.common.akkahttp.web.session
 
 import cats.effect.Resource
 import cats.syntax.flatMap._
-import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.session.HttpSessionApi
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.http.AkkaHttpClient
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import js7.base.auth.{UserAndPassword, UserId}
+import js7.base.generic.SecretString
+import js7.base.session.HttpSessionApi
+import js7.base.time.ScalaTime._
+import js7.base.web.Uri
+import js7.common.http.AkkaHttpClient
+import js7.common.scalautil.Futures.implicits._
 import monix.catnap.MVar
 import monix.eval.Task
 import monix.execution.Scheduler

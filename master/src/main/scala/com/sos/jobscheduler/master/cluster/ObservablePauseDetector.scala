@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.master.cluster
+package js7.master.cluster
 
 import monix.reactive.{Observable, OverflowStrategy}
 import scala.concurrent.duration.FiniteDuration

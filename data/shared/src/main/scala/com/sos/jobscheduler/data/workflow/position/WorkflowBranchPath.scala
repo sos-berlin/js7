@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.data.workflow.position
+package js7.data.workflow.position
 
 import cats.syntax.show._
-import com.sos.jobscheduler.data.workflow.WorkflowId
+import js7.data.workflow.WorkflowId
 import scala.language.implicitConversions
 
 /**

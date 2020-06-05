@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.common.configutils
+package js7.common.configutils
 
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.common.configutils.Configs._
-import com.sos.jobscheduler.common.configutils.ConfigsTest._
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryDirectory
+import js7.base.problem.Problem
+import js7.common.configutils.Configs._
+import js7.common.configutils.ConfigsTest._
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.FileUtils.withTemporaryDirectory
 import com.typesafe.config.{ConfigException, ConfigFactory}
 import org.scalatest.freespec.AnyFreeSpec
 

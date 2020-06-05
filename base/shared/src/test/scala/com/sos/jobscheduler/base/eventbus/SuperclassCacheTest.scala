@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.base.eventbus
+package js7.base.eventbus
 
-import com.sos.jobscheduler.base.eventbus.SuperclassCacheTest._
+import js7.base.eventbus.SuperclassCacheTest._
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.common.time
+package js7.common.time
 
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.WaitForCondition._
-import com.sos.jobscheduler.common.time.WaitForConditionExclusiveTest._
+import js7.base.time.ScalaTime._
+import js7.base.utils.SideEffect.ImplicitSideEffect
+import js7.common.scalautil.Logger
+import js7.common.time.WaitForCondition._
+import js7.common.time.WaitForConditionExclusiveTest._
 import org.scalatest.matchers.should.Matchers._
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._

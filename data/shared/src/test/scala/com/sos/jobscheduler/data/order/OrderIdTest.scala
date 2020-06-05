@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.data.order
+package js7.data.order
 
-import com.sos.jobscheduler.base.generic.GenericString.EmptyStringProblem
-import com.sos.jobscheduler.base.problem.Problem
+import js7.base.generic.GenericString.EmptyStringProblem
+import js7.base.problem.Problem
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

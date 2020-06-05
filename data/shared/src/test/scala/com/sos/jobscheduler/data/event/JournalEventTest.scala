@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.data.event
+package js7.data.event
 
-import com.sos.jobscheduler.base.auth.UserId
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
-import com.sos.jobscheduler.tester.CirceJsonTester._
+import js7.base.auth.UserId
+import js7.base.circeutils.CirceUtils._
+import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
+import js7.tester.CirceJsonTester._
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

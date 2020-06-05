@@ -1,52 +1,52 @@
-package com.sos.jobscheduler.agent.scheduler.order
+package js7.agent.scheduler.order
 
 import akka.actor.{ActorRef, DeadLetterSuppression, Stash, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
-import com.sos.jobscheduler.agent.AgentState
-import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.data.Problems.{AgentDuplicateOrder, AgentIsShuttingDown}
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, CancelOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, OrderCommand, ReleaseEvents, Response}
-import com.sos.jobscheduler.agent.data.event.AgentMasterEvent.AgentReadyForMaster
-import com.sos.jobscheduler.agent.scheduler.job.JobActor
-import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
-import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper._
-import com.sos.jobscheduler.agent.scheduler.order.JobRegister.JobEntry
-import com.sos.jobscheduler.agent.scheduler.order.OrderRegister.OrderEntry
-import com.sos.jobscheduler.base.crypt.SignatureVerifier
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.ScalaUtils._
-import com.sos.jobscheduler.base.utils.SetOnce
-import com.sos.jobscheduler.common.akkautils.Akkas.{encodeAsActorName, uniqueActorName}
-import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
-import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.scalautil.Logger.ops._
-import com.sos.jobscheduler.common.utils.Exceptions.wrapException
-import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
-import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActor}
-import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
-import com.sos.jobscheduler.core.problems.ReverseReleaseEventsProblem
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.crypt.FileBasedVerifier
-import com.sos.jobscheduler.data.event.JournalEvent.JournalEventsReleased
-import com.sos.jobscheduler.data.event.{<-:, Event, EventId, JournalState, JournaledState, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.execution.workflow.OrderEventHandler.FollowUp
-import com.sos.jobscheduler.data.execution.workflow.OrderProcessor
-import com.sos.jobscheduler.data.execution.workflow.Workflows.ExecutableWorkflow
-import com.sos.jobscheduler.data.job.JobKey
-import com.sos.jobscheduler.data.master.MasterId
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderBroken, OrderDetached}
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
-import com.sos.jobscheduler.data.workflow.Workflow
-import com.sos.jobscheduler.data.workflow.WorkflowEvent.WorkflowAttached
-import com.sos.jobscheduler.data.workflow.instructions.Execute
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
+import js7.agent.AgentState
+import js7.agent.configuration.AgentConfiguration
+import js7.agent.data.Problems.{AgentDuplicateOrder, AgentIsShuttingDown}
+import js7.agent.data.commands.AgentCommand
+import js7.agent.data.commands.AgentCommand.{AttachOrder, CancelOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, OrderCommand, ReleaseEvents, Response}
+import js7.agent.data.event.AgentMasterEvent.AgentReadyForMaster
+import js7.agent.scheduler.job.JobActor
+import js7.agent.scheduler.job.task.TaskRunner
+import js7.agent.scheduler.order.AgentOrderKeeper._
+import js7.agent.scheduler.order.JobRegister.JobEntry
+import js7.agent.scheduler.order.OrderRegister.OrderEntry
+import js7.base.crypt.SignatureVerifier
+import js7.base.generic.Completed
+import js7.base.problem.Checked.Ops
+import js7.base.problem.{Checked, Problem}
+import js7.base.time.ScalaTime._
+import js7.base.time.Timestamp
+import js7.base.utils.ScalaUtils._
+import js7.base.utils.SetOnce
+import js7.common.akkautils.Akkas.{encodeAsActorName, uniqueActorName}
+import js7.common.akkautils.SupervisorStrategies
+import js7.common.scalautil.Futures.promiseFuture
+import js7.common.scalautil.Logger
+import js7.common.scalautil.Logger.ops._
+import js7.common.utils.Exceptions.wrapException
+import js7.core.event.journal.recover.JournalRecoverer
+import js7.core.event.journal.{JournalActor, MainJournalingActor}
+import js7.core.event.state.JournaledStatePersistence
+import js7.core.problems.ReverseReleaseEventsProblem
+import js7.data.agent.AgentRefPath
+import js7.data.crypt.FileBasedVerifier
+import js7.data.event.JournalEvent.JournalEventsReleased
+import js7.data.event.{<-:, Event, EventId, JournalState, JournaledState, KeyedEvent, Stamped}
+import js7.data.execution.workflow.OrderEventHandler.FollowUp
+import js7.data.execution.workflow.OrderProcessor
+import js7.data.execution.workflow.Workflows.ExecutableWorkflow
+import js7.data.job.JobKey
+import js7.data.master.MasterId
+import js7.data.order.OrderEvent.{OrderBroken, OrderDetached}
+import js7.data.order.{Order, OrderEvent, OrderId}
+import js7.data.workflow.Workflow
+import js7.data.workflow.WorkflowEvent.WorkflowAttached
+import js7.data.workflow.instructions.Execute
+import js7.data.workflow.instructions.executable.WorkflowJob
 import java.time.ZoneId
 import monix.execution.{Cancelable, Scheduler}
 import scala.concurrent.duration.Deadline.now

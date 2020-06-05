@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.data.fatevent
+package js7.data.fatevent
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.data.agent.AgentRefPath
+import js7.base.circeutils.CirceUtils.deriveCodec
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.data.agent.AgentRefPath
 
 /**
   * @author Joacim Zschimmer

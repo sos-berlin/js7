@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.base.auth
+package js7.base.auth
 
-import com.sos.jobscheduler.base.generic.GenericString
-import com.sos.jobscheduler.base.generic.GenericString.EmptyStringProblem
-import com.sos.jobscheduler.base.problem.Problems.InvalidNameProblem
+import js7.base.generic.GenericString
+import js7.base.generic.GenericString.EmptyStringProblem
+import js7.base.problem.Problems.InvalidNameProblem
 import java.lang.Character.{isIdentifierIgnorable, isUnicodeIdentifierPart, isUnicodeIdentifierStart}
 
 /**

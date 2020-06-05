@@ -1,16 +1,16 @@
-package com.sos.jobscheduler.data.fatevent
+package js7.data.fatevent
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.fatevent.OrderFatEvent._
-import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.data.order.{OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.position.Position
-import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import js7.base.circeutils.CirceUtils._
+import js7.base.time.Timestamp
+import js7.base.web.Uri
+import js7.data.agent.AgentRefPath
+import js7.data.fatevent.OrderFatEvent._
+import js7.data.job.ReturnCode
+import js7.data.order.{OrderId, Outcome}
+import js7.data.workflow.WorkflowPath
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.position.Position
+import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

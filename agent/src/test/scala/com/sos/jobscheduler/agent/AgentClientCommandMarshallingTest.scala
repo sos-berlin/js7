@@ -1,19 +1,19 @@
-package com.sos.jobscheduler.agent
+package js7.agent
 
 import com.google.inject.{AbstractModule, Provides}
-import com.sos.jobscheduler.agent.AgentClientCommandMarshallingTest._
-import com.sos.jobscheduler.agent.client.SimpleAgentClient
-import com.sos.jobscheduler.agent.command.CommandHandler
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{EmergencyStop, ShutDown}
-import com.sos.jobscheduler.agent.tests.AgentTester
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.Closer.syntax._
-import com.sos.jobscheduler.base.utils.ScalaUtils._
-import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.core.command.CommandMeta
+import js7.agent.AgentClientCommandMarshallingTest._
+import js7.agent.client.SimpleAgentClient
+import js7.agent.command.CommandHandler
+import js7.agent.data.commands.AgentCommand
+import js7.agent.data.commands.AgentCommand.{EmergencyStop, ShutDown}
+import js7.agent.tests.AgentTester
+import js7.base.problem.Checked
+import js7.base.time.ScalaTime._
+import js7.base.utils.Closer.syntax._
+import js7.base.utils.ScalaUtils._
+import js7.base.utils.SideEffect.ImplicitSideEffect
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.core.command.CommandMeta
 import javax.inject.Singleton
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global

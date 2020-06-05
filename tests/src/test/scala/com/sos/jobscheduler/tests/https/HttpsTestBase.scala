@@ -1,24 +1,24 @@
-package com.sos.jobscheduler.tests.https
+package js7.tests.https
 
-import com.sos.jobscheduler.base.auth.UserId
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.utils.Closer.syntax.RichClosersAutoCloseable
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
-import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
-import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax.RichPath
-import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import com.sos.jobscheduler.common.utils.JavaResource
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
-import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
-import com.sos.jobscheduler.tests.https.HttpsTestBase._
-import com.sos.jobscheduler.tests.testenv.{DirectoryProvider, MasterAgentForScalaTest}
+import js7.base.auth.UserId
+import js7.base.generic.SecretString
+import js7.base.problem.Checked.Ops
+import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
+import js7.base.utils.ScalazStyle._
+import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
+import js7.common.akkautils.ProvideActorSystem
+import js7.common.process.Processes.{ShellFileExtension => sh}
+import js7.common.scalautil.FileUtils.syntax.RichPath
+import js7.common.system.OperatingSystem.operatingSystem
+import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import js7.common.utils.JavaResource
+import js7.data.agent.AgentRefPath
+import js7.data.job.ExecutablePath
+import js7.data.workflow.WorkflowPath
+import js7.data.workflow.parser.WorkflowParser
+import js7.master.client.AkkaHttpMasterApi
+import js7.tests.https.HttpsTestBase._
+import js7.tests.testenv.{DirectoryProvider, MasterAgentForScalaTest}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.config.ConfigUtil.quoteString
 import java.nio.file.Files.{createTempFile, delete}

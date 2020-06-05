@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.base.session
+package js7.base.session
 
-import com.sos.jobscheduler.base.auth.UserAndPassword
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.problem.Problems.InvalidSessionTokenProblem
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, RichThrowable}
-import com.sos.jobscheduler.base.web.HttpClient.HttpException
+import js7.base.auth.UserAndPassword
+import js7.base.generic.Completed
+import js7.base.problem.Problems.InvalidSessionTokenProblem
+import js7.base.time.ScalaTime._
+import js7.base.utils.ScalaUtils.{RichJavaClass, RichThrowable}
+import js7.base.web.HttpClient.HttpException
 import monix.eval.Task
 import scala.concurrent.duration.FiniteDuration
 // Test in SessionRouteTest

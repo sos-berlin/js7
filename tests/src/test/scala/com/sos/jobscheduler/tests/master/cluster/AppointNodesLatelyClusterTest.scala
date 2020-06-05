@@ -1,17 +1,17 @@
-package com.sos.jobscheduler.tests.master.cluster
+package js7.tests.master.cluster
 
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPorts
-import com.sos.jobscheduler.core.event.journal.files.JournalFiles.listJournalFiles
-import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId}
-import com.sos.jobscheduler.data.event.EventId
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderFinished, OrderStarted}
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
-import com.sos.jobscheduler.master.data.MasterCommand.ClusterAppointNodes
-import com.sos.jobscheduler.tests.master.cluster.MasterClusterTester._
+import js7.base.problem.Checked._
+import js7.base.time.ScalaTime._
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
+import js7.core.event.journal.files.JournalFiles.listJournalFiles
+import js7.data.cluster.{ClusterEvent, ClusterNodeId}
+import js7.data.event.EventId
+import js7.data.order.OrderEvent.{OrderFinished, OrderStarted}
+import js7.data.order.{FreshOrder, OrderId}
+import js7.master.data.MasterCommand.ClusterAppointNodes
+import js7.tests.master.cluster.MasterClusterTester._
 import monix.execution.Scheduler.Implicits.global
 
 final class AppointNodesLatelyClusterTest extends MasterClusterTester

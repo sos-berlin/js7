@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.data.execution.workflow.instructions
+package js7.data.execution.workflow.instructions
 
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.data.execution.workflow.context.OrderContext
-import com.sos.jobscheduler.data.order.Order
-import com.sos.jobscheduler.data.order.OrderEvent.OrderMoved
-import com.sos.jobscheduler.data.workflow.instructions.If
-import com.sos.jobscheduler.data.workflow.position.BranchId.{Else, Then}
+import js7.base.utils.Assertions.assertThat
+import js7.base.utils.ScalazStyle._
+import js7.data.execution.workflow.context.OrderContext
+import js7.data.order.Order
+import js7.data.order.OrderEvent.OrderMoved
+import js7.data.workflow.instructions.If
+import js7.data.workflow.position.BranchId.{Else, Then}
 
 /**
   * @author Joacim Zschimmer

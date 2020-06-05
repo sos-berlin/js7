@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.master
+package js7.master
 
 import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.util.Timeout
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId}
-import com.sos.jobscheduler.master.data.MasterState
+import js7.base.generic.Completed
+import js7.base.problem.Checked
+import js7.data.order.{FreshOrder, Order, OrderId}
+import js7.master.data.MasterState
 import monix.eval.Task
 import shapeless.tag.@@
 

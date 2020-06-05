@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.base.crypt
+package js7.base.crypt
 
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.problem.Checked
+import js7.base.generic.SecretString
+import js7.base.problem.Checked
 
 trait MessageSigner
 {

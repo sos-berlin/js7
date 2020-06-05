@@ -1,16 +1,16 @@
-package com.sos.jobscheduler.master.client
+package js7.master.client
 
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.ScalaUtils._
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.http.Uris.{encodePath, encodeQuery}
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest}
-import com.sos.jobscheduler.data.fatevent.FatEvent
-import com.sos.jobscheduler.data.order.OrderId
-import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.master.client.MasterUris._
+import js7.base.time.ScalaTime._
+import js7.base.utils.ScalaUtils._
+import js7.base.utils.ScalazStyle._
+import js7.base.web.Uri
+import js7.common.http.Uris.{encodePath, encodeQuery}
+import js7.data.agent.AgentRefPath
+import js7.data.event.{Event, EventId, EventRequest}
+import js7.data.fatevent.FatEvent
+import js7.data.order.OrderId
+import js7.data.workflow.WorkflowPath
+import js7.master.client.MasterUris._
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
 

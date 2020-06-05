@@ -1,22 +1,22 @@
-package com.sos.jobscheduler.master.web.master.api.graphql
+package js7.master.web.master.api.graphql
 
 import akka.http.scaladsl.model.ContentTypes.`text/html(UTF-8)`
 import akka.http.scaladsl.model.StatusCodes.BadRequest
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import com.sos.jobscheduler.base.auth.ValidUserPermission
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
-import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
-import com.sos.jobscheduler.common.akkahttp.html.HtmlDirectives.htmlPreferred
-import com.sos.jobscheduler.common.utils.JavaResource
-import com.sos.jobscheduler.core.filebased.FileBasedApi
-import com.sos.jobscheduler.data.filebased.FileBased
-import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.master.OrderApi
-import com.sos.jobscheduler.master.web.common.MasterRouteProvider
-import com.sos.jobscheduler.master.web.master.api.graphql.GraphqlRoute._
+import js7.base.auth.ValidUserPermission
+import js7.base.circeutils.CirceUtils._
+import js7.base.utils.ScalaUtils.RichThrowable
+import js7.common.akkahttp.CirceJsonOrYamlSupport._
+import js7.common.akkahttp.StandardMarshallers._
+import js7.common.akkahttp.html.HtmlDirectives.htmlPreferred
+import js7.common.utils.JavaResource
+import js7.core.filebased.FileBasedApi
+import js7.data.filebased.FileBased
+import js7.data.order.{Order, OrderId}
+import js7.master.OrderApi
+import js7.master.web.common.MasterRouteProvider
+import js7.master.web.master.api.graphql.GraphqlRoute._
 import io.circe.parser.{parse => parseJson}
 import io.circe.syntax.EncoderOps
 import io.circe.{Json, JsonObject}

@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.master.data.events
+package js7.master.data.events
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.master.data.events.MasterEvent._
-import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import js7.base.circeutils.CirceUtils._
+import js7.master.data.events.MasterEvent._
+import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
 

@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.agent.tests
+package js7.agent.tests
 
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
+import js7.base.time.ScalaTime._
+import js7.common.scalautil.MonixUtils.syntax._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.{BeforeAndAfterAll, Suite}
 

@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.data.event
+package js7.data.event
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowableEither
-import com.sos.jobscheduler.base.utils.ScodecUtils.RichByteVector
+import js7.base.circeutils.CirceUtils.RichCirceString
+import js7.base.utils.ScalaUtils.RichThrowableEither
+import js7.base.utils.ScodecUtils.RichByteVector
 import io.circe.Json
 import scodec.bits.ByteVector
 

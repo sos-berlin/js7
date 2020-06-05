@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.base.crypt
+package js7.base.crypt
 
 trait Signature
 {

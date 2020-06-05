@@ -1,40 +1,40 @@
-package com.sos.jobscheduler.master.agent
+package js7.master.agent
 
 import akka.actor.{ActorRef, DeadLetterSuppression, Props}
 import cats.data.EitherT
-import com.sos.jobscheduler.agent.client.AgentClient
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{CoupleMaster, RegisterAsMaster}
-import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
-import com.sos.jobscheduler.base.auth.UserAndPassword
-import com.sos.jobscheduler.base.crypt.Signed
-import com.sos.jobscheduler.base.generic.{Completed, SecretString}
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.Problems.InvalidSessionTokenProblem
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.base.utils.ScalaUtils._
-import com.sos.jobscheduler.base.utils.SetOnce
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.akkautils.ReceiveLoggingActor
-import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
-import com.sos.jobscheduler.common.http.RecouplingStreamReader
-import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.scalautil.MonixUtils.promiseTask
-import com.sos.jobscheduler.core.event.journal.{JournalActor, KeyedJournalingActor}
-import com.sos.jobscheduler.data.agent.{AgentRefPath, AgentRunId}
-import com.sos.jobscheduler.data.command.CancelMode
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, Stamped}
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
-import com.sos.jobscheduler.data.workflow.Workflow
-import com.sos.jobscheduler.master.agent.AgentDriver._
-import com.sos.jobscheduler.master.agent.CommandQueue.QueuedInputResponse
-import com.sos.jobscheduler.master.configuration.MasterConfiguration
-import com.sos.jobscheduler.master.data.MasterState
-import com.sos.jobscheduler.master.data.events.MasterAgentEvent
-import com.sos.jobscheduler.master.data.events.MasterAgentEvent.{AgentCouplingFailed, AgentRegisteredMaster}
+import js7.agent.client.AgentClient
+import js7.agent.data.commands.AgentCommand
+import js7.agent.data.commands.AgentCommand.{CoupleMaster, RegisterAsMaster}
+import js7.agent.data.event.AgentMasterEvent
+import js7.base.auth.UserAndPassword
+import js7.base.crypt.Signed
+import js7.base.generic.{Completed, SecretString}
+import js7.base.problem.Checked._
+import js7.base.problem.Problems.InvalidSessionTokenProblem
+import js7.base.problem.{Checked, Problem}
+import js7.base.time.Timestamp
+import js7.base.utils.Assertions.assertThat
+import js7.base.utils.ScalaUtils._
+import js7.base.utils.SetOnce
+import js7.base.web.Uri
+import js7.common.akkautils.ReceiveLoggingActor
+import js7.common.configutils.Configs.ConvertibleConfig
+import js7.common.http.RecouplingStreamReader
+import js7.common.scalautil.Futures.promiseFuture
+import js7.common.scalautil.Logger
+import js7.common.scalautil.MonixUtils.promiseTask
+import js7.core.event.journal.{JournalActor, KeyedJournalingActor}
+import js7.data.agent.{AgentRefPath, AgentRunId}
+import js7.data.command.CancelMode
+import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, Stamped}
+import js7.data.order.{Order, OrderEvent, OrderId}
+import js7.data.workflow.Workflow
+import js7.master.agent.AgentDriver._
+import js7.master.agent.CommandQueue.QueuedInputResponse
+import js7.master.configuration.MasterConfiguration
+import js7.master.data.MasterState
+import js7.master.data.events.MasterAgentEvent
+import js7.master.data.events.MasterAgentEvent.{AgentCouplingFailed, AgentRegisteredMaster}
 import com.typesafe.config.ConfigUtil
 import monix.eval.Task
 import monix.execution.atomic.{AtomicInt, AtomicLong}

@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.common.scalautil.xmls
+package js7.common.scalautil.xmls
 
-import com.sos.jobscheduler.base.convert.ConvertiblePartialFunction
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.base.utils.ScalaUtils.{cast, implicitClass}
-import com.sos.jobscheduler.common.scalautil.AssignableFrom.assignableFrom
-import com.sos.jobscheduler.common.scalautil.xmls.ScalaStax.{RichStartElement, getCommonXMLInputFactory}
-import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader._
+import js7.base.convert.ConvertiblePartialFunction
+import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.ScalaUtils.{cast, implicitClass}
+import js7.common.scalautil.AssignableFrom.assignableFrom
+import js7.common.scalautil.xmls.ScalaStax.{RichStartElement, getCommonXMLInputFactory}
+import js7.common.scalautil.xmls.ScalaXMLEventReader._
 import java.util.NoSuchElementException
 import javax.xml.stream.events.{Characters, Comment, EndDocument, EndElement, StartDocument, StartElement, XMLEvent}
 import javax.xml.stream.{Location, XMLEventReader, XMLInputFactory}
@@ -126,7 +126,7 @@ extends AutoCloseable {
   }
 
 //  import javax.xml.transform.{Result, TransformerFactory}
-//  import com.sos.jobscheduler.common.scalautil.StringWriters.writingString
+//  import js7.common.scalautil.StringWriters.writingString
 //  import javax.xml.transform.stax.StAXSource
 //  import javax.xml.transform.stream.StreamResult
 //  private lazy val transformerFactory = TransformerFactory.newInstance()

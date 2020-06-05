@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.core.event.journal.files
+package js7.core.event.journal.files
 
 import com.google.common.io.MoreFiles.touch
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.FileUtils.{deleteDirectoryContentRecursively, withTemporaryDirectory}
+import js7.base.problem.Problem
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.FileUtils.{deleteDirectoryContentRecursively, withTemporaryDirectory}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

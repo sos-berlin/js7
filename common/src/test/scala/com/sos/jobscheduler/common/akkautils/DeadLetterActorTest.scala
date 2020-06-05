@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.common.akkautils
+package js7.common.akkautils
 
 import akka.actor.{Actor, DeadLetterSuppression, Props}
-import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
-import com.sos.jobscheduler.common.akkautils.DeadLetterActorTest._
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
+import js7.common.akkautils.Akkas.newActorSystem
+import js7.common.akkautils.DeadLetterActorTest._
+import js7.base.time.ScalaTime._
+import js7.common.time.WaitForCondition.waitForCondition
 import com.typesafe.config.ConfigFactory
 import scala.collection.mutable
 import org.scalatest.freespec.AnyFreeSpec

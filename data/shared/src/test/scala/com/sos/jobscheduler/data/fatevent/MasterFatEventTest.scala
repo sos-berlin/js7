@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.data.fatevent
+package js7.data.fatevent
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.data.fatevent.MasterFatEvent._
-import com.sos.jobscheduler.data.master.MasterId
-import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import js7.base.circeutils.CirceUtils._
+import js7.data.fatevent.MasterFatEvent._
+import js7.data.master.MasterId
+import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

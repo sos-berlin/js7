@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.data.workflow.instructions
+package js7.data.workflow.instructions
 
-import com.sos.jobscheduler.data.source.SourcePos
-import com.sos.jobscheduler.data.workflow.Instruction
+import js7.data.source.SourcePos
+import js7.data.workflow.Instruction
 import io.circe.generic.JsonCodec
 
 /** reduceForAgent uses Gap for all instructions not executable on the requested Agent.

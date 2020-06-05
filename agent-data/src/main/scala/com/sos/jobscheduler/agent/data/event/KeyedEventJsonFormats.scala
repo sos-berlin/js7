@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.agent.data.event
+package js7.agent.data.event
 
-import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import com.sos.jobscheduler.data.event.{Event, JournalEvent, KeyedEventTypedJsonCodec}
-import com.sos.jobscheduler.data.order.OrderEvent
-import com.sos.jobscheduler.data.workflow.WorkflowEvent
+import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
+import js7.data.event.{Event, JournalEvent, KeyedEventTypedJsonCodec}
+import js7.data.order.OrderEvent
+import js7.data.workflow.WorkflowEvent
 
 /**
   * @author Joacim Zschimmer

@@ -1,18 +1,18 @@
-package com.sos.jobscheduler.core.cluster
+package js7.core.cluster
 
 import akka.actor.ActorSystem
-import com.sos.jobscheduler.base.auth.UserAndPassword
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.session.HttpSessionApi
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.base.web.HttpClient.HttpException
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.http.AkkaHttpClient
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.cluster.ClusterWatch.isClusterWatchProblem
-import com.sos.jobscheduler.core.cluster.HttpClusterWatch._
-import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
+import js7.base.auth.UserAndPassword
+import js7.base.generic.Completed
+import js7.base.problem.Checked
+import js7.base.session.HttpSessionApi
+import js7.base.utils.ScalaUtils.RichThrowable
+import js7.base.web.HttpClient.HttpException
+import js7.base.web.Uri
+import js7.common.http.AkkaHttpClient
+import js7.common.scalautil.Logger
+import js7.core.cluster.ClusterWatch.isClusterWatchProblem
+import js7.core.cluster.HttpClusterWatch._
+import js7.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
 import io.circe._
 import monix.eval.Task
 

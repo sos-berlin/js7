@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.proxy.javaapi.data
+package js7.proxy.javaapi.data
 
-import com.sos.jobscheduler.base.annotation.javaApi
+import js7.base.annotation.javaApi
 
 @javaApi
 trait JavaWrapper

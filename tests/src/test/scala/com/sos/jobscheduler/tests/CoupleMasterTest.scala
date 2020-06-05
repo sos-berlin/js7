@@ -1,20 +1,20 @@
-package com.sos.jobscheduler.tests
+package js7.tests
 
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
-import com.sos.jobscheduler.data.problems.UnknownEventIdProblem
-import com.sos.jobscheduler.data.workflow.instructions.Execute
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentCouplingFailed
-import com.sos.jobscheduler.tests.CoupleMasterTest._
-import com.sos.jobscheduler.tests.testenv.DirectoryProvider.script
-import com.sos.jobscheduler.tests.testenv.DirectoryProviderForScalaTest
+import js7.base.time.ScalaTime._
+import js7.common.scalautil.FileUtils.syntax._
+import js7.data.agent.AgentRefPath
+import js7.data.event.{Event, EventId, KeyedEvent, Stamped}
+import js7.data.job.ExecutablePath
+import js7.data.order.OrderEvent.OrderFinished
+import js7.data.order.{FreshOrder, OrderId}
+import js7.data.problems.UnknownEventIdProblem
+import js7.data.workflow.instructions.Execute
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.master.data.events.MasterAgentEvent.AgentCouplingFailed
+import js7.tests.CoupleMasterTest._
+import js7.tests.testenv.DirectoryProvider.script
+import js7.tests.testenv.DirectoryProviderForScalaTest
 import java.nio.file.Files.{delete, move}
 import java.nio.file.Paths
 import monix.execution.Scheduler.Implicits.global

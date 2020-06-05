@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.base.web
+package js7.base.web
 
-import com.sos.jobscheduler.base.auth.SessionToken
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
+import js7.base.auth.SessionToken
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.StackTraces.StackTraceThrowable
 import io.circe.{Decoder, Encoder}
 import monix.eval.Task
 import monix.reactive.Observable

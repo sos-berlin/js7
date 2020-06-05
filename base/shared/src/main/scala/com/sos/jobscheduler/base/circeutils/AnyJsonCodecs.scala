@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.base.circeutils
+package js7.base.circeutils
 
-import com.sos.jobscheduler.base.generic.GenericString
-import com.sos.jobscheduler.base.utils.Collections.RichMap
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
+import js7.base.generic.GenericString
+import js7.base.utils.Collections.RichMap
+import js7.base.utils.ScalaUtils.RichJavaClass
 import io.circe.{Decoder, Encoder, Json, JsonObject}
 import scala.jdk.CollectionConverters._
 /**

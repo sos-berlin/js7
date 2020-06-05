@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.core.event.journal.watch
+package js7.core.event.journal.watch
 
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.common.event.PositionAnd
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.core.event.journal.watch.FileEventIteratorPool._
-import com.sos.jobscheduler.data.event.{EventId, JournalId}
+import js7.base.utils.ScalazStyle._
+import js7.common.event.PositionAnd
+import js7.common.scalautil.Logger
+import js7.core.event.journal.data.JournalMeta
+import js7.core.event.journal.watch.FileEventIteratorPool._
+import js7.data.event.{EventId, JournalId}
 import java.nio.file.Path
 import monix.execution.atomic.AtomicBoolean
 import scala.collection.mutable

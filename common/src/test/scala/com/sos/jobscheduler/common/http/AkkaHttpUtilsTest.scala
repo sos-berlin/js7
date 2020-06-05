@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.common.http
+package js7.common.http
 
 import akka.http.scaladsl.model.{Uri => AkkaUri}
 import akka.util.ByteString
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.http.AkkaHttpUtils._
+import js7.base.web.Uri
+import js7.common.http.AkkaHttpUtils._
 import org.scalatest.freespec.AnyFreeSpec
 import scodec.bits.ByteVector
 

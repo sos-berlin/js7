@@ -1,17 +1,17 @@
-package com.sos.jobscheduler.master.workflow
+package js7.master.workflow
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.common.http.CirceToYaml.ToYamlString
-import com.sos.jobscheduler.common.scalautil.FileUtils
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.core.filebased.TypedSourceReader
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.workflow.instructions.Execute
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
+import js7.base.circeutils.CirceUtils.RichJson
+import js7.base.problem.Checked.Ops
+import js7.common.http.CirceToYaml.ToYamlString
+import js7.common.scalautil.FileUtils
+import js7.common.scalautil.FileUtils.syntax._
+import js7.core.filebased.TypedSourceReader
+import js7.data.agent.AgentRefPath
+import js7.data.job.ExecutablePath
+import js7.data.workflow.instructions.Execute
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.parser.WorkflowParser
+import js7.data.workflow.{Workflow, WorkflowPath}
 import io.circe.syntax.EncoderOps
 import scala.collection.mutable
 import org.scalatest.freespec.AnyFreeSpec

@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.base.session
+package js7.base.session
 
-import com.sos.jobscheduler.base.auth.{SessionToken, UserAndPassword}
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.session.SessionCommand.{Login, Logout}
-import com.sos.jobscheduler.base.web.{HttpClient, Uri}
+import js7.base.auth.{SessionToken, UserAndPassword}
+import js7.base.generic.Completed
+import js7.base.session.SessionCommand.{Login, Logout}
+import js7.base.web.{HttpClient, Uri}
 import monix.eval.Task
 import monix.execution.atomic.AtomicAny
 

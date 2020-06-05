@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.core.event.journal
+package js7.core.event.journal
 
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.data.event.{Event, JournaledState, KeyedEvent, Stamped}
+import js7.base.time.Timestamp
+import js7.data.event.{Event, JournaledState, KeyedEvent, Stamped}
 import scala.concurrent.Future
 import scala.concurrent.duration._
 

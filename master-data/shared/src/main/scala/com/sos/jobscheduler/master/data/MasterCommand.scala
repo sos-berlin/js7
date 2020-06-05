@@ -1,22 +1,22 @@
-package com.sos.jobscheduler.master.data
+package js7.master.data
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
-import com.sos.jobscheduler.base.circeutils.ScalaJsonCodecs.{FiniteDurationJsonDecoder, FiniteDurationJsonEncoder}
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.base.crypt.SignedString
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.Checked.implicits.{checkedJsonDecoder, checkedJsonEncoder}
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.Big
-import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.data.cluster.{ClusterCommand, ClusterNodeId, ClusterSetting}
-import com.sos.jobscheduler.data.command.{CancelMode, CommonCommand}
-import com.sos.jobscheduler.data.event.EventId
-import com.sos.jobscheduler.data.filebased.{TypedPath, VersionId}
-import com.sos.jobscheduler.data.master.MasterFileBaseds.typedPathJsonDecoder
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
+import js7.base.circeutils.CirceUtils.deriveCodec
+import js7.base.circeutils.ScalaJsonCodecs.{FiniteDurationJsonDecoder, FiniteDurationJsonEncoder}
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.crypt.SignedString
+import js7.base.problem.Checked._
+import js7.base.problem.Checked.implicits.{checkedJsonDecoder, checkedJsonEncoder}
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.Big
+import js7.base.utils.IntelliJUtils.intelliJuseImport
+import js7.base.utils.ScalazStyle._
+import js7.base.web.Uri
+import js7.data.cluster.{ClusterCommand, ClusterNodeId, ClusterSetting}
+import js7.data.command.{CancelMode, CommonCommand}
+import js7.data.event.EventId
+import js7.data.filebased.{TypedPath, VersionId}
+import js7.data.master.MasterFileBaseds.typedPathJsonDecoder
+import js7.data.order.{FreshOrder, OrderId}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json, JsonObject}
 
@@ -187,7 +187,7 @@ object MasterCommand extends CommonCommand.Companion
       Subtype(Accepted),
       Subtype.named(deriveCodec[AddOrder.Response], "AddOrder.Response"),
       Subtype.named(deriveCodec[Batch.Response], "BatchResponse"),
-      Subtype.named(deriveCodec[com.sos.jobscheduler.master.data.MasterCommand.InternalClusterCommand.Response], "InternalClusterCommand.Response"))
+      Subtype.named(deriveCodec[js7.master.data.MasterCommand.InternalClusterCommand.Response], "InternalClusterCommand.Response"))
   }
 
   implicit val jsonCodec: TypedJsonCodec[MasterCommand] = TypedJsonCodec[MasterCommand](

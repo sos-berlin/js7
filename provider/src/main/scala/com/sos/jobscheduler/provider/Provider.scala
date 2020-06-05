@@ -1,32 +1,32 @@
-package com.sos.jobscheduler.provider
+package js7.provider
 
 import cats.implicits._
-import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
-import com.sos.jobscheduler.base.convert.As._
-import com.sos.jobscheduler.base.generic.{Completed, SecretString}
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.HasCloser
-import com.sos.jobscheduler.base.web.HttpClient
-import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
-import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
-import com.sos.jobscheduler.common.files.{DirectoryReader, PathSeqDiff, PathSeqDiffer}
-import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger}
-import com.sos.jobscheduler.common.time.JavaTimeConverters._
-import com.sos.jobscheduler.core.crypt.generic.MessageSigners
-import com.sos.jobscheduler.core.filebased.FileBaseds.diffFileBaseds
-import com.sos.jobscheduler.core.filebased.{FileBaseds, TypedPaths, TypedSourceReader}
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedSigner, TypedPath, VersionId}
-import com.sos.jobscheduler.data.master.MasterFileBaseds
-import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.master.agent.AgentRefReader
-import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
-import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.data.MasterCommand.{ReplaceRepo, UpdateRepo}
-import com.sos.jobscheduler.master.workflow.WorkflowReader
-import com.sos.jobscheduler.provider.Provider._
-import com.sos.jobscheduler.provider.configuration.ProviderConfiguration
+import js7.base.auth.{UserAndPassword, UserId}
+import js7.base.convert.As._
+import js7.base.generic.{Completed, SecretString}
+import js7.base.problem.Checked._
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.HasCloser
+import js7.base.web.HttpClient
+import js7.common.akkautils.ProvideActorSystem
+import js7.common.configutils.Configs.ConvertibleConfig
+import js7.common.files.{DirectoryReader, PathSeqDiff, PathSeqDiffer}
+import js7.common.scalautil.{IOExecutor, Logger}
+import js7.common.time.JavaTimeConverters._
+import js7.core.crypt.generic.MessageSigners
+import js7.core.filebased.FileBaseds.diffFileBaseds
+import js7.core.filebased.{FileBaseds, TypedPaths, TypedSourceReader}
+import js7.data.agent.AgentRefPath
+import js7.data.filebased.{FileBased, FileBasedSigner, TypedPath, VersionId}
+import js7.data.master.MasterFileBaseds
+import js7.data.workflow.WorkflowPath
+import js7.master.agent.AgentRefReader
+import js7.master.client.AkkaHttpMasterApi
+import js7.master.data.MasterCommand
+import js7.master.data.MasterCommand.{ReplaceRepo, UpdateRepo}
+import js7.master.workflow.WorkflowReader
+import js7.provider.Provider._
+import js7.provider.configuration.ProviderConfiguration
 import com.typesafe.config.ConfigUtil
 import java.nio.file.{Files, Path, Paths}
 import monix.eval.Task
@@ -36,7 +36,7 @@ import monix.reactive.Observable
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 
-// Test in com.sos.jobscheduler.tests.provider.ProviderTest
+// Test in js7.tests.provider.ProviderTest
 /**
   * @author Joacim Zschimmer
   */

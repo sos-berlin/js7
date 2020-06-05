@@ -1,22 +1,22 @@
-package com.sos.jobscheduler.tests
+package js7.tests
 
-import com.sos.jobscheduler.base.BuildInfo
-import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.Closer.syntax.RichClosersAutoCloseable
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId}
-import com.sos.jobscheduler.data.workflow.instructions.Execute
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
-import com.sos.jobscheduler.master.data.MasterCommand.AddOrder
-import com.sos.jobscheduler.tests.AkkaHttpMasterApiTest._
-import com.sos.jobscheduler.tests.testenv.MasterAgentForScalaTest
+import js7.base.BuildInfo
+import js7.base.auth.{UserAndPassword, UserId}
+import js7.base.generic.SecretString
+import js7.base.time.ScalaTime._
+import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.data.agent.AgentRefPath
+import js7.data.job.ExecutablePath
+import js7.data.order.{FreshOrder, Order, OrderId}
+import js7.data.workflow.instructions.Execute
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.master.client.AkkaHttpMasterApi
+import js7.master.data.MasterCommand.AddOrder
+import js7.tests.AkkaHttpMasterApiTest._
+import js7.tests.testenv.MasterAgentForScalaTest
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec

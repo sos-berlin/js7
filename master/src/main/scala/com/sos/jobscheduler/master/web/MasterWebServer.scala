@@ -1,25 +1,25 @@
-package com.sos.jobscheduler.master.web
+package js7.master.web
 
 import akka.actor.ActorSystem
 import com.google.inject.Injector
-import com.sos.jobscheduler.base.auth.SimpleUser
-import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.utils.Closer
-import com.sos.jobscheduler.base.utils.Closer.syntax.RichClosersAutoCloseable
-import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
-import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
-import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
-import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import com.sos.jobscheduler.common.configutils.Configs._
-import com.sos.jobscheduler.common.event.EventWatch
-import com.sos.jobscheduler.core.command.CommandMeta
-import com.sos.jobscheduler.core.filebased.FileBasedApi
-import com.sos.jobscheduler.data.cluster.ClusterState
-import com.sos.jobscheduler.master.OrderApi
-import com.sos.jobscheduler.master.command.MasterCommandExecutor
-import com.sos.jobscheduler.master.configuration.MasterConfiguration
-import com.sos.jobscheduler.master.data.{MasterCommand, MasterState}
+import js7.base.auth.SimpleUser
+import js7.base.convert.AsJava.StringAsPath
+import js7.base.problem.Checked
+import js7.base.utils.Closer
+import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
+import js7.common.akkahttp.web.AkkaWebServer
+import js7.common.akkahttp.web.auth.GateKeeper
+import js7.common.akkahttp.web.data.WebServerBinding
+import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
+import js7.common.configutils.Configs._
+import js7.common.event.EventWatch
+import js7.core.command.CommandMeta
+import js7.core.filebased.FileBasedApi
+import js7.data.cluster.ClusterState
+import js7.master.OrderApi
+import js7.master.command.MasterCommandExecutor
+import js7.master.configuration.MasterConfiguration
+import js7.master.data.{MasterCommand, MasterState}
 import com.typesafe.config.Config
 import java.nio.file.Path
 import javax.inject.{Inject, Singleton}

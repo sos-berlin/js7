@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.data.workflow.parser
+package js7.data.workflow.parser
 
-import com.sos.jobscheduler.data.expression.Expression
-import com.sos.jobscheduler.data.expression.Expression._
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.parser.BasicParsers.{keyValue, _}
+import js7.data.expression.Expression
+import js7.data.expression.Expression._
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.parser.BasicParsers.{keyValue, _}
 import fastparse.NoWhitespace._
 import fastparse._
 

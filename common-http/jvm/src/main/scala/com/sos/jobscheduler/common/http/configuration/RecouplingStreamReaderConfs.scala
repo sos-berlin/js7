@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.common.http.configuration
+package js7.common.http.configuration
 
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.common.time.JavaTimeConverters._
+import js7.base.problem.Checked
+import js7.common.time.JavaTimeConverters._
 import com.typesafe.config.Config
 
 object RecouplingStreamReaderConfs

@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.log
+package js7.common.log
 
 import java.util.concurrent.ConcurrentHashMap
 import scribe.format._

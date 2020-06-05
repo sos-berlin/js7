@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.proxy.javaapi
+package js7.proxy.javaapi
 
-import com.sos.jobscheduler.base.annotation.javaApi
-import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.proxy.javaapi.JCredentials._
+import js7.base.annotation.javaApi
+import js7.base.auth.{UserAndPassword, UserId}
+import js7.base.generic.SecretString
+import js7.proxy.javaapi.JCredentials._
 
 @javaApi
 sealed trait JCredentials

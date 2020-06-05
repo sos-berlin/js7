@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.common.concurrent
+package js7.common.concurrent
 
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.Stopwatch.measureTime
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import js7.base.time.ScalaTime._
+import js7.base.time.Stopwatch.measureTime
+import js7.common.scalautil.Futures.implicits._
 import java.util.concurrent.Executors.newFixedThreadPool
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec

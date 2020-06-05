@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.common.utils
+package js7.common.utils
 
-import com.sos.jobscheduler.common.scalautil.Logger
+import js7.common.scalautil.Logger
 import java.net.{BindException, ServerSocket}
 import scala.math.abs
 import scala.util.Random

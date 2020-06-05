@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.common.auth
+package js7.common.auth
 
-import com.sos.jobscheduler.base.auth.{SimpleUser, UserId}
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.auth.IdToUser.RawUserAccount
-import com.sos.jobscheduler.common.auth.IdToUserTest._
-import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import js7.base.auth.{SimpleUser, UserId}
+import js7.base.generic.SecretString
+import js7.base.time.ScalaTime._
+import js7.common.auth.IdToUser.RawUserAccount
+import js7.common.auth.IdToUserTest._
+import js7.common.configutils.Configs.ConvertibleConfig
+import js7.common.scalautil.Futures.implicits._
 import com.typesafe.config.ConfigFactory
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future

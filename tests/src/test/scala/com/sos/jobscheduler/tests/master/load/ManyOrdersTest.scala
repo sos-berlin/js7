@@ -1,25 +1,25 @@
-package com.sos.jobscheduler.tests.master.load
+package js7.tests.master.load
 
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.Stopwatch
-import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.event.{EventId, EventRequest}
-import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
-import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
-import com.sos.jobscheduler.tests.master.load.ManyOrdersTest._
-import com.sos.jobscheduler.tests.testenv.DirectoryProvider.script
-import com.sos.jobscheduler.tests.testenv.MasterAgentForScalaTest
+import js7.base.problem.Checked.Ops
+import js7.base.time.ScalaTime._
+import js7.base.time.Stopwatch
+import js7.common.process.Processes.{ShellFileExtension => sh}
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.data.agent.AgentRefPath
+import js7.data.event.{EventId, EventRequest}
+import js7.data.job.ExecutablePath
+import js7.data.order.OrderEvent.OrderFinished
+import js7.data.order.{FreshOrder, OrderId}
+import js7.data.workflow.WorkflowPath
+import js7.data.workflow.parser.WorkflowParser
+import js7.tests.master.load.ManyOrdersTest._
+import js7.tests.testenv.DirectoryProvider.script
+import js7.tests.testenv.MasterAgentForScalaTest
 import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler.Implicits.global
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.master.data.MasterCommand.TakeSnapshot
+import js7.base.time.Timestamp
+import js7.master.data.MasterCommand.TakeSnapshot
 import monix.execution.atomic.AtomicInt
 import org.scalatest.freespec.AnyFreeSpec
 

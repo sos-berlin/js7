@@ -1,14 +1,14 @@
-package com.sos.jobscheduler.data.workflow
+package js7.data.workflow
 
 import cats.syntax.show._
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.expression.Expression.{BooleanConstant, Equal, In, LastReturnCode, ListExpression, NamedValue, NumericConstant, Or, StringConstant}
-import com.sos.jobscheduler.data.job.{ExecutablePath, ExecutableScript}
-import com.sos.jobscheduler.data.order.OrderId
-import com.sos.jobscheduler.data.workflow.WorkflowPrinter.WorkflowShow
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fork, Goto, If, IfFailedGoto, Offer, ReturnCodeMeaning}
-import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
+import js7.data.agent.AgentRefPath
+import js7.data.expression.Expression.{BooleanConstant, Equal, In, LastReturnCode, ListExpression, NamedValue, NumericConstant, Or, StringConstant}
+import js7.data.job.{ExecutablePath, ExecutableScript}
+import js7.data.order.OrderId
+import js7.data.workflow.WorkflowPrinter.WorkflowShow
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fork, Goto, If, IfFailedGoto, Offer, ReturnCodeMeaning}
+import js7.data.workflow.parser.WorkflowParser
 import scala.concurrent.duration._
 import org.scalatest.freespec.AnyFreeSpec
 

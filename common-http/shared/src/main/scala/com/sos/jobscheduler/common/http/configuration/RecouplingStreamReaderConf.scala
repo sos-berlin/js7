@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.http.configuration
+package js7.common.http.configuration
 
 import scala.concurrent.duration.FiniteDuration
 

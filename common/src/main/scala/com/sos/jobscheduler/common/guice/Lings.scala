@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 // This file is an extract of https://raw.githubusercontent.com/codingwell/scala-guice/develop/src/main/scala/net/codingwell/package.scala
-package com.sos.jobscheduler.common.guice
+package js7.common.guice
 
 import com.google.inject.TypeLiteral
 import java.lang.reflect.Type

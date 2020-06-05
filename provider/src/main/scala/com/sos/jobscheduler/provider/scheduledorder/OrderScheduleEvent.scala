@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.provider.scheduledorder
+package js7.provider.scheduledorder
 
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.data.event.NoKeyEvent
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.time.Timestamp
+import js7.data.event.NoKeyEvent
 import io.circe.generic.JsonCodec
 
 /**

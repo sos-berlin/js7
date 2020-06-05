@@ -1,17 +1,17 @@
-package com.sos.jobscheduler.master.web.master.api
+package js7.master.web.master.api
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import com.sos.jobscheduler.base.BuildInfo
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.completeTask
-import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
-import com.sos.jobscheduler.common.system.JavaInformations.javaInformation
-import com.sos.jobscheduler.common.system.SystemInformations.systemInformation
-import com.sos.jobscheduler.data.master.MasterId
-import com.sos.jobscheduler.master.data.{MasterOverview, MasterState}
-import com.sos.jobscheduler.master.web.common.MasterRouteProvider
+import js7.base.BuildInfo
+import js7.base.problem.Checked
+import js7.base.time.ScalaTime._
+import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
+import js7.common.akkahttp.CirceJsonOrYamlSupport._
+import js7.common.system.JavaInformations.javaInformation
+import js7.common.system.SystemInformations.systemInformation
+import js7.data.master.MasterId
+import js7.master.data.{MasterOverview, MasterState}
+import js7.master.web.common.MasterRouteProvider
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.duration.Deadline

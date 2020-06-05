@@ -1,15 +1,15 @@
-package com.sos.jobscheduler.agent.web.master
+package js7.agent.web.master
 
 import akka.util.Timeout
-import com.sos.jobscheduler.agent.DirectAgentApi
-import com.sos.jobscheduler.agent.data.event.KeyedEventJsonFormats.keyedEventJsonCodec
-import com.sos.jobscheduler.agent.web.common.AgentRouteProvider
-import com.sos.jobscheduler.base.auth.SimpleUser
-import com.sos.jobscheduler.core.command.CommandMeta
-import com.sos.jobscheduler.core.event.GenericEventRoute
-import com.sos.jobscheduler.data.event.{Event, KeyedEvent}
-import com.sos.jobscheduler.data.master.MasterId
-import com.sos.jobscheduler.data.order.OrderEvent.OrderDetached
+import js7.agent.DirectAgentApi
+import js7.agent.data.event.KeyedEventJsonFormats.keyedEventJsonCodec
+import js7.agent.web.common.AgentRouteProvider
+import js7.base.auth.SimpleUser
+import js7.core.command.CommandMeta
+import js7.core.event.GenericEventRoute
+import js7.data.event.{Event, KeyedEvent}
+import js7.data.master.MasterId
+import js7.data.order.OrderEvent.OrderDetached
 
 /**
   * @author Joacim Zschimmer

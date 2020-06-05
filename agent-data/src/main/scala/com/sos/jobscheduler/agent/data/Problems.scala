@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.agent.data
+package js7.agent.data
 
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.master.MasterId
-import com.sos.jobscheduler.data.order.OrderId
+import js7.base.problem.Problem
+import js7.data.agent.AgentRefPath
+import js7.data.master.MasterId
+import js7.data.order.OrderId
 
 /**
   * @author Joacim Zschimmer

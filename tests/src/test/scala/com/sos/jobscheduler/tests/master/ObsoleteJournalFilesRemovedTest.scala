@@ -1,22 +1,22 @@
-package com.sos.jobscheduler.tests.master
+package js7.tests.master
 
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.core.event.journal.files.JournalFiles.listJournalFiles
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
-import com.sos.jobscheduler.data.workflow.instructions.Execute
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.master.data.MasterCommand.TakeSnapshot
-import com.sos.jobscheduler.master.data.events.MasterEvent
-import com.sos.jobscheduler.tests.master.ObsoleteJournalFilesRemovedTest._
-import com.sos.jobscheduler.tests.testenv.DirectoryProvider.script
-import com.sos.jobscheduler.tests.testenv.DirectoryProviderForScalaTest
+import js7.base.problem.Checked.Ops
+import js7.base.time.ScalaTime._
+import js7.common.process.Processes.{ShellFileExtension => sh}
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.core.event.journal.files.JournalFiles.listJournalFiles
+import js7.data.agent.AgentRefPath
+import js7.data.job.ExecutablePath
+import js7.data.order.{FreshOrder, OrderId}
+import js7.data.workflow.instructions.Execute
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.master.data.MasterCommand.TakeSnapshot
+import js7.master.data.events.MasterEvent
+import js7.tests.master.ObsoleteJournalFilesRemovedTest._
+import js7.tests.testenv.DirectoryProvider.script
+import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 

@@ -1,16 +1,16 @@
-package com.sos.jobscheduler.master.web.master.api.fatevent
+package js7.master.web.master.api.fatevent
 
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.base.utils.CloseableIterator
-import com.sos.jobscheduler.common.event.EventWatch
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
-import com.sos.jobscheduler.data.fatevent.FatEvent
-import com.sos.jobscheduler.data.master.MasterId
-import com.sos.jobscheduler.master.data.MasterState
-import com.sos.jobscheduler.master.web.master.api.fatevent.FatStateCache._
+import js7.base.time.ScalaTime._
+import js7.base.utils.Assertions.assertThat
+import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.CloseableIterator
+import js7.common.event.EventWatch
+import js7.common.scalautil.Logger
+import js7.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
+import js7.data.fatevent.FatEvent
+import js7.data.master.MasterId
+import js7.master.data.MasterState
+import js7.master.web.master.api.fatevent.FatStateCache._
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 

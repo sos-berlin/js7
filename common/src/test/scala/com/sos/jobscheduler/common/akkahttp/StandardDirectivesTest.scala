@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.common.akkahttp
+package js7.common.akkahttp
 
 import akka.http.scaladsl.model.Uri.Path
 import akka.http.scaladsl.server.PathMatcher.{Matched, Unmatched}
-import com.sos.jobscheduler.common.akkahttp.StandardDirectives._
-import com.sos.jobscheduler.data.filebased.APath
+import js7.common.akkahttp.StandardDirectives._
+import js7.data.filebased.APath
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

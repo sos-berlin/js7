@@ -1,20 +1,20 @@
-package com.sos.jobscheduler.data.filebased
+package js7.data.filebased
 
 import cats.instances.either._
 import cats.instances.vector._
 import cats.syntax.traverse._
-import com.sos.jobscheduler.base.crypt.Signed
-import com.sos.jobscheduler.base.crypt.donotcrypt.DoNotVerifySignatureVerifier
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.base.utils.Collections._
-import com.sos.jobscheduler.base.utils.Collections.implicits._
-import com.sos.jobscheduler.base.utils.Memoizer
-import com.sos.jobscheduler.base.utils.ScalaUtils._
-import com.sos.jobscheduler.data.crypt.FileBasedVerifier
-import com.sos.jobscheduler.data.filebased.Repo.Entry
-import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedAddedOrChanged, FileBasedChanged, FileBasedDeleted, FileBasedEvent, VersionAdded}
+import js7.base.crypt.Signed
+import js7.base.crypt.donotcrypt.DoNotVerifySignatureVerifier
+import js7.base.problem.Checked._
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.Assertions.assertThat
+import js7.base.utils.Collections._
+import js7.base.utils.Collections.implicits._
+import js7.base.utils.Memoizer
+import js7.base.utils.ScalaUtils._
+import js7.data.crypt.FileBasedVerifier
+import js7.data.filebased.Repo.Entry
+import js7.data.filebased.RepoEvent.{FileBasedAdded, FileBasedAddedOrChanged, FileBasedChanged, FileBasedDeleted, FileBasedEvent, VersionAdded}
 import io.circe.Decoder
 import org.jetbrains.annotations.TestOnly
 
@@ -139,7 +139,7 @@ final case class Repo private(
                 else if (fileBased.id.versionId != versionId)
                   EventVersionDoesNotMatchProblem(versionId, event)
                 else
-                  Right(addEntry(fileBased.path, Some(com.sos.jobscheduler.base.crypt.Signed(fileBased withVersion versionId, signedString)))))
+                  Right(addEntry(fileBased.path, Some(js7.base.crypt.Signed(fileBased withVersion versionId, signedString)))))
 
             case FileBasedDeleted(path) =>
               Right(addEntry(path, None))

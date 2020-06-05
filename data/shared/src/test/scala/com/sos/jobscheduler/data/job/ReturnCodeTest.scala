@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.data.job
+package js7.data.job
 
-import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
+import js7.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

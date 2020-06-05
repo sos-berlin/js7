@@ -1,35 +1,35 @@
-package com.sos.jobscheduler.agent.tests
+package js7.agent.tests
 
 import akka.http.scaladsl.model.StatusCodes.Unauthorized
-import com.sos.jobscheduler.agent.RunningAgent
-import com.sos.jobscheduler.agent.client.AgentClient
-import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.configuration.Akkas.newAgentActorSystem
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, Batch, DetachOrder, RegisterAsMaster}
-import com.sos.jobscheduler.agent.tests.OrderAgentTest._
-import com.sos.jobscheduler.agent.tests.TestAgentDirectoryProvider.{TestUserAndPassword, provideAgentDirectory}
-import com.sos.jobscheduler.base.Problems.TamperedWithSignedMessageProblem
-import com.sos.jobscheduler.base.crypt.SignedString
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.Stopwatch
-import com.sos.jobscheduler.base.utils.Closer.syntax._
-import com.sos.jobscheduler.base.utils.Closer.withCloser
-import com.sos.jobscheduler.common.http.AkkaHttpClient
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
-import com.sos.jobscheduler.core.crypt.pgp.PgpSigner
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.event.{Event, EventRequest, EventSeq, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.filebased.FileBasedSigner
-import com.sos.jobscheduler.data.order.OrderEvent.OrderDetachable
-import com.sos.jobscheduler.data.order.{HistoricOutcome, Order, OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.Workflow
-import com.sos.jobscheduler.data.workflow.position.Position
-import com.sos.jobscheduler.data.workflow.test.TestSetting._
+import js7.agent.RunningAgent
+import js7.agent.client.AgentClient
+import js7.agent.configuration.AgentConfiguration
+import js7.agent.configuration.Akkas.newAgentActorSystem
+import js7.agent.data.commands.AgentCommand
+import js7.agent.data.commands.AgentCommand.{AttachOrder, Batch, DetachOrder, RegisterAsMaster}
+import js7.agent.tests.OrderAgentTest._
+import js7.agent.tests.TestAgentDirectoryProvider.{TestUserAndPassword, provideAgentDirectory}
+import js7.base.Problems.TamperedWithSignedMessageProblem
+import js7.base.crypt.SignedString
+import js7.base.problem.Checked
+import js7.base.problem.Checked.Ops
+import js7.base.time.ScalaTime._
+import js7.base.time.Stopwatch
+import js7.base.utils.Closer.syntax._
+import js7.base.utils.Closer.withCloser
+import js7.common.http.AkkaHttpClient
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.common.system.OperatingSystem.isWindows
+import js7.core.crypt.pgp.PgpSigner
+import js7.data.agent.AgentRefPath
+import js7.data.event.{Event, EventRequest, EventSeq, KeyedEvent, Stamped}
+import js7.data.filebased.FileBasedSigner
+import js7.data.order.OrderEvent.OrderDetachable
+import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
+import js7.data.workflow.Workflow
+import js7.data.workflow.position.Position
+import js7.data.workflow.test.TestSetting._
 import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec

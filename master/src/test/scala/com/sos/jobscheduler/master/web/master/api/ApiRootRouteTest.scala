@@ -1,20 +1,20 @@
-package com.sos.jobscheduler.master.web.master.api
+package js7.master.web.master.api
 
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
-import com.sos.jobscheduler.base.BuildInfo
-import com.sos.jobscheduler.base.auth.UserId
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegment
-import com.sos.jobscheduler.common.http.CirceJsonSupport._
-import com.sos.jobscheduler.data.cluster.ClusterState
-import com.sos.jobscheduler.data.event.{EventId, JournalState, JournaledState}
-import com.sos.jobscheduler.data.filebased.Repo
-import com.sos.jobscheduler.data.master.{MasterFileBaseds, MasterId}
-import com.sos.jobscheduler.master.data.{MasterOverview, MasterState}
-import com.sos.jobscheduler.master.data.MasterSnapshots.MasterMetaState
-import com.sos.jobscheduler.master.web.master.api.test.RouteTester
+import js7.base.BuildInfo
+import js7.base.auth.UserId
+import js7.base.time.Timestamp
+import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
+import js7.common.http.CirceJsonSupport._
+import js7.data.cluster.ClusterState
+import js7.data.event.{EventId, JournalState, JournaledState}
+import js7.data.filebased.Repo
+import js7.data.master.{MasterFileBaseds, MasterId}
+import js7.master.data.{MasterOverview, MasterState}
+import js7.master.data.MasterSnapshots.MasterMetaState
+import js7.master.web.master.api.test.RouteTester
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec

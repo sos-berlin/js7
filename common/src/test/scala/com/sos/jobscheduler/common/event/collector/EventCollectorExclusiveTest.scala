@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.common.event.collector
+package js7.common.event.collector
 
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.event.EventIdGenerator
-import com.sos.jobscheduler.common.event.collector.EventCollectorExclusiveTest._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, TearableEventSeq}
+import js7.base.time.ScalaTime._
+import js7.common.event.EventIdGenerator
+import js7.common.event.collector.EventCollectorExclusiveTest._
+import js7.common.scalautil.Futures.implicits.SuccessFuture
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, TearableEventSeq}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.duration._

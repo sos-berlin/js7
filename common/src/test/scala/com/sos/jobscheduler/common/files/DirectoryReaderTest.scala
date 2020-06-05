@@ -1,15 +1,15 @@
-package com.sos.jobscheduler.common.files
+package js7.common.files
 
 import com.google.common.io.MoreFiles.touch
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.Stopwatch.measureTime
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.common.files.DirectoryReader.Entry
-import com.sos.jobscheduler.common.files.DirectoryReaderTest._
-import com.sos.jobscheduler.common.scalautil.FileUtils._
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.JavaTimeConverters._
+import js7.base.time.ScalaTime._
+import js7.base.time.Stopwatch.measureTime
+import js7.base.time.Timestamp
+import js7.common.files.DirectoryReader.Entry
+import js7.common.files.DirectoryReaderTest._
+import js7.common.scalautil.FileUtils._
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.Logger
+import js7.common.time.JavaTimeConverters._
 import java.nio.file.Files.createDirectory
 import java.nio.file.Paths
 import java.util.Comparator

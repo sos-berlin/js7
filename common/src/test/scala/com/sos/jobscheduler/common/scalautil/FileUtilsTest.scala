@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.common.scalautil
+package js7.common.scalautil
 
 import com.google.common.io.MoreFiles.touch
-import com.sos.jobscheduler.base.problem.ProblemException
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.FileUtils.{autoDeleting, checkRelativePath, withTemporaryFile}
-import com.sos.jobscheduler.common.scalautil.FileUtilsTest._
+import js7.base.problem.ProblemException
+import js7.common.scalautil.FileUtils.implicits._
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.FileUtils.{autoDeleting, checkRelativePath, withTemporaryFile}
+import js7.common.scalautil.FileUtilsTest._
 import io.circe.Json
 import java.io.File
 import java.io.File.separator

@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.master.data.javaapi
+package js7.master.data.javaapi
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
-import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
+import js7.base.circeutils.CirceUtils._
+import js7.base.problem.{Checked, Problem}
+import js7.data.workflow.instructions.Instructions.jsonCodec
+import js7.data.workflow.{Instruction, Workflow}
 import io.circe.Decoder
 import java.util.Optional
 

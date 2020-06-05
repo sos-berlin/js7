@@ -1,17 +1,17 @@
-package com.sos.jobscheduler.data.workflow.parser
+package js7.data.workflow.parser
 
 import cats.syntax.show._
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.expression.Expression.{Equal, In, LastReturnCode, ListExpression, NamedValue, NumericConstant, Or, StringConstant}
-import com.sos.jobscheduler.data.job.{ExecutablePath, ExecutableScript, ReturnCode}
-import com.sos.jobscheduler.data.order.OrderId
-import com.sos.jobscheduler.data.source.SourcePos
-import com.sos.jobscheduler.data.workflow.WorkflowPrinter.WorkflowShow
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Finish, Fork, Goto, If, IfFailedGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction}
-import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowSource}
-import com.sos.jobscheduler.data.workflow.{Label, Workflow, WorkflowPath}
+import js7.base.problem.Problem
+import js7.data.agent.AgentRefPath
+import js7.data.expression.Expression.{Equal, In, LastReturnCode, ListExpression, NamedValue, NumericConstant, Or, StringConstant}
+import js7.data.job.{ExecutablePath, ExecutableScript, ReturnCode}
+import js7.data.order.OrderId
+import js7.data.source.SourcePos
+import js7.data.workflow.WorkflowPrinter.WorkflowShow
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Finish, Fork, Goto, If, IfFailedGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction}
+import js7.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowSource}
+import js7.data.workflow.{Label, Workflow, WorkflowPath}
 import scala.concurrent.duration._
 import scala.util.control.NoStackTrace
 import org.scalatest.freespec.AnyFreeSpec

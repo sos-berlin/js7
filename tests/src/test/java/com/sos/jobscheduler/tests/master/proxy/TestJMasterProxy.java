@@ -1,13 +1,13 @@
-package com.sos.jobscheduler.tests.master.proxy;
+package js7.tests.master.proxy;
 
-import com.sos.jobscheduler.data.event.KeyedEvent;
-import com.sos.jobscheduler.data.event.Stamped;
-import com.sos.jobscheduler.data.order.OrderEvent;
-import com.sos.jobscheduler.data.order.OrderId;
-import com.sos.jobscheduler.proxy.javaapi.JCredentials;
-import com.sos.jobscheduler.proxy.javaapi.JMasterProxy;
-import com.sos.jobscheduler.proxy.javaapi.JProxyEventBus;
-import com.sos.jobscheduler.proxy.javaapi.data.JMasterState;
+import js7.data.event.KeyedEvent;
+import js7.data.event.Stamped;
+import js7.data.order.OrderEvent;
+import js7.data.order.OrderId;
+import js7.proxy.javaapi.JCredentials;
+import js7.proxy.javaapi.JMasterProxy;
+import js7.proxy.javaapi.JProxyEventBus;
+import js7.proxy.javaapi.data.JMasterState;
 import com.typesafe.config.ConfigFactory;
 import java.time.Instant;
 import java.util.concurrent.CompletableFuture;

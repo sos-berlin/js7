@@ -1,27 +1,27 @@
-package com.sos.jobscheduler.agent.scheduler.order
+package js7.agent.scheduler.order
 
 import akka.actor.{ActorRef, DeadLetterSuppression, Props, Status, Terminated}
 import akka.pattern.pipe
-import com.sos.jobscheduler.agent.AgentState
-import com.sos.jobscheduler.agent.scheduler.job.JobActor
-import com.sos.jobscheduler.agent.scheduler.job.task.{TaskStepFailed, TaskStepSucceeded}
-import com.sos.jobscheduler.agent.scheduler.order.OrderActor._
-import com.sos.jobscheduler.agent.scheduler.order.StdouterrToEvent.Stdouterr
-import com.sos.jobscheduler.base.generic.{Accepted, Completed}
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.base.utils.ScalaUtils.cast
-import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.JavaTimeConverters._
-import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalConf, KeyedJournalingActor}
-import com.sos.jobscheduler.data.job.JobKey
-import com.sos.jobscheduler.data.order.OrderEvent._
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
-import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.taskserver.task.process.StdChannels
+import js7.agent.AgentState
+import js7.agent.scheduler.job.JobActor
+import js7.agent.scheduler.job.task.{TaskStepFailed, TaskStepSucceeded}
+import js7.agent.scheduler.order.OrderActor._
+import js7.agent.scheduler.order.StdouterrToEvent.Stdouterr
+import js7.base.generic.{Accepted, Completed}
+import js7.base.problem.Checked.Ops
+import js7.base.problem.Problem
+import js7.base.utils.Assertions.assertThat
+import js7.base.utils.ScalaUtils.cast
+import js7.base.utils.ScalazStyle.OptionRichBoolean
+import js7.common.scalautil.Logger
+import js7.common.time.JavaTimeConverters._
+import js7.core.event.journal.{JournalActor, JournalConf, KeyedJournalingActor}
+import js7.data.job.JobKey
+import js7.data.order.OrderEvent._
+import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
+import js7.data.system.{Stderr, Stdout, StdoutOrStderr}
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.taskserver.task.process.StdChannels
 import com.typesafe.config.Config
 import monix.execution.Scheduler
 import scala.concurrent.Future

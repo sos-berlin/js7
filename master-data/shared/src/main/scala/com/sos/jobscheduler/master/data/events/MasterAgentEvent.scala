@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.master.data.events
+package js7.master.data.events
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.data.agent.{AgentRefPath, AgentRunId}
-import com.sos.jobscheduler.data.event.Event
+import js7.base.circeutils.CirceUtils.deriveCodec
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.problem.Problem
+import js7.data.agent.{AgentRefPath, AgentRunId}
+import js7.data.event.Event
 
 /**
   * @author Joacim Zschimmer

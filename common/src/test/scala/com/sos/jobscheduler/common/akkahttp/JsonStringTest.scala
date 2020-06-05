@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.akkahttp
+package js7.common.akkahttp
 
 import akka.http.scaladsl.model.HttpCharsets.`UTF-8`
 import akka.http.scaladsl.model.MediaTypes._
@@ -8,7 +8,7 @@ import akka.http.scaladsl.model.{ContentType, HttpEntity}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import com.sos.jobscheduler.common.akkahttp.JsonStringTest._
+import js7.common.akkahttp.JsonStringTest._
 import java.nio.charset.StandardCharsets.UTF_8
 import org.scalatest.freespec.AnyFreeSpec
 

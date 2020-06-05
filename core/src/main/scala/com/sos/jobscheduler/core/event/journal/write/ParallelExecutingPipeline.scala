@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.core.event.journal.write
+package js7.core.event.journal.write
 
-import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
+import js7.common.scalautil.Futures.implicits.SuccessFuture
 import java.util.concurrent.ArrayBlockingQueue
 import scala.concurrent.{ExecutionContext, Future}
 

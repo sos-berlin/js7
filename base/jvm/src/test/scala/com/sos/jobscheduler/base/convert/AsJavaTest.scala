@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.base.convert
+package js7.base.convert
 
-import com.sos.jobscheduler.base.convert.AsJava._
-import com.sos.jobscheduler.base.convert.ConvertiblePartialFunctions.ImplicitConvertablePF
+import js7.base.convert.AsJava._
+import js7.base.convert.ConvertiblePartialFunctions.ImplicitConvertablePF
 import java.nio.file.{Path, Paths}
 import org.scalatest
 

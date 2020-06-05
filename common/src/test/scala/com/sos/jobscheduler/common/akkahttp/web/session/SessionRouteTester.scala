@@ -1,22 +1,22 @@
-package com.sos.jobscheduler.common.akkahttp.web.session
+package js7.common.akkahttp.web.session
 
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, ServiceUnavailable, Unauthorized}
 import akka.http.scaladsl.model.headers.{HttpChallenges, `WWW-Authenticate`}
 import akka.http.scaladsl.server.Directives.{complete, decodeRequest, get, path, _}
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import com.sos.jobscheduler.base.auth.{SessionToken, ValidUserPermission}
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegment
-import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
-import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
-import com.sos.jobscheduler.common.http.AkkaHttpClient
-import com.sos.jobscheduler.common.http.AkkaHttpClient.HttpException
-import com.sos.jobscheduler.common.http.CirceJsonSupport._
-import com.sos.jobscheduler.common.log.ScribeUtils
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
+import js7.base.auth.{SessionToken, ValidUserPermission}
+import js7.base.time.ScalaTime._
+import js7.base.web.Uri
+import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
+import js7.common.akkahttp.web.AkkaWebServer
+import js7.common.akkahttp.web.auth.GateKeeper
+import js7.common.http.AkkaHttpClient
+import js7.common.http.AkkaHttpClient.HttpException
+import js7.common.http.CirceJsonSupport._
+import js7.common.log.ScribeUtils
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.MonixUtils.syntax._
 import com.typesafe.config.ConfigFactory
 import monix.eval.Task
 import org.scalatest.matchers.should.Matchers._

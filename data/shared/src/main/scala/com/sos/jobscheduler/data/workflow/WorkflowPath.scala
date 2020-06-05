@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.data.workflow
+package js7.data.workflow
 
-import com.sos.jobscheduler.base.annotation.javaApi
-import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
+import js7.base.annotation.javaApi
+import js7.data.filebased.{SourceType, TypedPath}
 
 final case class WorkflowPath private(string: String)
 extends TypedPath

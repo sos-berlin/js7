@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.data.workflow
+package js7.data.workflow
 
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
-import com.sos.jobscheduler.data.source.SourcePos
-import com.sos.jobscheduler.data.workflow.Instruction.Labeled
-import com.sos.jobscheduler.data.workflow.position._
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.ScalaUtils.RichJavaClass
+import js7.data.source.SourcePos
+import js7.data.workflow.Instruction.Labeled
+import js7.data.workflow.position._
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json}
 import scala.language.implicitConversions

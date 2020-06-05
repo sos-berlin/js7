@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.common.scalautil
+package js7.common.scalautil
 
-import com.sos.jobscheduler.base.utils.HasCloser
+import js7.base.utils.HasCloser
 import scala.util.Success
 import org.scalatest.freespec.AnyFreeSpec
 

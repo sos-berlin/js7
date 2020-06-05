@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.base.utils
+package js7.base.utils
 
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.utils.Collections._
-import com.sos.jobscheduler.base.utils.Collections.implicits._
-import com.sos.jobscheduler.base.utils.CollectionsTest._
+import js7.base.problem.Problem
+import js7.base.utils.Collections._
+import js7.base.utils.Collections.implicits._
+import js7.base.utils.CollectionsTest._
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
 import scala.collection.mutable

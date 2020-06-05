@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.scalautil.xmls
+package js7.common.scalautil.xmls
 
 object RichScalaXML {
   implicit final class RichElem(private val delegate: xml.Node) extends AnyVal {

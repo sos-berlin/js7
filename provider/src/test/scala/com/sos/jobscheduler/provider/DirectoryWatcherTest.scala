@@ -1,13 +1,13 @@
-package com.sos.jobscheduler.provider
+package js7.provider
 
 import com.google.common.io.MoreFiles.touch
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.IOExecutor.Implicits.globalIOX
-import com.sos.jobscheduler.common.system.OperatingSystem.isMac
-import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
+import js7.base.time.ScalaTime._
+import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.IOExecutor.Implicits.globalIOX
+import js7.common.system.OperatingSystem.isMac
+import js7.common.time.WaitForCondition.waitForCondition
 import java.nio.file.Files.{createTempDirectory, delete}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll

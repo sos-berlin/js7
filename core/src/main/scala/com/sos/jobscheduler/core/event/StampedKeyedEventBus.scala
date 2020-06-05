@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.core.event
+package js7.core.event
 
 import akka.actor.ActorRef
 import akka.event.{EventBus, SubchannelClassification}
 import akka.util.Subclassification
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Stamped, Event => EngineEvent}
+import js7.data.event.{AnyKeyedEvent, Stamped, Event => EngineEvent}
 import javax.inject.Singleton
 
 /**

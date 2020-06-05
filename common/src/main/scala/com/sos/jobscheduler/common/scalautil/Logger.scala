@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.common.scalautil
+package js7.common.scalautil
 
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
-import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
-import com.sos.jobscheduler.common.log.ConvertingLogger
+import js7.base.problem.Problem
+import js7.base.utils.ScalaUtils.implicitClass
+import js7.base.utils.StackTraces.StackTraceThrowable
+import js7.common.log.ConvertingLogger
 import com.typesafe.scalalogging.{Logger => ScalaLogger}
 import org.slf4j.{LoggerFactory, Marker, MarkerFactory}
 import scala.reflect.ClassTag

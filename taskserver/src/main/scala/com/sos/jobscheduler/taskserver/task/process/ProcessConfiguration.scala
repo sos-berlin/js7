@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.taskserver.task.process
+package js7.taskserver.task.process
 
-import com.sos.jobscheduler.agent.data.{AgentTaskId, ProcessKillScript}
-import com.sos.jobscheduler.common.process.Processes.Pid
-import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
-import com.sos.jobscheduler.data.system.StdoutOrStderr
+import js7.agent.data.{AgentTaskId, ProcessKillScript}
+import js7.common.process.Processes.Pid
+import js7.common.system.OperatingSystem.isWindows
+import js7.data.system.StdoutOrStderr
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_8}
 import java.nio.file.Path

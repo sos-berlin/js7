@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.base.generic
+package js7.base.generic
 
-import com.sos.jobscheduler.base.generic.GenericString.EmptyStringProblem
-import com.sos.jobscheduler.base.generic.GenericStringTest._
-import com.sos.jobscheduler.base.problem.Problems.InvalidNameProblem
+import js7.base.generic.GenericString.EmptyStringProblem
+import js7.base.generic.GenericStringTest._
+import js7.base.problem.Problems.InvalidNameProblem
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

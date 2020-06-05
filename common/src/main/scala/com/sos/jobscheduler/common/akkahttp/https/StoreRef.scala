@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.common.akkahttp.https
+package js7.common.akkahttp.https
 
-import com.sos.jobscheduler.base.generic.SecretString
+import js7.base.generic.SecretString
 import java.net.URL
 
 /**

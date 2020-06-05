@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.common.process
+package js7.common.process
 
-import com.sos.jobscheduler.common.process.Processes._
-import com.sos.jobscheduler.common.process.ProcessesTest._
-import com.sos.jobscheduler.common.scalautil.FileUtils.autoDeleting
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax.RichPath
-import com.sos.jobscheduler.common.system.FileUtils._
-import com.sos.jobscheduler.common.system.OperatingSystem.{isMac, isSolaris, isWindows}
-import com.sos.jobscheduler.data.system.Stdout
+import js7.common.process.Processes._
+import js7.common.process.ProcessesTest._
+import js7.common.scalautil.FileUtils.autoDeleting
+import js7.common.scalautil.FileUtils.syntax.RichPath
+import js7.common.system.FileUtils._
+import js7.common.system.OperatingSystem.{isMac, isSolaris, isWindows}
+import js7.data.system.Stdout
 import java.io.IOException
 import java.lang.ProcessBuilder.Redirect.PIPE
 import java.nio.file.Files.exists

@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.base.utils
+package js7.base.utils
 
 import cats.effect.{Bracket, Resource, SyncIO}
 import java.io.{ByteArrayInputStream, InputStream}

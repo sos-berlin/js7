@@ -1,18 +1,18 @@
-package com.sos.jobscheduler.master.data
+package js7.master.data
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
-import com.sos.jobscheduler.base.circeutils.ScalaJsonCodecs._
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
-import com.sos.jobscheduler.data.cluster.ClusterState
-import com.sos.jobscheduler.data.event.JournalState
-import com.sos.jobscheduler.data.filebased.RepoEvent
-import com.sos.jobscheduler.data.master.MasterFileBaseds._
-import com.sos.jobscheduler.data.master.MasterId
-import com.sos.jobscheduler.data.order.Order
-import com.sos.jobscheduler.master.data.agent.AgentSnapshot
-import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentRegisteredMaster
+import js7.base.circeutils.CirceUtils.deriveCodec
+import js7.base.circeutils.ScalaJsonCodecs._
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.time.Timestamp
+import js7.base.utils.IntelliJUtils.intelliJuseImport
+import js7.data.cluster.ClusterState
+import js7.data.event.JournalState
+import js7.data.filebased.RepoEvent
+import js7.data.master.MasterFileBaseds._
+import js7.data.master.MasterId
+import js7.data.order.Order
+import js7.master.data.agent.AgentSnapshot
+import js7.master.data.events.MasterAgentEvent.AgentRegisteredMaster
 
 /**
   * @author Joacim Zschimmer

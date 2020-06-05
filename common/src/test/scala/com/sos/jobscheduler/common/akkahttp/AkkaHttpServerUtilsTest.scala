@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.common.akkahttp
+package js7.common.akkahttp
 
 import akka.http.scaladsl.model.Uri
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils._
+import js7.common.akkahttp.AkkaHttpServerUtils._
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

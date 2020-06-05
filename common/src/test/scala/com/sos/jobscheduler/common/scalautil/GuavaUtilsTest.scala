@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.common.scalautil
+package js7.common.scalautil
 
-import com.sos.jobscheduler.common.scalautil.GuavaUtils._
+import js7.common.scalautil.GuavaUtils._
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

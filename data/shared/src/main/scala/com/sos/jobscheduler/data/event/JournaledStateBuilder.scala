@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.data.event
+package js7.data.event
 
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.{Stopwatch, Timestamp}
-import com.sos.jobscheduler.base.utils.SetOnce
-import com.sos.jobscheduler.base.utils.Strings._
-import com.sos.jobscheduler.data.cluster.ClusterState
+import js7.base.time.ScalaTime._
+import js7.base.time.{Stopwatch, Timestamp}
+import js7.base.utils.SetOnce
+import js7.base.utils.Strings._
+import js7.data.cluster.ClusterState
 import monix.eval.Task
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Future, Promise}

@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.common.system
+package js7.common.system
 
-import com.sos.jobscheduler.base.system.SystemInformation
-import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
+import js7.base.system.SystemInformation
+import js7.common.system.OperatingSystem.operatingSystem
 import java.lang.management.ManagementFactory.{getOperatingSystemMXBean, getPlatformMBeanServer}
 import javax.management.ObjectName
 import scala.util.Try

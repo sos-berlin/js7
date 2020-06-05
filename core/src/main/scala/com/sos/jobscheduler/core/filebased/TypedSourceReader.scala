@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.core.filebased
+package js7.core.filebased
 
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
-import com.sos.jobscheduler.common.files.DirectoryReader
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax.RichPath
-import com.sos.jobscheduler.data.filebased.{FileBased, TypedPath}
+import js7.base.problem.Checked._
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.Collections.implicits.RichTraversable
+import js7.common.files.DirectoryReader
+import js7.common.scalautil.FileUtils.syntax.RichPath
+import js7.data.filebased.{FileBased, TypedPath}
 import java.nio.file.Path
 
 /**

@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.master.web.master.api.test
+package js7.master.web.master.api.test
 
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
-import com.sos.jobscheduler.base.auth.SimpleUser
-import com.sos.jobscheduler.common.akkahttp.ExceptionHandling
-import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
-import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import com.sos.jobscheduler.core.message.ProblemCodeMessages
-import com.sos.jobscheduler.master.configuration.MasterConfiguration.DefaultConfig
+import js7.base.auth.SimpleUser
+import js7.common.akkahttp.ExceptionHandling
+import js7.common.akkahttp.web.auth.GateKeeper
+import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
+import js7.core.message.ProblemCodeMessages
+import js7.master.configuration.MasterConfiguration.DefaultConfig
 import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Suite

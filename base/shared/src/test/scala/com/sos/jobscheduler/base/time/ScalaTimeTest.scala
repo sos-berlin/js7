@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.base.time
+package js7.base.time
 
-import com.sos.jobscheduler.base.convert.As
-import com.sos.jobscheduler.base.time.ScalaTime._
+import js7.base.convert.As
+import js7.base.time.ScalaTime._
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
 import scala.concurrent.duration._

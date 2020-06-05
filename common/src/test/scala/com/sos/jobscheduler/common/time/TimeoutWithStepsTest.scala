@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.common.time
+package js7.common.time
 
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.time.TimeoutWithSteps._
+import js7.base.time.ScalaTime._
+import js7.common.time.TimeoutWithSteps._
 import scala.concurrent.duration._
 import org.scalatest.freespec.AnyFreeSpec
 

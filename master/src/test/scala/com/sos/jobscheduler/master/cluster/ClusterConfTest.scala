@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.master.cluster
+package js7.master.cluster
 
-import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.http.configuration.RecouplingStreamReaderConf
-import com.sos.jobscheduler.core.message.ProblemCodeMessages
-import com.sos.jobscheduler.data.cluster.ClusterNodeId
+import js7.base.auth.{UserAndPassword, UserId}
+import js7.base.generic.SecretString
+import js7.base.time.ScalaTime._
+import js7.base.web.Uri
+import js7.common.http.configuration.RecouplingStreamReaderConf
+import js7.core.message.ProblemCodeMessages
+import js7.data.cluster.ClusterNodeId
 import com.typesafe.config.ConfigFactory
 import org.scalatest.freespec.AnyFreeSpec
 

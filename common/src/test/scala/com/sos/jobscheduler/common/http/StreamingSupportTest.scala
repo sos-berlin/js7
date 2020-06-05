@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.common.http
+package js7.common.http
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.http.StreamingSupport._
+import js7.base.time.ScalaTime._
+import js7.common.http.StreamingSupport._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable

@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.taskserver.task.process
+package js7.taskserver.task.process
 
-import com.sos.jobscheduler.common.process.Processes._
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
-import com.sos.jobscheduler.common.scalautil.IOExecutor
-import com.sos.jobscheduler.common.scalautil.IOExecutor.ioFuture
-import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.taskserver.task.process.RichProcess._
+import js7.common.process.Processes._
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.Futures.promiseFuture
+import js7.common.scalautil.IOExecutor
+import js7.common.scalautil.IOExecutor.ioFuture
+import js7.data.job.ReturnCode
+import js7.taskserver.task.process.RichProcess._
 import java.io.{InputStream, InputStreamReader, Reader, Writer}
 import java.nio.file.Path
 import scala.annotation.tailrec

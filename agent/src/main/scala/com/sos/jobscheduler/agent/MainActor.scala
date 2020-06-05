@@ -1,20 +1,20 @@
-package com.sos.jobscheduler.agent
+package js7.agent
 
 import akka.actor.{Actor, Props, Terminated}
 import com.google.inject.Injector
-import com.sos.jobscheduler.agent.MainActor._
-import com.sos.jobscheduler.agent.command.{CommandActor, CommandHandler}
-import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.data.AgentTermination
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.scheduler.{AgentActor, AgentHandle}
-import com.sos.jobscheduler.base.auth.UserId
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import com.sos.jobscheduler.common.akkautils.CatchingSupervisorStrategy
-import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.command.CommandMeta
+import js7.agent.MainActor._
+import js7.agent.command.{CommandActor, CommandHandler}
+import js7.agent.configuration.AgentConfiguration
+import js7.agent.data.AgentTermination
+import js7.agent.data.commands.AgentCommand
+import js7.agent.scheduler.{AgentActor, AgentHandle}
+import js7.base.auth.UserId
+import js7.base.problem.Checked
+import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
+import js7.common.akkautils.CatchingSupervisorStrategy
+import js7.common.guice.GuiceImplicits.RichInjector
+import js7.common.scalautil.Logger
+import js7.core.command.CommandMeta
 import monix.execution.Scheduler
 import scala.concurrent.Promise
 import scala.util.control.NoStackTrace

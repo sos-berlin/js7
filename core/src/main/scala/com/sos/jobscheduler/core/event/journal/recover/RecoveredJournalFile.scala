@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.core.event.journal.recover
+package js7.core.event.journal.recover
 
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.data.event.{JournalHeader, JournalPosition, JournaledState}
+import js7.base.utils.Assertions.assertThat
+import js7.data.event.{JournalHeader, JournalPosition, JournaledState}
 import java.nio.file.Path
 
 final case class RecoveredJournalFile[S <: JournaledState[S]](

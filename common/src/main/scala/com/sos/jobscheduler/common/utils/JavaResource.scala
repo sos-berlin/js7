@@ -1,14 +1,14 @@
-package com.sos.jobscheduler.common.utils
+package js7.common.utils
 
 import cats.effect.SyncIO
 import com.google.common.base.Charsets._
 import com.google.common.io.ByteStreams.toByteArray
 import com.google.common.io.Resources
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.utils.JavaResource._
+import js7.base.problem.Checked._
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.AutoClosing.autoClosing
+import js7.common.scalautil.Logger
+import js7.common.utils.JavaResource._
 import java.io.{File, InputStream}
 import java.net.{URI, URL}
 import java.nio.file.{CopyOption, DirectoryNotEmptyException, FileAlreadyExistsException, Files, Path}
@@ -113,7 +113,7 @@ object JavaResource {
   //
   //def apply_macro(c: scala.reflect.macros.blackbox.Context)(path: c.Expr[String]): c.Tree = {
   //  import c.universe._
-  //  q"_root_.com.sos.jobscheduler.common.utils.JavaResource(this.getClass.getClassLoader, $path)"
+  //  q"_root_.js7.common.utils.JavaResource(this.getClass.getClassLoader, $path)"
   //}
 
   implicit def asResource(o: JavaResource): cats.effect.Resource[SyncIO, InputStream] =

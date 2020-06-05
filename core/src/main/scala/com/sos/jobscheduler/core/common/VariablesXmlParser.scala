@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.core.common
+package js7.core.common
 
-import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader
+import js7.common.scalautil.xmls.ScalaXMLEventReader
 import javax.xml.stream.events.{Attribute, EndElement}
 
 /**

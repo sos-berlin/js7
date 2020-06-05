@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.master.data.javaapi
+package js7.master.data.javaapi
 
-import com.sos.jobscheduler.master.data.javaapi.MasterJsonValidatorTester._
+import js7.master.data.javaapi.MasterJsonValidatorTester._
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

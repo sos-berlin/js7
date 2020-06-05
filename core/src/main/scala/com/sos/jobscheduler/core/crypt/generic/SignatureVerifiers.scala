@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.core.crypt.generic
+package js7.core.crypt.generic
 
-import com.sos.jobscheduler.base.crypt.SignatureVerifier
-import com.sos.jobscheduler.base.crypt.silly.SillySignatureVerifier
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.Collections._
-import com.sos.jobscheduler.base.utils.Collections.implicits._
-import com.sos.jobscheduler.core.crypt.pgp.PgpSignatureVerifier
+import js7.base.crypt.SignatureVerifier
+import js7.base.crypt.silly.SillySignatureVerifier
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.Collections._
+import js7.base.utils.Collections.implicits._
+import js7.core.crypt.pgp.PgpSignatureVerifier
 
 /**
   * @author Joacim Zschimmer

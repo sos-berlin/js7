@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.agent.data
+package js7.agent.data
 
-import com.sos.jobscheduler.common.process.Processes.Pid
-import com.sos.jobscheduler.data.job.TaskId
+import js7.common.process.Processes.Pid
+import js7.data.job.TaskId
 import java.nio.file.Paths
 import org.scalatest.freespec.AnyFreeSpec
 

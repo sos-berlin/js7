@@ -1,21 +1,21 @@
-package com.sos.jobscheduler.data.filebased
+package js7.data.filebased
 
 import cats.instances.either._
 import cats.instances.vector._
 import cats.syntax.traverse._
-import com.sos.jobscheduler.base.circeutils.CirceCodec
-import com.sos.jobscheduler.base.circeutils.CirceUtils.CirceUtilsChecked
-import com.sos.jobscheduler.base.generic.GenericString
-import com.sos.jobscheduler.base.generic.GenericString.EmptyStringProblem
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.problem.Problems.InvalidNameProblem
-import com.sos.jobscheduler.base.problem.{Checked, CheckedString, Problem}
-import com.sos.jobscheduler.base.standards.NameValidator
-import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
-import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
-import com.sos.jobscheduler.base.utils.Strings.RichString
-import com.sos.jobscheduler.data.filebased.FileBasedId.VersionSeparator
-import com.sos.jobscheduler.data.filebased.TypedPath._
+import js7.base.circeutils.CirceCodec
+import js7.base.circeutils.CirceUtils.CirceUtilsChecked
+import js7.base.generic.GenericString
+import js7.base.generic.GenericString.EmptyStringProblem
+import js7.base.problem.Checked.Ops
+import js7.base.problem.Problems.InvalidNameProblem
+import js7.base.problem.{Checked, CheckedString, Problem}
+import js7.base.standards.NameValidator
+import js7.base.utils.Collections.implicits.RichTraversable
+import js7.base.utils.ScalaUtils.implicitClass
+import js7.base.utils.Strings.RichString
+import js7.data.filebased.FileBasedId.VersionSeparator
+import js7.data.filebased.TypedPath._
 import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json, JsonObject}
 import java.nio.file.{Path, Paths}
 import scala.reflect.ClassTag

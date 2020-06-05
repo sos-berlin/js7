@@ -1,17 +1,17 @@
-package com.sos.jobscheduler.core.crypt.pgp
+package js7.core.crypt.pgp
 
 import cats.effect.{Resource, SyncIO}
 import cats.instances.vector._
 import cats.syntax.foldable.catsSyntaxFoldOps
 import cats.syntax.show._
-import com.sos.jobscheduler.base.crypt.{MessageSigner, PgpSignature, SignerId}
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.utils.CatsUtils.bytesToInputStreamResource
-import com.sos.jobscheduler.base.utils.SyncResource.syntax.RichResource
-import com.sos.jobscheduler.common.scalautil.GuavaUtils.stringToInputStreamResource
-import com.sos.jobscheduler.core.crypt.pgp.PgpCommons._
+import js7.base.crypt.{MessageSigner, PgpSignature, SignerId}
+import js7.base.generic.SecretString
+import js7.base.problem.Checked
+import js7.base.problem.Checked.Ops
+import js7.base.utils.CatsUtils.bytesToInputStreamResource
+import js7.base.utils.SyncResource.syntax.RichResource
+import js7.common.scalautil.GuavaUtils.stringToInputStreamResource
+import js7.core.crypt.pgp.PgpCommons._
 import java.io.InputStream
 import java.util.Base64
 import org.bouncycastle.bcpg.HashAlgorithmTags

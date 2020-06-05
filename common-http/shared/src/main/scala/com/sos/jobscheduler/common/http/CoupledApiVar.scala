@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.common.http
+package js7.common.http
 
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.session.SessionApi
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.http.RecouplingStreamReader.TerminatedProblem
+import js7.base.generic.Completed
+import js7.base.problem.Checked
+import js7.base.problem.Checked.Ops
+import js7.base.session.SessionApi
+import js7.base.time.ScalaTime._
+import js7.common.http.RecouplingStreamReader.TerminatedProblem
 import monix.catnap.MVar
 import monix.eval.Task
 import scala.concurrent.duration.Duration

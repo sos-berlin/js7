@@ -1,19 +1,19 @@
-package com.sos.jobscheduler.core.filebased
+package js7.core.filebased
 
-import com.sos.jobscheduler.base.Problems.TamperedWithSignedMessageProblem
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.base.crypt.{Signed, SignedString, SignerId}
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.utils.CatsUtils.bytesToInputStreamResource
-import com.sos.jobscheduler.core.crypt.pgp.PgpCommons.RichPGPPublicKey
-import com.sos.jobscheduler.core.crypt.pgp.{PgpKeyGenerator, PgpSignatureVerifier, PgpSigner}
-import com.sos.jobscheduler.core.filebased.FileBasedVerifierTest._
-import com.sos.jobscheduler.data.crypt.FileBasedVerifier
-import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedSigner}
-import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
+import js7.base.Problems.TamperedWithSignedMessageProblem
+import js7.base.circeutils.CirceUtils.RichJson
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.crypt.{Signed, SignedString, SignerId}
+import js7.base.generic.SecretString
+import js7.base.problem.Checked.Ops
+import js7.base.utils.CatsUtils.bytesToInputStreamResource
+import js7.core.crypt.pgp.PgpCommons.RichPGPPublicKey
+import js7.core.crypt.pgp.{PgpKeyGenerator, PgpSignatureVerifier, PgpSigner}
+import js7.core.filebased.FileBasedVerifierTest._
+import js7.data.crypt.FileBasedVerifier
+import js7.data.filebased.{FileBased, FileBasedSigner}
+import js7.data.workflow.parser.WorkflowParser
+import js7.data.workflow.{Workflow, WorkflowPath}
 import io.circe.syntax.EncoderOps
 import org.scalatest.freespec.AnyFreeSpec
 

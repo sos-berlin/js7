@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.common.system
+package js7.common.system
 
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
+import js7.base.utils.AutoClosing.autoClosing
 import java.io.{File, FileInputStream}
 import java.net.InetAddress
 import java.nio.file.Files.newDirectoryStream

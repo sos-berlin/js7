@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.data.workflow.instructions
+package js7.data.workflow.instructions
 
-import com.sos.jobscheduler.data.order.OrderId
-import com.sos.jobscheduler.data.source.SourcePos
-import com.sos.jobscheduler.data.workflow.Instruction
+import js7.data.order.OrderId
+import js7.data.source.SourcePos
+import js7.data.workflow.Instruction
 import io.circe.generic.JsonCodec
 
 /**

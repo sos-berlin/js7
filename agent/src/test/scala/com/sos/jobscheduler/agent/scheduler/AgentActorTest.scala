@@ -1,25 +1,25 @@
-package com.sos.jobscheduler.agent.scheduler
+package js7.agent.scheduler
 
 import akka.pattern.ask
 import akka.util.Timeout
-import com.sos.jobscheduler.agent.data.Problems.AgentDuplicateOrder
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, CoupleMaster, DetachOrder, GetOrders, RegisterAsMaster}
-import com.sos.jobscheduler.agent.scheduler.AgentActorTest._
-import com.sos.jobscheduler.agent.scheduler.order.TestAgentActorProvider
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.Stopwatch
-import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.event.{EventId, EventRequest}
-import com.sos.jobscheduler.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.position.Position
-import com.sos.jobscheduler.data.workflow.test.TestSetting._
+import js7.agent.data.Problems.AgentDuplicateOrder
+import js7.agent.data.commands.AgentCommand
+import js7.agent.data.commands.AgentCommand.{AttachOrder, CoupleMaster, DetachOrder, GetOrders, RegisterAsMaster}
+import js7.agent.scheduler.AgentActorTest._
+import js7.agent.scheduler.order.TestAgentActorProvider
+import js7.base.problem.Checked.Ops
+import js7.base.time.ScalaTime._
+import js7.base.time.Stopwatch
+import js7.base.utils.ScalazStyle.OptionRichBoolean
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.common.system.OperatingSystem.isWindows
+import js7.data.agent.AgentRefPath
+import js7.data.event.{EventId, EventRequest}
+import js7.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
+import js7.data.workflow.position.Position
+import js7.data.workflow.test.TestSetting._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 

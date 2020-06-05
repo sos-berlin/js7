@@ -1,20 +1,20 @@
-package com.sos.jobscheduler.agent.tests
+package js7.agent.tests
 
-import com.sos.jobscheduler.agent.tests.TestAgentDirectoryProvider._
-import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
-import com.sos.jobscheduler.base.crypt.silly.{SillySignature, SillySigner}
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.base.utils.Closer.syntax.RichClosersAny
-import com.sos.jobscheduler.base.utils.HasCloser
-import com.sos.jobscheduler.common.scalautil.FileUtils._
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.utils.Exceptions.repeatUntilNoException
-import com.sos.jobscheduler.common.utils.JavaResource
-import com.sos.jobscheduler.data.filebased.FileBasedSigner
-import com.sos.jobscheduler.data.workflow.Workflow
+import js7.agent.tests.TestAgentDirectoryProvider._
+import js7.base.auth.{UserAndPassword, UserId}
+import js7.base.crypt.silly.{SillySignature, SillySigner}
+import js7.base.generic.SecretString
+import js7.base.time.ScalaTime._
+import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.Closer.syntax.RichClosersAny
+import js7.base.utils.HasCloser
+import js7.common.scalautil.FileUtils._
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.Logger
+import js7.common.utils.Exceptions.repeatUntilNoException
+import js7.common.utils.JavaResource
+import js7.data.filebased.FileBasedSigner
+import js7.data.workflow.Workflow
 import java.nio.file.Files.{createDirectories, createDirectory, createTempDirectory, delete}
 import java.nio.file.Path
 import scala.util.control.NonFatal

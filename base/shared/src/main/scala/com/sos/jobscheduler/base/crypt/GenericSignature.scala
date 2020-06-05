@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.base.crypt
+package js7.base.crypt
 
-import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
+import js7.base.utils.IntelliJUtils.intelliJuseImport
 import io.circe.generic.extras.defaults.defaultGenericConfiguration
 import io.circe.generic.extras.{ConfiguredJsonCodec, JsonKey}
 

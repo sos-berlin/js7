@@ -1,15 +1,15 @@
-package com.sos.jobscheduler.core.common.jsonseq
+package js7.core.common.jsonseq
 
 import com.google.common.io.MoreFiles.touch
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
-import com.sos.jobscheduler.base.time.{Stopwatch, Timestamp}
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowableEither
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryFile
-import com.sos.jobscheduler.core.common.jsonseq.FileJsonSeqTest._
-import com.sos.jobscheduler.data.event.{Event, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
+import js7.base.circeutils.CirceUtils.RichJson
+import js7.base.time.{Stopwatch, Timestamp}
+import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.ScalaUtils.RichThrowableEither
+import js7.common.scalautil.FileUtils.implicits._
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.FileUtils.withTemporaryFile
+import js7.core.common.jsonseq.FileJsonSeqTest._
+import js7.data.event.{Event, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
 import io.circe.Json
 import io.circe.generic.JsonCodec
 import io.circe.syntax.EncoderOps

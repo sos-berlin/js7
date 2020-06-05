@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.core.event.journal.write
+package js7.core.event.journal.write
 
 import akka.util.ByteString
-import com.sos.jobscheduler.core.common.jsonseq.OutputStreamJsonSeqWriter
+import js7.core.common.jsonseq.OutputStreamJsonSeqWriter
 import java.io.{BufferedOutputStream, FileOutputStream}
 import java.nio.file.{Files, Path}
 import java.util.concurrent.atomic.AtomicBoolean

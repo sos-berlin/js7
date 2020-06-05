@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.agent.scheduler.order
+package js7.agent.scheduler.order
 
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
-import com.sos.jobscheduler.data.event.KeyedEvent
-import com.sos.jobscheduler.data.order.Order
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowEvent, WorkflowId}
+import js7.base.utils.Assertions.assertThat
+import js7.base.utils.Collections.implicits.InsertableMutableMap
+import js7.data.event.KeyedEvent
+import js7.data.order.Order
+import js7.data.workflow.{Workflow, WorkflowEvent, WorkflowId}
 import scala.collection.mutable
 
 /**

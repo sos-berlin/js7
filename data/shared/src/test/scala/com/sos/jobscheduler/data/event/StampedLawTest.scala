@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.data.event
+package js7.data.event
 
 import cats.instances.int._
 import cats.instances.string._
 import cats.laws.discipline.FunctorTests
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.data.event.Stamped._
+import js7.base.time.Timestamp
+import js7.data.event.Stamped._
 import org.scalacheck.Arbitrary
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalatest.prop.Configuration

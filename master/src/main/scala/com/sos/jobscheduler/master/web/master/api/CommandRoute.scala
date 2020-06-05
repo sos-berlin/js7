@@ -1,15 +1,15 @@
-package com.sos.jobscheduler.master.web.master.api
+package js7.master.web.master.api
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import com.sos.jobscheduler.base.auth.ValidUserPermission
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.completeTask
-import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
-import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
-import com.sos.jobscheduler.core.command.CommandMeta
-import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.web.common.MasterRouteProvider
+import js7.base.auth.ValidUserPermission
+import js7.base.problem.Checked
+import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
+import js7.common.akkahttp.CirceJsonOrYamlSupport._
+import js7.common.akkahttp.StandardMarshallers._
+import js7.core.command.CommandMeta
+import js7.master.data.MasterCommand
+import js7.master.web.common.MasterRouteProvider
 import monix.eval.Task
 import monix.execution.Scheduler
 

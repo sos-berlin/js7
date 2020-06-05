@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.data.order
+package js7.data.order
 
-import com.sos.jobscheduler.data.workflow.position.Position
+import js7.data.workflow.position.Position
 import io.circe.generic.JsonCodec
 
 @JsonCodec

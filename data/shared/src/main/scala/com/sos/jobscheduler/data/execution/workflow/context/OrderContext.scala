@@ -1,16 +1,16 @@
-package com.sos.jobscheduler.data.execution.workflow.context
+package js7.data.execution.workflow.context
 
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
-import com.sos.jobscheduler.data.execution.workflow.context.OrderContext._
-import com.sos.jobscheduler.data.expression.Evaluator.{NumericValue, StringValue, Value}
-import com.sos.jobscheduler.data.expression.{Scope, ValueSearch}
-import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.data.order.{HistoricOutcome, Order, OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.instructions.Instructions
-import com.sos.jobscheduler.data.workflow.position.WorkflowPosition
-import com.sos.jobscheduler.data.workflow.{Instruction, Workflow, WorkflowId}
+import js7.base.problem.Checked._
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.ScalaUtils.implicitClass
+import js7.data.execution.workflow.context.OrderContext._
+import js7.data.expression.Evaluator.{NumericValue, StringValue, Value}
+import js7.data.expression.{Scope, ValueSearch}
+import js7.data.job.ReturnCode
+import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
+import js7.data.workflow.instructions.Instructions
+import js7.data.workflow.position.WorkflowPosition
+import js7.data.workflow.{Instruction, Workflow, WorkflowId}
 import scala.reflect.ClassTag
 
 /**

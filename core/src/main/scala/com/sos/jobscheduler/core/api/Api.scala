@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.core.api
+package js7.core.api
 
-import com.sos.jobscheduler.data.workflow.WorkflowPrinter
+import js7.data.workflow.WorkflowPrinter
 
 object Api
 {

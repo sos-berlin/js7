@@ -1,16 +1,16 @@
-package com.sos.jobscheduler.common.akkahttp.web.session
+package js7.common.akkahttp.web.session
 
 import akka.actor.{Actor, DeadLetterSuppression, Props}
-import com.sos.jobscheduler.base.auth.{SessionToken, User}
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.Problems.InvalidSessionTokenProblem
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
-import com.sos.jobscheduler.common.akkahttp.web.session.SessionActor._
-import com.sos.jobscheduler.common.auth.SecretStringGenerator
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.JavaTimeConverters._
+import js7.base.auth.{SessionToken, User}
+import js7.base.generic.Completed
+import js7.base.problem.Checked._
+import js7.base.problem.Problems.InvalidSessionTokenProblem
+import js7.base.utils.Assertions.assertThat
+import js7.base.utils.Collections.implicits.InsertableMutableMap
+import js7.common.akkahttp.web.session.SessionActor._
+import js7.common.auth.SecretStringGenerator
+import js7.common.scalautil.Logger
+import js7.common.time.JavaTimeConverters._
 import com.typesafe.config.Config
 import monix.execution.{Cancelable, Scheduler}
 import scala.collection.mutable

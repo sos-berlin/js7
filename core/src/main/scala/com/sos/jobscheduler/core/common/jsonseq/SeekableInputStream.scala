@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.core.common.jsonseq
+package js7.core.common.jsonseq
 
 import java.io.{InputStream, RandomAccessFile}
 import java.nio.file.Path

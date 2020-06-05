@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.core.event.journal.write
+package js7.core.event.journal.write
 
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.concurrent.ParallelismCounter
+import js7.base.time.ScalaTime._
+import js7.common.concurrent.ParallelismCounter
 import java.util.concurrent.Executors
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext

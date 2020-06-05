@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.base.eventbus
+package js7.base.eventbus
 
 trait EventPublisher[Event]
 {

@@ -1,15 +1,15 @@
-package com.sos.jobscheduler.master.web
+package js7.master.web
 
 import akka.actor.{ActorRefFactory, ActorSystem}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import com.sos.jobscheduler.base.auth.SimpleUser
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegment
-import com.sos.jobscheduler.common.akkahttp.WebLogDirectives
-import com.sos.jobscheduler.common.akkahttp.web.auth.CSRF.forbidCSRF
-import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
-import com.sos.jobscheduler.master.web.master.MasterRoute
-import com.sos.jobscheduler.master.web.serviceprovider.ServiceProviderRoute
+import js7.base.auth.SimpleUser
+import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
+import js7.common.akkahttp.WebLogDirectives
+import js7.common.akkahttp.web.auth.CSRF.forbidCSRF
+import js7.common.akkahttp.web.auth.GateKeeper
+import js7.master.web.master.MasterRoute
+import js7.master.web.serviceprovider.ServiceProviderRoute
 import com.typesafe.config.Config
 
 /**

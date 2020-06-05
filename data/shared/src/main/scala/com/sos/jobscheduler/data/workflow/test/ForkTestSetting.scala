@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.data.workflow.test
+package js7.data.workflow.test
 
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{Execute, Fork}
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
+import js7.data.agent.AgentRefPath
+import js7.data.job.ExecutablePath
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.instructions.{Execute, Fork}
+import js7.data.workflow.{Workflow, WorkflowPath}
 
 /**
   * @author Joacim Zschimmer

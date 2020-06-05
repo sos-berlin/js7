@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.master
+package js7.master
 
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
-import com.sos.jobscheduler.core.filebased.FileBasedApi
-import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, FileBasedsOverview, Repo, TypedPath}
-import com.sos.jobscheduler.master.data.MasterState
+import js7.base.problem.Checked
+import js7.base.utils.ScalaUtils.RichPartialFunction
+import js7.core.filebased.FileBasedApi
+import js7.data.filebased.{FileBased, FileBasedId, FileBasedsOverview, Repo, TypedPath}
+import js7.master.data.MasterState
 import monix.eval.Task
 
 private[master] final class MainFileBasedApi(masterState: Task[Checked[MasterState]])

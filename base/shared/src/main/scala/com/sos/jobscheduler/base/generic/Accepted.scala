@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.base.generic
+package js7.base.generic
 
 /**
   * Accepted, but maybe not yet `Completed`, may be used for Future[Accepted].

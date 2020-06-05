@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.base.exceptions
+package js7.base.exceptions
 
 trait HasIsIgnorableStackTrace
 {

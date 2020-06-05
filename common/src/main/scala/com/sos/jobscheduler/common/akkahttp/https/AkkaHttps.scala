@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.common.akkahttp.https
+package js7.common.akkahttp.https
 
 import akka.http.scaladsl.{ConnectionContext, HttpsConnectionContext}
-import com.sos.jobscheduler.common.akkahttp.https.Https.loadSSLContext
+import js7.common.akkahttp.https.Https.loadSSLContext
 
 /**
   * @author Joacim Zschimmer

@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.base.utils
+package js7.base.utils
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowableEither
-import com.sos.jobscheduler.base.utils.Strings.RichString
+import js7.base.circeutils.CirceUtils._
+import js7.base.problem.Checked
+import js7.base.utils.ScalaUtils.RichThrowableEither
+import js7.base.utils.Strings.RichString
 import io.circe.{Decoder, Json}
 import java.nio.charset.CodingErrorAction.REPLACE
 import java.nio.charset.StandardCharsets.UTF_8

@@ -1,28 +1,28 @@
-package com.sos.jobscheduler.agent.task
+package js7.agent.task
 
 import akka.actor.{Actor, Props, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
-import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.configuration.Akkas.newAgentActorSystem
-import com.sos.jobscheduler.agent.data.AgentTaskId
-import com.sos.jobscheduler.agent.data.views.{TaskOverview, TaskRegisterOverview}
-import com.sos.jobscheduler.agent.task.TaskRegisterTest._
-import com.sos.jobscheduler.agent.tests.TestAgentDirectoryProvider
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.process.ProcessSignal
-import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.base.utils.HasCloser
-import com.sos.jobscheduler.common.process.Processes.Pid
-import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
-import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
-import com.sos.jobscheduler.common.time.WaitForCondition.retryUntil
-import com.sos.jobscheduler.data.job.JobKey
-import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
+import js7.agent.configuration.AgentConfiguration
+import js7.agent.configuration.Akkas.newAgentActorSystem
+import js7.agent.data.AgentTaskId
+import js7.agent.data.views.{TaskOverview, TaskRegisterOverview}
+import js7.agent.task.TaskRegisterTest._
+import js7.agent.tests.TestAgentDirectoryProvider
+import js7.base.generic.Completed
+import js7.base.process.ProcessSignal
+import js7.base.process.ProcessSignal.{SIGKILL, SIGTERM}
+import js7.base.time.ScalaTime._
+import js7.base.time.Timestamp
+import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.HasCloser
+import js7.common.process.Processes.Pid
+import js7.common.scalautil.Futures.implicits.SuccessFuture
+import js7.common.system.OperatingSystem.isWindows
+import js7.common.time.WaitForCondition.retryUntil
+import js7.data.job.JobKey
+import js7.data.workflow.WorkflowPath
+import js7.data.workflow.instructions.executable.WorkflowJob
 import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.Promise

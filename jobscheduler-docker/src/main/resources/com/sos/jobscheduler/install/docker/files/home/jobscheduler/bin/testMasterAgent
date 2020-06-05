@@ -48,7 +48,7 @@ execute=(
   "$java"
   "${javaOptions[@]}"
   -classpath "$classpathString"
-  "com.sos.jobscheduler.tests.TestMasterAgent"
+  "js7.tests.TestMasterAgent"
   "-directory=$directory"
   "${args[@]}"
 )

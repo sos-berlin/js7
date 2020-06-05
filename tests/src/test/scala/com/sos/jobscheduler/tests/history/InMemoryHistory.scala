@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.tests.history
+package js7.tests.history
 
-import com.sos.jobscheduler.data.event.{<-:, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderCancelledFat, OrderFailedFat, OrderFinishedFat, OrderForkedFat, OrderJoinedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStdWrittenFat}
-import com.sos.jobscheduler.data.fatevent.{FatEvent, OrderFatEvent}
-import com.sos.jobscheduler.data.order.OrderId
+import js7.data.event.{<-:, KeyedEvent, Stamped}
+import js7.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderCancelledFat, OrderFailedFat, OrderFinishedFat, OrderForkedFat, OrderJoinedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStdWrittenFat}
+import js7.data.fatevent.{FatEvent, OrderFatEvent}
+import js7.data.order.OrderId
 import scala.collection.mutable
 
 /**

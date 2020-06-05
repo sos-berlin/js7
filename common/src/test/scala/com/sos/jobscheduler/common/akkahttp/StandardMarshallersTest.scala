@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.akkahttp
+package js7.common.akkahttp
 
 import akka.http.scaladsl.marshalling.Marshal
 import akka.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
@@ -8,13 +8,13 @@ import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpRequest, HttpResponse, MessageEntity}
 import akka.stream.ActorMaterializer
 import akka.util.ByteString
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
-import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
-import com.sos.jobscheduler.common.http.CirceJsonSupport._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import js7.base.circeutils.CirceUtils._
+import js7.base.problem.{Checked, Problem}
+import js7.base.time.ScalaTime._
+import js7.common.akkahttp.StandardMarshallers._
+import js7.common.akkautils.Akkas.newActorSystem
+import js7.common.http.CirceJsonSupport._
+import js7.common.scalautil.Futures.implicits._
 import io.circe.generic.semiauto.deriveEncoder
 import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.ExecutionContext.Implicits.global

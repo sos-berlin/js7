@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.agent.scheduler.job.task
+package js7.agent.scheduler.job.task
 
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.data.job.ReturnCode
+import js7.base.problem.Problem
+import js7.data.job.ReturnCode
 
 /**
   * @author Joacim Zschimmer

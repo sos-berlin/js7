@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.base.system
+package js7.base.system
 
 import com.sun.management.HotSpotDiagnosticMXBean
 import java.lang.management.ManagementFactory.{getPlatformMBeanServer, newPlatformMXBeanProxy}

@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.common.time
+package js7.common.time
 
-import com.sos.jobscheduler.base.time.ScalaTime._
+import js7.base.time.ScalaTime._
 import scala.concurrent.blocking
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._

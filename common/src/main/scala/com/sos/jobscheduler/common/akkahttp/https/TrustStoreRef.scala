@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.common.akkahttp.https
+package js7.common.akkahttp.https
 
-import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.common.configutils.Configs._
+import js7.base.convert.AsJava.StringAsPath
+import js7.base.generic.SecretString
+import js7.base.problem.Checked
+import js7.common.configutils.Configs._
 import com.typesafe.config.Config
 import java.net.URL
 import java.nio.file.Path

@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.data.system
+package js7.data.system
 
-import com.sos.jobscheduler.data.system.JavaInformation._
+import js7.data.system.JavaInformation._
 import io.circe.generic.JsonCodec
 
 @JsonCodec

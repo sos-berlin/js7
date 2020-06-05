@@ -1,18 +1,18 @@
-package com.sos.jobscheduler.master.web.master.api.log
+package js7.master.web.master.api.log
 
 import akka.http.scaladsl.model.MediaTypes.`text/plain`
 import akka.http.scaladsl.model.StatusCodes.{NotFound, OK}
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.testkit.RouteTestTimeout
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegment
-import com.sos.jobscheduler.common.http.StreamingSupport._
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryFile
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.master.web.master.api.test.RouteTester
+import js7.base.time.ScalaTime._
+import js7.base.utils.AutoClosing.autoClosing
+import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
+import js7.common.http.StreamingSupport._
+import js7.common.scalautil.FileUtils.implicits._
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.FileUtils.withTemporaryFile
+import js7.common.scalautil.Futures.implicits._
+import js7.master.web.master.api.test.RouteTester
 import com.typesafe.config.ConfigFactory
 import java.io.{FileOutputStream, OutputStreamWriter}
 import java.nio.charset.StandardCharsets.UTF_8

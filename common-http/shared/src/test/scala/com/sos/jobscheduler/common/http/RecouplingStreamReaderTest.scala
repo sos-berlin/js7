@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.common.http
+package js7.common.http
 
-import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.session.TestSessionApi
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.http.configuration.RecouplingStreamReaderConf
+import js7.base.auth.{UserAndPassword, UserId}
+import js7.base.generic.SecretString
+import js7.base.problem.Problem
+import js7.base.session.TestSessionApi
+import js7.base.time.ScalaTime._
+import js7.common.http.configuration.RecouplingStreamReaderConf
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable

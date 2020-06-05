@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.data.filebased
+package js7.data.filebased
 
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.data.filebased.FileBasedId._
+import js7.base.utils.ScalazStyle._
+import js7.data.filebased.FileBasedId._
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 import scala.language.implicitConversions

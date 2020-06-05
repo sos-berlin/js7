@@ -1,19 +1,19 @@
-package com.sos.jobscheduler.core.event.journal.watch
+package js7.core.event.journal.watch
 
-import com.sos.jobscheduler.base.problem.Checked.{CheckedOption, Ops}
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.base.utils.Collections.implicits._
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.base.utils.{CloseableIterator, SetOnce}
-import com.sos.jobscheduler.common.event.{PositionAnd, RealEventWatch}
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.core.event.journal.files.JournalFiles.listJournalFiles
-import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch._
-import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.problems.UnknownEventIdProblem
+import js7.base.problem.Checked.{CheckedOption, Ops}
+import js7.base.problem.{Checked, Problem}
+import js7.base.time.Timestamp
+import js7.base.utils.Assertions.assertThat
+import js7.base.utils.Collections.implicits._
+import js7.base.utils.ScalaUtils.RichThrowable
+import js7.base.utils.{CloseableIterator, SetOnce}
+import js7.common.event.{PositionAnd, RealEventWatch}
+import js7.common.scalautil.Logger
+import js7.core.event.journal.data.JournalMeta
+import js7.core.event.journal.files.JournalFiles.listJournalFiles
+import js7.core.event.journal.watch.JournalEventWatch._
+import js7.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
+import js7.data.problems.UnknownEventIdProblem
 import com.typesafe.config.{Config, ConfigFactory}
 import java.io.IOException
 import java.nio.file.Files.delete

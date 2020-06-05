@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.proxy.javaapi.data
+package js7.proxy.javaapi.data
 
-import com.sos.jobscheduler.base.annotation.javaApi
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
-import com.sos.jobscheduler.data.workflow.WorkflowPath
+import js7.base.annotation.javaApi
+import js7.base.problem.Problem
+import js7.base.time.Timestamp
+import js7.data.order.{FreshOrder, OrderId}
+import js7.data.workflow.WorkflowPath
 import io.circe.{Decoder, Encoder}
 import io.vavr.control.{Either => VEither}
 import java.time.Instant

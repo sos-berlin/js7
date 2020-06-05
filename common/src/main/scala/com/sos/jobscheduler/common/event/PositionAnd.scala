@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.event
+package js7.common.event
 
 /**
   * @author Joacim Zschimmer

@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.base.circeutils
+package js7.base.circeutils
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.toStringJsonCodec
+import js7.base.circeutils.CirceUtils.toStringJsonCodec
 import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json}
 import java.nio.file.{Path, Paths}
 import java.time.format.DateTimeFormatter

@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.core.event.journal.watch
+package js7.core.event.journal.watch
 
-import com.sos.jobscheduler.common.event.PositionAnd
+import js7.common.event.PositionAnd
 import org.scalatest.matchers
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.freespec.AnyFreeSpec

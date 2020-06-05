@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.common.tcp
+package js7.common.tcp
 
-import com.sos.jobscheduler.common.tcp.TcpUtils.{parseTcpPort, requireTcpPortNumber}
+import js7.common.tcp.TcpUtils.{parseTcpPort, requireTcpPortNumber}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

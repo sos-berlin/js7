@@ -1,25 +1,25 @@
-package com.sos.jobscheduler.tests.master.proxy
+package js7.tests.master.proxy
 
-import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderFinished, OrderProcessed}
-import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
-import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
-import com.sos.jobscheduler.master.data.MasterState
-import com.sos.jobscheduler.proxy.javaapi.JCredentials
-import com.sos.jobscheduler.proxy.{JournaledProxy, ProxyEventBus}
-import com.sos.jobscheduler.tests.master.proxy.JournaledProxyTest._
-import com.sos.jobscheduler.tests.testenv.DirectoryProvider.script
-import com.sos.jobscheduler.tests.testenv.DirectoryProviderForScalaTest
+import js7.base.auth.{UserAndPassword, UserId}
+import js7.base.generic.SecretString
+import js7.base.problem.Checked.Ops
+import js7.base.time.ScalaTime._
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.data.agent.AgentRefPath
+import js7.data.job.ExecutablePath
+import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed}
+import js7.data.order.{FreshOrder, Order, OrderId, Outcome}
+import js7.data.workflow.WorkflowPath
+import js7.data.workflow.parser.WorkflowParser
+import js7.master.client.AkkaHttpMasterApi
+import js7.master.data.MasterState
+import js7.proxy.javaapi.JCredentials
+import js7.proxy.{JournaledProxy, ProxyEventBus}
+import js7.tests.master.proxy.JournaledProxyTest._
+import js7.tests.testenv.DirectoryProvider.script
+import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.jdk.FutureConverters._

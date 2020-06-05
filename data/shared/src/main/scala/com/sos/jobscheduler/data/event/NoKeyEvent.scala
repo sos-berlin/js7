@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.data.event
+package js7.data.event
 
-import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
+import js7.data.event.KeyedEvent.NoKey
 import scala.language.implicitConversions
 
 /**

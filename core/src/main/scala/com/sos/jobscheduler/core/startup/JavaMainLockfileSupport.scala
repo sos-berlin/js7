@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.core.startup
+package js7.core.startup
 
-import com.sos.jobscheduler.common.commandline.CommandLineArguments
-import com.sos.jobscheduler.core.startup.StartUp.printlnWithClock
+import js7.common.commandline.CommandLineArguments
+import js7.core.startup.StartUp.printlnWithClock
 import java.nio.channels.FileChannel
 import java.nio.file.Files.{createDirectory, exists}
 import java.nio.file.StandardOpenOption.{CREATE, WRITE}

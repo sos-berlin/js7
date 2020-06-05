@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.master.agent
+package js7.master.agent
 
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader
-import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefId}
+import js7.base.problem.Checked
+import js7.base.web.Uri
+import js7.common.scalautil.xmls.ScalaXMLEventReader
+import js7.data.agent.{AgentRef, AgentRefId}
 import javax.xml.transform.Source
 
 /**

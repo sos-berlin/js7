@@ -1,17 +1,17 @@
-package com.sos.jobscheduler.master.data
+package js7.master.data
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.crypt.{GenericSignature, SignedString}
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.cluster.{ClusterCommand, ClusterNodeId}
-import com.sos.jobscheduler.data.command.CancelMode
-import com.sos.jobscheduler.data.filebased.VersionId
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
-import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.master.data.MasterCommand._
-import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import js7.base.circeutils.CirceUtils._
+import js7.base.crypt.{GenericSignature, SignedString}
+import js7.base.problem.Problem
+import js7.base.web.Uri
+import js7.data.agent.AgentRefPath
+import js7.data.cluster.{ClusterCommand, ClusterNodeId}
+import js7.data.command.CancelMode
+import js7.data.filebased.VersionId
+import js7.data.order.{FreshOrder, OrderId}
+import js7.data.workflow.WorkflowPath
+import js7.master.data.MasterCommand._
+import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
 final class MasterCommandTest extends AnyFreeSpec

@@ -1,15 +1,15 @@
-package com.sos.jobscheduler.data.workflow.instructions.executable
+package js7.data.workflow.instructions.executable
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.CirceUtilsChecked
-import com.sos.jobscheduler.base.generic.GenericString
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.job.{Executable, ExecutablePath, ExecutableScript, ReturnCode}
-import com.sos.jobscheduler.data.order.OrderEvent.OrderProcessed
-import com.sos.jobscheduler.data.order.Outcome
-import com.sos.jobscheduler.data.workflow.instructions.ReturnCodeMeaning
+import js7.base.circeutils.CirceUtils.CirceUtilsChecked
+import js7.base.generic.GenericString
+import js7.base.problem.Checked.Ops
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.ScalazStyle.OptionRichBoolean
+import js7.data.agent.AgentRefPath
+import js7.data.job.{Executable, ExecutablePath, ExecutableScript, ReturnCode}
+import js7.data.order.OrderEvent.OrderProcessed
+import js7.data.order.Outcome
+import js7.data.workflow.instructions.ReturnCodeMeaning
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 

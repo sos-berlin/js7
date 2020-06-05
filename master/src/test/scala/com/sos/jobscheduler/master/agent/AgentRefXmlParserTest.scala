@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.master.agent
+package js7.master.agent
 
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
-import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
+import js7.base.web.Uri
+import js7.common.scalautil.xmls.XmlSources._
+import js7.data.agent.{AgentRef, AgentRefPath}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

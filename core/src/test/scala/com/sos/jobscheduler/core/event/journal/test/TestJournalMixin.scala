@@ -1,26 +1,26 @@
-package com.sos.jobscheduler.core.event.journal.test
+package js7.core.event.journal.test
 
 import akka.Done
 import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.pattern.ask
 import akka.util.Timeout
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, RichThrowableEither}
-import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
-import com.sos.jobscheduler.common.akkautils.DeadLetterActor
-import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader
-import com.sos.jobscheduler.core.event.journal.JournalActor
-import com.sos.jobscheduler.core.event.journal.files.JournalFiles
-import com.sos.jobscheduler.core.event.journal.test.TestData.testJournalMeta
-import com.sos.jobscheduler.core.event.journal.test.TestJournalMixin._
-import com.sos.jobscheduler.core.event.journal.test.TestJsonCodecs.TestKeyedEventJsonCodec
-import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Stamped}
+import js7.base.problem.Checked._
+import js7.base.time.ScalaTime._
+import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.ScalaUtils.{RichJavaClass, RichThrowableEither}
+import js7.common.akkautils.Akkas.newActorSystem
+import js7.common.akkautils.DeadLetterActor
+import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.Logger
+import js7.core.common.jsonseq.InputStreamJsonSeqReader
+import js7.core.event.journal.JournalActor
+import js7.core.event.journal.files.JournalFiles
+import js7.core.event.journal.test.TestData.testJournalMeta
+import js7.core.event.journal.test.TestJournalMixin._
+import js7.core.event.journal.test.TestJsonCodecs.TestKeyedEventJsonCodec
+import js7.data.event.{Event, KeyedEvent, Stamped}
 import com.typesafe.config.{Config, ConfigFactory}
 import io.circe.Json
 import io.circe.syntax.EncoderOps

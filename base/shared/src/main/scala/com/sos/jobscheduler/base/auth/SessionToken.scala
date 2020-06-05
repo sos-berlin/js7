@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.base.auth
+package js7.base.auth
 
-import com.sos.jobscheduler.base.generic.SecretString
+import js7.base.generic.SecretString
 
 /**
   * @author Joacim Zschimmer

@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.base.convert
+package js7.base.convert
 
 import scala.util.control.NonFatal
 

@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.core.event.journal.test
+package js7.core.event.journal.test
 
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.core.event.journal.test.TestJsonCodecs.TestKeyedEventJsonCodec
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.core.event.journal.data.JournalMeta
+import js7.core.event.journal.test.TestJsonCodecs.TestKeyedEventJsonCodec
 import com.typesafe.config.ConfigFactory
 import java.nio.file.Path
 

@@ -1,16 +1,16 @@
-package com.sos.jobscheduler.common.http
+package js7.common.http
 
 import cats.syntax.flatMap._
-import com.sos.jobscheduler.base.exceptions.HasIsIgnorableStackTrace
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.problem.Problems.InvalidSessionTokenProblem
-import com.sos.jobscheduler.base.problem.{Checked, Problem, ProblemException}
-import com.sos.jobscheduler.base.session.SessionApi
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.common.http.RecouplingStreamReader._
-import com.sos.jobscheduler.common.http.configuration.RecouplingStreamReaderConf
-import com.sos.jobscheduler.data.event.EventSeqTornProblem
+import js7.base.exceptions.HasIsIgnorableStackTrace
+import js7.base.generic.Completed
+import js7.base.problem.Problems.InvalidSessionTokenProblem
+import js7.base.problem.{Checked, Problem, ProblemException}
+import js7.base.session.SessionApi
+import js7.base.time.ScalaTime._
+import js7.base.utils.ScalaUtils.RichThrowable
+import js7.common.http.RecouplingStreamReader._
+import js7.common.http.configuration.RecouplingStreamReaderConf
+import js7.data.event.EventSeqTornProblem
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean
 import monix.execution.exceptions.UpstreamTimeoutException

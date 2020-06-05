@@ -1,26 +1,26 @@
-package com.sos.jobscheduler.data.execution.workflow
+package js7.data.execution.workflow
 
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.utils.Collections.implicits._
-import com.sos.jobscheduler.base.utils.ScalaUtils._
-import com.sos.jobscheduler.data.Problems.CancelStartedOrderProblem
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.command.CancelMode
-import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
-import com.sos.jobscheduler.data.execution.workflow.OrderEventHandler.FollowUp
-import com.sos.jobscheduler.data.execution.workflow.OrderEventSourceTest._
-import com.sos.jobscheduler.data.expression.Expression.{Equal, LastReturnCode, NumericConstant}
-import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancellationMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
-import com.sos.jobscheduler.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{Execute, ExplicitEnd, Gap, Goto, If, IfFailedGoto, TryInstruction}
-import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
-import com.sos.jobscheduler.data.workflow.position.BranchId.{Else, Then, catch_, try_}
-import com.sos.jobscheduler.data.workflow.position.{BranchId, Position}
-import com.sos.jobscheduler.data.workflow.test.ForkTestSetting
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
+import js7.base.problem.Checked.Ops
+import js7.base.problem.Problem
+import js7.base.utils.Collections.implicits._
+import js7.base.utils.ScalaUtils._
+import js7.data.Problems.CancelStartedOrderProblem
+import js7.data.agent.AgentRefPath
+import js7.data.command.CancelMode
+import js7.data.event.{<-:, KeyedEvent}
+import js7.data.execution.workflow.OrderEventHandler.FollowUp
+import js7.data.execution.workflow.OrderEventSourceTest._
+import js7.data.expression.Expression.{Equal, LastReturnCode, NumericConstant}
+import js7.data.job.{ExecutablePath, ReturnCode}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancellationMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
+import js7.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.instructions.{Execute, ExplicitEnd, Gap, Goto, If, IfFailedGoto, TryInstruction}
+import js7.data.workflow.parser.WorkflowParser
+import js7.data.workflow.position.BranchId.{Else, Then, catch_, try_}
+import js7.data.workflow.position.{BranchId, Position}
+import js7.data.workflow.test.ForkTestSetting
+import js7.data.workflow.{Workflow, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 

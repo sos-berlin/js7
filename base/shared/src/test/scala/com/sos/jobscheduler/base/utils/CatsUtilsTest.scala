@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.base.utils
+package js7.base.utils
 
 import cats.data.Validated
 import cats.data.Validated.{Invalid, Valid}
-import com.sos.jobscheduler.base.problem.{Problem, ProblemException}
-import com.sos.jobscheduler.base.utils.CatsUtils._
+import js7.base.problem.{Problem, ProblemException}
+import js7.base.utils.CatsUtils._
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

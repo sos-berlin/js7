@@ -1,21 +1,21 @@
-package com.sos.jobscheduler.core.event.journal.watch
+package js7.core.event.journal.watch
 
-import com.sos.jobscheduler.base.monixutils.MonixBase.memoryLeakLimitedObservableTailRecM
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.base.utils.AutoClosing.closeOnError
-import com.sos.jobscheduler.base.utils.CloseableIterator
-import com.sos.jobscheduler.base.utils.Collections.implicits.RichIterator
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.common.event.PositionAnd
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.utils.UntilNoneIterator
-import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader
-import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.core.event.journal.recover.JournalReader
-import com.sos.jobscheduler.core.problems.JsonSeqFileClosedProblem
-import com.sos.jobscheduler.data.event.JournalSeparators.EndOfJournalFileMarker
-import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
+import js7.base.monixutils.MonixBase.memoryLeakLimitedObservableTailRecM
+import js7.base.time.Timestamp
+import js7.base.utils.Assertions.assertThat
+import js7.base.utils.AutoClosing.closeOnError
+import js7.base.utils.CloseableIterator
+import js7.base.utils.Collections.implicits.RichIterator
+import js7.base.utils.ScalazStyle._
+import js7.common.event.PositionAnd
+import js7.common.scalautil.Logger
+import js7.common.utils.UntilNoneIterator
+import js7.core.common.jsonseq.InputStreamJsonSeqReader
+import js7.core.event.journal.data.JournalMeta
+import js7.core.event.journal.recover.JournalReader
+import js7.core.problems.JsonSeqFileClosedProblem
+import js7.data.event.JournalSeparators.EndOfJournalFileMarker
+import js7.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
 import com.typesafe.config.Config
 import java.nio.file.Path
 import monix.eval.Task

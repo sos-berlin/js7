@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.common.utils
+package js7.common.utils
 
-import com.sos.jobscheduler.common.utils.Tests.isTest
+import js7.common.utils.Tests.isTest
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

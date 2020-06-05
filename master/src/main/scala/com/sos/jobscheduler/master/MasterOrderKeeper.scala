@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.master
+package js7.master
 
 import akka.actor.{ActorRef, DeadLetterSuppression, Stash, Status, Terminated}
 import akka.pattern.{ask, pipe}
@@ -8,62 +8,62 @@ import cats.instances.future._
 import cats.instances.vector._
 import cats.syntax.flatMap._
 import cats.syntax.traverse._
-import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
-import com.sos.jobscheduler.base.crypt.{SignatureVerifier, Signed}
-import com.sos.jobscheduler.base.eventbus.EventPublisher
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.monixutils.MonixBase.syntax._
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.base.utils.Collections.implicits._
-import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
-import com.sos.jobscheduler.base.utils.ScalaUtils.{RichPartialFunction, RichThrowable}
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.base.utils.SetOnce
-import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
-import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
-import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
-import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.scalautil.Logger.ops._
-import com.sos.jobscheduler.core.command.CommandMeta
-import com.sos.jobscheduler.core.common.ActorRegister
-import com.sos.jobscheduler.core.event.journal.recover.{JournalRecoverer, Recovered}
-import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActor}
-import com.sos.jobscheduler.core.filebased.FileBaseds
-import com.sos.jobscheduler.core.problems.ReverseReleaseEventsProblem
-import com.sos.jobscheduler.data.Problems.UnknownOrderProblem
-import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath, AgentRunId}
-import com.sos.jobscheduler.data.cluster.ClusterState
-import com.sos.jobscheduler.data.crypt.FileBasedVerifier
-import com.sos.jobscheduler.data.event.JournalEvent.JournalEventsReleased
-import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{Event, EventId, JournalHeader, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.execution.workflow.OrderEventHandler.FollowUp
-import com.sos.jobscheduler.data.execution.workflow.OrderProcessor
-import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
-import com.sos.jobscheduler.data.filebased.{FileBased, RepoEvent, TypedPath}
-import com.sos.jobscheduler.data.master.MasterFileBaseds
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderBroken, OrderCancellationMarked, OrderCoreEvent, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
-import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderEvent, OrderId}
-import com.sos.jobscheduler.data.problems.UserIsNotEnabledToReleaseEventsProblem
-import com.sos.jobscheduler.data.workflow.instructions.Execute
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.position.WorkflowPosition
-import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
-import com.sos.jobscheduler.master.MasterOrderKeeper._
-import com.sos.jobscheduler.master.agent.{AgentDriver, AgentDriverConfiguration}
-import com.sos.jobscheduler.master.cluster.Cluster
-import com.sos.jobscheduler.master.configuration.MasterConfiguration
-import com.sos.jobscheduler.master.data.agent.AgentEventIdEvent
-import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentReady
-import com.sos.jobscheduler.master.data.events.MasterEvent
-import com.sos.jobscheduler.master.data.events.MasterEvent.{MasterShutDown, MasterTestEvent}
-import com.sos.jobscheduler.master.data.{MasterCommand, MasterState}
-import com.sos.jobscheduler.master.problems.MasterIsNotYetReadyProblem
-import com.sos.jobscheduler.master.repo.RepoCommandExecutor
+import js7.agent.data.event.AgentMasterEvent
+import js7.base.crypt.{SignatureVerifier, Signed}
+import js7.base.eventbus.EventPublisher
+import js7.base.generic.Completed
+import js7.base.monixutils.MonixBase.syntax._
+import js7.base.problem.Checked._
+import js7.base.problem.{Checked, Problem}
+import js7.base.time.ScalaTime._
+import js7.base.utils.Assertions.assertThat
+import js7.base.utils.Collections.implicits._
+import js7.base.utils.IntelliJUtils.intelliJuseImport
+import js7.base.utils.ScalaUtils.{RichPartialFunction, RichThrowable}
+import js7.base.utils.ScalazStyle._
+import js7.base.utils.SetOnce
+import js7.base.utils.StackTraces.StackTraceThrowable
+import js7.common.akkautils.Akkas.encodeAsActorName
+import js7.common.akkautils.SupervisorStrategies
+import js7.common.configutils.Configs.ConvertibleConfig
+import js7.common.scalautil.Logger
+import js7.common.scalautil.Logger.ops._
+import js7.core.command.CommandMeta
+import js7.core.common.ActorRegister
+import js7.core.event.journal.recover.{JournalRecoverer, Recovered}
+import js7.core.event.journal.{JournalActor, MainJournalingActor}
+import js7.core.filebased.FileBaseds
+import js7.core.problems.ReverseReleaseEventsProblem
+import js7.data.Problems.UnknownOrderProblem
+import js7.data.agent.{AgentRef, AgentRefPath, AgentRunId}
+import js7.data.cluster.ClusterState
+import js7.data.crypt.FileBasedVerifier
+import js7.data.event.JournalEvent.JournalEventsReleased
+import js7.data.event.KeyedEvent.NoKey
+import js7.data.event.{Event, EventId, JournalHeader, KeyedEvent, Stamped}
+import js7.data.execution.workflow.OrderEventHandler.FollowUp
+import js7.data.execution.workflow.OrderProcessor
+import js7.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
+import js7.data.filebased.{FileBased, RepoEvent, TypedPath}
+import js7.data.master.MasterFileBaseds
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderBroken, OrderCancellationMarked, OrderCoreEvent, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
+import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId}
+import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
+import js7.data.workflow.instructions.Execute
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.position.WorkflowPosition
+import js7.data.workflow.{Instruction, Workflow}
+import js7.master.MasterOrderKeeper._
+import js7.master.agent.{AgentDriver, AgentDriverConfiguration}
+import js7.master.cluster.Cluster
+import js7.master.configuration.MasterConfiguration
+import js7.master.data.agent.AgentEventIdEvent
+import js7.master.data.events.MasterAgentEvent.AgentReady
+import js7.master.data.events.MasterEvent
+import js7.master.data.events.MasterEvent.{MasterShutDown, MasterTestEvent}
+import js7.master.data.{MasterCommand, MasterState}
+import js7.master.problems.MasterIsNotYetReadyProblem
+import js7.master.repo.RepoCommandExecutor
 import java.time.ZoneId
 import monix.eval.Task
 import monix.execution.Scheduler

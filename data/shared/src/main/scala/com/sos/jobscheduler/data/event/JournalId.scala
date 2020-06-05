@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.data.event
+package js7.data.event
 
-import com.sos.jobscheduler.base.generic.GenericString
-import com.sos.jobscheduler.base.utils.Base64UUID
+import js7.base.generic.GenericString
+import js7.base.utils.Base64UUID
 import java.util.UUID
 import java.util.UUID.randomUUID
 

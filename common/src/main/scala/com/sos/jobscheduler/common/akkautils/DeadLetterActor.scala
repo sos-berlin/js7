@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.common.akkautils
+package js7.common.akkautils
 
 import akka.actor.{Actor, ActorSystem, DeadLetter, DeadLetterSuppression, Props, UnhandledMessage}
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
-import com.sos.jobscheduler.common.akkautils.Akkas._
-import com.sos.jobscheduler.common.akkautils.DeadLetterActor._
-import com.sos.jobscheduler.common.scalautil.Logger
+import js7.base.utils.ScalaUtils.RichJavaClass
+import js7.common.akkautils.Akkas._
+import js7.common.akkautils.DeadLetterActor._
+import js7.common.scalautil.Logger
 import scala.util.control.NonFatal
 
 /**

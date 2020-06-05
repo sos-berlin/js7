@@ -1,13 +1,13 @@
-package com.sos.jobscheduler.agent.scheduler
+package js7.agent.scheduler
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils
-import com.sos.jobscheduler.base.circeutils.JavaJsonCodecs.zoneIdJsonEncoder
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
-import com.sos.jobscheduler.data.agent.{AgentRefPath, AgentRunId}
-import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import com.sos.jobscheduler.data.event.{Event, JournalEvent, KeyedEventTypedJsonCodec, NoKeyEvent}
-import com.sos.jobscheduler.data.master.MasterId
+import js7.base.circeutils.CirceUtils
+import js7.base.circeutils.JavaJsonCodecs.zoneIdJsonEncoder
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.utils.IntelliJUtils.intelliJuseImport
+import js7.data.agent.{AgentRefPath, AgentRunId}
+import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
+import js7.data.event.{Event, JournalEvent, KeyedEventTypedJsonCodec, NoKeyEvent}
+import js7.data.master.MasterId
 
 /**
   * @author Joacim Zschimmer

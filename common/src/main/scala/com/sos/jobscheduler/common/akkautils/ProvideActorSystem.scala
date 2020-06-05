@@ -1,13 +1,13 @@
-package com.sos.jobscheduler.common.akkautils
+package js7.common.akkautils
 
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.Closer.syntax._
-import com.sos.jobscheduler.base.utils.HasCloser
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
-import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
-import com.sos.jobscheduler.common.akkautils.ProvideActorSystem._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.Logger
+import js7.base.time.ScalaTime._
+import js7.base.utils.Closer.syntax._
+import js7.base.utils.HasCloser
+import js7.base.utils.ScalaUtils.RichJavaClass
+import js7.common.akkautils.Akkas.newActorSystem
+import js7.common.akkautils.ProvideActorSystem._
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.Logger
 import com.typesafe.config.Config
 import scala.concurrent.duration.Deadline.now
 

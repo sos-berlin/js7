@@ -1,39 +1,39 @@
-package com.sos.jobscheduler.tests.testenv
+package js7.tests.testenv
 
 import com.google.inject.Module
 import com.google.inject.util.Modules.EMPTY_MODULE
-import com.sos.jobscheduler.agent.RunningAgent
-import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.base.crypt.{MessageSigner, SignatureVerifier, SignedString}
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.base.utils.AutoClosing.{closeOnError, multipleAutoClosing}
-import com.sos.jobscheduler.base.utils.Closer.syntax.RichClosersAny
-import com.sos.jobscheduler.base.utils.HasCloser
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.log.ScribeUtils
-import com.sos.jobscheduler.common.scalautil.FileUtils
-import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
-import com.sos.jobscheduler.common.utils.Exceptions.repeatUntilNoException
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import com.sos.jobscheduler.common.utils.JavaResource
-import com.sos.jobscheduler.core.crypt.pgp.PgpSigner
-import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
-import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedSigner, TypedPath, VersionId}
-import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.master.MasterFileBaseds
-import com.sos.jobscheduler.master.RunningMaster
-import com.sos.jobscheduler.master.configuration.MasterConfiguration
-import com.sos.jobscheduler.master.data.MasterCommand.{ReplaceRepo, UpdateRepo}
-import com.sos.jobscheduler.tests.testenv.DirectoryProvider._
+import js7.agent.RunningAgent
+import js7.agent.configuration.AgentConfiguration
+import js7.base.crypt.{MessageSigner, SignatureVerifier, SignedString}
+import js7.base.generic.SecretString
+import js7.base.problem.Checked._
+import js7.base.time.ScalaTime._
+import js7.base.utils.Assertions.assertThat
+import js7.base.utils.AutoClosing.{closeOnError, multipleAutoClosing}
+import js7.base.utils.Closer.syntax.RichClosersAny
+import js7.base.utils.HasCloser
+import js7.base.utils.ScalaUtils.RichThrowable
+import js7.base.utils.ScalazStyle._
+import js7.base.web.Uri
+import js7.common.log.ScribeUtils
+import js7.common.scalautil.FileUtils
+import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.common.system.OperatingSystem.isWindows
+import js7.common.utils.Exceptions.repeatUntilNoException
+import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import js7.common.utils.JavaResource
+import js7.core.crypt.pgp.PgpSigner
+import js7.data.agent.{AgentRef, AgentRefPath}
+import js7.data.filebased.{FileBased, FileBasedSigner, TypedPath, VersionId}
+import js7.data.job.ExecutablePath
+import js7.data.master.MasterFileBaseds
+import js7.master.RunningMaster
+import js7.master.configuration.MasterConfiguration
+import js7.master.data.MasterCommand.{ReplaceRepo, UpdateRepo}
+import js7.tests.testenv.DirectoryProvider._
 import com.typesafe.config.ConfigUtil.quoteString
 import com.typesafe.config.{Config, ConfigFactory}
 import java.lang.ProcessBuilder.Redirect.INHERIT

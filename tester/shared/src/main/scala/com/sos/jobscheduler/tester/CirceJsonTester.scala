@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.tester
+package js7.tester
 
 import io.circe.parser.parse
 import io.circe.syntax.EncoderOps

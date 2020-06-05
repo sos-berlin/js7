@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.proxy
+package js7.proxy
 
 import cats.effect.Resource
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.master.client.HttpMasterApi
-import com.sos.jobscheduler.master.data.MasterCommand
+import js7.base.problem.Checked
+import js7.master.client.HttpMasterApi
+import js7.master.data.MasterCommand
 import monix.eval.Task
 
 final class MasterCommandProxy(apiResource: Resource[Task, HttpMasterApi])

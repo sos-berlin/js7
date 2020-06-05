@@ -1,21 +1,21 @@
-package com.sos.jobscheduler.data.execution.workflow
+package js7.data.execution.workflow
 
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.base.utils.Strings.RichString
-import com.sos.jobscheduler.data.Problems.{CancelChildOrderProblem, CancelStartedOrderProblem}
-import com.sos.jobscheduler.data.command.CancelMode
-import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
-import com.sos.jobscheduler.data.execution.workflow.context.OrderContext
-import com.sos.jobscheduler.data.execution.workflow.instructions.{ForkExecutor, InstructionExecutor}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCatched, OrderDetachable, OrderFailed, OrderFailedCatchable, OrderFailedInFork, OrderMoved}
-import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.instructions.{End, Fork, Goto, IfFailedGoto, Retry, TryInstruction}
-import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
-import com.sos.jobscheduler.data.workflow.{Instruction, Workflow, WorkflowId}
+import js7.base.problem.Checked._
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.Assertions.assertThat
+import js7.base.utils.ScalaUtils.RichPartialFunction
+import js7.base.utils.ScalazStyle._
+import js7.base.utils.Strings.RichString
+import js7.data.Problems.{CancelChildOrderProblem, CancelStartedOrderProblem}
+import js7.data.command.CancelMode
+import js7.data.event.{<-:, KeyedEvent}
+import js7.data.execution.workflow.context.OrderContext
+import js7.data.execution.workflow.instructions.{ForkExecutor, InstructionExecutor}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCatched, OrderDetachable, OrderFailed, OrderFailedCatchable, OrderFailedInFork, OrderMoved}
+import js7.data.order.{Order, OrderId, Outcome}
+import js7.data.workflow.instructions.{End, Fork, Goto, IfFailedGoto, Retry, TryInstruction}
+import js7.data.workflow.position.{Position, WorkflowPosition}
+import js7.data.workflow.{Instruction, Workflow, WorkflowId}
 import scala.annotation.tailrec
 
 /**

@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.data.cluster
+package js7.data.cluster
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.data.cluster.ClusterCommand._
-import com.sos.jobscheduler.data.cluster.ClusterState.FailedOver
-import com.sos.jobscheduler.data.event.JournalPosition
-import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import js7.base.circeutils.CirceUtils._
+import js7.base.time.ScalaTime._
+import js7.base.web.Uri
+import js7.data.cluster.ClusterCommand._
+import js7.data.cluster.ClusterState.FailedOver
+import js7.data.event.JournalPosition
+import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
 final class ClusterCommandTest extends AnyFreeSpec

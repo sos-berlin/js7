@@ -1,19 +1,19 @@
-package com.sos.jobscheduler.proxy.javaapi
+package js7.proxy.javaapi
 
 import cats.data.EitherT
 import cats.effect.Resource
-import com.sos.jobscheduler.base.annotation.javaApi
-import com.sos.jobscheduler.base.circeutils.CirceUtils.{RichCirceEither, RichJson}
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.data.event.Event
-import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
-import com.sos.jobscheduler.master.data.{MasterCommand, MasterState}
-import com.sos.jobscheduler.proxy.javaapi.JMasterProxy._
-import com.sos.jobscheduler.proxy.javaapi.data.JMasterState
-import com.sos.jobscheduler.proxy.javaapi.utils.VavrConversions._
-import com.sos.jobscheduler.proxy.{JournaledProxy, MasterCommandProxy}
+import js7.base.annotation.javaApi
+import js7.base.circeutils.CirceUtils.{RichCirceEither, RichJson}
+import js7.base.problem.Problem
+import js7.base.web.Uri
+import js7.common.scalautil.Logger
+import js7.data.event.Event
+import js7.master.client.{AkkaHttpMasterApi, HttpMasterApi}
+import js7.master.data.{MasterCommand, MasterState}
+import js7.proxy.javaapi.JMasterProxy._
+import js7.proxy.javaapi.data.JMasterState
+import js7.proxy.javaapi.utils.VavrConversions._
+import js7.proxy.{JournaledProxy, MasterCommandProxy}
 import com.typesafe.config.{Config, ConfigFactory}
 import io.circe.Json
 import io.vavr.control.{Either => VEither}

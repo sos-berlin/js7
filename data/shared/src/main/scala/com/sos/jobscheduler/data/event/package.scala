@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.data
+package js7.data
 
 /**
   * @author Joacim Zschimmer
@@ -6,7 +6,7 @@ package com.sos.jobscheduler.data
 package object event
 {
   /**
-    *  Identifies [[com.sos.jobscheduler.data.event.Stamped]]s taken at different times.
+    *  Identifies [[js7.data.event.Stamped]]s taken at different times.
     *  <p>
     *    The ID encodes the timestamp as the value of milliseconds since 1970-01-01 UTC multiplied by 1000.
     *    The accuracy is one millisecond in most cases (below 1000 events/ms).

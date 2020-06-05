@@ -1,13 +1,13 @@
-package com.sos.jobscheduler.data.execution.workflow
+package js7.data.execution.workflow
 
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.data.command.CancelMode
-import com.sos.jobscheduler.data.event.KeyedEvent
-import com.sos.jobscheduler.data.execution.workflow.OrderEventHandler.FollowUp
-import com.sos.jobscheduler.data.order.OrderEvent.OrderActorEvent
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowId}
+import js7.base.problem.Checked
+import js7.base.problem.Checked.Ops
+import js7.data.command.CancelMode
+import js7.data.event.KeyedEvent
+import js7.data.execution.workflow.OrderEventHandler.FollowUp
+import js7.data.order.OrderEvent.OrderActorEvent
+import js7.data.order.{Order, OrderEvent, OrderId}
+import js7.data.workflow.{Workflow, WorkflowId}
 
 /**
   * @author Joacim Zschimmer

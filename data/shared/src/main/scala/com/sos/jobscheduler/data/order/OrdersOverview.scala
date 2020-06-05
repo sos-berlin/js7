@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.data.order
+package js7.data.order
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
+import js7.base.circeutils.CirceUtils.deriveCodec
 
 /**
   * @author Joacim Zschimmer

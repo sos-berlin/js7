@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.core.system
+package js7.core.system
 
-import com.sos.jobscheduler.base.convert.As
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.startup.Halt.haltJava
+import js7.base.convert.As
+import js7.base.utils.ScalaUtils.RichThrowable
+import js7.common.configutils.Configs.ConvertibleConfig
+import js7.common.scalautil.Logger
+import js7.core.startup.Halt.haltJava
 import com.typesafe.config.Config
 import java.lang.Thread.currentThread
 import monix.execution.schedulers.ExecutorScheduler

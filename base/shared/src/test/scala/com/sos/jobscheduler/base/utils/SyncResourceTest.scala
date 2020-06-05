@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.base.utils
+package js7.base.utils
 
 import cats.effect.{Resource, SyncIO}
-import com.sos.jobscheduler.base.utils.SyncResource.syntax._
+import js7.base.utils.SyncResource.syntax._
 import monix.execution.atomic.AtomicAny
 import scala.collection.mutable
 import scala.util.Random

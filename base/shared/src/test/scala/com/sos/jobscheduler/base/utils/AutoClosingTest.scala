@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.base.utils
+package js7.base.utils
 
-import com.sos.jobscheduler.base.utils.AutoClosing._
-import com.sos.jobscheduler.base.utils.AutoClosingTest._
+import js7.base.utils.AutoClosing._
+import js7.base.utils.AutoClosingTest._
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
 

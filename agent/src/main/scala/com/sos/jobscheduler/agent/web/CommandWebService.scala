@@ -1,18 +1,18 @@
-package com.sos.jobscheduler.agent.web
+package js7.agent.web
 
 import akka.http.scaladsl.model.headers.CacheDirectives.`max-age`
 import akka.http.scaladsl.model.headers.`Cache-Control`
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.web.common.AgentRouteProvider
-import com.sos.jobscheduler.base.auth.ValidUserPermission
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.completeTask
-import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
-import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
-import com.sos.jobscheduler.core.command.CommandMeta
-import com.sos.jobscheduler.data.command.{CommandHandlerDetailed, CommandHandlerOverview}
+import js7.agent.data.commands.AgentCommand
+import js7.agent.web.common.AgentRouteProvider
+import js7.base.auth.ValidUserPermission
+import js7.base.problem.Checked
+import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
+import js7.common.akkahttp.CirceJsonOrYamlSupport._
+import js7.common.akkahttp.StandardMarshallers._
+import js7.core.command.CommandMeta
+import js7.data.command.{CommandHandlerDetailed, CommandHandlerOverview}
 import monix.eval.Task
 import monix.execution.Scheduler
 

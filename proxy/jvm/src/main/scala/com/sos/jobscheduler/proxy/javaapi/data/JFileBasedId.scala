@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.proxy.javaapi.data
+package js7.proxy.javaapi.data
 
-import com.sos.jobscheduler.base.annotation.javaApi
-import com.sos.jobscheduler.data.filebased.{FileBasedId, TypedPath, VersionId}
+import js7.base.annotation.javaApi
+import js7.data.filebased.{FileBasedId, TypedPath, VersionId}
 
 @javaApi
 trait JFileBasedId[P <: TypedPath]

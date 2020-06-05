@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.common.event
+package js7.common.event
 
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.data.event.{EventId, Stamped}
+import js7.base.time.Timestamp
+import js7.data.event.{EventId, Stamped}
 import java.util.concurrent.atomic.AtomicLong
 import javax.inject.{Inject, Singleton}
 import scala.annotation.tailrec

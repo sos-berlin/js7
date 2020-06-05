@@ -1,18 +1,18 @@
-package com.sos.jobscheduler.tests
+package js7.tests
 
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
-import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent}
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
-import com.sos.jobscheduler.data.workflow.position.Position
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.tests.FailTest._
-import com.sos.jobscheduler.tests.testenv.DirectoryProvider
+import js7.base.problem.Checked.Ops
+import js7.base.utils.AutoClosing.autoClosing
+import js7.common.system.OperatingSystem.isWindows
+import js7.data.agent.AgentRefPath
+import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
+import js7.data.job.{ExecutablePath, ReturnCode}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent}
+import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.workflow.parser.WorkflowParser
+import js7.data.workflow.position.Position
+import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.tests.FailTest._
+import js7.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._

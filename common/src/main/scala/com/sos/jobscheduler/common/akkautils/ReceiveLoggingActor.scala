@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.common.akkautils
+package js7.common.akkautils
 
-import com.sos.jobscheduler.base.utils.Strings.RichString
-import com.sos.jobscheduler.common.akkautils.Akkas._
-import com.sos.jobscheduler.common.akkautils.ReceiveLoggingActor._
-import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
-import com.sos.jobscheduler.common.log.LogLevel
-import com.sos.jobscheduler.common.log.LogLevel._
-import com.sos.jobscheduler.common.scalautil.Logger
+import js7.base.utils.Strings.RichString
+import js7.common.akkautils.Akkas._
+import js7.common.akkautils.ReceiveLoggingActor._
+import js7.common.configutils.Configs.ConvertibleConfig
+import js7.common.log.LogLevel
+import js7.common.log.LogLevel._
+import js7.common.scalautil.Logger
 
 /**
   * @author Joacim Zschimmer

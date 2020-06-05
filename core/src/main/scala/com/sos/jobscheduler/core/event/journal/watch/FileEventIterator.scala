@@ -1,15 +1,15 @@
-package com.sos.jobscheduler.core.event.journal.watch
+package js7.core.event.journal.watch
 
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.AutoClosing.closeOnError
-import com.sos.jobscheduler.base.utils.CloseableIterator
-import com.sos.jobscheduler.common.event.PositionAnd
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
-import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.core.event.journal.recover.JournalReader
-import com.sos.jobscheduler.core.event.journal.watch.FileEventIterator._
-import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
+import js7.base.time.ScalaTime._
+import js7.base.utils.AutoClosing.closeOnError
+import js7.base.utils.CloseableIterator
+import js7.common.event.PositionAnd
+import js7.common.scalautil.Logger
+import js7.common.utils.ByteUnits.toKBGB
+import js7.core.event.journal.data.JournalMeta
+import js7.core.event.journal.recover.JournalReader
+import js7.core.event.journal.watch.FileEventIterator._
+import js7.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
 import java.nio.file.Path
 import scala.concurrent.blocking
 import scala.concurrent.duration.Deadline.now

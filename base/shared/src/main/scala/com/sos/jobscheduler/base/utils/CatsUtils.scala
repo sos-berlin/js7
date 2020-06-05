@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.base.utils
+package js7.base.utils
 
 import cats.data.Validated
 import cats.effect.{Resource, SyncIO}
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.utils.StackTraces._
+import js7.base.problem.Problem
+import js7.base.utils.StackTraces._
 import java.io.{ByteArrayInputStream, InputStream}
 import java.util.Base64
 

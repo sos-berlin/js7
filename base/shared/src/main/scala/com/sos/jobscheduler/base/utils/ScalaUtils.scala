@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.base.utils
+package js7.base.utils
 
-import com.sos.jobscheduler.base.exceptions.PublicException
-import com.sos.jobscheduler.base.problem.{Checked, Problem, ProblemException}
-import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
-import com.sos.jobscheduler.base.utils.Strings.RichString
+import js7.base.exceptions.PublicException
+import js7.base.problem.{Checked, Problem, ProblemException}
+import js7.base.utils.StackTraces.StackTraceThrowable
+import js7.base.utils.Strings.RichString
 import java.io.{ByteArrayInputStream, InputStream, PrintWriter, StringWriter}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.concurrent.atomic.AtomicBoolean

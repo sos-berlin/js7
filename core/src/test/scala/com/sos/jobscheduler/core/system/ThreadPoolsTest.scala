@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.core.system
+package js7.core.system
 
-import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
-import com.sos.jobscheduler.core.system.ThreadPools._
+import js7.common.configutils.Configs.ConvertibleConfig
+import js7.core.system.ThreadPools._
 import com.typesafe.config.ConfigFactory
 import org.scalatest.freespec.AnyFreeSpec
 

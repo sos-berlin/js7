@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.proxy
+package js7.proxy
 
-import com.sos.jobscheduler.data.event.{Event, JournaledState, KeyedEvent, Stamped}
+import js7.data.event.{Event, JournaledState, KeyedEvent, Stamped}
 
 final case class EventAndState[+E <: Event, S <: JournaledState[S]](
   stampedEvent: Stamped[KeyedEvent[E]],

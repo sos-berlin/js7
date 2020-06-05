@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.base.circeutils
+package js7.base.circeutils
 
-import com.sos.jobscheduler.base.circeutils.AnyJsonCodecs._
-import com.sos.jobscheduler.base.circeutils.AnyJsonCodecsTest._
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.generic.GenericString
+import js7.base.circeutils.AnyJsonCodecs._
+import js7.base.circeutils.AnyJsonCodecsTest._
+import js7.base.circeutils.CirceUtils._
+import js7.base.generic.GenericString
 import io.circe.syntax.EncoderOps
 import io.circe.{Json, JsonObject}
 import scala.jdk.CollectionConverters._

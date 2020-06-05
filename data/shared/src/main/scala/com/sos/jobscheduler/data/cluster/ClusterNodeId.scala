@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.data.cluster
+package js7.data.cluster
 
-import com.sos.jobscheduler.base.generic.GenericString
+import js7.base.generic.GenericString
 
 final case class ClusterNodeId private(string: String)
 extends GenericString

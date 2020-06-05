@@ -1,20 +1,20 @@
-package com.sos.jobscheduler.data.order
+package js7.data.order
 
 import cats.syntax.option._
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.problem.{Problem, ProblemException}
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.command.CancelMode
-import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Cancelled, DelayedAfterError, Detaching, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, IsFreshOrReady, Offering, Processed, Processing, Ready, State}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
-import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.data.workflow.instructions.Fork
-import com.sos.jobscheduler.data.workflow.position.BranchId.Then
-import com.sos.jobscheduler.data.workflow.position.Position
-import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import js7.base.circeutils.CirceUtils._
+import js7.base.problem.{Problem, ProblemException}
+import js7.base.time.Timestamp
+import js7.base.utils.ScalaUtils.implicitClass
+import js7.data.agent.AgentRefPath
+import js7.data.command.CancelMode
+import js7.data.job.ReturnCode
+import js7.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Cancelled, DelayedAfterError, Detaching, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, IsFreshOrReady, Offering, Processed, Processing, Ready, State}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
+import js7.data.workflow.WorkflowPath
+import js7.data.workflow.instructions.Fork
+import js7.data.workflow.position.BranchId.Then
+import js7.data.workflow.position.Position
+import js7.tester.CirceJsonTester.testJson
 import io.circe.Json
 import io.circe.syntax.EncoderOps
 import org.scalactic.source

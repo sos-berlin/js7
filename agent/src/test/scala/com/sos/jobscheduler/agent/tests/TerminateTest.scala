@@ -1,26 +1,26 @@
-package com.sos.jobscheduler.agent.tests
+package js7.agent.tests
 
 import com.google.inject.{AbstractModule, Injector, Provides}
-import com.sos.jobscheduler.agent.client.AgentClient
-import com.sos.jobscheduler.agent.configuration.Akkas.newAgentActorSystem
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, RegisterAsMaster, ShutDown}
-import com.sos.jobscheduler.agent.tests.TerminateTest._
-import com.sos.jobscheduler.base.auth.UserId
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.event.collector.EventCollector
-import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
-import com.sos.jobscheduler.core.event.ActorEventCollector
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.event.EventRequest
-import com.sos.jobscheduler.data.order.OrderEvent.OrderProcessed
-import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.test.TestSetting._
+import js7.agent.client.AgentClient
+import js7.agent.configuration.Akkas.newAgentActorSystem
+import js7.agent.data.commands.AgentCommand.{AttachOrder, RegisterAsMaster, ShutDown}
+import js7.agent.tests.TerminateTest._
+import js7.base.auth.UserId
+import js7.base.generic.SecretString
+import js7.base.problem.Checked.Ops
+import js7.base.time.ScalaTime._
+import js7.common.event.collector.EventCollector
+import js7.common.guice.GuiceImplicits.RichInjector
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.common.system.OperatingSystem.operatingSystem
+import js7.core.event.ActorEventCollector
+import js7.data.agent.AgentRefPath
+import js7.data.event.EventRequest
+import js7.data.order.OrderEvent.OrderProcessed
+import js7.data.order.{Order, OrderId, Outcome}
+import js7.data.workflow.test.TestSetting._
 import javax.inject.Singleton
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec

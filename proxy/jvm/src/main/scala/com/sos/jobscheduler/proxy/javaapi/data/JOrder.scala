@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.proxy.javaapi.data
+package js7.proxy.javaapi.data
 
-import com.sos.jobscheduler.base.annotation.javaApi
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.data.order.{Order, OrderId}
+import js7.base.annotation.javaApi
+import js7.base.problem.Problem
+import js7.data.order.{Order, OrderId}
 import io.vavr.control.{Either => VEither}
 
 @javaApi

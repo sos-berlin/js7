@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.data.event
+package js7.data.event
 
-import com.sos.jobscheduler.base.problem.Problem
+import js7.base.problem.Problem
 
 /**
   * @author Joacim Zschimmer

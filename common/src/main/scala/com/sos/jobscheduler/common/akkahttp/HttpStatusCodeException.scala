@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.common.akkahttp
+package js7.common.akkahttp
 
 import akka.http.scaladsl.model.StatusCode
-import com.sos.jobscheduler.base.problem.Problem
+import js7.base.problem.Problem
 
 /**
   * @author Joacim Zschimmer

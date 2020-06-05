@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.master
+package js7.master
 
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.pattern.ask
@@ -8,47 +8,47 @@ import com.google.inject.Stage.{DEVELOPMENT, PRODUCTION}
 import com.google.inject.util.Modules
 import com.google.inject.util.Modules.EMPTY_MODULE
 import com.google.inject.{Guice, Injector, Module}
-import com.sos.jobscheduler.base.auth.{SimpleUser, UserAndPassword}
-import com.sos.jobscheduler.base.eventbus.{EventPublisher, StandardEventBus}
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.base.utils.Closer.syntax.RichClosersAutoCloseable
-import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, RichThrowable}
-import com.sos.jobscheduler.base.utils.{Closer, SetOnce}
-import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import com.sos.jobscheduler.common.event.{EventIdGenerator, StrictEventWatch}
-import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import com.sos.jobscheduler.core.command.{CommandExecutor, CommandMeta}
-import com.sos.jobscheduler.core.crypt.generic.GenericSignatureVerifier
-import com.sos.jobscheduler.core.event.StampedKeyedEventBus
-import com.sos.jobscheduler.core.event.journal.JournalActor
-import com.sos.jobscheduler.core.event.journal.JournalActor.Output
-import com.sos.jobscheduler.core.event.journal.recover.Recovered
-import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
-import com.sos.jobscheduler.core.problems.{ClusterNodeIsNotActiveProblem, ClusterNodeIsNotYetReadyProblem, JobSchedulerIsShuttingDownProblem}
-import com.sos.jobscheduler.data.Problems.PassiveClusterNodeShutdownNotAllowedProblem
-import com.sos.jobscheduler.data.cluster.ClusterState
-import com.sos.jobscheduler.data.event.{EventRequest, Stamped}
-import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent}
-import com.sos.jobscheduler.master.RunningMaster._
-import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
-import com.sos.jobscheduler.master.cluster.{Cluster, ClusterFollowUp}
-import com.sos.jobscheduler.master.command.MasterCommandExecutor
-import com.sos.jobscheduler.master.configuration.MasterConfiguration
-import com.sos.jobscheduler.master.configuration.inject.MasterModule
-import com.sos.jobscheduler.master.data.{MasterCommand, MasterState}
-import com.sos.jobscheduler.master.problems.MasterIsNotYetReadyProblem
-import com.sos.jobscheduler.master.web.MasterWebServer
+import js7.base.auth.{SimpleUser, UserAndPassword}
+import js7.base.eventbus.{EventPublisher, StandardEventBus}
+import js7.base.generic.Completed
+import js7.base.problem.Checked
+import js7.base.problem.Checked._
+import js7.base.time.ScalaTime._
+import js7.base.utils.Assertions.assertThat
+import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
+import js7.base.utils.ScalaUtils.{RichJavaClass, RichThrowable}
+import js7.base.utils.{Closer, SetOnce}
+import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
+import js7.common.event.{EventIdGenerator, StrictEventWatch}
+import js7.common.guice.GuiceImplicits.RichInjector
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.Logger
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import js7.core.command.{CommandExecutor, CommandMeta}
+import js7.core.crypt.generic.GenericSignatureVerifier
+import js7.core.event.StampedKeyedEventBus
+import js7.core.event.journal.JournalActor
+import js7.core.event.journal.JournalActor.Output
+import js7.core.event.journal.recover.Recovered
+import js7.core.event.state.JournaledStatePersistence
+import js7.core.problems.{ClusterNodeIsNotActiveProblem, ClusterNodeIsNotYetReadyProblem, JobSchedulerIsShuttingDownProblem}
+import js7.data.Problems.PassiveClusterNodeShutdownNotAllowedProblem
+import js7.data.cluster.ClusterState
+import js7.data.event.{EventRequest, Stamped}
+import js7.data.order.OrderEvent.OrderFinished
+import js7.data.order.{FreshOrder, OrderEvent}
+import js7.master.RunningMaster._
+import js7.master.client.{AkkaHttpMasterApi, HttpMasterApi}
+import js7.master.cluster.{Cluster, ClusterFollowUp}
+import js7.master.command.MasterCommandExecutor
+import js7.master.configuration.MasterConfiguration
+import js7.master.configuration.inject.MasterModule
+import js7.master.data.{MasterCommand, MasterState}
+import js7.master.problems.MasterIsNotYetReadyProblem
+import js7.master.web.MasterWebServer
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Files.deleteIfExists
 import java.nio.file.Path
@@ -65,7 +65,7 @@ import shapeless.tag.@@
 /**
  * JobScheduler Master.
  *
- * Integration test in engine-tests, for example com.sos.jobscheduler.tests.jira.js1291.JS1291AgentIT.
+ * Integration test in engine-tests, for example js7.tests.jira.js1291.JS1291AgentIT.
  *
  * @author Joacim Zschimmer
  */

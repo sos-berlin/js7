@@ -1,16 +1,16 @@
-package com.sos.jobscheduler.data.workflow.instructions
+package js7.data.workflow.instructions
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.generic.GenericString
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.Collections.implicits._
-import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.source.SourcePos
-import com.sos.jobscheduler.data.workflow.instructions.Fork._
-import com.sos.jobscheduler.data.workflow.position.BranchId
-import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
+import js7.base.circeutils.CirceUtils._
+import js7.base.generic.GenericString
+import js7.base.problem.Checked.Ops
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.Collections.implicits._
+import js7.base.utils.StackTraces.StackTraceThrowable
+import js7.data.agent.AgentRefPath
+import js7.data.source.SourcePos
+import js7.data.workflow.instructions.Fork._
+import js7.data.workflow.position.BranchId
+import js7.data.workflow.{Instruction, Workflow}
 import io.circe._
 import io.circe.syntax._
 import scala.language.implicitConversions

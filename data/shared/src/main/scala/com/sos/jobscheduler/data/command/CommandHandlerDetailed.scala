@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.data.command
+package js7.data.command
 
-import com.sos.jobscheduler.base.circeutils.CirceObjectCodec
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
+import js7.base.circeutils.CirceObjectCodec
+import js7.base.circeutils.CirceUtils.deriveCodec
 import io.circe.{Decoder, Encoder}
 /**
  * @author Joacim Zschimmer

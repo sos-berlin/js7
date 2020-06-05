@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.master.web.master.api.graphql
+package js7.master.web.master.api.graphql
 
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.data.filebased.FileBased
-import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.data.workflow.WorkflowPath
+import js7.base.problem.Checked
+import js7.data.filebased.FileBased
+import js7.data.order.{Order, OrderId}
+import js7.data.workflow.WorkflowPath
 import java.util.regex.Pattern
 import monix.eval.Task
 import monix.execution.Scheduler

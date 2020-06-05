@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.master.data.javaapi;
+package js7.master.data.javaapi;
 
-import com.sos.jobscheduler.base.problem.Problem;
+import js7.base.problem.Problem;
 import java.util.Optional;
 
 /**
@@ -66,7 +66,7 @@ final class MasterJsonValidatorTester {
                 "\"TYPE\": \"INVALID\"" +
             "}");
         assertEqual(maybeProblem.get().toString(),
-            "com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec$UnknownJsonTypeException: Unexpected JSON {\"TYPE\": \"INVALID\"} for class 'Instruction'");
+            "js7.base.circeutils.typed.TypedJsonCodec$UnknownJsonTypeException: Unexpected JSON {\"TYPE\": \"INVALID\"} for class 'Instruction'");
     }
 
     private static void assertEqual(String string, String expected) {

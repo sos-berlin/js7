@@ -1,13 +1,13 @@
-package com.sos.jobscheduler.data.execution.workflow.instructions
+package js7.data.execution.workflow.instructions
 
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.data.event.KeyedEvent
-import com.sos.jobscheduler.data.execution.workflow.context.OrderContext
-import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderBroken, OrderDetachable, OrderFailedCatchable, OrderForked, OrderJoined, OrderMoved, OrderStarted}
-import com.sos.jobscheduler.data.order.{Order, Outcome}
-import com.sos.jobscheduler.data.workflow.instructions.Fork
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.ScalazStyle._
+import js7.data.event.KeyedEvent
+import js7.data.execution.workflow.context.OrderContext
+import js7.data.job.ReturnCode
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderBroken, OrderDetachable, OrderFailedCatchable, OrderForked, OrderJoined, OrderMoved, OrderStarted}
+import js7.data.order.{Order, Outcome}
+import js7.data.workflow.instructions.Fork
 
 /**
   * @author Joacim Zschimmer

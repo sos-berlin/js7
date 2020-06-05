@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.provider.scheduledorder.oldruntime
+package js7.provider.scheduledorder.oldruntime
 
 import java.time.{Instant, LocalDate, LocalDateTime, LocalTime, ZoneId}
 import org.scalatest.freespec.AnyFreeSpec

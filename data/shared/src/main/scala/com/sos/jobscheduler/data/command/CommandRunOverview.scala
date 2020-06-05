@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.data.command
+package js7.data.command
 
-import com.sos.jobscheduler.base.circeutils.CirceObjectCodec
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
-import com.sos.jobscheduler.base.circeutils.ScalaJsonCodecs._
-import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
+import js7.base.circeutils.CirceObjectCodec
+import js7.base.circeutils.CirceUtils.deriveCodec
+import js7.base.circeutils.ScalaJsonCodecs._
+import js7.base.utils.IntelliJUtils.intelliJuseImport
 import io.circe.{Decoder, Encoder}
 import scala.concurrent.duration.FiniteDuration
 

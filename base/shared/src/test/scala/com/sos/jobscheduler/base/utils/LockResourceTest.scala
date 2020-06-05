@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.base.utils
+package js7.base.utils
 
 import cats.effect.Resource
-import com.sos.jobscheduler.base.time.ScalaTime._
+import js7.base.time.ScalaTime._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AsyncFreeSpec

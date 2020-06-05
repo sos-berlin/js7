@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.data.fatevent
+package js7.data.fatevent
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.data.event.NoKeyEvent
-import com.sos.jobscheduler.data.master.MasterId
+import js7.base.circeutils.CirceUtils.deriveCodec
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.data.event.NoKeyEvent
+import js7.data.master.MasterId
 
 /**
   * @author Joacim Zschimmer

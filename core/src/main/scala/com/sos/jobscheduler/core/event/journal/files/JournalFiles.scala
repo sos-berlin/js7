@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.core.event.journal.files
+package js7.core.event.journal.files
 
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.data.event.EventId
+import js7.base.problem.Checked._
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.AutoClosing.autoClosing
+import js7.core.event.journal.data.JournalMeta
+import js7.data.event.EventId
 import java.nio.file.Files.{createSymbolicLink, delete, exists}
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.{Files, Path, Paths}

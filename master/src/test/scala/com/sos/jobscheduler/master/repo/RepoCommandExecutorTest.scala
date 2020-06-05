@@ -1,19 +1,19 @@
-package com.sos.jobscheduler.master.repo
+package js7.master.repo
 
-import com.sos.jobscheduler.base.auth.User.UserDoesNotHavePermissionProblem
-import com.sos.jobscheduler.base.auth.{SimpleUser, UpdateRepoPermission, UserId}
-import com.sos.jobscheduler.base.crypt.silly.{SillySignature, SillySigner}
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.core.command.CommandMeta
-import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
-import com.sos.jobscheduler.data.crypt.FileBasedVerifier
-import com.sos.jobscheduler.data.filebased.Repo.Entry
-import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedSigner, Repo, VersionId}
-import com.sos.jobscheduler.data.master.MasterFileBaseds
-import com.sos.jobscheduler.data.workflow.instructions.Fail
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.master.data.MasterCommand.{ReplaceRepo, UpdateRepo}
+import js7.base.auth.User.UserDoesNotHavePermissionProblem
+import js7.base.auth.{SimpleUser, UpdateRepoPermission, UserId}
+import js7.base.crypt.silly.{SillySignature, SillySigner}
+import js7.base.problem.Checked.Ops
+import js7.base.web.Uri
+import js7.core.command.CommandMeta
+import js7.data.agent.{AgentRef, AgentRefPath}
+import js7.data.crypt.FileBasedVerifier
+import js7.data.filebased.Repo.Entry
+import js7.data.filebased.{FileBased, FileBasedSigner, Repo, VersionId}
+import js7.data.master.MasterFileBaseds
+import js7.data.workflow.instructions.Fail
+import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.master.data.MasterCommand.{ReplaceRepo, UpdateRepo}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

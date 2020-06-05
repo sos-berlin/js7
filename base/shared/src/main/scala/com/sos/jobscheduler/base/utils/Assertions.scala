@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.base.utils
+package js7.base.utils
 
-import com.sos.jobscheduler.base.utils.Strings._
+import js7.base.utils.Strings._
 
 object Assertions
 {

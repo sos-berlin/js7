@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.base.session
+package js7.base.session
 
-import com.sos.jobscheduler.base.auth.{SessionToken, UserAndPassword}
-import com.sos.jobscheduler.base.exceptions.HasIsIgnorableStackTrace
-import com.sos.jobscheduler.base.generic.{Completed, SecretString}
-import com.sos.jobscheduler.base.session.TestSessionApi._
+import js7.base.auth.{SessionToken, UserAndPassword}
+import js7.base.exceptions.HasIsIgnorableStackTrace
+import js7.base.generic.{Completed, SecretString}
+import js7.base.session.TestSessionApi._
 import monix.eval.Task
 import monix.execution.atomic.{AtomicAny, AtomicLong}
 

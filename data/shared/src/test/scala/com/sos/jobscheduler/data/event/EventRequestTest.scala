@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.data.event
+package js7.data.event
 
-import com.sos.jobscheduler.data.event.EventRequestTest._
+import js7.data.event.EventRequestTest._
 import scala.concurrent.duration._
 import org.scalatest.freespec.AnyFreeSpec
 

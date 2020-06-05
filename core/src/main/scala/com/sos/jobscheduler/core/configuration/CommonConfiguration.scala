@@ -1,16 +1,16 @@
-package com.sos.jobscheduler.core.configuration
+package js7.core.configuration
 
 import cats.syntax.semigroup._
-import com.sos.jobscheduler.base.convert.As
-import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
-import com.sos.jobscheduler.common.akkahttp.web.data.{WebServerBinding, WebServerPort}
-import com.sos.jobscheduler.common.commandline.CommandLineArguments
-import com.sos.jobscheduler.common.internet.IP.StringToServerInetSocketAddress
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.configuration.CommonConfiguration._
+import js7.base.convert.As
+import js7.base.convert.AsJava.StringAsPath
+import js7.base.problem.Checked.Ops
+import js7.base.problem.{Checked, Problem}
+import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
+import js7.common.akkahttp.web.data.{WebServerBinding, WebServerPort}
+import js7.common.commandline.CommandLineArguments
+import js7.common.internet.IP.StringToServerInetSocketAddress
+import js7.common.scalautil.Logger
+import js7.core.configuration.CommonConfiguration._
 import com.typesafe.config.Config
 import java.net.InetSocketAddress
 import java.nio.file.Path

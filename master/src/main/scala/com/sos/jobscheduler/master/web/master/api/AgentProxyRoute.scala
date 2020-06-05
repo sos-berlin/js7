@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.master.web.master.api
+package js7.master.web.master.api
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.HttpMethods.GET
@@ -6,18 +6,18 @@ import akka.http.scaladsl.model.headers.{Accept, `Cache-Control`}
 import akka.http.scaladsl.model.{HttpHeader, HttpRequest, HttpResponse, headers, Uri => AkkaUri}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import com.sos.jobscheduler.agent.client.AgentClient
-import com.sos.jobscheduler.base.auth.{SessionToken, ValidUserPermission}
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.completeTask
-import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
-import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichAkkaUri
-import com.sos.jobscheduler.core.filebased.FileBasedApi
-import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
-import com.sos.jobscheduler.master.configuration.MasterConfiguration
-import com.sos.jobscheduler.master.web.common.MasterRouteProvider
-import com.sos.jobscheduler.master.web.master.api.AgentProxyRoute._
+import js7.agent.client.AgentClient
+import js7.base.auth.{SessionToken, ValidUserPermission}
+import js7.base.problem.Checked._
+import js7.base.web.Uri
+import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
+import js7.common.akkahttp.StandardMarshallers._
+import js7.common.http.AkkaHttpUtils.RichAkkaUri
+import js7.core.filebased.FileBasedApi
+import js7.data.agent.{AgentRef, AgentRefPath}
+import js7.master.configuration.MasterConfiguration
+import js7.master.web.common.MasterRouteProvider
+import js7.master.web.master.api.AgentProxyRoute._
 import monix.eval.Task
 import monix.execution.Scheduler
 

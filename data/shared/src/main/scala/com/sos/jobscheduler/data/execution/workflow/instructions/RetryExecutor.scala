@@ -1,15 +1,15 @@
-package com.sos.jobscheduler.data.execution.workflow.instructions
+package js7.data.execution.workflow.instructions
 
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.data.execution.workflow.context.OrderContext
-import com.sos.jobscheduler.data.execution.workflow.instructions.RetryExecutor._
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderFailed, OrderRetrying}
-import com.sos.jobscheduler.data.order.{Order, Outcome}
-import com.sos.jobscheduler.data.workflow.instructions.{Retry, TryInstruction}
-import com.sos.jobscheduler.data.workflow.position.{BranchPath, TryBranchId}
+import js7.base.problem.Checked._
+import js7.base.problem.Problem
+import js7.base.time.Timestamp
+import js7.base.utils.ScalazStyle._
+import js7.data.execution.workflow.context.OrderContext
+import js7.data.execution.workflow.instructions.RetryExecutor._
+import js7.data.order.OrderEvent.{OrderFailed, OrderRetrying}
+import js7.data.order.{Order, Outcome}
+import js7.data.workflow.instructions.{Retry, TryInstruction}
+import js7.data.workflow.position.{BranchPath, TryBranchId}
 import scala.concurrent.duration._
 
 /**

@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.common.akkahttp.web.auth
+package js7.common.akkahttp.web.auth
 
 import akka.http.scaladsl.server.directives.Credentials
 import akka.http.scaladsl.server.directives.SecurityDirectives.Authenticator
-import com.sos.jobscheduler.base.auth.{User, UserAndPassword, UserId}
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.utils.Memoizer
-import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.jobscheduler.common.akkahttp.web.auth.OurMemoizingAuthenticator._
+import js7.base.auth.{User, UserAndPassword, UserId}
+import js7.base.generic.SecretString
+import js7.base.utils.Memoizer
+import js7.base.utils.ScalazStyle.OptionRichBoolean
+import js7.common.akkahttp.web.auth.OurMemoizingAuthenticator._
 
 /**
   * Rejects authentication (returning None) only if provided credentials are invalid or user is `Anonymous`.

@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.master.client
+package js7.master.client
 
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
-import com.sos.jobscheduler.data.event.{Event, EventRequest}
-import com.sos.jobscheduler.data.fatevent.OrderFatEvent
-import com.sos.jobscheduler.data.filebased.RepoEvent.FileBasedEvent
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
+import js7.base.web.Uri
+import js7.data.agent.{AgentRef, AgentRefPath}
+import js7.data.event.{Event, EventRequest}
+import js7.data.fatevent.OrderFatEvent
+import js7.data.filebased.RepoEvent.FileBasedEvent
+import js7.data.order.{Order, OrderEvent, OrderId}
+import js7.data.workflow.{Workflow, WorkflowPath}
 import scala.concurrent.duration._
 import org.scalatest.freespec.AnyFreeSpec
 

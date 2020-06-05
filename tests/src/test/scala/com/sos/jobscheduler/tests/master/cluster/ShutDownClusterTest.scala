@@ -1,21 +1,21 @@
-package com.sos.jobscheduler.tests.master.cluster
+package js7.tests.master.cluster
 
-import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPorts
-import com.sos.jobscheduler.data.Problems.PassiveClusterNodeShutdownNotAllowedProblem
-import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver}
-import com.sos.jobscheduler.data.cluster.ClusterState
-import com.sos.jobscheduler.data.cluster.ClusterState.{Coupled, FailedOver}
-import com.sos.jobscheduler.data.event.EventId
-import com.sos.jobscheduler.master.data.MasterCommand.ShutDown
-import com.sos.jobscheduler.master.data.MasterCommand.ShutDown.ClusterAction
+import js7.base.auth.{UserAndPassword, UserId}
+import js7.base.generic.SecretString
+import js7.base.problem.Checked._
+import js7.base.time.ScalaTime._
+import js7.base.web.Uri
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.common.time.WaitForCondition.waitForCondition
+import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
+import js7.data.Problems.PassiveClusterNodeShutdownNotAllowedProblem
+import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver}
+import js7.data.cluster.ClusterState
+import js7.data.cluster.ClusterState.{Coupled, FailedOver}
+import js7.data.event.EventId
+import js7.master.data.MasterCommand.ShutDown
+import js7.master.data.MasterCommand.ShutDown.ClusterAction
 import monix.execution.Scheduler.Implicits.global
 
 final class ShutDownClusterTest extends MasterClusterTester

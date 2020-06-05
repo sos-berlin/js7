@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.core.event.journal.test
+package js7.core.event.journal.test
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
-import com.sos.jobscheduler.core.event.journal.test.TestEvent.{Appended, NothingDone}
+import js7.base.circeutils.CirceUtils.deriveCodec
+import js7.core.event.journal.test.TestEvent.{Appended, NothingDone}
 
 /**
   * @author Joacim Zschimmer

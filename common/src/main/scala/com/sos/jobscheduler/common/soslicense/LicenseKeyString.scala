@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.common.soslicense
+package js7.common.soslicense
 
-import com.sos.jobscheduler.common.soslicense.LicenseKeyString._
+import js7.common.soslicense.LicenseKeyString._
 import scala.PartialFunction.cond
 
 /**

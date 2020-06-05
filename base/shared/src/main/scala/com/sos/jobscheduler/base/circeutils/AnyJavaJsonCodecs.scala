@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.base.circeutils
+package js7.base.circeutils
 
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
+import js7.base.utils.ScalaUtils.RichJavaClass
 import io.circe.Json
 import scala.collection.immutable.SeqMap
 import scala.jdk.CollectionConverters._

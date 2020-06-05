@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.common.scalautil
+package js7.common.scalautil
 
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.Stopwatch.measureTime
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.Futures.{FutureNotSucceededException, catchInFuture, namedThreadFuture, promiseFuture}
+import js7.base.time.ScalaTime._
+import js7.base.time.Stopwatch.measureTime
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.Futures.{FutureNotSucceededException, catchInFuture, namedThreadFuture, promiseFuture}
 import java.util.concurrent.TimeoutException
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._

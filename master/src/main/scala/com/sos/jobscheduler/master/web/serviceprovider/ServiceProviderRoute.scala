@@ -1,14 +1,14 @@
-package com.sos.jobscheduler.master.web.serviceprovider
+package js7.master.web.serviceprovider
 
 import akka.http.scaladsl.server.Route
 import com.google.inject.Injector
-import com.sos.jobscheduler.base.utils.Collections.implicits._
-import com.sos.jobscheduler.base.utils.Lazy
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import com.sos.jobscheduler.common.akkahttp.StandardDirectives.combineRoutes
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.master.web.serviceprovider.ServiceProviderRoute._
+import js7.base.utils.Collections.implicits._
+import js7.base.utils.Lazy
+import js7.base.utils.ScalaUtils.RichJavaClass
+import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
+import js7.common.akkahttp.StandardDirectives.combineRoutes
+import js7.common.scalautil.Logger
+import js7.master.web.serviceprovider.ServiceProviderRoute._
 import java.util.ServiceLoader
 import scala.jdk.CollectionConverters._
 

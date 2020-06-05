@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.data.event
+package js7.data.event
 
-import com.sos.jobscheduler.base.exceptions.HasIsIgnorableStackTrace
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.session.SessionApi
+import js7.base.exceptions.HasIsIgnorableStackTrace
+import js7.base.problem.Checked
+import js7.base.session.SessionApi
 import io.circe.Decoder
 import monix.eval.Task
 import monix.reactive.Observable

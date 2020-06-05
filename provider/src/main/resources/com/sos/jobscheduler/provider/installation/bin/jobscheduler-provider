@@ -108,7 +108,7 @@ execute=(
   "$java"
   "${javaOptions[@]}"
   -classpath "$classpathString"
-  com.sos.jobscheduler.provider.ProviderMain
+  js7.provider.ProviderMain
   "${providerOptions[@]}")
 echo "${execute[@]}"
 

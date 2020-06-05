@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.files
+package js7.common.files
 
 import java.nio.file.Path
 

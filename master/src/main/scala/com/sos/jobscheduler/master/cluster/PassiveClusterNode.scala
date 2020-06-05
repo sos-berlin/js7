@@ -1,34 +1,34 @@
-package com.sos.jobscheduler.master.cluster
+package js7.master.cluster
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec._
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.base.utils.ScalaUtils._
-import com.sos.jobscheduler.base.utils.ScodecUtils.RichByteVector
-import com.sos.jobscheduler.base.utils.SetOnce
-import com.sos.jobscheduler.base.web.{HttpClient, Uri}
-import com.sos.jobscheduler.common.event.{EventIdGenerator, PositionAnd}
-import com.sos.jobscheduler.common.http.RecouplingStreamReader
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.event.journal.JournalConf
-import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.core.event.journal.files.JournalFiles._
-import com.sos.jobscheduler.core.event.journal.recover.{FileJournaledStateBuilder, JournalProgress, Recovered, RecoveredJournalFile}
-import com.sos.jobscheduler.data.cluster.ClusterCommand.{ClusterCouple, ClusterPrepareCoupling, ClusterRecouple}
-import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
-import com.sos.jobscheduler.data.cluster.ClusterState.{Coupled, Decoupled, PreparedToBeCoupled}
-import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
-import com.sos.jobscheduler.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
-import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{EventId, JournalEvent, JournalId, JournalPosition, JournalSeparators, JournaledState, JournaledStateBuilder, KeyedEvent, Stamped}
-import com.sos.jobscheduler.master.client.HttpMasterApi
-import com.sos.jobscheduler.master.cluster.ClusterCommon.clusterEventAndStateToString
-import com.sos.jobscheduler.master.cluster.ObservablePauseDetector.RichPauseObservable
-import com.sos.jobscheduler.master.cluster.PassiveClusterNode._
+import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.typed.TypedJsonCodec._
+import js7.base.problem.Checked._
+import js7.base.problem.{Checked, Problem}
+import js7.base.time.ScalaTime._
+import js7.base.utils.Assertions.assertThat
+import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.ScalaUtils._
+import js7.base.utils.ScodecUtils.RichByteVector
+import js7.base.utils.SetOnce
+import js7.base.web.{HttpClient, Uri}
+import js7.common.event.{EventIdGenerator, PositionAnd}
+import js7.common.http.RecouplingStreamReader
+import js7.common.scalautil.Logger
+import js7.core.event.journal.JournalConf
+import js7.core.event.journal.data.JournalMeta
+import js7.core.event.journal.files.JournalFiles._
+import js7.core.event.journal.recover.{FileJournaledStateBuilder, JournalProgress, Recovered, RecoveredJournalFile}
+import js7.data.cluster.ClusterCommand.{ClusterCouple, ClusterPrepareCoupling, ClusterRecouple}
+import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
+import js7.data.cluster.ClusterState.{Coupled, Decoupled, PreparedToBeCoupled}
+import js7.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
+import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
+import js7.data.event.KeyedEvent.NoKey
+import js7.data.event.{EventId, JournalEvent, JournalId, JournalPosition, JournalSeparators, JournaledState, JournaledStateBuilder, KeyedEvent, Stamped}
+import js7.master.client.HttpMasterApi
+import js7.master.cluster.ClusterCommon.clusterEventAndStateToString
+import js7.master.cluster.ObservablePauseDetector.RichPauseObservable
+import js7.master.cluster.PassiveClusterNode._
 import io.circe.Json
 import io.circe.syntax._
 import java.nio.ByteBuffer

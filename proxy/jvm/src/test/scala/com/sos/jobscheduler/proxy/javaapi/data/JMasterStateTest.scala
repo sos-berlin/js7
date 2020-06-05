@@ -1,26 +1,26 @@
-package com.sos.jobscheduler.proxy.javaapi.data
+package js7.proxy.javaapi.data
 
-import com.sos.jobscheduler.base.annotation.javaApi
-import com.sos.jobscheduler.base.auth.UserId
-import com.sos.jobscheduler.base.crypt.silly.SillySigner
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.Collections.implicits._
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
-import com.sos.jobscheduler.data.cluster.{ClusterNodeId, ClusterState}
-import com.sos.jobscheduler.data.event.{EventId, JournalState, JournaledState}
-import com.sos.jobscheduler.data.filebased.RepoEvent.VersionAdded
-import com.sos.jobscheduler.data.filebased.{FileBasedSigner, Repo, VersionId}
-import com.sos.jobscheduler.data.master.{MasterFileBaseds, MasterId}
-import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
-import com.sos.jobscheduler.data.workflow.position.Position
-import com.sos.jobscheduler.master.data.MasterSnapshots.MasterMetaState
-import com.sos.jobscheduler.master.data.MasterState
-import com.sos.jobscheduler.master.data.agent.AgentSnapshot
-import com.sos.jobscheduler.proxy.javaapi.data.JMasterStateTest._
+import js7.base.annotation.javaApi
+import js7.base.auth.UserId
+import js7.base.crypt.silly.SillySigner
+import js7.base.problem.Checked.Ops
+import js7.base.time.Timestamp
+import js7.base.utils.Collections.implicits._
+import js7.base.web.Uri
+import js7.data.agent.{AgentRef, AgentRefPath}
+import js7.data.cluster.{ClusterNodeId, ClusterState}
+import js7.data.event.{EventId, JournalState, JournaledState}
+import js7.data.filebased.RepoEvent.VersionAdded
+import js7.data.filebased.{FileBasedSigner, Repo, VersionId}
+import js7.data.master.{MasterFileBaseds, MasterId}
+import js7.data.order.{Order, OrderId}
+import js7.data.workflow.WorkflowPath
+import js7.data.workflow.parser.WorkflowParser
+import js7.data.workflow.position.Position
+import js7.master.data.MasterSnapshots.MasterMetaState
+import js7.master.data.MasterState
+import js7.master.data.agent.AgentSnapshot
+import js7.proxy.javaapi.data.JMasterStateTest._
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

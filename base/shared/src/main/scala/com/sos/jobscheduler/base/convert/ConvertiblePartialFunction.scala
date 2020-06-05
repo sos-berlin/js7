@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.base.convert
+package js7.base.convert
 
-import com.sos.jobscheduler.base.convert.ConvertiblePartialFunction._
-import com.sos.jobscheduler.base.convert.ConvertiblePartialFunctions.wrappedConvert
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import js7.base.convert.ConvertiblePartialFunction._
+import js7.base.convert.ConvertiblePartialFunctions.wrappedConvert
+import js7.base.problem.Checked._
+import js7.base.problem.{Checked, Problem}
 
 /**
   * Provides methods for convertion of the result of a PartialFunction (for example a Map).

@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.base.generic
+package js7.base.generic
 
 import java.lang.System.nanoTime
 import scala.util.Random

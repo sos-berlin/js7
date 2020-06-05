@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.base.crypt.silly
+package js7.base.crypt.silly
 
 import cats.effect.{Resource, SyncIO}
-import com.sos.jobscheduler.base.Problems.TamperedWithSignedMessageProblem
-import com.sos.jobscheduler.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.base.utils.SyncResource.syntax.RichResource
+import js7.base.Problems.TamperedWithSignedMessageProblem
+import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
+import js7.base.utils.Assertions.assertThat
+import js7.base.utils.SyncResource.syntax.RichResource
 import java.io.InputStream
 import java.nio.charset.StandardCharsets.UTF_8
 import scodec.bits.ByteVector

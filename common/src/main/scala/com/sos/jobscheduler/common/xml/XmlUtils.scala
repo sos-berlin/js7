@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.common.xml
+package js7.common.xml
 
 import akka.util.ByteString
-import com.sos.jobscheduler.common.scalautil.xmls.SafeXML
+import js7.common.scalautil.xmls.SafeXML
 import java.io._
 
 object XmlUtils {

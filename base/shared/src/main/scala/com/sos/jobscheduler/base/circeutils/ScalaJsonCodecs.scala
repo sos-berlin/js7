@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.base.circeutils
+package js7.base.circeutils
 
 import io.circe.{Decoder, DecodingFailure, Encoder, Json}
 import scala.concurrent.duration._

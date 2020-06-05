@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.base.circeutils.typed
+package js7.base.circeutils.typed
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec._
-import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodecTest._
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowableEither
-import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.typed.TypedJsonCodec._
+import js7.base.circeutils.typed.TypedJsonCodecTest._
+import js7.base.utils.ScalaUtils.RichThrowableEither
+import js7.tester.CirceJsonTester.testJson
 import io.circe.syntax.EncoderOps
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
@@ -24,7 +24,7 @@ final class TypedJsonCodecTest extends AnyFreeSpec
     intercept[UnknownClassForJsonException] {
       (NotRegistered(1): A).asJson(AJsonCodec)
     }.getMessage should include (
-      "Class com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodecTest$NotRegistered is not registered with TypedJsonCodec[TypedJsonCodecTest.A]")
+      "Class js7.base.circeutils.typed.TypedJsonCodecTest$NotRegistered is not registered with TypedJsonCodec[TypedJsonCodecTest.A]")
   }
 
   "decode unknown subclass" in {

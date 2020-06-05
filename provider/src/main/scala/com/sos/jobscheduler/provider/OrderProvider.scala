@@ -1,14 +1,14 @@
-package com.sos.jobscheduler.provider
+package js7.provider
 
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.utils.HasCloser
-import com.sos.jobscheduler.common.files.DirectoryReader
-import com.sos.jobscheduler.core.filebased.TypedSourceReader
-import com.sos.jobscheduler.data.order.FreshOrder
-import com.sos.jobscheduler.master.client.HttpMasterApi
-import com.sos.jobscheduler.provider.configuration.ProviderConfiguration
-import com.sos.jobscheduler.provider.scheduledorder.{OrderScheduleGenerator, ScheduledOrderGenerator, ScheduledOrderGeneratorReader}
+import js7.base.generic.Completed
+import js7.base.problem.Checked
+import js7.base.utils.HasCloser
+import js7.common.files.DirectoryReader
+import js7.core.filebased.TypedSourceReader
+import js7.data.order.FreshOrder
+import js7.master.client.HttpMasterApi
+import js7.provider.configuration.ProviderConfiguration
+import js7.provider.scheduledorder.{OrderScheduleGenerator, ScheduledOrderGenerator, ScheduledOrderGeneratorReader}
 import java.time.ZoneId
 import monix.eval.Task
 import monix.execution.Scheduler

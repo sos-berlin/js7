@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.common.log
+package js7.common.log
 
-import com.sos.jobscheduler.common.scalautil.Logger
+import js7.common.scalautil.Logger
 import java.time.LocalDateTime
 import monix.execution.atomic.AtomicBoolean
 import scala.util.Try

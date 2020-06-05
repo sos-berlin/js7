@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.agent.scheduler.job.task
+package js7.agent.scheduler.job.task
 
 import com.google.inject.ImplementedBy
-import com.sos.jobscheduler.agent.task.BaseAgentTask
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.process.ProcessSignal
-import com.sos.jobscheduler.data.order.Order
-import com.sos.jobscheduler.taskserver.task.process.StdChannels
+import js7.agent.task.BaseAgentTask
+import js7.base.generic.Completed
+import js7.base.process.ProcessSignal
+import js7.data.order.Order
+import js7.taskserver.task.process.StdChannels
 import scala.concurrent.Future
 
 /**

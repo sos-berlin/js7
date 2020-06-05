@@ -1,16 +1,16 @@
-package com.sos.jobscheduler.tests.master.cluster
+package js7.tests.master.cluster
 
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPorts
-import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterCoupled, ClusterPassiveLost}
-import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId}
-import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
-import com.sos.jobscheduler.master.data.MasterCommand.ClusterAppointNodes
-import com.sos.jobscheduler.tests.master.cluster.MasterClusterTester._
+import js7.base.problem.Checked._
+import js7.base.time.ScalaTime._
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
+import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterPassiveLost}
+import js7.data.cluster.{ClusterEvent, ClusterNodeId}
+import js7.data.event.KeyedEvent.NoKey
+import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
+import js7.data.order.{FreshOrder, OrderId}
+import js7.master.data.MasterCommand.ClusterAppointNodes
+import js7.tests.master.cluster.MasterClusterTester._
 import monix.execution.Scheduler.Implicits.global
 
 final class PassiveLostClusterTest extends MasterClusterTester

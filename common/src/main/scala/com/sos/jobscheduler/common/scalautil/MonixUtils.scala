@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.common.scalautil
+package js7.common.scalautil
 
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.Futures.promiseFuture
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.collection.BuildFrom

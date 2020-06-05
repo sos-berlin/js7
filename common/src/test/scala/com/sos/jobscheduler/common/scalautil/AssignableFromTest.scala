@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.common.scalautil
+package js7.common.scalautil
 
-import com.sos.jobscheduler.common.scalautil.AssignableFrom.assignableFrom
+import js7.common.scalautil.AssignableFrom.assignableFrom
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
 import scala.reflect.ClassTag

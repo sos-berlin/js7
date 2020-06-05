@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.core.event.journal
+package js7.core.event.journal
 
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.core.event.journal.JournalConfTest._
+import js7.base.time.ScalaTime._
+import js7.core.event.journal.JournalConfTest._
 import com.typesafe.config.ConfigFactory
 import org.scalatest.freespec.AnyFreeSpec
 

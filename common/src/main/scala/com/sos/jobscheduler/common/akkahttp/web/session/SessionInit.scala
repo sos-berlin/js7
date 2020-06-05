@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.common.akkahttp.web.session
+package js7.common.akkahttp.web.session
 
-import com.sos.jobscheduler.base.auth.{SessionToken, User}
+import js7.base.auth.{SessionToken, User}
 
 /**
   * @author Joacim Zschimmer

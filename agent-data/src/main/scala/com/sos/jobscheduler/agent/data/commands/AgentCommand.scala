@@ -1,22 +1,22 @@
-package com.sos.jobscheduler.agent.data.commands
+package js7.agent.data.commands
 
-import com.sos.jobscheduler.base.circeutils.CirceCodec
-import com.sos.jobscheduler.base.circeutils.CirceUtils.{deriveCodec, singletonCodec}
-import com.sos.jobscheduler.base.circeutils.ScalaJsonCodecs._
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.base.crypt.SignedString
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.Checked.implicits.{checkedJsonDecoder, checkedJsonEncoder}
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.Big
-import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.data.agent.{AgentRefPath, AgentRunId}
-import com.sos.jobscheduler.data.command.{CancelMode, CommonCommand}
-import com.sos.jobscheduler.data.event.EventId
-import com.sos.jobscheduler.data.order.{Order, OrderId}
+import js7.base.circeutils.CirceCodec
+import js7.base.circeutils.CirceUtils.{deriveCodec, singletonCodec}
+import js7.base.circeutils.ScalaJsonCodecs._
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.crypt.SignedString
+import js7.base.problem.Checked
+import js7.base.problem.Checked._
+import js7.base.problem.Checked.implicits.{checkedJsonDecoder, checkedJsonEncoder}
+import js7.base.time.ScalaTime._
+import js7.base.utils.Big
+import js7.base.utils.IntelliJUtils.intelliJuseImport
+import js7.base.utils.ScalaUtils.RichJavaClass
+import js7.base.utils.ScalazStyle._
+import js7.data.agent.{AgentRefPath, AgentRunId}
+import js7.data.command.{CancelMode, CommonCommand}
+import js7.data.event.EventId
+import js7.data.order.{Order, OrderId}
 import io.circe.generic.JsonCodec
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json, JsonObject}

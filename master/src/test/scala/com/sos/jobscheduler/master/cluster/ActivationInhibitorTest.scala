@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.master.cluster
+package js7.master.cluster
 
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.master.cluster.ActivationInhibitor.{Active, Inhibited, Initial, Passive, State}
+import js7.base.time.ScalaTime._
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.master.cluster.ActivationInhibitor.{Active, Inhibited, Initial, Passive, State}
 import monix.eval.Task
 import monix.execution.schedulers.TestScheduler
 import org.scalatest.freespec.AnyFreeSpec

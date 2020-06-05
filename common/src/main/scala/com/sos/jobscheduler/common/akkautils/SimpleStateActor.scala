@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.akkautils
+package js7.common.akkautils
 
 import akka.actor.Actor
 

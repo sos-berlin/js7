@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.common.event
+package js7.common.event
 
-import com.sos.jobscheduler.base.monixutils.MonixBase.syntax._
-import com.sos.jobscheduler.base.time.ScalaTime._
+import js7.base.monixutils.MonixBase.syntax._
+import js7.base.time.ScalaTime._
 import monix.eval.Task
 import scala.collection.mutable
 import scala.concurrent.Promise

@@ -1,30 +1,30 @@
-package com.sos.jobscheduler.tests
+package js7.tests
 
-import com.sos.jobscheduler.agent.RunningAgent
-import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.base.crypt.silly.{SillySignature, SillySigner}
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.commandline.CommandLineArguments
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryDirectory
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder
-import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
-import com.sos.jobscheduler.data.filebased.{FileBasedSigner, VersionId}
-import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.master.MasterFileBaseds
-import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
-import com.sos.jobscheduler.data.workflow.instructions.Execute
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.master.RunningMaster
-import com.sos.jobscheduler.master.configuration.MasterConfiguration
-import com.sos.jobscheduler.master.data.MasterCommand.ReplaceRepo
-import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentCouplingFailed
-import com.sos.jobscheduler.tests.MasterAgentWithoutAuthenticationTest._
+import js7.agent.RunningAgent
+import js7.agent.configuration.AgentConfiguration
+import js7.base.crypt.silly.{SillySignature, SillySigner}
+import js7.base.problem.Checked.Ops
+import js7.base.problem.Problem
+import js7.base.web.Uri
+import js7.common.commandline.CommandLineArguments
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.FileUtils.withTemporaryDirectory
+import js7.common.scalautil.Futures.implicits._
+import js7.common.utils.FreeTcpPortFinder
+import js7.data.agent.{AgentRef, AgentRefPath}
+import js7.data.filebased.{FileBasedSigner, VersionId}
+import js7.data.job.ExecutablePath
+import js7.data.master.MasterFileBaseds
+import js7.data.order.OrderEvent.OrderFinished
+import js7.data.order.{FreshOrder, OrderId}
+import js7.data.workflow.instructions.Execute
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.master.RunningMaster
+import js7.master.configuration.MasterConfiguration
+import js7.master.data.MasterCommand.ReplaceRepo
+import js7.master.data.events.MasterAgentEvent.AgentCouplingFailed
+import js7.tests.MasterAgentWithoutAuthenticationTest._
 import java.nio.file.Files.{createDirectories, createDirectory}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec

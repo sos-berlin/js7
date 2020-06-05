@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.common.akkautils
+package js7.common.akkautils
 
 import akka.actor.SupervisorStrategy.Decider
 import akka.actor.{Actor, ActorRef, ActorRefFactory, Props, Terminated}
-import com.sos.jobscheduler.common.akkautils.Akkas._
+import js7.common.akkautils.Akkas._
 import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Try}
 

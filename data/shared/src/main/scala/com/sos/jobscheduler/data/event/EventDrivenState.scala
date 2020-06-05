@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.data.event
+package js7.data.event
 
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.data.event.JournaledState.EventNotApplicableProblem
+import js7.base.problem.{Checked, Problem}
+import js7.data.event.JournaledState.EventNotApplicableProblem
 
 trait EventDrivenState[This <: EventDrivenState[This, E], E <: Event]
 {

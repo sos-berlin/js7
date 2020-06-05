@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.base.web
+package js7.base.web
 
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.web.HttpClient.liftProblem
+import js7.base.problem.Problem
+import js7.base.web.HttpClient.liftProblem
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AsyncFreeSpec

@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.base.auth
+package js7.base.auth
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
-import com.sos.jobscheduler.base.generic.SecretString
+import js7.base.circeutils.CirceUtils.deriveCodec
+import js7.base.generic.SecretString
 import scala.language.implicitConversions
 
 

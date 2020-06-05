@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.common.time
+package js7.common.time
 
-import com.sos.jobscheduler.common.time.JavaTimeConverters._
+import js7.common.time.JavaTimeConverters._
 import java.time.Duration
 import scala.concurrent.duration._
 import org.scalatest.freespec.AnyFreeSpec

@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.core.command
+package js7.core.command
 
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.data.command.CommonCommand
+import js7.base.problem.Checked
+import js7.data.command.CommonCommand
 import monix.eval.Task
 
 /**

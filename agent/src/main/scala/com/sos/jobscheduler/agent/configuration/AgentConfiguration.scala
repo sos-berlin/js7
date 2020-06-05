@@ -1,25 +1,25 @@
-package com.sos.jobscheduler.agent.configuration
+package js7.agent.configuration
 
 import akka.util.Timeout
-import com.sos.jobscheduler.agent.configuration.AgentConfiguration._
-import com.sos.jobscheduler.agent.data.{KillScriptConf, ProcessKillScript}
-import com.sos.jobscheduler.base.convert.AsJava.asAbsolutePath
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.common.akkahttp.web.data.WebServerPort
-import com.sos.jobscheduler.common.commandline.CommandLineArguments
-import com.sos.jobscheduler.common.configutils.Configs
-import com.sos.jobscheduler.common.configutils.Configs._
-import com.sos.jobscheduler.common.process.Processes.ShellFileExtension
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.FileUtils.{EmptyPath, WorkingDirectory}
-import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
-import com.sos.jobscheduler.common.time.JavaTimeConverters._
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import com.sos.jobscheduler.common.utils.JavaResource
-import com.sos.jobscheduler.common.utils.Tests.isTest
-import com.sos.jobscheduler.core.configuration.CommonConfiguration
-import com.sos.jobscheduler.core.event.journal.JournalConf
-import com.sos.jobscheduler.taskserver.task.process.ProcessKillScriptProvider
+import js7.agent.configuration.AgentConfiguration._
+import js7.agent.data.{KillScriptConf, ProcessKillScript}
+import js7.base.convert.AsJava.asAbsolutePath
+import js7.base.utils.Assertions.assertThat
+import js7.common.akkahttp.web.data.WebServerPort
+import js7.common.commandline.CommandLineArguments
+import js7.common.configutils.Configs
+import js7.common.configutils.Configs._
+import js7.common.process.Processes.ShellFileExtension
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.FileUtils.{EmptyPath, WorkingDirectory}
+import js7.common.system.OperatingSystem.isWindows
+import js7.common.time.JavaTimeConverters._
+import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import js7.common.utils.JavaResource
+import js7.common.utils.Tests.isTest
+import js7.core.configuration.CommonConfiguration
+import js7.core.event.journal.JournalConf
+import js7.taskserver.task.process.ProcessKillScriptProvider
 import com.typesafe.config.{Config, ConfigFactory}
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_8}

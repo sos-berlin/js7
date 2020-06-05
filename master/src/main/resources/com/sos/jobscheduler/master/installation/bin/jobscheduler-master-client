@@ -38,7 +38,7 @@ execute=(
   "${javaOptions[@]}"
   -classpath "$classpathString"
   -Dlog4j.configurationFile=com/sos/jobscheduler/master/client/main/log4j2.xml \
-  com.sos.jobscheduler.master.client.main.MasterClientMain
+  js7.master.client.main.MasterClientMain
   http://127.0.0.1:$httpPort
   "${args[@]}")
 exec "${execute[@]}"

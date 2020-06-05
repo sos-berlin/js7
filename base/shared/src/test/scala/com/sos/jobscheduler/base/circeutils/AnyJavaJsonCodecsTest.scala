@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.base.circeutils
+package js7.base.circeutils
 
-import com.sos.jobscheduler.base.circeutils.AnyJavaJsonCodecs._
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import js7.base.circeutils.AnyJavaJsonCodecs._
+import js7.base.circeutils.CirceUtils._
 import io.circe.Json
 import scala.jdk.CollectionConverters._
 import org.scalatest.freespec.AnyFreeSpec

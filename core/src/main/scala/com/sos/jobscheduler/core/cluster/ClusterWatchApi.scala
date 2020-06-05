@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.core.cluster
+package js7.core.cluster
 
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
+import js7.base.generic.Completed
+import js7.base.problem.Checked
+import js7.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
 import monix.eval.Task
 trait ClusterWatchApi
 {

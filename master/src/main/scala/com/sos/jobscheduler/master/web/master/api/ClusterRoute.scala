@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.master.web.master.api
+package js7.master.web.master.api
 
 import akka.http.scaladsl.server.Directives._
-import com.sos.jobscheduler.base.auth.ValidUserPermission
-import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
-import com.sos.jobscheduler.data.cluster.ClusterState
-import com.sos.jobscheduler.master.web.common.MasterRouteProvider
+import js7.base.auth.ValidUserPermission
+import js7.common.akkahttp.CirceJsonOrYamlSupport._
+import js7.data.cluster.ClusterState
+import js7.master.web.common.MasterRouteProvider
 import monix.eval.Task
 
 trait ClusterRoute extends MasterRouteProvider

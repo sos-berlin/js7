@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.base.convert
+package js7.base.convert
 
-import com.sos.jobscheduler.base.convert.ConvertiblePartialFunction.MissingConfigurationKeyProblem
-import com.sos.jobscheduler.base.problem.Problem
+import js7.base.convert.ConvertiblePartialFunction.MissingConfigurationKeyProblem
+import js7.base.problem.Problem
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
 

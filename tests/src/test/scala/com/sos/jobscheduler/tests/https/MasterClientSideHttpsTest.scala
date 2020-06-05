@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.tests.https
+package js7.tests.https
 
 /**
   * Master and Agent with server-side HTTPS.

@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.common.http
+package js7.common.http
 
-import com.sos.jobscheduler.base.circeutils.AnyJavaJsonCodecs.jsonToJava
-import com.sos.jobscheduler.base.circeutils.AnyJsonCodecs.anyToJson
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
+import js7.base.circeutils.AnyJavaJsonCodecs.jsonToJava
+import js7.base.circeutils.AnyJsonCodecs.anyToJson
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.ScalaUtils.RichThrowable
+import js7.base.utils.SideEffect.ImplicitSideEffect
 import io.circe.syntax.EncoderOps
 import io.circe.{Encoder, Json, Printer}
 import org.yaml.snakeyaml.DumperOptions.FlowStyle

@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.common.akkautils
+package js7.common.akkautils
 
 import akka.actor.SupervisorStrategy.{Decider, Stop}
 import akka.actor.{ActorContext, ActorRef, ChildRestartStats, SupervisorStrategy}
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.common.akkautils.Akkas._
-import com.sos.jobscheduler.common.akkautils.CatchingSupervisorStrategy._
-import com.sos.jobscheduler.common.scalautil.Logger
+import js7.base.utils.ScalaUtils.RichThrowable
+import js7.common.akkautils.Akkas._
+import js7.common.akkautils.CatchingSupervisorStrategy._
+import js7.common.scalautil.Logger
 import scala.concurrent.Promise
 
 /**

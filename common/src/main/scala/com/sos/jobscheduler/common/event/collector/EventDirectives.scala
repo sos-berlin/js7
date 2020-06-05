@@ -1,13 +1,13 @@
-package com.sos.jobscheduler.common.event.collector
+package js7.common.event.collector
 
 import akka.http.scaladsl.model.headers.`Timeout-Access`
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive1, Route, ValidationRejection}
 import cats.syntax.option._
 import com.google.common.base.Splitter
-import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
-import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
-import com.sos.jobscheduler.data.event._
+import js7.base.utils.ScalaUtils.implicitClass
+import js7.common.akkahttp.StandardMarshallers._
+import js7.data.event._
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.reflect.ClassTag

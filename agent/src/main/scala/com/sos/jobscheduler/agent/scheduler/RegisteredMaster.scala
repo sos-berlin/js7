@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.agent.scheduler
+package js7.agent.scheduler
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
-import com.sos.jobscheduler.data.agent.{AgentRefPath, AgentRunId}
-import com.sos.jobscheduler.data.master.MasterId
+import js7.base.circeutils.CirceUtils.deriveCodec
+import js7.data.agent.{AgentRefPath, AgentRunId}
+import js7.data.master.MasterId
 
 final case class RegisteredMaster(
   masterId: MasterId,

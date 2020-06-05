@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.master.cluster
+package js7.master.cluster
 
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.master.cluster.ObservablePauseDetector._
+import js7.base.time.ScalaTime._
+import js7.master.cluster.ObservablePauseDetector._
 import monix.eval.Task
 import monix.execution.schedulers.TestScheduler
 import monix.reactive.Observable

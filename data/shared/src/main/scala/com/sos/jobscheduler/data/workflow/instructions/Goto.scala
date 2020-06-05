@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.data.workflow.instructions
+package js7.data.workflow.instructions
 
-import com.sos.jobscheduler.data.source.SourcePos
-import com.sos.jobscheduler.data.workflow.{JumpInstruction, Label}
+import js7.data.source.SourcePos
+import js7.data.workflow.{JumpInstruction, Label}
 import io.circe.generic.JsonCodec
 
 /**

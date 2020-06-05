@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.provider.scheduledorder
+package js7.provider.scheduledorder
 
 import akka.util.ByteString
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.common.scalautil.xmls.XmlSources.stringToSource
-import com.sos.jobscheduler.core.filebased.FileBasedReader
-import com.sos.jobscheduler.data.filebased.{FileBasedId, SourceType}
+import js7.base.problem.Problem
+import js7.common.scalautil.xmls.XmlSources.stringToSource
+import js7.core.filebased.FileBasedReader
+import js7.data.filebased.{FileBasedId, SourceType}
 import io.circe.Json
 import java.time.ZoneId
 

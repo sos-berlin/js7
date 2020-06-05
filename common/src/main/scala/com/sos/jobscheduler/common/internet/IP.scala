@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.common.internet
+package js7.common.internet
 
-import com.sos.jobscheduler.base.convert.As
-import com.sos.jobscheduler.base.convert.As.convert
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichAny
+import js7.base.convert.As
+import js7.base.convert.As.convert
+import js7.base.utils.ScalaUtils.RichAny
 import java.net.{InetAddress, InetSocketAddress}
 import scala.util.control.NonFatal
 

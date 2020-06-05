@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.data.expression
+package js7.data.expression
 
-import com.sos.jobscheduler.data.workflow.Label
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.Label
+import js7.data.workflow.instructions.executable.WorkflowJob
 
 sealed trait PositionSearch
 

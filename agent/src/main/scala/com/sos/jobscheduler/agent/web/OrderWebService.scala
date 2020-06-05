@@ -1,15 +1,15 @@
-package com.sos.jobscheduler.agent.web
+package js7.agent.web
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import com.sos.jobscheduler.agent.DirectAgentApi
-import com.sos.jobscheduler.agent.web.common.AgentRouteProvider
-import com.sos.jobscheduler.base.auth.ValidUserPermission
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.completeTask
-import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
-import com.sos.jobscheduler.core.command.CommandMeta
-import com.sos.jobscheduler.data.order.{Order, OrderId}
+import js7.agent.DirectAgentApi
+import js7.agent.web.common.AgentRouteProvider
+import js7.base.auth.ValidUserPermission
+import js7.base.problem.Checked
+import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
+import js7.common.akkahttp.CirceJsonOrYamlSupport._
+import js7.core.command.CommandMeta
+import js7.data.order.{Order, OrderId}
 import monix.execution.Scheduler
 
 /**

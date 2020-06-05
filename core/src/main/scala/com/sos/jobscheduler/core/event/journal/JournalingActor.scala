@@ -1,20 +1,20 @@
-package com.sos.jobscheduler.core.event.journal
+package js7.core.event.journal
 
 import akka.actor.{Actor, ActorLogging, ActorRef, DeadLetterSuppression, Stash}
-import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec.typeName
-import com.sos.jobscheduler.base.generic.Accepted
-import com.sos.jobscheduler.base.monixutils.MonixBase.syntax.RichScheduler
-import com.sos.jobscheduler.base.problem.{Checked, ProblemException}
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
-import com.sos.jobscheduler.common.akkautils.ReceiveLoggingActor
-import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.scalautil.MonixUtils.promiseTask
-import com.sos.jobscheduler.core.event.journal.JournalingActor._
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, JournaledState, KeyedEvent, Stamped}
+import js7.base.circeutils.typed.TypedJsonCodec.typeName
+import js7.base.generic.Accepted
+import js7.base.monixutils.MonixBase.syntax.RichScheduler
+import js7.base.problem.{Checked, ProblemException}
+import js7.base.time.Timestamp
+import js7.base.utils.Assertions.assertThat
+import js7.base.utils.ScalaUtils.RichThrowable
+import js7.base.utils.StackTraces.StackTraceThrowable
+import js7.common.akkautils.ReceiveLoggingActor
+import js7.common.scalautil.Futures.promiseFuture
+import js7.common.scalautil.Logger
+import js7.common.scalautil.MonixUtils.promiseTask
+import js7.core.event.journal.JournalingActor._
+import js7.data.event.{AnyKeyedEvent, Event, EventId, JournaledState, KeyedEvent, Stamped}
 import monix.eval.Task
 import monix.execution.cancelables.SerialCancelable
 import monix.execution.{Cancelable, Scheduler}

@@ -1,35 +1,35 @@
-package com.sos.jobscheduler.tests.provider
+package js7.tests.provider
 
 import cats.syntax.option._
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.crypt.silly.SillySigner
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowableEither
-import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.IOExecutor.Implicits.globalIOX
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits._
-import com.sos.jobscheduler.common.system.OperatingSystem.isMac
-import com.sos.jobscheduler.core.filebased.{FileBasedReader, FileBaseds, TypedPaths}
-import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
-import com.sos.jobscheduler.data.event.EventId
-import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.filebased.Repo.Entry
-import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, FileBasedEvent, VersionAdded}
-import com.sos.jobscheduler.data.filebased.{Repo, SourceType, VersionId}
-import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.order.OrderEvent.OrderAdded
-import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.provider.Provider
-import com.sos.jobscheduler.provider.configuration.ProviderConfiguration
-import com.sos.jobscheduler.tests.provider.ProviderTest._
-import com.sos.jobscheduler.tests.testenv.MasterAgentForScalaTest
+import js7.base.circeutils.CirceUtils._
+import js7.base.crypt.silly.SillySigner
+import js7.base.generic.SecretString
+import js7.base.problem.Checked.Ops
+import js7.base.problem.{Checked, Problem}
+import js7.base.time.ScalaTime._
+import js7.base.utils.ScalaUtils.RichThrowableEither
+import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.IOExecutor.Implicits.globalIOX
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.common.scalautil.xmls.ScalaXmls.implicits._
+import js7.common.system.OperatingSystem.isMac
+import js7.core.filebased.{FileBasedReader, FileBaseds, TypedPaths}
+import js7.data.agent.{AgentRef, AgentRefPath}
+import js7.data.event.EventId
+import js7.data.event.KeyedEvent.NoKey
+import js7.data.filebased.Repo.Entry
+import js7.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, FileBasedEvent, VersionAdded}
+import js7.data.filebased.{Repo, SourceType, VersionId}
+import js7.data.job.ExecutablePath
+import js7.data.order.OrderEvent.OrderAdded
+import js7.data.workflow.parser.WorkflowParser
+import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.provider.Provider
+import js7.provider.configuration.ProviderConfiguration
+import js7.tests.provider.ProviderTest._
+import js7.tests.testenv.MasterAgentForScalaTest
 import com.typesafe.config.ConfigFactory
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.{createDirectories, delete}

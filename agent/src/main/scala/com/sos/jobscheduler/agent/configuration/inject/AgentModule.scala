@@ -1,19 +1,19 @@
-package com.sos.jobscheduler.agent.configuration.inject
+package js7.agent.configuration.inject
 
 import akka.actor.{ActorRefFactory, ActorSystem}
 import com.google.inject.{AbstractModule, Provides}
-import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.configuration.Akkas.newAgentActorSystem
-import com.sos.jobscheduler.agent.web.AgentWebServer
-import com.sos.jobscheduler.base.auth.SimpleUser
-import com.sos.jobscheduler.base.utils.Closer
-import com.sos.jobscheduler.base.utils.Closer.syntax._
-import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
-import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import com.sos.jobscheduler.common.event.EventIdGenerator
-import com.sos.jobscheduler.common.scalautil.IOExecutor
-import com.sos.jobscheduler.core.cluster.ClusterWatchRegister
-import com.sos.jobscheduler.core.system.ThreadPools
+import js7.agent.configuration.AgentConfiguration
+import js7.agent.configuration.Akkas.newAgentActorSystem
+import js7.agent.web.AgentWebServer
+import js7.base.auth.SimpleUser
+import js7.base.utils.Closer
+import js7.base.utils.Closer.syntax._
+import js7.common.akkahttp.web.auth.GateKeeper
+import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
+import js7.common.event.EventIdGenerator
+import js7.common.scalautil.IOExecutor
+import js7.core.cluster.ClusterWatchRegister
+import js7.core.system.ThreadPools
 import com.typesafe.config.Config
 import javax.inject.Singleton
 import monix.execution.Scheduler

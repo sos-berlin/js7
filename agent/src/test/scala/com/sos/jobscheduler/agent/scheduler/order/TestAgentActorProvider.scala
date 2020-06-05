@@ -1,23 +1,23 @@
-package com.sos.jobscheduler.agent.scheduler.order
+package js7.agent.scheduler.order
 
 import akka.actor.{ActorRef, Props}
 import com.google.inject.{AbstractModule, Guice, Provides}
-import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.configuration.Akkas.newAgentActorSystem
-import com.sos.jobscheduler.agent.configuration.inject.AgentModule
-import com.sos.jobscheduler.agent.data.AgentTermination
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.scheduler.AgentActor
-import com.sos.jobscheduler.agent.scheduler.order.TestAgentActorProvider._
-import com.sos.jobscheduler.agent.tests.TestAgentDirectoryProvider
-import com.sos.jobscheduler.base.auth.UserId
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.base.utils.Closer.syntax.RichClosersAutoCloseable
-import com.sos.jobscheduler.base.utils.{Closer, HasCloser}
-import com.sos.jobscheduler.common.event.collector.EventCollector
-import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
-import com.sos.jobscheduler.core.event.ActorEventCollector
+import js7.agent.configuration.AgentConfiguration
+import js7.agent.configuration.Akkas.newAgentActorSystem
+import js7.agent.configuration.inject.AgentModule
+import js7.agent.data.AgentTermination
+import js7.agent.data.commands.AgentCommand
+import js7.agent.scheduler.AgentActor
+import js7.agent.scheduler.order.TestAgentActorProvider._
+import js7.agent.tests.TestAgentDirectoryProvider
+import js7.base.auth.UserId
+import js7.base.problem.Checked
+import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
+import js7.base.utils.{Closer, HasCloser}
+import js7.common.event.collector.EventCollector
+import js7.common.guice.GuiceImplicits.RichInjector
+import js7.core.event.ActorEventCollector
 import java.nio.file.Path
 import javax.inject.Singleton
 import scala.concurrent.{Future, Promise}

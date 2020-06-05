@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.common.scalautil.xmls
+package js7.common.scalautil.xmls
 
 import akka.util.ByteString
 import com.google.common.base.Charsets.ISO_8859_1
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits._
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.xmls.ScalaXmls.implicits._
 import java.io.File
 import java.nio.file.Files.delete
 import java.nio.file.Path

@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.master.web.master
+package js7.master.web.master
 
 import akka.http.scaladsl.model.StatusCodes.OK
 import akka.http.scaladsl.server.Directives._

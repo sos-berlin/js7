@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.core.event.journal.watch
+package js7.core.event.journal.watch
 
-import com.sos.jobscheduler.common.event.PositionAnd
-import com.sos.jobscheduler.common.scalautil.{Logger, Synchronizer}
-import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
-import com.sos.jobscheduler.core.event.journal.watch.JournalIndex._
-import com.sos.jobscheduler.data.event.EventId
+import js7.common.event.PositionAnd
+import js7.common.scalautil.{Logger, Synchronizer}
+import js7.common.utils.ByteUnits.toKBGB
+import js7.core.event.journal.watch.JournalIndex._
+import js7.data.event.EventId
 import java.util.Arrays.binarySearch
 import org.jetbrains.annotations.TestOnly
 

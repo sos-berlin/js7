@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.common.scalautil
+package js7.common.scalautil
 
-import com.sos.jobscheduler.common.scalautil.Synchronizer._
-import com.sos.jobscheduler.base.time.ScalaTime._
+import js7.common.scalautil.Synchronizer._
+import js7.base.time.ScalaTime._
 import java.util.concurrent.locks.ReentrantLock
 import scala.concurrent.blocking
 import scala.concurrent.duration._

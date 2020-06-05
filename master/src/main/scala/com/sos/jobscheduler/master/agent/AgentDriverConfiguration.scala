@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.master.agent
+package js7.master.agent
 
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.common.http.configuration.{RecouplingStreamReaderConf, RecouplingStreamReaderConfs}
-import com.sos.jobscheduler.common.time.JavaTimeConverters._
-import com.sos.jobscheduler.core.event.journal.JournalConf
+import js7.base.problem.Checked
+import js7.common.http.configuration.{RecouplingStreamReaderConf, RecouplingStreamReaderConfs}
+import js7.common.time.JavaTimeConverters._
+import js7.core.event.journal.JournalConf
 import com.typesafe.config.Config
 import scala.concurrent.duration._
 

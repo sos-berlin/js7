@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.provider.scheduledorder.oldruntime
+package js7.provider.scheduledorder.oldruntime
 
-import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.jobscheduler.common.time.JavaTime._
-import com.sos.jobscheduler.provider.scheduledorder.oldruntime.SingleStartPeriod._
+import js7.base.utils.ScalazStyle.OptionRichBoolean
+import js7.common.time.JavaTime._
+import js7.provider.scheduledorder.oldruntime.SingleStartPeriod._
 import java.time.{Duration, LocalTime}
 
 /**

@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.core.configuration
+package js7.core.configuration
 
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
-import com.sos.jobscheduler.common.akkahttp.web.data.{WebServerBinding, WebServerPort}
-import com.sos.jobscheduler.common.commandline.CommandLineArguments
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.core.configuration.CommonConfigurationTest._
+import js7.base.generic.SecretString
+import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
+import js7.common.akkahttp.web.data.{WebServerBinding, WebServerPort}
+import js7.common.commandline.CommandLineArguments
+import js7.common.scalautil.FileUtils.syntax._
+import js7.core.configuration.CommonConfigurationTest._
 import com.typesafe.config.{Config, ConfigFactory}
 import java.net.InetSocketAddress
 import java.nio.file.{Path, Paths}

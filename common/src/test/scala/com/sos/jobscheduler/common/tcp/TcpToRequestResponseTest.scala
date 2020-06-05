@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.common.tcp
+package js7.common.tcp
 
 import akka.util.ByteString
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
-import com.sos.jobscheduler.common.tcp.TcpToRequestResponseTest._
+import js7.base.utils.AutoClosing.autoClosing
+import js7.common.akkautils.Akkas.newActorSystem
+import js7.common.tcp.TcpToRequestResponseTest._
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.Future

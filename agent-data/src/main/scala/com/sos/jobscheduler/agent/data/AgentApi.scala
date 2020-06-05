@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.agent.data
+package js7.agent.data
 
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.views.AgentOverview
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.data.order.{Order, OrderId}
+import js7.agent.data.commands.AgentCommand
+import js7.agent.data.views.AgentOverview
+import js7.base.problem.Checked
+import js7.data.order.{Order, OrderId}
 import monix.eval.Task
 
 /**

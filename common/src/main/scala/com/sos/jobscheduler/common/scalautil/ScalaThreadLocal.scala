@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.scalautil
+package js7.common.scalautil
 
 import scala.language.implicitConversions
 

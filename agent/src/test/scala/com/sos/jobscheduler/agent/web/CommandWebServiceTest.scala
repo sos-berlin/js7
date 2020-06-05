@@ -1,18 +1,18 @@
-package com.sos.jobscheduler.agent.web
+package js7.agent.web
 
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.{OK, ServiceUnavailable}
 import akka.http.scaladsl.model.headers.Accept
-import com.sos.jobscheduler.agent.data.Problems.AgentIsShuttingDown
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand._
-import com.sos.jobscheduler.agent.web.CommandWebServiceTest._
-import com.sos.jobscheduler.agent.web.test.WebServiceTest
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import com.sos.jobscheduler.common.http.CirceJsonSupport._
-import com.sos.jobscheduler.core.command.CommandMeta
-import com.sos.jobscheduler.data.command.{CommandHandlerDetailed, CommandHandlerOverview, CommandRunOverview, InternalCommandId}
+import js7.agent.data.Problems.AgentIsShuttingDown
+import js7.agent.data.commands.AgentCommand
+import js7.agent.data.commands.AgentCommand._
+import js7.agent.web.CommandWebServiceTest._
+import js7.agent.web.test.WebServiceTest
+import js7.base.circeutils.CirceUtils._
+import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
+import js7.common.http.CirceJsonSupport._
+import js7.core.command.CommandMeta
+import js7.data.command.{CommandHandlerDetailed, CommandHandlerOverview, CommandRunOverview, InternalCommandId}
 import io.circe.Json
 import io.circe.syntax.EncoderOps
 import monix.eval.Task

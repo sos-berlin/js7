@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.common.scalautil.xmls
+package js7.common.scalautil.xmls
 
-import com.sos.jobscheduler.common.scalautil.xmls.RichScalaXML.RichElem
+import js7.common.scalautil.xmls.RichScalaXML.RichElem
 import org.scalatest.matchers
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.freespec.AnyFreeSpec

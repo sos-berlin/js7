@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.core.event.journal.files
+package js7.core.event.journal.files
 
-import com.sos.jobscheduler.base.generic.GenericString.EmptyStringProblem
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.data.event.EventId
+import js7.base.generic.GenericString.EmptyStringProblem
+import js7.base.problem.Checked._
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.ScalazStyle._
+import js7.data.event.EventId
 import java.io.RandomAccessFile
 import java.nio.file.Path
 import java.util.regex.Pattern

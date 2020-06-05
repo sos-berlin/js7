@@ -1,17 +1,17 @@
-package com.sos.jobscheduler.data.expression
+package js7.data.expression
 
 import cats.instances.either._
 import cats.instances.list._
 import cats.syntax.apply._
 import cats.syntax.traverse._
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
-import com.sos.jobscheduler.base.utils.Strings.RichString
-import com.sos.jobscheduler.data.expression.Evaluator._
-import com.sos.jobscheduler.data.expression.Expression._
-import com.sos.jobscheduler.data.workflow.Label
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
+import js7.base.problem.Checked._
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.ScalaUtils.RichJavaClass
+import js7.base.utils.Strings.RichString
+import js7.data.expression.Evaluator._
+import js7.data.expression.Expression._
+import js7.data.workflow.Label
+import js7.data.workflow.instructions.executable.WorkflowJob
 
 /**
   * @author Joacim Zschimmer

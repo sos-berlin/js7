@@ -1,13 +1,13 @@
-package com.sos.jobscheduler.master.agent
+package js7.master.agent
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.http.CirceToYaml.ToYamlString
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryDirectory
-import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
-import com.sos.jobscheduler.core.filebased.TypedSourceReader
-import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
+import js7.base.circeutils.CirceUtils.RichJson
+import js7.base.web.Uri
+import js7.common.http.CirceToYaml.ToYamlString
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.FileUtils.withTemporaryDirectory
+import js7.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
+import js7.core.filebased.TypedSourceReader
+import js7.data.agent.{AgentRef, AgentRefPath}
 import io.circe.syntax.EncoderOps
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable

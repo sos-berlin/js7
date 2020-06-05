@@ -1,21 +1,21 @@
-package com.sos.jobscheduler.agent.command
+package js7.agent.command
 
 import akka.actor.{Actor, ActorRef}
 import akka.pattern.ask
 import akka.util.Timeout
-import com.sos.jobscheduler.agent.command.CommandActor._
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Batch, CoupleMaster, EmergencyStop, NoOperation, OrderCommand, RegisterAsMaster, Response, ShutDown, TakeSnapshot}
-import com.sos.jobscheduler.agent.scheduler.AgentHandle
-import com.sos.jobscheduler.base.auth.UserId
-import com.sos.jobscheduler.base.circeutils.JavaJsonCodecs.instant.StringInstantJsonCodec
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.command.{CommandMeta, CommandRegister, CommandRun}
-import com.sos.jobscheduler.core.startup.Halt
-import com.sos.jobscheduler.data.command.{CommandHandlerDetailed, CommandHandlerOverview, InternalCommandId}
+import js7.agent.command.CommandActor._
+import js7.agent.data.commands.AgentCommand
+import js7.agent.data.commands.AgentCommand.{Batch, CoupleMaster, EmergencyStop, NoOperation, OrderCommand, RegisterAsMaster, Response, ShutDown, TakeSnapshot}
+import js7.agent.scheduler.AgentHandle
+import js7.base.auth.UserId
+import js7.base.circeutils.JavaJsonCodecs.instant.StringInstantJsonCodec
+import js7.base.problem.Checked
+import js7.base.time.ScalaTime._
+import js7.base.utils.IntelliJUtils.intelliJuseImport
+import js7.common.scalautil.Logger
+import js7.core.command.{CommandMeta, CommandRegister, CommandRun}
+import js7.core.startup.Halt
+import js7.data.command.{CommandHandlerDetailed, CommandHandlerOverview, InternalCommandId}
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.{Future, Promise}

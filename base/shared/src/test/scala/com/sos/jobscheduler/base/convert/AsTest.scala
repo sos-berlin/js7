@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.base.convert
+package js7.base.convert
 
-import com.sos.jobscheduler.base.convert.As.StringAsIntOrUnlimited
+import js7.base.convert.As.StringAsIntOrUnlimited
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
 

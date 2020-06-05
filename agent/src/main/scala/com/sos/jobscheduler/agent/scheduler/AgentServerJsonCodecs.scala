@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.agent.scheduler
+package js7.agent.scheduler
 
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.data.event.JournalState
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.data.event.JournalState
 
 private[scheduler] object AgentServerJsonCodecs
 {

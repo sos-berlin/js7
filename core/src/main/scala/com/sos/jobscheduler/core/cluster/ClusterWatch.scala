@@ -1,15 +1,15 @@
-package com.sos.jobscheduler.core.cluster
+package js7.core.cluster
 
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.monixutils.MonixDeadline
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.{Checked, Problem, ProblemCode}
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.cluster.ClusterWatch._
-import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
-import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.master.MasterId
+import js7.base.generic.Completed
+import js7.base.monixutils.MonixDeadline
+import js7.base.problem.Checked._
+import js7.base.problem.{Checked, Problem, ProblemCode}
+import js7.base.time.ScalaTime._
+import js7.common.scalautil.Logger
+import js7.core.cluster.ClusterWatch._
+import js7.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
+import js7.data.event.KeyedEvent.NoKey
+import js7.data.master.MasterId
 import monix.catnap.MVar
 import monix.eval.Task
 import monix.execution.Scheduler

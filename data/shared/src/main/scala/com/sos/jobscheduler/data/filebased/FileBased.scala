@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.data.filebased
+package js7.data.filebased
 
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
+import js7.base.utils.ScalaUtils.RichJavaClass
 
 /**
   * @author Joacim Zschimmer

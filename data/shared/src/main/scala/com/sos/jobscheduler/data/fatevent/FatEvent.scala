@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.data.fatevent
+package js7.data.fatevent
 
-import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import com.sos.jobscheduler.data.event.{Event, KeyedEventTypedJsonCodec}
+import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
+import js7.data.event.{Event, KeyedEventTypedJsonCodec}
 
 /**
   * @author Joacim Zschimmer

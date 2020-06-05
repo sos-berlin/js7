@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.tests.history
+package js7.tests.history
 
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.data.order.OrderId
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.position.WorkflowPosition
+import js7.base.time.Timestamp
+import js7.base.web.Uri
+import js7.data.job.ReturnCode
+import js7.data.order.OrderId
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.position.WorkflowPosition
 
 /**
   * @author Joacim Zschimmer

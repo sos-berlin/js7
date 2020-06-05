@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.core.event.journal.recover
+package js7.core.event.journal.recover
 
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -23,7 +23,7 @@ final class JournaledStateRecovererTest extends AnyFreeSpec
 
 private object JournaledStateRecovererTest
 //{
-//  private val logger = com.sos.jobscheduler.common.scalautil.Logger(getClass)
+//  private val logger = js7.common.scalautil.Logger(getClass)
 //
 //  private class TestStateBuilder extends JournaledStateBuilder[TestState]
 //  {

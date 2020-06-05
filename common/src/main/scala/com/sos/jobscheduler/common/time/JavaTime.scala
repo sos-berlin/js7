@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.common.time
+package js7.common.time
 
 import cats.Show
-import com.sos.jobscheduler.base.convert.As
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.Ascii.isAsciiDigit
+import js7.base.convert.As
+import js7.base.time.Timestamp
+import js7.base.utils.Ascii.isAsciiDigit
 import java.time._
 import org.jetbrains.annotations.TestOnly
 import scala.math.abs

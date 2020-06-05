@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.base.standards
+package js7.base.standards
 
-import com.sos.jobscheduler.base.standards.NameValidator._
+import js7.base.standards.NameValidator._
 import scala.jdk.CollectionConverters._
 import org.scalatest.freespec.AnyFreeSpec
 

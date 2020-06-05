@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.http
+package js7.common.http
 
 import akka.http.scaladsl.coding.{Coder, Deflate, Gzip, NoCoding, StreamDecoder}
 import akka.http.scaladsl.model.headers.HttpEncodings.gzip
@@ -6,7 +6,7 @@ import akka.http.scaladsl.model.headers.{HttpEncoding, HttpEncodings, `Accept-En
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, ResponseEntity, Uri => AkkaUri}
 import akka.stream.Materializer
 import akka.util.ByteString
-import com.sos.jobscheduler.base.web.Uri
+import js7.base.web.Uri
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scodec.bits.ByteVector

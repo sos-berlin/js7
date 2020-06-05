@@ -1,14 +1,14 @@
-package com.sos.jobscheduler.tests.https
+package js7.tests.https
 
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.event.KeyedEvent
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
-import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentCouplingFailed
-import com.sos.jobscheduler.tests.https.AgentClientSideHttpsWithoutCertificateTest._
+import js7.base.time.ScalaTime._
+import js7.common.scalautil.Logger
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.data.agent.AgentRefPath
+import js7.data.event.KeyedEvent
+import js7.data.order.{FreshOrder, OrderId}
+import js7.data.workflow.WorkflowPath
+import js7.master.data.events.MasterAgentEvent.AgentCouplingFailed
+import js7.tests.https.AgentClientSideHttpsWithoutCertificateTest._
 import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.duration._
 

@@ -1,19 +1,19 @@
-package com.sos.jobscheduler.data.cluster
+package js7.data.cluster
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.base.utils.Strings._
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
-import com.sos.jobscheduler.data.cluster.ClusterSetting.checkUris
-import com.sos.jobscheduler.data.cluster.ClusterSetting.syntax._
-import com.sos.jobscheduler.data.cluster.ClusterState._
-import com.sos.jobscheduler.data.event.JournaledState.EventNotApplicableProblem
-import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{EventDrivenState, JournalPosition, KeyedEvent}
+import js7.base.circeutils.CirceUtils.deriveCodec
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.problem.Checked
+import js7.base.problem.Checked.Ops
+import js7.base.utils.ScalazStyle._
+import js7.base.utils.Strings._
+import js7.base.web.Uri
+import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
+import js7.data.cluster.ClusterSetting.checkUris
+import js7.data.cluster.ClusterSetting.syntax._
+import js7.data.cluster.ClusterState._
+import js7.data.event.JournaledState.EventNotApplicableProblem
+import js7.data.event.KeyedEvent.NoKey
+import js7.data.event.{EventDrivenState, JournalPosition, KeyedEvent}
 import monix.reactive.Observable
 
 sealed trait ClusterState

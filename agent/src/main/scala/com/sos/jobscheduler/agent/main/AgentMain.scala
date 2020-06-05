@@ -1,20 +1,20 @@
-package com.sos.jobscheduler.agent.main
+package js7.agent.main
 
-import com.sos.jobscheduler.agent.RunningAgent
-import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.data.AgentTermination
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.ShutDown
-import com.sos.jobscheduler.base.BuildInfo
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.commandline.CommandLineArguments
-import com.sos.jobscheduler.common.configutils.Configs.logConfig
-import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.JavaTimeConverters._
-import com.sos.jobscheduler.core.startup.JavaMain.withShutdownHooks
-import com.sos.jobscheduler.core.startup.JavaMainLockfileSupport.lockAndRunMain
-import com.sos.jobscheduler.core.startup.StartUp.printlnWithClock
+import js7.agent.RunningAgent
+import js7.agent.configuration.AgentConfiguration
+import js7.agent.data.AgentTermination
+import js7.agent.data.commands.AgentCommand.ShutDown
+import js7.base.BuildInfo
+import js7.base.time.Timestamp
+import js7.base.utils.AutoClosing.autoClosing
+import js7.common.commandline.CommandLineArguments
+import js7.common.configutils.Configs.logConfig
+import js7.common.scalautil.Futures.implicits.SuccessFuture
+import js7.common.scalautil.Logger
+import js7.common.time.JavaTimeConverters._
+import js7.core.startup.JavaMain.withShutdownHooks
+import js7.core.startup.JavaMainLockfileSupport.lockAndRunMain
+import js7.core.startup.StartUp.printlnWithClock
 import scala.concurrent.duration._
 
 /**

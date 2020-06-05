@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.core.command
+package js7.core.command
 
-import com.sos.jobscheduler.base.auth.{SessionToken, SimpleUser}
+import js7.base.auth.{SessionToken, SimpleUser}
 
 /**
  * @author Joacim Zschimmer

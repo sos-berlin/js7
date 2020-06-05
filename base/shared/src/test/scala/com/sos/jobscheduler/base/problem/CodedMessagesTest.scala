@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.base.problem
+package js7.base.problem
 
-import com.sos.jobscheduler.base.problem.CodedMessages.patternToMessage
+import js7.base.problem.CodedMessages.patternToMessage
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.base.convert
+package js7.base.convert
 
-import com.sos.jobscheduler.base.convert.ConvertiblePartialFunctions.wrappedConvert
+import js7.base.convert.ConvertiblePartialFunctions.wrappedConvert
 /**
   * Provides methods for convertion of the Iterable result of a PartialFunction (for example a Map).
   *

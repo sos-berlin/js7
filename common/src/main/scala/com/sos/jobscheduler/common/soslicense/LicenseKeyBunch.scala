@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.common.soslicense
+package js7.common.soslicense
 
 import com.google.common.base.Splitter
-import com.sos.jobscheduler.common.soslicense.LicenseKey.Parameter
-import com.sos.jobscheduler.common.soslicense.LicenseKey.Parameter.{Expired, Missing, OK}
+import js7.common.soslicense.LicenseKey.Parameter
+import js7.common.soslicense.LicenseKey.Parameter.{Expired, Missing, OK}
 import scala.jdk.CollectionConverters._
 
 /**

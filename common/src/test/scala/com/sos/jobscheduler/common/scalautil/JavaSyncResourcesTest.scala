@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.common.scalautil
+package js7.common.scalautil
 
 import cats.effect.SyncIO
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryFile
-import com.sos.jobscheduler.common.scalautil.JavaSyncResources.fileAsResource
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.FileUtils.withTemporaryFile
+import js7.common.scalautil.JavaSyncResources.fileAsResource
 import java.io.{BufferedReader, InputStreamReader}
 import org.scalatest.freespec.AnyFreeSpec
 

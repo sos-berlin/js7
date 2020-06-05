@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.data.workflow.instructions
+package js7.data.workflow.instructions
 
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
-import com.sos.jobscheduler.data.expression.Expression
-import com.sos.jobscheduler.data.source.SourcePos
-import com.sos.jobscheduler.data.workflow.position.BranchId
-import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
+import js7.base.problem.Checked._
+import js7.base.problem.Problem
+import js7.base.utils.IntelliJUtils.intelliJuseImport
+import js7.data.expression.Expression
+import js7.data.source.SourcePos
+import js7.data.workflow.position.BranchId
+import js7.data.workflow.{Instruction, Workflow}
 import io.circe.generic.extras.defaults.defaultGenericConfiguration
 import io.circe.generic.extras.{ConfiguredJsonCodec, JsonKey}
 

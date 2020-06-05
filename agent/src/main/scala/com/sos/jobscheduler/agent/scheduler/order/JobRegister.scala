@@ -1,14 +1,14 @@
-package com.sos.jobscheduler.agent.scheduler.order
+package js7.agent.scheduler.order
 
 import akka.actor.ActorRef
-import com.sos.jobscheduler.agent.scheduler.order.JobRegister._
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.utils.DuplicateKeyException
-import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.common.ActorRegister
-import com.sos.jobscheduler.data.job.JobKey
-import com.sos.jobscheduler.data.order.OrderId
+import js7.agent.scheduler.order.JobRegister._
+import js7.base.problem.Problem
+import js7.base.utils.DuplicateKeyException
+import js7.base.utils.ScalazStyle.OptionRichBoolean
+import js7.common.scalautil.Logger
+import js7.core.common.ActorRegister
+import js7.data.job.JobKey
+import js7.data.order.OrderId
 import scala.collection.mutable
 
 /**

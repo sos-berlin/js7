@@ -1,29 +1,29 @@
-package com.sos.jobscheduler.master.web.master.api.fatevent
+package js7.master.web.master.api.fatevent
 
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.server.Directives.{complete, get, pathEnd}
 import akka.http.scaladsl.server.Route
-import com.sos.jobscheduler.base.auth.ValidUserPermission
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
-import com.sos.jobscheduler.common.akkahttp.ConcurrentRequestLimiter
-import com.sos.jobscheduler.common.akkahttp.EventSeqStreamingSupport.NonEmptyEventSeqJsonStreamingSupport
-import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
-import com.sos.jobscheduler.common.event.EventWatch
-import com.sos.jobscheduler.common.event.collector.EventDirectives.{DefaultTimeout, eventRequest}
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.event.journal.watch.ClosedException
-import com.sos.jobscheduler.data.event.{Event, EventRequest, EventSeq, KeyedEvent, TearableEventSeq}
-import com.sos.jobscheduler.data.fatevent.FatEvent
-import com.sos.jobscheduler.data.filebased.RepoEvent
-import com.sos.jobscheduler.data.order.OrderEvent
-import com.sos.jobscheduler.master.configuration.MasterConfiguration
-import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
-import com.sos.jobscheduler.master.problems.FatEventServiceBusyProblem
-import com.sos.jobscheduler.master.web.common.MasterRouteProvider
-import com.sos.jobscheduler.master.web.master.api.fatevent.FatEventRoute._
+import js7.base.auth.ValidUserPermission
+import js7.base.time.ScalaTime._
+import js7.base.utils.IntelliJUtils.intelliJuseImport
+import js7.base.utils.ScalaUtils.RichThrowable
+import js7.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
+import js7.common.akkahttp.ConcurrentRequestLimiter
+import js7.common.akkahttp.EventSeqStreamingSupport.NonEmptyEventSeqJsonStreamingSupport
+import js7.common.akkahttp.StandardMarshallers._
+import js7.common.event.EventWatch
+import js7.common.event.collector.EventDirectives.{DefaultTimeout, eventRequest}
+import js7.common.scalautil.Logger
+import js7.core.event.journal.watch.ClosedException
+import js7.data.event.{Event, EventRequest, EventSeq, KeyedEvent, TearableEventSeq}
+import js7.data.fatevent.FatEvent
+import js7.data.filebased.RepoEvent
+import js7.data.order.OrderEvent
+import js7.master.configuration.MasterConfiguration
+import js7.master.data.events.{MasterAgentEvent, MasterEvent}
+import js7.master.problems.FatEventServiceBusyProblem
+import js7.master.web.common.MasterRouteProvider
+import js7.master.web.master.api.fatevent.FatEventRoute._
 import java.util.concurrent.Executors.newSingleThreadExecutor
 import monix.eval.Task
 import monix.execution.{Scheduler, UncaughtExceptionReporter}

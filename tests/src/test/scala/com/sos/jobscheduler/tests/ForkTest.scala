@@ -1,25 +1,25 @@
-package com.sos.jobscheduler.tests
+package js7.tests
 
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.data.command.CancelMode
-import com.sos.jobscheduler.data.event.EventSeq
-import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.order.OrderEvent._
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.instructions.Execute
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.position.Position
-import com.sos.jobscheduler.data.workflow.test.ForkTestSetting._
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.master.data.MasterCommand.CancelOrder
-import com.sos.jobscheduler.tests.ForkTest._
-import com.sos.jobscheduler.tests.testenv.DirectoryProvider.{StdoutOutput, script}
-import com.sos.jobscheduler.tests.testenv.MasterAgentForScalaTest
+import js7.agent.data.commands.AgentCommand
+import js7.base.problem.Checked.Ops
+import js7.base.problem.Problem
+import js7.base.time.ScalaTime._
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.data.command.CancelMode
+import js7.data.event.EventSeq
+import js7.data.job.ExecutablePath
+import js7.data.order.OrderEvent._
+import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.workflow.instructions.Execute
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.position.Position
+import js7.data.workflow.test.ForkTestSetting._
+import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.master.data.MasterCommand.CancelOrder
+import js7.tests.ForkTest._
+import js7.tests.testenv.DirectoryProvider.{StdoutOutput, script}
+import js7.tests.testenv.MasterAgentForScalaTest
 import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec

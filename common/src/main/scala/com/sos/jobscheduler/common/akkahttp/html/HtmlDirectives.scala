@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.akkahttp.html
+package js7.common.akkahttp.html
 
 import akka.http.scaladsl.model.HttpMethods.GET
 import akka.http.scaladsl.model.MediaTypes.`text/html`
@@ -8,7 +8,7 @@ import akka.http.scaladsl.model.headers.{Accept, `Cache-Control`}
 import akka.http.scaladsl.model.{HttpRequest, MediaRange, Uri}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive0, RejectionHandler, Route}
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.passIf
+import js7.common.akkahttp.AkkaHttpServerUtils.passIf
 
 /**
   * @author Joacim Zschimmer

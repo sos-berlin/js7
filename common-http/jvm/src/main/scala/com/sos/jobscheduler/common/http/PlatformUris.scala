@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.http
+package js7.common.http
 
 import akka.http.scaladsl.model.Uri
 

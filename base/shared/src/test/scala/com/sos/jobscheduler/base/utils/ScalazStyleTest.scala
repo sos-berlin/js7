@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.base.utils
+package js7.base.utils
 
-import com.sos.jobscheduler.base.utils.ScalazStyle._
+import js7.base.utils.ScalazStyle._
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

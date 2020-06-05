@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.base.monixutils
+package js7.base.monixutils
 
-import com.sos.jobscheduler.base.monixutils.MonixDeadline.now
-import com.sos.jobscheduler.base.time.ScalaTime._
+import js7.base.monixutils.MonixDeadline.now
+import js7.base.time.ScalaTime._
 import monix.execution.schedulers.TestScheduler
 import org.scalatest.freespec.AnyFreeSpec
 

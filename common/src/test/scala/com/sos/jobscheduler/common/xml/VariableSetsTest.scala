@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.common.xml
+package js7.common.xml
 
-import com.sos.jobscheduler.common.xml.VariableSets.{parseXml, toParamsXmlElem, toXmlElem}
+import js7.common.xml.VariableSets.{parseXml, toParamsXmlElem, toXmlElem}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

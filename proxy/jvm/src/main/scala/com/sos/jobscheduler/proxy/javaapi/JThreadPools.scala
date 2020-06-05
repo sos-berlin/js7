@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.proxy.javaapi
+package js7.proxy.javaapi
 
-import com.sos.jobscheduler.base.annotation.javaApi
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.common.scalautil.Logger
+import js7.base.annotation.javaApi
+import js7.base.utils.ScalaUtils.RichThrowable
+import js7.common.scalautil.Logger
 import java.lang.Thread.currentThread
 import monix.execution.schedulers.ExecutorScheduler
 import monix.execution.{ExecutionModel, UncaughtExceptionReporter}

@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.base.monixutils
+package js7.base.monixutils
 
-import com.sos.jobscheduler.base.monixutils.MonixBase._
-import com.sos.jobscheduler.base.monixutils.MonixBase.syntax._
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.CloseableIterator
+import js7.base.monixutils.MonixBase._
+import js7.base.monixutils.MonixBase.syntax._
+import js7.base.problem.{Checked, Problem}
+import js7.base.time.ScalaTime._
+import js7.base.time.Timestamp
+import js7.base.utils.CloseableIterator
 import monix.eval.Task
 import monix.execution.Cancelable
 import monix.execution.Scheduler.Implicits.global

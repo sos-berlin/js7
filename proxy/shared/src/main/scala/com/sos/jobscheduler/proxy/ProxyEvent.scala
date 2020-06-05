@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.proxy
+package js7.proxy
 
-import com.sos.jobscheduler.data.event.NoKeyEvent
+import js7.data.event.NoKeyEvent
 
 sealed trait ProxyEvent extends NoKeyEvent
 

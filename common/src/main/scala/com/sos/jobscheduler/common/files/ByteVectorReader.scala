@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.common.files
+package js7.common.files
 
-import com.sos.jobscheduler.common.files.ByteVectorReader._
-import com.sos.jobscheduler.common.scalautil.Logger
+import js7.common.files.ByteVectorReader._
+import js7.common.scalautil.Logger
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.file.Path

@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.master.data.agent
+package js7.master.data.agent
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
-import com.sos.jobscheduler.data.agent.{AgentRefPath, AgentRunId}
-import com.sos.jobscheduler.data.event.EventId
+import js7.base.circeutils.CirceUtils.deriveCodec
+import js7.data.agent.{AgentRefPath, AgentRunId}
+import js7.data.event.EventId
 
 /**
   * @author Joacim Zschimmer

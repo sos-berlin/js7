@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.akkahttp.web.auth
+package js7.common.akkahttp.web.auth
 
 import akka.http.scaladsl.model.HttpMethods.POST
 import akka.http.scaladsl.model.HttpRequest

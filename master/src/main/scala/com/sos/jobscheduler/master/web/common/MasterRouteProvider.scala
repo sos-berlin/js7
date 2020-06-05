@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.master.web.common
+package js7.master.web.common
 
-import com.sos.jobscheduler.common.akkahttp.web.session.{RouteProvider, SimpleSession}
+import js7.common.akkahttp.web.session.{RouteProvider, SimpleSession}
 
 /**
   * @author Joacim Zschimmer

@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.base.auth
+package js7.base.auth
 
-import com.sos.jobscheduler.base.auth.User._
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import js7.base.auth.User._
+import js7.base.problem.{Checked, Problem}
 
 /**
   * User for a user.

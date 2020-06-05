@@ -1,23 +1,23 @@
-package com.sos.jobscheduler.common.akkahttp.web
+package js7.common.akkahttp.web
 
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.HttpMethods.GET
 import akka.http.scaladsl.model.{HttpRequest, StatusCodes}
 import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.common.akkahttp.https.{AkkaHttps, KeyStoreRef, TrustStoreRef}
-import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer.HasUri
-import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServerTest._
-import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
-import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
-import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
-import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPorts
-import com.sos.jobscheduler.common.utils.JavaResource
+import js7.base.generic.SecretString
+import js7.base.problem.Checked.Ops
+import js7.common.akkahttp.https.{AkkaHttps, KeyStoreRef, TrustStoreRef}
+import js7.common.akkahttp.web.AkkaWebServer.HasUri
+import js7.common.akkahttp.web.AkkaWebServerTest._
+import js7.common.akkahttp.web.data.WebServerBinding
+import js7.common.akkautils.Akkas.newActorSystem
+import js7.common.http.AkkaHttpUtils.RichHttpResponse
+import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.Futures.implicits._
+import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
+import js7.common.utils.JavaResource
 import com.typesafe.config.ConfigFactory
 import java.net.{InetAddress, InetSocketAddress}
 import java.nio.file.Files.{createDirectory, createTempDirectory}
@@ -27,7 +27,7 @@ import org.scalatest.BeforeAndAfterAll
 import Scheduler.Implicits.global
 import scala.concurrent.duration._
 import org.scalatest.freespec.AnyFreeSpec
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
+import js7.common.scalautil.MonixUtils.syntax._
 
 /**
   * @author Joacim Zschimmer

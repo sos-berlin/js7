@@ -1,26 +1,26 @@
-package com.sos.jobscheduler.agent.web
+package js7.agent.web
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.server.Directives.decodeRequest
 import cats.effect.Resource
-import com.sos.jobscheduler.agent.client.AgentClient
-import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand._
-import com.sos.jobscheduler.agent.web.CommandWebServerTest._
-import com.sos.jobscheduler.base.auth.SimpleUser
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
-import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
-import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import com.sos.jobscheduler.common.akkautils.Akkas.actorSystemResource
-import com.sos.jobscheduler.common.log.ScribeUtils.coupleScribeWithSlf4j
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import com.sos.jobscheduler.core.command.CommandMeta
-import com.sos.jobscheduler.data.agent.{AgentRefPath, AgentRunId}
-import com.sos.jobscheduler.data.event.{EventId, JournalId}
-import com.sos.jobscheduler.data.order.OrderId
+import js7.agent.client.AgentClient
+import js7.agent.configuration.AgentConfiguration
+import js7.agent.data.commands.AgentCommand
+import js7.agent.data.commands.AgentCommand._
+import js7.agent.web.CommandWebServerTest._
+import js7.base.auth.SimpleUser
+import js7.base.web.Uri
+import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
+import js7.common.akkahttp.web.AkkaWebServer
+import js7.common.akkahttp.web.auth.GateKeeper
+import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
+import js7.common.akkautils.Akkas.actorSystemResource
+import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
+import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import js7.core.command.CommandMeta
+import js7.data.agent.{AgentRefPath, AgentRunId}
+import js7.data.event.{EventId, JournalId}
+import js7.data.order.OrderId
 import com.typesafe.config.ConfigFactory
 import monix.eval.Task
 import monix.execution.Scheduler

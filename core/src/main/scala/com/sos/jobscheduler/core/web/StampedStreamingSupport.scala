@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.core.web
+package js7.core.web
 
 import akka.http.scaladsl.common.{EntityStreamingSupport, JsonEntityStreamingSupport}
 import akka.stream.scaladsl.Flow
 import akka.util.ByteString
-import com.sos.jobscheduler.common.http.JsonStreamingSupport
-import com.sos.jobscheduler.data.event.EventId
+import js7.common.http.JsonStreamingSupport
+import js7.data.event.EventId
 
 /**
   * @author Joacim Zschimmer

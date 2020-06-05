@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.proxy.javaapi.data
+package js7.proxy.javaapi.data
 
-import com.sos.jobscheduler.base.annotation.javaApi
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
-import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.data.workflow.Workflow
-import com.sos.jobscheduler.master.data.MasterState
-import com.sos.jobscheduler.proxy.javaapi.utils.VavrConversions._
+import js7.base.annotation.javaApi
+import js7.base.problem.Problem
+import js7.base.utils.Collections.implicits.RichTraversable
+import js7.data.order.{Order, OrderId}
+import js7.data.workflow.Workflow
+import js7.master.data.MasterState
+import js7.proxy.javaapi.utils.VavrConversions._
 import io.vavr.control.{Either => VEither}
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._

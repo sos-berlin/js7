@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.base.utils
+package js7.base.utils
 
-import com.sos.jobscheduler.base.utils.StackTraces._
-import com.sos.jobscheduler.base.utils.StackTracesTest._
+import js7.base.utils.StackTraces._
+import js7.base.utils.StackTracesTest._
 import scala.util.Try
 import org.scalatest.freespec.AnyFreeSpec
 

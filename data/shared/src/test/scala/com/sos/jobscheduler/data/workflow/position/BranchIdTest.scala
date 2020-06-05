@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.data.workflow.position
+package js7.data.workflow.position
 
-import com.sos.jobscheduler.data.workflow.position.BranchId.{catch_, try_}
+import js7.data.workflow.position.BranchId.{catch_, try_}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

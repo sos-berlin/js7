@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.base.time
+package js7.base.time
 
 import java.time.Instant
 import scala.math.abs

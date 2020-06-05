@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.base.crypt
+package js7.base.crypt
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.tester.CirceJsonTester
+import js7.base.circeutils.CirceUtils._
+import js7.tester.CirceJsonTester
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

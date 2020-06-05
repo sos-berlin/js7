@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.core.event.journal.recover
+package js7.core.event.journal.recover
 
 sealed trait JournalProgress
 {

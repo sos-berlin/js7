@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.data.workflow
+package js7.data.workflow
 
-import com.sos.jobscheduler.data.workflow.Instruction._
-import com.sos.jobscheduler.data.workflow.instructions.ExplicitEnd
+import js7.data.workflow.Instruction._
+import js7.data.workflow.instructions.ExplicitEnd
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

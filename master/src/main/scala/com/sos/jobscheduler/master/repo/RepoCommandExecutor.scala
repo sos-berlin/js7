@@ -1,15 +1,15 @@
-package com.sos.jobscheduler.master.repo
+package js7.master.repo
 
-import com.sos.jobscheduler.base.auth.UpdateRepoPermission
-import com.sos.jobscheduler.base.crypt.{Signed, SignedString}
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.command.CommandMeta
-import com.sos.jobscheduler.data.crypt.FileBasedVerifier
-import com.sos.jobscheduler.data.filebased.{FileBased, Repo, RepoEvent}
-import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.repo.RepoCommandExecutor._
+import js7.base.auth.UpdateRepoPermission
+import js7.base.crypt.{Signed, SignedString}
+import js7.base.problem.Checked
+import js7.base.problem.Checked._
+import js7.common.scalautil.Logger
+import js7.core.command.CommandMeta
+import js7.data.crypt.FileBasedVerifier
+import js7.data.filebased.{FileBased, Repo, RepoEvent}
+import js7.master.data.MasterCommand
+import js7.master.repo.RepoCommandExecutor._
 
 /**
   * @author Joacim Zschimmer

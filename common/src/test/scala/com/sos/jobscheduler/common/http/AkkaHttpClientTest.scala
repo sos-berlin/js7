@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.http
+package js7.common.http
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.ContentTypes.{`application/json`, `text/plain(UTF-8)`}
@@ -8,21 +8,21 @@ import akka.http.scaladsl.model.headers.`Content-Type`
 import akka.http.scaladsl.model.{HttpEntity, HttpResponse}
 import akka.http.scaladsl.server.Directives._
 import cats.syntax.option._
-import com.sos.jobscheduler.base.auth.SessionToken
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.Closer.syntax.RichClosersAutoCloseable
-import com.sos.jobscheduler.base.utils.HasCloser
-import com.sos.jobscheduler.base.web.HttpClient.liftProblem
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport
-import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
-import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
-import com.sos.jobscheduler.common.http.AkkaHttpClient.HttpException
-import com.sos.jobscheduler.common.http.AkkaHttpClientTest._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import js7.base.auth.SessionToken
+import js7.base.circeutils.CirceUtils._
+import js7.base.problem.Problem
+import js7.base.time.ScalaTime._
+import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
+import js7.base.utils.HasCloser
+import js7.base.web.HttpClient.liftProblem
+import js7.base.web.Uri
+import js7.common.akkahttp.CirceJsonOrYamlSupport
+import js7.common.akkahttp.StandardMarshallers._
+import js7.common.akkahttp.web.AkkaWebServer
+import js7.common.http.AkkaHttpClient.HttpException
+import js7.common.http.AkkaHttpClientTest._
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import java.net.ServerSocket
 import java.nio.charset.StandardCharsets.UTF_8
 import monix.eval.Task

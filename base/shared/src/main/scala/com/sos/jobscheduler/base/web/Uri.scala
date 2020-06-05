@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.base.web
+package js7.base.web
 
-import com.sos.jobscheduler.base.generic.GenericString
+import js7.base.generic.GenericString
 
 final case class Uri(string: String) extends GenericString
 

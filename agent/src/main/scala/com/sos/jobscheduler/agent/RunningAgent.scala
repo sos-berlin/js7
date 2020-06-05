@@ -1,30 +1,30 @@
-package com.sos.jobscheduler.agent
+package js7.agent
 
 import akka.actor.{ActorRef, ActorSystem, Props}
 import com.google.inject.Stage.PRODUCTION
 import com.google.inject.{Guice, Injector, Module}
-import com.sos.jobscheduler.agent.RunningAgent._
-import com.sos.jobscheduler.agent.configuration.inject.AgentModule
-import com.sos.jobscheduler.agent.configuration.{AgentConfiguration, AgentStartInformation}
-import com.sos.jobscheduler.agent.data.AgentTermination
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.web.AgentWebServer
-import com.sos.jobscheduler.base.auth.{SessionToken, SimpleUser, UserId}
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.base.utils.Closer
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import com.sos.jobscheduler.common.guice.GuiceImplicits._
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.command.CommandMeta
-import com.sos.jobscheduler.core.startup.StartUp
+import js7.agent.RunningAgent._
+import js7.agent.configuration.inject.AgentModule
+import js7.agent.configuration.{AgentConfiguration, AgentStartInformation}
+import js7.agent.data.AgentTermination
+import js7.agent.data.commands.AgentCommand
+import js7.agent.web.AgentWebServer
+import js7.base.auth.{SessionToken, SimpleUser, UserId}
+import js7.base.problem.Checked
+import js7.base.problem.Checked._
+import js7.base.time.ScalaTime._
+import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.Closer
+import js7.base.utils.ScalaUtils.RichThrowable
+import js7.base.web.Uri
+import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
+import js7.common.guice.GuiceImplicits._
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.Futures.promiseFuture
+import js7.common.scalautil.Logger
+import js7.core.command.CommandMeta
+import js7.core.startup.StartUp
 import com.typesafe.config.Config
 import java.nio.file.Files.deleteIfExists
 import monix.eval.Task
@@ -36,7 +36,7 @@ import scala.concurrent.{ExecutionContext, Future, Promise, blocking}
 /**
  * JobScheduler Agent Server.
  *
- * Integration test in engine-tests, for example com.sos.jobscheduler.tests.jira.js1291.JS1291AgentIT.
+ * Integration test in engine-tests, for example js7.tests.jira.js1291.JS1291AgentIT.
  *
  * @author Joacim Zschimmer
  */

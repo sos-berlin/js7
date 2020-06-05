@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.data.order
+package js7.data.order
 
-import com.sos.jobscheduler.base.annotation.javaApi
-import com.sos.jobscheduler.base.generic.GenericString
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import js7.base.annotation.javaApi
+import js7.base.generic.GenericString
+import js7.base.problem.{Checked, Problem}
 
 final case class OrderId private(string: String) extends GenericString
 {

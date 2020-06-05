@@ -1,18 +1,18 @@
-package com.sos.jobscheduler.data.order
+package js7.data.order
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowableEither
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.command.CancelMode
-import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.data.order.OrderEvent._
-import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.data.workflow.position.Position
-import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import js7.base.circeutils.CirceUtils._
+import js7.base.problem.Problem
+import js7.base.time.ScalaTime._
+import js7.base.time.Timestamp
+import js7.base.utils.ScalaUtils.RichThrowableEither
+import js7.data.agent.AgentRefPath
+import js7.data.command.CancelMode
+import js7.data.event.{KeyedEvent, Stamped}
+import js7.data.job.ReturnCode
+import js7.data.order.OrderEvent._
+import js7.data.workflow.WorkflowPath
+import js7.data.workflow.position.Position
+import js7.tester.CirceJsonTester.testJson
 import io.circe.Json
 import io.circe.syntax.EncoderOps
 import scala.concurrent.duration._

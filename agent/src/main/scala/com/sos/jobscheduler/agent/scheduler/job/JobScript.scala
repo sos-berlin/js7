@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.agent.scheduler.job
+package js7.agent.scheduler.job
 
-import com.sos.jobscheduler.base.generic.GenericString
+import js7.base.generic.GenericString
 
 /**
   * @author Joacim Zschimmer

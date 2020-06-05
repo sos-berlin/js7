@@ -1,21 +1,21 @@
-package com.sos.jobscheduler.master.web.master.api.fatevent
+package js7.master.web.master.api.fatevent
 
-import com.sos.jobscheduler.base.crypt.silly.{SillySignatureVerifier, SillySigner}
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
-import com.sos.jobscheduler.data.crypt.FileBasedVerifier
-import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderCancelledFat, OrderFailedFat, OrderFinishedFat, OrderForkedFat, OrderJoinedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStderrWrittenFat, OrderStdoutWrittenFat}
-import com.sos.jobscheduler.data.filebased.{FileBasedSigner, Repo, RepoEvent, VersionId}
-import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
-import com.sos.jobscheduler.data.master.{MasterFileBaseds, MasterId}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancelled, OrderDetachable, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStderrWritten, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToMaster}
-import com.sos.jobscheduler.data.order.{OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.instructions.Execute
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.position.Position
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.master.web.master.api.fatevent.FatStateTest._
+import js7.base.crypt.silly.{SillySignatureVerifier, SillySigner}
+import js7.base.web.Uri
+import js7.data.agent.{AgentRef, AgentRefPath}
+import js7.data.crypt.FileBasedVerifier
+import js7.data.event.{Event, KeyedEvent, Stamped}
+import js7.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderCancelledFat, OrderFailedFat, OrderFinishedFat, OrderForkedFat, OrderJoinedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStderrWrittenFat, OrderStdoutWrittenFat}
+import js7.data.filebased.{FileBasedSigner, Repo, RepoEvent, VersionId}
+import js7.data.job.{ExecutablePath, ReturnCode}
+import js7.data.master.{MasterFileBaseds, MasterId}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancelled, OrderDetachable, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStderrWritten, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToMaster}
+import js7.data.order.{OrderId, Outcome}
+import js7.data.workflow.instructions.Execute
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.position.Position
+import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.master.web.master.api.fatevent.FatStateTest._
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

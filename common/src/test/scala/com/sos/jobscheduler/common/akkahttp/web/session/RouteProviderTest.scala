@@ -1,17 +1,17 @@
-package com.sos.jobscheduler.common.akkahttp.web.session
+package js7.common.akkahttp.web.session
 
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, OK, Unauthorized}
 import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
-import com.sos.jobscheduler.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
-import com.sos.jobscheduler.common.akkahttp.web.session.RouteProviderTest._
-import com.sos.jobscheduler.common.auth.IdToUser
-import com.sos.jobscheduler.common.http.CirceJsonSupport._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
+import js7.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
+import js7.base.generic.SecretString
+import js7.common.akkahttp.web.auth.GateKeeper
+import js7.common.akkahttp.web.session.RouteProviderTest._
+import js7.common.auth.IdToUser
+import js7.common.http.CirceJsonSupport._
+import js7.common.scalautil.MonixUtils.syntax._
 import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler
 import scala.concurrent.duration._

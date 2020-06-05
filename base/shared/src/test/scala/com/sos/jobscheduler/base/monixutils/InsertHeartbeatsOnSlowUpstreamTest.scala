@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.base.monixutils
+package js7.base.monixutils
 
-import com.sos.jobscheduler.base.monixutils.MonixBase.syntax._
-import com.sos.jobscheduler.base.time.ScalaTime._
+import js7.base.monixutils.MonixBase.syntax._
+import js7.base.time.ScalaTime._
 import monix.eval.Task
 import monix.execution.schedulers.TestScheduler
 import monix.reactive.Observable

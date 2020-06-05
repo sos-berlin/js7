@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.common.akkautils
+package js7.common.akkautils
 
 import akka.actor.{Actor, ActorSystem, Props}
 import akka.pattern.ask
 import akka.util.Timeout
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.akkautils.CatchingActorTest._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
+import js7.base.generic.Completed
+import js7.base.time.ScalaTime._
+import js7.common.akkautils.CatchingActorTest._
+import js7.common.scalautil.Futures.implicits.SuccessFuture
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._

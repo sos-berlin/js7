@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.master.web.master.api.log
+package js7.master.web.master.api.log
 
 import akka.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
 import akka.http.scaladsl.model.HttpEntity
@@ -6,16 +6,16 @@ import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.directives.ParameterDirectives._
 import akka.http.scaladsl.server.directives.PathDirectives.pathEnd
 import akka.http.scaladsl.server.directives.RouteDirectives.complete
-import com.sos.jobscheduler.base.auth.ValidUserPermission
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.passIf
-import com.sos.jobscheduler.common.akkahttp.StandardMarshallers.logAkkaStreamErrorToWebLogAndIgnore
-import com.sos.jobscheduler.common.files.GrowingFileObservable
-import com.sos.jobscheduler.common.http.AkkaHttpUtils.AkkaByteVector
-import com.sos.jobscheduler.common.http.StreamingSupport._
-import com.sos.jobscheduler.common.time.JavaTimeConverters._
-import com.sos.jobscheduler.master.web.common.MasterRouteProvider
-import com.sos.jobscheduler.master.web.master.api.log.LogRoute._
+import js7.base.auth.ValidUserPermission
+import js7.base.utils.ScalazStyle._
+import js7.common.akkahttp.AkkaHttpServerUtils.passIf
+import js7.common.akkahttp.StandardMarshallers.logAkkaStreamErrorToWebLogAndIgnore
+import js7.common.files.GrowingFileObservable
+import js7.common.http.AkkaHttpUtils.AkkaByteVector
+import js7.common.http.StreamingSupport._
+import js7.common.time.JavaTimeConverters._
+import js7.master.web.common.MasterRouteProvider
+import js7.master.web.master.api.log.LogRoute._
 import com.typesafe.config.Config
 import java.nio.file.Files.{isReadable, isRegularFile}
 import java.nio.file.Path

@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.base.utils
+package js7.base.utils
 
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import js7.base.problem.Checked.Ops
+import js7.base.problem.{Checked, Problem}
 import monix.eval.Task
 import scala.concurrent.{Future, Promise}
 import scala.reflect.runtime.universe._

@@ -1,15 +1,15 @@
-package com.sos.jobscheduler.tests.master.commands
+package js7.tests.master.commands
 
 import akka.http.scaladsl.model.StatusCodes.ServiceUnavailable
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.http.AkkaHttpClient.HttpException
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
-import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
-import com.sos.jobscheduler.tests.master.commands.AddOrderTimeoutTest._
-import com.sos.jobscheduler.tests.testenv.MasterAgentForScalaTest
+import js7.base.problem.Checked.Ops
+import js7.base.time.ScalaTime._
+import js7.common.http.AkkaHttpClient.HttpException
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.data.order.{FreshOrder, OrderId}
+import js7.data.workflow.WorkflowPath
+import js7.data.workflow.parser.WorkflowParser
+import js7.tests.master.commands.AddOrderTimeoutTest._
+import js7.tests.testenv.MasterAgentForScalaTest
 import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec

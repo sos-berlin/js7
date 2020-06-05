@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.base.time
+package js7.base.time
 
 import cats.Show
-import com.sos.jobscheduler.base.time.GenericTimestamp._
+import js7.base.time.GenericTimestamp._
 import io.circe
 import scala.concurrent.duration._
 

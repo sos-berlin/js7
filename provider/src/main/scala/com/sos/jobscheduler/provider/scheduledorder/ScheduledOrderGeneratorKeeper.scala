@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.provider.scheduledorder
+package js7.provider.scheduledorder
 
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
-import com.sos.jobscheduler.common.time.JavaTimeConverters._
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
-import com.sos.jobscheduler.provider.scheduledorder.ScheduledOrderGeneratorKeeper._
-import com.sos.jobscheduler.provider.scheduledorder.oldruntime.InstantInterval
+import js7.base.time.Timestamp
+import js7.base.utils.Collections.implicits.RichTraversable
+import js7.common.time.JavaTimeConverters._
+import js7.data.order.{FreshOrder, OrderId}
+import js7.provider.scheduledorder.ScheduledOrderGeneratorKeeper._
+import js7.provider.scheduledorder.oldruntime.InstantInterval
 
 /**
   * @author Joacim Zschimmer

@@ -1,45 +1,45 @@
-package com.sos.jobscheduler.agent.scheduler.order
+package js7.agent.scheduler.order
 
 import akka.actor.{Actor, ActorRef, PoisonPill, Props, Terminated}
 import akka.pattern.{ask, pipe}
 import akka.util.Timeout
-import com.sos.jobscheduler.agent.AgentState
-import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.configuration.Akkas.newAgentActorSystem
-import com.sos.jobscheduler.agent.data.AgentTaskId
-import com.sos.jobscheduler.agent.scheduler.job.JobActor
-import com.sos.jobscheduler.agent.scheduler.job.task.{SimpleShellTaskRunner, TaskRunner}
-import com.sos.jobscheduler.agent.scheduler.order.OrderActorTest._
-import com.sos.jobscheduler.agent.tests.TestAgentDirectoryProvider
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.HasCloser
-import com.sos.jobscheduler.common.akkautils.{CatchingActor, SupervisorStrategies}
-import com.sos.jobscheduler.common.event.EventIdGenerator
-import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.IOExecutor.Implicits.globalIOX
-import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
-import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
-import com.sos.jobscheduler.common.utils.Exceptions.repeatUntilNoException
-import com.sos.jobscheduler.core.event.StampedKeyedEventBus
-import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
-import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalConf}
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import com.sos.jobscheduler.data.event.{Event, EventRequest, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.filebased.VersionId
-import com.sos.jobscheduler.data.job.{ExecutablePath, JobKey}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderDetachable, OrderDetached, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
-import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
-import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.position.Position
-import com.sos.jobscheduler.taskserver.modules.shell.StandardRichProcessStartSynchronizer
+import js7.agent.AgentState
+import js7.agent.configuration.AgentConfiguration
+import js7.agent.configuration.Akkas.newAgentActorSystem
+import js7.agent.data.AgentTaskId
+import js7.agent.scheduler.job.JobActor
+import js7.agent.scheduler.job.task.{SimpleShellTaskRunner, TaskRunner}
+import js7.agent.scheduler.order.OrderActorTest._
+import js7.agent.tests.TestAgentDirectoryProvider
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.generic.Completed
+import js7.base.time.ScalaTime._
+import js7.base.utils.HasCloser
+import js7.common.akkautils.{CatchingActor, SupervisorStrategies}
+import js7.common.event.EventIdGenerator
+import js7.common.process.Processes.{ShellFileExtension => sh}
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.IOExecutor.Implicits.globalIOX
+import js7.common.system.OperatingSystem.isWindows
+import js7.common.utils.ByteUnits.toKBGB
+import js7.common.utils.Exceptions.repeatUntilNoException
+import js7.core.event.StampedKeyedEventBus
+import js7.core.event.journal.data.JournalMeta
+import js7.core.event.journal.watch.JournalEventWatch
+import js7.core.event.journal.{JournalActor, JournalConf}
+import js7.data.agent.AgentRefPath
+import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
+import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped}
+import js7.data.filebased.VersionId
+import js7.data.job.{ExecutablePath, JobKey}
+import js7.data.order.OrderEvent.{OrderAttached, OrderDetachable, OrderDetached, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
+import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
+import js7.data.system.{Stderr, Stdout, StdoutOrStderr}
+import js7.data.workflow.WorkflowPath
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.position.Position
+import js7.taskserver.modules.shell.StandardRichProcessStartSynchronizer
 import com.typesafe.config.{Config, ConfigValueFactory}
 import java.nio.file.{Files, Path}
 import monix.execution.Scheduler

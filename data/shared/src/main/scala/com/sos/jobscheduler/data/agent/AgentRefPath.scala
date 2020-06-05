@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.data.agent
+package js7.data.agent
 
-import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
+import js7.data.filebased.{SourceType, TypedPath}
 
 /**
   * @author Joacim Zschimmer

@@ -1,20 +1,20 @@
-package com.sos.jobscheduler.tests
+package js7.tests
 
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.event.{<-:, EventSeq, KeyedEvent, TearableEventSeq}
-import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAwaiting, OrderDetachable, OrderFinished, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
-import com.sos.jobscheduler.data.workflow.position.Position
-import com.sos.jobscheduler.master.RunningMaster
-import com.sos.jobscheduler.tests.OfferAndAwaitOrderTest._
-import com.sos.jobscheduler.tests.testenv.DirectoryProvider
+import js7.base.problem.Checked.Ops
+import js7.base.time.Timestamp
+import js7.base.utils.AutoClosing.autoClosing
+import js7.common.process.Processes.{ShellFileExtension => sh}
+import js7.data.agent.AgentRefPath
+import js7.data.event.{<-:, EventSeq, KeyedEvent, TearableEventSeq}
+import js7.data.job.ExecutablePath
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAwaiting, OrderDetachable, OrderFinished, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
+import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.workflow.WorkflowPath
+import js7.data.workflow.parser.WorkflowParser
+import js7.data.workflow.position.Position
+import js7.master.RunningMaster
+import js7.tests.OfferAndAwaitOrderTest._
+import js7.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 

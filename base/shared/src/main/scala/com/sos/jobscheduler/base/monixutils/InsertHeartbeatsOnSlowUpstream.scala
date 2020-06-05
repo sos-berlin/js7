@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package com.sos.jobscheduler.base.monixutils
+package js7.base.monixutils
 
 import java.util.concurrent.TimeUnit
 import monix.execution.Ack.{Continue, Stop}

@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.base.crypt
+package js7.base.crypt
 
-import com.sos.jobscheduler.base.generic.GenericString
+import js7.base.generic.GenericString
 
 /**
   * Name, comment and email.

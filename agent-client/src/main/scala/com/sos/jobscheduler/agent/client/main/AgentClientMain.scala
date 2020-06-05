@@ -1,14 +1,14 @@
-package com.sos.jobscheduler.agent.client.main
+package js7.agent.client.main
 
-import com.sos.jobscheduler.agent.client.AkkaHttpAgentTextApi
-import com.sos.jobscheduler.base.auth.SessionToken
-import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.commandline.CommandLineArguments
-import com.sos.jobscheduler.common.log.Log4j
-import com.sos.jobscheduler.common.scalautil.Logger
+import js7.agent.client.AkkaHttpAgentTextApi
+import js7.base.auth.SessionToken
+import js7.base.convert.AsJava.StringAsPath
+import js7.base.generic.SecretString
+import js7.base.utils.AutoClosing.autoClosing
+import js7.base.web.Uri
+import js7.common.commandline.CommandLineArguments
+import js7.common.log.Log4j
+import js7.common.scalautil.Logger
 import java.nio.file.{Files, Path}
 import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal

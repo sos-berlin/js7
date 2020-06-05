@@ -1,27 +1,27 @@
-package com.sos.jobscheduler.tests
+package js7.tests
 
-import com.sos.jobscheduler.agent.RunningAgent
-import com.sos.jobscheduler.agent.data.Problems.UnknownMaster
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.akkahttp.web.data.WebServerPort
-import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
-import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryContentRecursively
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPorts
-import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
-import com.sos.jobscheduler.data.filebased.VersionId
-import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.master.MasterId
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
-import com.sos.jobscheduler.data.workflow.instructions.Execute
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentCouplingFailed
-import com.sos.jobscheduler.tests.UpdateRepoAgentRefTest._
-import com.sos.jobscheduler.tests.testenv.DirectoryProvider.script
-import com.sos.jobscheduler.tests.testenv.{DirectoryProvider, DirectoryProviderForScalaTest}
+import js7.agent.RunningAgent
+import js7.agent.data.Problems.UnknownMaster
+import js7.base.time.ScalaTime._
+import js7.base.web.Uri
+import js7.common.akkahttp.web.data.WebServerPort
+import js7.common.process.Processes.{ShellFileExtension => sh}
+import js7.common.scalautil.FileUtils.deleteDirectoryContentRecursively
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
+import js7.data.agent.{AgentRef, AgentRefPath}
+import js7.data.filebased.VersionId
+import js7.data.job.ExecutablePath
+import js7.data.master.MasterId
+import js7.data.order.{FreshOrder, OrderId}
+import js7.data.workflow.instructions.Execute
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.master.data.events.MasterAgentEvent.AgentCouplingFailed
+import js7.tests.UpdateRepoAgentRefTest._
+import js7.tests.testenv.DirectoryProvider.script
+import js7.tests.testenv.{DirectoryProvider, DirectoryProviderForScalaTest}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 

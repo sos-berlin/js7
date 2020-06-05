@@ -1,18 +1,18 @@
-package com.sos.jobscheduler.data.order
+package js7.data.order
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
-import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.command.CancelMode
-import com.sos.jobscheduler.data.order.Order._
-import com.sos.jobscheduler.data.order.OrderEvent._
-import com.sos.jobscheduler.data.workflow.WorkflowId
-import com.sos.jobscheduler.data.workflow.position.{InstructionNr, Position, WorkflowPosition}
+import js7.base.circeutils.CirceUtils.deriveCodec
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.problem.Checked.Ops
+import js7.base.problem.{Checked, Problem}
+import js7.base.time.Timestamp
+import js7.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
+import js7.base.utils.ScalazStyle.OptionRichBoolean
+import js7.data.agent.AgentRefPath
+import js7.data.command.CancelMode
+import js7.data.order.Order._
+import js7.data.order.OrderEvent._
+import js7.data.workflow.WorkflowId
+import js7.data.workflow.position.{InstructionNr, Position, WorkflowPosition}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, DecodingFailure, Encoder, JsonObject}
 import scala.reflect.ClassTag

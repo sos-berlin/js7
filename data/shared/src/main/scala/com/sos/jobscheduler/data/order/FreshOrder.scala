@@ -1,14 +1,14 @@
-package com.sos.jobscheduler.data.order
+package js7.data.order
 
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.data.filebased.VersionId
-import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
+import js7.base.circeutils.CirceUtils._
+import js7.base.problem.Checked
+import js7.base.problem.Checked._
+import js7.base.time.Timestamp
+import js7.base.utils.ScalazStyle._
+import js7.data.filebased.VersionId
+import js7.data.workflow.WorkflowPath
+import js7.data.workflow.position.{Position, WorkflowPosition}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 import org.jetbrains.annotations.TestOnly

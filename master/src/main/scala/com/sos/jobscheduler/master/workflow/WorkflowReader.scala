@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.master.workflow
+package js7.master.workflow
 
 import akka.util.ByteString
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.core.filebased.FileBasedReader
-import com.sos.jobscheduler.data.filebased.SourceType
-import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowId}
+import js7.base.circeutils.CirceUtils._
+import js7.base.problem.Checked
+import js7.core.filebased.FileBasedReader
+import js7.data.filebased.SourceType
+import js7.data.workflow.parser.WorkflowParser
+import js7.data.workflow.{Workflow, WorkflowId}
 import io.circe.Json
 
 /**

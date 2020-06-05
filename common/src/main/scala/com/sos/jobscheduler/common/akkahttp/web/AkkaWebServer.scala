@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.akkahttp.web
+package js7.common.akkahttp.web
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.server.Route
@@ -8,19 +8,19 @@ import akka.stream.{ActorMaterializer, TLSClientAuth}
 import cats.effect.Resource
 import cats.instances.vector._
 import cats.syntax.traverse._
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.ScalaUtils._
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.base.utils.{Lazy, SetOnce}
-import com.sos.jobscheduler.common.akkahttp.https.Https.loadSSLContext
-import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer._
-import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
-import com.sos.jobscheduler.common.http.JsonStreamingSupport
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.JavaTimeConverters.AsScalaDuration
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import js7.base.generic.Completed
+import js7.base.time.ScalaTime._
+import js7.base.utils.ScalaUtils._
+import js7.base.utils.ScalazStyle._
+import js7.base.utils.{Lazy, SetOnce}
+import js7.common.akkahttp.https.Https.loadSSLContext
+import js7.common.akkahttp.web.AkkaWebServer._
+import js7.common.akkahttp.web.data.WebServerBinding
+import js7.common.http.JsonStreamingSupport
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.Logger
+import js7.common.time.JavaTimeConverters.AsScalaDuration
+import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.typesafe.config.{Config, ConfigFactory}
 import java.net.InetSocketAddress
 import monix.eval.Task

@@ -1,15 +1,15 @@
-package com.sos.jobscheduler.agent.scheduler
+package js7.agent.scheduler
 
 import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.util.Timeout
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.views.AgentOverview
-import com.sos.jobscheduler.agent.scheduler.AgentActor.Command
-import com.sos.jobscheduler.base.auth.UserId
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.common.event.EventWatch
-import com.sos.jobscheduler.data.master.MasterId
+import js7.agent.data.commands.AgentCommand
+import js7.agent.data.views.AgentOverview
+import js7.agent.scheduler.AgentActor.Command
+import js7.base.auth.UserId
+import js7.base.problem.Checked
+import js7.common.event.EventWatch
+import js7.data.master.MasterId
 import monix.eval.Task
 import scala.concurrent.Promise
 

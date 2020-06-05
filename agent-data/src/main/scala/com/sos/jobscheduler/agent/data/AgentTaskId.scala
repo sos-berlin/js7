@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.agent.data
+package js7.agent.data
 
-import com.sos.jobscheduler.agent.data
-import com.sos.jobscheduler.base.generic.GenericString
+import js7.agent.data
+import js7.base.generic.GenericString
 import javax.inject.Singleton
 import scala.math.abs
 import scala.util.Random

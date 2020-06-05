@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.common.files
+package js7.common.files
 
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.ScodecUtils.RichByteVector
-import com.sos.jobscheduler.common.scalautil.FileUtils._
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
+import js7.base.time.ScalaTime._
+import js7.base.utils.ScodecUtils.RichByteVector
+import js7.common.scalautil.FileUtils._
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.MonixUtils.syntax._
 import java.util.concurrent.ArrayBlockingQueue
 import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.duration._

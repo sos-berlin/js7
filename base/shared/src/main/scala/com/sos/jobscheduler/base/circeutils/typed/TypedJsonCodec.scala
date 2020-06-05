@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.base.circeutils.typed
+package js7.base.circeutils.typed
 
-import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec._
-import com.sos.jobscheduler.base.utils.Collections.implicits._
-import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
+import js7.base.circeutils.typed.TypedJsonCodec._
+import js7.base.utils.Collections.implicits._
+import js7.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
 import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json, JsonObject}
 import scala.reflect.ClassTag
 

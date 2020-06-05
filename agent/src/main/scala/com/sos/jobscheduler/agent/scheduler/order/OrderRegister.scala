@@ -1,18 +1,18 @@
-package com.sos.jobscheduler.agent.scheduler.order
+package js7.agent.scheduler.order
 
 import akka.actor.ActorRef
-import com.sos.jobscheduler.agent.scheduler.order.OrderRegister._
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.base.monixutils.MonixBase.syntax._
-import com.sos.jobscheduler.core.common.ActorRegister
-import com.sos.jobscheduler.data.event.KeyedEvent
-import com.sos.jobscheduler.data.order.OrderEvent.OrderDetached
-import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.data.workflow.Workflow
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
+import js7.agent.scheduler.order.OrderRegister._
+import js7.base.problem.Checked
+import js7.base.problem.Checked.Ops
+import js7.base.time.Timestamp
+import js7.base.utils.Assertions.assertThat
+import js7.base.monixutils.MonixBase.syntax._
+import js7.core.common.ActorRegister
+import js7.data.event.KeyedEvent
+import js7.data.order.OrderEvent.OrderDetached
+import js7.data.order.{Order, OrderId}
+import js7.data.workflow.Workflow
+import js7.data.workflow.instructions.executable.WorkflowJob
 import monix.execution.{Cancelable, Scheduler}
 import scala.concurrent.Promise
 

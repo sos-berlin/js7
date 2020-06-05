@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.agent.client
+package js7.agent.client
 
-import com.sos.jobscheduler.base.auth.UserAndPassword
-import com.sos.jobscheduler.base.utils.Closer.syntax.RichClosersAny
-import com.sos.jobscheduler.base.utils.HasCloser
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
-import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
+import js7.base.auth.UserAndPassword
+import js7.base.utils.Closer.syntax.RichClosersAny
+import js7.base.utils.HasCloser
+import js7.base.web.Uri
+import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
+import js7.common.akkautils.Akkas.newActorSystem
 
 /**
  * Simple client for JobScheduler Agent Server.

@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.core.filebased
+package js7.core.filebased
 
-import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
-import com.sos.jobscheduler.data.filebased.{FileBased, RepoChange, TypedPath, VersionId}
+import js7.base.utils.Collections.implicits.RichTraversable
+import js7.data.filebased.{FileBased, RepoChange, TypedPath, VersionId}
 
 /**
   * @author Joacim Zschimmer

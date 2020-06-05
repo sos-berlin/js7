@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.taskserver.task.process
+package js7.taskserver.task.process
 
 import java.io.Writer
 

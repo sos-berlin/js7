@@ -1,14 +1,14 @@
-package com.sos.jobscheduler.core.filebased
+package js7.core.filebased
 
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.common.files.DirectoryReader
-import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.core.filebased.TypedFile.checkUniqueness
-import com.sos.jobscheduler.core.filebased.TypedFileTest._
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.filebased.SourceType
-import com.sos.jobscheduler.data.workflow.WorkflowPath
+import js7.base.problem.Problem
+import js7.common.files.DirectoryReader
+import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
+import js7.common.scalautil.FileUtils.syntax._
+import js7.core.filebased.TypedFile.checkUniqueness
+import js7.core.filebased.TypedFileTest._
+import js7.data.agent.AgentRefPath
+import js7.data.filebased.SourceType
+import js7.data.workflow.WorkflowPath
 import java.io.File.separator
 import java.nio.file.Files.{createDirectories, createTempDirectory}
 import java.nio.file.Path

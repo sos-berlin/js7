@@ -107,7 +107,7 @@ execute=(
   "$java"
   "${javaOptions[@]}"
   -classpath "$classpathString"
-  com.sos.jobscheduler.master.MasterMain
+  js7.master.MasterMain
   "${masterOptions[@]}")
 
 while true; do
@@ -131,7 +131,7 @@ while true; do
       "$java" -Xmx50m \
         -Dlog4j.configurationFile=com/sos/jobscheduler/master/client/main/log4j2.xml \
         -classpath "$classpathString" \
-        com.sos.jobscheduler.master.client.main.MasterClientMain \
+        js7.master.client.main.MasterClientMain \
         -data-directory="$data" \
         http://127.0.0.1:"$httpPort" \
         "$terminateCommand" \

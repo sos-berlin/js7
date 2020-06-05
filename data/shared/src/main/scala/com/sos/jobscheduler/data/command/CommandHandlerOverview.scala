@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.data.command
+package js7.data.command
 
 import io.circe.generic.JsonCodec
 

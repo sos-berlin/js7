@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.base.crypt
+package js7.base.crypt
 
-import com.sos.jobscheduler.base.crypt.PgpSignature._
-import com.sos.jobscheduler.base.utils.Strings.RichString
+import js7.base.crypt.PgpSignature._
+import js7.base.utils.Strings.RichString
 
 /**
   * @author Joacim Zschimmer

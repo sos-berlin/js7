@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.data.workflow.position
+package js7.data.workflow.position
 
-import com.sos.jobscheduler.base.utils.ScalaUtils.reuseIfEqual
-import com.sos.jobscheduler.data.workflow.WorkflowId
+import js7.base.utils.ScalaUtils.reuseIfEqual
+import js7.data.workflow.WorkflowId
 import io.circe.generic.JsonCodec
 import scala.language.implicitConversions
 

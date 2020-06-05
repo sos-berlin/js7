@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.base.utils
+package js7.base.utils
 
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.MemoizerTest._
+import js7.base.time.ScalaTime._
+import js7.base.utils.MemoizerTest._
 import java.util.concurrent.atomic.AtomicInteger
 import org.scalatest.freespec.AsyncFreeSpec
 import scala.collection.mutable

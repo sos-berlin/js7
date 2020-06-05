@@ -1,20 +1,20 @@
-package com.sos.jobscheduler.taskserver.task.process
+package js7.taskserver.task.process
 
-import com.sos.jobscheduler.agent.data.AgentTaskId
-import com.sos.jobscheduler.base.process.ProcessSignal.SIGKILL
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.process.Processes
-import com.sos.jobscheduler.common.process.Processes.{Pid, RobustlyStartProcess, processToPidOption}
-import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.system.FileUtils._
-import com.sos.jobscheduler.common.system.OperatingSystem.{isMac, isSolaris, isUnix, isWindows}
-import com.sos.jobscheduler.common.utils.JavaResource
-import com.sos.jobscheduler.taskserver.task.process.ProcessKillScriptTest._
+import js7.agent.data.AgentTaskId
+import js7.base.process.ProcessSignal.SIGKILL
+import js7.base.time.ScalaTime._
+import js7.base.utils.AutoClosing.autoClosing
+import js7.common.process.Processes
+import js7.common.process.Processes.{Pid, RobustlyStartProcess, processToPidOption}
+import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
+import js7.common.scalautil.FileUtils.implicits._
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.Logger
+import js7.common.system.FileUtils._
+import js7.common.system.OperatingSystem.{isMac, isSolaris, isUnix, isWindows}
+import js7.common.utils.JavaResource
+import js7.taskserver.task.process.ProcessKillScriptTest._
 import java.io.InputStream
 import java.lang.ProcessBuilder.Redirect.INHERIT
 import java.nio.file.Files._

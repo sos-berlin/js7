@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.base.time
+package js7.base.time
 
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.Stopwatch._
+import js7.base.time.ScalaTime._
+import js7.base.time.Stopwatch._
 import java.lang.System.nanoTime
 import scala.concurrent.duration._
 

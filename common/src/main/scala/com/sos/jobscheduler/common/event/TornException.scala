@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.common.event
+package js7.common.event
 
-import com.sos.jobscheduler.base.problem.ProblemException
-import com.sos.jobscheduler.data.event.{EventId, EventSeqTornProblem}
+import js7.base.problem.ProblemException
+import js7.data.event.{EventId, EventSeqTornProblem}
 
 /**
   * @author Joacim Zschimmer

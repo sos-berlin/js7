@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.common.scalautil.xmls
+package js7.common.scalautil.xmls
 
-import com.sos.jobscheduler.base.convert.ConvertiblePartialFunctions._
-import com.sos.jobscheduler.base.time.Stopwatch.measureTime
-import com.sos.jobscheduler.base.utils.ScalaUtils._
-import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader._
-import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReaderTest._
-import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
+import js7.base.convert.ConvertiblePartialFunctions._
+import js7.base.time.Stopwatch.measureTime
+import js7.base.utils.ScalaUtils._
+import js7.common.scalautil.xmls.ScalaXMLEventReader._
+import js7.common.scalautil.xmls.ScalaXMLEventReaderTest._
+import js7.common.scalautil.xmls.XmlSources._
 import javax.xml.transform.Source
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._

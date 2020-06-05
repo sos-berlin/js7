@@ -1,16 +1,16 @@
-package com.sos.jobscheduler.core.crypt.pgp
+package js7.core.crypt.pgp
 
 import cats.syntax.show._
-import com.sos.jobscheduler.base.Problems.{MessageSignedByUnknownProblem, TamperedWithSignedMessageProblem}
-import com.sos.jobscheduler.base.crypt.{PgpSignature, SignerId}
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.utils.SyncResource.syntax._
-import com.sos.jobscheduler.common.scalautil.GuavaUtils.stringToInputStreamResource
-import com.sos.jobscheduler.common.utils.JavaResource
-import com.sos.jobscheduler.core.crypt.pgp.PgpCommons.{readPublicKeyRingCollection, toPublicKeyRingCollection, writePublicKeyAsAscii, _}
-import com.sos.jobscheduler.core.crypt.pgp.PgpSigner.readSecretKey
-import com.sos.jobscheduler.core.crypt.pgp.PgpTest._
+import js7.base.Problems.{MessageSignedByUnknownProblem, TamperedWithSignedMessageProblem}
+import js7.base.crypt.{PgpSignature, SignerId}
+import js7.base.generic.SecretString
+import js7.base.problem.Checked.Ops
+import js7.base.utils.SyncResource.syntax._
+import js7.common.scalautil.GuavaUtils.stringToInputStreamResource
+import js7.common.utils.JavaResource
+import js7.core.crypt.pgp.PgpCommons.{readPublicKeyRingCollection, toPublicKeyRingCollection, writePublicKeyAsAscii, _}
+import js7.core.crypt.pgp.PgpSigner.readSecretKey
+import js7.core.crypt.pgp.PgpTest._
 import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets.UTF_8
 import org.bouncycastle.openpgp.{PGPException, PGPSignature}

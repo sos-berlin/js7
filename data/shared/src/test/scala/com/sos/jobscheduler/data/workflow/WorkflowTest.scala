@@ -1,20 +1,20 @@
-package com.sos.jobscheduler.data.workflow
+package js7.data.workflow
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.JsonStringInterpolator
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.problem.Problems.UnknownKeyProblem
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.expression.Expression.{BooleanConstant, Equal, LastReturnCode, NumericConstant}
-import com.sos.jobscheduler.data.expression.PositionSearch
-import com.sos.jobscheduler.data.job.{ExecutablePath, ExecutableScript, JobKey}
-import com.sos.jobscheduler.data.workflow.WorkflowTest._
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{Execute, ExplicitEnd, Fail, Fork, Goto, If, IfFailedGoto, ImplicitEnd, Retry, TryInstruction}
-import com.sos.jobscheduler.data.workflow.position.BranchId.{Else, Then, Try_, catch_, try_}
-import com.sos.jobscheduler.data.workflow.position._
-import com.sos.jobscheduler.data.workflow.test.TestSetting._
-import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import js7.base.circeutils.CirceUtils.JsonStringInterpolator
+import js7.base.problem.Checked.Ops
+import js7.base.problem.Problem
+import js7.base.problem.Problems.UnknownKeyProblem
+import js7.data.agent.AgentRefPath
+import js7.data.expression.Expression.{BooleanConstant, Equal, LastReturnCode, NumericConstant}
+import js7.data.expression.PositionSearch
+import js7.data.job.{ExecutablePath, ExecutableScript, JobKey}
+import js7.data.workflow.WorkflowTest._
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.instructions.{Execute, ExplicitEnd, Fail, Fork, Goto, If, IfFailedGoto, ImplicitEnd, Retry, TryInstruction}
+import js7.data.workflow.position.BranchId.{Else, Then, Try_, catch_, try_}
+import js7.data.workflow.position._
+import js7.data.workflow.test.TestSetting._
+import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.common.time
+package js7.common.time
 
-import com.sos.jobscheduler.common.time.TimeoutWithSteps._
+import js7.common.time.TimeoutWithSteps._
 import scala.concurrent.duration._
 
 /** Eine in Schritte unterteilte Frist.

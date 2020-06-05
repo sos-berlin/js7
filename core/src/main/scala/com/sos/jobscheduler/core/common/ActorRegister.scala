@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.core.common
+package js7.core.common
 
 import akka.actor.ActorRef
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.Collections._
-import com.sos.jobscheduler.base.utils.DuplicateKeyException
-import com.sos.jobscheduler.core.event.journal.data.RecoveredJournalingActors
+import js7.base.problem.Checked._
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.Collections._
+import js7.base.utils.DuplicateKeyException
+import js7.core.event.journal.data.RecoveredJournalingActors
 import scala.collection.mutable
 
 /**

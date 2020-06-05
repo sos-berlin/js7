@@ -1,19 +1,19 @@
-package com.sos.jobscheduler.agent.client
+package js7.agent.client
 
-import com.sos.jobscheduler.agent.client.AkkaHttpAgentTextApi._
-import com.sos.jobscheduler.agent.data.web.AgentUris
-import com.sos.jobscheduler.base.auth.UserAndPassword
-import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.session.HttpSessionApi
-import com.sos.jobscheduler.base.utils.HasCloser
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.akkahttp.https.TrustStoreRef
-import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
-import com.sos.jobscheduler.common.configutils.Configs.{ConvertibleConfig, parseConfigIfExists}
-import com.sos.jobscheduler.common.http.{AkkaHttpClient, TextApi}
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.Logger
+import js7.agent.client.AkkaHttpAgentTextApi._
+import js7.agent.data.web.AgentUris
+import js7.base.auth.UserAndPassword
+import js7.base.convert.AsJava.StringAsPath
+import js7.base.problem.Checked._
+import js7.base.session.HttpSessionApi
+import js7.base.utils.HasCloser
+import js7.base.web.Uri
+import js7.common.akkahttp.https.TrustStoreRef
+import js7.common.akkautils.ProvideActorSystem
+import js7.common.configutils.Configs.{ConvertibleConfig, parseConfigIfExists}
+import js7.common.http.{AkkaHttpClient, TextApi}
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.Logger
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Path
 import scala.jdk.CollectionConverters._

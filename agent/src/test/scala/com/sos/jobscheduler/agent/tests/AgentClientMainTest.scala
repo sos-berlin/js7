@@ -1,15 +1,15 @@
-package com.sos.jobscheduler.agent.tests
+package js7.agent.tests
 
-import com.sos.jobscheduler.agent.client.main.AgentClientMain
-import com.sos.jobscheduler.agent.command.CommandHandler
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.ShutDown
-import com.sos.jobscheduler.agent.tests.AgentClientMainTest._
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.utils.HasCloser
-import com.sos.jobscheduler.common.guice.ScalaAbstractModule
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import com.sos.jobscheduler.core.command.CommandMeta
+import js7.agent.client.main.AgentClientMain
+import js7.agent.command.CommandHandler
+import js7.agent.data.commands.AgentCommand
+import js7.agent.data.commands.AgentCommand.ShutDown
+import js7.agent.tests.AgentClientMainTest._
+import js7.base.problem.Checked
+import js7.base.utils.HasCloser
+import js7.common.guice.ScalaAbstractModule
+import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import js7.core.command.CommandMeta
 import monix.eval.Task
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec

@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.agent.scheduler.order
+package js7.agent.scheduler.order
 
-import com.sos.jobscheduler.base.utils.DuplicateKeyException
-import com.sos.jobscheduler.data.order.OrderId
+import js7.base.utils.DuplicateKeyException
+import js7.data.order.OrderId
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

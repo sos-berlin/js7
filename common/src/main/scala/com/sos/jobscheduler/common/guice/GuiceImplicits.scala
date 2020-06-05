@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.common.guice
+package js7.common.guice
 
 import com.google.inject.{Injector, Key}
-import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
-import com.sos.jobscheduler.common.guice.Lings.typeLiteral
+import js7.base.utils.ScalaUtils.implicitClass
+import js7.common.guice.Lings.typeLiteral
 import scala.reflect.ClassTag
 
 object GuiceImplicits {

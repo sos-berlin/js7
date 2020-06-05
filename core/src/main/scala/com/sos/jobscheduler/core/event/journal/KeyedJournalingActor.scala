@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.core.event.journal
+package js7.core.event.journal
 
-import com.sos.jobscheduler.base.generic.Accepted
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.utils.Assertions.assertThat
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
-import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor._
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, JournaledState, KeyedEvent, Stamped}
+import js7.base.generic.Accepted
+import js7.base.problem.Checked
+import js7.base.utils.Assertions.assertThat
+import js7.base.utils.ScalaUtils.RichJavaClass
+import js7.core.event.journal.KeyedJournalingActor._
+import js7.data.event.{AnyKeyedEvent, Event, JournaledState, KeyedEvent, Stamped}
 import monix.eval.Task
 import scala.concurrent.Future
 import scala.concurrent.duration.{Duration, FiniteDuration}

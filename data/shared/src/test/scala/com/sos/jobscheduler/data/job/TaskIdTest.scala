@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.data.job
+package js7.data.job
 
 import org.scalatest.freespec.AnyFreeSpec
 

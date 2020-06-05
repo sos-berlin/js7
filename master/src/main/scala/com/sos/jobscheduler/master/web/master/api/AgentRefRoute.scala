@@ -1,16 +1,16 @@
-package com.sos.jobscheduler.master.web.master.api
+package js7.master.web.master.api
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import com.sos.jobscheduler.base.auth.ValidUserPermission
-import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.completeTask
-import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
-import com.sos.jobscheduler.common.akkahttp.StandardDirectives.remainingSegmentOrPath
-import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
-import com.sos.jobscheduler.core.filebased.FileBasedApi
-import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
-import com.sos.jobscheduler.master.web.common.MasterRouteProvider
+import js7.base.auth.ValidUserPermission
+import js7.base.utils.IntelliJUtils.intelliJuseImport
+import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
+import js7.common.akkahttp.CirceJsonOrYamlSupport._
+import js7.common.akkahttp.StandardDirectives.remainingSegmentOrPath
+import js7.common.akkahttp.StandardMarshallers._
+import js7.core.filebased.FileBasedApi
+import js7.data.agent.{AgentRef, AgentRefPath}
+import js7.master.web.common.MasterRouteProvider
 import monix.execution.Scheduler
 
 /**

@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.common.event.collector
+package js7.common.event.collector
 
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.utils.CloseableIterator
-import com.sos.jobscheduler.common.event.RealEventWatch
-import com.sos.jobscheduler.common.event.collector.EventCollector._
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, EventId, Stamped}
+import js7.base.problem.Problem
+import js7.base.utils.CloseableIterator
+import js7.common.event.RealEventWatch
+import js7.common.event.collector.EventCollector._
+import js7.data.event.{AnyKeyedEvent, EventId, Stamped}
 import monix.execution.Scheduler
 import scala.concurrent.duration.FiniteDuration
 

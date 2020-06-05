@@ -1,14 +1,14 @@
-package com.sos.jobscheduler.master.web.master.api
+package js7.master.web.master.api
 
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import com.sos.jobscheduler.common.http.CirceJsonSupport._
-import com.sos.jobscheduler.core.command.CommandMeta
-import com.sos.jobscheduler.data.master.MasterId
-import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.web.master.api.test.RouteTester
+import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
+import js7.common.http.CirceJsonSupport._
+import js7.core.command.CommandMeta
+import js7.data.master.MasterId
+import js7.master.data.MasterCommand
+import js7.master.web.master.api.test.RouteTester
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec

@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.master.web.master
+package js7.master.web.master
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.{passIf, pathSegment}
-import com.sos.jobscheduler.common.akkahttp.WebLogDirectives
-import com.sos.jobscheduler.master.web.master.api.ApiRoute
+import js7.common.akkahttp.AkkaHttpServerUtils.{passIf, pathSegment}
+import js7.common.akkahttp.WebLogDirectives
+import js7.master.web.master.api.ApiRoute
 
 /**
   * @author Joacim Zschimmer

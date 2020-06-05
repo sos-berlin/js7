@@ -1,16 +1,16 @@
-package com.sos.jobscheduler.taskserver.task.process
+package js7.taskserver.task.process
 
-import com.sos.jobscheduler.agent.data.ProcessKillScript
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.HasCloser
-import com.sos.jobscheduler.common.log.LazyScalaLogger.AsLazyScalaLogger
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.system.OperatingSystem._
-import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
-import com.sos.jobscheduler.common.utils.Exceptions.ignoreException
-import com.sos.jobscheduler.common.utils.JavaResource
-import com.sos.jobscheduler.taskserver.task.process.ProcessKillScriptProvider._
+import js7.agent.data.ProcessKillScript
+import js7.base.time.ScalaTime._
+import js7.base.utils.HasCloser
+import js7.common.log.LazyScalaLogger.AsLazyScalaLogger
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.Logger
+import js7.common.system.OperatingSystem._
+import js7.common.time.WaitForCondition.waitForCondition
+import js7.common.utils.Exceptions.ignoreException
+import js7.common.utils.JavaResource
+import js7.taskserver.task.process.ProcessKillScriptProvider._
 import java.nio.file.Files.{delete, exists}
 import java.nio.file.Path
 

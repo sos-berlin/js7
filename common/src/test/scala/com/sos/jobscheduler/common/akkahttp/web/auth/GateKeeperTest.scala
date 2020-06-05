@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.akkahttp.web.auth
+package js7.common.akkahttp.web.auth
 
 import akka.http.scaladsl.model.MediaTypes.`text/plain`
 import akka.http.scaladsl.model.StatusCodes.{OK, Unauthorized}
@@ -9,15 +9,15 @@ import akka.http.scaladsl.server.{ExceptionHandler, Route}
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import akka.http.scaladsl.unmarshalling.Unmarshaller
 import akka.testkit.TestDuration
-import com.sos.jobscheduler.base.auth.Permission.toStringToPermission
-import com.sos.jobscheduler.base.auth.{GetPermission, HashedPassword, Permission, SimpleUser, SuperPermission, User, UserAndPassword, UserId, ValidUserPermission}
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper.{GetIsPublic, IsPublic, LoopbackIsPublic}
-import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeperTest._
-import com.sos.jobscheduler.common.auth.IdToUser
-import com.sos.jobscheduler.common.http.CirceJsonSupport._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
+import js7.base.auth.Permission.toStringToPermission
+import js7.base.auth.{GetPermission, HashedPassword, Permission, SimpleUser, SuperPermission, User, UserAndPassword, UserId, ValidUserPermission}
+import js7.base.generic.SecretString
+import js7.base.time.ScalaTime._
+import js7.common.akkahttp.web.auth.GateKeeper.{GetIsPublic, IsPublic, LoopbackIsPublic}
+import js7.common.akkahttp.web.auth.GateKeeperTest._
+import js7.common.auth.IdToUser
+import js7.common.http.CirceJsonSupport._
+import js7.common.scalautil.Futures.implicits.SuccessFuture
 import com.typesafe.config.ConfigFactory
 import io.circe.Json
 import monix.execution.Scheduler

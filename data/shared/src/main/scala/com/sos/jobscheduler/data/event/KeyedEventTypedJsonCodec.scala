@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.data.event
+package js7.data.event
 
-import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec.{TypeFieldName, UnknownClassForJsonException, UnknownJsonTypeException, typeName, unknownJsonTypeFailure}
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.base.utils.Collections._
-import com.sos.jobscheduler.base.utils.Collections.implicits.RichPairTraversable
-import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
+import js7.base.circeutils.typed.TypedJsonCodec.{TypeFieldName, UnknownClassForJsonException, UnknownJsonTypeException, typeName, unknownJsonTypeFailure}
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.utils.Collections._
+import js7.base.utils.Collections.implicits.RichPairTraversable
+import js7.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, HCursor, Json}
 import scala.reflect.ClassTag

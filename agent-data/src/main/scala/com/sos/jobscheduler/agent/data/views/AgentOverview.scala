@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.agent.data.views
+package js7.agent.data.views
 
-import com.sos.jobscheduler.base.circeutils.CirceCodec
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
-import com.sos.jobscheduler.base.system.SystemInformation
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.data.system.JavaInformation
+import js7.base.circeutils.CirceCodec
+import js7.base.circeutils.CirceUtils.deriveCodec
+import js7.base.system.SystemInformation
+import js7.base.time.Timestamp
+import js7.data.system.JavaInformation
 
 /**
  * @author Joacim Zschimmer

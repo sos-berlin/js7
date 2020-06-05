@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.agent.scheduler.job.task
+package js7.agent.scheduler.job.task
 
-import com.sos.jobscheduler.agent.scheduler.job.ShellReturnValuesProvider
-import com.sos.jobscheduler.data.job.JobKey
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
+import js7.agent.scheduler.job.ShellReturnValuesProvider
+import js7.data.job.JobKey
+import js7.data.workflow.instructions.executable.WorkflowJob
 import java.nio.file.Path
 
 /**

@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.data.folder
+package js7.data.folder
 
-import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
-import com.sos.jobscheduler.data.folder.FolderPathTest._
+import js7.data.filebased.{SourceType, TypedPath}
+import js7.data.folder.FolderPathTest._
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

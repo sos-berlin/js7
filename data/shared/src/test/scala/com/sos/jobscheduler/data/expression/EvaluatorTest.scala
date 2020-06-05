@@ -1,14 +1,14 @@
-package com.sos.jobscheduler.data.expression
+package js7.data.expression
 
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
-import com.sos.jobscheduler.data.expression.Evaluator.{BooleanValue, NumericValue, StringValue, Value}
-import com.sos.jobscheduler.data.expression.Expression._
-import com.sos.jobscheduler.data.expression.Scope.ConstantExpressionRequiredProblem
-import com.sos.jobscheduler.data.workflow.Label
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.parser.ExpressionParser
-import com.sos.jobscheduler.data.workflow.parser.Parsers.checkedParse
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.ScalaUtils.RichPartialFunction
+import js7.data.expression.Evaluator.{BooleanValue, NumericValue, StringValue, Value}
+import js7.data.expression.Expression._
+import js7.data.expression.Scope.ConstantExpressionRequiredProblem
+import js7.data.workflow.Label
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.parser.ExpressionParser
+import js7.data.workflow.parser.Parsers.checkedParse
 import fastparse.NoWhitespace._
 import fastparse._
 import org.scalactic.source

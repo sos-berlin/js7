@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.core.startup
+package js7.core.startup
 
-import com.sos.jobscheduler.base.system.SystemInformation.totalPhysicalMemory
-import com.sos.jobscheduler.common.process.ProcessPidRetriever.maybeOwnPid
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.system.JavaInformations
-import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem.{cpuModel, distributionNameAndVersionOption, hostname}
-import com.sos.jobscheduler.common.utils.ByteUnits.toKiBGiB
+import js7.base.system.SystemInformation.totalPhysicalMemory
+import js7.common.process.ProcessPidRetriever.maybeOwnPid
+import js7.common.scalautil.Logger
+import js7.common.system.JavaInformations
+import js7.common.system.OperatingSystem.operatingSystem.{cpuModel, distributionNameAndVersionOption, hostname}
+import js7.common.utils.ByteUnits.toKiBGiB
 import java.io.File
 import java.nio.file.Path
 import java.time.LocalDateTime

@@ -1,14 +1,14 @@
-package com.sos.jobscheduler.common.http
+package js7.common.http
 
 import akka.http.scaladsl.marshalling.{Marshaller, ToEntityMarshaller}
 import akka.http.scaladsl.model.ContentTypes.`application/json`
 import akka.http.scaladsl.model.HttpEntity
 import akka.http.scaladsl.unmarshalling.{FromEntityUnmarshaller, Unmarshaller}
 import akka.util.ByteString
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.circeutils.CirceUtils.implicits.CompactPrinter
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.utils.ScalaUtils._
+import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.implicits.CompactPrinter
+import js7.base.problem.Checked._
+import js7.base.utils.ScalaUtils._
 import io.circe.{Decoder, Encoder, Json, Printer, jawn}
 
 object CirceJsonSupport

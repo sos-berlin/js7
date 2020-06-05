@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.tests.history
+package js7.tests.history
 
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
-import com.sos.jobscheduler.data.order.Outcome.Undisrupted
-import com.sos.jobscheduler.data.order.{OrderId, Outcome}
-import com.sos.jobscheduler.data.system.StdoutOrStderr
-import com.sos.jobscheduler.data.workflow.position.WorkflowPosition
-import com.sos.jobscheduler.tests.history.OrderEntry._
+import js7.base.time.Timestamp
+import js7.base.utils.ScalaUtils.RichJavaClass
+import js7.data.order.Outcome.Undisrupted
+import js7.data.order.{OrderId, Outcome}
+import js7.data.system.StdoutOrStderr
+import js7.data.workflow.position.WorkflowPosition
+import js7.tests.history.OrderEntry._
 import io.circe.{Decoder, Encoder, Json}
 
 /**

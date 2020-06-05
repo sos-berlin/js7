@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.core.event.journal.watch
+package js7.core.event.journal.watch
 
-import com.sos.jobscheduler.base.monixutils.MonixBase.syntax._
-import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.data.event.{EventId, JournalId}
+import js7.base.monixutils.MonixBase.syntax._
+import js7.core.event.journal.data.JournalMeta
+import js7.data.event.{EventId, JournalId}
 import com.typesafe.config.Config
 import java.nio.file.{Files, Path}
 import monix.eval.Task

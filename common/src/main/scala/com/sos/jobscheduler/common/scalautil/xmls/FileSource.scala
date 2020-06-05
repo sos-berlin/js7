@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.scalautil.xmls
+package js7.common.scalautil.xmls
 
 import java.io.{BufferedInputStream, FileInputStream}
 import java.nio.file.Path

@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.data.agent
+package js7.data.agent
 
-import com.sos.jobscheduler.base.generic.GenericString
-import com.sos.jobscheduler.data.event.JournalId
+import js7.base.generic.GenericString
+import js7.data.event.JournalId
 
 /** The ID of an Agent run.
   * It identifies an Agent's event stream.

@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.data.master
+package js7.data.master
 
-import com.sos.jobscheduler.base.circeutils.CirceCodec
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.base.utils.Collections.implicits._
-import com.sos.jobscheduler.base.utils.ScalaUtils._
-import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
-import com.sos.jobscheduler.data.filebased.{FileBased, TypedPath}
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
+import js7.base.circeutils.CirceCodec
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.utils.Collections.implicits._
+import js7.base.utils.ScalaUtils._
+import js7.data.agent.{AgentRef, AgentRefPath}
+import js7.data.filebased.{FileBased, TypedPath}
+import js7.data.workflow.{Workflow, WorkflowPath}
 import io.circe.Decoder
 
 /**

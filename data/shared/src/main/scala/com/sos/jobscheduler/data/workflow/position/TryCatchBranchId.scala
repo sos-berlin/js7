@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.data.workflow.position
+package js7.data.workflow.position
 
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.data.workflow.position.BranchId.{Catch_, Try_}
+import js7.base.utils.ScalazStyle._
+import js7.data.workflow.position.BranchId.{Catch_, Try_}
 
 private[workflow] object TryCatchBranchId
 {

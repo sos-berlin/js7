@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.base.monixutils
+package js7.base.monixutils
 
-import com.sos.jobscheduler.base.monixutils.MonixDeadline._
+import js7.base.monixutils.MonixDeadline._
 import monix.execution.Scheduler
 import scala.concurrent.duration.{Duration, FiniteDuration, NANOSECONDS}
 

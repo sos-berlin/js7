@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.akkahttp.web.data
+package js7.common.akkahttp.web.data
 
 import java.net.InetSocketAddress
 

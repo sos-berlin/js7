@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.data.workflow.instructions.executable
+package js7.data.workflow.instructions.executable
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.generic.GenericString.EmptyStringProblem
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.problem.Problems.InvalidNameProblem
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.tester.CirceJsonTester
+import js7.base.circeutils.CirceUtils._
+import js7.base.generic.GenericString.EmptyStringProblem
+import js7.base.problem.Problem
+import js7.base.problem.Problems.InvalidNameProblem
+import js7.data.agent.AgentRefPath
+import js7.data.job.ExecutablePath
+import js7.tester.CirceJsonTester
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

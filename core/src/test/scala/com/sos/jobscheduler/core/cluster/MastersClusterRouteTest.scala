@@ -1,18 +1,18 @@
-package com.sos.jobscheduler.core.cluster
+package js7.core.cluster
 
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, OK}
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegment
-import com.sos.jobscheduler.common.akkahttp.web.session.SimpleSession
-import com.sos.jobscheduler.common.http.CirceJsonSupport._
-import com.sos.jobscheduler.data.cluster.ClusterEvent.ClusterNodesAppointed
-import com.sos.jobscheduler.data.cluster.{ClusterNodeId, ClusterState}
-import com.sos.jobscheduler.data.master.MasterId
+import js7.base.problem.Problem
+import js7.base.time.ScalaTime._
+import js7.base.web.Uri
+import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
+import js7.common.akkahttp.web.session.SimpleSession
+import js7.common.http.CirceJsonSupport._
+import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
+import js7.data.cluster.{ClusterNodeId, ClusterState}
+import js7.data.master.MasterId
 import io.circe.JsonObject
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec

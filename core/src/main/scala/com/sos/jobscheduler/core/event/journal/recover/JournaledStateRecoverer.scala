@@ -1,18 +1,18 @@
-package com.sos.jobscheduler.core.event.journal.recover
+package js7.core.event.journal.recover
 
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.base.utils.SetOnce
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
-import com.sos.jobscheduler.common.utils.UntilNoneIterator
-import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader
-import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.core.event.journal.files.JournalFiles
-import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
-import com.sos.jobscheduler.core.event.journal.recover.JournalProgress.{AfterSnapshotSection, InCommittedEventsSection}
-import com.sos.jobscheduler.core.event.journal.recover.JournaledStateRecoverer._
-import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
-import com.sos.jobscheduler.data.event.{EventId, JournalId, JournaledState, JournaledStateBuilder}
+import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.SetOnce
+import js7.common.scalautil.Logger
+import js7.common.utils.ByteUnits.toKBGB
+import js7.common.utils.UntilNoneIterator
+import js7.core.common.jsonseq.InputStreamJsonSeqReader
+import js7.core.event.journal.data.JournalMeta
+import js7.core.event.journal.files.JournalFiles
+import js7.core.event.journal.files.JournalFiles.JournalMetaOps
+import js7.core.event.journal.recover.JournalProgress.{AfterSnapshotSection, InCommittedEventsSection}
+import js7.core.event.journal.recover.JournaledStateRecoverer._
+import js7.core.event.journal.watch.JournalEventWatch
+import js7.data.event.{EventId, JournalId, JournaledState, JournaledStateBuilder}
 import com.typesafe.config.Config
 import java.nio.file.{Files, Path}
 import scala.concurrent.duration.Deadline

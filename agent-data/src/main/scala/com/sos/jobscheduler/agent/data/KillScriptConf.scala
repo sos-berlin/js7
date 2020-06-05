@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.agent.data
+package js7.agent.data
 
 import java.nio.file.Path
 

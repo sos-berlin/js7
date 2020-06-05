@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.data.event
-import com.sos.jobscheduler.base.auth.UserId
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
-import com.sos.jobscheduler.data.event.JournaledState.EventNotApplicableProblem
-import com.sos.jobscheduler.data.event.JournaledStateTest.{MyState, _}
-import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
+package js7.data.event
+import js7.base.auth.UserId
+import js7.base.problem.Checked.Ops
+import js7.base.web.Uri
+import js7.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
+import js7.data.event.JournaledState.EventNotApplicableProblem
+import js7.data.event.JournaledStateTest.{MyState, _}
+import js7.data.event.KeyedEvent.NoKey
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

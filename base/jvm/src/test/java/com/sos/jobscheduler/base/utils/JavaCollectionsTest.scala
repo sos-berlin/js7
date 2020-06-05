@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.base.utils
+package js7.base.utils
 
-import com.sos.jobscheduler.base.utils.JavaCollections.syntax._
+import js7.base.utils.JavaCollections.syntax._
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

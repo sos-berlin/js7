@@ -1,16 +1,16 @@
-package com.sos.jobscheduler.data.event
+package js7.data.event
 
 import cats.syntax.semigroup._
-import com.sos.jobscheduler.base.BuildInfo
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.circeutils.ScalaJsonCodecs._
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
-import com.sos.jobscheduler.data.event.JournalHeader._
+import js7.base.BuildInfo
+import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.ScalaJsonCodecs._
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.problem.Checked._
+import js7.base.problem.{Checked, Problem}
+import js7.base.time.ScalaTime._
+import js7.base.time.Timestamp
+import js7.base.utils.IntelliJUtils.intelliJuseImport
+import js7.data.event.JournalHeader._
 import io.circe.Json
 import java.nio.file.Path
 import scala.concurrent.duration.{Duration, FiniteDuration}

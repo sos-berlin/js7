@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.master.web.master.api.order
+package js7.master.web.master.api.order
 
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.model.StatusCodes.{Conflict, Created, NotFound, OK}
@@ -6,19 +6,19 @@ import akka.http.scaladsl.model.Uri
 import akka.http.scaladsl.model.headers.Location
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive, Route}
-import com.sos.jobscheduler.base.auth.ValidUserPermission
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.completeTask
-import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
-import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
-import com.sos.jobscheduler.master.OrderApi
-import com.sos.jobscheduler.master.data.events.MasterKeyedEventJsonCodec.keyedEventJsonCodec
-import com.sos.jobscheduler.master.web.common.MasterRouteProvider
-import com.sos.jobscheduler.master.web.master.api.order.OrderRoute._
+import js7.base.auth.ValidUserPermission
+import js7.base.circeutils.CirceUtils._
+import js7.base.generic.Completed
+import js7.base.problem.Problem
+import js7.base.utils.IntelliJUtils.intelliJuseImport
+import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
+import js7.common.akkahttp.CirceJsonOrYamlSupport._
+import js7.common.akkahttp.StandardMarshallers._
+import js7.data.order.{FreshOrder, OrderId}
+import js7.master.OrderApi
+import js7.master.data.events.MasterKeyedEventJsonCodec.keyedEventJsonCodec
+import js7.master.web.common.MasterRouteProvider
+import js7.master.web.master.api.order.OrderRoute._
 import io.circe.Json
 import monix.execution.Scheduler
 

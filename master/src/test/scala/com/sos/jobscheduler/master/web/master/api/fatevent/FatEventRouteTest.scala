@@ -1,38 +1,38 @@
-package com.sos.jobscheduler.master.web.master.api.fatevent
+package js7.master.web.master.api.fatevent
 
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.{OK, TooManyRequests}
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.testkit.RouteTestTimeout
-import com.sos.jobscheduler.base.crypt.silly.SillySigner
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.CloseableIterator
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import com.sos.jobscheduler.common.event.collector.{EventCollector, EventDirectives}
-import com.sos.jobscheduler.common.http.CirceJsonSupport._
-import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
-import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, EventId, EventSeq, JournalHeader, JournalId, KeyedEvent, Stamped, TearableEventSeq}
-import com.sos.jobscheduler.data.fatevent.FatEvent
-import com.sos.jobscheduler.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStdoutWrittenFat}
-import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, VersionAdded}
-import com.sos.jobscheduler.data.filebased.{FileBasedSigner, VersionId}
-import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.master.{MasterFileBaseds, MasterId}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTransferredToAgent}
-import com.sos.jobscheduler.data.order.{OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.instructions.Execute
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.position.Position
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.master.configuration.MasterConfiguration
-import com.sos.jobscheduler.master.data.MasterSnapshots.MasterMetaState
-import com.sos.jobscheduler.master.web.master.api.fatevent.FatEventRouteTest._
-import com.sos.jobscheduler.master.web.master.api.test.RouteTester
+import js7.base.crypt.silly.SillySigner
+import js7.base.time.ScalaTime._
+import js7.base.time.Timestamp
+import js7.base.utils.CloseableIterator
+import js7.base.web.Uri
+import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
+import js7.common.event.collector.{EventCollector, EventDirectives}
+import js7.common.http.CirceJsonSupport._
+import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
+import js7.common.scalautil.Logger
+import js7.data.agent.{AgentRef, AgentRefPath}
+import js7.data.event.KeyedEvent.NoKey
+import js7.data.event.{AnyKeyedEvent, EventId, EventSeq, JournalHeader, JournalId, KeyedEvent, Stamped, TearableEventSeq}
+import js7.data.fatevent.FatEvent
+import js7.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStdoutWrittenFat}
+import js7.data.filebased.RepoEvent.{FileBasedAdded, VersionAdded}
+import js7.data.filebased.{FileBasedSigner, VersionId}
+import js7.data.job.ExecutablePath
+import js7.data.master.{MasterFileBaseds, MasterId}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTransferredToAgent}
+import js7.data.order.{OrderId, Outcome}
+import js7.data.workflow.instructions.Execute
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.position.Position
+import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.master.configuration.MasterConfiguration
+import js7.master.data.MasterSnapshots.MasterMetaState
+import js7.master.web.master.api.fatevent.FatEventRouteTest._
+import js7.master.web.master.api.test.RouteTester
 import java.nio.file.Files
 import java.util.UUID.randomUUID
 import monix.execution.Scheduler

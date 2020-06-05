@@ -1,18 +1,18 @@
-package com.sos.jobscheduler.data.filebased
+package js7.data.filebased
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.base.crypt.silly.{SillySignatureVerifier, SillySigner}
-import com.sos.jobscheduler.base.crypt.{GenericSignature, SignedString}
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.time.Stopwatch
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.crypt.FileBasedVerifier
-import com.sos.jobscheduler.data.filebased.Repo.testOnly.{Changed, Deleted, OpRepo}
-import com.sos.jobscheduler.data.filebased.Repo.{DuplicateVersionProblem, ObjectVersionDoesNotMatchProblem}
-import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
-import com.sos.jobscheduler.data.filebased.RepoTest._
+import js7.base.circeutils.CirceUtils.RichJson
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.crypt.silly.{SillySignatureVerifier, SillySigner}
+import js7.base.crypt.{GenericSignature, SignedString}
+import js7.base.problem.Checked._
+import js7.base.problem.Problem
+import js7.base.time.Stopwatch
+import js7.data.agent.AgentRefPath
+import js7.data.crypt.FileBasedVerifier
+import js7.data.filebased.Repo.testOnly.{Changed, Deleted, OpRepo}
+import js7.data.filebased.Repo.{DuplicateVersionProblem, ObjectVersionDoesNotMatchProblem}
+import js7.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
+import js7.data.filebased.RepoTest._
 import io.circe.syntax.EncoderOps
 import org.scalatest.freespec.AnyFreeSpec
 

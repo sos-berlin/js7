@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.base.eventbus
+package js7.base.eventbus
 
-import com.sos.jobscheduler.base.eventbus.ClassEventBusTest._
+import js7.base.eventbus.ClassEventBusTest._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AsyncFreeSpec
 import scala.collection.mutable

@@ -1,15 +1,15 @@
-package com.sos.jobscheduler.agent.web.views
+package js7.agent.web.views
 
 import akka.http.scaladsl.model.headers.CacheDirectives.`max-age`
 import akka.http.scaladsl.model.headers.`Cache-Control`
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import com.sos.jobscheduler.agent.data.AgentTaskId
-import com.sos.jobscheduler.agent.task.TaskRegister
-import com.sos.jobscheduler.agent.web.common.AgentRouteProvider
-import com.sos.jobscheduler.base.auth.ValidUserPermission
-import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
-import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
+import js7.agent.data.AgentTaskId
+import js7.agent.task.TaskRegister
+import js7.agent.web.common.AgentRouteProvider
+import js7.base.auth.ValidUserPermission
+import js7.base.utils.IntelliJUtils.intelliJuseImport
+import js7.common.akkahttp.CirceJsonOrYamlSupport._
 import scala.concurrent.ExecutionContext
 
 /**

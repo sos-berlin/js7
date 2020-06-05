@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.base.problem
+package js7.base.problem
 
 /**
   * @author Joacim Zschimmer

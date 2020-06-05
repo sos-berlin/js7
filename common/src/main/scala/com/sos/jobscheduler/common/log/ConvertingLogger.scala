@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.log
+package js7.common.log
 
 import org.slf4j.{Marker, Logger => Slf4jLogger}
 

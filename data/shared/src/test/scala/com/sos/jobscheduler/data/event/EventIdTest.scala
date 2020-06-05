@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.data.event
+package js7.data.event
 
-import com.sos.jobscheduler.base.time.Timestamp
+import js7.base.time.Timestamp
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

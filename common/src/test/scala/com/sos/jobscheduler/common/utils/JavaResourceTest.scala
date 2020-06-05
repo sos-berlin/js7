@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.common.utils
+package js7.common.utils
 
 import cats.effect.SyncIO
 import com.google.common.io.Resources.getResource
 import com.google.common.io.{ByteStreams, Resources}
-import com.sos.jobscheduler.base.problem.ProblemException
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.utils.JavaResourceTest._
+import js7.base.problem.ProblemException
+import js7.base.utils.AutoClosing.autoClosing
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.utils.JavaResourceTest._
 import java.io.{BufferedReader, InputStreamReader}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.FileAlreadyExistsException

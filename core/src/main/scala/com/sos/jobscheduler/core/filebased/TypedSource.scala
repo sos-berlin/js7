@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.core.filebased
+package js7.core.filebased
 
 import akka.util.ByteString
-import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
+import js7.data.filebased.{SourceType, TypedPath}
 
 /**
   * @author Joacim Zschimmer

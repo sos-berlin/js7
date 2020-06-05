@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.master.web.serviceprovider
+package js7.master.web.serviceprovider
 
 import akka.http.scaladsl.server.Route
 

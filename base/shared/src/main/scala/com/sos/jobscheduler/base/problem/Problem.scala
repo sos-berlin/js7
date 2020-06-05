@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.base.problem
+package js7.base.problem
 
 import cats.syntax.semigroup._
 import cats.{Eq, Semigroup}
-import com.sos.jobscheduler.base.problem.Problem._
-import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, RichThrowable}
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.base.utils.StackTraces._
+import js7.base.problem.Problem._
+import js7.base.utils.ScalaUtils.{RichJavaClass, RichThrowable}
+import js7.base.utils.ScalazStyle._
+import js7.base.utils.StackTraces._
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json, JsonObject}
 import scala.language.implicitConversions

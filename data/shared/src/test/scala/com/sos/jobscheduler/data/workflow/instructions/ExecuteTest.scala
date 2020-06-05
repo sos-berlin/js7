@@ -1,13 +1,13 @@
-package com.sos.jobscheduler.data.workflow.instructions
+package js7.data.workflow.instructions
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.job.{ExecutablePath, ExecutableScript}
-import com.sos.jobscheduler.data.source.SourcePos
-import com.sos.jobscheduler.data.workflow.Instruction
-import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.tester.CirceJsonTester
+import js7.base.circeutils.CirceUtils._
+import js7.data.agent.AgentRefPath
+import js7.data.job.{ExecutablePath, ExecutableScript}
+import js7.data.source.SourcePos
+import js7.data.workflow.Instruction
+import js7.data.workflow.instructions.Instructions.jsonCodec
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.tester.CirceJsonTester
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

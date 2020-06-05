@@ -1,16 +1,16 @@
-package com.sos.jobscheduler.agent.data.commands
+package js7.agent.data.commands
 
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Batch, DetachOrder, NoOperation, ShutDown}
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.crypt.{GenericSignature, SignedString}
-import com.sos.jobscheduler.base.problem.TestCodeProblem
-import com.sos.jobscheduler.data.agent.{AgentRefPath, AgentRunId}
-import com.sos.jobscheduler.data.command.CancelMode
-import com.sos.jobscheduler.data.event.JournalId
-import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.data.workflow.position.Position
-import com.sos.jobscheduler.data.workflow.test.TestSetting.SimpleTestWorkflow
-import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import js7.agent.data.commands.AgentCommand.{Batch, DetachOrder, NoOperation, ShutDown}
+import js7.base.circeutils.CirceUtils._
+import js7.base.crypt.{GenericSignature, SignedString}
+import js7.base.problem.TestCodeProblem
+import js7.data.agent.{AgentRefPath, AgentRunId}
+import js7.data.command.CancelMode
+import js7.data.event.JournalId
+import js7.data.order.{Order, OrderId}
+import js7.data.workflow.position.Position
+import js7.data.workflow.test.TestSetting.SimpleTestWorkflow
+import js7.tester.CirceJsonTester.testJson
 import io.circe.Json
 import java.util.UUID
 import org.scalatest.freespec.AnyFreeSpec

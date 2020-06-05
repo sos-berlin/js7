@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.base.auth
+package js7.base.auth
 
-import com.sos.jobscheduler.base.auth.HashedPassword._
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.generic.SecretString.timingAttackSecureEqual
+import js7.base.auth.HashedPassword._
+import js7.base.generic.SecretString
+import js7.base.generic.SecretString.timingAttackSecureEqual
 import java.nio.charset.StandardCharsets.UTF_8
 import java.security.MessageDigest
 import java.util.Base64

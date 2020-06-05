@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.base.crypt.silly
+package js7.base.crypt.silly
 
-import com.sos.jobscheduler.base.crypt.silly.SillySignature._
-import com.sos.jobscheduler.base.crypt.{GenericSignature, Signature}
+import js7.base.crypt.silly.SillySignature._
+import js7.base.crypt.{GenericSignature, Signature}
 
 /**
   * @author Joacim Zschimmer

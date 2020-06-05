@@ -1,14 +1,14 @@
-package com.sos.jobscheduler.common.akkahttp
+package js7.common.akkahttp
 
 import akka.http.scaladsl.model.StatusCodes.{InternalServerError, ServiceUnavailable}
 import akka.http.scaladsl.model.{HttpRequest, StatusCode}
 import akka.http.scaladsl.server.Directives.{complete, extractRequest}
 import akka.http.scaladsl.server.{ExceptionHandler, Route}
-import com.sos.jobscheduler.base.problem.{Problem, ProblemException}
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.common.akkahttp.ExceptionHandling._
-import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
-import com.sos.jobscheduler.common.scalautil.Logger
+import js7.base.problem.{Problem, ProblemException}
+import js7.base.utils.ScalaUtils.RichThrowable
+import js7.common.akkahttp.ExceptionHandling._
+import js7.common.akkahttp.StandardMarshallers._
+import js7.common.scalautil.Logger
 import com.typesafe.config.Config
 
 /**

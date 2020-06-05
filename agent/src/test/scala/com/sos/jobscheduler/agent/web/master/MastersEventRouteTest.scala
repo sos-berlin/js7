@@ -1,20 +1,20 @@
-package com.sos.jobscheduler.agent.web.master
+package js7.agent.web.master
 
-import com.sos.jobscheduler.agent.client.AgentClient
-import com.sos.jobscheduler.agent.data.Problems.{DuplicateAgentRef, MasterAgentMismatch, UnknownMaster}
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{CoupleMaster, RegisterAsMaster, ReleaseEvents, TakeSnapshot}
-import com.sos.jobscheduler.agent.data.event.AgentMasterEvent.AgentReadyForMaster
-import com.sos.jobscheduler.agent.tests.AgentTester
-import com.sos.jobscheduler.agent.tests.TestAgentDirectoryProvider._
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.Closer.syntax._
-import com.sos.jobscheduler.common.guice.GuiceImplicits._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.data.agent.{AgentRefPath, AgentRunId}
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, JournalEvent, JournalId, TearableEventSeq}
-import com.sos.jobscheduler.data.master.MasterId
-import com.sos.jobscheduler.data.problems.UnknownEventIdProblem
+import js7.agent.client.AgentClient
+import js7.agent.data.Problems.{DuplicateAgentRef, MasterAgentMismatch, UnknownMaster}
+import js7.agent.data.commands.AgentCommand.{CoupleMaster, RegisterAsMaster, ReleaseEvents, TakeSnapshot}
+import js7.agent.data.event.AgentMasterEvent.AgentReadyForMaster
+import js7.agent.tests.AgentTester
+import js7.agent.tests.TestAgentDirectoryProvider._
+import js7.base.problem.Checked._
+import js7.base.time.ScalaTime._
+import js7.base.utils.Closer.syntax._
+import js7.common.guice.GuiceImplicits._
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.data.agent.{AgentRefPath, AgentRunId}
+import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, JournalEvent, JournalId, TearableEventSeq}
+import js7.data.master.MasterId
+import js7.data.problems.UnknownEventIdProblem
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
 

@@ -1,34 +1,34 @@
-package com.sos.jobscheduler.tests
+package js7.tests
 
-import com.sos.jobscheduler.agent.RunningAgent
-import com.sos.jobscheduler.agent.scheduler.AgentEvent
-import com.sos.jobscheduler.base.crypt.silly.{SillySignature, SillySigner}
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.AutoClosing.{autoClosing, multipleAutoClosing}
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowableEither
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.utils.UntilNoneIterator
-import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader
-import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
-import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{<-:, Event, EventId, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, VersionAdded}
-import com.sos.jobscheduler.data.filebased.{RepoEvent, VersionId}
-import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.master.MasterId
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToMaster}
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.instructions.Execute
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.position.Position
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.master.RunningMaster
-import com.sos.jobscheduler.master.data.events.MasterEvent
-import com.sos.jobscheduler.tests.RecoveryTest._
-import com.sos.jobscheduler.tests.testenv.DirectoryProvider
-import com.sos.jobscheduler.tests.testenv.DirectoryProvider.{StdoutOutput, script}
+import js7.agent.RunningAgent
+import js7.agent.scheduler.AgentEvent
+import js7.base.crypt.silly.{SillySignature, SillySigner}
+import js7.base.time.ScalaTime._
+import js7.base.utils.AutoClosing.{autoClosing, multipleAutoClosing}
+import js7.base.utils.ScalaUtils.RichThrowableEither
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.Logger
+import js7.common.utils.UntilNoneIterator
+import js7.core.common.jsonseq.InputStreamJsonSeqReader
+import js7.data.agent.{AgentRef, AgentRefPath}
+import js7.data.event.KeyedEvent.NoKey
+import js7.data.event.{<-:, Event, EventId, KeyedEvent, Stamped}
+import js7.data.filebased.RepoEvent.{FileBasedAdded, VersionAdded}
+import js7.data.filebased.{RepoEvent, VersionId}
+import js7.data.job.ExecutablePath
+import js7.data.master.MasterId
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToMaster}
+import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.workflow.instructions.Execute
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.position.Position
+import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.master.RunningMaster
+import js7.master.data.events.MasterEvent
+import js7.tests.RecoveryTest._
+import js7.tests.testenv.DirectoryProvider
+import js7.tests.testenv.DirectoryProvider.{StdoutOutput, script}
 import com.typesafe.config.ConfigFactory
 import java.nio.file.Path
 import monix.execution.Scheduler.Implicits.global

@@ -1,15 +1,15 @@
-package com.sos.jobscheduler.master.configuration
+package js7.master.configuration
 
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.akkahttp.web.data.WebServerPort
-import com.sos.jobscheduler.common.commandline.CommandLineArguments
-import com.sos.jobscheduler.common.http.configuration.RecouplingStreamReaderConf
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.core.event.journal.JournalConf
-import com.sos.jobscheduler.data.cluster.ClusterNodeId
-import com.sos.jobscheduler.data.master.MasterId
-import com.sos.jobscheduler.master.cluster.ClusterConf
-import com.sos.jobscheduler.master.configuration.MasterConfiguration.DefaultConfig
+import js7.base.time.ScalaTime._
+import js7.common.akkahttp.web.data.WebServerPort
+import js7.common.commandline.CommandLineArguments
+import js7.common.http.configuration.RecouplingStreamReaderConf
+import js7.common.scalautil.FileUtils.syntax._
+import js7.core.event.journal.JournalConf
+import js7.data.cluster.ClusterNodeId
+import js7.data.master.MasterId
+import js7.master.cluster.ClusterConf
+import js7.master.configuration.MasterConfiguration.DefaultConfig
 import com.typesafe.config.ConfigFactory
 import java.net.InetSocketAddress
 import java.nio.file.Files.{createDirectories, createTempDirectory, delete}

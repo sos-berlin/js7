@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.base.crypt.donotcrypt
+package js7.base.crypt.donotcrypt
 
 import cats.effect.{Resource, SyncIO}
-import com.sos.jobscheduler.base.crypt.{GenericSignature, SignatureVerifier}
-import com.sos.jobscheduler.base.problem.Problem
+import js7.base.crypt.{GenericSignature, SignatureVerifier}
+import js7.base.problem.Problem
 import java.io.InputStream
 
 /**

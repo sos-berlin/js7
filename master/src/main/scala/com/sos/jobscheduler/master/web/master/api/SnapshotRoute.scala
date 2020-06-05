@@ -1,17 +1,17 @@
-package com.sos.jobscheduler.master.web.master.api
+package js7.master.web.master.api
 
 import akka.http.scaladsl.server.Directives.get
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.directives.PathDirectives.pathSingleSlash
-import com.sos.jobscheduler.base.auth.ValidUserPermission
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.completeTask
-import com.sos.jobscheduler.common.akkahttp.StandardMarshallers.monixObservableToMarshallable
-import com.sos.jobscheduler.common.http.CirceJsonSupport.jsonMarshaller
-import com.sos.jobscheduler.core.web.StampedStreamingSupport.stampedCirceStreamingSupport
-import com.sos.jobscheduler.master.data.MasterSnapshots.SnapshotJsonCodec
-import com.sos.jobscheduler.master.data.MasterState
-import com.sos.jobscheduler.master.web.common.MasterRouteProvider
+import js7.base.auth.ValidUserPermission
+import js7.base.problem.Checked
+import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
+import js7.common.akkahttp.StandardMarshallers.monixObservableToMarshallable
+import js7.common.http.CirceJsonSupport.jsonMarshaller
+import js7.core.web.StampedStreamingSupport.stampedCirceStreamingSupport
+import js7.master.data.MasterSnapshots.SnapshotJsonCodec
+import js7.master.data.MasterState
+import js7.master.web.common.MasterRouteProvider
 import monix.eval.Task
 import monix.execution.Scheduler
 

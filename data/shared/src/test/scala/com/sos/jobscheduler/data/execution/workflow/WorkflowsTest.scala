@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.data.execution.workflow
+package js7.data.execution.workflow
 
-import com.sos.jobscheduler.data.execution.workflow.Workflows.ExecutableWorkflow
-import com.sos.jobscheduler.data.workflow.instructions.{Fork, Gap}
-import com.sos.jobscheduler.data.workflow.position.Position
-import com.sos.jobscheduler.data.workflow.test.ForkTestSetting._
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
+import js7.data.execution.workflow.Workflows.ExecutableWorkflow
+import js7.data.workflow.instructions.{Fork, Gap}
+import js7.data.workflow.position.Position
+import js7.data.workflow.test.ForkTestSetting._
+import js7.data.workflow.{Workflow, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

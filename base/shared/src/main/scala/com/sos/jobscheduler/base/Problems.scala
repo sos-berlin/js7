@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.base
+package js7.base
 
-import com.sos.jobscheduler.base.problem.Problem
+import js7.base.problem.Problem
 
 object Problems
 {

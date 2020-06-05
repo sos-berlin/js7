@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.common.event
+package js7.common.event
 
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.CloseableIterator
-import com.sos.jobscheduler.common.event.RealEventWatchTest._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped}
+import js7.base.problem.Problem
+import js7.base.time.ScalaTime._
+import js7.base.utils.CloseableIterator
+import js7.common.event.RealEventWatchTest._
+import js7.common.scalautil.Futures.implicits._
+import js7.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable

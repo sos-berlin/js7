@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.base.crypt.donotcrypt
+package js7.base.crypt.donotcrypt
 
-import com.sos.jobscheduler.base.crypt.GenericSignature
-import com.sos.jobscheduler.base.utils.CatsUtils.bytesToInputStreamResource
+import js7.base.crypt.GenericSignature
+import js7.base.utils.CatsUtils.bytesToInputStreamResource
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

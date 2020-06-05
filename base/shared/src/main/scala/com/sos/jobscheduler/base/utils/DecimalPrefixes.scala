@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.base.utils
+package js7.base.utils
 
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import js7.base.problem.Checked._
+import js7.base.problem.{Checked, Problem}
 
 /**
   * @author Joacim Zschimmer

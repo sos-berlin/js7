@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.base.utils
+package js7.base.utils
 
-import com.sos.jobscheduler.base.generic.GenericString
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import js7.base.generic.GenericString
+import js7.base.problem.{Checked, Problem}
 import java.nio.ByteBuffer
 import java.util.{Base64, UUID}
 

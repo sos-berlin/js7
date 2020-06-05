@@ -1,20 +1,20 @@
-package com.sos.jobscheduler.data.workflow.parser
+package js7.data.workflow.parser
 
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.expression.Expression.BooleanConstant
-import com.sos.jobscheduler.data.expression.{Evaluator, Expression}
-import com.sos.jobscheduler.data.job.{Executable, ExecutablePath, ExecutableScript, ReturnCode}
-import com.sos.jobscheduler.data.order.OrderId
-import com.sos.jobscheduler.data.source.SourcePos
-import com.sos.jobscheduler.data.workflow.Instruction.Labeled
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Finish, Fork, Goto, If, IfFailedGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction, End => EndInstr, Fail => FailInstr}
-import com.sos.jobscheduler.data.workflow.parser.BasicParsers._
-import com.sos.jobscheduler.data.workflow.parser.ExpressionParser.{booleanConstant, constantExpression, expression}
-import com.sos.jobscheduler.data.workflow.parser.Parsers.checkedParse
-import com.sos.jobscheduler.data.workflow.{Instruction, Label, Workflow, WorkflowId, WorkflowPath}
+import js7.base.problem.Checked
+import js7.base.utils.Collections.implicits.RichTraversable
+import js7.data.agent.AgentRefPath
+import js7.data.expression.Expression.BooleanConstant
+import js7.data.expression.{Evaluator, Expression}
+import js7.data.job.{Executable, ExecutablePath, ExecutableScript, ReturnCode}
+import js7.data.order.OrderId
+import js7.data.source.SourcePos
+import js7.data.workflow.Instruction.Labeled
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Finish, Fork, Goto, If, IfFailedGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction, End => EndInstr, Fail => FailInstr}
+import js7.data.workflow.parser.BasicParsers._
+import js7.data.workflow.parser.ExpressionParser.{booleanConstant, constantExpression, expression}
+import js7.data.workflow.parser.Parsers.checkedParse
+import js7.data.workflow.{Instruction, Label, Workflow, WorkflowId, WorkflowPath}
 import fastparse.NoWhitespace._
 import fastparse._
 import scala.concurrent.duration._

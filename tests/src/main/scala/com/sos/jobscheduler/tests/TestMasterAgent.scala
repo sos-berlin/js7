@@ -1,37 +1,37 @@
-package com.sos.jobscheduler.tests
+package js7.tests
 
 import akka.actor.{Actor, Props}
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.ShutDown
-import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.{Stopwatch, Timestamp}
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.base.utils.Closer.syntax.RichClosersAutoCloseable
-import com.sos.jobscheduler.base.utils.Closer.withCloser
-import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
-import com.sos.jobscheduler.base.utils.{Closer, DecimalPrefixes}
-import com.sos.jobscheduler.common.commandline.CommandLineArguments
-import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
-import com.sos.jobscheduler.common.log.Log4j
-import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryContentRecursively
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
-import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
-import com.sos.jobscheduler.common.utils.JavaShutdownHook
-import com.sos.jobscheduler.core.event.StampedKeyedEventBus
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.expression.Expression.{Equal, LastReturnCode, NumericConstant, Or}
-import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId}
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{Execute, Fork, If}
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.tests.testenv.DirectoryProvider
+import js7.agent.data.commands.AgentCommand
+import js7.agent.data.commands.AgentCommand.ShutDown
+import js7.base.convert.AsJava.StringAsPath
+import js7.base.problem.Checked.Ops
+import js7.base.time.ScalaTime._
+import js7.base.time.{Stopwatch, Timestamp}
+import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
+import js7.base.utils.Closer.withCloser
+import js7.base.utils.SideEffect.ImplicitSideEffect
+import js7.base.utils.{Closer, DecimalPrefixes}
+import js7.common.commandline.CommandLineArguments
+import js7.common.guice.GuiceImplicits.RichInjector
+import js7.common.log.Log4j
+import js7.common.scalautil.FileUtils.deleteDirectoryContentRecursively
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.Futures.implicits._
+import js7.common.system.FileUtils.temporaryDirectory
+import js7.common.system.OperatingSystem.isWindows
+import js7.common.utils.JavaShutdownHook
+import js7.core.event.StampedKeyedEventBus
+import js7.data.agent.AgentRefPath
+import js7.data.event.{KeyedEvent, Stamped}
+import js7.data.expression.Expression.{Equal, LastReturnCode, NumericConstant, Or}
+import js7.data.job.ExecutablePath
+import js7.data.order.OrderEvent.OrderFinished
+import js7.data.order.{FreshOrder, OrderEvent, OrderId}
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.instructions.{Execute, Fork, If}
+import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.tests.testenv.DirectoryProvider
 import java.lang.management.ManagementFactory.getOperatingSystemMXBean
 import java.nio.file.Files.createDirectory
 import java.nio.file.{Files, Path}

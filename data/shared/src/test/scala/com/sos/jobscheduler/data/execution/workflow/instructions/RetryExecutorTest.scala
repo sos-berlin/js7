@@ -1,15 +1,15 @@
-package com.sos.jobscheduler.data.execution.workflow.instructions
+package js7.data.execution.workflow.instructions
 
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.data.execution.workflow.context.OrderContext
-import com.sos.jobscheduler.data.execution.workflow.instructions.RetryExecutorTest._
-import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.data.order.OrderEvent.OrderRetrying
-import com.sos.jobscheduler.data.order.{HistoricOutcome, Order, OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.instructions.{Gap, Retry, TryInstruction}
-import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowId, WorkflowPath}
+import js7.base.problem.Problem
+import js7.base.time.Timestamp
+import js7.data.execution.workflow.context.OrderContext
+import js7.data.execution.workflow.instructions.RetryExecutorTest._
+import js7.data.job.ReturnCode
+import js7.data.order.OrderEvent.OrderRetrying
+import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
+import js7.data.workflow.instructions.{Gap, Retry, TryInstruction}
+import js7.data.workflow.position.{Position, WorkflowPosition}
+import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
 

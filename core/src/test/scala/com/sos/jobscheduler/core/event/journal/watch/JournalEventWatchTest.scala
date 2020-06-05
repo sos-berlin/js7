@@ -1,30 +1,30 @@
-package com.sos.jobscheduler.core.event.journal.watch
+package js7.core.event.journal.watch
 
-import com.sos.jobscheduler.base.BuildInfo
-import com.sos.jobscheduler.base.circeutils.CirceUtils
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.{Problem, ProblemException}
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.AutoClosing.autoClosing
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowableEither
-import com.sos.jobscheduler.base.utils.ScodecUtils.RichByteVector
-import com.sos.jobscheduler.common.event.{PositionAnd, TornException}
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax.RichPath
-import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryDirectory
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
-import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
-import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.core.event.journal.files.JournalFiles
-import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
-import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatchTest._
-import com.sos.jobscheduler.core.event.journal.watch.TestData.{writeJournal, writeJournalSnapshot}
-import com.sos.jobscheduler.core.event.journal.write.EventJournalWriter
-import com.sos.jobscheduler.data.event.JournalHeader.JournalIdMismatchProblem
-import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, JournalEvent, JournalHeader, JournalId, JournalSeparators, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
+import js7.base.BuildInfo
+import js7.base.circeutils.CirceUtils
+import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.problem.Checked._
+import js7.base.problem.{Problem, ProblemException}
+import js7.base.time.ScalaTime._
+import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.ScalaUtils.RichThrowableEither
+import js7.base.utils.ScodecUtils.RichByteVector
+import js7.common.event.{PositionAnd, TornException}
+import js7.common.scalautil.FileUtils.syntax.RichPath
+import js7.common.scalautil.FileUtils.withTemporaryDirectory
+import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.common.time.WaitForCondition.waitForCondition
+import js7.core.event.journal.data.JournalMeta
+import js7.core.event.journal.files.JournalFiles
+import js7.core.event.journal.files.JournalFiles.JournalMetaOps
+import js7.core.event.journal.watch.JournalEventWatchTest._
+import js7.core.event.journal.watch.TestData.{writeJournal, writeJournalSnapshot}
+import js7.core.event.journal.write.EventJournalWriter
+import js7.data.event.JournalHeader.JournalIdMismatchProblem
+import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
+import js7.data.event.{Event, EventId, EventRequest, EventSeq, JournalEvent, JournalHeader, JournalId, JournalSeparators, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
 import io.circe._
 import io.circe.syntax._
 import java.nio.file.Files

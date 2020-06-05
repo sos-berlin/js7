@@ -1,16 +1,16 @@
-package com.sos.jobscheduler.agent
+package js7.agent
 
-import com.sos.jobscheduler.agent.command.CommandHandler
-import com.sos.jobscheduler.agent.data.AgentApi
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.views.AgentOverview
-import com.sos.jobscheduler.agent.scheduler.AgentHandle
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.common.event.EventWatch
-import com.sos.jobscheduler.core.command.CommandMeta
-import com.sos.jobscheduler.data.command.{CommandHandlerDetailed, CommandHandlerOverview}
-import com.sos.jobscheduler.data.master.MasterId
-import com.sos.jobscheduler.data.order.{Order, OrderId}
+import js7.agent.command.CommandHandler
+import js7.agent.data.AgentApi
+import js7.agent.data.commands.AgentCommand
+import js7.agent.data.views.AgentOverview
+import js7.agent.scheduler.AgentHandle
+import js7.base.problem.Checked
+import js7.common.event.EventWatch
+import js7.core.command.CommandMeta
+import js7.data.command.{CommandHandlerDetailed, CommandHandlerOverview}
+import js7.data.master.MasterId
+import js7.data.order.{Order, OrderId}
 import monix.eval.Task
 /**
   * @author Joacim Zschimmer

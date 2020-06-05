@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.provider.configuration
+package js7.provider.configuration
 
-import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
-import com.sos.jobscheduler.base.web.Uri
-import com.sos.jobscheduler.common.commandline.CommandLineArguments
-import com.sos.jobscheduler.common.configutils.Configs
-import com.sos.jobscheduler.common.configutils.Configs.parseConfigIfExists
-import com.sos.jobscheduler.common.scalautil.FileUtils.syntax._
-import com.sos.jobscheduler.common.utils.JavaResource
+import js7.base.convert.AsJava.StringAsPath
+import js7.base.web.Uri
+import js7.common.commandline.CommandLineArguments
+import js7.common.configutils.Configs
+import js7.common.configutils.Configs.parseConfigIfExists
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.utils.JavaResource
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Path
 import scala.jdk.CollectionConverters._

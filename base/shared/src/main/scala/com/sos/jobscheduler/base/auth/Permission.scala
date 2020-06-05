@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.base.auth
+package js7.base.auth
 
-import com.sos.jobscheduler.base.utils.Collections.implicits._
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
+import js7.base.utils.Collections.implicits._
+import js7.base.utils.ScalaUtils.RichJavaClass
 
 /**
   * @author Joacim Zschimmer

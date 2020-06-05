@@ -1,14 +1,14 @@
-package com.sos.jobscheduler.core.event.journal.test
+package js7.core.event.journal.test
 
 import akka.actor.{ActorContext, ActorRef}
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.utils.DuplicateKeyException
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
-import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor
-import com.sos.jobscheduler.core.event.journal.data.RecoveredJournalingActors
-import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
-import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, KeyedEvent, Stamped}
+import js7.base.problem.Checked._
+import js7.base.utils.DuplicateKeyException
+import js7.base.utils.ScalaUtils.RichPartialFunction
+import js7.core.event.journal.KeyedJournalingActor
+import js7.core.event.journal.data.RecoveredJournalingActors
+import js7.core.event.journal.recover.JournalRecoverer
+import js7.core.event.journal.watch.JournalEventWatch
+import js7.data.event.{AnyKeyedEvent, Event, KeyedEvent, Stamped}
 import scala.collection.mutable
 
 /**

@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.akkahttp.web.auth
+package js7.common.akkahttp.web.auth
 
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, OK}
@@ -6,7 +6,7 @@ import akka.http.scaladsl.model.{HttpEntity, Uri}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import com.sos.jobscheduler.common.akkahttp.web.auth.CSRF.forbidCSRF
+import js7.common.akkahttp.web.auth.CSRF.forbidCSRF
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

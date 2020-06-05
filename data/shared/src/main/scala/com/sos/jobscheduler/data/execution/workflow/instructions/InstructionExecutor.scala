@@ -1,14 +1,14 @@
-package com.sos.jobscheduler.data.execution.workflow.instructions
+package js7.data.execution.workflow.instructions
 
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.data.event.KeyedEvent
-import com.sos.jobscheduler.data.execution.workflow.context.OrderContext
-import com.sos.jobscheduler.data.order.Order
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderMoved}
-import com.sos.jobscheduler.data.workflow.Instruction
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, End, Execute, Fail, Finish, Fork, Gap, If, Offer, Retry, TryInstruction}
-import com.sos.jobscheduler.data.workflow.position.Position
+import js7.base.problem.Checked
+import js7.base.time.Timestamp
+import js7.data.event.KeyedEvent
+import js7.data.execution.workflow.context.OrderContext
+import js7.data.order.Order
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderMoved}
+import js7.data.workflow.Instruction
+import js7.data.workflow.instructions.{AwaitOrder, End, Execute, Fail, Finish, Fork, Gap, If, Offer, Retry, TryInstruction}
+import js7.data.workflow.position.Position
 
 /**
   * @author Joacim Zschimmer

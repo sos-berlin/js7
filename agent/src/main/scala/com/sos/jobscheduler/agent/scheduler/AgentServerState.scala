@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.agent.scheduler
+package js7.agent.scheduler
 
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.ScalaUtils._
-import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{Event, EventId, JournalState, JournaledState, KeyedEvent}
-import com.sos.jobscheduler.data.master.MasterId
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.ScalaUtils._
+import js7.data.event.KeyedEvent.NoKey
+import js7.data.event.{Event, EventId, JournalState, JournaledState, KeyedEvent}
+import js7.data.master.MasterId
 import monix.reactive.Observable
 
 final case class AgentServerState(

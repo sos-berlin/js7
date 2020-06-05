@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.common.xml
+package js7.common.xml
 
-import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader
-import com.sos.jobscheduler.common.scalautil.xmls.XmlSources.stringToSource
+import js7.common.scalautil.xmls.ScalaXMLEventReader
+import js7.common.scalautil.xmls.XmlSources.stringToSource
 import javax.xml.stream.XMLEventReader
 import scala.xml.{TopScope, UnprefixedAttribute}
 

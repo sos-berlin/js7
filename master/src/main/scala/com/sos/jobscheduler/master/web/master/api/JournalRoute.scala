@@ -1,23 +1,23 @@
-package com.sos.jobscheduler.master.web.master.api
+package js7.master.web.master.api
 
 import akka.http.scaladsl.model.HttpEntity
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import com.sos.jobscheduler.base.auth.ValidUserPermission
-import com.sos.jobscheduler.base.monixutils.MonixBase.syntax._
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.ScalaUtils.{RichAny, RichThrowableEither}
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.accept
-import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
-import com.sos.jobscheduler.common.event.{EventWatch, PositionAnd}
-import com.sos.jobscheduler.common.http.AkkaHttpUtils.AkkaByteVector
-import com.sos.jobscheduler.common.http.JsonStreamingSupport.`application/x-ndjson`
-import com.sos.jobscheduler.common.http.StreamingSupport._
-import com.sos.jobscheduler.common.time.JavaTimeConverters._
-import com.sos.jobscheduler.data.event.EventId
-import com.sos.jobscheduler.data.event.JournalSeparators.{EndOfJournalFileMarker, HeartbeatMarker}
-import com.sos.jobscheduler.master.web.common.MasterRouteProvider
-import com.sos.jobscheduler.master.web.master.api.JournalRoute._
+import js7.base.auth.ValidUserPermission
+import js7.base.monixutils.MonixBase.syntax._
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.ScalaUtils.{RichAny, RichThrowableEither}
+import js7.common.akkahttp.AkkaHttpServerUtils.accept
+import js7.common.akkahttp.StandardMarshallers._
+import js7.common.event.{EventWatch, PositionAnd}
+import js7.common.http.AkkaHttpUtils.AkkaByteVector
+import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
+import js7.common.http.StreamingSupport._
+import js7.common.time.JavaTimeConverters._
+import js7.data.event.EventId
+import js7.data.event.JournalSeparators.{EndOfJournalFileMarker, HeartbeatMarker}
+import js7.master.web.common.MasterRouteProvider
+import js7.master.web.master.api.JournalRoute._
 import monix.execution.Scheduler
 import scala.concurrent.duration.FiniteDuration
 import scodec.bits.ByteVector

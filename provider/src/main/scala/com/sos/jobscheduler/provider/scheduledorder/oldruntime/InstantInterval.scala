@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.provider.scheduledorder.oldruntime
+package js7.provider.scheduledorder.oldruntime
 
-import com.sos.jobscheduler.common.time.JavaTime._
+import js7.common.time.JavaTime._
 import java.time._
 import scala.language.implicitConversions
 

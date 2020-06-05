@@ -1,21 +1,21 @@
-package com.sos.jobscheduler.common.akkahttp.web.session
+package js7.common.akkahttp.web.session
 
 import akka.http.scaladsl.model.StatusCode
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
 import akka.http.scaladsl.server.Directives.{complete, onSuccess, optionalHeaderValueByName, pass, respondWithHeader}
 import akka.http.scaladsl.server.{Directive, Directive1, Route}
-import com.sos.jobscheduler.base.auth.{Permission, SessionToken}
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.common.akkahttp.ExceptionHandling
-import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
-import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
-import com.sos.jobscheduler.common.akkahttp.web.session.RouteProvider._
-import com.sos.jobscheduler.common.akkahttp.web.session.SessionRoute.InvalidLoginProblem
-import com.sos.jobscheduler.common.akkahttp.web.session.{Session => Session_}
-import com.sos.jobscheduler.common.scalautil.Logger
+import js7.base.auth.{Permission, SessionToken}
+import js7.base.generic.SecretString
+import js7.base.problem.Problem
+import js7.base.time.ScalaTime._
+import js7.base.utils.ScalazStyle._
+import js7.common.akkahttp.ExceptionHandling
+import js7.common.akkahttp.StandardMarshallers._
+import js7.common.akkahttp.web.auth.GateKeeper
+import js7.common.akkahttp.web.session.RouteProvider._
+import js7.common.akkahttp.web.session.SessionRoute.InvalidLoginProblem
+import js7.common.akkahttp.web.session.{Session => Session_}
+import js7.common.scalautil.Logger
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.duration.Duration

@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.master
+package js7.master
 
 private[master] sealed trait MasterTermination
 

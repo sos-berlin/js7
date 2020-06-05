@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.data.master
+package js7.data.master
 
-import com.sos.jobscheduler.base.auth.UserId
-import com.sos.jobscheduler.base.generic.GenericString
+import js7.base.auth.UserId
+import js7.base.generic.GenericString
 
 /**
   * @author Joacim Zschimmer

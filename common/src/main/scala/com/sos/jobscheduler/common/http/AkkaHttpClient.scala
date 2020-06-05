@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.http
+package js7.common.http
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.marshalling.Marshal
@@ -14,26 +14,26 @@ import akka.http.scaladsl.{Http, HttpsConnectionContext}
 import akka.stream.ActorMaterializer
 import akka.util.ByteString
 import cats.effect.{ExitCase, Resource}
-import com.sos.jobscheduler.base.auth.SessionToken
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
-import com.sos.jobscheduler.base.exceptions.HasIsIgnorableStackTrace
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.MonixAntiBlocking.executeOn
-import com.sos.jobscheduler.base.utils.ScalaUtils._
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.base.utils.Strings.RichString
-import com.sos.jobscheduler.base.utils.{ByteVectorToLinesObservable, Lazy}
-import com.sos.jobscheduler.base.web.{HttpClient, Uri}
-import com.sos.jobscheduler.common.akkahttp.https.AkkaHttps.loadHttpsConnectionContext
-import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
-import com.sos.jobscheduler.common.http.AkkaHttpClient._
-import com.sos.jobscheduler.common.http.AkkaHttpUtils.{RichAkkaAsUri, RichAkkaUri, decodeResponse, encodeGzip}
-import com.sos.jobscheduler.common.http.CirceJsonSupport._
-import com.sos.jobscheduler.common.http.JsonStreamingSupport.StreamingJsonHeaders
-import com.sos.jobscheduler.common.http.StreamingSupport._
-import com.sos.jobscheduler.common.scalautil.Logger
+import js7.base.auth.SessionToken
+import js7.base.circeutils.CirceUtils.RichCirceString
+import js7.base.exceptions.HasIsIgnorableStackTrace
+import js7.base.problem.Checked._
+import js7.base.problem.{Checked, Problem}
+import js7.base.time.ScalaTime._
+import js7.base.utils.MonixAntiBlocking.executeOn
+import js7.base.utils.ScalaUtils._
+import js7.base.utils.ScalazStyle._
+import js7.base.utils.Strings.RichString
+import js7.base.utils.{ByteVectorToLinesObservable, Lazy}
+import js7.base.web.{HttpClient, Uri}
+import js7.common.akkahttp.https.AkkaHttps.loadHttpsConnectionContext
+import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
+import js7.common.http.AkkaHttpClient._
+import js7.common.http.AkkaHttpUtils.{RichAkkaAsUri, RichAkkaUri, decodeResponse, encodeGzip}
+import js7.common.http.CirceJsonSupport._
+import js7.common.http.JsonStreamingSupport.StreamingJsonHeaders
+import js7.common.http.StreamingSupport._
+import js7.common.scalautil.Logger
 import io.circe.{Decoder, Encoder}
 import java.util.Locale
 import monix.eval.Task

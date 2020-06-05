@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.common.scalautil.xmls
+package js7.common.scalautil.xmls
 
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.scalautil.ScalaThreadLocal._
+import js7.common.scalautil.Logger
+import js7.common.scalautil.ScalaThreadLocal._
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.xml.stream.XMLInputFactory
 import javax.xml.stream.events.{Attribute, StartElement}

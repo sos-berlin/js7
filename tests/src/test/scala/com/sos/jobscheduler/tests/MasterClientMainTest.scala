@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.tests
+package js7.tests
 
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import com.sos.jobscheduler.master.client.main.MasterClientMain
-import com.sos.jobscheduler.tests.testenv.MasterAgentForScalaTest
+import js7.base.time.ScalaTime._
+import js7.common.scalautil.Futures.implicits._
+import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import js7.master.client.main.MasterClientMain
+import js7.tests.testenv.MasterAgentForScalaTest
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.mutable
 import org.scalatest.freespec.AnyFreeSpec

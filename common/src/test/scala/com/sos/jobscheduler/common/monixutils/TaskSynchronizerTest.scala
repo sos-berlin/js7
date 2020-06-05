@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.common.monixutils
+package js7.common.monixutils
 
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import js7.common.scalautil.Futures.implicits._
 import java.lang.Thread.sleep
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global

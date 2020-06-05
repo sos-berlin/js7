@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.akkahttp
+package js7.common.akkahttp
 
 import akka.NotUsed
 import akka.http.scaladsl.model.StatusCodes.{OK, TooManyRequests}
@@ -8,11 +8,11 @@ import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.http.JsonStreamingSupport.{JsonSeqStreamingSupport, jsonSeqMarshaller}
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
+import js7.base.problem.Problem
+import js7.base.time.ScalaTime._
+import js7.common.http.JsonStreamingSupport.{JsonSeqStreamingSupport, jsonSeqMarshaller}
+import js7.common.scalautil.Futures.implicits._
+import js7.common.time.WaitForCondition.waitForCondition
 import io.circe.Json
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
