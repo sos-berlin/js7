@@ -3,18 +3,26 @@ package com.sos.jobscheduler.common.http
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.ContentTypes.{`application/json`, `text/plain(UTF-8)`}
 import akka.http.scaladsl.model.HttpMethods.POST
-import akka.http.scaladsl.model.StatusCodes.BadRequest
+import akka.http.scaladsl.model.StatusCodes.{BadRequest, InternalServerError, OK}
 import akka.http.scaladsl.model.headers.`Content-Type`
 import akka.http.scaladsl.model.{HttpEntity, HttpResponse}
+import akka.http.scaladsl.server.Directives._
 import cats.syntax.option._
 import com.sos.jobscheduler.base.auth.SessionToken
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.utils.Closer.syntax.RichClosersAutoCloseable
+import com.sos.jobscheduler.base.utils.HasCloser
 import com.sos.jobscheduler.base.web.HttpClient.liftProblem
 import com.sos.jobscheduler.base.web.Uri
+import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport
+import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
+import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
 import com.sos.jobscheduler.common.http.AkkaHttpClient.HttpException
 import com.sos.jobscheduler.common.http.AkkaHttpClientTest._
+import com.sos.jobscheduler.common.scalautil.MonixUtils.syntax._
+import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import java.net.ServerSocket
 import java.nio.charset.StandardCharsets.UTF_8
 import monix.eval.Task
@@ -28,39 +36,127 @@ import scala.concurrent.{Await, TimeoutException}
 /**
   * @author Joacim Zschimmer
   */
-final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll
+final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with HasCloser
 {
-  private lazy val actorSystem = ActorSystem("AkkaHttpClientTest")
-
-  private lazy val httpClient = new AkkaHttpClient {
-    protected val actorSystem = AkkaHttpClientTest.this.actorSystem
-    protected val baseUri = Uri("https://example.com:9999")
-    protected val name = "AkkaHttpClientTest"
-    protected def uriPrefixPath = "/PREFIX"
-    protected def keyStoreRef = None
-    protected def trustStoreRef = None
-  }
+  implicit private lazy val actorSystem = ActorSystem("AkkaHttpClientTest")
+  private lazy val port = findFreeTcpPort()
 
   override def afterAll() = {
     actorSystem.terminate()
+    closer.close()
     super.afterAll()
   }
 
-  "toCheckedAgentUri, checkAgentUri and apply, failing" - {
-    for ((uri, None) <- Setting) s"$uri" in {
-      assert(httpClient.checkAgentUri(uri).isLeft)
-      assert(httpClient.toCheckedAgentUri(uri).isLeft)
+  "Without a server" - {
+    lazy val httpClient = new AkkaHttpClient {
+      protected val actorSystem = AkkaHttpClientTest.this.actorSystem
+      protected val baseUri = Uri("https://example.com:9999")
+      protected val name = "AkkaHttpClientTest"
+      protected def uriPrefixPath = "/PREFIX"
+      protected def keyStoreRef = None
+      protected def trustStoreRef = None
+    }.closeWithCloser
+
+    "toCheckedAgentUri, checkAgentUri and apply, failing" - {
+      for ((uri, None) <- Setting) s"$uri" in {
+        assert(httpClient.checkAgentUri(uri).isLeft)
+        assert(httpClient.toCheckedAgentUri(uri).isLeft)
+        implicit val s = Task.pure(none[SessionToken])
+        assert(Await.result(httpClient.get_[HttpResponse](uri).runToFuture.failed, 99.seconds).getMessage
+          contains "does not match")
+      }
+    }
+
+    "normalizeAgentUri" - {
+      for ((uri, Some(converted)) <- Setting) s"$uri" in {
+        assert(httpClient.normalizeAgentUri(uri) == converted)
+        assert(httpClient.toCheckedAgentUri(uri) == Right(converted))
+      }
+    }
+
+    "Operations after close are rejected" in {
+      httpClient.close()
+      val uri = Uri("https://example.com:9999/PREFIX")
       implicit val s = Task.pure(none[SessionToken])
       assert(Await.result(httpClient.get_[HttpResponse](uri).runToFuture.failed, 99.seconds).getMessage
-        contains "does not match")
+        contains "»AkkaHttpClientTest« has been closed")
     }
   }
 
-  "normalizeAgentUri" - {
-    for ((uri, Some(converted)) <- Setting) s"$uri" in {
-      assert(httpClient.normalizeAgentUri(uri) == converted)
-      assert(httpClient.toCheckedAgentUri(uri) == Right(converted))
+  "With a server" - {
+    final case class A(int: Int)
+    implicit val aJsonCodec = deriveCodec[A]
+
+    lazy val webServer = {
+      val server = AkkaWebServer.http(findFreeTcpPort()) {
+        import CirceJsonOrYamlSupport.{jsonOrYamlMarshaller, jsonUnmarshaller}
+        decodeRequest {
+          post {
+            entity(as[A]) { a =>
+              path("OK") {
+                complete(OK -> A(a.int + 1))
+              } ~
+              path("BAD-REQUEST") {
+                complete(BadRequest -> "BAD REQUEST")
+              } ~
+              path("PROBLEM") {
+                complete(BadRequest -> Problem("PROBLEM"))
+              } ~
+              path("SERVER-ERROR") {
+                complete(InternalServerError -> "SERVER ERROR")
+              }
+            }
+          }
+        }
+      }.closeWithCloser
+      server.start() await 99.s
+      server
     }
+
+    lazy val httpClient = new AkkaHttpClient {
+      protected val actorSystem = AkkaHttpClientTest.this.actorSystem
+      protected val baseUri = webServer.localUri
+      protected val name = "AkkaHttpClientTest"
+      protected def uriPrefixPath = ""
+      protected def keyStoreRef = None
+      protected def trustStoreRef = None
+    }.closeWithCloser
+
+    lazy val uri = webServer.localUri
+    implicit val sessionToken: Task[Option[SessionToken]] = Task.pure(None)
+
+    "OK" in {
+      assert(httpClient.post(Uri(s"$uri/OK"), A(1)).await(99.s) == A(2))
+      assert(liftProblem(httpClient.post(Uri(s"$uri/OK"), A(1))).await(99.s) == Right(A(2)))
+    }
+
+    "Bad Request post" in {
+      val t = intercept[HttpException](
+        httpClient.post(Uri(s"$uri/BAD-REQUEST"), A(1)).await(99.s))
+      assert(t.toString == s"""HTTP 400 Bad Request: #3 POST $uri/BAD-REQUEST => "BAD REQUEST"""")
+    }
+
+    "Bad Request postDiscardResponse" in {
+      val t = intercept[HttpException](
+        httpClient.postDiscardResponse(Uri(s"$uri/BAD-REQUEST"), A(1)).await(99.s))
+      assert(t.toString == s"""HTTP 400 Bad Request: #4 POST $uri/BAD-REQUEST => "BAD REQUEST"""")
+    }
+
+    "Problem" in {
+      val t = intercept[HttpException](
+        httpClient.post(Uri(s"$uri/PROBLEM"), A(1)).await(99.s))
+      assert(t.toString == s"""HTTP 400 Bad Request: #5 POST $uri/PROBLEM => PROBLEM""")
+
+      assert(liftProblem(httpClient.post(Uri(s"$uri/PROBLEM"), A(1))).await(99.s) ==
+        Left(Problem("PROBLEM")))
+    }
+
+    "Internal Server Error" in {
+      val t = intercept[HttpException](
+        httpClient.post(Uri(s"$uri/SERVER-ERROR"), A(1)).await(99.s))
+      assert(t.toString == s"""HTTP 500 Internal Server Error: #7 POST $uri/SERVER-ERROR => "SERVER ERROR"""")
+    }
+
   }
 
   "liftProblem, HttpException#problem" - {
@@ -104,14 +200,6 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll
       val e = new Exception
       assert(liftProblem(Task.raiseError(e)).failed.runSyncUnsafe(99.seconds) eq e)
     }
-  }
-
-  "Operations after close are rejected" in {
-    httpClient.close()
-    val uri = Uri("https://example.com:9999/PREFIX")
-    implicit val s = Task.pure(none[SessionToken])
-    assert(Await.result(httpClient.get_[HttpResponse](uri).runToFuture.failed, 99.seconds).getMessage
-      contains "»AkkaHttpClientTest« has been closed")
   }
 
   "Unreachable port, try several times" - {

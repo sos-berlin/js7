@@ -139,6 +139,11 @@ object AkkaWebServer
 {
   private val logger = Logger(getClass)
 
+  def http(port: Int, config: Config = ConfigFactory.empty)(route: Route)(implicit as: ActorSystem)
+  : AkkaWebServer with HasUri = {
+    new Standard(WebServerBinding.http(port) :: Nil, _ => BoundRoute(route), config) with AkkaWebServer.HasUri
+  }
+
   class Standard(
     protected val bindings: Seq[WebServerBinding],
     route: WebServerBinding => BoundRoute,
