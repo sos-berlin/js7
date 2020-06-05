@@ -2,10 +2,10 @@ package js7.base.utils
 
 import cats.data.Validated
 import cats.effect.{Resource, SyncIO}
-import js7.base.problem.Problem
-import js7.base.utils.StackTraces._
 import java.io.{ByteArrayInputStream, InputStream}
 import java.util.Base64
+import js7.base.problem.Problem
+import js7.base.utils.StackTraces._
 
 /**
   * @author Joacim Zschimmer

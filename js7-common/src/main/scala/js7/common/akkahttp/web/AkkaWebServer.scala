@@ -8,6 +8,8 @@ import akka.stream.{ActorMaterializer, TLSClientAuth}
 import cats.effect.Resource
 import cats.instances.vector._
 import cats.syntax.traverse._
+import com.typesafe.config.{Config, ConfigFactory}
+import java.net.InetSocketAddress
 import js7.base.generic.Completed
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils._
@@ -21,8 +23,6 @@ import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.Logger
 import js7.common.time.JavaTimeConverters.AsScalaDuration
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import com.typesafe.config.{Config, ConfigFactory}
-import java.net.InetSocketAddress
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.Promise

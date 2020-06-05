@@ -1,18 +1,18 @@
 package js7.base.circeutils
 
-import js7.base.circeutils.CirceUtils._
-import js7.base.circeutils.JavaJsonCodecs._
-import js7.base.utils.IntelliJUtils.intelliJuseImport
-import js7.base.utils.ScalaUtils._
-import js7.tester.CirceJsonTester.testJson
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json}
 import java.io.File
 import java.nio.file.Paths
 import java.time.format.DateTimeParseException
 import java.time.{Duration, Instant}
-import scala.concurrent.duration._
+import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.JavaJsonCodecs._
+import js7.base.utils.IntelliJUtils.intelliJuseImport
+import js7.base.utils.ScalaUtils._
+import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer

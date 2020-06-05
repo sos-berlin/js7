@@ -1,6 +1,11 @@
 package js7.tests.provider
 
 import cats.syntax.option._
+import com.typesafe.config.ConfigFactory
+import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.Files.{createDirectories, delete}
+import java.nio.file.{Files, Paths}
+import java.util.concurrent._
 import js7.base.circeutils.CirceUtils._
 import js7.base.crypt.silly.SillySigner
 import js7.base.generic.SecretString
@@ -30,11 +35,6 @@ import js7.provider.Provider
 import js7.provider.configuration.ProviderConfiguration
 import js7.tests.provider.ProviderTest._
 import js7.tests.testenv.MasterAgentForScalaTest
-import com.typesafe.config.ConfigFactory
-import java.nio.charset.StandardCharsets.UTF_8
-import java.nio.file.Files.{createDirectories, delete}
-import java.nio.file.{Files, Paths}
-import java.util.concurrent._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.Deadline.now

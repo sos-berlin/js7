@@ -1,8 +1,8 @@
 package js7.core.system
 
+import com.typesafe.config.ConfigFactory
 import js7.common.configutils.Configs.ConvertibleConfig
 import js7.core.system.ThreadPools._
-import com.typesafe.config.ConfigFactory
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

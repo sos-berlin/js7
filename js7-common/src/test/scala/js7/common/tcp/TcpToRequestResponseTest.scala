@@ -4,12 +4,11 @@ import akka.util.ByteString
 import js7.base.utils.AutoClosing.autoClosing
 import js7.common.akkautils.Akkas.newActorSystem
 import js7.common.tcp.TcpToRequestResponseTest._
-import org.scalatest.matchers.should.Matchers._
 import org.scalatest.BeforeAndAfterAll
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers._
 import scala.concurrent.Future
 import scala.util.control.NoStackTrace
-import org.scalatest.matchers
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer

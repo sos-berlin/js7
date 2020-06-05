@@ -1,13 +1,13 @@
 package js7.common.tcp
 
 import akka.util.ByteString
+import java.net.{InetAddress, InetSocketAddress, ServerSocket, Socket}
+import java.util.concurrent.TimeoutException
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer.syntax._
 import js7.base.utils.HasCloser
 import js7.common.scalautil.Futures._
 import js7.common.scalautil.Futures.implicits._
-import java.net.{InetAddress, InetSocketAddress, ServerSocket, Socket}
-import java.util.concurrent.TimeoutException
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._

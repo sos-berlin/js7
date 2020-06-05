@@ -1,5 +1,6 @@
 package js7.tests.history
 
+import io.circe.{Decoder, Encoder, Json}
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.RichJavaClass
 import js7.data.order.Outcome.Undisrupted
@@ -7,7 +8,6 @@ import js7.data.order.{OrderId, Outcome}
 import js7.data.system.StdoutOrStderr
 import js7.data.workflow.position.WorkflowPosition
 import js7.tests.history.OrderEntry._
-import io.circe.{Decoder, Encoder, Json}
 
 /**
   * @author Joacim Zschimmer

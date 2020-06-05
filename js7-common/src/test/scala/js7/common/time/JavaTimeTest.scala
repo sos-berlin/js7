@@ -1,11 +1,11 @@
 package js7.common.time
 
 import cats.syntax.show._
+import java.time.format.DateTimeParseException
+import java.time.{Duration, Instant, LocalDateTime, LocalTime, ZoneId}
 import js7.base.convert.As
 import js7.base.time.Timestamp
 import js7.common.time.JavaTime._
-import java.time.format.DateTimeParseException
-import java.time.{Duration, Instant, LocalDateTime, LocalTime, ZoneId}
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
 import scala.util.Random

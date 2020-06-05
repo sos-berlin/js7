@@ -1,6 +1,9 @@
 package js7.common.files
 
 import com.google.common.io.MoreFiles.touch
+import java.nio.file.Files.createDirectory
+import java.nio.file.Paths
+import java.util.Comparator
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.measureTime
 import js7.base.time.Timestamp
@@ -10,9 +13,6 @@ import js7.common.scalautil.FileUtils._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Logger
 import js7.common.time.JavaTimeConverters._
-import java.nio.file.Files.createDirectory
-import java.nio.file.Paths
-import java.util.Comparator
 import org.scalatest.freespec.AnyFreeSpec
 import scala.util.Random
 

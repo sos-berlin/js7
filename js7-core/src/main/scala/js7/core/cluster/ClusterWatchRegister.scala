@@ -1,7 +1,7 @@
 package js7.core.cluster
 
-import js7.data.master.MasterId
 import javax.inject.{Inject, Singleton}
+import js7.data.master.MasterId
 import monix.catnap.MVar
 import monix.eval.Task
 import monix.execution.Scheduler

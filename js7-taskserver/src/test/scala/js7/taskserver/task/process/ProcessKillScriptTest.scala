@@ -1,5 +1,9 @@
 package js7.taskserver.task.process
 
+import java.io.InputStream
+import java.lang.ProcessBuilder.Redirect.INHERIT
+import java.nio.file.Files._
+import java.nio.file.Path
 import js7.agent.data.AgentTaskId
 import js7.base.process.ProcessSignal.SIGKILL
 import js7.base.time.ScalaTime._
@@ -15,15 +19,11 @@ import js7.common.system.FileUtils._
 import js7.common.system.OperatingSystem.{isMac, isSolaris, isUnix, isWindows}
 import js7.common.utils.JavaResource
 import js7.taskserver.task.process.ProcessKillScriptTest._
-import java.io.InputStream
-import java.lang.ProcessBuilder.Redirect.INHERIT
-import java.nio.file.Files._
-import java.nio.file.Path
+import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Future, blocking}
 import scala.jdk.CollectionConverters._
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * JS-1558 Agent includes kill scripts

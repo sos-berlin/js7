@@ -1,5 +1,9 @@
 package js7.agent.configuration
 
+import com.typesafe.config.ConfigFactory
+import java.net.InetSocketAddress
+import java.nio.file.Files.createTempDirectory
+import java.nio.file.{Path, Paths}
 import js7.agent.configuration.AgentConfiguration.DefaultConfig
 import js7.agent.configuration.AgentConfigurationTest._
 import js7.agent.data.ProcessKillScript
@@ -9,10 +13,6 @@ import js7.common.scalautil.FileUtils._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.system.OperatingSystem.isWindows
 import js7.core.event.journal.JournalConf
-import com.typesafe.config.ConfigFactory
-import java.net.InetSocketAddress
-import java.nio.file.Files.createTempDirectory
-import java.nio.file.{Path, Paths}
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.DurationInt
 

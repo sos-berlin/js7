@@ -1,9 +1,9 @@
 package js7.data.workflow
 
 import cats.Show
-import js7.base.utils.ScalazStyle._
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, DecodingFailure, Encoder, Json}
+import js7.base.utils.ScalazStyle._
 
 /**
   * @author Joacim Zschimmer

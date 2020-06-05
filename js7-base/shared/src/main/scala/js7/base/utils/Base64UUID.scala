@@ -1,9 +1,9 @@
 package js7.base.utils
 
-import js7.base.generic.GenericString
-import js7.base.problem.{Checked, Problem}
 import java.nio.ByteBuffer
 import java.util.{Base64, UUID}
+import js7.base.generic.GenericString
+import js7.base.problem.{Checked, Problem}
 
 final case class Base64UUID private(uuid: UUID, string: String) extends GenericString
 

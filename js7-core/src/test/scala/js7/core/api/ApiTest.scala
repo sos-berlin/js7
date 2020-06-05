@@ -1,11 +1,11 @@
 package js7.core.api
 
-import js7.core.api.Api.quoteString
-import js7.data.workflow.parser.{ExpressionParser, Parsers}
 import fastparse.NoWhitespace._
 import fastparse.{End, P}
-import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks._
+import js7.core.api.Api.quoteString
+import js7.data.workflow.parser.{ExpressionParser, Parsers}
 import org.scalatest.freespec.AnyFreeSpec
+import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks._
 
 /**
   * @author Joacim Zschimmer

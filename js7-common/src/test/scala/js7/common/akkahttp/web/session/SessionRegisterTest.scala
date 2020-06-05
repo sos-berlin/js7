@@ -11,8 +11,8 @@ import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.schedulers.TestScheduler
-import scala.concurrent.duration._
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer

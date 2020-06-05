@@ -1,6 +1,7 @@
 package js7.agent.web
 
 import akka.actor.ActorSystem
+import com.typesafe.config.Config
 import js7.agent.DirectAgentApi
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.commands.AgentCommand
@@ -13,7 +14,6 @@ import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.core.cluster.ClusterWatchRegister
 import js7.core.command.CommandMeta
-import com.typesafe.config.Config
 import monix.execution.Scheduler
 import scala.concurrent.Future
 

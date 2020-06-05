@@ -1,5 +1,6 @@
 package js7.tests
 
+import com.typesafe.config.ConfigFactory
 import js7.agent.data.commands.AgentCommand
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
@@ -20,7 +21,6 @@ import js7.master.data.MasterCommand.CancelOrder
 import js7.tests.ForkTest._
 import js7.tests.testenv.DirectoryProvider.{StdoutOutput, script}
 import js7.tests.testenv.MasterAgentForScalaTest
-import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._

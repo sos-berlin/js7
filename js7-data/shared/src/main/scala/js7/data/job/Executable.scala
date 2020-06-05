@@ -1,11 +1,11 @@
 package js7.data.job
 
+import java.nio.file.Path
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.generic.GenericString
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.problem.Problems.InvalidNameProblem
-import java.nio.file.Path
 
 sealed trait Executable
 

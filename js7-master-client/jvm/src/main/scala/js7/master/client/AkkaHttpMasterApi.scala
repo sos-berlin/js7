@@ -2,13 +2,13 @@ package js7.master.client
 
 import akka.actor.ActorSystem
 import cats.effect.Resource
+import com.typesafe.config.{Config, ConfigFactory}
 import js7.base.auth.UserAndPassword
 import js7.base.session.SessionApi
 import js7.base.web.Uri
 import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import js7.common.akkautils.Akkas.actorSystemResource
 import js7.common.http.AkkaHttpClient
-import com.typesafe.config.{Config, ConfigFactory}
 import monix.eval.Task
 import scala.concurrent.duration.FiniteDuration
 

@@ -1,7 +1,7 @@
 package js7.data.workflow.position
 
-import js7.base.utils.ScalazStyle._
 import io.circe.{Decoder, DecodingFailure, Json}
+import js7.base.utils.ScalazStyle._
 import scala.collection.mutable
 
 /** Denotes globally a branch in a instruction, for example fork or if-then-else, globally unique.

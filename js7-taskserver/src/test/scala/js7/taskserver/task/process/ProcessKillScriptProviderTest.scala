@@ -1,14 +1,14 @@
 package js7.taskserver.task.process
 
 import com.google.common.io.MoreFiles.touch
-import js7.common.process.Processes.ShellFileExtension
-import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
-import js7.common.scalautil.FileUtils.syntax._
-import js7.common.system.OperatingSystem.isUnix
 import java.nio.file.Files
 import java.nio.file.Files._
 import java.nio.file.attribute.PosixFileAttributes
 import java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE
+import js7.common.process.Processes.ShellFileExtension
+import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.system.OperatingSystem.isUnix
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 

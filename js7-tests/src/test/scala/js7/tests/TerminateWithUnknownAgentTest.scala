@@ -1,5 +1,6 @@
 package js7.tests
 
+import java.net.ServerSocket
 import js7.base.time.ScalaTime._
 import js7.base.web.Uri
 import js7.common.scalautil.MonixUtils.syntax._
@@ -12,7 +13,6 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.master.data.events.MasterAgentEvent.AgentCouplingFailed
 import js7.tests.TerminateWithUnknownAgentTest._
 import js7.tests.testenv.MasterAgentForScalaTest
-import java.net.ServerSocket
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 

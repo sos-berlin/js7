@@ -1,12 +1,12 @@
 package js7.base.crypt.silly
 
 import cats.effect.{Resource, SyncIO}
+import java.io.InputStream
+import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.Problems.TamperedWithSignedMessageProblem
 import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.SyncResource.syntax.RichResource
-import java.io.InputStream
-import java.nio.charset.StandardCharsets.UTF_8
 import scodec.bits.ByteVector
 
 /**

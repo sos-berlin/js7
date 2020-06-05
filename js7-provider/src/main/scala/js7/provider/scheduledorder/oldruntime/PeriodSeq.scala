@@ -1,7 +1,7 @@
 package js7.provider.scheduledorder.oldruntime
 
-import js7.provider.scheduledorder.oldruntime.PeriodSeq._
 import java.time.LocalTime
+import js7.provider.scheduledorder.oldruntime.PeriodSeq._
 import scala.language.implicitConversions
 
 abstract sealed case class PeriodSeq(orderedSeq: Seq[Period]) {

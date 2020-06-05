@@ -1,5 +1,6 @@
 package js7.core.event.journal.watch
 
+import java.nio.file.Files
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.common.scalautil.FileUtils
 import js7.core.event.journal.data.JournalMeta
@@ -7,7 +8,6 @@ import js7.core.event.journal.files.JournalFiles.JournalMetaOps
 import js7.core.event.journal.watch.FileEventIteratorPoolTest._
 import js7.core.event.journal.watch.TestData.{AEvent, TestKeyedEventJsonCodec, journalId, writeJournal}
 import js7.data.event.{EventId, Stamped}
-import java.nio.file.Files
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

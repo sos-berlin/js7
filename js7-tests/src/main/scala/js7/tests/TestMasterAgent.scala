@@ -1,6 +1,9 @@
 package js7.tests
 
 import akka.actor.{Actor, Props}
+import java.lang.management.ManagementFactory.getOperatingSystemMXBean
+import java.nio.file.Files.createDirectory
+import java.nio.file.{Files, Path}
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.ShutDown
 import js7.base.convert.AsJava.StringAsPath
@@ -32,9 +35,6 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fork, If}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.testenv.DirectoryProvider
-import java.lang.management.ManagementFactory.getOperatingSystemMXBean
-import java.nio.file.Files.createDirectory
-import java.nio.file.{Files, Path}
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.duration._

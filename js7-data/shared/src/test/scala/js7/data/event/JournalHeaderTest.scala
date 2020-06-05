@@ -1,10 +1,10 @@
 package js7.data.event
 
+import java.util.UUID
 import js7.base.BuildInfo
 import js7.base.circeutils.CirceUtils._
 import js7.base.time.Timestamp
 import js7.tester.CirceJsonTester.testJson
-import java.util.UUID
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
 

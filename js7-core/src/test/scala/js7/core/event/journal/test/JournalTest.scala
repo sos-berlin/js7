@@ -1,6 +1,8 @@
 package js7.core.event.journal.test
 
 import akka.pattern.ask
+import com.typesafe.config.ConfigFactory
+import java.nio.file.Files.{delete, deleteIfExists}
 import js7.base.BuildInfo
 import js7.base.circeutils.CirceUtils._
 import js7.base.time.ScalaTime._
@@ -11,8 +13,6 @@ import js7.common.scalautil.Futures.implicits._
 import js7.core.event.journal.JournalActor
 import js7.core.event.journal.files.JournalFiles.listJournalFiles
 import js7.core.event.journal.test.JournalTest._
-import com.typesafe.config.ConfigFactory
-import java.nio.file.Files.{delete, deleteIfExists}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._

@@ -2,6 +2,7 @@ package js7.core.crypt.pgp
 
 import cats.effect.{Resource, SyncIO}
 import cats.syntax.show._
+import java.io.InputStream
 import js7.base.Problems.{MessageSignedByUnknownProblem, TamperedWithSignedMessageProblem}
 import js7.base.crypt.{GenericSignature, PgpSignature, SignatureVerifier, SignerId}
 import js7.base.problem.{Checked, Problem}
@@ -11,7 +12,6 @@ import js7.base.utils.SyncResource.syntax._
 import js7.common.scalautil.GuavaUtils.stringToInputStreamResource
 import js7.common.scalautil.Logger
 import js7.core.crypt.pgp.PgpCommons._
-import java.io.InputStream
 import org.bouncycastle.openpgp.jcajce.JcaPGPObjectFactory
 import org.bouncycastle.openpgp.operator.jcajce.JcaPGPContentVerifierBuilderProvider
 import org.bouncycastle.openpgp.{PGPPublicKey, PGPPublicKeyRingCollection, PGPSignature, PGPSignatureList, PGPUtil}

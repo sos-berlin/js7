@@ -1,5 +1,6 @@
 package js7.agent.client.main
 
+import java.nio.file.{Files, Path}
 import js7.agent.client.AkkaHttpAgentTextApi
 import js7.base.auth.SessionToken
 import js7.base.convert.AsJava.StringAsPath
@@ -9,7 +10,6 @@ import js7.base.web.Uri
 import js7.common.commandline.CommandLineArguments
 import js7.common.log.Log4j
 import js7.common.scalautil.Logger
-import java.nio.file.{Files, Path}
 import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 

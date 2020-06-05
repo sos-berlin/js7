@@ -1,6 +1,7 @@
 package js7.master.cluster
 
 import cats.implicits._
+import com.typesafe.config.Config
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
 import js7.base.problem.{Checked, Problem}
@@ -9,7 +10,6 @@ import js7.common.configutils.Configs._
 import js7.common.http.configuration.{RecouplingStreamReaderConf, RecouplingStreamReaderConfs}
 import js7.common.time.JavaTimeConverters.AsScalaDuration
 import js7.data.cluster.{ClusterNodeId, ClusterSetting}
-import com.typesafe.config.Config
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
 

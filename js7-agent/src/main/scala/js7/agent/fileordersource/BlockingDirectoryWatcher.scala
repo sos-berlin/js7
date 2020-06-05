@@ -1,13 +1,13 @@
 package js7.agent.fileordersource
 
+import java.nio.file.StandardWatchEventKinds._
+import java.nio.file.{FileSystems, Path, WatchEvent}
 import js7.agent.fileordersource.BlockingDirectoryWatcher._
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.HasCloser
 import js7.common.scalautil.Logger
 import js7.common.system.OperatingSystem.isMac
-import java.nio.file.StandardWatchEventKinds._
-import java.nio.file.{FileSystems, Path, WatchEvent}
 import scala.concurrent._
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._

@@ -5,6 +5,10 @@ import akka.http.scaladsl.model.HttpMethods.GET
 import akka.http.scaladsl.model.{HttpRequest, StatusCodes}
 import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
+import com.typesafe.config.ConfigFactory
+import java.net.{InetAddress, InetSocketAddress}
+import java.nio.file.Files.{createDirectory, createTempDirectory}
+import javax.net.ssl.SSLHandshakeException
 import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
 import js7.common.akkahttp.https.{AkkaHttps, KeyStoreRef, TrustStoreRef}
@@ -16,18 +20,14 @@ import js7.common.http.AkkaHttpUtils.RichHttpResponse
 import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import js7.common.utils.JavaResource
-import com.typesafe.config.ConfigFactory
-import java.net.{InetAddress, InetSocketAddress}
-import java.nio.file.Files.{createDirectory, createTempDirectory}
-import javax.net.ssl.SSLHandshakeException
 import monix.execution.Scheduler
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll
-import Scheduler.Implicits.global
-import scala.concurrent.duration._
 import org.scalatest.freespec.AnyFreeSpec
-import js7.common.scalautil.MonixUtils.syntax._
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer

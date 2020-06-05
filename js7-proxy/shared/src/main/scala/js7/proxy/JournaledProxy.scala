@@ -1,6 +1,7 @@
 package js7.proxy
 
 import cats.effect.Resource
+import io.circe.Decoder
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
@@ -11,7 +12,6 @@ import js7.common.http.RecouplingStreamReader
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.data.event.{AnyKeyedEvent, Event, EventApi, EventId, EventRequest, JournaledState, KeyedEvent, Stamped}
 import js7.proxy.ProxyEvent.ProxyStarted
-import io.circe.Decoder
 import monix.eval.Task
 import monix.execution.CancelableFuture
 import monix.reactive.Observable

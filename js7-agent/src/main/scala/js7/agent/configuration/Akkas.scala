@@ -1,6 +1,7 @@
 package js7.agent.configuration
 
 import akka.actor.ActorSystem
+import com.typesafe.config.{Config, ConfigFactory}
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer
 import js7.base.utils.ScalazStyle._
@@ -9,7 +10,6 @@ import js7.common.akkautils.DeadLetterActor
 import js7.common.scalautil.Futures.implicits.SuccessFuture
 import js7.common.scalautil.Logger
 import js7.common.time.JavaTimeConverters._
-import com.typesafe.config.{Config, ConfigFactory}
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Deadline.now
 

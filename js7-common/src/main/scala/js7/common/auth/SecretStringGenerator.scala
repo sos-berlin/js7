@@ -1,8 +1,8 @@
 package js7.common.auth
 
-import js7.base.generic.SecretString
 import java.security.SecureRandom
 import java.util.Base64
+import js7.base.generic.SecretString
 
 /**
   * @author Joacim Zschimmer

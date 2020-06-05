@@ -1,5 +1,7 @@
 package js7.master.client
 
+import com.typesafe.config.{Config, ConfigFactory}
+import java.nio.file.Path
 import js7.base.auth.UserAndPassword
 import js7.base.session.HttpSessionApi
 import js7.base.utils.HasCloser
@@ -10,8 +12,6 @@ import js7.common.configutils.Configs.parseConfigIfExists
 import js7.common.http.{AkkaHttpClient, TextApi}
 import js7.common.scalautil.FileUtils.syntax._
 import js7.master.client.AkkaHttpMasterTextApi._
-import com.typesafe.config.{Config, ConfigFactory}
-import java.nio.file.Path
 
 /**
   * @author Joacim Zschimmer

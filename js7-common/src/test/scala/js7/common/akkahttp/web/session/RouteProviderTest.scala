@@ -5,6 +5,7 @@ import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
+import com.typesafe.config.ConfigFactory
 import js7.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
 import js7.base.generic.SecretString
 import js7.common.akkahttp.web.auth.GateKeeper
@@ -12,10 +13,9 @@ import js7.common.akkahttp.web.session.RouteProviderTest._
 import js7.common.auth.IdToUser
 import js7.common.http.CirceJsonSupport._
 import js7.common.scalautil.MonixUtils.syntax._
-import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler
-import scala.concurrent.duration._
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer

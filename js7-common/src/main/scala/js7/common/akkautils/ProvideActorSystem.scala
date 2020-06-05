@@ -1,5 +1,6 @@
 package js7.common.akkautils
 
+import com.typesafe.config.Config
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer.syntax._
 import js7.base.utils.HasCloser
@@ -8,7 +9,6 @@ import js7.common.akkautils.Akkas.newActorSystem
 import js7.common.akkautils.ProvideActorSystem._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.Logger
-import com.typesafe.config.Config
 import scala.concurrent.duration.Deadline.now
 
 /**

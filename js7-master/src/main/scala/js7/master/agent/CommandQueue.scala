@@ -1,5 +1,6 @@
 package js7.master.agent
 
+import com.typesafe.scalalogging.{Logger => ScalaLogger}
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.Batch
 import js7.base.problem.{Checked, Problem}
@@ -7,7 +8,6 @@ import js7.base.utils.Assertions.assertThat
 import js7.data.order.OrderId
 import js7.master.agent.AgentDriver.{Input, Queueable, ReleaseEventsQueueable}
 import js7.master.agent.CommandQueue._
-import com.typesafe.scalalogging.{Logger => ScalaLogger}
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.collection.{View, mutable}

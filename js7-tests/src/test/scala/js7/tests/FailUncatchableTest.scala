@@ -14,10 +14,10 @@ import js7.data.workflow.position.Position
 import js7.tests.FailUncatchableTest._
 import js7.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
+import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
-import org.scalatest.freespec.AnyFreeSpec
 
 final class FailUncatchableTest extends AnyFreeSpec
 {

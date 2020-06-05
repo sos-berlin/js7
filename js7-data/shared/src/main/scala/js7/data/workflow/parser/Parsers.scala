@@ -1,7 +1,7 @@
 package js7.data.workflow.parser
 
-import js7.base.problem.{Checked, Problem}
 import fastparse._
+import js7.base.problem.{Checked, Problem}
 
 /**
   * @author Joacim Zschimmer

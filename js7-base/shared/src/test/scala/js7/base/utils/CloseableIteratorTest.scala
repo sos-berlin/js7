@@ -1,8 +1,8 @@
 package js7.base.utils
 
 import js7.base.utils.CloseableIteratorTest._
-import scala.language.reflectiveCalls
 import org.scalatest.freespec.AnyFreeSpec
+import scala.language.reflectiveCalls
 
 /**
   * @author Joacim Zschimmer

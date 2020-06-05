@@ -1,5 +1,6 @@
 package js7.tests.history
 
+import java.time.ZoneId
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
@@ -32,7 +33,6 @@ import js7.master.data.MasterCommand.NoOperation
 import js7.tests.history.FatEventsTest._
 import js7.tests.testenv.DirectoryProvider
 import js7.tests.testenv.DirectoryProvider.StdoutOutput
-import java.time.ZoneId
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable

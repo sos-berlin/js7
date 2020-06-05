@@ -1,7 +1,7 @@
 package js7.base.utils
 
-import scala.concurrent.Future
 import org.scalatest.freespec.AsyncFreeSpec
+import scala.concurrent.Future
 
 final class CloserParallelTest extends AsyncFreeSpec
 {

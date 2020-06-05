@@ -1,10 +1,10 @@
 package js7.common.files
 
-import js7.base.utils.AutoClosing.autoClosing
 import java.nio.file.Files.newDirectoryStream
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{DirectoryStream, Files, Path}
 import java.util.Comparator
+import js7.base.utils.AutoClosing.autoClosing
 import scala.collection.mutable
 /**
   * @author Joacim Zschimmer

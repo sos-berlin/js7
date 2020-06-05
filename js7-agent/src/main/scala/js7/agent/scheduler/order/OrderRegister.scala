@@ -2,11 +2,11 @@ package js7.agent.scheduler.order
 
 import akka.actor.ActorRef
 import js7.agent.scheduler.order.OrderRegister._
+import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
-import js7.base.monixutils.MonixBase.syntax._
 import js7.core.common.ActorRegister
 import js7.data.event.KeyedEvent
 import js7.data.order.OrderEvent.OrderDetached

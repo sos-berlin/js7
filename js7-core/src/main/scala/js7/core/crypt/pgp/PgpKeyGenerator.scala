@@ -1,10 +1,10 @@
 package js7.core.crypt.pgp
 
+import java.math.BigInteger
+import java.security.SecureRandom
 import js7.base.crypt.SignerId
 import js7.base.generic.SecretString
 import js7.common.scalautil.Logger
-import java.math.BigInteger
-import java.security.SecureRandom
 import org.bouncycastle.bcpg.sig.{Features, KeyFlags}
 import org.bouncycastle.bcpg.{HashAlgorithmTags, PublicKeyAlgorithmTags, SymmetricKeyAlgorithmTags}
 import org.bouncycastle.crypto.AsymmetricCipherKeyPair

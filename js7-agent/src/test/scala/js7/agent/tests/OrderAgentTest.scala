@@ -1,6 +1,7 @@
 package js7.agent.tests
 
 import akka.http.scaladsl.model.StatusCodes.Unauthorized
+import com.typesafe.config.ConfigFactory
 import js7.agent.RunningAgent
 import js7.agent.client.AgentClient
 import js7.agent.configuration.AgentConfiguration
@@ -30,7 +31,6 @@ import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.workflow.Workflow
 import js7.data.workflow.position.Position
 import js7.data.workflow.test.TestSetting._
-import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._

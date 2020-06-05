@@ -3,6 +3,8 @@ package js7.agent
 import akka.actor.{ActorRef, ActorSystem, Props}
 import com.google.inject.Stage.PRODUCTION
 import com.google.inject.{Guice, Injector, Module}
+import com.typesafe.config.Config
+import java.nio.file.Files.deleteIfExists
 import js7.agent.RunningAgent._
 import js7.agent.configuration.inject.AgentModule
 import js7.agent.configuration.{AgentConfiguration, AgentStartInformation}
@@ -25,8 +27,6 @@ import js7.common.scalautil.Futures.promiseFuture
 import js7.common.scalautil.Logger
 import js7.core.command.CommandMeta
 import js7.core.startup.StartUp
-import com.typesafe.config.Config
-import java.nio.file.Files.deleteIfExists
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly

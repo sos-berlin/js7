@@ -1,12 +1,12 @@
 package js7.core.system
 
+import com.typesafe.config.Config
+import java.lang.Thread.currentThread
 import js7.base.convert.As
 import js7.base.utils.ScalaUtils.RichThrowable
 import js7.common.configutils.Configs.ConvertibleConfig
 import js7.common.scalautil.Logger
 import js7.core.startup.Halt.haltJava
-import com.typesafe.config.Config
-import java.lang.Thread.currentThread
 import monix.execution.schedulers.ExecutorScheduler
 import monix.execution.{ExecutionModel, UncaughtExceptionReporter}
 import scala.util.control.NonFatal

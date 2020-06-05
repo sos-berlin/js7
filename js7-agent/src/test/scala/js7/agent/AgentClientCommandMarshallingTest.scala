@@ -1,6 +1,7 @@
 package js7.agent
 
 import com.google.inject.{AbstractModule, Provides}
+import javax.inject.Singleton
 import js7.agent.AgentClientCommandMarshallingTest._
 import js7.agent.client.SimpleAgentClient
 import js7.agent.command.CommandHandler
@@ -14,7 +15,6 @@ import js7.base.utils.ScalaUtils._
 import js7.base.utils.SideEffect.ImplicitSideEffect
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.core.command.CommandMeta
-import javax.inject.Singleton
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.concurrent.ScalaFutures

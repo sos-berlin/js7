@@ -1,5 +1,7 @@
 package js7.core.event.journal.watch
 
+import io.circe.syntax.EncoderOps
+import java.nio.file.Files
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.common.event.PositionAnd
@@ -9,8 +11,6 @@ import js7.core.event.journal.files.JournalFiles.JournalMetaOps
 import js7.core.event.journal.watch.FileEventIteratorTest._
 import js7.core.event.journal.watch.TestData.{AEvent, TestKeyedEventJsonCodec, journalId, writeJournal}
 import js7.data.event.{EventId, JournalSeparators, Stamped}
-import io.circe.syntax.EncoderOps
-import java.nio.file.Files
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
 

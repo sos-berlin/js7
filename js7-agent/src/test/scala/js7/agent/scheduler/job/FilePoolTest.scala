@@ -1,9 +1,9 @@
 package js7.agent.scheduler.job
 
+import java.nio.file.Files.exists
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.system.FileUtils.temporaryDirectory
 import js7.data.job.JobKey
-import java.nio.file.Files.exists
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

@@ -1,8 +1,8 @@
 package js7.core.event.journal.recover
 
+import java.nio.file.Path
 import js7.base.utils.Assertions.assertThat
 import js7.data.event.{JournalHeader, JournalPosition, JournaledState}
-import java.nio.file.Path
 
 final case class RecoveredJournalFile[S <: JournaledState[S]](
   file: Path,

@@ -1,12 +1,12 @@
 package js7.data.workflow.instructions
 
+import io.circe.syntax.EncoderOps
+import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.utils.ScalazStyle._
 import js7.data.expression.Expression
 import js7.data.job.ReturnCode
 import js7.data.source.SourcePos
 import js7.data.workflow.Instruction
-import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, JsonObject}
 
 /**
   * @author Joacim Zschimmer

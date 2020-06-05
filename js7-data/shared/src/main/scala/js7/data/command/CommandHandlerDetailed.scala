@@ -1,8 +1,8 @@
 package js7.data.command
 
+import io.circe.{Decoder, Encoder}
 import js7.base.circeutils.CirceObjectCodec
 import js7.base.circeutils.CirceUtils.deriveCodec
-import io.circe.{Decoder, Encoder}
 /**
  * @author Joacim Zschimmer
  */

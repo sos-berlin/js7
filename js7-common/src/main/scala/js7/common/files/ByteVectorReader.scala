@@ -1,11 +1,11 @@
 package js7.common.files
 
-import js7.common.files.ByteVectorReader._
-import js7.common.scalautil.Logger
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption.READ
+import js7.common.files.ByteVectorReader._
+import js7.common.scalautil.Logger
 import scodec.bits.ByteVector
 
 final class ByteVectorReader(file: Path, fromEnd: Boolean = false)

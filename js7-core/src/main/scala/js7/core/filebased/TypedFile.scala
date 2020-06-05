@@ -1,9 +1,9 @@
 package js7.core.filebased
 
+import java.nio.file.Path
 import js7.base.problem.{Checked, Problem}
 import js7.core.filebased.TypedPaths.fileToTypedPathAndSourceType
 import js7.data.filebased.{SourceType, TypedPath}
-import java.nio.file.Path
 
 /**
   * @author Joacim Zschimmer

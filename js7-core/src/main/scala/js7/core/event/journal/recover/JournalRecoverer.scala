@@ -1,6 +1,7 @@
 package js7.core.event.journal.recover
 
 import akka.actor.{Actor, ActorRef, ActorRefFactory, Props}
+import java.nio.file.{Files, Path}
 import js7.base.time.ScalaTime._
 import js7.base.time.{Stopwatch, Timestamp}
 import js7.base.utils.AutoClosing.autoClosing
@@ -15,7 +16,6 @@ import js7.core.event.journal.recover.JournalRecoverer._
 import js7.core.event.journal.watch.JournalingObserver
 import js7.core.event.journal.{JournalActor, KeyedJournalingActor}
 import js7.data.event.{Event, EventId, JournalHeader, JournalId, JournaledState, KeyedEvent, Stamped}
-import java.nio.file.{Files, Path}
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 

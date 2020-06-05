@@ -1,12 +1,12 @@
 package js7.master.data.events
 
+import java.util.UUID
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Problem
 import js7.data.agent.{AgentRefPath, AgentRunId}
 import js7.data.event.{JournalId, KeyedEvent}
 import js7.master.data.events.MasterAgentEvent.{AgentCouplingFailed, AgentReady, AgentRegisteredMaster}
 import js7.tester.CirceJsonTester.testJson
-import java.util.UUID
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

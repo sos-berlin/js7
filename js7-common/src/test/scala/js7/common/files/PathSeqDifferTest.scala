@@ -1,9 +1,9 @@
 package js7.common.files
 
 import com.google.common.io.MoreFiles.touch
+import java.nio.file.Files.delete
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.FileUtils.withTemporaryDirectory
-import java.nio.file.Files.delete
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

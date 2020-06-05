@@ -1,11 +1,11 @@
 package js7.data.filebased
 
+import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Problems.InvalidNameProblem
 import js7.base.problem.{Problem, ProblemException}
 import js7.data.filebased.FileBasedId.VersionSeparator
 import js7.tester.CirceJsonTester.testJson
-import io.circe.syntax.EncoderOps
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

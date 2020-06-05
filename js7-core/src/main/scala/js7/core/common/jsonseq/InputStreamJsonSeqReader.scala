@@ -1,6 +1,9 @@
 package js7.core.common.jsonseq
 
 import cats.effect.Resource
+import io.circe.Json
+import java.io.IOException
+import java.nio.file.Path
 import js7.base.problem.ProblemException
 import js7.base.utils.Ascii.{LF, RS}
 import js7.base.utils.ScalazStyle._
@@ -11,9 +14,6 @@ import js7.common.scalautil.Logger
 import js7.common.utils.UntilNoneIterator
 import js7.core.common.jsonseq.InputStreamJsonSeqReader._
 import js7.core.problems.JsonSeqFileClosedProblem
-import io.circe.Json
-import java.io.IOException
-import java.nio.file.Path
 import monix.eval.Task
 import monix.execution.atomic.AtomicAny
 import scodec.bits.ByteVector

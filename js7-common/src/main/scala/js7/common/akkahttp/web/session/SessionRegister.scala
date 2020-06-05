@@ -3,6 +3,9 @@ package js7.common.akkahttp.web.session
 import akka.actor.{ActorRef, ActorRefFactory}
 import akka.pattern.ask
 import akka.util.Timeout
+import com.typesafe.config.{Config, ConfigFactory}
+import java.nio.file.Files.{createFile, deleteIfExists}
+import java.nio.file.Path
 import js7.base.auth.SessionToken
 import js7.base.generic.Completed
 import js7.base.problem.Checked
@@ -11,9 +14,6 @@ import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Logger
 import js7.common.system.OperatingSystem.operatingSystem
 import js7.common.time.JavaTimeConverters._
-import com.typesafe.config.{Config, ConfigFactory}
-import java.nio.file.Files.{createFile, deleteIfExists}
-import java.nio.file.Path
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly

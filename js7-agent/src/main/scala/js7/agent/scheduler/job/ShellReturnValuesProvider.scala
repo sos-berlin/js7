@@ -1,11 +1,11 @@
 package js7.agent.scheduler.job
 
+import java.nio.file.Files.createTempFile
+import java.nio.file.Path
 import js7.agent.configuration.AgentConfiguration.FileEncoding
 import js7.agent.scheduler.job.ShellReturnValuesProvider._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.common.scalautil.FileUtils.syntax._
-import java.nio.file.Files.createTempFile
-import java.nio.file.Path
 
 /**
   * @author Joacim Zschimmer

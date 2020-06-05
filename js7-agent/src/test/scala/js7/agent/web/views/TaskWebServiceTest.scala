@@ -2,6 +2,7 @@ package js7.agent.web.views
 
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.headers.Accept
+import io.circe.Json
 import js7.agent.data.AgentTaskId
 import js7.agent.data.views.{TaskOverview, TaskRegisterOverview}
 import js7.agent.task.{BaseAgentTask, TaskRegister, TaskRegisterActor}
@@ -18,11 +19,10 @@ import js7.common.scalautil.Futures.implicits.SuccessFuture
 import js7.data.job.JobKey
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.executable.WorkflowJob
-import io.circe.Json
 import monix.execution.Scheduler
+import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Promise
 import scala.concurrent.duration._
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer

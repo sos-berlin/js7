@@ -1,13 +1,13 @@
 package js7.data.workflow.parser
 
+import fastparse.NoWhitespace._
+import fastparse._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits._
 import js7.base.utils.Identifier.{isIdentifierPart, isIdentifierStart}
 import js7.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
 import js7.data.filebased.TypedPath
 import js7.data.folder.FolderPath
-import fastparse.NoWhitespace._
-import fastparse._
 import scala.reflect.ClassTag
 
 /**

@@ -1,13 +1,13 @@
 package js7.core.event.journal.write
 
+import java.util.concurrent.Executors
 import js7.base.time.ScalaTime._
 import js7.common.concurrent.ParallelismCounter
-import java.util.concurrent.Executors
+import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer

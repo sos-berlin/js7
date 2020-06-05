@@ -1,8 +1,8 @@
 package js7.base.generic
 
 import java.lang.System.nanoTime
-import scala.util.Random
 import org.scalatest.freespec.AnyFreeSpec
+import scala.util.Random
 
 /**
   * @author Joacim Zschimmer

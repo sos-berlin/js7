@@ -1,12 +1,12 @@
 package js7.taskserver.task.process
 
+import java.nio.charset.Charset
+import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_8}
+import java.nio.file.Path
 import js7.agent.data.{AgentTaskId, ProcessKillScript}
 import js7.common.process.Processes.Pid
 import js7.common.system.OperatingSystem.isWindows
 import js7.data.system.StdoutOrStderr
-import java.nio.charset.Charset
-import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_8}
-import java.nio.file.Path
 
 /**
  * @author Joacim Zschimmer

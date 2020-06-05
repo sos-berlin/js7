@@ -1,7 +1,7 @@
 package js7.common.utils
 
-import js7.common.scalautil.Logger
 import java.net.{BindException, ServerSocket}
+import js7.common.scalautil.Logger
 import scala.math.abs
 import scala.util.Random
 

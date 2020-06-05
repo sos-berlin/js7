@@ -1,6 +1,8 @@
 package js7.provider
 
 import cats.implicits._
+import com.typesafe.config.ConfigUtil
+import java.nio.file.{Files, Path, Paths}
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.convert.As._
 import js7.base.generic.{Completed, SecretString}
@@ -27,8 +29,6 @@ import js7.master.data.MasterCommand.{ReplaceRepo, UpdateRepo}
 import js7.master.workflow.WorkflowReader
 import js7.provider.Provider._
 import js7.provider.configuration.ProviderConfiguration
-import com.typesafe.config.ConfigUtil
-import java.nio.file.{Files, Path, Paths}
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.AtomicAny

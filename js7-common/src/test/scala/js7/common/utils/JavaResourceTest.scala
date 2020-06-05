@@ -3,15 +3,15 @@ package js7.common.utils
 import cats.effect.SyncIO
 import com.google.common.io.Resources.getResource
 import com.google.common.io.{ByteStreams, Resources}
-import js7.base.problem.ProblemException
-import js7.base.utils.AutoClosing.autoClosing
-import js7.common.scalautil.FileUtils.syntax._
-import js7.common.utils.JavaResourceTest._
 import java.io.{BufferedReader, InputStreamReader}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files.{createTempDirectory, createTempFile, delete}
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
+import js7.base.problem.ProblemException
+import js7.base.utils.AutoClosing.autoClosing
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.utils.JavaResourceTest._
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
 

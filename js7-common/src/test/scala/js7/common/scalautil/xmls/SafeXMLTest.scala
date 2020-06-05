@@ -1,10 +1,9 @@
 package js7.common.scalautil.xmls
 
 import js7.common.scalautil.xmls.SafeXMLTest._
+import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
 import org.xml.sax.SAXParseException
-import org.scalatest.matchers
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer

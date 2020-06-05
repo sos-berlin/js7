@@ -1,7 +1,7 @@
 package js7.common.log
 
-import js7.common.scalautil.Logger
 import java.time.LocalDateTime
+import js7.common.scalautil.Logger
 import monix.execution.atomic.AtomicBoolean
 import scala.util.Try
 

@@ -1,9 +1,9 @@
 package js7.proxy.javaapi.data
 
+import io.vavr.control.{Either => VEither}
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem
 import js7.data.workflow.{Workflow, WorkflowPath}
-import io.vavr.control.{Either => VEither}
 
 @javaApi
 final case class JWorkflow(underlying: Workflow)

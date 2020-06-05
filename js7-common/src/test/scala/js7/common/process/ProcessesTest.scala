@@ -1,5 +1,9 @@
 package js7.common.process
 
+import java.io.IOException
+import java.lang.ProcessBuilder.Redirect.PIPE
+import java.nio.file.Files.exists
+import java.nio.file.Paths
 import js7.common.process.Processes._
 import js7.common.process.ProcessesTest._
 import js7.common.scalautil.FileUtils.autoDeleting
@@ -7,12 +11,8 @@ import js7.common.scalautil.FileUtils.syntax.RichPath
 import js7.common.system.FileUtils._
 import js7.common.system.OperatingSystem.{isMac, isSolaris, isWindows}
 import js7.data.system.Stdout
-import java.io.IOException
-import java.lang.ProcessBuilder.Redirect.PIPE
-import java.nio.file.Files.exists
-import java.nio.file.Paths
-import scala.jdk.CollectionConverters._
 import org.scalatest.freespec.AnyFreeSpec
+import scala.jdk.CollectionConverters._
 
 /**
  * @author Joacim Zschimmer

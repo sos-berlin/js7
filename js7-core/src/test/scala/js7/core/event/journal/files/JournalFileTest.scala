@@ -1,8 +1,8 @@
 package js7.core.event.journal.files
 
-import js7.common.scalautil.FileUtils.syntax._
 import java.nio.file.Files.{createTempFile, delete, size}
 import java.nio.file.Paths
+import js7.common.scalautil.FileUtils.syntax._
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

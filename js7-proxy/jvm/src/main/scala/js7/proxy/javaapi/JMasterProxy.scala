@@ -2,22 +2,21 @@ package js7.proxy.javaapi
 
 import cats.data.EitherT
 import cats.effect.Resource
+import com.typesafe.config.{Config, ConfigFactory}
+import io.circe.Json
+import io.vavr.control.{Either => VEither}
+import java.util.concurrent.CompletableFuture
 import js7.base.annotation.javaApi
 import js7.base.circeutils.CirceUtils.{RichCirceEither, RichJson}
 import js7.base.problem.Problem
 import js7.base.web.Uri
 import js7.common.scalautil.Logger
-import js7.data.event.Event
 import js7.master.client.{AkkaHttpMasterApi, HttpMasterApi}
 import js7.master.data.{MasterCommand, MasterState}
 import js7.proxy.javaapi.JMasterProxy._
 import js7.proxy.javaapi.data.JMasterState
 import js7.proxy.javaapi.utils.VavrConversions._
 import js7.proxy.{JournaledProxy, MasterCommandProxy}
-import com.typesafe.config.{Config, ConfigFactory}
-import io.circe.Json
-import io.vavr.control.{Either => VEither}
-import java.util.concurrent.CompletableFuture
 import monix.eval.Task
 import monix.execution.FutureUtils.Java8Extensions
 import monix.execution.schedulers.ExecutorScheduler

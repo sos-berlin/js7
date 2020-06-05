@@ -1,13 +1,13 @@
 package js7.master.web.master.api.test
 
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
+import com.typesafe.config.ConfigFactory
 import js7.base.auth.SimpleUser
 import js7.common.akkahttp.ExceptionHandling
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.core.message.ProblemCodeMessages
 import js7.master.configuration.MasterConfiguration.DefaultConfig
-import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Suite
 import scala.concurrent.duration._

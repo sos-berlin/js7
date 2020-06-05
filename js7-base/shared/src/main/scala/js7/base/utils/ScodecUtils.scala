@@ -1,12 +1,12 @@
 package js7.base.utils
 
+import io.circe.{Decoder, Json}
+import java.nio.charset.CodingErrorAction.REPLACE
+import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.RichThrowableEither
 import js7.base.utils.Strings.RichString
-import io.circe.{Decoder, Json}
-import java.nio.charset.CodingErrorAction.REPLACE
-import java.nio.charset.StandardCharsets.UTF_8
 import scodec.bits.ByteVector
 
 object ScodecUtils

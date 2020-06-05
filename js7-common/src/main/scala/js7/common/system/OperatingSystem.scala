@@ -1,12 +1,12 @@
 package js7.common.system
 
-import js7.base.utils.AutoClosing.autoClosing
 import java.io.{File, FileInputStream}
 import java.net.InetAddress
 import java.nio.file.Files.newDirectoryStream
 import java.nio.file.attribute.PosixFilePermissions.asFileAttribute
 import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
 import java.nio.file.{Path, Paths}
+import js7.base.utils.AutoClosing.autoClosing
 import scala.concurrent.duration._
 import scala.io.Source.fromInputStream
 import scala.util.Try

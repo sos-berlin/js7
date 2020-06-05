@@ -1,9 +1,9 @@
 package js7.base.crypt.silly
 
+import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.crypt.MessageSigner
 import js7.base.generic.SecretString
 import js7.base.problem.Problem
-import java.nio.charset.StandardCharsets.UTF_8
 
 /**
   * @author Joacim Zschimmer

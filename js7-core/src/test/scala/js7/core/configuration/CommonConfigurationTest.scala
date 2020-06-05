@@ -1,14 +1,14 @@
 package js7.core.configuration
 
+import com.typesafe.config.{Config, ConfigFactory}
+import java.net.InetSocketAddress
+import java.nio.file.{Path, Paths}
 import js7.base.generic.SecretString
 import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import js7.common.akkahttp.web.data.{WebServerBinding, WebServerPort}
 import js7.common.commandline.CommandLineArguments
 import js7.common.scalautil.FileUtils.syntax._
 import js7.core.configuration.CommonConfigurationTest._
-import com.typesafe.config.{Config, ConfigFactory}
-import java.net.InetSocketAddress
-import java.nio.file.{Path, Paths}
 import org.scalatest.freespec.AnyFreeSpec
 /**
   * @author Joacim Zschimmer

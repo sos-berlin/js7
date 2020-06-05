@@ -1,6 +1,7 @@
 package js7.core.filebased
 
 import akka.util.ByteString
+import io.circe.Json
 import js7.base.circeutils.CirceUtils.RichCirceString
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
@@ -8,7 +9,6 @@ import js7.base.utils.Assertions.assertThat
 import js7.common.http.CirceToYaml.yamlToJson
 import js7.core.filebased.FileBasedReader._
 import js7.data.filebased.{FileBased, FileBasedId, FileBasedId_, SourceType, TypedPath}
-import io.circe.Json
 
 /**
   * @author Joacim Zschimmer

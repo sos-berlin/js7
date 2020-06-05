@@ -6,8 +6,8 @@ import js7.base.time.Timestamp
 import MonixDeadline.syntax._
 import js7.base.utils.CloseableIterator
 import monix.eval.Task
-import monix.execution.{Cancelable, Scheduler}
 import monix.execution.cancelables.MultiAssignCancelable
+import monix.execution.{Cancelable, Scheduler}
 import monix.reactive.Observable
 import scala.concurrent.duration._
 import scala.concurrent.{Future, TimeoutException}

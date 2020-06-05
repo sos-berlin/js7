@@ -1,7 +1,7 @@
 package js7.provider.scheduledorder.oldruntime
 
-import js7.common.time.JavaTime._
 import java.time.LocalTime
+import js7.common.time.JavaTime._
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

@@ -9,6 +9,8 @@ import akka.http.scaladsl.server.{ExceptionHandler, Route}
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import akka.http.scaladsl.unmarshalling.Unmarshaller
 import akka.testkit.TestDuration
+import com.typesafe.config.ConfigFactory
+import io.circe.Json
 import js7.base.auth.Permission.toStringToPermission
 import js7.base.auth.{GetPermission, HashedPassword, Permission, SimpleUser, SuperPermission, User, UserAndPassword, UserId, ValidUserPermission}
 import js7.base.generic.SecretString
@@ -18,13 +20,11 @@ import js7.common.akkahttp.web.auth.GateKeeperTest._
 import js7.common.auth.IdToUser
 import js7.common.http.CirceJsonSupport._
 import js7.common.scalautil.Futures.implicits.SuccessFuture
-import com.typesafe.config.ConfigFactory
-import io.circe.Json
 import monix.execution.Scheduler
+import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.language.implicitConversions
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer

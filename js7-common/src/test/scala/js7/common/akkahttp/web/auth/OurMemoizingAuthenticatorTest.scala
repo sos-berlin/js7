@@ -5,8 +5,8 @@ import akka.http.scaladsl.server.directives.Credentials
 import js7.base.auth.{HashedPassword, SimpleUser, UserAndPassword, UserId}
 import js7.base.generic.SecretString
 import js7.common.akkahttp.web.auth.OurMemoizingAuthenticatorTest._
-import scala.collection.mutable
 import org.scalatest.freespec.AnyFreeSpec
+import scala.collection.mutable
 
 /**
   * @author Joacim Zschimmer

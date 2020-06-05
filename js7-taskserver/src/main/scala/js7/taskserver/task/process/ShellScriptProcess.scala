@@ -1,5 +1,7 @@
 package js7.taskserver.task.process
 
+import java.io.{InputStream, InputStreamReader, Reader, Writer}
+import java.nio.file.Path
 import js7.common.process.Processes._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.promiseFuture
@@ -7,8 +9,6 @@ import js7.common.scalautil.IOExecutor
 import js7.common.scalautil.IOExecutor.ioFuture
 import js7.data.job.ReturnCode
 import js7.taskserver.task.process.RichProcess._
-import java.io.{InputStream, InputStreamReader, Reader, Writer}
-import java.nio.file.Path
 import scala.annotation.tailrec
 import scala.concurrent.ExecutionContext
 import scala.jdk.CollectionConverters._

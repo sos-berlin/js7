@@ -1,8 +1,8 @@
 package js7.data.workflow.instructions
 
+import io.circe.generic.JsonCodec
 import js7.data.source.SourcePos
 import js7.data.workflow.{JumpInstruction, Label}
-import io.circe.generic.JsonCodec
 
 /**
   * @author Joacim Zschimmer

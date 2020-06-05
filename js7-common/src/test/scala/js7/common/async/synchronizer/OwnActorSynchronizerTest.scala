@@ -6,8 +6,8 @@ import js7.base.utils.Closer.withCloser
 import js7.common.akkautils.Akkas.newActorSystem
 import js7.common.scalautil.Futures.blockingThreadFuture
 import js7.common.scalautil.Futures.implicits.RichFutures
-import scala.concurrent.Future
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.Future
 
 /**
   * @author Joacim Zschimmer

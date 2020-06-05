@@ -1,9 +1,9 @@
 package js7.provider.scheduledorder.oldruntime
 
+import java.time.{Duration, LocalTime}
 import js7.base.utils.ScalazStyle.OptionRichBoolean
 import js7.common.time.JavaTime._
 import js7.provider.scheduledorder.oldruntime.SingleStartPeriod._
-import java.time.{Duration, LocalTime}
 
 /**
   * @author Joacim Zschimmer

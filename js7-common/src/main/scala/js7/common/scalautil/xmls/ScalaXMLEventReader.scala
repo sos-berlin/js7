@@ -1,15 +1,15 @@
 package js7.common.scalautil.xmls
 
+import java.util.NoSuchElementException
+import javax.xml.stream.events.{Characters, Comment, EndDocument, EndElement, StartDocument, StartElement, XMLEvent}
+import javax.xml.stream.{Location, XMLEventReader, XMLInputFactory}
+import javax.xml.transform.Source
 import js7.base.convert.ConvertiblePartialFunction
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.{cast, implicitClass}
 import js7.common.scalautil.AssignableFrom.assignableFrom
 import js7.common.scalautil.xmls.ScalaStax.{RichStartElement, getCommonXMLInputFactory}
 import js7.common.scalautil.xmls.ScalaXMLEventReader._
-import java.util.NoSuchElementException
-import javax.xml.stream.events.{Characters, Comment, EndDocument, EndElement, StartDocument, StartElement, XMLEvent}
-import javax.xml.stream.{Location, XMLEventReader, XMLInputFactory}
-import javax.xml.transform.Source
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.language.implicitConversions

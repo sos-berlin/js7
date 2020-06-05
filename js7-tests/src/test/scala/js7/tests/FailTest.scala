@@ -14,9 +14,9 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.FailTest._
 import js7.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
+import org.scalatest.freespec.AnyFreeSpec
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
-import org.scalatest.freespec.AnyFreeSpec
 
 final class FailTest extends AnyFreeSpec
 {

@@ -5,8 +5,8 @@ import js7.base.time.ScalaTime._
 import monix.eval.Task
 import monix.execution.schedulers.TestScheduler
 import monix.reactive.Observable
-import scala.concurrent.Await
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.Await
 
 /**
   * @author Joacim Zschimmer

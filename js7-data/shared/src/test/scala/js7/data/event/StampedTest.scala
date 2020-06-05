@@ -1,9 +1,9 @@
 package js7.data.event
 
+import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils._
 import js7.base.time.Timestamp
 import js7.tester.CirceJsonTester.testJson
-import io.circe.syntax.EncoderOps
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

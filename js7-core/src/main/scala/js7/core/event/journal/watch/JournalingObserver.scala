@@ -1,8 +1,8 @@
 package js7.core.event.journal.watch
 
+import java.nio.file.Path
 import js7.common.event.PositionAnd
 import js7.data.event.{EventId, JournalId}
-import java.nio.file.Path
 
 /**
   * @author Joacim Zschimmer

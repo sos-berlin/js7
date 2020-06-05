@@ -1,5 +1,8 @@
 package js7.tests.https
 
+import com.typesafe.config.ConfigFactory
+import com.typesafe.config.ConfigUtil.quoteString
+import java.nio.file.Files.{createTempFile, delete}
 import js7.base.auth.UserId
 import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
@@ -19,9 +22,6 @@ import js7.data.workflow.parser.WorkflowParser
 import js7.master.client.AkkaHttpMasterApi
 import js7.tests.https.HttpsTestBase._
 import js7.tests.testenv.{DirectoryProvider, MasterAgentForScalaTest}
-import com.typesafe.config.ConfigFactory
-import com.typesafe.config.ConfigUtil.quoteString
-import java.nio.file.Files.{createTempFile, delete}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._

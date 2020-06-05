@@ -1,6 +1,5 @@
 package js7.common.scalautil.xmls
 
-import js7.common.scalautil.xmls.XmlSources._
 import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.NoSuchElementException
@@ -8,9 +7,9 @@ import javax.xml.namespace.QName
 import javax.xml.stream.XMLInputFactory
 import javax.xml.stream.events.{EndDocument, StartDocument}
 import javax.xml.transform.Source
-import org.scalatest.matchers
-import org.scalatest.matchers.should.Matchers._
+import js7.common.scalautil.xmls.XmlSources._
 import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers._
 
 /**
  * @author Joacim Zschimmer

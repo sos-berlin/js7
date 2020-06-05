@@ -1,12 +1,12 @@
 package js7.common.tcp
 
 import akka.util.ByteString
-import js7.base.utils.Assertions.assertThat
-import js7.common.scalautil.Logger
-import js7.common.tcp.BlockingTcpConnection._
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.{AsynchronousCloseException, ServerSocketChannel, SocketChannel}
+import js7.base.utils.Assertions.assertThat
+import js7.common.scalautil.Logger
+import js7.common.tcp.BlockingTcpConnection._
 
 final class BlockingTcpConnection(val channel: SocketChannel)
 extends AutoCloseable with BlockingMessageConnection {

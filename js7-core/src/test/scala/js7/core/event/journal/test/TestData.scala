@@ -1,10 +1,10 @@
 package js7.core.event.journal.test
 
+import com.typesafe.config.ConfigFactory
+import java.nio.file.Path
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.core.event.journal.data.JournalMeta
 import js7.core.event.journal.test.TestJsonCodecs.TestKeyedEventJsonCodec
-import com.typesafe.config.ConfigFactory
-import java.nio.file.Path
 
 /**
   * @author Joacim Zschimmer

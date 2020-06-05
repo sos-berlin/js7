@@ -8,6 +8,7 @@ import cats.instances.future._
 import cats.instances.vector._
 import cats.syntax.flatMap._
 import cats.syntax.traverse._
+import java.time.ZoneId
 import js7.agent.data.event.AgentMasterEvent
 import js7.base.crypt.{SignatureVerifier, Signed}
 import js7.base.eventbus.EventPublisher
@@ -64,7 +65,6 @@ import js7.master.data.events.MasterEvent.{MasterShutDown, MasterTestEvent}
 import js7.master.data.{MasterCommand, MasterState}
 import js7.master.problems.MasterIsNotYetReadyProblem
 import js7.master.repo.RepoCommandExecutor
-import java.time.ZoneId
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.cancelables.SerialCancelable

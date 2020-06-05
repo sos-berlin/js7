@@ -2,6 +2,12 @@ package js7.tests.testenv
 
 import com.google.inject.Module
 import com.google.inject.util.Modules.EMPTY_MODULE
+import com.typesafe.config.ConfigUtil.quoteString
+import com.typesafe.config.{Config, ConfigFactory}
+import java.lang.ProcessBuilder.Redirect.INHERIT
+import java.nio.file.Files.{createDirectory, createTempDirectory}
+import java.nio.file.Path
+import java.util.Locale
 import js7.agent.RunningAgent
 import js7.agent.configuration.AgentConfiguration
 import js7.base.crypt.{MessageSigner, SignatureVerifier, SignedString}
@@ -34,12 +40,6 @@ import js7.master.RunningMaster
 import js7.master.configuration.MasterConfiguration
 import js7.master.data.MasterCommand.{ReplaceRepo, UpdateRepo}
 import js7.tests.testenv.DirectoryProvider._
-import com.typesafe.config.ConfigUtil.quoteString
-import com.typesafe.config.{Config, ConfigFactory}
-import java.lang.ProcessBuilder.Redirect.INHERIT
-import java.nio.file.Files.{createDirectory, createTempDirectory}
-import java.nio.file.Path
-import java.util.Locale
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.atomic.AtomicBoolean

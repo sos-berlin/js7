@@ -1,7 +1,7 @@
 package js7.common.scalautil.xmls
 
-import js7.common.xml.XxeVulnerability
 import javax.xml.parsers.SAXParserFactory
+import js7.common.xml.XxeVulnerability
 import scala.xml.factory.XMLLoader
 
 /**

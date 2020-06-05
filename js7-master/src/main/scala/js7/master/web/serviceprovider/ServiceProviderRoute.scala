@@ -2,6 +2,7 @@ package js7.master.web.serviceprovider
 
 import akka.http.scaladsl.server.Route
 import com.google.inject.Injector
+import java.util.ServiceLoader
 import js7.base.utils.Collections.implicits._
 import js7.base.utils.Lazy
 import js7.base.utils.ScalaUtils.RichJavaClass
@@ -9,7 +10,6 @@ import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.StandardDirectives.combineRoutes
 import js7.common.scalautil.Logger
 import js7.master.web.serviceprovider.ServiceProviderRoute._
-import java.util.ServiceLoader
 import scala.jdk.CollectionConverters._
 
 /**

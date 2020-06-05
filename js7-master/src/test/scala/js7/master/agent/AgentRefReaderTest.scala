@@ -1,5 +1,6 @@
 package js7.master.agent
 
+import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.web.Uri
 import js7.common.http.CirceToYaml.ToYamlString
@@ -8,7 +9,6 @@ import js7.common.scalautil.FileUtils.withTemporaryDirectory
 import js7.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import js7.core.filebased.TypedSourceReader
 import js7.data.agent.{AgentRef, AgentRefPath}
-import io.circe.syntax.EncoderOps
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 

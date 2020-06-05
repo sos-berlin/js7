@@ -1,6 +1,7 @@
 package js7.agent.tests
 
 import com.google.inject.{AbstractModule, Injector, Provides}
+import javax.inject.Singleton
 import js7.agent.client.AgentClient
 import js7.agent.configuration.Akkas.newAgentActorSystem
 import js7.agent.data.commands.AgentCommand.{AttachOrder, RegisterAsMaster, ShutDown}
@@ -21,7 +22,6 @@ import js7.data.event.EventRequest
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.workflow.test.TestSetting._
-import javax.inject.Singleton
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future

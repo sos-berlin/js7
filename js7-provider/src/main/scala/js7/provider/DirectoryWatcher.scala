@@ -1,14 +1,14 @@
 package js7.provider
 
 import cats.Show
+import java.nio.file.StandardWatchEventKinds._
+import java.nio.file.{ClosedWatchServiceException, Path, WatchEvent}
 import js7.base.generic.Completed
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.closeOnError
 import js7.common.scalautil.IOExecutor.ioFuture
 import js7.common.scalautil.{IOExecutor, Logger}
 import js7.provider.DirectoryWatcher._
-import java.nio.file.StandardWatchEventKinds._
-import java.nio.file.{ClosedWatchServiceException, Path, WatchEvent}
 import monix.execution.atomic.AtomicBoolean
 import monix.execution.{Ack, Cancelable, Scheduler}
 import monix.reactive.Observable

@@ -1,8 +1,8 @@
 package js7.common.akkahttp
 
+import io.circe.{Json, JsonObject}
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.common.http.CirceToYaml._
-import io.circe.{Json, JsonObject}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

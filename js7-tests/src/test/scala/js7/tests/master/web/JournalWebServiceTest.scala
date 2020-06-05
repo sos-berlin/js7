@@ -1,6 +1,8 @@
 package js7.tests.master.web
 
 import akka.http.scaladsl.model.StatusCodes.Unauthorized
+import com.typesafe.config.ConfigFactory
+import java.nio.file.Files
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
 import js7.base.time.ScalaTime._
@@ -30,8 +32,6 @@ import js7.master.data.events.MasterAgentEvent.AgentReady
 import js7.tests.master.web.JournalWebServiceTest._
 import js7.tests.testenv.DirectoryProvider.script
 import js7.tests.testenv.MasterAgentForScalaTest
-import com.typesafe.config.ConfigFactory
-import java.nio.file.Files
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec

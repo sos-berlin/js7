@@ -1,9 +1,9 @@
 package js7.base.circeutils
 
+import io.circe.{Decoder, Encoder, Json, JsonObject}
 import js7.base.generic.GenericString
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.RichJavaClass
-import io.circe.{Decoder, Encoder, Json, JsonObject}
 import scala.jdk.CollectionConverters._
 /**
   * @author Joacim Zschimmer

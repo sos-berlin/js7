@@ -2,6 +2,8 @@ package js7.master.configuration.inject
 
 import akka.actor.{ActorRefFactory, ActorSystem}
 import com.google.inject.{AbstractModule, Provides}
+import com.typesafe.config.Config
+import javax.inject.Singleton
 import js7.base.auth.{Permission, SimpleUser, UpdateRepoPermission}
 import js7.base.eventbus.StandardEventBus
 import js7.base.time.ScalaTime._
@@ -17,8 +19,6 @@ import js7.common.time.JavaTimeConverters._
 import js7.core.system.ThreadPools
 import js7.master.configuration.MasterConfiguration
 import js7.master.configuration.inject.MasterModule._
-import com.typesafe.config.Config
-import javax.inject.Singleton
 import monix.execution.Scheduler
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Deadline.now

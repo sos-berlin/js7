@@ -1,8 +1,8 @@
 package js7.agent.data
 
+import java.nio.file.Paths
 import js7.common.process.Processes.Pid
 import js7.data.job.TaskId
-import java.nio.file.Paths
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

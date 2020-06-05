@@ -1,12 +1,12 @@
 package js7.agent.scheduler.order
 
+import java.io.IOException
 import js7.agent.scheduler.order.BufferedStringWriterTest._
 import js7.base.generic.Accepted
-import java.io.IOException
 import monix.execution.Scheduler
+import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 import scala.concurrent.Future
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer

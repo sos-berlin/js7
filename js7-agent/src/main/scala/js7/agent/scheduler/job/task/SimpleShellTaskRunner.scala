@@ -1,5 +1,7 @@
 package js7.agent.scheduler.job.task
 
+import java.nio.file.Files.delete
+import javax.inject.{Inject, Singleton}
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentTaskId
 import js7.agent.data.views.TaskOverview
@@ -18,8 +20,6 @@ import js7.data.order.Order
 import js7.taskserver.modules.shell.RichProcessStartSynchronizer
 import js7.taskserver.task.process.ShellScriptProcess.startPipedShellScript
 import js7.taskserver.task.process.{ProcessConfiguration, RichProcess, StdChannels}
-import java.nio.file.Files.delete
-import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.Success
 import scala.util.control.NonFatal

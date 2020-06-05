@@ -1,8 +1,8 @@
 package js7.common.scalautil
 
 import js7.base.utils.HasCloser
-import scala.util.Success
 import org.scalatest.freespec.AnyFreeSpec
+import scala.util.Success
 
 /**
  * @author Joacim Zschimmer

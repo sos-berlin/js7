@@ -1,5 +1,7 @@
 package js7.provider.configuration
 
+import com.typesafe.config.{Config, ConfigFactory}
+import java.nio.file.Path
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.web.Uri
 import js7.common.commandline.CommandLineArguments
@@ -7,8 +9,6 @@ import js7.common.configutils.Configs
 import js7.common.configutils.Configs.parseConfigIfExists
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.utils.JavaResource
-import com.typesafe.config.{Config, ConfigFactory}
-import java.nio.file.Path
 import scala.jdk.CollectionConverters._
 
 /**

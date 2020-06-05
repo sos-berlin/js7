@@ -1,8 +1,8 @@
 package js7.base.crypt
 
-import js7.base.utils.IntelliJUtils.intelliJuseImport
 import io.circe.generic.extras.defaults.defaultGenericConfiguration
 import io.circe.generic.extras.{ConfiguredJsonCodec, JsonKey}
+import js7.base.utils.IntelliJUtils.intelliJuseImport
 
 /**
   * @author Joacim Zschimmer

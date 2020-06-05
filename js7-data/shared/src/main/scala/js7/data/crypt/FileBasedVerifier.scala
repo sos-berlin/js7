@@ -1,11 +1,11 @@
 package js7.data.crypt
 
+import io.circe.Decoder
 import js7.base.circeutils.CirceUtils.{RichCirceString, _}
 import js7.base.crypt.{SignatureVerifier, Signed, SignedString, SignerId}
 import js7.base.problem.Checked
 import js7.data.crypt.FileBasedVerifier.Verified
 import js7.data.filebased.FileBased
-import io.circe.Decoder
 
 /**
   * @author Joacim Zschimmer

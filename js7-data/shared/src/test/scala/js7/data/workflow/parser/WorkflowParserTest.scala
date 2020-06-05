@@ -12,9 +12,9 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Finish, Fork, Goto, If, IfFailedGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction}
 import js7.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowSource}
 import js7.data.workflow.{Label, Workflow, WorkflowPath}
+import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
 import scala.util.control.NoStackTrace
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer

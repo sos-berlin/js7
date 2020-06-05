@@ -1,5 +1,9 @@
 package js7.core.event.journal.watch
 
+import io.circe._
+import io.circe.syntax._
+import java.nio.file.Files
+import java.util.UUID
 import js7.base.BuildInfo
 import js7.base.circeutils.CirceUtils
 import js7.base.circeutils.CirceUtils._
@@ -25,10 +29,6 @@ import js7.core.event.journal.write.EventJournalWriter
 import js7.data.event.JournalHeader.JournalIdMismatchProblem
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, EventRequest, EventSeq, JournalEvent, JournalHeader, JournalId, JournalSeparators, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
-import io.circe._
-import io.circe.syntax._
-import java.nio.file.Files
-import java.util.UUID
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalatest.BeforeAndAfterAll

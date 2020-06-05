@@ -12,8 +12,8 @@ import js7.data.cluster.ClusterState
 import js7.data.event.{EventId, JournalState, JournaledState}
 import js7.data.filebased.Repo
 import js7.data.master.{MasterFileBaseds, MasterId}
-import js7.master.data.{MasterOverview, MasterState}
 import js7.master.data.MasterSnapshots.MasterMetaState
+import js7.master.data.{MasterOverview, MasterState}
 import js7.master.web.master.api.test.RouteTester
 import monix.eval.Task
 import monix.execution.Scheduler

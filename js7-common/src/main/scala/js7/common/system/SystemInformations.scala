@@ -1,9 +1,9 @@
 package js7.common.system
 
-import js7.base.system.SystemInformation
-import js7.common.system.OperatingSystem.operatingSystem
 import java.lang.management.ManagementFactory.{getOperatingSystemMXBean, getPlatformMBeanServer}
 import javax.management.ObjectName
+import js7.base.system.SystemInformation
+import js7.common.system.OperatingSystem.operatingSystem
 import scala.util.Try
 
 object SystemInformations

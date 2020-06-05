@@ -1,9 +1,9 @@
 package js7.provider.scheduledorder
 
+import io.circe.generic.JsonCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.time.Timestamp
 import js7.data.event.NoKeyEvent
-import io.circe.generic.JsonCodec
 
 /**
   * @author Joacim Zschimmer

@@ -1,5 +1,8 @@
 package js7.tests.master.cluster
 
+import com.typesafe.config.ConfigFactory
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer.syntax._
@@ -22,9 +25,6 @@ import js7.master.RunningMaster
 import js7.master.data.MasterCommand.ShutDown
 import js7.tests.master.cluster.MasterClusterTester.{shellScript, _}
 import js7.tests.testenv.DirectoryProvider
-import com.typesafe.config.ConfigFactory
-import java.nio.file.Files
-import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.Assertions._

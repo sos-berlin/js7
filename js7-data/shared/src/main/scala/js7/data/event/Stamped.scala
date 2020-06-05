@@ -1,11 +1,11 @@
 package js7.data.event
 
 import cats.{Eq, Functor}
+import io.circe.syntax.EncoderOps
+import io.circe.{Decoder, Encoder, Json, JsonObject}
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.RichJavaClass
 import js7.data.event.Stamped._
-import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, Json, JsonObject}
 import scala.collection.mutable
 
 /**

@@ -1,5 +1,9 @@
 package js7.master.configuration
 
+import com.typesafe.config.ConfigFactory
+import java.net.InetSocketAddress
+import java.nio.file.Files.{createDirectories, createTempDirectory, delete}
+import java.time.ZoneId
 import js7.base.time.ScalaTime._
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
@@ -10,10 +14,6 @@ import js7.data.cluster.ClusterNodeId
 import js7.data.master.MasterId
 import js7.master.cluster.ClusterConf
 import js7.master.configuration.MasterConfiguration.DefaultConfig
-import com.typesafe.config.ConfigFactory
-import java.net.InetSocketAddress
-import java.nio.file.Files.{createDirectories, createTempDirectory, delete}
-import java.time.ZoneId
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 

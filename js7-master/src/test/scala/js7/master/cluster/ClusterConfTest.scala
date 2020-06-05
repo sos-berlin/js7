@@ -1,5 +1,6 @@
 package js7.master.cluster
 
+import com.typesafe.config.ConfigFactory
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
 import js7.base.time.ScalaTime._
@@ -7,7 +8,6 @@ import js7.base.web.Uri
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.core.message.ProblemCodeMessages
 import js7.data.cluster.ClusterNodeId
-import com.typesafe.config.ConfigFactory
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

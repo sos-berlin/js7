@@ -1,8 +1,8 @@
 package js7.provider.scheduledorder.oldruntime
 
+import java.time.{DayOfWeek, LocalTime, ZoneId, ZonedDateTime}
 import js7.common.time.JavaTime._
 import js7.provider.scheduledorder.oldruntime.OldSchedule.EveryDay
-import java.time.{DayOfWeek, LocalTime, ZoneId, ZonedDateTime}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

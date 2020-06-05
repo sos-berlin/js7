@@ -1,10 +1,10 @@
 package js7.base.circeutils
 
-import js7.base.circeutils.CirceUtils.toStringJsonCodec
 import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json}
 import java.nio.file.{Path, Paths}
 import java.time.format.DateTimeFormatter
 import java.time.{Duration, Instant, ZoneId}
+import js7.base.circeutils.CirceUtils.toStringJsonCodec
 import scala.util.control.NonFatal
 
 /**

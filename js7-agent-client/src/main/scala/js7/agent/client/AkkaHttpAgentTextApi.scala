@@ -1,5 +1,7 @@
 package js7.agent.client
 
+import com.typesafe.config.{Config, ConfigFactory}
+import java.nio.file.Path
 import js7.agent.client.AkkaHttpAgentTextApi._
 import js7.agent.data.web.AgentUris
 import js7.base.auth.UserAndPassword
@@ -14,8 +16,6 @@ import js7.common.configutils.Configs.{ConvertibleConfig, parseConfigIfExists}
 import js7.common.http.{AkkaHttpClient, TextApi}
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Logger
-import com.typesafe.config.{Config, ConfigFactory}
-import java.nio.file.Path
 import scala.jdk.CollectionConverters._
 
 /**

@@ -1,8 +1,8 @@
 package js7.master.data.javaapi;
 
+import java.util.Optional;
 import js7.base.problem.JavaChecked;
 import js7.base.problem.Problem;
-import java.util.Optional;
 
 /**
  * @author Joacim Zschimmer

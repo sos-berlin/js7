@@ -8,8 +8,8 @@ import akka.http.scaladsl.model.{ContentType, HttpEntity}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import js7.common.akkahttp.JsonStringTest._
 import java.nio.charset.StandardCharsets.UTF_8
+import js7.common.akkahttp.JsonStringTest._
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

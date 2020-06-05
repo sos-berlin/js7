@@ -1,6 +1,8 @@
 package js7.data.event
 
 import cats.syntax.semigroup._
+import io.circe.Json
+import java.nio.file.Path
 import js7.base.BuildInfo
 import js7.base.circeutils.CirceUtils._
 import js7.base.circeutils.ScalaJsonCodecs._
@@ -11,8 +13,6 @@ import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.data.event.JournalHeader._
-import io.circe.Json
-import java.nio.file.Path
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
 /**

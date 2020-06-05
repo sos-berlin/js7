@@ -1,5 +1,8 @@
 package js7.master.tests
 
+import java.io.IOException
+import java.nio.file.Files.{createDirectories, createDirectory, deleteIfExists, exists}
+import java.nio.file.Path
 import js7.common.scalautil.FileUtils.deleteDirectoryContentRecursively
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Logger
@@ -7,9 +10,6 @@ import js7.data.agent.AgentRefPath
 import js7.data.filebased.{SourceType, TypedPath}
 import js7.data.folder.FolderPath
 import js7.master.tests.TestEnvironment._
-import java.io.IOException
-import java.nio.file.Files.{createDirectories, createDirectory, deleteIfExists, exists}
-import java.nio.file.Path
 
 /**
   * @author Joacim Zschimmer

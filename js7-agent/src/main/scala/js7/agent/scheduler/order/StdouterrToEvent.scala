@@ -1,12 +1,12 @@
 package js7.agent.scheduler.order
 
 import akka.actor.{ActorContext, ActorRef, DeadLetterSuppression}
+import com.typesafe.config.Config
+import java.io.Writer
 import js7.agent.scheduler.order.StdouterrToEvent._
 import js7.base.generic.Accepted
 import js7.common.time.JavaTimeConverters._
 import js7.data.system.{Stderr, Stdout, StdoutOrStderr}
-import com.typesafe.config.Config
-import java.io.Writer
 import monix.execution.{Cancelable, Scheduler}
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._

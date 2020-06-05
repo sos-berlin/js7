@@ -1,13 +1,13 @@
 package js7.base.generic
 
+import io.circe.{Decoder, Encoder, Json, KeyDecoder, KeyEncoder}
+import javax.annotation.Nullable
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
 import js7.base.convert.As
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.standards.NameValidator
 import js7.base.utils.ScalaUtils.RichJavaClass
-import io.circe.{Decoder, Encoder, Json, KeyDecoder, KeyEncoder}
-import javax.annotation.Nullable
 
 trait GenericString
 {

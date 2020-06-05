@@ -1,5 +1,7 @@
 package js7.data.order
 
+import io.circe.syntax.EncoderOps
+import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Problem
@@ -15,8 +17,6 @@ import js7.data.system.{Stderr, Stdout, StdoutOrStderr}
 import js7.data.workflow.WorkflowId
 import js7.data.workflow.instructions.Fork
 import js7.data.workflow.position.{Position, WorkflowPosition}
-import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, JsonObject}
 
 /**
   * @author Joacim Zschimmer

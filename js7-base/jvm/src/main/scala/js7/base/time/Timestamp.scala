@@ -1,8 +1,8 @@
 package js7.base.time
 
-import js7.base.time.Timestamp.dateTimeFormatter
 import java.time.Instant
 import java.time.format.DateTimeFormatter
+import js7.base.time.Timestamp.dateTimeFormatter
 
 /**
   * @author Joacim Zschimmer

@@ -3,6 +3,7 @@ package js7.data.filebased
 import cats.instances.either._
 import cats.instances.vector._
 import cats.syntax.traverse._
+import io.circe.Decoder
 import js7.base.crypt.Signed
 import js7.base.crypt.donotcrypt.DoNotVerifySignatureVerifier
 import js7.base.problem.Checked._
@@ -15,7 +16,6 @@ import js7.base.utils.ScalaUtils._
 import js7.data.crypt.FileBasedVerifier
 import js7.data.filebased.Repo.Entry
 import js7.data.filebased.RepoEvent.{FileBasedAdded, FileBasedAddedOrChanged, FileBasedChanged, FileBasedDeleted, FileBasedEvent, VersionAdded}
-import io.circe.Decoder
 import org.jetbrains.annotations.TestOnly
 
 /**

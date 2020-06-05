@@ -2,6 +2,8 @@ package js7.agent.scheduler.order
 
 import akka.actor.{ActorRef, Props}
 import com.google.inject.{AbstractModule, Guice, Provides}
+import java.nio.file.Path
+import javax.inject.Singleton
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.Akkas.newAgentActorSystem
 import js7.agent.configuration.inject.AgentModule
@@ -18,8 +20,6 @@ import js7.base.utils.{Closer, HasCloser}
 import js7.common.event.collector.EventCollector
 import js7.common.guice.GuiceImplicits.RichInjector
 import js7.core.event.ActorEventCollector
-import java.nio.file.Path
-import javax.inject.Singleton
 import scala.concurrent.{Future, Promise}
 
 /**

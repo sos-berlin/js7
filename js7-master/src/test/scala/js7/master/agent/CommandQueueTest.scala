@@ -1,5 +1,6 @@
 package js7.master.agent
 
+import com.typesafe.scalalogging.{Logger => ScalaLogger}
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.Batch
 import js7.base.crypt.Signed
@@ -20,12 +21,11 @@ import js7.master.agent.CommandQueue.QueuedInputResponse
 import js7.master.agent.CommandQueueTest._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
+import monix.execution.atomic.AtomicInt
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
 import scala.collection.mutable
 import scala.language.reflectiveCalls
-import com.typesafe.scalalogging.{Logger => ScalaLogger}
-import monix.execution.atomic.AtomicInt
 
 /**
   * @author Joacim Zschimmer

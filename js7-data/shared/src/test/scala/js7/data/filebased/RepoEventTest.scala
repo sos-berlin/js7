@@ -1,5 +1,6 @@
 package js7.data.filebased
 
+import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils._
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.crypt.{GenericSignature, SignedString}
@@ -9,7 +10,6 @@ import js7.data.master.MasterFileBaseds._
 import js7.data.workflow.instructions.Fail
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tester.CirceJsonTester.testJson
-import io.circe.syntax.EncoderOps
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

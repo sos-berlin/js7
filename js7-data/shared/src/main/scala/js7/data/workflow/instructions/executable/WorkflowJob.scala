@@ -1,5 +1,7 @@
 package js7.data.workflow.instructions.executable
 
+import io.circe.syntax.EncoderOps
+import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
 import js7.base.generic.GenericString
 import js7.base.problem.Checked.Ops
@@ -10,8 +12,6 @@ import js7.data.job.{Executable, ExecutablePath, ExecutableScript, ReturnCode}
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.Outcome
 import js7.data.workflow.instructions.ReturnCodeMeaning
-import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, JsonObject}
 
 /**
   * @author Joacim Zschimmer

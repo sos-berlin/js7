@@ -3,6 +3,8 @@ package js7.data.filebased
 import cats.instances.either._
 import cats.instances.vector._
 import cats.syntax.traverse._
+import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json, JsonObject}
+import java.nio.file.{Path, Paths}
 import js7.base.circeutils.CirceCodec
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
 import js7.base.generic.GenericString
@@ -16,8 +18,6 @@ import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.Strings.RichString
 import js7.data.filebased.FileBasedId.VersionSeparator
 import js7.data.filebased.TypedPath._
-import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json, JsonObject}
-import java.nio.file.{Path, Paths}
 import scala.reflect.ClassTag
 
 trait TypedPath extends GenericString

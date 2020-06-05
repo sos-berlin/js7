@@ -1,5 +1,7 @@
 package js7.core.filebased
 
+import java.io.File.separator
+import java.nio.file.Paths
 import js7.base.problem.Problem
 import js7.base.problem.Problems.InvalidNameProblem
 import js7.base.time.Stopwatch.measureTime
@@ -8,8 +10,6 @@ import js7.core.filebased.TypedPaths._
 import js7.data.agent.AgentRefPath
 import js7.data.filebased.SourceType
 import js7.data.workflow.WorkflowPath
-import java.io.File.separator
-import java.nio.file.Paths
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

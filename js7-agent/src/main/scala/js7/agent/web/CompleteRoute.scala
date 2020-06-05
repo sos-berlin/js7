@@ -3,10 +3,10 @@ package js7.agent.web
 import akka.actor.ActorSystem
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.directives.CodingDirectives.{decodeRequest, encodeResponse}
+import com.typesafe.config.Config
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.WebLogDirectives
 import js7.common.akkahttp.web.auth.CSRF.forbidCSRF
-import com.typesafe.config.Config
 
 /**
  * @author Joacim Zschimmer

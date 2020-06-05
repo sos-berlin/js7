@@ -1,8 +1,8 @@
 package js7.data.workflow.position
 
-import js7.base.problem.{Checked, Problem}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json}
+import js7.base.problem.{Checked, Problem}
 import scala.language.implicitConversions
 
 /** Denotes a branch in a instruction, for example fork or if-then-else..

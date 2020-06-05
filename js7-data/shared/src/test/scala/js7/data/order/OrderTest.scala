@@ -1,6 +1,8 @@
 package js7.data.order
 
 import cats.syntax.option._
+import io.circe.Json
+import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.{Problem, ProblemException}
 import js7.base.time.Timestamp
@@ -15,8 +17,6 @@ import js7.data.workflow.instructions.Fork
 import js7.data.workflow.position.BranchId.Then
 import js7.data.workflow.position.Position
 import js7.tester.CirceJsonTester.testJson
-import io.circe.Json
-import io.circe.syntax.EncoderOps
 import org.scalactic.source
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.immutable.ListSet

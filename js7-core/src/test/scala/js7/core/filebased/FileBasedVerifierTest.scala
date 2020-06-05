@@ -1,5 +1,6 @@
 package js7.core.filebased
 
+import io.circe.syntax.EncoderOps
 import js7.base.Problems.TamperedWithSignedMessageProblem
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
@@ -14,7 +15,6 @@ import js7.data.crypt.FileBasedVerifier
 import js7.data.filebased.{FileBased, FileBasedSigner}
 import js7.data.workflow.parser.WorkflowParser
 import js7.data.workflow.{Workflow, WorkflowPath}
-import io.circe.syntax.EncoderOps
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

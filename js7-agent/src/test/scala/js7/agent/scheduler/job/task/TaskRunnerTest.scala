@@ -1,6 +1,9 @@
 package js7.agent.scheduler.job.task
 
 import com.google.inject.Guice
+import java.io.Writer
+import java.nio.file.Files.{createTempDirectory, setPosixFilePermissions}
+import java.nio.file.attribute.PosixFilePermissions
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.inject.AgentModule
 import js7.agent.scheduler.job.ShellReturnValuesProvider
@@ -23,9 +26,6 @@ import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.taskserver.task.process.{RichProcess, StdChannels}
-import java.io.Writer
-import java.nio.file.Files.{createTempDirectory, setPosixFilePermissions}
-import java.nio.file.attribute.PosixFilePermissions
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec

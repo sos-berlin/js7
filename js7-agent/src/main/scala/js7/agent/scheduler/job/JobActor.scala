@@ -1,6 +1,10 @@
 package js7.agent.scheduler.job
 
 import akka.actor.{Actor, DeadLetterSuppression, Props, Stash}
+import java.nio.file.Files.{createTempFile, exists, getPosixFilePermissions}
+import java.nio.file.LinkOption.NOFOLLOW_LINKS
+import java.nio.file.Path
+import java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.Problems.SignedInjectionNotAllowed
 import js7.agent.scheduler.job.JobActor._
@@ -20,10 +24,6 @@ import js7.data.order.{Order, OrderId}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.taskserver.task.process.RichProcess.tryDeleteFile
 import js7.taskserver.task.process.StdChannels
-import java.nio.file.Files.{createTempFile, exists, getPosixFilePermissions}
-import java.nio.file.LinkOption.NOFOLLOW_LINKS
-import java.nio.file.Path
-import java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE
 import monix.execution.Scheduler
 import scala.collection.mutable
 import scala.concurrent.Future

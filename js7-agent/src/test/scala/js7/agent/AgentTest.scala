@@ -1,5 +1,7 @@
 package js7.agent
 
+import java.nio.file.Files.createDirectory
+import java.nio.file.Path
 import js7.agent.AgentTest._
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.commands.AgentCommand
@@ -23,8 +25,6 @@ import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.test.TestSetting.TestAgentRefPath
 import js7.data.workflow.{Workflow, WorkflowPath}
-import java.nio.file.Files.createDirectory
-import java.nio.file.Path
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._

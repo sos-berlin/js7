@@ -1,8 +1,8 @@
 package js7.common.scalautil.xmls
 
-import js7.common.scalautil.FileUtils.syntax.RichPath
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.{createTempFile, delete}
+import js7.common.scalautil.FileUtils.syntax.RichPath
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

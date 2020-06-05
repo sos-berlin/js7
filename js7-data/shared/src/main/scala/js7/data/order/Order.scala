@@ -1,5 +1,7 @@
 package js7.data.order
 
+import io.circe.syntax.EncoderOps
+import io.circe.{Decoder, DecodingFailure, Encoder, JsonObject}
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Checked.Ops
@@ -13,8 +15,6 @@ import js7.data.order.Order._
 import js7.data.order.OrderEvent._
 import js7.data.workflow.WorkflowId
 import js7.data.workflow.position.{InstructionNr, Position, WorkflowPosition}
-import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, DecodingFailure, Encoder, JsonObject}
 import scala.reflect.ClassTag
 
 /**

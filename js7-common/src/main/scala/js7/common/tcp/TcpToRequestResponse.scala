@@ -4,11 +4,11 @@ import akka.actor.SupervisorStrategy._
 import akka.actor._
 import akka.io.{IO, Tcp}
 import akka.util.ByteString
+import java.net.InetSocketAddress
 import js7.base.utils.ScalaUtils.RichThrowable
 import js7.common.scalautil.Futures.catchInFuture
 import js7.common.scalautil.Logger
 import js7.common.tcp.TcpToRequestResponse._
-import java.net.InetSocketAddress
 import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success}
 

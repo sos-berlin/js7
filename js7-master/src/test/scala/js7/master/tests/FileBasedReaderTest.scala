@@ -1,5 +1,8 @@
 package js7.master.tests
 
+import io.circe.syntax.EncoderOps
+import java.io.File.separator
+import java.nio.file.Files.{createDirectories, createDirectory, createTempDirectory, delete}
 import js7.base.problem.Problem
 import js7.common.files.DirectoryReader
 import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
@@ -9,9 +12,6 @@ import js7.core.filebased.TypedSourceReader
 import js7.master.agent.AgentRefReader
 import js7.master.tests.FileBasedsTest.{AAgent, AWorkflow, BAgent, BWorkflow, CWorkflow}
 import js7.master.workflow.WorkflowReader
-import io.circe.syntax.EncoderOps
-import java.io.File.separator
-import java.nio.file.Files.{createDirectories, createDirectory, createTempDirectory, delete}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 

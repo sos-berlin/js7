@@ -1,9 +1,9 @@
 package js7.data.event
 
+import io.circe.Json
 import js7.base.circeutils.CirceUtils.RichCirceString
 import js7.base.utils.ScalaUtils.RichThrowableEither
 import js7.base.utils.ScodecUtils.RichByteVector
-import io.circe.Json
 import scodec.bits.ByteVector
 
 /**

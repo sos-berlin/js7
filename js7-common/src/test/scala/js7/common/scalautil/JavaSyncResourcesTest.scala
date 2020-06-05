@@ -1,10 +1,10 @@
 package js7.common.scalautil
 
 import cats.effect.SyncIO
+import java.io.{BufferedReader, InputStreamReader}
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.FileUtils.withTemporaryFile
 import js7.common.scalautil.JavaSyncResources.fileAsResource
-import java.io.{BufferedReader, InputStreamReader}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

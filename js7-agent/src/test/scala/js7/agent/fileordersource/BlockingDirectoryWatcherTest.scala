@@ -1,5 +1,6 @@
 package js7.agent.fileordersource
 
+import java.nio.file.Files.{createTempDirectory, delete}
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer.syntax._
 import js7.base.utils.Closer.withCloser
@@ -7,11 +8,10 @@ import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.FileUtils.touchAndDeleteWithCloser
 import js7.common.scalautil.Futures.blockingThreadFuture
 import js7.common.scalautil.Futures.implicits._
-import java.nio.file.Files.{createTempDirectory, delete}
+import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer

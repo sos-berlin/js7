@@ -1,9 +1,9 @@
 package js7.data.filebased
 
+import io.circe.Encoder
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.crypt.{MessageSigner, Signed, SignedString}
 import js7.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged}
-import io.circe.Encoder
 
 /**
   * @author Joacim Zschimmer

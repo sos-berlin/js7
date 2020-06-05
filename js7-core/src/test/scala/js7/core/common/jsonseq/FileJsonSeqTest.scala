@@ -1,6 +1,11 @@
 package js7.core.common.jsonseq
 
 import com.google.common.io.MoreFiles.touch
+import io.circe.Json
+import io.circe.generic.JsonCodec
+import io.circe.syntax.EncoderOps
+import java.io.FileOutputStream
+import java.nio.file.Files
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.time.{Stopwatch, Timestamp}
 import js7.base.utils.AutoClosing.autoClosing
@@ -10,11 +15,6 @@ import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.FileUtils.withTemporaryFile
 import js7.core.common.jsonseq.FileJsonSeqTest._
 import js7.data.event.{Event, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
-import io.circe.Json
-import io.circe.generic.JsonCodec
-import io.circe.syntax.EncoderOps
-import java.io.FileOutputStream
-import java.nio.file.Files
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

@@ -1,11 +1,11 @@
 package js7.master.data.javaapi
 
+import io.circe.Decoder
+import java.util.Optional
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.{Checked, Problem}
 import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.data.workflow.{Instruction, Workflow}
-import io.circe.Decoder
-import java.util.Optional
 
 /**
   * @author Joacim Zschimmer

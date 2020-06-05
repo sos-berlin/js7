@@ -1,13 +1,13 @@
 package js7.proxy.javaapi.data
 
+import io.circe.{Decoder, Encoder}
+import io.vavr.control.{Either => VEither}
+import java.time.Instant
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem
 import js7.base.time.Timestamp
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.WorkflowPath
-import io.circe.{Decoder, Encoder}
-import io.vavr.control.{Either => VEither}
-import java.time.Instant
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
 

@@ -12,6 +12,7 @@ import akka.http.scaladsl.model.sse.ServerSentEvent
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive1, ExceptionHandler, Route}
 import akka.stream.scaladsl.Source
+import io.circe.syntax.EncoderOps
 import js7.base.BuildInfo
 import js7.base.auth.ValidUserPermission
 import js7.base.circeutils.CirceUtils.{CompactPrinter, RichJson}
@@ -39,7 +40,6 @@ import js7.common.time.JavaTimeConverters.AsScalaDuration
 import js7.core.event.GenericEventRoute._
 import js7.core.problems.JobSchedulerIsShuttingDownProblem
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, EventSeqTornProblem, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
-import io.circe.syntax.EncoderOps
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable

@@ -6,6 +6,9 @@ import akka.util.Timeout
 import cats.data.EitherT
 import cats.effect.ExitCase
 import cats.syntax.flatMap._
+import com.typesafe.config.{Config, ConfigUtil}
+import java.nio.file.StandardCopyOption.REPLACE_EXISTING
+import java.nio.file.{Files, Paths}
 import js7.base.auth.UserAndPassword
 import js7.base.eventbus.EventPublisher
 import js7.base.generic.{Completed, SecretString}
@@ -46,9 +49,6 @@ import js7.master.cluster.ClusterCommon.{clusterEventAndStateToString, truncateF
 import js7.master.cluster.ObservablePauseDetector._
 import js7.master.data.MasterCommand.InternalClusterCommand
 import js7.master.data.MasterState
-import com.typesafe.config.{Config, ConfigUtil}
-import java.nio.file.StandardCopyOption.REPLACE_EXISTING
-import java.nio.file.{Files, Paths}
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean
 import monix.execution.cancelables.SerialCancelable

@@ -1,11 +1,11 @@
 package js7.proxy.javaapi.data
 
+import io.circe.{Decoder, Encoder}
+import io.vavr.control.{Either => VEither}
 import js7.base.annotation.javaApi
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Problem
 import js7.proxy.javaapi.utils.VavrConversions._
-import io.circe.{Decoder, Encoder}
-import io.vavr.control.{Either => VEither}
 
 @javaApi
 trait JJsonable[A <: JJsonable[A]] extends JavaWrapper

@@ -1,6 +1,8 @@
 package js7.core.crypt.pgp
 
 import cats.syntax.show._
+import java.io.ByteArrayOutputStream
+import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.Problems.{MessageSignedByUnknownProblem, TamperedWithSignedMessageProblem}
 import js7.base.crypt.{PgpSignature, SignerId}
 import js7.base.generic.SecretString
@@ -11,8 +13,6 @@ import js7.common.utils.JavaResource
 import js7.core.crypt.pgp.PgpCommons.{readPublicKeyRingCollection, toPublicKeyRingCollection, writePublicKeyAsAscii, _}
 import js7.core.crypt.pgp.PgpSigner.readSecretKey
 import js7.core.crypt.pgp.PgpTest._
-import java.io.ByteArrayOutputStream
-import java.nio.charset.StandardCharsets.UTF_8
 import org.bouncycastle.openpgp.{PGPException, PGPSignature}
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._

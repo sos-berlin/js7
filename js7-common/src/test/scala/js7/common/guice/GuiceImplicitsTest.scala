@@ -1,8 +1,8 @@
 package js7.common.guice
 
 import com.google.inject.{AbstractModule, Guice, Provides}
-import js7.common.guice.GuiceImplicits._
 import javax.inject.Singleton
+import js7.common.guice.GuiceImplicits._
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

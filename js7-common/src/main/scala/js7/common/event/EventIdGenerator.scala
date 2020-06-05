@@ -1,9 +1,9 @@
 package js7.common.event
 
-import js7.base.time.Timestamp
-import js7.data.event.{EventId, Stamped}
 import java.util.concurrent.atomic.AtomicLong
 import javax.inject.{Inject, Singleton}
+import js7.base.time.Timestamp
+import js7.data.event.{EventId, Stamped}
 import scala.annotation.tailrec
 
 /**

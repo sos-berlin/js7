@@ -1,15 +1,15 @@
 package js7.taskserver.task.process
 
+import java.util.concurrent.ForkJoinPool
+import js7.base.time.ScalaTime._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.IOExecutor.Implicits.globalIOX
 import js7.common.system.OperatingSystem.isWindows
-import js7.base.time.ScalaTime._
 import js7.common.time.WaitForCondition.waitForCondition
 import js7.data.job.ReturnCode
 import js7.taskserver.task.process.ShellScriptProcess.startShellScript
-import java.util.concurrent.ForkJoinPool
-import scala.concurrent.{ExecutionContext, Future}
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * @author Joacim Zschimmer

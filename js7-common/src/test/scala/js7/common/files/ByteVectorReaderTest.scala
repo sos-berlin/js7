@@ -3,9 +3,9 @@ package js7.common.files
 import js7.base.utils.AutoClosing.autoClosing
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.FileUtils.withTemporaryFile
+import org.scalatest.freespec.AnyFreeSpec
 import scala.util.Random
 import scodec.bits.ByteVector
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer

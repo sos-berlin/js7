@@ -25,9 +25,9 @@ import js7.data.workflow.WorkflowPath
 import js7.master.web.master.api.EventRouteTest._
 import js7.master.web.master.api.test.RouteTester
 import monix.execution.Scheduler
+import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer

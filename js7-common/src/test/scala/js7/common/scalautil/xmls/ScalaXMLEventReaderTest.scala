@@ -1,12 +1,12 @@
 package js7.common.scalautil.xmls
 
+import javax.xml.transform.Source
 import js7.base.convert.ConvertiblePartialFunctions._
 import js7.base.time.Stopwatch.measureTime
 import js7.base.utils.ScalaUtils._
 import js7.common.scalautil.xmls.ScalaXMLEventReader._
 import js7.common.scalautil.xmls.ScalaXMLEventReaderTest._
 import js7.common.scalautil.xmls.XmlSources._
-import javax.xml.transform.Source
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
 

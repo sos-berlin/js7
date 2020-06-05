@@ -1,10 +1,10 @@
 package js7.core.event.journal.watch
 
+import com.typesafe.config.Config
+import java.nio.file.{Files, Path}
 import js7.base.monixutils.MonixBase.syntax._
 import js7.core.event.journal.data.JournalMeta
 import js7.data.event.{EventId, JournalId}
-import com.typesafe.config.Config
-import java.nio.file.{Files, Path}
 import monix.eval.Task
 import scala.concurrent.duration.Deadline
 

@@ -3,9 +3,9 @@ package js7.base.utils
 import cats.effect.{Resource, SyncIO}
 import js7.base.utils.SyncResource.syntax._
 import monix.execution.atomic.AtomicAny
+import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 import scala.util.Random
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer

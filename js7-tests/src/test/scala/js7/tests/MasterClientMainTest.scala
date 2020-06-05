@@ -6,8 +6,8 @@ import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.master.client.main.MasterClientMain
 import js7.tests.testenv.MasterAgentForScalaTest
 import org.scalatest.BeforeAndAfterAll
-import scala.collection.mutable
 import org.scalatest.freespec.AnyFreeSpec
+import scala.collection.mutable
 
 /**
  * @author Joacim Zschimmer

@@ -1,11 +1,11 @@
 package js7.base.auth
 
-import js7.base.auth.HashedPassword._
-import js7.base.generic.SecretString
-import js7.base.generic.SecretString.timingAttackSecureEqual
 import java.nio.charset.StandardCharsets.UTF_8
 import java.security.MessageDigest
 import java.util.Base64
+import js7.base.auth.HashedPassword._
+import js7.base.generic.SecretString
+import js7.base.generic.SecretString.timingAttackSecureEqual
 import scala.util.Random
 
 /**

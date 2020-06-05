@@ -1,5 +1,7 @@
 package js7.tests
 
+import com.typesafe.config.ConfigFactory
+import java.nio.file.Path
 import js7.agent.RunningAgent
 import js7.agent.scheduler.AgentEvent
 import js7.base.crypt.silly.{SillySignature, SillySigner}
@@ -29,8 +31,6 @@ import js7.master.data.events.MasterEvent
 import js7.tests.RecoveryTest._
 import js7.tests.testenv.DirectoryProvider
 import js7.tests.testenv.DirectoryProvider.{StdoutOutput, script}
-import com.typesafe.config.ConfigFactory
-import java.nio.file.Path
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._

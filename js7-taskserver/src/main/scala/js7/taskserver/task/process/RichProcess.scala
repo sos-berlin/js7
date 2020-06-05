@@ -1,5 +1,11 @@
 package js7.taskserver.task.process
 
+import java.io.{BufferedOutputStream, OutputStream, OutputStreamWriter}
+import java.lang.ProcessBuilder.Redirect
+import java.lang.ProcessBuilder.Redirect.INHERIT
+import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.Files.delete
+import java.nio.file.Path
 import js7.base.generic.Completed
 import js7.base.process.ProcessSignal
 import js7.base.process.ProcessSignal.{SIGKILL, SIGTERM}
@@ -16,12 +22,6 @@ import js7.common.system.OperatingSystem._
 import js7.data.job.ReturnCode
 import js7.data.system.{Stderr, Stdout, StdoutOrStderr}
 import js7.taskserver.task.process.RichProcess._
-import java.io.{BufferedOutputStream, OutputStream, OutputStreamWriter}
-import java.lang.ProcessBuilder.Redirect
-import java.lang.ProcessBuilder.Redirect.INHERIT
-import java.nio.charset.StandardCharsets.UTF_8
-import java.nio.file.Files.delete
-import java.nio.file.Path
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.{ExecutionContext, Future, blocking}

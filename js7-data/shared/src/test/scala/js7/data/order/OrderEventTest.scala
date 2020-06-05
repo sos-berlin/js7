@@ -15,8 +15,8 @@ import js7.data.workflow.position.Position
 import js7.tester.CirceJsonTester.testJson
 import io.circe.Json
 import io.circe.syntax.EncoderOps
-import scala.concurrent.duration._
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -339,7 +339,7 @@ final class OrderEventTest extends AnyFreeSpec {
 
   if (sys.props contains "test.speed") "Speed" in {
     val n = 10000
-    val event = Stamped(12345678, Timestamp.ofEpochMilli(1),
+    val event = Stamped(12345678L, Timestamp.ofEpochMilli(1),
       KeyedEvent[OrderEvent](OrderId("ORDER"), OrderAdded(WorkflowPath("/WORKFLOW") ~ "VERSION", arguments = Map("KEY" -> "VALUE"))))
     val jsonString = event.asJson.compactPrint
     println(f"${"Serialize"}%-20s Deserialize")

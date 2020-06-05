@@ -1,14 +1,14 @@
 package js7.base.circeutils
 
 import cats.syntax.show._
-import js7.base.circeutils.AnyJsonCodecs.anyToJson
-import js7.base.generic.GenericString
-import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils._
 import io.circe.generic.decoding.DerivedDecoder
 import io.circe.generic.encoding.DerivedAsObjectEncoder
 import io.circe.syntax.EncoderOps
 import io.circe.{CursorOp, Decoder, DecodingFailure, Encoder, HCursor, Json, JsonNumber, JsonObject, Printer}
+import js7.base.circeutils.AnyJsonCodecs.anyToJson
+import js7.base.generic.GenericString
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.ScalaUtils._
 import scala.collection.immutable.SeqMap
 import shapeless.Lazy
 

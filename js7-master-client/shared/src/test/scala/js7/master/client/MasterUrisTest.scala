@@ -7,8 +7,8 @@ import js7.data.fatevent.OrderFatEvent
 import js7.data.filebased.RepoEvent.FileBasedEvent
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import scala.concurrent.duration._
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer

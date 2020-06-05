@@ -3,6 +3,14 @@ package js7.common.scalautil
 import akka.util.ByteString
 import com.google.common.io.FileWriteMode.APPEND
 import com.google.common.io.{Files => GuavaFiles}
+import io.circe.Encoder
+import java.io.{File, FileOutputStream}
+import java.nio.charset.Charset
+import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.Files.{delete, deleteIfExists, isDirectory, isSymbolicLink, readAllBytes, setPosixFilePermissions}
+import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
+import java.nio.file.{FileAlreadyExistsException, FileVisitOption, Files, Path, Paths}
+import java.util.concurrent.ThreadLocalRandom
 import js7.base.circeutils.CirceUtils.CompactPrinter
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
@@ -12,14 +20,6 @@ import js7.base.utils.Closer.syntax._
 import js7.base.utils.Closer.withCloser
 import js7.base.utils.JavaCollections.syntax._
 import js7.common.system.OperatingSystem.isUnix
-import io.circe.Encoder
-import java.io.{File, FileOutputStream}
-import java.nio.charset.Charset
-import java.nio.charset.StandardCharsets.UTF_8
-import java.nio.file.Files.{delete, deleteIfExists, isDirectory, isSymbolicLink, readAllBytes, setPosixFilePermissions}
-import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
-import java.nio.file.{FileAlreadyExistsException, FileVisitOption, Files, Path, Paths}
-import java.util.concurrent.ThreadLocalRandom
 import scala.annotation.tailrec
 import scala.collection.AbstractIterator
 import scala.language.implicitConversions

@@ -1,5 +1,8 @@
 package js7.agent.data.commands
 
+import io.circe.generic.JsonCodec
+import io.circe.syntax.EncoderOps
+import io.circe.{Decoder, Encoder, Json, JsonObject}
 import js7.base.circeutils.CirceCodec
 import js7.base.circeutils.CirceUtils.{deriveCodec, singletonCodec}
 import js7.base.circeutils.ScalaJsonCodecs._
@@ -17,9 +20,6 @@ import js7.data.agent.{AgentRefPath, AgentRunId}
 import js7.data.command.{CancelMode, CommonCommand}
 import js7.data.event.EventId
 import js7.data.order.{Order, OrderId}
-import io.circe.generic.JsonCodec
-import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, Json, JsonObject}
 import scala.concurrent.duration.FiniteDuration
 
 /**

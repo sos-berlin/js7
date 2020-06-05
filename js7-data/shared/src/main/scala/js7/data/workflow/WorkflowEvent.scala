@@ -1,7 +1,7 @@
 package js7.data.workflow
 
-import js7.data.event.{Event, NoKeyEvent}
 import io.circe.generic.JsonCodec
+import js7.data.event.{Event, NoKeyEvent}
 
 /**
   * @author Joacim Zschimmer

@@ -1,11 +1,11 @@
 package js7.core.startup
 
-import js7.common.commandline.CommandLineArguments
-import js7.core.startup.StartUp.printlnWithClock
 import java.nio.channels.FileChannel
 import java.nio.file.Files.{createDirectory, exists}
 import java.nio.file.StandardOpenOption.{CREATE, WRITE}
 import java.nio.file.{Path, Paths}
+import js7.common.commandline.CommandLineArguments
+import js7.core.startup.StartUp.printlnWithClock
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 

@@ -1,8 +1,8 @@
 package js7.base.utils
 
+import java.lang.Character.{isIdentifierIgnorable, isUnicodeIdentifierPart, isUnicodeIdentifierStart}
 import js7.base.generic.GenericString
 import js7.base.problem.{Checked, Problem}
-import java.lang.Character.{isIdentifierIgnorable, isUnicodeIdentifierPart, isUnicodeIdentifierStart}
 
 final case class Identifier private(string: String) extends GenericString
 

@@ -1,5 +1,7 @@
 package js7.core.event.journal.recover
 
+import io.circe.Json
+import java.nio.file.Path
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Checked._
 import js7.base.utils.AutoClosing.closeOnError
@@ -15,8 +17,6 @@ import js7.core.event.journal.data.JournalMeta
 import js7.core.event.journal.recover.JournalReader._
 import js7.data.event.JournalSeparators.{Commit, EventHeader, SnapshotFooter, SnapshotHeader, Transaction}
 import js7.data.event.{Event, EventId, JournalHeader, JournalId, KeyedEvent, Stamped}
-import io.circe.Json
-import java.nio.file.Path
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer

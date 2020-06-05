@@ -1,8 +1,8 @@
 package js7.base.convert
 
+import java.nio.file.{Path, Paths}
 import js7.base.convert.AsJava._
 import js7.base.convert.ConvertiblePartialFunctions.ImplicitConvertablePF
-import java.nio.file.{Path, Paths}
 import org.scalatest
 
 /**

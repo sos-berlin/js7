@@ -1,7 +1,7 @@
 package js7.core.common
 
-import js7.common.scalautil.xmls.ScalaXMLEventReader
 import javax.xml.stream.events.{Attribute, EndElement}
+import js7.common.scalautil.xmls.ScalaXMLEventReader
 
 /**
   * @author Joacim Zschimmer

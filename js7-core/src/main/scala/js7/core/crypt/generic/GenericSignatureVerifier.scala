@@ -5,6 +5,10 @@ import cats.effect.{Resource, SyncIO}
 import cats.instances.either._
 import cats.instances.vector._
 import cats.syntax.traverse._
+import com.typesafe.config.Config
+import java.io.InputStream
+import java.nio.file.Files.exists
+import java.nio.file.{Files, Paths}
 import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.AutoClosing.autoClosing
@@ -13,10 +17,6 @@ import js7.base.utils.JavaCollections.syntax._
 import js7.base.utils.ScalaUtils.checkedCast
 import js7.common.scalautil.JavaSyncResources.fileAsResource
 import js7.common.scalautil.Logger
-import com.typesafe.config.Config
-import java.io.InputStream
-import java.nio.file.Files.exists
-import java.nio.file.{Files, Paths}
 import scala.jdk.CollectionConverters._
 
 /** A `SignatureVerifier` that verifies different types of signatures.

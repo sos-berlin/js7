@@ -1,6 +1,8 @@
 package js7.data.order
 
 
+import io.circe.syntax.EncoderOps
+import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
@@ -9,8 +11,6 @@ import js7.base.utils.ScalazStyle._
 import js7.data.filebased.VersionId
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.{Position, WorkflowPosition}
-import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, JsonObject}
 import org.jetbrains.annotations.TestOnly
 
 /**

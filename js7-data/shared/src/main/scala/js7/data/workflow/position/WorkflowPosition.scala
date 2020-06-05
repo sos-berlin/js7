@@ -1,8 +1,8 @@
 package js7.data.workflow.position
 
+import io.circe.generic.JsonCodec
 import js7.base.utils.ScalaUtils.reuseIfEqual
 import js7.data.workflow.WorkflowId
-import io.circe.generic.JsonCodec
 import scala.language.implicitConversions
 
 /**

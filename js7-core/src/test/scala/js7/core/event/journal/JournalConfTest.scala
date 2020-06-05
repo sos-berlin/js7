@@ -1,8 +1,8 @@
 package js7.core.event.journal
 
+import com.typesafe.config.ConfigFactory
 import js7.base.time.ScalaTime._
 import js7.core.event.journal.JournalConfTest._
-import com.typesafe.config.ConfigFactory
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

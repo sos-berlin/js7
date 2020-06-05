@@ -1,7 +1,7 @@
 package js7.core.event.journal.write
 
-import js7.common.scalautil.Futures.implicits.SuccessFuture
 import java.util.concurrent.ArrayBlockingQueue
+import js7.common.scalautil.Futures.implicits.SuccessFuture
 import scala.concurrent.{ExecutionContext, Future}
 
 /**

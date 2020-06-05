@@ -1,11 +1,11 @@
 package js7.common.utils
 
+import java.io.IOException
 import js7.base.time.ScalaTime._
 import js7.common.log.LazyScalaLogger.AsLazyScalaLogger
 import js7.common.scalautil.Logger
 import js7.common.utils.Exceptions._
 import js7.common.utils.ExceptionsTest._
-import java.io.IOException
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
 import scala.concurrent.duration.Deadline.now

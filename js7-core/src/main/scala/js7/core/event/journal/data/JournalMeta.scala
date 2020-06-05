@@ -1,8 +1,8 @@
 package js7.core.event.journal.data
 
+import java.nio.file.Path
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.data.event.{Event, KeyedEventTypedJsonCodec}
-import java.nio.file.Path
 
 /**
   * @author Joacim Zschimmer

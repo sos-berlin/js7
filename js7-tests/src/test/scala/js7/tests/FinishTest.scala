@@ -16,9 +16,9 @@ import js7.data.workflow.position.Position
 import js7.tests.FinishTest._
 import js7.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
+import org.scalatest.freespec.AnyFreeSpec
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
-import org.scalatest.freespec.AnyFreeSpec
 
 final class FinishTest extends AnyFreeSpec
 {

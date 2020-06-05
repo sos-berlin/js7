@@ -1,9 +1,9 @@
 package js7.base.web
 
+import io.circe.{Decoder, Encoder}
 import js7.base.auth.SessionToken
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.StackTraces.StackTraceThrowable
-import io.circe.{Decoder, Encoder}
 import monix.eval.Task
 import monix.reactive.Observable
 import scala.concurrent.duration.Duration

@@ -1,8 +1,8 @@
 package js7.data.event
 
 import js7.data.event.EventRequestTest._
-import scala.concurrent.duration._
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer

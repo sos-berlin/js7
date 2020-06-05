@@ -1,9 +1,9 @@
 package js7.provider.configuration
 
+import com.typesafe.config.ConfigFactory
 import js7.base.web.Uri
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.FileUtils.withTemporaryDirectory
-import com.typesafe.config.ConfigFactory
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

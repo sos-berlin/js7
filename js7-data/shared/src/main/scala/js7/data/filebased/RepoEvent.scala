@@ -1,11 +1,11 @@
 package js7.data.filebased
 
+import io.circe.syntax._
+import io.circe.{Decoder, DecodingFailure, Encoder, JsonObject}
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.SignedString
 import js7.data.event.NoKeyEvent
-import io.circe.syntax._
-import io.circe.{Decoder, DecodingFailure, Encoder, JsonObject}
 
 /**
   * @author Joacim Zschimmer

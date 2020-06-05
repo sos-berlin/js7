@@ -1,10 +1,10 @@
 package js7.agent.scheduler.order
 
+import java.io.Writer
+import java.lang.System.nanoTime
 import js7.agent.scheduler.order.StatisticalWriter._
 import js7.base.time.ScalaTime._
 import js7.common.utils.ByteUnits.toKBGB
-import java.io.Writer
-import java.lang.System.nanoTime
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 

@@ -7,6 +7,7 @@ import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.RouteTestTimeout
 import akka.http.scaladsl.unmarshalling.Unmarshaller
 import akka.util.ByteString
+import io.circe.Json
 import js7.base.circeutils.CirceUtils._
 import js7.base.time.ScalaTime._
 import js7.base.utils.Collections.implicits.RichTraversable
@@ -21,7 +22,6 @@ import js7.data.workflow.position.Position
 import js7.master.OrderApi
 import js7.master.web.master.api.graphql.GraphqlRouteTest._
 import js7.master.web.master.api.test.RouteTester
-import io.circe.Json
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec

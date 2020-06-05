@@ -1,8 +1,8 @@
 package js7.common.system
 
-import js7.common.system.OperatingSystem._
 import java.io.File
 import java.io.File.pathSeparator
+import js7.common.system.OperatingSystem._
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

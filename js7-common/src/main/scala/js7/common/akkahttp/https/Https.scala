@@ -1,11 +1,11 @@
 package js7.common.akkahttp.https
 
-import js7.base.utils.AutoClosing._
-import js7.common.scalautil.Logger
 import java.net.URL
 import java.security.cert.{Certificate, X509Certificate}
 import java.security.{KeyStore, SecureRandom}
 import javax.net.ssl.{KeyManager, KeyManagerFactory, SSLContext, TrustManager, TrustManagerFactory}
+import js7.base.utils.AutoClosing._
+import js7.common.scalautil.Logger
 import scala.jdk.CollectionConverters._
 
 /**

@@ -1,13 +1,13 @@
 package js7.common.process
 
-import js7.common.process.OperatingSystemSpecific._
-import js7.common.scalautil.Logger
-import js7.common.system.OperatingSystem._
-import js7.data.system.StdoutOrStderr
 import java.nio.file.Files._
 import java.nio.file.attribute.PosixFilePermissions._
 import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
 import java.nio.file.{FileAlreadyExistsException, Path}
+import js7.common.process.OperatingSystemSpecific._
+import js7.common.scalautil.Logger
+import js7.common.system.OperatingSystem._
+import js7.data.system.StdoutOrStderr
 
 /**
   * @author Joacim Zschimmer

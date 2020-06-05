@@ -1,5 +1,7 @@
 package js7.agent.tests
 
+import java.nio.file.Files.{createDirectories, createDirectory, createTempDirectory, delete}
+import java.nio.file.Path
 import js7.agent.tests.TestAgentDirectoryProvider._
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.crypt.silly.{SillySignature, SillySigner}
@@ -15,8 +17,6 @@ import js7.common.utils.Exceptions.repeatUntilNoException
 import js7.common.utils.JavaResource
 import js7.data.filebased.FileBasedSigner
 import js7.data.workflow.Workflow
-import java.nio.file.Files.{createDirectories, createDirectory, createTempDirectory, delete}
-import java.nio.file.Path
 import scala.util.control.NonFatal
 
 trait TestAgentDirectoryProvider extends HasCloser

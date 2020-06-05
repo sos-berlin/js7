@@ -2,6 +2,10 @@ package js7.master.cluster
 
 import akka.actor.ActorSystem
 import cats.effect.Resource
+import java.nio.ByteBuffer
+import java.nio.channels.{FileChannel, GatheringByteChannel, ScatteringByteChannel}
+import java.nio.file.StandardOpenOption.{CREATE, READ, TRUNCATE_EXISTING, WRITE}
+import java.nio.file.{Path, Paths}
 import js7.base.eventbus.EventPublisher
 import js7.base.generic.Completed
 import js7.base.problem.Checked
@@ -18,10 +22,6 @@ import js7.master.cluster.ClusterCommon._
 import js7.master.cluster.PassiveClusterNode.{ClusterWatchAgreesToActivation, ClusterWatchDisagreeToActivation}
 import js7.master.data.MasterCommand
 import js7.master.data.MasterCommand.InternalClusterCommand
-import java.nio.ByteBuffer
-import java.nio.channels.{FileChannel, GatheringByteChannel, ScatteringByteChannel}
-import java.nio.file.StandardOpenOption.{CREATE, READ, TRUNCATE_EXISTING, WRITE}
-import java.nio.file.{Path, Paths}
 import monix.eval.Task
 
 private[cluster] final class ClusterCommon(

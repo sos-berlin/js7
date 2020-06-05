@@ -1,5 +1,6 @@
 package js7.provider
 
+import java.util.concurrent.CancellationException
 import js7.base.BuildInfo
 import js7.base.problem.Checked.Ops
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
@@ -9,7 +10,6 @@ import js7.common.scalautil.Logger
 import js7.core.startup.JavaMain.{runMain, withShutdownHooks}
 import js7.core.startup.StartUp.logStartUp
 import js7.provider.configuration.ProviderConfiguration
-import java.util.concurrent.CancellationException
 import monix.execution.CancelableFuture
 import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.Future

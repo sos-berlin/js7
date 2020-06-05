@@ -1,7 +1,7 @@
 package js7.common.monixutils
 
-import js7.common.scalautil.Futures.promiseFuture
 import java.util.Objects.requireNonNull
+import js7.common.scalautil.Futures.promiseFuture
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.AtomicBoolean

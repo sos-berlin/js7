@@ -1,14 +1,14 @@
 package js7.core.startup
 
+import java.io.File
+import java.nio.file.Path
+import java.time.LocalDateTime
 import js7.base.system.SystemInformation.totalPhysicalMemory
 import js7.common.process.ProcessPidRetriever.maybeOwnPid
 import js7.common.scalautil.Logger
 import js7.common.system.JavaInformations
 import js7.common.system.OperatingSystem.operatingSystem.{cpuModel, distributionNameAndVersionOption, hostname}
 import js7.common.utils.ByteUnits.toKiBGiB
-import java.io.File
-import java.nio.file.Path
-import java.time.LocalDateTime
 import monix.execution.atomic.AtomicBoolean
 
 /**

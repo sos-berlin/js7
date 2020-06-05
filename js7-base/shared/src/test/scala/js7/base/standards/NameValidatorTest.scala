@@ -1,8 +1,8 @@
 package js7.base.standards
 
 import js7.base.standards.NameValidator._
-import scala.jdk.CollectionConverters._
 import org.scalatest.freespec.AnyFreeSpec
+import scala.jdk.CollectionConverters._
 
 /**
   * @author Joacim Zschimmer

@@ -1,6 +1,7 @@
 package js7.common.event
 
 import cats.syntax.option._
+import java.util.concurrent.TimeoutException
 import js7.base.monixutils.MonixBase.closeableIteratorToObservable
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
@@ -11,7 +12,6 @@ import js7.common.event.RealEventWatch._
 import js7.common.scalautil.Logger
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
-import java.util.concurrent.TimeoutException
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable

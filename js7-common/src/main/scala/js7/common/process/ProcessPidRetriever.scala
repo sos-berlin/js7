@@ -1,10 +1,10 @@
 package js7.common.process
 
+import javax.lang.model.SourceVersion
 import js7.base.utils.ScalaUtils.RichThrowable
 import js7.common.process.Processes.Pid
 import js7.common.scalautil.Logger
 import js7.common.system.OperatingSystem._
-import javax.lang.model.SourceVersion
 
 /**
  * Tries to retrieve the PID of a process.

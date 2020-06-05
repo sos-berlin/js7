@@ -2,6 +2,7 @@ package js7.common.akkahttp.web.data
 
 import akka.http.scaladsl.model.{Uri => AkkaUri}
 import cats.syntax.either._
+import java.net.{InetAddress, InetSocketAddress}
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
@@ -9,7 +10,6 @@ import js7.base.utils.CatsUtils._
 import js7.base.web.Uri
 import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import js7.common.http.AkkaHttpUtils.RichAkkaAsUri
-import java.net.{InetAddress, InetSocketAddress}
 
 /**
   * @author Joacim Zschimmer

@@ -1,9 +1,9 @@
 package js7.base.standards
 
+import java.lang.Character.{isHighSurrogate, isIdentifierIgnorable, isSurrogate, isUnicodeIdentifierPart, isUnicodeIdentifierStart}
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.problem.Checked
 import js7.base.problem.Problems.InvalidNameProblem
-import java.lang.Character.{isHighSurrogate, isIdentifierIgnorable, isSurrogate, isUnicodeIdentifierPart, isUnicodeIdentifierStart}
 
 /**
   * @author Joacim Zschimmer

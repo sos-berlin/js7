@@ -2,9 +2,9 @@ package js7.common.scalautil
 
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.IOExecutor.ioFuture
+import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer

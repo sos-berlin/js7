@@ -3,6 +3,7 @@ package js7.agent.scheduler
 import akka.actor.{ActorRef, PoisonPill, Props, Terminated}
 import akka.pattern.{ask, pipe}
 import cats.data.EitherT
+import javax.inject.{Inject, Singleton}
 import js7.agent.AgentState
 import js7.agent.configuration.{AgentConfiguration, AgentStartInformation}
 import js7.agent.data.AgentTermination
@@ -43,7 +44,6 @@ import js7.data.event.{EventId, JournalEvent, JournalId, JournalState, KeyedEven
 import js7.data.master.MasterId
 import js7.data.order.Order
 import js7.data.workflow.Workflow
-import javax.inject.{Inject, Singleton}
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.{Future, Promise}

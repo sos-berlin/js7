@@ -6,13 +6,13 @@ import akka.http.scaladsl.model.MediaTypes.`text/plain`
 import akka.http.scaladsl.model.{ContentType, HttpEntity}
 import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
 import akka.util.ByteString
+import io.circe.syntax.EncoderOps
+import io.circe.{Decoder, Encoder}
 import js7.base.circeutils.CirceUtils.implicits.CompactPrinter
 import js7.base.utils.ScalaUtils.RichThrowable
 import js7.common.http.CirceToYaml._
 import js7.common.http.{CirceJsonSupport, CirceToYaml}
 import js7.common.scalautil.Logger
-import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder}
 import scala.util.control.NonFatal
 
 /**

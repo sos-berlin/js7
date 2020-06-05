@@ -1,5 +1,6 @@
 package js7.core.event.journal.watch
 
+import java.nio.file.Path
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.closeOnError
 import js7.base.utils.CloseableIterator
@@ -10,7 +11,6 @@ import js7.core.event.journal.data.JournalMeta
 import js7.core.event.journal.recover.JournalReader
 import js7.core.event.journal.watch.FileEventIterator._
 import js7.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
-import java.nio.file.Path
 import scala.concurrent.blocking
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._

@@ -1,6 +1,8 @@
 package js7.core.event.journal.recover
 
 import cats.syntax.show.toShow
+import io.circe.Json
+import java.nio.file.Path
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.problem.Checked._
 import js7.base.utils.ScalaUtils.RichThrowableEither
@@ -11,8 +13,6 @@ import js7.core.event.journal.recover.FileJournaledStateBuilder._
 import js7.core.event.journal.recover.JournalProgress.{AfterHeader, AfterSnapshotSection, InCommittedEventsSection, InSnapshotSection, InTransaction, Initial}
 import js7.data.event.JournalSeparators.{Commit, EventHeader, SnapshotFooter, SnapshotHeader, Transaction}
 import js7.data.event.{Event, EventId, JournalHeader, JournalId, JournaledState, JournaledStateBuilder, KeyedEvent, Stamped}
-import io.circe.Json
-import java.nio.file.Path
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 

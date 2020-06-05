@@ -1,10 +1,10 @@
 package js7.common.scalautil
 
+import java.util.concurrent.TimeoutException
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.measureTime
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.Futures.{FutureNotSucceededException, catchInFuture, namedThreadFuture, promiseFuture}
-import java.util.concurrent.TimeoutException
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
 import scala.concurrent.ExecutionContext.Implicits.global

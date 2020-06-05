@@ -1,5 +1,7 @@
 package js7.master.data
 
+import io.circe.syntax.EncoderOps
+import io.circe.{Decoder, Encoder, Json, JsonObject}
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.ScalaJsonCodecs.{FiniteDurationJsonDecoder, FiniteDurationJsonEncoder}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
@@ -17,8 +19,6 @@ import js7.data.event.EventId
 import js7.data.filebased.{TypedPath, VersionId}
 import js7.data.master.MasterFileBaseds.typedPathJsonDecoder
 import js7.data.order.{FreshOrder, OrderId}
-import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, Json, JsonObject}
 
 /**
   * @author Joacim Zschimmer

@@ -1,8 +1,8 @@
 package js7.master.data.agent
 
+import io.circe.generic.JsonCodec
 import js7.data.agent.AgentRefPath
 import js7.data.event.{Event, EventId}
-import io.circe.generic.JsonCodec
 
 /**
   * @author Joacim Zschimmer

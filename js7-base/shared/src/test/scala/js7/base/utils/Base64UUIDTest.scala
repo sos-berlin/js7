@@ -1,11 +1,11 @@
 package js7.base.utils
 
+import java.util.UUID
 import js7.base.utils.Base64UUID.{base64ToUUID, uuidToBase64}
 import js7.tester.CirceJsonTester.testJson
-import java.util.UUID
 import org.scalacheck.Gen
-import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks._
 import org.scalatest.freespec.AnyFreeSpec
+import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks._
 
 /**
   * @author Joacim Zschimmer

@@ -4,6 +4,7 @@ import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, OK}
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
+import io.circe.JsonObject
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.web.Uri
@@ -13,7 +14,6 @@ import js7.common.http.CirceJsonSupport._
 import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
 import js7.data.cluster.{ClusterNodeId, ClusterState}
 import js7.data.master.MasterId
-import io.circe.JsonObject
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
 

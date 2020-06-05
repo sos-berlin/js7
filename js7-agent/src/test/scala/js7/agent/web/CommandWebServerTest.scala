@@ -3,6 +3,7 @@ package js7.agent.web
 import akka.actor.ActorSystem
 import akka.http.scaladsl.server.Directives.decodeRequest
 import cats.effect.Resource
+import com.typesafe.config.ConfigFactory
 import js7.agent.client.AgentClient
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.commands.AgentCommand
@@ -21,7 +22,6 @@ import js7.core.command.CommandMeta
 import js7.data.agent.{AgentRefPath, AgentRunId}
 import js7.data.event.{EventId, JournalId}
 import js7.data.order.OrderId
-import com.typesafe.config.ConfigFactory
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global

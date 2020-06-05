@@ -1,12 +1,15 @@
 package js7.proxy.javaapi.data;
 
-import js7.data.order.Order;
-import js7.data.order.OrderId;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import js7.data.order.Order;
+import js7.data.order.OrderId;
+import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
+import static java.util.stream.Collectors.toList;
 import static js7.proxy.javaapi.data.JOrderPredicates.and;
 import static js7.proxy.javaapi.data.JOrderPredicates.by;
 import static js7.proxy.javaapi.data.JOrderPredicates.byOrderState;
@@ -14,9 +17,6 @@ import static js7.proxy.javaapi.data.JOrderPredicates.not;
 import static js7.proxy.javaapi.data.JOrderPredicates.or;
 import static js7.proxy.javaapi.data.JOrderTester.aOrder;
 import static js7.proxy.javaapi.data.JOrderTester.bOrder;
-import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
-import static java.util.stream.Collectors.toList;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 

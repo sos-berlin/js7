@@ -1,5 +1,8 @@
 package js7.tests.master.proxy;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import js7.data.event.KeyedEvent;
 import js7.data.event.Stamped;
 import js7.data.order.OrderEvent;
@@ -13,13 +16,10 @@ import js7.proxy.javaapi.JMasterProxy;
 import js7.proxy.javaapi.data.JFreshOrder;
 import js7.proxy.javaapi.data.JMasterCommand;
 import js7.proxy.javaapi.data.JMasterState;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import static js7.proxy.javaapi.data.JKeyedEvent.keyedEventToJson;
-import static js7.proxy.javaapi.utils.VavrUtils.getOrThrowProblem;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static js7.proxy.javaapi.data.JKeyedEvent.keyedEventToJson;
+import static js7.proxy.javaapi.utils.VavrUtils.getOrThrowProblem;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;

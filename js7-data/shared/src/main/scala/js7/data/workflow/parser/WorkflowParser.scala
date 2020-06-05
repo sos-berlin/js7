@@ -1,5 +1,7 @@
 package js7.data.workflow.parser
 
+import fastparse.NoWhitespace._
+import fastparse._
 import js7.base.problem.Checked
 import js7.base.utils.Collections.implicits.RichTraversable
 import js7.data.agent.AgentRefPath
@@ -15,8 +17,6 @@ import js7.data.workflow.parser.BasicParsers._
 import js7.data.workflow.parser.ExpressionParser.{booleanConstant, constantExpression, expression}
 import js7.data.workflow.parser.Parsers.checkedParse
 import js7.data.workflow.{Instruction, Label, Workflow, WorkflowId, WorkflowPath}
-import fastparse.NoWhitespace._
-import fastparse._
 import scala.concurrent.duration._
 
 /**

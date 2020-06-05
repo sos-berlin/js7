@@ -6,6 +6,9 @@ import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.directives.ParameterDirectives._
 import akka.http.scaladsl.server.directives.PathDirectives.pathEnd
 import akka.http.scaladsl.server.directives.RouteDirectives.complete
+import com.typesafe.config.Config
+import java.nio.file.Files.{isReadable, isRegularFile}
+import java.nio.file.Path
 import js7.base.auth.ValidUserPermission
 import js7.base.utils.ScalazStyle._
 import js7.common.akkahttp.AkkaHttpServerUtils.passIf
@@ -16,9 +19,6 @@ import js7.common.http.StreamingSupport._
 import js7.common.time.JavaTimeConverters._
 import js7.master.web.common.MasterRouteProvider
 import js7.master.web.master.api.log.LogRoute._
-import com.typesafe.config.Config
-import java.nio.file.Files.{isReadable, isRegularFile}
-import java.nio.file.Path
 import monix.execution.Scheduler
 
 trait LogRoute extends MasterRouteProvider

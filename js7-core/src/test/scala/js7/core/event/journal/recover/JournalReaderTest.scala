@@ -2,6 +2,10 @@ package js7.core.event.journal.recover
 
 import akka.pattern.ask
 import akka.util.ByteString
+import io.circe.Encoder
+import io.circe.syntax.EncoderOps
+import java.nio.file.Files.delete
+import java.util.UUID
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
@@ -14,10 +18,6 @@ import js7.core.event.journal.write.{EventJournalWriter, FileJsonWriter, Snapsho
 import js7.data.event.JournalEvent.SnapshotTaken
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalEvent, JournalHeader, JournalId, JournalSeparators, KeyedEvent, Stamped}
-import io.circe.Encoder
-import io.circe.syntax.EncoderOps
-import java.nio.file.Files.delete
-import java.util.UUID
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

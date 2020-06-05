@@ -1,9 +1,9 @@
 package js7.data.event
 
-import js7.base.circeutils.typed.TypedJsonCodec
-import js7.data.event.KeyedEvent.NoKey
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder}
+import js7.base.circeutils.typed.TypedJsonCodec
+import js7.data.event.KeyedEvent.NoKey
 import scala.reflect.ClassTag
 
 /**

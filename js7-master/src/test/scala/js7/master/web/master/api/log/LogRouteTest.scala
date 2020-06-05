@@ -4,6 +4,13 @@ import akka.http.scaladsl.model.MediaTypes.`text/plain`
 import akka.http.scaladsl.model.StatusCodes.{NotFound, OK}
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.testkit.RouteTestTimeout
+import com.typesafe.config.ConfigFactory
+import java.io.{FileOutputStream, OutputStreamWriter}
+import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.Files.delete
+import java.nio.file.Path
+import java.util.Objects.requireNonNull
+import java.util.concurrent.ArrayBlockingQueue
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
@@ -13,13 +20,6 @@ import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.FileUtils.withTemporaryFile
 import js7.common.scalautil.Futures.implicits._
 import js7.master.web.master.api.test.RouteTester
-import com.typesafe.config.ConfigFactory
-import java.io.{FileOutputStream, OutputStreamWriter}
-import java.nio.charset.StandardCharsets.UTF_8
-import java.nio.file.Files.delete
-import java.nio.file.Path
-import java.util.Objects.requireNonNull
-import java.util.concurrent.ArrayBlockingQueue
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._

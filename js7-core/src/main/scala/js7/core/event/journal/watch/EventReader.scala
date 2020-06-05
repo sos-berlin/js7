@@ -1,5 +1,7 @@
 package js7.core.event.journal.watch
 
+import com.typesafe.config.Config
+import java.nio.file.Path
 import js7.base.monixutils.MonixBase.memoryLeakLimitedObservableTailRecM
 import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
@@ -16,8 +18,6 @@ import js7.core.event.journal.recover.JournalReader
 import js7.core.problems.JsonSeqFileClosedProblem
 import js7.data.event.JournalSeparators.EndOfJournalFileMarker
 import js7.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
-import com.typesafe.config.Config
-import java.nio.file.Path
 import monix.eval.Task
 import monix.execution.atomic.AtomicAny
 import monix.reactive.Observable

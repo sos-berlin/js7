@@ -3,6 +3,7 @@ package js7.agent.task
 import akka.actor.{Actor, Props, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
+import com.typesafe.config.ConfigFactory
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.Akkas.newAgentActorSystem
 import js7.agent.data.AgentTaskId
@@ -23,14 +24,13 @@ import js7.common.time.WaitForCondition.retryUntil
 import js7.data.job.JobKey
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.executable.WorkflowJob
-import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
+import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.io
 import scala.jdk.CollectionConverters._
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer

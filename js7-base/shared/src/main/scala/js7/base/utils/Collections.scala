@@ -1,7 +1,7 @@
 package js7.base.utils
 
-import js7.base.problem.{Checked, Problem}
 import javax.annotation.Nullable
+import js7.base.problem.{Checked, Problem}
 import scala.annotation.tailrec
 import scala.collection.immutable.VectorBuilder
 import scala.collection.{BufferedIterator, mutable}

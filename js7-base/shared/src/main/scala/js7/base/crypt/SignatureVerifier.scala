@@ -1,8 +1,8 @@
 package js7.base.crypt
 
 import cats.effect.{Resource, SyncIO}
-import js7.base.problem.Checked
 import java.io.InputStream
+import js7.base.problem.Checked
 
 /**
   * @author Joacim Zschimmer

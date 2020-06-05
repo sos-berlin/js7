@@ -1,12 +1,12 @@
 package js7.common.http
 
+import io.circe.syntax.EncoderOps
+import io.circe.{Encoder, Json, Printer}
 import js7.base.circeutils.AnyJavaJsonCodecs.jsonToJava
 import js7.base.circeutils.AnyJsonCodecs.anyToJson
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.RichThrowable
 import js7.base.utils.SideEffect.ImplicitSideEffect
-import io.circe.syntax.EncoderOps
-import io.circe.{Encoder, Json, Printer}
 import org.yaml.snakeyaml.DumperOptions.FlowStyle
 import org.yaml.snakeyaml.nodes.Tag
 import org.yaml.snakeyaml.{DumperOptions, Yaml}

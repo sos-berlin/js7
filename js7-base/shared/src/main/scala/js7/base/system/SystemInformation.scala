@@ -1,8 +1,8 @@
 package js7.base.system
 
+import java.lang.management.ManagementFactory.getOperatingSystemMXBean
 import js7.base.circeutils.AnyJsonCodecs.implicits._
 import js7.base.circeutils.CirceUtils.deriveCodec
-import java.lang.management.ManagementFactory.getOperatingSystemMXBean
 
 final case class SystemInformation(
   hostname: String,

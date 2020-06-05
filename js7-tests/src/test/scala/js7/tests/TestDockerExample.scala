@@ -1,6 +1,9 @@
 package js7.tests
 
 import com.google.inject.Guice
+import java.nio.file.Files.{createDirectory, setPosixFilePermissions}
+import java.nio.file.attribute.PosixFilePermissions
+import java.nio.file.{Files, Path}
 import js7.agent.RunningAgent
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.commands.AgentCommand
@@ -22,9 +25,6 @@ import js7.master.RunningMaster
 import js7.master.configuration.MasterConfiguration
 import js7.master.configuration.inject.MasterModule
 import js7.master.tests.TestEnvironment
-import java.nio.file.Files.{createDirectory, setPosixFilePermissions}
-import java.nio.file.attribute.PosixFilePermissions
-import java.nio.file.{Files, Path}
 import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.duration.DurationInt
 

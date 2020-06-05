@@ -1,6 +1,11 @@
 package js7.master.configuration
 
 import akka.util.Timeout
+import com.typesafe.config.{Config, ConfigFactory}
+import java.net.InetSocketAddress
+import java.nio.file.Files.createDirectory
+import java.nio.file.{Files, Path}
+import java.time.ZoneId
 import js7.base.problem.Checked._
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
@@ -18,11 +23,6 @@ import js7.data.master.MasterId
 import js7.master.cluster.ClusterConf
 import js7.master.data.MasterSnapshots.SnapshotJsonCodec
 import js7.master.data.events.MasterKeyedEventJsonCodec
-import com.typesafe.config.{Config, ConfigFactory}
-import java.net.InetSocketAddress
-import java.nio.file.Files.createDirectory
-import java.nio.file.{Files, Path}
-import java.time.ZoneId
 import scala.jdk.CollectionConverters._
 /**
   * @author Joacim Zschimmer

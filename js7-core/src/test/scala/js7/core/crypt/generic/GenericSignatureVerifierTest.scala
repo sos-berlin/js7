@@ -1,12 +1,12 @@
 package js7.core.crypt.generic
 
+import com.typesafe.config.ConfigFactory
 import js7.base.Problems.TamperedWithSignedMessageProblem
 import js7.base.problem.Checked.Ops
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.FileUtils.withTemporaryDirectory
 import js7.core.crypt.pgp.PgpSigner.readSecretKey
 import js7.core.crypt.pgp.{PgpSigner, PgpTest}
-import com.typesafe.config.ConfigFactory
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

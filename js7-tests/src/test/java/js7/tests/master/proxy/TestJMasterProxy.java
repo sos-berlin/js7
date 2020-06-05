@@ -1,5 +1,10 @@
 package js7.tests.master.proxy;
 
+import com.typesafe.config.ConfigFactory;
+import java.time.Instant;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 import js7.data.event.KeyedEvent;
 import js7.data.event.Stamped;
 import js7.data.order.OrderEvent;
@@ -8,11 +13,6 @@ import js7.proxy.javaapi.JCredentials;
 import js7.proxy.javaapi.JMasterProxy;
 import js7.proxy.javaapi.JProxyEventBus;
 import js7.proxy.javaapi.data.JMasterState;
-import com.typesafe.config.ConfigFactory;
-import java.time.Instant;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.stream.Collectors;
 import static java.lang.System.out;
 import static java.util.Arrays.asList;
 

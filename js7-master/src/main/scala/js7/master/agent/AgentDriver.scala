@@ -2,6 +2,7 @@ package js7.master.agent
 
 import akka.actor.{ActorRef, DeadLetterSuppression, Props}
 import cats.data.EitherT
+import com.typesafe.config.ConfigUtil
 import js7.agent.client.AgentClient
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{CoupleMaster, RegisterAsMaster}
@@ -35,7 +36,6 @@ import js7.master.configuration.MasterConfiguration
 import js7.master.data.MasterState
 import js7.master.data.events.MasterAgentEvent
 import js7.master.data.events.MasterAgentEvent.{AgentCouplingFailed, AgentRegisteredMaster}
-import com.typesafe.config.ConfigUtil
 import monix.eval.Task
 import monix.execution.atomic.{AtomicInt, AtomicLong}
 import monix.execution.{Cancelable, CancelableFuture, Scheduler}

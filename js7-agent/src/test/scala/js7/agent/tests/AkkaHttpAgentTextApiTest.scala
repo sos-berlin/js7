@@ -3,6 +3,7 @@ package js7.agent.tests
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.directives.SecurityDirectives.Authenticator
 import com.google.inject.{AbstractModule, Provides}
+import javax.inject.Singleton
 import js7.agent.client.AkkaHttpAgentTextApi
 import js7.agent.command.CommandHandler
 import js7.agent.configuration.AgentConfiguration
@@ -21,7 +22,6 @@ import js7.common.http.AkkaHttpClient
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.core.command.CommandMeta
-import javax.inject.Singleton
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Assertions._

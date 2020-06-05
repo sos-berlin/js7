@@ -1,5 +1,8 @@
 package js7.data.expression
 
+import fastparse.NoWhitespace._
+import io.circe.{Decoder, Encoder, Json}
+import java.lang.Character.{isUnicodeIdentifierPart, isUnicodeIdentifierStart}
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
 import js7.base.utils.Identifier.isIdentifier
 import js7.data.expression.Expression.NamedValue.{LastOccurred, ReturnCode}
@@ -7,9 +10,6 @@ import js7.data.workflow.Label
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.parser.ExpressionParser
 import js7.data.workflow.parser.Parsers.checkedParse
-import fastparse.NoWhitespace._
-import io.circe.{Decoder, Encoder, Json}
-import java.lang.Character.{isUnicodeIdentifierPart, isUnicodeIdentifierStart}
 import scala.collection.mutable
 
 /**

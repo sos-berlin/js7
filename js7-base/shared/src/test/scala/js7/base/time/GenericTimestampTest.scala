@@ -1,13 +1,13 @@
 package js7.base.time
 
+import io.circe.{Decoder, Encoder}
 import js7.base.circeutils.CirceUtils._
 import js7.base.utils.ScalaUtils._
 import js7.tester.CirceJsonTester.testJson
 import io.circe.{Decoder, Encoder}
 import io.circe.syntax.EncoderOps
-import java.time.Instant
-import scala.concurrent.duration._
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer

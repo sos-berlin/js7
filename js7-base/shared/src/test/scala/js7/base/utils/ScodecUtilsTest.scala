@@ -4,8 +4,8 @@ import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.RichThrowableEither
 import js7.base.utils.ScodecUtils._
-import scodec.bits.ByteVector
 import org.scalatest.freespec.AnyFreeSpec
+import scodec.bits.ByteVector
 
 /**
   * @author Joacim Zschimmer

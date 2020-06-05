@@ -1,10 +1,10 @@
 package js7.common.scalautil
 
+import com.typesafe.scalalogging.{Logger => ScalaLogger}
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.common.log.ConvertingLogger
-import com.typesafe.scalalogging.{Logger => ScalaLogger}
 import org.slf4j.{LoggerFactory, Marker, MarkerFactory}
 import scala.reflect.ClassTag
 

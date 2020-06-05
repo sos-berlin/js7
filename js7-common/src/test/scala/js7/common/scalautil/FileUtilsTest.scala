@@ -1,17 +1,17 @@
 package js7.common.scalautil
 
 import com.google.common.io.MoreFiles.touch
-import js7.base.problem.ProblemException
-import js7.common.scalautil.FileUtils.implicits._
-import js7.common.scalautil.FileUtils.syntax._
-import js7.common.scalautil.FileUtils.{autoDeleting, checkRelativePath, withTemporaryFile}
-import js7.common.scalautil.FileUtilsTest._
 import io.circe.Json
 import java.io.File
 import java.io.File.separator
 import java.nio.charset.StandardCharsets.{UTF_16BE, UTF_8}
 import java.nio.file.Files.{createTempDirectory, createTempFile, delete, exists}
 import java.nio.file.{Files, NotDirectoryException, Path, Paths}
+import js7.base.problem.ProblemException
+import js7.common.scalautil.FileUtils.implicits._
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.FileUtils.{autoDeleting, checkRelativePath, withTemporaryFile}
+import js7.common.scalautil.FileUtilsTest._
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._

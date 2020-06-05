@@ -2,16 +2,16 @@ package js7.common.akkautils
 
 import akka.actor.{Actor, ActorPath, ActorSystem, Props}
 import akka.util.{ByteString, Timeout}
+import com.typesafe.config.ConfigFactory
 import js7.base.time.ScalaTime._
 import js7.common.akkautils.Akkas._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
-import com.typesafe.config.ConfigFactory
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
+import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
 import scala.util.Random
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer

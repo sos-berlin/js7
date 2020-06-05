@@ -1,7 +1,7 @@
 package js7.common.akkahttp.https
 
-import js7.base.generic.SecretString
 import java.net.URL
+import js7.base.generic.SecretString
 
 /**
   * @author Joacim Zschimmer

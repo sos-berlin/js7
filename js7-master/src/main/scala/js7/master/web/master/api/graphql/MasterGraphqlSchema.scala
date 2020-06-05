@@ -1,5 +1,6 @@
 package js7.master.web.master.api.graphql
 
+import java.util.regex.Pattern
 import js7.base.generic.{GenericInt, GenericString}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
@@ -13,7 +14,6 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{AwaitOrder, End, Execute, Fork, Gap, Goto, If, IfFailedGoto, Instructions, Offer, TryInstruction}
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow, WorkflowPath}
-import java.util.regex.Pattern
 import sangria.ast
 import sangria.marshalling.FromInput.CoercedScalaResult
 import sangria.schema.{Argument, Field, InputType, IntType, InterfaceType, LeafType, ListType, LongType, Named, NullableType, ObjectType, OptionInputType, OptionType, OutputType, ScalarType, Schema, StringType, UnmodifiedType, fields, interfaces}

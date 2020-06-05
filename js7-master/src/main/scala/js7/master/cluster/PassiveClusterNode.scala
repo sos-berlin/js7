@@ -1,10 +1,19 @@
 package js7.master.cluster
 
+import com.softwaremill.diffx._
+import io.circe.Json
+import io.circe.syntax._
+import java.nio.ByteBuffer
+import java.nio.channels.FileChannel
+import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.Files.{exists, move, size}
+import java.nio.file.StandardCopyOption.ATOMIC_MOVE
+import java.nio.file.StandardOpenOption.{APPEND, CREATE, TRUNCATE_EXISTING, WRITE}
+import java.nio.file.{Path, Paths}
 import js7.base.circeutils.CirceUtils._
 import js7.base.circeutils.typed.TypedJsonCodec._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils._
@@ -29,20 +38,10 @@ import js7.master.client.HttpMasterApi
 import js7.master.cluster.ClusterCommon.clusterEventAndStateToString
 import js7.master.cluster.ObservablePauseDetector.RichPauseObservable
 import js7.master.cluster.PassiveClusterNode._
-import io.circe.Json
-import io.circe.syntax._
-import java.nio.ByteBuffer
-import java.nio.channels.FileChannel
-import java.nio.charset.StandardCharsets.UTF_8
-import java.nio.file.Files.{exists, move, size}
-import java.nio.file.StandardCopyOption.ATOMIC_MOVE
-import java.nio.file.StandardOpenOption.{APPEND, CREATE, TRUNCATE_EXISTING, WRITE}
-import java.nio.file.{Path, Paths}
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import scodec.bits.ByteVector
-import com.softwaremill.diffx._
 
 /*private[cluster]*/ final class PassiveClusterNode[S <: JournaledState[S]: Diff](
   ownId: ClusterNodeId,

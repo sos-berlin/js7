@@ -6,6 +6,10 @@ import akka.http.scaladsl.model.StatusCodes.{Forbidden, NotFound, OK}
 import akka.http.scaladsl.model.headers.{Accept, Location, RawHeader}
 import akka.http.scaladsl.model.{HttpEntity, HttpHeader, Uri => AkkaUri}
 import com.google.inject.{AbstractModule, Provides}
+import io.circe.syntax.EncoderOps
+import io.circe.{Json, JsonObject}
+import java.time.ZoneId
+import javax.inject.Singleton
 import js7.agent.data.views.AgentOverview
 import js7.base.BuildInfo
 import js7.base.auth.SessionToken
@@ -44,10 +48,6 @@ import js7.master.data.events.MasterEvent.MasterReady
 import js7.tester.CirceJsonTester.testJson
 import js7.tests.MasterWebServiceTest._
 import js7.tests.testenv.{DirectoryProvider, MasterAgentForScalaTest}
-import io.circe.syntax.EncoderOps
-import io.circe.{Json, JsonObject}
-import java.time.ZoneId
-import javax.inject.Singleton
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll

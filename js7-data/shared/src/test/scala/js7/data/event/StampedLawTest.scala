@@ -7,9 +7,9 @@ import js7.base.time.Timestamp
 import js7.data.event.Stamped._
 import org.scalacheck.Arbitrary
 import org.scalacheck.Arbitrary.arbitrary
+import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.prop.Configuration
 import org.typelevel.discipline.scalatest.FunSuiteDiscipline
-import org.scalatest.funsuite.AnyFunSuite
 
 /**
   * @author Joacim Zschimmer

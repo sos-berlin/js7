@@ -1,11 +1,11 @@
 package js7.data.agent
 
+import io.circe.syntax.EncoderOps
+import io.circe.{Decoder, Encoder, Json, JsonObject}
 import js7.base.circeutils.CirceUtils._
 import js7.base.utils.ScalaUtils.reuseIfEqual
 import js7.base.web.Uri
 import js7.data.filebased.{FileBased, FileBasedId}
-import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, Json, JsonObject}
 
 /**
   * @author Joacim Zschimmer

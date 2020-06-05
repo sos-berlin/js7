@@ -2,6 +2,9 @@ package js7.core.event.journal
 
 import akka.actor.{Actor, ActorRef, DeadLetterSuppression, Props, Stash, Terminated}
 import akka.util.ByteString
+import java.nio.file.Files.{delete, exists, move}
+import java.nio.file.Path
+import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import js7.base.circeutils.CirceUtils._
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.syntax.RichScheduler
@@ -31,9 +34,6 @@ import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, EventId, JournalEvent, JournalHeader, JournalId, JournalState, JournaledState, KeyedEvent, Stamped}
-import java.nio.file.Files.{delete, exists, move}
-import java.nio.file.Path
-import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import monix.eval.Task
 import monix.execution.cancelables.SerialCancelable
 import monix.execution.{Cancelable, Scheduler}

@@ -1,5 +1,7 @@
 package js7.master.tests
 
+import java.nio.file.Files.{createDirectories, createTempDirectory}
+import java.nio.file.Path
 import js7.base.problem.Checked.Ops
 import js7.base.web.Uri
 import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
@@ -14,8 +16,6 @@ import js7.data.workflow.instructions.{Execute, ExplicitEnd}
 import js7.data.workflow.parser.WorkflowParser
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.master.tests.FileBasedsTest._
-import java.nio.file.Files.{createDirectories, createTempDirectory}
-import java.nio.file.Path
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

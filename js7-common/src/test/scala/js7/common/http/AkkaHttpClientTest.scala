@@ -8,6 +8,8 @@ import akka.http.scaladsl.model.headers.`Content-Type`
 import akka.http.scaladsl.model.{HttpEntity, HttpResponse}
 import akka.http.scaladsl.server.Directives._
 import cats.syntax.option._
+import java.net.ServerSocket
+import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.auth.SessionToken
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Problem
@@ -23,8 +25,6 @@ import js7.common.http.AkkaHttpClient.HttpException
 import js7.common.http.AkkaHttpClientTest._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import java.net.ServerSocket
-import java.nio.charset.StandardCharsets.UTF_8
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll

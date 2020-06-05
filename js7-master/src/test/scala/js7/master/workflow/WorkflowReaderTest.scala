@@ -1,5 +1,6 @@
 package js7.master.workflow
 
+import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.problem.Checked.Ops
 import js7.common.http.CirceToYaml.ToYamlString
@@ -12,9 +13,8 @@ import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.parser.WorkflowParser
 import js7.data.workflow.{Workflow, WorkflowPath}
-import io.circe.syntax.EncoderOps
-import scala.collection.mutable
 import org.scalatest.freespec.AnyFreeSpec
+import scala.collection.mutable
 
 /**
   * @author Joacim Zschimmer

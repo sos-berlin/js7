@@ -4,6 +4,8 @@ import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.{OK, TooManyRequests}
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.testkit.RouteTestTimeout
+import java.nio.file.Files
+import java.util.UUID.randomUUID
 import js7.base.crypt.silly.SillySigner
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
@@ -33,8 +35,6 @@ import js7.master.configuration.MasterConfiguration
 import js7.master.data.MasterSnapshots.MasterMetaState
 import js7.master.web.master.api.fatevent.FatEventRouteTest._
 import js7.master.web.master.api.test.RouteTester
-import java.nio.file.Files
-import java.util.UUID.randomUUID
 import monix.execution.Scheduler
 import org.scalatest.Args
 import org.scalatest.freespec.AnyFreeSpec

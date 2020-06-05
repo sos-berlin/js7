@@ -1,10 +1,10 @@
 package js7.base.generic
 
+import io.circe.{Decoder, Encoder, Json}
+import java.util.Objects.requireNonNull
 import js7.base.circeutils.CirceUtils
 import js7.base.convert.As
 import js7.base.generic.SecretString._
-import io.circe.{Decoder, Encoder, Json}
-import java.util.Objects.requireNonNull
 import scala.annotation.tailrec
 
 /**

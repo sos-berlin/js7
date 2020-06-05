@@ -1,6 +1,8 @@
 package js7.core.event.journal.write
 
 import akka.util.ByteString
+import io.circe.syntax.EncoderOps
+import java.nio.file.Path
 import js7.base.circeutils.CirceUtils._
 import js7.base.utils.Assertions.assertThat
 import js7.common.event.PositionAnd
@@ -11,8 +13,6 @@ import js7.core.event.journal.watch.JournalingObserver
 import js7.core.event.journal.write.EventJournalWriter._
 import js7.data.event.JournalSeparators.{Commit, Transaction}
 import js7.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
-import io.circe.syntax.EncoderOps
-import java.nio.file.Path
 import scala.concurrent.duration.FiniteDuration
 
 /**

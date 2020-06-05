@@ -1,10 +1,10 @@
 package js7.core.event.journal.write
 
 import akka.util.ByteString
-import js7.core.common.jsonseq.OutputStreamJsonSeqWriter
 import java.io.{BufferedOutputStream, FileOutputStream}
 import java.nio.file.{Files, Path}
 import java.util.concurrent.atomic.AtomicBoolean
+import js7.core.common.jsonseq.OutputStreamJsonSeqWriter
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
 

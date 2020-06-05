@@ -1,5 +1,7 @@
 package js7.tests
 
+import com.typesafe.config.ConfigFactory
+import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.{RichCirceString, RichJson}
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
@@ -17,8 +19,6 @@ import js7.master.data.events.MasterAgentEvent.AgentCouplingFailed
 import js7.tests.JournalIdTest._
 import js7.tests.testenv.DirectoryProvider.script
 import js7.tests.testenv.DirectoryProviderForScalaTest
-import com.typesafe.config.ConfigFactory
-import io.circe.syntax.EncoderOps
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 

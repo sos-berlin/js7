@@ -1,7 +1,7 @@
 package js7.proxy.javaapi.utils
 
-import js7.base.annotation.javaApi
 import io.vavr.control.{Either => VEither}
+import js7.base.annotation.javaApi
 
 @javaApi
 object VavrConversions

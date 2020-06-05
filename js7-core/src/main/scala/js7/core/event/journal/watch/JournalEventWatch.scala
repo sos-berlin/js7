@@ -1,5 +1,9 @@
 package js7.core.event.journal.watch
 
+import com.typesafe.config.{Config, ConfigFactory}
+import java.io.IOException
+import java.nio.file.Files.delete
+import java.nio.file.Path
 import js7.base.problem.Checked.{CheckedOption, Ops}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
@@ -14,10 +18,6 @@ import js7.core.event.journal.files.JournalFiles.listJournalFiles
 import js7.core.event.journal.watch.JournalEventWatch._
 import js7.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
 import js7.data.problems.UnknownEventIdProblem
-import com.typesafe.config.{Config, ConfigFactory}
-import java.io.IOException
-import java.nio.file.Files.delete
-import java.nio.file.Path
 import monix.execution.atomic.AtomicAny
 import monix.reactive.Observable
 import scala.annotation.tailrec

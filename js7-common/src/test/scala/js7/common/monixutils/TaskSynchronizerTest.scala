@@ -1,13 +1,13 @@
 package js7.common.monixutils
 
-import js7.common.scalautil.Futures.implicits._
 import java.lang.Thread.sleep
+import js7.common.scalautil.Futures.implicits._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.atomic.AtomicInt
+import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
 import scala.concurrent.duration._
-import org.scalatest.freespec.AnyFreeSpec
 
 /** Runs one task after the other.
   * @author Joacim Zschimmer

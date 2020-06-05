@@ -1,8 +1,8 @@
 package js7.base.generic
 
-import cats.syntax.monoid._
-import cats.syntax.foldable._
 import cats.instances.list._
+import cats.syntax.foldable._
+import cats.syntax.monoid._
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

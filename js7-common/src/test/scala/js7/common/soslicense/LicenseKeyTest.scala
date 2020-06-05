@@ -1,9 +1,9 @@
 package js7.common.soslicense
 
+import java.time.LocalDate
 import js7.common.soslicense.LicenseKey.Parameter
 import js7.common.soslicense.LicenseKey.Parameter.{Expired, Missing, OK}
 import js7.common.soslicense.Parameters._
-import java.time.LocalDate
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

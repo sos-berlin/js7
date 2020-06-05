@@ -1,11 +1,11 @@
 package js7.core.event.journal.recover
 
 import akka.actor.{ActorRef, ActorRefFactory}
+import com.typesafe.config.Config
 import js7.core.event.journal.data.{JournalMeta, RecoveredJournalingActors}
 import js7.core.event.journal.watch.JournalEventWatch
 import js7.data.cluster.ClusterState
 import js7.data.event.{EventId, JournalId, JournaledState, JournaledStateBuilder}
-import com.typesafe.config.Config
 import scala.concurrent.duration.Deadline
 
 final case class Recovered[S <: JournaledState[S]](

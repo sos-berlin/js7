@@ -1,5 +1,6 @@
 package js7.tests
 
+import java.nio.file.Files.{createDirectories, createDirectory}
 import js7.agent.RunningAgent
 import js7.agent.configuration.AgentConfiguration
 import js7.base.crypt.silly.{SillySignature, SillySigner}
@@ -25,7 +26,6 @@ import js7.master.configuration.MasterConfiguration
 import js7.master.data.MasterCommand.ReplaceRepo
 import js7.master.data.events.MasterAgentEvent.AgentCouplingFailed
 import js7.tests.MasterAgentWithoutAuthenticationTest._
-import java.nio.file.Files.{createDirectories, createDirectory}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._

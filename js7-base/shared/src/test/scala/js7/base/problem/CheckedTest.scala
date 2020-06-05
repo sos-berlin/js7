@@ -10,11 +10,11 @@ import cats.syntax.option._
 import cats.syntax.semigroup._
 import cats.syntax.traverse._
 import cats.{Applicative, Apply}
+import io.circe.generic.JsonCodec
 import js7.base.circeutils.CirceUtils._
 import js7.base.generic.Completed
 import js7.base.problem.Checked._
 import js7.tester.CirceJsonTester.testJson
-import io.circe.generic.JsonCodec
 import monix.eval.Coeval
 import org.scalatest.freespec.AnyFreeSpec
 import scala.util.{Failure, Success}

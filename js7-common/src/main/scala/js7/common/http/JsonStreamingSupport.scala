@@ -8,10 +8,10 @@ import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.model.{ContentType, HttpEntity, MediaRange, MediaType}
 import akka.stream.scaladsl.Flow
 import akka.util.ByteString
-import js7.base.circeutils.CirceUtils.implicits.CompactPrinter
-import js7.base.utils.Ascii
 import io.circe.Encoder
 import io.circe.syntax.EncoderOps
+import js7.base.circeutils.CirceUtils.implicits.CompactPrinter
+import js7.base.utils.Ascii
 
 /**
   * @author Joacim Zschimmer

@@ -1,5 +1,6 @@
 package js7.data.fatevent
 
+import io.circe.generic.JsonCodec
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.time.Timestamp
@@ -12,7 +13,6 @@ import js7.data.system.{Stderr, Stdout, StdoutOrStderr}
 import js7.data.workflow.instructions.Fork
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.WorkflowPosition
-import io.circe.generic.JsonCodec
 
 /**
   * @author Joacim Zschimmer

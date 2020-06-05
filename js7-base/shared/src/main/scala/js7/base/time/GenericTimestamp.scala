@@ -1,8 +1,8 @@
 package js7.base.time
 
 import cats.Show
-import js7.base.time.GenericTimestamp._
 import io.circe
+import js7.base.time.GenericTimestamp._
 import scala.concurrent.duration._
 
 /**

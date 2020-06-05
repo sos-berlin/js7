@@ -1,6 +1,7 @@
 package js7.core.event.journal.write
 
 import akka.util.ByteString
+import java.nio.file.Path
 import js7.base.circeutils.CirceUtils._
 import js7.base.time.ScalaTime._
 import js7.common.scalautil.Logger
@@ -8,7 +9,6 @@ import js7.core.event.journal.data.JournalMeta
 import js7.core.event.journal.files.JournalFiles._
 import js7.data.event.EventId
 import js7.data.event.JournalSeparators.{SnapshotFooter, SnapshotHeader}
-import java.nio.file.Path
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 

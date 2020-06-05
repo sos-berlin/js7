@@ -4,6 +4,9 @@ import akka.http.scaladsl.model.ContentTypes.`text/html(UTF-8)`
 import akka.http.scaladsl.model.StatusCodes.BadRequest
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
+import io.circe.parser.{parse => parseJson}
+import io.circe.syntax.EncoderOps
+import io.circe.{Json, JsonObject}
 import js7.base.auth.ValidUserPermission
 import js7.base.circeutils.CirceUtils._
 import js7.base.utils.ScalaUtils.RichThrowable
@@ -17,9 +20,6 @@ import js7.data.order.{Order, OrderId}
 import js7.master.OrderApi
 import js7.master.web.common.MasterRouteProvider
 import js7.master.web.master.api.graphql.GraphqlRoute._
-import io.circe.parser.{parse => parseJson}
-import io.circe.syntax.EncoderOps
-import io.circe.{Json, JsonObject}
 import monix.execution.Scheduler
 import sangria.ast.Document
 import sangria.execution.Executor

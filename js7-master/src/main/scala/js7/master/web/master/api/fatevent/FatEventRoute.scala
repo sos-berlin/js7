@@ -3,6 +3,7 @@ package js7.master.web.master.api.fatevent
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.server.Directives.{complete, get, pathEnd}
 import akka.http.scaladsl.server.Route
+import java.util.concurrent.Executors.newSingleThreadExecutor
 import js7.base.auth.ValidUserPermission
 import js7.base.time.ScalaTime._
 import js7.base.utils.IntelliJUtils.intelliJuseImport
@@ -24,7 +25,6 @@ import js7.master.data.events.{MasterAgentEvent, MasterEvent}
 import js7.master.problems.FatEventServiceBusyProblem
 import js7.master.web.common.MasterRouteProvider
 import js7.master.web.master.api.fatevent.FatEventRoute._
-import java.util.concurrent.Executors.newSingleThreadExecutor
 import monix.eval.Task
 import monix.execution.{Scheduler, UncaughtExceptionReporter}
 import org.jetbrains.annotations.TestOnly

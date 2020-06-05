@@ -1,8 +1,8 @@
 package js7.common.http.configuration
 
+import com.typesafe.config.Config
 import js7.base.problem.Checked
 import js7.common.time.JavaTimeConverters._
-import com.typesafe.config.Config
 
 object RecouplingStreamReaderConfs
 {

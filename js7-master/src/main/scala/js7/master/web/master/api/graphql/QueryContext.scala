@@ -1,10 +1,10 @@
 package js7.master.web.master.api.graphql
 
+import java.util.regex.Pattern
 import js7.base.problem.Checked
 import js7.data.filebased.FileBased
 import js7.data.order.{Order, OrderId}
 import js7.data.workflow.WorkflowPath
-import java.util.regex.Pattern
 import monix.eval.Task
 import monix.execution.Scheduler
 

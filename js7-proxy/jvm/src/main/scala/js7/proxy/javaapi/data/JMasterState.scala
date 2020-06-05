@@ -1,5 +1,6 @@
 package js7.proxy.javaapi.data
 
+import io.vavr.control.{Either => VEither}
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem
 import js7.base.utils.Collections.implicits.RichTraversable
@@ -7,7 +8,6 @@ import js7.data.order.{Order, OrderId}
 import js7.data.workflow.Workflow
 import js7.master.data.MasterState
 import js7.proxy.javaapi.utils.VavrConversions._
-import io.vavr.control.{Either => VEither}
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
 import scala.jdk.StreamConverters._

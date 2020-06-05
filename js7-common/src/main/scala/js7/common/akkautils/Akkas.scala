@@ -5,11 +5,11 @@ import akka.actor.{ActorContext, ActorPath, ActorSystem, Cancellable, ChildActor
 import akka.http.scaladsl.model.Uri
 import akka.util.{ByteString, Timeout}
 import cats.effect.Resource
+import com.typesafe.config.{Config, ConfigFactory}
 import js7.base.time.ScalaTime._
 import js7.common.configutils.Configs
 import js7.common.scalautil.Logger
 import js7.common.utils.JavaResource
-import com.typesafe.config.{Config, ConfigFactory}
 import monix.eval.Task
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._

@@ -4,15 +4,15 @@ import cats.effect.SyncIO
 import com.google.common.base.Charsets._
 import com.google.common.io.ByteStreams.toByteArray
 import com.google.common.io.Resources
+import java.io.{File, InputStream}
+import java.net.{URI, URL}
+import java.nio.file.{CopyOption, DirectoryNotEmptyException, FileAlreadyExistsException, Files, Path}
+import java.util.Objects.requireNonNull
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.AutoClosing.autoClosing
 import js7.common.scalautil.Logger
 import js7.common.utils.JavaResource._
-import java.io.{File, InputStream}
-import java.net.{URI, URL}
-import java.nio.file.{CopyOption, DirectoryNotEmptyException, FileAlreadyExistsException, Files, Path}
-import java.util.Objects.requireNonNull
 import scala.language.implicitConversions
 
 /**

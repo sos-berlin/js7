@@ -1,5 +1,7 @@
 package js7.data.workflow
 
+import io.circe.syntax.EncoderOps
+import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Checked._
 import js7.base.problem.Problems.UnknownKeyProblem
@@ -20,8 +22,6 @@ import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{End, Execute, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, Retry, TryInstruction}
 import js7.data.workflow.position.{BranchPath, InstructionNr, Position, WorkflowBranchPath, WorkflowPosition}
-import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, JsonObject}
 import scala.annotation.tailrec
 
 /**

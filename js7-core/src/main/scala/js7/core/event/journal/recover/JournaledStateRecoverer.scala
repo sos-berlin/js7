@@ -1,5 +1,7 @@
 package js7.core.event.journal.recover
 
+import com.typesafe.config.Config
+import java.nio.file.{Files, Path}
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.SetOnce
 import js7.common.scalautil.Logger
@@ -13,8 +15,6 @@ import js7.core.event.journal.recover.JournalProgress.{AfterSnapshotSection, InC
 import js7.core.event.journal.recover.JournaledStateRecoverer._
 import js7.core.event.journal.watch.JournalEventWatch
 import js7.data.event.{EventId, JournalId, JournaledState, JournaledStateBuilder}
-import com.typesafe.config.Config
-import java.nio.file.{Files, Path}
 import scala.concurrent.duration.Deadline
 import scala.concurrent.duration.Deadline.now
 

@@ -2,8 +2,8 @@ package js7.common.time
 
 import js7.base.time.ScalaTime._
 import js7.common.time.TimeoutWithSteps._
-import scala.concurrent.duration._
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.duration._
 
 final class TimeoutWithStepsTest extends AnyFreeSpec {
 

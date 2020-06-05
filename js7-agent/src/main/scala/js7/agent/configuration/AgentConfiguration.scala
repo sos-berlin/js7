@@ -1,6 +1,11 @@
 package js7.agent.configuration
 
 import akka.util.Timeout
+import com.typesafe.config.{Config, ConfigFactory}
+import java.net.InetSocketAddress
+import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_8}
+import java.nio.file.Files.{createDirectory, exists}
+import java.nio.file.{Path, Paths}
 import js7.agent.configuration.AgentConfiguration._
 import js7.agent.data.{KillScriptConf, ProcessKillScript}
 import js7.base.convert.AsJava.asAbsolutePath
@@ -20,11 +25,6 @@ import js7.common.utils.Tests.isTest
 import js7.core.configuration.CommonConfiguration
 import js7.core.event.journal.JournalConf
 import js7.taskserver.task.process.ProcessKillScriptProvider
-import com.typesafe.config.{Config, ConfigFactory}
-import java.net.InetSocketAddress
-import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_8}
-import java.nio.file.Files.{createDirectory, exists}
-import java.nio.file.{Path, Paths}
 import org.scalactic.Requirements._
 import scala.jdk.CollectionConverters._
 

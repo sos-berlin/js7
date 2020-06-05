@@ -5,11 +5,10 @@ import js7.base.utils.SideEffect.ImplicitSideEffect
 import js7.common.scalautil.Logger
 import js7.common.time.WaitForCondition._
 import js7.common.time.WaitForConditionExclusiveTest._
+import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
-import org.scalatest.matchers
-import org.scalatest.freespec.AnyFreeSpec
 
 final class WaitForConditionExclusiveTest extends AnyFreeSpec
 {

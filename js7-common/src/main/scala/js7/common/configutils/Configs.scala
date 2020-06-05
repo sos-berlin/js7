@@ -1,16 +1,16 @@
 package js7.common.configutils
 
+import com.typesafe.config.ConfigRenderOptions.concise
+import com.typesafe.config.{Config, ConfigFactory, ConfigParseOptions, ConfigValue}
+import java.nio.file.Files.exists
+import java.nio.file.Path
+import java.time.Duration
 import js7.base.convert.ConvertiblePartialFunctions.wrappedConvert
 import js7.base.convert.{As, ConvertiblePartialFunction}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalazStyle.OptionRichBoolean
 import js7.common.scalautil.Logger
 import js7.common.utils.JavaResource
-import com.typesafe.config.ConfigRenderOptions.concise
-import com.typesafe.config.{Config, ConfigFactory, ConfigParseOptions, ConfigValue}
-import java.nio.file.Files.exists
-import java.nio.file.Path
-import java.time.Duration
 import scala.collection.immutable.VectorBuilder
 import scala.jdk.CollectionConverters._
 /**

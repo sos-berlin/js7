@@ -1,10 +1,10 @@
 package js7.data.filebased
 
+import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils._
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.problem.ProblemException
 import js7.tester.CirceJsonTester.testJson
-import io.circe.syntax.EncoderOps
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

@@ -8,6 +8,9 @@ import com.google.inject.Stage.{DEVELOPMENT, PRODUCTION}
 import com.google.inject.util.Modules
 import com.google.inject.util.Modules.EMPTY_MODULE
 import com.google.inject.{Guice, Injector, Module}
+import com.typesafe.config.{Config, ConfigFactory}
+import java.nio.file.Files.deleteIfExists
+import java.nio.file.Path
 import js7.base.auth.{SimpleUser, UserAndPassword}
 import js7.base.eventbus.{EventPublisher, StandardEventBus}
 import js7.base.generic.Completed
@@ -49,9 +52,6 @@ import js7.master.configuration.inject.MasterModule
 import js7.master.data.{MasterCommand, MasterState}
 import js7.master.problems.MasterIsNotYetReadyProblem
 import js7.master.web.MasterWebServer
-import com.typesafe.config.{Config, ConfigFactory}
-import java.nio.file.Files.deleteIfExists
-import java.nio.file.Path
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly

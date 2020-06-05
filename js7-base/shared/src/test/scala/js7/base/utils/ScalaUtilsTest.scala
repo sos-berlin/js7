@@ -1,10 +1,10 @@
 package js7.base.utils
 
+import java.util.concurrent.atomic.AtomicBoolean
 import js7.base.exceptions.StandardPublicException
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils._
 import js7.base.utils.ScalaUtils.implicits._
-import java.util.concurrent.atomic.AtomicBoolean
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
 import scala.reflect.ClassTag

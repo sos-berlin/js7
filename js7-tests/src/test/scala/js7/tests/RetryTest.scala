@@ -1,5 +1,6 @@
 package js7.tests
 
+import com.typesafe.config.ConfigFactory
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
@@ -18,12 +19,11 @@ import js7.data.workflow.position.BranchId.{Else, Then, catch_, try_}
 import js7.data.workflow.position.Position
 import js7.tests.RetryTest._
 import js7.tests.testenv.MasterAgentForScalaTest
-import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler.Implicits.global
+import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
-import org.scalatest.freespec.AnyFreeSpec
 
 final class RetryTest extends AnyFreeSpec with MasterAgentForScalaTest
 {

@@ -2,6 +2,7 @@ package js7.agent.task
 
 import akka.actor.{Actor, ActorSystem, Cancellable, DeadLetterSuppression, PoisonPill, Props, Status}
 import akka.dispatch.{PriorityGenerator, UnboundedStablePriorityMailbox}
+import com.typesafe.config.Config
 import js7.agent.data.views.TaskRegisterOverview
 import js7.agent.data.{AgentTaskId, KillScriptConf}
 import js7.agent.task.TaskRegisterActor._
@@ -12,7 +13,6 @@ import js7.base.time.ScalaTime._
 import js7.common.scalautil.Logger
 import js7.common.system.OperatingSystem.isWindows
 import js7.data.job.TaskId
-import com.typesafe.config.Config
 import scala.collection.mutable
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline

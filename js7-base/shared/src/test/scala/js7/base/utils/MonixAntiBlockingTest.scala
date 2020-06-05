@@ -2,9 +2,9 @@ package js7.base.utils
 
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future, Promise}
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer

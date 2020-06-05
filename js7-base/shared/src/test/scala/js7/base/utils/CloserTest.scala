@@ -1,12 +1,12 @@
 package js7.base.utils
 
-import js7.base.utils.CloserTest._
 import java.util.concurrent.ConcurrentLinkedQueue
+import js7.base.utils.CloserTest._
 import monix.execution.atomic.AtomicBoolean
+import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 import scala.util.control.NoStackTrace
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer

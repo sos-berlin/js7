@@ -1,8 +1,8 @@
 package js7.data.workflow.instructions
 
+import io.circe.generic.JsonCodec
 import js7.data.source.SourcePos
 import js7.data.workflow.Instruction
-import io.circe.generic.JsonCodec
 
 /** reduceForAgent uses Gap for all instructions not executable on the requested Agent.
   * @author Joacim Zschimmer

@@ -1,5 +1,7 @@
 package js7.taskserver.task.process
 
+import java.nio.file.Files.{delete, exists}
+import java.nio.file.Path
 import js7.agent.data.ProcessKillScript
 import js7.base.time.ScalaTime._
 import js7.base.utils.HasCloser
@@ -11,8 +13,6 @@ import js7.common.time.WaitForCondition.waitForCondition
 import js7.common.utils.Exceptions.ignoreException
 import js7.common.utils.JavaResource
 import js7.taskserver.task.process.ProcessKillScriptProvider._
-import java.nio.file.Files.{delete, exists}
-import java.nio.file.Path
 
 /**
  * @author Joacim Zschimmer

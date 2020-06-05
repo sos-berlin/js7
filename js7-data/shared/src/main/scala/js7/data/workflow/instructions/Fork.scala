@@ -1,5 +1,7 @@
 package js7.data.workflow.instructions
 
+import io.circe._
+import io.circe.syntax._
 import js7.base.circeutils.CirceUtils._
 import js7.base.generic.GenericString
 import js7.base.problem.Checked.Ops
@@ -11,8 +13,6 @@ import js7.data.source.SourcePos
 import js7.data.workflow.instructions.Fork._
 import js7.data.workflow.position.BranchId
 import js7.data.workflow.{Instruction, Workflow}
-import io.circe._
-import io.circe.syntax._
 import scala.language.implicitConversions
 
 /**

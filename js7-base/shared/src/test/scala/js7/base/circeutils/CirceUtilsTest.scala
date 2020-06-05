@@ -1,11 +1,11 @@
 package js7.base.circeutils
 
+import io.circe.syntax.EncoderOps
+import io.circe.{Decoder, Json, JsonObject}
 import js7.base.circeutils.CirceUtils._
 import js7.base.generic.GenericString
 import js7.base.problem.Problem
 import js7.tester.CirceJsonTester.testJson
-import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Json, JsonObject}
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.immutable.SeqMap
 

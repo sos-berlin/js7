@@ -1,11 +1,11 @@
 package js7.common.configutils
 
+import com.typesafe.config.{ConfigException, ConfigFactory}
 import js7.base.problem.Problem
 import js7.common.configutils.Configs._
 import js7.common.configutils.ConfigsTest._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.FileUtils.withTemporaryDirectory
-import com.typesafe.config.{ConfigException, ConfigFactory}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

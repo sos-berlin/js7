@@ -1,6 +1,7 @@
 package js7.master.client
 
 import cats.effect.Resource
+import io.circe.{Decoder, Encoder}
 import js7.base.auth.UserAndPassword
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.Completed
@@ -16,7 +17,6 @@ import js7.data.order.{FreshOrder, Order, OrdersOverview}
 import js7.data.workflow.Workflow
 import js7.master.client.HttpMasterApi._
 import js7.master.data.{MasterCommand, MasterOverview, MasterSnapshots}
-import io.circe.{Decoder, Encoder}
 import monix.eval.Task
 import monix.reactive.Observable
 import scala.concurrent.duration._

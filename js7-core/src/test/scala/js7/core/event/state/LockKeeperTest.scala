@@ -1,11 +1,11 @@
 package js7.core.event.state
 
+import java.util.concurrent.ConcurrentHashMap
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.Logger
 import js7.core.event.state.LockKeeperTest._
-import java.util.concurrent.ConcurrentHashMap
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec

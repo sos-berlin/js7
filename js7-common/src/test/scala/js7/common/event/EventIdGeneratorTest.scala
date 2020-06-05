@@ -1,15 +1,15 @@
 package js7.common.event
 
+import java.util.concurrent.ConcurrentHashMap
 import js7.base.time.ScalaTime._
 import js7.common.event
 import js7.common.scalautil.Futures.implicits._
 import js7.data.event.EventId
-import java.util.concurrent.ConcurrentHashMap
+import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.jdk.CollectionConverters._
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer

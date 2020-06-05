@@ -1,8 +1,8 @@
 package js7.common.xml
 
+import javax.xml.stream.XMLEventReader
 import js7.common.scalautil.xmls.ScalaXMLEventReader
 import js7.common.scalautil.xmls.XmlSources.stringToSource
-import javax.xml.stream.XMLEventReader
 import scala.xml.{TopScope, UnprefixedAttribute}
 
 /**

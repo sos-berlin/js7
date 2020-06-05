@@ -2,6 +2,8 @@ package js7.agent.configuration.inject
 
 import akka.actor.{ActorRefFactory, ActorSystem}
 import com.google.inject.{AbstractModule, Provides}
+import com.typesafe.config.Config
+import javax.inject.Singleton
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.Akkas.newAgentActorSystem
 import js7.agent.web.AgentWebServer
@@ -14,8 +16,6 @@ import js7.common.event.EventIdGenerator
 import js7.common.scalautil.IOExecutor
 import js7.core.cluster.ClusterWatchRegister
 import js7.core.system.ThreadPools
-import com.typesafe.config.Config
-import javax.inject.Singleton
 import monix.execution.Scheduler
 import scala.concurrent.ExecutionContext
 

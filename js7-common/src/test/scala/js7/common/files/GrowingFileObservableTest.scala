@@ -1,17 +1,17 @@
 package js7.common.files
 
+import java.util.concurrent.ArrayBlockingQueue
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScodecUtils.RichByteVector
 import js7.common.scalautil.FileUtils._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.MonixUtils.syntax._
-import java.util.concurrent.ArrayBlockingQueue
 import monix.execution.Scheduler.Implicits.global
+import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
 import scala.util.Random
 import scodec.bits.ByteVector
 import scodec.interop.cats._
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer

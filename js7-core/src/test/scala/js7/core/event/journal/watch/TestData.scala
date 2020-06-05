@@ -1,6 +1,8 @@
 package js7.core.event.journal.watch
 
 import akka.util.ByteString
+import java.nio.file.Path
+import java.util.UUID
 import js7.base.circeutils.CirceUtils.RichJsonObject
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.AutoClosing.autoClosing
@@ -10,8 +12,6 @@ import js7.data.event.JournalEvent.SnapshotTaken
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, JournalEvent, JournalHeader, JournalId, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
-import java.nio.file.Path
-import java.util.UUID
 
 /**
   * @author Joacim Zschimmer

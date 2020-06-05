@@ -8,6 +8,7 @@ import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpRequest, HttpResponse, MessageEntity}
 import akka.stream.ActorMaterializer
 import akka.util.ByteString
+import io.circe.generic.semiauto.deriveEncoder
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
@@ -15,11 +16,10 @@ import js7.common.akkahttp.StandardMarshallers._
 import js7.common.akkautils.Akkas.newActorSystem
 import js7.common.http.CirceJsonSupport._
 import js7.common.scalautil.Futures.implicits._
-import io.circe.generic.semiauto.deriveEncoder
 import org.scalatest.BeforeAndAfterAll
+import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer

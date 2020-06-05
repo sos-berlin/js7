@@ -1,5 +1,7 @@
 package js7.agent.data.commands
 
+import io.circe.Json
+import java.util.UUID
 import js7.agent.data.commands.AgentCommand.{Batch, DetachOrder, NoOperation, ShutDown}
 import js7.base.circeutils.CirceUtils._
 import js7.base.crypt.{GenericSignature, SignedString}
@@ -11,8 +13,6 @@ import js7.data.order.{Order, OrderId}
 import js7.data.workflow.position.Position
 import js7.data.workflow.test.TestSetting.SimpleTestWorkflow
 import js7.tester.CirceJsonTester.testJson
-import io.circe.Json
-import java.util.UUID
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.DurationInt
 

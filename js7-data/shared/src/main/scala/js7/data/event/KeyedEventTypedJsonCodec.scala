@@ -1,12 +1,12 @@
 package js7.data.event
 
+import io.circe.syntax.EncoderOps
+import io.circe.{Decoder, Encoder, HCursor, Json}
 import js7.base.circeutils.typed.TypedJsonCodec.{TypeFieldName, UnknownClassForJsonException, UnknownJsonTypeException, typeName, unknownJsonTypeFailure}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.Collections._
 import js7.base.utils.Collections.implicits.RichPairTraversable
 import js7.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
-import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, HCursor, Json}
 import scala.reflect.ClassTag
 
 /**

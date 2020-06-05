@@ -1,8 +1,9 @@
 package js7.tests.master.load
 
+import com.typesafe.config.ConfigFactory
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
-import js7.base.time.Stopwatch
+import js7.base.time.{Stopwatch, Timestamp}
 import js7.common.process.Processes.{ShellFileExtension => sh}
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
@@ -13,13 +14,11 @@ import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.parser.WorkflowParser
+import js7.master.data.MasterCommand.TakeSnapshot
 import js7.tests.master.load.ManyOrdersTest._
 import js7.tests.testenv.DirectoryProvider.script
 import js7.tests.testenv.MasterAgentForScalaTest
-import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler.Implicits.global
-import js7.base.time.Timestamp
-import js7.master.data.MasterCommand.TakeSnapshot
 import monix.execution.atomic.AtomicInt
 import org.scalatest.freespec.AnyFreeSpec
 

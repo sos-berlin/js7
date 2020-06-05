@@ -1,7 +1,7 @@
 package js7.data.system
 
-import js7.base.generic.GenericString
 import io.circe.{Decoder, DecodingFailure, Encoder, Json, KeyDecoder, KeyEncoder}
+import js7.base.generic.GenericString
 
 /**
  * @author Joacim Zschimmer

@@ -1,5 +1,6 @@
 package js7.master.client
 
+import io.circe.{Decoder, Encoder}
 import js7.base.problem.Checked
 import js7.data.agent.AgentRef
 import js7.data.cluster.ClusterState
@@ -8,7 +9,6 @@ import js7.data.fatevent.OrderFatEvent
 import js7.data.order.{Order, OrdersOverview}
 import js7.data.workflow.Workflow
 import js7.master.data.{MasterCommand, MasterOverview}
-import io.circe.{Decoder, Encoder}
 import monix.eval.Task
 import monix.reactive.Observable
 import scala.concurrent.duration.FiniteDuration

@@ -1,5 +1,8 @@
 package js7.tests.core
 
+import com.typesafe.config.ConfigFactory
+import io.circe.Decoder
+import java.net.{InetAddress, InetSocketAddress}
 import js7.base.auth.{SessionToken, SimpleUser}
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
@@ -25,9 +28,6 @@ import js7.data.order.{OrderEvent, OrderId}
 import js7.data.workflow.WorkflowPath
 import js7.master.data.events.MasterKeyedEventJsonCodec
 import js7.tests.core.GenericEventRouteTest._
-import com.typesafe.config.ConfigFactory
-import io.circe.Decoder
-import java.net.{InetAddress, InetSocketAddress}
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable

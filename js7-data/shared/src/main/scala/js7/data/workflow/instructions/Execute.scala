@@ -1,13 +1,13 @@
 package js7.data.workflow.instructions
 
+import io.circe.syntax.EncoderOps
+import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.ScalazStyle.OptionRichBoolean
 import js7.data.source.SourcePos
 import js7.data.workflow.Instruction
 import js7.data.workflow.instructions.executable.WorkflowJob
-import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, JsonObject}
 
 /**
   * @author Joacim Zschimmer

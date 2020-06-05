@@ -1,11 +1,11 @@
 package js7.common.akkautils
 
 import akka.actor.{Actor, Props}
+import com.typesafe.config.ConfigFactory
 import js7.base.time.ScalaTime._
 import js7.common.akkautils.ActorTest._
 import js7.common.scalautil.Futures.implicits.SuccessFuture
 import js7.common.scalautil.Logger
-import com.typesafe.config.ConfigFactory
 import monix.execution.atomic.{AtomicBoolean, AtomicInt}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec

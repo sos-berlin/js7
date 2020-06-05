@@ -6,6 +6,7 @@ import akka.http.scaladsl.model.Uri
 import akka.http.scaladsl.model.headers.Location
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive, Route}
+import io.circe.Json
 import js7.base.auth.ValidUserPermission
 import js7.base.circeutils.CirceUtils._
 import js7.base.generic.Completed
@@ -19,7 +20,6 @@ import js7.master.OrderApi
 import js7.master.data.events.MasterKeyedEventJsonCodec.keyedEventJsonCodec
 import js7.master.web.common.MasterRouteProvider
 import js7.master.web.master.api.order.OrderRoute._
-import io.circe.Json
 import monix.execution.Scheduler
 
 /**

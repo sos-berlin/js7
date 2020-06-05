@@ -7,12 +7,12 @@ import js7.core.command.{CommandExecutor, CommandMeta}
 import js7.data.command.CancelMode
 import js7.data.order.OrderId
 import js7.master.data.MasterCommand
-import js7.master.data.MasterCommand.{Batch, CancelOrder, ReleaseEvents, NoOperation, Response}
+import js7.master.data.MasterCommand.{Batch, CancelOrder, NoOperation, ReleaseEvents, Response}
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
+import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
 import scala.language.reflectiveCalls
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
@@ -49,7 +49,7 @@ final class MasterCommandExecutorTest extends AnyFreeSpec
   }
 
   "Batch" in {
-    assert(commandExecutor.executeCommand(Batch(NoOperation :: ReleaseEvents(999) :: cancelOrder :: Nil), meta).await(99.seconds) ==
+    assert(commandExecutor.executeCommand(Batch(NoOperation :: ReleaseEvents(999L) :: cancelOrder :: Nil), meta).await(99.seconds) ==
       Right(Batch.Response(Right(Response.Accepted) :: Left(Problem("COMMAND NOT IMPLEMENTED")) :: Right(Response.Accepted) :: Nil)))
     assert(otherCommandExecutor.cancelled == 2)
   }

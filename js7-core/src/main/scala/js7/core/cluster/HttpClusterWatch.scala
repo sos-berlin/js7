@@ -1,6 +1,7 @@
 package js7.core.cluster
 
 import akka.actor.ActorSystem
+import io.circe._
 import js7.base.auth.UserAndPassword
 import js7.base.generic.Completed
 import js7.base.problem.Checked
@@ -13,7 +14,6 @@ import js7.common.scalautil.Logger
 import js7.core.cluster.ClusterWatch.isClusterWatchProblem
 import js7.core.cluster.HttpClusterWatch._
 import js7.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
-import io.circe._
 import monix.eval.Task
 
 final class HttpClusterWatch(

@@ -1,5 +1,6 @@
 package js7.common.auth
 
+import com.typesafe.config.ConfigFactory
 import js7.base.auth.{SimpleUser, UserId}
 import js7.base.generic.SecretString
 import js7.base.time.ScalaTime._
@@ -7,11 +8,10 @@ import js7.common.auth.IdToUser.RawUserAccount
 import js7.common.auth.IdToUserTest._
 import js7.common.configutils.Configs.ConvertibleConfig
 import js7.common.scalautil.Futures.implicits._
-import com.typesafe.config.ConfigFactory
+import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.jdk.CollectionConverters._
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer

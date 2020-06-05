@@ -1,11 +1,11 @@
 package js7.core.event.journal.watch
 
+import java.util.Arrays.binarySearch
 import js7.common.event.PositionAnd
 import js7.common.scalautil.{Logger, Synchronizer}
 import js7.common.utils.ByteUnits.toKBGB
 import js7.core.event.journal.watch.JournalIndex._
 import js7.data.event.EventId
-import java.util.Arrays.binarySearch
 import org.jetbrains.annotations.TestOnly
 
 /**

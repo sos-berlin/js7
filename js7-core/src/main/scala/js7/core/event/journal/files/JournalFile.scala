@@ -1,14 +1,14 @@
 package js7.core.event.journal.files
 
+import java.io.RandomAccessFile
+import java.nio.file.Path
+import java.util.regex.Pattern
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalazStyle._
 import js7.data.event.EventId
-import java.io.RandomAccessFile
-import java.nio.file.Path
-import java.util.regex.Pattern
 
 /**
   * @author Joacim Zschimmer

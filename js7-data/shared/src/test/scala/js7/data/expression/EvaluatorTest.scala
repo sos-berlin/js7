@@ -1,5 +1,7 @@
 package js7.data.expression
 
+import fastparse.NoWhitespace._
+import fastparse._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.RichPartialFunction
 import js7.data.expression.Evaluator.{BooleanValue, NumericValue, StringValue, Value}
@@ -9,11 +11,9 @@ import js7.data.workflow.Label
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.parser.ExpressionParser
 import js7.data.workflow.parser.Parsers.checkedParse
-import fastparse.NoWhitespace._
-import fastparse._
 import org.scalactic.source
-import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks._
 import org.scalatest.freespec.AnyFreeSpec
+import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks._
 
 /**
   * @author Joacim Zschimmer

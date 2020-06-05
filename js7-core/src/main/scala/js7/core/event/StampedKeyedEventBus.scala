@@ -3,8 +3,8 @@ package js7.core.event
 import akka.actor.ActorRef
 import akka.event.{EventBus, SubchannelClassification}
 import akka.util.Subclassification
-import js7.data.event.{AnyKeyedEvent, Stamped, Event => EngineEvent}
 import javax.inject.Singleton
+import js7.data.event.{AnyKeyedEvent, Stamped, Event => EngineEvent}
 
 /**
   * @author Joacim Zschimmer

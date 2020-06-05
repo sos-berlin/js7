@@ -1,8 +1,8 @@
 package js7.base.utils
 
-import js7.base.utils.AutoClosing.autoClosing
 import java.util.Objects.requireNonNull
 import java.util.concurrent.ConcurrentLinkedDeque
+import js7.base.utils.AutoClosing.autoClosing
 import monix.execution.atomic.AtomicAny
 import scala.annotation.tailrec
 import scala.util.control.NonFatal

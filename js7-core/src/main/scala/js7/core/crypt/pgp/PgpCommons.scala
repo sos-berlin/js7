@@ -5,10 +5,10 @@ import cats.effect.{Resource, SyncIO}
 import cats.instances.vector._
 import cats.syntax.foldable._
 import cats.syntax.show._
-import js7.base.utils.SyncResource.syntax._
-import js7.common.time.JavaTime._
 import java.io.{ByteArrayOutputStream, InputStream, OutputStream}
 import java.security.Security
+import js7.base.utils.SyncResource.syntax._
+import js7.common.time.JavaTime._
 import org.bouncycastle.bcpg.{ArmoredOutputStream, HashAlgorithmTags, PublicKeyAlgorithmTags}
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.openpgp.examples.PubringDump

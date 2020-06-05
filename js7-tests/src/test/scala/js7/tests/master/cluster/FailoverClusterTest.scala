@@ -1,5 +1,6 @@
 package js7.tests.master.cluster
 
+import java.nio.file.Files.size
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
 import js7.common.guice.GuiceImplicits.RichInjector
@@ -19,7 +20,6 @@ import js7.master.cluster.PassiveClusterNode
 import js7.master.configuration.MasterConfiguration
 import js7.master.data.MasterCommand.{ClusterSwitchOver, ShutDown}
 import js7.tests.master.cluster.MasterClusterTester._
-import java.nio.file.Files.size
 import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.duration.Deadline.now
 

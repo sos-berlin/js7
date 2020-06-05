@@ -1,9 +1,9 @@
 package js7.base.crypt.donotcrypt
 
 import cats.effect.{Resource, SyncIO}
+import java.io.InputStream
 import js7.base.crypt.{GenericSignature, SignatureVerifier}
 import js7.base.problem.Problem
-import java.io.InputStream
 
 /**
   * @author Joacim Zschimmer

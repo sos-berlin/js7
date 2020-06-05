@@ -2,11 +2,11 @@ package js7.base.problem
 
 import cats.Applicative
 import cats.syntax.semigroup._
+import io.circe.{Decoder, Encoder, Json}
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.generic.Completed
 import js7.base.problem.Problem._
 import js7.base.utils.ScalaUtils._
-import io.circe.{Decoder, Encoder, Json}
 import scala.collection.immutable.VectorBuilder
 import scala.collection.mutable
 import scala.concurrent.Future

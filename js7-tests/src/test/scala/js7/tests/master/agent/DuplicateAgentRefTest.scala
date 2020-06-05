@@ -1,5 +1,6 @@
 package js7.tests.master.agent
 
+import com.typesafe.config.ConfigUtil.quoteString
 import js7.agent.data.Problems.DuplicateAgentRef
 import js7.base.time.ScalaTime._
 import js7.common.scalautil.FileUtils.syntax._
@@ -14,7 +15,6 @@ import js7.master.data.events.MasterAgentEvent.{AgentCouplingFailed, AgentReady}
 import js7.tests.master.agent.DuplicateAgentRefTest._
 import js7.tests.testenv.DirectoryProvider.script
 import js7.tests.testenv.MasterAgentForScalaTest
-import com.typesafe.config.ConfigUtil.quoteString
 import org.scalatest.freespec.AnyFreeSpec
 
 final class DuplicateAgentRefTest extends AnyFreeSpec with MasterAgentForScalaTest

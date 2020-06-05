@@ -1,5 +1,6 @@
 package js7.taskserver.task.process
 
+import java.nio.file.Files._
 import js7.agent.data.{AgentTaskId, ProcessKillScript}
 import js7.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.time.ScalaTime._
@@ -15,9 +16,8 @@ import js7.common.time.WaitForCondition.waitForCondition
 import js7.data.job.ReturnCode
 import js7.data.system.Stdout
 import js7.taskserver.task.process.ShellScriptProcess.startShellScript
-import java.nio.file.Files._
-import scala.concurrent.ExecutionContext.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
  * @author Joacim Zschimmer

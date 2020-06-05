@@ -2,6 +2,7 @@ package js7.agent.web.views
 
 import akka.http.scaladsl.model.MediaTypes.{`application/json`, `text/plain`}
 import akka.http.scaladsl.model.headers.Accept
+import io.circe.Json
 import js7.agent.data.views.AgentOverview
 import js7.agent.web.test.WebServiceTest
 import js7.base.circeutils.CirceUtils._
@@ -13,7 +14,6 @@ import js7.common.http.AkkaHttpUtils.RichHttpResponse
 import js7.common.http.CirceJsonSupport._
 import js7.common.scalautil.Futures.implicits._
 import js7.data.system.JavaInformation
-import io.circe.Json
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec

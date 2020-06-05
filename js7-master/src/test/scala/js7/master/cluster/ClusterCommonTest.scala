@@ -1,10 +1,10 @@
 package js7.master.cluster
 
+import java.nio.file.Files.{delete, size}
+import java.nio.file.Paths
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.FileUtils.withTemporaryFile
 import js7.master.cluster.ClusterCommon._
-import java.nio.file.Files.{delete, size}
-import java.nio.file.Paths
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

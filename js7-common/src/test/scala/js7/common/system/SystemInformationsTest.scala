@@ -1,7 +1,7 @@
 package js7.common.system
 
-import js7.base.system.SystemInformation
 import io.circe.syntax.EncoderOps
+import js7.base.system.SystemInformation
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

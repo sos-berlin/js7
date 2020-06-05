@@ -4,6 +4,13 @@ import akka.Done
 import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.pattern.ask
 import akka.util.Timeout
+import com.typesafe.config.{Config, ConfigFactory}
+import io.circe.Json
+import io.circe.syntax.EncoderOps
+import java.io.EOFException
+import java.nio.file.Files.createTempDirectory
+import java.nio.file.Path
+import java.util.concurrent.atomic.AtomicInteger
 import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
@@ -21,13 +28,6 @@ import js7.core.event.journal.test.TestData.testJournalMeta
 import js7.core.event.journal.test.TestJournalMixin._
 import js7.core.event.journal.test.TestJsonCodecs.TestKeyedEventJsonCodec
 import js7.data.event.{Event, KeyedEvent, Stamped}
-import com.typesafe.config.{Config, ConfigFactory}
-import io.circe.Json
-import io.circe.syntax.EncoderOps
-import java.io.EOFException
-import java.nio.file.Files.createTempDirectory
-import java.nio.file.Path
-import java.util.concurrent.atomic.AtomicInteger
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration._

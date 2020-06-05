@@ -1,11 +1,11 @@
 package js7.base.session
 
+import io.circe.{Decoder, Encoder, Json, JsonObject}
 import js7.base.auth.{SessionToken, UserAndPassword}
 import js7.base.circeutils.CirceCodec
 import js7.base.circeutils.CirceUtils.{deriveCodec, singletonCodec}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.generic.SecretString
-import io.circe.{Decoder, Encoder, Json, JsonObject}
 
 /**
   * @author Joacim Zschimmer

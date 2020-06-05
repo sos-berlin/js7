@@ -2,6 +2,9 @@ package js7.master.web
 
 import akka.actor.ActorSystem
 import com.google.inject.Injector
+import com.typesafe.config.Config
+import java.nio.file.Path
+import javax.inject.{Inject, Singleton}
 import js7.base.auth.SimpleUser
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.problem.Checked
@@ -20,9 +23,6 @@ import js7.master.OrderApi
 import js7.master.command.MasterCommandExecutor
 import js7.master.configuration.MasterConfiguration
 import js7.master.data.{MasterCommand, MasterState}
-import com.typesafe.config.Config
-import java.nio.file.Path
-import javax.inject.{Inject, Singleton}
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.duration.Deadline

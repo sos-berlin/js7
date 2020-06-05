@@ -8,6 +8,7 @@ import akka.http.scaladsl.server.AuthenticationFailedRejection.CredentialsMissin
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route.seal
 import akka.http.scaladsl.server.{AuthenticationFailedRejection, Directive1, ExceptionHandler, RejectionHandler, Route}
+import com.typesafe.config.{Config, ConfigFactory}
 import js7.base.auth.{GetPermission, HashedPassword, Permission, SimpleUser, SuperPermission, User, UserAndPassword, UserId, ValidUserPermission}
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalazStyle._
@@ -15,7 +16,6 @@ import js7.common.akkahttp.web.auth.GateKeeper._
 import js7.common.auth.IdToUser
 import js7.common.scalautil.Logger
 import js7.common.time.JavaTimeConverters._
-import com.typesafe.config.{Config, ConfigFactory}
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.duration._

@@ -14,6 +14,8 @@ import akka.http.scaladsl.{Http, HttpsConnectionContext}
 import akka.stream.ActorMaterializer
 import akka.util.ByteString
 import cats.effect.{ExitCase, Resource}
+import io.circe.{Decoder, Encoder}
+import java.util.Locale
 import js7.base.auth.SessionToken
 import js7.base.circeutils.CirceUtils.RichCirceString
 import js7.base.exceptions.HasIsIgnorableStackTrace
@@ -34,8 +36,6 @@ import js7.common.http.CirceJsonSupport._
 import js7.common.http.JsonStreamingSupport.StreamingJsonHeaders
 import js7.common.http.StreamingSupport._
 import js7.common.scalautil.Logger
-import io.circe.{Decoder, Encoder}
-import java.util.Locale
 import monix.eval.Task
 import monix.execution.Cancelable
 import monix.execution.atomic.AtomicLong

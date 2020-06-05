@@ -1,12 +1,12 @@
 package js7.data.workflow
 
+import io.circe.syntax.EncoderOps
+import io.circe.{Decoder, Encoder, Json}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.RichJavaClass
 import js7.data.source.SourcePos
 import js7.data.workflow.Instruction.Labeled
 import js7.data.workflow.position._
-import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, Json}
 import scala.language.implicitConversions
 
 /**

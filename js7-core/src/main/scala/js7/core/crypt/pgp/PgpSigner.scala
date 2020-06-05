@@ -4,6 +4,8 @@ import cats.effect.{Resource, SyncIO}
 import cats.instances.vector._
 import cats.syntax.foldable.catsSyntaxFoldOps
 import cats.syntax.show._
+import java.io.InputStream
+import java.util.Base64
 import js7.base.crypt.{MessageSigner, PgpSignature, SignerId}
 import js7.base.generic.SecretString
 import js7.base.problem.Checked
@@ -12,8 +14,6 @@ import js7.base.utils.CatsUtils.bytesToInputStreamResource
 import js7.base.utils.SyncResource.syntax.RichResource
 import js7.common.scalautil.GuavaUtils.stringToInputStreamResource
 import js7.core.crypt.pgp.PgpCommons._
-import java.io.InputStream
-import java.util.Base64
 import org.bouncycastle.bcpg.HashAlgorithmTags
 import org.bouncycastle.openpgp.operator.jcajce.{JcaPGPContentSignerBuilder, JcePBESecretKeyDecryptorBuilder}
 import org.bouncycastle.openpgp.{PGPSecretKey, PGPSecretKeyRingCollection, PGPSignature, PGPSignatureGenerator, PGPSignatureSubpacketGenerator, PGPUtil}

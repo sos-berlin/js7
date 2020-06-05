@@ -1,13 +1,13 @@
 package js7.core.event.journal.files
 
+import java.nio.file.Files.{createSymbolicLink, delete, exists}
+import java.nio.file.LinkOption.NOFOLLOW_LINKS
+import java.nio.file.{Files, Path, Paths}
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.AutoClosing.autoClosing
 import js7.core.event.journal.data.JournalMeta
 import js7.data.event.EventId
-import java.nio.file.Files.{createSymbolicLink, delete, exists}
-import java.nio.file.LinkOption.NOFOLLOW_LINKS
-import java.nio.file.{Files, Path, Paths}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 

@@ -1,7 +1,7 @@
 package js7.core.event.journal.watch
 
-import js7.base.problem.{Problem, ProblemException}
 import java.nio.file.Path
+import js7.base.problem.{Problem, ProblemException}
 
 /**
   * @author Joacim Zschimmer

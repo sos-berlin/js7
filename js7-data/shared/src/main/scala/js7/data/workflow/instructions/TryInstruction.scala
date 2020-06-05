@@ -1,5 +1,7 @@
 package js7.data.workflow.instructions
 
+import io.circe.syntax.EncoderOps
+import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.circeutils.CirceUtils._
 import js7.base.circeutils.ScalaJsonCodecs._
 import js7.base.problem.{Checked, Problem}
@@ -8,8 +10,6 @@ import js7.data.source.SourcePos
 import js7.data.workflow.instructions.TryInstruction._
 import js7.data.workflow.position.{BranchId, CatchBranchId, TryBranchId, TryCatchBranchId}
 import js7.data.workflow.{Instruction, Workflow}
-import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, JsonObject}
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
 /**

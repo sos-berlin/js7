@@ -3,6 +3,8 @@ package js7.agent.scheduler.order
 import akka.actor.{Actor, ActorRef, PoisonPill, Props, Terminated}
 import akka.pattern.{ask, pipe}
 import akka.util.Timeout
+import com.typesafe.config.{Config, ConfigValueFactory}
+import java.nio.file.{Files, Path}
 import js7.agent.AgentState
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.Akkas.newAgentActorSystem
@@ -40,8 +42,6 @@ import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.taskserver.modules.shell.StandardRichProcessStartSynchronizer
-import com.typesafe.config.{Config, ConfigValueFactory}
-import java.nio.file.{Files, Path}
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Assertions._

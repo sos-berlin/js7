@@ -3,9 +3,8 @@ package js7.common.soslicense
 import js7.common.soslicense.LicenseKey.Parameter
 import js7.common.soslicense.LicenseKey.Parameter.{Expired, Missing, OK}
 import js7.common.soslicense.Parameters._
-import org.scalatest.matchers
-import org.scalatest.matchers.should.Matchers._
 import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers._
 
 /**
  * @author Joacim Zschimmer

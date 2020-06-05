@@ -1,5 +1,6 @@
 package js7.master.web.master.api.graphql
 
+import io.circe.Json
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
@@ -15,7 +16,6 @@ import js7.data.workflow.instructions.{Execute, Fork}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.master.web.master.api.graphql.MasterGraphqlSchemaTest._
-import io.circe.Json
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec

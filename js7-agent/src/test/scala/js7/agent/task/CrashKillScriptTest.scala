@@ -1,5 +1,7 @@
 package js7.agent.task
 
+import java.nio.file.Files.{delete, exists, size}
+import java.nio.file.{Files, Paths}
 import js7.agent.data.{AgentTaskId, ProcessKillScript}
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
@@ -9,8 +11,6 @@ import js7.common.scalautil.FileUtils.implicits._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.system.OperatingSystem.isWindows
 import js7.data.job.TaskId
-import java.nio.file.Files.{delete, exists, size}
-import java.nio.file.{Files, Paths}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 

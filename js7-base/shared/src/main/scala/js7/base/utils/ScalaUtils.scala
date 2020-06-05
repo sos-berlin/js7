@@ -1,12 +1,12 @@
 package js7.base.utils
 
+import java.io.{ByteArrayInputStream, InputStream, PrintWriter, StringWriter}
+import java.nio.charset.StandardCharsets.UTF_8
+import java.util.concurrent.atomic.AtomicBoolean
 import js7.base.exceptions.PublicException
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.utils.Strings.RichString
-import java.io.{ByteArrayInputStream, InputStream, PrintWriter, StringWriter}
-import java.nio.charset.StandardCharsets.UTF_8
-import java.util.concurrent.atomic.AtomicBoolean
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.concurrent.Future

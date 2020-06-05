@@ -1,9 +1,9 @@
 package js7.provider.scheduledorder.oldruntime
 
 import com.google.common.collect.{AbstractIterator => GuavaIterator}
+import java.time._
 import js7.common.time.JavaTime._
 import js7.provider.scheduledorder.oldruntime.OldSchedule._
-import java.time._
 import scala.annotation.tailrec
 import scala.jdk.CollectionConverters._
 

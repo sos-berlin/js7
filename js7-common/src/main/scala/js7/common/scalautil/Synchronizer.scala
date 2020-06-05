@@ -1,8 +1,8 @@
 package js7.common.scalautil
 
-import js7.common.scalautil.Synchronizer._
-import js7.base.time.ScalaTime._
 import java.util.concurrent.locks.ReentrantLock
+import js7.base.time.ScalaTime._
+import js7.common.scalautil.Synchronizer._
 import scala.concurrent.blocking
 import scala.concurrent.duration._
 

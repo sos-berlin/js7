@@ -1,10 +1,10 @@
 package js7.core.event.journal.write
 
+import java.text.NumberFormat
+import java.util.Locale
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalazStyle._
 import js7.base.utils.Strings._
-import java.text.NumberFormat
-import java.util.Locale
 
 /**
   * @author Joacim Zschimmer

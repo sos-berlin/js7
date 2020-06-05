@@ -1,9 +1,9 @@
 package js7.data.filebased
 
-import js7.base.utils.ScalazStyle._
-import js7.data.filebased.FileBasedId._
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
+import js7.base.utils.ScalazStyle._
+import js7.data.filebased.FileBasedId._
 import scala.language.implicitConversions
 
 /**

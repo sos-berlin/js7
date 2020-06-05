@@ -1,6 +1,11 @@
 package js7.agent.task
 
 import com.google.common.base.StandardSystemProperty.LINE_SEPARATOR
+import java.io.{BufferedWriter, FileOutputStream, OutputStreamWriter, Writer}
+import java.nio.charset.Charset.defaultCharset
+import java.nio.file.Files.{createFile, deleteIfExists, move}
+import java.nio.file.Path
+import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import js7.agent.data.{AgentTaskId, ProcessKillScript}
 import js7.agent.task.CrashKillScript._
 import js7.base.utils.AutoClosing.autoClosing
@@ -9,11 +14,6 @@ import js7.common.process.Processes.Pid
 import js7.common.scalautil.Logger
 import js7.common.utils.Exceptions.ignoreException
 import js7.data.job.TaskId
-import java.io.{BufferedWriter, FileOutputStream, OutputStreamWriter, Writer}
-import java.nio.charset.Charset.defaultCharset
-import java.nio.file.Files.{createFile, deleteIfExists, move}
-import java.nio.file.Path
-import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import scala.collection.mutable
 
 /**

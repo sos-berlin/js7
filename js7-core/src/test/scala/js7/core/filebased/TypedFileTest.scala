@@ -1,5 +1,8 @@
 package js7.core.filebased
 
+import java.io.File.separator
+import java.nio.file.Files.{createDirectories, createTempDirectory}
+import java.nio.file.Path
 import js7.base.problem.Problem
 import js7.common.files.DirectoryReader
 import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
@@ -9,9 +12,6 @@ import js7.core.filebased.TypedFileTest._
 import js7.data.agent.AgentRefPath
 import js7.data.filebased.SourceType
 import js7.data.workflow.WorkflowPath
-import java.io.File.separator
-import java.nio.file.Files.{createDirectories, createTempDirectory}
-import java.nio.file.Path
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

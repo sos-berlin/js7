@@ -1,5 +1,7 @@
 package js7.tests
 
+import java.nio.file.Files.{delete, move}
+import java.nio.file.Paths
 import js7.base.time.ScalaTime._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.data.agent.AgentRefPath
@@ -15,8 +17,6 @@ import js7.master.data.events.MasterAgentEvent.AgentCouplingFailed
 import js7.tests.CoupleMasterTest._
 import js7.tests.testenv.DirectoryProvider.script
 import js7.tests.testenv.DirectoryProviderForScalaTest
-import java.nio.file.Files.{delete, move}
-import java.nio.file.Paths
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 

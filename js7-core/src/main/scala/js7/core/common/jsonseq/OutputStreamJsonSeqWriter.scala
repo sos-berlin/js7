@@ -2,11 +2,11 @@ package js7.core.common.jsonseq
 
 import akka.util.ByteString
 import com.google.common.base.Ascii
+import io.circe.Json
+import java.io.{BufferedOutputStream, OutputStream}
 import js7.base.circeutils.CirceUtils._
 import js7.base.utils.Assertions.assertThat
 import js7.core.common.jsonseq.OutputStreamJsonSeqWriter._
-import io.circe.Json
-import java.io.{BufferedOutputStream, OutputStream}
 import org.jetbrains.annotations.TestOnly
 
 /**

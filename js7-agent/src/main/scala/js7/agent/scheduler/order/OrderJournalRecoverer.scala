@@ -1,6 +1,7 @@
 package js7.agent.scheduler.order
 
 import akka.actor.{ActorRef, ActorRefFactory}
+import com.typesafe.config.Config
 import js7.agent.AgentState
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.event.AgentMasterEvent
@@ -20,7 +21,6 @@ import js7.data.execution.workflow.WorkflowAndOrderRecovering.followUpRecoveredW
 import js7.data.order.OrderEvent.{OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.workflow.{Workflow, WorkflowEvent}
-import com.typesafe.config.Config
 import scala.collection.mutable
 import shapeless.tag.@@
 

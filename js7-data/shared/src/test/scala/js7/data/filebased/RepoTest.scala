@@ -1,5 +1,6 @@
 package js7.data.filebased
 
+import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.silly.{SillySignatureVerifier, SillySigner}
@@ -13,7 +14,6 @@ import js7.data.filebased.Repo.testOnly.{Changed, Deleted, OpRepo}
 import js7.data.filebased.Repo.{DuplicateVersionProblem, ObjectVersionDoesNotMatchProblem}
 import js7.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
 import js7.data.filebased.RepoTest._
-import io.circe.syntax.EncoderOps
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

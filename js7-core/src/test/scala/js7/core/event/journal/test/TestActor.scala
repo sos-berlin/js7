@@ -4,6 +4,8 @@ import akka.Done
 import akka.actor.{Actor, ActorRef, Props, Stash, Terminated}
 import akka.pattern.{ask, pipe}
 import akka.util.Timeout
+import com.typesafe.config.Config
+import java.util.UUID
 import js7.base.time.ScalaTime._
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.common.akkautils.SupervisorStrategies
@@ -19,8 +21,6 @@ import js7.core.event.journal.test.TestJsonCodecs.TestKeyedEventJsonCodec
 import js7.core.event.journal.watch.JournalEventWatch
 import js7.core.event.journal.{JournalActor, JournalConf}
 import js7.data.event.{JournalId, KeyedEvent, Stamped}
-import com.typesafe.config.Config
-import java.util.UUID
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 import scala.collection.mutable

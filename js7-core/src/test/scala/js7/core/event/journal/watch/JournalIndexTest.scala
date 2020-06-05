@@ -1,9 +1,8 @@
 package js7.core.event.journal.watch
 
 import js7.common.event.PositionAnd
-import org.scalatest.matchers
-import org.scalatest.matchers.should.Matchers._
 import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers._
 
 /**
   * @author Joacim Zschimmer

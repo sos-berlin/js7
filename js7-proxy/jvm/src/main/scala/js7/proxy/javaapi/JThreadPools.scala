@@ -1,9 +1,9 @@
 package js7.proxy.javaapi
 
+import java.lang.Thread.currentThread
 import js7.base.annotation.javaApi
 import js7.base.utils.ScalaUtils.RichThrowable
 import js7.common.scalautil.Logger
-import java.lang.Thread.currentThread
 import monix.execution.schedulers.ExecutorScheduler
 import monix.execution.{ExecutionModel, UncaughtExceptionReporter}
 import scala.util.control.NonFatal

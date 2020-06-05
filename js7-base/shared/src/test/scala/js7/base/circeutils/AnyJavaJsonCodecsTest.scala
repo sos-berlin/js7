@@ -1,10 +1,10 @@
 package js7.base.circeutils
 
+import io.circe.Json
 import js7.base.circeutils.AnyJavaJsonCodecs._
 import js7.base.circeutils.CirceUtils._
-import io.circe.Json
-import scala.jdk.CollectionConverters._
 import org.scalatest.freespec.AnyFreeSpec
+import scala.jdk.CollectionConverters._
 
 /**
   * @author Joacim Zschimmer

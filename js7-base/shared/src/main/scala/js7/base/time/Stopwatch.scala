@@ -1,8 +1,8 @@
 package js7.base.time
 
+import java.lang.System.nanoTime
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch._
-import java.lang.System.nanoTime
 import scala.concurrent.duration._
 
 /**

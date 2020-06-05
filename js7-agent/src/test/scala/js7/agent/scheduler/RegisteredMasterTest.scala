@@ -1,11 +1,11 @@
 package js7.agent.scheduler
 
+import java.util.UUID
 import js7.base.circeutils.CirceUtils._
 import js7.data.agent.{AgentRefPath, AgentRunId}
 import js7.data.event.JournalId
 import js7.data.master.MasterId
 import js7.tester.CirceJsonTester.testJson
-import java.util.UUID
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

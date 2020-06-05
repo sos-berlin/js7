@@ -1,10 +1,10 @@
 package js7.agent.scheduler.job
 
+import java.nio.file.Path
 import js7.agent.scheduler.job.FilePool._
 import js7.common.scalautil.Logger
 import js7.data.job.JobKey
 import js7.taskserver.task.process.RichProcess.tryDeleteFiles
-import java.nio.file.Path
 import scala.collection.mutable
 
 /**

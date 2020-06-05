@@ -1,14 +1,14 @@
 package js7.data.workflow.position
 
 import cats.syntax.show.toShow
+import io.circe.syntax.EncoderOps
+import io.circe.{Decoder, DecodingFailure, Encoder, Json}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.reuseIfEqual
 import js7.data.workflow.WorkflowId
 import js7.data.workflow.position.BranchId.nextTryBranchId
 import js7.data.workflow.position.BranchPath.Segment
 import js7.data.workflow.position.Position._
-import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, DecodingFailure, Encoder, Json}
 import scala.annotation.tailrec
 
 /**

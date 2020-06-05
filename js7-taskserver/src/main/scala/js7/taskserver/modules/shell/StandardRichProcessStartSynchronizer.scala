@@ -1,9 +1,9 @@
 package js7.taskserver.modules.shell
 
 import akka.actor.ActorSystem
+import javax.inject.{Inject, Singleton}
 import js7.common.async.synchronizer.OwnActorSynchronizer
 import js7.taskserver.task.process.RichProcess
-import javax.inject.{Inject, Singleton}
 
 /**
   * @author Joacim Zschimmer

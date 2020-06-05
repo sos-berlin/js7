@@ -1,8 +1,8 @@
 package js7.common.xml
 
 import akka.util.ByteString
-import js7.common.scalautil.xmls.SafeXML
 import java.io._
+import js7.common.scalautil.xmls.SafeXML
 
 object XmlUtils {
 

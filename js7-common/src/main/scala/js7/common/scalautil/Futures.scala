@@ -1,8 +1,8 @@
 package js7.common.scalautil
 
+import java.util.concurrent.TimeoutException
 import js7.base.time.ScalaTime._
 import js7.base.utils.StackTraces._
-import java.util.concurrent.TimeoutException
 import scala.collection.BuildFrom
 import scala.concurrent._
 import scala.concurrent.duration._

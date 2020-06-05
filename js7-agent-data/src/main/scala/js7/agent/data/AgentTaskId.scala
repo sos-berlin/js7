@@ -1,8 +1,8 @@
 package js7.agent.data
 
+import javax.inject.Singleton
 import js7.agent.data
 import js7.base.generic.GenericString
-import javax.inject.Singleton
 import scala.math.abs
 import scala.util.Random
 

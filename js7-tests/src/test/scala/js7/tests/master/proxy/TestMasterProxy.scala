@@ -1,6 +1,7 @@
 package js7.tests.master.proxy
 
 import akka.http.scaladsl.server.Directives.{complete, get, pathSingleSlash}
+import java.time.LocalDateTime
 import js7.base.BuildInfo
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
@@ -20,7 +21,6 @@ import js7.master.data.MasterSnapshots.SnapshotJsonCodec
 import js7.master.data.MasterState
 import js7.proxy.{JournaledProxy, ProxyEventBus}
 import js7.tests.master.proxy.TestMasterProxy._
-import java.time.LocalDateTime
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.util.Try
