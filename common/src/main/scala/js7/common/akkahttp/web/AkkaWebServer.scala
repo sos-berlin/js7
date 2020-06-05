@@ -43,7 +43,7 @@ trait AkkaWebServer extends AutoCloseable
   private lazy val akkaHttp = Http(actorSystem)
   private val materializerLazy = Lazy { ActorMaterializer() }
   private implicit def materializer = materializerLazy()
-  private lazy val shutdownTimeout = config.getDuration("jobscheduler.webserver.shutdown-timeout").toFiniteDuration
+  private lazy val shutdownTimeout = config.getDuration("js7.webserver.shutdown-timeout").toFiniteDuration
   private val scheduler = SetOnce[Scheduler]
 
   private var activeBindings: Seq[Task[Http.ServerBinding]] = null
@@ -199,7 +199,7 @@ object AkkaWebServer
   }
 
   final class ForTest(protected val actorSystem: ActorSystem, route: Route) extends AkkaWebServer with AkkaWebServer.HasUri {
-    protected val config = ConfigFactory.parseString("jobscheduler.webserver.shutdown-timeout = 10s")
+    protected val config = ConfigFactory.parseString("js7.webserver.shutdown-timeout = 10s")
     protected def scheduler = Scheduler.global
     protected lazy val bindings = WebServerBinding.Http(new InetSocketAddress("127.0.0.1", findFreeTcpPort())) :: Nil
     protected def newRoute(binding: WebServerBinding) = AkkaWebServer.BoundRoute(route)

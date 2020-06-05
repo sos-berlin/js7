@@ -18,7 +18,7 @@ import monix.execution.Scheduler
 import scala.concurrent.duration._
 
 /**
-  * JobScheduler Master.
+  * JS7 Master.
   *
   * @author Joacim Zschimmer
   */
@@ -27,14 +27,14 @@ final class MasterMain
   private val logger = Logger(getClass)
 
   def run(arguments: CommandLineArguments): MasterTermination.Terminate = {
-    logger.info(s"JobScheduler Master ${BuildInfo.prettyVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
+    logger.info(s"JS7 Master ${BuildInfo.prettyVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
     logger.debug(arguments.toString)
     val masterConfiguration = MasterConfiguration.fromCommandLine(arguments)
     StartUp.logStartUp(masterConfiguration.configDirectory, Some(masterConfiguration.dataDirectory))
     logConfig(masterConfiguration.config)
     var restartInProcess = false
     var terminate = MasterTermination.Terminate()
-    /** val restartJvmWhenDeactivated = masterConfiguration.config.getBoolean("jobscheduler.master.cluster.when-deactivated-restart-jvm")
+    /** val restartJvmWhenDeactivated = masterConfiguration.config.getBoolean("js7.master.cluster.when-deactivated-restart-jvm")
        - Erste HTTP-Anforderungen an deaktivierten Knoten können in ins Leere laufen (mit Timeout abgefangen)
        - Heap platzt nach vielen Deaktivierungen */
     val restartJvmWhenDeactivated = true
@@ -50,7 +50,7 @@ final class MasterMain
               if (restartJvmWhenDeactivated) {
                 terminate = MasterTermination.Terminate(restart = true)
               } else {
-                logger.info("------- JobScheduler Master restarts -------")
+                logger.info("------- JS7 Master restarts -------")
                 restartInProcess = true
               }
           }
@@ -58,7 +58,7 @@ final class MasterMain
       }
     } while (restartInProcess)
     // Log complete timestamp in case of short log timestamp
-    val msg = s"JobScheduler Master terminates at ${Timestamp.now.show}" + (terminate.restart ?: " – will try to restart")
+    val msg = s"JS7 Master terminates at ${Timestamp.now.show}" + (terminate.restart ?: " – will try to restart")
     logger.info(msg)
     printlnWithClock(msg)
     terminate
@@ -78,7 +78,7 @@ object MasterMain
   // Don't use a Logger here to avoid overwriting a concurrently used logfile
 
   def main(args: Array[String]): Unit = {
-    printlnWithClock(s"JobScheduler Master ${BuildInfo.prettyVersion}")
+    printlnWithClock(s"JS7 Master ${BuildInfo.prettyVersion}")
     var terminate = MasterTermination.Terminate()
     lockAndRunMain(args) { commandLineArguments =>
       ScribeUtils.coupleScribeWithSlf4j()

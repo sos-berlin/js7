@@ -96,7 +96,7 @@ object MasterCommand extends CommonCommand.Companion
   }
 
   /** Some outer component no longer needs the events until (including) the given `untilEventId`.
-    * JobScheduler may delete these events to reduce the journal,
+    * JS7 may delete these events to reduce the journal,
     * keeping all events after `untilEventId`.
     */
   final case class ReleaseEvents(untilEventId: EventId) extends MasterCommand {

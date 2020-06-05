@@ -169,10 +169,10 @@ private object JournaledStatePersistenceTest
 {
   private val TestConfig = TestData.TestConfig
     .withFallback(ConfigFactory.parseString("""
-     |jobscheduler.akka.actor-message-log-level = Trace
-     |jobscheduler.journal.remove-obsolete-files = true
-     |jobscheduler.journal.users-allowed-to-release-events = []
-     |jobscheduler.journal.dispatcher.type = PinnedDispatcher
+     |js7.akka.actor-message-log-level = Trace
+     |js7.journal.remove-obsolete-files = true
+     |js7.journal.users-allowed-to-release-events = []
+     |js7.journal.dispatcher.type = PinnedDispatcher
      |""".stripMargin))
 
   private class TestStateBuilder extends JournaledStateBuilder[TestState]

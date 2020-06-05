@@ -27,7 +27,7 @@ final class ProviderConfigurationTest extends AnyFreeSpec
 
   "Command line with provider.conf" in {
     withTemporaryDirectory("ProviderConfigurationTest-") { dir =>
-      dir / "provider.conf" := """jobscheduler.provider.master.uri = "http://example.com"""" + "\n"
+      dir / "provider.conf" := """js7.provider.master.uri = "http://example.com"""" + "\n"
       assert(ProviderConfiguration.fromCommandLine(
         s"-config-directory=$dir" ::Nil
       ).copy(config = ConfigFactory.empty)

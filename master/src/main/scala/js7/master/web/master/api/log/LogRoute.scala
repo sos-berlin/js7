@@ -27,7 +27,7 @@ trait LogRoute extends MasterRouteProvider
   protected def config: Config
   protected def currentLogFile: Path
 
-  private lazy val pollDuration = config.getDuration("jobscheduler.webserver.services.log.poll-interval").toFiniteDuration
+  private lazy val pollDuration = config.getDuration("js7.webserver.services.log.poll-interval").toFiniteDuration
   implicit private def implicitScheduler = scheduler
 
   lazy val logRoute: Route =

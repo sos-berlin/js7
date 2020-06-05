@@ -71,7 +71,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri
       protected def clusterState = MasterWebServer.this.clusterState
       protected def masterState = MasterWebServer.this.masterState
       protected def totalRunningSince = MasterWebServer.this.totalRunningSince
-      protected val currentLogFile = config.as[Path]("jobscheduler.log.file")
+      protected val currentLogFile = config.as[Path]("js7.log.file")
 
       def webServerRoute = completeRoute
 

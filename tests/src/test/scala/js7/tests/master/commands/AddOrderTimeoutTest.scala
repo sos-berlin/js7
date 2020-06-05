@@ -19,9 +19,9 @@ final class AddOrderTimeoutTest extends AnyFreeSpec with MasterAgentForScalaTest
   protected val agentRefPaths = Nil
   protected val fileBased = workflow :: Nil
   override protected val masterConfig = ConfigFactory.parseString("""
-    jobscheduler.webserver.auth.public = on
-    jobscheduler.akka.ask-timeout = 1s
-    jobscheduler.TEST-ONLY.add-order-delay = 10s
+    js7.webserver.auth.public = on
+    js7.akka.ask-timeout = 1s
+    js7.TEST-ONLY.add-order-delay = 10s
     """)
 
   "AddOrder timeout is returned as 403 Service Unavailable" in {

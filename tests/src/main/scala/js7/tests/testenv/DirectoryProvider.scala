@@ -104,9 +104,9 @@ extends HasCloser
 
     // Agent configurations have already been written by a.createDirectoriesAndFiles()
     (master.configDir / "private" / "private.conf").append(
-      s"""jobscheduler.https.keystore {
-         |  store-password = "jobscheduler"
-         |  key-password = "jobscheduler"
+      s"""js7.https.keystore {
+         |  store-password = "js7"
+         |  key-password = "js7"
          |}
          |""".stripMargin)
   }
@@ -230,8 +230,8 @@ object DirectoryProvider
 
       // Truststore
       (configDir / "private/private.conf").append("""
-        |jobscheduler.https.truststore {
-        |  store-password = "jobscheduler"
+        |js7.https.truststore {
+        |  store-password = "js7"
         |}""".stripMargin)
       val trustStore = configDir / "private/https-truststore.p12"
       trustStore := AgentTrustStoreResource.contentBytes
@@ -241,8 +241,8 @@ object DirectoryProvider
 
     def writeAgentAuthentication(agentTree: AgentTree): Unit = {
       (configDir / "private" / "private.conf") ++=
-        "jobscheduler.auth.agents." + quoteString(agentTree.agentRefPath.string) + " = " + quoteString(agentTree.password.string) + "\n" +
-        "jobscheduler.auth.agents." + quoteString(agentTree.localUri.toString) + " = " + quoteString(agentTree.password.string) + "\n"
+        "js7.auth.agents." + quoteString(agentTree.agentRefPath.string) + " = " + quoteString(agentTree.password.string) + "\n" +
+        "js7.auth.agents." + quoteString(agentTree.localUri.toString) + " = " + quoteString(agentTree.password.string) + "\n"
     }
   }
 
@@ -270,19 +270,19 @@ object DirectoryProvider
         (configDir / "private/https-keystore.p12") := AgentKeyStoreResource.contentBytes
         if (provideClientCertificate) {
           (configDir / "private/private.conf").append("""
-            |jobscheduler.https.truststore {
-            |  store-password = "jobscheduler"
+            |js7.https.truststore {
+            |  store-password = "js7"
             |}""".stripMargin)
           (configDir / "private/https-truststore.p12") := MasterTrustStoreResource.contentBytes
         }
       }
       (configDir / "private" / "private.conf").append(s"""
-         |jobscheduler.auth.users {
+         |js7.auth.users {
          |  Master = ${quoteString("plain:" + password.string)}
          |}
-         |jobscheduler.https.keystore {
-         |  store-password = "jobscheduler"
-         |  key-password = "jobscheduler"
+         |js7.https.keystore {
+         |  store-password = "js7"
+         |  key-password = "js7"
          |}
          |""".stripMargin)
     }
@@ -316,8 +316,8 @@ object DirectoryProvider
       configDir / dir / (s"key-${i+1}." + verifier.companion.typeName.toLowerCase(Locale.ROOT)) := key
     }
     configDir / confFilename ++=
-      s"""jobscheduler.configuration.trusted-signature-keys {
-         |  ${verifier.companion.typeName} = $${jobscheduler.config-directory}"/$dir"
+      s"""js7.configuration.trusted-signature-keys {
+         |  ${verifier.companion.typeName} = $${js7.config-directory}"/$dir"
          |}
          |""".stripMargin
   }
@@ -344,8 +344,8 @@ object DirectoryProvider
       "-destkeystore", keyStore.toString,
       "-deststoretype", "pkcs12",
       "-srckeystore", add.toString,
-      "-srcstorepass", "jobscheduler",
-      "-storepass", "jobscheduler")
+      "-srcstorepass", "js7",
+      "-storepass", "js7")
     p.redirectOutput(INHERIT)
     p.redirectError(INHERIT)
     val process = p.start()

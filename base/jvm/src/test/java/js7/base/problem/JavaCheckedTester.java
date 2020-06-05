@@ -8,7 +8,7 @@ import scala.util.Right;
  */
 final class JavaCheckedTester
 {
-    // Access to cryptic JobScheduler internals for this test only. Not an offical API.
+    // Access to cryptic JS7 internals for this test only. Not an offical API.
     @SuppressWarnings({"unchecked","rawtypes"})
     private static final JavaChecked<String> valid = new JavaChecked<>(new Right("VALID"));
     @SuppressWarnings({"unchecked","rawtypes"})

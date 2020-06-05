@@ -147,7 +147,7 @@ final class RecoveryTest extends AnyFreeSpec
 private object RecoveryTest {
   private val logger = Logger(getClass)
 
-  private val TestConfig = ConfigFactory.parseString("jobscheduler.journal.remove-obsolete-files = false")
+  private val TestConfig = ConfigFactory.parseString("js7.journal.remove-obsolete-files = false")
   private val AgentRefPaths = AgentRefPath("/agent-111") :: AgentRefPath("/agent-222") :: Nil
   private val TestExecutablePath = ExecutablePath("/TEST.cmd")
 

@@ -96,7 +96,7 @@ final class Cluster(
       .getOrElse(sys.error("Missing ClusterWatch / Agent URI in cluster configuration"))
     new HttpClusterWatch(
       uri,
-      userAndPassword = config.optionAs[SecretString]("jobscheduler.auth.agents." + ConfigUtil.joinPath(uri.string))
+      userAndPassword = config.optionAs[SecretString]("js7.auth.agents." + ConfigUtil.joinPath(uri.string))
         .map(password => UserAndPassword(masterId.toUserId, password)),
       actorSystem)
   }

@@ -79,7 +79,7 @@ object JournalHeader
     intelliJuseImport(FiniteDurationJsonEncoder)
     implicit val x = Timestamp.StringTimestampJsonEncoder
     TypedJsonCodec[JournalHeader](
-      Subtype.named(deriveCodec[JournalHeader], "JobScheduler.Journal"))
+      Subtype.named(deriveCodec[JournalHeader], "JS7.Journal"))
   }
 
   def checkedHeader(json: Json, journalFileForInfo: Path, expectedJournalId: Option[JournalId]): Checked[JournalHeader] =
@@ -87,7 +87,7 @@ object JournalHeader
       header <-
         json.as[JournalHeader].toChecked.mapProblem(problem =>
           Problem.pure(
-            s"Not a valid JobScheduler journal file: $journalFileForInfo. Expected a JournalHeader instead of ${json.compactPrint}:"
+            s"Not a valid JS7 journal file: $journalFileForInfo. Expected a JournalHeader instead of ${json.compactPrint}:"
           ) |+| problem)
       header <-
         expectedJournalId match {

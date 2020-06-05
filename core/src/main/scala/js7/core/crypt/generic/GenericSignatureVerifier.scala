@@ -44,7 +44,7 @@ extends SignatureVerifier
 
 object GenericSignatureVerifier extends SignatureVerifier.Companion
 {
-  private val configPath = "jobscheduler.configuration.trusted-signature-keys"
+  private val configPath = "js7.configuration.trusted-signature-keys"
   private val logger = Logger(getClass)
 
   protected type MySignature = GenericSignature

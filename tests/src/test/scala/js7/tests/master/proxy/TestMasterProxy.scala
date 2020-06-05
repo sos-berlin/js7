@@ -59,7 +59,7 @@ object TestMasterProxy
 
   def main(args: Array[String]): Unit = {
     implicit def scheduler = Scheduler.global
-    println(s"${LocalDateTime.now.toString.replace('T', ' ')} JobScheduler TestMasterProxy ${BuildInfo.prettyVersion}")
+    println(s"${LocalDateTime.now.toString.replace('T', ' ')} JS7 TestMasterProxy ${BuildInfo.prettyVersion}")
     ScribeUtils.coupleScribeWithSlf4j()
     CommandLineArguments.parse(args.toSeq) { arguments =>
       val masterUri = arguments.as[Uri]("--master-uri=")

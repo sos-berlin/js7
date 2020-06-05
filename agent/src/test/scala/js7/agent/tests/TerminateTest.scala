@@ -34,7 +34,7 @@ final class TerminateTest extends AnyFreeSpec with AgentTester
 {
   override def beforeAll() = {
     (agentDirectory / "config" / "private" / "private.conf") ++= """
-        |jobscheduler.auth.users.TEST-USER = "plain:TEST-PASSWORD"
+        |js7.auth.users.TEST-USER = "plain:TEST-PASSWORD"
         |""".stripMargin
     AExecutablePath.toFile(agentDirectory / "config" / "executables").writeExecutable(AScript)
     BExecutablePath.toFile(agentDirectory / "config" / "executables").writeExecutable(AScript)

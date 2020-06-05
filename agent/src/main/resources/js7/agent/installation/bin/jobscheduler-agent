@@ -6,8 +6,8 @@ export JOBSCHEDULER_HOME
 . "$JOBSCHEDULER_HOME/bin/internal/set-context.sh"
 declare classpathString java  # returned by set-context.sh
 
-config=/var/opt/jobscheduler/agent/config
-data=/var/opt/jobscheduler/agent/data
+config=/var/opt/js7/agent/config
+data=/var/opt/js7/agent/data
 httpPort=4445
 agentOptions=()
 javaOptions=(-XX:+UseStringDeduplication)
@@ -87,14 +87,14 @@ stateDir="$data/state"
 [ -d "$stateDir" ] || mkdir "$stateDir"
 
 exec > >(tee -a "$logs"/stdouterr.log) 2>&1  # Redirects stderr to stdout as a side effect
-javaOptions+=("-Djobscheduler.log4j.directory=$logs")  # Used in logging configuration
+javaOptions+=("-Djs7.log4j.directory=$logs")  # Used in logging configuration
 if [ -f "$config/log4j2.xml" ]; then :
   javaOptions+=("-Dlog4j.configurationFile=$config/log4j2.xml")
 fi
 if $log4Async; then :
   javaOptions+=("-Dlog4j2.contextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector")
   javaOptions+=("-Dlog4j2.asyncLoggerWaitStrategy=Block")  # Uses less CPU when idling than default "Timeout"
-  javaOptions+=("-Djobscheduler.log4j.immediateFlush=false")
+  javaOptions+=("-Djs7.log4j.immediateFlush=false")
 fi
 
 agentOptions+=("-config-directory=$config")
@@ -123,11 +123,11 @@ while true; do
 
   terminate() {
     echo
-    echo "ShutDown JobScheduler Agent Server"
+    echo "ShutDown JS7 Agent Server"
     # Add some seconds to start Java with AgentClientMain
     terminateTimeout=30
     if [ "$SHELL" = "/bin/bash" ]; then
-      "$JOBSCHEDULER_HOME"/bin/jobscheduler-client -data-directory="$data" "$terminateCommand" &
+      "$JOBSCHEDULER_HOME"/bin/js7-client -data-directory="$data" "$terminateCommand" &
     else
       "$java" -Xmx50m \
         -Dlog4j.configurationFile=js7/agent/client/main/log4j2.xml \
@@ -148,7 +148,7 @@ while true; do
   returnCode=0
   wait $pid || {
     returnCode=$?
-    echo "JobScheduler Agent Server exited with exit code $returnCode"
+    echo "JS7 Agent Server exited with exit code $returnCode"
   }
   rm "$pidFile"
   trap - SIGTERM SIGINT
@@ -160,7 +160,7 @@ while true; do
     (. "$crashKillScript" || true)
     ps fux || true
   fi
-  (t=$(date +"%Y-%m-%d %H:%M:%S.%N"); echo -e "\n${t:0:23} JobScheduler Agent Server has been shut down" >>"$logs/stdouterr.log")
+  (t=$(date +"%Y-%m-%d %H:%M:%S.%N"); echo -e "\n${t:0:23} JS7 Agent Server has been shut down" >>"$logs/stdouterr.log")
 
   if [[ $returnCode -ne 97 ]] && [[ $returnCode -ne 98 ]]; then
     exit $returnCode

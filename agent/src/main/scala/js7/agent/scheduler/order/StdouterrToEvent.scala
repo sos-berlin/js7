@@ -90,9 +90,9 @@ object StdouterrToEvent {
   final case class Conf(chunkSize: Int, delay: FiniteDuration, noDelayAfter: FiniteDuration)
   object Conf {
     def apply(config: Config): Conf = new Conf(
-      chunkSize    = config.getInt     ("jobscheduler.order.stdout-stderr.chunk-size"),
-      delay        = config.getDuration("jobscheduler.order.stdout-stderr.delay").toFiniteDuration,
-      noDelayAfter = config.getDuration("jobscheduler.order.stdout-stderr.no-delay-after").toFiniteDuration)
+      chunkSize    = config.getInt     ("js7.order.stdout-stderr.chunk-size"),
+      delay        = config.getDuration("js7.order.stdout-stderr.delay").toFiniteDuration,
+      noDelayAfter = config.getDuration("js7.order.stdout-stderr.no-delay-after").toFiniteDuration)
   }
 }
 

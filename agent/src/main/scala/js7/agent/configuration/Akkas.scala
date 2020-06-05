@@ -23,13 +23,13 @@ object Akkas {
     (implicit closer: Closer)
   : ActorSystem = {
     val myConfig = config withFallback AgentConfiguration.DefaultConfig
-    val ec = myConfig.getBoolean("jobscheduler.akka.use-jobscheduler-thread-pool") ? defaultExecutionContext
+    val ec = myConfig.getBoolean("js7.akka.use-js7-thread-pool") ? defaultExecutionContext
     ActorSystem(name, config = Some(myConfig), defaultExecutionContext = ec) sideEffect { o =>
       DeadLetterActor.subscribe(o)
       closer.onClose {
         logger.debug(s"ActorSystem('${o.name}') terminate")
         val since = now
-        o.terminate() await myConfig.getDuration("jobscheduler.akka.shutdown-timeout").toFiniteDuration
+        o.terminate() await myConfig.getDuration("js7.akka.shutdown-timeout").toFiniteDuration
         logger.debug(s"ActorSystem('${o.name}') terminated (${since.elapsed.pretty})")
       }
     }

@@ -131,7 +131,7 @@ object TaskRegisterActor {
 
   def props(killScriptConf: Option[KillScriptConf]) =
     Props { new TaskRegisterActor(killScriptConf) }
-      .withDispatcher("jobscheduler.agent.internal.TaskRegisterActor.mailbox")
+      .withDispatcher("js7.agent.internal.TaskRegisterActor.mailbox")
 
   sealed trait Input
   object Input {

@@ -10,8 +10,8 @@ rm -rf "${dir:?}"/*
 docker run \
   --publish=127.0.0.1:4444:4444 \
   --publish=127.0.0.1:5000:5000 \
-  --volume="$dir":/var/opt/jobscheduler/testMasterAgent \
+  --volume="$dir":/var/opt/js7/testMasterAgent \
   --rm --name=TestMasterAgent \
   -ti \
-  jobscheduler \
+  js7 \
   testMasterAgent "$@"

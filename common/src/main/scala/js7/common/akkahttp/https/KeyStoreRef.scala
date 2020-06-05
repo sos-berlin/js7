@@ -25,10 +25,10 @@ extends StoreRef
 object KeyStoreRef
 {
   def fromConfig(config: Config, default: Path): Checked[KeyStoreRef] =
-    config.checkedPath("jobscheduler.https.keystore.store-password")(path =>
+    config.checkedPath("js7.https.keystore.store-password")(path =>
       Right(
         KeyStoreRef(
-          url = config.as[Path]("jobscheduler.https.keystore.file", default).toAbsolutePath.toUri.toURL,
+          url = config.as[Path]("js7.https.keystore.file", default).toAbsolutePath.toUri.toURL,
           storePassword = config.as[SecretString](path),
-          keyPassword = config.as[SecretString]("jobscheduler.https.keystore.key-password"))))
+          keyPassword = config.as[SecretString]("js7.https.keystore.key-password"))))
 }

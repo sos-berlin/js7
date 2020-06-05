@@ -30,10 +30,10 @@ final class JournalIdTest extends AnyFreeSpec with DirectoryProviderForScalaTest
   protected val agentRefPaths = agentRefPath :: Nil
   protected val fileBased = TestWorkflow :: Nil
   override protected val masterConfig = ConfigFactory.parseString(
-     """jobscheduler.journal.remove-obsolete-files = false
+     """js7.journal.remove-obsolete-files = false
        |""".stripMargin)
   override protected val agentConfig = ConfigFactory.parseString(
-     """jobscheduler.journal.remove-obsolete-files = false
+     """js7.journal.remove-obsolete-files = false
        |""".stripMargin)
 
   private lazy val agentStateDir = directoryProvider.agents.head.dataDir / "state"

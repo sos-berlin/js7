@@ -98,11 +98,11 @@ private object CommonConfigurationTest {
       dataDirectory = common.dataDirectory,
       webServerPorts = common.webServerPorts,
       ConfigFactory.parseString(
-        """jobscheduler.https.keystore {
+        """js7.https.keystore {
           |  store-password = "KEYSTORE-STORE-PASSWORD"
           |  key-password = "KEYSTORE-KEY-PASSWORD"
           |}
-          |jobscheduler.https.truststore {
+          |js7.https.truststore {
           |  store-password = "TRUSTSTORE-PASSWORD"
           |}
           |""".stripMargin))

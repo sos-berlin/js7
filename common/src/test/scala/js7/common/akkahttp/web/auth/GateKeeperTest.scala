@@ -40,7 +40,7 @@ final class GateKeeperTest extends AnyFreeSpec with ScalatestRouteTest
     realm = "REALM",
     invalidAuthenticationDelay = 100.millis,
     idToUser = IdToUser.fromConfig(ConfigFactory.parseString("""
-        |jobscheduler.auth.users {
+        |js7.auth.users {
         |   USER {
         |     password = "plain:PASSWORD"
         |   }

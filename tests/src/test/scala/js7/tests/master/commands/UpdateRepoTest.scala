@@ -42,7 +42,7 @@ final class UpdateRepoTest extends AnyFreeSpec with MasterAgentForScalaTest
 
   override def beforeAll() = {
     (directoryProvider.master.configDir / "private" / "private.conf") ++=
-       """jobscheduler.auth.users {
+       """js7.auth.users {
          |  UpdateRepoTest {
          |    password = "plain:TEST-PASSWORD"
          |    permissions = [ UpdateRepo ]

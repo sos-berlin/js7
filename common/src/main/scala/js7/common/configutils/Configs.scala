@@ -18,8 +18,8 @@ import scala.jdk.CollectionConverters._
   */
 object Configs
 {
-  private val InternalOriginDescription = "JobScheduler"
-  private val SecretOriginDescription = "JobScheduler Secret"
+  private val InternalOriginDescription = "JS7"
+  private val SecretOriginDescription = "JS7 Secret"
   private val Required = ConfigParseOptions.defaults.setAllowMissing(false)
   private val logger = Logger(getClass)
 

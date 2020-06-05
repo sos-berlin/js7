@@ -44,7 +44,7 @@ final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll wit
 
   protected implicit def scheduler = Scheduler.global
   protected val config = ConfigFactory.parseString(
-     """jobscheduler {
+     """js7 {
        |  auth.users {}
        |  auth.session {
        |    timeout = 1 minute

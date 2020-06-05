@@ -66,7 +66,7 @@ with ReceiveLoggingActor.WithStash
 
   private val logger = Logger.withPrefix[this.type](agentRefPath.string)
   private val agentUserAndPassword: Option[UserAndPassword] =
-    masterConfiguration.config.optionAs[SecretString]("jobscheduler.auth.agents." + ConfigUtil.joinPath(agentRefPath.string))
+    masterConfiguration.config.optionAs[SecretString]("js7.auth.agents." + ConfigUtil.joinPath(agentRefPath.string))
       .map(password => UserAndPassword(masterConfiguration.masterId.toUserId, password))
 
   private val agentRunIdOnce = SetOnce.fromOption(initialAgentRunId)

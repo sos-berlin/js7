@@ -36,7 +36,7 @@ final class MasterRepoTest extends AnyFreeSpec
       for (v <- 1 to 4)  // For each version, we use a dedicated job which echos the VersionId
         provider.agents.head.writeExecutable(ExecutablePath(s"/EXECUTABLE-V$v$sh"), (if (isWindows) "@" else "") + s"echo /VERSION-$v/")
       provider.master.configDir / "master.conf" ++=
-        """jobscheduler.auth.users.TEST-USER {
+        """js7.auth.users.TEST-USER {
           |  password = "plain:TEST-PASSWORD"
           |  permissions = [ UpdateRepo ]
           |}

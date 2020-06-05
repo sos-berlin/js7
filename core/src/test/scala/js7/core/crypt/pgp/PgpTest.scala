@@ -151,7 +151,7 @@ object PgpTest
 {
   private[crypt] val TestMessage = "The data to be signed\n"
   private[crypt] val signerIds = SignerId("TEST (COMMENT) <test@example.com>") :: Nil
-  private[crypt] val signerIds2 = SignerId("JobScheduler Test (demonstration only) <jobscheduler-test@example.com>") :: Nil
+  private[crypt] val signerIds2 = SignerId("JS7 Test (demonstration only) <js7-test@example.com>") :: Nil
 
   // Keys and signatur generated gpg (GnuPG/MacGPG2) 2.2.10, libgcrypt 1.8.3
   // gpg --export --armor

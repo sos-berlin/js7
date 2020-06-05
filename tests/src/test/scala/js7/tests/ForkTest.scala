@@ -29,7 +29,7 @@ final class ForkTest extends AnyFreeSpec with MasterAgentForScalaTest
 {
   protected val agentRefPaths = AAgentRefPath :: BAgentRefPath :: Nil
   override protected val masterConfig = ConfigFactory.parseString(
-    s"""jobscheduler.TEST-ONLY.suppress-order-id-check-for = "DUPLICATE/🥕" """)
+    s"""js7.TEST-ONLY.suppress-order-id-check-for = "DUPLICATE/🥕" """)
   protected val fileBased = TestWorkflow :: DuplicateWorkflow :: Nil
 
   override def beforeAll() = {

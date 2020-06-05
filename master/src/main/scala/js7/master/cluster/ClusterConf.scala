@@ -28,12 +28,12 @@ final case class ClusterConf(
 object ClusterConf
 {
   def fromConfig(userId: UserId, config: Config): Checked[ClusterConf] = {
-    val isBackup = config.getBoolean("jobscheduler.master.cluster.node.is-backup")
+    val isBackup = config.getBoolean("js7.master.cluster.node.is-backup")
     for {
-      ownId <- config.checkedOptionAs[ClusterNodeId]("jobscheduler.master.cluster.node.id")
+      ownId <- config.checkedOptionAs[ClusterNodeId]("js7.master.cluster.node.id")
         .map(_ getOrElse ClusterNodeId(if (isBackup) "Backup" else "Primary"))
       maybeIdToUri <- {
-        val key = "jobscheduler.master.cluster.nodes"
+        val key = "js7.master.cluster.nodes"
         if (!config.hasPath(key))
           Right(None)
         else if (isBackup)
@@ -52,13 +52,13 @@ object ClusterConf
             .flatMap(idToUri =>
               ClusterSetting.checkUris(idToUri.toMap) map Some.apply)
       }
-      userAndPassword <- config.checkedOptionAs[SecretString]("jobscheduler.auth.cluster.password")
+      userAndPassword <- config.checkedOptionAs[SecretString]("js7.auth.cluster.password")
         .map(_.map(UserAndPassword(userId, _)))
       recouplingStreamReaderConf <- RecouplingStreamReaderConfs.fromConfig(config)
-      heartbeat <- Right(config.getDuration("jobscheduler.master.cluster.heartbeat").toFiniteDuration)
-      failAfter <- Right(config.getDuration("jobscheduler.master.cluster.fail-after").toFiniteDuration)
-      watchUris <- Right(config.getStringList("jobscheduler.master.cluster.watches").asScala.toVector map Uri.apply)
-      testHeartbeatLoss <- Right(config.optionAs[String]("jobscheduler.master.cluster.TEST-HEARTBEAT-LOSS"))
+      heartbeat <- Right(config.getDuration("js7.master.cluster.heartbeat").toFiniteDuration)
+      failAfter <- Right(config.getDuration("js7.master.cluster.fail-after").toFiniteDuration)
+      watchUris <- Right(config.getStringList("js7.master.cluster.watches").asScala.toVector map Uri.apply)
+      testHeartbeatLoss <- Right(config.optionAs[String]("js7.master.cluster.TEST-HEARTBEAT-LOSS"))
     } yield
       new ClusterConf(
         ownId,

@@ -49,8 +49,8 @@ object ThreadPools
 
   def newStandardScheduler(name: String, config: Config): ExecutorScheduler =
     ExecutorScheduler.forkJoinDynamic(name,
-      parallelism = config.as("jobscheduler.thread-pools.standard.parallelism")(ThreadCount),
-      maxThreads = config.as("jobscheduler.thread-pools.standard.maximum")(ThreadCount),
+      parallelism = config.as("js7.thread-pools.standard.parallelism")(ThreadCount),
+      maxThreads = config.as("js7.thread-pools.standard.maximum")(ThreadCount),
       daemonic = true,
       reporter = uncaughtExceptionReporter,
       ExecutionModel.Default)

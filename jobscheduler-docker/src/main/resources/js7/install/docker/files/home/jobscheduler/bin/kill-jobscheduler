@@ -3,7 +3,7 @@ set -e
 
 bin=$(cd "${0%/*}" && pwd)
 
-if test -d /var/opt/jobscheduler/agent; then
+if test -d /var/opt/js7/agent; then
   "$bin"/kill-agent "$@"
 else
   "$bin"/kill-master "$@"

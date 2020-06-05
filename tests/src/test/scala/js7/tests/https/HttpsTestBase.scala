@@ -49,8 +49,8 @@ private[https] trait HttpsTestBase extends AnyFreeSpec with BeforeAndAfterAll wi
     Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD")),
     actorSystem,
     config,
-    keyStoreRef = Some(KeyStoreRef(keyStore.toUri.toURL, storePassword = SecretString("jobscheduler"), keyPassword = SecretString("jobscheduler"))),
-    trustStoreRef = Some(TrustStoreRef(trustStore.toUri.toURL, storePassword = SecretString("jobscheduler"))),
+    keyStoreRef = Some(KeyStoreRef(keyStore.toUri.toURL, storePassword = SecretString("js7"), keyPassword = SecretString("js7"))),
+    trustStoreRef = Some(TrustStoreRef(trustStore.toUri.toURL, storePassword = SecretString("js7"))),
   ).closeWithCloser
 
   override protected def agentHttps = true
@@ -93,7 +93,7 @@ private[https] object HttpsTestBase
 
   private def provideAgentConfiguration(agent: DirectoryProvider.AgentTree): Unit = {
     (agent.configDir / "private/private.conf").append(
-      s"""jobscheduler.auth.users {
+      s"""js7.auth.users {
          |  Master = ${quoteString("plain:" + agent.password.string)}
          |}
          |""".stripMargin)
@@ -102,7 +102,7 @@ private[https] object HttpsTestBase
 
   private def provideMasterConfiguration(master: DirectoryProvider.MasterTree): Unit = {
     (master.configDir / "private/private.conf").append("""
-      |jobscheduler.auth.users {
+      |js7.auth.users {
       |  TEST-USER: "plain:TEST-PASSWORD"
       |}
       |""".stripMargin)

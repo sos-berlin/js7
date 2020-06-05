@@ -359,8 +359,8 @@ private[order] object OrderActor
     journalConf: JournalConf)
   object Conf {
     def apply(config: Config, journalConf: JournalConf) = new Conf(
-      stdoutCommitDelay = config.getDuration("jobscheduler.order.stdout-stderr.commit-delay").toFiniteDuration,
-      charBufferSize    = config.getInt     ("jobscheduler.order.stdout-stderr.char-buffer-size"),
+      stdoutCommitDelay = config.getDuration("js7.order.stdout-stderr.commit-delay").toFiniteDuration,
+      charBufferSize    = config.getInt     ("js7.order.stdout-stderr.char-buffer-size"),
       stdouterrToEventConf = StdouterrToEvent.Conf(config),
       journalConf)
   }

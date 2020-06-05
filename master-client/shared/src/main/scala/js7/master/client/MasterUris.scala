@@ -15,7 +15,7 @@ import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
 
 /**
- * URIs of the JobScheduler Master.
+ * URIs of the JS7 Master.
  *
  * @author Joacim Zschimmer
  */

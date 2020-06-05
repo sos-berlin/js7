@@ -105,8 +105,8 @@ with MainJournalingActor[MasterState, Event]
   private val idToOrder = orderRegister mapPartialFunction (_.order)
   private var orderProcessor = new OrderProcessor(PartialFunction.empty, idToOrder)
   private val recoveredJournalHeader = SetOnce[JournalHeader]
-  private val suppressOrderIdCheckFor = config.optionAs[String]("jobscheduler.TEST-ONLY.suppress-order-id-check-for")
-  private val testAddOrderDelay = config.optionAs[FiniteDuration]("jobscheduler.TEST-ONLY.add-order-delay").fold(Task.unit)(Task.sleep)
+  private val suppressOrderIdCheckFor = config.optionAs[String]("js7.TEST-ONLY.suppress-order-id-check-for")
+  private val testAddOrderDelay = config.optionAs[FiniteDuration]("js7.TEST-ONLY.add-order-delay").fold(Task.unit)(Task.sleep)
 
   private def repo = masterState.repo
 

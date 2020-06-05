@@ -54,7 +54,7 @@ private[graphql] object MasterGraphqlSchema
 
   private implicit val PatternType = stringEquivalentType[Pattern](str => Checked.catchNonFatal(Pattern.compile(str)), _.toString,
     "Pattern", "Regular expression pattern")
-  private implicit val OrderIdType         = genericStringType[OrderId]("Identifies the Order in JobScheduler")
+  private implicit val OrderIdType         = genericStringType[OrderId]("Identifies the Order in JS7")
   private implicit val WorkflowPathType    = genericStringType[WorkflowPath]("Path of Workflow (String)")
   private implicit val AgentRefPathType    = genericStringType[AgentRefPath]("Path of Agent (String)")
   private implicit val ExecutablePathType  = genericStringType[ExecutablePath]("Path of an executable (String)")

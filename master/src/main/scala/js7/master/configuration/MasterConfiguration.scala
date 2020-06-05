@@ -56,7 +56,7 @@ extends CommonConfiguration
 
 object MasterConfiguration
 {
-  val DefaultName = if (isTest) "Master" else "JobScheduler"
+  val DefaultName = if (isTest) "Master" else "JS7"
 
   def forTest(configAndData: Path,
     config: Config = ConfigFactory.empty,
@@ -104,15 +104,15 @@ object MasterConfiguration
     val dataDir = dataDirectory.toAbsolutePath
     val configDir = configDirectory.toAbsolutePath
     val config = resolvedConfig(configDir, dataDir, extraDefaultConfig)
-    val masterId = MasterId(config.getString("jobscheduler.master.id"))
+    val masterId = MasterId(config.getString("js7.master.id"))
     new MasterConfiguration(
       masterId = masterId,
       dataDirectory = dataDir,
       configDirectory = configDir,
       webServerPorts = Nil,
-        //config.seqAs("jobscheduler.webserver.http.ports")(StringToServerInetSocketAddress) map WebServerBinding.Http,
+        //config.seqAs("js7.webserver.http.ports")(StringToServerInetSocketAddress) map WebServerBinding.Http,
       timeZone = ZoneId.systemDefault,
-      akkaAskTimeout = config.getDuration("jobscheduler.akka.ask-timeout").toFiniteDuration,
+      akkaAskTimeout = config.getDuration("js7.akka.ask-timeout").toFiniteDuration,
       journalConf = JournalConf.fromConfig(config),
       clusterConf = ClusterConf.fromConfig(masterId.toUserId, config).orThrow,
       name = name,
@@ -122,8 +122,8 @@ object MasterConfiguration
   private def resolvedConfig(configDirectory: Path, dataDirectory: Path, extraDefaultConfig: Config): Config = {
     val config = configDirectoryConfig(configDirectory)
     ConfigFactory.parseMap(Map(
-        "jobscheduler.config-directory" -> configDirectory.toString,
-        "jobscheduler.data-directory" -> dataDirectory.toString
+        "js7.config-directory" -> configDirectory.toString,
+        "js7.data-directory" -> dataDirectory.toString
       ).asJava)
       .withFallback(ConfigFactory.systemProperties)
       .withFallback(config)

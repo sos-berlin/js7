@@ -36,7 +36,7 @@ object JavaMainLockfileSupport
     Try(lockFileChannel.tryLock()) match {
       case Success(null) =>
         lockFileChannel.close()
-        printlnWithClock("Duplicate start of JobScheduler")
+        printlnWithClock("Duplicate start of JS7")
         System.exit(1)
 
       case Failure(throwable) =>

@@ -9,7 +9,7 @@ import js7.data.event.{Event, EventRequest}
 import js7.data.order.OrderId
 
 /**
- * URIs of the JobScheduler Agent Server.
+ * URIs of the JS7 Agent Server.
  *
  * @author Joacim Zschimmer
  */

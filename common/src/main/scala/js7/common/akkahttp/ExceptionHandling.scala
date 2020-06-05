@@ -19,7 +19,7 @@ trait ExceptionHandling
   protected def isShuttingDown: Boolean
   protected def config: Config
 
-  private lazy val respondWithException = config.getBoolean("jobscheduler.webserver.verbose-error-messages")
+  private lazy val respondWithException = config.getBoolean("js7.webserver.verbose-error-messages")
 
   implicit protected val exceptionHandler: ExceptionHandler =
     ExceptionHandler {
@@ -62,7 +62,7 @@ trait ExceptionHandling
 
 object ExceptionHandling
 {
-  val webLogger = Logger("jobscheduler.web.exception")
+  val webLogger = Logger("js7.web.exception")
 
   private def toLogMessage(request: HttpRequest, throwable: Throwable) =
     s"Error while handling ${request.method.value} ${request.uri}: ${throwable.toStringWithCauses}"

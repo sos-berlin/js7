@@ -51,7 +51,7 @@ object IdToUser
 {
   private val logger = Logger(getClass)
   private val EntryRegex = "([^:]+):(.*)".r
-  private val UsersConfigPath = "jobscheduler.auth.users"
+  private val UsersConfigPath = "js7.auth.users"
 
   def fromConfig[U <: User](
     config: Config,

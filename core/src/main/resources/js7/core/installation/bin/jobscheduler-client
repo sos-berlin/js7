@@ -18,7 +18,7 @@ argToGet() {
   echo -e "GET $baseUri/api$arg HTTP/1.1\r
 Host: host\r
 Connection: close\r
-X-JobScheduler-Session: $(cat "$sessionTokenFile")\r
+X-JS7-Session: $(cat "$sessionTokenFile")\r
 Accept: text/plain;charset=UTF-8\r
 Accept-Charset: UTF-8\r
 \r
@@ -30,7 +30,7 @@ argToPost() {
   echo -e "POST $baseUri/api/command HTTP/1.1\r
 Host: host\r
 Connection: close\r
-X-JobScheduler-Session: $(cat "$sessionTokenFile")\r
+X-JS7-Session: $(cat "$sessionTokenFile")\r
 Content-Type: application/json\r
 Content-Length: ${#arg}\r
 Accept: text/plain;charset=UTF-8\r
@@ -60,7 +60,7 @@ fi
 
 httpUri="$(cat "$data/state/http-uri")"
 if ! [[ "$httpUri" =~ ^http://[^:]+:([0-9]+)/(.*)$ ]]; then
-  echo File "$data/state/http-uri does not contain a valid HTTP URI. Maybe JobScheduler is not running or does not provide a HTTP port on localhost"
+  echo File "$data/state/http-uri does not contain a valid HTTP URI. Maybe JS7 is not running or does not provide a HTTP port on localhost"
   exit 1
 else
   httpPort="${BASH_REMATCH[1]}"

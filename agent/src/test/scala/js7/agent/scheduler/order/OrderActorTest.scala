@@ -60,7 +60,7 @@ final class OrderActorTest extends AnyFreeSpec with HasCloser with BeforeAndAfte
 {
   private lazy val directoryProvider = TestAgentDirectoryProvider()
   private lazy val config = AgentConfiguration.forTest(directoryProvider.agentDirectory).finishAndProvideFiles.config
-    .withValue("jobscheduler.journal.simulate-sync", ConfigValueFactory.fromAnyRef("20ms"))
+    .withValue("js7.journal.simulate-sync", ConfigValueFactory.fromAnyRef("20ms"))
   private lazy val actorSystem = newAgentActorSystem("OrderActorTest")
 
   override def afterAll() = {

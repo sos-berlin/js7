@@ -26,10 +26,10 @@ trait WebLogDirectives extends ExceptionHandling
   protected def config: Config
   protected def actorSystem: ActorSystem
 
-  private lazy val logLevel = LogLevel(config.getString("jobscheduler.webserver.log.level"))
-  private lazy val errorLogLevel = LogLevel(config.getString("jobscheduler.webserver.log.error-level"))
-  private lazy val internalServerErrrorLevel = LogLevel(config.getString("jobscheduler.webserver.log.500-level"))
-  private lazy val logResponse = actorSystem.settings.config.getBoolean("jobscheduler.webserver.log.response")
+  private lazy val logLevel = LogLevel(config.getString("js7.webserver.log.level"))
+  private lazy val errorLogLevel = LogLevel(config.getString("js7.webserver.log.error-level"))
+  private lazy val internalServerErrrorLevel = LogLevel(config.getString("js7.webserver.log.500-level"))
+  private lazy val logResponse = actorSystem.settings.config.getBoolean("js7.webserver.log.response")
   private lazy val hasRemoteAddress = actorSystem.settings.config.getBoolean("akka.http.server.remote-address-header")
 
   protected def webLog(userId: Option[UserId]): Directive0 =
@@ -117,15 +117,15 @@ trait WebLogDirectives extends ExceptionHandling
 
 object WebLogDirectives
 {
-  private val webLogger = Logger("jobscheduler.web.log")
+  private val webLogger = Logger("js7.web.log")
 
   val TestConfig = ConfigFactory.parseString("""
-     |jobscheduler.webserver.log.level = debug
-     |jobscheduler.webserver.log.error-level = debug
-     |jobscheduler.webserver.log.500-level = info
-     |jobscheduler.webserver.log.duration = off
-     |jobscheduler.webserver.verbose-error-messages = true
-     |jobscheduler.webserver.shutdown-timeout = 10s""")
+     |js7.webserver.log.level = debug
+     |js7.webserver.log.error-level = debug
+     |js7.webserver.log.500-level = info
+     |js7.webserver.log.duration = off
+     |js7.webserver.verbose-error-messages = true
+     |js7.webserver.shutdown-timeout = 10s""")
 
   private def appendQuotedString(sb: StringBuilder, string: String) = {
     sb.append('"')

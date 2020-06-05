@@ -35,7 +35,7 @@ final class MasterClientMainTest extends AnyFreeSpec with BeforeAndAfterAll with
           s"https://localhost:$httpsPort" :: Nil,
         output += _)
     }
-    assert(output == List("JobScheduler Master is responding"))
+    assert(output == List("JS7 Master is responding"))
   }
 
   "Multiple api calls" in {
@@ -62,7 +62,7 @@ final class MasterClientMainTest extends AnyFreeSpec with BeforeAndAfterAll with
           Nil,
         output += _)
     }
-    assert(output.head contains "JobScheduler Master is not responding: ")
+    assert(output.head contains "JS7 Master is not responding: ")
     //assert(output.head contains "Connection refused")
   }
 

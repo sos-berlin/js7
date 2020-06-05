@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shows the threads (one per line) of running JobScheduler
+# Shows the threads (one per line) of running JS7
 set -e
 
 pid="$(cat "$HOME"/data/state/pid)"

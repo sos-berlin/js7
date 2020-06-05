@@ -28,8 +28,8 @@ final class ManyOrdersTest extends AnyFreeSpec with MasterAgentForScalaTest
   protected val agentRefPaths = agentRefPath :: Nil
   protected val fileBased = workflow :: Nil
   override protected val masterConfig = ConfigFactory.parseString("""
-    jobscheduler.webserver.auth.public = on
-    jobscheduler.journal.remove-obsolete-files = false""")
+    js7.webserver.auth.public = on
+    js7.journal.remove-obsolete-files = false""")
 
   private lazy val n = sys.props.get("ManyOrdersTest").map(_.toInt) getOrElse 1000
 

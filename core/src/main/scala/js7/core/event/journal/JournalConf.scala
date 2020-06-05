@@ -27,28 +27,28 @@ final case class JournalConf(
 object JournalConf
 {
   private val logger = Logger(getClass)
-  private val checkStateKey = "jobscheduler.journal.slow-check-state"
+  private val checkStateKey = "js7.journal.slow-check-state"
 
   def fromConfig(config: Config) = {
-    val syncOnCommit = config.getBoolean("jobscheduler.journal.sync")
-    val delay = config.getDuration("jobscheduler.journal.delay").toFiniteDuration
-    lazy val syncDelay = config.getDuration("jobscheduler.journal.sync-delay").toFiniteDuration
+    val syncOnCommit = config.getBoolean("js7.journal.sync")
+    val delay = config.getDuration("js7.journal.delay").toFiniteDuration
+    lazy val syncDelay = config.getDuration("js7.journal.sync-delay").toFiniteDuration
     val checkJournaledState = config.getBoolean(checkStateKey) || sys.props.contains("TEST")
     if (checkJournaledState) logger.warn(s"Slowing down due to $checkStateKey = true")
     new JournalConf(
       syncOnCommit = syncOnCommit,
-      simulateSync = config.durationOption("jobscheduler.journal.simulate-sync") map (_.toFiniteDuration),
+      simulateSync = config.durationOption("js7.journal.simulate-sync") map (_.toFiniteDuration),
       delay = (if (syncOnCommit) syncDelay max delay else delay) min 1.second,
-      eventLimit = config.as[Int]("jobscheduler.journal.event-buffer-size"),  // TODO Limit byte count to avoid OutOfMemoryError?
-      snapshotPeriod = config.getDuration("jobscheduler.journal.snapshot.period").toFiniteDuration,
-      snapshotSizeLimit = config.as("jobscheduler.journal.snapshot.when-bigger-than")(StringAsByteCountWithDecimalPrefix),
-      snapshotLogProgressPeriod = config.getDuration("jobscheduler.journal.snapshot.log-period").toFiniteDuration,
-      snapshotLogProgressActorLimit = config.getInt("jobscheduler.journal.snapshot.log-actor-limit"),
-      ackWarnDurations = config.getDurationList("jobscheduler.journal.ack-warn-durations")
+      eventLimit = config.as[Int]("js7.journal.event-buffer-size"),  // TODO Limit byte count to avoid OutOfMemoryError?
+      snapshotPeriod = config.getDuration("js7.journal.snapshot.period").toFiniteDuration,
+      snapshotSizeLimit = config.as("js7.journal.snapshot.when-bigger-than")(StringAsByteCountWithDecimalPrefix),
+      snapshotLogProgressPeriod = config.getDuration("js7.journal.snapshot.log-period").toFiniteDuration,
+      snapshotLogProgressActorLimit = config.getInt("js7.journal.snapshot.log-actor-limit"),
+      ackWarnDurations = config.getDurationList("js7.journal.ack-warn-durations")
         .asScala.toSeq.map(_.toFiniteDuration),
-      deleteObsoleteFiles = config.getBoolean("jobscheduler.journal.remove-obsolete-files"),
-      releaseEventsUserIds = config.seqAs[UserId]("jobscheduler.journal.users-allowed-to-release-events").toSet,
+      deleteObsoleteFiles = config.getBoolean("js7.journal.remove-obsolete-files"),
+      releaseEventsUserIds = config.seqAs[UserId]("js7.journal.users-allowed-to-release-events").toSet,
       slowCheckState = checkJournaledState,
-      useJournaledStateAsSnapshot = config.getBoolean("jobscheduler.journal.use-journaled-state-as-snapshot"))
+      useJournaledStateAsSnapshot = config.getBoolean("js7.journal.use-journaled-state-as-snapshot"))
   }
 }

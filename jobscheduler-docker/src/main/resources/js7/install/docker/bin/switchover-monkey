@@ -7,10 +7,10 @@ trap "kill -- -$$ >/dev/null || kill $echoPid" EXIT
 
 while true; do
   echo -n "master switchover: "
-  docker exec jobscheduler-master switch-over || true
+  docker exec js7-master switch-over || true
   sleep $((2 ** (RANDOM / 8000)))
   echo -n "backup-master switchover: "
-  docker exec jobscheduler-backup-master switch-over || true
+  docker exec js7-backup-master switch-over || true
   sleep $((2 ** (RANDOM / 8000)))
 done
 

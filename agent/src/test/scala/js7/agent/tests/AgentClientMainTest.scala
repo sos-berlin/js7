@@ -57,7 +57,7 @@ final class AgentClientMainTest extends AnyFreeSpec with BeforeAndAfterAll with 
     assertResult(0) {
       AgentClientMain.run(List(s"-data-directory=$dataDirectory", agent.localUri.toString), o => output += o)
     }
-    assert(output == List("JobScheduler Agent Server is responding"))
+    assert(output == List("JS7 Agent Server is responding"))
   }
 
   "main with Agent URI only checks wether Agent Server is responding (it is not)" in {
@@ -66,7 +66,7 @@ final class AgentClientMainTest extends AnyFreeSpec with BeforeAndAfterAll with 
     assertResult(1) {
       AgentClientMain.run(List(s"-data-directory=$dataDirectory", s"http://127.0.0.1:$port"), output += _)
     }
-    assert(output.head contains "JobScheduler Agent Server is not responding: ")
+    assert(output.head contains "JS7 Agent Server is not responding: ")
     assert(output.head contains "Connection refused")
   }
 }

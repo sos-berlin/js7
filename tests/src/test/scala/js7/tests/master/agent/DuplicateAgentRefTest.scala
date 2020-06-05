@@ -26,7 +26,7 @@ final class DuplicateAgentRefTest extends AnyFreeSpec with MasterAgentForScalaTe
 
   override def beforeAll() = {
     (directoryProvider.master.configDir / "private" / "private.conf") ++=
-      "jobscheduler.auth.agents." + quoteString(bAgentRefPath.string) + " = " +
+      "js7.auth.agents." + quoteString(bAgentRefPath.string) + " = " +
         quoteString(directoryProvider.agentToTree(aAgentRefPath).password.string) + "\n"
     for (a <- directoryProvider.agents) a.writeExecutable(TestExecutablePath, script(0.s))
     super.beforeAll()

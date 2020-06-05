@@ -19,8 +19,8 @@ import scala.util.{Failure, Success}
   */
 final class OrderScheduleGenerator(addOrders: Seq[FreshOrder] => Task[Completed], config: Config)
 {
-  private val addEvery = config.getDuration("jobscheduler.provider.add-orders-every").toFiniteDuration
-  private val addEarlier = config.getDuration("jobscheduler.provider.add-orders-earlier").toFiniteDuration
+  private val addEvery = config.getDuration("js7.provider.add-orders-every").toFiniteDuration
+  private val addEarlier = config.getDuration("js7.provider.add-orders-earlier").toFiniteDuration
   @volatile private var scheduledOrderGeneratorKeeper = new ScheduledOrderGeneratorKeeper(Nil)
   @volatile private var generatedUntil = Timestamp.now.roundToNextSecond
   @volatile private var timer: Cancelable = Cancelable.empty

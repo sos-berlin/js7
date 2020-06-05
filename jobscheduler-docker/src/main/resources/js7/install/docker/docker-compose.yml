@@ -13,18 +13,18 @@ services:
       context: build
       args:
         - UID
-    image: jobscheduler
-    container_name: jobscheduler-master
+    image: js7
+    container_name: js7-master
     command: ["master", "-J-Xmx200m"]
     hostname: master
     networks:
     - default
     ports:
     - "127.0.0.1:4444:4444"
-    working_dir: /var/opt/jobscheduler/master/data
+    working_dir: /var/opt/js7/master/data
     volumes:
-      - ./volumes/master/config:/var/opt/jobscheduler/master/config:ro
-      - ./volumes/master/data:/var/opt/jobscheduler/master/data:delegated
+      - ./volumes/master/config:/var/opt/js7/master/config:ro
+      - ./volumes/master/data:/var/opt/js7/master/data:delegated
     depends_on:
       - backup-master
       - agent-1
@@ -37,52 +37,52 @@ services:
       context: build
       args:
         - UID
-    image: jobscheduler
-    container_name: jobscheduler-backup-master
+    image: js7
+    container_name: js7-backup-master
     command: ["master", "-J-Xmx200m"]
     hostname: backup-master
     networks:
     - default
     #ports:
     #Does not work for Docker 2.2.3.0 MacOS:  - "127.0.0.2:4444:4444"
-    working_dir: /var/opt/jobscheduler/master/data
+    working_dir: /var/opt/js7/master/data
     volumes:
-      - ./volumes/backup-master/config:/var/opt/jobscheduler/master/config:ro
-      - ./volumes/backup-master/data:/var/opt/jobscheduler/master/data:delegated
+      - ./volumes/backup-master/config:/var/opt/js7/master/config:ro
+      - ./volumes/backup-master/data:/var/opt/js7/master/data:delegated
     stop_grace_period: 10s
     restart: unless-stopped
 
   provider:
-    image: jobscheduler
-    container_name: jobscheduler-provider
+    image: js7
+    container_name: js7-provider
     command: ["provider", "-J-Xmx100m", "-master-uri=http://master:4444"]
     hostname: provider
-    working_dir: /var/opt/jobscheduler/provider/data
+    working_dir: /var/opt/js7/provider/data
     volumes:
-      - ./volumes/provider/config:/var/opt/jobscheduler/provider/config:ro
-      - ./volumes/provider/data:/var/opt/jobscheduler/provider/data:delegated
+      - ./volumes/provider/config:/var/opt/js7/provider/config:ro
+      - ./volumes/provider/data:/var/opt/js7/provider/data:delegated
     restart: unless-stopped
 
   agent-1:
-    image: jobscheduler
-    container_name: jobscheduler-agent-1
+    image: js7
+    container_name: js7-agent-1
     command: ["agent", "-J-Xmx200m"]
     hostname: agent-1
-    working_dir: /var/opt/jobscheduler/agent/data
+    working_dir: /var/opt/js7/agent/data
     volumes:
-      - ./volumes/agent-1/config:/var/opt/jobscheduler/agent/config:ro
-      - ./volumes/agent-1/data:/var/opt/jobscheduler/agent/data:delegated
+      - ./volumes/agent-1/config:/var/opt/js7/agent/config:ro
+      - ./volumes/agent-1/data:/var/opt/js7/agent/data:delegated
     stop_grace_period: 10s
     restart: unless-stopped
 
   agent-2:
-    image: jobscheduler
-    container_name: jobscheduler-agent-2
+    image: js7
+    container_name: js7-agent-2
     command: ["agent", "-J-Xmx200m"]
     hostname: agent-2
-    working_dir: /var/opt/jobscheduler/agent/data
+    working_dir: /var/opt/js7/agent/data
     volumes:
-      - ./volumes/agent-2/config:/var/opt/jobscheduler/agent/config:ro
-      - ./volumes/agent-2/data:/var/opt/jobscheduler/agent/data:delegated
+      - ./volumes/agent-2/config:/var/opt/js7/agent/config:ro
+      - ./volumes/agent-2/data:/var/opt/js7/agent/data:delegated
     stop_grace_period: 10s
     restart: unless-stopped

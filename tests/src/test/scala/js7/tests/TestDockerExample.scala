@@ -64,7 +64,7 @@ object TestDockerExample
     provide("agent-1/config/executables/test")
     provide("agent-2/config/private/private.conf")
     provide("agent-2/config/executables/test")
-    env.masterDir / "config" / "master.conf" := """jobscheduler.webserver.auth.loopback-is-public = on"""
+    env.masterDir / "config" / "master.conf" := """js7.webserver.auth.loopback-is-public = on"""
     withCloser { implicit closer =>
       val masterConfiguration = MasterConfiguration.forTest(configAndData = env.masterDir, httpPort = Some(4444))
       val injector = Guice.createInjector(new MasterModule(masterConfiguration.copy(

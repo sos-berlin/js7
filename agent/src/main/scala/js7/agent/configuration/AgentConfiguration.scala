@@ -102,7 +102,7 @@ extends CommonConfiguration
   lazy val temporaryDirectory: Path =
     dataDirectory  / "tmp"
 
-  lazy val scriptInjectionAllowed = config.getBoolean("jobscheduler.agent.task.signed-script-injection-allowed")
+  lazy val scriptInjectionAllowed = config.getBoolean("js7.agent.task.signed-script-injection-allowed")
 
   // Suppresses Config (which may contain secrets)
   override def toString = s"AgentConfiguration($configDirectory,$dataDirectory,$webServerPorts," +
@@ -111,7 +111,7 @@ extends CommonConfiguration
 
 object AgentConfiguration {
   val FileEncoding = if (isWindows) ISO_8859_1 else UTF_8
-  private[configuration] val DefaultName = if (isTest) "Agent" else "JobScheduler"
+  private[configuration] val DefaultName = if (isTest) "Agent" else "JS7"
   private val DelayUntilFinishKillScript = ProcessKillScript(EmptyPath)  // Marker for finish
   lazy val DefaultConfig = Configs.loadResource(
     JavaResource("js7/agent/configuration/agent.conf"),
@@ -133,15 +133,15 @@ object AgentConfiguration {
       configDirectory = configDirectory,
       dataDirectory = dataDirectory,
       webServerPorts = Nil,
-      logDirectory = config.optionAs("jobscheduler.agent.log.directory")(asAbsolutePath) getOrElse defaultLogDirectory(dataDirectory),
-      jobJavaOptions = config.stringSeq("jobscheduler.agent.task.java.options"),
+      logDirectory = config.optionAs("js7.agent.log.directory")(asAbsolutePath) getOrElse defaultLogDirectory(dataDirectory),
+      jobJavaOptions = config.stringSeq("js7.agent.task.java.options"),
       killScript = Some(DelayUntilFinishKillScript),  // Changed later
-      akkaAskTimeout = config.getDuration("jobscheduler.akka.ask-timeout").toFiniteDuration,
+      akkaAskTimeout = config.getDuration("js7.akka.ask-timeout").toFiniteDuration,
       journalConf = JournalConf.fromConfig(config),
       name = DefaultName,
       config = config)
-    v = v.withKillScript(config.optionAs[String]("jobscheduler.agent.task.kill.script"))
-    //for (o <- config.optionAs("jobscheduler.https.port")(StringToServerInetSocketAddress)) {
+    v = v.withKillScript(config.optionAs[String]("js7.agent.task.kill.script"))
+    //for (o <- config.optionAs("js7.https.port")(StringToServerInetSocketAddress)) {
     //  v = v addHttps o
     //}
     v
@@ -158,7 +158,7 @@ object AgentConfiguration {
   // Same code in TextAgentClient.configDirectoryConfig
   private def configDirectoryConfig(configDirectory: Path): Config =
     ConfigFactory.parseMap(Map(
-        "jobscheduler.config-directory" -> configDirectory.toString
+        "js7.config-directory" -> configDirectory.toString
       ).asJava)
       .withFallback(parseConfigIfExists(configDirectory / "private/private.conf", secret = true))
       .withFallback(parseConfigIfExists(configDirectory / "agent.conf", secret = false))

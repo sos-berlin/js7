@@ -59,12 +59,12 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
   }
 
   override protected val masterConfig = ConfigFactory.parseString("""
-    jobscheduler.auth.users {
+    js7.auth.users {
       TEST-USER {
         password = "plain:TEST-PASSWORD",
       }
     }
-    jobscheduler.journal.remove-obsolete-files = false""")
+    js7.journal.remove-obsolete-files = false""")
 
   "/master/api/journal requires authentication" in {
     val e = intercept[HttpException] {

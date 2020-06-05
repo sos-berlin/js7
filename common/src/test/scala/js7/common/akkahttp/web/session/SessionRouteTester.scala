@@ -33,7 +33,7 @@ trait SessionRouteTester extends BeforeAndAfterAll with ScalatestRouteTest with 
   protected type Session = SimpleSession
 
   protected final def isShuttingDown = false
-  protected final val config = ConfigFactory.parseString("jobscheduler.webserver.verbose-error-messages = on")
+  protected final val config = ConfigFactory.parseString("js7.webserver.verbose-error-messages = on")
 
   override def testConfig = ConfigFactory.parseString(s"""
      |akka.http.host-connection-pool.base-connection-backoff = 10ms
@@ -46,7 +46,7 @@ trait SessionRouteTester extends BeforeAndAfterAll with ScalatestRouteTest with 
   protected final lazy val gateKeeper = GateKeeper.forTest(
     isPublic = isPublic,
     config = ConfigFactory.parseString("""
-       |jobscheduler.auth.users {
+       |js7.auth.users {
        |  A-USER = "plain:A-PASSWORD"
        |  B-USER = "plain:B-PASSWORD"
        |}""".stripMargin))

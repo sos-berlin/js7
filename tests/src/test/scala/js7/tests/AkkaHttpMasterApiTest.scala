@@ -34,7 +34,7 @@ final class AkkaHttpMasterApiTest extends AnyFreeSpec with MasterAgentForScalaTe
 
   override def beforeAll() = {
     directoryProvider.master.configDir / "private" / "private.conf" ++= """
-        |jobscheduler.auth.users.TEST-USER = "plain:TEST-PASSWORD"
+        |js7.auth.users.TEST-USER = "plain:TEST-PASSWORD"
         |""".stripMargin
     super.beforeAll()
   }

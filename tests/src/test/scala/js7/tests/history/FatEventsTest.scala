@@ -46,8 +46,8 @@ final class FatEventsTest extends AnyFreeSpec
   "test" in {
     autoClosing(new DirectoryProvider(AAgentRefPath :: BAgentRefPath :: Nil, TestWorkflow :: Nil, testName = Some("FatEventsTest"))) { provider =>
       (provider.master.configDir / "private/private.conf").append("""
-        |jobscheduler.auth.users.TEST-USER = "plain:TEST-PASSWORD"
-        |jobscheduler.journal.users-allowed-to-release-events = [ "TEST-USER" ]
+        |js7.auth.users.TEST-USER = "plain:TEST-PASSWORD"
+        |js7.journal.users-allowed-to-release-events = [ "TEST-USER" ]
         |""".stripMargin )
       for (a <- provider.agents) a.writeExecutable(TestExecutablePath, DirectoryProvider.script(0.s))
 

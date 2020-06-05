@@ -37,7 +37,7 @@ extends AutoCloseable
 with RealEventWatch
 with JournalingObserver
 {
-  private val keepOpenCount = config.getInt("jobscheduler.journal.watch.keep-open")
+  private val keepOpenCount = config.getInt("js7.journal.watch.keep-open")
   // Read journal file names from directory while constructing
   private val journalId = SetOnce[JournalId]
   @volatile
@@ -315,11 +315,11 @@ object JournalEventWatch
   }
 
   val TestConfig = ConfigFactory.parseString("""
-     |jobscheduler.journal.watch.keep-open = 2
-     |jobscheduler.journal.watch.index-size = 100
-     |jobscheduler.journal.watch.index-factor = 10
-     |jobscheduler.journal.remove-obsolete-files = true
-     |jobscheduler.journal.users-allowed-to-release-events = []
-     |jobscheduler.monix.tailrecm-limit = 1000
+     |js7.journal.watch.keep-open = 2
+     |js7.journal.watch.index-size = 100
+     |js7.journal.watch.index-factor = 10
+     |js7.journal.remove-obsolete-files = true
+     |js7.journal.users-allowed-to-release-events = []
+     |js7.monix.tailrecm-limit = 1000
     """.stripMargin)
 }

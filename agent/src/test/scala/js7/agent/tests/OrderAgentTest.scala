@@ -46,7 +46,7 @@ final class OrderAgentTest extends AnyFreeSpec
     provideAgentDirectory { directory =>
       directory / "config" / "private" / "trusted-pgp-keys" / "test.asc" := signer.publicKey
       directory / "config" / "private" / "private.conf" ++=
-        s"""|jobscheduler.configuration.trusted-signature-keys.PGP = $${jobscheduler.config-directory}"/private/trusted-pgp-keys"
+        s"""|js7.configuration.trusted-signature-keys.PGP = $${js7.config-directory}"/private/trusted-pgp-keys"
            |""".stripMargin
 
       val jobDir = directory / "config" / "executables"
@@ -95,11 +95,11 @@ final class OrderAgentTest extends AnyFreeSpec
       AExecutablePath.toFile(executableDir).writeExecutable(TestScript)
       BExecutablePath.toFile(executableDir).writeExecutable(TestScript)
       val agentConf = AgentConfiguration.forTest(directory, ConfigFactory.parseString("""
-         |jobscheduler.journal.sync = on
-         |jobscheduler.journal.delay = 0ms
-         |jobscheduler.journal.simulate-sync = 10ms
-         |jobscheduler.journal.snapshot.log-period = 1ms
-         |jobscheduler.journal.snapshot.log-actor-limit = 10
+         |js7.journal.sync = on
+         |js7.journal.delay = 0ms
+         |js7.journal.simulate-sync = 10ms
+         |js7.journal.snapshot.log-period = 1ms
+         |js7.journal.snapshot.log-actor-limit = 10
          |""".stripMargin))
       val timeout = 1.hour
       RunningAgent.run(agentConf, timeout = Some(timeout)) { agent =>

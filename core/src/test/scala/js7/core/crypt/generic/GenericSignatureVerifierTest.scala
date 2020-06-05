@@ -29,7 +29,7 @@ final class GenericSignatureVerifierTest extends AnyFreeSpec
       directory / ".ignore" := "NOT A SIGNATURE FILE"
 
       val verifier = GenericSignatureVerifier(ConfigFactory.parseString(
-        s"""jobscheduler.configuration.trusted-signature-keys.PGP = "$directory" """)
+        s"""js7.configuration.trusted-signature-keys.PGP = "$directory" """)
       ).orThrow
       assert(verifier.verify(messages(0), signatures(0)) == Right(PgpTest.signerIds))
       assert(verifier.verify("TAMPERED", signatures(0)) == Left(TamperedWithSignedMessageProblem))

@@ -38,9 +38,9 @@ extends HasCloser with ProvideActorSystem with TextApi with HttpSessionApi with 
   protected lazy val trustStoreRef = configDirectory.flatMap { configDir =>
     // Use Master's keystore as truststore for client access, using also Master's store-password
     val mastersConfig = configDirectoryConfig(configDir)
-    mastersConfig.optionAs[String]("jobscheduler.https.keystore.store-password").flatMap { storePassword =>
-      val file = mastersConfig.optionAs[Path]("jobscheduler.https.keystore.file") getOrElse configDir / "private/https-keystore.p12"
-      val config = ConfigFactory.parseMap(Map("jobscheduler.https.truststore.store-password" -> storePassword).asJava)
+    mastersConfig.optionAs[String]("js7.https.keystore.store-password").flatMap { storePassword =>
+      val file = mastersConfig.optionAs[Path]("js7.https.keystore.file") getOrElse configDir / "private/https-keystore.p12"
+      val config = ConfigFactory.parseMap(Map("js7.https.truststore.store-password" -> storePassword).asJava)
       TrustStoreRef.fromConfig(config, default = file).onProblem(o => logger.debug(s"No keystore: $o"))
     }
   }
@@ -49,7 +49,7 @@ extends HasCloser with ProvideActorSystem with TextApi with HttpSessionApi with 
 
   protected def uriPrefixPath = "/agent"
 
-  protected def serverName = "JobScheduler Agent Server"
+  protected def serverName = "JS7 JobScheduler Agent Server"
 
   protected val sessionUri = agentUris.session
 

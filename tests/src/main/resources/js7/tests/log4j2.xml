@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration status="WARN" shutdownHook="disable">
   <properties>
-    <property name="logDirectory">${sys:jobscheduler.log4j.directory:-logs}</property>
+    <property name="logDirectory">${sys:js7.log4j.directory:-logs}</property>
   </properties>
   <appenders>
     <console name="stderr" target="SYSTEM_ERR">

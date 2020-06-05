@@ -67,11 +67,11 @@ object SessionRegister
   : SessionRegister[S] = {
     val sessionActor = actorRefFactory.actorOf(SessionActor.props[S](newSession, config), "session")
     new SessionRegister[S](sessionActor,
-      akkaAskTimeout = config.getDuration("jobscheduler.akka.ask-timeout").toFiniteDuration)
+      akkaAskTimeout = config.getDuration("js7.akka.ask-timeout").toFiniteDuration)
   }
 
   val TestConfig: Config = ConfigFactory.parseString(
-    """jobscheduler.akka.ask-timeout = 99.s
-      |jobscheduler.auth.session.timeout = 1 minute
+    """js7.akka.ask-timeout = 99.s
+      |js7.auth.session.timeout = 1 minute
       |""".stripMargin)
 }

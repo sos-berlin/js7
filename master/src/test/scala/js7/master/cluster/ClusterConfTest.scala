@@ -20,12 +20,12 @@ final class ClusterConfTest extends AnyFreeSpec
   "fromConfig" - {
     "Minimum configuration" in {
       val config = ConfigFactory.parseString("""
-        jobscheduler.master.cluster.node.is-backup = no
-        jobscheduler.master.cluster.heartbeat = 7s
-        jobscheduler.master.cluster.fail-after = 5s
-        jobscheduler.master.cluster.watches = [ "http://AGENT-1", "http://AGENT-2" ]
-        jobscheduler.web.client.idle-get-timeout = 50s
-        jobscheduler.web.client.delay-between-polling-gets = 1s""")
+        js7.master.cluster.node.is-backup = no
+        js7.master.cluster.heartbeat = 7s
+        js7.master.cluster.fail-after = 5s
+        js7.master.cluster.watches = [ "http://AGENT-1", "http://AGENT-2" ]
+        js7.web.client.idle-get-timeout = 50s
+        js7.web.client.delay-between-polling-gets = 1s""")
       val clusterConf = ClusterConf.fromConfig(UserId("USER"), config)
       assert(clusterConf == Right(
         ClusterConf(
@@ -43,18 +43,18 @@ final class ClusterConfTest extends AnyFreeSpec
 
     "Full configuration" in {
       val config = ConfigFactory.parseString("""
-        jobscheduler.master.cluster.node.id = A
-        jobscheduler.master.cluster.node.is-backup = no
-        jobscheduler.master.cluster.nodes = {
+        js7.master.cluster.node.id = A
+        js7.master.cluster.node.is-backup = no
+        js7.master.cluster.nodes = {
           A: "http://A"
           B: "http://B"
         }
-        jobscheduler.master.cluster.watches = [ "http://AGENT" ]
-        jobscheduler.master.cluster.heartbeat = 7s
-        jobscheduler.master.cluster.fail-after = 5s
-        jobscheduler.auth.cluster.password = "PASSWORD"
-        jobscheduler.web.client.idle-get-timeout = 50s
-        jobscheduler.web.client.delay-between-polling-gets = 1s""")
+        js7.master.cluster.watches = [ "http://AGENT" ]
+        js7.master.cluster.heartbeat = 7s
+        js7.master.cluster.fail-after = 5s
+        js7.auth.cluster.password = "PASSWORD"
+        js7.web.client.idle-get-timeout = 50s
+        js7.web.client.delay-between-polling-gets = 1s""")
       val checkedClusterConf = ClusterConf.fromConfig(UserId("USER"), config)
       assert(checkedClusterConf == Right(
         ClusterConf(

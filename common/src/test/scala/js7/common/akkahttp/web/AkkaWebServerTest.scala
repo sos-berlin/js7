@@ -41,7 +41,7 @@ final class AkkaWebServerTest extends AnyFreeSpec with BeforeAndAfterAll
   private lazy val http = Http()
 
   private lazy val webServer = new AkkaWebServer with HasUri {
-    protected val config = ConfigFactory.parseString("jobscheduler.webserver.shutdown-timeout = 10s")
+    protected val config = ConfigFactory.parseString("js7.webserver.shutdown-timeout = 10s")
     protected def actorSystem = AkkaWebServerTest.this.actorSystem
     protected def scheduler = Scheduler.global
 
@@ -50,9 +50,9 @@ final class AkkaWebServerTest extends AnyFreeSpec with BeforeAndAfterAll
       KeyStoreResource copyToFile directory / "private" / "https-keystore.p12"
       KeyStoreRef.fromConfig(
         ConfigFactory.parseString(
-          """jobscheduler.https.keystore {
-            |  key-password = jobscheduler
-            |  store-password = jobscheduler
+          """js7.https.keystore {
+            |  key-password = js7
+            |  store-password = js7
             |}
             |""".stripMargin),
         directory / "private/https-keystore.p12")
@@ -118,5 +118,5 @@ object AkkaWebServerTest {
   private val TrustStoreResource = JavaResource(getClass.getClassLoader,
     "js7/common/akkahttp/https/config/export/https-truststore.p12")
 
-  private val ClientTrustStoreRef = TrustStoreRef(TrustStoreResource.url, storePassword = SecretString("jobscheduler"))
+  private val ClientTrustStoreRef = TrustStoreRef(TrustStoreResource.url, storePassword = SecretString("js7"))
 }

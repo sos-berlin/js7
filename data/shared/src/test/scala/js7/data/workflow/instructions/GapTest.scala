@@ -12,7 +12,7 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class GapTest extends AnyFreeSpec {
 
-  // For internal JobScheduler use only.
+  // For internal JS7 use only.
 
   "JSON" in {
     testJson[Instruction.Labeled](

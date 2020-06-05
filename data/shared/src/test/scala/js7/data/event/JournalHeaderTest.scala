@@ -22,7 +22,7 @@ final class JournalHeaderTest extends AnyFreeSpec
         totalRunningTime = 1.hour,
         timestamp = Timestamp.parse("2019-05-23T22:22:22.222Z")),
       json"""{
-        "TYPE": "JobScheduler.Journal",
+        "TYPE": "JS7.Journal",
         "journalId": "ABEiM0RVZneImaq7zN3u_w",
         "eventId": 777,
         "generation": 0,

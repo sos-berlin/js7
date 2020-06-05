@@ -186,11 +186,11 @@ object GateKeeper {
       toPermission: PartialFunction[String, Permission] = PartialFunction.empty)
     =
       Configuration[U](
-        realm                       = config.getString  ("jobscheduler.webserver.auth.realm"),
-        invalidAuthenticationDelay  = config.getDuration("jobscheduler.webserver.auth.invalid-authentication-delay").toFiniteDuration,
-        isPublic                    = config.getBoolean ("jobscheduler.webserver.auth.public"),
-        loopbackIsPublic            = config.getBoolean ("jobscheduler.webserver.auth.loopback-is-public"),
-        getIsPublic                 = config.getBoolean ("jobscheduler.webserver.auth.get-is-public"),
+        realm                       = config.getString  ("js7.webserver.auth.realm"),
+        invalidAuthenticationDelay  = config.getDuration("js7.webserver.auth.invalid-authentication-delay").toFiniteDuration,
+        isPublic                    = config.getBoolean ("js7.webserver.auth.public"),
+        loopbackIsPublic            = config.getBoolean ("js7.webserver.auth.loopback-is-public"),
+        getIsPublic                 = config.getBoolean ("js7.webserver.auth.get-is-public"),
         idToUser = IdToUser.fromConfig(config, toUser, toPermission))
   }
 
@@ -210,7 +210,7 @@ object GateKeeper {
     new GateKeeper(
       GateKeeper.Configuration.fromConfig(
         config.withFallback(ConfigFactory.parseString(
-         s"""jobscheduler.webserver.auth {
+         s"""js7.webserver.auth {
             |  realm = "TEST REALM"
             |  invalid-authentication-delay = 100ms
             |  loopback-is-public = false

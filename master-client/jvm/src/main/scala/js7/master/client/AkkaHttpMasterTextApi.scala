@@ -35,7 +35,7 @@ extends HasCloser with ProvideActorSystem with TextApi with HttpSessionApi with 
 
   protected def sessionUri = masterUris.session
 
-  protected def serverName = "JobScheduler Master"
+  protected def serverName = "JS7 Master"
 
   protected def commandUri = masterUris.command
 

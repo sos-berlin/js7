@@ -39,7 +39,7 @@ final class ReleaseEventsTest extends AnyFreeSpec with DirectoryProviderForScala
   protected val agentRefPaths = TestAgentRefPath :: Nil
   protected val fileBased = TestWorkflow :: Nil
   override protected val masterConfig = ConfigFactory.parseString(
-     """jobscheduler {
+     """js7 {
        |  journal.users-allowed-to-release-events = [ "A", "B" ]
        |  auth.users {
        |    A = "plain:PASSWORD"

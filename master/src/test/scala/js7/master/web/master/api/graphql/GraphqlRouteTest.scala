@@ -85,7 +85,7 @@ final class GraphqlRouteTest extends AnyFreeSpec with RouteTester with GraphqlRo
     "text/html - GraphiQL" in {
       Get("/master/api/graphql") ~> Accept(`text/html`) ~> route ~> check {
         implicit val u = Unmarshaller.byteStringUnmarshaller.forContentTypes(`text/html`)
-        assert(responseAs[ByteString].utf8String contains "<title>JobScheduler Master · GraphQL</title>")
+        assert(responseAs[ByteString].utf8String contains "<title>JS7 Master · GraphQL</title>")
       }
     }
 

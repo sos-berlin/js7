@@ -36,14 +36,14 @@ object IOExecutor
   private val logger = Logger(getClass)
 
   object Implicits {
-    implicit val globalIOX = new IOExecutor(60.seconds, name = "JobScheduler")
+    implicit val globalIOX = new IOExecutor(60.seconds, name = "JS7")
   }
 
   def newThreadPoolExecutor(config: Config, name: String): ThreadPoolExecutor =
     newThreadPoolExecutor(
-      keepAlive = config.getDuration("jobscheduler.thread-pools.io.keep-alive").toFiniteDuration,
-      minimum   = config.getInt     ("jobscheduler.thread-pools.io.minimum"),
-      maximum   = config.as         ("jobscheduler.thread-pools.io.maximum")(StringAsIntOrUnlimited),
+      keepAlive = config.getDuration("js7.thread-pools.io.keep-alive").toFiniteDuration,
+      minimum   = config.getInt     ("js7.thread-pools.io.minimum"),
+      maximum   = config.as         ("js7.thread-pools.io.maximum")(StringAsIntOrUnlimited),
       name      = name)
 
   def newThreadPoolExecutor(keepAlive: FiniteDuration = 60.seconds, minimum: Int = 0, maximum: Option[Int] = None, name: String): ThreadPoolExecutor =

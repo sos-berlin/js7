@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 set -e
 
-# JobScheduler Master starter
+# JS7 Master starter
 
 JOBSCHEDULER_HOME="$(cd "${0%/*}/../bin/.." && pwd)"
 export JOBSCHEDULER_HOME
 . "$JOBSCHEDULER_HOME/bin/internal/set-context.sh"
 declare classpathString java  # returned by set-context.sh
 
-config=/var/opt/jobscheduler/master/config
-data=/var/opt/jobscheduler/master/data
+config=/var/opt/js7/master/config
+data=/var/opt/js7/master/data
 httpPort=4444
 masterOptions=()
 javaOptions=(-XX:+UseStringDeduplication)
@@ -89,14 +89,14 @@ stateDir="$data/state"
 [ -d "$stateDir" ] || mkdir "$stateDir"
 
 exec > >(tee -a "$logs"/stdouterr.log) 2>&1  # Redirects stderr to stdout as a side effect
-javaOptions+=("-Djobscheduler.log4j.directory=$logs")  # Used in logging configuration
+javaOptions+=("-Djs7.log4j.directory=$logs")  # Used in logging configuration
 if [ -f "$config/log4j2.xml" ]; then :
   javaOptions+=("-Dlog4j.configurationFile=$config/log4j2.xml")
 fi
 if $log4jAsync; then :
   javaOptions+=("-Dlog4j2.contextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector")
   javaOptions+=("-Dlog4j2.asyncLoggerWaitStrategy=Block")  # Uses less CPU when idling than default "Timeout"
-  javaOptions+=("-Djobscheduler.log4j.immediateFlush=false")
+  javaOptions+=("-Djs7.log4j.immediateFlush=false")
 fi
 
 masterOptions+=("-config-directory=$config")
@@ -122,11 +122,11 @@ while true; do
 
   terminate() {
     echo
-    echo ShutDown JobScheduler Master
+    echo ShutDown JS7 Master
     # Add some seconds to start Java with MasterClientMain
     terminateTimeout=30
     if [ "$SHELL" = "/bin/bash" ]; then
-      "$JOBSCHEDULER_HOME/bin/jobscheduler-client" -data-directory="$data" '{ "TYPE": "ShutDown" }' &
+      "$JOBSCHEDULER_HOME/bin/js7-client" -data-directory="$data" '{ "TYPE": "ShutDown" }' &
     else
       "$java" -Xmx50m \
         -Dlog4j.configurationFile=js7/master/client/main/log4j2.xml \
@@ -147,11 +147,11 @@ while true; do
   returnCode=0
   wait $pid || {
     returnCode=$?
-    echo "JobScheduler Master exited with exit code $returnCode"
+    echo "JS7 Master exited with exit code $returnCode"
   }
   rm "$pidFile"
   trap - SIGTERM SIGINT
-  (t=$(date +"%Y-%m-%d %H:%M:%S.%N"); echo -e "\n${t:0:23} JobScheduler Master has been shut down" >>"$logs/stdouterr.log")
+  (t=$(date +"%Y-%m-%d %H:%M:%S.%N"); echo -e "\n${t:0:23} JS7 Master has been shut down" >>"$logs/stdouterr.log")
 
   if [[ $returnCode -ne 97 ]] && [[ $returnCode -ne 98 ]]; then
     exit $returnCode

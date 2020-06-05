@@ -66,12 +66,12 @@ final class MasterModule(configuration: MasterConfiguration) extends AbstractMod
   @Provides @Singleton
   def actorSystem(closer: Closer, executionContext: ExecutionContext): ActorSystem = {
     val actorSystem = ActorSystem(configuration.name, config = Some(configuration.config),
-      defaultExecutionContext = config.getBoolean("jobscheduler.akka.use-jobscheduler-thread-pool") ? executionContext)
+      defaultExecutionContext = config.getBoolean("js7.akka.use-js7-thread-pool") ? executionContext)
     closer.onClose {
       logger.debug("ActorSystem.terminate ...")
       try {
         val since = now
-        actorSystem.terminate() await config.getDuration("jobscheduler.akka.shutdown-timeout").toFiniteDuration
+        actorSystem.terminate() await config.getDuration("js7.akka.shutdown-timeout").toFiniteDuration
         logger.debug(s"ActorSystem terminated (${since.elapsed.pretty})")
       }
       catch {

@@ -12,7 +12,7 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class GotoTest extends AnyFreeSpec {
 
-  // For compatibility with JobScheduler 1 only.
+  // For compatibility with JS7 1 only.
 
   "JSON" in {
     testJson[Instruction.Labeled](

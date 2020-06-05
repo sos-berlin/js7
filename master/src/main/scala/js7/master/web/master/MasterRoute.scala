@@ -18,7 +18,7 @@ trait MasterRoute extends ApiRoute with WebLogDirectives with TestRoute {
       }
     } ~
     pathSegment("TEST") {
-      passIf(config.getBoolean("jobscheduler.webserver.test")) {
+      passIf(config.getBoolean("js7.webserver.test")) {
         testRoute
       }
     }

@@ -16,25 +16,25 @@ final class JournalConfTest extends AnyFreeSpec
 
   "delay is maximum of delay and sync-delay if sync-delay=on (1)" in {
     val c = ConfigFactory.parseString("""
-      jobscheduler.journal.delay = 1ms
-      jobscheduler.journal.sync-delay = 222ms""")
+      js7.journal.delay = 1ms
+      js7.journal.sync-delay = 222ms""")
     assert(JournalConf.fromConfig(c withFallback config) ==
       journalConf.copy(delay = 222.ms))
   }
 
   "delay is maximum of delay and sync-delay if sync-delay=on (2)" in {
     val c = ConfigFactory.parseString("""
-      jobscheduler.journal.delay = 333ms
-      jobscheduler.journal.sync-delay = 1ms""")
+      js7.journal.delay = 333ms
+      js7.journal.sync-delay = 1ms""")
     assert(JournalConf.fromConfig(c withFallback config) ==
       journalConf.copy(delay = 333.ms))
   }
 
   "On sync=off sync-delay is not respected" in {
     val c = ConfigFactory.parseString("""
-      jobscheduler.journal.sync = off
-      jobscheduler.journal.delay = 1ms
-      jobscheduler.journal.sync-delay = 222ms""")
+      js7.journal.sync = off
+      js7.journal.delay = 1ms
+      js7.journal.sync-delay = 222ms""")
     assert(JournalConf.fromConfig(c withFallback config) ==
       journalConf.copy(syncOnCommit = false, delay = 1.ms))
   }
@@ -43,7 +43,7 @@ final class JournalConfTest extends AnyFreeSpec
 object JournalConfTest
 {
   private[journal] val config = ConfigFactory.parseString("""
-     jobscheduler.journal {
+     js7.journal {
        sync = on
        delay = 1ms
        sync-delay = 2ms

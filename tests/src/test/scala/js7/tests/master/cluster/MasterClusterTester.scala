@@ -39,7 +39,7 @@ private[cluster] trait MasterClusterTester extends AnyFreeSpec
 
   coupleScribeWithSlf4j()
   ProblemCodeMessages.initialize()
-  protected final val testHeartbeatLossPropertyKey = "jobscheduler.TEST." + SecretStringGenerator.randomString()
+  protected final val testHeartbeatLossPropertyKey = "js7.TEST." + SecretStringGenerator.randomString()
   sys.props(testHeartbeatLossPropertyKey) = "false"
 
   protected[cluster] final def withMasterAndBackup(primaryHttpPort: Int, backupHttpPort: Int)
@@ -50,34 +50,34 @@ private[cluster] trait MasterClusterTester extends AnyFreeSpec
       val agentPort = findFreeTcpPort()
       val primary = new DirectoryProvider(agentRefPath :: Nil, TestWorkflow :: Nil, testName = Some(s"$testName-Primary"),
         masterConfig = ConfigFactory.parseString((configureClusterNodes ?: s"""
-          jobscheduler.master.cluster.nodes = {
+          js7.master.cluster.nodes = {
             Primary: "http://127.0.0.1:$primaryHttpPort"
             Backup: "http://127.0.0.1:$backupHttpPort"
           }""") + s"""
-          jobscheduler.master.cluster.heartbeat = 3s
-          jobscheduler.master.cluster.fail-after = 5s
-          jobscheduler.master.cluster.watches = [ "http://127.0.0.1:$agentPort" ]
-          jobscheduler.master.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"
-          jobscheduler.auth.users.Master.password = "plain:PRIMARY-MASTER-PASSWORD"
-          jobscheduler.auth.users.TEST.password = "plain:TEST-PASSWORD"
-          jobscheduler.auth.cluster.password = "BACKUP-MASTER-PASSWORD"
-          jobscheduler.journal.use-journaled-state-as-snapshot = true
-          jobscheduler.journal.remove-obsolete-files = $removeObsoleteJournalFiles """),
+          js7.master.cluster.heartbeat = 3s
+          js7.master.cluster.fail-after = 5s
+          js7.master.cluster.watches = [ "http://127.0.0.1:$agentPort" ]
+          js7.master.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"
+          js7.auth.users.Master.password = "plain:PRIMARY-MASTER-PASSWORD"
+          js7.auth.users.TEST.password = "plain:TEST-PASSWORD"
+          js7.auth.cluster.password = "BACKUP-MASTER-PASSWORD"
+          js7.journal.use-journaled-state-as-snapshot = true
+          js7.journal.remove-obsolete-files = $removeObsoleteJournalFiles """),
         agentPorts = agentPort :: Nil
       ).closeWithCloser
 
       val backup = new DirectoryProvider(Nil, Nil, testName = Some(s"$testName-Backup"),
         masterConfig = ConfigFactory.parseString(s"""
-          jobscheduler.master.cluster.node.is-backup = yes
-          jobscheduler.master.cluster.heartbeat = 3s
-          jobscheduler.master.cluster.fail-after = 5s
-          jobscheduler.master.cluster.watches = [ "http://127.0.0.1:$agentPort" ]
-          jobscheduler.master.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"
-          jobscheduler.auth.users.Master.password = "plain:BACKUP-MASTER-PASSWORD"
-          jobscheduler.auth.users.TEST.password = "plain:TEST-PASSWORD"
-          jobscheduler.auth.cluster.password = "PRIMARY-MASTER-PASSWORD"
-          jobscheduler.journal.use-journaled-state-as-snapshot = true
-          jobscheduler.journal.remove-obsolete-files = $removeObsoleteJournalFiles """),
+          js7.master.cluster.node.is-backup = yes
+          js7.master.cluster.heartbeat = 3s
+          js7.master.cluster.fail-after = 5s
+          js7.master.cluster.watches = [ "http://127.0.0.1:$agentPort" ]
+          js7.master.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"
+          js7.auth.users.Master.password = "plain:BACKUP-MASTER-PASSWORD"
+          js7.auth.users.TEST.password = "plain:TEST-PASSWORD"
+          js7.auth.cluster.password = "PRIMARY-MASTER-PASSWORD"
+          js7.journal.use-journaled-state-as-snapshot = true
+          js7.journal.remove-obsolete-files = $removeObsoleteJournalFiles """),
       ).closeWithCloser
 
       // Replicate credentials required for agents

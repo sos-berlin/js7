@@ -7,7 +7,7 @@ import com.typesafe.config.Config
 object RecouplingStreamReaderConfs
 {
   def fromConfig(config: Config): Checked[RecouplingStreamReaderConf] =
-    fromSubconfig(config.getConfig("jobscheduler.web.client"))
+    fromSubconfig(config.getConfig("js7.web.client"))
 
   def fromSubconfig(subconfig: Config): Checked[RecouplingStreamReaderConf] =
     Checked.catchNonFatal {

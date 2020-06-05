@@ -26,13 +26,13 @@ object AgentDriverConfiguration
         Checked.catchNonFatal {
           new AgentDriverConfiguration(
             recouplingStreamReader,
-            eventBufferDelay    = config.getDuration("jobscheduler.master.agent-driver.event-buffer-delay").toFiniteDuration,
-            eventBufferSize     = config.getInt     ("jobscheduler.master.agent-driver.event-buffer-size"),
+            eventBufferDelay    = config.getDuration("js7.master.agent-driver.event-buffer-delay").toFiniteDuration,
+            eventBufferSize     = config.getInt     ("js7.master.agent-driver.event-buffer-size"),
             commitDelay         = journalConf.delay,
-            commandBatchSize    = config.getInt     ("jobscheduler.master.agent-driver.command-batch-size"),
-            commandBatchDelay   = config.getDuration("jobscheduler.master.agent-driver.command-batch-delay").toFiniteDuration,
-            commandErrorDelay   = config.getDuration("jobscheduler.master.agent-driver.command-error-delay").toFiniteDuration,
-            commandParallelism  = config.getInt     ("jobscheduler.master.agent-driver.command-parallelism"),
-            releaseEventsPeriod    = config.getDuration("jobscheduler.master.agent-driver.release-events-period").toFiniteDuration)
+            commandBatchSize    = config.getInt     ("js7.master.agent-driver.command-batch-size"),
+            commandBatchDelay   = config.getDuration("js7.master.agent-driver.command-batch-delay").toFiniteDuration,
+            commandErrorDelay   = config.getDuration("js7.master.agent-driver.command-error-delay").toFiniteDuration,
+            commandParallelism  = config.getInt     ("js7.master.agent-driver.command-parallelism"),
+            releaseEventsPeriod    = config.getDuration("js7.master.agent-driver.release-events-period").toFiniteDuration)
         })
 }

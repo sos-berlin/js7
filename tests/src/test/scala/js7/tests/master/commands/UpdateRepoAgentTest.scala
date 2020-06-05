@@ -39,7 +39,7 @@ final class UpdateRepoAgentTest extends AnyFreeSpec
   "MasterCommand.UpdateRepo" in {
     autoClosing(new DirectoryProvider(agentRefPath :: Nil, workflow :: Nil, testName = Some("UpdateRepoAgentTest"))) { provider =>
       (provider.master.configDir / "private" / "private.conf") ++=
-        """jobscheduler.auth.users {
+        """js7.auth.users {
           |  UpdateRepoAgentTest {
           |    password = "plain:TEST-PASSWORD"
           |    permissions = [ UpdateRepo ]

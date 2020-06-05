@@ -44,6 +44,6 @@ object ProviderMain
 
   private def awaitTermination(future: Future[Unit]): Unit = {
     future.recover { case _: CancellationException => }.awaitInfinite
-    logger.info("JobScheduler Provider terminated")
+    logger.info("JS7 Provider terminated")
   }
 }

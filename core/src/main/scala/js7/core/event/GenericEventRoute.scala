@@ -57,9 +57,9 @@ trait GenericEventRoute extends RouteProvider
 
   private implicit def implicitScheduler: Scheduler = scheduler
 
-  private lazy val defaultJsonSeqChunkTimeout = config.getDuration("jobscheduler.webserver.services.event.streaming.chunk-timeout")
+  private lazy val defaultJsonSeqChunkTimeout = config.getDuration("js7.webserver.services.event.streaming.chunk-timeout")
     .toFiniteDuration
-  private lazy val defaultStreamingDelay = config.getDuration("jobscheduler.webserver.services.event.streaming.delay")
+  private lazy val defaultStreamingDelay = config.getDuration("js7.webserver.services.event.streaming.delay")
     .toFiniteDuration
 
   protected trait GenericEventRouteProvider

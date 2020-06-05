@@ -18,7 +18,7 @@ import js7.core.startup.StartUp.printlnWithClock
 import scala.concurrent.duration._
 
 /**
- * JobScheduler Agent Server.
+ * JS7 Agent Server.
  *
  * @author Joacim Zschimmer
  */
@@ -27,7 +27,7 @@ final class AgentMain
   private val logger = Logger(getClass)
 
   def run(arguments: CommandLineArguments): AgentTermination.Terminate = {
-    logger.info(s"JobScheduler Agent Server ${BuildInfo.prettyVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
+    logger.info(s"JS7 Agent Server ${BuildInfo.prettyVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
     logger.debug(arguments.toString)
     val agentConfiguration = AgentConfiguration.fromCommandLine(arguments)
     logConfig(agentConfiguration.config)
@@ -38,16 +38,16 @@ final class AgentMain
       }
     }
     // Log complete timestamp in case of short log timestamp
-    val msg = s"JobScheduler Agent Server terminates at ${Timestamp.now.show}"
+    val msg = s"JS7 Agent Server terminates at ${Timestamp.now.show}"
     logger.info(msg)
     printlnWithClock(msg)
     terminated
   }
 
   private def onJavaShutdown(agent: RunningAgent)(timeout: FiniteDuration): Unit = {
-    logger.warn("Trying to shut down JobScheduler Agent Server due to Java shutdown")
+    logger.warn("Trying to shut down JS7 Agent Server due to Java shutdown")
     import agent.scheduler
-    val sigkillAfter = agent.config.getDuration("jobscheduler.termination.sigkill-after").toFiniteDuration
+    val sigkillAfter = agent.config.getDuration("js7.termination.sigkill-after").toFiniteDuration
     agent.executeCommandAsSystemUser(ShutDown(sigtermProcesses = true, sigkillProcessesAfter = Some(sigkillAfter)))
       .runAsyncAndForget
     agent.terminated await timeout
@@ -60,7 +60,7 @@ object AgentMain
   // Don't use a Logger here to avoid overwriting a concurrently used logfile
 
   def main(args: Array[String]): Unit = {
-    printlnWithClock(s"JobScheduler Agent Server ${BuildInfo.prettyVersion}")
+    printlnWithClock(s"JS7 Agent Server ${BuildInfo.prettyVersion}")
     var terminated = AgentTermination.Terminate()
     lockAndRunMain(args) { commandLineArguments =>
       terminated = new AgentMain().run(commandLineArguments)

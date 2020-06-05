@@ -27,7 +27,7 @@ trait RouteTester extends ScalatestRouteTest with ExceptionHandling
 
   protected final lazy val gateKeeper = new GateKeeper(
     GateKeeper.Configuration.fromConfig(
-      ConfigFactory.parseString("jobscheduler.webserver.auth.loopback-is-public = true")
+      ConfigFactory.parseString("js7.webserver.auth.loopback-is-public = true")
         withFallback DefaultConfig,
       SimpleUser.apply),
     isLoopback = true)
@@ -36,8 +36,8 @@ trait RouteTester extends ScalatestRouteTest with ExceptionHandling
     SessionRegister.start[SimpleSession](system, SimpleSession.apply, SessionRegister.TestConfig)
 
   protected def config = ConfigFactory.parseString(
-    """jobscheduler.webserver.verbose-error-messages = on
-      |jobscheduler.webserver.services.event.streaming.delay = 20ms
-      |jobscheduler.webserver.services.event.streaming.chunk-timeout = 1h
+    """js7.webserver.verbose-error-messages = on
+      |js7.webserver.services.event.streaming.delay = 20ms
+      |js7.webserver.services.event.streaming.chunk-timeout = 1h
       |""".stripMargin)
 }

@@ -44,7 +44,7 @@ trait FatEventRoute extends MasterRouteProvider
   private implicit val fatScheduler: Scheduler = Scheduler(
     newSingleThreadExecutor { runnable =>
       val thread = new Thread(runnable)
-      thread.setName(s"JobScheduler-fatEvent-${thread.getId}")
+      thread.setName(s"JS7-fatEvent-${thread.getId}")
       thread
     },
     reporter = new UncaughtExceptionReporter {

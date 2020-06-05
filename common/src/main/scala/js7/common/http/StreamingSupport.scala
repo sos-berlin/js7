@@ -15,7 +15,7 @@ import scala.reflect.runtime.universe._
   */
 object StreamingSupport
 {
-  private val logger = Logger("jobscheduler.common.http.StreamingSupport")  // TODO Use Logger adapter (unreachable in module common)
+  private val logger = Logger("js7.common.http.StreamingSupport")  // TODO Use Logger adapter (unreachable in module common)
 
   implicit final class AkkaObservable[A](private val underlying: Observable[A]) extends AnyVal {
     def toAkkaSource(implicit scheduler: Scheduler, A: TypeTag[A]): Source[A, NotUsed] =

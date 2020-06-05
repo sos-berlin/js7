@@ -35,7 +35,7 @@ final class IdToUserTest extends AnyFreeSpec
   }
 
   "fromConfig" - {
-    "No jobscheduler.auth.users" in {
+    "No js7.auth.users" in {
       intercept[com.typesafe.config.ConfigException.Missing] {
         IdToUser.fromConfig(ConfigFactory.parseString(""), SimpleUser.apply)
       }
@@ -44,7 +44,7 @@ final class IdToUserTest extends AnyFreeSpec
 
     val idToUser = IdToUser.fromConfig(
       ConfigFactory.parseString(
-        """jobscheduler.auth.users {
+        """js7.auth.users {
           |  A = "plain:PLAIN-PASSWORD"
           |  B = "sha512:130c7809c9e5a8d81347b55f5c82c3a7407f4b41b461eb641887d276b11af4b575c5a32d1cf104e531c700e4b1ddd75b27b9e849576f6dfb8ca42789fbc7ece2"
           |  C {

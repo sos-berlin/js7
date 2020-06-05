@@ -14,7 +14,7 @@ import js7.common.scalautil.Logger
 trait ReceiveLoggingActor extends SimpleStateActor
 {
   protected[ReceiveLoggingActor] val receiveLogLevel =
-    context.system.settings.config.as[LogLevel]("jobscheduler.akka.actor-message-log-level")
+    context.system.settings.config.as[LogLevel]("js7.akka.actor-message-log-level")
 
   protected[ReceiveLoggingActor] def isLoggingEnabled =
     logger.underlying.isEnabled(receiveLogLevel, Logger.Actor)

@@ -12,20 +12,20 @@ import java.nio.file.Path
 private[event] object TestData
 {
   val TestConfig = ConfigFactory.parseString("""
-     |jobscheduler.journal.sync = on
-     |jobscheduler.journal.delay = 0s
-     |jobscheduler.journal.sync-delay = 0s
-     |jobscheduler.journal.simulate-sync = 1ms
-     |jobscheduler.journal.snapshot.log-period = 10ms
-     |jobscheduler.journal.snapshot.log-actor-limit = 1
-     |jobscheduler.journal.event-buffer-size = 1000
-     |jobscheduler.journal.use-journaled-state-as-snapshot = true
-     |jobscheduler.journal.slow-check-state = true
-     |jobscheduler.journal.snapshot.period = 1h
-     |jobscheduler.journal.snapshot.when-bigger-than = 1G
-     |jobscheduler.journal.ack-warn-durations = [ 10s ]
-     |jobscheduler.journal.remove-obsolete-files = false  # DIFFERS FROM DEFAULT TO ALLOW AWAITNG FOR OLD EVENTS !
-     |jobscheduler.journal.users-allowed-to-release-events = []
+     |js7.journal.sync = on
+     |js7.journal.delay = 0s
+     |js7.journal.sync-delay = 0s
+     |js7.journal.simulate-sync = 1ms
+     |js7.journal.snapshot.log-period = 10ms
+     |js7.journal.snapshot.log-actor-limit = 1
+     |js7.journal.event-buffer-size = 1000
+     |js7.journal.use-journaled-state-as-snapshot = true
+     |js7.journal.slow-check-state = true
+     |js7.journal.snapshot.period = 1h
+     |js7.journal.snapshot.when-bigger-than = 1G
+     |js7.journal.ack-warn-durations = [ 10s ]
+     |js7.journal.remove-obsolete-files = false  # DIFFERS FROM DEFAULT TO ALLOW AWAITNG FOR OLD EVENTS !
+     |js7.journal.users-allowed-to-release-events = []
      |""".stripMargin)
 
   val SnapshotJsonFormat = TypedJsonCodec[Any](

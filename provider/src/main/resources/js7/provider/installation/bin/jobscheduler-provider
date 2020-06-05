@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 set -e
 
-# JobScheduler Provider starter
+# JS7 Provider starter
 
 JOBSCHEDULER_HOME="$(cd "${0%/*}/../bin/.." && pwd)"
 export JOBSCHEDULER_HOME
 . "$JOBSCHEDULER_HOME/bin/internal/set-context.sh"
 declare classpathString java  # returned by set-context.sh
 
-config=/var/opt/jobscheduler/provider/config
-data=/var/opt/jobscheduler/provider/data
+config=/var/opt/js7/provider/config
+data=/var/opt/js7/provider/data
 providerOptions=()
 javaOptions=(-XX:+UseStringDeduplication)
 log4jAsync=false
@@ -84,14 +84,14 @@ stateDir="$data/state"
 
 echo -e "\n-------\n$(date --iso-8601=ns)" >>"$logs/stdouterr.log"
 exec > >(tee -a "$logs"/stdouterr.log) 2>&1  # Redirects stderr to stdout as a side effect
-javaOptions+=("-Djobscheduler.log4j.directory=$logs")  # Used in logging configuration
+javaOptions+=("-Djs7.log4j.directory=$logs")  # Used in logging configuration
 if [ -f "$config/log4j2.xml" ]; then :
   javaOptions+=("-Dlog4j.configurationFile=$config/log4j2.xml")
 fi
 if $log4jAsync; then :
   javaOptions+=("-Dlog4j2.contextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector")
   javaOptions+=("-Dlog4j2.asyncLoggerWaitStrategy=Block")  # Uses less CPU when idling than default "Timeout"
-  javaOptions+=("-Djobscheduler.log4j.immediateFlush=false")
+  javaOptions+=("-Djs7.log4j.immediateFlush=false")
 fi
 
 providerOptions+=("-config-directory=$config")
@@ -121,13 +121,13 @@ echo PID $pid
 
 terminate() {
   echo
-  echo ShutDown JobScheduler Provider
+  echo ShutDown JS7 Provider
   kill $pid
 }
 
 trap terminate SIGTERM SIGINT
-wait $pid || echo "JobScheduler Provider exited with exit code $?"
+wait $pid || echo "JS7 Provider exited with exit code $?"
 rm "$pidFile"
 trap - SIGTERM SIGINT
 
-echo -e "\n$(date --iso-8601=ns) JobScheduler Provider has been shut down" >>"$logs/stdouterr.log"
+echo -e "\n$(date --iso-8601=ns) JS7 Provider has been shut down" >>"$logs/stdouterr.log"

@@ -10,5 +10,5 @@ final case class SessionToken(secret: SecretString) {
 }
 
 object SessionToken {
-  val HeaderName = "X-JobScheduler-Session"
+  val HeaderName = "X-JS7-Session"
 }

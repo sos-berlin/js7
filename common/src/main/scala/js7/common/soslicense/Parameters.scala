@@ -17,8 +17,9 @@ object Parameters {
   val ZZIncludes = Set(JobScheduler, ClassicAgent, UniversalAgent)
 
   val parameterToString = Map[Parameter, String](
-    JobScheduler -> "JobScheduler",
+    JobScheduler -> "JS7",
     ClassicAgent -> "Classic Agent",
     UniversalAgent -> "Universal Agent")
   .withDefault { _.string }
 }
+

@@ -47,9 +47,9 @@ extends AutoCloseable
 
   private lazy val logger = Logger.withPrefix[this.type](journalFile.getFileName.toString)
   protected lazy val journalIndex = new JournalIndex(PositionAnd(tornPosition, tornEventId),
-    size = config.getInt("jobscheduler.journal.watch.index-size"))
-  private lazy val journalIndexFactor = config.getInt("jobscheduler.journal.watch.index-factor")
-  private lazy val limitTailRecM = config.getInt("jobscheduler.monix.tailrecm-limit")
+    size = config.getInt("js7.journal.watch.index-size"))
+  private lazy val journalIndexFactor = config.getInt("js7.journal.watch.index-factor")
+  private lazy val limitTailRecM = config.getInt("js7.monix.tailrecm-limit")
   protected final lazy val iteratorPool = new FileEventIteratorPool(journalMeta, expectedJournalId, journalFile, tornEventId, () => committedLength)
   @volatile
   private var _closeAfterUse = false

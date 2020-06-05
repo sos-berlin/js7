@@ -82,10 +82,10 @@ extends AutoCloseable {
               case _ if t.getClass.getName == "js7.http.client.heartbeat.HeartbeatRequestor$HttpRequestTimeoutException" => logger.error(t.toStringWithCauses)
               case _ => logger.error(s"$t", t)
             }
-            bridge ! MessageTcpBridge.Close // 2015-06-29 Tcp.Abort does not close the connection when peer is C++ JobScheduler
+            bridge ! MessageTcpBridge.Close // 2015-06-29 Tcp.Abort does not close the connection when peer is C++ JS7
         }
       case MessageTcpBridge.PeerClosed =>
-        logger.debug("MessageTcpBridge.PeerClosed")  // We ignore this. The JobScheduler COM RPC protocol ensures the server side termination.
+        logger.debug("MessageTcpBridge.PeerClosed")  // We ignore this. The JS7 COM RPC protocol ensures the server side termination.
       case Close =>
         bridge ! MessageTcpBridge.Close
       case Terminated(_) =>

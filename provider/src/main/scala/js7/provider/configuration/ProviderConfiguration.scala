@@ -34,7 +34,7 @@ object ProviderConfiguration
     CommandLineArguments.parse(args) { a =>
       val configDir = a.as[Path]("-config-directory=").toAbsolutePath
       val config = ConfigFactory.parseMap(Map(
-          "jobscheduler.config-directory" -> configDir.toString
+          "js7.config-directory" -> configDir.toString
         ).asJava)
         .withFallback(ConfigFactory.systemProperties)
         .withFallback(addConfig)
@@ -44,7 +44,7 @@ object ProviderConfiguration
         .resolve
       new ProviderConfiguration(
         configDirectory = configDir,
-        masterUri = a.optionAs[Uri]("-master-uri=") getOrElse Uri(config.getString("jobscheduler.provider.master.uri")),
+        masterUri = a.optionAs[Uri]("-master-uri=") getOrElse Uri(config.getString("js7.provider.master.uri")),
         config = config)
     }
 }

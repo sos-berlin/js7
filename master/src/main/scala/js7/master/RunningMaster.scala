@@ -63,7 +63,7 @@ import shapeless.tag
 import shapeless.tag.@@
 
 /**
- * JobScheduler Master.
+ * JS7 Master.
  *
  * Integration test in engine-tests, for example js7.tests.jira.js1291.JS1291AgentIT.
  *

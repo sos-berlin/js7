@@ -385,7 +385,7 @@ object AkkaHttpClient
   }
 
   private final case class InternalHeader(number: Long) extends CustomHeader {
-    val name = "X-JobScheduler-Internal-Header"
+    val name = "X-JS7-Internal-Header"
     val value = number.toString
     def renderInRequests = false
     def renderInResponses = false

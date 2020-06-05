@@ -8,7 +8,7 @@
                              fileName="target/build.log"
                              filePattern="target/build-%d{yyyy-MM-dd}-%i.log.gz"
                              append="true"
-                             immediateFlush="${sys:jobscheduler.log4j.immediateFlush:-true}">
+                             immediateFlush="${sys:js7.log4j.immediateFlush:-true}">
       <!-- append=true is required to let forked tests append. -->
       <patternLayout pattern="%d{DEFAULT_MICROS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} [%threadName] %logger %notEmpty{»%marker« }- %message%n"
                      charset="UTF-8"/>

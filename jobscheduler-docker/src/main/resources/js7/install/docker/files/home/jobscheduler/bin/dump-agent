@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-data="/var/opt/jobscheduler/agent/data"
+data="/var/opt/js7/agent/data"
 dumpFile="$data/logs"
 
 jmap "-dump:live,format=b,file=$dumpFile" "$(cat $data/state/pid)"

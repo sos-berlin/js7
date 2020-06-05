@@ -3,6 +3,6 @@ set -e
 
 cd "$(cd "$(realpath "${0%/*}")"/../../build/bin/../.. && pwd)"
 
-egrep -w "ERROR|WARN|JobScheduler Master terminates" \
+egrep -w "ERROR|WARN|JS7 Master terminates" \
   stdouterr.log volumes/backup-master/data/logs/stdouterr.log \
   | sort -k 3 | uniq -f 2 | sort

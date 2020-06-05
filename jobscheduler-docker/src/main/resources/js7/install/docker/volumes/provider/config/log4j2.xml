@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration status="WARN" shutdownHook="disable" monitorInterval="10">
   <properties>
-    <property name="logDirectory">${sys:jobscheduler.log4j.directory:-logs}</property>
+    <property name="logDirectory">${sys:js7.log4j.directory:-logs}</property>
   </properties>
 
   <appenders>
@@ -11,7 +11,7 @@
     <rollingRandomAccessFile name="file-info"
                              fileName="${logDirectory}/provider.log"
                              filePattern="${logDirectory}/provider-%d{yyyy-MM-dd}-%i.log.gz"
-                             immediateFlush="${sys:jobscheduler.log4j.immediateFlush:-true}">
+                             immediateFlush="${sys:js7.log4j.immediateFlush:-true}">
       <patternLayout pattern="%d{DEFAULT_MICROS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message%n"
                      charset="UTF-8"/>
       <policies>
@@ -33,7 +33,7 @@
     <rollingRandomAccessFile name="file-debug"
                              fileName="${logDirectory}/provider-debug.log"
                              filePattern="${logDirectory}/provider-%d{yyyy-MM-dd}-debug-%i.log.gz"
-                             immediateFlush="${sys:jobscheduler.log4j.immediateFlush:-true}">
+                             immediateFlush="${sys:js7.log4j.immediateFlush:-true}">
       <patternLayout pattern="%d{DEFAULT_MICROS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message%n"
                      charset="UTF-8"/>
       <policies>
@@ -60,7 +60,7 @@
       <appenderRef level="trace" ref="file-debug"/>
     </root>
     <logger level="debug" name="js7.web">
-      <appenderRef ref="jobscheduler.web.log"/>
+      <appenderRef ref="js7.web.log"/>
     </logger>
     <logger level="warn" name="akka.event.slf4j.Slf4jLogger"/>
     <logger level="debug" name="js7"/>

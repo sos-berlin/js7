@@ -8,7 +8,7 @@ import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import js7.common.akkautils.Akkas.newActorSystem
 
 /**
- * Simple client for JobScheduler Agent Server.
+ * Simple client for JS7 Agent Server.
  * <p>
  * Should be closed after use, to close all remaining HTTP connections.
  *

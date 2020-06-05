@@ -44,13 +44,13 @@ final class Provider(val fileBasedSigner: FileBasedSigner[FileBased], val conf: 
 extends HasCloser with Observing with ProvideActorSystem
 {
   protected val userAndPassword: Option[UserAndPassword] = for {
-      userName <- conf.config.optionAs[String]("jobscheduler.provider.master.user")
-      password <- conf.config.optionAs[String]("jobscheduler.provider.master.password")
+      userName <- conf.config.optionAs[String]("js7.provider.master.user")
+      password <- conf.config.optionAs[String]("js7.provider.master.password")
     } yield UserAndPassword(UserId(userName), SecretString(password))
   protected val masterApi = new AkkaHttpMasterApi(conf.masterUri, userAndPassword, actorSystem = actorSystem, config = conf.config)
   protected def config = conf.config
 
-  private val firstRetryLoginDurations = conf.config.getDurationList("jobscheduler.provider.master.login-retry-delays")
+  private val firstRetryLoginDurations = conf.config.getDurationList("js7.provider.master.login-retry-delays")
     .asScala.map(_.toFiniteDuration)
   private val typedSourceReader = new TypedSourceReader(conf.liveDirectory, readers)
   private val newVersionId = new VersionIdGenerator
@@ -207,8 +207,8 @@ object Provider
 
   def apply(conf: ProviderConfiguration)(implicit s: Scheduler): Checked[Provider] = {
     val fileBasedSigner = {
-      val typeName = conf.config.getString("jobscheduler.provider.sign-with")
-      val configPath = "jobscheduler.provider.private-signature-keys." + ConfigUtil.quoteString(typeName)
+      val typeName = conf.config.getString("js7.provider.sign-with")
+      val configPath = "js7.provider.private-signature-keys." + ConfigUtil.quoteString(typeName)
       val keyFile = Paths.get(conf.config.getString(s"$configPath.key"))
       val password = SecretString(conf.config.getString(s"$configPath.password"))
       MessageSigners.typeToMessageSignersCompanion(typeName)

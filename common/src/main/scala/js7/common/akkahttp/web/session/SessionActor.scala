@@ -25,7 +25,7 @@ final class SessionActor[S <: Session] private(newSession: SessionInit[S#User] =
   (implicit scheduler: Scheduler)
 extends Actor {
 
-  private val sessionTimeout = config.getDuration("jobscheduler.auth.session.timeout").toFiniteDuration
+  private val sessionTimeout = config.getDuration("js7.auth.session.timeout").toFiniteDuration
   private val cleanupInterval = sessionTimeout / 4
   private val tokenToSession = mutable.Map[SessionToken, S]()
   private val numberIterator = Iterator.from(1)

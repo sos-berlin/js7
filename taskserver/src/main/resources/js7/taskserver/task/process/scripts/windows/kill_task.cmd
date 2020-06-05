@@ -1,7 +1,7 @@
 @echo off
 rem #  ------------------------------------------------------------
 rem #  Company: Software- und Organisations-Service GmbH
-rem #  Purpose: "kill script" for JobScheduler Agent
+rem #  Purpose: "kill script" for JS7 Agent
 rem #  ------------------------------------------------------------
 
 SETLOCAL

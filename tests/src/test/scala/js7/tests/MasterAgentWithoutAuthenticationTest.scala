@@ -35,14 +35,14 @@ import scala.concurrent.duration._
   */
 final class MasterAgentWithoutAuthenticationTest extends AnyFreeSpec
 {
-  "jobscheduler.webserver.auth.public = true" in {
+  "js7.webserver.auth.public = true" in {
     runMyTest(isPublic = true) { (master, _) =>
       master.addOrder(FreshOrder(orderId, workflow.path)).runSyncUnsafe(99.seconds).orThrow
       master.eventWatch.await[OrderFinished](_.key == orderId)
     }
   }
 
-  "jobscheduler.webserver.auth.public = false" in {
+  "js7.webserver.auth.public = false" in {
     runMyTest(isPublic = false) { (master, agentPort) =>
       assert(master.eventWatch.await[AgentCouplingFailed]().head.value.event.problem
         == Problem(s"HTTP 401 Unauthorized: #2 POST http://127.0.0.1:$agentPort/agent/api/command => The resource requires authentication, which was not supplied with the request"))
@@ -58,7 +58,7 @@ final class MasterAgentWithoutAuthenticationTest extends AnyFreeSpec
       createDirectories(dir / "agent/data/state")
 
       if (isPublic) {
-        dir / "agent/config/agent.conf" := "jobscheduler.webserver.auth.public = true\n"
+        dir / "agent/config/agent.conf" := "js7.webserver.auth.public = true\n"
       }
       (dir / "agent/config/executables/EXECUTABLE.cmd").writeExecutable(":")
 
@@ -70,7 +70,7 @@ final class MasterAgentWithoutAuthenticationTest extends AnyFreeSpec
           val keyFile =keyDirectory / "silly-signature.txt"
           keyFile := signature.string
           dir / x / "config/private/private.conf" ++=
-            "jobscheduler.configuration.trusted-signature-keys.Silly = " +
+            "js7.configuration.trusted-signature-keys.Silly = " +
               "\"" + keyDirectory.toString.replace("""\""", """\\""") + "\"\n"
         }
         new FileBasedSigner(new SillySigner(signature), MasterFileBaseds.jsonCodec)

@@ -34,7 +34,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future, Promise, blocking}
 
 /**
- * JobScheduler Agent Server.
+ * JS7 Agent Server.
  *
  * Integration test in engine-tests, for example js7.tests.jira.js1291.JS1291AgentIT.
  *

@@ -16,8 +16,8 @@ keyStore="private/https-keystore.p12"
 trustStore="export/https-truststore.p12"
 trustPem="export/https-truststore.pem"
 alias=
-keyPassword="jobscheduler"
-storePassword="jobscheduler"
+keyPassword="js7"
+storePassword="js7"
 
 for arg in "$@"; do
   case "$arg" in

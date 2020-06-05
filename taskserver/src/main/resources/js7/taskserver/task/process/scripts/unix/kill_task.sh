@@ -1,7 +1,7 @@
 #! /bin/sh
 #  ------------------------------------------------------------
 #  Company: Software- und Organisations-Service GmbH
-#  Purpose: "kill script" for JobScheduler Agent
+#  Purpose: "kill script" for JS7 Agent
 #  ------------------------------------------------------------
 
 set -e

@@ -21,9 +21,9 @@ import monix.reactive.Observable
 private[provider] trait Observing extends OrderProvider {
   this: Provider =>
 
-  private val minimumSilence    = conf.config.getDuration("jobscheduler.provider.directory-watch.minimum-silence").toFiniteDuration
-  private val watchDuration     = conf.config.getDuration("jobscheduler.provider.directory-watch.poll-interval").toFiniteDuration
-  private val errorWaitDuration = conf.config.getDuration("jobscheduler.provider.directory-watch.error-delay").toFiniteDuration
+  private val minimumSilence    = conf.config.getDuration("js7.provider.directory-watch.minimum-silence").toFiniteDuration
+  private val watchDuration     = conf.config.getDuration("js7.provider.directory-watch.poll-interval").toFiniteDuration
+  private val errorWaitDuration = conf.config.getDuration("js7.provider.directory-watch.error-delay").toFiniteDuration
 
   def observe(implicit s: Scheduler, iox: IOExecutor): Observable[Completed] = {
     val observables = observeLive ::

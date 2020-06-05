@@ -37,7 +37,7 @@ private[process] sealed trait OperatingSystemSpecific {
 
   def directShellCommandArguments(argument: String): Seq[String]
 
-  protected final def filenamePrefix(name: String) = s"JobScheduler-Agent-$name-"
+  protected final def filenamePrefix(name: String) = s"JS7-Agent-$name-"
 }
 
 private object OperatingSystemSpecific {

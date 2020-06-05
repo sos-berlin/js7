@@ -69,22 +69,22 @@ final class ProviderTest extends AnyFreeSpec with MasterAgentForScalaTest
     createDirectories(orderGeneratorsDir)
 
     providerDirectory / "config" / "provider.conf" :=
-      """jobscheduler.provider.add-orders-every = 0.1s
-        |jobscheduler.provider.add-orders-earlier = 0.1s
+      """js7.provider.add-orders-every = 0.1s
+        |js7.provider.add-orders-earlier = 0.1s
         |""".stripMargin
     providerDirectory / "config" / "private" / "private-silly-keys.txt" := signer.privateKey
     providerDirectory / "config" / "private" / "private.conf" :=
-      s"""jobscheduler.provider.sign-with = Silly
-         |jobscheduler.provider.private-signature-keys.Silly {
-         |  key = $${jobscheduler.config-directory}"/private/private-silly-keys.txt"
+      s"""js7.provider.sign-with = Silly
+         |js7.provider.private-signature-keys.Silly {
+         |  key = $${js7.config-directory}"/private/private-silly-keys.txt"
          |  password = "${privateKeyPassword.string}"
          |}
-         |jobscheduler.provider.master.user = "$loginName"
-         |jobscheduler.provider.master.password = "$loginPassword"
+         |js7.provider.master.user = "$loginName"
+         |js7.provider.master.password = "$loginPassword"
          """.stripMargin
 
     directoryProvider.master.configDir / "private" / "private.conf" ++=
-     s"""jobscheduler.auth.users {
+     s"""js7.auth.users {
         |  $loginName {
         |    password = "plain:$loginPassword"
         |    permissions = [ UpdateRepo ]
@@ -110,7 +110,7 @@ final class ProviderTest extends AnyFreeSpec with MasterAgentForScalaTest
       provider
     }
 
-    "Initially, JobScheduler's Repo is empty" in {
+    "Initially, JS7's Repo is empty" in {
       assert(checkedRepo.map(_.pathToVersionToSignedFileBased.isEmpty) == Right(true))
     }
 
@@ -310,8 +310,8 @@ object ProviderTest
   private val loginName = "ProviderTest"
   private val loginPassword = "ProviderTest-PASSWORD"
   private val testConfig = ConfigFactory.parseString(
-    s"""jobscheduler.provider.directory-watch.minimum-silence = 50ms
-       |jobscheduler.provider.directory-watch.poll-interval = ${if (isMac) "100ms" else "300s"}
+    s"""js7.provider.directory-watch.minimum-silence = 50ms
+       |js7.provider.directory-watch.poll-interval = ${if (isMac) "100ms" else "300s"}
        |""".stripMargin)
 
   private val agentRefPath = AgentRefPath("/AGENT")

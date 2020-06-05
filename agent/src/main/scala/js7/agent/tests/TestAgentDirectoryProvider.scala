@@ -53,9 +53,9 @@ trait TestAgentDirectoryProvider extends HasCloser
     // Certificate files are under src/test/resources and only available for module "agent".
     PrivateHttpJksResource.copyToFile(agentDirectory / "config/private/https-keystore.p12") withCloser delete
     (agentDirectory / "config/private/private.conf").append(
-      s"""jobscheduler.https.keystore {
-         |  store-password = "jobscheduler"
-         |  key-password = "jobscheduler"
+      s"""js7.https.keystore {
+         |  store-password = "js7"
+         |  key-password = "js7"
          |}
          |""".stripMargin)
   }
@@ -65,7 +65,7 @@ trait TestAgentDirectoryProvider extends HasCloser
     createDirectory(directory)
     directory / "trusted-silly-signature-key.txt" := signature.string
     configDirectory / "private" / "private.conf" ++=
-      s"""|jobscheduler.configuration.trusted-signature-keys.Silly = $${jobscheduler.config-directory}"/private/trusted-silly-signature-keys"
+      s"""|js7.configuration.trusted-signature-keys.Silly = $${js7.config-directory}"/private/trusted-silly-signature-keys"
          |""".stripMargin
   }
 }

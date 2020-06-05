@@ -32,7 +32,7 @@ final class JournaledProxyTest extends AnyFreeSpec with DirectoryProviderForScal
   override def beforeAll() = {
     super.beforeAll()
     (directoryProvider.master.configDir / "private" / "private.conf") ++= """
-      |jobscheduler.auth.users.TEST-USER = "plain:TEST-PASSWORD"
+      |js7.auth.users.TEST-USER = "plain:TEST-PASSWORD"
       |""".stripMargin
     directoryProvider.agents.head.writeExecutable(ExecutablePath("/test.cmd"), script(1.s))
   }
@@ -52,7 +52,7 @@ final class JournaledProxyTest extends AnyFreeSpec with DirectoryProviderForScal
         assert(processed.stampedEvent.value.event == OrderProcessed(Outcome.succeeded))
         assert(processed.state.idToOrder(OrderId("🔺")).state == Order.Processed)
 
-        whenFinished await 99.s  // Await order termination before shutting down the JobScheduler
+        whenFinished await 99.s  // Await order termination before shutting down the JS7
       } finally proxy.stop() await 99.s
     }
   }

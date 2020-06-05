@@ -114,7 +114,7 @@ final class JournalTest extends AnyFreeSpec with BeforeAndAfterAll with TestJour
   "Massive parallel" - {
     def run(n: Int, eventBufferSize: Int): Unit = {
       listJournalFiles(journalMeta.fileBase) map (_.file) foreach delete
-      withTestActor(ConfigFactory.parseString(s"""jobscheduler.journal.event-buffer-size = $eventBufferSize""")) { (_, actor) =>
+      withTestActor(ConfigFactory.parseString(s"""js7.journal.event-buffer-size = $eventBufferSize""")) { (_, actor) =>
         val prefixes = for (i <- 1 to n) yield i.toString
         val stopwatch = new Stopwatch
         // Add "$p-A"
@@ -177,7 +177,7 @@ final class JournalTest extends AnyFreeSpec with BeforeAndAfterAll with TestJour
 object JournalTest {
   private val FirstJournal = Vector(
     json"""{
-      "TYPE": "JobScheduler.Journal",
+      "TYPE": "JS7.Journal",
       "journalId" : "ABEiM0RVZneImaq7zN3u_w",
       "eventId": 0,
       "generation": 1,
@@ -268,7 +268,7 @@ object JournalTest {
 
   private val SecondJournal = Vector(
     json"""{
-      "TYPE": "JobScheduler.Journal",
+      "TYPE": "JS7.Journal",
       "version": "0.29",
       "softwareVersion": "2.0.0-SNAPSHOT",
       "buildId": "${BuildInfo.buildId}",

@@ -85,8 +85,8 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
 
   override def beforeAll() = {
     directoryProvider.master.configDir / "master.conf" ++=
-      """jobscheduler.journal.sync = off
-         jobscheduler.journal.delay = 0s
+      """js7.journal.sync = off
+         js7.journal.delay = 0s
         |""".stripMargin
     writeMasterConfiguration(directoryProvider.master)
     writeAgentConfiguration(directoryProvider.agents(0))
@@ -218,7 +218,7 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
         "delete": []
       }"""
 
-    val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
+    val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
     val response = httpClient.postWithHeaders[Json, Json](Uri(s"$uri/master/api/command"), cmd, headers) await 99.s
     assert(response == json"""
       {
@@ -228,13 +228,13 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
 
   "/master/api/workflow" - {
     testGet("master/api/workflow",
-      RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
+      RawHeader("X-JS7-Session", sessionToken) :: Nil,
       json"""{
         "count": 2
       }""")
 
     testGet("master/api/workflow/",
-      RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
+      RawHeader("X-JS7-Session", sessionToken) :: Nil,
       json"""[
         "/FOLDER/WORKFLOW-2",
         "/WORKFLOW"
@@ -243,7 +243,7 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
     testGets("master/api/workflow/FOLDER/WORKFLOW-2"::
              "master/api/workflow//FOLDER/WORKFLOW-2"::
              "master/api/workflow/%2FFOLDER%2FWORKFLOW-2":: Nil,
-      RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
+      RawHeader("X-JS7-Session", sessionToken) :: Nil,
       json"""{
         "path": "/FOLDER/WORKFLOW-2",
         "versionId": "VERSION-1",
@@ -275,20 +275,20 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
 
   "/master/api/agent" - {
     testGet("master/api/agent",
-      RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
+      RawHeader("X-JS7-Session", sessionToken) :: Nil,
       json"""{
         "count": 2
       }""")
 
     testGet("master/api/agent/",
-      RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
+      RawHeader("X-JS7-Session", sessionToken) :: Nil,
       json"""[
         "/AGENT",
         "/FOLDER/AGENT-A"
       ]""")
 
     testGet("master/api/agent/?return=AgentRef",
-      RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
+      RawHeader("X-JS7-Session", sessionToken) :: Nil,
       json"""[
           {
             "path": "/AGENT",
@@ -302,7 +302,7 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
         ]""")
 
     testGet("master/api/agent/FOLDER/AGENT-A?return=AgentRef",
-      RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
+      RawHeader("X-JS7-Session", sessionToken) :: Nil,
       json"""{
         "path": "/FOLDER/AGENT-A",
         "versionId": "INITIAL",
@@ -310,7 +310,7 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
       }""")
 
     testGet("master/api/agent/%2FFOLDER%2FAGENT-A?return=AgentRef",
-      RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
+      RawHeader("X-JS7-Session", sessionToken) :: Nil,
       json"""{
         "path": "/FOLDER/AGENT-A",
         "versionId": "INITIAL",
@@ -321,13 +321,13 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
   "/master/api/agent-proxy" - {
     "/master/api/agent-proxy/%2FFOLDER%2FAGENT-A" in {
       // Pass-through AgentRef. Slashes but the first in AgentRefPath must be coded as %2F.
-      val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
+      val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
       val overview = httpClient.get[AgentOverview](Uri(s"$uri/master/api/agent-proxy/FOLDER%2FAGENT-A"), Duration.Inf, headers) await 99.s
       assert(overview.version == BuildInfo.prettyVersion)
     }
 
     "/master/api/agent-proxy/UNKNOWN returns 400" in {
-      val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
+      val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
       val e = intercept[HttpException] {
         httpClient.get[Json](Uri(s"$uri/master/api/agent-proxy/UNKNOWN"), headers) await 99.s
       }
@@ -336,7 +336,7 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
     }
 
     "/master/api/agent-proxy/FOLDER%2F/AGENT-A/NOT-FOUND returns 404" in {
-      val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
+      val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
       assert(
         intercept[HttpException] {
           httpClient.get[Json](Uri(s"$uri/master/api/agent-proxy/FOLDER%2FAGENT-A/task"), headers) await 99.s
@@ -344,7 +344,7 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
     }
 
     "/master/api/agent-proxy/FOLDER%2F/AGENT-A/timer" in {
-      val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
+      val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
       assert(
         intercept[HttpException] {
           httpClient.get[Json](Uri(s"$uri/master/api/agent-proxy/FOLDER%2FAGENT-A/timer"), headers) await 99.s
@@ -360,7 +360,7 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
       }"""
 
       "Order with missing workflow is rejected (single order)" in {
-        val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
+        val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
         val exception = intercept[HttpException] {
           httpClient.postWithHeaders[Json, Json](Uri(s"$uri/master/api/order"), orderWithMissingWorkflow, headers) await 99.s
         }
@@ -370,7 +370,7 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
       }
 
       "Order with missing workflow is rejected (order array)" in {
-        val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
+        val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
         val orders = Json.fromValues(orderWithMissingWorkflow :: Nil)
         val exception = intercept[HttpException] {
           httpClient.postWithHeaders[Json, Json](Uri(s"$uri/master/api/order"), orders, headers) await 99.s
@@ -381,7 +381,7 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
       }
 
       "Invalid OrderId is rejected (single order)" in {
-        val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
+        val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
         val order = json"""{ "id": "ORDER/ID", "workflowPath": "/MISSING" }"""
         val exception = intercept[HttpException] {
           httpClient.postWithHeaders[Json, Json](Uri(s"$uri/master/api/order"), order, headers) await 99.s
@@ -392,7 +392,7 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
       }
 
       "Invalid OrderId is rejected (order array)" in {
-        val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
+        val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
         val orders = Json.fromValues(json"""{ "id": "ORDER/ID", "workflowPath": "/MISSING" }""" :: Nil)
         val exception = intercept[HttpException] {
           httpClient.postWithHeaders[Json, Json](Uri(s"$uri/master/api/order"), orders, headers) await 99.s
@@ -408,7 +408,7 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
       }"""
 
       "First" in {
-        val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Accept(`application/json`) :: Nil
+        val headers = RawHeader("X-JS7-Session", sessionToken) :: Accept(`application/json`) :: Nil
         val response = httpClient.post_[Json](Uri(s"$uri/master/api/order"), order, headers) await 99.s
         assert(response.status.intValue == 201/*Created*/)
         assert(response.header[Location] == Some(Location(AkkaUri(s"$uri/master/api/order/ORDER-ID"))))
@@ -416,7 +416,7 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
       }
 
       "Duplicate" in {
-        val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Accept(`application/json`) :: Nil
+        val headers = RawHeader("X-JS7-Session", sessionToken) :: Accept(`application/json`) :: Nil
         val response = httpClient.post_[Json](Uri(s"$uri/master/api/order"), order, headers) await 99.s
         assert(response.status.intValue == 409/*Conflict*/)
         assert(response.header[Location] == Some(Location(AkkaUri(s"$uri/master/api/order/ORDER-ID"))))
@@ -429,7 +429,7 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
           "workflowPath": "/WORKFLOW"
         }"""
 
-        val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Accept(`application/json`) :: Nil
+        val headers = RawHeader("X-JS7-Session", sessionToken) :: Accept(`application/json`) :: Nil
         val response = httpClient.post_[Json](Uri(s"$uri/master/api/order"), order, headers) await 99.s
         assert(response.status.intValue == 400/*BadRequest*/)
         assert(response.utf8StringFuture.await(99.seconds).parseJsonCheckedAs[Problem]
@@ -448,7 +448,7 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
               "workflowPath": "/WORKFLOW"
             }
           ]"""
-        val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Accept(`application/json`) :: Nil
+        val headers = RawHeader("X-JS7-Session", sessionToken) :: Accept(`application/json`) :: Nil
         val response = httpClient.post_[Json](Uri(s"$uri/master/api/order"), orders, headers) await 99.s
         assert(response.status == OK)  // Duplicates are silently ignored
         assert(response.header[Location].isEmpty)
@@ -463,7 +463,7 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
               "workflowPath": "/WORKFLOW"
             }
           ]"""
-        val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Accept(`application/json`) :: Nil
+        val headers = RawHeader("X-JS7-Session", sessionToken) :: Accept(`application/json`) :: Nil
         val response = httpClient.post_[Json](Uri(s"$uri/master/api/order"), orders, headers) await 99.s
         assert(response.status.intValue == 400/*BadRequest*/)
         assert(response.header[Location].isEmpty)
@@ -473,17 +473,17 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
     }
 
     testGet("master/api/order",
-      RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
+      RawHeader("X-JS7-Session", sessionToken) :: Nil,
       json"""{
         "count": 1
       }""")
 
     testGet("master/api/order/",
-      RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
+      RawHeader("X-JS7-Session", sessionToken) :: Nil,
       json"""[ "ORDER-ID" ]""")
 
     "master/api/order/?return=Order" in {
-      val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Accept(`application/json`) :: Nil
+      val headers = RawHeader("X-JS7-Session", sessionToken) :: Accept(`application/json`) :: Nil
       val response = httpClient.get[Json](Uri(s"$uri/master/api/order/?return=Order"), headers) await 99.s
       val orders = response.asArray.get
       assert(orders.length == 1)
@@ -491,7 +491,7 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
     }
 
     "master/api/order/ORDER-ID" in {
-      val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
+      val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
       val order = httpClient.get[Json](Uri(s"$uri/master/api/order/ORDER-ID"), headers) await 99.s
       assert(order.fieldOrThrow("id") == Json.fromString("ORDER-ID"))  // May fail when OrderFinished
     }
@@ -505,7 +505,7 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
   }
 
   "/master/api/snapshot/ (only JSON)" in {
-    val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
+    val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
     val snapshots = httpClient.get[Json](Uri(s"$uri/master/api/snapshot/"), headers) await 99.s
     assert(snapshots.asObject.get("eventId") == Some(orderFinishedEventId.asJson))
     val array = snapshots.asObject.get("array").get.asArray.get
@@ -569,7 +569,7 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
   }
 
   "/master/api/event (only JSON)" in {
-    val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
+    val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
     val eventsJson = httpClient.get[Json](Uri(s"$uri/master/api/event?after=0"), headers) await 99.s
     val keyedEvents: Seq[KeyedEvent[Event]] = {
       import js7.master.data.events.MasterKeyedEventJsonCodec
@@ -736,7 +736,7 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
     "Syntax error" in {
       val query = "INVALID"
       val queryJson = json"""{ "query": "$query" }"""
-      val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Accept(`application/json`) :: Nil
+      val headers = RawHeader("X-JS7-Session", sessionToken) :: Accept(`application/json`) :: Nil
       val response = httpClient.post_[Json](Uri(s"$uri/master/api/graphql"), queryJson, headers) await 99.s
       assert(response.status.intValue == 400/*BadRequest*/)
       assert(response.utf8StringFuture.await(99.s).parseJsonOrThrow ==
@@ -758,7 +758,7 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
     "Unknown field" in {
       val query = "{ UNKNOWN }"
       val queryJson = json"""{ "query": "$query" }"""
-      val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Accept(`application/json`) :: Nil
+      val headers = RawHeader("X-JS7-Session", sessionToken) :: Accept(`application/json`) :: Nil
       val response = httpClient.post_[Json](Uri(s"$uri/master/api/graphql"), queryJson, headers) await 99.s
       assert(response.status.intValue == 400/*BadRequest*/)
       assert(response.utf8StringFuture.await(99.s).parseJsonOrThrow ==
@@ -891,7 +891,7 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
     }
 
     def postGraphql(graphql: Json): Json = {
-      val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
+      val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
       httpClient.postWithHeaders[Json, Json](Uri(s"$uri/master/api/graphql"), graphql, headers).await(99.s)
     }
   }
@@ -931,7 +931,7 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
             }
           ]
         }"""
-      val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
+      val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
       testJson(
         httpClient.postWithHeaders[Json, Json](Uri(s"$uri/master/api/command"), cmd, headers) await 99.s,
         json"""{
@@ -953,7 +953,7 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
 
     "ShutDown" in {
       val cmd = json"""{ "TYPE": "ShutDown" }"""
-      val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
+      val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
       testJson(
         httpClient.postWithHeaders[Json, Json](Uri(s"$uri/master/api/command"), cmd, headers) await 99.s,
         json"""{
@@ -986,10 +986,10 @@ object MasterWebServiceTest
 {
   private def writeMasterConfiguration(master: DirectoryProvider.MasterTree): Unit = {
     master.configDir / "master.conf" ++= """
-      |jobscheduler.webserver.test = true
+      |js7.webserver.test = true
       |""".stripMargin
     (master.configDir / "private" / "private.conf").append("""
-      |jobscheduler.auth.users {
+      |js7.auth.users {
       |  TEST-USER {
       |    password = "plain:TEST-PASSWORD",
       |    permissions = [ UpdateRepo ]
