@@ -22,8 +22,8 @@ import com.sos.jobscheduler.tests.testenv.DirectoryProvider.{StdoutOutput, scrip
 import com.sos.jobscheduler.tests.testenv.MasterAgentForScalaTest
 import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler.Implicits.global
-import scala.concurrent.duration._
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.duration._
 
 final class ForkTest extends AnyFreeSpec with MasterAgentForScalaTest
 {
@@ -55,7 +55,7 @@ final class ForkTest extends AnyFreeSpec with MasterAgentForScalaTest
 
   "Existing child OrderId yield broken (and cancelable) order" in {
     val order = TestOrder.copy(id = OrderId("DUPLICATE"))
-    master.addOrderBlocking(FreshOrder(OrderId("DUPLICATE/🥕"), DuplicateWorkflow.id.path))  // Invalid syntax is allowed for this OrderId, check is suppressed
+    master.addOrderBlocking(FreshOrder.unchecked(OrderId("DUPLICATE/🥕"), DuplicateWorkflow.id.path))  // Invalid syntax is allowed for this OrderId, check is suppressed
     master.eventWatch.await[OrderProcessingStarted](_.key == OrderId("DUPLICATE/🥕"))
 
     master.addOrderBlocking(order)

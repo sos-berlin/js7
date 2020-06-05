@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.data.order
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -29,5 +30,10 @@ final class FreshOrderTest extends AnyFreeSpec
           "KEY": "VALUE"
         }
       }""")
+  }
+
+  "checked" in {
+    assert(FreshOrder.checked(OrderId("INVALID/ID"), WorkflowPath("/WORKFLOW")) ==
+      Left(Problem("OrderId must not contain reserved characters /")))
   }
 }

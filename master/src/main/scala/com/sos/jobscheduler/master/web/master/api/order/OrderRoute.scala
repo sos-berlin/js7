@@ -1,12 +1,13 @@
 package com.sos.jobscheduler.master.web.master.api.order
 
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
-import akka.http.scaladsl.model.StatusCodes.{BadRequest, Conflict, Created, NotFound, OK}
+import akka.http.scaladsl.model.StatusCodes.{Conflict, Created, NotFound, OK}
 import akka.http.scaladsl.model.Uri
 import akka.http.scaladsl.model.headers.Location
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive, Route}
 import com.sos.jobscheduler.base.auth.ValidUserPermission
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
@@ -37,7 +38,7 @@ trait OrderRoute extends MasterRouteProvider
           entity(as[Json]) { json =>
             if (json.isArray)
               json.as[Seq[FreshOrder]] match {
-                case Left(failure) => complete(BadRequest -> Option(failure.getMessage).getOrElse(failure.toString))
+                case Left(failure) => complete(failure.toProblem)
                 case Right(orders) =>
                   completeTask(
                     orderApi.addOrders(orders)
@@ -45,7 +46,7 @@ trait OrderRoute extends MasterRouteProvider
               }
             else
               json.as[FreshOrder] match {
-                case Left(failure) => complete(BadRequest -> Option(failure.getMessage).getOrElse(failure.toString))
+                case Left(failure) => complete(failure.toProblem)
                 case Right(order) =>
                   extractUri { uri =>
                     onSuccess(orderApi.addOrder(order).runToFuture) {

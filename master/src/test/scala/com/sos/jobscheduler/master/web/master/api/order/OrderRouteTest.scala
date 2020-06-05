@@ -1,15 +1,18 @@
 package com.sos.jobscheduler.master.web.master.api.order
 
 import akka.http.scaladsl.model.MediaTypes.`application/json`
-import akka.http.scaladsl.model.StatusCodes.{Conflict, Created, OK}
+import akka.http.scaladsl.model.StatusCodes.{BadRequest, Conflict, Created, OK}
 import akka.http.scaladsl.model.headers.{Accept, Location}
 import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
+import com.sos.jobscheduler.common.http.AkkaHttpUtils._
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId, OrdersOverview}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.position.Position
@@ -78,11 +81,19 @@ final class OrderRouteTest extends AnyFreeSpec with RouteTester with OrderRoute
     }
   }
 
+  "POST invalid order" in {
+    val order = FreshOrder.unchecked(OrderId("ORDER/🔵"), WorkflowPath("/WORKFLOW"))
+    Post(s"/master/api/order", order) ~> route ~> check {
+      assert(status == BadRequest)  // New order
+      assert(response.utf8StringFuture.await(99.s) == "JSON DecodingFailure at : OrderId must not contain reserved characters /\n")
+    }
+  }
+
   "POST new order" in {
-    val order = FreshOrder(OrderId("ORDER/🔵"), WorkflowPath("/WORKFLOW"), Some(Timestamp.parse("2017-03-07T12:00:00Z")), Map("KEY" -> "VALUE"))
+    val order = FreshOrder(OrderId("ORDER-🔵"), WorkflowPath("/WORKFLOW"), Some(Timestamp.parse("2017-03-07T12:00:00Z")), Map("KEY" -> "VALUE"))
     Post(s"/master/api/order", order) ~> route ~> check {
       assert(status == Created)  // New order
-      assert(response.header[Location] contains Location("http://example.com/master/api/order/ORDER%2F%F0%9F%94%B5"))
+      assert(response.header[Location] contains Location("http://example.com/master/api/order/ORDER-%F0%9F%94%B5"))
     }
   }
 
