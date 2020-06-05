@@ -398,13 +398,6 @@ extends Actor with Stash
         journaledState = journaledState.withEventId(eventId)
       }
 
-    //for (
-    //  written: AcceptEarlyWritten <- ackWritten.lastOption;
-    //  PositionAnd(_, eventId) <- written.lastFileLengthAndEventId
-    //) {
-    //  journaledState = journaledState.withEventId(eventId)
-    //}
-
     writtenBuffer.remove(0, n)
     assertThat((lastAcknowledgedEventId == lastWrittenEventId) == writtenBuffer.isEmpty)
   }
