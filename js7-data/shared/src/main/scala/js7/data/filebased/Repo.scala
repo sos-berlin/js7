@@ -17,6 +17,7 @@ import js7.data.crypt.FileBasedVerifier
 import js7.data.filebased.Repo.Entry
 import js7.data.filebased.RepoEvent.{FileBasedAdded, FileBasedAddedOrChanged, FileBasedChanged, FileBasedDeleted, FileBasedEvent, VersionAdded}
 import org.jetbrains.annotations.TestOnly
+import scala.collection.mutable
 
 /**
   * Representation of versioned FileBased (configuration objects).
@@ -180,7 +181,7 @@ final case class Repo private(
         .orElse(
           for {
             history <- historyBefore(id.versionId)
-            fb <- versionToSignedFileBased.fileBasedOption(history) toChecked Problem(s"No such '$id'")
+            fb <- findInHistory(versionToSignedFileBased, history.contains) toChecked Problem(s"No such '$id'")
           } yield fb
         ): Checked[Option[Signed[FileBased]]]
       signedFileBased <- fileBasedOption.toChecked(DeletedProblem(id))
@@ -193,32 +194,31 @@ final case class Repo private(
       case e: FileBasedEvent if is(e.path.companion) => e
     }
 
-  /** Converts the Repo to an event sequence. */
+  /** Convert the Repo to an event sequence ordered by VersionId. */
   private[filebased] def toEvents: Seq[RepoEvent] = {
-    val versionToFileBasedOptions: Map[VersionId, Seq[Either[Signed[FileBased/*added/updated*/], TypedPath/*deleted*/]]] =
+    type DeletedOrUpdated = Either[TypedPath/*deleted*/, Signed[FileBased/*added/updated*/]]
+    val versionToChanges: Map[VersionId, Seq[DeletedOrUpdated]] =
       pathToVersionToSignedFileBased.toVector.sortBy(_._1)/*for testing*/
-        .flatMap { case (path, versionToFileBasedOpt) =>
-          versionToFileBasedOpt
-            .map(entry => entry.versionId -> entry.maybeSignedFileBased.map(Left.apply).getOrElse(Right(path)))
+        .flatMap { case (path, entries) =>
+          entries.map(entry =>
+            entry.versionId -> entry.maybeSignedFileBased.fold[DeletedOrUpdated](Left(path))(Right.apply))
         }
-        .groupBy(_._1).view.mapValues(_ map (_._2))
+        .groupBy(_._1).view.mapValues(_.map(_._2))
         .toMap
-    versions.tails
-      .map {
-        case Nil =>  // Last of tails
-          Vector.empty
-        case version :: history =>
-          Vector(VersionAdded(version)) ++
-            versionToFileBasedOptions.getOrElse(version, Nil).map {
-              case Left(signedFileBased) =>
-                val vToF = pathToVersionToSignedFileBased(signedFileBased.value.path)
-                if (vToF.fileBasedOption(history).flatten.isDefined)
-                  FileBasedChanged(signedFileBased.value.path, signedFileBased.signedString)
-                else
-                  FileBasedAdded(signedFileBased.value.path, signedFileBased.signedString)
-              case Right(path) =>
-                FileBasedDeleted(path)
-            }
+    val versionSet = mutable.HashSet() ++ versions
+    versions.view.map { version =>
+      versionSet -= version
+      Vector(VersionAdded(version)) ++
+        versionToChanges.getOrElse(version, Nil).map {
+          case Left(path) =>
+            FileBasedDeleted(path)
+          case Right(signedFileBased) =>
+            val entries = pathToVersionToSignedFileBased(signedFileBased.value.path)
+            if (findInHistory(entries, versionSet).flatten.isDefined)
+              FileBasedChanged(signedFileBased.value.path, signedFileBased.signedString)
+            else
+              FileBasedAdded(signedFileBased.value.path, signedFileBased.signedString)
+        }
       }
       .toVector.reverse.flatten
   }
@@ -275,12 +275,12 @@ object Repo
 
   final case class Entry private(versionId: VersionId, maybeSignedFileBased:  Option[Signed[FileBased]])
 
-  private implicit class RichVersionToFileBasedOption(private val versionToFileBasedOption: List[Entry])
-  extends AnyVal {
-    /** None: no such version; Some(None): deleted */
-    def fileBasedOption(history: List[VersionId]): Option[Option[Signed[FileBased]]] =
-      history.map(v => versionToFileBasedOption.collectFirst { case Entry(`v`, o) => o }).headOption.flatten
-  }
+  /** None: not known at or before this VersionId; Some(None): deleted at or before this VersionId. */
+  private def findInHistory(entries: List[Entry], isKnownVersion: VersionId => Boolean): Option[Option[Signed[FileBased]]] =
+    entries
+      .dropWhile(e => !isKnownVersion(e.versionId))
+      .map(_.maybeSignedFileBased)
+      .headOption
 
   final case class DeletedProblem private[Repo](id: FileBasedId_)
     extends Problem.Lazy(s"Has been deleted: $id")
