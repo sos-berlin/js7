@@ -172,14 +172,41 @@ object ScalaTime
     private def bigPretty = {
       val seconds = delegate.toSeconds
       val absSeconds = abs(seconds)
-      if (absSeconds >= 15*24*60*60)
-        s"${seconds / (7*24*60*60)}weeks"
-      else if (absSeconds >= 3*24*60*60)
-        s"${seconds / (24*60*60)}days"
-      else if (absSeconds >= 3*60*60)
-        s"${seconds / (60*60)}h"
+      if (absSeconds >= 22*24*3600)
+        s"${seconds / (7*24*3600)}weeks"
+      else if (absSeconds >= 3*24*3600)
+        bigPretty2(24*3600, "days", 3600, "h")
+      else if (absSeconds >= 3600)
+        bigPretty2(3600, "h", 60)
       else
-        s"${seconds / 60}min"
+        bigPretty2(60, "min", 1)
+    }
+
+    private def bigPretty2(primaryFactor: Int, primaryName: String, secondaryFactor: Int, secondaryName: String): String = {
+      val seconds = delegate.toSeconds
+      val sb = new StringBuilder
+      val primary = seconds / primaryFactor
+      sb.append(primary)
+      val secondary = (abs(seconds) - abs(primary * primaryFactor)) / secondaryFactor
+      sb.append(primaryName)
+      if (secondary > 0) {
+        sb.append(secondary)
+        sb.append(secondaryName)
+      }
+      sb.toString
+    }
+
+    private def bigPretty2(primaryFactor: Int, primaryName: String, secondaryFactor: Int): String = {
+      val seconds = delegate.toSeconds
+      val sb = new StringBuilder
+      val primary = seconds / primaryFactor
+      sb.append(primary)
+      val secondary = (abs(seconds) - abs(primary * primaryFactor)) / secondaryFactor
+      if (secondary > 0) {
+        sb.append(f":$secondary%02d")
+      }
+      sb.append(primaryName)
+      sb.toString
     }
 
     def compare(o: RichDuration) = delegate compareTo o.delegate
