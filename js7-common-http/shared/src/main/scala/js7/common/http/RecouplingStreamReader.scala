@@ -99,14 +99,14 @@ abstract class RecouplingStreamReader[
         Task.tailRecM(0)(i =>
           if (inUse.getAndSet(true))
             Task {
-              if (i % 50 == 0) scribe.warn(s"RecouplingStreamReader.observe($api) is still inUse ...")
-              else scribe.debug(s"observe($api): still inUse ...")
+              val msg = s"RecouplingStreamReader.observe($api) is still inUse ..."
+              if (i % 50 == 10) scribe.warn(msg) else scribe.debug(msg)
             } >>
               Task.sleep(100.ms)
                 .map(_ => Left(i + 1))
           else
             Task {
-              scribe.debug(s"RecouplingStreamReader.observe($api) is continuing")
+              scribe.debug(s"RecouplingStreamReader.observe($api) inUse is false, we continue")
               Right(())
             }))
 
