@@ -66,7 +66,6 @@ extends AkkaWebServer with AkkaWebServer.HasUri
       protected val eventWatch          = MasterWebServer.this.eventWatch
       protected val fileBasedApi = MasterWebServer.this.fileBasedApi
       protected val orderApi = MasterWebServer.this.orderApi
-      protected def orderCount = orderApi.orderCount
       protected def executeCommand(command: MasterCommand, meta: CommandMeta) = commandExecutor.executeCommand(command, meta)
       protected def clusterState = MasterWebServer.this.clusterState
       protected def masterState = MasterWebServer.this.masterState
