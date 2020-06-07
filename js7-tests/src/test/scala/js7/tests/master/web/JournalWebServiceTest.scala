@@ -143,8 +143,8 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
     val orderId = OrderId("🔵")
     masterApi.addOrder(FreshOrder(orderId, workflow.path)) await 99.s
     master.eventWatch.await[OrderFinished](_.key == orderId)
-    waitForCondition(1.s, 10.ms) { lines.exists(_ contains "OrderFinished") } shouldBe true
-    waitForCondition(1.s, 10.ms) { heartbeatLines.exists(_ contains "OrderFinished") } shouldBe true
+    waitForCondition(9.s, 10.ms) { lines.exists(_ contains "OrderFinished") } shouldBe true
+    waitForCondition(9.s, 10.ms) { heartbeatLines.exists(_ contains "OrderFinished") } shouldBe true
 
     assert(heartbeatLines.count(_ == JournalSeparators.HeartbeatMarker.utf8String) > 1)
     assert(heartbeatLines.filterNot(_ == JournalSeparators.HeartbeatMarker.utf8String) == lines)
