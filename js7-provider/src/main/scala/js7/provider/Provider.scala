@@ -16,10 +16,10 @@ import js7.common.files.{DirectoryReader, PathSeqDiff, PathSeqDiffer}
 import js7.common.scalautil.{IOExecutor, Logger}
 import js7.common.time.JavaTimeConverters._
 import js7.core.crypt.generic.MessageSigners
-import js7.core.filebased.FileBaseds.diffFileBaseds
-import js7.core.filebased.{FileBaseds, TypedPaths, TypedSourceReader}
+import js7.core.filebased.{TypedPaths, TypedSourceReader}
 import js7.data.agent.AgentRefPath
-import js7.data.filebased.{FileBased, FileBasedSigner, TypedPath, VersionId}
+import js7.data.filebased.FileBaseds.diffFileBaseds
+import js7.data.filebased.{FileBased, FileBasedSigner, FileBaseds, TypedPath, VersionId}
 import js7.data.master.MasterFileBaseds
 import js7.data.workflow.WorkflowPath
 import js7.master.agent.AgentRefReader

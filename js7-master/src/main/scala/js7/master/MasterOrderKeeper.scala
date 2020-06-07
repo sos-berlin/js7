@@ -33,7 +33,6 @@ import js7.core.command.CommandMeta
 import js7.core.common.ActorRegister
 import js7.core.event.journal.recover.{JournalRecoverer, Recovered}
 import js7.core.event.journal.{JournalActor, MainJournalingActor}
-import js7.core.filebased.FileBaseds
 import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.Problems.UnknownOrderProblem
 import js7.data.agent.{AgentRef, AgentRefPath, AgentRunId}
@@ -44,8 +43,8 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{Event, EventId, JournalHeader, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.OrderProcessor
-import js7.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
-import js7.data.filebased.{FileBased, RepoEvent, TypedPath}
+import js7.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, FileBasedEvent, VersionAdded}
+import js7.data.filebased.{FileBased, FileBaseds, RepoChange, RepoEvent, TypedPath}
 import js7.data.master.MasterFileBaseds
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderBroken, OrderCancellationMarked, OrderCoreEvent, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId}
@@ -573,14 +572,14 @@ with MainJournalingActor[MasterState, Event]
       case cmd: MasterCommand.ReplaceRepo =>
         intelliJuseImport(catsStdInstancesForFuture)  // For traverse
         repoCommandExecutor.replaceRepoCommandToEvents(repo, cmd, commandMeta)
-          .flatMap(readConfiguration)
+          .flatMap(applyRepoEvents)
           .traverse((_: SyncIO[Future[Completed]])
             .unsafeRunSync()  // Persist events!
             .map(_ => MasterCommand.Response.Accepted))
 
       case cmd: MasterCommand.UpdateRepo =>
         repoCommandExecutor.updateRepoCommandToEvents(repo, cmd, commandMeta)
-          .flatMap(readConfiguration)
+          .flatMap(applyRepoEvents)
           .traverse((_: SyncIO[Future[Completed]])
             .unsafeRunSync()  // Persist events!
             .map(_ => MasterCommand.Response.Accepted))
@@ -633,7 +632,7 @@ with MainJournalingActor[MasterState, Event]
         Future.failed(new NotImplementedError)
     }
 
-  private def readConfiguration(events: Seq[RepoEvent]): Checked[SyncIO[Future[Completed]]] = {
+  private def applyRepoEvents(events: Seq[RepoEvent]): Checked[SyncIO[Future[Completed]]] = {
     def updateFileBaseds(diff: FileBaseds.Diff[TypedPath, FileBased]): Seq[Checked[SyncIO[Unit]]] =
       updateAgents(diff.select[AgentRefPath, AgentRef])
 
@@ -654,14 +653,12 @@ with MainJournalingActor[MasterState, Event]
       (implicit A: FileBased.Companion[A]): Seq[Left[Problem, Nothing]] =
       diff.deleted.map(o => Left(Problem.pure(s"Deletion of ${A.name} configuration objects is not supported: $o")))
 
-    //def changeNotSupported[P <: TypedPath, A <: FileBased](diff: FileBaseds.Diff[P, A]): Seq[Left[Problem]] =
-    //  diff.updated.map(o => Left(Problem(s"Change of these configuration objects is not supported: ${o.path}")))
-
     for {
-      changedRepo <- repo.applyEvents(events)  // May return DuplicateVersionProblem
-      realChanges = FileBaseds.diffFileBaseds(changedRepo.currentFileBaseds, repo.currentFileBaseds)  // should be equivalent to events
-      checkedSideEffects = updateFileBaseds(FileBaseds.Diff.fromRepoChanges(realChanges) withVersionId changedRepo.versionId)
-      foldedSideEffects <- checkedSideEffects.toVector.sequence map (_.fold(SyncIO.unit)(_ >> _))  // One problem invalidates all side effects
+      newVersionRepo <- repo.applyEvent(events.head) // May return DuplicateVersionProblem
+      versionId = newVersionRepo.versionId
+      changes <- events.tail.toVector.traverse(event => toRepoChange(event.asInstanceOf[FileBasedEvent]/*???*/))
+      checkedSideEffects = updateFileBaseds(FileBaseds.Diff.fromRepoChanges(changes) withVersionId versionId)
+      foldedSideEffects <- checkedSideEffects.toVector.sequence.map(_.fold(SyncIO.unit)(_ >> _))  // One problem invalidates all side effects
     } yield
       SyncIO {
         persistTransaction(events.map(KeyedEvent(_))) { (_, updatedState) =>
@@ -674,12 +671,22 @@ with MainJournalingActor[MasterState, Event]
       }
   }
 
+  private def toRepoChange(event: FileBasedEvent): Checked[RepoChange] =
+    event match {
+      case FileBasedAdded(_, signed) =>
+        repo.fileBasedVerifier.verify(signed).map(o => RepoChange.Added(o.signedFileBased.value))
+      case FileBasedChanged(_, signed) =>
+        repo.fileBasedVerifier.verify(signed).map(o => RepoChange.Updated(o.signedFileBased.value))
+      case FileBasedDeleted(path) =>
+        Right(RepoChange.Deleted(path))
+    }
+
   private def logRepoEvent(event: RepoEvent): Unit =
     event match {
       case VersionAdded(version)     => logger.info(s"Version '${version.string}' added")
-      case FileBasedAdded(path, _)   => logger.info(s"Added $path")
-      case FileBasedChanged(path, _) => logger.info(s"Changed $path")
-      case FileBasedDeleted(path)    => logger.info(s"Deleted $path")
+      case FileBasedAdded(path, _)   => logger.info(s"$path added")
+      case FileBasedChanged(path, _) => logger.info(s"$path changed")
+      case FileBasedDeleted(path)    => logger.info(s"$path deleted")
     }
 
   private def updateRepo(): Unit =

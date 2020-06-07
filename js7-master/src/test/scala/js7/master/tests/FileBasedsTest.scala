@@ -6,10 +6,9 @@ import js7.base.problem.Checked.Ops
 import js7.base.web.Uri
 import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
 import js7.common.scalautil.FileUtils.syntax._
-import js7.core.filebased.FileBaseds
-import js7.core.filebased.FileBaseds.diffFileBaseds
 import js7.data.agent.{AgentRef, AgentRefPath}
-import js7.data.filebased.{FileBased, RepoChange, TypedPath, VersionId}
+import js7.data.filebased.FileBaseds.diffFileBaseds
+import js7.data.filebased.{FileBased, FileBaseds, RepoChange, TypedPath, VersionId}
 import js7.data.job.ExecutablePath
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, ExplicitEnd}

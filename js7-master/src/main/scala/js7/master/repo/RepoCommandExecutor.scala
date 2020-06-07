@@ -26,7 +26,7 @@ final class RepoCommandExecutor(fileBasedVerifier: FileBasedVerifier[FileBased])
         val MasterCommand.ReplaceRepo(versionId, objects) = replaceRepo
         for {
           signedFileBaseds <- objects.failFastMap(verify)
-          deleted = repo.currentFileBaseds.map(_.path).toSet -- signedFileBaseds.map(_.value.path).toSet
+          deleted = repo.currentFileBaseds.view.map(_.path).filterNot(signedFileBaseds.view.map(_.value.path).toSet).toSet
           events <- repo.fileBasedToEvents(versionId, signedFileBaseds, deleted)
         } yield
           events

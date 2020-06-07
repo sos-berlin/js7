@@ -7,6 +7,7 @@ import io.circe.Decoder
 import js7.base.crypt.Signed
 import js7.base.crypt.donotcrypt.DoNotVerifySignatureVerifier
 import js7.base.problem.Checked._
+import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections._
@@ -17,7 +18,7 @@ import js7.data.crypt.FileBasedVerifier
 import js7.data.filebased.Repo.Entry
 import js7.data.filebased.RepoEvent.{FileBasedAdded, FileBasedAddedOrChanged, FileBasedChanged, FileBasedDeleted, FileBasedEvent, VersionAdded}
 import org.jetbrains.annotations.TestOnly
-import scala.collection.mutable
+import scala.collection.{View, mutable}
 
 /**
   * Representation of versioned FileBased (configuration objects).
@@ -42,11 +43,11 @@ final case class Repo private(
 
   lazy val versionId: VersionId = versions.headOption getOrElse VersionId.Anonymous
 
+  def currentVersionSize =
+    currentSignedFileBaseds.size
+
   lazy val currentVersion: Map[TypedPath, Signed[FileBased]] =
-    (for {
-      (path, versionToFileBased) <- pathToVersionToSignedFileBased
-      fileBased <- versionToFileBased.head.maybeSignedFileBased
-    } yield path -> fileBased)
+    currentSignedFileBaseds.view.map(o => o.value.path -> o).toMap
 
   private lazy val typeToPathToCurrentFileBased: FileBased.Companion_ => Map[TypedPath, Signed[FileBased]] =
     Memoizer.nonStrict { companion: FileBased.Companion_ =>
@@ -59,36 +60,51 @@ final case class Repo private(
   /** Returns the difference to the repo as events. */
   def fileBasedToEvents(versionId: VersionId, changed: Iterable[Signed[FileBased]], deleted: Iterable[TypedPath] = Nil)
   : Checked[Seq[RepoEvent]] =
-    checkVersion(versionId, changed) flatMap { changed =>
-      val addedOrChanged = changed flatMap toAddedOrChanged
-      addedOrChanged.checkUniqueness(_.path) map { _ =>
-        val deletedEvents = deleted
-          .filterNot(addedOrChanged.map(_.path).toSet)  // delete and change?
-          .filter(currentVersion.keySet)  // delete unknown?
-          .map(FileBasedDeleted.apply)
-        Vector(VersionAdded(versionId)) ++ deletedEvents ++ addedOrChanged
+    checkVersion(versionId, changed)
+      .flatMap { changed =>
+        val addedOrChanged = changed flatMap toAddedOrChanged
+        for (_ <- addedOrChanged.checkUniqueness(_.path)) yield {
+          lazy val addedSet = addedOrChanged.view.collect { case a: FileBasedAdded => a.path }.toSet
+          val deletedEvents = deleted.view
+            .filterNot(addedSet)  // delete and change?
+            .filter(exists)  // delete unknown?
+            .map(FileBasedDeleted.apply)
+          (new View.Single(VersionAdded(versionId)) ++ deletedEvents ++ addedOrChanged)
+            .toVector
+        }
       }
-    }
+
+  private def diffCurrentVersion(base: Repo): Seq[RepoChange] = {
+    // Optimized for small differences (less materialization, more views)
+    val added = currentFileBaseds.view
+      .filter(o => !base.exists(o.path))
+      .map(o => o.path -> o)
+      .toMap[TypedPath, FileBased]
+    val updated = currentFileBaseds.view
+      .filter(o => base.pathToFileBased(o.path).exists(_.id.versionId != o.id.versionId))
+    val deleted = base.currentFileBaseds.view
+      .map(_.path)
+      .filter(path => !exists(path) && !added.contains(path))
+    (deleted.map(RepoChange.Deleted.apply) ++
+      updated.map(RepoChange.Updated.apply) ++
+      added.values.view.map(RepoChange.Added.apply)
+    ).toVector
+      .sortBy(_.path)
+  }
 
   private def checkVersion(versionId: VersionId, signedFileBased: Iterable[Signed[FileBased]]): Checked[Vector[Signed[FileBased]]] =
     signedFileBased.toVector.traverse(o =>
-      (o.value.id.versionId match {
+      o.value.id.versionId match {
         case `versionId` => Right(o)
         case _ => Left(ObjectVersionDoesNotMatchProblem(versionId, o.value.id))
-      }): Checked[Signed[FileBased]])
+      })
 
   private def toAddedOrChanged(signedFileBased: Signed[FileBased]): Option[RepoEvent.FileBasedEvent] = {
-    val fileBased = signedFileBased.value
-    currentVersion.get(fileBased.path) match {
-      //case Some(existing) if existing.value.withVersion(fileBased.id.versionId) == fileBased =>
-      case Some(existing) if existing == signedFileBased =>
-        None
-
-      case Some(_) =>
-        Some(FileBasedChanged(fileBased.path, signedFileBased.signedString))
-
-      case None =>
-        Some(FileBasedAdded(fileBased.path, signedFileBased.signedString))
+    val path = signedFileBased.value.path
+    pathToSigned(path) match {
+      case Right(`signedFileBased`) => None
+      case Right(_) => Some(FileBasedChanged(path, signedFileBased.signedString))
+      case Left(_) => Some(FileBasedAdded(path, signedFileBased.signedString))
     }
   }
 
@@ -101,11 +117,14 @@ final case class Repo private(
   def currentTyped[A <: FileBased](implicit A: FileBased.Companion[A]): Map[A#Path, A] =
     typeToPathToCurrentFileBased(A).view.mapValues(_.value).toMap.asInstanceOf[Map[A#Path, A]]
 
-  def currentFileBaseds: Iterable[FileBased] =
-    currentSignedFileBaseds.map(_.value)
+  def currentFileBaseds: View[FileBased] =
+    currentSignedFileBaseds.view.map(_.value)
 
-  def currentSignedFileBaseds: Iterable[Signed[FileBased]] =
-    currentVersion.values
+  def currentSignedFileBaseds: View[Signed[FileBased]] =
+    for {
+      versionToFileBased <- pathToVersionToSignedFileBased.values.view
+      fileBased <- versionToFileBased.head.maybeSignedFileBased
+    } yield fileBased
 
   def applyEvents(events: Seq[RepoEvent]): Checked[Repo] = {
     var result = Checked(this)
@@ -120,7 +139,7 @@ final case class Repo private(
     event match {
       case VersionAdded(version) =>
         if (versionSet contains version)
-          DuplicateVersionProblem(version)
+          DuplicateKey("VersionId", version)
         else
           Right(copy(
             versions = version :: versions,
@@ -131,21 +150,33 @@ final case class Repo private(
           Problem.pure(s"Missing initial VersionAdded event for Repo")
         else
           event match {
-            case event @ FileBasedAddedOrChanged(path, signedString) =>
-              fileBasedVerifier.verify(signedString).map(_.fileBased).flatMap(fileBased =>
-                if (path != fileBased.path)
-                  Problem.pure(s"Error in FileBasedAddedOrChanged event: path=$path does not equal path=${fileBased.path}")
-                else if (fileBased.path.isAnonymous)
-                  Problem.pure(s"Adding an anonymous ${fileBased.companion.name} is not allowed")
-                else if (fileBased.id.versionId != versionId)
-                  EventVersionDoesNotMatchProblem(versionId, event)
-                else
-                  Right(addEntry(fileBased.path, Some(js7.base.crypt.Signed(fileBased withVersion versionId, signedString)))))
+            case event: FileBasedAdded =>
+              if (exists(event.path))
+                Left(DuplicateKey("TypedPath", event.path))
+              else
+                addOrChange(event)
+
+            case event: FileBasedChanged =>
+              pathToFileBased(event.path)
+                .flatMap(_ => addOrChange(event))
 
             case FileBasedDeleted(path) =>
-              Right(addEntry(path, None))
+              for (_ <- pathToFileBased(event.path)) yield
+                addEntry(path, None)
           }
     }
+
+  private def addOrChange(event: FileBasedAddedOrChanged): Checked[Repo] = {
+    fileBasedVerifier.verify(event.signed).map(_.fileBased).flatMap(fileBased =>
+      if (event.path != fileBased.path)
+        Problem.pure(s"Error in FileBasedAddedOrChanged event: path=${event.path} does not equal path=${fileBased.path}")
+      else if (fileBased.path.isAnonymous)
+        Problem.pure(s"Adding an anonymous ${fileBased.companion.name} is not allowed")
+      else if (fileBased.id.versionId != versionId)
+        EventVersionDoesNotMatchProblem(versionId, event)
+      else
+        Right(addEntry(fileBased.path, Some(js7.base.crypt.Signed(fileBased withVersion versionId, event.signed)))))
+  }
 
   private def addEntry(path: TypedPath, fileBasedOption: Option[Signed[FileBased]]): Repo = {
     val version = versions.head
@@ -155,6 +186,12 @@ final case class Repo private(
           (Entry(version,fileBasedOption) :: (pathToVersionToSignedFileBased.getOrElse(path, Nil)))))
   }
 
+  def exists(path: TypedPath): Boolean =
+    pathToVersionToSignedFileBased.get(path) match {
+      case None => false
+      case Some(entries) => entries.head.maybeSignedFileBased.isDefined  // Deleted?
+    }
+
   /** Returns the current FileBased to a Path. */
   def pathTo[A <: FileBased](path: A#Path)(implicit A: FileBased.Companion[A]): Checked[A] =
     pathToVersionToSignedFileBased
@@ -163,8 +200,22 @@ final case class Repo private(
         val entry = entries.head
         entry
           .maybeSignedFileBased
-          .toChecked(DeletedProblem(path ~ entry.versionId))
+          .toChecked(FileBasedDeletedProblem(path ~ entry.versionId))
           .map(_.value.asInstanceOf[A])
+      }
+
+  def pathToFileBased(path: TypedPath): Checked[FileBased] =
+    pathToSigned(path)
+      .map(_.value)
+
+  private def pathToSigned(path: TypedPath): Checked[Signed[FileBased]] =
+    pathToVersionToSignedFileBased
+      .checked(path)
+      .flatMap { entries =>
+        val entry = entries.head
+        entry
+          .maybeSignedFileBased
+          .toChecked(FileBasedDeletedProblem(path ~ entry.versionId))
       }
 
   /** Returns the FileBased to a FileBasedId. */
@@ -177,14 +228,14 @@ final case class Repo private(
       versionToSignedFileBased <- pathToVersionToSignedFileBased.checked(id.path)
       fileBasedOption <- versionToSignedFileBased
         .collectFirst { case Entry(id.versionId, o) => o }
-        .toChecked(Problem(s"No such '$id'"))
+        .toChecked(UnknownKeyProblem("FileBasedId", id))
         .orElse(
           for {
             history <- historyBefore(id.versionId)
-            fb <- findInHistory(versionToSignedFileBased, history.contains) toChecked Problem(s"No such '$id'")
+            fb <- findInHistory(versionToSignedFileBased, history.contains) toChecked UnknownKeyProblem("FileBasedId", id)
           } yield fb
         ): Checked[Option[Signed[FileBased]]]
-      signedFileBased <- fileBasedOption.toChecked(DeletedProblem(id))
+      signedFileBased <- fileBasedOption.toChecked(FileBasedDeletedProblem(id))
     } yield signedFileBased.copy(signedFileBased.value.cast[A])
 
   /** Converts the Repo to an event sequence, regarding only a given type. */
@@ -225,7 +276,7 @@ final case class Repo private(
 
   private[filebased] def historyBefore(versionId: VersionId): Checked[List[VersionId]] =
     versions.dropWhile(versionId.!=) match {
-      case Nil => Problem(s"No such '$versionId'")
+      case Nil => UnknownKeyProblem("VersionId", versionId)
       case _ :: tail => Right(tail)
     }
 
@@ -282,11 +333,8 @@ object Repo
       .map(_.maybeSignedFileBased)
       .headOption
 
-  final case class DeletedProblem private[Repo](id: FileBasedId_)
+  final case class FileBasedDeletedProblem private[Repo](id: FileBasedId_)
     extends Problem.Lazy(s"Has been deleted: $id")
-
-  final case class DuplicateVersionProblem private[Repo](versionId: VersionId)
-    extends Problem.Lazy(s"Duplicate VersionId '${versionId.string}'")
 
   final case class ObjectVersionDoesNotMatchProblem(versionId: VersionId, fileBasedId: FileBasedId[_ <: TypedPath]) extends Problem.Coded {
     def arguments = Map("versionId" -> versionId.string, "id" -> fileBasedId.toString)

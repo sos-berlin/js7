@@ -39,9 +39,11 @@ object Collections
 
     implicit final class RichTraversable[F[x] <: Iterable[x], A](private val delegate: F[A]) extends AnyVal
     {
-      def toKeyedMap[K](toKey: A => K): Map[K, A] = (delegate map { o => toKey(o) -> o }).uniqueToMap
+      def toKeyedMap[K](toKey: A => K): Map[K, A] =
+        delegate.view.map(o => toKey(o) -> o).uniqueToMap
 
-      def toKeyedMap[K](toKey: A => K, ifNot: Iterable[K] => Nothing): Map[K, A] = (delegate map { o => toKey(o) -> o }).uniqueToMap(ifNot)
+      def toKeyedMap[K](toKey: A => K, ifNot: Iterable[K] => Nothing): Map[K, A] =
+        delegate.view.map(o => toKey(o) -> o).uniqueToMap(ifNot)
 
       def uniqueToSet: Set[A] =
         delegate.requireUniqueness.toSet
@@ -115,13 +117,15 @@ object Collections
 
     implicit final class RichPairTraversable[A, B](private val delegate: Iterable[(A, B)]) extends AnyVal {
       def uniqueToMap: Map[A, B] = {
-        delegate.requireUniqueness { _._1 }
-        delegate.toMap
+        val result = delegate.toMap
+        if (delegate.sizeIs != result.size) delegate.requireUniqueness { _._1 }
+        result
       }
 
       def uniqueToMap(ifNot: Iterable[A] => Nothing): Map[A, B] = {
-        delegate.ifNotUnique(_._1, ifNot)
-        delegate.toMap
+        val result = delegate.toMap
+        if (delegate.sizeIs != result.size) delegate.ifNotUnique(_._1, ifNot)
+        result
       }
 
       def toSeqMultiMap: Map[A, Seq[B]] =

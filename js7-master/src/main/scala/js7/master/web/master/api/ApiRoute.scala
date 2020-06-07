@@ -36,29 +36,30 @@ with LogRoute
 {
   final val apiRoute: Route =
     respondWithHeaders(StandardResponseHeaders) {
-      pathEnd {
-        apiRootRoute
-      } ~
       pathPrefix(Segment) {
-        case "session"     => sessionRoute
-        case "event"       => eventRoute
         case "journal"     => journalRoute
+        case "event"       => eventRoute
         case "command"     => commandRoute
+        case "cluster"     => clusterRoute
         case "fatEvent"    => fatEventRoute
         case "order"       => orderRoute
         case "workflow"    => workflowRoute
         case "agent"       => agentRefRoute
         case "agent-proxy" => agentProxyRoute
         case "snapshot"    => snapshotRoute
-        case "cluster"     => clusterRoute
+        case "session"     => sessionRoute
         case "graphql"     => graphqlRoute
         case "log"         => logRoute
         case _ => complete(NotFound)
+      } ~
+      pathEnd {
+        apiRootRoute
       }
     }
 }
 
-object ApiRoute {
+object ApiRoute
+{
   private val StandardResponseHeaders = Vector(
     `Cache-Control`(`max-age`(0), `no-store`, `no-cache`))
 }

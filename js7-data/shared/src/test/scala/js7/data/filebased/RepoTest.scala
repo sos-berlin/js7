@@ -7,11 +7,12 @@ import js7.base.crypt.silly.{SillySignatureVerifier, SillySigner}
 import js7.base.crypt.{GenericSignature, SignedString}
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
+import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.time.Stopwatch
 import js7.data.agent.AgentRefPath
 import js7.data.crypt.FileBasedVerifier
 import js7.data.filebased.Repo.testOnly.{Changed, Deleted, OpRepo}
-import js7.data.filebased.Repo.{DuplicateVersionProblem, ObjectVersionDoesNotMatchProblem}
+import js7.data.filebased.Repo.{EventVersionDoesNotMatchProblem, FileBasedDeletedProblem, ObjectVersionDoesNotMatchProblem}
 import js7.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
 import js7.data.filebased.RepoTest._
 import org.scalatest.freespec.AnyFreeSpec
@@ -26,36 +27,44 @@ final class RepoTest extends AnyFreeSpec
   private lazy val Right(testRepo) = emptyRepo.applyEvents(TestEvents)
 
   "empty" in {
-    assert(emptyRepo.historyBefore(v("UNKNOWN")) == Left(Problem("No such 'version UNKNOWN'")))
+    assert(emptyRepo.historyBefore(v("UNKNOWN")) == Left(UnknownKeyProblem("VersionId", VersionId("UNKNOWN"))))
 
     assert(emptyRepo.idTo[AFileBased](APath("/UNKNOWN-PATH") ~ "UNKNOWN-VERSION") ==
-      Left(Problem("No such TypedPath: A:/UNKNOWN-PATH")))
+      Left(UnknownKeyProblem("TypedPath", APath("/UNKNOWN-PATH"))))
 
     assert(emptyRepo.applyEvent(FileBasedAdded(a1.path, SignedString(a1.asJson.compactPrint, GenericSignature("SILLY", "SIGNED")))) ==
       Left(Problem("Missing initial VersionAdded event for Repo")))
+
+    assert(!emptyRepo.exists(APath("/A")))
   }
 
   "empty version" in {
     val Right(repo) = emptyRepo.applyEvent(VersionAdded(v("INITIAL")))
     assert(repo.historyBefore(v("INITIAL")) == Right(Nil))
-    assert(repo.historyBefore(v("UNKNOWN")) == Left(Problem("No such 'version UNKNOWN'")))
+    assert(repo.historyBefore(v("UNKNOWN")) == Left(UnknownKeyProblem("VersionId", VersionId("UNKNOWN"))))
 
     assert(repo.idTo[AFileBased](APath("/UNKNOWN") ~ "INITIAL") ==
-      Left(Problem("No such TypedPath: A:/UNKNOWN")))
+      Left(UnknownKeyProblem("TypedPath", APath("/UNKNOWN"))))
 
     assert(repo.idTo[AFileBased](APath("/UNKNOWN-PATH") ~ "UNKNOWN-VERSION") ==
-      Left(Problem("No such TypedPath: A:/UNKNOWN-PATH")))
+      Left(UnknownKeyProblem("TypedPath", APath("/UNKNOWN-PATH"))))
 
     assert(repo.applyEvent(VersionAdded(v("INITIAL"))) ==
-      Left(Repo.DuplicateVersionProblem(v("INITIAL"))))
+      Left(DuplicateKey("VersionId", v("INITIAL"))))
+  }
+
+  "exists" in {
+    assert(testRepo.exists(APath("/A")))
+    assert(!testRepo.exists(APath("/Bx")))
+    assert(!testRepo.exists(APath("/UNKNOWN")))
   }
 
   "Event input" in {
-    assert(testRepo.idTo[AFileBased](APath("/A") ~ "UNKNOWN") == Left(Problem("No such 'version UNKNOWN'")))
-    assert(testRepo.idTo[AFileBased](APath("/X") ~ V1) == Left(Problem("No such TypedPath: A:/X")))
-    assert(testRepo.idTo[AFileBased](APath("/X") ~ V1) == Left(Problem("No such TypedPath: A:/X")))
-    assert(testRepo.idTo[BFileBased](BPath("/Bx") ~ V1) == Left(Problem("No such 'B:/Bx~1'")))
-    assert(testRepo.idTo[BFileBased](BPath("/Bx") ~ V3) == Left(Problem("Has been deleted: B:/Bx~3")))
+    assert(testRepo.idTo[AFileBased](APath("/A") ~ "UNKNOWN") == Left(UnknownKeyProblem("VersionId", VersionId("UNKNOWN"))))
+    assert(testRepo.idTo[AFileBased](APath("/X") ~ V1) == Left(UnknownKeyProblem("TypedPath", APath("/X"))))
+    assert(testRepo.idTo[AFileBased](APath("/X") ~ V1) == Left(UnknownKeyProblem("TypedPath", APath("/X"))))
+    assert(testRepo.idTo[BFileBased](BPath("/Bx") ~ V1) == Left(UnknownKeyProblem("FileBasedId", BPath("/Bx") ~ V1)))
+    assert(testRepo.idTo[BFileBased](BPath("/Bx") ~ V3) == Left(FileBasedDeletedProblem(BPath("/Bx") ~ V3)))
     assert(testRepo.idTo[AFileBased](APath("/A") ~ V1) == Right(a1))
     assert(testRepo.idTo[AFileBased](APath("/A") ~ V2) == Right(a2))
     assert(testRepo.idTo[AFileBased](APath("/A") ~ V3) == Right(a3))
@@ -134,7 +143,7 @@ final class RepoTest extends AnyFreeSpec
         == Right(VersionAdded(V1) :: FileBasedAdded(a1.path, sign(a1)) :: Nil))
     }
 
-    "Deleting åunknown" in {
+    "Deleting unknown" in {
       assert(emptyRepo.fileBasedToEvents(V1, Nil, deleted = bx2.path :: Nil)
         == Right(VersionAdded(V1) :: Nil))
     }
@@ -162,7 +171,50 @@ final class RepoTest extends AnyFreeSpec
         Changed(toSigned(a1)) :: Changed(toSigned(a2)) :: Changed(toSigned(b1)) :: Deleted(b1.path ~ V2) :: Changed(toSigned(bx2)) :: Nil,
         fileBasedVerifier))
 
-      assert(repo.applyEvents(events) == Left(DuplicateVersionProblem(VersionId("2"))))
+      assert(repo.applyEvents(events) == Left(DuplicateKey("VersionId", VersionId("2"))))
+    }
+  }
+
+  "applyEvent" - {
+    var repo = emptyRepo.applyEvent(VersionAdded(V1)).orThrow
+
+    "FileBasedChanged for unknown path" in {
+      assert(repo.applyEvent(FileBasedChanged(APath("/A"), sign(AFileBased(APath("/A") ~ V1, "A")))) ==
+        Left(UnknownKeyProblem("TypedPath", APath("/A"))))
+    }
+
+    "FileBasedDeleted for unknown path" in {
+      assert(repo.applyEvent(FileBasedDeleted(APath("/A"))) ==
+        Left(UnknownKeyProblem("TypedPath", APath("/A"))))
+    }
+
+    "FileBasedAdded for existent path" in {
+      repo = repo.applyEvent(FileBasedAdded(APath("/A"), sign(AFileBased(APath("/A") ~ V1, "A")))).orThrow
+      assert(repo.applyEvent(FileBasedAdded(APath("/A"), sign(AFileBased(APath("/A") ~ V1, "A")))) ==
+        Left(DuplicateKey("TypedPath", APath("/A"))))
+    }
+
+    "FileBaseAdded with different VersionId" in {
+      val event = FileBasedAdded(APath("/B"), sign(AFileBased(APath("/B") ~ V3, "B")))
+      assert(repo.applyEvent(event) ==
+        Left(EventVersionDoesNotMatchProblem(V1, event)))
+    }
+
+    "FileBaseChanged with different VersionId" in {
+      val event = FileBasedChanged(APath("/A"), sign(AFileBased(APath("/A") ~ V3, "A")))
+      assert(repo.applyEvent(event) == Left(EventVersionDoesNotMatchProblem(V1, event)))
+    }
+
+    "FileBasedChanged for deleted path" in {
+      repo = repo.applyEvent(VersionAdded(V2)).orThrow
+      repo = repo.applyEvent(FileBasedDeleted(APath("/A"))).orThrow
+      repo = repo.applyEvent(VersionAdded(V3)).orThrow
+      assert(repo.applyEvent(FileBasedChanged(APath("/A"), sign(AFileBased(APath("/A") ~ V3, "A")))) ==
+        Left(FileBasedDeletedProblem(APath("/A") ~ V2)))
+    }
+
+    "FileBasedDeleted for deleted path" in {
+      assert(repo.applyEvent(FileBasedDeleted(APath("/A"))) == Left(FileBasedDeletedProblem(APath("/A") ~ V2)))
     }
   }
 
@@ -170,14 +222,17 @@ final class RepoTest extends AnyFreeSpec
     val n = sys.props.get("RepoTest").map(_.toInt) getOrElse 2000
     s"Add many $n versions" in {
       // MasterCommand.UpdateRepo calls fileBasedToEvents
-      val a = AFileBased(APath("/A"), "A")
       var repo = emptyRepo
       val stopwatch = new Stopwatch
+      var sw = new Stopwatch
       for (i <- 1 to n) {
         val v = VersionId(i.toString)
-        val events = repo.fileBasedToEvents(v, toSigned(a withVersion v) :: Nil).orThrow
+        val events = repo.fileBasedToEvents(v, toSigned(AFileBased(APath(s"/A-$i"), "A") withVersion v) :: Nil).orThrow
         repo = repo.applyEvents(events).orThrow
-        if (i % 1000 == 0) scribe.info(stopwatch.itemsPerSecondString(i, "versions"))
+        if (i % 1000 == 0) {
+          scribe.info(sw.itemsPerSecondString(1000, "versions"))
+          sw = new Stopwatch
+        }
       }
       info(stopwatch.itemsPerSecondString(n, "versions"))
     }

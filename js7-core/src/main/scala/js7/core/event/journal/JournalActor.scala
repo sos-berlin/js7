@@ -88,6 +88,7 @@ extends Actor with Stash
 
   logger.debug(s"fileBase=${journalMeta.fileBase}")
   for (o <- conf.simulateSync) logger.warn(s"Disk sync is simulated with a ${o.pretty} pause")
+  logger.whenTraceEnabled { logger.debug("Logger isTraceEnabled=true") }
 
   override def postStop() = {
     if (snapshotSchedule != null) snapshotSchedule.cancel()
@@ -111,6 +112,7 @@ extends Actor with Stash
 
   def receive = {
     case Input.Start(journaledState_, RecoveredJournalingActors(keyToActor), observer_, header, totalRunningSince_) =>
+      logger.debug(s"Thread ${Thread.currentThread.getName}")
       uncommittedJournaledState = journaledState_.asInstanceOf[S]
       journaledState = uncommittedJournaledState
       requireClusterAcknowledgement = journaledState.clusterState.isInstanceOf[ClusterState.Coupled]

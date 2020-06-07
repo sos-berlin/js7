@@ -1,22 +1,18 @@
-package js7.core.filebased
-
-import js7.base.utils.Collections.implicits.RichTraversable
-import js7.data.filebased.{FileBased, RepoChange, TypedPath, VersionId}
+package js7.data.filebased
 
 /**
   * @author Joacim Zschimmer
   */
 object FileBaseds
 {
-  def diffFileBaseds(changed: Iterable[FileBased], base: Iterable[FileBased], ignoreVersion: Boolean = false): Seq[RepoChange] =
-    diffFileBaseds2(changed, base, ignoreVersion).sortBy(_.path)
-
-  private def diffFileBaseds2(changed: Iterable[FileBased], base: Iterable[FileBased], ignoreVersion: Boolean): Seq[RepoChange] = {
-    val pathToFileBased = base toKeyedMap (_.path: TypedPath)
-    val addedOrChanged = changed.toVector flatMap toAddedOrChanged(pathToFileBased.lift, ignoreVersion)
-    val readPaths = changed.map(_.path).toSet
-    val deletedEvents = base map (_.path) filterNot readPaths map RepoChange.Deleted.apply
-    deletedEvents.toVector ++ addedOrChanged
+  def diffFileBaseds(changed: Iterable[FileBased], base: Iterable[FileBased], ignoreVersion: Boolean = false): Seq[RepoChange] = {
+    val pathToMaybeFileBased = base.view.map(o => o.path -> o).toMap[TypedPath, FileBased].lift
+    val addedOrChanged = changed.view flatMap toAddedOrChanged(pathToMaybeFileBased, ignoreVersion)
+    val changedPaths = changed.view.map(_.path).toSet
+    val deletedEvents = base.view.map(_.path) filterNot changedPaths map RepoChange.Deleted.apply
+    (deletedEvents ++ addedOrChanged)
+      .toVector
+      .sortBy(_.path)
   }
 
   private def toAddedOrChanged(previousPathToFileBased: TypedPath => Option[FileBased], ignoreVersion: Boolean)(fileBased: FileBased): Option[RepoChange] =

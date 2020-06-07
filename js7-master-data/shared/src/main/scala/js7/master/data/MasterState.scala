@@ -137,7 +137,7 @@ extends JournaledState[MasterState]
   }
 
   override def toString =
-    s"MasterState(${EventId.toString(eventId)} ${idToOrder.size} orders, Repo(${repo.currentVersion.size} objects, ...))"
+    s"MasterState(${EventId.toString(eventId)} ${idToOrder.size} orders, Repo(${repo.currentVersionSize} objects, ...))"
 }
 
 object MasterState

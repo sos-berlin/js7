@@ -2,10 +2,12 @@ package js7.tests
 
 import js7.base.auth.UserId
 import js7.base.generic.SecretString
-import js7.base.problem.Problem
+import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
 import js7.base.utils.AutoClosing.autoClosing
+import js7.base.web.Uri
+import js7.common.http.AkkaHttpClient.HttpException
 import js7.common.process.Processes.{ShellFileExtension => sh}
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
@@ -13,6 +15,7 @@ import js7.common.scalautil.Logger
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.system.OperatingSystem.isWindows
 import js7.data.agent.AgentRefPath
+import js7.data.filebased.Repo.FileBasedDeletedProblem
 import js7.data.filebased.VersionId
 import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.{OrderAdded, OrderFinished, OrderStdoutWritten}
@@ -21,9 +24,12 @@ import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import js7.master.RunningMaster
+import js7.master.client.{AkkaHttpMasterApi, MasterApi}
 import js7.master.data.MasterCommand.UpdateRepo
 import js7.tests.testenv.DirectoryProvider
+import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
+import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 import scala.util.Try
 
@@ -50,7 +56,7 @@ final class MasterRepoTest extends AnyFreeSpec
 
           // Command is rejected due to duplicate VersionId
           assert(master.executeCommandAsSystemUser(UpdateRepo(V1)).await(99.s) ==
-            Left(Problem(s"Duplicate VersionId '${V1.string}'")))
+            Left(DuplicateKey("VersionId", V1)))
 
           // Add Workflow
           addWorkflowAndRunOrder(master, V2, BWorkflowPath, OrderId("B"))
@@ -74,24 +80,41 @@ final class MasterRepoTest extends AnyFreeSpec
           // Delete workflow
           provider.updateRepo(master, V6, delete = CWorkflowPath :: Nil)
           assert(Try { runOrder(master, CWorkflowPath ~ V6, OrderId("B-6")) }
-            .failed.get.getMessage contains s"Has been deleted: Workflow:${CWorkflowPath.string}")
+            .failed.get.asInstanceOf[HttpException].problem contains FileBasedDeletedProblem(CWorkflowPath ~ V6))
 
           // Command is rejected due to duplicate VersionId
           assert(master.executeCommandAsSystemUser(UpdateRepo(V2)).await(99.s) ==
-            Left(Problem(s"Duplicate VersionId '${V2.string}'")))
+            Left(DuplicateKey("VersionId", V2)))
 
           // AWorkflowPath is still version V3
           runOrder(master, AWorkflowPath ~ V3, OrderId("A-3"))
           runOrder(master, BWorkflowPath ~ V2, OrderId("B-2"))
 
-          testSpeed(master)
+          sys.props.get("MasterRepoTest").foreach(_.split(" +") match {
+            case Array(nString) =>
+              master.httpApi.login_(Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD"))).await(99.s)
+              testSpeed(master.httpApi, n = nString.toInt)
+
+            case Array(nString, uri, userId, password) =>
+              // Fails because JS7 does not know our signature !!!
+              AkkaHttpMasterApi.separateAkkaResource(Uri(uri), Some(UserId(userId) -> SecretString(password)))
+                .use(masterApi =>
+                  masterApi.login() >>
+                    Task {
+                      testSpeed(masterApi, n = nString.toInt)
+                    })
+                .runToFuture
+                .await(1.h)
+
+            case _ => sys.error("Invalid number of arguments in property MasterRepoTest")
+          })
         }
       }
 
       def addWorkflowAndRunOrder(master: RunningMaster, versionId: VersionId, path: WorkflowPath, orderId: OrderId): Unit = {
         val order = FreshOrder(orderId, path)
         // Command will be rejected because workflow is not yet defined
-        assert(master.addOrder(order).runToFuture.await(99.s) == Left(Problem(s"No such TypedPath: Workflow:${path.string}")))
+        assert(master.addOrder(order).runToFuture.await(99.s) == Left(UnknownKeyProblem("TypedPath", path)))
         defineWorkflowAndRunOrder(master, versionId, path, orderId)
       }
 
@@ -122,17 +145,22 @@ final class MasterRepoTest extends AnyFreeSpec
         master.eventWatch.await[OrderFinished](_.key == orderId)
       }
 
-      def testSpeed(master: RunningMaster): Unit = {
-        val n = sys.props.get("MasterRepoTest").map(_.toInt) getOrElse 3
-        master.httpApi.login_(Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD"))).await(99.s)
+      def testSpeed(masterApi: MasterApi, n: Int): Unit = {
+        val workflow0 = testWorkflow(V1)
         val stopwatch = new Stopwatch
-        for (i <- 1 to n) {
-          val v = VersionId(s"SPEED-$i")
-          val workflow = testWorkflow(v).withId(WorkflowPath("/WORKFLOW") ~ v)
-          master.httpApi.executeCommand(UpdateRepo(v, provider.sign(workflow) :: Nil)).await(99.s)
-          if (i % 1000 == 0) logger.info(stopwatch.itemsPerSecondString(i, "UpdateRepos"))
-        }
-        info(stopwatch.itemsPerSecondString(n, "UpdateRepos"))
+        Observable
+          .fromIterable(1 to n)
+          .mapParallelUnordered(parallelism = (sys.runtime.availableProcessors / 2) max 1) { i =>
+            val v = VersionId(s"SPEED-$i")
+            val workflow = workflow0.withId(WorkflowPath(s"/WORKFLOW-$i") ~ VersionId(s"SPEED-$i"))
+            masterApi.executeCommand(UpdateRepo(v, provider.sign(workflow) :: Nil))
+          }
+          .completedL
+          .runToFuture
+          .await(1.h)
+        val stopwatchResult = stopwatch.itemsPerSecondString(n, "UpdateRepos")
+        logger.info(stopwatchResult)
+        info(stopwatchResult)
       }
     }
   }
