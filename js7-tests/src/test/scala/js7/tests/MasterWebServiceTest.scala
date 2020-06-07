@@ -18,6 +18,7 @@ import js7.base.crypt.silly.{SillySignature, SillySigner}
 import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
+import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
@@ -332,7 +333,7 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
         httpClient.get[Json](Uri(s"$uri/master/api/agent-proxy/UNKNOWN"), headers) await 99.s
       }
       assert(e.status.intValue == 400/*BadRequest*/)
-      assert(e.problem == Some(Problem("No such TypedPath: AgentRef:/UNKNOWN")))
+      assert(e.problem == Some(UnknownKeyProblem("TypedPath", AgentRefPath("/UNKNOWN"))))
     }
 
     "/master/api/agent-proxy/FOLDER%2F/AGENT-A/NOT-FOUND returns 404" in {
@@ -366,7 +367,7 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
         }
         assert(exception.status.intValue == 400/*BadRequest*/)
         assert(exception.dataAsString contains "No such TypedPath: Workflow:/MISSING")  // Or similar
-        assert(exception.problem == Some(Problem("No such TypedPath: Workflow:/MISSING")))
+        assert(exception.problem == Some(UnknownKeyProblem("TypedPath", WorkflowPath("/MISSING"))))
       }
 
       "Order with missing workflow is rejected (order array)" in {
@@ -377,7 +378,7 @@ final class MasterWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with
         }
         assert(exception.status.intValue == 400/*BadRequest*/)
         assert(exception.dataAsString contains "No such TypedPath: Workflow:/MISSING")  // Or similar
-        assert(exception.problem == Some(Problem("No such TypedPath: Workflow:/MISSING")))
+        assert(exception.problem == Some(UnknownKeyProblem("TypedPath", WorkflowPath("/MISSING"))))
       }
 
       "Invalid OrderId is rejected (single order)" in {

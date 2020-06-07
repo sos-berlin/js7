@@ -9,8 +9,21 @@ object Problems
     )
   }
 
-  final case class UnknownKeyProblem(typ: String, key: String) extends Problem.Coded {
-    def arguments = Map("type" -> typ, "key" -> key)
+  final class UnknownKeyProblem(_typ: => String, val key: Any) extends Problem.Coded {
+    lazy val typ = _typ
+
+    def arguments = Map(
+      "type" -> typ,
+      "key" -> key.toString)
+  }
+  object UnknownKeyProblem {
+    def apply(typ: => String, key: Any) = new UnknownKeyProblem(typ, key)
+  }
+
+  final case class DuplicateKey(typ: String, key: Any) extends Problem.Coded {
+    def arguments = Map(
+      "type" -> typ,
+      "key" -> key.toString)
   }
 
   case object InvalidSessionTokenProblem extends Problem.ArgumentlessCoded

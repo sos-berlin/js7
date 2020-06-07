@@ -10,6 +10,7 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.crypt.silly.SillySigner
 import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
+import js7.base.problem.Problems.DuplicateKey
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.RichThrowableEither
@@ -20,13 +21,13 @@ import js7.common.scalautil.IOExecutor.Implicits.globalIOX
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.scalautil.xmls.ScalaXmls.implicits._
 import js7.common.system.OperatingSystem.isMac
-import js7.core.filebased.{FileBasedReader, FileBaseds, TypedPaths}
+import js7.core.filebased.{FileBasedReader, TypedPaths}
 import js7.data.agent.{AgentRef, AgentRefPath}
 import js7.data.event.EventId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.filebased.Repo.Entry
 import js7.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, FileBasedEvent, VersionAdded}
-import js7.data.filebased.{Repo, SourceType, VersionId}
+import js7.data.filebased.{FileBaseds, Repo, SourceType, VersionId}
 import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.OrderAdded
 import js7.data.workflow.parser.WorkflowParser
@@ -139,7 +140,7 @@ final class ProviderTest extends AnyFreeSpec with MasterAgentForScalaTest
     }
 
     "Duplicate VersionId" in {
-      assert(provider.updateMasterConfiguration(V1.some).await(99.seconds) == Left(Problem("Duplicate VersionId '1'")))
+      assert(provider.updateMasterConfiguration(V1.some).await(99.seconds) == Left(DuplicateKey("VersionId", VersionId("1"))))
     }
 
     "An unknown and some invalid files" in {

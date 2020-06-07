@@ -109,6 +109,8 @@ object Problem
       case _ => false
     }
 
+    override def hashCode = (code.hashCode * 31 + arguments.hashCode) * 31 + cause.hashCode
+
     override def toString = {
       val msg = messageWithCause
       if (msg + " " startsWith code.string + " ") msg

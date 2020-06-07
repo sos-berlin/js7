@@ -4,6 +4,7 @@ import java.io.{ByteArrayInputStream, InputStream, PrintWriter, StringWriter}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.concurrent.atomic.AtomicBoolean
 import js7.base.exceptions.PublicException
+import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.utils.Strings.RichString
@@ -208,7 +209,7 @@ object ScalaUtils
   extends AnyVal
   {
     def checked(key: A)(implicit A: ClassTag[A]): Checked[B] =
-      rightOr(key, Problem(s"No such ${A.runtimeClass.shortClassName}: $key"))
+      rightOr(key, UnknownKeyProblem(A.runtimeClass.shortClassName, key))
 
     def rightOr(key: A, notFound: => Problem): Checked[B] =
       toChecked(_ => notFound)(key)
@@ -224,7 +225,7 @@ object ScalaUtils
     def checkNoDuplicate(key: A)(implicit A: ClassTag[A]): Checked[Unit] = {
       val lifted = underlying.lift
       lifted(key) match {
-        case Some(_) => Left(Problem(s"Duplicate ${A.runtimeClass.shortClassName}: $key"))
+        case Some(_) => Left(DuplicateKey(A.runtimeClass.shortClassName, key))
         case None => Right(())
       }
     }

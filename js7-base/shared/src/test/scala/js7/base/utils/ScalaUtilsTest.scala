@@ -2,6 +2,7 @@ package js7.base.utils
 
 import java.util.concurrent.atomic.AtomicBoolean
 import js7.base.exceptions.StandardPublicException
+import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils._
 import js7.base.utils.ScalaUtils.implicits._
@@ -197,23 +198,23 @@ final class ScalaUtilsTest extends AnyFreeSpec
 
     "PartialFunction.checked" in {
       assert(pf.checked(1) == Right("ONE"))
-      assert(pf.checked(2) == Left(Problem("No such Int: 2")))
+      assert(pf.checked(2) == Left(UnknownKeyProblem("Int", 2)))
     }
 
     "PartialFunction.checked as curried function" in {
       val checked: Int => Checked[String] = pf.checked
       assert(checked(1) == Right("ONE"))
-      assert(checked(2) == Left(Problem("No such Int: 2")))
+      assert(checked(2) == Left(UnknownKeyProblem("Int", 2)))
     }
 
     "PartialFunction.doNotContain" in {
-      assert(pf.checkNoDuplicate(1) == Left(Problem("Duplicate Int: 1")))
+      assert(pf.checkNoDuplicate(1) == Left(DuplicateKey("Int", 1)))
       assert(pf.checkNoDuplicate(2) == Right(()))
     }
 
     "PartialFunction.toThrowableChecked" in {
       assert(pf.checked(1) == Right("ONE"))
-      assert(pf.checked(2) == Left(Problem("No such Int: 2")))
+      assert(pf.checked(2) == Left(UnknownKeyProblem("Int", 2)))
     }
 
     "PartialFunction.getOrElse" in {
