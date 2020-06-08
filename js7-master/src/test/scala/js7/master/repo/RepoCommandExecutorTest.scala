@@ -4,7 +4,9 @@ import js7.base.auth.User.UserDoesNotHavePermissionProblem
 import js7.base.auth.{SimpleUser, UpdateRepoPermission, UserId}
 import js7.base.crypt.silly.{SillySignature, SillySigner}
 import js7.base.problem.Checked.Ops
+import js7.base.time.ScalaTime._
 import js7.base.web.Uri
+import js7.common.scalautil.MonixUtils.syntax._
 import js7.core.command.CommandMeta
 import js7.data.agent.{AgentRef, AgentRefPath}
 import js7.data.crypt.FileBasedVerifier
@@ -14,6 +16,7 @@ import js7.data.master.MasterFileBaseds
 import js7.data.workflow.instructions.Fail
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.master.data.MasterCommand.{ReplaceRepo, UpdateRepo}
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
@@ -38,13 +41,13 @@ final class RepoCommandExecutorTest extends AnyFreeSpec
 
   "replaceRepoCommandToEvents requires UpdateRepo permission" in {
     val commandMeta = CommandMeta(SimpleUser(UserId("HACKER")))
-    assert(repoCommandExecutor.replaceRepoCommandToEvents(repo, ReplaceRepo(v1, Nil), commandMeta)
+    assert(repoCommandExecutor.replaceRepoCommandToEvents(repo, ReplaceRepo(v1, Nil), commandMeta).await(99.s)
       == Left(UserDoesNotHavePermissionProblem(UserId("HACKER"), UpdateRepoPermission)))
   }
 
   "updateRepoCommandToEvents requires UpdateRepo permission" in {
     val commandMeta = CommandMeta(SimpleUser(UserId("HACKER")))
-    assert(repoCommandExecutor.updateRepoCommandToEvents(repo, UpdateRepo(v1), commandMeta)
+    assert(repoCommandExecutor.updateRepoCommandToEvents(repo, UpdateRepo(v1), commandMeta).await(99.s)
       == Left(UserDoesNotHavePermissionProblem(UserId("HACKER"), UpdateRepoPermission)))
   }
 
@@ -73,8 +76,10 @@ final class RepoCommandExecutorTest extends AnyFreeSpec
   }
 
   private def executeReplace(replaceRepo: ReplaceRepo): Repo =
-    repo.applyEvents(repoCommandExecutor.replaceRepoCommandToEvents(repo, replaceRepo, commandMeta).orThrow).orThrow
+    repo.applyEvents(repoCommandExecutor.replaceRepoCommandToEvents(repo, replaceRepo, commandMeta).await(99.s).orThrow)
+      .orThrow
 
   private def executeUpdate(updateRepo: UpdateRepo): Repo =
-    repo.applyEvents(repoCommandExecutor.updateRepoCommandToEvents(repo, updateRepo, commandMeta).orThrow).orThrow
+    repo.applyEvents(repoCommandExecutor.updateRepoCommandToEvents(repo, updateRepo, commandMeta).await(99.s).orThrow)
+      .orThrow
 }

@@ -1,6 +1,6 @@
 package js7.tests
 
-import js7.base.auth.UserId
+import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.time.ScalaTime._
@@ -24,11 +24,12 @@ import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import js7.master.RunningMaster
-import js7.master.client.{AkkaHttpMasterApi, MasterApi}
+import js7.master.client.AkkaHttpMasterApi
 import js7.master.data.MasterCommand.UpdateRepo
 import js7.tests.testenv.DirectoryProvider
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
+import monix.execution.atomic.AtomicInt
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 import scala.util.Try
@@ -92,19 +93,15 @@ final class MasterRepoTest extends AnyFreeSpec
 
           sys.props.get("MasterRepoTest").foreach(_.split(" +") match {
             case Array(nString) =>
-              master.httpApi.login_(Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD"))).await(99.s)
-              testSpeed(master.httpApi, n = nString.toInt)
+              val (a, b) = nString.span(_ != '/')
+              val (n, bundleFactor) = (a.toInt, b.drop(1).toInt)
+              testSpeed(master.localUri, Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD")), n, bundleFactor)
 
             case Array(nString, uri, userId, password) =>
               // Fails because JS7 does not know our signature !!!
-              AkkaHttpMasterApi.separateAkkaResource(Uri(uri), Some(UserId(userId) -> SecretString(password)))
-                .use(masterApi =>
-                  masterApi.login() >>
-                    Task {
-                      testSpeed(masterApi, n = nString.toInt)
-                    })
-                .runToFuture
-                .await(1.h)
+              val (a, b) = nString.span(_ != '/')
+              val (n, bundleFactor) = (a.toInt, b.drop(1).toInt)
+              testSpeed(Uri(uri), Some(UserId(userId) -> SecretString(password)), n, bundleFactor)
 
             case _ => sys.error("Invalid number of arguments in property MasterRepoTest")
           })
@@ -145,24 +142,45 @@ final class MasterRepoTest extends AnyFreeSpec
         master.eventWatch.await[OrderFinished](_.key == orderId)
       }
 
-      def testSpeed(masterApi: MasterApi, n: Int): Unit = {
-        val workflow0 = testWorkflow(V1)
-        val stopwatch = new Stopwatch
-        Observable
-          .fromIterable(1 to n)
-          .mapParallelUnordered(parallelism = (sys.runtime.availableProcessors / 2) max 1) { i =>
-            val v = VersionId(s"SPEED-$i")
-            val workflow = workflow0.withId(WorkflowPath(s"/WORKFLOW-$i") ~ VersionId(s"SPEED-$i"))
-            masterApi.executeCommand(UpdateRepo(v, provider.sign(workflow) :: Nil))
-          }
-          .completedL
+      def testSpeed(uri: Uri, credentials: Option[UserAndPassword], n: Int, bundleFactor: Int): Unit = {
+        val genStopwatch = new Stopwatch
+        val commands = generateCommands(n, bundleFactor)
+        logInfo(genStopwatch.itemsPerSecondString(n, "objects signed"))
+        val exeStopwatch = new Stopwatch
+        testSpeedOfCommands(uri, credentials, commands)
+        logInfo(exeStopwatch.itemsPerSecondString(n, "objects"))
+      }
+
+      def testSpeedOfCommands(uri: Uri, credentials: Option[UserAndPassword], commands: Seq[UpdateRepo]): Unit =
+        AkkaHttpMasterApi.separateAkkaResource(uri, credentials)
+          .use(master =>
+            master.login() >>
+              Observable
+                .fromIterable(commands)
+                .mapParallelUnordered(2)(
+                  master.executeCommand(_))
+                .completedL)
           .runToFuture
           .await(1.h)
-        val stopwatchResult = stopwatch.itemsPerSecondString(n, "UpdateRepos")
-        logger.info(stopwatchResult)
-        info(stopwatchResult)
+
+      def generateCommands(n: Int, bundleFactor: Int): Seq[UpdateRepo] = {
+        val workflow0 = Workflow.of(Execute(WorkflowJob(TestAgentRefPath, ExecutablePath(s"/EXECUTABLE"))))
+        val versionCounter = AtomicInt(0)
+        Observable.fromIterable(1 to n)
+          .bufferTumbling(bundleFactor)
+          .mapParallelUnordered(sys.runtime.availableProcessors)(is => Task {
+            val v = VersionId(s"SPEED-${versionCounter.incrementAndGet()}")
+            val workflows = for (i <- is) yield workflow0.withId(WorkflowPath(s"/WORKFLOW-$i") ~ v)
+            UpdateRepo(v, workflows map provider.sign)
+          }
+        ).toListL.await(99.s)
       }
     }
+  }
+
+  private def logInfo(message: String): Unit = {
+    logger.info(message)
+    info(message)
   }
 }
 

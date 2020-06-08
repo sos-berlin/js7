@@ -27,6 +27,7 @@ import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.common.akkautils.Akkas.encodeAsActorName
 import js7.common.akkautils.SupervisorStrategies
 import js7.common.configutils.Configs.ConvertibleConfig
+import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.Logger
 import js7.common.scalautil.Logger.ops._
 import js7.core.command.CommandMeta
@@ -571,18 +572,34 @@ with MainJournalingActor[MasterState, Event]
 
       case cmd: MasterCommand.ReplaceRepo =>
         intelliJuseImport(catsStdInstancesForFuture)  // For traverse
-        repoCommandExecutor.replaceRepoCommandToEvents(repo, cmd, commandMeta)
-          .flatMap(applyRepoEvents)
-          .traverse((_: SyncIO[Future[Completed]])
-            .unsafeRunSync()  // Persist events!
-            .map(_ => MasterCommand.Response.Accepted))
+        Try(
+          repoCommandExecutor.replaceRepoCommandToEvents(repo, cmd, commandMeta)
+            .runToFuture
+            .await/*!!!*/(masterConfiguration.akkaAskTimeout.duration))  // May throw TimeoutException
+        match {
+          case Failure(t) => Future.failed(t)
+          case Success(checkedRepoEvents) =>
+            checkedRepoEvents
+              .flatMap(applyRepoEvents)
+              .traverse((_: SyncIO[Future[Completed]])
+                .unsafeRunSync()  // Persist events!
+                .map(_ => MasterCommand.Response.Accepted))
+        }
 
       case cmd: MasterCommand.UpdateRepo =>
-        repoCommandExecutor.updateRepoCommandToEvents(repo, cmd, commandMeta)
-          .flatMap(applyRepoEvents)
-          .traverse((_: SyncIO[Future[Completed]])
-            .unsafeRunSync()  // Persist events!
-            .map(_ => MasterCommand.Response.Accepted))
+        Try(
+          repoCommandExecutor.updateRepoCommandToEvents(repo, cmd, commandMeta)
+            .runToFuture
+            .await/*!!!*/(masterConfiguration.akkaAskTimeout.duration))  // May throw TimeoutException
+        match {
+          case Failure(t) => Future.failed(t)
+          case Success(checkedRepoEvents) =>
+            checkedRepoEvents
+              .flatMap(applyRepoEvents)
+              .traverse((_: SyncIO[Future[Completed]])
+                .unsafeRunSync()  // Persist events!
+                .map(_ => MasterCommand.Response.Accepted))
+        }
 
       case MasterCommand.NoOperation =>
         // NoOperation completes only after MasterOrderKeeper has become ready (can be used to await readiness)

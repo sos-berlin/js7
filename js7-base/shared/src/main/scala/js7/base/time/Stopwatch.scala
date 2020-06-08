@@ -4,6 +4,7 @@ import java.lang.System.nanoTime
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch._
 import scala.concurrent.duration._
+import scala.language.implicitConversions
 
 /**
  * @author Joacim Zschimmer
@@ -27,7 +28,17 @@ final class Stopwatch {
     duration.pretty
 }
 
-object Stopwatch {
+object Stopwatch
+{
+  def measureTimeOfSingleRun(n: Int, ops: String = "ops")(body: => Unit): Result =
+    Result(durationOf(body), n, ops)
+
+  def durationOf(body: => Unit): FiniteDuration = {
+    val start = nanoTime
+    body
+    (nanoTime - start).nanoseconds
+  }
+
   def measureTime(n: Int, ops: String = "ops", warmUp: Int = 1)(body: => Unit): Result = {
     for (_ <- 1 to warmUp) body
     val start = nanoTime
@@ -58,5 +69,8 @@ object Stopwatch {
         s"0 $ops"
       else
         s"${duration.pretty}/$n $ops (⌀${singleDuration.pretty}) $perSecondString $ops/s"
+  }
+  object Result {
+    implicit def resultToString(result: Result) = result.toString
   }
 }
