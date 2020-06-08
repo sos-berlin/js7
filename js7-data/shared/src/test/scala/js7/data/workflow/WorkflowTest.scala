@@ -7,6 +7,7 @@ import js7.base.problem.Problems.UnknownKeyProblem
 import js7.data.agent.AgentRefPath
 import js7.data.expression.Expression.{BooleanConstant, Equal, LastReturnCode, NumericConstant}
 import js7.data.expression.PositionSearch
+import js7.data.filebased.VersionId
 import js7.data.job.{ExecutablePath, ExecutableScript, JobKey}
 import js7.data.workflow.WorkflowTest._
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -250,6 +251,31 @@ final class WorkflowTest extends AnyFreeSpec {
               }
             }
           ]
+        }""")
+    }
+
+    "Single shell script Workflow" in {
+      val workflow = Workflow(
+        WorkflowPath("/WORKFLOW") ~ VersionId("1"),
+        Vector(
+          Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutableScript("echo HELLO\n")))))
+      testJson(workflow,json"""
+        {
+          "instructions": [
+            {
+              "TYPE": "Execute.Anonymous",
+              "job": {
+                "agentRefPath": "/AGENT",
+                "executable": {
+                  "TYPE": "ExecutableScript",
+                  "script": "echo HELLO\n"
+                },
+                "taskLimit": 1
+              }
+            }
+          ],
+          "path": "/WORKFLOW",
+          "versionId": "1"
         }""")
     }
   }
