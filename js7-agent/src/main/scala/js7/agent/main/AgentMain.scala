@@ -5,17 +5,16 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentTermination
 import js7.agent.data.commands.AgentCommand.ShutDown
 import js7.base.BuildInfo
+import js7.base.process.ProcessSignal.SIGTERM
 import js7.base.time.Timestamp
 import js7.base.utils.AutoClosing.autoClosing
 import js7.common.commandline.CommandLineArguments
 import js7.common.configutils.Configs.logConfig
 import js7.common.scalautil.Futures.implicits.SuccessFuture
 import js7.common.scalautil.Logger
-import js7.common.time.JavaTimeConverters._
 import js7.core.startup.JavaMain.withShutdownHooks
 import js7.core.startup.JavaMainLockfileSupport.lockAndRunMain
 import js7.core.startup.StartUp.printlnWithClock
-import scala.concurrent.duration._
 
 /**
  * JS7 Agent Server.
@@ -33,7 +32,7 @@ final class AgentMain
     logConfig(agentConfiguration.config)
     var terminated = AgentTermination.Terminate()
     autoClosing(RunningAgent(agentConfiguration).awaitInfinite) { agent =>
-      withShutdownHooks(agentConfiguration.config, "AgentMain", onJavaShutdown(agent)) {
+      withShutdownHooks(agentConfiguration.config, "AgentMain", () => onJavaShutdown(agent)) {
         terminated = agent.terminated.awaitInfinite
       }
     }
@@ -44,13 +43,12 @@ final class AgentMain
     terminated
   }
 
-  private def onJavaShutdown(agent: RunningAgent)(timeout: FiniteDuration): Unit = {
+  private def onJavaShutdown(agent: RunningAgent): Unit = {
     logger.warn("Trying to shut down JS7 Agent Server due to Java shutdown")
     import agent.scheduler
-    val sigkillAfter = agent.config.getDuration("js7.termination.sigkill-after").toFiniteDuration
-    agent.executeCommandAsSystemUser(ShutDown(sigtermProcesses = true, sigkillProcessesAfter = Some(sigkillAfter)))
+    agent.executeCommandAsSystemUser(ShutDown(Some(SIGTERM)))
       .runAsyncAndForget
-    agent.terminated await timeout
+    agent.terminated.awaitInfinite
     agent.close()
   }
 }

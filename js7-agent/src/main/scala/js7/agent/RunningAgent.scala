@@ -14,6 +14,7 @@ import js7.agent.web.AgentWebServer
 import js7.base.auth.{SessionToken, SimpleUser, UserId}
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
+import js7.base.process.ProcessSignal
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer
@@ -68,13 +69,13 @@ extends AutoCloseable {
 
   def close() = closer.close()
 
-  def terminate(sigkillProcessesAfter: Option[FiniteDuration] = Some(5.seconds)): Task[AgentTermination.Terminate] =
+  def terminate(processSignal: Option[ProcessSignal] = None): Task[AgentTermination.Terminate] =
     if (terminated.isCompleted)  // Works only if previous termination has been completed
       Task.fromFuture(terminated)
     else {
       logger.debug("terminate")
       for {
-        _ <- directExecuteCommand(AgentCommand.ShutDown(sigtermProcesses = true, sigkillProcessesAfter = sigkillProcessesAfter))
+        _ <- directExecuteCommand(AgentCommand.ShutDown(processSignal))
               .map(_.orThrow)
         t <- Task.fromFuture(terminated)
       } yield t

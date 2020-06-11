@@ -54,7 +54,7 @@ trait OrderContext
           Right(
             order.historicOutcomes.reverseIterator
               .collectFirst {
-                case HistoricOutcome(_, outcome: Outcome.Undisrupted) if outcome.keyValues.contains(name) =>
+                case HistoricOutcome(_, outcome: Outcome.Completed) if outcome.keyValues.contains(name) =>
                   outcome.keyValues(name)
               }
               .orElse(order.arguments.get(name)) map StringValue.apply)
@@ -67,7 +67,7 @@ trait OrderContext
             workflow <- idToWorkflow(order.workflowId)
             maybeValue <- order.historicOutcomes.reverseIterator
               .collectFirst {
-                case HistoricOutcome(pos, outcome: Outcome.Undisrupted) if workflow.positionMatchesSearch(pos, positionSearch) =>
+                case HistoricOutcome(pos, outcome: Outcome.Completed) if workflow.positionMatchesSearch(pos, positionSearch) =>
                   whatToValue(outcome, what)
               }
               .toChecked(Problem(s"There is no position in workflow that matches '$positionSearch'"))
@@ -80,7 +80,7 @@ object OrderContext
 {
   private val DisruptedReturnCode = ReturnCode(-1)  // TODO Should we use this value ?
 
-  private def whatToValue(outcome: Outcome.Undisrupted, what: ValueSearch.What): Option[Value] =
+  private def whatToValue(outcome: Outcome.Completed, what: ValueSearch.What): Option[Value] =
     what match {
       case ValueSearch.KeyValue(key) => outcome.keyValues.get(key) map StringValue.apply
       case ValueSearch.ReturnCode => Some(NumericValue(outcome.returnCode.number))
@@ -88,7 +88,7 @@ object OrderContext
 
   private def outcomeToReturnCode(outcome: Outcome): ReturnCode =
     outcome match {
-      case o: Outcome.Undisrupted => o.returnCode
+      case o: Outcome.Completed => o.returnCode
       case _: Outcome.Disrupted => DisruptedReturnCode
     }
 }

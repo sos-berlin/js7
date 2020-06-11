@@ -9,6 +9,7 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{EmergencyStop, ShutDown}
 import js7.agent.tests.AgentTester
 import js7.base.problem.Checked
+import js7.base.process.ProcessSignal.SIGTERM
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer.syntax._
 import js7.base.utils.ScalaUtils._
@@ -19,7 +20,6 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration._
 
 /**
  * @author Joacim Zschimmer
@@ -59,5 +59,5 @@ extends AnyFreeSpec with ScalaFutures with AgentTester {
 }
 
 private object AgentClientCommandMarshallingTest {
-  private val ExpectedTerminate = ShutDown(sigtermProcesses = true, sigkillProcessesAfter = Some(123.seconds))
+  private val ExpectedTerminate = ShutDown(Some(SIGTERM))
 }

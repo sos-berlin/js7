@@ -8,6 +8,7 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.ShutDown
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.problem.Checked.Ops
+import js7.base.process.ProcessSignal.SIGTERM
 import js7.base.time.ScalaTime._
 import js7.base.time.{Stopwatch, Timestamp}
 import js7.base.utils.AutoClosing.autoClosing
@@ -95,7 +96,7 @@ object TestMasterAgent
             JavaShutdownHook.add("TestMasterAgent") {
               print('\n')
               (for (agent <- agents) yield {
-                agent.executeCommandAsSystemUser(ShutDown(sigtermProcesses = true, sigkillProcessesAfter = Some(3.seconds)))
+                agent.executeCommandAsSystemUser(ShutDown(Some(SIGTERM)))
                 val r = agent.terminated
                 agent.close()
                 r

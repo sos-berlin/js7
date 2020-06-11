@@ -1,6 +1,7 @@
 package js7.data.workflow
 
 import cats.syntax.show._
+import js7.base.time.ScalaTime._
 import js7.data.agent.AgentRefPath
 import js7.data.expression.Expression.{BooleanConstant, Equal, In, LastReturnCode, ListExpression, NamedValue, NumericConstant, Or, StringConstant}
 import js7.data.job.{ExecutablePath, ExecutableScript}
@@ -15,7 +16,8 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class WorkflowPrinterTest extends AnyFreeSpec {
+final class WorkflowPrinterTest extends AnyFreeSpec
+{
   // Also tested by WorkflowParserTest.
 
   "execute" in {
@@ -79,9 +81,10 @@ final class WorkflowPrinterTest extends AnyFreeSpec {
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          Execute.Anonymous(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/my-script"), Map("KEY" -> "VALUE"), ReturnCodeMeaning.NoFailure)))),
+          Execute.Anonymous(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/my-script"), Map("KEY" -> "VALUE"),
+            ReturnCodeMeaning.NoFailure, taskLimit = 3, sigkillAfter = Some(10.s))))),
       """define workflow {
-        |  execute agent="/AGENT", arguments={"KEY": "VALUE"}, failureReturnCodes=[], executable="/my-script";
+        |  execute agent="/AGENT", taskLimit=3, arguments={"KEY": "VALUE"}, failureReturnCodes=[], sigkillAfter=10, executable="/my-script";
         |}
         |""".stripMargin)
   }

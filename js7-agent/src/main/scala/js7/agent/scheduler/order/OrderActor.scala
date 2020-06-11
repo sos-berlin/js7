@@ -1,5 +1,6 @@
 package js7.agent.scheduler.order
 
+import akka.actor.ActorRef.noSender
 import akka.actor.{ActorRef, DeadLetterSuppression, Props, Status, Terminated}
 import akka.pattern.pipe
 import com.typesafe.config.Config
@@ -11,13 +12,15 @@ import js7.agent.scheduler.order.StdouterrToEvent.Stdouterr
 import js7.base.generic.{Accepted, Completed}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
+import js7.base.process.ProcessSignal
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.cast
 import js7.base.utils.ScalazStyle.OptionRichBoolean
 import js7.common.scalautil.Logger
 import js7.common.time.JavaTimeConverters._
 import js7.core.event.journal.{JournalActor, JournalConf, KeyedJournalingActor}
-import js7.data.job.JobKey
+import js7.data.command.CancelMode
+import js7.data.job.{JobKey, ReturnCode}
 import js7.data.order.OrderEvent._
 import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
 import js7.data.system.{Stderr, Stdout, StdoutOrStderr}
@@ -100,18 +103,16 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
   private def fresh = startable
 
   private def ready: Receive =
-    startable orElse {
-      case command: Command =>
-        executeOtherCommand(command)
-    }
+    startable orElse receiveCommand
+
+  private def processingCancelled: Receive =
+    receiveEvent() orElse receiveCommand
 
   private def delayedAfterError: Receive =
-    startable orElse {
-      case command: Command => executeOtherCommand(command)
-    }
+    startable orElse receiveCommand
 
   private def startable: Receive =
-    receiveEvent orElse {
+    receiveEvent() orElse {
       case Input.StartProcessing(jobKey, workflowJob, jobActor, defaultArguments) =>
         assertThat(stdouterr == null)
         stdouterr = new StdouterrToEvent(context, conf.stdouterrToEventConf, writeStdouterr)
@@ -133,33 +134,29 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
               stderrWriter = stderrWriter))
         }
 
-      case Input.Terminate(_, _) =>
+      case _: Input.Terminate =>
         context.stop(self)
     }
 
   private def failedOrBroken: Receive =
-    receiveEvent orElse {
-      case command: Command =>
-        executeOtherCommand(command)
-
-      case Input.Terminate(_, _) =>
-        context.stop(self)
-    }
+    receiveEvent() orElse receiveCommand orElse receiveTerminate
 
   private def processing(jobKey: JobKey, job: WorkflowJob, jobActor: ActorRef, stdoutStderrStatistics: () => Option[String]): Receive =
-    receiveEvent orElse {
+    receiveCommand orElse receiveEvent(jobActor) orElse {
       case msg: Stdouterr =>  // Handle these events to continue the stdout and stderr threads or the threads will never terminate !!!
         stdouterr.handle(msg)
 
-      case JobActor.Response.OrderProcessed(`orderId`, taskStepEnded) =>
-        val event = taskStepEnded match {
+      case JobActor.Response.OrderProcessed(`orderId`, taskStepEnded, isKilled) =>
+        val outcome = taskStepEnded match {
           case TaskStepSucceeded(keyValues, returnCode) =>
-            job.toOrderProcessed(returnCode, keyValues)
+            val o = job.toOutcome(returnCode, keyValues)
+            if (isKilled) Outcome.Cancelled(o) else o
 
           case TaskStepFailed(problem) =>
-            OrderProcessed(Outcome.Disrupted(problem))
+            if (isKilled) Outcome.Cancelled(Outcome.Failed(Some(problem.toString/*???*/), ReturnCode(0)/*TODO*/, Map.empty))
+            else Outcome.Disrupted(problem)
         }
-        finishProcessing(event, stdoutStderrStatistics)
+        finishProcessing(OrderProcessed(outcome), stdoutStderrStatistics)
         context.unwatch(jobActor)
 
       case Terminated(`jobActor`) =>
@@ -172,12 +169,9 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
           context.stop(self)
         }
 
-      case command: Command =>
-        executeOtherCommand(command)
-
-      case Input.Terminate(sigtermProcesses, sigkillProcessesAfter) =>
+      case Input.Terminate(signal) =>
         terminating = true
-        jobActor ! JobActor.Input.KillProcess(orderId, sigtermProcesses, sigkillProcessesAfter)
+        jobActor ! JobActor.Input.KillProcess(orderId, signal)
     }
 
   private def finishProcessing(event: OrderProcessed, stdoutStderrStatistics: () => Option[String]): Unit = {
@@ -188,37 +182,19 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
   }
 
   private def processed: Receive =
-    receiveEvent orElse {
-      case Input.Terminate(_, _) =>
-        context.stop(self)
-
-      case command: Command =>
-        executeOtherCommand(command)
-    }
+    receiveEvent() orElse receiveCommand orElse receiveTerminate
 
   private def forked: Receive =
-    receiveEvent orElse {
-      case Input.Terminate(_, _) =>
-        context.stop(self)
-
-      case command: Command =>
-        executeOtherCommand(command)
-    }
+    receiveEvent() orElse receiveCommand orElse receiveTerminate
 
   private def offering: Receive =
-    receiveEvent orElse {
-      case Input.Terminate(_, _) =>
-        context.stop(self)
+    receiveEvent() orElse receiveCommand orElse receiveTerminate
 
-      case command: Command =>
-        executeOtherCommand(command)
-    }
-
-  private def receiveEvent: Receive = {
-    case Command.HandleEvent(event) => handleEvent(event) pipeTo sender()
+  private def receiveEvent(jobActor: ActorRef = noSender): Receive = {
+    case Command.HandleEvent(event) => handleEvent(event, jobActor) pipeTo sender()
   }
 
-  private def handleEvent(event: OrderCoreEvent): Future[Completed] =
+  private def handleEvent(event: OrderCoreEvent, jobActor: ActorRef = noSender): Future[Completed] =
     order.update(event) match {
       case Left(problem) =>
         logger.error(problem.toString)
@@ -233,7 +209,13 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
             update(event :: Nil, updatedState)
             if (terminating) {
               context.stop(self)
-            }
+            } else
+              event match {
+                case OrderCancellationMarked(CancelMode.FreshOrStarted(Some(CancelMode.Kill(signal, maybeWp))))
+                  if maybeWp.forall(_ == order.workflowPosition) && jobActor != noSender =>
+                  jobActor ! JobActor.Input.KillProcess(order.id, Some(signal))
+                case _ =>
+              }
             Completed
           }
     }
@@ -248,6 +230,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
         case _: Order.Ready      => become("ready")(ready)
         case _: Order.Processing => sys.error("Unexpected Order.state 'Processing'")  // Not handled here
         case _: Order.Processed  => become("processed")(processed)
+        case _: Order.ProcessingCancelled  => become("processingCancelled")(processingCancelled)
         case _: Order.DelayedAfterError => become("delayedAfterError")(delayedAfterError)
         case _: Order.Offering   => become("offering")(offering)
         case _: Order.Forked     => become("forked")(forked)
@@ -262,13 +245,16 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
   }
 
   private def detaching: Receive =
-    receiveEvent orElse {
-      case Input.Terminate(_, _) =>
-        context.stop(self)
+    receiveCommand orElse receiveEvent() orElse receiveTerminate
 
-      case cmd: Command =>
-        executeOtherCommand(cmd)
-    }
+  private def receiveTerminate: Receive = {
+    case _: Input.Terminate =>
+      context.stop(self)
+  }
+
+  private def receiveCommand: Receive = {
+    case command: Command => executeOtherCommand(command)
+  }
 
   private def executeOtherCommand(command: Command): Unit = {
     val msg = s"Improper command $command while in state ${Option(order) map (_.state) getOrElse "(no order)"}"
@@ -344,9 +330,7 @@ private[order] object OrderActor
     final case class AddOffering(order: Order[Order.Offering]) extends Input
     final case class StartProcessing(jobKey: JobKey, workflowJob: WorkflowJob, jobActor: ActorRef, defaultArguments: Map[String, String])
       extends Input
-    final case class Terminate(
-      sigtermProcesses: Boolean = false,
-      sigkillProcessesAfter: Option[FiniteDuration] = None)
+    final case class Terminate(processSignal: Option[ProcessSignal] = None)
     extends Input with DeadLetterSuppression
   }
 

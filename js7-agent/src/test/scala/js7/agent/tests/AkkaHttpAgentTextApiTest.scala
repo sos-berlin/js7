@@ -13,6 +13,7 @@ import js7.agent.tests.TestAgentDirectoryProvider.TestUserAndPassword
 import js7.base.auth.{HashedPassword, SimpleUser, UserAndPassword}
 import js7.base.generic.SecretString
 import js7.base.problem.Checked
+import js7.base.process.ProcessSignal.SIGTERM
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.HasCloser
@@ -28,7 +29,6 @@ import org.scalatest.Assertions._
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
-import scala.concurrent.duration._
 
 /**
  * @author Joacim Zschimmer
@@ -73,7 +73,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider
   "Unauthorized when credentials are missing" in {
     autoClosing(newTextAgentClient(None)(_ => ())) { client =>
       interceptUnauthorized {
-        client.executeCommand("""{ TYPE: ShutDown, sigtermProcesses: true, sigkillProcessesAfter: 10 }""")
+        client.executeCommand("""{ TYPE: ShutDown, processSignal: SIGTERM }""")
       }
     }
   }
@@ -92,7 +92,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider
     val output = mutable.Buffer[String]()
     autoClosing(newTextAgentClient(Some(TestUserId -> Password))(output += _)) { client =>
       client.login() await 99.s
-      client.executeCommand("""{ TYPE: ShutDown, sigtermProcesses: true, sigkillProcessesAfter: 10 }""")
+      client.executeCommand("""{ TYPE: ShutDown, processSignal: SIGTERM }""")
       client.getApi("")
     }
     assert(output.size == 3)
@@ -123,8 +123,9 @@ extends AnyFreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider
       configDirectory = Some(configDirectory))
 }
 
-private object AkkaHttpAgentTextApiTest {
-  private val ExpectedTerminate = AgentCommand.ShutDown(sigtermProcesses = true, sigkillProcessesAfter = Some(10.seconds))
+private object AkkaHttpAgentTextApiTest
+{
+  private val ExpectedTerminate = AgentCommand.ShutDown(Some(SIGTERM))
   private val TestUserId = TestUserAndPassword.userId
   private val Password = TestUserAndPassword.password
 

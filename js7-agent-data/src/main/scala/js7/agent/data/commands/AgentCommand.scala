@@ -1,17 +1,17 @@
 package js7.agent.data.commands
 
 import io.circe.generic.JsonCodec
-import io.circe.syntax.EncoderOps
+import io.circe.generic.extras.Configuration.default.withDefaults
 import io.circe.{Decoder, Encoder, Json, JsonObject}
 import js7.base.circeutils.CirceCodec
-import js7.base.circeutils.CirceUtils.{deriveCodec, singletonCodec}
+import js7.base.circeutils.CirceUtils.{deriveCodec, deriveConfiguredCodec, singletonCodec}
 import js7.base.circeutils.ScalaJsonCodecs._
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.SignedString
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
 import js7.base.problem.Checked.implicits.{checkedJsonDecoder, checkedJsonEncoder}
-import js7.base.time.ScalaTime._
+import js7.base.process.ProcessSignal
 import js7.base.utils.Big
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.RichJavaClass
@@ -20,7 +20,6 @@ import js7.data.agent.{AgentRefPath, AgentRunId}
 import js7.data.command.{CancelMode, CommonCommand}
 import js7.data.event.EventId
 import js7.data.order.{Order, OrderId}
-import scala.concurrent.duration.FiniteDuration
 
 /**
  * @author Joacim Zschimmer
@@ -118,28 +117,14 @@ object AgentCommand extends CommonCommand.Companion
   sealed trait ShutdownOrAbort extends AgentCommand
 
   final case class ShutDown(
-    sigtermProcesses: Boolean = false,
-    sigkillProcessesAfter: Option[FiniteDuration] = None,
+    processSignal: Option[ProcessSignal] = None,
     restart: Boolean = false)
   extends ShutdownOrAbort {
     type Response = Response.Accepted
   }
-
   object ShutDown {
-    val MaxDuration = 31 * 24.h
-
-    implicit val jsonEncoder: Encoder.AsObject[ShutDown] = o =>
-      JsonObject.fromIterable(
-        o.sigtermProcesses.thenList("sigtermProcesses" -> Json.True) :::
-        o.sigkillProcessesAfter.map(o => "sigkillProcessesAfter" -> o.asJson).toList :::
-        o.restart.thenList("restart" -> Json.True))
-
-    implicit val jsonDecoder: Decoder[ShutDown] = c =>
-      for {
-        sigtermProcesses <- c.get[Option[Boolean]]("sigtermProcesses") map (_ getOrElse false)
-        sigkillProcessesAfter <- c.get[Option[FiniteDuration]]("sigkillProcessesAfter")
-        restart <- c.get[Option[Boolean]]("restart") map (_ getOrElse false)
-      } yield ShutDown(sigtermProcesses, sigkillProcessesAfter, restart)
+    private implicit val customConfig = withDefaults
+    implicit val jsonCodec = deriveConfiguredCodec[ShutDown]
   }
 
   sealed trait OrderCommand extends AgentCommand

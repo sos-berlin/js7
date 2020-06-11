@@ -26,6 +26,7 @@ import js7.core.configuration.CommonConfiguration
 import js7.core.event.journal.JournalConf
 import js7.taskserver.task.process.ProcessKillScriptProvider
 import org.scalactic.Requirements._
+import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
 
 /**
@@ -38,6 +39,7 @@ final case class AgentConfiguration(
   logDirectory: Path,
   jobWorkingDirectory: Path = WorkingDirectory,
   /** Unused. */jobJavaOptions: Seq[String],
+  sigkillProcessesAfter: FiniteDuration,
   killScript: Option[ProcessKillScript],
   implicit val akkaAskTimeout: Timeout,
   journalConf: JournalConf,
@@ -135,6 +137,7 @@ object AgentConfiguration {
       webServerPorts = Nil,
       logDirectory = config.optionAs("js7.agent.log.directory")(asAbsolutePath) getOrElse defaultLogDirectory(dataDirectory),
       jobJavaOptions = config.stringSeq("js7.agent.task.java.options"),
+      sigkillProcessesAfter = config.getDuration("js7.agent.task.sigkill-after").toFiniteDuration,
       killScript = Some(DelayUntilFinishKillScript),  // Changed later
       akkaAskTimeout = config.getDuration("js7.akka.ask-timeout").toFiniteDuration,
       journalConf = JournalConf.fromConfig(config),

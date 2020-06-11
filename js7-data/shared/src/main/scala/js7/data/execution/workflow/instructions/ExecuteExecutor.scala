@@ -1,7 +1,7 @@
 package js7.data.execution.workflow.instructions
 
 import js7.data.execution.workflow.context.OrderContext
-import js7.data.order.OrderEvent.{OrderFailedCatchable, OrderMoved}
+import js7.data.order.OrderEvent.{OrderFailedCatchable, OrderMoved, OrderProcessingCancelled}
 import js7.data.order.Outcome.Disrupted.JobSchedulerRestarted
 import js7.data.order.{Order, Outcome}
 import js7.data.workflow.instructions.Execute
@@ -20,8 +20,8 @@ object ExecuteExecutor extends EventInstructionExecutor
       //  order.id <-: OrderStarted)
       //.orElse(
         order.ifState[Order.Processed].map(order =>
-          order.id <-: (
-            order.lastOutcome match {
+          order.id <-:
+            (order.lastOutcome match {
               case Outcome.Disrupted(JobSchedulerRestarted) =>
                 OrderMoved(order.position) // Repeat
 
@@ -30,5 +30,8 @@ object ExecuteExecutor extends EventInstructionExecutor
 
               case failed: Outcome.NotSucceeded =>
                 OrderFailedCatchable(failed)
+
+              case _: Outcome.Cancelled =>
+                OrderProcessingCancelled
             })))
 }

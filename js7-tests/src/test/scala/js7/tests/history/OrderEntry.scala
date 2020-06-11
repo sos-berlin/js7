@@ -3,7 +3,7 @@ package js7.tests.history
 import io.circe.{Decoder, Encoder, Json}
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.RichJavaClass
-import js7.data.order.Outcome.Undisrupted
+import js7.data.order.Outcome.Completed
 import js7.data.order.{OrderId, Outcome}
 import js7.data.system.StdoutOrStderr
 import js7.data.workflow.position.WorkflowPosition
@@ -29,7 +29,7 @@ final case class OrderEntry(
     copy(steps = steps.take(steps.size - 1) :+
       lastStep.copy(
         endedAt = Some(endedAt),
-        returnCode = Some(outcome) collect { case o: Undisrupted => o.returnCode },
+        returnCode = Some(outcome) collect { case o: Completed => o.returnCode },
         endVariables = Some(keyValues)))
   }
 

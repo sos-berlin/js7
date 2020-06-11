@@ -3,6 +3,7 @@ package js7.data.workflow.parser
 import fastparse.NoWhitespace._
 import fastparse._
 import js7.base.problem.Checked
+import js7.base.time.ScalaTime._
 import js7.base.utils.Collections.implicits.RichTraversable
 import js7.data.agent.AgentRefPath
 import js7.data.expression.Expression.BooleanConstant
@@ -97,14 +98,17 @@ object WorkflowParser
           keyValue("arguments", arguments) |
           keyValue("successReturnCodes", successReturnCodes) |
           keyValue("failureReturnCodes", failureReturnCodes) |
-          keyValue("taskLimit", int))
+          keyValue("taskLimit", int) |
+          keyValue("sigkillAfter", int))
         agentRefPath <- kv[AgentRefPath]("agent")
         executable <- kv.oneOf[Executable]("executable", "script").map(_._2)
         arguments <- kv[Arguments]("arguments", Arguments.empty)
         returnCodeMeaning <- kv.oneOfOr(Set("successReturnCodes", "failureReturnCodes"), ReturnCodeMeaning.Default)
         taskLimit <- kv[Int]("taskLimit", WorkflowJob.DefaultTaskLimit)
+        sigkillAfter <- kv.get[Int]("sigkillAfter").map(_.map(_.s))
       } yield
-        WorkflowJob(agentRefPath, executable, arguments.toMap, returnCodeMeaning, taskLimit = taskLimit))
+        WorkflowJob(agentRefPath, executable, arguments.toMap, returnCodeMeaning, taskLimit = taskLimit,
+          sigkillAfter = sigkillAfter))
 
     private def executeInstruction[_: P] = P[Execute.Anonymous](
       (Index ~ keyword("execute") ~ w ~ anonymousWorkflowExecutable ~ hardEnd)

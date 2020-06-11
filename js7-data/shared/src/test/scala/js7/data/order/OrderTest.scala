@@ -10,8 +10,8 @@ import js7.base.utils.ScalaUtils.implicitClass
 import js7.data.agent.AgentRefPath
 import js7.data.command.CancelMode
 import js7.data.job.ReturnCode
-import js7.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Cancelled, DelayedAfterError, Detaching, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, IsFreshOrReady, Offering, Processed, Processing, Ready, State}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
+import js7.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Cancelled, DelayedAfterError, Detaching, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, IsFreshOrReady, Offering, Processed, Processing, ProcessingCancelled, Ready, State}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingCancelled, OrderProcessingStarted, OrderRetrying, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.Fork
 import js7.data.workflow.position.BranchId.Then
@@ -232,6 +232,7 @@ final class OrderTest extends AnyFreeSpec
       //OrderStdoutWritten("stdout") is not an OrderCoreEvent
       //OrderStderrWritten("stderr") is not an OrderCoreEvent
       OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
+      OrderProcessingCancelled,
       OrderFailed(Outcome.Failed(ReturnCode(1))),
       OrderCatched(Outcome.Failed(ReturnCode(1)), Position(1)),
       OrderRetrying(Position(1)),
@@ -305,11 +306,22 @@ final class OrderTest extends AnyFreeSpec
       checkAllEvents(Order(orderId, workflowId, Processed,
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(ReturnCode(0))) :: Nil),
         cancelationMarkingAllowed[Processed] orElse {
-          case (_: OrderMoved       , `detached` | `attached`) => _.isInstanceOf[Ready]
-          case (_: OrderFailed      , `detached` | `attached`) => _.isInstanceOf[Failed]
-          case (_: OrderFailedInFork, `detached` | `attached`) => _.isInstanceOf[FailedInFork]
-          case (_: OrderCatched     , `detached` | `attached`) => _.isInstanceOf[Ready]
-          case (_: OrderBroken      , _                      ) => _.isInstanceOf[Broken]
+          case (_: OrderMoved              , `detached` | `attached`) => _.isInstanceOf[Ready]
+          case (_: OrderProcessingCancelled,              `attached`) => _.isInstanceOf[ProcessingCancelled]
+          case (_: OrderFailed             , `detached` | `attached`) => _.isInstanceOf[Failed]
+          case (_: OrderFailedInFork       , `detached` | `attached`) => _.isInstanceOf[FailedInFork]
+          case (_: OrderCatched            , `detached` | `attached`) => _.isInstanceOf[Ready]
+          case (_: OrderBroken             , _                      ) => _.isInstanceOf[Broken]
+        })
+    }
+
+    "ProcessingCancelled" - {
+      checkAllEvents(Order(orderId, workflowId, ProcessingCancelled,
+          historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(ReturnCode(0))) :: Nil),
+        detachingAllowed[ProcessingCancelled] orElse
+        {
+          case (_: OrderCancelled, `detached`) => _.isInstanceOf[Cancelled]
+          case (_: OrderBroken   , _         ) => _.isInstanceOf[Broken]
         })
     }
 

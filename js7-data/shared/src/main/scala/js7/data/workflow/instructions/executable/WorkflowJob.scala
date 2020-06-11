@@ -3,15 +3,16 @@ package js7.data.workflow.instructions.executable
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
+import js7.base.circeutils.ScalaJsonCodecs._
 import js7.base.generic.GenericString
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalazStyle.OptionRichBoolean
 import js7.data.agent.AgentRefPath
 import js7.data.job.{Executable, ExecutablePath, ExecutableScript, ReturnCode}
-import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.Outcome
 import js7.data.workflow.instructions.ReturnCodeMeaning
+import scala.concurrent.duration.FiniteDuration
 
 /**
   * @author Joacim Zschimmer
@@ -21,10 +22,11 @@ final case class WorkflowJob private(
   executable: Executable,
   defaultArguments: Map[String, String],
   returnCodeMeaning: ReturnCodeMeaning,
-  taskLimit: Int)
+  taskLimit: Int,
+  sigkillAfter: Option[FiniteDuration])
 {
-  def toOrderProcessed(returnCode: ReturnCode, keyValues: Map[String, String]) =
-    OrderProcessed(Outcome.Undisrupted(success = returnCodeMeaning.isSuccess(returnCode), returnCode, keyValues))
+  def toOutcome(returnCode: ReturnCode, keyValues: Map[String, String]) =
+    Outcome.Completed(success = returnCodeMeaning.isSuccess(returnCode), returnCode, keyValues)
 
   def isExecutableOnAgent(agentRefPath: AgentRefPath): Boolean =
     this.agentRefPath == agentRefPath
@@ -52,20 +54,24 @@ object WorkflowJob
     executable: Executable,
     defaultArguments: Map[String, String] = Map.empty,
     returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default,
-    taskLimit: Int = DefaultTaskLimit): WorkflowJob
-  = checked(agentRefPath, executable, defaultArguments, returnCodeMeaning, taskLimit).orThrow
+    taskLimit: Int = DefaultTaskLimit,
+    sigkillAfter: Option[FiniteDuration] = None)
+  : WorkflowJob
+  = checked(agentRefPath, executable, defaultArguments, returnCodeMeaning, taskLimit, sigkillAfter).orThrow
 
   def checked(
     agentRefPath: AgentRefPath,
     executable: Executable,
     defaultArguments: Map[String, String] = Map.empty,
     returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default,
-    taskLimit: Int = DefaultTaskLimit): Checked[WorkflowJob]
+    taskLimit: Int = DefaultTaskLimit,
+    sigkillAfter: Option[FiniteDuration] = None)
+  : Checked[WorkflowJob]
   =
     if (agentRefPath.isAnonymous)
       Problem.pure("Anonymous AgentRef in Job?")
     else
-      Right(new WorkflowJob(agentRefPath, executable, defaultArguments, returnCodeMeaning, taskLimit))
+      Right(new WorkflowJob(agentRefPath, executable, defaultArguments, returnCodeMeaning, taskLimit, sigkillAfter))
 
   final case class Name private(string: String) extends GenericString
   object Name extends GenericString.NameValidating[Name] {
@@ -87,6 +93,7 @@ object WorkflowJob
       workflowJob.defaultArguments.nonEmpty.thenList("defaultArguments" -> workflowJob.defaultArguments.asJson) :::
       (workflowJob.returnCodeMeaning != ReturnCodeMeaning.Default thenList ("returnCodeMeaning" -> workflowJob.returnCodeMeaning.asJson)) :::
       ("taskLimit" -> workflowJob.taskLimit.asJson) ::
+      ("sigkillAfter" -> workflowJob.sigkillAfter.asJson) ::
       Nil)
   implicit val jsonDecoder: Decoder[WorkflowJob] = cursor =>
     for {
@@ -96,6 +103,8 @@ object WorkflowJob
       arguments <- cursor.getOrElse[Map[String, String]]("defaultArguments")(Map.empty)
       rc <- cursor.getOrElse[ReturnCodeMeaning]("returnCodeMeaning")(ReturnCodeMeaning.Default)
       taskLimit <- cursor.get[Int]("taskLimit")
-      job <- checked(agentRefPath, executable, arguments, rc, taskLimit).toDecoderResult(cursor.history)
+      sigkillProcessesAfter <- cursor.get[Option[FiniteDuration]]("sigkillAfter")
+      job <- checked(agentRefPath, executable, arguments, rc, taskLimit, sigkillProcessesAfter)
+        .toDecoderResult(cursor.history)
     } yield job
 }

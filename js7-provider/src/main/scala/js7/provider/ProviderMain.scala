@@ -13,7 +13,6 @@ import js7.provider.configuration.ProviderConfiguration
 import monix.execution.CancelableFuture
 import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.Future
-import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -30,13 +29,13 @@ object ProviderMain
       val conf = ProviderConfiguration.fromCommandLine(args.toVector)
       logStartUp(configDir = conf.configDirectory, dataDir = None)
       val cancelable = Provider.observe(conf).orThrow.onCancelTriggerError foreach { _ => }
-      withShutdownHooks(conf.config, "ProviderMain", onJavaShutdown(cancelable)) {
+      withShutdownHooks(conf.config, "ProviderMain", () => onJavaShutdown(cancelable)) {
         awaitTermination(cancelable)
       }
     }
   }
 
-  private def onJavaShutdown(cancelable: CancelableFuture[Unit])(timeout: Duration): Unit = {
+  private def onJavaShutdown(cancelable: CancelableFuture[Unit]): Unit = {
     logger.warn("Trying to terminate Provider due to Java shutdown")
     cancelable.cancel()
     awaitTermination(cancelable)

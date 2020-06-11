@@ -9,6 +9,7 @@ import js7.agent.tests.TerminateTest._
 import js7.base.auth.UserId
 import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
+import js7.base.process.ProcessSignal.SIGKILL
 import js7.base.time.ScalaTime._
 import js7.common.event.collector.EventCollector
 import js7.common.guice.GuiceImplicits.RichInjector
@@ -71,9 +72,9 @@ final class TerminateTest extends AnyFreeSpec with AgentTester
     sleep(2.s)
     assert(!whenStepEnded.isCompleted)
 
-    client.commandExecute(ShutDown(sigkillProcessesAfter = Some(0.seconds))).await(99.s).orThrow
+    client.commandExecute(ShutDown(Some(SIGKILL))).await(99.s).orThrow
     val stepEnded = whenStepEnded await 99.s
-    assert(stepEnded forall { _.outcome.asInstanceOf[Outcome.Undisrupted].isFailed })
+    assert(stepEnded.forall(_.outcome.isInstanceOf[Outcome.Cancelled]))
     agent.terminated await 99.s
     client.close()
   }

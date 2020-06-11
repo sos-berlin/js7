@@ -4,6 +4,7 @@ import com.typesafe.config.ConfigFactory
 import js7.agent.data.commands.AgentCommand
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
+import js7.base.process.ProcessSignal.SIGKILL
 import js7.base.time.ScalaTime._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
@@ -23,7 +24,6 @@ import js7.tests.testenv.DirectoryProvider.{StdoutOutput, script}
 import js7.tests.testenv.MasterAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration._
 
 final class ForkTest extends AnyFreeSpec with MasterAgentForScalaTest
 {
@@ -63,7 +63,7 @@ final class ForkTest extends AnyFreeSpec with MasterAgentForScalaTest
       "Forked OrderIds duplicate existing Order(Order:DUPLICATE/🥕,/DUPLICATE~INITIAL:0,Processing,Map(),List(),Some(Attached(/AGENT-A)),None,None)"))
     assert(master.eventWatch.await[OrderBroken](_.key == order.id).head.value.event == expectedBroken)
 
-    master.executeCommandAsSystemUser(CancelOrder(order.id, CancelMode.FreshOrStarted)).await(99.s).orThrow
+    master.executeCommandAsSystemUser(CancelOrder(order.id, CancelMode.FreshOrStarted())).await(99.s).orThrow
     master.eventWatch.await[OrderCancelled](_.key == order.id)
     assert(master.eventWatch.keyedEvents[OrderEvent](order.id) == Vector(
       OrderAdded(TestWorkflow.id, None, order.arguments),
@@ -73,7 +73,7 @@ final class ForkTest extends AnyFreeSpec with MasterAgentForScalaTest
 
     master.terminate() await 99.s
     // Kill SLOW job
-    agents(0).executeCommandAsSystemUser(AgentCommand.ShutDown(sigkillProcessesAfter = Some(0.seconds))).await(99.s).orThrow
+    agents(0).executeCommandAsSystemUser(AgentCommand.ShutDown(Some(SIGKILL))).await(99.s).orThrow
     agents(0).terminated await 99.s
   }
 }

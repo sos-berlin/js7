@@ -27,6 +27,11 @@ object CirceJsonTester
     assert(reparsed == asJson)
   }
 
+  def testJsonDecoder[A: Decoder](a: A, json: => Json): Assertion = {
+    // Do a.asJson first to get the JSON string, then evaluate lazy json (which may have syntax errors during development).
+    assert(a == rightOrThrow(json.as[A]))
+  }
+
   private def parseJson(string: String): Json =
     rightOrThrow(parse(string))
 

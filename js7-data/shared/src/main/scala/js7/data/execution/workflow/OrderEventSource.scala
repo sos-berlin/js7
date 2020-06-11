@@ -3,7 +3,7 @@ package js7.data.execution.workflow
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.ScalaUtils.RichPartialFunction
+import js7.base.utils.ScalaUtils._
 import js7.base.utils.ScalazStyle._
 import js7.base.utils.Strings.RichString
 import js7.data.Problems.{CancelChildOrderProblem, CancelStartedOrderProblem}
@@ -48,7 +48,7 @@ final class OrderEventSource(
     if (order.isState[Order.Broken])
       None  // Avoid issuing a second OrderBroken (would be a loop)
     else
-      invalidToEvent(order, checkedNextEvent(order))
+      checkedNextEvent(order) |> (invalidToEvent(order, _))
   }
 
   private def checkedNextEvent(order: Order[Order.State]): Checked[Option[KeyedEvent[OrderActorEvent]]] =
@@ -81,7 +81,6 @@ final class OrderEventSource(
 
       case o => o
     }
-
 
   // Special handling for try with maxRetries and catch block with retry instruction only:
   // try (maxRetries=n) ... catch retry
@@ -164,8 +163,9 @@ final class OrderEventSource(
 
   private def isOrderCancelable(order: Order[Order.State], mode: CancelMode): Boolean =
     (order.isState[Order.Fresh] ||
-      (mode == CancelMode.FreshOrStarted && (
+      (mode.isInstanceOf[CancelMode.FreshOrStarted] && (
         order.isState[Order.Ready] ||
+        order.isState[Order.ProcessingCancelled] ||
         order.isState[Order.FailedWhileFresh] ||
         order.isState[Order.Failed] ||
         order.isState[Order.Broken]))

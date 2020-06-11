@@ -6,15 +6,15 @@ import js7.agent.data.commands.AgentCommand.{Batch, DetachOrder, NoOperation, Sh
 import js7.base.circeutils.CirceUtils._
 import js7.base.crypt.{GenericSignature, SignedString}
 import js7.base.problem.TestCodeProblem
+import js7.base.process.ProcessSignal.SIGTERM
 import js7.data.agent.{AgentRefPath, AgentRunId}
 import js7.data.command.CancelMode
 import js7.data.event.JournalId
 import js7.data.order.{Order, OrderId}
 import js7.data.workflow.position.Position
 import js7.data.workflow.test.TestSetting.SimpleTestWorkflow
-import js7.tester.CirceJsonTester.testJson
+import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration.DurationInt
 
 /**
   * @author Joacim Zschimmer
@@ -133,20 +133,19 @@ final class AgentCommandTest extends AnyFreeSpec
   }
 
   "ShutDown" - {
-    "JSON without sigkillProcessesAfter" in {
-      check(AgentCommand.ShutDown(sigtermProcesses = true),
+    "using defaults" in {
+      testJsonDecoder[AgentCommand](AgentCommand.ShutDown(),
         json"""{
-          "TYPE": "ShutDown",
-          "sigtermProcesses": true
+          "TYPE": "ShutDown"
         }""")
     }
 
-    "JSON with sigkillProcessesAfter" in {
-      check(AgentCommand.ShutDown(sigtermProcesses = true, sigkillProcessesAfter = Some(30.seconds)),
+    "JSON without sigkillAfter" in {
+      check(AgentCommand.ShutDown(processSignal = Some(SIGTERM)),
         json"""{
           "TYPE": "ShutDown",
-          "sigtermProcesses": true,
-          "sigkillProcessesAfter": 30
+          "processSignal": "SIGTERM",
+          "restart": false
         }""")
     }
 

@@ -11,7 +11,7 @@ import js7.agent.scheduler.job.JobActor._
 import js7.agent.scheduler.job.task.{TaskConfiguration, TaskRunner, TaskStepEnded, TaskStepFailed}
 import js7.base.problem.{Checked, Problem}
 import js7.base.process.ProcessSignal
-import js7.base.process.ProcessSignal.{SIGKILL, SIGTERM}
+import js7.base.process.ProcessSignal.SIGKILL
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.implicits.InsertableMutableMap
 import js7.base.utils.ScalaUtils.RichThrowable
@@ -27,7 +27,7 @@ import js7.taskserver.task.process.StdChannels
 import monix.execution.Scheduler
 import scala.collection.mutable
 import scala.concurrent.Future
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -40,6 +40,7 @@ extends Actor with Stash {
   private val logger = Logger.withPrefix[this.type](jobKey.keyName)
   private val orderToTask = mutable.Map[OrderId, Task]()
   private var waitingForNextOrder = false
+  private var killed = false
   private var terminating = false
   private lazy val filePool = new FilePool(jobKey, temporaryDirectory)
 
@@ -83,20 +84,22 @@ extends Actor with Stash {
 
     case cmd: Command.ProcessOrder if waitingForNextOrder =>
       if (cmd.jobKey != jobKey)
-        sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Problem.pure(s"Internal error: requested jobKey=${cmd.jobKey} ≠ JobActor's $jobKey")))
+        sender() ! Response.OrderProcessed(
+          cmd.order.id,
+          TaskStepFailed(Problem.pure(s"Internal error: requested jobKey=${cmd.jobKey} ≠ JobActor's $jobKey")), killed)
       else
         checkedExecutable match {
           case Left(problem) =>
-            sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(problem))  // Exception.toString is published !!!
+            sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(problem), killed)  // Exception.toString is published !!!
           case Right(executable) =>
             if (!exists(executable.file)) {
               val msg = s"Executable '${executable.file}' is not accessible"
               logger.error(s"Order '${cmd.order.id.string}' step failed: $msg")
-              sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Problem.pure(msg)))
+              sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Problem.pure(msg)), killed)
             } else
               Try(executable.file.toRealPath()) match {
                 case Failure(t) =>
-                  sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Problem.pure(s"Executable '$executable': $t")))  // Exception.toString is published !!!
+                  sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Problem.pure(s"Executable '$executable': $t")), killed)  // Exception.toString is published !!!
                 case Success(executableFile) =>
                   assertThat(taskCount < workflowJob.taskLimit, "Task limit exceeded")
                   assertThat(executable.isTemporary || executableFile.startsWith(conf.executablesDirectory.toRealPath(NOFOLLOW_LINKS)),
@@ -113,30 +116,30 @@ extends Actor with Stash {
     case Internal.TaskFinished(order, triedStepEnded) =>
       filePool.release(orderToTask(order.id).fileSet)
       orderToTask -= order.id
-      sender() ! Response.OrderProcessed(order.id, recoverFromFailure(triedStepEnded))
+      sender() ! Response.OrderProcessed(order.id, recoverFromFailure(triedStepEnded), isKilled = killed)
       continueTermination()
       handleIfReadyForOrder()
 
-    case Input.Terminate(sigtermProcesses, sigkillProcessesAfter) =>
+    case Input.Terminate(maybeSignal) =>
       logger.debug("Terminate")
       terminating = true
-      if (sigtermProcesses) {
-        killAll(SIGTERM)
+      for (signal <- maybeSignal) {
+        killAll(signal)
       }
-      for (duration <- sigkillProcessesAfter if taskCount > 0) {
-        scheduler.scheduleOnce(duration) {
+      if (maybeSignal != Some(SIGKILL) && taskCount > 0) {
+        scheduler.scheduleOnce(conf.sigkillProcessesAfter) {
           self ! Internal.KillAll
         }
       }
       continueTermination()
 
-    case Input.KillProcess(orderId, sigtermProcesses, sigkillProcessesAfter) =>
+    case Input.KillProcess(orderId, maybeSignal) =>
       logger.debug(s"KillProcess $orderId")
-      if (sigtermProcesses) {
-        killOrder(orderId, SIGTERM)
+      for (signal <- maybeSignal) {
+        killOrder(orderId, signal)
       }
-      for (duration <- sigkillProcessesAfter if taskCount > 0) {
-        scheduler.scheduleOnce(duration) {
+      if (maybeSignal != Some(SIGKILL) && taskCount > 0) {
+        scheduler.scheduleOnce(conf.sigkillProcessesAfter) {
           self ! Internal.KillOrder(orderId)
         }
       }
@@ -183,6 +186,7 @@ extends Actor with Stash {
   private def killOrder(orderId: OrderId, signal: ProcessSignal): Unit =
     for (task <- orderToTask.get(orderId)) {
       logger.warn(s"Kill $signal ${task.taskRunner.asBaseAgentTask.id} processing $orderId")
+      killed = true
       task.taskRunner.kill(signal)
     }
 
@@ -210,6 +214,7 @@ object JobActor
     newTaskRunner: TaskRunner.Factory,
     temporaryDirectory: Path,
     executablesDirectory: Path,
+    sigkillProcessesAfter: FiniteDuration,
     scriptInjectionAllowed: Boolean)
 
   sealed trait Command
@@ -219,18 +224,13 @@ object JobActor
   }
 
   object Response {
-    final case class OrderProcessed(orderId: OrderId, taskStepEnded: TaskStepEnded)
+    final case class OrderProcessed(orderId: OrderId, taskStepEnded: TaskStepEnded, isKilled: Boolean)
   }
 
   object Input {
     case object OrderAvailable extends Command
-    final case class Terminate(
-      sigtermProcesses: Boolean = false,
-      sigkillProcessesAfter: Option[FiniteDuration] = None)
-    final case class KillProcess(
-      orderId: OrderId,
-      sigtermProcesses: Boolean = false,
-      sigkillProcessesAfter: Option[FiniteDuration] = None)
+    final case class Terminate(signal: Option[ProcessSignal] = None)
+    final case class KillProcess(orderId: OrderId, signal: Option[ProcessSignal])
   }
 
   object Output {

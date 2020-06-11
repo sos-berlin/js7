@@ -3,6 +3,8 @@ package js7.base.circeutils
 import cats.syntax.show._
 import io.circe.generic.decoding.DerivedDecoder
 import io.circe.generic.encoding.DerivedAsObjectEncoder
+import io.circe.generic.extras.decoding.ConfiguredDecoder
+import io.circe.generic.extras.encoding.ConfiguredAsObjectEncoder
 import io.circe.syntax.EncoderOps
 import io.circe.{CursorOp, Decoder, DecodingFailure, Encoder, HCursor, Json, JsonNumber, JsonObject, Printer}
 import js7.base.circeutils.AnyJsonCodecs.anyToJson
@@ -153,7 +155,32 @@ object CirceUtils
       }
   }
 
-  final def deriveCodec[A](implicit encode: Lazy[DerivedAsObjectEncoder[A]], decode: Lazy[DerivedDecoder[A]]): CirceObjectCodec[A] =
+  final def deriveCodec[A](implicit encode: Lazy[DerivedAsObjectEncoder[A]], decode: Lazy[DerivedDecoder[A]])
+  : CirceObjectCodec[A] = {
+    new Encoder.AsObject[A] with Decoder[A] {
+      def encodeObject(a: A) = encode.value.encodeObject(a)
+      def apply(c: HCursor) = decode.value.tryDecode(c)
+    }
+  }
+
+  //import io.circe.generic.extras.Configuration.default.withDefaults
+  //import io.circe.generic.extras.semiauto.deriveConfiguredDecoder
+  //import io.circe.generic.extras.semiauto.deriveConfiguredDecoder
+  //private val withDefaultsConfiguration = withDefaults
+  //
+  //final def deriveCodecWithDefaults[A](implicit encode: Lazy[DerivedAsObjectEncoder[A]], decode: Lazy[DerivedDecoder[A]])
+  //: CirceObjectCodec[A] =
+  //  new Encoder.AsObject[A] with Decoder[A] {
+  //    private val decodeWithDefaults = new ConfiguredDecoder[A](withDefaultsConfiguration) {
+  //      todo: apply configuration
+  //      override def apply(c: HCursor) = decode.value.apply(c)
+  //    }
+  //    def encodeObject(a: A) = encode.value.encodeObject(a)
+  //    def apply(c: HCursor) = decodeWithDefaults.tryDecode(c)
+  //  }
+
+  final def deriveConfiguredCodec[A](implicit encode: Lazy[ConfiguredAsObjectEncoder[A]], decode: Lazy[ConfiguredDecoder[A]])
+  : CirceObjectCodec[A] =
     new Encoder.AsObject[A] with Decoder[A] {
       def encodeObject(a: A) = encode.value.encodeObject(a)
       def apply(c: HCursor) = decode.value.tryDecode(c)

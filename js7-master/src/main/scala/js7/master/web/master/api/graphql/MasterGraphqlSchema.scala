@@ -267,7 +267,7 @@ private[graphql] object MasterGraphqlSchema
     fields[QueryContext, Outcome](
       Field("TYPE", StringType, resolve = o => Outcome.jsonCodec.classToName(o.value.getClass)),
       Field("returnCode", OptionType(ReturnCodeType), resolve = _.value match {
-        case o: Outcome.Undisrupted => Some(o.returnCode)
+        case o: Outcome.Completed => Some(o.returnCode)
         case _ => None
       }),
       Field("reason", OptionType(DisruptedOutcomeReasonType), resolve = _.value match {

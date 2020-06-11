@@ -77,6 +77,10 @@ object WorkflowPrinter
           sb ++= returnCodes.map(_.number).toVector.sorted.mkString(", ")
           sb += ']'
       }
+      for (o <- job.sigkillAfter) {
+        sb.append(", sigkillAfter=")
+        sb.append(o.toBigDecimalSeconds)  // TODO Use floating point
+      }
       job.executable match {
         case ExecutablePath(path) =>
           sb ++= ", executable="

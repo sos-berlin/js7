@@ -2,6 +2,7 @@ package js7.data.workflow.parser
 
 import cats.syntax.show._
 import js7.base.problem.Problem
+import js7.base.time.ScalaTime._
 import js7.data.agent.AgentRefPath
 import js7.data.expression.Expression.{Equal, In, LastReturnCode, ListExpression, NamedValue, NumericConstant, Or, StringConstant}
 import js7.data.job.{ExecutablePath, ExecutableScript, ReturnCode}
@@ -19,8 +20,8 @@ import scala.util.control.NoStackTrace
 /**
   * @author Joacim Zschimmer
   */
-final class WorkflowParserTest extends AnyFreeSpec {
-
+final class WorkflowParserTest extends AnyFreeSpec
+{
   "parse" in {
     assert(parse(TestWorkflowSource).withoutSourcePos == TestWorkflow.withId(WorkflowPath.NoId))
   }
@@ -55,15 +56,23 @@ final class WorkflowParserTest extends AnyFreeSpec {
   }
 
   "Execute anonymous with default arguments 'SCHEDULER_PARAM_'" in {
-    checkWithSourcePos("""define workflow { execute executable="/my/executable", agent="/AGENT", arguments={"A": "aaa", "B": "bbb"}, taskLimit=3; }""",
+    checkWithSourcePos(
+       """define workflow {
+         |  execute executable = "/my/executable",
+         |          agent = "/AGENT",
+         |          arguments = { "A": "aaa", "B": "bbb" },
+         |          taskLimit = 3,
+         |          sigkillAfter = 30;
+         |}""".stripMargin,
       Workflow.of(
         Execute.Anonymous(
           WorkflowJob(AgentRefPath("/AGENT"),
             ExecutablePath("/my/executable"),
             Map("A" -> "aaa", "B" -> "bbb"),
-            taskLimit = 3),
-          sourcePos(18, 118)),
-        ImplicitEnd(sourcePos(120, 121))))
+            taskLimit = 3,
+            sigkillAfter = Some(30.s)),
+          sourcePos(20, 189)),
+        ImplicitEnd(sourcePos(191, 192))))
   }
 
   "Execute script with \\n" in {

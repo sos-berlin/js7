@@ -15,7 +15,6 @@ import js7.core.startup.StartUp
 import js7.core.startup.StartUp.printlnWithClock
 import js7.master.configuration.MasterConfiguration
 import monix.execution.Scheduler
-import scala.concurrent.duration._
 
 /**
   * JS7 Master.
@@ -41,7 +40,7 @@ final class MasterMain
     do {
       autoClosing(RunningMaster(masterConfiguration).awaitInfinite) { runningMaster =>
         import runningMaster.scheduler
-        withShutdownHooks(masterConfiguration.config, "MasterMain", onJavaShutdown(runningMaster, _)) {
+        withShutdownHooks(masterConfiguration.config, "MasterMain", () => onJavaShutdown(runningMaster)) {
           runningMaster.terminated.awaitInfinite match {
             case t: MasterTermination.Terminate =>
               restartInProcess = false
@@ -64,10 +63,12 @@ final class MasterMain
     terminate
   }
 
-  private def onJavaShutdown(master: RunningMaster, timeout: FiniteDuration)(implicit s: Scheduler): Unit = {
+  private def onJavaShutdown(master: RunningMaster)(implicit s: Scheduler): Unit = {
     logger.warn("Trying to shut down Master due to Java shutdown")
     if (!master.actorSystem.whenTerminated.isCompleted) {
-      master.terminate().runToFuture await timeout
+      master.terminate()
+        .runToFuture
+        .awaitInfinite
     }
     master.close()
   }

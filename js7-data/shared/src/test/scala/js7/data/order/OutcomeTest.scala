@@ -3,15 +3,15 @@ package js7.data.order
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Problem
 import js7.data.job.ReturnCode
-import js7.data.order.Outcome.Undisrupted
+import js7.data.order.Outcome.Completed
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class OutcomeTest extends AnyFreeSpec {
-
+final class OutcomeTest extends AnyFreeSpec
+{
   "isSucceeded" in {
     assert(Outcome.Succeeded(ReturnCode(0)).isSucceeded)
     assert(Outcome.Succeeded(ReturnCode(1)).isSucceeded)
@@ -20,11 +20,11 @@ final class OutcomeTest extends AnyFreeSpec {
     assert(!Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted).isSucceeded)
   }
 
-  "Undisrupted" in {
-    assert(Undisrupted(true, ReturnCode(1), Map("K" -> "V")) == Outcome.Succeeded(ReturnCode(1), Map("K" -> "V")))
-    assert(Undisrupted(false, ReturnCode(1), Map("K" -> "V")) == Outcome.Failed(ReturnCode(1), Map("K" -> "V")))
+  "Completed" in {
+    assert(Completed(true, ReturnCode(1), Map("K" -> "V")) == Outcome.Succeeded(ReturnCode(1), Map("K" -> "V")))
+    assert(Completed(false, ReturnCode(1), Map("K" -> "V")) == Outcome.Failed(ReturnCode(1), Map("K" -> "V")))
     assert((Outcome.Disrupted(Problem("PROBLEM")): Outcome) match {
-      case _: Outcome.Undisrupted => false
+      case _: Outcome.Completed => false
       case _ => true
     })
   }
@@ -69,6 +69,20 @@ final class OutcomeTest extends AnyFreeSpec {
         }""")
     }
 
+    "Cancelled with Succeeded and keyValues" in {
+      testJson[Outcome](Outcome.Cancelled(Outcome.Succeeded(ReturnCode(0), Map("KEY" -> "VALUE"))), json"""
+        {
+          "TYPE": "Cancelled",
+          "outcome": {
+            "TYPE": "Succeeded",
+            "keyValues": {
+              "KEY": "VALUE"
+            },
+            "returnCode": 0
+          }
+        }""")
+    }
+
     "Disrupted(JobSchedulerRestarted)" in {
       testJson[Outcome](Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted), json"""
         {
@@ -95,11 +109,11 @@ final class OutcomeTest extends AnyFreeSpec {
 
   "Constant pool for memory reuse" in {
     assert(Outcome.Succeeded(Map.empty[String, String]) eq Outcome.Succeeded(ReturnCode(0)))
-    assert(Outcome.Succeeded(Map.empty[String, String]) eq Outcome.Undisrupted(true, ReturnCode(0)))
+    assert(Outcome.Succeeded(Map.empty[String, String]) eq Outcome.Completed(true, ReturnCode(0)))
     for (i <- 0 to 255) {
       assert(Outcome.Succeeded(ReturnCode(i)) eq Outcome.Succeeded(ReturnCode(i)))
-      assert(Outcome.Succeeded(ReturnCode(i)) eq Outcome.Undisrupted(true, ReturnCode(i)))
-      assert(Outcome.Failed(ReturnCode(i)) eq Outcome.Undisrupted(false, ReturnCode(i)))
+      assert(Outcome.Succeeded(ReturnCode(i)) eq Outcome.Completed(true, ReturnCode(i)))
+      assert(Outcome.Failed(ReturnCode(i)) eq Outcome.Completed(false, ReturnCode(i)))
     }
     assert(Outcome.Succeeded(ReturnCode(1234)) ne Outcome.Succeeded(ReturnCode(1234)))  // Not in constant pool
   }

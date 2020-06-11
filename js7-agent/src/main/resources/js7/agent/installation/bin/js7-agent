@@ -12,7 +12,7 @@ httpPort=4445
 agentOptions=()
 javaOptions=(-XX:+UseStringDeduplication)
 log4Async=false
-terminateCommand='{ "TYPE": "ShutDown", "sigtermProcesses": false }'
+terminateCommand='{ "TYPE": "ShutDown" }'
 
 for arg in "$@"; do
   case "$arg" in

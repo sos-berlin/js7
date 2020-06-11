@@ -3,6 +3,7 @@ package js7.master.data
 import js7.base.circeutils.CirceUtils._
 import js7.base.crypt.{GenericSignature, SignedString}
 import js7.base.problem.Problem
+import js7.base.process.ProcessSignal.SIGTERM
 import js7.base.web.Uri
 import js7.data.agent.AgentRefPath
 import js7.data.cluster.{ClusterCommand, ClusterNodeId}
@@ -10,8 +11,10 @@ import js7.data.command.CancelMode
 import js7.data.filebased.VersionId
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.WorkflowPath
+import js7.data.workflow.position.Position
 import js7.master.data.MasterCommand._
-import js7.tester.CirceJsonTester.testJson
+import js7.tester.CirceJsonTester
+import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 import org.scalatest.freespec.AnyFreeSpec
 
 final class MasterCommandTest extends AnyFreeSpec
@@ -86,12 +89,40 @@ final class MasterCommandTest extends AnyFreeSpec
     }
 
     "CancelOrder FreshOrStarted" in {
-      testJson[MasterCommand](CancelOrder(OrderId("ORDER"), CancelMode.FreshOrStarted),
+      testJson[MasterCommand](CancelOrder(
+        OrderId("ORDER"),
+        CancelMode.FreshOrStarted(
+          Some(CancelMode.Kill(
+            SIGTERM,
+            Some(WorkflowPath("/WORKFLOW") ~ VersionId("VERSION") /: Position(1)))))),
         json"""{
           "TYPE": "CancelOrder",
           "orderId": "ORDER",
           "mode": {
-            "TYPE": "FreshOrStarted"
+            "TYPE": "FreshOrStarted",
+            "kill": {
+              "signal": "SIGTERM",
+              "workflowPosition": {
+                "workflowId": {
+                  "path": "/WORKFLOW",
+                  "versionId": "VERSION"
+                },
+                "position": [ 1 ]
+              }
+            }
+          }
+        }""")
+
+      testJsonDecoder[MasterCommand](CancelOrder(
+        OrderId("ORDER"),
+        CancelMode.FreshOrStarted(
+          Some(CancelMode.Kill()))),
+        json"""{
+          "TYPE": "CancelOrder",
+          "orderId": "ORDER",
+          "mode": {
+            "TYPE": "FreshOrStarted",
+            "kill": {}
           }
         }""")
     }

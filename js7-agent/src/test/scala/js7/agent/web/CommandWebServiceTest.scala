@@ -11,6 +11,8 @@ import js7.agent.data.commands.AgentCommand._
 import js7.agent.web.CommandWebServiceTest._
 import js7.agent.web.test.WebServiceTest
 import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.implicits._
+import js7.base.process.ProcessSignal.SIGTERM
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.http.CirceJsonSupport._
 import js7.core.command.CommandMeta
@@ -48,11 +50,7 @@ final class CommandWebServiceTest extends AnyFreeSpec with WebServiceTest with C
     }
 
   "ShutDown" in {
-    val json = json"""{
-        "TYPE": "ShutDown",
-        "sigtermProcesses": false,
-        "sigkillProcessesAfter": 999
-      }"""
+    val json = json"""{ "TYPE": "ShutDown" }"""
     postJsonCommand(json) ~> check {
       if (status != OK) fail(s"$status - ${responseEntity.toStrict(99.seconds).value}")
       assert(responseAs[AgentCommand.Response.Accepted] == AgentCommand.Response.Accepted)
@@ -90,19 +88,19 @@ final class CommandWebServiceTest extends AnyFreeSpec with WebServiceTest with C
     }
   }
 
-  "commandHandler/ returns array of running command" in {
+  "commandHandler/ returns array of running commands" in {
     Get("/agent/api/command/") ~> testSessionHeader ~> Accept(`application/json`) ~> route ~> check {
       assert(status == OK)
       assert(responseAs[Json] == Json.fromValues(List(
         Json.obj(
           "internalId" -> "333".asJson,
           "duration" -> 3600.asJson,
-          "command" -> (TestCommand: AgentCommand).asJson))))
+          "command" -> (TestCommand: AgentCommand).asJson.dropNullValues))))
     }
   }
 }
 
 private object CommandWebServiceTest {
-  private val TestCommand = ShutDown(sigkillProcessesAfter = Some(999.seconds))
-  private val TestCommandWhileShuttingDown = ShutDown(sigkillProcessesAfter = Some(777.seconds))
+  private val TestCommand = ShutDown(None)
+  private val TestCommandWhileShuttingDown = ShutDown(Some(SIGTERM))
 }

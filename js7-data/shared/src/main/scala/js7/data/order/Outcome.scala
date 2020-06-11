@@ -24,22 +24,21 @@ object Outcome
   val RecoveryGeneratedOutcome = Disrupted(Disrupted.JobSchedulerRestarted)
 
   /** The job has terminated. */
-  sealed trait Undisrupted extends Outcome {
+  sealed trait Completed extends Outcome {
     def returnCode: ReturnCode
     def keyValues: Map[String, String]
   }
-
-  object Undisrupted {
-    def apply(success: Boolean, returnCode: ReturnCode): Undisrupted =
+  object Completed {
+    def apply(success: Boolean, returnCode: ReturnCode): Completed =
       apply(success, returnCode, Map.empty)
 
-    def apply(success: Boolean, returnCode: ReturnCode, keyValues: Map[String, String]): Undisrupted =
+    def apply(success: Boolean, returnCode: ReturnCode, keyValues: Map[String, String]): Completed =
       if (success)
         Succeeded(returnCode, keyValues)
       else
         Failed(returnCode, keyValues)
 
-    private[Outcome] sealed trait Companion[A <: Undisrupted] {
+    private[Outcome] sealed trait Companion[A <: Completed] {
       protected def newInstance(returnCode: ReturnCode, keyValues: Map[String, String]): A
 
       // re-use memory for usual values.
@@ -51,12 +50,16 @@ object Outcome
         else
           newInstance(returnCode, keyValues)
     }
+
+    implicit val jsonCodec = TypedJsonCodec[Completed](
+      Subtype(deriveCodec[Failed]),
+      Subtype(deriveCodec[Succeeded]))
   }
 
-  final case class Succeeded(returnCode: ReturnCode, keyValues: Map[String, String] = Map.empty) extends Undisrupted {
+  final case class Succeeded(returnCode: ReturnCode, keyValues: Map[String, String] = Map.empty) extends Completed {
     def isSucceeded = true
   }
-  object Succeeded extends Undisrupted.Companion[Succeeded]
+  object Succeeded extends Completed.Companion[Succeeded]
   {
     def apply(keyValues: Map[String, String]): Succeeded = apply(ReturnCode.Success, keyValues)
 
@@ -76,11 +79,11 @@ object Outcome
   }
 
   final case class Failed(errorMessage: Option[String], returnCode: ReturnCode, keyValues: Map[String, String])
-  extends Undisrupted with NotSucceeded
+  extends Completed with NotSucceeded
   {
     def isSucceeded = false
   }
-  object Failed extends Undisrupted.Companion[Failed]
+  object Failed extends Completed.Companion[Failed]
   {
     val DefaultErrorMessage = "Failed"
 
@@ -102,6 +105,11 @@ object Outcome
         returnCode <- c.get[ReturnCode]("returnCode")
         keyValues <- c.get[Option[Map[String, String]]]("keyValues") map (_ getOrElse Map.empty)
       } yield Failed(errorMessage, returnCode, keyValues)
+  }
+
+  final case class Cancelled(outcome: Outcome.Completed)
+  extends Outcome {
+    def isSucceeded = false
   }
 
   /** No response from job - some other error has occurred. */
@@ -139,5 +147,6 @@ object Outcome
   implicit val jsonCodec = TypedJsonCodec[Outcome](
     Subtype[Succeeded],
     Subtype[Failed],
+    Subtype(deriveCodec[Cancelled]),
     Subtype(deriveCodec[Disrupted]))
 }

@@ -85,6 +85,10 @@ final case class Order[+S <: Order.State](
             state = Processed,
             historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
 
+      case OrderProcessingCancelled =>
+        check(isState[Processed] && isAttached,
+          copy(state = ProcessingCancelled))
+
       case OrderFailed(outcome_) =>
         check(isOrderFailedApplicable,
           copy(
@@ -167,7 +171,7 @@ final case class Order[+S <: Order.State](
       case OrderDetachable =>
         attachedState match {
           case Some(Attached(agentRefPath))
-            if isState[Fresh] || isState[Ready] || isState[Forked] ||
+            if isState[Fresh] || isState[Ready] || isState[Forked] || isState[ProcessingCancelled] ||
                isState[FailedWhileFresh] || isState[Failed] || isState[FailedInFork] || isState[Broken] =>
               Right(copy(attachedState = Some(Detaching(agentRefPath))))
           case _ =>
@@ -175,21 +179,22 @@ final case class Order[+S <: Order.State](
         }
 
       case OrderDetached =>
-        check(isDetaching && (isState[Fresh] || isState[Ready] || isState[Forked] ||
+        check(isDetaching && (isState[Fresh] || isState[Ready] || isState[Forked] || isState[ProcessingCancelled] ||
                               isState[FailedWhileFresh] || isState[Failed] || isState[FailedInFork] || isState[Broken]),
           copy(attachedState = None))
 
       case OrderTransferredToMaster =>
-        check(isDetaching && (isState[Fresh] || isState[Ready] || isState[Forked] ||
+        check(isDetaching && (isState[Fresh] || isState[Ready] || isState[Forked] || isState[ProcessingCancelled] ||
                               isState[FailedWhileFresh] || isState[Failed] || isState[FailedInFork] || isState[Broken]),
           copy(attachedState = None))
 
       case OrderCancellationMarked(mode) =>
-        check(!isState[IsFinal] && !isDetaching,
+        check(!isState[IsFinal] && !isState[ProcessingCancelled] && !isDetaching,
           copy(cancel = Some(mode)))
 
       case OrderCancelled =>
-        check((isState[IsFreshOrReady] || isState[DelayedAfterError] || isState[FailedWhileFresh] || isState[Failed] || isState[Broken])
+        check((isState[IsFreshOrReady] || isState[ProcessingCancelled] ||
+               isState[DelayedAfterError] || isState[FailedWhileFresh] || isState[Failed] || isState[Broken])
             && isDetached,
           copy(state = Cancelled))
     }
@@ -209,7 +214,7 @@ final case class Order[+S <: Order.State](
     historicOutcomes.lastOption.map(_.outcome) getOrElse Outcome.succeeded
 
   def keyValues: Map[String, String] = historicOutcomes
-    .collect { case HistoricOutcome(_, o: Outcome.Undisrupted) => o.keyValues }
+    .collect { case HistoricOutcome(_, o: Outcome.Completed) => o.keyValues }
     .fold(arguments)((a, b) => a ++ b)
 
   def isStarted = isState[IsStarted]
@@ -346,6 +351,9 @@ object Order
   type Processed = Processed.type
   case object Processed extends IsStarted
 
+  type ProcessingCancelled = ProcessingCancelled.type
+  case object ProcessingCancelled extends IsStarted
+
   final case class Forked(children: Seq[Forked.Child]) extends IsStarted {
     def childOrderIds = children map (_.orderId)
   }
@@ -378,6 +386,7 @@ object Order
     Subtype[IsFreshOrReady],
     Subtype(Processing),
     Subtype(Processed),
+    Subtype(ProcessingCancelled),
     Subtype(deriveCodec[DelayedAfterError]),
     Subtype(FailedWhileFresh),
     Subtype(deriveCodec[Forked]),

@@ -8,6 +8,7 @@ import js7.agent.RunningAgent
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.ShutDown
+import js7.base.process.ProcessSignal.SIGTERM
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
@@ -26,7 +27,6 @@ import js7.master.configuration.MasterConfiguration
 import js7.master.configuration.inject.MasterModule
 import js7.master.tests.TestEnvironment
 import monix.execution.Scheduler.Implicits.global
-import scala.concurrent.duration.DurationInt
 
 /**
   * @author Joacim Zschimmer
@@ -80,7 +80,7 @@ object TestDockerExample
       JavaShutdownHook.add("TestDockerExample") {
         print('\n')
         (for (agent <- agents) yield {
-          agent.executeCommandAsSystemUser(ShutDown(sigtermProcesses = true, sigkillProcessesAfter = Some(3.seconds)))
+          agent.executeCommandAsSystemUser(ShutDown(Some(SIGTERM)))
           val r = agent.terminated
           agent.close()
           r

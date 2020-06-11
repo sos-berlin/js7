@@ -6,7 +6,7 @@ import js7.data.agent.AgentRefPath
 import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.context.OrderContext
 import js7.data.job.{ExecutablePath, ReturnCode}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderFailedCatchable, OrderMoved, OrderProcessed}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderFailedCatchable, OrderMoved}
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, ReturnCodeMeaning}
@@ -30,11 +30,11 @@ final class ExecuteTest extends AnyFreeSpec {
     def idToWorkflow(id: WorkflowId) = throw new NotImplementedError
   }
 
-  "toOrderProcessed" in {
+  "toOutcome" in {
     val keyValues = Map("a" -> "A")
-    assert(executeAnonymous.job.toOrderProcessed(ReturnCode(0), keyValues) == OrderProcessed(Outcome.Succeeded(keyValues)))
-    assert(executeAnonymous.job.toOrderProcessed(ReturnCode(1), keyValues) == OrderProcessed(Outcome.Failed(ReturnCode(1), keyValues)))
-    assert(executeAnonymous.job.toOrderProcessed(ReturnCode(3), keyValues) == OrderProcessed(Outcome.Succeeded(ReturnCode(3), keyValues)))
+    assert(executeAnonymous.job.toOutcome(ReturnCode(0), keyValues) == Outcome.Succeeded(keyValues))
+    assert(executeAnonymous.job.toOutcome(ReturnCode(1), keyValues) == Outcome.Failed(ReturnCode(1), keyValues))
+    assert(executeAnonymous.job.toOutcome(ReturnCode(3), keyValues) == Outcome.Succeeded(ReturnCode(3), keyValues))
   }
 
   "toEvent" in {

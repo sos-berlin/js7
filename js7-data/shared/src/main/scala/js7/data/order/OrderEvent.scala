@@ -117,6 +117,10 @@ object OrderEvent {
 
   final case class OrderAwaiting(orderId: OrderId) extends OrderActorEvent
 
+  type OrderProcessingCancelled = OrderProcessingCancelled.type
+  final case object OrderProcessingCancelled
+  extends OrderActorEvent
+
   final case class OrderMoved(to: Position)
   extends OrderActorEvent
 
@@ -180,6 +184,7 @@ object OrderEvent {
     Subtype(deriveCodec[OrderCatched]),
     Subtype(deriveCodec[OrderRetrying]),
     Subtype(OrderAwoke),
+    Subtype(deriveCodec[OrderProcessingCancelled]),
     Subtype(deriveCodec[OrderMoved]),
     Subtype(deriveCodec[OrderForked]),
     Subtype(deriveCodec[OrderJoined]),

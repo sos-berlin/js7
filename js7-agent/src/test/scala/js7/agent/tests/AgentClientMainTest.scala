@@ -6,6 +6,7 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.ShutDown
 import js7.agent.tests.AgentClientMainTest._
 import js7.base.problem.Checked
+import js7.base.process.ProcessSignal.SIGTERM
 import js7.base.utils.HasCloser
 import js7.common.guice.ScalaAbstractModule
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
@@ -14,7 +15,6 @@ import monix.eval.Task
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
-import scala.concurrent.duration._
 
 /**
  * @author Joacim Zschimmer
@@ -43,7 +43,7 @@ final class AgentClientMainTest extends AnyFreeSpec with BeforeAndAfterAll with 
 
   "main" in {
     val output = mutable.Buffer[String]()
-    val commandYaml = """{ TYPE: ShutDown, sigtermProcesses: true, sigkillProcessesAfter: 10 }"""
+    val commandYaml = """{ TYPE: ShutDown, processSignal: SIGTERM }"""
     AgentClientMain.run(List(s"-data-directory=$dataDirectory", agent.localUri.toString, commandYaml, "?"), o => output += o)
     assert(output.size == 3)
     assert(output(0) == "TYPE: Accepted")
@@ -71,7 +71,8 @@ final class AgentClientMainTest extends AnyFreeSpec with BeforeAndAfterAll with 
   }
 }
 
-private object AgentClientMainTest {
-  private val ExpectedTerminate = ShutDown(sigtermProcesses = true, sigkillProcessesAfter = Some(10.seconds))
+private object AgentClientMainTest
+{
+  private val ExpectedTerminate = ShutDown(Some(SIGTERM))
 }
 

@@ -1,18 +1,22 @@
 package js7.tests
 
 import js7.base.problem.Checked.Ops
+import js7.base.process.ProcessSignal
+import js7.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.common.scalautil.MonixUtils.syntax._
+import js7.common.system.OperatingSystem.isWindows
 import js7.data.Problems.{CancelStartedOrderProblem, UnknownOrderProblem}
 import js7.data.agent.AgentRefPath
 import js7.data.command.CancelMode
-import js7.data.job.ExecutablePath
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancellationMarked, OrderCancelled, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
+import js7.data.filebased.VersionId
+import js7.data.job.{ExecutablePath, ReturnCode}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancellationMarked, OrderCancelled, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingCancelled, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
-import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.position.Position
+import js7.data.workflow.instructions.{Execute, Fork}
+import js7.data.workflow.position.{Position, WorkflowPosition}
 import js7.data.workflow.test.ForkTestSetting.TestExecutablePath
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.master.data.MasterCommand.{Batch, CancelOrder, Response}
@@ -28,8 +32,8 @@ import scala.concurrent.duration._
   */
 final class CancelOrderTest extends AnyFreeSpec with MasterAgentForScalaTest
 {
-  protected val agentRefPaths = TestAgentRefPath :: Nil
-  protected val fileBased = SingleJobWorkflow :: TwoJobsWorkflow :: Nil
+  protected val agentRefPaths = agentRefPath :: Nil
+  protected val fileBased = singleJobWorkflow :: twoJobsWorkflow :: forkWorkflow :: Nil
 
   override def beforeAll() = {
     for (a <- directoryProvider.agents) a.writeExecutable(TestExecutablePath, script(2.s))
@@ -37,15 +41,15 @@ final class CancelOrderTest extends AnyFreeSpec with MasterAgentForScalaTest
   }
 
   "Cancel a fresh order" in {
-    val order = FreshOrder(OrderId("🔹"), SingleJobWorkflow.id.path, scheduledFor = Some(Timestamp.now + 99.seconds))
+    val order = FreshOrder(OrderId("🔹"), singleJobWorkflow.id.path, scheduledFor = Some(Timestamp.now + 99.seconds))
     master.addOrderBlocking(order)
     master.eventWatch.await[OrderTransferredToAgent](_.key == order.id)
     master.executeCommandAsSystemUser(CancelOrder(order.id, CancelMode.NotStarted)).await(99.seconds).orThrow
     master.eventWatch.await[OrderCancelled](_.key == order.id)
     assert(master.eventWatch.keyedEvents[OrderEvent](order.id) == Vector(
-      OrderAdded(SingleJobWorkflow.id, order.scheduledFor),
-      OrderAttachable(TestAgentRefPath),
-      OrderTransferredToAgent(TestAgentRefPath),
+      OrderAdded(singleJobWorkflow.id, order.scheduledFor),
+      OrderAttachable(agentRefPath),
+      OrderTransferredToAgent(agentRefPath),
       OrderCancellationMarked(CancelMode.NotStarted),
       OrderDetachable,
       OrderTransferredToMaster,
@@ -53,18 +57,18 @@ final class CancelOrderTest extends AnyFreeSpec with MasterAgentForScalaTest
   }
 
   "Cancel a finishing order" in {
-    val order = FreshOrder(OrderId("🔺"), SingleJobWorkflow.id.path)
+    val order = FreshOrder(OrderId("🔺"), singleJobWorkflow.id.path)
     master.addOrderBlocking(order)
     master.eventWatch.await[OrderProcessingStarted](_.key == order.id)
-    master.executeCommandAsSystemUser(CancelOrder(order.id, CancelMode.FreshOrStarted)).await(99.seconds).orThrow
+    master.executeCommandAsSystemUser(CancelOrder(order.id, CancelMode.FreshOrStarted())).await(99.seconds).orThrow
     master.eventWatch.await[OrderFinished](_.key == order.id)
     assert(master.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
-      OrderAdded(SingleJobWorkflow.id, order.scheduledFor),
-      OrderAttachable(TestAgentRefPath),
-      OrderTransferredToAgent(TestAgentRefPath),
+      OrderAdded(singleJobWorkflow.id, order.scheduledFor),
+      OrderAttachable(agentRefPath),
+      OrderTransferredToAgent(agentRefPath),
       OrderStarted,
       OrderProcessingStarted,
-      OrderCancellationMarked(CancelMode.FreshOrStarted),
+      OrderCancellationMarked(CancelMode.FreshOrStarted()),
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(1)),
       OrderDetachable,
@@ -73,7 +77,7 @@ final class CancelOrderTest extends AnyFreeSpec with MasterAgentForScalaTest
   }
 
   "Cancelling (mode=NotStarted) a started order is not possible" in {
-    val order = FreshOrder(OrderId("❌"), TwoJobsWorkflow.id.path)
+    val order = FreshOrder(OrderId("❌"), twoJobsWorkflow.id.path)
     master.addOrderBlocking(order)
     master.eventWatch.await[OrderProcessingStarted](_.key == order.id)
     sleep(100.ms)  // MasterOrderKeeper may take some time to update its state
@@ -83,23 +87,112 @@ final class CancelOrderTest extends AnyFreeSpec with MasterAgentForScalaTest
   }
 
   "Cancel a started order between two jobs" in {
-    val order = FreshOrder(OrderId("🔴"), TwoJobsWorkflow.id.path)
+    val order = FreshOrder(OrderId("🔴"), twoJobsWorkflow.id.path)
     master.addOrderBlocking(order)
     master.eventWatch.await[OrderProcessingStarted](_.key == order.id)
-    master.executeCommandAsSystemUser(CancelOrder(order.id, CancelMode.FreshOrStarted)).await(99.seconds).orThrow
+    master.executeCommandAsSystemUser(CancelOrder(order.id, CancelMode.FreshOrStarted())).await(99.seconds).orThrow
     master.eventWatch.await[OrderCancelled](_.key == order.id)
     assert(master.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
-      OrderAdded(TwoJobsWorkflow.id, order.scheduledFor),
-      OrderAttachable(TestAgentRefPath),
-      OrderTransferredToAgent(TestAgentRefPath),
+      OrderAdded(twoJobsWorkflow.id, order.scheduledFor),
+      OrderAttachable(agentRefPath),
+      OrderTransferredToAgent(agentRefPath),
       OrderStarted,
       OrderProcessingStarted,
-      OrderCancellationMarked(CancelMode.FreshOrStarted),
+      OrderCancellationMarked(CancelMode.FreshOrStarted()),
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(1)),
       OrderDetachable,
       OrderTransferredToMaster,
       OrderCancelled))
+  }
+
+  "Cancel an order and a the first job" in {
+    testCancelFirstJob(FreshOrder(OrderId("⭕️"), singleJobWorkflow.id.path), Some(singleJobWorkflow.id /: Position(0)), SIGTERM)
+  }
+
+  "Cancel an order but not the first job" in {
+    testCancel(FreshOrder(OrderId("🔶"), twoJobsWorkflow.id.path), Some(twoJobsWorkflow.id /: Position(1)), SIGTERM,
+      mode => Vector(
+        OrderAdded(twoJobsWorkflow.id, None),
+        OrderAttachable(agentRefPath),
+        OrderTransferredToAgent(agentRefPath),
+        OrderStarted,
+        OrderProcessingStarted,
+        OrderCancellationMarked(mode),
+        OrderProcessed(Outcome.succeeded),
+        OrderMoved(Position(1)),
+        OrderDetachable,
+        OrderTransferredToMaster,
+        OrderCancelled))
+  }
+
+  "Cancel an order and the currently running job" in {
+    testCancelFirstJob(FreshOrder(OrderId("🔷"), singleJobWorkflow.id.path), None, SIGTERM)
+  }
+
+  "Cancel an order and a certain running job with SIGKILL" in {
+    testCancelFirstJob(FreshOrder(OrderId("🔵"), singleJobWorkflow.id.path), Some(singleJobWorkflow.id /: Position(0)), SIGKILL)
+  }
+
+  private def testCancelFirstJob(order: FreshOrder, workflowPosition: Option[WorkflowPosition], signal: ProcessSignal): Unit =
+    testCancel(order, workflowPosition, signal,
+      mode => Vector(
+        OrderAdded(order.workflowPath ~ versionId, None),
+        OrderAttachable(agentRefPath),
+        OrderTransferredToAgent(agentRefPath),
+        OrderStarted,
+        OrderProcessingStarted,
+        OrderCancellationMarked(mode),
+        OrderProcessed(Outcome.Cancelled(Outcome.Failed(if (isWindows) ReturnCode(0) else ReturnCode(signal)))),
+        OrderProcessingCancelled,
+        OrderDetachable,
+        OrderTransferredToMaster,
+        OrderCancelled))
+
+  "Cancel a forked order and kill job" in {
+    val order = FreshOrder(OrderId("FORK"), forkWorkflow.id.path)
+    master.addOrderBlocking(order)
+    master.eventWatch.await[OrderProcessingStarted](_.key == order.id / "🥕")
+    val mode = CancelMode.FreshOrStarted(Some(CancelMode.Kill(SIGTERM)))
+    master.executeCommandAsSystemUser(CancelOrder(order.id, mode))
+      .await(99.seconds).orThrow
+    master.eventWatch.await[OrderCancelled](_.key == order.id)
+    assert(master.eventWatch
+      .keyedEvents[OrderEvent]
+      .filter(_.key.string startsWith "FORK")
+      .filterNot(_.event.isInstanceOf[OrderStdWritten]) ==
+      Vector(
+        OrderId("FORK") <-: OrderAdded(forkWorkflow.id, order.scheduledFor),
+        OrderId("FORK") <-: OrderStarted,
+        OrderId("FORK") <-: OrderForked(Seq(OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("FORK/🥕")))),
+        OrderId("FORK/🥕") <-: OrderAttachable(agentRefPath),
+        OrderId("FORK/🥕") <-: OrderTransferredToAgent(agentRefPath),
+        OrderId("FORK/🥕") <-: OrderProcessingStarted,
+        OrderId("FORK") <-: OrderCancellationMarked(mode),
+        OrderId("FORK/🥕") <-: OrderProcessed(Outcome.succeeded),
+        OrderId("FORK/🥕") <-: OrderMoved(Position(0) / "fork+🥕" % 1),
+        OrderId("FORK/🥕") <-: OrderDetachable,
+        OrderId("FORK/🥕") <-: OrderTransferredToMaster,
+        OrderId("FORK") <-: OrderJoined(Outcome.succeeded),
+        OrderId("FORK") <-: OrderMoved(Position(1)),
+        OrderId("FORK") <-: OrderCancelled))
+  }
+
+  "Cancel with sigkillAfter" in {
+    pending  // TODO
+  }
+
+  private def testCancel(order: FreshOrder, workflowPosition: Option[WorkflowPosition], signal: ProcessSignal,
+    expectedEvents: CancelMode => Seq[OrderEvent])
+  : Unit = {
+    master.addOrderBlocking(order)
+    master.eventWatch.await[OrderProcessingStarted](_.key == order.id)
+    val mode = CancelMode.FreshOrStarted(Some(CancelMode.Kill(signal, workflowPosition)))
+    master.executeCommandAsSystemUser(CancelOrder(order.id, mode))
+      .await(99.seconds).orThrow
+    master.eventWatch.await[OrderCancelled](_.key == order.id)
+    assert(master.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) ==
+      expectedEvents(mode))
   }
 
   "Cancel unknown order" in {
@@ -108,7 +201,7 @@ final class CancelOrderTest extends AnyFreeSpec with MasterAgentForScalaTest
   }
 
   "Cancel multiple orders with Batch" in {
-    val orders = for (i <- 1 to 3) yield FreshOrder(OrderId(i.toString), SingleJobWorkflow.id.path, scheduledFor = Some(Timestamp.now + 99.seconds))
+    val orders = for (i <- 1 to 3) yield FreshOrder(OrderId(i.toString), singleJobWorkflow.id.path, scheduledFor = Some(Timestamp.now + 99.seconds))
     for (o <- orders) master.addOrderBlocking(o)
     for (o <- orders) master.eventWatch.await[OrderTransferredToAgent](_.key == o.id)
     val response = master.executeCommandAsSystemUser(Batch(for (o <- orders) yield CancelOrder(o.id, CancelMode.NotStarted))).await(99.seconds).orThrow
@@ -117,14 +210,25 @@ final class CancelOrderTest extends AnyFreeSpec with MasterAgentForScalaTest
   }
 }
 
-object CancelOrderTest {
-  private val TestExecutablePath = ExecutablePath("/executable.cmd")
-  private val TestAgentRefPath = AgentRefPath("/AGENT")
-  private val SingleJobWorkflow = Workflow.of(
-    WorkflowPath("/SINGLE") ~ "INITIAL",
-    Execute(WorkflowJob(TestAgentRefPath, TestExecutablePath)))
-  private val TwoJobsWorkflow = Workflow.of(
-    WorkflowPath("/TWO") ~ "INITIAL",
-    Execute(WorkflowJob(TestAgentRefPath, TestExecutablePath)),
-    Execute(WorkflowJob(TestAgentRefPath, TestExecutablePath)))
+object CancelOrderTest
+{
+  private val executablePath = ExecutablePath("/executable.cmd")
+  private val agentRefPath = AgentRefPath("/AGENT")
+  private val versionId = VersionId("INITIAL")
+
+  private val singleJobWorkflow = Workflow.of(
+    WorkflowPath("/SINGLE") ~ versionId,
+    Execute(WorkflowJob(agentRefPath, executablePath)))
+
+  private val twoJobsWorkflow = Workflow.of(
+    WorkflowPath("/TWO") ~ versionId,
+    Execute(WorkflowJob(agentRefPath, executablePath)),
+    Execute(WorkflowJob(agentRefPath, executablePath)))
+
+  private val forkWorkflow = Workflow.of(
+    WorkflowPath("/FORK") ~ versionId,
+    Fork.of(
+      "🥕" -> Workflow.of(
+        Execute(WorkflowJob(agentRefPath, executablePath)))),
+    Execute(WorkflowJob(agentRefPath, executablePath)))
 }

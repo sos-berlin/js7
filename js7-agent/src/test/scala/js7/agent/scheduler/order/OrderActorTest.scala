@@ -74,8 +74,8 @@ final class OrderActorTest extends AnyFreeSpec with HasCloser with BeforeAndAfte
     executablePath.toFile(directoryProvider.agentDirectory / "config" / "executables").writeExecutable(TestScript)
     val (testActor, result) = runTestActor(DummyJobKey, WorkflowJob(TestAgentRefPath, executablePath, Map("VAR1" -> "FROM-JOB")))
     assert(result.events == ExpectedOrderEvents)
-    assert(result.stdoutStderr(Stdout).toString == s"Hej!${Nl}var1=FROM-JOB$Nl")
-    assert(result.stdoutStderr(Stderr).toString == s"THIS IS STDERR$Nl")
+    assert(result.stdoutStderr(Stdout) == s"Hej!${Nl}var1=FROM-JOB$Nl")
+    assert(result.stdoutStderr(Stderr) == s"THIS IS STDERR$Nl")
     actorSystem.stop(testActor)
     repeatUntilNoException(9.s, 10.ms) {  // Windows
       Files.delete(directoryProvider.dataDirectory / "state/agent--0.journal")
@@ -170,6 +170,7 @@ private object OrderActorTest {
       JobActor.props(JobActor.Conf(jobKey, workflowJob, taskRunnerFactory,
         temporaryDirectory = dir / "data" / "tmp",
         executablesDirectory = (dir / "config" / "executables").toRealPath(),
+        sigkillProcessesAfter = 5.s,
         scriptInjectionAllowed = false)))
     private val orderActor = watch(actorOf(
       OrderActor.props(TestOrder.id, journalActor = journalActor, OrderActor.Conf(config, JournalConf.fromConfig(config))),

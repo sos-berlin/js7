@@ -131,7 +131,7 @@ with Stash {
           if (!terminatingOrders) {
             terminatingOrders = true
             for (o <- orderRegister.values if !o.isDetaching) {
-              o.actor ! OrderActor.Input.Terminate(terminate.sigtermProcesses, terminate.sigkillProcessesAfter)
+              o.actor ! OrderActor.Input.Terminate(terminate.processSignal)
             }
           }
           if (orderRegister.isEmpty) {
@@ -393,7 +393,8 @@ with Stash {
       if (job.agentRefPath == ownAgentRefPath) {
         val jobActor = watch(actorOf(
           JobActor.props(JobActor.Conf(jobKey, job, newTaskRunner, temporaryDirectory = conf.temporaryDirectory,
-            executablesDirectory = conf.executableDirectory, scriptInjectionAllowed = conf.scriptInjectionAllowed))
+            executablesDirectory = conf.executableDirectory, sigkillProcessesAfter = job.sigkillAfter getOrElse conf.sigkillProcessesAfter,
+            scriptInjectionAllowed = conf.scriptInjectionAllowed))
           /*TODO name actor?*/))
         jobRegister.insert(jobKey, jobActor)
       }
