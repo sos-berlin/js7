@@ -36,5 +36,9 @@ package object problems
     override def arguments = Map("passiveId" -> passiveId.toString)
   }
 
+  object ClusterNodeIsNotBackupProblem extends Problem.ArgumentlessCoded
+
+  object PrimaryMayNotBecomeBackupProblem extends Problem.ArgumentlessCoded
+
   final case object ClusterNodesAlreadyAppointed extends Problem.ArgumentlessCoded
 }

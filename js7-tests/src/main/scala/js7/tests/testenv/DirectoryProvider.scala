@@ -120,8 +120,13 @@ extends HasCloser
       runMaster()(master =>
         body(master, agents)))
 
-  def runMaster[A](httpPort: Option[Int] = Some(findFreeTcpPort()), dontWaitUntilReady: Boolean = false)(body: RunningMaster => A): A = {
-    val runningMaster = startMaster(httpPort = httpPort) await 99.s
+  def runMaster[A](
+    httpPort: Option[Int] = Some(findFreeTcpPort()),
+    dontWaitUntilReady: Boolean = false,
+    config: Config = ConfigFactory.empty)
+    (body: RunningMaster => A)
+  : A = {
+    val runningMaster = startMaster(httpPort = httpPort, config = config) await 99.s
     try {
       if (!dontWaitUntilReady) {
         runningMaster.waitUntilReady()

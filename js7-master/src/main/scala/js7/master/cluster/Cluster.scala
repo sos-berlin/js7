@@ -34,7 +34,7 @@ import js7.core.event.journal.files.JournalFiles.JournalMetaOps
 import js7.core.event.journal.recover.{JournaledStateRecoverer, Recovered}
 import js7.core.event.journal.{JournalActor, JournalConf}
 import js7.core.event.state.JournaledStatePersistence
-import js7.core.problems.{ClusterNodesAlreadyAppointed, MissingPassiveClusterNodeHeartbeatProblem}
+import js7.core.problems.{ClusterNodeIsNotBackupProblem, ClusterNodesAlreadyAppointed, MissingPassiveClusterNodeHeartbeatProblem, PrimaryMayNotBecomeBackupProblem}
 import js7.core.startup.Halt.haltJava
 import js7.data.cluster.ClusterCommand.{ClusterInhibitActivation, ClusterStartBackupNode}
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
@@ -143,7 +143,9 @@ final class Cluster(
           Task.pure(None) ->
             (activationInhibitor.startActive >>
               Task.pure(Right(recovered.clusterState -> ClusterFollowUp.BecomeActive(recovered))))
-        } else {
+        } else if (recovered.eventId != EventId.BeforeFirst)
+          Task.pure(None) -> Task.pure(Left(PrimaryMayNotBecomeBackupProblem))
+        else {
           logger.info(s"Backup cluster node '$ownId', awaiting appointment from a primary node")
           val promise = Promise[ClusterStartBackupNode]()
           expectingStartBackupCommand := promise
@@ -314,7 +316,11 @@ final class Cluster(
       case command: ClusterCommand.ClusterStartBackupNode =>
         Task {
           expectingStartBackupCommand.toOption match {
-            case None => Left(Problem("Cluster node is not ready to accept a backup node configuration"))
+            case None =>
+              if (!clusterConf.isBackup)
+                Left(ClusterNodeIsNotBackupProblem)
+              else
+                Left(Problem("Cluster node is not ready to accept a backup node configuration"))
             case Some(promise) =>
               if (command.passiveId != ownId)
                 Left(Problem.pure(s"$command sent to wrong node '$ownId'"))

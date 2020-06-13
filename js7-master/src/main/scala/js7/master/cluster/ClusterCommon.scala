@@ -65,6 +65,7 @@ private[cluster] final class ClusterCommon(
       .onErrorRestartLoop(()) { (throwable, _, retry) =>
         logger.warn(s"'$name' command failed with ${throwable.toStringWithCauses}")
         logger.debug(throwable.toString, throwable)
+        // TODO ClusterFailed event?
         retry(()).delayExecution(1.s/*TODO*/)        // TODO Handle heartbeat timeout!
       }
   }
