@@ -70,7 +70,7 @@ trait AkkaWebServer extends AutoCloseable
     bind(http, akkaHttp.defaultServerHttpContext)
 
   private def bindHttps(https: WebServerBinding.Https): Task[Http.ServerBinding] = {
-    logger.info(s"Using HTTPS certificate in ${https.keyStoreRef.url} for ${https.toWebServerPort}")
+    logger.info(s"Using HTTPS certificate in ${https.keyStoreRef.url} for port ${https.toWebServerPort}")
     bind(
       https,
       ConnectionContext.https(
