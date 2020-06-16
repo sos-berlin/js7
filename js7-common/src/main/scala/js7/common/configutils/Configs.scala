@@ -13,6 +13,7 @@ import js7.common.scalautil.Logger
 import js7.common.utils.JavaResource
 import scala.collection.immutable.VectorBuilder
 import scala.jdk.CollectionConverters._
+
 /**
   * @author Joacim Zschimmer
   */
@@ -70,7 +71,7 @@ object Configs
         "(secret)"
       else
         value.render(concise.setJson(false))
-      s"$key=$v"
+    s"$key=$v"
   }
 
   implicit final class ConvertibleConfig(private val underlying: Config) extends ConvertiblePartialFunction[String, String]
