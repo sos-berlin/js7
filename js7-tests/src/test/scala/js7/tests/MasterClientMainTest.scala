@@ -23,7 +23,7 @@ final class MasterClientMainTest extends AnyFreeSpec with BeforeAndAfterAll with
   override protected lazy val masterHttpsPort = Some(httpsPort)
 
   override def beforeAll() = {
-    directoryProvider.master.provideHttpsCertificate()
+    directoryProvider.master.provideHttpsCertificates()
     assert(master.localUri.string startsWith "https://")
   }
 

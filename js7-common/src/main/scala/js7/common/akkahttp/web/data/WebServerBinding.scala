@@ -46,8 +46,10 @@ object WebServerBinding
     def scheme = Https
     def toWebServerPort = WebServerPort.Https(address, mutual)
 
-    override def toString = s"https://${address.getAddress.getHostAddress}:${address.getPort}, $keyStoreRef" +
-      (if (mutual) " (client certificate required)" else "")
+    override def toString = s"https://${address.getAddress.getHostAddress}:${address.getPort} ($keyStoreRef" +
+      (mutual ?: ", client certificate required") +
+      ", " + (trustStoreRefs.map(_.toString).mkString(", ")) +
+      ")"
   }
   object Https extends Scheme {
     override def toString = "https"

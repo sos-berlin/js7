@@ -3,6 +3,7 @@ package js7.common.http
 import io.circe.Json
 import js7.base.auth.SessionToken
 import js7.base.problem.Checked.Ops
+import js7.base.utils.ScalazStyle._
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.web.{HttpClient, Uri}
 import js7.common.http.CirceToYaml._
@@ -86,9 +87,11 @@ trait TextApi
            true
          case _ if t.getMessage == "Connection was shutdown." =>  // akka.http.impl.engine.client.pool.SlotState$BusyState$$anon$1
            true
+         case _ =>
+           false
        }
 
     def unapply(t: Throwable): Option[Throwable] =
-      if (apply(t)) Some(t) else None
+      apply(t) ? t
   }
 }

@@ -5,6 +5,7 @@ import java.security.cert.{Certificate, X509Certificate}
 import java.security.{KeyStore, SecureRandom}
 import javax.net.ssl.{KeyManager, KeyManagerFactory, SSLContext, TrustManager, TrustManagerFactory}
 import js7.base.utils.AutoClosing._
+import js7.base.utils.Strings._
 import js7.common.scalautil.Logger
 import scala.jdk.CollectionConverters._
 
@@ -40,7 +41,7 @@ object Https
     val keyManagers = keyStoreRef match {
       case None => Array.empty[KeyManager]
       case Some(ref) =>
-        val keyStore = loadKeyStore(ref)
+        val keyStore = loadKeyStore(ref, "private key")
         val factory = KeyManagerFactory.getInstance("SunX509")
         factory.init(keyStore, ref.keyPassword.string.toCharArray)
         factory.getKeyManagers
@@ -86,21 +87,22 @@ object Https
     if (aliases.isEmpty)
       "Key store does not contain any certificate"
     else
-      aliases.map(alias =>
-        s"Alias $alias: " +
-        certificateToString(keyStore.getCertificate(alias)) +
-          (if (keyStore.isKeyEntry(alias)) " (private key)" else ""))
-      .mkString(", ")
+      aliases
+        .flatMap(alias => Option(keyStore.getCertificate(alias))
+          .map(cert => s"Alias $alias: " +
+            certificateToString(cert) +
+              (keyStore.isKeyEntry(alias) ?: " (private)") +
+              (keyStore.isCertificateEntry(alias) ?: " (trusted)")))
+        .mkString(", ")
   }
 
   private def certificateToString(cert: Certificate): String =
     cert match {
       case cert: X509Certificate =>
-        "X509 certificate " +
-          '"' + cert.getSubjectX500Principal.toString + '"'
+        s"""X.509 "${cert.getSubjectX500Principal}" #${cert.getSerialNumber} ${Timestamp.ofEpochMilli(cert.getNotBefore.getTime)}"""
           //", valid from " + Timestamp.ofEpochMilli(cert.getNotBefore.getTime) +
           //" until " + Timestamp.ofEpochMilli(cert.getNotAfter.getTime)
       case o =>
-        o.getClass.getName
+        o.getType
     }
 }

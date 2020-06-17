@@ -24,11 +24,19 @@ extends StoreRef
 
 object KeyStoreRef
 {
+  def apply(
+    file: Path,
+    /** Password for file */
+    storePassword: SecretString,
+    /** PKCS#12 key password */
+    keyPassword: SecretString)
+  = new KeyStoreRef(file.toUri.toURL, storePassword, keyPassword)
+
   def fromConfig(config: Config, default: Path): Checked[KeyStoreRef] =
     config.checkedPath("js7.https.keystore.store-password")(path =>
       Right(
         KeyStoreRef(
-          url = config.as[Path]("js7.https.keystore.file", default).toAbsolutePath.toUri.toURL,
+          config.as[Path]("js7.https.keystore.file", default).toAbsolutePath,
           storePassword = config.as[SecretString](path),
           keyPassword = config.as[SecretString]("js7.https.keystore.key-password"))))
 }

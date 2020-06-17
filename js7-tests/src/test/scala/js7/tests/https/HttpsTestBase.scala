@@ -38,11 +38,11 @@ private[https] trait HttpsTestBase extends AnyFreeSpec with BeforeAndAfterAll wi
 
   override protected final lazy val masterHttpPort = None
   override protected final lazy val masterHttpsPort = Some(findFreeTcpPort())
-  override protected final def masterClientCertificate = provideMasterClientCertificate ? ClientTrustStoreResource
+  override protected final def masterClientCertificate = provideMasterClientCertificate ? ExportedClientTrustStoreResource
   protected val config = ConfigFactory.empty
 
   private lazy val keyStore = createTempFile(getClass.getSimpleName + "-keystore-", ".p12")
-  private lazy val trustStore = createTempFile(getClass.getSimpleName + "-truststore-", ".p12")
+  private lazy val masterTrustStore = createTempFile(getClass.getSimpleName + "-truststore-", ".p12")
 
   protected lazy val masterApi = new AkkaHttpMasterApi(
     master.localUri,
@@ -58,22 +58,23 @@ private[https] trait HttpsTestBase extends AnyFreeSpec with BeforeAndAfterAll wi
   protected val fileBased = TestWorkflow :: Nil
 
   override def beforeAll() = {
+    keyStore := ClientKeyStoreResource.contentBytes
+    masterTrustStore := DirectoryProvider.ExportedMasterTrustStoreResource.contentBytes
+
     // Reference to agents implicitly starts them (before master)
     provideAgentConfiguration(directoryProvider.agents(0))
     assert(agents.forall(_.localUri.string startsWith "https://"))
 
-    directoryProvider.master.provideHttpsCertificate()
+    directoryProvider.master.provideHttpsCertificates()
     provideMasterConfiguration(directoryProvider.master)
     assert(master.localUri.string startsWith "https://")
-
-    keyStore := ClientKeyStoreResource.contentBytes
-    trustStore := DirectoryProvider.MasterTrustStoreResource.contentBytes
 
     super.beforeAll()
   }
 
   override def afterAll() = {
     close()
+    delete(masterTrustStore)
     delete(keyStore)
     super.afterAll()
   }
@@ -84,7 +85,7 @@ private[https] object HttpsTestBase
   // Following resources have been generated with the command line:
   // common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=client -config-directory=tests/src/test/resources/js7/tests/client
   private val ClientKeyStoreResource = JavaResource("js7/tests/client/private/https-keystore.p12")
-  private val ClientTrustStoreResource = JavaResource("js7/tests/client/export/https-truststore.p12")
+  private val ExportedClientTrustStoreResource = JavaResource("js7/tests/client/export/https-truststore.p12")
 
   private val TestWorkflow = WorkflowParser.parse(WorkflowPath("/TEST-WORKFLOW"), s"""
     define workflow {
@@ -100,11 +101,10 @@ private[https] object HttpsTestBase
     agent.writeExecutable(ExecutablePath(s"/TEST$sh"), operatingSystem.sleepingShellScript(0.seconds))
   }
 
-  private def provideMasterConfiguration(master: DirectoryProvider.MasterTree): Unit = {
-    (master.configDir / "private/private.conf").append("""
+  private def provideMasterConfiguration(master: DirectoryProvider.MasterTree): Unit =
+    master.configDir / "private/private.conf" ++= """
       |js7.auth.users {
       |  TEST-USER: "plain:TEST-PASSWORD"
       |}
-      |""".stripMargin)
-  }
+      |""".stripMargin
 }

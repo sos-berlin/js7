@@ -22,10 +22,18 @@ extends StoreRef
 
 object TrustStoreRef
 {
+  private val configKey = "js7.https.truststores"
+
+  def apply(file: Path, password: SecretString): TrustStoreRef =
+    new TrustStoreRef(file.toAbsolutePath.toUri.toURL, password)
+
   def fromConfig(config: Config, default: Path): Checked[TrustStoreRef] =
     config.checkedPath("js7.https.truststore.store-password")(path =>
       Right(
         TrustStoreRef(
           url = config.as[Path]("js7.https.truststore.file", default).toAbsolutePath.toUri.toURL,
           storePassword = config.as[SecretString](path))))
+
+  def fromKeyStore(keyStoreRef: KeyStoreRef): TrustStoreRef =
+    new TrustStoreRef(keyStoreRef.url, keyStoreRef.storePassword)
 }
