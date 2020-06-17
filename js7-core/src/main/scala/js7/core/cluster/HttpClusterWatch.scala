@@ -9,6 +9,7 @@ import js7.base.session.HttpSessionApi
 import js7.base.utils.ScalaUtils.RichThrowable
 import js7.base.web.HttpClient.HttpException
 import js7.base.web.Uri
+import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import js7.common.http.AkkaHttpClient
 import js7.common.scalautil.Logger
 import js7.core.cluster.ClusterWatch.isClusterWatchProblem
@@ -19,6 +20,8 @@ import monix.eval.Task
 final class HttpClusterWatch(
   protected val baseUri: Uri,
   protected val userAndPassword: Option[UserAndPassword],
+  protected val keyStoreRef: Option[KeyStoreRef] = None,
+  protected val trustStoreRefs: Seq[TrustStoreRef] = Nil,
   protected val actorSystem: ActorSystem)
 extends ClusterWatchApi with AkkaHttpClient with HttpSessionApi
 {
@@ -27,9 +30,6 @@ extends ClusterWatchApi with AkkaHttpClient with HttpSessionApi
   protected def uriPrefixPath = "/agent"
 
   protected val sessionUri = Uri(s"$baseUri/agent/api/session")
-
-  protected def trustStoreRef = None
-  protected def keyStoreRef = None
 
   protected def name = "ClusterWatch"
 

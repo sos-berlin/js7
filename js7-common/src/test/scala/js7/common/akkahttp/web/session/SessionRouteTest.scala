@@ -296,7 +296,7 @@ extends AnyFreeSpec with SessionRouteTester
       def uriPrefixPath = ""
       override val standardHeaders = headers ::: super.standardHeaders
       def keyStoreRef = None
-      def trustStoreRef = None
+      def trustStoreRefs = Nil
     }
     autoClosing(api) {
       body

@@ -18,7 +18,7 @@ final class SimpleAgentClient(
   val baseUri: Uri,
   protected val userAndPassword: Option[UserAndPassword],
   protected val keyStoreRef: Option[KeyStoreRef] = None,
-  protected val trustStoreRef: Option[TrustStoreRef] = None)
+  protected val trustStoreRefs: Seq[TrustStoreRef] = Nil)
 extends HasCloser with AgentClient
 {
   protected val name = "SimpleAgentClient"

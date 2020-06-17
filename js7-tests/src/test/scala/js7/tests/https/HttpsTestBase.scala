@@ -49,8 +49,10 @@ private[https] trait HttpsTestBase extends AnyFreeSpec with BeforeAndAfterAll wi
     Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD")),
     actorSystem,
     config,
-    keyStoreRef = Some(KeyStoreRef(keyStore.toUri.toURL, storePassword = SecretString("jobscheduler"), keyPassword = SecretString("jobscheduler"))),
-    trustStoreRef = Some(TrustStoreRef(trustStore.toUri.toURL, storePassword = SecretString("jobscheduler"))),
+    keyStoreRef = Some(KeyStoreRef(keyStore,
+      storePassword = SecretString("jobscheduler"),
+      keyPassword = SecretString("jobscheduler"))),
+    trustStoreRefs = TrustStoreRef(masterTrustStore, SecretString("jobscheduler")) :: Nil,
   ).closeWithCloser
 
   override protected def agentHttps = true

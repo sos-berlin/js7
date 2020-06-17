@@ -50,7 +50,7 @@ final class HttpClusterWatchTest extends AnyFreeSpec with BeforeAndAfterAll with
   }
 
   "HttpClusterWatch" in {
-    val clusterWatch = new HttpClusterWatch(server.localUri, userAndPassword = None, actorSystem)
+    val clusterWatch = new HttpClusterWatch(server.localUri, userAndPassword = None, actorSystem = actorSystem)
     val idToUri = Map(ClusterNodeId("A") -> Uri("http://A"), ClusterNodeId("B") -> Uri("http://B"))
     val primaryUri = ClusterNodeId("A")
     val expectedClusterState = ClusterState.NodesAppointed(idToUri, primaryUri)

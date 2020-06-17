@@ -54,7 +54,7 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with H
       protected val name = "AkkaHttpClientTest"
       protected def uriPrefixPath = "/PREFIX"
       protected def keyStoreRef = None
-      protected def trustStoreRef = None
+      protected def trustStoreRefs = Nil
     }.closeWithCloser
 
     "toCheckedAgentUri, checkAgentUri and apply, failing" - {
@@ -119,7 +119,7 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with H
       protected val name = "AkkaHttpClientTest"
       protected def uriPrefixPath = ""
       protected def keyStoreRef = None
-      protected def trustStoreRef = None
+      protected def trustStoreRefs = Nil
     }.closeWithCloser
 
     lazy val uri = webServer.localUri
@@ -217,7 +217,7 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with H
       protected val name = "AkkaHttpClientTest"
       protected def uriPrefixPath = "/PREFIX"
       protected def keyStoreRef = None
-      protected def trustStoreRef = None
+      protected def trustStoreRefs = Nil
     }
     var duration: FiniteDuration = null
 

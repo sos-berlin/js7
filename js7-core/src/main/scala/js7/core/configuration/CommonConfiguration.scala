@@ -14,6 +14,7 @@ import js7.common.commandline.CommandLineArguments
 import js7.common.internet.IP.StringToServerInetSocketAddress
 import js7.common.scalautil.Logger
 import js7.core.configuration.CommonConfiguration._
+
 /**
   * @author Joacim Zschimmer
   */
@@ -31,11 +32,8 @@ trait CommonConfiguration extends WebServerBinding.HasLocalUris
   final lazy val keyStoreRefOption: Option[KeyStoreRef] =
     keyStoreRef onProblem (p => logger.debug(s"No keystore: $p"))
 
-  final lazy val trustStoreRef: Checked[TrustStoreRef] =
-    TrustStoreRef.fromConfig(config, default = configDirectory resolve "private/https-truststore.p12")
-
-  final lazy val trustStoreRefOption: Option[TrustStoreRef] =
-    trustStoreRef onProblem (p => logger.debug(s"No truststore: $p"))
+  final lazy val trustStoreRefs: Seq[TrustStoreRef] =
+    TrustStoreRef.fromConfig(config)
 
   final def http: Seq[WebServerBinding.Http] =
     webServerBindings collect { case o: WebServerBinding.Http => o }
@@ -51,7 +49,7 @@ trait CommonConfiguration extends WebServerBinding.HasLocalUris
       case WebServerPort.Https(port, mutual) =>
         WebServerBinding.Https(port,
           keyStoreRef.mapProblem(Problem("HTTPS requires a key store:") |+| _).orThrow,
-          trustStoreRefOption,
+          trustStoreRefs,
           mutual = mutual)
     }
 }

@@ -10,6 +10,7 @@ import js7.common.commandline.CommandLineArguments
 import js7.common.scalautil.FileUtils.syntax._
 import js7.core.configuration.CommonConfigurationTest._
 import org.scalatest.freespec.AnyFreeSpec
+
 /**
   * @author Joacim Zschimmer
   */
@@ -45,20 +46,28 @@ final class CommonConfigurationTest extends AnyFreeSpec
         url = (config / "private/https-keystore.p12").toUri.toURL,
         storePassword = SecretString("KEYSTORE-STORE-PASSWORD"),
         keyPassword = SecretString("KEYSTORE-KEY-PASSWORD")),
-      Some(TrustStoreRef(
-        url = (config / "private/https-truststore.p12").toUri.toURL,
-        storePassword = SecretString("TRUSTSTORE-PASSWORD"))),
-        mutual = false)))
+      List(
+        TrustStoreRef(
+          url = (config / "private/https-truststore.p12").toUri.toURL,
+          storePassword = SecretString("TRUSTSTORE-PASSWORD")),
+        TrustStoreRef(
+          url = (config / "private/second-https-truststore.p12").toUri.toURL,
+          storePassword = SecretString("SECOND-TRUSTSTORE-PASSWORD"))),
+      mutual = false)))
     assert(conf("-https-port=11.22.33.44:1234").webServerBindings == List(WebServerBinding.Https(
       new InetSocketAddress("11.22.33.44", 1234),
       KeyStoreRef(
         url = (config / "private/https-keystore.p12").toUri.toURL,
         storePassword = SecretString("KEYSTORE-STORE-PASSWORD"),
         keyPassword = SecretString("KEYSTORE-KEY-PASSWORD")),
-      Some(TrustStoreRef(
-        url = (config / "private/https-truststore.p12").toUri.toURL,
-        storePassword = SecretString("TRUSTSTORE-PASSWORD"))),
-        mutual = false)))
+      List(
+        TrustStoreRef(
+          url = (config / "private/https-truststore.p12").toUri.toURL,
+          storePassword = SecretString("TRUSTSTORE-PASSWORD")),
+        TrustStoreRef(
+          url = (config / "private/second-https-truststore.p12").toUri.toURL,
+          storePassword = SecretString("SECOND-TRUSTSTORE-PASSWORD"))),
+      mutual = false)))
   }
 
   "-https-port=n,mutual" in {
@@ -69,20 +78,28 @@ final class CommonConfigurationTest extends AnyFreeSpec
         url = (config / "private/https-keystore.p12").toUri.toURL,
         storePassword = SecretString("KEYSTORE-STORE-PASSWORD"),
         keyPassword = SecretString("KEYSTORE-KEY-PASSWORD")),
-      Some(TrustStoreRef(
-        url = (config / "private/https-truststore.p12").toUri.toURL,
-        storePassword = SecretString("TRUSTSTORE-PASSWORD"))),
-        mutual = true)))
+      List(
+        TrustStoreRef(
+          url = (config / "private/https-truststore.p12").toUri.toURL,
+          storePassword = SecretString("TRUSTSTORE-PASSWORD")),
+        TrustStoreRef(
+          url = (config / "private/second-https-truststore.p12").toUri.toURL,
+          storePassword = SecretString("SECOND-TRUSTSTORE-PASSWORD"))),
+      mutual = true)))
     assert(conf("-https-port=11.22.33.44:1234,mutual").webServerBindings == List(WebServerBinding.Https(
       new InetSocketAddress("11.22.33.44", 1234),
       KeyStoreRef(
         url = (config / "private/https-keystore.p12").toUri.toURL,
         storePassword = SecretString("KEYSTORE-STORE-PASSWORD"),
         keyPassword = SecretString("KEYSTORE-KEY-PASSWORD")),
-      Some(TrustStoreRef(
-        url = (config / "private/https-truststore.p12").toUri.toURL,
-        storePassword = SecretString("TRUSTSTORE-PASSWORD"))),
-        mutual = true)))
+      List(
+        TrustStoreRef(
+          url = (config / "private/https-truststore.p12").toUri.toURL,
+          storePassword = SecretString("TRUSTSTORE-PASSWORD")),
+        TrustStoreRef(
+          url = (config / "private/second-https-truststore.p12").toUri.toURL,
+          storePassword = SecretString("SECOND-TRUSTSTORE-PASSWORD"))),
+      mutual = true)))
   }
 }
 
@@ -90,7 +107,7 @@ private object CommonConfigurationTest {
   private case class TestConf(configDirectory: Path, dataDirectory: Path, webServerPorts: Seq[WebServerPort], config: Config)
   extends CommonConfiguration
 
-  private def conf(args: String*) = {
+  private def conf(args: String*): TestConf = {
     val common = CommonConfiguration.Common.fromCommandLineArguments(CommandLineArguments(
       Vector("-config-directory=CONFIG", "-data-directory=DATA") ++ args))
     TestConf(
@@ -98,13 +115,19 @@ private object CommonConfigurationTest {
       dataDirectory = common.dataDirectory,
       webServerPorts = common.webServerPorts,
       ConfigFactory.parseString(
-        """js7.https.keystore {
-          |  store-password = "KEYSTORE-STORE-PASSWORD"
-          |  key-password = "KEYSTORE-KEY-PASSWORD"
-          |}
-          |js7.https.truststore {
-          |  store-password = "TRUSTSTORE-PASSWORD"
-          |}
-          |""".stripMargin))
+        s"""js7.https.keystore {
+           |  store-password = "KEYSTORE-STORE-PASSWORD"
+           |  key-password = "KEYSTORE-KEY-PASSWORD"
+           |}
+           |js7.https.truststores = [
+           |  {
+           |    file = "${common.configDirectory}/private/https-truststore.p12"
+           |    store-password = "TRUSTSTORE-PASSWORD"
+           |  }, {
+           |    file = "${common.configDirectory}/private/second-https-truststore.p12"
+           |    store-password = "SECOND-TRUSTSTORE-PASSWORD"
+           |  }
+           |]
+           |""".stripMargin))
   }
 }

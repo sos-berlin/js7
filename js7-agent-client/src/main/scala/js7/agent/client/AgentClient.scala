@@ -30,7 +30,7 @@ trait AgentClient extends AgentApi with HttpSessionApi with AkkaHttpClient
 
   def baseUri: Uri
   protected def keyStoreRef: Option[KeyStoreRef]
-  protected def trustStoreRef: Option[TrustStoreRef]
+  protected def trustStoreRefs: Seq[TrustStoreRef]
 
   protected lazy val sessionUri = agentUris.session
   protected lazy val agentUris = AgentUris(baseUri)
@@ -84,19 +84,19 @@ trait AgentClient extends AgentApi with HttpSessionApi with AkkaHttpClient
 object AgentClient
 {
   def apply(agentUri: Uri, userAndPassword: Option[UserAndPassword],
-    keyStoreRef: => Option[KeyStoreRef] = None, trustStoreRef: => Option[TrustStoreRef] = None)
+    keyStoreRef: => Option[KeyStoreRef] = None, trustStoreRefs: => Seq[TrustStoreRef] = Nil)
     (implicit actorSystem: ActorSystem)
   : AgentClient = {
     val a = actorSystem
     val up = userAndPassword
     def k = keyStoreRef    // lazy, to avoid reference when not needed (needed only for http)
-    def t = trustStoreRef  // lazy, to avoid reference when not needed (needed only for http)
+    def t = trustStoreRefs  // lazy, to avoid reference when not needed (needed only for http)
     new AgentClient {
       protected val actorSystem = a
       val baseUri = agentUri
       protected val name = "Agent"
       protected def keyStoreRef = k
-      protected def trustStoreRef = t
+      protected def trustStoreRefs = t
       protected def userAndPassword = up
     }
   }

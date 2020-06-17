@@ -103,7 +103,7 @@ final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll wit
     protected val name = "GenericEventRouteTest"
     protected val uriPrefixPath = ""
     protected def keyStoreRef = None
-    protected def trustStoreRef = None
+    protected def trustStoreRefs = Nil
   }
 
   private implicit val noSessionToken: Task[Option[SessionToken]] = Task.pure(None)

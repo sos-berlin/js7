@@ -61,7 +61,7 @@ trait AgentProxyRoute extends MasterRouteProvider
       agentUri,
       userAndPassword = None,
       masterConfiguration.keyStoreRefOption,
-      masterConfiguration.trustStoreRefOption)
+      masterConfiguration.trustStoreRefs)
     implicit val sessionToken: Task[Option[SessionToken]] = Task.pure(None)
     agentClient
       .sendReceive(HttpRequest(GET,  forwardUri, headers = headers filter { h => isForwardableHeaderClass(h.getClass) }))

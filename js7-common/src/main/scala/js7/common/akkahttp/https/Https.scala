@@ -1,9 +1,10 @@
 package js7.common.akkahttp.https
 
 import java.net.URL
+import java.security.KeyStore
 import java.security.cert.{Certificate, X509Certificate}
-import java.security.{KeyStore, SecureRandom}
-import javax.net.ssl.{KeyManager, KeyManagerFactory, SSLContext, TrustManager, TrustManagerFactory}
+import javax.net.ssl.{KeyManager, KeyManagerFactory, SSLContext, TrustManagerFactory, X509TrustManager}
+import js7.base.time.Timestamp
 import js7.base.utils.AutoClosing._
 import js7.base.utils.Strings._
 import js7.common.scalautil.Logger
@@ -37,7 +38,7 @@ object Https
   //  r
   //}
 
-  def loadSSLContext(keyStoreRef: Option[KeyStoreRef] = None, trustStoreRef: Option[TrustStoreRef] = None): SSLContext = {
+  def loadSSLContext(keyStoreRef: Option[KeyStoreRef] = None, trustStoreRefs: Seq[TrustStoreRef] = Nil): SSLContext = {
     val keyManagers = keyStoreRef match {
       case None => Array.empty[KeyManager]
       case Some(ref) =>
@@ -46,30 +47,33 @@ object Https
         factory.init(keyStore, ref.keyPassword.string.toCharArray)
         factory.getKeyManagers
     }
-    val trustManagers = trustStoreRef match {
-      case None => Array.empty[TrustManager]
-      case Some(ref) =>
-        val keyStore = loadKeyStore(ref)
-        val factory = TrustManagerFactory.getInstance("SunX509")
-        factory.init(keyStore)
-        factory.getTrustManagers
-    }
+    val trustManagers = trustStoreRefs.view.flatMap { trustStoreRef =>
+      val factory = TrustManagerFactory.getInstance("SunX509")
+      factory.init(loadKeyStore(trustStoreRef, "trust"))
+      factory.getTrustManagers
+    }.collect {
+      case o: X509TrustManager => Some(o)
+      case o =>
+        logger.debug(s"Ignoring unknown TrustManager: ${o.getClass.getName} $o")
+        None
+    }.flatten
+      .toSeq
     val sslContext = SSLContext.getInstance("TLS")
-    sslContext.init(keyManagers, trustManagers, new SecureRandom)
+    sslContext.init(keyManagers, Array(CompositeX509TrustManager(trustManagers)), null)
     sslContext
   }
 
-  private def loadKeyStore(storeRef: StoreRef): KeyStore = {
+  private def loadKeyStore(storeRef: StoreRef, name: String): KeyStore = {
     val keyStore = KeyStore.getInstance("PKCS12")
     autoClosing(storeRef.url.openStream()) { inputStream =>
       keyStore.load(inputStream, storeRef.storePassword.string.toCharArray)
     }
-    log(storeRef.url, keyStore)
+    log(storeRef.url, keyStore, name)
     keyStore
   }
 
-  private def log(url: URL, keyStore: KeyStore): Unit =
-    logger.info(s"Loaded key store $url: ${keyStoreToString(keyStore)}")
+  private def log(url: URL, keyStore: KeyStore, name: String): Unit =
+    logger.info(s"Loaded $name keystore $url: ${keyStoreToString(keyStore)}")
   //{
   //  val aliases = keyStore.aliases.asScala
   //  if (aliases.isEmpty)

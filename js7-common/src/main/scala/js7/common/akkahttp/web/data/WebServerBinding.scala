@@ -7,6 +7,7 @@ import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsUtils._
+import js7.base.utils.Strings._
 import js7.base.web.Uri
 import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import js7.common.http.AkkaHttpUtils.RichAkkaAsUri
@@ -41,7 +42,11 @@ object WebServerBinding
     override def toString = "http"
   }
 
-  final case class Https(address: InetSocketAddress, keyStoreRef: KeyStoreRef, trustStoreRef: Option[TrustStoreRef] = None,  mutual: Boolean)
+  final case class Https(
+    address: InetSocketAddress,
+    keyStoreRef: KeyStoreRef,
+    trustStoreRefs: Seq[TrustStoreRef] = Nil,
+    mutual: Boolean)
   extends WebServerBinding {
     def scheme = Https
     def toWebServerPort = WebServerPort.Https(address, mutual)

@@ -5,8 +5,8 @@ import java.net.URL
 import java.nio.file.Path
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.generic.SecretString
-import js7.base.problem.Checked
 import js7.common.configutils.Configs._
+import scala.jdk.CollectionConverters._
 
 /** To trust the server's certificate.
   * @author Joacim Zschimmer
@@ -27,12 +27,17 @@ object TrustStoreRef
   def apply(file: Path, password: SecretString): TrustStoreRef =
     new TrustStoreRef(file.toAbsolutePath.toUri.toURL, password)
 
-  def fromConfig(config: Config, default: Path): Checked[TrustStoreRef] =
-    config.checkedPath("js7.https.truststore.store-password")(path =>
-      Right(
-        TrustStoreRef(
-          url = config.as[Path]("js7.https.truststore.file", default).toAbsolutePath.toUri.toURL,
-          storePassword = config.as[SecretString](path))))
+  def fromConfig(config: Config): Seq[TrustStoreRef] =
+    if (!config.hasPath(configKey))
+      Nil
+    else
+      config.getObjectList(configKey)
+        .asScala
+        .toVector
+        .map(obj =>
+          TrustStoreRef(
+            file = obj.toConfig.as[Path]("file"),
+            password = obj.toConfig.as[SecretString]("store-password")))
 
   def fromKeyStore(keyStoreRef: KeyStoreRef): TrustStoreRef =
     new TrustStoreRef(keyStoreRef.url, keyStoreRef.storePassword)

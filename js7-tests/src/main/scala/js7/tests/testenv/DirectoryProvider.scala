@@ -4,7 +4,6 @@ import com.google.inject.Module
 import com.google.inject.util.Modules.EMPTY_MODULE
 import com.typesafe.config.ConfigUtil.quoteString
 import com.typesafe.config.{Config, ConfigFactory}
-import java.lang.ProcessBuilder.Redirect.INHERIT
 import java.nio.file.Files.{createDirectory, createTempDirectory}
 import java.nio.file.Path
 import java.util.Locale
@@ -14,7 +13,6 @@ import js7.base.crypt.{MessageSigner, SignatureVerifier, SignedString}
 import js7.base.generic.SecretString
 import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
-import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.{closeOnError, multipleAutoClosing}
 import js7.base.utils.Closer.syntax.RichClosersAny
 import js7.base.utils.HasCloser
@@ -22,7 +20,6 @@ import js7.base.utils.ScalaUtils.RichThrowable
 import js7.base.utils.ScalazStyle._
 import js7.base.web.Uri
 import js7.common.log.ScribeUtils
-import js7.common.scalautil.FileUtils
 import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
@@ -78,7 +75,7 @@ extends HasCloser
       })
 
   val master = new MasterTree(directory / "master",
-    mutualHttps = masterHttpsMutual, clientCertificate = masterClientCertificate)
+    mutualHttps = masterHttpsMutual, clientTrustStore = masterClientCertificate)
   val agentToTree: Map[AgentRefPath, AgentTree] =
     agentRefPaths
       .zip(agentPorts ++ Vector.fill(agentRefPaths.size - agentPorts.size)(findFreeTcpPort()))
@@ -103,12 +100,12 @@ extends HasCloser
     agents foreach prepareAgentFiles
 
     // Agent configurations have already been written by a.createDirectoriesAndFiles()
-    (master.configDir / "private" / "private.conf").append(
+    master.configDir / "private" / "private.conf" ++=
       s"""js7.https.keystore {
          |  store-password = "jobscheduler"
          |  key-password = "jobscheduler"
          |}
-         |""".stripMargin)
+         |""".stripMargin
   }
 
   val fileBasedSigner = new FileBasedSigner(signer, MasterFileBaseds.jsonCodec)
@@ -228,27 +225,31 @@ object DirectoryProvider
     }
   }
 
-  final class MasterTree(val directory: Path, mutualHttps: Boolean, clientCertificate: Option[JavaResource]) extends Tree {
-    def provideHttpsCertificate(): Unit = {
-      // Keystore
-      (configDir / "private/https-keystore.p12") := MasterKeyStoreResource.contentBytes
-
-      // Truststore
-      (configDir / "private/private.conf").append("""
-        |js7.https.truststore {
-        |  store-password = "jobscheduler"
-        |}""".stripMargin)
-      val trustStore = configDir / "private/https-truststore.p12"
-      trustStore := AgentTrustStoreResource.contentBytes
-      for (o <- clientCertificate) importKeyStore(trustStore, o)
-      // KeyStore passwords has been provided
+  final class MasterTree(val directory: Path, mutualHttps: Boolean, clientTrustStore: Option[JavaResource]) extends Tree
+  {
+    def provideHttpsCertificates(): Unit = {
+      configDir / "private/https-keystore.p12" := MasterKeyStoreResource.contentBytes
+      provideTrustStore(AgentTrustStoreResource, "agent-https-truststore.p12")
+      for (o <- clientTrustStore) {
+        provideTrustStore(o, "client-https-truststore.p12")
+        //importKeyStore(configDir / "private/agent-https-truststore.p12", o)
+      }
     }
 
-    def writeAgentAuthentication(agentTree: AgentTree): Unit = {
+    private def provideTrustStore(resource: JavaResource, filename: String): Unit = {
+      val trustStore = configDir / "private" / filename
+      trustStore := resource.contentBytes
+      configDir / "private/private.conf" ++= s"""
+         |js7.https.truststores += {
+         |  file = "$trustStore"
+         |  store-password = "jobscheduler"
+         |}""".stripMargin
+    }
+
+    def writeAgentAuthentication(agentTree: AgentTree): Unit =
       (configDir / "private" / "private.conf") ++=
         "js7.auth.agents." + quoteString(agentTree.agentRefPath.string) + " = " + quoteString(agentTree.password.string) + "\n" +
         "js7.auth.agents." + quoteString(agentTree.localUri.toString) + " = " + quoteString(agentTree.password.string) + "\n"
-    }
   }
 
   final class AgentTree(rootDirectory: Path, val agentRefPath: AgentRefPath, name: String,
@@ -274,14 +275,17 @@ object DirectoryProvider
       if (provideHttpsCertificate) {
         (configDir / "private/https-keystore.p12") := AgentKeyStoreResource.contentBytes
         if (provideClientCertificate) {
-          (configDir / "private/private.conf").append("""
-            |js7.https.truststore {
-            |  store-password = "jobscheduler"
-            |}""".stripMargin)
-          (configDir / "private/https-truststore.p12") := MasterTrustStoreResource.contentBytes
+          configDir / "private/master-https-truststore.p12" := ExportedMasterTrustStoreResource.contentBytes
+          configDir / "private/private.conf" ++= s"""
+             |js7.https.truststores = [
+             |  {
+             |    file = "$configDir/private/master-https-truststore.p12"
+             |    store-password = "jobscheduler"
+             |  }
+             |]""".stripMargin
         }
       }
-      (configDir / "private" / "private.conf").append(s"""
+      configDir / "private" / "private.conf" ++= s"""
          |js7.auth.users {
          |  Master = ${quoteString("plain:" + password.string)}
          |}
@@ -289,7 +293,7 @@ object DirectoryProvider
          |  store-password = "jobscheduler"
          |  key-password = "jobscheduler"
          |}
-         |""".stripMargin)
+         |""".stripMargin
     }
 
     def writeTrustedSignatureKeys(verifier: SignatureVerifier): Unit =
@@ -330,34 +334,12 @@ object DirectoryProvider
   // Following resources have been generated with the command line:
   // common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=master -config-directory=tests/src/test/resources/js7/tests/master/config
   val MasterKeyStoreResource = JavaResource("js7/tests/master/config/private/https-keystore.p12")
-  val MasterTrustStoreResource = JavaResource("js7/tests/master/config/export/https-truststore.p12")
+  val ExportedMasterTrustStoreResource = JavaResource("js7/tests/master/config/export/https-truststore.p12")
 
   // Following resources have been generated with the command line:
   // common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=agent -config-directory=tests/src/test/resources/js7/tests/agent/config
   private val AgentKeyStoreResource   = JavaResource("js7/tests/agent/config/private/https-keystore.p12")
   private val AgentTrustStoreResource = JavaResource("js7/tests/agent/config/export/https-truststore.p12")
-
-  private def importKeyStore(keyStore: Path, add: JavaResource): Unit =
-    FileUtils.withTemporaryFile("test-", ".p12") { file =>
-      file := add.contentBytes
-      importKeyStore(keyStore, file)
-    }
-
-  private def importKeyStore(keyStore: Path, add: Path): Unit = {
-    val p = new ProcessBuilder("keytool", "-noprompt",
-      "-importkeystore",
-      "-destkeystore", keyStore.toString,
-      "-deststoretype", "pkcs12",
-      "-srckeystore", add.toString,
-      "-srcstorepass", "jobscheduler",
-      "-storepass", "jobscheduler")
-    p.redirectOutput(INHERIT)
-    p.redirectError(INHERIT)
-    val process = p.start()
-    val finished = process.waitFor(99, SECONDS)
-    assertThat(finished, "Command 'keytool' takes longer than 99 seconds")
-    assertThat(process.exitValue == 0, s"Command 'keytool' returns with exit code ${process.exitValue}")
-  }
 
   final def defaultSigner = pgpSigner
 

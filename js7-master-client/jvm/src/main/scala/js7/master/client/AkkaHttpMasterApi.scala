@@ -20,13 +20,13 @@ class AkkaHttpMasterApi(
   /** To provide a client certificate to server. */
   keyStoreRef: Option[KeyStoreRef] = None,
   /** To trust the server's certificate. */
-  trustStoreRef: Option[TrustStoreRef] = None,
+  trustStoreRefs: Seq[TrustStoreRef] = Nil,
   override protected final val loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays,
   name: String = "")
 extends HttpMasterApi with AutoCloseable
 {
   final val httpClient = new AkkaHttpClient.Standard(
-    baseUri, HttpMasterApi.UriPrefixPath, actorSystem, keyStoreRef, trustStoreRef, name = name)
+    baseUri, HttpMasterApi.UriPrefixPath, actorSystem, keyStoreRef, trustStoreRefs, name = name)
 
   def close() = httpClient.close()
 }
@@ -52,14 +52,14 @@ object AkkaHttpMasterApi
     uri: Uri,
     userAndPassword: Option[UserAndPassword],
     keyStoreRef: Option[KeyStoreRef] = None,
-    trustStoreRef: Option[TrustStoreRef] = None,
+    trustStoreRefs: Seq[TrustStoreRef] = Nil,
     loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays,
     name: String = "")
     (implicit actorSystem: ActorSystem)
   : Resource[Task, HttpMasterApi] =
     for {
       httpClient <- Resource.fromAutoCloseable(Task(
-        new AkkaHttpClient.Standard(uri, HttpMasterApi.UriPrefixPath, actorSystem, keyStoreRef, trustStoreRef, name = name)))
+        new AkkaHttpClient.Standard(uri, HttpMasterApi.UriPrefixPath, actorSystem, keyStoreRef, trustStoreRefs, name = name)))
       api <- HttpMasterApi.resource(uri, userAndPassword, httpClient, loginDelays)
     } yield api
 }

@@ -98,7 +98,7 @@ final class Cluster(
       uri,
       userAndPassword = config.optionAs[SecretString]("js7.auth.agents." + ConfigUtil.joinPath(uri.string))
         .map(password => UserAndPassword(masterId.toUserId, password)),
-      actorSystem)
+      actorSystem = actorSystem)
   }
 
   def stop(): Unit = {

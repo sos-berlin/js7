@@ -74,7 +74,7 @@ trait AkkaWebServer extends AutoCloseable
     bind(
       https,
       ConnectionContext.https(
-        loadSSLContext(Some(https.keyStoreRef), https.trustStoreRef),
+        loadSSLContext(Some(https.keyStoreRef), https.trustStoreRefs),
         clientAuth = https.mutual ? TLSClientAuth.Need,
         sslConfig = None,
         enabledCipherSuites = None,
@@ -91,7 +91,7 @@ trait AkkaWebServer extends AutoCloseable
           .withParserSettings(ParserSettings(actorSystem).withCustomMediaTypes(JsonStreamingSupport.CustomMediaTypes: _*)))
     ) .map { serverBinding =>
         logger.info(s"Bound ${binding.scheme}://${serverBinding.localAddress.getAddress.getHostAddress}:${serverBinding.localAddress.getPort}" +
-          (if (binding.mutual) ", client certificate is required" else "") +
+          (if (binding.mutual) ", client certificate required" else "") +
           boundRoute.boundMessageSuffix)
         serverBinding
       }

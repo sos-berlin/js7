@@ -11,6 +11,7 @@ import js7.core.message.ProblemCodeMessages
 import js7.data.agent.AgentRefPath
 import js7.data.filebased.FileBased
 import org.scalatest.BeforeAndAfterAll
+
 /**
   * @author Joacim Zschimmer
   */
@@ -21,15 +22,20 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
 
   protected def agentRefPaths: Seq[AgentRefPath]
   protected def agentHttps = false
+  protected def agentPorts: Iterable[Int] = Nil
   protected def suppressRepoInitialization = false
 
-  protected final lazy val directoryProvider = new DirectoryProvider(agentRefPaths,
+  protected final lazy val directoryProvider = new DirectoryProvider(
+    agentRefPaths,
     fileBased = fileBased,
     masterConfig = masterConfig,
     agentHttps = agentHttps, agentHttpsMutual = agentHttpsMutual,
     agentConfig = agentConfig,
-    provideAgentHttpsCertificate = provideAgentHttpsCertificate, provideAgentClientCertificate = provideAgentClientCertificate,
-    masterHttpsMutual = masterHttpsMutual, masterClientCertificate = masterClientCertificate,
+    agentPorts = agentPorts,
+    provideAgentHttpsCertificate = provideAgentHttpsCertificate,
+    provideAgentClientCertificate = provideAgentClientCertificate,
+    masterHttpsMutual = masterHttpsMutual,
+    masterClientCertificate = masterClientCertificate,
     signer = signer,
     testName = Some(getClass.getSimpleName),
     suppressRepo = suppressRepoInitialization)

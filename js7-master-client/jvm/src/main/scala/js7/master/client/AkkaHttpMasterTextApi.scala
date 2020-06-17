@@ -6,7 +6,7 @@ import js7.base.auth.UserAndPassword
 import js7.base.session.HttpSessionApi
 import js7.base.utils.HasCloser
 import js7.base.web.Uri
-import js7.common.akkahttp.https.TrustStoreRef
+import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import js7.common.akkautils.ProvideActorSystem
 import js7.common.configutils.Configs.parseConfigIfExists
 import js7.common.http.{AkkaHttpClient, TextApi}
@@ -43,9 +43,12 @@ extends HasCloser with ProvideActorSystem with TextApi with HttpSessionApi with 
 
   protected def keyStoreRef = None
 
-  protected lazy val trustStoreRef = configDirectory.flatMap(configDir =>
-    TrustStoreRef.fromConfig(configDirectoryConfig(configDir), default = configDir / "private/https-keystore.p12")
-      .toOption)
+  protected lazy val trustStoreRefs = configDirectory
+    .flatMap(dir =>
+      KeyStoreRef.fromConfig(configDirectoryConfig(dir), dir / "private/https-keystore.p12")
+        .toOption)
+    .map(TrustStoreRef.fromKeyStore)
+    .toSeq
 
   closer.onClose { super.close() }
 

@@ -32,7 +32,7 @@ final class HasUserAndPasswordTest extends AnyFreeSpec with SessionRouteTester
         def uriPrefixPath = ""
         protected val userAndPassword = Some(UserAndPassword(UserId("A-USER"), SecretString("A-PASSWORD")))
         protected def keyStoreRef = None
-        protected def trustStoreRef = None
+        protected def trustStoreRefs = Nil
       }
     }).use(api =>
       api.retryUntilReachable {

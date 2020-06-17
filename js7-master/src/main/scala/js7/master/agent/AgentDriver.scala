@@ -201,7 +201,7 @@ with ReceiveLoggingActor.WithStash
 
   private def newAgentClient(uri: Uri): AgentClient =
     AgentClient(uri, agentUserAndPassword,
-      masterConfiguration.keyStoreRefOption, masterConfiguration.trustStoreRefOption)(context.system)
+      masterConfiguration.keyStoreRefOption, masterConfiguration.trustStoreRefs)(context.system)
 
   def receive = {
     case input: Input with Queueable if sender() == context.parent && !isTerminating =>

@@ -8,9 +8,9 @@ import js7.common.akkahttp.https.Https.loadSSLContext
   */
 object AkkaHttps
 {
-  def loadHttpsConnectionContext(keyStoreRef: Option[KeyStoreRef] = None, trustStoreRef: Option[TrustStoreRef] = None): HttpsConnectionContext =
+  def loadHttpsConnectionContext(keyStoreRef: Option[KeyStoreRef] = None, trustStoreRefs: Seq[TrustStoreRef] = Nil): HttpsConnectionContext =
     ConnectionContext.https(
-      loadSSLContext(keyStoreRef, trustStoreRef),
+      loadSSLContext(keyStoreRef, trustStoreRefs),
       sslConfig = None,
       enabledCipherSuites = None,
       enabledProtocols = None,

@@ -23,7 +23,6 @@ import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import js7.common.utils.JavaResource
-import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
@@ -91,7 +90,7 @@ final class AkkaWebServerTest extends AnyFreeSpec with BeforeAndAfterAll
         http.singleRequest(HttpRequest(GET, s"https://127.0.0.1:$httpsPort/TEST")) await 99.seconds }
     }
 
-    lazy val httpsConnectionContext = AkkaHttps.loadHttpsConnectionContext(trustStoreRef = Some(ClientTrustStoreRef))
+    lazy val httpsConnectionContext = AkkaHttps.loadHttpsConnectionContext(trustStoreRefs = ClientTrustStoreRef :: Nil)
 
     "Hostname verification rejects 127.0.0.1" in {
       val e = intercept[akka.stream.ConnectionException] {

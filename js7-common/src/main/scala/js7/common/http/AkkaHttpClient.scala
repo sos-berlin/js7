@@ -67,10 +67,10 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
   implicit final def materializer = materializerLazy()
 
   protected def keyStoreRef: Option[KeyStoreRef]
-  protected def trustStoreRef: Option[TrustStoreRef]
+  protected def trustStoreRefs: Seq[TrustStoreRef]
 
   protected final lazy val httpsConnectionContextOption: Option[HttpsConnectionContext] =
-    (keyStoreRef.nonEmpty || trustStoreRef.nonEmpty) ? loadHttpsConnectionContext(keyStoreRef, trustStoreRef)  // TODO None means HttpsConnectionContext? Or empty context?
+    (keyStoreRef.nonEmpty || trustStoreRefs.nonEmpty) ? loadHttpsConnectionContext(keyStoreRef, trustStoreRefs)  // TODO None means HttpsConnectionContext? Or empty context?
 
   private lazy val httpsConnectionContext = httpsConnectionContextOption getOrElse http.defaultClientHttpsContext
 
@@ -340,7 +340,7 @@ object AkkaHttpClient
     /** To provide a client certificate to server. */
     protected val keyStoreRef: Option[KeyStoreRef] = None,
     /** To trust the server's certificate. */
-    protected val trustStoreRef: Option[TrustStoreRef] = None,
+    protected val trustStoreRefs: Seq[TrustStoreRef] = Nil,
     protected val name: String = "")
   extends AkkaHttpClient
 
