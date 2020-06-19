@@ -19,7 +19,7 @@ import js7.base.utils.HasCloser
 import js7.base.utils.ScalaUtils.RichThrowable
 import js7.base.utils.ScalazStyle._
 import js7.base.web.Uri
-import js7.common.log.ScribeUtils
+import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
@@ -207,7 +207,7 @@ extends HasCloser
 
 object DirectoryProvider
 {
-  ScribeUtils.coupleScribeWithSlf4j()
+  coupleScribeWithSlf4j()
 
   val Vinitial = VersionId("INITIAL")
 

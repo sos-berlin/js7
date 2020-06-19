@@ -8,7 +8,7 @@ import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.utils.AutoClosing.autoClosing
 import js7.common.http.AkkaHttpClient.HttpException
-import js7.common.log.ScribeUtils
+import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax.RichTask
@@ -34,7 +34,7 @@ import scala.concurrent.duration._
   */
 final class UpdateRepoAgentTest extends AnyFreeSpec
 {
-  ScribeUtils.coupleScribeWithSlf4j()
+  coupleScribeWithSlf4j()
 
   "MasterCommand.UpdateRepo" in {
     autoClosing(new DirectoryProvider(agentRefPath :: Nil, workflow :: Nil, testName = Some("UpdateRepoAgentTest"))) { provider =>

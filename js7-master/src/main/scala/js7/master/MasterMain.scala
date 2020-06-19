@@ -6,7 +6,6 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Strings._
 import js7.common.commandline.CommandLineArguments
 import js7.common.configutils.Configs.logConfig
-import js7.common.log.ScribeUtils
 import js7.common.scalautil.Futures.implicits.SuccessFuture
 import js7.common.scalautil.Logger
 import js7.core.startup.JavaMain.withShutdownHooks
@@ -82,7 +81,6 @@ object MasterMain
     printlnWithClock(s"JS7 JobScheduler Master ${BuildInfo.prettyVersion}")
     var terminate = MasterTermination.Terminate()
     lockAndRunMain(args) { commandLineArguments =>
-      ScribeUtils.coupleScribeWithSlf4j()
       terminate = new MasterMain().run(commandLineArguments)
     }
     if (terminate.restart) {

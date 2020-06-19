@@ -17,7 +17,7 @@ import js7.base.utils.Collections.implicits._
 import js7.base.utils.ScalaUtils._
 import js7.common.akkautils.ProvideActorSystem
 import js7.common.event.{EventIdClock, EventIdGenerator}
-import js7.common.log.ScribeUtils
+import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
@@ -45,7 +45,7 @@ import shapeless.tag
   */
 final class JournaledStatePersistenceTest extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem
 {
-  ScribeUtils.coupleScribeWithSlf4j()
+  coupleScribeWithSlf4j()
 
   private implicit lazy val scheduler = Scheduler(Executors.newCachedThreadPool())  // Scheduler.Implicits.global blocks on 2-processor machine
   protected def config = TestConfig

@@ -15,7 +15,7 @@ import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.http.AkkaHttpClient
 import js7.common.http.AkkaHttpClient.HttpException
 import js7.common.http.CirceJsonSupport._
-import js7.common.log.ScribeUtils
+import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
 import monix.eval.Task
@@ -26,7 +26,7 @@ trait SessionRouteTester extends BeforeAndAfterAll with ScalatestRouteTest with 
 {
   this: Suite =>
 
-  ScribeUtils.coupleScribeWithSlf4j()
+  coupleScribeWithSlf4j()
 
   protected def isPublic = false
 

@@ -4,6 +4,7 @@ import com.typesafe.config.Config
 import js7.base.utils.ScalaUtils.RichThrowable
 import js7.common.configutils.Configs.ConvertibleConfig
 import js7.common.log.Log4j
+import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.scalautil.Logger
 import js7.common.utils.JavaShutdownHook
 import js7.core.message.ProblemCodeMessages
@@ -16,6 +17,7 @@ object JavaMain
 
   def runMain(body: => Unit): Unit =
     try {
+      coupleScribeWithSlf4j()
       ProblemCodeMessages.initialize()
       body
       Log4j.shutdown()
