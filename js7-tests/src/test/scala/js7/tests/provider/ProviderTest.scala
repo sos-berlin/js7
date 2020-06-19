@@ -35,7 +35,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.provider.Provider
 import js7.provider.configuration.ProviderConfiguration
 import js7.tests.provider.ProviderTest._
-import js7.tests.testenv.MasterAgentForScalaTest
+import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.Deadline.now
@@ -44,7 +44,7 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class ProviderTest extends AnyFreeSpec with MasterAgentForScalaTest
+final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   override protected def suppressRepoInitialization = true
   protected val agentRefPaths = agentRefPath :: Nil
@@ -58,7 +58,7 @@ final class ProviderTest extends AnyFreeSpec with MasterAgentForScalaTest
   private lazy val orderGeneratorsDir = providerDirectory / "config/order-generators"
   private lazy val providerConfiguration = ProviderConfiguration.fromCommandLine(
     "-config-directory=" + providerDirectory / "config" ::
-    "-master-uri=" + master.localUri :: Nil,
+    "-controller-uri=" + controller.localUri :: Nil,
     testConfig)
   private lazy val provider = Provider(providerConfiguration).orThrow
   private lazy val v1Time = now
@@ -80,11 +80,11 @@ final class ProviderTest extends AnyFreeSpec with MasterAgentForScalaTest
          |  key = $${js7.config-directory}"/private/private-silly-keys.txt"
          |  password = "${privateKeyPassword.string}"
          |}
-         |js7.provider.master.user = "$loginName"
-         |js7.provider.master.password = "$loginPassword"
+         |js7.provider.controller.user = "$loginName"
+         |js7.provider.controller.password = "$loginPassword"
          """.stripMargin
 
-    directoryProvider.master.configDir / "private" / "private.conf" ++=
+    directoryProvider.controller.configDir / "private" / "private.conf" ++=
      s"""js7.auth.users {
         |  $loginName {
         |    password = "plain:$loginPassword"
@@ -106,7 +106,7 @@ final class ProviderTest extends AnyFreeSpec with MasterAgentForScalaTest
     super.afterAll()
   }
 
-  "updateMasterConfiguration" - {
+  "updateControllerConfiguration" - {
     "(start provider)" in {
       provider
     }
@@ -121,12 +121,12 @@ final class ProviderTest extends AnyFreeSpec with MasterAgentForScalaTest
       writeWorkflowFile(BWorkflowPath)
       v1Time
 
-      // `initiallyUpdateMasterConfiguration` will send this diff to the Master
-      assert(provider.testMasterDiff.await(99.seconds).orThrow == FileBaseds.Diff(
+      // `initiallyUpdateControllerConfiguration` will send this diff to the Controller
+      assert(provider.testControllerDiff.await(99.seconds).orThrow == FileBaseds.Diff(
         added = agentRef :: TestWorkflow.withId(AWorkflowPath) :: TestWorkflow.withId(BWorkflowPath) :: Nil))
 
-      provider.initiallyUpdateMasterConfiguration(V1.some).await(99.seconds).orThrow
-      assert(master.fileBasedApi.checkedRepo.await(99.seconds).map(_.pathToVersionToSignedFileBased) == Right(Map(
+      provider.initiallyUpdateControllerConfiguration(V1.some).await(99.seconds).orThrow
+      assert(controller.fileBasedApi.checkedRepo.await(99.seconds).map(_.pathToVersionToSignedFileBased) == Right(Map(
         agentRef.path -> List(
           Entry(V1, Some(toSigned(agentRef withVersion V1)))),
         AWorkflowPath -> List(
@@ -136,11 +136,11 @@ final class ProviderTest extends AnyFreeSpec with MasterAgentForScalaTest
         BWorkflowPath -> List(
           Entry(V1, Some(toSigned(TestWorkflow.withId(BWorkflowPath ~ V1))))))))
 
-      assert(provider.testMasterDiff.await(99.seconds).orThrow.isEmpty)
+      assert(provider.testControllerDiff.await(99.seconds).orThrow.isEmpty)
     }
 
     "Duplicate VersionId" in {
-      assert(provider.updateMasterConfiguration(V1.some).await(99.seconds) == Left(DuplicateKey("VersionId", VersionId("1"))))
+      assert(provider.updateControllerConfiguration(V1.some).await(99.seconds) == Left(DuplicateKey("VersionId", VersionId("1"))))
     }
 
     "An unknown and some invalid files" in {
@@ -151,7 +151,7 @@ final class ProviderTest extends AnyFreeSpec with MasterAgentForScalaTest
       (live / "NO-JSON.workflow.json") := "INVALID JSON"
       (live / "ERROR-1.workflow.json") := json"""{ "something": "different" }"""
       (live / "ERROR-2.workflow.json") := json"""{ "instructions": 0 }"""
-      assert(provider.updateMasterConfiguration(V2.some).await(99.seconds) ==
+      assert(provider.updateControllerConfiguration(V2.some).await(99.seconds) ==
         Left(Problem.Combined(Set(
           TypedPaths.AlienFileProblem(Paths.get("UNKNOWN.tmp")),
           FileBasedReader.SourceProblem(WorkflowPath("/NO-JSON"), SourceType.Json, Problem("JSON ParsingFailure: expected json value got 'INVALI...' (line 1, column 1)")),
@@ -164,8 +164,8 @@ final class ProviderTest extends AnyFreeSpec with MasterAgentForScalaTest
       delete(live / "NO-JSON.workflow.json")
       delete(live / "ERROR-1.workflow.json")
       delete(live / "ERROR-2.workflow.json")
-      provider.updateMasterConfiguration(V2.some).await(99.seconds).orThrow
-      assert(master.fileBasedApi.checkedRepo.await(99.seconds).map(_.pathToVersionToSignedFileBased) == Right(Map(
+      provider.updateControllerConfiguration(V2.some).await(99.seconds).orThrow
+      assert(controller.fileBasedApi.checkedRepo.await(99.seconds).map(_.pathToVersionToSignedFileBased) == Right(Map(
         agentRef.path -> List(
           Entry(V1, Some(toSigned(agentRef withVersion V1)))),
         AWorkflowPath -> List(
@@ -179,7 +179,7 @@ final class ProviderTest extends AnyFreeSpec with MasterAgentForScalaTest
 
     "Delete a Workflow" in {
       delete(live / "B.workflow.json")
-      provider.updateMasterConfiguration(V3.some).await(99.seconds).orThrow
+      provider.updateControllerConfiguration(V3.some).await(99.seconds).orThrow
       assert(checkedRepo.map(_.versions) == Right(V3 :: V2 :: V1 :: Nil))
       assert(checkedRepo.map(_.pathToVersionToSignedFileBased) == Right(Map(
         agentRef.path -> List(
@@ -204,9 +204,9 @@ final class ProviderTest extends AnyFreeSpec with MasterAgentForScalaTest
       val workflow = WorkflowParser.parse(workflowPath, notation).orThrow
       live.resolve(workflowPath.toFile(SourceType.Txt)) := notation
 
-      assert(provider.testMasterDiff.await(99.seconds).orThrow == FileBaseds.Diff(added = workflow :: Nil))
-      provider.updateMasterConfiguration(V4.some).await(99.seconds).orThrow
-      assert(provider.testMasterDiff.await(99.seconds).orThrow.isEmpty)
+      assert(provider.testControllerDiff.await(99.seconds).orThrow == FileBaseds.Diff(added = workflow :: Nil))
+      provider.updateControllerConfiguration(V4.some).await(99.seconds).orThrow
+      assert(provider.testControllerDiff.await(99.seconds).orThrow.isEmpty)
     }
 
     "closeTask" in {
@@ -222,54 +222,54 @@ final class ProviderTest extends AnyFreeSpec with MasterAgentForScalaTest
     var lastEventId = EventId.BeforeFirst
 
     "Initial observation with a workflow and an agentRef added" in {
-      lastEventId = master.eventWatch.lastAddedEventId
+      lastEventId = controller.eventWatch.lastAddedEventId
       writeWorkflowFile(BWorkflowPath)
       live.resolve(agentRefPath.toFile(SourceType.Json)) := AgentRef(agentRefPath, uri = agent.localUri)
 
       whenObserved
-      val versionId = master.eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
-      val events = master.eventWatch.await[FileBasedEvent](after = lastEventId).map(_.value)
+      val versionId = controller.eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
+      val events = controller.eventWatch.await[FileBasedEvent](after = lastEventId).map(_.value)
       assert(events == Vector(BWorkflowPath)
         .map(path => NoKey <-: FileBasedAdded(path, sign(TestWorkflow withId path ~ versionId))))
     }
 
     "Delete a workflow" in {
       whenObserved
-      lastEventId = master.eventWatch.lastAddedEventId
+      lastEventId = controller.eventWatch.lastAddedEventId
       delete(live resolve CWorkflowPath.toFile(SourceType.Json))
-      assert(master.eventWatch.await[FileBasedEvent](after = lastEventId).map(_.value) ==
+      assert(controller.eventWatch.await[FileBasedEvent](after = lastEventId).map(_.value) ==
         Vector(NoKey <-: FileBasedDeleted(CWorkflowPath)))
     }
 
     "Add a workflow" in {
       assert(!whenObserved.isCompleted)
-      lastEventId = master.eventWatch.lastAddedEventId
+      lastEventId = controller.eventWatch.lastAddedEventId
       writeWorkflowFile(CWorkflowPath)
-      val versionId = master.eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
-      assert(master.eventWatch.await[FileBasedEvent](after = lastEventId).map(_.value) ==
+      val versionId = controller.eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
+      assert(controller.eventWatch.await[FileBasedEvent](after = lastEventId).map(_.value) ==
         Vector(NoKey <-: FileBasedAdded(CWorkflowPath, sign(TestWorkflow withId CWorkflowPath ~ versionId))))
     }
 
     "Change a workflow" in {
       assert(!whenObserved.isCompleted)
-      lastEventId = master.eventWatch.lastAddedEventId
+      lastEventId = controller.eventWatch.lastAddedEventId
       live.resolve(CWorkflowPath toFile SourceType.Json) := ChangedWorkflowJson
-      val versionId = master.eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
-      assert(master.eventWatch.await[FileBasedEvent](after = lastEventId).map(_.value) ==
+      val versionId = controller.eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
+      assert(controller.eventWatch.await[FileBasedEvent](after = lastEventId).map(_.value) ==
         Vector(NoKey <-: FileBasedChanged(CWorkflowPath, sign(ChangedWorkflow withId CWorkflowPath ~ versionId))))
     }
 
     "Add an order generator" in {
-      lastEventId = master.eventWatch.lastAddedEventId
+      lastEventId = controller.eventWatch.lastAddedEventId
       (orderGeneratorsDir / "test.order.xml").xml =
         <order job_chain="/A">
           <run_time>
             <period absolute_repeat="1"/>
           </run_time>
         </order>
-      master.eventWatch.await[OrderAdded](_.event.workflowId.path == AWorkflowPath, after = lastEventId)
-      lastEventId = master.eventWatch.lastAddedEventId
-      master.eventWatch.await[OrderAdded](_.event.workflowId.path == AWorkflowPath, after = lastEventId)
+      controller.eventWatch.await[OrderAdded](_.event.workflowId.path == AWorkflowPath, after = lastEventId)
+      lastEventId = controller.eventWatch.lastAddedEventId
+      controller.eventWatch.await[OrderAdded](_.event.workflowId.path == AWorkflowPath, after = lastEventId)
     }
 
     "Replace an order generator" in {
@@ -279,14 +279,14 @@ final class ProviderTest extends AnyFreeSpec with MasterAgentForScalaTest
             <period absolute_repeat="1"/>
           </run_time>
         </order>
-      master.eventWatch.await[OrderAdded](_.event.workflowId.path == BWorkflowPath, after = lastEventId)
-      lastEventId = master.eventWatch.lastAddedEventId
-      master.eventWatch.await[OrderAdded](_.event.workflowId.path == BWorkflowPath, after = lastEventId)
+      controller.eventWatch.await[OrderAdded](_.event.workflowId.path == BWorkflowPath, after = lastEventId)
+      lastEventId = controller.eventWatch.lastAddedEventId
+      controller.eventWatch.await[OrderAdded](_.event.workflowId.path == BWorkflowPath, after = lastEventId)
     }
 
     "Delete an order generator" in {
       Files.delete(orderGeneratorsDir / "test.order.xml")
-      master.eventWatch.await[OrderAdded](_.event.workflowId.path == BWorkflowPath, after = lastEventId)  // TIMEOUT
+      controller.eventWatch.await[OrderAdded](_.event.workflowId.path == BWorkflowPath, after = lastEventId)  // TIMEOUT
     }
 
     "Cancel" in {
@@ -300,7 +300,7 @@ final class ProviderTest extends AnyFreeSpec with MasterAgentForScalaTest
   }
 
   private def checkedRepo: Checked[Repo] =
-    master.fileBasedApi.checkedRepo.await(99.seconds)
+    controller.fileBasedApi.checkedRepo.await(99.seconds)
 
   private def writeWorkflowFile(workflowPath: WorkflowPath): Unit =
     live.resolve(workflowPath.toFile(SourceType.Json)) := TestWorkflowJson

@@ -1,12 +1,12 @@
 package js7.tests.https
 
 /**
-  * Master and Agent with server-side HTTPS.
+  * Controller and Agent with server-side HTTPS.
   *
   * @author Joacim Zschimmer
   */
-final class AgentClientSideHttpsTest extends MasterHttpsStandardTests
+final class AgentClientSideHttpsTest extends ControllerHttpsStandardTests
 {
-  override protected def agentHttpsMutual = true  // Agent requires client certificate from Master
+  override protected def agentHttpsMutual = true  // Agent requires client certificate from Controller
   override protected def provideAgentClientCertificate = true
 }

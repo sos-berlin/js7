@@ -92,42 +92,42 @@ final class AgentCommandTest extends AnyFreeSpec
       }""")
   }
 
-  "RegisterAsMaster" in {
-    check(AgentCommand.RegisterAsMaster(AgentRefPath("/AGENT")),
+  "RegisterAsController" in {
+    check(AgentCommand.RegisterAsController(AgentRefPath("/AGENT")),
       json"""{
-        "TYPE": "RegisterAsMaster",
+        "TYPE": "RegisterAsController",
         "agentRefPath": "/AGENT"
       }""")
   }
 
-  "RegisterAsMaster.Response" in {
+  "RegisterAsController.Response" in {
     testJson[AgentCommand.Response](
-      AgentCommand.RegisterAsMaster.Response(AgentRunId(JournalId(UUID.fromString("11111111-2222-3333-4444-555555555555")))),
+      AgentCommand.RegisterAsController.Response(AgentRunId(JournalId(UUID.fromString("11111111-2222-3333-4444-555555555555")))),
       json"""{
-        "TYPE": "RegisterAsMaster.Response",
+        "TYPE": "RegisterAsController.Response",
         "agentRunId": "ERERESIiMzNERFVVVVVVVQ"
       }""")
   }
 
-  "CoupleMaster" in {
+  "CoupleController" in {
     check(
-      AgentCommand.CoupleMaster(
+      AgentCommand.CoupleController(
         AgentRefPath("/AGENT"),
         AgentRunId(JournalId(UUID.fromString("11111111-2222-3333-4444-555555555555"))),
         1000L),
       json"""{
-        "TYPE": "CoupleMaster",
+        "TYPE": "CoupleController",
         "agentRefPath": "/AGENT",
         "agentRunId": "ERERESIiMzNERFVVVVVVVQ",
         "eventId": 1000
       }""")
   }
 
-  "CoupleMaster.Response" in {
+  "CoupleController.Response" in {
     testJson[AgentCommand.Response](
-      AgentCommand.CoupleMaster.Response(Set(OrderId("ORDER"))),
+      AgentCommand.CoupleController.Response(Set(OrderId("ORDER"))),
       json"""{
-        "TYPE": "CoupleMaster.Response",
+        "TYPE": "CoupleController.Response",
         "orderIds": [ "ORDER" ]
       }""")
   }

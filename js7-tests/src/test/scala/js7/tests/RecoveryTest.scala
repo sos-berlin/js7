@@ -12,22 +12,22 @@ import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.Logger
 import js7.common.utils.UntilNoneIterator
+import js7.controller.RunningController
+import js7.controller.data.events.ControllerEvent
 import js7.core.common.jsonseq.InputStreamJsonSeqReader
 import js7.data.agent.{AgentRef, AgentRefPath}
+import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{<-:, Event, EventId, KeyedEvent, Stamped}
 import js7.data.filebased.RepoEvent.{FileBasedAdded, VersionAdded}
 import js7.data.filebased.{RepoEvent, VersionId}
 import js7.data.job.ExecutablePath
-import js7.data.master.MasterId
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToMaster}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToController}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.master.RunningMaster
-import js7.master.data.events.MasterEvent
 import js7.tests.RecoveryTest._
 import js7.tests.testenv.DirectoryProvider
 import js7.tests.testenv.DirectoryProvider.{StdoutOutput, script}
@@ -42,7 +42,7 @@ import scala.util.control.NonFatal
   */
 final class RecoveryTest extends AnyFreeSpec
 {
-  // TODO Starte Master und Agenten in eigenen Prozessen, die wir abbrechen können.
+  // TODO Starte Controller und Agenten in eigenen Prozessen, die wir abbrechen können.
 
   "test" in {
     for (_ <- if (sys.props contains "test.infinite") Iterator.from(1) else Iterator(1)) {
@@ -54,18 +54,18 @@ final class RecoveryTest extends AnyFreeSpec
         TestWorkflow :: QuickWorkflow :: Nil,
         signer = new SillySigner(SillySignature("MY-SILLY-SIGNATURE")),
         testName = Some("RecoveryTest"),
-        masterConfig = TestConfig)
+        controllerConfig = TestConfig)
       autoClosing(directoryProvider) { _ =>
         for (agent <- directoryProvider.agentToTree.values)
           agent.writeExecutable(TestExecutablePath, script(1.s, resultVariable = Some("var1")))
 
-        runMaster(directoryProvider) { master =>
+        runController(directoryProvider) { controller =>
           if (lastEventId == EventId.BeforeFirst) {
-            lastEventId = master.eventWatch.tornEventId
+            lastEventId = controller.eventWatch.tornEventId
           }
-          master.eventWatch.await[MasterEvent.MasterReady](after = lastEventId)
+          controller.eventWatch.await[ControllerEvent.ControllerReady](after = lastEventId)
           import directoryProvider.sign
-          assert(master.eventWatch.await[RepoEvent]().map(_.value).sortBy(_.toString) ==
+          assert(controller.eventWatch.await[RepoEvent]().map(_.value).sortBy(_.toString) ==
             Vector(
               NoKey <-: VersionAdded(VersionId("INITIAL")),
               NoKey <-: FileBasedAdded(AgentRefPaths(0), sign(AgentRef(AgentRefPaths(0) ~ "INITIAL", directoryProvider.agents(0).localUri))),
@@ -74,31 +74,31 @@ final class RecoveryTest extends AnyFreeSpec
               NoKey <-: FileBasedAdded(QuickWorkflow.path, sign(QuickWorkflow)))
             .sortBy(_.toString))
           runAgents(directoryProvider) { _ =>
-            master.addOrderBlocking(order1)
-            master.addOrderBlocking(QuickOrder)
-            /*lastEventId =*/ lastEventIdOf(master.eventWatch.await[OrderFinished](after = lastEventId, predicate = _.key == QuickOrder.id))
-            lastEventId = lastEventIdOf(master.eventWatch.await[OrderProcessed](after = lastEventId, predicate = _.key == order1.id))
-            master.addOrderBlocking(order2)
-            lastEventId = lastEventIdOf(master.eventWatch.await[OrderProcessed](after = lastEventId, predicate = _.key == order1.id))
+            controller.addOrderBlocking(order1)
+            controller.addOrderBlocking(QuickOrder)
+            /*lastEventId =*/ lastEventIdOf(controller.eventWatch.await[OrderFinished](after = lastEventId, predicate = _.key == QuickOrder.id))
+            lastEventId = lastEventIdOf(controller.eventWatch.await[OrderProcessed](after = lastEventId, predicate = _.key == order1.id))
+            controller.addOrderBlocking(order2)
+            lastEventId = lastEventIdOf(controller.eventWatch.await[OrderProcessed](after = lastEventId, predicate = _.key == order1.id))
           }
-          val Vector(Stamped(_, _, NoKey <-: AgentEvent.MasterRegistered(MasterId("Master")/*see default master.conf*/, _, _/*agentRunId*/))) =
+          val Vector(Stamped(_, _, NoKey <-: AgentEvent.ControllerRegistered(ControllerId("Controller")/*see default controller.conf*/, _, _/*agentRunId*/))) =
             readAgentEvents(directoryProvider.agents(0).dataDir / "state/agent--0.journal")
 
           logger.info("\n\n*** RESTARTING AGENTS ***\n")
           runAgents(directoryProvider) { _ =>
-            lastEventId = lastEventIdOf(master.eventWatch.await[OrderProcessed](after = lastEventId, predicate = _.key == order1.id))
-            master.addOrderBlocking(order3)
+            lastEventId = lastEventIdOf(controller.eventWatch.await[OrderProcessed](after = lastEventId, predicate = _.key == order1.id))
+            controller.addOrderBlocking(order3)
           }
         }
 
         for (i <- 1 to 2) withClue(s"Run #$i:") {
           val myLastEventId = lastEventId
           //sys.runtime.gc()  // For a clean memory view
-          logger.info(s"\n\n*** RESTARTING MASTER AND AGENTS #$i ***\n")
+          logger.info(s"\n\n*** RESTARTING CONTROLLER AND AGENTS #$i ***\n")
           runAgents(directoryProvider) { _ =>
-            runMaster(directoryProvider) { master =>
-              val orderId = master.eventWatch.await[OrderFinished](after = myLastEventId, predicate = _.key == orders(i).id).last.value.key
-              val orderStampeds = master.eventWatch.await[Event](_.key == orderId)
+            runController(directoryProvider) { controller =>
+              val orderId = controller.eventWatch.await[OrderFinished](after = myLastEventId, predicate = _.key == orders(i).id).last.value.key
+              val orderStampeds = controller.eventWatch.await[Event](_.key == orderId)
               withClue(s"$orderId") {
                 try assert(deleteRestartedJobEvents(orderStampeds.map(_.value.event).iterator).toVector == ExpectedOrderEvents)
                 catch { case NonFatal(t) =>
@@ -113,12 +113,12 @@ final class RecoveryTest extends AnyFreeSpec
     }
   }
 
-  private def runMaster(directoryProvider: DirectoryProvider)(body: RunningMaster => Unit): Unit =
-    directoryProvider.runMaster() { master =>
-      body(master)
-      logger.info("🔥🔥🔥 TERMINATE MASTER 🔥🔥🔥")
-      // Kill Master ActorSystem
-      master.actorSystem.terminate() await 99.s
+  private def runController(directoryProvider: DirectoryProvider)(body: RunningController => Unit): Unit =
+    directoryProvider.runController() { controller =>
+      body(controller)
+      logger.info("🔥🔥🔥 TERMINATE CONTROLLER 🔥🔥🔥")
+      // Kill Controller ActorSystem
+      controller.actorSystem.terminate() await 99.s
     }
 
   private def runAgents(directoryProvider: DirectoryProvider)(body: IndexedSeq[RunningAgent] => Unit): Unit =
@@ -183,7 +183,7 @@ private object RecoveryTest {
     OrderProcessed(Outcome.Succeeded(Map("result" -> "SCRIPT-VARIABLE-VALUE-agent-111"))),
     OrderMoved(Position(3)),
     OrderDetachable,
-    OrderTransferredToMaster,
+    OrderTransferredToController,
     OrderAttachable(AgentRefPaths(1)),
     OrderTransferredToAgent(AgentRefPaths(1)),
     OrderProcessingStarted,
@@ -195,7 +195,7 @@ private object RecoveryTest {
     OrderProcessed(Outcome.Succeeded(Map("result" -> "SCRIPT-VARIABLE-VALUE-agent-222"))),
     OrderMoved(Position(5)),
     OrderDetachable,
-    OrderTransferredToMaster,
+    OrderTransferredToController,
     OrderFinished)
 
   /** Deletes restart sequences to make event sequence comparable with ExpectedOrderEvents. */

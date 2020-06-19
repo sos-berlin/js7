@@ -12,7 +12,7 @@ final case class ProcessKillScript(file: Path) extends GenericString {
   def string = file.toString
 
   def toCommandArguments(id: AgentTaskId, pid: Option[Pid], taskId: TaskId): Seq[String] =
-    toCommandArguments(id, pid) :+ s"-master-task-id=${taskId.string}" //:+ s"-job=${jobPath.string}"
+    toCommandArguments(id, pid) :+ s"-controller-task-id=${taskId.string}" //:+ s"-job=${jobPath.string}"
 
   def toCommandArguments(id: AgentTaskId, pid: Option[Pid]): Seq[String] =
     Vector(file.toString, s"-kill-agent-task-id=${id.string}") ++ (pid map { o => s"-pid=${o.string}" })

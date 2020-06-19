@@ -36,7 +36,7 @@ final class CommandWebServerTest extends AsyncFreeSpec
 
   private val n = 1_000 //1_000_000
   private lazy val orderIds = (for (i <- 1 to n) yield OrderId(s"A-MEDIUM-LONG-ORDER-$i")).toSet
-  private lazy val coupleMaster = CoupleMaster(AgentRefPath("/AGENT"), AgentRunId(JournalId.random()), EventId.BeforeFirst)
+  private lazy val coupleController = CoupleController(AgentRefPath("/AGENT"), AgentRunId(JournalId.random()), EventId.BeforeFirst)
   private lazy val clientResource = for {
     as <- actorSystemResource("CommandWebServerTest", testConfig)
     webServer <- AkkaWebServer.resourceForHttp(findFreeTcpPort(), route(as), testConfig)(as)
@@ -44,8 +44,8 @@ final class CommandWebServerTest extends AsyncFreeSpec
   } yield client
 
   "Big response" in {
-    clientResource.use(_.commandExecute(coupleMaster))
-      .map(response => assert(response == Right(CoupleMaster.Response(orderIds))))
+    clientResource.use(_.commandExecute(coupleController))
+      .map(response => assert(response == Right(CoupleController.Response(orderIds))))
       .runToFuture
   }
 
@@ -62,7 +62,7 @@ final class CommandWebServerTest extends AsyncFreeSpec
           protected def commandExecute(meta: CommandMeta, command: AgentCommand) =
             Task(
               command match {
-                case _: CoupleMaster => Right(CoupleMaster.Response(orderIds))
+                case _: CoupleController => Right(CoupleController.Response(orderIds))
                 case _ => fail()
               })
 

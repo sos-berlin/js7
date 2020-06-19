@@ -1,7 +1,7 @@
 #! /bin/bash
 set -e
 
-for project in base data master-client; do :
+for project in base data controller-client; do :
   test -d $project || { echo "No such project: $project"; exit 1; }
   for s in main test; do
     for target in jvm js; do

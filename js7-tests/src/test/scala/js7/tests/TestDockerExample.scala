@@ -21,11 +21,11 @@ import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.system.FileUtils.temporaryDirectory
 import js7.common.utils.{JavaResource, JavaShutdownHook}
+import js7.controller.RunningController
+import js7.controller.configuration.ControllerConfiguration
+import js7.controller.configuration.inject.ControllerModule
+import js7.controller.tests.TestEnvironment
 import js7.data.agent.AgentRefPath
-import js7.master.RunningMaster
-import js7.master.configuration.MasterConfiguration
-import js7.master.configuration.inject.MasterModule
-import js7.master.tests.TestEnvironment
 import monix.execution.Scheduler.Implicits.global
 
 /**
@@ -53,22 +53,22 @@ object TestDockerExample
   private def run(directory: Path): Unit = {
     val env = new TestEnvironment(TestAgentRefPaths, directory)
     def provide(path: String) = {
-      val dir = if (path.startsWith("master")) directory else env.agentsDir
+      val dir = if (path.startsWith("controller")) directory else env.agentsDir
       JavaResource(s"js7/install/docker/volumes/$path").copyToFile(dir / path)
       if (path contains "/executables/") setPosixFilePermissions(dir / path, PosixFilePermissions.fromString("rwx------"))
     }
-    provide("master/config/private/private.conf")
+    provide("controller/config/private/private.conf")
     provide("provider/config/live/მაგალითად.workflow.json")
     provide("provider/config/order-generators/test.order.xml")
     provide("agent-1/config/private/private.conf")
     provide("agent-1/config/executables/test")
     provide("agent-2/config/private/private.conf")
     provide("agent-2/config/executables/test")
-    env.masterDir / "config" / "master.conf" := """js7.webserver.auth.loopback-is-public = on"""
+    env.controllerDir / "config" / "controller.conf" := """js7.webserver.auth.loopback-is-public = on"""
     withCloser { implicit closer =>
-      val masterConfiguration = MasterConfiguration.forTest(configAndData = env.masterDir, httpPort = Some(4444))
-      val injector = Guice.createInjector(new MasterModule(masterConfiguration.copy(
-        config = masterConfiguration.config)))
+      val controllerConfiguration = ControllerConfiguration.forTest(configAndData = env.controllerDir, httpPort = Some(4444))
+      val injector = Guice.createInjector(new ControllerModule(controllerConfiguration.copy(
+        config = controllerConfiguration.config)))
       injector.instance[Closer].closeWithCloser
       val agents = for (agentRefPath <- TestAgentRefPaths) yield {
         val agent = RunningAgent.startForTest(
@@ -89,10 +89,10 @@ object TestDockerExample
         Log4j.shutdown()
       } .closeWithCloser
 
-      val master = RunningMaster.fromInjector(injector) await 99.s
-      //??? master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery(1.minute)).runToFuture.await(99.s).orThrow
-      master.terminated await 365 * 24.h
-      master.close()
+      val controller = RunningController.fromInjector(injector) await 99.s
+      //??? controller.executeCommandAsSystemUser(ControllerCommand.ScheduleOrdersEvery(1.minute)).runToFuture.await(99.s).orThrow
+      controller.terminated await 365 * 24.h
+      controller.close()
       for (agent <- agents) agent.executeCommandAsSystemUser(AgentCommand.ShutDown())
       agents map (_.terminated) await 60.s
       agents foreach (_.close())

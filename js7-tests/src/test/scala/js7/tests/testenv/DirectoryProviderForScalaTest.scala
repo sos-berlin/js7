@@ -28,29 +28,29 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
   protected final lazy val directoryProvider = new DirectoryProvider(
     agentRefPaths,
     fileBased = fileBased,
-    masterConfig = masterConfig,
+    controllerConfig = controllerConfig,
     agentHttps = agentHttps, agentHttpsMutual = agentHttpsMutual,
     agentConfig = agentConfig,
     agentPorts = agentPorts,
     provideAgentHttpsCertificate = provideAgentHttpsCertificate,
     provideAgentClientCertificate = provideAgentClientCertificate,
-    masterHttpsMutual = masterHttpsMutual,
-    masterClientCertificate = masterClientCertificate,
+    controllerHttpsMutual = controllerHttpsMutual,
+    controllerClientCertificate = controllerClientCertificate,
     signer = signer,
     testName = Some(getClass.getSimpleName),
     suppressRepo = suppressRepoInitialization)
 
   protected def agentConfig: Config = ConfigFactory.empty
 
-  protected val masterModule: Module = EMPTY_MODULE
-  protected lazy val masterHttpPort: Option[Int] = Some(findFreeTcpPort())
-  protected lazy val masterHttpsPort: Option[Int] = None
+  protected val controllerModule: Module = EMPTY_MODULE
+  protected lazy val controllerHttpPort: Option[Int] = Some(findFreeTcpPort())
+  protected lazy val controllerHttpsPort: Option[Int] = None
   protected def agentHttpsMutual = false
-  protected def masterHttpsMutual = false
+  protected def controllerHttpsMutual = false
   protected def provideAgentHttpsCertificate = false
   protected def provideAgentClientCertificate = false
-  protected def masterClientCertificate: Option[JavaResource] = None
-  protected def masterConfig: Config = ConfigFactory.empty
+  protected def controllerClientCertificate: Option[JavaResource] = None
+  protected def controllerConfig: Config = ConfigFactory.empty
   protected def fileBased: Seq[FileBased]
   protected def signer: MessageSigner = DirectoryProvider.defaultSigner
 

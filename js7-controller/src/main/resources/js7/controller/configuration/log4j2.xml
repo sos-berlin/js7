@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration status="WARN" shutdownHook="disable">
+  <properties>
+    <property name="logDirectory">${sys:js7.log4j.directory:-logs}</property>
+  </properties>
+  <appenders>
+    <console name="stderr" target="SYSTEM_ERR">
+      <patternLayout pattern="%highlight{%d{DEFAULT} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message}{INFO=blue,WARN=red bold}%n"/>
+    </console>
+    <rollingRandomAccessFile name="file"
+                             fileName="${logDirectory}/controller.log"
+                             filePattern="${logDirectory}/controller-%d{yyyy-MM-dd}-%i.log.gz"
+                             immediateFlush="${sys:js7.log4j.immediateFlush:-true}">
+      <patternLayout pattern="%d{DEFAULT_MICROS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message%n"
+                     charset="UTF-8"/>
+      <policies>
+        <onStartupTriggeringPolicy/>
+        <timeBasedTriggeringPolicy/>
+        <sizeBasedTriggeringPolicy size="1GB"/>
+      </policies>
+      <defaultRolloverStrategy fileIndex="nomax">
+        <delete basePath="${logDirectory}">
+          <ifFileName glob="controller-*.log.gz"/>
+          <ifAny>
+            <ifLastModified age="8d"/>
+            <ifAccumulatedFileSize exceeds="2GB"/>
+          </ifAny>
+        </delete>
+      </defaultRolloverStrategy>
+    </rollingRandomAccessFile>
+  </appenders>
+  <loggers>
+    <root level="info">
+      <appenderRef level="info"  ref="stderr"/>
+      <appenderRef level="trace" ref="file"/>
+    </root>
+    <logger level="warn"  name="akka.event.slf4j.Slf4jLogger"/>
+  </loggers>
+</configuration>

@@ -6,5 +6,5 @@ bin=$(cd "${0%/*}" && pwd)
 if test -d /var/opt/js7/agent; then
   "$bin"/js7-kill-agent "$@"
 else
-  "$bin"/js7-kill-master "$@"
+  "$bin"/js7-kill-controller "$@"
 fi

@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -e
+
+cd "$(cd "$(realpath "${0%/*}")"/../../build/bin/../.. && pwd)"
+
+[ -d "volumes/testControllerAgent" ] || mkdir volumes/testControllerAgent
+
+dir="$PWD/volumes/testControllerAgent"
+rm -rf "${dir:?}"/*
+docker run \
+  --publish=127.0.0.1:4444:4444 \
+  --publish=127.0.0.1:5000:5000 \
+  --volume="$dir":/var/opt/js7/testControllerAgent \
+  --rm --name=TestControllerAgent \
+  -ti \
+  js7 \
+  testControllerAgent "$@"

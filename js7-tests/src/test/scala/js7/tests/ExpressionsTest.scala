@@ -8,7 +8,7 @@ import js7.common.system.OperatingSystem.isWindows
 import js7.data.agent.AgentRefPath
 import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import js7.data.job.{ExecutablePath, ReturnCode}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent, OrderTransferredToController}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.parser.WorkflowParser
@@ -26,12 +26,12 @@ final class ExpressionsTest extends AnyFreeSpec
       for (a <- directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/TEST$sh"), ":")
       for (a <- directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/TEST-RC$sh"), jobScript)
 
-      directoryProvider.run { (master, _) =>
+      directoryProvider.run { (controller, _) =>
         for (order <- orders) withClue(s"Order ${order.id.string}: ") {
-          master.addOrderBlocking(order)
+          controller.addOrderBlocking(order)
           val expectedLast = ExpectedEvents(order.id).last
-          master.eventWatch.await[OrderEvent](ke => ke.key == order.id && expectedLast.getClass == ke.event.getClass)
-          checkEventSeq(order.id, master.eventWatch.all[OrderEvent])
+          controller.eventWatch.await[OrderEvent](ke => ke.key == order.id && expectedLast.getClass == ke.event.getClass)
+          checkEventSeq(order.id, controller.eventWatch.all[OrderEvent])
         }
       }
     }
@@ -116,6 +116,6 @@ object ExpressionsTest {
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(3)),
       OrderDetachable,
-      OrderTransferredToMaster,
+      OrderTransferredToController,
       OrderFinished))
 }

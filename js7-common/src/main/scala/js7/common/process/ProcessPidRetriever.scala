@@ -10,7 +10,7 @@ import js7.common.system.OperatingSystem._
  * Tries to retrieve the PID of a process.
  * With Java 9, these methods become obsolete and can be replaced by Process.getPid.
  *
- * @see https://github.com/flapdoodle-oss/de.flapdoodle.embed.process/blob/master/src/main/java/de/flapdoodle/embed/process/runtime/Processes.java
+ * @see https://github.com/flapdoodle-oss/de.flapdoodle.embed.process/blob/controller/src/main/java/de/flapdoodle/embed/process/runtime/Processes.java
  * @author Joacim Zschimmer
  */
 object ProcessPidRetriever

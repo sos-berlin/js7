@@ -4,15 +4,15 @@ import js7.base.problem.Checked.Ops
 import js7.base.time.Timestamp
 import js7.base.utils.AutoClosing.autoClosing
 import js7.common.process.Processes.{ShellFileExtension => sh}
+import js7.controller.RunningController
 import js7.data.agent.AgentRefPath
 import js7.data.event.{<-:, EventSeq, KeyedEvent, TearableEventSeq}
 import js7.data.job.ExecutablePath
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAwaiting, OrderDetachable, OrderFinished, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAwaiting, OrderDetachable, OrderFinished, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent, OrderTransferredToController}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.parser.WorkflowParser
 import js7.data.workflow.position.Position
-import js7.master.RunningMaster
 import js7.tests.OfferAndAwaitOrderTest._
 import js7.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
@@ -40,10 +40,10 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
     autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflows, testName = Some("OfferAndAwaitOrderTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/executable$sh"), ":")
 
-      directoryProvider.run { (master, _) =>
-        runOrders(master)
+      directoryProvider.run { (controller, _) =>
+        runOrders(controller)
 
-        checkEventSeq(master.eventWatch.all[OrderEvent],
+        checkEventSeq(controller.eventWatch.all[OrderEvent],
           expectedOffering = Vector(
               OrderAdded(OfferingWorkflowId),
               OrderAttachable(TestAgentRefPath),
@@ -53,7 +53,7 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
               OrderProcessed(Outcome.succeeded),
               OrderMoved(Position(1)),
               OrderDetachable,
-              OrderTransferredToMaster,
+              OrderTransferredToController,
               OrderOffered(OrderId("OFFERED-ORDER-ID"), TestOfferedUntil),
               OrderMoved(Position(2)),
               OrderAttachable(TestAgentRefPath),
@@ -62,7 +62,7 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
               OrderProcessed(Outcome.succeeded),
               OrderMoved(Position(3)),
               OrderDetachable,
-              OrderTransferredToMaster,
+              OrderTransferredToController,
               OrderFinished),
           expectedAwaiting = Vector(
             OrderAdded(JoiningWorkflowId),
@@ -73,7 +73,7 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
             OrderProcessed(Outcome.succeeded),
             OrderMoved(Position(1)),
             OrderDetachable,
-            OrderTransferredToMaster,
+            OrderTransferredToController,
             OrderAwaiting(OrderId("OFFERED-ORDER-ID")),
             OrderJoined(Outcome.succeeded),
             OrderMoved(Position(2)),
@@ -83,7 +83,7 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
             OrderProcessed(Outcome.succeeded),
             OrderMoved(Position(3)),
             OrderDetachable,
-            OrderTransferredToMaster,
+            OrderTransferredToController,
             OrderFinished))
       }
     }
@@ -102,10 +102,10 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
     autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflows, testName = Some("OfferAndAwaitOrderTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/executable$sh"), ":")
 
-      directoryProvider.run { (master, _) =>
-        runOrders(master)
+      directoryProvider.run { (controller, _) =>
+        runOrders(controller)
 
-        checkEventSeq(master.eventWatch.all[OrderEvent],
+        checkEventSeq(controller.eventWatch.all[OrderEvent],
           expectedOffering = Vector(
               OrderAdded(OfferingWorkflowId),
               OrderStarted,
@@ -123,21 +123,21 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
     }
   }
 
-  private def runOrders(master: RunningMaster): Unit = {
-    master.addOrderBlocking(JoinBefore1Order)
-    master.addOrderBlocking(JoinBefore2Order)
-    master.eventWatch.await[OrderAwaiting](_.key == JoinBefore1Order.id)
-    master.eventWatch.await[OrderAwaiting](_.key == JoinBefore2Order.id)
+  private def runOrders(controller: RunningController): Unit = {
+    controller.addOrderBlocking(JoinBefore1Order)
+    controller.addOrderBlocking(JoinBefore2Order)
+    controller.eventWatch.await[OrderAwaiting](_.key == JoinBefore1Order.id)
+    controller.eventWatch.await[OrderAwaiting](_.key == JoinBefore2Order.id)
 
-    master.addOrderBlocking(OfferingOrder)
-    master.eventWatch.await[OrderJoined]  (_.key == JoinBefore1Order.id)
-    master.eventWatch.await[OrderJoined]  (_.key == JoinBefore2Order.id)
-    master.eventWatch.await[OrderFinished](_.key == JoinBefore1Order.id)
-    master.eventWatch.await[OrderFinished](_.key == JoinBefore2Order.id)
+    controller.addOrderBlocking(OfferingOrder)
+    controller.eventWatch.await[OrderJoined]  (_.key == JoinBefore1Order.id)
+    controller.eventWatch.await[OrderJoined]  (_.key == JoinBefore2Order.id)
+    controller.eventWatch.await[OrderFinished](_.key == JoinBefore1Order.id)
+    controller.eventWatch.await[OrderFinished](_.key == JoinBefore2Order.id)
 
-    master.addOrderBlocking(JoinAfterOrder)
-    master.eventWatch.await[OrderJoined]  (_.key == JoinAfterOrder.id)
-    master.eventWatch.await[OrderFinished](_.key == JoinAfterOrder.id)
+    controller.addOrderBlocking(JoinAfterOrder)
+    controller.eventWatch.await[OrderJoined]  (_.key == JoinAfterOrder.id)
+    controller.eventWatch.await[OrderFinished](_.key == JoinAfterOrder.id)
   }
 
   private def checkEventSeq(eventSeq: TearableEventSeq[IterableOnce, KeyedEvent[OrderEvent]], expectedOffering: Seq[OrderEvent], expectedAwaiting: Seq[OrderEvent]): Unit =

@@ -1,6 +1,6 @@
 package js7.agent
 
-import js7.agent.data.event.AgentMasterEvent
+import js7.agent.data.event.AgentControllerEvent
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils._
 import js7.data.event.KeyedEvent.NoKey
@@ -42,7 +42,7 @@ extends JournaledState[AgentState]
         Right(reuseIfEqual(this, copy(
           idToWorkflow = idToWorkflow + (workflow.id -> workflow))))
 
-      case KeyedEvent(_, _: AgentMasterEvent.AgentReadyForMaster) =>
+      case KeyedEvent(_, _: AgentControllerEvent.AgentReadyForController) =>
         Right(this)
 
       case keyedEvent => applyStandardEvent(keyedEvent)
@@ -88,7 +88,7 @@ extends JournaledState[AgentState]
                 idToOrder = idToOrder + (order.id-> order)))
 
           case _: OrderStdWritten =>
-            // OrderStdWritten is not applied (but forwarded to Master)
+            // OrderStdWritten is not applied (but forwarded to Controller)
             Right(this)
         }
     }

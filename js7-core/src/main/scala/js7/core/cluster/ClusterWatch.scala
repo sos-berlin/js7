@@ -8,13 +8,14 @@ import js7.base.time.ScalaTime._
 import js7.common.scalautil.Logger
 import js7.core.cluster.ClusterWatch._
 import js7.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
+import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.master.MasterId
 import monix.catnap.MVar
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
-final class ClusterWatch(masterId: MasterId, scheduler: Scheduler)
+final class ClusterWatch(controllerId: ControllerId, scheduler: Scheduler)
+
 extends ClusterWatchApi
 {
   private val timeout = 5.s // FIXME Take from ClusterWatchHearbeat/Events
@@ -31,12 +32,12 @@ extends ClusterWatchApi
 
   def get: Task[Checked[ClusterState]] =
     stateMVar.flatMap(_.read)
-      .map(_.map(_.clusterState) toChecked Problem(s"ClusterWatch not yet started for Master '$masterId'"))
+      .map(_.map(_.clusterState) toChecked Problem(s"ClusterWatch not yet started for Controller '$controllerId'"))
 
   /**
     * @param reportedClusterState the expected ClusterState after applying the `events` */
   def applyEvents(from: ClusterNodeId, events: Seq[ClusterEvent], reportedClusterState: ClusterState, force: Boolean): Task[Checked[Completed]] =
-    update(from, force, s"MasterId '$masterId': applyEvents($from, $events, $reportedClusterState)") {
+    update(from, force, s"ControllerId '$controllerId': applyEvents($from, $events, $reportedClusterState)") {
       case None =>  // Not yet initialized: we accept anything
         Right(reportedClusterState)
       case Some(current) =>
@@ -104,7 +105,7 @@ extends ClusterWatchApi
 
   private def now = MonixDeadline.now(scheduler)
 
-  override def toString = s"ClusterWatch(masterId=$masterId)"
+  override def toString = s"ClusterWatch(controllerId=$controllerId)"
 }
 
 object ClusterWatch
@@ -127,7 +128,7 @@ object ClusterWatch
     reportedClusterState: ClusterState)
   extends Problem.Coded
   {
-    //"Master's ClusterState $currentClusterState does not match registered $clusterState")
+    //"Controller's ClusterState $currentClusterState does not match registered $clusterState")
     def arguments = Map(
       "currentClusterState" -> currentClusterState.toString,
       "reportedClusterState" -> reportedClusterState.toString)
@@ -140,7 +141,7 @@ object ClusterWatch
     reportedClusterState: ClusterState)
   extends Problem.Coded
   {
-    //"Master's ClusterState $currentClusterState does not match registered $clusterState")
+    //"Controller's ClusterState $currentClusterState does not match registered $clusterState")
     def arguments = Map(
       "events" -> events.mkString(", "),
       "currentClusterState" -> currentClusterState.toString,

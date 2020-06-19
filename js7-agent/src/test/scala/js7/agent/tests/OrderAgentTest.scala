@@ -7,7 +7,7 @@ import js7.agent.client.AgentClient
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.Akkas.newAgentActorSystem
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{AttachOrder, Batch, DetachOrder, RegisterAsMaster}
+import js7.agent.data.commands.AgentCommand.{AttachOrder, Batch, DetachOrder, RegisterAsController}
 import js7.agent.tests.OrderAgentTest._
 import js7.agent.tests.TestAgentDirectoryProvider.{TestUserAndPassword, provideAgentDirectory}
 import js7.base.Problems.TamperedWithSignedMessageProblem
@@ -59,11 +59,11 @@ final class OrderAgentTest extends AnyFreeSpec
           implicit val actorSystem = newAgentActorSystem(getClass.getSimpleName)
           val agentClient = AgentClient(agent.localUri, Some(TestUserAndPassword)).closeWithCloser
           intercept[AkkaHttpClient.HttpException] {  // Login is required
-            agentClient.commandExecute(RegisterAsMaster(agentRefPath)).await(99.s).orThrow
+            agentClient.commandExecute(RegisterAsController(agentRefPath)).await(99.s).orThrow
           } .status shouldEqual Unauthorized
           agentClient.login() await 99.s
-          assert(agentClient.commandExecute(RegisterAsMaster(agentRefPath)).await(99.s).toOption.get  // Without Login, this registers all anonymous clients
-            .isInstanceOf[RegisterAsMaster.Response])
+          assert(agentClient.commandExecute(RegisterAsController(agentRefPath)).await(99.s).toOption.get  // Without Login, this registers all anonymous clients
+            .isInstanceOf[RegisterAsController.Response])
 
           val order = Order(OrderId("TEST-ORDER"), SimpleTestWorkflow.id, Order.Ready, Map("x" -> "X"))
 
@@ -75,7 +75,7 @@ final class OrderAgentTest extends AnyFreeSpec
           attachOrder(SignedSimpleWorkflow) shouldEqual Right(AgentCommand.Response.Accepted)
 
           EventRequest.singleClass[Event](timeout = Some(10.s))
-            .repeat(eventRequest => agentClient.mastersEvents(eventRequest).map(_.orThrow).runToFuture) {
+            .repeat(eventRequest => agentClient.controllersEvents(eventRequest).map(_.orThrow).runToFuture) {
               case Stamped(_, _, KeyedEvent(order.id, OrderDetachable)) =>
             }
           val Right(processedOrder) = agentClient.order(order.id) await 99.s
@@ -107,7 +107,7 @@ final class OrderAgentTest extends AnyFreeSpec
           implicit val actorSystem = newAgentActorSystem(getClass.getSimpleName)
           val agentClient = AgentClient(agent.localUri, Some(TestUserAndPassword)).closeWithCloser
           agentClient.login() await 99.s
-          assert(agentClient.commandExecute(RegisterAsMaster(agentRefPath)).await(99.s) == Right(AgentCommand.Response.Accepted))
+          assert(agentClient.commandExecute(RegisterAsController(agentRefPath)).await(99.s) == Right(AgentCommand.Response.Accepted))
 
           val orders = for (i <- 1 to n) yield
             Order(OrderId(s"TEST-ORDER-$i"), SimpleTestWorkflow.id, Order.Ready,
@@ -120,7 +120,7 @@ final class OrderAgentTest extends AnyFreeSpec
           val awaitedOrderIds = (orders map { _.id }).toSet
           val ready = mutable.Set[OrderId]()
           while (
-            agentClient.mastersEvents(EventRequest.singleClass[Event](timeout = Some(timeout))).map(_.orThrow) await 99.s match {
+            agentClient.controllersEvents(EventRequest.singleClass[Event](timeout = Some(timeout))).map(_.orThrow) await 99.s match {
               case EventSeq.NonEmpty(stampeds) =>
                 ready ++= stampeds map { _.value } collect { case KeyedEvent(orderId: OrderId, OrderDetachable) => orderId }
                 ready != awaitedOrderIds

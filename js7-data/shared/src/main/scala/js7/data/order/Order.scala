@@ -183,7 +183,7 @@ final case class Order[+S <: Order.State](
                               isState[FailedWhileFresh] || isState[Failed] || isState[FailedInFork] || isState[Broken]),
           copy(attachedState = None))
 
-      case OrderTransferredToMaster =>
+      case OrderTransferredToController =>
         check(isDetaching && (isState[Fresh] || isState[Ready] || isState[Forked] || isState[ProcessingCancelled] ||
                               isState[FailedWhileFresh] || isState[Failed] || isState[FailedInFork] || isState[Broken]),
           copy(attachedState = None))
@@ -239,7 +239,7 @@ final case class Order[+S <: Order.State](
 
   def attachedStateString: String =
     attachedState match {
-      case None => "on Master"
+      case None => "on Controller"
       case Some(Attaching(agentRefPath)) => s"attachable to $agentRefPath"
       case Some(Attached(agentRefPath)) => s"attached to $agentRefPath"
       case Some(Detaching(agentRefPath)) => s"detaching from $agentRefPath"
@@ -257,7 +257,7 @@ final case class Order[+S <: Order.State](
   def isDetaching: Boolean =
     attachedState exists (_.isInstanceOf[Detaching])
 
-  /** `true` iff order is processable on Master.. */
+  /** `true` iff order is processable on Controller.. */
   def isDetached: Boolean =
     attachedState.isEmpty
 

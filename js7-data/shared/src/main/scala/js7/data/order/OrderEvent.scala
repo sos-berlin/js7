@@ -58,8 +58,8 @@ object OrderEvent {
   final case class OrderTransferredToAgent(agentRefPath: AgentRefPath)
   extends OrderCoreEvent
 
-  type OrderTransferredToMaster = OrderTransferredToMaster.type
-  case object OrderTransferredToMaster
+  type OrderTransferredToController = OrderTransferredToController.type
+  case object OrderTransferredToController
   extends OrderCoreEvent
 
   type OrderStarted = OrderStarted.type
@@ -147,28 +147,28 @@ object OrderEvent {
   final case class OrderBroken(problem: Problem) extends OrderActorEvent
 
   /**
-    * Master may have started to attach Order to Agent..
+    * Controller may have started to attach Order to Agent..
     */
   final case class OrderAttachable(agentRefPath: AgentRefPath) extends OrderCoreEvent
 
   type OrderDetachable = OrderDetachable.type
   /**
-    * Agent has processed all steps and the Order should be fetched by the Master.
+    * Agent has processed all steps and the Order should be fetched by the Controller.
     */
   case object OrderDetachable extends OrderActorEvent
 
   type OrderDetached = OrderDetached.type
   /**
-    * Order has been removed from the Agent and is held by the Master.
+    * Order has been removed from the Agent and is held by the Controller.
     */
   case object OrderDetached extends OrderCoreEvent
 
   type OrderFinished = OrderFinished.type
   case object OrderFinished extends OrderActorEvent with OrderTerminated
 
-  /** A OrderCancellationMarked on Agent is different from same Event on Master.
-    * Master will ignore the Agent's OrderCancellationMarked.
-    * Master should have emitted the event independendly. **/
+  /** A OrderCancellationMarked on Agent is different from same Event on Controller.
+    * Controller will ignore the Agent's OrderCancellationMarked.
+    * Controller should have emitted the event independendly. **/
   final case class OrderCancellationMarked(mode: CancelMode) extends OrderActorEvent
 
   type OrderCancelled = OrderCancelled.type
@@ -196,7 +196,7 @@ object OrderEvent {
     Subtype(deriveCodec[OrderCancellationMarked]),
     Subtype(OrderCancelled),
     Subtype(deriveCodec[OrderTransferredToAgent]),
-    Subtype(OrderTransferredToMaster),
+    Subtype(OrderTransferredToController),
     Subtype(deriveCodec[OrderAttached]),
     Subtype(deriveCodec[OrderAttachable]),
     Subtype(OrderDetachable),

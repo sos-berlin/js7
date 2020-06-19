@@ -2,7 +2,7 @@ package js7.agent.data
 
 import js7.base.problem.Problem
 import js7.data.agent.AgentRefPath
-import js7.data.master.MasterId
+import js7.data.controller.ControllerId
 import js7.data.order.OrderId
 
 /**
@@ -14,7 +14,7 @@ object Problems
     override def httpStatusCode = 503  // Service unavailable
   }
 
-  final case class MasterAgentMismatch(agentRefPath: AgentRefPath)
+  final case class ControllerAgentMismatch(agentRefPath: AgentRefPath)
   extends Problem.Coded {
     def arguments = Map("agentRefPath" -> agentRefPath.string)
   }
@@ -30,8 +30,8 @@ object Problems
     def arguments = Map("orderId" -> orderId.string)
   }
 
-  final case class UnknownMaster(masterId: MasterId) extends Problem.Coded {
-    def arguments = Map("masterId" -> masterId.string)
+  final case class UnknownController(controllerId: ControllerId) extends Problem.Coded {
+    def arguments = Map("controllerId" -> controllerId.string)
   }
 
   case object SignedInjectionNotAllowed extends Problem.ArgumentlessCoded

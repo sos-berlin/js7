@@ -37,13 +37,13 @@ private class TestAgentActorProvider extends HasCloser {
 
   def executeCommand(command: AgentCommand): Future[Checked[AgentCommand.Response]] = {
     val response = Promise[Checked[AgentCommand.Response]]()
-    agentActor ! AgentActor.Input.ExternalCommand(MasterUserId, command, response)
+    agentActor ! AgentActor.Input.ExternalCommand(ControllerUserId, command, response)
     response.future
   }
 }
 
 object TestAgentActorProvider {
-  private val MasterUserId = UserId.Anonymous
+  private val ControllerUserId = UserId.Anonymous
 
   def provide[A](body: TestAgentActorProvider => A): A =
     autoClosing(new TestAgentActorProvider)(body)

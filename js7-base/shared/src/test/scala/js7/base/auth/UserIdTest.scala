@@ -16,7 +16,7 @@ final class UserIdTest extends AnyFreeSpec {
     assert(UserId.checked(".").isLeft)
     assert(UserId.checked("..").isLeft)
     assert(UserId.checked(".hidden").isLeft)
-    assert(UserId.checked("Master--100").isLeft)  // "--" is used for history journal files
+    assert(UserId.checked("Controller--100").isLeft)  // "--" is used for history journal files
   }
 
   "Valid UserId" in {

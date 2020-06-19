@@ -9,7 +9,7 @@ import js7.base.problem.Checked
 import js7.common.event.EventWatch
 import js7.core.command.CommandMeta
 import js7.data.command.{CommandHandlerDetailed, CommandHandlerOverview}
-import js7.data.master.MasterId
+import js7.data.controller.ControllerId
 import js7.data.order.{Order, OrderId}
 import monix.eval.Task
 /**
@@ -42,6 +42,6 @@ extends AgentApi
     commandHandler.typedExecute(AgentCommand.GetOrders, meta)
       .map(_.map(_.orders))
 
-  def eventWatchForMaster(masterId: MasterId): Task[Checked[EventWatch]] =
-    agentHandle.eventWatch(masterId)
+  def eventWatchForController(controllerId: ControllerId): Task[Checked[EventWatch]] =
+    agentHandle.eventWatch(controllerId)
 }

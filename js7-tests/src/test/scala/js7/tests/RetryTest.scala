@@ -11,30 +11,30 @@ import js7.common.system.OperatingSystem.isWindows
 import js7.data.agent.AgentRefPath
 import js7.data.event.{EventId, EventRequest, EventSeq}
 import js7.data.job.{ExecutablePath, ReturnCode}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCatched, OrderDetachable, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCatched, OrderDetachable, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted, OrderTransferredToAgent, OrderTransferredToController}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.parser.WorkflowParser
 import js7.data.workflow.position.BranchId.{Else, Then, catch_, try_}
 import js7.data.workflow.position.Position
 import js7.tests.RetryTest._
-import js7.tests.testenv.MasterAgentForScalaTest
+import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
 
-final class RetryTest extends AnyFreeSpec with MasterAgentForScalaTest
+final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  override protected val masterConfig = ConfigFactory.parseString(
+  override protected val controllerConfig = ConfigFactory.parseString(
     s"""js7.journal.simulate-sync = 10ms""")  // Avoid excessive syncs in case of test failure
   override protected val agentConfig = ConfigFactory.parseString(
     s"""js7.journal.simulate-sync = 10ms""")  // Avoid excessive syncs in case of test failure
   protected val agentRefPaths = TestAgentRefPath :: Nil
   protected val fileBased = Nil
 
-  import master.eventWatch
+  import controller.eventWatch
 
   override def beforeAll() = {
     for (a <- directoryProvider.agents) {
@@ -75,12 +75,12 @@ final class RetryTest extends AnyFreeSpec with MasterAgentForScalaTest
       OrderCatched(Outcome.Failed(ReturnCode(1)), Position(1)),   // Retry limit reached
 
       OrderDetachable,
-      OrderTransferredToMaster,
+      OrderTransferredToController,
       OrderFinished)
 
     val orderId = OrderId("🔺")
     val afterEventId = eventWatch.lastAddedEventId
-    master.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
+    controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
     awaitAndCheckEventSeq[OrderFinished](afterEventId, orderId, expectedEvents)
   }
 
@@ -159,12 +159,12 @@ final class RetryTest extends AnyFreeSpec with MasterAgentForScalaTest
       OrderMoved(Position(1)),
 
       OrderDetachable,
-      OrderTransferredToMaster,
+      OrderTransferredToController,
       OrderFinished)
 
     val orderId = OrderId("🔷")
     val afterEventId = eventWatch.lastAddedEventId
-    master.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
+    controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
     awaitAndCheckEventSeq[OrderFinished](afterEventId, orderId, expectedEvents)
   }
 
@@ -179,7 +179,7 @@ final class RetryTest extends AnyFreeSpec with MasterAgentForScalaTest
 
     val orderId = OrderId("⭕")
     val afterEventId = eventWatch.lastAddedEventId
-    master.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
+    controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
     eventWatch.await[OrderFailed](_.key == orderId, after = afterEventId)
 
     val EventSeq.NonEmpty(stamped) = eventWatch.when(EventRequest.singleClass[OrderProcessingStarted](after = afterEventId)).await(9.seconds)
@@ -214,7 +214,7 @@ final class RetryTest extends AnyFreeSpec with MasterAgentForScalaTest
 
     val orderId = OrderId("🔶")
     val afterEventId = eventWatch.lastAddedEventId
-    master.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
+    controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
     awaitAndCheckEventSeq[OrderFailed](afterEventId, orderId, expectedEvents)
   }
 
@@ -243,7 +243,7 @@ final class RetryTest extends AnyFreeSpec with MasterAgentForScalaTest
 
     val orderId = OrderId("🔵")
     val afterEventId = eventWatch.lastAddedEventId
-    master.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
+    controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
     awaitAndCheckEventSeq[OrderFailed](afterEventId, orderId, expectedEvents)
   }
 

@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+set -e
+
+JOBSCHEDULER_HOME="$(cd "${0%/*}/../bin/.." && pwd)"
+export JOBSCHEDULER_HOME
+. "$JOBSCHEDULER_HOME/bin/internal/set-context.sh"
+declare classpathString java
+
+httpPort=4444
+args=()
+javaOptions=(-Xmx100m -Xms50m)
+
+for arg in "$@"; do :
+  case "$arg" in
+    -java-option=*)
+      a="${arg#*=}"
+      javaOptions+=("$a")
+      shift
+      ;;
+    -J*)
+      a="${arg#-J}"
+      javaOptions+=("$a")
+      shift
+      ;;
+    -http-port=*)
+      httpPort="${arg#*=}"
+      shift
+      ;;
+    *)
+      args+=("$arg")
+      shift
+      ;;
+  esac
+done
+
+execute=(
+  "$java"
+  "${javaOptions[@]}"
+  -classpath "$classpathString"
+  -Dlog4j.configurationFile=js7/controller/client/main/log4j2.xml \
+  js7.controller.client.main.ControllerClientMain
+  http://127.0.0.1:$httpPort
+  "${args[@]}")
+exec "${execute[@]}"

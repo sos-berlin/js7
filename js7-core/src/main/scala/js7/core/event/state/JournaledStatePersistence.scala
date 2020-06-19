@@ -16,7 +16,7 @@ import scala.concurrent.Promise
 import scala.reflect.runtime.universe._
 import shapeless.tag.@@
 
-// TODO Lock for NoKey is to wide. Restrict to a set of Event superclasses, like ClusterEvent, MasterEvent?
+// TODO Lock for NoKey is to wide. Restrict to a set of Event superclasses, like ClusterEvent, ControllerEvent?
 //  Der Aufrufer kann sich im die Sperren uns dessen Granularität kümmern.
 //  JournaledStatePersistence stellt dazu LockKeeper bereit
 //  Wir werden vielleicht mehrere Schlüssel auf einmal sperren wollen (für fork/join?)

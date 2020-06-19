@@ -35,7 +35,7 @@ object StartUp
       s"config=$configDir " +
         dataDir.fold("")("data=".+))
 
-    if (!classPathLogged.getAndSet(true)) {  // Log only once (for tests running master and agents in same JVM)
+    if (!classPathLogged.getAndSet(true)) {  // Log only once (for tests running controller and agents in same JVM)
       val paths = sys.props("java.class.path") split File.pathSeparator filter (_.nonEmpty)
       logger.debug(Logger.Java, s"Classpath contains ${paths.size} libraries:")
       for (o <- paths) {

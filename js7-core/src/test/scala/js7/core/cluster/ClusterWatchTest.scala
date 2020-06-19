@@ -10,9 +10,9 @@ import js7.core.cluster.ClusterWatch._
 import js7.core.message.ProblemCodeMessages
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
+import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalPosition}
-import js7.data.master.MasterId
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.schedulers.TestScheduler
 import org.scalatest.freespec.AnyFreeSpec
@@ -34,7 +34,7 @@ final class ClusterWatchTest extends AnyFreeSpec
   "ClusterWatch" - {
     lazy val scheduler = TestScheduler()
     var clusterState: ClusterState = ClusterState.NodesAppointed(idToUri, aId)
-    lazy val watch = new ClusterWatch(MasterId("MASTER"), scheduler)
+    lazy val watch = new ClusterWatch(ControllerId("CONTROLLER"), scheduler)
 
     "Early heartbeat" in {
       scheduler.tick(1.s)

@@ -1,7 +1,7 @@
 package js7.tests
 
 import js7.agent.RunningAgent
-import js7.agent.data.Problems.UnknownMaster
+import js7.agent.data.Problems.UnknownController
 import js7.base.time.ScalaTime._
 import js7.base.web.Uri
 import js7.common.akkahttp.web.data.WebServerPort
@@ -10,15 +10,15 @@ import js7.common.scalautil.FileUtils.deleteDirectoryContentRecursively
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
+import js7.controller.data.events.ControllerAgentEvent.AgentCouplingFailed
 import js7.data.agent.{AgentRef, AgentRefPath}
+import js7.data.controller.ControllerId
 import js7.data.filebased.VersionId
 import js7.data.job.ExecutablePath
-import js7.data.master.MasterId
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.master.data.events.MasterAgentEvent.AgentCouplingFailed
 import js7.tests.UpdateRepoAgentRefTest._
 import js7.tests.testenv.DirectoryProvider.script
 import js7.tests.testenv.{DirectoryProvider, DirectoryProviderForScalaTest}
@@ -31,12 +31,12 @@ final class UpdateRepoAgentRefTest extends AnyFreeSpec with DirectoryProviderFor
   protected val fileBased = workflow :: Nil
   private lazy val agentPort1 :: agentPort2 :: agentPort3 :: Nil = findFreeTcpPorts(3)
   private lazy val agentFileTree = new DirectoryProvider.AgentTree(directoryProvider.directory, agentRefPath, "AGENT", agentPort1)
-  private lazy val master = directoryProvider.startMaster() await 99.s
+  private lazy val controller = directoryProvider.startController() await 99.s
   private var agentRef: AgentRef = null
   private var agent: RunningAgent = null
 
   override def afterAll() = {
-    master.terminate() await 99.s
+    controller.terminate() await 99.s
     super.afterAll()
   }
 
@@ -48,8 +48,8 @@ final class UpdateRepoAgentRefTest extends AnyFreeSpec with DirectoryProviderFor
     agentRef = AgentRef(agentRefPath, Uri(s"http://127.0.0.1:$agentPort1"))
     agent = RunningAgent.startForTest(agentFileTree.agentConfiguration) await 99.s
 
-    directoryProvider.updateRepo(master, v1, List(agentRef))
-    master.runOrder(FreshOrder(OrderId("🔵"), workflow.path))
+    directoryProvider.updateRepo(controller, v1, List(agentRef))
+    controller.runOrder(FreshOrder(OrderId("🔵"), workflow.path))
   }
 
   "Change Agent's URI and keep Agent's state" in {
@@ -60,8 +60,8 @@ final class UpdateRepoAgentRefTest extends AnyFreeSpec with DirectoryProviderFor
       agentFileTree.agentConfiguration.copy(
         webServerPorts = List(WebServerPort.localhost(agentPort2)))
     ) await 99.s
-    directoryProvider.updateRepo(master, v2, List(agentRef))
-    master.runOrder(FreshOrder(OrderId("🔶"), workflow.path))
+    directoryProvider.updateRepo(controller, v2, List(agentRef))
+    controller.runOrder(FreshOrder(OrderId("🔶"), workflow.path))
   }
 
   "Change Agent's URI and start Agent with clean state: should fail" in {
@@ -74,11 +74,11 @@ final class UpdateRepoAgentRefTest extends AnyFreeSpec with DirectoryProviderFor
       agentFileTree.agentConfiguration.copy(
         webServerPorts = List(WebServerPort.localhost(agentPort3)))
     ) await 99.s
-    val beforeUpdate = master.eventWatch.lastFileTornEventId
-    directoryProvider.updateRepo(master, v3, List(agentRef))
-    master.addOrder(FreshOrder(OrderId("❌"), workflow.path)) await 99.s
-    master.eventWatch.await[AgentCouplingFailed](
-      _.event.problem == UnknownMaster(MasterId("Master")),
+    val beforeUpdate = controller.eventWatch.lastFileTornEventId
+    directoryProvider.updateRepo(controller, v3, List(agentRef))
+    controller.addOrder(FreshOrder(OrderId("❌"), workflow.path)) await 99.s
+    controller.eventWatch.await[AgentCouplingFailed](
+      _.event.problem == UnknownController(ControllerId("Controller")),
       after = beforeUpdate)
     agent.terminate() await 99.s
   }

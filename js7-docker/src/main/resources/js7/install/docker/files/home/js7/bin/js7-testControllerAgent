@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+set -e
+
+export JS7_HOME=/opt/js7
+. "$JS7_HOME"/bin/internal/set-context.sh
+declare classpathString java
+
+directory=/var/opt/js7/testControllerAgent
+log4jXml="js7/tests/log4j2.xml"   # Java resource
+javaOptions=()
+args=()
+
+for arg in "$@"; do :
+  case "$arg" in
+    -rmx-port=*)
+      a="${arg#*=}"
+      javaOptions+=(
+        "-Dcom.sun.management.jmxremote"
+        "-Dcom.sun.management.jmxremote.ssl=false"
+        "-Dcom.sun.management.jmxremote.authenticate=false"
+        "-Dcom.sun.management.jmxremote.port=$a")
+      shift
+      ;;
+    -debug-port=*)
+      a="${arg#*=}"
+      javaOptions+=("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=$a")
+      shift
+      ;;
+    -java-option=*)
+      a="${arg#*=}"
+      javaOptions+=("$a")
+      shift
+      ;;
+    *)
+      args+=("$arg")
+      ;;
+  esac
+done
+
+logs="$directory"
+export SCHEDULER_LOGS="$logs"  # Used in log4j2.xml
+javaOptions+=("-Dlog4j.configurationFile=$log4jXml")
+javaOptions+=("-Dlog4j2.contextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector")
+javaOptions+=("-Dlog4j2.asyncLoggerWaitStrategy=Block")  # Uses less CPU when idling than default "Timeout"
+javaOptions+=("-Djs7.log4j.immediateFlush=false")
+
+execute=(
+  "$java"
+  "${javaOptions[@]}"
+  -classpath "$classpathString"
+  "js7.tests.TestControllerAgent"
+  "-directory=$directory"
+  "${args[@]}"
+)
+echo "${execute[@]}"
+exec "${execute[@]}"

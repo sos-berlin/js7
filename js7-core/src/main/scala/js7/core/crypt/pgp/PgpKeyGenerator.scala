@@ -24,16 +24,16 @@ object PgpKeyGenerator
     // See https://stackoverflow.com/questions/3087049/bouncy-castle-rsa-keypair-generation-using-lightweight-api
     val publicExponent = 0x10001  // Should be a Fermat number
     val certainty = 80
-    val masterSigningKeyPair = newKeyPair(new RSAKeyGenerationParameters(BigInteger.valueOf(publicExponent), new SecureRandom, keySize, certainty))
+    val controllerSigningKeyPair = newKeyPair(new RSAKeyGenerationParameters(BigInteger.valueOf(publicExponent), new SecureRandom, keySize, certainty))
     val shaCalculator = new BcPGPDigestCalculatorProvider().get(HashAlgorithmTags.SHA1)  // "only SHA1 supported for key checksum calculations"
     new PGPKeyRingGenerator(
       PGPSignature.POSITIVE_CERTIFICATION,
-      masterSigningKeyPair,
+      controllerSigningKeyPair,
       id.string,
       shaCalculator,
       signatureSubpackets,
       null,
-      new BcPGPContentSignerBuilder(masterSigningKeyPair.getPublicKey.getAlgorithm, HashAlgorithmTags.SHA512),
+      new BcPGPContentSignerBuilder(controllerSigningKeyPair.getPublicKey.getAlgorithm, HashAlgorithmTags.SHA512),
       new BcPBESecretKeyEncryptorBuilder(SymmetricKeyAlgorithmTags.AES_256, shaCalculator)
         .build(password.string.toArray)
     ).generateSecretKeyRing.getSecretKey

@@ -2,27 +2,27 @@
 set -e
 
 while true; do
-  if docker ps | grep js7-master >/dev/null; then
+  if docker ps | grep js7-controller >/dev/null; then
     echo -en "\n\e[0;31mkill "
-    docker kill js7-master || true
+    docker kill js7-controller || true
     echo -en "\e[0m"
   fi
-  if docker ps | grep js7-backup-master >/dev/null; then
+  if docker ps | grep js7-backup-controller >/dev/null; then
     a=$((2 ** (RANDOM / 5000) + RANDOM / 500))
     #echo -n "Primary will start in ${a}s "
     sleep $a
   else
     if [ $((RANDOM / 16384)) -eq 0 ]; then
       echo -n "start "
-      docker start js7-master || true
+      docker start js7-controller || true
     else
       echo -n "start "
-      docker start js7-backup-master || true
+      docker start js7-backup-controller || true
     fi
   fi
-  if ! docker ps | grep js7-master >/dev/null; then
+  if ! docker ps | grep js7-controller >/dev/null; then
     echo -n "start "
-    docker start js7-master || true
+    docker start js7-controller || true
     #echo -n "Primary runs for ${a}s "
   fi
   a=$((2 ** (RANDOM / 10000) + RANDOM / 250))
@@ -32,27 +32,27 @@ primaryPid=$!
 
 sleep 1  # Delay to not mix startig echo lines
 while true; do
-  if docker ps | grep js7-backup-master >/dev/null; then
+  if docker ps | grep js7-backup-controller >/dev/null; then
     echo -en "\n\e[0;31mkill "
-    docker kill js7-backup-master || true
+    docker kill js7-backup-controller || true
     echo -en "\e[0m"
   fi
-  if docker ps | grep js7-master >/dev/null; then
+  if docker ps | grep js7-controller >/dev/null; then
     a=$((2 ** (RANDOM / 5000) + RANDOM / 500))
     #echo -n "Backup will start in ${a}s "
     sleep $a
   else
     if [ $((RANDOM / 16384)) -eq 0 ]; then
       echo -n "start "
-      docker start js7-backup-master || true
+      docker start js7-backup-controller || true
     else
       echo -n "start "
-      docker start js7-master || true
+      docker start js7-controller || true
     fi
   fi
-  if ! docker ps | grep js7-backup-master >/dev/null; then
+  if ! docker ps | grep js7-backup-controller >/dev/null; then
     echo -n "start "
-    docker start js7-backup-master || true
+    docker start js7-backup-controller || true
   fi
   #echo -n "Backup runs for ${a}s "
   a=$((2 ** (RANDOM / 5000) + RANDOM / 250))

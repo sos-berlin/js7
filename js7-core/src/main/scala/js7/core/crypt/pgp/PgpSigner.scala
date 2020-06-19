@@ -118,10 +118,10 @@ object PgpSigner extends MessageSigner.Companion
   private def selectSecretKey(keyRings: PGPSecretKeyRingCollection): PGPSecretKey = {
     val keys = keyRings
       .getKeyRings.asScala
-      .map(o => o.getSecretKey(o.getPublicKey/*the master key*/.getFingerprint))
+      .map(o => o.getSecretKey(o.getPublicKey/*the controller key*/.getFingerprint))
       .toVector
-    if (keys.isEmpty) throw new NoSuchElementException("No master key in secret key ring")
-    if (keys.sizeIs > 1) throw new IllegalArgumentException(s"More than one master key in secret key ring: " + keys.mkString_("", ", ", ""))
+    if (keys.isEmpty) throw new NoSuchElementException("No controller key in secret key ring")
+    if (keys.sizeIs > 1) throw new IllegalArgumentException(s"More than one controller key in secret key ring: " + keys.mkString_("", ", ", ""))
     keys.head
   }
 }

@@ -5,9 +5,9 @@ import js7.base.circeutils.JavaJsonCodecs.zoneIdJsonEncoder
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.data.agent.{AgentRefPath, AgentRunId}
+import js7.data.controller.ControllerId
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, JournalEvent, KeyedEventTypedJsonCodec, NoKeyEvent}
-import js7.data.master.MasterId
 
 /**
   * @author Joacim Zschimmer
@@ -18,16 +18,16 @@ object AgentEvent
 {
   intelliJuseImport(zoneIdJsonEncoder)
 
-  sealed trait AgentMasterEvent extends AgentEvent
+  sealed trait AgentControllerEvent extends AgentEvent
 
-  final case class MasterRegistered(
-    masterId: MasterId,
+  final case class ControllerRegistered(
+    controllerId: ControllerId,
     agentRefPath: AgentRefPath,
     agentRunId: AgentRunId)
-  extends AgentMasterEvent
+  extends AgentControllerEvent
 
   implicit val jsonCodec: TypedJsonCodec[AgentEvent] = TypedJsonCodec[AgentEvent](
-    Subtype(CirceUtils.deriveCodec[MasterRegistered])
+    Subtype(CirceUtils.deriveCodec[ControllerRegistered])
   )
   implicit val KeyedEventJsonCodec = KeyedEventTypedJsonCodec[Event](
     KeyedSubtype[JournalEvent],

@@ -32,9 +32,9 @@ extends HasCloser with ProvideActorSystem with TextApi with HttpSessionApi with 
   protected def keyStoreRef = None
 
   protected lazy val trustStoreRefs = configDirectory.toList.flatMap { configDir =>
-    // Use Master's keystore as truststore for client access, using also Master's store-password
-    val mastersConfig = configDirectoryConfig(configDir)
-    KeyStoreRef.fromConfig(mastersConfig, configDir / "private/https-keystore.p12")
+    // Use Controller's keystore as truststore for client access, using also Controller's store-password
+    val controllersConfig = configDirectoryConfig(configDir)
+    KeyStoreRef.fromConfig(controllersConfig, configDir / "private/https-keystore.p12")
       .map(TrustStoreRef.fromKeyStore)
       .toOption
   }
@@ -65,5 +65,5 @@ object AkkaHttpAgentTextApi
     ConfigFactory
       .empty
       .withFallback(parseConfigIfExists(configDirectory / "private/private.conf", secret = true))
-      .withFallback(parseConfigIfExists(configDirectory / "master.conf", secret = false))
+      .withFallback(parseConfigIfExists(configDirectory / "controller.conf", secret = false))
 }

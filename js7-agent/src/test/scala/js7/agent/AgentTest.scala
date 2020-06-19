@@ -5,7 +5,7 @@ import java.nio.file.Path
 import js7.agent.AgentTest._
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{AttachOrder, RegisterAsMaster}
+import js7.agent.data.commands.AgentCommand.{AttachOrder, RegisterAsController}
 import js7.agent.tests.AgentTester
 import js7.agent.tests.TestAgentDirectoryProvider.provideAgentDirectory
 import js7.base.auth.SimpleUser
@@ -17,8 +17,8 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.system.OperatingSystem.isWindows
 import js7.core.command.CommandMeta
 import js7.data.agent.AgentRefPath
+import js7.data.controller.ControllerId
 import js7.data.job.ExecutablePath
-import js7.data.master.MasterId
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.workflow.instructions.Execute
@@ -55,13 +55,13 @@ final class AgentTest extends AnyFreeSpec with AgentTester
           }
           RunningAgent.run(agentConf, timeout = Some(99.s)) { agent =>
             val agentApi = agent.api(CommandMeta(TestUser))
-            assert(agentApi.commandExecute(RegisterAsMaster(agentRefPath)).await(99.s).toOption.get
-              .isInstanceOf[RegisterAsMaster.Response])
+            assert(agentApi.commandExecute(RegisterAsController(agentRefPath)).await(99.s).toOption.get
+              .isInstanceOf[RegisterAsController.Response])
 
             val order = Order(OrderId("TEST"), TestWorkflow.id, Order.Ready)
             assert(agentApi.commandExecute(AttachOrder(order, TestAgentRefPath, fileBasedSigner.sign(TestWorkflow))).await(99.s)
               == Right(AgentCommand.Response.Accepted))
-            val Right(eventWatch) = agentApi.eventWatchForMaster(TestMasterId).await(99.seconds)
+            val Right(eventWatch) = agentApi.eventWatchForController(TestControllerId).await(99.seconds)
             val orderProcessed = eventWatch.await[OrderProcessed]().head.value.event
             assert(orderProcessed.outcome == Outcome.Succeeded(Map("WORKDIR" -> workingDirectory.toString)))
             agent.terminate() await 99.s
@@ -72,8 +72,8 @@ final class AgentTest extends AnyFreeSpec with AgentTester
 }
 
 object AgentTest {
-  private val TestMasterId = MasterId("MASTER")
-  private val TestUser = SimpleUser(TestMasterId.toUserId)
+  private val TestControllerId = ControllerId("CONTROLLER")
+  private val TestUser = SimpleUser(TestControllerId.toUserId)
   private val agentRefPath = AgentRefPath("/AGENT")
 
   private val TestScript =

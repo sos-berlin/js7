@@ -21,12 +21,12 @@ import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.time.WaitForCondition.waitForCondition
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import js7.controller.data.events.ControllerKeyedEventJsonCodec
 import js7.core.event.GenericEventRoute
 import js7.data.event.{Event, EventId, EventRequest, EventSeqTornProblem, KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.OrderAdded
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.workflow.WorkflowPath
-import js7.master.data.events.MasterKeyedEventJsonCodec
 import js7.tests.core.GenericEventRouteTest._
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -84,7 +84,7 @@ final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll wit
 
   private lazy val route = pathSegments("event")(
     new GenericEventRouteProvider {
-      def keyedEventTypedJsonCodec = MasterKeyedEventJsonCodec/*Example for test*/
+      def keyedEventTypedJsonCodec = ControllerKeyedEventJsonCodec/*Example for test*/
       def eventWatchFor(user: SimpleUser) = Task.pure(Right(eventWatch))
       override def isRelevantEvent(keyedEvent: KeyedEvent[Event]) = true
     }.route)

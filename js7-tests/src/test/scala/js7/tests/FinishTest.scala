@@ -6,7 +6,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.data.agent.AgentRefPath
 import js7.data.event.{EventSeq, KeyedEvent}
 import js7.data.job.{ExecutablePath, ReturnCode}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToController}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.Fork
@@ -38,7 +38,7 @@ final class FinishTest extends AnyFreeSpec
         OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
         OrderMoved(Position(1)),
         OrderDetachable,
-        OrderTransferredToMaster,
+        OrderTransferredToController,
         OrderFinished))
   }
 
@@ -78,7 +78,7 @@ final class FinishTest extends AnyFreeSpec
         OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
         OrderMoved(Position(0) / "fork+🥕" % 1 / Then % 0),  // Position of Finish
         OrderDetachable,
-        OrderTransferredToMaster,
+        OrderTransferredToController,
         OrderMoved(Position(0) / "fork+🥕" % 3)))    // Moved to end
 
     assert(events.filter(_.key == orderId / "🍋").map(_.event) ==
@@ -89,7 +89,7 @@ final class FinishTest extends AnyFreeSpec
         OrderProcessed(Outcome.succeeded),
         OrderMoved(Position(0) / "fork+🍋" % 1),
         OrderDetachable,
-        OrderTransferredToMaster))
+        OrderTransferredToController))
   }
 
   "finish in fork, succeed first" in {
@@ -128,7 +128,7 @@ final class FinishTest extends AnyFreeSpec
         OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
         OrderMoved(Position(0) / "fork+🥕" % 1 / Then % 0),  // Position of Finish
         OrderDetachable,
-        OrderTransferredToMaster,
+        OrderTransferredToController,
         OrderMoved(Position(0) / "fork+🥕" % 3)))  // Moved to end
 
     assert(events.filter(_.key == orderId / "🍋").map(_.event) ==
@@ -139,7 +139,7 @@ final class FinishTest extends AnyFreeSpec
         OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
         OrderMoved(Position(0) / "fork+🍋" % 1),
         OrderDetachable,
-        OrderTransferredToMaster))
+        OrderTransferredToController))
   }
 
 
@@ -151,10 +151,10 @@ final class FinishTest extends AnyFreeSpec
     autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflow :: Nil, testName = Some("FinishTest"))) { directoryProvider =>
       directoryProvider.agents.head.writeExecutable(ExecutablePath("/test.cmd"), "exit 3")
       directoryProvider.agents.head.writeExecutable(ExecutablePath("/sleep.cmd"), DirectoryProvider.script(100.ms))
-      directoryProvider.run { (master, _) =>
-        master.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
-        master.eventWatch.await[E](_.key == orderId)
-        master.eventWatch.all[OrderEvent] match {
+      directoryProvider.run { (controller, _) =>
+        controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
+        controller.eventWatch.await[E](_.key == orderId)
+        controller.eventWatch.all[OrderEvent] match {
           case EventSeq.NonEmpty(stampeds) => stampeds.map(_.value).filterNot(_.event.isInstanceOf[OrderStdWritten]).toVector
           case o => fail(s"Unexpected EventSeq received: $o")
         }

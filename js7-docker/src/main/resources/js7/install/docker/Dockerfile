@@ -7,8 +7,8 @@ FROM openjdk:15
 #   /opt/js7-VERSION/bin/
 #   /opt/js7-VERSION/lib/
 #   /opt/js7 -> js7-VERSION
-#   /var/opt/js7/{master,agent}/config/  read-only
-#   /var/opt/js7/{master,agent}/data/{logs,state,tmp,...}  writable
+#   /var/opt/js7/{controller,agent}/config/  read-only
+#   /var/opt/js7/{controller,agent}/data/{logs,state,tmp,...}  writable
 #   /home/js7/bin
 
 ARG UID
@@ -33,10 +33,10 @@ RUN chown root:root -R /opt/js7-[1-9]* && \
     ln -s /opt/js7-[1-9]* /opt/js7 && \
     groupadd --gid ${UID:-1000} js7 && \
     useradd --uid ${UID:-1000} --gid js7 --home-dir /home/js7 --no-create-home --shell /bin/bash js7 && \
-    mkdir -p /var/opt/js7/testMasterAgent && \
+    mkdir -p /var/opt/js7/testControllerAgent && \
     chown js7:js7 -R /home/js7 /var/opt/js7
 
-# ~js7/bin contains scripts master and agent, useable for "docker run".
+# ~js7/bin contains scripts controller and agent, useable for "docker run".
 ENV PATH /home/js7/bin:/usr/local/bin:/usr/bin:/bin
 USER js7
 

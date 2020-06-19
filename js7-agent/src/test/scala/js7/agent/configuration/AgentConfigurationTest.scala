@@ -97,7 +97,7 @@ final class AgentConfigurationTest extends AnyFreeSpec
   private def conf(args: String*) = {
     AgentConfiguration.fromCommandLine(
       CommandLineArguments(args.toVector),
-      ConfigFactory.parseString("user.name = MasterConfigurationTest"/*Will be overridden*/))
+      ConfigFactory.parseString("user.name = ControllerConfigurationTest"/*Will be overridden*/))
   }
 }
 

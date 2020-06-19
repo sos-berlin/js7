@@ -65,7 +65,7 @@
 
     <!--
     <logger level="trace" name="js7.core.event.journal.JournalActor"/>
-    <logger level="trace" name="js7.master.cluster"/>
+    <logger level="trace" name="js7.controller.cluster"/>
     -->
   </loggers>
 </configuration>

@@ -2,14 +2,14 @@ package js7.agent.scheduler
 
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils._
+import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{Event, EventId, JournalState, JournaledState, KeyedEvent}
-import js7.data.master.MasterId
 import monix.reactive.Observable
 
 final case class AgentServerState(
   standards: JournaledState.Standards,
-  idToMaster: Map[MasterId, RegisteredMaster])
+  idToController: Map[ControllerId, RegisteredController])
 extends JournaledState[AgentServerState]
 {
   def withEventId(eventId: EventId) = this  // ???
@@ -19,7 +19,7 @@ extends JournaledState[AgentServerState]
 
   def toSnapshotObservable =
     journalState.toSnapshotObservable ++
-      Observable.fromIterable(idToMaster.values)
+      Observable.fromIterable(idToController.values)
 
   def applySnapshot(snapshot: Any): Checked[AgentServerState] =
     snapshot match {
@@ -28,11 +28,11 @@ extends JournaledState[AgentServerState]
           standards = standards.copy(
             journalState = o)))
 
-      case o: RegisteredMaster =>
-        if (idToMaster contains o.masterId)
-          Left(Problem.pure(s"Duplicate snapshot for register Master: $o"))
+      case o: RegisteredController =>
+        if (idToController contains o.controllerId)
+          Left(Problem.pure(s"Duplicate snapshot for register Controller: $o"))
         else
-          Right(copy(idToMaster = idToMaster + (o.masterId -> o)))
+          Right(copy(idToController = idToController + (o.controllerId -> o)))
 
       case o =>
         Left(Problem.pure(s"Unknown snapshot for AgentServer: ${o.getClass.scalaName}"))
@@ -40,12 +40,12 @@ extends JournaledState[AgentServerState]
 
   def applyEvent(keyedEvent: KeyedEvent[Event]) =
     keyedEvent match {
-      case KeyedEvent(_: NoKey, AgentEvent.MasterRegistered(masterId, agentRefPath, agentRunId)) =>
-        if (idToMaster contains masterId)
-          Left(Problem.pure(s"Duplicate event for register Master: $keyedEvent"))
+      case KeyedEvent(_: NoKey, AgentEvent.ControllerRegistered(controllerId, agentRefPath, agentRunId)) =>
+        if (idToController contains controllerId)
+          Left(Problem.pure(s"Duplicate event for register Controller: $keyedEvent"))
         else
           Right(copy(
-            idToMaster = idToMaster + (masterId -> RegisteredMaster(masterId, agentRefPath, agentRunId))))
+            idToController = idToController + (controllerId -> RegisteredController(controllerId, agentRefPath, agentRunId))))
 
       case keyedEvent =>
         applyStandardEvent(keyedEvent)

@@ -7,7 +7,7 @@ import js7.common.system.OperatingSystem.isWindows
 import js7.data.agent.AgentRefPath
 import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import js7.data.job.{ExecutablePath, ReturnCode}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCatched, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTerminated, OrderTransferredToAgent, OrderTransferredToMaster}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCatched, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTerminated, OrderTransferredToAgent, OrderTransferredToController}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.parser.WorkflowParser
@@ -27,11 +27,11 @@ final class TryTest extends AnyFreeSpec
         a.writeExecutable(ExecutablePath(s"/FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
         a.writeExecutable(ExecutablePath(s"/FAIL-2$sh"), if (isWindows) "@exit 2" else "exit 2")
       }
-      directoryProvider.run { (master, _) =>
+      directoryProvider.run { (controller, _) =>
         val orderId = OrderId("🔺")
-        master.addOrderBlocking(FreshOrder(orderId, FinishingWorkflow.id.path))
-        master.eventWatch.await[OrderFinished](_.key == orderId)
-        checkEventSeq(orderId, master.eventWatch.all[OrderEvent], ExpectedFinishedEvents)
+        controller.addOrderBlocking(FreshOrder(orderId, FinishingWorkflow.id.path))
+        controller.eventWatch.await[OrderFinished](_.key == orderId)
+        checkEventSeq(orderId, controller.eventWatch.all[OrderEvent], ExpectedFinishedEvents)
       }
     }
   }
@@ -42,11 +42,11 @@ final class TryTest extends AnyFreeSpec
         a.writeExecutable(ExecutablePath(s"/FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
         a.writeExecutable(ExecutablePath(s"/FAIL-2$sh"), if (isWindows) "@exit 2" else "exit 2")
       }
-      directoryProvider.run { (master, _) =>
+      directoryProvider.run { (controller, _) =>
         val orderId = OrderId("❌")
-        master.addOrderBlocking(FreshOrder(orderId, StoppingWorkflow.id.path))
-        master.eventWatch.await[OrderFailed](_.key == orderId)
-        checkEventSeq(orderId, master.eventWatch.all[OrderEvent], ExpectedStoppedEvent)
+        controller.addOrderBlocking(FreshOrder(orderId, StoppingWorkflow.id.path))
+        controller.eventWatch.await[OrderFailed](_.key == orderId)
+        checkEventSeq(orderId, controller.eventWatch.all[OrderEvent], ExpectedStoppedEvent)
       }
     }
   }
@@ -69,11 +69,11 @@ final class TryTest extends AnyFreeSpec
         a.writeExecutable(ExecutablePath(s"/OKAY$sh"), ":")
         a.writeExecutable(ExecutablePath(s"/FAIL$sh"), if (isWindows) "@exit 1" else "exit 1")
       }
-      directoryProvider.run { (master, _) =>
+      directoryProvider.run { (controller, _) =>
         val orderId = OrderId("⭕")
-        master.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
-        master.eventWatch.await[OrderFinished](_.key == orderId)
-        checkEventSeq(orderId, master.eventWatch.all[OrderEvent], Vector(
+        controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
+        controller.eventWatch.await[OrderFinished](_.key == orderId)
+        checkEventSeq(orderId, controller.eventWatch.all[OrderEvent], Vector(
           OrderAdded(workflow.id),
           OrderMoved(Position(0) / try_(0) % 0),
           OrderAttachable(TestAgentRefPath),
@@ -90,7 +90,7 @@ final class TryTest extends AnyFreeSpec
           OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
           OrderMoved(Position(2)),
           OrderDetachable,
-          OrderTransferredToMaster,
+          OrderTransferredToController,
           OrderFinished))
       }
     }
@@ -117,11 +117,11 @@ final class TryTest extends AnyFreeSpec
         a.writeExecutable(ExecutablePath(s"/FAIL-2$sh"), if (isWindows) "@exit 2" else "exit 2")
         a.writeExecutable(ExecutablePath(s"/NEVER$sh"), if (isWindows) "@exit 3" else "exit 3")
       }
-      directoryProvider.run { (master, _) =>
+      directoryProvider.run { (controller, _) =>
         val orderId = OrderId("🔴")
-        master.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
-        master.eventWatch.await[OrderTerminated](_.key == orderId)
-        checkEventSeq(orderId, master.eventWatch.all[OrderEvent], Vector(
+        controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
+        controller.eventWatch.await[OrderTerminated](_.key == orderId)
+        checkEventSeq(orderId, controller.eventWatch.all[OrderEvent], Vector(
           OrderAdded(workflow.id),
           OrderMoved(Position(0) / "try+0" % 0),
           OrderStarted,
@@ -137,16 +137,16 @@ final class TryTest extends AnyFreeSpec
           OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
           OrderMoved(Position(1)),
           OrderDetachable,
-          OrderTransferredToMaster,
+          OrderTransferredToController,
           OrderFinished))
-        checkEventSeq(OrderId("🔴/🍋"), master.eventWatch.all[OrderEvent], Vector(
+        checkEventSeq(OrderId("🔴/🍋"), controller.eventWatch.all[OrderEvent], Vector(
           OrderAttachable(TestAgentRefPath),
           OrderTransferredToAgent(TestAgentRefPath),
           OrderProcessingStarted,
           OrderProcessed(Outcome.Failed(None,ReturnCode(1))),
           OrderFailedInFork(Outcome.Failed(None,ReturnCode(1), Map.empty)),
           OrderDetachable,
-          OrderTransferredToMaster))
+          OrderTransferredToController))
       }
     }
   }
@@ -199,7 +199,7 @@ object TryTest {
     OrderMoved(Position(2)),
 
     OrderDetachable,
-    OrderTransferredToMaster,
+    OrderTransferredToController,
     OrderFinished)
 
   private val stoppingScript = s"""

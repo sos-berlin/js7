@@ -1,7 +1,7 @@
 package js7.core.cluster
 
 import javax.inject.{Inject, Singleton}
-import js7.data.master.MasterId
+import js7.data.controller.ControllerId
 import monix.catnap.MVar
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -9,29 +9,29 @@ import monix.execution.Scheduler
 @Singleton
 final class ClusterWatchRegister @Inject private[cluster](scheduler: Scheduler)
 {
-  private val mvarTask = MVar[Task].of(Map.empty[MasterId, ClusterWatch]).memoize
+  private val mvarTask = MVar[Task].of(Map.empty[ControllerId, ClusterWatch]).memoize
 
-  def apply(masterId: MasterId): Task[ClusterWatch] =
+  def apply(controllerId: ControllerId): Task[ClusterWatch] =
     mvarTask.flatMap(mvar =>
       mvar.read.flatMap(_
-        .get(masterId) match {
+        .get(controllerId) match {
           case Some(custerWatch) =>
             Task.pure(custerWatch)
           case None =>
             mvar.take.flatMap { map =>
-              map.get(masterId) match {
+              map.get(controllerId) match {
                 case Some(custerWatch) =>
                   mvar.put(map)
                     .map(_ => custerWatch)
                 case None =>
-                  val custerWatch = new ClusterWatch(masterId, scheduler)
-                  mvar.put(map + (masterId -> custerWatch))
+                  val custerWatch = new ClusterWatch(controllerId, scheduler)
+                  mvar.put(map + (controllerId -> custerWatch))
                     .map(_ => custerWatch)
               }
             }
       }))
 
-  def tryRead(masterId: MasterId): Task[Option[ClusterWatch]] =
+  def tryRead(controllerId: ControllerId): Task[Option[ClusterWatch]] =
     mvarTask.flatMap(_.read)
-      .map(_.get(masterId))
+      .map(_.get(controllerId))
 }

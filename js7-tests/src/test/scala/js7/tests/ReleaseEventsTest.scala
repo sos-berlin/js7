@@ -11,6 +11,10 @@ import js7.common.process.Processes.{ShellFileExtension => sh}
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.time.WaitForCondition.waitForCondition
+import js7.controller.RunningController
+import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
+import js7.controller.data.ControllerCommand.{ReleaseEvents, TakeSnapshot}
+import js7.controller.data.events.ControllerEvent
 import js7.core.command.CommandMeta
 import js7.core.event.journal.files.JournalFiles.listJournalFiles
 import js7.data.agent.AgentRefPath
@@ -21,10 +25,6 @@ import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.master.RunningMaster
-import js7.master.client.{AkkaHttpMasterApi, HttpMasterApi}
-import js7.master.data.MasterCommand.{ReleaseEvents, TakeSnapshot}
-import js7.master.data.events.MasterEvent
 import js7.tests.ReleaseEventsTest._
 import js7.tests.testenv.DirectoryProvider.script
 import js7.tests.testenv.DirectoryProviderForScalaTest
@@ -38,7 +38,7 @@ final class ReleaseEventsTest extends AnyFreeSpec with DirectoryProviderForScala
 {
   protected val agentRefPaths = TestAgentRefPath :: Nil
   protected val fileBased = TestWorkflow :: Nil
-  override protected val masterConfig = ConfigFactory.parseString(
+  override protected val controllerConfig = ConfigFactory.parseString(
      """js7 {
        |  journal.users-allowed-to-release-events = [ "A", "B" ]
        |  auth.users {
@@ -46,7 +46,7 @@ final class ReleaseEventsTest extends AnyFreeSpec with DirectoryProviderForScala
        |    B = "plain:PASSWORD"
        |    X = "plain:PASSWORD"
        |  }
-       |  master.agent-driver.release-events-period = 0ms
+       |  controller.agent-driver.release-events-period = 0ms
        |}""".stripMargin)
 
   "ReleaseEvents" in {
@@ -54,81 +54,81 @@ final class ReleaseEventsTest extends AnyFreeSpec with DirectoryProviderForScala
       tree.writeExecutable(TestExecutablePath, script(0.s))
     }
 
-    directoryProvider.run { (master, _) =>
-      master.eventWatch.await[MasterEvent.MasterReady]()
-      master.runOrder(aOrder)
+    directoryProvider.run { (controller, _) =>
+      controller.eventWatch.await[ControllerEvent.ControllerReady]()
+      controller.runOrder(aOrder)
     }
 
-    def masterJournalFiles = listJournalFiles(directoryProvider.master.dataDir / "state" / "master")
-    def agentJournalFiles = listJournalFiles(directoryProvider.agents(0).dataDir / "state" / "master-Master")
+    def controllerJournalFiles = listJournalFiles(directoryProvider.controller.dataDir / "state" / "controller")
+    def agentJournalFiles = listJournalFiles(directoryProvider.agents(0).dataDir / "state" / "controller-Controller")
 
-    def assertMasterJournalFileCount(n: Int): Unit = {
-      waitForCondition(9.s, 10.ms) { masterJournalFiles.size == n }
-      assert(masterJournalFiles.size == n)
+    def assertControllerJournalFileCount(n: Int): Unit = {
+      waitForCondition(9.s, 10.ms) { controllerJournalFiles.size == n }
+      assert(controllerJournalFiles.size == n)
     }
 
-    assertMasterJournalFileCount(2)
+    assertControllerJournalFileCount(2)
     assert(agentJournalFiles.size == 2)
 
-    directoryProvider.run { case (master, Seq(agent)) =>
-      import master.eventWatch.{lastFileTornEventId, tornEventId}
+    directoryProvider.run { case (controller, Seq(agent)) =>
+      import controller.eventWatch.{lastFileTornEventId, tornEventId}
 
-      val finished = master.eventWatch.await[OrderFinished](predicate = _.key == aOrder.id)
+      val finished = controller.eventWatch.await[OrderFinished](predicate = _.key == aOrder.id)
       assert(finished.size == 1)
-      assertMasterJournalFileCount(3)
+      assertControllerJournalFileCount(3)
       assert(agentJournalFiles.size <= 3)
 
-      val a = newApi(master, aUserAndPassword)
-      val b = newApi(master, bUserAndPassword)
+      val a = newApi(controller, aUserAndPassword)
+      val b = newApi(controller, bUserAndPassword)
 
       locally {
-        val x = newApi(master, xUserAndPassword)
+        val x = newApi(controller, xUserAndPassword)
         val result = x.httpClient.liftProblem(x.executeCommand(ReleaseEvents(finished.head.eventId))).await(99.s)
         assert(result.left.toOption.exists(_ is UserIsNotEnabledToReleaseEventsProblem))
       }
 
       a.executeCommand(ReleaseEvents(finished.head.eventId)).await(99.s)
-      assertMasterJournalFileCount(3)
+      assertControllerJournalFileCount(3)
 
       b.executeCommand(ReleaseEvents(finished.head.eventId)).await(99.s)
-      assertMasterJournalFileCount(2)
+      assertControllerJournalFileCount(2)
 
-      // Master sends ReleaseEvents after some events from Agent have arrived. So we start an order.
-      master.executeCommandAsSystemUser(TakeSnapshot).await(99.s).orThrow
-      val bAdded = master.runOrder(bOrder).head.eventId
-      assertMasterJournalFileCount(3)
+      // Controller sends ReleaseEvents after some events from Agent have arrived. So we start an order.
+      controller.executeCommandAsSystemUser(TakeSnapshot).await(99.s).orThrow
+      val bAdded = controller.runOrder(bOrder).head.eventId
+      assertControllerJournalFileCount(3)
 
-      master.executeCommandAsSystemUser(TakeSnapshot).await(99.s).orThrow
-      assertMasterJournalFileCount(4)
+      controller.executeCommandAsSystemUser(TakeSnapshot).await(99.s).orThrow
+      assertControllerJournalFileCount(4)
 
-      master.runOrder(cOrder)
-      master.executeCommandAsSystemUser(TakeSnapshot).await(99.s).orThrow
-      assertMasterJournalFileCount(5)
+      controller.runOrder(cOrder)
+      controller.executeCommandAsSystemUser(TakeSnapshot).await(99.s).orThrow
+      assertControllerJournalFileCount(5)
 
       b.executeCommand(ReleaseEvents(bAdded)).await(99.s)
-      assertMasterJournalFileCount(5)
+      assertControllerJournalFileCount(5)
 
       a.executeCommand(ReleaseEvents(lastFileTornEventId)).await(99.s)
-      assertMasterJournalFileCount(3)
+      assertControllerJournalFileCount(3)
       assert(tornEventId <= bAdded)
 
       b.executeCommand(ReleaseEvents(lastFileTornEventId)).await(99.s)
-      assertMasterJournalFileCount(1)
+      assertControllerJournalFileCount(1)
 
       // TakeSnapshot and KeepSnapshot on last event written should tear this event
-      master.executeCommandAsSystemUser(TakeSnapshot).await(99.s).orThrow
+      controller.executeCommandAsSystemUser(TakeSnapshot).await(99.s).orThrow
       assert(tornEventId < lastFileTornEventId)
       a.executeCommand(ReleaseEvents(lastFileTornEventId)).await(99.s)
       b.executeCommand(ReleaseEvents(lastFileTornEventId)).await(99.s)
       //waitForCondition(5.s, 10.ms) { tornEventId == last }
       assert(tornEventId == lastFileTornEventId)
 
-      // Agent's journal file count should be 1 after TakeSnapshot and after Master has read all events
-      agent.executeCommand(AgentCommand.TakeSnapshot, CommandMeta(SimpleUser(UserId("Master"))))
+      // Agent's journal file count should be 1 after TakeSnapshot and after Controller has read all events
+      agent.executeCommand(AgentCommand.TakeSnapshot, CommandMeta(SimpleUser(UserId("Controller"))))
         .await(99.s).orThrow
       waitForCondition(5.s, 10.ms) { agentJournalFiles.size == 2 }
       assert(agentJournalFiles.size == 2)
-      master.runOrder(dOrder)
+      controller.runOrder(dOrder)
       waitForCondition(5.s, 10.ms) { agentJournalFiles.size == 1 }
       assert(agentJournalFiles.size == 1)
     }
@@ -149,13 +149,13 @@ private object ReleaseEventsTest
   private val cOrder = FreshOrder(OrderId("⭕️"), TestWorkflow.id.path)
   private val dOrder = FreshOrder(OrderId("🔺"), TestWorkflow.id.path)
 
-  private def newApi(master: RunningMaster, credentials: UserAndPassword): HttpMasterApi = {
-    val api = new TestApi(master, credentials)
+  private def newApi(controller: RunningController, credentials: UserAndPassword): HttpControllerApi = {
+    val api = new TestApi(controller, credentials)
     api.loginUntilReachable() await 99.s
     api
   }
 
-  private class TestApi(master: RunningMaster, protected val credentials: UserAndPassword)
-  extends AkkaHttpMasterApi(master.localUri, Some(credentials), master.actorSystem, name = "RunningMaster")
+  private class TestApi(controller: RunningController, protected val credentials: UserAndPassword)
+  extends AkkaHttpControllerApi(controller.localUri, Some(credentials), controller.actorSystem, name = "RunningController")
   with SessionApi.HasUserAndPassword
 }

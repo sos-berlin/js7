@@ -19,7 +19,7 @@ final class ProviderConfigurationTest extends AnyFreeSpec
     withTemporaryDirectory("ProviderConfigurationTest-") { dir =>
       assert(ProviderConfiguration.fromCommandLine(
         s"-config-directory=$dir" ::
-        "-master-uri=http://example.com" :: Nil
+        "-controller-uri=http://example.com" :: Nil
       ).copy(config = ConfigFactory.empty)
         == ProviderConfiguration(dir, Uri("http://example.com")))
     }
@@ -27,7 +27,7 @@ final class ProviderConfigurationTest extends AnyFreeSpec
 
   "Command line with provider.conf" in {
     withTemporaryDirectory("ProviderConfigurationTest-") { dir =>
-      dir / "provider.conf" := """js7.provider.master.uri = "http://example.com"""" + "\n"
+      dir / "provider.conf" := """js7.provider.controller.uri = "http://example.com"""" + "\n"
       assert(ProviderConfiguration.fromCommandLine(
         s"-config-directory=$dir" ::Nil
       ).copy(config = ConfigFactory.empty)

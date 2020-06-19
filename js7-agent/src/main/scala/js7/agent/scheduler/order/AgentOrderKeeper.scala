@@ -9,7 +9,7 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.Problems.{AgentDuplicateOrder, AgentIsShuttingDown}
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{AttachOrder, CancelOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, OrderCommand, ReleaseEvents, Response}
-import js7.agent.data.event.AgentMasterEvent.AgentReadyForMaster
+import js7.agent.data.event.AgentControllerEvent.AgentReadyForController
 import js7.agent.scheduler.job.JobActor
 import js7.agent.scheduler.job.task.TaskRunner
 import js7.agent.scheduler.order.AgentOrderKeeper._
@@ -34,6 +34,7 @@ import js7.core.event.journal.{JournalActor, MainJournalingActor}
 import js7.core.event.state.JournaledStatePersistence
 import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.agent.AgentRefPath
+import js7.data.controller.ControllerId
 import js7.data.crypt.FileBasedVerifier
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.{<-:, Event, EventId, JournalState, JournaledState, KeyedEvent, Stamped}
@@ -41,7 +42,6 @@ import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.OrderProcessor
 import js7.data.execution.workflow.Workflows.ExecutableWorkflow
 import js7.data.job.JobKey
-import js7.data.master.MasterId
 import js7.data.order.OrderEvent.{OrderBroken, OrderDetached}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.workflow.Workflow
@@ -56,12 +56,12 @@ import scala.util.{Failure, Success}
 import shapeless.tag
 
 /**
-  * Keeper of one Master's orders.
+  * Keeper of one Controller's orders.
   *
   * @author Joacim Zschimmer
   */
 final class AgentOrderKeeper(
-  masterId: MasterId,
+  controllerId: ControllerId,
   ownAgentRefPath: AgentRefPath,
   recovered_ : OrderJournalRecoverer.Recovered,
   signatureVerifier: SignatureVerifier,
@@ -204,16 +204,16 @@ with Stash {
 
     case JournalRecoverer.Output.JournalIsReady(journalHeader) =>
       logger.info(s"${orderRegister.size} Orders and ${workflowRegister.size} Workflows recovered")
-      if (!journalState.userIdToReleasedEventId.contains(masterId.toUserId)) {
-        // Automatically add Master's UserId to list of users allowed to release events,
-        // to avoid deletion of journal files due to an empty list, becore master has read the events.
-        // The master has to send ReleaseEvents commands to release obsolete journal files.
-        persist(JournalEventsReleased(masterId.toUserId, EventId.BeforeFirst)) {
+      if (!journalState.userIdToReleasedEventId.contains(controllerId.toUserId)) {
+        // Automatically add Controller's UserId to list of users allowed to release events,
+        // to avoid deletion of journal files due to an empty list, becore controller has read the events.
+        // The controller has to send ReleaseEvents commands to release obsolete journal files.
+        persist(JournalEventsReleased(controllerId.toUserId, EventId.BeforeFirst)) {
           case (Stamped(_,_, _ <-: event), journaledState) =>
             journalState = journalState.applyEvent(event)
         }
       }
-      persist(AgentReadyForMaster(ZoneId.systemDefault.getId, totalRunningTime = journalHeader.totalRunningTime)) { (_, _) =>
+      persist(AgentReadyForController(ZoneId.systemDefault.getId, totalRunningTime = journalHeader.totalRunningTime)) { (_, _) =>
         become("ready")(ready)
         unstashAll()
         logger.info("Ready")
@@ -319,7 +319,7 @@ with Stash {
       orderRegister.get(orderId) match {
         case Some(orderEntry) =>
           // TODO Antwort erst nach OrderDetached _und_ Terminated senden, wenn Actor aus orderRegister entfernt worden ist
-          // Bei langsamem Agenten, schnellem Master-Wiederanlauf kann DetachOrder doppelt kommen, während OrderActor sich noch beendet.
+          // Bei langsamem Agenten, schnellem Controller-Wiederanlauf kann DetachOrder doppelt kommen, während OrderActor sich noch beendet.
           orderEntry.order.detaching match {
             case Left(problem) => Future.failed(problem.throwable)
             case Right(_) =>
@@ -331,13 +331,13 @@ with Stash {
                   case Failure(t) => promise.tryFailure(t)
                   case Success(Completed) =>
                     // Ignore this and instead await OrderActor termination and removal from orderRegister.
-                    // Otherwise in case of a quick Master restart, CoupleMaster would response with this OrderId
-                    // and the Master will try again to DetachOrder, while the original DetachOrder is still in progress.
+                    // Otherwise in case of a quick Controller restart, CoupleController would response with this OrderId
+                    // and the Controller will try again to DetachOrder, while the original DetachOrder is still in progress.
                 }
               promise.future.map(_ => Right(AgentCommand.Response.Accepted))
           }
         case None =>
-          // May occur after Master restart when Master is not sure about order has been detached previously.
+          // May occur after Controller restart when Controller is not sure about order has been detached previously.
           logger.debug(s"Ignoring duplicate $cmd")
           Future.successful(Right(AgentCommand.Response.Accepted))
       }
@@ -373,7 +373,7 @@ with Stash {
         for (orderEntry <- orderRegister.values) yield orderEntry.order)))
 
     case ReleaseEvents(after) if !shuttingDown =>
-      val userId = masterId.toUserId
+      val userId = controllerId.toUserId
       val current = journalState.userIdToReleasedEventId(userId)  // Must contain userId
       if (after < current)
         Future(Left(ReverseReleaseEventsProblem(requestedUntilEventId = after, currentUntilEventId = current)))
@@ -441,7 +441,7 @@ with Stash {
           removeOrder(removeOrderId)
 
         case o: FollowUp.AddOffered =>
-          sys.error(s"Unexpected FollowUp: $o")  // Only Master handles this
+          sys.error(s"Unexpected FollowUp: $o")  // Only Controller handles this
       }
     }
   }

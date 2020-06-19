@@ -16,14 +16,14 @@ import scala.jdk.CollectionConverters._
   */
 final case class ProviderConfiguration(
   configDirectory: Path,
-  masterUri: Uri,
+  controllerUri: Uri,
   config: Config = ConfigFactory.empty)
 {
   val liveDirectory = configDirectory / "live"
   val orderGeneratorsDirectory = configDirectory / "order-generators"
 
   // Suppresses Config (which may contain secrets)
-  override def toString = s"ProviderConfiguration($configDirectory,$masterUri,Config)"
+  override def toString = s"ProviderConfiguration($configDirectory,$controllerUri,Config)"
 }
 
 object ProviderConfiguration
@@ -44,7 +44,7 @@ object ProviderConfiguration
         .resolve
       new ProviderConfiguration(
         configDirectory = configDir,
-        masterUri = a.optionAs[Uri]("-master-uri=") getOrElse Uri(config.getString("js7.provider.master.uri")),
+        controllerUri = a.optionAs[Uri]("-controller-uri=") getOrElse Uri(config.getString("js7.provider.controller.uri")),
         config = config)
     }
 }

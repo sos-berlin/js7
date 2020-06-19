@@ -94,13 +94,13 @@ final class FailTest extends AnyFreeSpec
   private def runUntil[E <: OrderEvent: ClassTag: TypeTag](workflow: Workflow, expectedEvents: Vector[OrderEvent], moreExpectedEvents: (OrderId, Vector[OrderEvent])*): Unit =
     autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflow :: Nil, testName = Some("FailTest"))) { directoryProvider =>
       directoryProvider.agents.head.writeExecutable(ExecutablePath("/test.cmd"), (if (isWindows) "@echo off\n" else "") + "exit 3")
-      directoryProvider.run { (master, _) =>
+      directoryProvider.run { (controller, _) =>
         val orderId = OrderId("🔺")
-        master.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
-        master.eventWatch.await[E](_.key == orderId)
-        checkEventSeq(orderId, master.eventWatch.all[OrderEvent], expectedEvents)
+        controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
+        controller.eventWatch.await[E](_.key == orderId)
+        checkEventSeq(orderId, controller.eventWatch.all[OrderEvent], expectedEvents)
         for ((oId, expected) <- moreExpectedEvents) {
-          checkEventSeq(oId, master.eventWatch.all[OrderEvent], expected)
+          checkEventSeq(oId, controller.eventWatch.all[OrderEvent], expected)
         }
       }
     }

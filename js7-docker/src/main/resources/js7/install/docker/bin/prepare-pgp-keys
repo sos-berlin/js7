@@ -5,17 +5,17 @@ cd "$(cd "$(realpath "${0%/*}")"/../../build/bin/../.. && pwd)"
 
 homedir="$(pwd)/gnupg"
 privateKeyFile=volumes/provider/config/private/private-pgp-key.asc
-masterPublicKeyFile=volumes/master/config/private/trusted-pgp-keys/test.asc
+controllerPublicKeyFile=volumes/controller/config/private/trusted-pgp-keys/test.asc
 passphrase="PGP-PASSWORD"
 
-mkdir -p volumes/master/config/private/trusted-pgp-keys
-mkdir -p volumes/backup-master/config/private/trusted-pgp-keys
+mkdir -p volumes/controller/config/private/trusted-pgp-keys
+mkdir -p volumes/backup-controller/config/private/trusted-pgp-keys
 mkdir -p volumes/agent-1/config/private/trusted-pgp-keys
 mkdir -p volumes/agent-2/config/private/trusted-pgp-keys
 
 umask go-rwx
 
-if [ -s "$privateKeyFile" ] && [ -s "$masterPublicKeyFile" ]; then
+if [ -s "$privateKeyFile" ] && [ -s "$controllerPublicKeyFile" ]; then
   echo "PGP files exist already. Nothing to do"
 else
   which gpg >/dev/null || {
@@ -25,9 +25,9 @@ else
   echo "🔸 Exporting secret PGP key. If you are being asked for a passphrase, type each time: $passphrase"
   if [ -d "$homedir" ]; then
     gpg --homedir "$homedir" --export-secret-keys --armor --output="$privateKeyFile"
-    gpg --homedir "$homedir" --export --armor --output="$masterPublicKeyFile"
+    gpg --homedir "$homedir" --export --armor --output="$controllerPublicKeyFile"
   fi
-  if [ -s "$privateKeyFile" ] && [ -s "$masterPublicKeyFile" ]; then
+  if [ -s "$privateKeyFile" ] && [ -s "$controllerPublicKeyFile" ]; then
     :
   else
     mkdir -p gnupg
@@ -45,11 +45,11 @@ else
       Passphrase: $passphrase
 EOF
     gpg --homedir "$homedir" --export-secret-keys --armor --output="$privateKeyFile"
-    gpg --homedir "$homedir" --export --armor --output="$masterPublicKeyFile"
+    gpg --homedir "$homedir" --export --armor --output="$controllerPublicKeyFile"
   fi
 fi
 
-for a in volumes/backup-master volumes/agent-*; do
-  cp -p "$masterPublicKeyFile" "$a/config/private/trusted-pgp-keys/test.asc"
+for a in volumes/backup-controller volumes/agent-*; do
+  cp -p "$controllerPublicKeyFile" "$a/config/private/trusted-pgp-keys/test.asc"
 done
 ls -ld "$privateKeyFile" volumes/*/config/private/trusted-pgp-keys/test.asc

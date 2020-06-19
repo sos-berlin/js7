@@ -28,14 +28,14 @@ import js7.common.system.OperatingSystem.isWindows
 import js7.common.utils.Exceptions.repeatUntilNoException
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.common.utils.JavaResource
+import js7.controller.RunningController
+import js7.controller.configuration.ControllerConfiguration
+import js7.controller.data.ControllerCommand.{ReplaceRepo, UpdateRepo}
 import js7.core.crypt.pgp.PgpSigner
 import js7.data.agent.{AgentRef, AgentRefPath}
+import js7.data.controller.ControllerFileBaseds
 import js7.data.filebased.{FileBased, FileBasedSigner, TypedPath, VersionId}
 import js7.data.job.ExecutablePath
-import js7.data.master.MasterFileBaseds
-import js7.master.RunningMaster
-import js7.master.configuration.MasterConfiguration
-import js7.master.data.MasterCommand.{ReplaceRepo, UpdateRepo}
 import js7.tests.testenv.DirectoryProvider._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -51,15 +51,15 @@ import scala.util.control.NonFatal
 final class DirectoryProvider(
   agentRefPaths: Seq[AgentRefPath],
   fileBased: Seq[FileBased] = Nil,
-  masterConfig: Config = ConfigFactory.empty,
+  controllerConfig: Config = ConfigFactory.empty,
   agentHttps: Boolean = false,
   agentHttpsMutual: Boolean = false,
   agentConfig: Config = ConfigFactory.empty,
   agentPorts: Iterable[Int] = Nil,
   provideAgentHttpsCertificate: Boolean = false,
   provideAgentClientCertificate: Boolean = false,
-  masterHttpsMutual: Boolean = false,
-  masterClientCertificate: Option[JavaResource] = None,
+  controllerHttpsMutual: Boolean = false,
+  controllerClientCertificate: Option[JavaResource] = None,
   signer: MessageSigner = defaultSigner,
   testName: Option[String] = None,
   useDirectory: Option[Path] = None,
@@ -74,8 +74,8 @@ extends HasCloser
         }
       })
 
-  val master = new MasterTree(directory / "master",
-    mutualHttps = masterHttpsMutual, clientTrustStore = masterClientCertificate)
+  val controller = new ControllerTree(directory / "controller",
+    mutualHttps = controllerHttpsMutual, clientTrustStore = controllerClientCertificate)
   val agentToTree: Map[AgentRefPath, AgentTree] =
     agentRefPaths
       .zip(agentPorts ++ Vector.fill(agentRefPaths.size - agentPorts.size)(findFreeTcpPort()))
@@ -95,12 +95,12 @@ extends HasCloser
   private val filebasedHasBeenAdded = AtomicBoolean(false)
 
   closeOnError(this) {
-    master.createDirectoriesAndFiles()
-    writeTrustedSignatureKeys(signer.toVerifier, master.configDir, "master.conf")
+    controller.createDirectoriesAndFiles()
+    writeTrustedSignatureKeys(signer.toVerifier, controller.configDir, "controller.conf")
     agents foreach prepareAgentFiles
 
     // Agent configurations have already been written by a.createDirectoriesAndFiles()
-    master.configDir / "private" / "private.conf" ++=
+    controller.configDir / "private" / "private.conf" ++=
       s"""js7.https.keystore {
          |  store-password = "jobscheduler"
          |  key-password = "jobscheduler"
@@ -108,67 +108,67 @@ extends HasCloser
          |""".stripMargin
   }
 
-  val fileBasedSigner = new FileBasedSigner(signer, MasterFileBaseds.jsonCodec)
+  val fileBasedSigner = new FileBasedSigner(signer, ControllerFileBaseds.jsonCodec)
 
   val sign: FileBased => SignedString = fileBasedSigner.sign
 
-  def run[A](body: (RunningMaster, IndexedSeq[RunningAgent]) => A): A =
+  def run[A](body: (RunningController, IndexedSeq[RunningAgent]) => A): A =
     runAgents()(agents =>
-      runMaster()(master =>
-        body(master, agents)))
+      runController()(controller =>
+        body(controller, agents)))
 
-  def runMaster[A](
+  def runController[A](
     httpPort: Option[Int] = Some(findFreeTcpPort()),
     dontWaitUntilReady: Boolean = false,
     config: Config = ConfigFactory.empty)
-    (body: RunningMaster => A)
+    (body: RunningController => A)
   : A = {
-    val runningMaster = startMaster(httpPort = httpPort, config = config) await 99.s
+    val runningController = startController(httpPort = httpPort, config = config) await 99.s
     try {
       if (!dontWaitUntilReady) {
-        runningMaster.waitUntilReady()
+        runningController.waitUntilReady()
       }
-      val a = body(runningMaster)
-      runningMaster.terminate() await 99.s
+      val a = body(runningController)
+      runningController.terminate() await 99.s
       a
     }
     catch { case NonFatal(t) =>
-      try runningMaster.terminate() await 99.s
+      try runningController.terminate() await 99.s
       catch { case NonFatal(tt) if tt ne t => t.addSuppressed(tt) }
       throw t
     }
   }
 
-  def startMaster(
+  def startController(
     module: Module = EMPTY_MODULE,
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(findFreeTcpPort()),
     httpsPort: Option[Int] = None,
     mutualHttps: Boolean = false,
     fileBased: Seq[FileBased] = fileBased,
-    name: String = masterName)
-  : Task[RunningMaster]
+    name: String = controllerName)
+  : Task[RunningController]
   =
     Task.deferFuture(
-      RunningMaster.fromInjector(RunningMaster.newInjectorForTest(master.directory, module, config withFallback masterConfig,
+      RunningController.fromInjector(RunningController.newInjectorForTest(controller.directory, module, config withFallback controllerConfig,
         httpPort = httpPort, httpsPort = httpsPort, mutualHttps = mutualHttps, name = name)))
-    .map { runningMaster =>
+    .map { runningController =>
       if (!suppressRepo) {
         val myFileBased = agentRefs ++ fileBased
         if (!filebasedHasBeenAdded.getAndSet(true) && myFileBased.nonEmpty) {
-          // startMaster may be called several times. We configure only once.
-          runningMaster.waitUntilReady()
-          runningMaster.executeCommandAsSystemUser(ReplaceRepo(
+          // startController may be called several times. We configure only once.
+          runningController.waitUntilReady()
+          runningController.executeCommandAsSystemUser(ReplaceRepo(
             Vinitial,
             myFileBased map (_ withVersion Vinitial) map fileBasedSigner.sign)
           ).await(99.s).orThrow
         }
       }
-      for (t <- runningMaster.terminated.failed) {
+      for (t <- runningController.terminated.failed) {
         scribe.error(t.toStringWithCauses)
         scribe.debug(t.toStringWithCauses, t)
       }
-      runningMaster
+      runningController
     }
 
   def runAgents[A]()(body: IndexedSeq[RunningAgent] => A): A =
@@ -185,22 +185,22 @@ extends HasCloser
     RunningAgent.startForTest(agentToTree(agentRefPath).agentConfiguration)
 
   def updateRepo(
-    master: RunningMaster,
+    controller: RunningController,
     versionId: VersionId,
     change: Seq[FileBased] = Nil,
     delete: Seq[TypedPath] = Nil)
   : Unit =
-    master.executeCommandAsSystemUser(UpdateRepo(
+    controller.executeCommandAsSystemUser(UpdateRepo(
       versionId,
       change map (_ withVersion versionId) map fileBasedSigner.sign,
       delete)
     ).await(99.s).orThrow
 
-  private def masterName = testName.fold(MasterConfiguration.DefaultName)(_ + "-Master")
+  private def controllerName = testName.fold(ControllerConfiguration.DefaultName)(_ + "-Controller")
 
   def prepareAgentFiles(agentTree: AgentTree): Unit = {
     agentTree.createDirectoriesAndFiles()
-    master.writeAgentAuthentication(agentTree)
+    controller.writeAgentAuthentication(agentTree)
     agentTree.writeTrustedSignatureKeys(signer.toVerifier)
   }
 }
@@ -225,10 +225,10 @@ object DirectoryProvider
     }
   }
 
-  final class MasterTree(val directory: Path, mutualHttps: Boolean, clientTrustStore: Option[JavaResource]) extends Tree
+  final class ControllerTree(val directory: Path, mutualHttps: Boolean, clientTrustStore: Option[JavaResource]) extends Tree
   {
     def provideHttpsCertificates(): Unit = {
-      configDir / "private/https-keystore.p12" := MasterKeyStoreResource.contentBytes
+      configDir / "private/https-keystore.p12" := ControllerKeyStoreResource.contentBytes
       provideTrustStore(AgentTrustStoreResource, "agent-https-truststore.p12")
       for (o <- clientTrustStore) {
         provideTrustStore(o, "client-https-truststore.p12")
@@ -275,11 +275,11 @@ object DirectoryProvider
       if (provideHttpsCertificate) {
         (configDir / "private/https-keystore.p12") := AgentKeyStoreResource.contentBytes
         if (provideClientCertificate) {
-          configDir / "private/master-https-truststore.p12" := ExportedMasterTrustStoreResource.contentBytes
+          configDir / "private/controller-https-truststore.p12" := ExportedControllerTrustStoreResource.contentBytes
           configDir / "private/private.conf" ++= s"""
              |js7.https.truststores = [
              |  {
-             |    file = "$configDir/private/master-https-truststore.p12"
+             |    file = "$configDir/private/controller-https-truststore.p12"
              |    store-password = "jobscheduler"
              |  }
              |]""".stripMargin
@@ -287,7 +287,7 @@ object DirectoryProvider
       }
       configDir / "private" / "private.conf" ++= s"""
          |js7.auth.users {
-         |  Master = ${quoteString("plain:" + password.string)}
+         |  Controller = ${quoteString("plain:" + password.string)}
          |}
          |js7.https.keystore {
          |  store-password = "jobscheduler"
@@ -332,9 +332,9 @@ object DirectoryProvider
   }
 
   // Following resources have been generated with the command line:
-  // common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=master -config-directory=tests/src/test/resources/js7/tests/master/config
-  val MasterKeyStoreResource = JavaResource("js7/tests/master/config/private/https-keystore.p12")
-  val ExportedMasterTrustStoreResource = JavaResource("js7/tests/master/config/export/https-truststore.p12")
+  // common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=controller -config-directory=tests/src/test/resources/js7/tests/controller/config
+  val ControllerKeyStoreResource = JavaResource("js7/tests/controller/config/private/https-keystore.p12")
+  val ExportedControllerTrustStoreResource = JavaResource("js7/tests/controller/config/export/https-truststore.p12")
 
   // Following resources have been generated with the command line:
   // common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=agent -config-directory=tests/src/test/resources/js7/tests/agent/config

@@ -18,7 +18,7 @@ import js7.common.scalautil.MonixUtils.syntax.RichTask
 import js7.core.cluster.HttpClusterWatchTest._
 import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
 import js7.data.cluster.{ClusterNodeId, ClusterState}
-import js7.data.master.MasterId
+import js7.data.controller.ControllerId
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll
@@ -27,20 +27,20 @@ import org.scalatest.freespec.AnyFreeSpec
 final class HttpClusterWatchTest extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem
 {
   override protected def config = ConfigFactory.empty
-  private val masterId = MasterId("MASTER")
+  private val controllerId = ControllerId("CONTROLLER")
 
-  private val mastersClusterRoute = new MastersClusterRoute {
+  private val controllersClusterRoute = new ControllersClusterRoute {
     protected def scheduler = Scheduler.global
     protected val clusterWatchRegister = new ClusterWatchRegister(scheduler)
-    def route = masterClusterRoute(masterId)
+    def route = controllerClusterRoute(controllerId)
   }.route
 
   private lazy val server = new AkkaWebServer.ForTest(
     actorSystem,
     route = decodeRequest {
       testSessionRoute ~
-      pathSegments("agent/api/master/cluster") {
-        mastersClusterRoute
+      pathSegments("agent/api/controller/cluster") {
+        controllersClusterRoute
       }
     }
   ).closeWithCloser

@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -e
+
+cd "$(cd "$(realpath "${0%/*}")"/../../build/bin/../.. && pwd)"
+
+contentRC=0
+for file in volumes/controller/data/state/controller--*.journal; do
+  b="volumes/backup-controller/data/state/${file##*/}"
+  if [ -e "$b" ]; then
+    echo "${file##*/}"
+    if diff "$file" "$b"; then
+      echo -en "\e[1A\e[K"  # Cursor up
+    else
+      contentRC=$?
+    fi
+  fi
+done
+
+if diff <(cd volumes/controller/data/state && ls controller--*.journal | sort) \
+        <(cd volumes/backup-controller/data/state/ && ls controller--*.journal | sort); then
+  namesRC=$?
+else
+  namesRC=$?
+fi
+
+echo
+if [ $namesRC -eq 0 ] && [ $contentRC -eq 0 ]; then
+  echo "✔️  The backup Controller cluster node's journal files are exact copies of the primary cluster node"
+  exit 0
+else
+  if [ $contentRC -ne 0 ]; then
+    echo "⚠️  THE JOURNAL FILES ARE DIFFERENT"
+  fi
+  if [ $namesRC -ne 0 ]; then
+    echo "⚠️  THERE ARE EXTRA JOURNAL FILES"
+  fi
+  exit 1
+fi

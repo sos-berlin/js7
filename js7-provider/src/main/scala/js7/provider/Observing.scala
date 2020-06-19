@@ -33,7 +33,7 @@ private[provider] trait Observing extends OrderProvider {
   }
 
   private def observeLive(implicit s: Scheduler, iox: IOExecutor): Observable[Completed] =
-    observeDirectory(conf.liveDirectory, initiallyUpdateMasterConfiguration(), updateMasterConfiguration())
+    observeDirectory(conf.liveDirectory, initiallyUpdateControllerConfiguration(), updateControllerConfiguration())
 
   private def observeOrderGenerators(implicit s: Scheduler, iox: IOExecutor): Observable[Completed] = {
     startAddingOrders()  // No orders will be added before an OrderGenerator has been read from directory
@@ -44,7 +44,7 @@ private[provider] trait Observing extends OrderProvider {
   private def observeDirectory(directory: Path, replace: Task[Checked[Completed]], update: Task[Checked[Completed]])
     (implicit s: Scheduler, iox: IOExecutor)
   : Observable[Completed] = {
-    // Start DirectoryWatcher before replaceMasterConfiguration, otherwise the first events may get lost!
+    // Start DirectoryWatcher before replaceControllerConfiguration, otherwise the first events may get lost!
     val directoryWatcher = new DirectoryWatcher(directory, watchDuration)
     Observable.fromTask(
       retryUntilNoError(replace))
@@ -67,8 +67,8 @@ private[provider] trait Observing extends OrderProvider {
         }
         val logout =
           if (AkkaHttpClient.sessionMayBeLost(throwable))
-            masterApi.logout().onErrorHandle { _ =>
-              masterApi.clearSession()
+            controllerApi.logout().onErrorHandle { _ =>
+              controllerApi.clearSession()
               Completed
             }
           else

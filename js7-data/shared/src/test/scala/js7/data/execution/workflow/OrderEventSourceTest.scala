@@ -12,7 +12,7 @@ import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.OrderEventSourceTest._
 import js7.data.expression.Expression.{Equal, LastReturnCode, NumericConstant}
 import js7.data.job.{ExecutablePath, ReturnCode}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancellationMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancellationMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent, OrderTransferredToController}
 import js7.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, ExplicitEnd, Gap, Goto, If, IfFailedGoto, TryInstruction}
@@ -61,7 +61,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
       assert(process.step() == Some(OrderMoved(Position(2))))
       process.jobStep()
       assert(process.step() == Some(OrderMoved(Position(3))))
-      process.transferToMaster()
+      process.transferToController()
       assert(process.step() == Some(OrderFinished))
     }
 
@@ -100,14 +100,14 @@ final class OrderEventSourceTest extends AnyFreeSpec
         OrderForked.Child("🥕", orderId / "🥕"),
         OrderForked.Child("🍋", orderId / "🍋"))),
       orderId <-: OrderDetachable,
-      orderId <-: OrderTransferredToMaster))
+      orderId <-: OrderTransferredToController))
 
     assert(process.run(orderId / "🥕") == List(
       orderId / "🥕" <-: OrderProcessingStarted,
       orderId / "🥕" <-: OrderProcessed(Outcome.succeeded),
       orderId / "🥕" <-: OrderMoved(Position(0) / "fork+🥕" % 1),
       orderId / "🥕" <-: OrderDetachable,
-      orderId / "🥕" <-: OrderTransferredToMaster))
+      orderId / "🥕" <-: OrderTransferredToController))
 
     assert(process.step(orderId).isEmpty)  // Nothing to join
 
@@ -116,7 +116,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
       orderId / "🍋" <-: OrderProcessed(Outcome.succeeded),
       orderId / "🍋" <-: OrderMoved(Position(0) / "fork+🍋" % 1),
       orderId / "🍋" <-: OrderDetachable,
-      orderId / "🍋" <-: OrderTransferredToMaster,
+      orderId / "🍋" <-: OrderTransferredToController,
       orderId <-: OrderJoined(Outcome.succeeded)))
     assert(process.step(orderId) == Some(orderId <-: OrderMoved(Position(1))))
 
@@ -131,7 +131,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
       orderId / "🥕" <-: OrderProcessed(Outcome.succeeded),
       orderId / "🥕" <-: OrderMoved(Position(1) / "fork+🥕" % 1),
       orderId / "🥕" <-: OrderDetachable,
-      orderId / "🥕" <-: OrderTransferredToMaster))
+      orderId / "🥕" <-: OrderTransferredToController))
 
     assert(process.step(orderId).isEmpty)  // Nothing to join
 
@@ -142,7 +142,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
       orderId / "🍋" <-: OrderProcessed(Outcome.succeeded),
       orderId / "🍋" <-: OrderMoved(Position(1) / "fork+🍋" % 1),
       orderId / "🍋" <-: OrderDetachable,
-      orderId / "🍋" <-: OrderTransferredToMaster,
+      orderId / "🍋" <-: OrderTransferredToController,
       orderId <-: OrderJoined(Outcome.succeeded)))
 
     assert(process.step(orderId) == Some(orderId <-: OrderMoved(Position(2))))
@@ -454,9 +454,9 @@ object OrderEventSourceTest {
       update(OrderTransferredToAgent(agentRefPath))
     }
 
-    def transferToMaster() = {
+    def transferToController() = {
       update(OrderDetachable)
-      update(OrderTransferredToMaster)
+      update(OrderTransferredToController)
     }
 
     def jobStep(outcome: Outcome = Outcome.Succeeded(ReturnCode.Success)) =
@@ -495,7 +495,7 @@ object OrderEventSourceTest {
     private def nextEvent(orderId: OrderId): Option[KeyedEvent[OrderEvent]] = {
       val order = idToOrder(orderId)
       if (order.detaching.isRight)
-        Some(order.id <-: OrderTransferredToMaster)
+        Some(order.id <-: OrderTransferredToController)
       else
         (order.state, workflow.instruction(order.position)) match {
           case (_: Order.Ready, _: Execute) =>

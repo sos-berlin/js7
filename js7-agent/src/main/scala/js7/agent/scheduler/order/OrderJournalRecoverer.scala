@@ -4,7 +4,7 @@ import akka.actor.{ActorRef, ActorRefFactory}
 import com.typesafe.config.Config
 import js7.agent.AgentState
 import js7.agent.configuration.AgentConfiguration
-import js7.agent.data.event.AgentMasterEvent
+import js7.agent.data.event.AgentControllerEvent
 import js7.agent.scheduler.order.OrderJournalRecoverer._
 import js7.base.problem.Checked.Ops
 import js7.base.utils.Closer.syntax._
@@ -62,7 +62,7 @@ extends JournalRecoverer[AgentState]
     case Stamped(_, _, KeyedEvent(orderId: OrderId, event: OrderEvent)) =>
       handleEvent(orderId, event)
 
-    case Stamped(_, _, KeyedEvent(_, _: AgentMasterEvent.AgentReadyForMaster)) =>
+    case Stamped(_, _, KeyedEvent(_, _: AgentControllerEvent.AgentReadyForController)) =>
 
     case Stamped(_, _, KeyedEvent(_, event: JournalEvent)) =>
       journalState = journalState.applyEvent(event)
@@ -83,7 +83,7 @@ extends JournalRecoverer[AgentState]
             handleForkJoinEvent(orderId, event)
             idToOrder(orderId) = idToOrder(orderId).update(event).orThrow
           case _: OrderStdWritten =>
-            // OrderStdWritten is not handled (but forwarded to Master)
+            // OrderStdWritten is not handled (but forwarded to Controller)
         }
     }
 

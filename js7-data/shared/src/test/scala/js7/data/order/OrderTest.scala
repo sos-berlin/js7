@@ -11,7 +11,7 @@ import js7.data.agent.AgentRefPath
 import js7.data.command.CancelMode
 import js7.data.job.ReturnCode
 import js7.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Cancelled, DelayedAfterError, Detaching, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, IsFreshOrReady, Offering, Processed, Processing, ProcessingCancelled, Ready, State}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingCancelled, OrderProcessingStarted, OrderRetrying, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingCancelled, OrderProcessingStarted, OrderRetrying, OrderStarted, OrderTransferredToAgent, OrderTransferredToController}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.Fork
 import js7.data.workflow.position.BranchId.Then
@@ -252,7 +252,7 @@ final class OrderTest extends AnyFreeSpec
 
       OrderDetachable,
       OrderDetached,
-      OrderTransferredToMaster
+      OrderTransferredToController
     )
 
     assert(allEvents.map(_.getClass) == OrderEvent.jsonCodec.classes[OrderCoreEvent])
@@ -406,7 +406,7 @@ final class OrderTest extends AnyFreeSpec
         assert(order.update(OrderTransferredToAgent(agentRefPath)).isLeft)
         assert(order.update(OrderDetachable).isLeft)
         assert(order.update(OrderDetached).isLeft)
-        assert(order.update(OrderTransferredToMaster).isLeft)
+        assert(order.update(OrderTransferredToController).isLeft)
       }
 
       "attachedState=Attaching" in {
@@ -416,7 +416,7 @@ final class OrderTest extends AnyFreeSpec
         assert(order.update(OrderTransferredToAgent(AgentRefPath("/OTHER"))).isLeft)
         assert(order.update(OrderDetachable).isLeft)
         assert(order.update(OrderDetached).isLeft)
-        assert(order.update(OrderTransferredToMaster).isLeft)
+        assert(order.update(OrderTransferredToController).isLeft)
       }
 
       "attachedState=Attached" in {
@@ -426,7 +426,7 @@ final class OrderTest extends AnyFreeSpec
         assert(order.update(OrderTransferredToAgent(AgentRefPath("/OTHER"))).isLeft)
         assert(order.update(OrderDetachable) == Right(order.copy(attachedState = Some(Detaching(agentRefPath)))))
         assert(order.update(OrderDetached).isLeft)
-        assert(order.update(OrderTransferredToMaster).isLeft)
+        assert(order.update(OrderTransferredToController).isLeft)
       }
 
       "attachedState=Detaching" in {
@@ -436,7 +436,7 @@ final class OrderTest extends AnyFreeSpec
         assert(order.update(OrderTransferredToAgent(AgentRefPath("/OTHER"))).isLeft)
         assert(order.update(OrderDetachable).isLeft)
         assert(order.update(OrderDetached) == Right(order.copy(attachedState = None)))
-        assert(order.update(OrderTransferredToMaster) == Right(order.copy(attachedState = None)))
+        assert(order.update(OrderTransferredToController) == Right(order.copy(attachedState = None)))
       }
     }
 
@@ -454,7 +454,7 @@ final class OrderTest extends AnyFreeSpec
     def detachingAllowed[S <: Order.State: ClassTag]: ToPredicate = {
       case (OrderDetachable         , `attached` ) => implicitClass[S] isAssignableFrom _.getClass
       case (OrderDetached           , `detaching`) => implicitClass[S] isAssignableFrom _.getClass
-      case (OrderTransferredToMaster, `detaching`) => implicitClass[S] isAssignableFrom _.getClass
+      case (OrderTransferredToController, `detaching`) => implicitClass[S] isAssignableFrom _.getClass
     }
 
     /** Checks each event in `allEvents`. */
@@ -462,7 +462,7 @@ final class OrderTest extends AnyFreeSpec
       (implicit pos: source.Position)
     : Unit =
       for (event <- allEvents) s"$event" - {
-        for (a <- None :: attached :: detaching :: Nil) s"${a getOrElse "Master"}" in {
+        for (a <- None :: attached :: detaching :: Nil) s"${a getOrElse "Controller"}" in {
           val updated = order.copy(attachedState = a).update(event)
           val maybeState = updated.map(_.state)
           val maybePredicate = toPredicate.lift((event, a))
@@ -533,7 +533,7 @@ final class OrderTest extends AnyFreeSpec
 
   "Error message when updated failed" in {
     assert(testOrder.update(OrderDetachable) ==
-      Left(Problem("Order 'ID' at position '/WORKFLOW~VERSION:0' in state 'Ready' (on Master) has received an inapplicable event: OrderDetachable")))
+      Left(Problem("Order 'ID' at position '/WORKFLOW~VERSION:0' in state 'Ready' (on Controller) has received an inapplicable event: OrderDetachable")))
   }
 
   if (sys.props contains "test.speed") "Speed" in {

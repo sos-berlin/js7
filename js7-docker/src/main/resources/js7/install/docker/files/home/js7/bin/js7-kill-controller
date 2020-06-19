@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -e
+
+kill "$@" "$(cat /var/opt/js7/controller/data/state/pid)"

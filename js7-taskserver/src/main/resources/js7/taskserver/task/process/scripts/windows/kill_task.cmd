@@ -8,7 +8,7 @@ SETLOCAL
 
 set KILL_TASK_PID=
 set KILL_TASK_ID=
-set MASTER_TASK_ID=
+set CONTROLLER_TASK_ID=
 set JOB_PATH=
 goto read_command_line_options_begin
 
@@ -24,10 +24,10 @@ if "%~1" == "-kill-agent-task-id" (
   set KILL_TASK_ID=%~2
 )
 
-if "%~1" == "-master-task-id" (
+if "%~1" == "-controller-task-id" (
   if "%OPTION_VALUE%" == "" goto read_command_line_options
   if "%OPTION_VALUE:~0,1" == "-" goto read_command_line_options
-  set MASTER_TASK_ID=%~2
+  set CONTROLLER_TASK_ID=%~2
 )
 
 if "%~1" == "-job" (
@@ -44,7 +44,7 @@ if not defined KILL_TASK_ID (
   exit /b 2
 )
 
-if defined JOB_PATH echo %DATE% %TIME% [info]  Task "%MASTER_TASK_ID%" of Job "%JOB_PATH%" with Agent task id "%KILL_TASK_ID%" will be killed. 1>&2
+if defined JOB_PATH echo %DATE% %TIME% [info]  Task "%CONTROLLER_TASK_ID%" of Job "%JOB_PATH%" with Agent task id "%KILL_TASK_ID%" will be killed. 1>&2
 if not defined JOB_PATH echo %DATE% %TIME% [info]  Task with Agent task id "%KILL_TASK_ID%" will be killed. 1>&2
 
 for /f "usebackq tokens=2 delims==" %%i in (`wmic process where "commandline like '%% -agent-task-id=%KILL_TASK_ID%%%' and not commandline like '%%-kill-agent-task-id%%'" get processid /format:value 2^>nul`) do set KILL_TASK_PID=%%i

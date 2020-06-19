@@ -37,11 +37,11 @@ extends Instruction
     branches exists (_.workflow isPartiallyExecutableOnAgent agentRefPath)
 
   def isStartableOnAgent(agentRefPath: AgentRefPath): Boolean =
-    // Any Agent or the master can fork. The current Agent is okay.
+    // Any Agent or the controller can fork. The current Agent is okay.
     branches exists (_.workflow isStartableOnAgent agentRefPath)
 
   //def isJoinableOnAgent(agentRefPath: AgentRefPath): Boolean =
-  //  // If branches end on multiple Agents, only the Master can join the Orders
+  //  // If branches end on multiple Agents, only the Controller can join the Orders
   //  branches.values forall (_ isEndingOnAgent agentRefPath)
 
   //def startAgents: Set[AgentRefPath] =

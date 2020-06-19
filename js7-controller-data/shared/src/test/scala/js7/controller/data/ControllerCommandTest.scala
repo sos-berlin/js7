@@ -1,0 +1,336 @@
+package js7.controller.data
+
+import js7.base.circeutils.CirceUtils._
+import js7.base.crypt.{GenericSignature, SignedString}
+import js7.base.problem.Problem
+import js7.base.process.ProcessSignal.SIGTERM
+import js7.base.web.Uri
+import js7.controller.data.ControllerCommand._
+import js7.data.agent.AgentRefPath
+import js7.data.cluster.{ClusterCommand, ClusterNodeId}
+import js7.data.command.CancelMode
+import js7.data.filebased.VersionId
+import js7.data.order.{FreshOrder, OrderId}
+import js7.data.workflow.WorkflowPath
+import js7.data.workflow.position.Position
+import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
+import org.scalatest.freespec.AnyFreeSpec
+
+final class ControllerCommandTest extends AnyFreeSpec
+{
+  "Batch" - {
+    "Batch" in {
+      testJson[ControllerCommand](Batch(List(NoOperation, EmergencyStop())),
+        json"""{
+          "TYPE": "Batch",
+          "commands": [
+            { "TYPE": "NoOperation" },
+            { "TYPE": "EmergencyStop" }
+          ]
+        }""")
+    }
+
+    "Batch.toString" in {
+      assert(Batch(List(NoOperation, EmergencyStop(), NoOperation)).toString == "Batch(NoOperation, EmergencyStop, NoOperation)")
+      assert(Batch(List(NoOperation, EmergencyStop(), NoOperation, NoOperation)).toString == "Batch(NoOperation, EmergencyStop, 2×NoOperation)")
+    }
+
+    "BatchResponse" in {
+      testJson[ControllerCommand.Response](Batch.Response(Right(Response.Accepted) :: Left(Problem("PROBLEM")) :: Nil),
+        json"""{
+          "TYPE": "BatchResponse",
+          "responses": [
+            {
+              "TYPE": "Accepted"
+            }, {
+              "TYPE": "Problem",
+              "message": "PROBLEM"
+            }
+          ]
+        }""")
+    }
+
+    "BatchResponse.toString" in {
+      val threeResponses = Right(Response.Accepted) :: Left(Problem("PROBLEM")) :: Right(Response.Accepted) :: Nil
+      assert(Batch.Response(threeResponses).toString == "BatchResponse(2 succeeded and 1 failed)")
+      assert(Batch.Response(threeResponses ::: Right(Response.Accepted) :: Nil).toString == "BatchResponse(3 succeeded and 1 failed)")
+    }
+  }
+
+  "AddOrder" - {
+    "AddOrder" in {
+      testJson[ControllerCommand](AddOrder(FreshOrder(OrderId("ORDER"), WorkflowPath("/WORKFLOW"))),
+        json"""{
+          "TYPE": "AddOrder",
+          "order": {
+            "id": "ORDER",
+            "workflowPath": "/WORKFLOW"
+          }
+        }""")
+    }
+
+    "AddOrder.Response" in {
+      testJson[ControllerCommand.Response](AddOrder.Response(true),
+        json"""{
+          "TYPE": "AddOrder.Response",
+          "ignoredBecauseDuplicate": true
+        }""")
+    }
+  }
+
+  "CancelOrder" - {
+    "CancelOrder NotStarted" in {
+      testJson[ControllerCommand](CancelOrder(OrderId("ORDER"), CancelMode.NotStarted),
+        json"""{
+          "TYPE": "CancelOrder",
+          "orderId": "ORDER"
+        }""")
+    }
+
+    "CancelOrder FreshOrStarted" in {
+      testJson[ControllerCommand](CancelOrder(
+        OrderId("ORDER"),
+        CancelMode.FreshOrStarted(
+          Some(CancelMode.Kill(
+            SIGTERM,
+            Some(WorkflowPath("/WORKFLOW") ~ VersionId("VERSION") /: Position(1)))))),
+        json"""{
+          "TYPE": "CancelOrder",
+          "orderId": "ORDER",
+          "mode": {
+            "TYPE": "FreshOrStarted",
+            "kill": {
+              "signal": "SIGTERM",
+              "workflowPosition": {
+                "workflowId": {
+                  "path": "/WORKFLOW",
+                  "versionId": "VERSION"
+                },
+                "position": [ 1 ]
+              }
+            }
+          }
+        }""")
+
+      testJsonDecoder[ControllerCommand](CancelOrder(
+        OrderId("ORDER"),
+        CancelMode.FreshOrStarted(
+          Some(CancelMode.Kill()))),
+        json"""{
+          "TYPE": "CancelOrder",
+          "orderId": "ORDER",
+          "mode": {
+            "TYPE": "FreshOrStarted",
+            "kill": {}
+          }
+        }""")
+    }
+  }
+
+  "ReplaceRepo" in {
+    testJson[ControllerCommand](ReplaceRepo(
+      VersionId("1"),
+      objects = SignedString(
+        string = """{"TYPE": "Workflow", ...}""",
+        GenericSignature(
+          "PGP",
+          """|-----BEGIN PGP SIGNATURE-----
+             |
+             |...
+             |-----END PGP SIGNATURE-----
+             |""".stripMargin)) :: Nil),
+      json"""{
+        "TYPE": "ReplaceRepo",
+        "versionId": "1",
+        "objects": [
+          {
+            "string": "{\"TYPE\": \"Workflow\", ...}",
+            "signature": {
+              "TYPE": "PGP",
+              "signatureString": "-----BEGIN PGP SIGNATURE-----\n\n...\n-----END PGP SIGNATURE-----\n"
+            }
+          }
+        ]
+      }""")
+  }
+
+  "UpdateRepo" in {
+    testJson[ControllerCommand](UpdateRepo(
+      VersionId("1"),
+      change = SignedString(
+        string = """{"TYPE": "Workflow", ...}""",
+        GenericSignature(
+          "PGP",
+           """-----BEGIN PGP SIGNATURE-----
+            |
+            |...
+            |-----END PGP SIGNATURE-----
+            |""".stripMargin)) :: Nil,
+      delete = WorkflowPath("/WORKFLOW-A") :: AgentRefPath("/AGENT-A") :: Nil),
+      json"""{
+        "TYPE": "UpdateRepo",
+        "versionId": "1",
+        "change": [
+          {
+            "string": "{\"TYPE\": \"Workflow\", ...}",
+            "signature": {
+              "TYPE": "PGP",
+              "signatureString": "-----BEGIN PGP SIGNATURE-----\n\n...\n-----END PGP SIGNATURE-----\n"
+            }
+          }
+        ],
+        "delete": [
+          {
+            "TYPE": "WorkflowPath",
+            "path": "/WORKFLOW-A"
+          }, {
+            "TYPE": "AgentRefPath",
+            "path": "/AGENT-A"
+          }
+        ]
+      }""")
+  }
+
+  "EmergencyStop" - {
+    "restart=false" in {
+      testJson[ControllerCommand](EmergencyStop(),
+        json"""{
+          "TYPE": "EmergencyStop"
+        }""")
+    }
+
+    "restart=true" in {
+      testJson[ControllerCommand](EmergencyStop(restart = true),
+        json"""{
+          "TYPE": "EmergencyStop",
+          "restart": true
+        }""")
+    }
+  }
+
+  "ReleaseEvents" in {
+    testJson[ControllerCommand](
+      ReleaseEvents(123L),
+      json"""{
+        "TYPE": "ReleaseEvents",
+        "untilEventId": 123
+      }""")
+  }
+
+  "NoOperation" in {
+    testJson[ControllerCommand](NoOperation,
+      json"""{
+        "TYPE": "NoOperation"
+      }""")
+  }
+
+  "EmitTestEvent" in {  // For tests only
+    testJson[ControllerCommand](EmitTestEvent,
+      json"""{
+        "TYPE": "EmitTestEvent"
+      }""")
+  }
+
+  "TakeSnapshot" in {
+    testJson[ControllerCommand](TakeSnapshot,
+      json"""{
+        "TYPE": "TakeSnapshot"
+      }""")
+  }
+
+  "ShutDown" - {
+    "restart=false" in {
+      testJson[ControllerCommand](ShutDown(),
+        json"""{
+          "TYPE": "ShutDown"
+        }""")
+    }
+
+    "restart=true" in {
+      testJson[ControllerCommand](ShutDown(restart = true),
+        json"""{
+          "TYPE": "ShutDown",
+          "restart": true
+        }""")
+    }
+
+    "clusterAction=Switchover" in {
+      testJson[ControllerCommand](ShutDown(clusterAction = Some(ShutDown.ClusterAction.Switchover)),
+        json"""{
+          "TYPE": "ShutDown",
+          "clusterAction": {
+            "TYPE": "Switchover"
+          }
+        }""")
+    }
+
+    "clusterAction=Failover" in {
+      testJson[ControllerCommand](ShutDown(clusterAction = Some(ShutDown.ClusterAction.Failover)),
+        json"""{
+          "TYPE": "ShutDown",
+          "clusterAction": {
+            "TYPE": "Failover"
+          }
+        }""")
+    }
+  }
+
+  "ClusterAppointNodes" in {
+    testJson[ControllerCommand](
+      ClusterAppointNodes(
+        Map(
+          ClusterNodeId("A") -> Uri("http://A"),
+          ClusterNodeId("B") -> Uri("http://B")),
+        ClusterNodeId("A")),
+      json"""{
+        "TYPE": "ClusterAppointNodes",
+        "idToUri": {
+          "A": "http://A",
+          "B": "http://B"
+        },
+        "activeId": "A"
+      }""")
+  }
+
+  "ClusterSwitchOver" in {
+    testJson[ControllerCommand](ClusterSwitchOver,
+      json"""{
+        "TYPE": "ClusterSwitchOver"
+      }""")
+  }
+
+  // Internal use only
+  "InternalClusterCommand" in {
+    testJson[ControllerCommand](InternalClusterCommand(
+      ClusterCommand.ClusterCouple(
+        ClusterNodeId("A"),
+        ClusterNodeId("B"))),
+      json"""{
+        "TYPE": "InternalClusterCommand",
+        "clusterCommand": {
+          "TYPE": "ClusterCouple",
+          "activeId": "A",
+          "passiveId": "B"
+        }
+      }""")
+  }
+
+  "InternalClusterCommand.Response" in {
+    testJson[ControllerCommand.Response](InternalClusterCommand.Response(
+      ClusterCommand.Response.Accepted),
+      json"""{
+        "TYPE": "InternalClusterCommand.Response",
+        "response": {
+          "TYPE": "Accepted"
+        }
+      }""")
+  }
+
+  "Response.Accepted" in {
+    testJson[ControllerCommand.Response](
+      Response.Accepted,
+      json"""{
+        "TYPE": "Accepted"
+      }""")
+  }
+}

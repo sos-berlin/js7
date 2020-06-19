@@ -8,7 +8,7 @@ import js7.common.system.OperatingSystem.isWindows
 import js7.data.agent.AgentRefPath
 import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import js7.data.job.{ExecutablePath, ReturnCode}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent, OrderTransferredToController}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.parser.WorkflowParser
@@ -29,10 +29,10 @@ final class ExecuteTest extends AnyFreeSpec
     val workflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW"), workflowNotation).orThrow
 
     autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, fileBased = workflow :: Nil, testName = Some("ExecuteTest"))) { directoryProvider =>
-      directoryProvider.run { (master, _) =>
+      directoryProvider.run { (controller, _) =>
         val orderId = OrderId("❌")
-        master.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
-        val stampedSeq = master.eventWatch.await[OrderFailed](_.key == orderId)
+        controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
+        val stampedSeq = controller.eventWatch.await[OrderFailed](_.key == orderId)
         assert(stampedSeq.head.value.event.outcome.asInstanceOf[Outcome.Disrupted].reason.problem == SignedInjectionNotAllowed)
       }
     }
@@ -47,11 +47,11 @@ final class ExecuteTest extends AnyFreeSpec
           a.writeExecutable(ExecutablePath(o),
             if (isWindows) "@exit %SCHEDULER_PARAM_RETURN_CODE%" else "exit $SCHEDULER_PARAM_RETURN_CODE")
       }
-      directoryProvider.run { (master, _) =>
+      directoryProvider.run { (controller, _) =>
         val orderId = OrderId("🔺")
-        master.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path))
-        master.eventWatch.await[OrderFinished](_.key == orderId)
-        checkEventSeq(orderId, master.eventWatch.all[OrderEvent])
+        controller.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path))
+        controller.eventWatch.await[OrderFinished](_.key == orderId)
+        checkEventSeq(orderId, controller.eventWatch.all[OrderEvent])
       }
     }
   }
@@ -132,6 +132,6 @@ object ExecuteTest
     OrderProcessed(Outcome.Succeeded(ReturnCode(5))),
     OrderMoved(Position(6)),
     OrderDetachable,
-    OrderTransferredToMaster,
+    OrderTransferredToController,
     OrderFinished)
 }

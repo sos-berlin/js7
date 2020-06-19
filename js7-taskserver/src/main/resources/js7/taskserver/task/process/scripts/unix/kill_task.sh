@@ -16,8 +16,8 @@ for arg in "$@"; do
         -kill-agent-task-id=*)
             AGENT_TASK_ID=`echo "$arg" | sed 's/-kill-agent-task-id=//'`
             ;;
-        -master-task-id=*)
-            MASTER_TASK_ID=`echo "$arg" | sed 's/-master-task-id=//'`
+        -controller-task-id=*)
+            CONTROLLER_TASK_ID=`echo "$arg" | sed 's/-controller-task-id=//'`
              ;;
         -job=*)
             JOB_PATH=`echo "$arg" | sed 's/-job=//'`
@@ -33,7 +33,7 @@ if [ -z "$AGENT_TASK_ID$PID" ]; then
     exit 2
 fi
 if [ ! -z "$JOB_PATH" ]; then
-    log info "Task '$MASTER_TASK_ID' of Job '$JOB_PATH' with Agent task id '$AGENT_TASK_ID' is being killed"
+    log info "Task '$CONTROLLER_TASK_ID' of Job '$JOB_PATH' with Agent task id '$AGENT_TASK_ID' is being killed"
 else
     log info "Task with Agent task id '$AGENT_TASK_ID' is being killed"
 fi

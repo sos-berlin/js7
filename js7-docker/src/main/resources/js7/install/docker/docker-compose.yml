@@ -8,54 +8,54 @@
 version: "3.2"
 
 services:
-  master:
+  controller:
     build:
       context: build
       args:
         - UID
     image: js7
-    container_name: js7-master
-    command: ["master", "-J-Xmx200m"]
-    hostname: master
+    container_name: js7-controller
+    command: ["controller", "-J-Xmx200m"]
+    hostname: controller
     networks:
     - default
     ports:
     - "127.0.0.1:4444:4444"
-    working_dir: /var/opt/js7/master/data
+    working_dir: /var/opt/js7/controller/data
     volumes:
-      - ./volumes/master/config:/var/opt/js7/master/config:ro
-      - ./volumes/master/data:/var/opt/js7/master/data:delegated
+      - ./volumes/controller/config:/var/opt/js7/controller/config:ro
+      - ./volumes/controller/data:/var/opt/js7/controller/data:delegated
     depends_on:
-      - backup-master
+      - backup-controller
       - agent-1
       - agent-2
     stop_grace_period: 10s
     restart: unless-stopped
 
-  backup-master:
+  backup-controller:
     build:
       context: build
       args:
         - UID
     image: js7
-    container_name: js7-backup-master
-    command: ["master", "-J-Xmx200m"]
-    hostname: backup-master
+    container_name: js7-backup-controller
+    command: ["controller", "-J-Xmx200m"]
+    hostname: backup-controller
     networks:
     - default
     #ports:
     #Does not work for Docker 2.2.3.0 MacOS:  - "127.0.0.2:4444:4444"
-    working_dir: /var/opt/js7/master/data
+    working_dir: /var/opt/js7/controller/data
     volumes:
-      - ./volumes/backup-master/config:/var/opt/js7/master/config:ro
-      - ./volumes/backup-master/data:/var/opt/js7/master/data:delegated
+      - ./volumes/backup-controller/config:/var/opt/js7/controller/config:ro
+      - ./volumes/backup-controller/data:/var/opt/js7/controller/data:delegated
     stop_grace_period: 10s
     restart: unless-stopped
 
   provider:
     image: js7
     container_name: js7-provider
-    command: ["provider", "-J-Xmx100m", "-master-uri=http://master:4444"]
+    command: ["provider", "-J-Xmx100m", "-controller-uri=http://controller:4444"]
     hostname: provider
     working_dir: /var/opt/js7/provider/data
     volumes:

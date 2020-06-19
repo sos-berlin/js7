@@ -4,9 +4,9 @@ import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils._
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.crypt.{GenericSignature, SignedString}
+import js7.data.controller.ControllerFileBaseds._
 import js7.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
 import js7.data.filebased.RepoEventTest._
-import js7.data.master.MasterFileBaseds._
 import js7.data.workflow.instructions.Fail
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tester.CirceJsonTester.testJson

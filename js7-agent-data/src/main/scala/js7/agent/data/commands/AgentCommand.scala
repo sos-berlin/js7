@@ -87,25 +87,25 @@ object AgentCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
-  /** Registers the Master identified by current User as a new Master and couples it.
-    * The Agent Server starts a new Agent, dedicated to the Master.
+  /** Registers the Controller identified by current User as a new Controller and couples it.
+    * The Agent Server starts a new Agent, dedicated to the Controller.
     * Command may be given twice (in case of a sudden restart).
     */
-  final case class RegisterAsMaster(agentRefPath: AgentRefPath) extends AgentCommand {
-    type Response = RegisterAsMaster.Response
+  final case class RegisterAsController(agentRefPath: AgentRefPath) extends AgentCommand {
+    type Response = RegisterAsController.Response
   }
-  object RegisterAsMaster {
+  object RegisterAsController {
     /**
-      * @param agentRunId Use the value for `CoupleMaster`. */
+      * @param agentRunId Use the value for `CoupleController`. */
     final case class Response(agentRunId: AgentRunId) extends AgentCommand.Response
   }
 
-  /** Couples the registered Master identified by current User.
-    * @param agentRunId Must be the value returned by `RegisterAsMaster`. */
-  final case class CoupleMaster(agentRefPath: AgentRefPath, agentRunId: AgentRunId, eventId: EventId) extends AgentCommand {
-    type Response = CoupleMaster.Response
+  /** Couples the registered Controller identified by current User.
+    * @param agentRunId Must be the value returned by `RegisterAsController`. */
+  final case class CoupleController(agentRefPath: AgentRefPath, agentRunId: AgentRunId, eventId: EventId) extends AgentCommand {
+    type Response = CoupleController.Response
   }
-  object CoupleMaster {
+  object CoupleController {
     final case class Response(orderIds: Set[OrderId])
     extends AgentCommand.Response with Big
   }
@@ -176,8 +176,8 @@ object AgentCommand extends CommonCommand.Companion
       Subtype[EmergencyStop],
       Subtype(deriveCodec[ReleaseEvents]),
       Subtype(NoOperation),
-      Subtype(deriveCodec[RegisterAsMaster]),
-      Subtype(deriveCodec[CoupleMaster]),
+      Subtype(deriveCodec[RegisterAsController]),
+      Subtype(deriveCodec[CoupleController]),
       Subtype[ShutDown],
       Subtype(deriveCodec[AttachOrder]),
       Subtype(deriveCodec[DetachOrder]),
@@ -188,10 +188,10 @@ object AgentCommand extends CommonCommand.Companion
 
   implicit val responseJsonCodec: TypedJsonCodec[AgentCommand.Response] =
     TypedJsonCodec[AgentCommand.Response](
-      Subtype.named(deriveCodec[CoupleMaster.Response], "CoupleMaster.Response"),
+      Subtype.named(deriveCodec[CoupleController.Response], "CoupleController.Response"),
       Subtype.named(deriveCodec[Batch.Response], "Batch.Response"),
       Subtype(Response.Accepted),
-      Subtype.named(deriveCodec[RegisterAsMaster.Response], "RegisterAsMaster.Response"))
+      Subtype.named(deriveCodec[RegisterAsController.Response], "RegisterAsController.Response"))
 
   intelliJuseImport((checkedJsonEncoder[Int], checkedJsonDecoder[Int]))
 }

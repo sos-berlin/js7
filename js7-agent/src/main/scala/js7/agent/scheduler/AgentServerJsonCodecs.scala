@@ -7,5 +7,5 @@ private[scheduler] object AgentServerJsonCodecs
 {
   val jsonCodec = TypedJsonCodec[Any](
     Subtype[JournalState],
-    Subtype[RegisteredMaster])
+    Subtype[RegisteredController])
 }

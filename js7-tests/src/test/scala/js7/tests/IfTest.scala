@@ -7,7 +7,7 @@ import js7.common.system.OperatingSystem.isWindows
 import js7.data.agent.AgentRefPath
 import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import js7.data.job.{ExecutablePath, ReturnCode}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent, OrderTransferredToController}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.parser.WorkflowParser
@@ -25,15 +25,15 @@ final class IfTest extends AnyFreeSpec {
       for (a <- directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/TEST$sh"), ":")
       for (a <- directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/TEST-RC$sh"), jobScript)
 
-      directoryProvider.run { (master, _) =>
+      directoryProvider.run { (controller, _) =>
         for (returnCode <- ExpectedEvents.keys) withClue(s"$returnCode: ") {
           val orderId = OrderId("🔺" + returnCode.number)
-          master.addOrderBlocking(newOrder(orderId, returnCode))
+          controller.addOrderBlocking(newOrder(orderId, returnCode))
           if (returnCode == ReturnCode(2))
-            master.eventWatch.await[OrderFailed](_.key == orderId)
+            controller.eventWatch.await[OrderFailed](_.key == orderId)
           else
-            master.eventWatch.await[OrderFinished](_.key == orderId)
-          checkEventSeq(orderId, master.eventWatch.all[OrderEvent], returnCode)
+            controller.eventWatch.await[OrderFinished](_.key == orderId)
+          checkEventSeq(orderId, controller.eventWatch.all[OrderEvent], returnCode)
         }
       }
     }
@@ -103,7 +103,7 @@ object IfTest {
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(3)),
       OrderDetachable,
-      OrderTransferredToMaster,
+      OrderTransferredToController,
       OrderFinished),
     ReturnCode(1) -> Vector(
       OrderAdded(TestWorkflow.id, None, Map("ARG" -> "ARG-VALUE", "RETURN_CODE" -> "1")),
@@ -121,7 +121,7 @@ object IfTest {
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(3)),
       OrderDetachable,
-      OrderTransferredToMaster,
+      OrderTransferredToController,
       OrderFinished),
     ReturnCode(2) ->  Vector(
       OrderAdded(TestWorkflow.id, None, Map("ARG" -> "ARG-VALUE", "RETURN_CODE" -> "2")),

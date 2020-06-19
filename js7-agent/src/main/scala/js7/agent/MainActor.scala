@@ -67,7 +67,7 @@ extends Actor {
     case AgentActor.Output.Ready =>
       readyPromise.success(Ready(api))
 
-    case Input.ExternalCommand(userId, cmd, response) =>  // For RunningMaster
+    case Input.ExternalCommand(userId, cmd, response) =>  // For RunningController
       agentHandle.executeCommand(cmd, userId, response)
 
     case Terminated(`agentActor`) =>

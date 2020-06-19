@@ -2,20 +2,20 @@ package js7.proxy.javaapi
 
 import js7.base.annotation.javaApi
 import js7.base.utils.Assertions.assertThat
+import js7.controller.data.ControllerState
 import js7.data.event.{Event, KeyedEvent, Stamped}
-import js7.master.data.MasterState
 import js7.proxy.ProxyEventBus
-import js7.proxy.javaapi.data.{JMasterState, JavaWrapper}
+import js7.proxy.javaapi.data.{JControllerState, JavaWrapper}
 import scala.jdk.CollectionConverters._
 
 @javaApi
-final class JProxyEventBus(val underlying: ProxyEventBus[MasterState])
+final class JProxyEventBus(val underlying: ProxyEventBus[ControllerState])
 {
-  def this() = this(new ProxyEventBus[MasterState])
+  def this() = this(new ProxyEventBus[ControllerState])
 
   def subscribe[E <: Event](
     eventClasses: java.lang.Iterable[Class[_ <: Event]],
-    callback: java.util.function.BiConsumer[Stamped[KeyedEvent[E]], JMasterState])
+    callback: java.util.function.BiConsumer[Stamped[KeyedEvent[E]], JControllerState])
   : AutoCloseable = {
     val subscription = newSubscription(eventClasses, callback)
     addSubscription(subscription)
@@ -24,14 +24,14 @@ final class JProxyEventBus(val underlying: ProxyEventBus[MasterState])
 
   def newSubscription[E <: Event](
     eventClasses: java.lang.Iterable[Class[_ <: Event]],
-    callback: java.util.function.BiConsumer[Stamped[KeyedEvent[E]], JMasterState])
+    callback: java.util.function.BiConsumer[Stamped[KeyedEvent[E]], JControllerState])
   : EventSubscription[E] =
     EventSubscription[E](
       new underlying.EventSubscription(
         eventClasses.asScala.toSet,
         o => callback.accept(
           o.stampedEvent.asInstanceOf[Stamped[KeyedEvent[E]]],
-          new JMasterState(o.state))))
+          new JControllerState(o.state))))
 
   def addSubscription[E <: Event](subscription: EventSubscription[E]): Unit = {
     assertThat(subscription.eventBus eq underlying)

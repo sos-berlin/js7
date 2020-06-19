@@ -4,7 +4,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import js7.agent.data.Problems.AgentDuplicateOrder
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{AttachOrder, CoupleMaster, DetachOrder, GetOrders, RegisterAsMaster}
+import js7.agent.data.commands.AgentCommand.{AttachOrder, CoupleController, DetachOrder, GetOrders, RegisterAsController}
 import js7.agent.scheduler.AgentActorTest._
 import js7.agent.scheduler.order.TestAgentActorProvider
 import js7.base.problem.Checked.Ops
@@ -39,8 +39,8 @@ final class AgentActorTest extends AnyFreeSpec
           file.writeExecutable(TestScript)
         }
         (provider.agentActor ? AgentActor.Input.Start).mapTo[AgentActor.Output.Ready.type] await 99.s
-        val agentRunId = executeCommand(RegisterAsMaster(agentRefPath))
-          .await(99.s).orThrow.asInstanceOf[RegisterAsMaster.Response].agentRunId
+        val agentRunId = executeCommand(RegisterAsController(agentRefPath))
+          .await(99.s).orThrow.asInstanceOf[RegisterAsController.Response].agentRunId
         val stopwatch = new Stopwatch
         val orderIds = for (i <- 0 until n) yield OrderId(s"TEST-ORDER-$i")
         orderIds.map(orderId =>
@@ -51,8 +51,8 @@ final class AgentActorTest extends AnyFreeSpec
           executeCommand(
             AttachOrder(TestOrder.copy(id = orderIds.head), TestAgentRefPath, provider.fileBasedSigner.sign(SimpleTestWorkflow))
           ).await(99.s) == Left(AgentDuplicateOrder(orderIds.head)))
-        assert(executeCommand(CoupleMaster(agentRefPath, agentRunId, EventId.BeforeFirst)).await(99.s) ==
-          Right(CoupleMaster.Response(orderIds.toSet)))
+        assert(executeCommand(CoupleController(agentRefPath, agentRunId, EventId.BeforeFirst)).await(99.s) ==
+          Right(CoupleController.Response(orderIds.toSet)))
         for (orderId <- orderIds)
           eventCollector.whenKeyedEvent[OrderEvent.OrderDetachable](EventRequest.singleClass(timeout = Some(90.s)), orderId) await 99.s
         info(stopwatch.itemsPerSecondString(n, "Orders"))

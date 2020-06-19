@@ -4,7 +4,7 @@ import com.google.inject.{AbstractModule, Injector, Provides}
 import javax.inject.Singleton
 import js7.agent.client.AgentClient
 import js7.agent.configuration.Akkas.newAgentActorSystem
-import js7.agent.data.commands.AgentCommand.{AttachOrder, RegisterAsMaster, ShutDown}
+import js7.agent.data.commands.AgentCommand.{AttachOrder, RegisterAsController, ShutDown}
 import js7.agent.tests.TerminateTest._
 import js7.base.auth.UserId
 import js7.base.generic.SecretString
@@ -48,7 +48,7 @@ final class TerminateTest extends AnyFreeSpec with AgentTester
 
     val client = AgentClient(agentUri = agent.localUri, Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD")))
     client.login() await 99.s
-    client.commandExecute(RegisterAsMaster(agentRefPath)) await 99.s
+    client.commandExecute(RegisterAsController(agentRefPath)) await 99.s
 
     val eventCollector = newEventCollector(agent.injector)
 

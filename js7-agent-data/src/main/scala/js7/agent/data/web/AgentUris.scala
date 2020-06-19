@@ -42,8 +42,8 @@ final class AgentUris private(agentUri: Uri)
       toUri("api/order/", Query("return" -> "Order"))
   }
 
-  def mastersEvents[E <: Event](request: EventRequest[E]) =
-    toUri("api/master/event", Query(request.toQueryParameters: _*))
+  def controllersEvents[E <: Event](request: EventRequest[E]) =
+    toUri("api/controller/event", Query(request.toQueryParameters: _*))
 
   def apply(relativeUri: String) = toUri(stripLeadingSlash(relativeUri))
 

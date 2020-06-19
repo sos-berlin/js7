@@ -15,18 +15,18 @@ import js7.common.configutils.Configs.ConvertibleConfig
 import js7.common.files.{DirectoryReader, PathSeqDiff, PathSeqDiffer}
 import js7.common.scalautil.{IOExecutor, Logger}
 import js7.common.time.JavaTimeConverters._
+import js7.controller.agent.AgentRefReader
+import js7.controller.client.AkkaHttpControllerApi
+import js7.controller.data.ControllerCommand
+import js7.controller.data.ControllerCommand.{ReplaceRepo, UpdateRepo}
+import js7.controller.workflow.WorkflowReader
 import js7.core.crypt.generic.MessageSigners
 import js7.core.filebased.{TypedPaths, TypedSourceReader}
 import js7.data.agent.AgentRefPath
+import js7.data.controller.ControllerFileBaseds
 import js7.data.filebased.FileBaseds.diffFileBaseds
 import js7.data.filebased.{FileBased, FileBasedSigner, FileBaseds, TypedPath, VersionId}
-import js7.data.master.MasterFileBaseds
 import js7.data.workflow.WorkflowPath
-import js7.master.agent.AgentRefReader
-import js7.master.client.AkkaHttpMasterApi
-import js7.master.data.MasterCommand
-import js7.master.data.MasterCommand.{ReplaceRepo, UpdateRepo}
-import js7.master.workflow.WorkflowReader
 import js7.provider.Provider._
 import js7.provider.configuration.ProviderConfiguration
 import monix.eval.Task
@@ -44,13 +44,13 @@ final class Provider(val fileBasedSigner: FileBasedSigner[FileBased], val conf: 
 extends HasCloser with Observing with ProvideActorSystem
 {
   protected val userAndPassword: Option[UserAndPassword] = for {
-      userName <- conf.config.optionAs[String]("js7.provider.master.user")
-      password <- conf.config.optionAs[String]("js7.provider.master.password")
+      userName <- conf.config.optionAs[String]("js7.provider.controller.user")
+      password <- conf.config.optionAs[String]("js7.provider.controller.password")
     } yield UserAndPassword(UserId(userName), SecretString(password))
-  protected val masterApi = new AkkaHttpMasterApi(conf.masterUri, userAndPassword, actorSystem = actorSystem, config = conf.config)
+  protected val controllerApi = new AkkaHttpControllerApi(conf.controllerUri, userAndPassword, actorSystem = actorSystem, config = conf.config)
   protected def config = conf.config
 
-  private val firstRetryLoginDurations = conf.config.getDurationList("js7.provider.master.login-retry-delays")
+  private val firstRetryLoginDurations = conf.config.getDurationList("js7.provider.controller.login-retry-delays")
     .asScala.map(_.toFiniteDuration)
   private val typedSourceReader = new TypedSourceReader(conf.liveDirectory, readers)
   private val newVersionId = new VersionIdGenerator
@@ -59,23 +59,23 @@ extends HasCloser with Observing with ProvideActorSystem
   protected def scheduler = s
 
   def closeTask: Task[Completed] =
-    masterApi.logout()
-      .guarantee(Task(masterApi.close()))
+    controllerApi.logout()
+      .guarantee(Task(controllerApi.close()))
       .memoize
 
   protected val relogin: Task[Completed] =
-    masterApi.logout().onErrorHandle(_ => ()) >>
+    controllerApi.logout().onErrorHandle(_ => ()) >>
       loginUntilReachable
 
   // We don't use ReplaceRepo because it changes every existing object only because of changed signature.
-  private def replaceMasterConfiguration(versionId: Option[VersionId]): Task[Checked[Completed]] =
+  private def replaceControllerConfiguration(versionId: Option[VersionId]): Task[Checked[Completed]] =
     for {
       _ <- loginUntilReachable
       currentEntries = readDirectory
       checkedCommand = toReplaceRepoCommand(versionId getOrElse newVersionId(), currentEntries.map(_.file))
       response <- checkedCommand
         .traverse(o => HttpClient.liftProblem(
-          masterApi.executeCommand(o) map ((_: MasterCommand.Response) => Completed)))
+          controllerApi.executeCommand(o) map ((_: ControllerCommand.Response) => Completed)))
         .map(_.flatten)
     } yield {
       if (response.isRight) {
@@ -84,13 +84,13 @@ extends HasCloser with Observing with ProvideActorSystem
       response
     }
 
-  /** Compares the directory with the Master's repo and sends the difference.
+  /** Compares the directory with the Controller's repo and sends the difference.
     * Parses each file, so it may take some time for a big configuration directory. */
-  def initiallyUpdateMasterConfiguration(versionId: Option[VersionId] = None): Task[Checked[Completed]] = {
+  def initiallyUpdateControllerConfiguration(versionId: Option[VersionId] = None): Task[Checked[Completed]] = {
     val localEntries = readDirectory
     for {
       _ <- loginUntilReachable
-      checkedDiff <- masterDiff(localEntries)
+      checkedDiff <- controllerDiff(localEntries)
       checkedCompleted <- checkedDiff
         .traverse(execute(versionId, _))
         .map(_.flatten)
@@ -102,17 +102,17 @@ extends HasCloser with Observing with ProvideActorSystem
     }
   }
 
-  def testMasterDiff: Task[Checked[FileBaseds.Diff[TypedPath, FileBased]]] =
-    loginUntilReachable >> masterDiff(readDirectory)
+  def testControllerDiff: Task[Checked[FileBaseds.Diff[TypedPath, FileBased]]] =
+    loginUntilReachable >> controllerDiff(readDirectory)
 
-  /** Compares the directory with the Master's repo and sends the difference.
+  /** Compares the directory with the Controller's repo and sends the difference.
     * Parses each file, so it may take some time for a big configuration directory. */
-  private def masterDiff(localEntries: Seq[DirectoryReader.Entry]): Task[Checked[FileBaseds.Diff[TypedPath, FileBased]]] =
+  private def controllerDiff(localEntries: Seq[DirectoryReader.Entry]): Task[Checked[FileBaseds.Diff[TypedPath, FileBased]]] =
     for {
-      pair <- Task.parZip2(readLocalFileBased(localEntries.map(_.file)), fetchMasterFileBasedSeq)
-      (checkedLocalFileBasedSeq, masterFileBasedSeq) = pair
+      pair <- Task.parZip2(readLocalFileBased(localEntries.map(_.file)), fetchControllerFileBasedSeq)
+      (checkedLocalFileBasedSeq, controllerFileBasedSeq) = pair
     } yield
-      checkedLocalFileBasedSeq.map(o => fileBasedDiff(o, masterFileBasedSeq))
+      checkedLocalFileBasedSeq.map(o => fileBasedDiff(o, controllerFileBasedSeq))
 
   private def readLocalFileBased(files: Seq[Path]) =
     Task { typedSourceReader.readFileBaseds(files) }
@@ -120,7 +120,7 @@ extends HasCloser with Observing with ProvideActorSystem
   private def fileBasedDiff(aSeq: Seq[FileBased], bSeq: Seq[FileBased]): FileBaseds.Diff[TypedPath, FileBased] =
     FileBaseds.Diff.fromRepoChanges(diffFileBaseds(aSeq, bSeq, ignoreVersion = true))
 
-  def updateMasterConfiguration(versionId: Option[VersionId] = None): Task[Checked[Completed]] =
+  def updateControllerConfiguration(versionId: Option[VersionId] = None): Task[Checked[Completed]] =
     for {
       _ <- loginUntilReachable
       last = lastEntries.get
@@ -140,12 +140,12 @@ extends HasCloser with Observing with ProvideActorSystem
 
   protected lazy val loginUntilReachable: Task[Completed] =
     Task.defer {
-      if (masterApi.hasSession)
+      if (controllerApi.hasSession)
         Task.pure(Completed)
       else
-        masterApi.loginUntilReachable(retryLoginDurations)
+        controllerApi.loginUntilReachable(retryLoginDurations)
           .map { completed =>
-            logger.info("Logged-in at Master")
+            logger.info("Logged-in at Controller")
             completed
           }
     }
@@ -157,7 +157,7 @@ extends HasCloser with Observing with ProvideActorSystem
       val v = versionId getOrElse newVersionId()
       logUpdate(v, diff)
       HttpClient.liftProblem(
-        masterApi.executeCommand(toUpdateRepo(v, diff)) map ((_: MasterCommand.Response) => Completed))
+        controllerApi.executeCommand(toUpdateRepo(v, diff)) map ((_: ControllerCommand.Response) => Completed))
     }
 
   private def logUpdate(versionId: VersionId, diff: FileBaseds.Diff[TypedPath, FileBased]): Unit = {
@@ -173,10 +173,10 @@ extends HasCloser with Observing with ProvideActorSystem
       change = diff.added ++ diff.updated map (_ withVersion versionId) map fileBasedSigner.sign,
       delete = diff.deleted)
 
-  private def fetchMasterFileBasedSeq: Task[Seq[FileBased]] =
+  private def fetchControllerFileBasedSeq: Task[Seq[FileBased]] =
     Task.parMap2(
-      masterApi.agents.map(_.orThrow),
-      masterApi.workflows.map(_.orThrow)
+      controllerApi.agents.map(_.orThrow),
+      controllerApi.workflows.map(_.orThrow)
     )(_ ++ _)
 
   private def readDirectory: Vector[DirectoryReader.Entry] =
@@ -213,7 +213,7 @@ object Provider
       val password = SecretString(conf.config.getString(s"$configPath.password"))
       MessageSigners.typeToMessageSignersCompanion(typeName)
         .flatMap(companion => companion.checked(Files.readAllBytes(keyFile), password))
-        .map(messageSigner => new FileBasedSigner(messageSigner, MasterFileBaseds.jsonCodec))
+        .map(messageSigner => new FileBasedSigner(messageSigner, ControllerFileBaseds.jsonCodec))
     }.orThrow
     Right(new Provider(fileBasedSigner, conf))
   }

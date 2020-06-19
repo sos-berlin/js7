@@ -18,7 +18,7 @@ object KeyedEventJsonFormats
       KeyedSubtype[JournalEvent],
       KeyedSubtype[OrderEvent],
       KeyedSubtype.singleEvent[WorkflowEvent.WorkflowAttached],
-      KeyedSubtype[AgentMasterEvent])
+      KeyedSubtype[AgentControllerEvent])
 
   /**
     * All subtypes of `Event` are serialized as `Event`.

@@ -63,11 +63,11 @@ trait AgentClient extends AgentApi with HttpSessionApi with AkkaHttpClient
     liftProblem(
       get[Seq[Order[Order.State]]](agentUris.order.orders))
 
-  final def mastersEventObservable(request: EventRequest[Event]): Task[Checked[Observable[Stamped[KeyedEvent[Event]]]]] =
+  final def controllersEventObservable(request: EventRequest[Event]): Task[Checked[Observable[Stamped[KeyedEvent[Event]]]]] =
     liftProblem(
-      getDecodedLinesObservable[Stamped[KeyedEvent[Event]]](agentUris.mastersEvents(request)))
+      getDecodedLinesObservable[Stamped[KeyedEvent[Event]]](agentUris.controllersEvents(request)))
 
-  final def mastersEvents(request: EventRequest[Event]): Task[Checked[TearableEventSeq[Seq, KeyedEvent[Event]]]] = {
+  final def controllersEvents(request: EventRequest[Event]): Task[Checked[TearableEventSeq[Seq, KeyedEvent[Event]]]] = {
     //TODO Use Akka http connection level request with Akka streams and .withIdleTimeout()
     // See https://gist.github.com/burakbala/49617745ead702b4c83cf89699c266ff
     //val timeout = request match {
@@ -75,7 +75,7 @@ trait AgentClient extends AgentApi with HttpSessionApi with AkkaHttpClient
     //  case _ => akka configured default value
     //}
     liftProblem(
-      get[TearableEventSeq[Seq, KeyedEvent[Event]]](agentUris.mastersEvents(request)))
+      get[TearableEventSeq[Seq, KeyedEvent[Event]]](agentUris.controllersEvents(request)))
   }
 
   override def toString = baseUri.toString
