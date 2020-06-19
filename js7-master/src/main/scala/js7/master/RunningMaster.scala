@@ -249,6 +249,7 @@ object RunningMaster
         masterConfiguration.masterId,
         masterConfiguration.journalConf,
         masterConfiguration.clusterConf,
+        masterConfiguration.httpsConfig,
         masterConfiguration.config,
         injector.instance[EventIdGenerator],
         testEventBus)

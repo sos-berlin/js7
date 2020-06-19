@@ -5,19 +5,17 @@ set -e
 # Tested only with -host=localhost.
 
 # The source code test keystores has been generated with:
-#   common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=test -config-directory=common/src/test/resources/js7/common/akkahttp/https
-#   common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=agent -config-directory=agent/src/test/resources/js7/agent/test/config
+#   common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh --host=localhost --alias=test --config-directory=common/src/test/resources/js7/common/akkahttp/https
+#   common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh --host=localhost --alias=agent --config-directory=agent/src/test/resources/js7/agent/test/config
 
 configDirectory=
 host=
 distinguishedName=
 days=36500
-keyStore="private/https-keystore.p12"
-trustStore="export/https-truststore.p12"
-trustPem="export/https-truststore.pem"
+prefix=""
 alias=
-keyPassword="js7"
-storePassword="js7"
+keyPassword="jobscheduler"
+storePassword="jobscheduler"
 
 for arg in "$@"; do
   case "$arg" in
@@ -42,12 +40,20 @@ for arg in "$@"; do
       days="${arg#*=}"
       shift
       ;;
+    -prefix=*)
+      prefix="${arg#*=}"
+      shift
+      ;;
     *)
       echo Unknown argument: $arg
       exit 1
       ;;
   esac
 done
+
+keyStore="private/${prefix}https-keystore.p12"
+trustStore="export/${prefix}https-truststore.p12"
+trustPem="export/${prefix}https-truststore.pem"
 
 [ -n "$host" ] || {
   echo Missing argument for -host=
@@ -78,7 +84,7 @@ keytool -genkey \
   -storepass "$storePassword"
 
 echo "----------------------------------------------------------------------"
-echo File $keyStore:
+echo "File $keyStore:"
 keytool -list -keystore "$keyStore" -deststorepass "$storePassword"
 
 keytool -exportcert -rfc -noprompt \
@@ -94,11 +100,11 @@ keytool -importcert -noprompt \
   -alias "$alias"
 
 echo "----------------------------------------------------------------------"
-echo File $trustStore:
+echo "File $trustStore:"
 keytool -list \
   -keystore "$trustStore" \
   -deststorepass "$storePassword"
 echo "----------------------------------------------------------------------"
-echo File $trustPem:
+echo "File $trustPem:"
 keytool -printcert \
   -file "$trustPem"

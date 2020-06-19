@@ -8,7 +8,7 @@ import js7.base.convert.As
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
-import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
+import js7.common.akkahttp.https.{HttpsConfig, KeyStoreRef, TrustStoreRef}
 import js7.common.akkahttp.web.data.{WebServerBinding, WebServerPort}
 import js7.common.commandline.CommandLineArguments
 import js7.common.internet.IP.StringToServerInetSocketAddress
@@ -26,7 +26,7 @@ trait CommonConfiguration extends WebServerBinding.HasLocalUris
 
   def webServerPorts: Seq[WebServerPort]
 
-  final lazy val keyStoreRef: Checked[KeyStoreRef] =
+  private lazy val keyStoreRef: Checked[KeyStoreRef] =
     KeyStoreRef.fromConfig(config, default = configDirectory resolve "private/https-keystore.p12")
 
   final lazy val keyStoreRefOption: Option[KeyStoreRef] =
@@ -34,6 +34,8 @@ trait CommonConfiguration extends WebServerBinding.HasLocalUris
 
   final lazy val trustStoreRefs: Seq[TrustStoreRef] =
     TrustStoreRef.fromConfig(config)
+
+  def httpsConfig = HttpsConfig(keyStoreRefOption, trustStoreRefs)
 
   final def http: Seq[WebServerBinding.Http] =
     webServerBindings collect { case o: WebServerBinding.Http => o }

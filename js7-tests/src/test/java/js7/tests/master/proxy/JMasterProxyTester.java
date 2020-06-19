@@ -14,6 +14,7 @@ import js7.data.workflow.WorkflowPath;
 import js7.proxy.javaapi.JCredentials;
 import js7.proxy.javaapi.JMasterProxy;
 import js7.proxy.javaapi.data.JFreshOrder;
+import js7.proxy.javaapi.data.JHttpsConfig;
 import js7.proxy.javaapi.data.JMasterCommand;
 import js7.proxy.javaapi.data.JMasterState;
 import static java.util.Arrays.asList;
@@ -51,9 +52,9 @@ final class JMasterProxyTester
         }
     }
 
-    static CompletableFuture<JMasterProxyTester> start(String uri, JCredentials credentials) {
+    static CompletableFuture<JMasterProxyTester> start(String uri, JCredentials credentials, JHttpsConfig httpsConfig) {
         return
-            JMasterProxy.start(uri, credentials)
+            JMasterProxy.start(uri, credentials, httpsConfig)
                 .thenApply(JMasterProxyTester::new);
     }
 

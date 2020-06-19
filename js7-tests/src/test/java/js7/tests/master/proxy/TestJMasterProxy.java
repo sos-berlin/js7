@@ -12,6 +12,7 @@ import js7.data.order.OrderId;
 import js7.proxy.javaapi.JCredentials;
 import js7.proxy.javaapi.JMasterProxy;
 import js7.proxy.javaapi.JProxyEventBus;
+import js7.proxy.javaapi.data.JHttpsConfig;
 import js7.proxy.javaapi.data.JMasterState;
 import static java.lang.System.out;
 import static java.util.Arrays.asList;
@@ -82,7 +83,7 @@ public final class TestJMasterProxy implements AutoCloseable
         );
 
         return JMasterProxy
-            .start(uri, credentials, eventBus, ConfigFactory.empty())
+            .start(uri, credentials, JHttpsConfig.empty(), eventBus, ConfigFactory.empty())
             .thenAccept(proxy -> {
                 try (TestJMasterProxy test = new TestJMasterProxy(proxy)) {
                     test.run();

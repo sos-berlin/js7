@@ -22,6 +22,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.RichThrowable
 import js7.base.utils.{LockResource, SetOnce}
 import js7.base.web.{HttpClient, Uri}
+import js7.common.akkahttp.https.HttpsConfig
 import js7.common.configutils.Configs.ConvertibleConfig
 import js7.common.event.{EventIdGenerator, RealEventWatch}
 import js7.common.http.RecouplingStreamReader
@@ -65,6 +66,7 @@ final class Cluster(
   masterId: MasterId,
   journalConf: JournalConf,
   val clusterConf: ClusterConf,
+  httpsConfig: HttpsConfig,
   config: Config,
   eventIdGenerator: EventIdGenerator,
   testEventPublisher: EventPublisher[Any])
@@ -98,7 +100,8 @@ final class Cluster(
       uri,
       userAndPassword = config.optionAs[SecretString]("js7.auth.agents." + ConfigUtil.joinPath(uri.string))
         .map(password => UserAndPassword(masterId.toUserId, password)),
-      actorSystem = actorSystem)
+      httpsConfig = httpsConfig,
+      actorSystem)
   }
 
   def stop(): Unit = {
@@ -277,19 +280,21 @@ final class Cluster(
     initialFileEventId: Option[EventId] = None)
   : PassiveClusterNode[MasterState]
   = {
-    val common = new ClusterCommon(activationInhibitor, clusterWatch, clusterConf, testEventPublisher)
+    val common = new ClusterCommon(activationInhibitor, clusterWatch, clusterConf, httpsConfig, testEventPublisher)
     new PassiveClusterNode(ownId, idToUri, activeId, journalMeta, initialFileEventId, recovered,
       otherFailedOver, journalConf, clusterConf, eventIdGenerator, common)
   }
 
   private def automaticallyAppointConfiguredBackupNode: Task[Checked[Completed]] =
-    clusterConf.maybeIdToUri match {
-      case Some(idToUri) =>
-        appointNodes(idToUri, ownId).map {
-          case Left(ClusterNodesAlreadyAppointed) => Right(Completed)
-          case o => o
-        }
-      case _ => Task.pure(Right(Completed))
+    Task.defer {
+      clusterConf.maybeIdToUri match {
+        case Some(idToUri) =>
+          appointNodes(idToUri, ownId).map {
+            case Left(ClusterNodesAlreadyAppointed) => Right(Completed)
+            case o => o
+          }
+        case _ => Task.pure(Right(Completed))
+      }
     }
 
   def appointNodes(idToUri: Map[ClusterNodeId, Uri], activeId: ClusterNodeId): Task[Checked[Completed]] =
@@ -458,7 +463,7 @@ final class Cluster(
   private def inhibitActivationOf(uri: Uri): Task[Option[FailedOver]] =
     Task.defer {
       val retryDelay = 5.s  // TODO
-      AkkaHttpMasterApi.resource(uri, clusterConf.userAndPassword, name = "ClusterInhibitActivation")
+      AkkaHttpMasterApi.resource(uri, clusterConf.userAndPassword, httpsConfig, name = "ClusterInhibitActivation")
         .use(otherNode =>
           otherNode.loginUntilReachable() >>
             otherNode.executeCommand(
@@ -524,7 +529,7 @@ final class Cluster(
 
     private def proceedNodesAppointed(state: ClusterState.NodesAppointed): Unit =
       if (state.activeId == ownId && !startingBackupNode.getAndSet(true)) {
-        val common = new ClusterCommon(activationInhibitor, clusterWatch, clusterConf, testEventPublisher)
+        val common = new ClusterCommon(activationInhibitor, clusterWatch, clusterConf, httpsConfig, testEventPublisher)
         eventWatch.started.flatMap(_ =>
           common.tryEndlesslyToSendCommand(
             state.passiveUri,
@@ -554,7 +559,7 @@ final class Cluster(
               logger.warn("No heartbeat from passive cluster node - continuing as single active cluster node")
               assertThat(id != ownId)
               val passiveLost = ClusterPassiveLost(id)
-              val common = new ClusterCommon(activationInhibitor, clusterWatch, clusterConf, testEventPublisher)
+              val common = new ClusterCommon(activationInhibitor, clusterWatch, clusterConf, httpsConfig, testEventPublisher)
               // FIXME Exklusiver Zugriff (Lock) wegen parallelen ClusterCommand.ClusterRecouple,
               //  das ein ClusterPassiveLost auslöst, mit ClusterCouplingPrepared infolge.
               //  Dann können wir kein ClusterPassiveLost ausgeben.
@@ -624,7 +629,7 @@ final class Cluster(
     } >>
       Observable
         .fromResource(
-          AkkaHttpMasterApi.resource(passiveUri, clusterConf.userAndPassword, name = "acknowledgements")(actorSystem))
+          AkkaHttpMasterApi.resource(passiveUri, clusterConf.userAndPassword, httpsConfig, name = "acknowledgements")(actorSystem))
         .flatMap(api =>
           observeEventIds(api, after = after)
             //.map { eventId => logger.trace(s"$eventId acknowledged"); eventId }

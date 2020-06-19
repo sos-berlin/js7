@@ -14,7 +14,7 @@ import js7.common.scalautil.Logger
 import js7.master.client.{AkkaHttpMasterApi, HttpMasterApi}
 import js7.master.data.{MasterCommand, MasterState}
 import js7.proxy.javaapi.JMasterProxy._
-import js7.proxy.javaapi.data.JMasterState
+import js7.proxy.javaapi.data.{JHttpsConfig, JMasterState}
 import js7.proxy.javaapi.utils.VavrConversions._
 import js7.proxy.{JournaledProxy, MasterCommandProxy}
 import monix.eval.Task
@@ -84,11 +84,11 @@ object JMasterProxy
   private val logger = Logger(getClass)
   private val MaxThreads = 100  // Some limit, just in case
 
-  def start(uri: String, credentials: JCredentials)
+  def start(uri: String, credentials: JCredentials, httpsConfig: JHttpsConfig)
   : CompletableFuture[JMasterProxy] =
-    start(uri, credentials, new JProxyEventBus, ConfigFactory.empty)
+    start(uri, credentials, httpsConfig, new JProxyEventBus, ConfigFactory.empty)
 
-  def start(uri: String, credentials: JCredentials, eventBus: JProxyEventBus, config: Config)
+  def start(uri: String, credentials: JCredentials, httpsConfig: JHttpsConfig, eventBus: JProxyEventBus, config: Config)
   : CompletableFuture[JMasterProxy] = {
     implicit val scheduler = JThreadPools.newStandardScheduler(
       parallelism = sys.runtime.availableProcessors, maxThreads = MaxThreads, name = "JMasterProxy")

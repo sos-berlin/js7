@@ -26,10 +26,14 @@ trait MasterAgentForScalaTest extends DirectoryProviderForScalaTest {
      mutualHttps = masterHttpsMutual,
    ) await 99.s
 
+  protected def waitUntilReady = true
+
   override def beforeAll() = {
     super.beforeAll()
     agents
-    master.waitUntilReady()
+    if (waitUntilReady) {
+      master.waitUntilReady()
+    }
   }
 
   override def afterAll() = {

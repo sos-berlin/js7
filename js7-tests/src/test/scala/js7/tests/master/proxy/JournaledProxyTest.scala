@@ -16,6 +16,7 @@ import js7.data.workflow.parser.WorkflowParser
 import js7.master.client.AkkaHttpMasterApi
 import js7.master.data.MasterState
 import js7.proxy.javaapi.JCredentials
+import js7.proxy.javaapi.data.JHttpsConfig
 import js7.proxy.{JournaledProxy, ProxyEventBus}
 import js7.tests.master.proxy.JournaledProxyTest._
 import js7.tests.testenv.DirectoryProvider.script
@@ -59,7 +60,7 @@ final class JournaledProxyTest extends AnyFreeSpec with DirectoryProviderForScal
 
   "JMasterProxy" in {
     directoryProvider.run { (master, _) =>
-      JMasterProxyTester.start(master.localUri.string, JCredentials.JUserAndPassword(userAndPassword))
+      JMasterProxyTester.start(master.localUri.string, JCredentials.JUserAndPassword(userAndPassword), JHttpsConfig.empty)
         .asScala
         .flatMap { tester =>
           tester.test()

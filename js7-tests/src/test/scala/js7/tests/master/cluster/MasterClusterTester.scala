@@ -23,7 +23,7 @@ import js7.data.workflow.WorkflowPath
 import js7.data.workflow.parser.WorkflowParser
 import js7.master.RunningMaster
 import js7.master.data.MasterCommand.ShutDown
-import js7.tests.master.cluster.MasterClusterTester.{shellScript, _}
+import js7.tests.master.cluster.MasterClusterTester._
 import js7.tests.testenv.DirectoryProvider
 import monix.eval.Task
 import monix.execution.Scheduler

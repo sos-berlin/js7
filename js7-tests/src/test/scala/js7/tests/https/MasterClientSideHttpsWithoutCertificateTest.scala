@@ -13,6 +13,7 @@ import scala.concurrent.TimeoutException
 final class MasterClientSideHttpsWithoutCertificateTest extends HttpsTestBase
 {
   override protected def masterHttpsMutual = true  // Master requires Clients certificate
+  override protected def useCluster = false
 
   "overview" in {
     val exception = intercept[Exception] {

@@ -13,6 +13,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils._
 import js7.base.web.Uri
+import js7.common.akkahttp.https.HttpsConfig
 import js7.common.scalautil.Logger
 import js7.core.cluster.ClusterWatch.ClusterWatchHeartbeatFromInactiveNodeProblem
 import js7.core.cluster.ClusterWatchApi
@@ -28,6 +29,7 @@ private[cluster] final class ClusterCommon(
   activationInhibitor: ActivationInhibitor,
   val clusterWatch: ClusterWatchApi,
   clusterConf: ClusterConf,
+  httpsConfig: HttpsConfig,
   testEventPublisher: EventPublisher[Any])
   (implicit actorSystem: ActorSystem)
 {
@@ -71,7 +73,7 @@ private[cluster] final class ClusterCommon(
   }
 
   def masterApi(uri: Uri, name: String): Resource[Task, HttpMasterApi] =
-    AkkaHttpMasterApi.resource(uri, clusterConf.userAndPassword, name = name)
+    AkkaHttpMasterApi.resource(uri, clusterConf.userAndPassword, httpsConfig, name = name)
       .map(identity[HttpMasterApi])
       .evalTap(_.loginUntilReachable())
 }

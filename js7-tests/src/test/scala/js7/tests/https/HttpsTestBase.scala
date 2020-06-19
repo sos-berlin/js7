@@ -6,12 +6,16 @@ import java.nio.file.Files.{createTempFile, delete}
 import js7.base.auth.UserId
 import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
-import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
+import js7.base.time.ScalaTime._
+import js7.base.utils.Closer.syntax.{RichClosersAny, RichClosersAutoCloseable}
+import js7.base.utils.ScalaUtils.RichJavaClass
 import js7.base.utils.ScalazStyle._
+import js7.base.utils.Strings.RichString
 import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import js7.common.akkautils.ProvideActorSystem
 import js7.common.process.Processes.{ShellFileExtension => sh}
 import js7.common.scalautil.FileUtils.syntax.RichPath
+import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.system.OperatingSystem.operatingSystem
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.common.utils.JavaResource
@@ -22,6 +26,7 @@ import js7.data.workflow.parser.WorkflowParser
 import js7.master.client.AkkaHttpMasterApi
 import js7.tests.https.HttpsTestBase._
 import js7.tests.testenv.{DirectoryProvider, MasterAgentForScalaTest}
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
@@ -35,59 +40,114 @@ private[https] trait HttpsTestBase extends AnyFreeSpec with BeforeAndAfterAll wi
 {
   override protected final def provideAgentHttpsCertificate = true
   protected def provideMasterClientCertificate = false
+  protected def useCluster = true
 
   override protected final lazy val masterHttpPort = None
   override protected final lazy val masterHttpsPort = Some(findFreeTcpPort())
   override protected final def masterClientCertificate = provideMasterClientCertificate ? ExportedClientTrustStoreResource
-  protected val config = ConfigFactory.empty
+  private final lazy val agentHttpsPort = findFreeTcpPort()
+  override protected final lazy val agentPorts = agentHttpsPort :: Nil
+  private lazy val backupHttpsPort = findFreeTcpPort()
+  override protected lazy val config = ConfigFactory.empty  // for ProviderActorSystem
+  override protected lazy val masterConfig = ConfigFactory.parseString(
+    (useCluster ?: s"""
+      js7.master.cluster.nodes.Primary: "https://localhost:${masterHttpsPort.get}"
+      js7.master.cluster.nodes.Backup: "https://localhost:$backupHttpsPort"
+      js7.master.cluster.watches = [ "https://localhost:$agentHttpsPort" ]
+      """) + """
+    js7.auth.users.Master.password = "plain:PRIMARY-MASTER-PASSWORD"
+    js7.auth.users.TEST.password = "plain:TEST-PASSWORD"
+    js7.auth.cluster.password = "BACKUP-MASTER-PASSWORD"
+    """)
 
-  private lazy val keyStore = createTempFile(getClass.getSimpleName + "-keystore-", ".p12")
-  private lazy val masterTrustStore = createTempFile(getClass.getSimpleName + "-truststore-", ".p12")
+  private lazy val clientKeyStore = createTempFile(getClass.getSimpleName + "-keystore-", ".p12")
+  private lazy val masterTrustStore = createTempFile(getClass.getSimpleName + "-primary-truststore-", ".p12")
+
+  private lazy val backupDirectoryProvider = new DirectoryProvider(
+    Nil,
+    masterConfig = ConfigFactory.parseString(s"""
+      js7.master.cluster.node.is-backup = yes
+      js7.master.cluster.watches = [ "https://localhost:$agentHttpsPort" ]
+      js7.auth.users.Master.password = "plain:BACKUP-MASTER-PASSWORD"
+      js7.auth.users.TEST.password = "plain:TEST-PASSWORD"
+      js7.auth.cluster.password = "PRIMARY-MASTER-PASSWORD"
+      """),
+    masterHttpsMutual = provideMasterClientCertificate,
+    masterClientCertificate = provideMasterClientCertificate ? DirectoryProvider.ExportedMasterTrustStoreResource,
+    agentHttps = true,
+    agentHttpsMutual = provideMasterClientCertificate,
+    testName = Some(getClass.simpleScalaName + "-Backup"))
+  protected final lazy val backupMaster = backupDirectoryProvider.startMaster(httpPort = None, httpsPort = Some(backupHttpsPort)) await 99.s
 
   protected lazy val masterApi = new AkkaHttpMasterApi(
     master.localUri,
     Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD")),
     actorSystem,
     config,
-    keyStoreRef = Some(KeyStoreRef(keyStore,
+    keyStoreRef = Some(KeyStoreRef(clientKeyStore,
       storePassword = SecretString("jobscheduler"),
       keyPassword = SecretString("jobscheduler"))),
     trustStoreRefs = TrustStoreRef(masterTrustStore, SecretString("jobscheduler")) :: Nil,
   ).closeWithCloser
 
-  override protected def agentHttps = true
-  protected val agentRefPaths = AgentRefPath("/TEST-AGENT") :: Nil
-  protected val fileBased = TestWorkflow :: Nil
+  override protected final def agentHttps = true
+  protected final val agentRefPaths = AgentRefPath("/TEST-AGENT") :: Nil
+  protected final val fileBased = TestWorkflow :: Nil
 
   override def beforeAll() = {
-    keyStore := ClientKeyStoreResource.contentBytes
+    clientKeyStore := ClientKeyStoreResource.contentBytes
     masterTrustStore := DirectoryProvider.ExportedMasterTrustStoreResource.contentBytes
+    provideCertificatesToCluster()
 
-    // Reference to agents implicitly starts them (before master)
     provideAgentConfiguration(directoryProvider.agents(0))
-    assert(agents.forall(_.localUri.string startsWith "https://"))
 
     directoryProvider.master.provideHttpsCertificates()
     provideMasterConfiguration(directoryProvider.master)
-    assert(master.localUri.string startsWith "https://")
+    // We have provided our own certificates: backupDirectoryProvider.master.provideHttpsCertificates()
 
     super.beforeAll()
+  }
+
+  private def provideCertificatesToCluster(): Unit = {
+    backupDirectoryProvider.master.configDir / "private/https-keystore.p12" := BackupKeyStoreResource.contentBytes
+    backupDirectoryProvider.master.configDir / "private/private.conf" ++= s"""
+       |js7.https.truststores += {
+       |  file = "$masterTrustStore"
+       |  store-password = "jobscheduler"
+       |}
+       |""".stripMargin
+
+    val backupTrustStore = createTempFile(getClass.getSimpleName + "-backup-truststore-", ".p12") withCloser delete
+    backupTrustStore := ExportedBackupTrustStoreResource.contentBytes
+    directoryProvider.master.configDir / "private/private.conf" ++= s"""
+       |js7.https.truststores += {
+       |  file = "$backupTrustStore"
+       |  store-password = "jobscheduler"
+       |}
+       |""".stripMargin
   }
 
   override def afterAll() = {
     close()
     delete(masterTrustStore)
-    delete(keyStore)
+    delete(clientKeyStore)
     super.afterAll()
+    if (useCluster) backupMaster.terminate() await 99.s
+    backupDirectoryProvider.close()
   }
 }
 
 private[https] object HttpsTestBase
 {
   // Following resources have been generated with the command line:
-  // common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=client -config-directory=tests/src/test/resources/js7/tests/client
-  private val ClientKeyStoreResource = JavaResource("js7/tests/client/private/https-keystore.p12")
-  private val ExportedClientTrustStoreResource = JavaResource("js7/tests/client/export/https-truststore.p12")
+  // js7-common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh \
+  // -host=localhost -alias=client -config-directory=js7-tests/src/test/resources/js7/tests/https/resources -prefix="client-"
+  private val ClientKeyStoreResource = JavaResource("js7/tests/https/resources/private/client-https-keystore.p12")
+  private val ExportedClientTrustStoreResource = JavaResource("js7/tests/https/resources/export/client-https-truststore.p12")
+  // js7-common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh \
+  // -host=localhost -alias=backup-controller -config-directory=js7-tests/src/test/resources/js7/tests/https/resources -prefix="backup-controller-"
+  private val BackupKeyStoreResource = JavaResource("js7/tests/https/resources/private/backup-controller-https-keystore.p12")
+  private val ExportedBackupTrustStoreResource = JavaResource("js7/tests/https/resources/export/backup-controller-https-truststore.p12")
 
   private val TestWorkflow = WorkflowParser.parse(WorkflowPath("/TEST-WORKFLOW"), s"""
     define workflow {
