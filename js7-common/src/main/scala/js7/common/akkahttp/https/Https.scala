@@ -73,39 +73,25 @@ object Https
   }
 
   private def log(url: URL, keyStore: KeyStore, name: String): Unit =
-    logger.info(s"Loaded $name keystore $url: ${keyStoreToString(keyStore)}")
-  //{
-  //  val aliases = keyStore.aliases.asScala
-  //  if (aliases.isEmpty)
-  //    logger.info("Key store does not contain any certificate")
-  //  else
-  //    for (alias <- aliases) {
-  //      logger.info(certificateToString(keyStore.getCertificate(alias)) +
-  //        (if (keyStore.isKeyEntry(alias)) " (private key)" else "")) +
-  //        ", alias=" + alias
-  //    }
-  //}
-
-  def keyStoreToString(keyStore: KeyStore): String = {
-    val aliases = keyStore.aliases.asScala
-    if (aliases.isEmpty)
-      "Key store does not contain any certificate"
-    else
-      aliases
-        .flatMap(alias => Option(keyStore.getCertificate(alias))
-          .map(cert => s"Alias $alias: " +
-            certificateToString(cert) +
-              (keyStore.isKeyEntry(alias) ?: " (private)") +
-              (keyStore.isCertificateEntry(alias) ?: " (trusted)")))
-        .mkString(", ")
-  }
+    logger.info(s"Loaded $name keystore $url: " + {
+      val aliases = keyStore.aliases.asScala
+      if (aliases.isEmpty)
+        "Key store does not contain any certificate"
+      else
+        aliases
+          .flatMap(alias => Option(keyStore.getCertificate(alias))
+            .map(cert => s"\n  Alias '$alias': " +
+              (keyStore.isKeyEntry(alias) ?: "private ") +
+              (keyStore.isCertificateEntry(alias) ?: "trusted ") +
+              certificateToString(cert) +
+              " · created " + Timestamp.ofJavaUtilDate(keyStore.getCreationDate(alias))))
+          .mkString("")
+    })
 
   private def certificateToString(cert: Certificate): String =
     cert match {
       case cert: X509Certificate =>
-        s"""X.509 "${cert.getSubjectX500Principal}" #${cert.getSerialNumber} ${Timestamp.ofEpochMilli(cert.getNotBefore.getTime)}"""
-          //", valid from " + Timestamp.ofEpochMilli(cert.getNotBefore.getTime) +
-          //" until " + Timestamp.ofEpochMilli(cert.getNotAfter.getTime)
+        s"X.509 '${cert.getSubjectX500Principal}'"
       case o =>
         o.getType
     }
