@@ -9,6 +9,7 @@ import java.nio.file.{Path, Paths}
 import js7.base.utils.AutoClosing.autoClosing
 import scala.concurrent.duration._
 import scala.io.Source.fromInputStream
+import scala.sys.process._
 import scala.util.Try
 
 /**
@@ -122,7 +123,9 @@ object OperatingSystem {
     }
 
     def cpuModel =
-      if (isMac || isSolaris)
+      if (isMac)
+        Try(("/usr/sbin/sysctl -n machdep.cpu.brand_string").!!.trim).toOption
+      else if (isSolaris)
         None
       else
         Try {
