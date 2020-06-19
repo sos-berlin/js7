@@ -4,7 +4,6 @@ import java.net.URL
 import java.security.KeyStore
 import java.security.cert.{Certificate, X509Certificate}
 import javax.net.ssl.{KeyManager, KeyManagerFactory, SSLContext, TrustManagerFactory, X509TrustManager}
-import js7.base.time.Timestamp
 import js7.base.utils.AutoClosing._
 import js7.base.utils.Strings._
 import js7.common.scalautil.Logger
@@ -27,22 +26,12 @@ import scala.jdk.CollectionConverters._
 object Https
 {
   private val logger = Logger(getClass)
-  //private lazy val KeyManagerAlgorithm = {
-  //  val r = KeyManagerFactory.getDefaultAlgorithm
-  //  logger.debug(s"KeyManagerFactory.getDefaultAlgorithm=$r")
-  //  r
-  //}
-  //private lazy val TrustManagerAlgorithm = {
-  //  val r = TrustManagerFactory.getDefaultAlgorithm
-  //  logger.debug(s"TrustManagerFactory.getDefaultAlgorithm=$r")
-  //  r
-  //}
 
   def loadSSLContext(keyStoreRef: Option[KeyStoreRef] = None, trustStoreRefs: Seq[TrustStoreRef] = Nil): SSLContext = {
     val keyManagers = keyStoreRef match {
       case None => Array.empty[KeyManager]
       case Some(ref) =>
-        val keyStore = loadKeyStore(ref, "private key")
+        val keyStore = loadKeyStore(ref, "private")
         val factory = KeyManagerFactory.getInstance("SunX509")
         factory.init(keyStore, ref.keyPassword.string.toCharArray)
         factory.getKeyManagers
@@ -72,27 +61,30 @@ object Https
     keyStore
   }
 
-  private def log(url: URL, keyStore: KeyStore, name: String): Unit =
-    logger.info(s"Loaded $name keystore $url: " + {
-      val aliases = keyStore.aliases.asScala
-      if (aliases.isEmpty)
-        "Key store does not contain any certificate"
-      else
-        aliases
-          .flatMap(alias => Option(keyStore.getCertificate(alias))
-            .map(cert => s"\n  Alias '$alias': " +
-              (keyStore.isKeyEntry(alias) ?: "private ") +
-              (keyStore.isCertificateEntry(alias) ?: "trusted ") +
-              certificateToString(cert) +
-              " · created " + Timestamp.ofJavaUtilDate(keyStore.getCreationDate(alias))))
-          .mkString("")
-    })
+  private def log(url: URL, keyStore: KeyStore, name: String): Unit = {
+    val aliases = keyStore.aliases.asScala
+    if (aliases.isEmpty)
+      logger.info(s"Loaded empty $name keystore $url")
+    else
+      for (alias <- aliases) {
+        val maybeCert = Option(keyStore.getCertificate(alias))
+        logger.info(s"Alias '$alias': " +
+          maybeCert.fold("no certificate")(cert =>
+            (keyStore.isKeyEntry(alias) ?: "private ") +
+            (keyStore.isCertificateEntry(alias) ?: "trusted ") +
+            certificateToString(cert)) +
+            s" from $name $url")
+        for (cert <- maybeCert) {
+          logger.debug(s"Alias '$alias': hashCode=${cert.hashCode}")
+        }
+      }
+  }
 
   private def certificateToString(cert: Certificate): String =
-    cert match {
+    (cert match {
       case cert: X509Certificate =>
         s"X.509 '${cert.getSubjectX500Principal}'"
       case o =>
         o.getType
-    }
+    })
 }
