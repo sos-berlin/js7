@@ -6,7 +6,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import js7.base.auth.UserAndPassword
 import js7.base.session.SessionApi
 import js7.base.web.Uri
-import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
+import js7.common.akkahttp.https.{HttpsConfig, KeyStoreRef, TrustStoreRef}
 import js7.common.akkautils.Akkas.actorSystemResource
 import js7.common.http.AkkaHttpClient
 import monix.eval.Task
@@ -37,13 +37,14 @@ object AkkaHttpMasterApi
   def separateAkkaResource(
     uri: Uri,
     userAndPassword: Option[UserAndPassword],
+    httpsConfig: HttpsConfig = HttpsConfig.empty,
     config: Config = ConfigFactory.empty,
     name: String = "")
   : Resource[Task, HttpMasterApi] = {
     val myName = if (name.nonEmpty) name else "AkkaHttpMasterApi"
     for {
       actorSystem <- actorSystemResource(name = myName, config)
-      api <- resource(uri, userAndPassword, name = myName)(actorSystem)
+      api <- resource(uri, userAndPassword, httpsConfig, name = myName)(actorSystem)
     } yield api
   }
 
@@ -51,15 +52,15 @@ object AkkaHttpMasterApi
   def resource(
     uri: Uri,
     userAndPassword: Option[UserAndPassword],
-    keyStoreRef: Option[KeyStoreRef] = None,
-    trustStoreRefs: Seq[TrustStoreRef] = Nil,
+    httpsConfig: HttpsConfig = HttpsConfig.empty,
     loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays,
     name: String = "")
     (implicit actorSystem: ActorSystem)
   : Resource[Task, HttpMasterApi] =
     for {
       httpClient <- Resource.fromAutoCloseable(Task(
-        new AkkaHttpClient.Standard(uri, HttpMasterApi.UriPrefixPath, actorSystem, keyStoreRef, trustStoreRefs, name = name)))
+        new AkkaHttpClient.Standard(uri, HttpMasterApi.UriPrefixPath, actorSystem,
+          httpsConfig.keyStoreRef, httpsConfig.trustStoreRefs, name = name)))
       api <- HttpMasterApi.resource(uri, userAndPassword, httpClient, loginDelays)
     } yield api
 }

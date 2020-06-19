@@ -93,7 +93,7 @@ object JMasterProxy
     implicit val scheduler = JThreadPools.newStandardScheduler(
       parallelism = sys.runtime.availableProcessors, maxThreads = MaxThreads, name = "JMasterProxy")
 
-    val apiResource = AkkaHttpMasterApi.separateAkkaResource(Uri(uri), credentials.toUnderlying, config)
+    val apiResource = AkkaHttpMasterApi.separateAkkaResource(Uri(uri), credentials.toUnderlying, httpsConfig.toScala, config = config)
 
     JournaledProxy.start[MasterState](apiResource, eventBus.underlying.publish)
       .map(proxy => new JMasterProxy(proxy, eventBus, apiResource)(scheduler))
