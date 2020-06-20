@@ -27,7 +27,9 @@ final class ClusterRouteTest extends AnyFreeSpec with RouteTester with ClusterRo
       clusterRoute
     }
 
-  Get("/cluster") ~> Accept(`application/json`) ~> route ~> check {
-    assert(responseAs[ClusterState] == ClusterState.Empty)
+  "ClusterRoute" in {
+    Get("/cluster") ~> Accept(`application/json`) ~> route ~> check {
+      assert(responseAs[ClusterState] == ClusterState.Empty)
+    }
   }
 }
