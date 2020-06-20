@@ -105,7 +105,7 @@ extends CommonConfiguration
   lazy val temporaryDirectory: Path =
     dataDirectory  / "tmp"
 
-  lazy val scriptInjectionAllowed = config.getBoolean("js7.agent.task.signed-script-injection-allowed")
+  lazy val scriptInjectionAllowed = config.getBoolean("js7.job.execution.signed-script-injection-allowed")
 
   // Suppresses Config (which may contain secrets)
   override def toString = s"AgentConfiguration($configDirectory,$dataDirectory,$webServerPorts," +
@@ -138,15 +138,15 @@ object AgentConfiguration
       configDirectory = configDirectory,
       dataDirectory = dataDirectory,
       webServerPorts = Nil,
-      logDirectory = config.optionAs("js7.agent.log.directory")(asAbsolutePath) getOrElse defaultLogDirectory(dataDirectory),
-      jobJavaOptions = config.stringSeq("js7.agent.task.java.options"),
-      sigkillProcessesAfter = config.getDuration("js7.agent.task.sigkill-after").toFiniteDuration,
+      logDirectory = config.optionAs("js7.job.execution.log.directory")(asAbsolutePath) getOrElse defaultLogDirectory(dataDirectory),
+      jobJavaOptions = config.stringSeq("js7.job.execution.java.options"),
+      sigkillProcessesAfter = config.getDuration("js7.job.execution.sigkill-after").toFiniteDuration,
       killScript = Some(DelayUntilFinishKillScript),  // Changed later
       akkaAskTimeout = config.getDuration("js7.akka.ask-timeout").toFiniteDuration,
       journalConf = JournalConf.fromConfig(config),
       name = DefaultName,
       config = config)
-    v = v.withKillScript(config.optionAs[String]("js7.agent.task.kill.script"))
+    v = v.withKillScript(config.optionAs[String]("js7.job.execution.kill.script"))
     //for (o <- config.optionAs("js7.https.port")(StringToServerInetSocketAddress)) {
     //  v = v addHttps o
     //}
