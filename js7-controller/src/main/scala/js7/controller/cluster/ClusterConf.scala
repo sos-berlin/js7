@@ -28,12 +28,12 @@ final case class ClusterConf(
 object ClusterConf
 {
   def fromConfig(userId: UserId, config: Config): Checked[ClusterConf] = {
-    val isBackup = config.getBoolean("js7.controller.cluster.node.is-backup")
+    val isBackup = config.getBoolean("js7.journal.cluster.node.is-backup")
     for {
-      ownId <- config.checkedOptionAs[ClusterNodeId]("js7.controller.cluster.node.id")
+      ownId <- config.checkedOptionAs[ClusterNodeId]("js7.journal.cluster.node.id")
         .map(_ getOrElse ClusterNodeId(if (isBackup) "Backup" else "Primary"))
       maybeIdToUri <- {
-        val key = "js7.controller.cluster.nodes"
+        val key = "js7.journal.cluster.nodes"
         if (!config.hasPath(key))
           Right(None)
         else if (isBackup)
@@ -55,10 +55,10 @@ object ClusterConf
       userAndPassword <- config.checkedOptionAs[SecretString]("js7.auth.cluster.password")
         .map(_.map(UserAndPassword(userId, _)))
       recouplingStreamReaderConf <- RecouplingStreamReaderConfs.fromConfig(config)
-      heartbeat <- Right(config.getDuration("js7.controller.cluster.heartbeat").toFiniteDuration)
-      failAfter <- Right(config.getDuration("js7.controller.cluster.fail-after").toFiniteDuration)
-      watchUris <- Right(config.getStringList("js7.controller.cluster.watches").asScala.toVector map Uri.apply)
-      testHeartbeatLoss <- Right(config.optionAs[String]("js7.controller.cluster.TEST-HEARTBEAT-LOSS"))
+      heartbeat <- Right(config.getDuration("js7.journal.cluster.heartbeat").toFiniteDuration)
+      failAfter <- Right(config.getDuration("js7.journal.cluster.fail-after").toFiniteDuration)
+      watchUris <- Right(config.getStringList("js7.journal.cluster.watches").asScala.toVector map Uri.apply)
+      testHeartbeatLoss <- Right(config.optionAs[String]("js7.journal.cluster.TEST-HEARTBEAT-LOSS"))
     } yield
       new ClusterConf(
         ownId,

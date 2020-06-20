@@ -6,6 +6,7 @@ import akka.util.Timeout
 import cats.data.EitherT
 import cats.effect.ExitCase
 import cats.syntax.flatMap._
+import com.softwaremill.diffx.Diff
 import com.typesafe.config.{Config, ConfigUtil}
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, Paths}
@@ -32,7 +33,6 @@ import js7.controller.cluster.Cluster._
 import js7.controller.cluster.ClusterCommon.{clusterEventAndStateToString, truncateFile}
 import js7.controller.cluster.ObservablePauseDetector._
 import js7.controller.data.ControllerCommand.InternalClusterCommand
-import js7.controller.data.ControllerState
 import js7.core.cluster.ClusterWatch.ClusterWatchHeartbeatFromInactiveNodeProblem
 import js7.core.cluster.HttpClusterWatch
 import js7.core.event.journal.data.JournalMeta
@@ -49,7 +49,7 @@ import js7.data.cluster.ClusterState.{Coupled, CoupledActiveShutDown, Decoupled,
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeId, ClusterState}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{Event, EventId, EventRequest, EventSeqTornProblem, KeyedEvent, Stamped}
+import js7.data.event.{Event, EventId, EventRequest, EventSeqTornProblem, JournaledState, KeyedEvent, Stamped}
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean
 import monix.execution.cancelables.SerialCancelable
@@ -59,9 +59,9 @@ import scala.concurrent.Promise
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
-final class Cluster(
+final class Cluster[S <: JournaledState[S]: Diff](
   journalMeta: JournalMeta,
-  persistence: JournaledStatePersistence[ControllerState],
+  persistence: JournaledStatePersistence[S],
   eventWatch: RealEventWatch,
   controllerId: ControllerId,
   journalConf: JournalConf,
@@ -70,7 +70,9 @@ final class Cluster(
   config: Config,
   eventIdGenerator: EventIdGenerator,
   testEventPublisher: EventPublisher[Any])
-  (implicit journalActorAskTimeout: Timeout,
+  (implicit
+    S: JournaledState.Companion[S],
+    journalActorAskTimeout: Timeout,
     scheduler: Scheduler,
     actorSystem: ActorSystem)
 {
@@ -115,13 +117,13 @@ final class Cluster(
   /**
     * Returns a pair of `Task`s
     * - `(Task[None], _)` if this node starts as an active node
-    * - `(Task[Some[ControllerState]], _)` with the other's node ControllerState if this node starts as a passive node.
+    * - `(Task[Some[S]], _)` with the other's node S if this node starts as a passive node.
     * - `(_, Task[Checked[ClusterFollowUp]]` when this node should be activated or terminated
-    * @return A pair of `Task`s with maybe the current `ControllerState` of this passive node (if so)
+    * @return A pair of `Task`s with maybe the current `S` of this passive node (if so)
     *         and ClusterFollowUp.
     */
-  def start(recovered: Recovered[ControllerState], recoveredState: ControllerState)
-  : (Task[Option[ControllerState]], Task[Checked[ClusterFollowUp[ControllerState]]]) = {
+  def start(recovered: Recovered[S], recoveredState: S)
+  : (Task[Option[S]], Task[Checked[ClusterFollowUp[S]]]) = {
     if (recovered.clusterState != Empty) {
       logger.info(s"Recovered ClusterState is ${recovered.clusterState}")
     }
@@ -136,8 +138,8 @@ final class Cluster(
       })
   }
 
-  private def startCluster(recovered: Recovered[ControllerState], recoveredState: ControllerState)
-  : (Task[Option[ControllerState]], Task[Checked[(ClusterState, ClusterFollowUp[ControllerState])]])
+  private def startCluster(recovered: Recovered[S], recoveredState: S)
+  : (Task[Option[S]], Task[Checked[(ClusterState, ClusterFollowUp[S])]])
   =
     (recovered.clusterState, recovered.recoveredJournalFile) match {
       case (Empty, _) =>
@@ -221,8 +223,8 @@ final class Cluster(
                   // TODO Recovering may be omitted because the new active node has written a snapshot immediately after failover
                   // May take a long time !!!
                   logger.debug("Recovering again due to shortend journal after failover")
-                  trunkRecovered = JournaledStateRecoverer.recover[ControllerState](
-                    journalMeta, ControllerState.Undefined, recovered.newStateBuilder, config /*, runningSince=???*/)
+                  trunkRecovered = JournaledStateRecoverer.recover[S](
+                    journalMeta, S.empty, recovered.newStateBuilder, config /*, runningSince=???*/)
                   val truncatedRecoveredJournalFile = trunkRecovered.recoveredJournalFile
                     .getOrElse(sys.error(s"Unrecoverable journal file '${file.getFileName}''"))
                   assertThat(truncatedRecoveredJournalFile.state.clusterState == recoveredClusterState)
@@ -275,10 +277,10 @@ final class Cluster(
   private def newPassiveClusterNode(
     idToUri: Map[ClusterNodeId, Uri],
     activeId: ClusterNodeId,
-    recovered: Recovered[ControllerState],
+    recovered: Recovered[S],
     otherFailedOver: Boolean = false,
     initialFileEventId: Option[EventId] = None)
-  : PassiveClusterNode[ControllerState]
+  : PassiveClusterNode[S]
   = {
     val common = new ClusterCommon(activationInhibitor, clusterWatch, clusterConf, httpsConfig, testEventPublisher)
     new PassiveClusterNode(ownId, idToUri, activeId, journalMeta, initialFileEventId, recovered,

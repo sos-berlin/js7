@@ -81,7 +81,7 @@ import shapeless.tag.@@
 final class ControllerOrderKeeper(
   stopped: Promise[ControllerTermination],
   protected val journalActor: ActorRef @@ JournalActor.type,
-  cluster: Cluster,
+  cluster: Cluster[ControllerState],
   controllerConfiguration: ControllerConfiguration,
   signatureVerifier: SignatureVerifier,
   testEventPublisher: EventPublisher[Any])

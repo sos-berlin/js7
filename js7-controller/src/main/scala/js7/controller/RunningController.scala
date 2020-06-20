@@ -338,7 +338,7 @@ object RunningController
 
     /** @return Task(None) when cancelled. */
     private def startCluster(
-      cluster: Cluster,
+      cluster: Cluster[ControllerState],
       recovered: Recovered[ControllerState])
     : (Task[Option[ControllerState]], Task[Either[ControllerTermination.Terminate, ClusterFollowUp[ControllerState]]]) =
     {
@@ -358,7 +358,7 @@ object RunningController
 
     private def startControllerOrderKeeper(
       journalActor: ActorRef @@ JournalActor.type,
-      cluster: Cluster,
+      cluster: Cluster[ControllerState],
       followUp: ClusterFollowUp[ControllerState],
       testEventPublisher: EventPublisher[Any])
     : Either[ControllerTermination.Terminate, OrderKeeperStarted] = {
@@ -385,7 +385,7 @@ object RunningController
   }
 
   private class MyCommandExecutor(
-    cluster: Cluster,
+    cluster: Cluster[ControllerState],
     onShutDownPassive: ControllerTermination.Terminate => Task[Unit],
     orderKeeperStarted: Future[Option[ActorRef @@ ControllerOrderKeeper]])
     (implicit timeout: Timeout)

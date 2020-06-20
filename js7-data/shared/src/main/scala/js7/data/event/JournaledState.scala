@@ -77,6 +77,8 @@ object JournaledState
 
   trait Companion[S <: JournaledState[S]]
   {
+    def empty: S
+
     def fromIterable(snapshotObjects: Iterable[Any]): S
 
     implicit def snapshotObjectJsonCodec: Encoder[Any]

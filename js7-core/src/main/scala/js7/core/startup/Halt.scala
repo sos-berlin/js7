@@ -2,7 +2,7 @@ package js7.core.startup
 
 import js7.common.log.Log4j
 import js7.common.scalautil.Logger
-import js7.core.startup.StartUp.printlnWithClock
+import js7.core.startup.StartUp.printlnWithClockIgnoringException
 
 /**
   * @author Joacim Zschimmer
@@ -16,7 +16,7 @@ object Halt
 
   def haltJava(msg: String, exitCode: Int = 99): Nothing = {
     System.err.println()
-    printlnWithClock(msg)
+    printlnWithClockIgnoringException(msg)
     logger.error(msg)
     Log4j.shutdown()
     sys.runtime.halt(exitCode)

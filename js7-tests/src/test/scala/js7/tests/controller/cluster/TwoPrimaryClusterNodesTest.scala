@@ -20,7 +20,7 @@ final class TwoPrimaryClusterNodesTest extends ControllerClusterTester
       primary.runController(httpPort = Some(primaryHttpPort)) { primaryController =>
         backup.runController(
           httpPort = Some(backupHttpPort),
-          config = ConfigFactory.parseString("js7.controller.cluster.node.is-backup = false")
+          config = ConfigFactory.parseString("js7.journal.cluster.node.is-backup = false")
         ) { backupController =>
           val cmd = ClusterAppointNodes(
             Map(
@@ -42,7 +42,7 @@ final class TwoPrimaryClusterNodesTest extends ControllerClusterTester
       val t = intercept[ProblemException] {
         primary.runController(
           httpPort = Some(primaryHttpPort),
-          config = ConfigFactory.parseString("js7.controller.cluster.node.is-backup = true"),
+          config = ConfigFactory.parseString("js7.journal.cluster.node.is-backup = true"),
           dontWaitUntilReady = true
         ) { _ =>
           // TODO Introduce ClusterFailed event to check the asynchronous failure?

@@ -152,6 +152,8 @@ object ControllerState
 
   implicit val journaledStateCompanion: JournaledState.Companion[ControllerState] =
     new JournaledState.Companion[ControllerState] {
+      val empty = Undefined
+
       def fromIterable(snapshotObjects: Iterable[Any]) =
         ControllerState.fromIterable(snapshotObjects)
 

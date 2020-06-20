@@ -32,7 +32,7 @@ final class ControllerMain
     logConfig(controllerConfiguration.config)
     var restartInProcess = false
     var terminate = ControllerTermination.Terminate()
-    /** val restartJvmWhenDeactivated = controllerConfiguration.config.getBoolean("js7.controller.cluster.when-deactivated-restart-jvm")
+    /** val restartJvmWhenDeactivated = controllerConfiguration.config.getBoolean("js7.journal.cluster.when-deactivated-restart-jvm")
        - Erste HTTP-Anforderungen an deaktivierten Knoten können in ins Leere laufen (mit Timeout abgefangen)
        - Heap platzt nach vielen Deaktivierungen */
     val restartJvmWhenDeactivated = true

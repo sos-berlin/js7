@@ -20,10 +20,10 @@ final class ClusterConfTest extends AnyFreeSpec
   "fromConfig" - {
     "Minimum configuration" in {
       val config = ConfigFactory.parseString("""
-        js7.controller.cluster.node.is-backup = no
-        js7.controller.cluster.heartbeat = 7s
-        js7.controller.cluster.fail-after = 5s
-        js7.controller.cluster.watches = [ "http://AGENT-1", "http://AGENT-2" ]
+        js7.journal.cluster.node.is-backup = no
+        js7.journal.cluster.heartbeat = 7s
+        js7.journal.cluster.fail-after = 5s
+        js7.journal.cluster.watches = [ "http://AGENT-1", "http://AGENT-2" ]
         js7.web.client.idle-get-timeout = 50s
         js7.web.client.delay-between-polling-gets = 1s""")
       val clusterConf = ClusterConf.fromConfig(UserId("USER"), config)
@@ -43,15 +43,15 @@ final class ClusterConfTest extends AnyFreeSpec
 
     "Full configuration" in {
       val config = ConfigFactory.parseString("""
-        js7.controller.cluster.node.id = A
-        js7.controller.cluster.node.is-backup = no
-        js7.controller.cluster.nodes = {
+        js7.journal.cluster.node.id = A
+        js7.journal.cluster.node.is-backup = no
+        js7.journal.cluster.nodes = {
           A: "http://A"
           B: "http://B"
         }
-        js7.controller.cluster.watches = [ "http://AGENT" ]
-        js7.controller.cluster.heartbeat = 7s
-        js7.controller.cluster.fail-after = 5s
+        js7.journal.cluster.watches = [ "http://AGENT" ]
+        js7.journal.cluster.heartbeat = 7s
+        js7.journal.cluster.fail-after = 5s
         js7.auth.cluster.password = "PASSWORD"
         js7.web.client.idle-get-timeout = 50s
         js7.web.client.delay-between-polling-gets = 1s""")

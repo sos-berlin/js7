@@ -92,7 +92,7 @@
     <logger level="trace" name="js7.core.event.journal.JournalActor"/>
     <logger level="trace" name="js7.common.http.AkkaHttpClient"/>
     <logger level="trace" name="js7.controller.agent"/>
-    <logger level="trace" name="js7.controller.cluster"/>
+    <logger level="trace" name="js7.journal.cluster"/>
     -->
   </loggers>
 </configuration>

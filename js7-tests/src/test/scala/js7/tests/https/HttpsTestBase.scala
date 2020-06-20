@@ -51,9 +51,9 @@ private[https] trait HttpsTestBase extends AnyFreeSpec with BeforeAndAfterAll wi
   override protected lazy val config = ConfigFactory.empty  // for ProviderActorSystem
   override protected lazy val controllerConfig = ConfigFactory.parseString(
     (useCluster ?: s"""
-      js7.controller.cluster.nodes.Primary: "https://localhost:${controllerHttpsPort.get}"
-      js7.controller.cluster.nodes.Backup: "https://localhost:$backupHttpsPort"
-      js7.controller.cluster.watches = [ "https://localhost:$agentHttpsPort" ]
+      js7.journal.cluster.nodes.Primary: "https://localhost:${controllerHttpsPort.get}"
+      js7.journal.cluster.nodes.Backup: "https://localhost:$backupHttpsPort"
+      js7.journal.cluster.watches = [ "https://localhost:$agentHttpsPort" ]
       """) + """
     js7.auth.users.Controller.password = "plain:PRIMARY-CONTROLLER-PASSWORD"
     js7.auth.users.TEST.password = "plain:TEST-PASSWORD"
@@ -66,8 +66,8 @@ private[https] trait HttpsTestBase extends AnyFreeSpec with BeforeAndAfterAll wi
   private lazy val backupDirectoryProvider = new DirectoryProvider(
     Nil,
     controllerConfig = ConfigFactory.parseString(s"""
-      js7.controller.cluster.node.is-backup = yes
-      js7.controller.cluster.watches = [ "https://localhost:$agentHttpsPort" ]
+      js7.journal.cluster.node.is-backup = yes
+      js7.journal.cluster.watches = [ "https://localhost:$agentHttpsPort" ]
       js7.auth.users.Controller.password = "plain:BACKUP-CONTROLLER-PASSWORD"
       js7.auth.users.TEST.password = "plain:TEST-PASSWORD"
       js7.auth.cluster.password = "PRIMARY-CONTROLLER-PASSWORD"
