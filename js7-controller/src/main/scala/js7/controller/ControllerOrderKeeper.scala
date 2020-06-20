@@ -34,7 +34,7 @@ import js7.controller.ControllerOrderKeeper._
 import js7.controller.agent.{AgentDriver, AgentDriverConfiguration}
 import js7.controller.cluster.Cluster
 import js7.controller.configuration.ControllerConfiguration
-import js7.controller.data.agent.AgentEventIdEvent
+import js7.controller.data.agent.{AgentEventIdEvent, AgentSnapshot}
 import js7.controller.data.events.ControllerAgentEvent.AgentReady
 import js7.controller.data.events.ControllerEvent
 import js7.controller.data.events.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
@@ -275,7 +275,8 @@ with MainJournalingActor[ControllerState, Event]
       //controllerMetaState = controllerState.controllerMetaState.copy(totalRunningTime = recovered.totalRunningTime)
       updateRepo()
       for (agentRef <- repo.currentFileBaseds collect { case o: AgentRef => o }) {
-        val agentSnapshot = controllerState.pathToAgentSnapshot.checked(agentRef.path).orThrow
+        val agentSnapshot = controllerState.pathToAgentSnapshot.getOrElse(agentRef.path,
+          AgentSnapshot(agentRef.path, None, EventId.BeforeFirst))
         val e = registerAgent(agentRef, agentSnapshot.agentRunId, eventId = agentSnapshot.eventId)
         // Send an extra RegisterMe here, to be sure JournalActor has registered the AgentDriver when a snapshot is taken
         // TODO Fix fundamentally the race condition with JournalActor.Input.RegisterMe
