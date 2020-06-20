@@ -40,7 +40,7 @@ final class AkkaWebServerTest extends AnyFreeSpec with BeforeAndAfterAll
   private lazy val http = Http()
 
   private lazy val webServer = new AkkaWebServer with HasUri {
-    protected val config = ConfigFactory.parseString("js7.webserver.shutdown-timeout = 10s")
+    protected val config = ConfigFactory.parseString("js7.web.server.shutdown-timeout = 10s")
     protected def actorSystem = AkkaWebServerTest.this.actorSystem
 
     private val keyStoreRef: KeyStoreRef = {

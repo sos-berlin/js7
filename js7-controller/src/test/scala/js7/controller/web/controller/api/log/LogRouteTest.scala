@@ -33,7 +33,7 @@ final class LogRouteTest extends AnyFreeSpec with RouteTester with LogRoute
   protected def currentLogFile = requireNonNull/*call lazily!*/(_currentLogFile)
 
   override protected def config = ConfigFactory.parseString(
-    """js7.webserver.services.log.poll-interval = 1.ms
+    """js7.web.server.services.log.poll-interval = 1.ms
       |""".stripMargin)
     .withFallback(super.config)
 

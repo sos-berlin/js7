@@ -19,7 +19,7 @@ final class AddOrderTimeoutTest extends AnyFreeSpec with ControllerAgentForScala
   protected val agentRefPaths = Nil
   protected val fileBased = workflow :: Nil
   override protected val controllerConfig = ConfigFactory.parseString("""
-    js7.webserver.auth.public = on
+    js7.web.server.auth.public = on
     js7.akka.ask-timeout = 1s
     js7.TEST-ONLY.add-order-delay = 10s
     """)

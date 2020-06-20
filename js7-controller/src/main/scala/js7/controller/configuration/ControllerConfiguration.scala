@@ -110,7 +110,7 @@ object ControllerConfiguration
       dataDirectory = dataDir,
       configDirectory = configDir,
       webServerPorts = Nil,
-        //config.seqAs("js7.webserver.http.ports")(StringToServerInetSocketAddress) map WebServerBinding.Http,
+        //config.seqAs("js7.web.server.http.ports")(StringToServerInetSocketAddress) map WebServerBinding.Http,
       timeZone = ZoneId.systemDefault,
       akkaAskTimeout = config.getDuration("js7.akka.ask-timeout").toFiniteDuration,
       journalConf = JournalConf.fromConfig(config),

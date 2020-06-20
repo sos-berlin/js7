@@ -17,7 +17,7 @@ import scala.util.control.NoStackTrace
   */
 final class ExceptionHandlingTest extends AnyFreeSpec with ScalatestRouteTest with ExceptionHandling
 {
-  protected val config = ConfigFactory.parseString("js7.webserver.verbose-error-messages = true")
+  protected val config = ConfigFactory.parseString("js7.web.server.verbose-error-messages = true")
   protected def isShuttingDown = false
 
   protected def actorSystem = system

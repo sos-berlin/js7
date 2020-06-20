@@ -35,14 +35,14 @@ import scala.concurrent.duration._
   */
 final class ControllerAgentWithoutAuthenticationTest extends AnyFreeSpec
 {
-  "js7.webserver.auth.public = true" in {
+  "js7.web.server.auth.public = true" in {
     runMyTest(isPublic = true) { (controller, _) =>
       controller.addOrder(FreshOrder(orderId, workflow.path)).runSyncUnsafe(99.seconds).orThrow
       controller.eventWatch.await[OrderFinished](_.key == orderId)
     }
   }
 
-  "js7.webserver.auth.public = false" in {
+  "js7.web.server.auth.public = false" in {
     runMyTest(isPublic = false) { (controller, agentPort) =>
       assert(controller.eventWatch.await[AgentCouplingFailed]().head.value.event.problem
         == Problem(s"HTTP 401 Unauthorized: #2 POST http://127.0.0.1:$agentPort/agent/api/command => The resource requires authentication, which was not supplied with the request"))
@@ -58,7 +58,7 @@ final class ControllerAgentWithoutAuthenticationTest extends AnyFreeSpec
       createDirectories(dir / "agent/data/state")
 
       if (isPublic) {
-        dir / "agent/config/agent.conf" := "js7.webserver.auth.public = true\n"
+        dir / "agent/config/agent.conf" := "js7.web.server.auth.public = true\n"
       }
       (dir / "agent/config/executables/EXECUTABLE.cmd").writeExecutable(":")
 

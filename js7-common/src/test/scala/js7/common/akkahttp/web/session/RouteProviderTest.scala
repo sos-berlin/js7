@@ -26,7 +26,7 @@ final class RouteProviderTest extends AnyFreeSpec with RouteProvider with Scalat
 
   protected def isShuttingDown = false
   implicit protected def scheduler = Scheduler.global
-  protected val config = ConfigFactory.parseString("js7.webserver.verbose-error-messages = on")
+  protected val config = ConfigFactory.parseString("js7.web.server.verbose-error-messages = on")
   protected lazy val sessionRegister = SessionRegister.start[MySession](system, MySession.apply, SessionRegister.TestConfig)
   private implicit val routeTestTimeout = RouteTestTimeout(99.seconds)
 

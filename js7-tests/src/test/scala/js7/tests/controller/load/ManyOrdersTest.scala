@@ -27,7 +27,7 @@ final class ManyOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
   protected val agentRefPaths = agentRefPath :: Nil
   protected val fileBased = workflow :: Nil
   override protected val controllerConfig = ConfigFactory.parseString("""
-    js7.webserver.auth.public = on
+    js7.web.server.auth.public = on
     js7.journal.remove-obsolete-files = false""")
 
   private lazy val n = sys.props.get("ManyOrdersTest").map(_.toInt) getOrElse 1000

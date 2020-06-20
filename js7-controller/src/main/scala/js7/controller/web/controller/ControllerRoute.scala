@@ -18,7 +18,7 @@ trait ControllerRoute extends ApiRoute with WebLogDirectives with TestRoute {
       }
     } ~
     pathSegment("TEST") {
-      passIf(config.getBoolean("js7.webserver.test")) {
+      passIf(config.getBoolean("js7.web.server.test")) {
         testRoute
       }
     }

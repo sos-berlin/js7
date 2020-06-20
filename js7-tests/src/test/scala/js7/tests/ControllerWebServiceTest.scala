@@ -987,7 +987,7 @@ object ControllerWebServiceTest
 {
   private def writeControllerConfiguration(controller: DirectoryProvider.ControllerTree): Unit = {
     controller.configDir / "controller.conf" ++= """
-      |js7.webserver.test = true
+      |js7.web.server.test = true
       |""".stripMargin
     (controller.configDir / "private" / "private.conf").append("""
       |js7.auth.users {

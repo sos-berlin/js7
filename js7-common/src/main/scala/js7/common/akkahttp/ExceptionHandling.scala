@@ -19,7 +19,7 @@ trait ExceptionHandling
   protected def isShuttingDown: Boolean
   protected def config: Config
 
-  private lazy val respondWithException = config.getBoolean("js7.webserver.verbose-error-messages")
+  private lazy val respondWithException = config.getBoolean("js7.web.server.verbose-error-messages")
 
   implicit protected val exceptionHandler: ExceptionHandler =
     ExceptionHandler {

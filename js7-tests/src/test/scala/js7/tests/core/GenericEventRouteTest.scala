@@ -50,7 +50,7 @@ final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll wit
        |    timeout = 1 minute
        |  }
        |  akka.shutdown-timeout = 10s
-       |  webserver {
+       |  web.server {
        |    verbose-error-messages = on
        |    shutdown-timeout = 10s
        |    auth {

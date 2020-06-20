@@ -80,8 +80,8 @@ private object CommandWebServerTest
 {
   private val testConfig =
     ConfigFactory.parseString("""
-       js7.webserver.auth.public = on
-       js7.webserver.shutdown-timeout = 10s
+       js7.web.server.auth.public = on
+       js7.web.server.shutdown-timeout = 10s
        akka.http.client.parsing.max-content-length = 100MB"""
     ).withFallback(AgentConfiguration.DefaultConfig)
 }

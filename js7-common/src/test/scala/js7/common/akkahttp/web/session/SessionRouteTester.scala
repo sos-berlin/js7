@@ -33,7 +33,7 @@ trait SessionRouteTester extends BeforeAndAfterAll with ScalatestRouteTest with 
   protected type Session = SimpleSession
 
   protected final def isShuttingDown = false
-  protected final val config = ConfigFactory.parseString("js7.webserver.verbose-error-messages = on")
+  protected final val config = ConfigFactory.parseString("js7.web.server.verbose-error-messages = on")
 
   override def testConfig = ConfigFactory.parseString(s"""
      |akka.http.host-connection-pool.base-connection-backoff = 10ms

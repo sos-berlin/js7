@@ -68,8 +68,8 @@ object TestControllerAgent
 
   private def run(conf: Conf): Unit = {
     autoClosing(new DirectoryProvider(conf.agentRefPaths, makeWorkflow(conf) :: Nil, useDirectory = Some(conf.directory))) { env =>
-      env.controller.configDir / "controller.conf" ++= "js7.webserver.auth.loopback-is-public = on\n"
-      env.agents foreach { _.configDir / "agent.conf" ++= "js7.webserver.auth.loopback-is-public = on\n" }
+      env.controller.configDir / "controller.conf" ++= "js7.web.server.auth.loopback-is-public = on\n"
+      env.agents foreach { _.configDir / "agent.conf" ++= "js7.web.server.auth.loopback-is-public = on\n" }
       withCloser { implicit closer =>
         for (agentRefPath <- conf.agentRefPaths) {
           TestExecutablePath.toFile(env.agentToTree(agentRefPath).configDir / "executables").writeExecutable(

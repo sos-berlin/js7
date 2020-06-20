@@ -26,10 +26,10 @@ trait WebLogDirectives extends ExceptionHandling
   protected def config: Config
   protected def actorSystem: ActorSystem
 
-  private lazy val logLevel = LogLevel(config.getString("js7.webserver.log.level"))
-  private lazy val errorLogLevel = LogLevel(config.getString("js7.webserver.log.error-level"))
-  private lazy val internalServerErrrorLevel = LogLevel(config.getString("js7.webserver.log.500-level"))
-  private lazy val logResponse = actorSystem.settings.config.getBoolean("js7.webserver.log.response")
+  private lazy val logLevel = LogLevel(config.getString("js7.web.server.log.level"))
+  private lazy val errorLogLevel = LogLevel(config.getString("js7.web.server.log.error-level"))
+  private lazy val internalServerErrrorLevel = LogLevel(config.getString("js7.web.server.log.500-level"))
+  private lazy val logResponse = actorSystem.settings.config.getBoolean("js7.web.server.log.response")
   private lazy val hasRemoteAddress = actorSystem.settings.config.getBoolean("akka.http.server.remote-address-header")
 
   protected def webLog(userId: Option[UserId]): Directive0 =
@@ -120,12 +120,12 @@ object WebLogDirectives
   private val webLogger = Logger("js7.web.log")
 
   val TestConfig = ConfigFactory.parseString("""
-     |js7.webserver.log.level = debug
-     |js7.webserver.log.error-level = debug
-     |js7.webserver.log.500-level = info
-     |js7.webserver.log.duration = off
-     |js7.webserver.verbose-error-messages = true
-     |js7.webserver.shutdown-timeout = 10s""")
+     |js7.web.server.log.level = debug
+     |js7.web.server.log.error-level = debug
+     |js7.web.server.log.500-level = info
+     |js7.web.server.log.duration = off
+     |js7.web.server.verbose-error-messages = true
+     |js7.web.server.shutdown-timeout = 10s""")
 
   private def appendQuotedString(sb: StringBuilder, string: String) = {
     sb.append('"')
