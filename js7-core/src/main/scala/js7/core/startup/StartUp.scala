@@ -47,6 +47,10 @@ object StartUp
     }
   }
 
+  def printlnWithClockIgnoringException(line: String) =
+    try printlnWithClock(line)
+    catch { case _: Throwable => }
+
   def printlnWithClock(line: String) =
     System.err.println(s"${LocalDateTime.now.toString.replace('T', ' ')} $line")
 }
