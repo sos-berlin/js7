@@ -7,6 +7,7 @@ import akka.util.{ByteString, Timeout}
 import cats.effect.Resource
 import com.typesafe.config.{Config, ConfigFactory}
 import js7.base.time.ScalaTime._
+import js7.common.configuration.JobSchedulerConfiguration
 import js7.common.configutils.Configs
 import js7.common.scalautil.Logger
 import js7.common.utils.JavaResource
@@ -20,13 +21,15 @@ import scala.concurrent.duration._
 object Akkas
 {
   private val logger = Logger(getClass)
-  private val ConfigResource = JavaResource(getClass.getClassLoader, "js7/common/akkautils/akka.conf")
+  private val configResource = JavaResource(getClass.getClassLoader, "js7/common/akkautils/akka.conf")
+  private lazy val defaultConfig = Configs.loadResource(configResource, internal = true)
 
   def newActorSystem(name: String, config: Config = ConfigFactory.empty) = {
     logger.debug(s"new ActorSystem('$name')")
     val myConfig = ConfigFactory.systemProperties
       .withFallback(config)
-      .withFallback(Configs.loadResource(ConfigResource, internal = true))
+      .withFallback(defaultConfig)
+      .withFallback(JobSchedulerConfiguration.defaultConfig)
       .resolve
     ActorSystem(name, myConfig, getClass.getClassLoader)
   }

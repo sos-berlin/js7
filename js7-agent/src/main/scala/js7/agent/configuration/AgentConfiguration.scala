@@ -12,6 +12,7 @@ import js7.base.convert.AsJava.asAbsolutePath
 import js7.base.utils.Assertions.assertThat
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
+import js7.common.configuration.JobSchedulerConfiguration
 import js7.common.configutils.Configs
 import js7.common.configutils.Configs._
 import js7.common.process.Processes.ShellFileExtension
@@ -111,13 +112,15 @@ extends CommonConfiguration
     s"$logDirectory,$jobWorkingDirectory,$jobJavaOptions,$killScript,$akkaAskTimeout,$journalConf,$name,Config)"
 }
 
-object AgentConfiguration {
+object AgentConfiguration
+{
   val FileEncoding = if (isWindows) ISO_8859_1 else UTF_8
   private[configuration] val DefaultName = if (isTest) "Agent" else "JS7"
   private val DelayUntilFinishKillScript = ProcessKillScript(EmptyPath)  // Marker for finish
   lazy val DefaultConfig = Configs.loadResource(
     JavaResource("js7/agent/configuration/agent.conf"),
-    internal = true)
+    internal = true
+  ).withFallback(JobSchedulerConfiguration.defaultConfig)
 
   def fromCommandLine(arguments: CommandLineArguments, extraDefaultConfig: Config = ConfigFactory.empty) = {
     val common = CommonConfiguration.Common.fromCommandLineArguments(arguments)

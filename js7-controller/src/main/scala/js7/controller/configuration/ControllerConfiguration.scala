@@ -9,6 +9,7 @@ import java.time.ZoneId
 import js7.base.problem.Checked._
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
+import js7.common.configuration.JobSchedulerConfiguration
 import js7.common.configutils.Configs
 import js7.common.configutils.Configs._
 import js7.common.scalautil.FileUtils.syntax._
@@ -24,6 +25,7 @@ import js7.core.event.journal.JournalConf
 import js7.core.event.journal.data.JournalMeta
 import js7.data.controller.ControllerId
 import scala.jdk.CollectionConverters._
+
 /**
   * @author Joacim Zschimmer
   */
@@ -82,7 +84,8 @@ object ControllerConfiguration
 
   lazy val DefaultConfig = Configs.loadResource(
     JavaResource("js7/controller/configuration/controller.conf"),
-    internal = true)
+    internal = true
+  ).withFallback(JobSchedulerConfiguration.defaultConfig)
 
   def fromCommandLine(commandLineArguments: CommandLineArguments, config: Config = ConfigFactory.empty) = {
     val common = CommonConfiguration.Common.fromCommandLineArguments(commandLineArguments)
