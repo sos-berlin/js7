@@ -11,7 +11,7 @@ import akka.http.scaladsl.model.headers.{Accept, CustomHeader, RawHeader, `Cache
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpHeader, HttpMethod, HttpRequest, HttpResponse, RequestEntity, StatusCode, StatusCodes, Uri => AkkaUri}
 import akka.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshal}
 import akka.http.scaladsl.{Http, HttpsConnectionContext}
-import akka.stream.ActorMaterializer
+import akka.stream.Materializer
 import akka.util.ByteString
 import cats.effect.{ExitCase, Resource}
 import io.circe.{Decoder, Encoder}
@@ -22,11 +22,11 @@ import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
+import js7.base.utils.ByteVectorToLinesObservable
 import js7.base.utils.MonixAntiBlocking.executeOn
 import js7.base.utils.ScalaUtils._
 import js7.base.utils.ScalazStyle._
 import js7.base.utils.Strings.RichString
-import js7.base.utils.{ByteVectorToLinesObservable, Lazy}
 import js7.base.web.{HttpClient, Uri}
 import js7.common.akkahttp.https.AkkaHttps.loadHttpsConnectionContext
 import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
@@ -52,19 +52,16 @@ import scodec.bits.ByteVector
   */
 trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableStackTrace
 {
-  protected def actorSystem: ActorSystem
+  implicit protected def actorSystem: ActorSystem
   protected def baseUri: Uri
   protected def uriPrefixPath: String
   protected def name: String
   protected def standardHeaders: List[HttpHeader] = Nil
 
   private lazy val http = Http(actorSystem)
-  private val materializerLazy = Lazy(ActorMaterializer()(actorSystem))
   private lazy val baseAkkaUri = AkkaUri(baseUri.string)
   @volatile private var closed = false
   private val counter = AtomicLong(0)
-
-  implicit final def materializer = materializerLazy()
 
   protected def keyStoreRef: Option[KeyStoreRef]
   protected def trustStoreRefs: Seq[TrustStoreRef]
@@ -74,13 +71,11 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
 
   private lazy val httpsConnectionContext = httpsConnectionContextOption getOrElse http.defaultClientHttpsContext
 
+  final def materializer: Materializer = implicitly[Materializer]
+
   def close() = {
     logger.trace(s"$toString: close")
     closed = true
-    for (o <- materializerLazy) {
-      logger.debug(s"$toString: ActorMaterializer shutdown")
-      o.shutdown()
-    }
   }
 
   def isClosed = closed

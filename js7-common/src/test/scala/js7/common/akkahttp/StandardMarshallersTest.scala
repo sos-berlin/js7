@@ -6,7 +6,6 @@ import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, OK}
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpRequest, HttpResponse, MessageEntity}
-import akka.stream.ActorMaterializer
 import akka.util.ByteString
 import io.circe.generic.semiauto.deriveEncoder
 import js7.base.circeutils.CirceUtils._
@@ -26,13 +25,10 @@ import scala.concurrent.duration._
   */
 final class StandardMarshallersTest extends AnyFreeSpec with BeforeAndAfterAll {
 
-  private val actorSystem = newActorSystem("StandardMarshallersTest")
-  private implicit val mat = ActorMaterializer()(actorSystem)
+  implicit private val actorSystem = newActorSystem("StandardMarshallersTest")
 
-  override def afterAll(): Unit = {
-    mat.shutdown()
+  override def afterAll(): Unit =
     actorSystem.terminate()
-  }
 
   "ToEntityMarshaller[Problem], default is text/plain" in {
     val response = Marshal(Problem("PROBLEM")).toResponseFor(HttpRequest()) await 99.s

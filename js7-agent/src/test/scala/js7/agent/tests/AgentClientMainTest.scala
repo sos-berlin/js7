@@ -7,8 +7,8 @@ import js7.agent.data.commands.AgentCommand.ShutDown
 import js7.agent.tests.AgentClientMainTest._
 import js7.base.problem.Checked
 import js7.base.process.ProcessSignal.SIGTERM
-import js7.base.utils.HasCloser
 import js7.common.guice.ScalaAbstractModule
+import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.core.command.CommandMeta
 import monix.eval.Task
@@ -19,8 +19,10 @@ import scala.collection.mutable
 /**
  * @author Joacim Zschimmer
  */
-final class AgentClientMainTest extends AnyFreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider
+final class AgentClientMainTest extends AnyFreeSpec with BeforeAndAfterAll with TestAgentProvider
 {
+  coupleScribeWithSlf4j()
+
   override def afterAll() = closer closeThen super.afterAll()
 
   override protected def extraAgentModule = new ScalaAbstractModule {

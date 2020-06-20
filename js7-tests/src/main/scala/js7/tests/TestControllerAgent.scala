@@ -116,7 +116,7 @@ object TestControllerAgent
               new Actor {
                 controller.injector.instance[StampedKeyedEventBus].subscribe(self, classOf[OrderEvent.OrderAdded])
                 controller.injector.instance[StampedKeyedEventBus].subscribe(self, OrderEvent.OrderFinished.getClass)
-                context.system.scheduler.schedule(0.seconds, 1.second, self, "PRINT")
+                context.system.scheduler.scheduleWithFixedDelay(0.seconds, 1.second, self, "PRINT")
                 val stopwatch = new Stopwatch
                 var added, finished, printedFinished = 0
                 var lastDuration: Option[FiniteDuration] = None

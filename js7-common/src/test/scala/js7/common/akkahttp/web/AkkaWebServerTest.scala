@@ -4,7 +4,6 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.HttpMethods.GET
 import akka.http.scaladsl.model.{HttpRequest, StatusCodes}
 import akka.http.scaladsl.server.Directives._
-import akka.stream.ActorMaterializer
 import com.typesafe.config.ConfigFactory
 import java.net.{InetAddress, InetSocketAddress}
 import java.nio.file.Files.{createDirectory, createTempDirectory}
@@ -36,7 +35,6 @@ final class AkkaWebServerTest extends AnyFreeSpec with BeforeAndAfterAll
   private implicit lazy val actorSystem = newActorSystem("AkkaWebServerTest")
   private lazy val List(httpPort, httpsPort) = findFreeTcpPorts(2)
   private lazy val directory = createTempDirectory("AkkaWebServerTest-")
-  private implicit lazy val materializer = ActorMaterializer()
   private lazy val http = Http()
 
   private lazy val webServer = new AkkaWebServer with HasUri {
@@ -93,10 +91,11 @@ final class AkkaWebServerTest extends AnyFreeSpec with BeforeAndAfterAll
     lazy val httpsConnectionContext = AkkaHttps.loadHttpsConnectionContext(trustStoreRefs = ClientTrustStoreRef :: Nil)
 
     "Hostname verification rejects 127.0.0.1" in {
-      val e = intercept[akka.stream.ConnectionException] {
+      val e = intercept[javax.net.ssl.SSLHandshakeException] {
         http.singleRequest(HttpRequest(GET, s"https://127.0.0.1:$httpsPort/TEST"), httpsConnectionContext) await 99.seconds
       }
-      assert(e.getMessage == "Hostname verification failed! Expected session to be for 127.0.0.1")
+      assert(e.getMessage == "No subject alternative names present" ||
+             e.getMessage == "General SSLEngine problem")
     }
 
     "Hostname verification accepts localhost" in {

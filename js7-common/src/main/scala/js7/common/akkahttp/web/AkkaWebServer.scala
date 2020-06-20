@@ -4,7 +4,7 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.settings.{ParserSettings, ServerSettings}
 import akka.http.scaladsl.{ConnectionContext, Http}
-import akka.stream.{ActorMaterializer, TLSClientAuth}
+import akka.stream.TLSClientAuth
 import cats.effect.Resource
 import cats.instances.vector._
 import cats.syntax.traverse._
@@ -14,7 +14,7 @@ import js7.base.generic.Completed
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils._
 import js7.base.utils.ScalazStyle._
-import js7.base.utils.{Lazy, SetOnce}
+import js7.base.utils.SetOnce
 import js7.common.akkahttp.https.Https.loadSSLContext
 import js7.common.akkahttp.web.AkkaWebServer._
 import js7.common.akkahttp.web.data.WebServerBinding
@@ -41,8 +41,6 @@ trait AkkaWebServer extends AutoCloseable
   private val shuttingDownPromise = Promise[Completed]()
   protected final def isShuttingDown = shuttingDownPromise.future.isCompleted
   private lazy val akkaHttp = Http(actorSystem)
-  private val materializerLazy = Lazy { ActorMaterializer() }
-  private implicit def materializer = materializerLazy()
   private lazy val shutdownTimeout = config.getDuration("js7.web.server.shutdown-timeout").toFiniteDuration
   private val scheduler = SetOnce[Scheduler]
 
@@ -122,15 +120,7 @@ trait AkkaWebServer extends AutoCloseable
                   Completed
                 }))
             .map((_: Seq[Completed]) => ())
-    }.guarantee(Task {
-      for (materializer <- materializerLazy if !materializer.isShutdown) {
-        logger.debug("materializer.shutdown()")
-        try materializer.shutdown()
-        catch { case NonFatal(t) =>
-          logger.warn(s"$toString close(): " + t.toStringWithCauses, t.nullIfNoStackTrace)
-        }
-      }
-    })
+    }
 
   override def toString = s"${getClass.simpleScalaName}"
 }

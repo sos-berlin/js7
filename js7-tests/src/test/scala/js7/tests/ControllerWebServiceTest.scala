@@ -82,7 +82,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
     @Provides @Singleton def eventIdClock(): EventIdClock = new EventIdClock.Fixed(1000)
   }
 
-  import httpClient.materializer
+  private implicit def materializer = httpClient.materializer
 
   override def beforeAll() = {
     directoryProvider.controller.configDir / "controller.conf" ++=
