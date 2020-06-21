@@ -3,6 +3,7 @@ package js7.tests
 import js7.agent.data.Problems.SignedInjectionNotAllowed
 import js7.base.problem.Checked.Ops
 import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.system.OperatingSystem.isWindows
 import js7.data.agent.AgentRefPath
@@ -70,7 +71,7 @@ final class ExecuteTest extends AnyFreeSpec
 object ExecuteTest
 {
   private val TestAgentRefPath = AgentRefPath("/AGENT")
-  private val ScriptProlog = if (isWindows) "@echo off\n" else ""
+  private val ScriptProlog = isWindows ?: "@echo off\n"
   private val workflowNotation = s"""
     define workflow {
       execute executable="/SCRIPT-0a.cmd", agent="AGENT";

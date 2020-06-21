@@ -5,6 +5,7 @@ import js7.agent.data.{AgentTaskId, ProcessKillScript}
 import js7.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer.withCloser
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.process.Processes.newTemporaryShellFile
 import js7.common.scalautil.FileUtils.autoDeleting
 import js7.common.scalautil.FileUtils.syntax.RichPath
@@ -29,7 +30,7 @@ final class ShellScriptProcessTest extends AnyFreeSpec
     val envValue = "ENVVALUE"
     val exitCode = 42
     val processConfig = ProcessConfiguration.forTest.copy(additionalEnvironment = Map(envName -> envValue))
-    val shellProcess = startShellScript(processConfig, name = "TEST", (if (isWindows) "@" else "") + s"exit $exitCode")
+    val shellProcess = startShellScript(processConfig, name = "TEST", (isWindows ?: "@") + s"exit $exitCode")
     val returnCode = shellProcess.terminated await 99.s
     assert(returnCode == ReturnCode(exitCode))
     assert(!shellProcess.closed.isCompleted)

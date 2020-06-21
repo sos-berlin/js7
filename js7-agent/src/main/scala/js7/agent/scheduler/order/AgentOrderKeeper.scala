@@ -116,7 +116,7 @@ with Stash {
 
     def onStillTerminating() =
       logger.info(s"Still terminating, waiting for ${orderRegister.size} orders, ${jobRegister.size} jobs" +
-        (if (!snapshotTaken) ", and the snapshot" else ""))
+        (!snapshotTaken ?: ", and the snapshot"))
 
     def onSnapshotTaken(): Unit =
       if (shuttingDown) {

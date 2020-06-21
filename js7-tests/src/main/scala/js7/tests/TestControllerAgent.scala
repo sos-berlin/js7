@@ -14,6 +14,7 @@ import js7.base.time.{Stopwatch, Timestamp}
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.Closer.withCloser
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SideEffect.ImplicitSideEffect
 import js7.base.utils.{Closer, DecimalPrefixes}
 import js7.common.commandline.CommandLineArguments
@@ -76,7 +77,7 @@ object TestControllerAgent
               if (isWindows) s"""
                  |@echo off
                  |echo Hello
-                 |${if (conf.jobDuration.toSeconds > 0) s"ping -n ${conf.jobDuration.toSeconds + 1} 127.0.0.1 >nul" else ""}
+                 |${(conf.jobDuration.toSeconds > 0) ?: s"ping -n ${conf.jobDuration.toSeconds + 1} 127.0.0.1 >nul"}
                  |echo result=TEST-RESULT-%SCHEDULER_PARAM_VAR1% >>"%SCHEDULER_RETURN_VALUES%"
                  |""".stripMargin
               else s"""

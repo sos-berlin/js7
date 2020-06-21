@@ -98,7 +98,7 @@ extends HasCloser with ClosedFuture {
 
   private def killNow(): Unit = {
     if (process.isAlive) {
-      logger.info("destroyForcibly" + (if (!isWindows) " (SIGKILL)" else ""))
+      logger.info("destroyForcibly" + (!isWindows ?: " (SIGKILL)"))
       process.destroyForcibly()
     }
   }

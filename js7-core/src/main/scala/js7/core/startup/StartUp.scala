@@ -4,6 +4,7 @@ import java.io.File
 import java.nio.file.Path
 import java.time.LocalDateTime
 import js7.base.system.SystemInformation.totalPhysicalMemory
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.process.ProcessPidRetriever.maybeOwnPid
 import js7.common.scalautil.Logger
 import js7.common.system.JavaInformations
@@ -31,7 +32,7 @@ object StartUp
       totalPhysicalMemory.fold("")(o => " " + toKiBGiB(o)) +
       " · " +
       (maybeOwnPid.fold("")(pid => s"pid=${pid.number} ")) +
-      (if (hostname.nonEmpty) s"host=$hostname " else "") +
+      (hostname.nonEmpty ?: s"host=$hostname ") +
       s"config=$configDir " +
         dataDir.fold("")("data=".+))
 

@@ -2,6 +2,7 @@ package js7.tests
 
 import js7.base.problem.Checked.Ops
 import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.system.OperatingSystem.isWindows
 import js7.data.agent.AgentRefPath
 import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
@@ -93,7 +94,7 @@ final class FailTest extends AnyFreeSpec
 
   private def runUntil[E <: OrderEvent: ClassTag: TypeTag](workflow: Workflow, expectedEvents: Vector[OrderEvent], moreExpectedEvents: (OrderId, Vector[OrderEvent])*): Unit =
     autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflow :: Nil, testName = Some("FailTest"))) { directoryProvider =>
-      directoryProvider.agents.head.writeExecutable(ExecutablePath("/test.cmd"), (if (isWindows) "@echo off\n" else "") + "exit 3")
+      directoryProvider.agents.head.writeExecutable(ExecutablePath("/test.cmd"), (isWindows ?: "@echo off\n") + "exit 3")
       directoryProvider.run { (controller, _) =>
         val orderId = OrderId("🔺")
         controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))

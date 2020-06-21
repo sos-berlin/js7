@@ -8,6 +8,7 @@ import js7.base.problem.Checked._
 import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.implicits.InsertableMutableMap
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.web.session.SessionActor._
 import js7.common.auth.SecretStringGenerator
 import js7.common.scalautil.Logger
@@ -47,7 +48,7 @@ extends Actor {
         session.touch(sessionTimeout)
       }
       tokenToSession.insert(session.sessionToken -> session)
-      logger.info(s"Session #${session.sessionNumber} for User '${user.id}' added${if (session.isEternal) " (eternal)" else ""}")
+      logger.info(s"Session #${session.sessionNumber} for User '${user.id}' added${session.isEternal ?: " (eternal)"}")
       sender() ! token
       scheduleNextCleanup()
 

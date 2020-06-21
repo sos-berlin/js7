@@ -4,6 +4,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.CloseableIterator
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.event.EventWatch
 import js7.common.scalautil.Logger
 import js7.controller.data.ControllerState
@@ -33,14 +34,14 @@ private[fatevent] final class FatStateCache(controllerId: ControllerId, eventWat
     lastDelivered match {
       case Some(fatState) if fatState.eventId <= after =>
         logger.trace(s"Using last lastDelivered FatState ${EventId.toString(fatState.eventId)}" +
-          (if (after > fatState.eventId) s", after=${EventId.toString(after)}" else ""))
+          ((after > fatState.eventId) ?: s", after=${EventId.toString(after)}"))
         Some(fatState)
 
       case _ =>
         lastRequested match {
           case Some(fatState) if fatState.eventId <= after =>
             logger.trace(s"Using last requested FatState ${EventId.toString(fatState.eventId)}" +
-              (if (after > fatState.eventId) s", after=${EventId.toString(after)}" else ""))
+              ((after > fatState.eventId) ?: s", after=${EventId.toString(after)}"))
             Some(fatState)
 
           case _ =>

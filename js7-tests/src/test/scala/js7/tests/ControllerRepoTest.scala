@@ -6,6 +6,7 @@ import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
 import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
 import js7.common.http.AkkaHttpClient.HttpException
 import js7.common.process.Processes.{ShellFileExtension => sh}
@@ -41,7 +42,7 @@ final class ControllerRepoTest extends AnyFreeSpec
   "test" in {
     autoClosing(new DirectoryProvider(List(TestAgentRefPath), testName = Some("ControllerRepoTest"))) { provider =>
       for (v <- 1 to 4)  // For each version, we use a dedicated job which echos the VersionId
-        provider.agents.head.writeExecutable(ExecutablePath(s"/EXECUTABLE-V$v$sh"), (if (isWindows) "@" else "") + s"echo /VERSION-$v/")
+        provider.agents.head.writeExecutable(ExecutablePath(s"/EXECUTABLE-V$v$sh"), (isWindows ?: "@") + s"echo /VERSION-$v/")
       provider.controller.configDir / "controller.conf" ++=
         """js7.auth.users.TEST-USER {
           |  password = "plain:TEST-PASSWORD"

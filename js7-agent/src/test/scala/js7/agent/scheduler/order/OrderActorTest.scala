@@ -17,6 +17,7 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.generic.Completed
 import js7.base.time.ScalaTime._
 import js7.base.utils.HasCloser
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkautils.{CatchingActor, SupervisorStrategies}
 import js7.common.event.EventIdGenerator
 import js7.common.process.Processes.{ShellFileExtension => sh}
@@ -89,7 +90,7 @@ final class OrderActorTest extends AnyFreeSpec with HasCloser with BeforeAndAfte
     val expectedStdout = (for (i <- 1 to n) yield line("o", i) + Nl).mkString
     val executablePath = ExecutablePath(s"/TEST-2$sh")
     executablePath.toFile(directoryProvider.agentDirectory / "config" / "executables").writeExecutable(
-      (if (isWindows) "@echo off\n" else "") +
+      (isWindows ?: "@echo off\n") +
         (for (i <- 1 to n) yield
           s"""echo ${line("o", i)}
              |echo ${line("e", i)}>&2

@@ -1,6 +1,7 @@
 package js7.core.event.state
 
 import cats.effect.Resource
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.Logger
 import js7.core.event.state.LockKeeper._
 import monix.eval.Task
@@ -69,7 +70,7 @@ private[state] final class LockKeeper[K]
   {
     private[LockKeeper] val released = AtomicBoolean(false)
 
-    override def toString = s"LockKeeper.Token($key${if (released.get) ", released" else ""})"
+    override def toString = s"LockKeeper.Token($key${released.get ?: ", released"})"
   }
 }
 
