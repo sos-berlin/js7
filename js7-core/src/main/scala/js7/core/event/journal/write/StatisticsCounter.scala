@@ -3,7 +3,7 @@ package js7.core.event.journal.write
 import java.lang.System.nanoTime
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
-import js7.base.utils.Strings._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.core.event.journal.write.StatisticsCounter._
 import scala.concurrent.duration._
 

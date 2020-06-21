@@ -7,7 +7,6 @@ import cats.syntax.traverse._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.Strings.RichString
 import js7.data.expression.Evaluator._
 import js7.data.expression.Expression._
 import js7.data.workflow.Label

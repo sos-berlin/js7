@@ -7,16 +7,17 @@ import js7.base.exceptions.PublicException
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.utils.StackTraces.StackTraceThrowable
-import js7.base.utils.Strings.RichString
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.math.max
-import scala.util.chaining._
 import scala.reflect.ClassTag
+import scala.util.chaining._
 
 object ScalaUtils
 {
+  private val Ellipsis = "..."
+
   object syntax
   {
     implicit final class RichJavaClass[A](private val underlying: Class[A])
@@ -246,7 +247,42 @@ object ScalaUtils
             Left(if (t.getStackTrace.nonEmpty) t else new IllegalStateException(s"$t", t))
         }
     }
+
+    implicit final class RichString(private val underlying: String) extends AnyVal
+    {
+      /** Truncate to `n`, replacing the tail with ellipsis and, if the string is long, the total character count. */
+      def truncateWithEllipsis(n: Int, showLength: Boolean = false): String = {
+        val suffix = if (showLength) s"$Ellipsis(length ${underlying.length})" else Ellipsis
+        val nn = max(suffix.length, n)
+        if (underlying.lengthIs <= nn)
+          underlying
+        else
+          underlying.take(nn - suffix.length) + suffix
+      }
+
+      def replaceChar(from: Char, to: Char): String =
+        if (underlying contains from) {
+          val chars = new Array[Char](underlying.length)
+          underlying.getChars(0, underlying.length, chars, 0)
+          for (i <- chars.indices) if (chars(i) == from) chars(i) = to
+          new String(chars)
+        } else
+          underlying
+
+      def reverseDropWhile(predicate: Char => Boolean): String = {
+        var i = underlying.length
+        while (i > 0 && predicate(underlying(i - 1))) i = i -1
+        underlying.substring(0, i)
+      }
+
+      @inline def ?:(condition: Boolean): String =
+        when(condition)
+
+      @inline def when(condition: Boolean): String =
+        if (condition) underlying else ""
+    }
   }
+  import syntax._
 
   @inline
   def reuseIfEqual[A <: AnyRef](a: A)(f: A => A): A =

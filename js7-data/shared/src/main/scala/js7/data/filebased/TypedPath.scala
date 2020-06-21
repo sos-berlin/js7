@@ -15,7 +15,7 @@ import js7.base.problem.{Checked, CheckedString, Problem}
 import js7.base.standards.NameValidator
 import js7.base.utils.Collections.implicits.RichTraversable
 import js7.base.utils.ScalaUtils.implicitClass
-import js7.base.utils.Strings.RichString
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.filebased.FileBasedId.VersionSeparator
 import js7.data.filebased.TypedPath._
 import scala.reflect.ClassTag

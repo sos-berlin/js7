@@ -1,6 +1,6 @@
 package js7.base.utils
 
-import js7.base.utils.Strings._
+import js7.base.utils.ScalaUtils.syntax._
 
 object Assertions
 {

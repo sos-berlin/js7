@@ -5,7 +5,7 @@ import java.security.KeyStore
 import java.security.cert.{Certificate, X509Certificate}
 import javax.net.ssl.{KeyManager, KeyManagerFactory, SSLContext, TrustManagerFactory, X509TrustManager}
 import js7.base.utils.AutoClosing._
-import js7.base.utils.Strings._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.Logger
 import scala.jdk.CollectionConverters._
 

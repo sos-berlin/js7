@@ -1,7 +1,7 @@
 package js7.base.crypt
 
 import js7.base.circeutils.CirceUtils.deriveCodec
-import js7.base.utils.Strings._
+import js7.base.utils.ScalaUtils.syntax._
 
 /**
   * @author Joacim Zschimmer

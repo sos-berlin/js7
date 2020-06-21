@@ -2,8 +2,8 @@ package js7.data.event
 
 import js7.base.time.ScalaTime._
 import js7.base.time.{Stopwatch, Timestamp}
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
-import js7.base.utils.Strings._
 import js7.data.cluster.ClusterState
 import monix.eval.Task
 import scala.concurrent.duration.Duration

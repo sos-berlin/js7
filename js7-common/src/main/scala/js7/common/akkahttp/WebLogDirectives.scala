@@ -11,7 +11,7 @@ import java.lang.System.nanoTime
 import js7.base.auth.UserId
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
-import js7.base.utils.Strings._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.WebLogDirectives._
 import js7.common.log.LogLevel
 import js7.common.log.LogLevel._

@@ -7,7 +7,7 @@ import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer.syntax._
 import js7.base.utils.Closer.withCloser
-import js7.base.utils.Strings._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.auth.SecretStringGenerator
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.scalautil.FileUtils.syntax._

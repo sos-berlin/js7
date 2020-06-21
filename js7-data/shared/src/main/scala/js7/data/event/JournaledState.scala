@@ -2,7 +2,7 @@ package js7.data.event
 
 import io.circe.{Decoder, Encoder}
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.Strings.RichString
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.JournaledState._

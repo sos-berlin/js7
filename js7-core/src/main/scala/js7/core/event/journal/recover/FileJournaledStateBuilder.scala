@@ -6,7 +6,6 @@ import java.nio.file.Path
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.problem.Checked._
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.Strings.RichString
 import js7.common.scalautil.Logger
 import js7.core.event.journal.data.JournalMeta
 import js7.core.event.journal.recover.FileJournaledStateBuilder._

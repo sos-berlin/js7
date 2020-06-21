@@ -6,7 +6,6 @@ import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.Strings.RichString
 import scodec.bits.ByteVector
 
 object ScodecUtils

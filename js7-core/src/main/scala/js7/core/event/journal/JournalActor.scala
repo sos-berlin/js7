@@ -16,7 +16,6 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.base.utils.StackTraces.StackTraceThrowable
-import js7.base.utils.Strings.RichString
 import js7.common.akkautils.Akkas.RichActorPath
 import js7.common.akkautils.SupervisorStrategies
 import js7.common.event.{EventIdGenerator, PositionAnd}

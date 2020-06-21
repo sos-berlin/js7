@@ -24,7 +24,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.ScalazStyle._
 import js7.base.utils.SetOnce
 import js7.base.utils.StackTraces.StackTraceThrowable
-import js7.base.utils.Strings._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkautils.Akkas.encodeAsActorName
 import js7.common.akkautils.SupervisorStrategies
 import js7.common.configutils.Configs.ConvertibleConfig

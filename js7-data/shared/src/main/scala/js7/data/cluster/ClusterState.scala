@@ -5,7 +5,7 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.utils.ScalazStyle._
-import js7.base.utils.Strings._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.ClusterSetting.checkUris

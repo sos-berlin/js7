@@ -2,7 +2,7 @@ package js7.base.utils
 
 import js7.base.problem.Problem
 import js7.base.utils.ScodecUtils._
-import js7.base.utils.Strings.RichString
+import js7.base.utils.ScalaUtils.syntax._
 import monix.reactive.Observable
 import scala.collection.mutable.ArrayBuffer
 import scodec.bits.ByteVector
