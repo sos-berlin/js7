@@ -5,7 +5,6 @@ import js7.base.generic.{GenericInt, GenericString}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.ScalazStyle._
 import js7.data.agent.AgentRefPath
 import js7.data.filebased.{FileBasedId, TypedPath, VersionId}
 import js7.data.job.{ExecutablePath, ExecutableScript, ReturnCode}

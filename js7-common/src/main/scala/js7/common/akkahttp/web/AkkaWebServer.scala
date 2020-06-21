@@ -12,9 +12,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import java.net.InetSocketAddress
 import js7.base.generic.Completed
 import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils._
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.ScalazStyle._
 import js7.base.utils.SetOnce
 import js7.common.akkahttp.https.Https.loadSSLContext
 import js7.common.akkahttp.web.AkkaWebServer._
@@ -26,8 +24,8 @@ import js7.common.time.JavaTimeConverters.AsScalaDuration
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import monix.eval.Task
 import monix.execution.Scheduler
-import scala.concurrent.{Future, Promise}
 import scala.concurrent.duration.Deadline
+import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 
 /**

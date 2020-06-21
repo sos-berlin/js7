@@ -25,7 +25,6 @@ import js7.base.utils.FutureCompletion
 import js7.base.utils.FutureCompletion.syntax._
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.ScalazStyle._
 import js7.common.akkahttp.AkkaHttpServerUtils.{accept, completeTask}
 import js7.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
 import js7.common.akkahttp.EventSeqStreamingSupport.NonEmptyEventSeqJsonStreamingSupport

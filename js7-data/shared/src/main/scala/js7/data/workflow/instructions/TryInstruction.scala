@@ -5,7 +5,7 @@ import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.circeutils.CirceUtils._
 import js7.base.circeutils.ScalaJsonCodecs._
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalazStyle._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.source.SourcePos
 import js7.data.workflow.instructions.TryInstruction._
 import js7.data.workflow.position.{BranchId, CatchBranchId, TryBranchId, TryCatchBranchId}

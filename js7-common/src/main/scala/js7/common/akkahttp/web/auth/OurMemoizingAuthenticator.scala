@@ -5,7 +5,7 @@ import akka.http.scaladsl.server.directives.SecurityDirectives.Authenticator
 import js7.base.auth.{User, UserAndPassword, UserId}
 import js7.base.generic.SecretString
 import js7.base.utils.Memoizer
-import js7.base.utils.ScalazStyle.OptionRichBoolean
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.web.auth.OurMemoizingAuthenticator._
 
 /**

@@ -11,7 +11,6 @@ import js7.base.utils.Collections.emptyToNone
 import js7.base.utils.Collections.implicits.{RichIndexedSeq, RichPairTraversable}
 import js7.base.utils.ScalaUtils.reuseIfEqual
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.ScalazStyle.OptionRichBoolean
 import js7.data.agent.AgentRefPath
 import js7.data.expression.PositionSearch
 import js7.data.filebased.{FileBased, FileBasedId}

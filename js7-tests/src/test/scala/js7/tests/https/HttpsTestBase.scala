@@ -9,7 +9,6 @@ import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer.syntax.{RichClosersAny, RichClosersAutoCloseable}
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.ScalazStyle._
 import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import js7.common.akkautils.ProvideActorSystem
 import js7.common.process.Processes.{ShellFileExtension => sh}

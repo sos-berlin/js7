@@ -185,13 +185,47 @@ object ScalaUtils
       def switch[B](pf: PartialFunction[A, Unit]): Unit = pf.callIfDefined(delegate)
     }
 
-    implicit final class RichOption[A](val underlying: Option[A]) extends AnyVal {
-      def whenEmpty(f: => Unit): underlying.type = {
-        if (underlying.isEmpty) {
-          f
-        }
-        underlying
-      }
+    implicit final class OptionRichBoolean(private val underlying: Boolean) extends AnyVal
+    {
+      /**
+        * Conditional `Option`.
+        * <p>`(true ? a) == Some(a)`
+        * <br>`(false ? a) == None`
+        */
+      def ?[A](a: => A): Option[A] =
+        option(a)
+
+      /**
+        * Conditional `Option`.
+        * <p>`(true option a) == Some(a)`
+        * <br>`(false option a) == None`
+        */
+      def option[A](a: => A): Option[A] =
+        if (underlying) Some(a) else None
+
+      /**
+        * Conditional `List`.
+        * <p>`(true option a) == List(a)`
+        * <br>`(false option a) == Nil`
+        */
+      def thenList[A](a: => A): List[A] =
+        if (underlying) a :: Nil else Nil
+
+      /**
+        * Conditional `Vector`.
+        * <p>`(true option a) == Vector(a)`
+        * <br>`(false option a) == Vector.empty`
+        */
+      def thenVector[A](a: => A): Vector[A] =
+        if (underlying) Vector(a) else Vector.empty
+
+      /**
+        * Conditional `Set`.
+        * <p>`(true option a) == Set(a)`
+        * <br>`(false option a) == Set.empty`
+        */
+      def thenSet[A](a: => A): Set[A] =
+        if (underlying) Set(a) else Set.empty
     }
 
     implicit final class RichEither[L, R](private val underlying: Either[L, R]) extends AnyVal

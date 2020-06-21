@@ -3,7 +3,7 @@ package js7.common.http
 import io.circe.Json
 import js7.base.auth.SessionToken
 import js7.base.problem.Checked.Ops
-import js7.base.utils.ScalazStyle._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.web.{HttpClient, Uri}
 import js7.common.http.CirceToYaml._

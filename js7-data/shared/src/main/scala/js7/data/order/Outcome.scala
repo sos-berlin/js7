@@ -5,7 +5,7 @@ import io.circe.syntax._
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Problem
-import js7.base.utils.ScalazStyle._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.ReturnCode
 
 /**

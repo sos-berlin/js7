@@ -4,7 +4,7 @@ import akka.actor.ActorRef
 import js7.agent.scheduler.order.JobRegister._
 import js7.base.problem.Problem
 import js7.base.utils.DuplicateKeyException
-import js7.base.utils.ScalazStyle.OptionRichBoolean
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.Logger
 import js7.core.common.ActorRegister
 import js7.data.job.JobKey

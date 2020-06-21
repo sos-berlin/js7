@@ -5,7 +5,7 @@ import java.nio.file.Path
 import java.nio.file.attribute.FileAttribute
 import js7.base.generic.GenericLong
 import js7.base.time.ScalaTime._
-import js7.base.utils.ScalazStyle.OptionRichBoolean
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.process.OperatingSystemSpecific.OS
 import js7.common.process.Processes.RobustlyStartProcess.TextFileBusyIOException
 import js7.common.scalautil.Logger

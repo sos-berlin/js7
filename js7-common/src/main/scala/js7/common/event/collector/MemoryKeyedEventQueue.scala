@@ -2,7 +2,7 @@ package js7.common.event.collector
 
 import com.google.common.collect.{AbstractIterator => GuavaIterator}
 import java.util.NoSuchElementException
-import js7.base.utils.ScalazStyle.OptionRichBoolean
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.{AnyKeyedEvent, EventId, Stamped}
 import scala.jdk.CollectionConverters._
 

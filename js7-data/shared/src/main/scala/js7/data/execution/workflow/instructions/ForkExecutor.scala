@@ -1,7 +1,7 @@
 package js7.data.execution.workflow.instructions
 
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalazStyle._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.context.OrderContext
 import js7.data.job.ReturnCode

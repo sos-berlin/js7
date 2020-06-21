@@ -11,7 +11,7 @@ import js7.base.problem.Checked.implicits.{checkedJsonDecoder, checkedJsonEncode
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Big
 import js7.base.utils.IntelliJUtils.intelliJuseImport
-import js7.base.utils.ScalazStyle._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
 import js7.data.cluster.{ClusterCommand, ClusterNodeId, ClusterSetting}
 import js7.data.command.{CancelMode, CommonCommand}

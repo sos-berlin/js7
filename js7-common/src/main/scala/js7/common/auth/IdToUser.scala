@@ -6,7 +6,6 @@ import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.auth.{HashedPassword, Permission, User, UserId}
 import js7.base.generic.SecretString
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.ScalazStyle._
 import js7.common.auth.IdToUser._
 import js7.common.configutils.Configs.ConvertibleConfig
 import js7.common.scalautil.Logger

@@ -7,7 +7,7 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
 import js7.base.time.Timestamp
-import js7.base.utils.ScalazStyle._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.filebased.VersionId
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.{Position, WorkflowPosition}

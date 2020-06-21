@@ -15,7 +15,7 @@ import js7.base.problem.Problem
 import js7.base.process.ProcessSignal
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.cast
-import js7.base.utils.ScalazStyle.OptionRichBoolean
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.Logger
 import js7.common.time.JavaTimeConverters._
 import js7.core.event.journal.{JournalActor, JournalConf, KeyedJournalingActor}

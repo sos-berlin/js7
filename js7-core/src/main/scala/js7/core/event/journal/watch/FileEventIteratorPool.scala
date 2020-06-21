@@ -1,7 +1,7 @@
 package js7.core.event.journal.watch
 
 import java.nio.file.Path
-import js7.base.utils.ScalazStyle._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.event.PositionAnd
 import js7.common.scalautil.Logger
 import js7.core.event.journal.data.JournalMeta

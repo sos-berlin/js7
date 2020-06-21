@@ -12,7 +12,7 @@ import java.nio.file.Path
 import js7.base.auth.ValidUserPermission
 import js7.base.utils.FutureCompletion
 import js7.base.utils.FutureCompletion.syntax._
-import js7.base.utils.ScalazStyle._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.AkkaHttpServerUtils.passIf
 import js7.common.akkahttp.StandardMarshallers.logAkkaStreamErrorToWebLogAndIgnore
 import js7.common.files.GrowingFileObservable

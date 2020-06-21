@@ -3,7 +3,7 @@ package js7.data.execution.workflow.instructions
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.time.Timestamp
-import js7.base.utils.ScalazStyle._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.execution.workflow.context.OrderContext
 import js7.data.execution.workflow.instructions.RetryExecutor._
 import js7.data.order.OrderEvent.{OrderFailed, OrderRetrying}

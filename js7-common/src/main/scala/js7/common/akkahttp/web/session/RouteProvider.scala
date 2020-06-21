@@ -8,7 +8,7 @@ import js7.base.auth.{Permission, SessionToken}
 import js7.base.generic.SecretString
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
-import js7.base.utils.ScalazStyle._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.ExceptionHandling
 import js7.common.akkahttp.StandardMarshallers._
 import js7.common.akkahttp.web.auth.GateKeeper

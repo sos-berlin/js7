@@ -8,7 +8,7 @@ import java.time.Duration
 import js7.base.convert.ConvertiblePartialFunctions.wrappedConvert
 import js7.base.convert.{As, ConvertiblePartialFunction}
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalazStyle.OptionRichBoolean
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.Logger
 import js7.common.utils.JavaResource
 import scala.collection.immutable.VectorBuilder

@@ -6,7 +6,6 @@ import js7.base.generic.Completed
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.ScalazStyle._
 import js7.common.http.AkkaHttpClient
 import js7.common.scalautil.{IOExecutor, Logger}
 import js7.common.time.JavaTimeConverters._

@@ -11,7 +11,7 @@ import akka.http.scaladsl.server.{AuthenticationFailedRejection, Directive1, Exc
 import com.typesafe.config.{Config, ConfigFactory}
 import js7.base.auth.{GetPermission, HashedPassword, Permission, SimpleUser, SuperPermission, User, UserAndPassword, UserId, ValidUserPermission}
 import js7.base.time.ScalaTime._
-import js7.base.utils.ScalazStyle._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.web.auth.GateKeeper._
 import js7.common.auth.IdToUser
 import js7.common.scalautil.Logger

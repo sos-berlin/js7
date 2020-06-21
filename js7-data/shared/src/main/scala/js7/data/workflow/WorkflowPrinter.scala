@@ -2,7 +2,7 @@ package js7.data.workflow
 
 import cats.Show
 import js7.base.time.ScalaTime._
-import js7.base.utils.ScalazStyle._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.{ExecutablePath, ExecutableScript}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Finish, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction}

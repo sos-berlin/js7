@@ -7,7 +7,7 @@ import js7.base.circeutils.ScalaJsonCodecs._
 import js7.base.generic.GenericString
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalazStyle.OptionRichBoolean
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentRefPath
 import js7.data.job.{Executable, ExecutablePath, ExecutableScript, ReturnCode}
 import js7.data.order.Outcome

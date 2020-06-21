@@ -10,7 +10,7 @@ import js7.agent.scheduler.order.TestAgentActorProvider
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
-import js7.base.utils.ScalazStyle.OptionRichBoolean
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._

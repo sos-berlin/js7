@@ -8,7 +8,7 @@ import js7.base.auth.{Permission, SimpleUser, UpdateRepoPermission}
 import js7.base.eventbus.StandardEventBus
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer
-import js7.base.utils.ScalazStyle._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.akkautils.DeadLetterActor

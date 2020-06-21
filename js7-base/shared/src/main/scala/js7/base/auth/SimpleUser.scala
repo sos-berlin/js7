@@ -1,7 +1,7 @@
 package js7.base.auth
 
 import js7.base.utils.ScalaUtils._
-import js7.base.utils.ScalazStyle._
+import js7.base.utils.ScalaUtils.syntax._
 
 /**
   * @author Joacim Zschimmer

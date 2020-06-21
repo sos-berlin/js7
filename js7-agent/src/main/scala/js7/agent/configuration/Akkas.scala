@@ -4,7 +4,7 @@ import akka.actor.ActorSystem
 import com.typesafe.config.{Config, ConfigFactory}
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer
-import js7.base.utils.ScalazStyle._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SideEffect._
 import js7.common.akkautils.DeadLetterActor
 import js7.common.scalautil.Futures.implicits.SuccessFuture

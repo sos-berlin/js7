@@ -2,7 +2,6 @@ package js7.controller.data
 
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.ScalazStyle._
 import js7.controller.data.ControllerSnapshots.ControllerMetaState
 import js7.controller.data.agent.{AgentEventIdEvent, AgentSnapshot}
 import js7.controller.data.events.ControllerAgentEvent.{AgentCouplingFailed, AgentReady, AgentRegisteredController}

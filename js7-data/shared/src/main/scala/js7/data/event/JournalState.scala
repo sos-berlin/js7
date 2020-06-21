@@ -2,7 +2,7 @@ package js7.data.event
 
 import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils.deriveCodec
-import js7.base.utils.ScalazStyle._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import monix.reactive.Observable
 

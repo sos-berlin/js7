@@ -8,7 +8,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.closeOnError
 import js7.base.utils.CloseableIterator
 import js7.base.utils.Collections.implicits.RichIterator
-import js7.base.utils.ScalazStyle._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.event.PositionAnd
 import js7.common.scalautil.Logger
 import js7.common.utils.UntilNoneIterator
