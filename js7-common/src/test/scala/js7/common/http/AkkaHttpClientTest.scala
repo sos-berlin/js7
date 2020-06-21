@@ -39,11 +39,10 @@ import scala.concurrent.{Await, TimeoutException}
 final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with HasCloser
 {
   implicit private lazy val actorSystem = ActorSystem("AkkaHttpClientTest")
-  private lazy val port = findFreeTcpPort()
 
   override def afterAll() = {
-    actorSystem.terminate()
     closer.close()
+    actorSystem.terminate()
     super.afterAll()
   }
 
@@ -157,6 +156,10 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with H
       assert(t.toString == s"""HTTP 500 Internal Server Error: #7 POST $uri/SERVER-ERROR => "SERVER ERROR"""")
     }
 
+    "close" in {
+      httpClient.close()
+      webServer.close()
+    }
   }
 
   "liftProblem, HttpException#problem" - {
