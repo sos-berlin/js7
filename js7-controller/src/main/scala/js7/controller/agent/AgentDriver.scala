@@ -13,6 +13,7 @@ import js7.base.generic.{Completed, SecretString}
 import js7.base.problem.Checked._
 import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils._
@@ -83,6 +84,7 @@ with ReceiveLoggingActor.WithStash
   private var isTerminating = false
   private var changingUri: Option[Uri] = None
   private val sessionNumber = AtomicInt(0)
+  private val eventFetcherTerminated = Promise[Completed]()
 
   private val eventFetcher = new RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], AgentClient](
     _.eventId, conf.recouplingStreamReader)
@@ -187,18 +189,6 @@ with ReceiveLoggingActor.WithStash
   protected def recoverFromEvent(event: ControllerAgentEvent) = throw new NotImplementedError
   protected def snapshot = None  // ControllerOrderKeeper provides the AgentSnapshot
 
-  override def postStop() = {
-    eventFetcher.invalidateCoupledApi.materialize
-      .flatMap(_ =>
-        client.logout())
-          .onErrorHandle(_ => ())
-          .guarantee(Task(client.close()))
-          .runAsyncAndForget
-    currentFetchedFuture foreach (_.cancel())
-    releaseEventsCancelable foreach (_.cancel())
-    super.postStop()
-  }
-
   private def newAgentClient(uri: Uri): AgentClient =
     AgentClient(uri, agentUserAndPassword,
       controllerConfiguration.keyStoreRefOption, controllerConfiguration.trustStoreRefs)(context.system)
@@ -236,12 +226,15 @@ with ReceiveLoggingActor.WithStash
 
     case Input.Terminate =>
       // Wait until all pending Agent commands are responded, and do not accept further commands
-      logger.debug("Terminate")
-      isTerminating = true
-      currentFetchedFuture foreach (_.cancel())
-      commandQueue.terminate()
-      eventFetcher.terminate.runAsyncAndForget  // Rejects current commands waiting for coupling
-      stopIfTerminated()
+      if (!isTerminating) {
+        logger.debug("Terminate")
+        isTerminating = true
+        currentFetchedFuture foreach (_.cancel())
+        commandQueue.terminate()
+        eventFetcherTerminated.completeWith(
+          eventFetcher.terminate.runToFuture)  // Rejects current commands waiting for coupling
+        stopIfTerminated()
+      }
 
     case Input.StartFetchingEvents | Internal.FetchEvents =>
       if (changingUri.isEmpty && !isTerminating) {
@@ -417,8 +410,25 @@ with ReceiveLoggingActor.WithStash
   private def stopIfTerminated() =
     if (commandQueue.isTerminated) {
       logger.debug("Stop")
-      context.stop(self)
+      currentFetchedFuture.foreach(_.cancel())
+      releaseEventsCancelable.foreach(_.cancel())
+      Task.fromFuture(eventFetcherTerminated.future)
+        .onErrorRecover { case t => logger.debug(t.toStringWithCauses) }
+        .flatMap(_ => closeClient)
+        .onErrorRecover { case t => logger.debug(t.toStringWithCauses) }
+        .foreach(_ => self ! Internal.Stop)
+      become("stopping") {
+        case Internal.Stop => context.stop(self)
+      }
     }
+
+  private def closeClient: Task[Completed] =
+    eventFetcher.invalidateCoupledApi
+      .materialize
+      .flatMap(_ => client.logoutOrTimeout(10.s/*TODO*/))
+      .guarantee(Task {
+        client.close()
+      })
 
   override def toString = s"AgentDriver($agentRefPath)"
 }
@@ -479,6 +489,7 @@ private[controller] object AgentDriver
     final case class EventsAccepted(lastEventId: EventId, promise: Promise[Completed]) extends DeadLetterSuppression
     final case object ReleaseEvents extends DeadLetterSuppression
     final case object UriChanged extends DeadLetterSuppression
+    final case object Stop
   }
 
   private object CancelledMarker extends Exception with NoStackTrace
