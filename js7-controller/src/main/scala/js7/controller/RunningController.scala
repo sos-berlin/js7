@@ -108,7 +108,7 @@ extends AutoCloseable
         case None =>
           logger.debug("terminate")
           for {
-            _ <- executeCommandAsSystemUser(ControllerCommand.ShutDown()) map (_.orThrow)
+            _ <- executeCommandAsSystemUser(ControllerCommand.ShutDown()).map(_.orThrow)
             t <- Task.fromFuture(terminated)
           } yield t
       }
@@ -154,7 +154,7 @@ extends AutoCloseable
   lazy val localUri = webServer.localUri
 
   private val httpApiUserAndPassword = SetOnce[Option[UserAndPassword]]
-  private val _httpApi = SetOnce[HttpControllerApi]
+  private val _httpApi = SetOnce[AkkaHttpControllerApi]
 
   @TestOnly
   def httpApiDefaultLogin(userAndPassword: Option[UserAndPassword]): Unit = {
@@ -168,11 +168,9 @@ extends AutoCloseable
     if (_httpApi.isEmpty) {
       httpApiUserAndPassword.trySet(None)
       _httpApi := new AkkaHttpControllerApi(localUri, httpApiUserAndPassword.get, actorSystem = actorSystem, config = config)
-        .closeWithCloser(closer)
     }
     _httpApi.get
   }
-
 
   @TestOnly
   def journalActorState: Output.JournalActorState =
@@ -180,7 +178,10 @@ extends AutoCloseable
       .mapTo[JournalActor.Output.JournalActorState]
       .await(99.s)
 
-  def close() = closer.close()
+  def close() = {
+    for (o <- _httpApi) o.close()  // Close before server
+    closer.close()
+  }
 }
 
 object RunningController
