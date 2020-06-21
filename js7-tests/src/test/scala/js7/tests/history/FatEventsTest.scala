@@ -34,6 +34,7 @@ import js7.tests.history.FatEventsTest._
 import js7.tests.testenv.DirectoryProvider
 import js7.tests.testenv.DirectoryProvider.StdoutOutput
 import monix.execution.Scheduler.Implicits.global
+import org.scalactic.source
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 import scala.language.implicitConversions
@@ -53,7 +54,7 @@ final class FatEventsTest extends AnyFreeSpec
 
       def listJournalFiles = JournalFiles.listJournalFiles(provider.controller.dataDir / "state" / "controller").map(_.file.getFileName.toString)
 
-      def assertJournalFileCount(n: Int): Unit = {
+      def assertJournalFileCount(n: Int)(implicit pos: source.Position): Unit = {
         waitForCondition(9.s, 10.ms) { listJournalFiles.size == n }
         assert(listJournalFiles.size == n)
       }
