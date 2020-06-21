@@ -230,6 +230,7 @@ final class Cluster[S <: JournaledState[S]: Diff](
                   assertThat(truncatedRecoveredJournalFile.state.clusterState == recoveredClusterState)
                   assertThat(truncatedRecoveredJournalFile.journalPosition == failedAt,
                     s"${truncatedRecoveredJournalFile.journalPosition} != $failedAt")
+                  //TODO Missing test: recovered.close()
                 }
                 Some(recoveredClusterState ->
                   newPassiveClusterNode(otherFailedOver.idToUri, otherFailedOver.activeId, trunkRecovered,
