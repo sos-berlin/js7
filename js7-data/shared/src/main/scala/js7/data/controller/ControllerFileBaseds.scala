@@ -4,7 +4,7 @@ import io.circe.Decoder
 import js7.base.circeutils.CirceCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.Collections.implicits._
-import js7.base.utils.ScalaUtils._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.{AgentRef, AgentRefPath}
 import js7.data.filebased.{FileBased, TypedPath}
 import js7.data.workflow.{Workflow, WorkflowPath}

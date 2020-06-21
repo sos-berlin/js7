@@ -16,7 +16,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.ScalaUtils._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.base.web.Uri
 import js7.common.akkautils.ReceiveLoggingActor

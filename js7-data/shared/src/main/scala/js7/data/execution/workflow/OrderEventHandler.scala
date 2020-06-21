@@ -1,7 +1,7 @@
 package js7.data.execution.workflow
 
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.RichPartialFunction
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.job.JobKey

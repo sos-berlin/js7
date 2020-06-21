@@ -3,7 +3,7 @@ package js7.data.execution.workflow
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.ScalaUtils._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.ScalazStyle._
 import js7.base.utils.Strings.RichString
 import js7.data.Problems.{CancelChildOrderProblem, CancelStartedOrderProblem}

@@ -7,7 +7,7 @@ import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer.syntax._
-import js7.base.utils.ScalaUtils.RichThrowableEither
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.ScodecUtils._
 import js7.base.web.Uri
 import js7.common.guice.GuiceImplicits.RichInjector

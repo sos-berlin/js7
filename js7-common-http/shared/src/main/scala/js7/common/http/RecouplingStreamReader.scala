@@ -7,7 +7,7 @@ import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.session.SessionApi
 import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.RichThrowable
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.http.RecouplingStreamReader._
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.data.event.EventSeqTornProblem

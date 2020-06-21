@@ -10,7 +10,7 @@ import io.circe.{CursorOp, Decoder, DecodingFailure, Encoder, HCursor, Json, Jso
 import js7.base.circeutils.AnyJsonCodecs.anyToJson
 import js7.base.generic.GenericString
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils._
+import js7.base.utils.ScalaUtils.syntax._
 import scala.collection.immutable.SeqMap
 import shapeless.Lazy
 

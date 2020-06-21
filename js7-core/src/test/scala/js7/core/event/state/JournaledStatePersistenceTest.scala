@@ -14,7 +14,7 @@ import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
 import js7.base.utils.Collections.implicits._
-import js7.base.utils.ScalaUtils._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkautils.ProvideActorSystem
 import js7.common.event.{EventIdClock, EventIdGenerator}
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j

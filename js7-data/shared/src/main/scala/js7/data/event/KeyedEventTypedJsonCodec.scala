@@ -6,7 +6,8 @@ import js7.base.circeutils.typed.TypedJsonCodec.{TypeFieldName, UnknownClassForJ
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.Collections._
 import js7.base.utils.Collections.implicits.RichPairTraversable
-import js7.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
+import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.implicitClass
 import scala.reflect.ClassTag
 
 /**

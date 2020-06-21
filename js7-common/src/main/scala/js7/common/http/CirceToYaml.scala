@@ -5,7 +5,7 @@ import io.circe.{Encoder, Json, Printer}
 import js7.base.circeutils.AnyJavaJsonCodecs.jsonToJava
 import js7.base.circeutils.AnyJsonCodecs.anyToJson
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.RichThrowable
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SideEffect.ImplicitSideEffect
 import org.yaml.snakeyaml.DumperOptions.FlowStyle
 import org.yaml.snakeyaml.nodes.Tag

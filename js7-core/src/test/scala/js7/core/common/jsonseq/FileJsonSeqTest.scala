@@ -9,7 +9,7 @@ import java.nio.file.Files
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.time.{Stopwatch, Timestamp}
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.ScalaUtils.RichThrowableEither
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.FileUtils.implicits._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.FileUtils.withTemporaryFile

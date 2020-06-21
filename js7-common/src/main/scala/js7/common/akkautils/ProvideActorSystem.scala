@@ -4,7 +4,7 @@ import com.typesafe.config.Config
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer.syntax._
 import js7.base.utils.HasCloser
-import js7.base.utils.ScalaUtils.RichJavaClass
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkautils.Akkas.newActorSystem
 import js7.common.akkautils.ProvideActorSystem._
 import js7.common.scalautil.Futures.implicits._

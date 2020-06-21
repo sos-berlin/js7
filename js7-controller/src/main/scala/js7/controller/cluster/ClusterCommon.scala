@@ -11,7 +11,7 @@ import js7.base.generic.Completed
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.ScalaUtils._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
 import js7.common.akkahttp.https.HttpsConfig
 import js7.common.scalautil.Logger

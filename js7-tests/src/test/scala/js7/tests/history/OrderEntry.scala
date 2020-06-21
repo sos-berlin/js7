@@ -2,7 +2,7 @@ package js7.tests.history
 
 import io.circe.{Decoder, Encoder, Json}
 import js7.base.time.Timestamp
-import js7.base.utils.ScalaUtils.RichJavaClass
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.order.Outcome.Completed
 import js7.data.order.{OrderId, Outcome}
 import js7.data.system.StdoutOrStderr

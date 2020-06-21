@@ -9,7 +9,7 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Json, JsonObject}
 import js7.base.auth.ValidUserPermission
 import js7.base.circeutils.CirceUtils._
-import js7.base.utils.ScalaUtils.RichThrowable
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.CirceJsonOrYamlSupport._
 import js7.common.akkahttp.StandardMarshallers._
 import js7.common.akkahttp.html.HtmlDirectives.htmlPreferred

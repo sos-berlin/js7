@@ -24,7 +24,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.FutureCompletion
 import js7.base.utils.FutureCompletion.syntax._
 import js7.base.utils.IntelliJUtils.intelliJuseImport
-import js7.base.utils.ScalaUtils.{RichJavaClass, RichThrowable, _}
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.ScalazStyle._
 import js7.common.akkahttp.AkkaHttpServerUtils.{accept, completeTask}
 import js7.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
@@ -50,6 +50,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.reflect.runtime.universe._
+import scala.util.chaining._
 import scala.util.control.NonFatal
 
 /**

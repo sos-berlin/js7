@@ -8,7 +8,7 @@ import akka.http.scaladsl.unmarshalling.{FromStringUnmarshaller, Unmarshaller}
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.RichThrowable
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.http.CirceJsonSupport.jsonMarshaller
 import js7.common.http.StreamingSupport.AkkaObservable
 import js7.common.scalautil.Logger

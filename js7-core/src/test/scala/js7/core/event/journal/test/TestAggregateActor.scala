@@ -3,7 +3,8 @@ package js7.core.event.journal.test
 import akka.Done
 import akka.actor.{ActorRef, Status}
 import js7.base.generic.Accepted
-import js7.base.utils.ScalaUtils.{RichThrowable, cast}
+import js7.base.utils.ScalaUtils.cast
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.Logger
 import js7.core.event.journal.test.TestAggregateActor._
 import js7.core.event.journal.{JournalActor, JournalConf, KeyedJournalingActor}

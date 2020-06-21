@@ -4,7 +4,7 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
-import js7.base.utils.ScalaUtils.RichThrowableEither
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentRefPath
 import js7.data.command.CancelMode
 import js7.data.event.{KeyedEvent, Stamped}

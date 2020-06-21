@@ -12,7 +12,7 @@ import js7.base.problem.Checked
 import js7.base.process.ProcessSignal.SIGTERM
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer.syntax._
-import js7.base.utils.ScalaUtils._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SideEffect.ImplicitSideEffect
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.core.command.CommandMeta

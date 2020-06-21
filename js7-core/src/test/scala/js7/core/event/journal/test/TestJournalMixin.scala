@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.ScalaUtils.{RichJavaClass, RichThrowableEither}
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkautils.Akkas.newActorSystem
 import js7.common.akkautils.DeadLetterActor
 import js7.common.scalautil.FileUtils.deleteDirectoryRecursively

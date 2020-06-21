@@ -3,7 +3,7 @@ package js7.common.internet
 import java.net.{InetAddress, InetSocketAddress}
 import js7.base.convert.As
 import js7.base.convert.As.convert
-import js7.base.utils.ScalaUtils.RichAny
+import js7.base.utils.ScalaUtils.syntax._
 import scala.util.control.NonFatal
 
 /**

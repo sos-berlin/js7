@@ -6,7 +6,8 @@ import js7.base.monixutils.MonixBase.closeableIteratorToObservable
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.CloseableIterator
-import js7.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
+import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils._
 import js7.base.utils.ScalazStyle._
 import js7.common.event.RealEventWatch._
 import js7.common.scalautil.Logger

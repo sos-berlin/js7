@@ -12,7 +12,7 @@ import js7.base.problem.Checked._
 import js7.base.problem.{Problem, ProblemException}
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.ScalaUtils.RichThrowableEither
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.ScodecUtils.RichByteVector
 import js7.common.event.{PositionAnd, TornException}
 import js7.common.scalautil.FileUtils.syntax.RichPath

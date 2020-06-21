@@ -20,7 +20,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
-import js7.base.utils.ScalaUtils.{RichJavaClass, RichThrowable}
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{Closer, SetOnce}
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.event.{EventIdGenerator, StrictEventWatch}

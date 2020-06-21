@@ -8,7 +8,7 @@ import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer.syntax.{RichClosersAny, RichClosersAutoCloseable}
-import js7.base.utils.ScalaUtils.RichJavaClass
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.ScalazStyle._
 import js7.base.utils.Strings.RichString
 import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}

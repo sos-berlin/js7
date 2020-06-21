@@ -4,7 +4,7 @@ import com.google.common.base.Ascii.{LF, RS}
 import io.circe.Json
 import java.io.{ByteArrayInputStream, InputStream}
 import java.nio.charset.StandardCharsets.{US_ASCII, UTF_8}
-import js7.base.utils.ScalaUtils.RichThrowable
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.event.PositionAnd
 import js7.common.scalautil.FileUtils.withTemporaryFile
 import js7.core.common.jsonseq.InputStreamJsonSeqReaderTest._

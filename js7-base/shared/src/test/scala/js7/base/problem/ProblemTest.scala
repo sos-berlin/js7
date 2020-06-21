@@ -4,7 +4,7 @@ import cats.syntax.semigroup._
 import io.circe.Decoder
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.ProblemTest._
-import js7.base.utils.ScalaUtils.RichThrowable
+import js7.base.utils.ScalaUtils.syntax._
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 import scala.util.Try

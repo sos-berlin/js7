@@ -22,7 +22,7 @@ import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
-import js7.base.utils.ScalaUtils.RichThrowableEither
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
 import js7.common.event.EventIdClock
 import js7.common.http.AkkaHttpClient.HttpException

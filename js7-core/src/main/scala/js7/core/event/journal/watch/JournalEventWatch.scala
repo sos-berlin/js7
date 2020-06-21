@@ -9,7 +9,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.implicits._
-import js7.base.utils.ScalaUtils.RichThrowable
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{CloseableIterator, SetOnce}
 import js7.common.event.{PositionAnd, RealEventWatch}
 import js7.common.scalautil.Logger

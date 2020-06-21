@@ -1,7 +1,7 @@
 package js7.agent.scheduler
 
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{Event, EventId, JournalState, JournaledState, KeyedEvent}

@@ -16,7 +16,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.{closeOnError, multipleAutoClosing}
 import js7.base.utils.Closer.syntax.RichClosersAny
 import js7.base.utils.HasCloser
-import js7.base.utils.ScalaUtils.RichThrowable
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.ScalazStyle._
 import js7.base.web.Uri
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j

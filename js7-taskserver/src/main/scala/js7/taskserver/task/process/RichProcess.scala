@@ -12,7 +12,7 @@ import js7.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.HasCloser
-import js7.base.utils.ScalaUtils.RichThrowable
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.log.LogLevel
 import js7.common.log.LogLevel.LevelScalaLogger
 import js7.common.process.Processes._

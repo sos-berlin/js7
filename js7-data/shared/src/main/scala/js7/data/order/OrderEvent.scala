@@ -6,7 +6,7 @@ import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Problem
 import js7.base.time.Timestamp
-import js7.base.utils.ScalaUtils.RichJavaClass
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.ScalazStyle._
 import js7.base.utils.Strings.RichString
 import js7.data.agent.AgentRefPath

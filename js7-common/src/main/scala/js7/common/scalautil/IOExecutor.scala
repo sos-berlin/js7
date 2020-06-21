@@ -3,7 +3,7 @@ package js7.common.scalautil
 import com.typesafe.config.Config
 import java.util.concurrent.{Executor, LinkedBlockingQueue, SynchronousQueue, ThreadFactory, ThreadPoolExecutor}
 import js7.base.convert.As.StringAsIntOrUnlimited
-import js7.base.utils.ScalaUtils.RichThrowable
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.configutils.Configs.ConvertibleConfig
 import js7.common.scalautil.Futures.promiseFuture
 import js7.common.scalautil.IOExecutor.{logger, _}

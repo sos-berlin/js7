@@ -13,7 +13,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections._
 import js7.base.utils.Collections.implicits._
 import js7.base.utils.Memoizer
-import js7.base.utils.ScalaUtils._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.crypt.FileBasedVerifier
 import js7.data.filebased.Repo.Entry
 import js7.data.filebased.RepoEvent.{FileBasedAdded, FileBasedAddedOrChanged, FileBasedChanged, FileBasedDeleted, FileBasedEvent, VersionAdded}

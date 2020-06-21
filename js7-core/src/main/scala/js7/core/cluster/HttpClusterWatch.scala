@@ -6,7 +6,7 @@ import js7.base.auth.UserAndPassword
 import js7.base.generic.Completed
 import js7.base.problem.Checked
 import js7.base.session.HttpSessionApi
-import js7.base.utils.ScalaUtils.RichThrowable
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.HttpClient.HttpException
 import js7.base.web.Uri
 import js7.common.akkahttp.https.HttpsConfig

@@ -1,7 +1,7 @@
 package js7.controller
 
 import js7.base.problem.Checked
-import js7.base.utils.ScalaUtils.RichPartialFunction
+import js7.base.utils.ScalaUtils.syntax._
 import js7.controller.data.ControllerState
 import js7.core.filebased.FileBasedApi
 import js7.data.filebased.{FileBased, FileBasedId, FileBasedsOverview, Repo, TypedPath}

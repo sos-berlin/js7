@@ -13,7 +13,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.problem.Problems.DuplicateKey
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.RichThrowableEither
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._

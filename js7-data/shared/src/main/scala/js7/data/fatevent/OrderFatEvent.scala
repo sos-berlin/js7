@@ -4,7 +4,7 @@ import io.circe.generic.JsonCodec
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.time.Timestamp
-import js7.base.utils.ScalaUtils.RichJavaClass
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.Strings.RichString
 import js7.base.web.Uri
 import js7.data.agent.AgentRefPath

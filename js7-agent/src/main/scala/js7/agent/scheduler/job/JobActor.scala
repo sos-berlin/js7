@@ -14,7 +14,7 @@ import js7.base.process.ProcessSignal
 import js7.base.process.ProcessSignal.SIGKILL
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.implicits.InsertableMutableMap
-import js7.base.utils.ScalaUtils.RichThrowable
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.process.Processes.ShellFileAttributes
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Logger

@@ -10,7 +10,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.FutureCompletion
 import js7.base.utils.FutureCompletion.syntax._
 import js7.base.utils.IntelliJUtils.intelliJuseImport
-import js7.base.utils.ScalaUtils.RichThrowable
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
 import js7.common.akkahttp.ConcurrentRequestLimiter
 import js7.common.akkahttp.EventSeqStreamingSupport.NonEmptyEventSeqJsonStreamingSupport

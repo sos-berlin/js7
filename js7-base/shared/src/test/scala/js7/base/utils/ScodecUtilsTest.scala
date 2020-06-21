@@ -2,7 +2,7 @@ package js7.base.utils
 
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.problem.Problem
-import js7.base.utils.ScalaUtils.RichThrowableEither
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.ScodecUtils._
 import org.scalatest.freespec.AnyFreeSpec
 import scodec.bits.ByteVector

@@ -3,7 +3,7 @@ package js7.core.event.journal.test
 import akka.actor.{ActorContext, ActorRef}
 import js7.base.problem.Checked._
 import js7.base.utils.DuplicateKeyException
-import js7.base.utils.ScalaUtils.RichPartialFunction
+import js7.base.utils.ScalaUtils.syntax._
 import js7.core.event.journal.KeyedJournalingActor
 import js7.core.event.journal.data.RecoveredJournalingActors
 import js7.core.event.journal.recover.JournalRecoverer

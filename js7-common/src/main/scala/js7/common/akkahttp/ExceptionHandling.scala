@@ -6,7 +6,7 @@ import akka.http.scaladsl.server.Directives.{complete, extractRequest}
 import akka.http.scaladsl.server.{ExceptionHandler, Route}
 import com.typesafe.config.Config
 import js7.base.problem.{Problem, ProblemException}
-import js7.base.utils.ScalaUtils.RichThrowable
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.ExceptionHandling._
 import js7.common.akkahttp.StandardMarshallers._
 import js7.common.scalautil.Logger

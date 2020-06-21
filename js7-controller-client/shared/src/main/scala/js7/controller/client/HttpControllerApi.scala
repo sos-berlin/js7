@@ -7,7 +7,7 @@ import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.Completed
 import js7.base.problem.Checked
 import js7.base.session.{HttpSessionApi, SessionApi}
-import js7.base.utils.ScalaUtils._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.{HttpClient, Uri}
 import js7.controller.client.HttpControllerApi._
 import js7.controller.data.{ControllerCommand, ControllerOverview, ControllerSnapshots}

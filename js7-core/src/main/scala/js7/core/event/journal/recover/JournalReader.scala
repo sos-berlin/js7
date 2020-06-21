@@ -6,7 +6,7 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Checked._
 import js7.base.utils.AutoClosing.closeOnError
 import js7.base.utils.IntelliJUtils.intelliJuseImport
-import js7.base.utils.ScalaUtils._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.ScalazStyle._
 import js7.base.utils.Strings.RichString
 import js7.common.event.PositionAnd

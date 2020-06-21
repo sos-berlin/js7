@@ -5,7 +5,7 @@ import java.nio.file.{Files, Path}
 import js7.base.time.ScalaTime._
 import js7.base.time.{Stopwatch, Timestamp}
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.ScalaUtils.RichJavaClass
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.event.PositionAnd
 import js7.common.scalautil.Logger
 import js7.common.utils.ByteUnits.toKBGB

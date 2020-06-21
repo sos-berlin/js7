@@ -9,7 +9,8 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.emptyToNone
 import js7.base.utils.Collections.implicits.{RichIndexedSeq, RichPairTraversable}
-import js7.base.utils.ScalaUtils.{RichJavaClass, reuseIfEqual}
+import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.reuseIfEqual
 import js7.base.utils.ScalazStyle.OptionRichBoolean
 import js7.base.utils.Strings._
 import js7.data.agent.AgentRefPath

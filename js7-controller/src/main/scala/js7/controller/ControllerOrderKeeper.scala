@@ -20,7 +20,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.implicits._
 import js7.base.utils.IntelliJUtils.intelliJuseImport
-import js7.base.utils.ScalaUtils.{RichPartialFunction, RichThrowable}
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.ScalazStyle._
 import js7.base.utils.SetOnce
 import js7.base.utils.StackTraces.StackTraceThrowable

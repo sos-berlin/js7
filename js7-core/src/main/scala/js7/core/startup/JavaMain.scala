@@ -1,7 +1,7 @@
 package js7.core.startup
 
 import com.typesafe.config.Config
-import js7.base.utils.ScalaUtils.RichThrowable
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.configutils.Configs.ConvertibleConfig
 import js7.common.log.Log4j
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j

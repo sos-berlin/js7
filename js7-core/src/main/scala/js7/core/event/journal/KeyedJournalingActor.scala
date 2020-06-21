@@ -3,7 +3,7 @@ package js7.core.event.journal
 import js7.base.generic.Accepted
 import js7.base.problem.Checked
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.ScalaUtils.RichJavaClass
+import js7.base.utils.ScalaUtils.syntax._
 import js7.core.event.journal.KeyedJournalingActor._
 import js7.data.event.{AnyKeyedEvent, Event, JournaledState, KeyedEvent, Stamped}
 import monix.eval.Task

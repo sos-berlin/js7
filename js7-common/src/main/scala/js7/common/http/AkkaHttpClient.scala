@@ -24,7 +24,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
 import js7.base.utils.ByteVectorToLinesObservable
 import js7.base.utils.MonixAntiBlocking.executeOn
-import js7.base.utils.ScalaUtils._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.ScalazStyle._
 import js7.base.utils.Strings.RichString
 import js7.base.web.{HttpClient, Uri}

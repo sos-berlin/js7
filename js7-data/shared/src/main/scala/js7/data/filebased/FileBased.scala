@@ -1,6 +1,6 @@
 package js7.data.filebased
 
-import js7.base.utils.ScalaUtils.RichJavaClass
+import js7.base.utils.ScalaUtils.syntax._
 
 /**
   * @author Joacim Zschimmer

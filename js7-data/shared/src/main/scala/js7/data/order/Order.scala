@@ -7,7 +7,8 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
-import js7.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
+import js7.base.utils.ScalaUtils._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.ScalazStyle.OptionRichBoolean
 import js7.data.agent.AgentRefPath
 import js7.data.command.CancelMode

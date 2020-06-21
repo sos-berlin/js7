@@ -3,6 +3,7 @@ package js7.agent
 import js7.agent.data.event.AgentControllerEvent
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{Event, EventId, JournaledState, KeyedEvent}
 import js7.data.order.OrderEvent.{OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten}

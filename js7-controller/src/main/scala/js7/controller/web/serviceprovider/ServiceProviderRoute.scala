@@ -5,7 +5,7 @@ import com.google.inject.Injector
 import java.util.ServiceLoader
 import js7.base.utils.Collections.implicits._
 import js7.base.utils.Lazy
-import js7.base.utils.ScalaUtils.RichJavaClass
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.StandardDirectives.combineRoutes
 import js7.common.scalautil.Logger

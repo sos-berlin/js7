@@ -7,7 +7,7 @@ import js7.agent.scheduler.AgentEvent
 import js7.base.crypt.silly.{SillySignature, SillySigner}
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.{autoClosing, multipleAutoClosing}
-import js7.base.utils.ScalaUtils.RichThrowableEither
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.Logger

@@ -7,7 +7,7 @@ import js7.base.monixutils.MonixBase.syntax.RichScheduler
 import js7.base.problem.{Checked, ProblemException}
 import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.ScalaUtils.RichThrowable
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.common.akkautils.ReceiveLoggingActor
 import js7.common.scalautil.Futures.promiseFuture

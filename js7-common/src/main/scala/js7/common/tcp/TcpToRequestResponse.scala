@@ -5,7 +5,7 @@ import akka.actor._
 import akka.io.{IO, Tcp}
 import akka.util.ByteString
 import java.net.InetSocketAddress
-import js7.base.utils.ScalaUtils.RichThrowable
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.Futures.catchInFuture
 import js7.common.scalautil.Logger
 import js7.common.tcp.TcpToRequestResponse._

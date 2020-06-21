@@ -8,7 +8,7 @@ import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.FutureCompletion
 import js7.base.utils.FutureCompletion.syntax._
-import js7.base.utils.ScalaUtils.{RichAny, RichThrowableEither}
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.AkkaHttpServerUtils.accept
 import js7.common.akkahttp.StandardMarshallers._
 import js7.common.event.{EventWatch, PositionAnd}
@@ -24,6 +24,7 @@ import js7.data.event.JournalSeparators.{EndOfJournalFileMarker, HeartbeatMarker
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.duration.FiniteDuration
+import scala.util.chaining._
 import scodec.bits.ByteVector
 
 /** Returns the content of an old or currently written journal file as a live stream.

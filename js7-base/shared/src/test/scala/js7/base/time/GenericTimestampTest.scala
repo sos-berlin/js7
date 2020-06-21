@@ -2,7 +2,7 @@ package js7.base.time
 
 import io.circe.{Decoder, Encoder}
 import js7.base.circeutils.CirceUtils._
-import js7.base.utils.ScalaUtils._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.tester.CirceJsonTester.testJson
 import io.circe.{Decoder, Encoder}
 import io.circe.syntax.EncoderOps

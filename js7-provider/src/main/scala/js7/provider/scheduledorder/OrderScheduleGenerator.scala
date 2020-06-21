@@ -3,7 +3,7 @@ package js7.provider.scheduledorder
 import com.typesafe.config.Config
 import js7.base.generic.Completed
 import js7.base.time.Timestamp
-import js7.base.utils.ScalaUtils.RichThrowable
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.Logger
 import js7.common.time.JavaTimeConverters._
 import js7.data.order.FreshOrder

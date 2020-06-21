@@ -5,7 +5,7 @@ import io.circe.Decoder
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.ScalaUtils.RichThrowable
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.base.web.HttpClient
 import js7.common.http.RecouplingStreamReader

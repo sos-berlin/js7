@@ -1,6 +1,6 @@
 package js7.controller.cluster
 
-import js7.base.utils.ScalaUtils.RichThrowable
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.Logger
 import js7.controller.cluster.StateBuilderAndAccessor._
 import js7.data.event.{JournaledState, JournaledStateBuilder}

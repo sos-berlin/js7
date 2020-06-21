@@ -5,7 +5,7 @@ import js7.base.exceptions.StandardPublicException
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils._
-import js7.base.utils.ScalaUtils.implicits._
+import js7.base.utils.ScalaUtils.syntax._
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
 import scala.reflect.ClassTag

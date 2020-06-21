@@ -2,7 +2,7 @@ package js7.common.akkahttp.https
 
 import java.security.cert.{CertificateException, X509Certificate}
 import javax.net.ssl.X509TrustManager
-import js7.base.utils.ScalaUtils.RichThrowable
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.https.CompositeX509TrustManager._
 import js7.common.scalautil.Logger
 import scala.util.{Failure, Success}

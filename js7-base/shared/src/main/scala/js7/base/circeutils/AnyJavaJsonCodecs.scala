@@ -1,7 +1,7 @@
 package js7.base.circeutils
 
 import io.circe.Json
-import js7.base.utils.ScalaUtils.RichJavaClass
+import js7.base.utils.ScalaUtils.syntax._
 import scala.collection.immutable.SeqMap
 import scala.jdk.CollectionConverters._
 

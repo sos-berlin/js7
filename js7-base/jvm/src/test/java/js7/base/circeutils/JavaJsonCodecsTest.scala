@@ -9,7 +9,7 @@ import java.time.{Duration, Instant}
 import js7.base.circeutils.CirceUtils._
 import js7.base.circeutils.JavaJsonCodecs._
 import js7.base.utils.IntelliJUtils.intelliJuseImport
-import js7.base.utils.ScalaUtils._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._

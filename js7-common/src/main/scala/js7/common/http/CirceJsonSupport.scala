@@ -9,7 +9,7 @@ import io.circe.{Decoder, Encoder, Json, Printer, jawn}
 import js7.base.circeutils.CirceUtils._
 import js7.base.circeutils.CirceUtils.implicits.CompactPrinter
 import js7.base.problem.Checked._
-import js7.base.utils.ScalaUtils._
+import js7.base.utils.ScalaUtils.syntax._
 
 object CirceJsonSupport
 {

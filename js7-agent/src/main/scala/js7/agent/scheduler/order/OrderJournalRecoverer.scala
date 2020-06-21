@@ -10,7 +10,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.utils.Closer.syntax._
 import js7.base.utils.Collections.implicits.{InsertableMutableMap, RichTraversable}
 import js7.base.utils.HasCloser
-import js7.base.utils.ScalaUtils.RichPartialFunction
+import js7.base.utils.ScalaUtils.syntax._
 import js7.core.event.journal.JournalActor
 import js7.core.event.journal.data.{JournalMeta, RecoveredJournalingActors}
 import js7.core.event.journal.recover.JournalRecoverer

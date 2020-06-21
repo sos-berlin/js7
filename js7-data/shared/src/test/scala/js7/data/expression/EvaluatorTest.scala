@@ -3,7 +3,7 @@ package js7.data.expression
 import fastparse.NoWhitespace._
 import fastparse._
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.RichPartialFunction
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.expression.Evaluator.{BooleanValue, NumericValue, StringValue, Value}
 import js7.data.expression.Expression._
 import js7.data.expression.Scope.ConstantExpressionRequiredProblem

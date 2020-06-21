@@ -1,7 +1,7 @@
 package js7.common.utils
 
 import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.RichThrowable
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.Logger
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._

@@ -13,6 +13,7 @@ import java.net.InetSocketAddress
 import js7.base.generic.Completed
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.ScalazStyle._
 import js7.base.utils.SetOnce
 import js7.common.akkahttp.https.Https.loadSSLContext

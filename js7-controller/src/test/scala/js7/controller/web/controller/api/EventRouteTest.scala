@@ -11,7 +11,7 @@ import js7.base.circeutils.CirceUtils.RichCirceString
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
-import js7.base.utils.ScalaUtils.RichThrowableEither
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.event.collector.{EventCollector, EventDirectives}
 import js7.common.http.AkkaHttpUtils.RichHttpResponse

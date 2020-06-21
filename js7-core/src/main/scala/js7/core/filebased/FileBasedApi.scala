@@ -1,7 +1,7 @@
 package js7.core.filebased
 
 import js7.base.problem.Checked
-import js7.base.utils.ScalaUtils.RichPartialFunction
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.filebased.{FileBased, FileBasedsOverview, TypedPath}
 import monix.eval.Task
 
