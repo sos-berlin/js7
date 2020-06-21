@@ -176,7 +176,7 @@ final class CommandLineArgumentsTest extends AnyFreeSpec {
       .getMessage shouldEqual "Unknown command line arguments: -option -unknown=333"
   }
 
-  "Ignore CR at and of last argument" in {
+  "Ignore CR at end of last argument" in {
     // In case an unexperienced user lets end the shell script line with "\r\n"
     intercept[IllegalArgumentException] {
       parse(List("-option\r")) { _.boolean("-option") }

@@ -222,7 +222,7 @@ final class Cluster[S <: JournaledState[S]: Diff](
                 if (truncated) {
                   // TODO Recovering may be omitted because the new active node has written a snapshot immediately after failover
                   // May take a long time !!!
-                  logger.debug("Recovering again due to shortend journal after failover")
+                  logger.info("Recovering again from properly truncated journal file")
                   trunkRecovered = JournaledStateRecoverer.recover[S](
                     journalMeta, S.empty, recovered.newStateBuilder, config /*, runningSince=???*/)
                   val truncatedRecoveredJournalFile = trunkRecovered.recoveredJournalFile
