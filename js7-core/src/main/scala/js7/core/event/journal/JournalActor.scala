@@ -241,6 +241,7 @@ extends Actor with Stash
       }
 
     case Input.TakeSnapshot if !switchedOver =>
+      logger.debug(s"TakeSnapshot ${sender()}")
       snapshotRequesters += sender()
       tryTakeSnapshotIfRequested()
 
@@ -268,6 +269,7 @@ extends Actor with Stash
       commitWithoutAcknowledgement(passiveLost)
 
     case Input.Terminate =>
+      logger.debug("Terminate")
       if (!switchedOver) {
         commit(terminating = true)
         closeEventWriter()
