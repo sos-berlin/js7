@@ -24,7 +24,6 @@ import scala.annotation.tailrec
 import scala.collection.immutable.SortedMap
 import scala.concurrent.Promise
 import scala.concurrent.duration.FiniteDuration
-import scala.util.control.NoStackTrace
 import scodec.bits.ByteVector
 
 /**
@@ -50,13 +49,13 @@ with JournalingObserver
   @volatile
   private var currentEventReaderOption: Option[CurrentEventReader] = None
   @volatile
-  private var nextEventReaderPromise: Option[(EventId, Promise[CurrentEventReader])] = None
+  private var nextEventReaderPromise: Option[(EventId, Promise[Option[CurrentEventReader]])] = None
 
   def close() = {
     afterEventIdToHistoric.values foreach (_.close())
     currentEventReaderOption foreach (_.close())
     for (o <- nextEventReaderPromise)
-      o._2.tryFailure(new IllegalStateException("JournalEventWatch has been closed") with NoStackTrace)
+      o._2.trySuccess(None)
   }
 
   override def whenStarted = startedPromise.future
@@ -94,7 +93,7 @@ with JournalingObserver
         tornLengthAndEventId, flushedLengthAndEventId, config)
       currentEventReaderOption = Some(currentEventReader)
       for ((eventId, promise) <- nextEventReaderPromise if eventId == tornLengthAndEventId.value)
-        promise.success(currentEventReader)
+        promise.success(Some(currentEventReader))
     }
     onFileWritten(flushedLengthAndEventId.position)
     onEventsCommitted(flushedLengthAndEventId.value)  // Notify about already written events
@@ -109,7 +108,7 @@ with JournalingObserver
     //  Können wir auf onJournalingEnded verzichten zu Gunsten von onJournalingStarted ?
     for (o <- currentEventReaderOption) {
       logger.debug(s"onJournalingEnded ${o.journalFile.getFileName} fileLength=$fileLength")
-      nextEventReaderPromise = Some(o.lastEventId -> Promise[CurrentEventReader]())
+      nextEventReaderPromise = Some(o.lastEventId -> Promise())
       o.onJournalingEnded(fileLength)
     }
 
@@ -237,9 +236,12 @@ with JournalingObserver
           .filter(_.tornEventId == fileEventId)
           .orElse(afterEventIdToHistoric.get(fileEventId).map(_.eventReader))
           .toRight(Problem(s"Unknown journal file=$fileEventId"))
+          .map(Some.apply)
           .map(Observable.pure)
-    }).map(_.flatMap(_
-      .observeFile(position, timeout, markEOF = markEOF, onlyLastOfChunk = onlyLastOfChunk)))
+    }).map(x => x.flatMap {
+      case None => Observable.empty  // JournalEventWatch has been closed
+      case Some(o) => o.observeFile(position, timeout, markEOF = markEOF, onlyLastOfChunk = onlyLastOfChunk)
+    })
 
   private def lastEventId =
     currentEventReaderOption match {
