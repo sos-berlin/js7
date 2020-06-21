@@ -24,6 +24,7 @@ import js7.base.utils.ScalaUtils.{RichPartialFunction, RichThrowable}
 import js7.base.utils.ScalazStyle._
 import js7.base.utils.SetOnce
 import js7.base.utils.StackTraces.StackTraceThrowable
+import js7.base.utils.Strings._
 import js7.common.akkautils.Akkas.encodeAsActorName
 import js7.common.akkautils.SupervisorStrategies
 import js7.common.configutils.Configs.ConvertibleConfig
@@ -139,7 +140,7 @@ with MainJournalingActor[ControllerState, Event]
 
     def onStillShuttingDown() =
       logger.info(s"Still shutting down, waiting for ${agentRegister.runningActorCount} AgentDrivers" +
-        (if (!snapshotTaken) " and the snapshot" else ""))
+        (!snapshotTaken ?: " and the snapshot"))
 
     def onSnapshotTaken(): Unit =
       if (shuttingDown) {
@@ -149,28 +150,30 @@ with MainJournalingActor[ControllerState, Event]
 
     def continue() =
       if (shuttingDown) {
-        logger.trace(s"shutdown.continue: ${agentRegister.runningActorCount} AgentDrivers${if (snapshotTaken) ", snapshot taken" else ""}")
+        logger.trace(s"shutdown.continue: ${agentRegister.runningActorCount} AgentDrivers${snapshotTaken ?: ", snapshot taken"}")
         if (!terminatingAgentDrivers) {
           terminatingAgentDrivers = true
           agentRegister.values foreach {
             _.actor ! AgentDriver.Input.Terminate
           }
         }
-        if (agentRegister.runningActorCount == 0 && !takingSnapshot) {
-          takingSnapshot = true
-          journalActor ! JournalActor.Input.TakeSnapshot
-        }
-        if (snapshotTaken && !terminatingJournal) {
-          // The event forces the cluster to acknowledge this event and the snapshot taken
-          terminatingJournal = true
-          persistKeyedEventTask(NoKey <-: ControllerShutDown())((_, _) => Completed)
-            .runToFuture.onComplete { tried =>
-              tried match {
-                case Success(Right(Completed)) =>
-                case other => logger.error(s"While shutting down: $other")
+        if (agentRegister.runningActorCount == 0) {
+          if (!takingSnapshot) {
+            takingSnapshot = true
+            journalActor ! JournalActor.Input.TakeSnapshot
+          }
+          if (snapshotTaken && !terminatingJournal) {
+            // The event forces the cluster to acknowledge this event and the snapshot taken
+            terminatingJournal = true
+            persistKeyedEventTask(NoKey <-: ControllerShutDown())((_, _) => Completed)
+              .runToFuture.onComplete { tried =>
+                tried match {
+                  case Success(Right(Completed)) =>
+                  case other => logger.error(s"While shutting down: $other")
+                }
+                journalActor ! JournalActor.Input.Terminate
               }
-              journalActor ! JournalActor.Input.Terminate
-            }
+          }
         }
       }
   }
