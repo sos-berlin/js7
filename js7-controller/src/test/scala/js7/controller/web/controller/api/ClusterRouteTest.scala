@@ -10,6 +10,7 @@ import js7.data.cluster.ClusterState
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.Future
 
 /**
   * @author Joacim Zschimmer
@@ -18,7 +19,7 @@ final class ClusterRouteTest extends AnyFreeSpec with RouteTester with ClusterRo
 {
   protected def scheduler = Scheduler.global
 
-  protected def isShuttingDown = false
+  protected def whenShuttingDown = Future.never
 
   protected def clusterState = Task.pure(ClusterState.Empty)
 

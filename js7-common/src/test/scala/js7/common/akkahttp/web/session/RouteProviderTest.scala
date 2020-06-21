@@ -15,6 +15,7 @@ import js7.common.http.CirceJsonSupport._
 import js7.common.scalautil.MonixUtils.syntax._
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.Future
 import scala.concurrent.duration._
 
 /**
@@ -24,7 +25,7 @@ final class RouteProviderTest extends AnyFreeSpec with RouteProvider with Scalat
 
   protected type Session = MySession
 
-  protected def isShuttingDown = false
+  protected def whenShuttingDown = Future.never
   implicit protected def scheduler = Scheduler.global
   protected val config = ConfigFactory.parseString("js7.web.server.verbose-error-messages = on")
   protected lazy val sessionRegister = SessionRegister.start[MySession](system, MySession.apply, SessionRegister.TestConfig)

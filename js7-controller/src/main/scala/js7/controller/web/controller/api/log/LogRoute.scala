@@ -10,15 +10,19 @@ import com.typesafe.config.Config
 import java.nio.file.Files.{isReadable, isRegularFile}
 import java.nio.file.Path
 import js7.base.auth.ValidUserPermission
+import js7.base.utils.FutureCompletion
+import js7.base.utils.FutureCompletion.syntax._
 import js7.base.utils.ScalazStyle._
 import js7.common.akkahttp.AkkaHttpServerUtils.passIf
 import js7.common.akkahttp.StandardMarshallers.logAkkaStreamErrorToWebLogAndIgnore
 import js7.common.files.GrowingFileObservable
 import js7.common.http.AkkaHttpUtils.AkkaByteVector
 import js7.common.http.StreamingSupport._
+import js7.common.scalautil.Logger
 import js7.common.time.JavaTimeConverters._
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.log.LogRoute._
+import monix.eval.Task
 import monix.execution.Scheduler
 
 trait LogRoute extends ControllerRouteProvider
@@ -27,8 +31,10 @@ trait LogRoute extends ControllerRouteProvider
   protected def config: Config
   protected def currentLogFile: Path
 
+  private implicit def implicitScheduler = scheduler
+
+  private lazy val whenShuttingDownCompletion = new FutureCompletion(whenShuttingDown)
   private lazy val pollDuration = config.getDuration("js7.web.server.services.log.poll-interval").toFiniteDuration
-  implicit private def implicitScheduler = scheduler
 
   lazy val logRoute: Route =
     authorizedUser(ValidUserPermission)(_ =>
@@ -45,11 +51,14 @@ trait LogRoute extends ControllerRouteProvider
           contentType,  // Ignore requester's `Accept` header
           logAkkaStreamErrorToWebLogAndIgnore(
             new GrowingFileObservable(file, endless ? pollDuration)
+              .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
+                Task { logger.debug("whenShuttingDown completed") })
               .map(_.toByteString)
               .toAkkaSource))))
 }
 
 object LogRoute
 {
+  private val logger = Logger(getClass)
   private val contentType = `text/plain(UTF-8)`
 }

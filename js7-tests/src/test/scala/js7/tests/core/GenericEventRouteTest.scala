@@ -34,6 +34,7 @@ import monix.reactive.Observable
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
+import scala.concurrent.{Future, Promise}
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.reflect.runtime.universe._
@@ -78,7 +79,8 @@ final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll wit
   protected val gateKeeper = new GateKeeper(GateKeeper.Configuration.fromConfig(config, SimpleUser.apply))
   protected final val sessionRegister = SessionRegister.start[SimpleSession](
     actorSystem, SimpleSession.apply, SessionRegister.TestConfig)
-  @volatile protected var isShuttingDown = false
+  private val shuttingDown = Promise[Deadline]()
+  protected val whenShuttingDown = shuttingDown.future
 
   protected val eventWatch = new EventCollector.ForTest()  // TODO Use real JournalEventWatch
 
@@ -92,9 +94,9 @@ final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll wit
   private lazy val server = new AkkaWebServer with AkkaWebServer.HasUri {
     protected implicit def actorSystem = GenericEventRouteTest.this.actorSystem
     protected val config = GenericEventRouteTest.this.config
-    protected val scheduler = GenericEventRouteTest.this.scheduler
     protected val bindings = WebServerBinding.Http(new InetSocketAddress(InetAddress.getLoopbackAddress, findFreeTcpPort())) :: Nil
-    protected def newRoute(binding: WebServerBinding) = AkkaWebServer.BoundRoute(route)
+    protected def newRoute(binding: WebServerBinding, whenTerminating: Future[Deadline]) =
+      AkkaWebServer.BoundRoute(route, whenTerminating)
   }
 
   private lazy val api = new AkkaHttpClient {
@@ -227,16 +229,15 @@ final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll wit
       assert(result.isEmpty && t.elapsed > 0.1.second)
     }
 
-    "isShuttingDown completes observable" in {
+    "whenShuttingDown completes observable" in {
       val observableCompleted = getEventObservable(EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(99.s)))
         .foreach { _ => }
       sleep(10.ms)
       assert(!observableCompleted.isCompleted)
 
       // ShutDown service
-      isShuttingDown = true
-      sleep(100.ms)
-      assert(!observableCompleted.isCompleted)  // isShuttingDown is only checked after an event has been received !!! (to avoid a memory leak)
+      shuttingDown.success(Deadline.now)
+      observableCompleted await 99.s
 
       eventWatch.addStamped(ExtraEvent)
       observableCompleted.await(1.s)

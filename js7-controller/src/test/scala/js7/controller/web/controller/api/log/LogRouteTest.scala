@@ -22,6 +22,7 @@ import js7.common.scalautil.Futures.implicits._
 import js7.controller.web.controller.api.test.RouteTester
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.Future
 import scala.concurrent.duration._
 
 /**
@@ -29,7 +30,7 @@ import scala.concurrent.duration._
   */
 final class LogRouteTest extends AnyFreeSpec with RouteTester with LogRoute
 {
-  protected def isShuttingDown = false
+  protected def whenShuttingDown = Future.never
   protected def currentLogFile = requireNonNull/*call lazily!*/(_currentLogFile)
 
   override protected def config = ConfigFactory.parseString(

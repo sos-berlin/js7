@@ -20,6 +20,7 @@ import js7.common.scalautil.MonixUtils.syntax._
 import monix.eval.Task
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.{BeforeAndAfterAll, Suite}
+import scala.concurrent.Future
 
 trait SessionRouteTester extends BeforeAndAfterAll with ScalatestRouteTest with SessionRoute
 {
@@ -31,7 +32,7 @@ trait SessionRouteTester extends BeforeAndAfterAll with ScalatestRouteTest with 
 
   protected type Session = SimpleSession
 
-  protected final def isShuttingDown = false
+  protected final def whenShuttingDown = Future.never
   protected final val config = ConfigFactory.parseString("js7.web.server.verbose-error-messages = on")
 
   override def testConfig = ConfigFactory.parseString(s"""

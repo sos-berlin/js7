@@ -15,13 +15,14 @@ import js7.data.agent.{AgentRef, AgentRefPath}
 import js7.data.filebased.FileBasedsOverview
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.Future
 
 /**
   * @author Joacim Zschimmer
   */
 final class AgentRefRouteTest extends AnyFreeSpec with RouteTester with AgentRefRoute
 {
-  protected def isShuttingDown = false
+  protected def whenShuttingDown = Future.never
   protected implicit def scheduler: Scheduler = Scheduler.global
   protected val fileBasedApi = FileBasedApi.forTest(pathToAgent)
 

@@ -5,12 +5,16 @@ import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.directives.PathDirectives.pathSingleSlash
 import js7.base.auth.ValidUserPermission
 import js7.base.problem.Checked
+import js7.base.utils.FutureCompletion
+import js7.base.utils.FutureCompletion.syntax._
 import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
 import js7.common.akkahttp.StandardMarshallers.monixObservableToMarshallable
 import js7.common.http.CirceJsonSupport.jsonMarshaller
+import js7.common.scalautil.Logger
 import js7.controller.data.ControllerSnapshots.SnapshotJsonCodec
 import js7.controller.data.ControllerState
 import js7.controller.web.common.ControllerRouteProvider
+import js7.controller.web.controller.api.SnapshotRoute._
 import js7.core.web.StampedStreamingSupport.stampedCirceStreamingSupport
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -21,6 +25,8 @@ trait SnapshotRoute extends ControllerRouteProvider
 
   private implicit def implicitScheduler: Scheduler = scheduler
 
+  private lazy val whenShuttingDownCompletion = new FutureCompletion(whenShuttingDown)
+
   final val snapshotRoute: Route =
     get {
       authorizedUser(ValidUserPermission) { _ =>
@@ -30,9 +36,17 @@ trait SnapshotRoute extends ControllerRouteProvider
               for (state <- checkedState) yield {
                 implicit val x = stampedCirceStreamingSupport(eventId = state.eventId)
                 implicit val y = SnapshotJsonCodec
-                monixObservableToMarshallable(state.toSnapshotObservable)
+                monixObservableToMarshallable(
+                  state.toSnapshotObservable
+                  .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
+                    Task { logger.debug("whenShuttingDown completed") }))
               })
         }
       }
     }
+}
+
+object SnapshotRoute
+{
+  private val logger = Logger(getClass)
 }

@@ -25,6 +25,7 @@ import js7.core.filebased.FileBasedApi
 import js7.data.cluster.ClusterState
 import monix.eval.Task
 import monix.execution.Scheduler
+import scala.concurrent.Future
 import scala.concurrent.duration.Deadline
 
 /**
@@ -49,17 +50,17 @@ extends AkkaWebServer with AkkaWebServer.HasUri
 {
   protected val bindings = controllerConfiguration.webServerBindings
 
-  protected def newRoute(binding: WebServerBinding) =
+  protected def newRoute(binding: WebServerBinding, whenTerminating: Future[Deadline]) =
     new AkkaWebServer.BoundRoute with CompleteRoute {
-      protected def isShuttingDown      = ControllerWebServer.this.isShuttingDown
+      protected def whenShuttingDown        = whenTerminating
       protected val controllerConfiguration = ControllerWebServer.this.controllerConfiguration
       protected val controllerId            = controllerConfiguration.controllerId
-      protected val injector            = ControllerWebServer.this.injector
-      protected val actorSystem         = ControllerWebServer.this.actorSystem
+      protected val injector                = ControllerWebServer.this.injector
+      protected val actorSystem             = ControllerWebServer.this.actorSystem
       protected implicit def actorRefFactory = ControllerWebServer.this.actorSystem
-      protected implicit val scheduler  = ControllerWebServer.this.scheduler
-      protected val config              = ControllerWebServer.this.config
-      protected val gateKeeper          = new GateKeeper(gateKeeperConfiguration,
+      protected implicit val scheduler      = ControllerWebServer.this.scheduler
+      protected val config                  = ControllerWebServer.this.config
+      protected val gateKeeper              = new GateKeeper(gateKeeperConfiguration,
         isLoopback = binding.address.getAddress.isLoopbackAddress,
         mutual = binding.mutual)
       protected val sessionRegister     = ControllerWebServer.this.sessionRegister

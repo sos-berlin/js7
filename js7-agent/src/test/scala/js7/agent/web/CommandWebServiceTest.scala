@@ -20,6 +20,7 @@ import js7.data.command.{CommandHandlerDetailed, CommandHandlerOverview, Command
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.Future
 import scala.concurrent.duration._
 
 /**
@@ -27,7 +28,7 @@ import scala.concurrent.duration._
  */
 final class CommandWebServiceTest extends AnyFreeSpec with WebServiceTest with CommandWebService
 {
-  protected def isShuttingDown = false
+  protected def whenShuttingDown = Future.never
   protected def scheduler = Scheduler.global
   override protected val uriPathPrefix = "test"
 

@@ -16,10 +16,13 @@ import io.circe.syntax.EncoderOps
 import js7.base.BuildInfo
 import js7.base.auth.ValidUserPermission
 import js7.base.circeutils.CirceUtils.{CompactPrinter, RichJson}
+import js7.base.monixutils.MonixBase.closeableIteratorToObservable
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.FutureCompletion
+import js7.base.utils.FutureCompletion.syntax._
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.{RichJavaClass, RichThrowable, _}
 import js7.base.utils.ScalazStyle._
@@ -43,6 +46,7 @@ import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, Ev
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
+import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.reflect.runtime.universe._
@@ -53,10 +57,11 @@ import scala.util.control.NonFatal
   */
 trait GenericEventRoute extends RouteProvider
 {
-  protected def isShuttingDown: Boolean
+  protected def whenShuttingDown: Future[Deadline]
 
   private implicit def implicitScheduler: Scheduler = scheduler
 
+  private lazy val whenShuttingDownCompletion = new FutureCompletion(whenShuttingDown)
   private lazy val defaultJsonSeqChunkTimeout = config.getDuration("js7.web.server.services.event.streaming.chunk-timeout")
     .toFiniteDuration
   private lazy val defaultStreamingDelay = config.getDuration("js7.web.server.services.event.streaming.delay")
@@ -74,7 +79,7 @@ trait GenericEventRoute extends RouteProvider
 
     private val exceptionHandler = ExceptionHandler {
       case t: js7.core.event.journal.watch.ClosedException if t.getMessage != null =>
-        if (isShuttingDown)
+        if (whenShuttingDown.isCompleted)
           complete(ServiceUnavailable -> JobSchedulerIsShuttingDownProblem)
         else
           complete(ServiceUnavailable -> Problem.pure(t.getMessage))
@@ -133,7 +138,10 @@ trait GenericEventRoute extends RouteProvider
 
             case EventSeq.NonEmpty(events) =>
               implicit val x = NonEmptyEventSeqJsonStreamingSupport
-              closeableIteratorToMarshallable(events.takeWhile(_ => !isShuttingDown))
+              monixObservableToMarshallable(
+                closeableIteratorToObservable(events)
+                  .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
+                    Task { logger.debug("whenShuttingDown completed") }))
           })
       }
 
@@ -253,11 +261,8 @@ trait GenericEventRoute extends RouteProvider
     (implicit q: Source[A, NotUsed] => ToResponseMarshallable)
   : ToResponseMarshallable =
     monixObservableToMarshallable(
-      Observable.defer(
-        if (isShuttingDown)
-          Observable.empty
-        else
-          observable.takeWhile(_ => !isShuttingDown)))
+      observable.takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
+        Task { logger.debug("whenShuttingDown completed") }))
 }
 
 object GenericEventRoute

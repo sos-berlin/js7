@@ -39,6 +39,7 @@ import monix.execution.Scheduler
 import org.scalatest.Args
 import org.scalatest.freespec.AnyFreeSpec
 import scala.annotation.tailrec
+import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
@@ -50,7 +51,7 @@ final class FatEventRouteTest extends AnyFreeSpec with RouteTester with FatEvent
 {
   private lazy val configAndDataDirectory = Files.createTempDirectory("FatEventRouteTest-")
   protected val controllerConfiguration = ControllerConfiguration.forTest(configAndDataDirectory)
-  protected def isShuttingDown = false
+  protected def whenShuttingDown = Future.never
 
   override def afterAll(): Unit = {
     deleteDirectoryRecursively(configAndDataDirectory)

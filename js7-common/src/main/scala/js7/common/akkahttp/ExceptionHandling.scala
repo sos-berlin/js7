@@ -10,13 +10,15 @@ import js7.base.utils.ScalaUtils.RichThrowable
 import js7.common.akkahttp.ExceptionHandling._
 import js7.common.akkahttp.StandardMarshallers._
 import js7.common.scalautil.Logger
+import scala.concurrent.Future
+import scala.concurrent.duration.Deadline
 
 /**
   * @author Joacim Zschimmer
   */
 trait ExceptionHandling
 {
-  protected def isShuttingDown: Boolean
+  protected def whenShuttingDown: Future[Deadline]
   protected def config: Config
 
   private lazy val respondWithException = config.getBoolean("js7.web.server.verbose-error-messages")
@@ -27,7 +29,7 @@ trait ExceptionHandling
         complete(e.statusCode -> e.problem)
 
       case e: akka.pattern.AskTimeoutException =>
-        if (isShuttingDown) {
+        if (whenShuttingDown.isCompleted) {
           extractRequest { request =>
             webLogger.debug(toLogMessage(request, e), e.nullIfNoStackTrace)
             complete(ServiceUnavailable -> Problem.pure("Shutting down"))
@@ -49,7 +51,7 @@ trait ExceptionHandling
   private def completeWithError(status: StatusCode, e: Throwable): Route =
     extractRequest { request =>
       def msg = toLogMessage(request, e)
-      if (isShuttingDown) webLogger.debug(msg, e) else webLogger.warn(msg, e.nullIfNoStackTrace)
+      if (whenShuttingDown.isCompleted) webLogger.debug(msg, e) else webLogger.warn(msg, e.nullIfNoStackTrace)
       if (respondWithException)
         complete(status -> Problem.pure(e))
       else

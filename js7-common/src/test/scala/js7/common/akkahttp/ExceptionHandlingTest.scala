@@ -10,6 +10,7 @@ import js7.base.problem.Problem
 import js7.common.akkahttp.ExceptionHandlingTest._
 import js7.common.http.CirceJsonSupport._
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.Future
 import scala.util.control.NoStackTrace
 
 /**
@@ -18,7 +19,7 @@ import scala.util.control.NoStackTrace
 final class ExceptionHandlingTest extends AnyFreeSpec with ScalatestRouteTest with ExceptionHandling
 {
   protected val config = ConfigFactory.parseString("js7.web.server.verbose-error-messages = true")
-  protected def isShuttingDown = false
+  protected def whenShuttingDown = Future.never
 
   protected def actorSystem = system
 

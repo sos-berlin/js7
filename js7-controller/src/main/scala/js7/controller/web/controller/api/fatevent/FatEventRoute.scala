@@ -5,7 +5,10 @@ import akka.http.scaladsl.server.Directives.{complete, get, pathEnd}
 import akka.http.scaladsl.server.Route
 import java.util.concurrent.Executors.newSingleThreadExecutor
 import js7.base.auth.ValidUserPermission
+import js7.base.monixutils.MonixBase.closeableIteratorToObservable
 import js7.base.time.ScalaTime._
+import js7.base.utils.FutureCompletion
+import js7.base.utils.FutureCompletion.syntax._
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.RichThrowable
 import js7.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
@@ -40,6 +43,8 @@ trait FatEventRoute extends ControllerRouteProvider
 {
   protected def eventWatch: EventWatch
   protected def controllerConfiguration: ControllerConfiguration
+
+  private lazy val whenShuttingDownCompletion = new FutureCompletion(whenShuttingDown)
 
   private implicit val fatScheduler: Scheduler = Scheduler(
     newSingleThreadExecutor { runnable =>
@@ -101,7 +106,10 @@ trait FatEventRoute extends ControllerRouteProvider
 
                 case EventSeq.NonEmpty(stampedIterator) =>
                   implicit val x = NonEmptyEventSeqJsonStreamingSupport
-                  closeableIteratorToMarshallable(stampedIterator)
+                  monixObservableToMarshallable(
+                    closeableIteratorToObservable(stampedIterator)
+                      .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
+                        Task { logger.debug("whenShuttingDown completed") }))
               }
 
           requestFat(EventRequest[Event](

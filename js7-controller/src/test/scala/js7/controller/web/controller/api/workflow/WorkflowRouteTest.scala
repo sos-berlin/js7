@@ -15,13 +15,14 @@ import js7.data.workflow.test.ForkTestSetting
 import js7.data.workflow.{Workflow, WorkflowPath}
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.Future
 
 /**
   * @author Joacim Zschimmer
   */
 final class WorkflowRouteTest extends AnyFreeSpec with RouteTester with WorkflowRoute
 {
-  protected def isShuttingDown = false
+  protected def whenShuttingDown = Future.never
   protected implicit def scheduler: Scheduler = Scheduler.global
   protected val fileBasedApi = FileBasedApi.forTest(pathToWorkflow)
 

@@ -25,6 +25,7 @@ import js7.data.workflow.position.Position
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.Future
 import scala.concurrent.duration._
 
 /**
@@ -32,7 +33,7 @@ import scala.concurrent.duration._
   */
 final class GraphqlRouteTest extends AnyFreeSpec with RouteTester with GraphqlRoute {
 
-  protected def isShuttingDown = false
+  protected def whenShuttingDown = Future.never
   private implicit val routeTestTimeout = RouteTestTimeout(10.seconds)
 
   protected implicit def scheduler: Scheduler = Scheduler.Implicits.global

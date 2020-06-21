@@ -25,6 +25,7 @@ import js7.common.utils.JavaResource
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.Future
 import scala.concurrent.duration._
 
 /**
@@ -59,10 +60,12 @@ final class AkkaWebServerTest extends AnyFreeSpec with BeforeAndAfterAll
       WebServerBinding.Http(new InetSocketAddress("127.0.0.1", httpPort)) ::
       WebServerBinding.Https(new InetSocketAddress("127.0.0.1", httpsPort), keyStoreRef, mutual = false) :: Nil
 
-    def newRoute(binding: WebServerBinding) = AkkaWebServer.BoundRoute(
-      path("TEST") {
-        complete("OKAY")
-      })
+    def newRoute(binding: WebServerBinding, whenTerminating: Future[Deadline]) =
+      AkkaWebServer.BoundRoute(
+        path("TEST") {
+          complete("OKAY")
+        },
+        whenTerminating)
   }
 
   override def beforeAll(): Unit = {

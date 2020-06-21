@@ -16,6 +16,7 @@ import js7.core.cluster.ClusterWatchRegister
 import js7.core.command.CommandMeta
 import monix.execution.Scheduler
 import scala.concurrent.Future
+import scala.concurrent.duration.Deadline
 
 /**
  * @author Joacim Zschimmer
@@ -40,13 +41,13 @@ extends AkkaWebServer with AkkaWebServer.HasUri
 
   private def api = apiOnce.orThrow
 
-  protected def newRoute(binding: WebServerBinding) =
+  protected def newRoute(binding: WebServerBinding, whenTerminating: Future[Deadline]) =
     new AkkaWebServer.BoundRoute with CompleteRoute {
       private lazy val anonymousApi = api(CommandMeta(
         user = gateKeeperConfiguration.idToUser(UserId.Anonymous)
           .getOrElse(sys.error("Anonymous user has not been defined"))))
 
-      protected def isShuttingDown = AgentWebServer.this.isShuttingDown
+      protected def whenShuttingDown = whenTerminating
       protected implicit def scheduler: Scheduler = AgentWebServer.this.scheduler
 
       protected val gateKeeper = new GateKeeper(gateKeeperConfiguration,

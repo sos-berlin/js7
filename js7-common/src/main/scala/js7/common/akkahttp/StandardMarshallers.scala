@@ -7,9 +7,7 @@ import akka.http.scaladsl.model.{ContentType, HttpEntity, HttpResponse, MediaTyp
 import akka.http.scaladsl.unmarshalling.{FromStringUnmarshaller, Unmarshaller}
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
-import js7.base.monixutils.MonixBase.closeableIteratorToObservable
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.CloseableIterator
 import js7.base.utils.ScalaUtils.RichThrowable
 import js7.common.http.CirceJsonSupport.jsonMarshaller
 import js7.common.http.StreamingSupport.AkkaObservable
@@ -44,12 +42,6 @@ object StandardMarshallers
 
   private def stringToFiniteDuration(string: String) =
     (BigDecimal(string) * 1000).toLong.millis
-
-  def closeableIteratorToMarshallable[A: ToEntityMarshaller: TypeTag](closeableIterator: CloseableIterator[A])
-    (implicit s: Scheduler, q: Source[A, NotUsed] => ToResponseMarshallable)
-  : ToResponseMarshallable =
-    // Detour through Monix Observable to handle stream close
-    monixObservableToMarshallable(closeableIteratorToObservable(closeableIterator))
 
   def monixObservableToMarshallable[A: TypeTag](observable: Observable[A])
     (implicit s: Scheduler, q: Source[A, NotUsed] => ToResponseMarshallable)

@@ -17,13 +17,14 @@ import js7.data.system.JavaInformation
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.Future
 
 /**
  * @author Joacim Zschimmer
  */
 final class RootWebServiceTest extends AnyFreeSpec with WebServiceTest with RootWebService
 {
-  protected def isShuttingDown = false
+  protected def whenShuttingDown = Future.never
   protected def scheduler = Scheduler.global
   protected def agentOverview = Task.pure(AgentOverview(
     startedAt = Timestamp.parse("2015-06-01T12:00:00Z"),

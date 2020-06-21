@@ -6,6 +6,8 @@ import akka.http.scaladsl.server.Route
 import js7.base.auth.ValidUserPermission
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.FutureCompletion
+import js7.base.utils.FutureCompletion.syntax._
 import js7.base.utils.ScalaUtils.{RichAny, RichThrowableEither}
 import js7.common.akkahttp.AkkaHttpServerUtils.accept
 import js7.common.akkahttp.StandardMarshallers._
@@ -13,11 +15,13 @@ import js7.common.event.{EventWatch, PositionAnd}
 import js7.common.http.AkkaHttpUtils.AkkaByteVector
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.StreamingSupport._
+import js7.common.scalautil.Logger
 import js7.common.time.JavaTimeConverters._
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.JournalRoute._
 import js7.data.event.EventId
 import js7.data.event.JournalSeparators.{EndOfJournalFileMarker, HeartbeatMarker}
+import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.duration.FiniteDuration
 import scodec.bits.ByteVector
@@ -34,9 +38,12 @@ trait JournalRoute extends ControllerRouteProvider
   protected def eventWatch: EventWatch
   protected def scheduler: Scheduler
 
+  private implicit def implicitScheduler = scheduler
+
+  private lazy val whenShuttingDownCompletion = new FutureCompletion(whenShuttingDown)
+
   private lazy val defaultJsonSeqChunkTimeout = config.getDuration("js7.web.server.services.event.streaming.chunk-timeout")
     .toFiniteDuration
-  private implicit def implicitScheduler = scheduler
 
   protected final def journalRoute: Route =
     get {
@@ -59,9 +66,9 @@ trait JournalRoute extends ControllerRouteProvider
                               val f = if (returnLength) toLength _ else toContent _
                               HttpEntity(JournalContentType,
                                 logAkkaStreamErrorToWebLogAndIgnore(
-                                  observable
-                                    .takeWhile(_ => !isShuttingDown)
-                                    .map(f)
+                                  observable.takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
+                                    Task { logger.debug("whenShuttingDown completed") }
+                                  ) .map(f)
                                     .pipe(o => heartbeat.fold(o)(o.insertHeartbeatsOnSlowUpstream(_, HeartbeatMarker)))
                                     .map(_.toByteString)
                                     .toAkkaSource))
@@ -90,6 +97,7 @@ trait JournalRoute extends ControllerRouteProvider
 
 object JournalRoute
 {
+  private val logger = Logger(getClass)
   private val JournalContentType = `application/x-ndjson`
 
   private def parseReturnParameter(returnType: String): Checked[Boolean] =

@@ -21,7 +21,7 @@ import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.executable.WorkflowJob
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.Promise
+import scala.concurrent.{Future, Promise}
 import scala.concurrent.duration._
 
 /**
@@ -29,7 +29,7 @@ import scala.concurrent.duration._
  */
 final class TaskWebServiceTest extends AnyFreeSpec with WebServiceTest with TaskWebService
 {
-  protected def isShuttingDown = false
+  protected def whenShuttingDown = Future.never
   protected lazy val taskRegister = {
     val actor = actorSystem.actorOf(TaskRegisterActor.props(None))
     new TaskRegister(actor)(99.seconds)

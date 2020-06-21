@@ -18,6 +18,7 @@ import js7.data.filebased.Repo
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 
@@ -27,7 +28,7 @@ import scala.concurrent.duration._
 final class ApiRootRouteTest extends AnyFreeSpec with RouteTester with ApiRootRoute
 {
   protected val controllerId = ControllerId("TEST-CONTROLLER")
-  protected def isShuttingDown = false
+  protected def whenShuttingDown = Future.never
   protected implicit def scheduler: Scheduler = Scheduler.global
   protected def controllerState = Task.pure(Right(ControllerState(
     EventId(1001),

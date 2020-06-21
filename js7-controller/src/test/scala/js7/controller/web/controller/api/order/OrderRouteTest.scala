@@ -22,13 +22,14 @@ import js7.data.workflow.position.Position
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.Future
 
 /**
   * @author Joacim Zschimmer
   */
 final class OrderRouteTest extends AnyFreeSpec with RouteTester with OrderRoute
 {
-  protected def isShuttingDown = false
+  protected def whenShuttingDown = Future.never
   protected implicit def scheduler: Scheduler = Scheduler.global
   protected val orderApi = new OrderApi.WithCommands {
     def addOrder(order: FreshOrder) = Task(Right(order.id != DuplicateOrderId))

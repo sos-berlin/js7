@@ -12,6 +12,7 @@ import js7.data.controller.ControllerId
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.Future
 
 /**
   * @author Joacim Zschimmer
@@ -19,7 +20,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class CommandRouteTest extends AnyFreeSpec with RouteTester with CommandRoute {
 
   protected val controllerId = ControllerId("TEST-CONTROLLER")
-  protected def isShuttingDown = false
+  protected def whenShuttingDown = Future.never
   protected implicit def scheduler: Scheduler = Scheduler.global
 
   private var commandReceived = false

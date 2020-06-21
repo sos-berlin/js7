@@ -25,7 +25,8 @@ import js7.common.time.JavaTimeConverters.AsScalaDuration
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import monix.eval.Task
 import monix.execution.Scheduler
-import scala.concurrent.Promise
+import scala.concurrent.{Future, Promise}
+import scala.concurrent.duration.Deadline
 import scala.util.control.NonFatal
 
 /**
@@ -36,7 +37,7 @@ trait AkkaWebServer extends AutoCloseable
   protected implicit def actorSystem: ActorSystem
   protected def config: Config
   protected def bindings: Seq[WebServerBinding]
-  protected def newRoute(binding: WebServerBinding): BoundRoute
+  protected def newRoute(binding: WebServerBinding, whenTerminating: Future[Deadline]): BoundRoute
 
   private val shuttingDownPromise = Promise[Completed]()
   protected final def isShuttingDown = shuttingDownPromise.future.isCompleted
@@ -81,13 +82,16 @@ trait AkkaWebServer extends AutoCloseable
   }
 
   private def bind(binding: WebServerBinding, connectionContext: ConnectionContext): Task[Http.ServerBinding] = {
-    val boundRoute = newRoute(binding)
-    Task.deferFuture(
-      akkaHttp.bindAndHandle(boundRoute.webServerRoute, interface = binding.address.getAddress.getHostAddress, port = binding.address.getPort,
+    val whenTerminating = Promise[Deadline]()
+    val boundRoute = newRoute(binding, whenTerminating.future)
+    Task.deferFutureAction { implicit s =>
+      val serverBinding = akkaHttp.bindAndHandle(boundRoute.webServerRoute, interface = binding.address.getAddress.getHostAddress, port = binding.address.getPort,
         connectionContext,
         settings = ServerSettings(actorSystem)
           .withParserSettings(ParserSettings(actorSystem).withCustomMediaTypes(JsonStreamingSupport.CustomMediaTypes: _*)))
-    ) .map { serverBinding =>
+      whenTerminating.completeWith(serverBinding.flatMap(_.whenTerminationSignalIssued))
+      serverBinding
+    } .map { serverBinding =>
         logger.info(s"Bound ${binding.scheme}://${serverBinding.localAddress.getAddress.getHostAddress}:${serverBinding.localAddress.getPort}" +
           (if (binding.mutual) ", client certificate required" else "") +
           boundRoute.boundMessageSuffix)
@@ -131,17 +135,21 @@ object AkkaWebServer
 
   def http(port: Int, config: Config = ConfigFactory.empty)(route: Route)(implicit as: ActorSystem)
   : AkkaWebServer with HasUri = {
-    new Standard(WebServerBinding.http(port) :: Nil, _ => BoundRoute(route), config) with AkkaWebServer.HasUri
+    new Standard(
+      WebServerBinding.http(port) :: Nil,
+      (_, whenTerminating) => BoundRoute(route, whenTerminating), config
+    ) with AkkaWebServer.HasUri
   }
 
   class Standard(
     protected val bindings: Seq[WebServerBinding],
-    route: WebServerBinding => BoundRoute,
+    route: (WebServerBinding, Future[Deadline]) => BoundRoute,
     protected val config: Config = ConfigFactory.empty)
     (implicit protected val actorSystem: ActorSystem)
   extends AkkaWebServer
   {
-    def newRoute(binding: WebServerBinding) = route(binding)
+    def newRoute(binding: WebServerBinding, whenTerminating: Future[Deadline]) =
+      route(binding, whenTerminating)
   }
 
   def resourceForHttp(
@@ -150,11 +158,11 @@ object AkkaWebServer
     config: Config = ConfigFactory.empty)
     (implicit actorSystem: ActorSystem)
   : Resource[Task, AkkaWebServer with HasUri] =
-    resource(WebServerBinding.http(httpPort) :: Nil, _ => BoundRoute(route), config)
+    resource(WebServerBinding.http(httpPort) :: Nil, (_, whenTerminating) => BoundRoute(route, whenTerminating), config)
 
   def resource(
     bindings: Seq[WebServerBinding],
-    route: WebServerBinding => BoundRoute,
+    route: (WebServerBinding, Future[Deadline]) => BoundRoute,
     config: Config = ConfigFactory.empty)
     (implicit actorSystem: ActorSystem)
   : Resource[Task, AkkaWebServer with HasUri] =
@@ -182,7 +190,7 @@ object AkkaWebServer
     def boundMessageSuffix = ""
   }
   object BoundRoute {
-    def apply(route: Route): BoundRoute =
+    def apply(route: Route, whenTerminating: Future[Deadline]): BoundRoute =
       new BoundRoute {
         def webServerRoute = route
       }
@@ -192,6 +200,7 @@ object AkkaWebServer
     protected val config = ConfigFactory.parseString("js7.web.server.shutdown-timeout = 10s")
     protected def scheduler = Scheduler.global
     protected lazy val bindings = WebServerBinding.Http(new InetSocketAddress("127.0.0.1", findFreeTcpPort())) :: Nil
-    protected def newRoute(binding: WebServerBinding) = AkkaWebServer.BoundRoute(route)
+    protected def newRoute(binding: WebServerBinding, whenTerminating: Future[Deadline]) =
+      AkkaWebServer.BoundRoute(route, whenTerminating)
   }
 }

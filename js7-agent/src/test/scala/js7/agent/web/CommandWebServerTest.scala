@@ -26,6 +26,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AsyncFreeSpec
+import scala.concurrent.Future
 
 /**
  * @author Joacim Zschimmer
@@ -54,7 +55,7 @@ final class CommandWebServerTest extends AsyncFreeSpec
       pathSegments("agent/api/command") {
         new CommandWebService {
           protected def scheduler = Scheduler.global
-          protected def isShuttingDown = false
+          protected def whenShuttingDown = Future.never
           protected def config = testConfig
           protected def commandOverview = throw new NotImplementedError
           protected def commandDetailed = throw new NotImplementedError

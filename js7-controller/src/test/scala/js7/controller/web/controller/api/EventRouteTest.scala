@@ -26,6 +26,7 @@ import js7.data.order.{OrderEvent, OrderId}
 import js7.data.workflow.WorkflowPath
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 
@@ -36,7 +37,7 @@ final class EventRouteTest extends AnyFreeSpec with RouteTester with EventRoute
 {
   private implicit val timeout = 99.seconds
   private implicit val routeTestTimeout = RouteTestTimeout(timeout)
-  protected def isShuttingDown = false
+  protected def whenShuttingDown = Future.never
   protected implicit def scheduler: Scheduler = Scheduler.global
   protected val eventWatch = new EventCollector.ForTest()
 
