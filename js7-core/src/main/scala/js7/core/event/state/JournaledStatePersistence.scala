@@ -7,7 +7,9 @@ import js7.base.problem.Checked
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.SetOnce
 import js7.common.akkautils.Akkas.encodeAsActorName
+import js7.common.scalautil.Logger
 import js7.core.event.journal.{JournalActor, JournalConf}
+import js7.core.event.state.JournaledStatePersistence._
 import js7.core.event.state.StateJournalingActor.{PersistFunction, StateToEvents}
 import js7.data.event.{Event, JournaledState, KeyedEvent, Stamped}
 import monix.eval.Task
@@ -93,9 +95,14 @@ extends AutoCloseable
 
   def currentState: Task[S] =
     waitUntilStarted >>
-    Task.deferFuture(
+    Task.deferFuture {
+      logger.debug(s"JournalActor.Input.GetJournaledState")
       (journalActor ? JournalActor.Input.GetJournaledState).mapTo[JournaledState[S]]
-    ).map(_.asInstanceOf[S])
+    }.map(_.asInstanceOf[S])
 
   override def toString = s"JournaledStatePersistence[${S.tpe}]"
+}
+
+object JournaledStatePersistence {
+  private val logger = Logger(getClass)
 }
