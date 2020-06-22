@@ -181,10 +181,6 @@ object ScalaUtils
       def callIfDefined(a: A): Unit = delegate.getOrElse(a, ())
     }
 
-    implicit final class SwitchStatement[A](private val delegate: A) extends AnyVal {
-      def switch[B](pf: PartialFunction[A, Unit]): Unit = pf.callIfDefined(delegate)
-    }
-
     implicit final class OptionRichBoolean(private val underlying: Boolean) extends AnyVal
     {
       /**
@@ -309,9 +305,11 @@ object ScalaUtils
         underlying.substring(0, i)
       }
 
+      /** The string on the right side if `condition` is true, otherwise the empty string. */
       @inline def ?:(condition: Boolean): String =
         when(condition)
 
+      /** The string on the right side if `condition` is true, otherwise the empty string. */
       @inline def when(condition: Boolean): String =
         if (condition) underlying else ""
     }

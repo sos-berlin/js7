@@ -178,19 +178,6 @@ final class ScalaUtilsTest extends AnyFreeSpec
     assert(x == 3)
   }
 
-  "switch" in {
-    var r = 0
-    def f(i: Int) =
-      i switch {
-        case 11 => r = i
-      }
-    assert(r == 0)
-    f(11)
-    assert(r == 11)
-    f(22)
-    assert(r == 11)
-  }
-
   "RichPartialFunction" - {
     val pf: PartialFunction[Int, String] = {
       case 1 => "ONE"
