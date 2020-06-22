@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+set -e
+
+export JS7_HOME=/opt/js7
+. "$JS7_HOME"/bin/internal/set-context.sh
+declare classpathString java
+
+directory=/var/opt/js7/testAddWorkflows
+log4jXml="js7/tests/log4j2.xml"   # Java resource
+javaOptions=()
+args=()
+
+for arg in "$@"; do :
+  case "$arg" in
+    -J*)
+      a="${arg#-J}"
+      javaOptions+=("$a")
+      shift
+      ;;
+    *)
+      args+=("$arg")
+      ;;
+  esac
+done
+
+logs="$directory/logs"
+mkdir -p "$logs"
+javaOptions+=("-Dlog4j.configurationFile=$log4jXml")
+javaOptions+=("-Dlog4j2.contextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector")
+javaOptions+=("-Dlog4j2.asyncLoggerWaitStrategy=Block")  # Uses less CPU when idling than default "Timeout"
+javaOptions+=("-Djs7.log4j.directory=$logs")  # Used in logging configuration
+javaOptions+=("-Djs7.log4j.immediateFlush=false")
+
+execute=(
+  "$java"
+  "${javaOptions[@]}"
+  -classpath "$classpathString"
+  "js7.tests.TestAddWorkflows"
+  "--directory=$directory"
+  "${args[@]}"
+)
+echo "${execute[@]}"
+exec "${execute[@]}"

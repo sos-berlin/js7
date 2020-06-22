@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -e
+
+cd "$(cd "$(realpath "${0%/*}")"/../../build/bin/../.. && pwd)"
+
+[ -d "volumes/testAddWorkflows" ] || mkdir volumes/testAddWorkflows
+
+dir="$PWD/volumes/testAddWorkflows"
+rm -rf "${dir:?}"/*
+docker run \
+  --volume="$dir":/var/opt/js7/testAddWorkflows \
+  --rm --name=TestAddWorkflows \
+  -ti \
+  js7 \
+  js7-testAddWorkflows "$@"
