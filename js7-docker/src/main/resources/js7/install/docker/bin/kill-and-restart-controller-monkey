@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+set -e
+
+function isRunning() {
+  test "$(docker container inspect -f '{{.State.Running}}' "$1")" == "true"
+}
+
+while true; do
+  if isRunning js7-controller; then
+    echo -en "\n\e[1;31mPrimary Controller: kill "
+    docker kill js7-controller || true
+    echo -en "\e[0m"
+  fi
+  if isRunning js7-backup-controller; then
+    a=$((2 ** (RANDOM / 5000) + RANDOM / 10000))
+    echo "Primary Controller: sleep ${a}s "
+    sleep $a
+  else
+    if [ $((RANDOM / 16384)) -eq 0 ]; then
+      echo -en "\n\e[1;32mPrimary Controller: start "
+      docker start js7-controller || true
+    else
+      echo -en "\n\e[1;32mBackup Controller: start "
+      docker start js7-backup-controller || true
+    fi
+  fi
+  if ! isRunning js7-controller; then
+    echo -en "\n\e[1;32mPrimary Controller: start "
+    docker start js7-controller || true
+    #echo -n "Primary runs for ${a}s "
+  fi
+  a=$((RANDOM / 500))
+  echo "Primary Controller: sleep ${a}s "
+  sleep $a
+done &
+primaryPid=$!
+
+sleep 1  # Delay to not mix startig echo lines
+while true; do
+  if isRunning js7-backup-controller; then
+    echo -en "\n\e[1;31mBackup Controller: kill "
+    docker kill js7-backup-controller || true
+    echo -en "\e[0m"
+  fi
+  if isRunning js7-controller; then
+    a=$((2 ** (RANDOM / 5000) + RANDOM / 500))
+    echo "Backup Controller: sleep ${a}s "
+    sleep $a
+  else
+    if [ $((RANDOM / 16384)) -eq 0 ]; then
+      echo -en "\n\e[1;32mBackup Controller: start "
+      docker start js7-backup-controller || true
+      echo -en "\e[0m"
+    else
+      echo -en "\n\e[1;32mPrimary Controller: start "
+      docker start js7-controller || true
+    fi
+  fi
+  if ! isRunning js7-backup-controller; then
+    echo -en "\n\e[1;32mBackup Controller start "
+    docker start js7-backup-controller || true
+    echo -en "\e[0m"
+  fi
+  a=$((2 ** (RANDOM / 5000) + RANDOM / 500))
+  echo "Backup Controller: sleep ${a}s "
+  sleep $a
+done &
+backupPid=$!
+
+sleep 1
+while echo -n "·" && sleep 1; do :; done &
+echoPid=$!
+
+trap "kill -- -$$ >/dev/null || kill $primaryPid $backupPid $echoPid" EXIT
+wait
