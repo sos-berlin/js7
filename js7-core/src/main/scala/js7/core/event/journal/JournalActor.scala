@@ -280,7 +280,7 @@ extends Actor with Stash
         closeEventWriter()
         stop(self)
       } else {
-        become(receiveTerminatedOrGet andThen { _ =>
+        become(receiveTerminatedOrGet orElse { _ =>
           if (journalingActors.isEmpty) {
             closeEventWriter()
             stop(self)
