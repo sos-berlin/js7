@@ -121,6 +121,12 @@ final class ShutDownClusterTest extends ControllerClusterTester
             assert(primaryController.clusterState.await(99.s) == backupController.clusterState.await(99.s))
             assert(primaryController.clusterState.await(99.s) == Coupled(idToUri, primaryId))
 
+            // FIXME When Primary Controller is shutting down before started (no ControllerOrderKeeper)
+            //  while the Backup Controller is shutting down and times out the acknowledgement request,
+            //  Cluster asks the JournalActor about ClusterState for issuing a ClusterPassiveLost event.
+            //  But JournalActor does not answert if not started.
+            primaryController.waitUntilReady()
+
             backupController.executeCommandAsSystemUser(ShutDown()).await(99.s).orThrow
             backupController.terminated await 99.s
           }

@@ -563,11 +563,13 @@ final class Cluster[S <: JournaledState[S]: Diff](
               assertThat(id != ownId)
               val passiveLost = ClusterPassiveLost(id)
               val common = new ClusterCommon(activationInhibitor, clusterWatch, clusterConf, httpsConfig, testEventPublisher)
-              // FIXME Exklusiver Zugriff (Lock) wegen parallelen ClusterCommand.ClusterRecouple,
+              // FIXME (1) Exklusiver Zugriff (Lock) wegen parallelen ClusterCommand.ClusterRecouple,
               //  das ein ClusterPassiveLost auslöst, mit ClusterCouplingPrepared infolge.
               //  Dann können wir kein ClusterPassiveLost ausgeben.
               //  JournaledStatePersistence Lock in die Anwendungsebene (hier) heben
               //  -- Nicht nötig durch die Abfrage auf initialState ?
+              // FIXME (2) Deadlock when called immediately after start of Controller, before Journal has been started ?
+              //  persistence.currentState may not response GetJournalState.
               persistence.currentState/*???*/.map(_.clusterState).flatMap {
                 case clusterState: Coupled =>
                   common.ifClusterWatchAllowsActivation(clusterState, passiveLost,
