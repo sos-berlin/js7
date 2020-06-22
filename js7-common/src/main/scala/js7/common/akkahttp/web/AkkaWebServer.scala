@@ -25,7 +25,7 @@ import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.duration.Deadline
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.{Future, Promise, TimeoutException}
 import scala.util.control.NonFatal
 
 /**
@@ -99,10 +99,12 @@ trait AkkaWebServer extends AutoCloseable
   }
 
   def close() =
-    try terminate().runToFuture(scheduler.get) await shutdownTimeout + 1.s
-    catch { case NonFatal(t) =>
-      // In RecoveryTest: IllegalStateException: IO Listener actor terminated unexpectedly for remote endpoint [..]
-      logger.debug(s"$toString close(): " + t.toStringWithCauses, t.nullIfNoStackTrace)
+    try terminate().runToFuture(scheduler.get) await shutdownTimeout + 99.s
+    catch {
+      case NonFatal(t: TimeoutException) =>
+        logger.warn(s"$toString while shuttig down the web server: " + t.toStringWithCauses)
+      case NonFatal(t) =>
+        logger.warn(s"$toString close(): " + t.toStringWithCauses, t.nullIfNoStackTrace)
     }
 
   def terminate(): Task[Unit] =
@@ -113,17 +115,18 @@ trait AkkaWebServer extends AutoCloseable
         Task.unit
       else
         Task { logger.debug("terminate") } >>
-          Task.sleep(500.ms) >> // Wait a short time to let event streams finish, to avoid connection reset
-          // Now wait until (event) Observables has been closed?
-          activeBindings.toVector
-            .traverse(_.flatMap(binding =>
-              Task.deferFuture(binding.terminate(hardDeadline = shutdownTimeout))
-                .map { _: Http.HttpTerminated =>
-                  logger.debug(s"$binding terminated")
-                  Completed
-                }))
-            .map((_: Seq[Completed]) => ())
+          terminateBindings
     }
+
+  private def terminateBindings: Task[Unit] =
+    activeBindings.toVector
+      .traverse(_.flatMap(binding =>
+        Task.deferFuture(binding.terminate(hardDeadline = shutdownTimeout))
+          .map { _: Http.HttpTerminated =>
+            logger.debug(s"$binding terminated")
+            Completed
+          }))
+      .map((_: Seq[Completed]) => ())
 
   override def toString = s"${getClass.simpleScalaName}"
 }
