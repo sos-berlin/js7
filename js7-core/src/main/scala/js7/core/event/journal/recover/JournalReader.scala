@@ -66,7 +66,9 @@ extends AutoCloseable
       }
 
     def clear(): Unit =
-      buffer = null
+      synchronized {
+        buffer = null
+      }
 
     def readNext(): Option[Stamped[KeyedEvent[Event]]] =
       synchronized {
@@ -89,9 +91,15 @@ extends AutoCloseable
       }
 
     // Do not use concurrently!
-    def isInTransaction = buffer != null
+    def isInTransaction =
+      synchronized {
+        buffer != null
+      }
 
-    def length = buffer.length
+    def length =
+      synchronized {
+        buffer.length
+      }
   }
 
   def close() = jsonReader.close()
