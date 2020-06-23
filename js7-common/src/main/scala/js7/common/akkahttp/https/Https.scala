@@ -33,7 +33,8 @@ object Https
       case Some(ref) =>
         val keyStore = loadKeyStore(ref, "private")
         val factory = KeyManagerFactory.getInstance("SunX509")
-        factory.init(keyStore, ref.keyPassword.string.toCharArray)
+        ref.keyPassword.provideCharArray(
+          factory.init(keyStore, _))
         factory.getKeyManagers
     }
     val trustManagers = trustStoreRefs.view.flatMap { trustStoreRef =>
@@ -55,7 +56,8 @@ object Https
   private def loadKeyStore(storeRef: StoreRef, name: String): KeyStore = {
     val keyStore = KeyStore.getInstance("PKCS12")
     autoClosing(storeRef.url.openStream()) { inputStream =>
-      keyStore.load(inputStream, storeRef.storePassword.string.toCharArray)
+      storeRef.storePassword.provideCharArray(
+        keyStore.load(inputStream, _))
     }
     log(storeRef.url, keyStore, name)
     keyStore

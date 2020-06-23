@@ -13,6 +13,12 @@ import scala.annotation.tailrec
 final case class SecretString(string: String) {
   requireNonNull(string)
 
+  def provideCharArray[A](body: Array[Char] => A): A = {
+    val chars = string.toCharArray
+    try body(chars)
+    finally for (i <- chars.indices) chars(i) = '\u0000'
+  }
+
   override def toString = "SecretString"
 
   /**
@@ -27,8 +33,8 @@ final case class SecretString(string: String) {
     }
 }
 
-object SecretString {
-
+object SecretString
+{
   object implicits {
     // Import explicitly, it's secret.
 

@@ -7,7 +7,27 @@ import scala.util.Random
 /**
   * @author Joacim Zschimmer
   */
-final class SecretStringTest extends AnyFreeSpec {
+final class SecretStringTest extends AnyFreeSpec
+{
+  "provideCharArray deletes provided characters" in {
+    var a: Array[Char] = null
+    SecretString("SECRET").provideCharArray { chars =>
+      assert(chars sameElements Array('S', 'E', 'C', 'R', 'E', 'T'))
+      a = chars
+    }
+    assert(a sameElements Array.fill(6)('\u0000'))
+  }
+
+  "provideCharArray deletes provided characters on exception" in {
+    var a: Array[Char] = null
+    intercept[IllegalStateException] {
+      SecretString("SECRET").provideCharArray {
+        chars => a = chars
+        throw new IllegalStateException
+      }
+    }
+    assert(a sameElements Array.fill(6)('\u0000'))
+  }
 
   "equals" in {
     assert(SecretString("") == SecretString(""))
