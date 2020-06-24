@@ -1,6 +1,7 @@
 package js7.common.http
 
 import akka.actor.ActorSystem
+import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshalling.Marshal
 import akka.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
 import akka.http.scaladsl.model.HttpMethods.{GET, POST}
@@ -10,7 +11,6 @@ import akka.http.scaladsl.model.headers.CacheDirectives.{`no-cache`, `no-store`}
 import akka.http.scaladsl.model.headers.{Accept, CustomHeader, RawHeader, `Cache-Control`}
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpHeader, HttpMethod, HttpRequest, HttpResponse, RequestEntity, StatusCode, StatusCodes, Uri => AkkaUri}
 import akka.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshal}
-import akka.http.scaladsl.{Http, HttpsConnectionContext}
 import akka.stream.Materializer
 import akka.util.ByteString
 import cats.effect.{ExitCase, Resource}
@@ -64,10 +64,13 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
   protected def keyStoreRef: Option[KeyStoreRef]
   protected def trustStoreRefs: Seq[TrustStoreRef]
 
-  protected final lazy val httpsConnectionContextOption: Option[HttpsConnectionContext] =
-    (keyStoreRef.nonEmpty || trustStoreRefs.nonEmpty) ? loadHttpsConnectionContext(keyStoreRef, trustStoreRefs)  // TODO None means HttpsConnectionContext? Or empty context?
-
-  private lazy val httpsConnectionContext = httpsConnectionContextOption getOrElse http.defaultClientHttpsContext
+  private lazy val httpsConnectionContext = {
+    logger.debug(s"keyStoreRef=$keyStoreRef trustStoreRefs=$trustStoreRefs")
+    if (keyStoreRef.isEmpty && trustStoreRefs.isEmpty)
+      http.defaultClientHttpsContext
+    else
+      loadHttpsConnectionContext(keyStoreRef, trustStoreRefs)
+  }
 
   final def materializer: Materializer = implicitly[Materializer]
 
@@ -266,7 +269,8 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
             }
         else
           httpResponse.entity.toStrict(FailureTimeout, maxBytes = HttpErrorContentSizeMaximum)
-            .map(entity => throw new HttpException(method, uri, httpResponse, entity.data.utf8String))
+            .flatMap(entity => Future.failed(
+              new HttpException(method, uri, httpResponse, entity.data.utf8String)))
       })
 
   private def withCheckedAgentUri[A](request: HttpRequest)(body: HttpRequest => Task[A]): Task[A] =

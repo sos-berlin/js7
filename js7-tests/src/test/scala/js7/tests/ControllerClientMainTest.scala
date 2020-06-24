@@ -5,15 +5,14 @@ import js7.common.scalautil.Futures.implicits._
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.client.main.ControllerClientMain
 import js7.tests.testenv.ControllerAgentForScalaTest
-import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 
 /**
  * @author Joacim Zschimmer
  */
-final class ControllerClientMainTest extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest {
-
+final class ControllerClientMainTest extends AnyFreeSpec with ControllerAgentForScalaTest
+{
   protected val agentRefPaths = Nil
   protected val fileBased = Nil
   private def configDirectory = directoryProvider.controller.configDir
@@ -24,6 +23,9 @@ final class ControllerClientMainTest extends AnyFreeSpec with BeforeAndAfterAll 
 
   override def beforeAll() = {
     directoryProvider.controller.provideHttpsCertificates()
+  }
+
+  "https://" in {
     assert(controller.localUri.string startsWith "https://")
   }
 
