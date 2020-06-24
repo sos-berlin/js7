@@ -69,7 +69,6 @@ final class FailoverClusterTest extends ControllerClusterTester
 
       backupController.executeCommandForTest(ClusterSwitchOver).orThrow
       val recoupledEventId = primaryController.eventWatch.await[ClusterSwitchedOver](after = failedOverEventId).head.eventId
-      primaryController.eventWatch.await[ClusterSwitchedOver](after = failedOverEventId)
 
       backupController.terminated await 99.s
       backupController = backup.startController(httpPort = Some(backupHttpPort)) await 99.s

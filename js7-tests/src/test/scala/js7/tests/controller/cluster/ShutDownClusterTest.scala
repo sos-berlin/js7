@@ -66,9 +66,8 @@ final class ShutDownClusterTest extends ControllerClusterTester
 
             primaryController.executeCommandAsSystemUser(ShutDown(clusterAction = Some(ClusterAction.Switchover)))
               .await(99.s).orThrow
-            primaryController.eventWatch.await[ClusterSwitchedOver]()
-            primaryController.terminated.await(99.s)
             backupController.eventWatch.await[ClusterSwitchedOver]()
+            primaryController.terminated.await(99.s)
           }
         }
       }
