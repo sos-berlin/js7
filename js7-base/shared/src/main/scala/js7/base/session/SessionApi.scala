@@ -78,8 +78,12 @@ object SessionApi
     protected def logThrowable(throwable: Throwable): Task[Boolean] =
       Task {
         scribe.warn(s"$toString: ${throwable.toStringWithCauses}")
-        if (throwable.getStackTrace.nonEmpty && throwable.getClass.scalaName != "akka.stream.StreamTcpException") {
-          scribe.debug(s"$toString: ${throwable.toString}", throwable)
+        throwable match {
+          case _: javax.net.ssl.SSLException =>
+          case _ =>
+            if (throwable.getStackTrace.nonEmpty && throwable.getClass.scalaName != "akka.stream.StreamTcpException") {
+              scribe.debug(s"$toString: ${throwable.toString}", throwable)
+            }
         }
         true
       }

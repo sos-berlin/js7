@@ -540,8 +540,12 @@ final class Cluster[S <: JournaledState[S]: Diff](
           ) .onErrorRecover { case t: Throwable =>
               logger.warn(s"Sending Cluster command to other node failed: $t", t)
             }
-        ).runAsyncAndForget
-    }
+        ).runToFuture
+          .onComplete {
+            case Success(_) =>
+            case Failure(t) => logger.error(s"Appointment of cluster nodes failed: $t", t)
+          }
+      }
 
     private def proceedCoupled(state: Coupled, eventId: EventId): Unit = {
       if (state.activeId == ownId) {
