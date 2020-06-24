@@ -25,7 +25,6 @@ for arg in "$@"; do
       ;;
     -host=*)
       host="${arg#*=}"
-      distinguishedName="CN=$host"
       shift
       ;;
     -distinguished-name=*)
@@ -51,6 +50,11 @@ for arg in "$@"; do
   esac
 done
 
+test -n "$distinguishedName" || {
+  echo "--distinguished-name should not be empty"
+  exit 1
+}
+
 keyStore="private/${prefix}https-keystore.p12"
 trustStore="export/${prefix}https-truststore.p12"
 trustPem="export/${prefix}https-truststore.pem"
@@ -75,6 +79,7 @@ rm -vf "$keyStore" "$trustStore" "$trustPem"
 keytool -genkey \
   -alias "$alias" \
   -dname "$distinguishedName" \
+  -ext "san=dns:$host" \
   -validity "$days" \
   -keyalg RSA \
   -keysize 1024 \
