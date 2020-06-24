@@ -52,7 +52,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri
 
       protected val gateKeeper = new GateKeeper(gateKeeperConfiguration,
         isLoopback = binding.address.getAddress.isLoopbackAddress,
-        mutual = binding.mutual)
+        mutualHttps = binding.mutual)
       protected def sessionRegister = AgentWebServer.this.sessionRegister
 
       protected def agentApi(meta: CommandMeta) = api(meta)

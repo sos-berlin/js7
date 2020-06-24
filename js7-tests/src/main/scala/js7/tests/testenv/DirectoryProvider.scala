@@ -39,6 +39,7 @@ import js7.tests.testenv.DirectoryProvider._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.atomic.AtomicBoolean
+import scala.collection.immutable.Iterable
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.Random
@@ -58,7 +59,8 @@ final class DirectoryProvider(
   provideAgentHttpsCertificate: Boolean = false,
   provideAgentClientCertificate: Boolean = false,
   controllerHttpsMutual: Boolean = false,
-  controllerClientCertificate: Option[JavaResource] = None,
+  controllerKeyStore: Option[JavaResource] = Some(ControllerKeyStoreResource),
+  controllerTrustStores: Iterable[JavaResource] = Nil,
   signer: MessageSigner = defaultSigner,
   testName: Option[String] = None,
   useDirectory: Option[Path] = None,
@@ -74,7 +76,7 @@ extends HasCloser
       })
 
   val controller = new ControllerTree(directory / "controller",
-    mutualHttps = controllerHttpsMutual, clientTrustStore = controllerClientCertificate)
+    mutualHttps = controllerHttpsMutual, keyStore = controllerKeyStore, trustStores = controllerTrustStores)
   val agentToTree: Map[AgentRefPath, AgentTree] =
     agentRefPaths
       .zip(agentPorts ++ Vector.fill(agentRefPaths.size - agentPorts.size)(findFreeTcpPort()))
@@ -97,14 +99,6 @@ extends HasCloser
     controller.createDirectoriesAndFiles()
     writeTrustedSignatureKeys(signer.toVerifier, controller.configDir, "controller.conf")
     agents foreach prepareAgentFiles
-
-    // Agent configurations have already been written by a.createDirectoriesAndFiles()
-    controller.configDir / "private" / "private.conf" ++=
-      s"""js7.https.keystore {
-         |  store-password = "jobscheduler"
-         |  key-password = "jobscheduler"
-         |}
-         |""".stripMargin
   }
 
   val fileBasedSigner = new FileBasedSigner(signer, ControllerFileBaseds.jsonCodec)
@@ -149,8 +143,9 @@ extends HasCloser
   : Task[RunningController]
   =
     Task.deferFuture(
-      RunningController.fromInjector(RunningController.newInjectorForTest(controller.directory, module, config withFallback controllerConfig,
-        httpPort = httpPort, httpsPort = httpsPort, mutualHttps = mutualHttps, name = name)))
+      RunningController.fromInjector(
+        RunningController.newInjectorForTest(controller.directory, module, config withFallback controllerConfig,
+          httpPort = httpPort, httpsPort = httpsPort, mutualHttps = mutualHttps, name = name)))
     .map { runningController =>
       if (!suppressRepo) {
         val myFileBased = agentRefs ++ fileBased
@@ -159,7 +154,7 @@ extends HasCloser
           runningController.waitUntilReady()
           runningController.executeCommandAsSystemUser(ReplaceRepo(
             Vinitial,
-            myFileBased map (_ withVersion Vinitial) map fileBasedSigner.sign)
+            myFileBased.map(_ withVersion Vinitial) map fileBasedSigner.sign)
           ).await(99.s).orThrow
         }
       }
@@ -230,14 +225,24 @@ object DirectoryProvider
     }
   }
 
-  final class ControllerTree(val directory: Path, mutualHttps: Boolean, clientTrustStore: Option[JavaResource]) extends Tree
+  final class ControllerTree(val directory: Path, mutualHttps: Boolean,
+    keyStore: Option[JavaResource], trustStores: Iterable[JavaResource])
+  extends Tree
   {
-    def provideHttpsCertificates(): Unit = {
-      configDir / "private/https-keystore.p12" := ControllerKeyStoreResource.contentBytes
-      provideTrustStore(AgentTrustStoreResource, "agent-https-truststore.p12")
-      for (o <- clientTrustStore) {
-        provideTrustStore(o, "client-https-truststore.p12")
-        //importKeyStore(configDir / "private/agent-https-truststore.p12", o)
+    override private[DirectoryProvider] def createDirectoriesAndFiles(): Unit = {
+      super.createDirectoriesAndFiles()
+      for (keyStore <- keyStore) {
+        configDir / "private/private.conf" ++=
+          s"""js7.https.keystore {
+             |  store-password = "jobscheduler"
+             |  key-password = "jobscheduler"
+             |}
+             |""".stripMargin
+        configDir / "private/https-keystore.p12" := keyStore.contentBytes
+        provideTrustStore(AgentTrustStoreResource, "agent-https-truststore.p12")
+        for ((o, i) <- trustStores.zipWithIndex) {
+          provideTrustStore(o, s"extra-${i+1}-https-truststore.p12")
+        }
       }
     }
 
@@ -248,7 +253,8 @@ object DirectoryProvider
          |js7.https.truststores += {
          |  file = "$trustStore"
          |  store-password = "jobscheduler"
-         |}""".stripMargin
+         |}
+         |""".stripMargin
     }
 
     def writeAgentAuthentication(agentTree: AgentTree): Unit =

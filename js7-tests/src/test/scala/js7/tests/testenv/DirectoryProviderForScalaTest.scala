@@ -1,5 +1,6 @@
 package js7.tests.testenv
 
+import cats.syntax.option._
 import com.google.inject.Module
 import com.google.inject.util.Modules.EMPTY_MODULE
 import com.typesafe.config.{Config, ConfigFactory}
@@ -11,6 +12,7 @@ import js7.core.message.ProblemCodeMessages
 import js7.data.agent.AgentRefPath
 import js7.data.filebased.FileBased
 import org.scalatest.BeforeAndAfterAll
+import scala.collection.immutable.Iterable
 
 /**
   * @author Joacim Zschimmer
@@ -35,7 +37,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
     provideAgentHttpsCertificate = provideAgentHttpsCertificate,
     provideAgentClientCertificate = provideAgentClientCertificate,
     controllerHttpsMutual = controllerHttpsMutual,
-    controllerClientCertificate = controllerClientCertificate,
+    controllerTrustStores = controllerTrustStores,
     signer = signer,
     testName = Some(getClass.getSimpleName),
     suppressRepo = suppressRepoInitialization)
@@ -43,13 +45,13 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
   protected def agentConfig: Config = ConfigFactory.empty
 
   protected val controllerModule: Module = EMPTY_MODULE
-  protected lazy val controllerHttpPort: Option[Int] = Some(findFreeTcpPort())
-  protected lazy val controllerHttpsPort: Option[Int] = None
+  protected lazy val controllerHttpPort = findFreeTcpPort().some
+  protected lazy val controllerHttpsPort = none[Int]
   protected def agentHttpsMutual = false
   protected def controllerHttpsMutual = false
   protected def provideAgentHttpsCertificate = false
   protected def provideAgentClientCertificate = false
-  protected def controllerClientCertificate: Option[JavaResource] = None
+  protected def controllerTrustStores: Iterable[JavaResource] = Nil
   protected def controllerConfig: Config = ConfigFactory.empty
   protected def fileBased: Seq[FileBased]
   protected def signer: MessageSigner = DirectoryProvider.defaultSigner

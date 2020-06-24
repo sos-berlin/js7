@@ -2,16 +2,20 @@ package js7.common.akkahttp.web.auth
 
 import akka.http.scaladsl.model.HttpMethods.{GET, HEAD}
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
-import akka.http.scaladsl.model.headers.{HttpChallenges, `WWW-Authenticate`}
+import akka.http.scaladsl.model.headers.{HttpChallenges, `Tls-Session-Info`, `WWW-Authenticate`}
 import akka.http.scaladsl.model.{HttpMethod, HttpRequest}
 import akka.http.scaladsl.server.AuthenticationFailedRejection.CredentialsMissing
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route.seal
 import akka.http.scaladsl.server.{AuthenticationFailedRejection, Directive1, ExceptionHandler, RejectionHandler, Route}
 import com.typesafe.config.{Config, ConfigFactory}
+import java.security.cert.X509Certificate
 import js7.base.auth.{GetPermission, HashedPassword, Permission, SimpleUser, SuperPermission, User, UserAndPassword, UserId, ValidUserPermission}
+import js7.base.problem.Checked._
+import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
+import js7.common.akkahttp.StandardMarshallers._
 import js7.common.akkahttp.web.auth.GateKeeper._
 import js7.common.auth.IdToUser
 import js7.common.scalautil.Logger
@@ -23,7 +27,7 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class GateKeeper[U <: User](configuraton: Configuration[U], isLoopback: Boolean = false, mutual: Boolean = false)
+final class GateKeeper[U <: User](configuraton: Configuration[U], isLoopback: Boolean = false, mutualHttps: Boolean = false)
   (implicit U: User.Companion[U],
     scheduler: Scheduler,
     /** For `Route` `seal`. */
@@ -68,7 +72,19 @@ final class GateKeeper[U <: User](configuraton: Configuration[U], isLoopback: Bo
       def tapply(inner: Tuple1[U] => Route) =
         seal {
           httpAuthenticate { httpUser =>
-            inner(Tuple1(httpUser))
+            if (!mutualHttps)
+              inner(Tuple1(httpUser))
+            else clientHttpsAuthenticate { maybeHttpsUser =>
+              ((httpUser.id, maybeHttpsUser) match {
+                case (_, None) => Right(httpUser)
+                case (h, Some(t)) if h == t.id => Right(httpUser)
+                case (UserId.Anonymous, Some(httpsUser)) => Right(httpsUser)
+                case _ => Left(Problem.pure("HTTP logged-in user does not match client's HTTPS certificate user"))
+              }) match {
+                case Left(problem) => complete(Unauthorized -> problem)
+                case Right(user) => inner(Tuple1(user))
+              }
+            }
           }
         }
     }
@@ -82,6 +98,39 @@ final class GateKeeper[U <: User](configuraton: Configuration[U], isLoopback: Bo
             inner(Tuple1(user))
           }
         }
+    }
+
+  private def clientHttpsAuthenticate: Directive1[Option[U]] =
+    new Directive1[Option[U]] {
+      def tapply(inner: Tuple1[Option[U]] => Route) =
+        if (!mutualHttps)
+          inner(Tuple1(None))
+        else
+          optionalHeaderValueByType[`Tls-Session-Info`](()) { maybeTlsSessionInfo =>
+            maybeTlsSessionInfo
+              .toChecked(Problem.pure("Client HTTPS certificate is required"))
+              .flatMap(_
+                .peerCertificates match {
+                  case (cert: X509Certificate) :: Nil =>
+                    val distinguishedName = cert.getSubjectX500Principal.getName
+                    logger.debug(s"distinguishedName=$distinguishedName")
+                    Right(None)
+                    // TODO val userId = distinguishedNameToUserId(distinguishedName)
+                    //  idToUser(userId)
+                    //    .toChecked(Problem.pure("Unknown subject distinguished name in client's HTTPS certificate"))
+
+                  case certs =>
+                    if (certs.nonEmpty) logger.debug(s"HTTPS client certificates rejected: ${certs.mkString(", ")}")
+                    certs.length match {
+                      case n if n > 1 => Problem.pure(s"One and only one peer certificate is required (not $n)")
+                      case _ => Problem.pure(s"Client X.509 certificate is required")
+                    }
+                })
+              match {
+                case Left(problem) => complete(Forbidden -> problem)
+                case Right(user) => inner(Tuple1(user))
+              }
+          }
     }
 
   /** Continues with authenticated user or `Anonymous`, or completes with Unauthorized or Forbidden. */
@@ -157,7 +206,8 @@ final class GateKeeper[U <: User](configuraton: Configuration[U], isLoopback: Bo
       ""
 }
 
-object GateKeeper {
+object GateKeeper
+{
   private val logger = Logger(getClass)
 
   private def isGet(method: HttpMethod) = method == GET || method == HEAD

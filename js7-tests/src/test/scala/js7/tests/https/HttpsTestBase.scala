@@ -7,7 +7,7 @@ import js7.base.auth.UserId
 import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
-import js7.base.utils.Closer.syntax.{RichClosersAny, RichClosersAutoCloseable}
+import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import js7.common.akkautils.ProvideActorSystem
@@ -23,6 +23,7 @@ import js7.data.job.ExecutablePath
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.parser.WorkflowParser
 import js7.tests.https.HttpsTestBase._
+import js7.tests.testenv.DirectoryProvider.ExportedControllerTrustStoreResource
 import js7.tests.testenv.{ControllerAgentForScalaTest, DirectoryProvider}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll
@@ -34,7 +35,8 @@ import scala.concurrent.duration._
   *
   * @author Joacim Zschimmer
   */
-private[https] trait HttpsTestBase extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest with ProvideActorSystem
+private[https] trait HttpsTestBase
+extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest with ProvideActorSystem
 {
   override protected final def provideAgentHttpsCertificate = true
   protected def provideControllerClientCertificate = false
@@ -42,24 +44,21 @@ private[https] trait HttpsTestBase extends AnyFreeSpec with BeforeAndAfterAll wi
 
   override protected final lazy val controllerHttpPort = None
   override protected final lazy val controllerHttpsPort = Some(findFreeTcpPort())
-  override protected final def controllerClientCertificate = provideControllerClientCertificate ? ExportedClientTrustStoreResource
+  override protected final lazy val controllerTrustStores =
+    provideControllerClientCertificate.thenList(ExportedClientTrustStoreResource) ::: ExportedBackupTrustStoreResource :: Nil
   private final lazy val agentHttpsPort = findFreeTcpPort()
   override protected final lazy val agentPorts = agentHttpsPort :: Nil
   private lazy val backupHttpsPort = findFreeTcpPort()
   override protected lazy val config = ConfigFactory.empty  // for ProviderActorSystem
   override protected lazy val controllerConfig = ConfigFactory.parseString(
-    (useCluster ?: s"""
+    useCluster ?: s"""
       js7.journal.cluster.nodes.Primary: "https://localhost:${controllerHttpsPort.get}"
       js7.journal.cluster.nodes.Backup: "https://localhost:$backupHttpsPort"
-      js7.journal.cluster.watches = [ "https://localhost:$agentHttpsPort" ]
-      """) + """
+      js7.journal.cluster.watches = [ "https://localhost:$agentHttpsPort" ]""" + """
     js7.auth.users.Controller.password = "plain:PRIMARY-CONTROLLER-PASSWORD"
     js7.auth.users.TEST.password = "plain:TEST-PASSWORD"
-    js7.auth.cluster.password = "BACKUP-CONTROLLER-PASSWORD"
-    """)
-
+    js7.auth.cluster.password = "BACKUP-CONTROLLER-PASSWORD" """)
   private lazy val clientKeyStore = createTempFile(getClass.getSimpleName + "-keystore-", ".p12")
-  private lazy val controllerTrustStore = createTempFile(getClass.getSimpleName + "-primary-truststore-", ".p12")
 
   private lazy val backupDirectoryProvider = new DirectoryProvider(
     Nil,
@@ -68,14 +67,15 @@ private[https] trait HttpsTestBase extends AnyFreeSpec with BeforeAndAfterAll wi
       js7.journal.cluster.watches = [ "https://localhost:$agentHttpsPort" ]
       js7.auth.users.Controller.password = "plain:BACKUP-CONTROLLER-PASSWORD"
       js7.auth.users.TEST.password = "plain:TEST-PASSWORD"
-      js7.auth.cluster.password = "PRIMARY-CONTROLLER-PASSWORD"
-      """),
-    controllerHttpsMutual = provideControllerClientCertificate,
-    controllerClientCertificate = provideControllerClientCertificate ? DirectoryProvider.ExportedControllerTrustStoreResource,
+      js7.auth.cluster.password = "PRIMARY-CONTROLLER-PASSWORD" """),
+    controllerHttpsMutual = controllerHttpsMutual,
+    controllerKeyStore = Some(BackupKeyStoreResource),
+    controllerTrustStores = ExportedControllerTrustStoreResource :: Nil,
     agentHttps = true,
     agentHttpsMutual = provideControllerClientCertificate,
     testName = Some(getClass.simpleScalaName + "-Backup"))
-  protected final lazy val backupController = backupDirectoryProvider.startController(httpPort = None, httpsPort = Some(backupHttpsPort)) await 99.s
+  protected final lazy val backupController = backupDirectoryProvider.startController(httpPort = None, httpsPort = Some(backupHttpsPort))
+    .await(99.s)
 
   protected lazy val controllerApi = new AkkaHttpControllerApi(
     controller.localUri,
@@ -85,7 +85,7 @@ private[https] trait HttpsTestBase extends AnyFreeSpec with BeforeAndAfterAll wi
     keyStoreRef = Some(KeyStoreRef(clientKeyStore,
       storePassword = SecretString("jobscheduler"),
       keyPassword = SecretString("jobscheduler"))),
-    trustStoreRefs = TrustStoreRef(controllerTrustStore, SecretString("jobscheduler")) :: Nil,
+    trustStoreRefs = TrustStoreRef(ExportedControllerTrustStoreResource.url, SecretString("jobscheduler")) :: Nil,
   ).closeWithCloser
 
   override protected final def agentHttps = true
@@ -94,40 +94,15 @@ private[https] trait HttpsTestBase extends AnyFreeSpec with BeforeAndAfterAll wi
 
   override def beforeAll() = {
     clientKeyStore := ClientKeyStoreResource.contentBytes
-    controllerTrustStore := DirectoryProvider.ExportedControllerTrustStoreResource.contentBytes
-    provideCertificatesToCluster()
-
     provideAgentConfiguration(directoryProvider.agents(0))
-
-    directoryProvider.controller.provideHttpsCertificates()
     provideControllerConfiguration(directoryProvider.controller)
     // We have provided our own certificates: backupDirectoryProvider.controller.provideHttpsCertificates()
 
     super.beforeAll()
   }
 
-  private def provideCertificatesToCluster(): Unit = {
-    backupDirectoryProvider.controller.configDir / "private/https-keystore.p12" := BackupKeyStoreResource.contentBytes
-    backupDirectoryProvider.controller.configDir / "private/private.conf" ++= s"""
-       |js7.https.truststores += {
-       |  file = "$controllerTrustStore"
-       |  store-password = "jobscheduler"
-       |}
-       |""".stripMargin
-
-    val backupTrustStore = createTempFile(getClass.getSimpleName + "-backup-truststore-", ".p12") withCloser delete
-    backupTrustStore := ExportedBackupTrustStoreResource.contentBytes
-    directoryProvider.controller.configDir / "private/private.conf" ++= s"""
-       |js7.https.truststores += {
-       |  file = "$backupTrustStore"
-       |  store-password = "jobscheduler"
-       |}
-       |""".stripMargin
-  }
-
   override def afterAll() = {
     close()
-    delete(controllerTrustStore)
     delete(clientKeyStore)
     super.afterAll()
     if (useCluster) backupController.terminate() await 99.s

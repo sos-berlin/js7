@@ -62,7 +62,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri
       protected val config                  = ControllerWebServer.this.config
       protected val gateKeeper              = new GateKeeper(gateKeeperConfiguration,
         isLoopback = binding.address.getAddress.isLoopbackAddress,
-        mutual = binding.mutual)
+        mutualHttps = binding.mutual)
       protected val sessionRegister     = ControllerWebServer.this.sessionRegister
       protected val eventWatch          = ControllerWebServer.this.eventWatch
       protected val fileBasedApi = ControllerWebServer.this.fileBasedApi

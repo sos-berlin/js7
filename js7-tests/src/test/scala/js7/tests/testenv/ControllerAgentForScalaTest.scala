@@ -20,11 +20,11 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
   protected final lazy val agents: Seq[RunningAgent] = directoryProvider.startAgents() await 99.s
   protected final lazy val agent: RunningAgent = agents.head
   protected final lazy val controller: RunningController = directoryProvider.startController(
-     controllerModule,
-     httpPort = controllerHttpPort,
-     httpsPort = controllerHttpsPort,
-     mutualHttps = controllerHttpsMutual,
-   ) await 99.s
+    controllerModule,
+    httpPort = controllerHttpPort,
+    httpsPort = controllerHttpsPort,
+    mutualHttps = controllerHttpsMutual,
+  ) await 99.s
 
   protected def waitUntilReady = true
 

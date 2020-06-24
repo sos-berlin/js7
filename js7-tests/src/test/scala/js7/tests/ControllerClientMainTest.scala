@@ -21,10 +21,6 @@ final class ControllerClientMainTest extends AnyFreeSpec with ControllerAgentFor
   override protected lazy val controllerHttpPort = None
   override protected lazy val controllerHttpsPort = Some(httpsPort)
 
-  override def beforeAll() = {
-    directoryProvider.controller.provideHttpsCertificates()
-  }
-
   "https://" in {
     assert(controller.localUri.string startsWith "https://")
   }
