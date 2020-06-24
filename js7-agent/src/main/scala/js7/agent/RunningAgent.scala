@@ -122,37 +122,41 @@ object RunningAgent {
   def apply(module: Module): Future[RunningAgent] = {
     AgentStartInformation.initialize()
     val injector = Guice.createInjector(PRODUCTION, module)
-    val agentConfiguration = injector.instance[AgentConfiguration]
-
-    if (agentConfiguration.scriptInjectionAllowed) logger.info("SIGNED SCRIPT INJECTION IS ALLOWED")
-    StartUp.logStartUp(agentConfiguration.configDirectory, Some(agentConfiguration.dataDirectory))
-
-    val actorSystem = injector.instance[ActorSystem]
-    val closer = injector.instance[Closer]
-    val webServer = injector.instance[AgentWebServer]
-
-    val sessionRegister = injector.instance[SessionRegister[SimpleSession]]
-    val mainActorReadyPromise = Promise[MainActor.Ready]()
-    val terminationPromise = Promise[AgentTermination.Terminate]()
-    val mainActor = actorSystem.actorOf(
-      Props { new MainActor(agentConfiguration, sessionRegister, injector, mainActorReadyPromise, terminationPromise) },
-      "main")
     implicit val scheduler = injector.instance[Scheduler]
 
-    agentConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", o => s"$o/agent")
+    // Run under scheduler from start (and let debugger show Controller's thread names)
+    Future {
+      val agentConfiguration = injector.instance[AgentConfiguration]
 
-    val sessionTokenFile = agentConfiguration.stateDirectory / "session-token"
-    val sessionToken = blocking {
-      sessionRegister.createSystemSession(SimpleUser.System, sessionTokenFile)
-        .runToFuture await agentConfiguration.akkaAskTimeout.duration
-    }
-    closer onClose { deleteIfExists(sessionTokenFile) }
+      if (agentConfiguration.scriptInjectionAllowed) logger.info("SIGNED SCRIPT INJECTION IS ALLOWED")
+      StartUp.logStartUp(agentConfiguration.configDirectory, Some(agentConfiguration.dataDirectory))
 
-    for {
-      ready <- mainActorReadyPromise.future
-      api = ready.api
-      _ <- webServer.start(api)
-    } yield
-      new RunningAgent(webServer, mainActor, terminationPromise.future, api, sessionRegister, sessionToken, closer, injector)
+      val actorSystem = injector.instance[ActorSystem]
+      val closer = injector.instance[Closer]
+      val webServer = injector.instance[AgentWebServer]
+
+      val sessionRegister = injector.instance[SessionRegister[SimpleSession]]
+      val mainActorReadyPromise = Promise[MainActor.Ready]()
+      val terminationPromise = Promise[AgentTermination.Terminate]()
+      val mainActor = actorSystem.actorOf(
+        Props { new MainActor(agentConfiguration, sessionRegister, injector, mainActorReadyPromise, terminationPromise) },
+        "main")
+
+      agentConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", o => s"$o/agent")
+
+      val sessionTokenFile = agentConfiguration.stateDirectory / "session-token"
+      val sessionToken = blocking {
+        sessionRegister.createSystemSession(SimpleUser.System, sessionTokenFile)
+          .runToFuture await agentConfiguration.akkaAskTimeout.duration
+      }
+      closer onClose { deleteIfExists(sessionTokenFile) }
+
+      for {
+        ready <- mainActorReadyPromise.future
+        api = ready.api
+        _ <- webServer.start(api)
+      } yield
+        new RunningAgent(webServer, mainActor, terminationPromise.future, api, sessionRegister, sessionToken, closer, injector)
+    }.flatten
   }
 }
