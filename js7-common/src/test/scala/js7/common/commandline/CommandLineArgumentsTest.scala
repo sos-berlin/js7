@@ -11,79 +11,78 @@ final class CommandLineArgumentsTest extends AnyFreeSpec {
 
   "Flag" - {
     "boolean" in {
-      assert(parse(List("-option")) { _.boolean("-option") })
-      assert(parse(List("-option")) { _.boolean("-option") })
-      assert(!parse(Nil) { _.boolean("-option") })
-      assert(!parse(Nil) { _.boolean("-option", false) })
-      assert(parse(Nil) { _.boolean("-option", true) })
+      assert(parse(List("--option")) { _.boolean("--option") })
+      assert(!parse(Nil) { _.boolean("--option") })
+      assert(!parse(Nil) { _.boolean("--option", false) })
+      assert(parse(Nil) { _.boolean("--option", true) })
     }
 
     "Second switch overrides first with same name" in {
-      assert(parse(List("-option", "-option")) { _.boolean("-option") })
-      assert(parse(List("-option-", "-option")) { _.boolean("-option") })
+      assert(parse(List("--option", "--option")) { _.boolean("--option") })
+      assert(parse(List("--option-", "--option")) { _.boolean("--option") })
     }
 
     "false" in {
-      assert(!parse(List("-option-")) { _.boolean("-option") })
+      assert(!parse(List("--option-")) { _.boolean("--option") })
     }
 
     "Missing boolean" in {
       assertResult(false) {
         parse(Nil) { a =>
-          a.boolean("-missing")
+          a.boolean("--missing")
         }
       }
     }
 
     "Invalid used boolean option" in {
       intercept[IllegalArgumentException] {
-        parse(List("-option=value")) { a =>
-          a.boolean("-option")
+        parse(List("--option=value")) { a =>
+          a.boolean("--option")
         }
       }
-        .getMessage shouldEqual "Unknown command line arguments: -option=value"
+        .getMessage shouldEqual "Unknown command line arguments: --option=value"
     }
 
     "Multiple boolean option" in {
       intercept[IllegalArgumentException] {
-        parse(List("-option", "-option", "-option")) { a =>
-          a.boolean("-option")
+        parse(List("--option", "--option", "--option")) { a =>
+          a.boolean("--option")
         }
       }
-        .getMessage shouldEqual "Multiple command line options '-option'"
+        .getMessage shouldEqual "Multiple command line options '--option'"
     }
   }
 
   "Single value" - {
     "as String" in {
       assertResult("333") {
-        parse(List("-int=333")) { a =>
-          a.as[String]("-int=")
+        parse(List("--int=333")) { a =>
+          a.as[String]("--int=")
         }
       }
     }
 
     "as Int" in {
       assertResult(333) {
-        parse(List("-int=333")) { a =>
-          a.as[Int]("-int=")
+        parse(List("--int=333")) { a =>
+          a.as[Int]("--int=")
         }
       }
     }
 
     "as invalid Int" in {
       intercept[IllegalArgumentException] {
-        parse(List("-int=X")) { a =>
-          a.as[Int]("-int=")
+        parse(List("--int=X")) { a =>
+          a.as[Int]("--int=")
         }
       }
-        .getMessage shouldEqual """Invalid command line option '-int=': java.lang.NumberFormatException: For input string: "X""""
+        .getMessage shouldEqual """Invalid command line option '--int=': java.lang.NumberFormatException: For input string: "X""""
     }
 
     "optionAs Int" in {
       assertResult(Some(333)) {
-        parse(List("-int=333")) { a =>
-          a.optionAs[Int]("-int=")
+        parse(List("--int=333")) { a =>
+          a.optionAs[Int]("--int=")
         }
       }
     }
@@ -92,8 +91,8 @@ final class CommandLineArgumentsTest extends AnyFreeSpec {
   "Multiple values" - {
     "multiple Int" in {
       assertResult(List(111, 222)) {
-        parse(List("-int=111", "-int=222")) { a =>
-          a.seqAs[Int]("-int=")
+        parse(List("--int=111", "--int=222")) { a =>
+          a.seqAs[Int]("--int=")
         }
       }
     }
@@ -101,7 +100,7 @@ final class CommandLineArgumentsTest extends AnyFreeSpec {
     "Zero multiple Int" in {
       assertResult(Nil) {
         parse(List[String]()) { a =>
-          a.seqAs[Int]("-int=")
+          a.seqAs[Int]("--int=")
         }
       }
     }
@@ -171,15 +170,15 @@ final class CommandLineArgumentsTest extends AnyFreeSpec {
 
   "Unused options" in {
     intercept[IllegalArgumentException] {
-      parse(List("-option", "-unknown=333")) { a => }
+      parse(List("--option", "--unknown=333")) { a => }
     }
-      .getMessage shouldEqual "Unknown command line arguments: -option -unknown=333"
+      .getMessage shouldEqual "Unknown command line arguments: --option --unknown=333"
   }
 
   "Ignore CR at end of last argument" in {
     // In case an unexperienced user lets end the shell script line with "\r\n"
     intercept[IllegalArgumentException] {
-      parse(List("-option\r")) { _.boolean("-option") }
+      parse(List("--option\r")) { _.boolean("--option") }
     }
   }
 }

@@ -33,7 +33,7 @@ object ProviderConfiguration
 
   def fromCommandLine(args: Seq[String], addConfig: Config = ConfigFactory.empty): ProviderConfiguration =
     CommandLineArguments.parse(args) { a =>
-      val configDir = a.as[Path]("-config-directory=").toAbsolutePath
+      val configDir = a.as[Path]("--config-directory=").toAbsolutePath
       val config = ConfigFactory.parseMap(Map(
           "js7.config-directory" -> configDir.toString
         ).asJava)
@@ -46,7 +46,7 @@ object ProviderConfiguration
         .resolve
       new ProviderConfiguration(
         configDirectory = configDir,
-        controllerUri = a.optionAs[Uri]("-controller-uri=") getOrElse Uri(config.getString("js7.provider.controller.uri")),
+        controllerUri = a.optionAs[Uri]("--controller-uri=") getOrElse Uri(config.getString("js7.provider.controller.uri")),
         config = config)
     }
 }

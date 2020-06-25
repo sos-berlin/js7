@@ -46,7 +46,7 @@ final class AgentClientMainTest extends AnyFreeSpec with BeforeAndAfterAll with 
   "main" in {
     val output = mutable.Buffer[String]()
     val commandYaml = """{ TYPE: ShutDown, processSignal: SIGTERM }"""
-    AgentClientMain.run(List(s"-data-directory=$dataDirectory", agent.localUri.toString, commandYaml, "?"), o => output += o)
+    AgentClientMain.run(List(s"--data-directory=$dataDirectory", agent.localUri.toString, commandYaml, "?"), o => output += o)
     assert(output.size == 3)
     assert(output(0) == "TYPE: Accepted")
     assert(output(1) == "---")
@@ -57,7 +57,7 @@ final class AgentClientMainTest extends AnyFreeSpec with BeforeAndAfterAll with 
   "main with Agent URI only checks wether Agent Server is responding (it is)" in {
     val output = mutable.Buffer[String]()
     assertResult(0) {
-      AgentClientMain.run(List(s"-data-directory=$dataDirectory", agent.localUri.toString), o => output += o)
+      AgentClientMain.run(List(s"--data-directory=$dataDirectory", agent.localUri.toString), o => output += o)
     }
     assert(output == List("JS7 JobScheduler Agent Server is responding"))
   }
@@ -66,7 +66,7 @@ final class AgentClientMainTest extends AnyFreeSpec with BeforeAndAfterAll with 
     val port = findFreeTcpPort()
     val output = mutable.Buffer[String]()
     assertResult(1) {
-      AgentClientMain.run(List(s"-data-directory=$dataDirectory", s"http://127.0.0.1:$port"), output += _)
+      AgentClientMain.run(List(s"--data-directory=$dataDirectory", s"http://127.0.0.1:$port"), output += _)
     }
     assert(output.head contains "JS7 JobScheduler Agent Server is not responding: ")
     assert(output.head contains "Connection refused")

@@ -18,7 +18,7 @@ terminateCommand='{ "TYPE": "ShutDown" }'
 
 for arg in "$@"; do :
   case "$arg" in
-    -rmx-port=*)
+    --rmx-port=*)
       a="${arg#*=}"
       javaOptions+=(
         "-Dcom.sun.management.jmxremote"
@@ -27,12 +27,12 @@ for arg in "$@"; do :
         "-Dcom.sun.management.jmxremote.port=$a")
       shift
       ;;
-    -debug-port=*)
+    --debug-port=*)
       a="${arg#*=}"
       javaOptions+=("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=$a")
       shift
       ;;
-    -java-option=*)
+    --java-option=*)
       a="${arg#*=}"
       javaOptions+=("$a")
       shift
@@ -42,24 +42,24 @@ for arg in "$@"; do :
       javaOptions+=("$a")
       shift
       ;;
-    -directory=*)
+    --directory=*)
       config="${arg#*=}"/config
       data="${arg#*=}"/data
       shift
       ;;
-    -config-directory=*)
+    --config-directory=*)
       config="${arg#*=}"
       shift
       ;;
-    -data-directory=*)
+    --data-directory=*)
       data="${arg#*=}"
       shift
       ;;
-    -http-port=*)
+    --http-port=*)
       httpPort="${arg#*=}"
       shift
       ;;
-    -log4j-async)
+    --log4j-async)
       log4jAsync=true
       shift
       ;;
@@ -71,13 +71,13 @@ for arg in "$@"; do :
 done
 
 if [ ! -d "$config" ]; then :
-  echo "No such directory: -config-directory=$config"
+  echo "No such directory: --config-directory=$config"
   exit 1
 fi
 config="$(toSystemPath "$config")"
 
 if [ ! -d "$data" ]; then :
-  echo "No such directory: -data-directory=$data"
+  echo "No such directory: --data-directory=$data"
   exit 1
 fi
 data="$(toSystemPath "$data")"
@@ -99,9 +99,9 @@ if $log4jAsync; then :
   javaOptions+=("-Djs7.log4j.immediateFlush=false")
 fi
 
-controllerOptions+=("-config-directory=$config")
-controllerOptions+=("-data-directory=$data")
-[ -z "$httpPort" ] || controllerOptions+=("-http-port=$httpPort")
+controllerOptions+=("--config-directory=$config")
+controllerOptions+=("--data-directory=$data")
+[ -z "$httpPort" ] || controllerOptions+=("--http-port=$httpPort")
 
 execute=(
   "$java"
@@ -126,13 +126,13 @@ while true; do
     # Add some seconds to start Java with ControllerClientMain
     terminateTimeout=30
     if [ "$SHELL" = "/bin/bash" ]; then
-      "$JOBSCHEDULER_HOME/bin/js7-client" -data-directory="$data" '{ "TYPE": "ShutDown" }' &
+      "$JOBSCHEDULER_HOME/bin/js7-client" --data-directory="$data" '{ "TYPE": "ShutDown" }' &
     else
       "$java" -Xmx50m \
         -Dlog4j.configurationFile=js7/controller/client/main/log4j2.xml \
         -classpath "$classpathString" \
         js7.controller.client.main.ControllerClientMain \
-        -data-directory="$data" \
+        --data-directory="$data" \
         http://127.0.0.1:"$httpPort" \
         "$terminateCommand" \
         >/dev/null &

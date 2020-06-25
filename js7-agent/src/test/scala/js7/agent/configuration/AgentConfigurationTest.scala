@@ -26,7 +26,7 @@ final class AgentConfigurationTest extends AnyFreeSpec
 
   "Shortest argument list" in {
     provideConfigAndData { (config, data) =>
-      val c = AgentConfiguration.fromCommandLine(CommandLineArguments(s"-config-directory=$config" :: s"-data-directory=$data" :: Nil))
+      val c = AgentConfiguration.fromCommandLine(CommandLineArguments(s"--config-directory=$config" :: s"--data-directory=$data" :: Nil))
         .finishAndProvideFiles
       assert(c.copy(config = DefaultConfig) == AgentConfiguration(
         configDirectory = config,
@@ -44,45 +44,45 @@ final class AgentConfigurationTest extends AnyFreeSpec
     }
   }
 
-  "-http-port=" in {
+  "--http-port=" in {
     // For more tests see CommonConfigurationTest
-    intercept[IllegalArgumentException] { dummyDirectoriesConf("-http-port=65536") }
-    assert(dummyDirectoriesConf("-http-port=1234").webServerPorts == WebServerPort.Http(new InetSocketAddress("0.0.0.0", 1234)) :: Nil)
+    intercept[IllegalArgumentException] { dummyDirectoriesConf("--http-port=65536") }
+    assert(dummyDirectoriesConf("--http-port=1234").webServerPorts == WebServerPort.Http(new InetSocketAddress("0.0.0.0", 1234)) :: Nil)
   }
 
-  "-https-port=" in {
+  "--https-port=" in {
     // For more tests see CommonConfigurationTest
-    assert(dummyDirectoriesConf("-https-port=1234").webServerPorts == WebServerPort.Https(new InetSocketAddress("0.0.0.0", 1234), mutual = false) :: Nil)
+    assert(dummyDirectoriesConf("--https-port=1234").webServerPorts == WebServerPort.Https(new InetSocketAddress("0.0.0.0", 1234), mutual = false) :: Nil)
   }
 
-  "-log-directory=" in {
+  "--log-directory=" in {
     assert(dummyDirectoriesConf().logDirectory == Paths.get("DATA/logs").toAbsolutePath)
-    assert(dummyDirectoriesConf("-log-directory=LOGS").logDirectory == Paths.get("LOGS").toAbsolutePath)
-    assert(dummyDirectoriesConf("-log-directory=test").logDirectory == Paths.get("test").toAbsolutePath)
+    assert(dummyDirectoriesConf("--log-directory=LOGS").logDirectory == Paths.get("LOGS").toAbsolutePath)
+    assert(dummyDirectoriesConf("--log-directory=test").logDirectory == Paths.get("test").toAbsolutePath)
   }
 
-  "-job-working-directory=" in {
-    assert(dummyDirectoriesConf("-job-working-directory=DIR").jobWorkingDirectory == Paths.get("DIR").toAbsolutePath)
+  "--job-working-directory=" in {
+    assert(dummyDirectoriesConf("--job-working-directory=DIR").jobWorkingDirectory == Paths.get("DIR").toAbsolutePath)
   }
 
-  "-kill-script= is missing (default)" in {
+  "--kill-script= is missing (default)" in {
     provideConfigAndData { (config, data) =>
       val expectedFile = data / s"tmp/kill_task.$shellExt"
-      val myConf = conf(s"-config-directory=$config", s"-data-directory=$data").finishAndProvideFiles
+      val myConf = conf(s"--config-directory=$config", s"--data-directory=$data").finishAndProvideFiles
       assert(myConf.killScript == Some(ProcessKillScript(expectedFile)))
     }
   }
 
-  "-kill-script= (empty)" in {
+  "--kill-script= (empty)" in {
     provideConfigAndData { (config, data) =>
-      val myConf = conf(s"-config-directory=$config", s"-data-directory=$data", "-kill-script=").finishAndProvideFiles
+      val myConf = conf(s"--config-directory=$config", s"--data-directory=$data", "--kill-script=").finishAndProvideFiles
       assert(myConf.killScript == None)
     }
   }
 
-  "-kill-script=FILE" in {
+  "--kill-script=FILE" in {
     provideConfigAndData { (config, data) =>
-      val myConf = conf(s"-config-directory=$config", s"-data-directory=$data", "-kill-script=/my/kill/script").finishAndProvideFiles
+      val myConf = conf(s"--config-directory=$config", s"--data-directory=$data", "--kill-script=/my/kill/script").finishAndProvideFiles
       assert(myConf.killScript == Some(ProcessKillScript(Paths.get("/my/kill/script").toAbsolutePath)))
     }
   }
@@ -92,7 +92,7 @@ final class AgentConfigurationTest extends AnyFreeSpec
   }
 
   private def dummyDirectoriesConf(args: String*) =
-    conf(List("-config-directory=CONFIG", "-data-directory=DATA") ++ args: _*)
+    conf(List("--config-directory=CONFIG", "--data-directory=DATA") ++ args: _*)
 
   private def conf(args: String*) = {
     AgentConfiguration.fromCommandLine(

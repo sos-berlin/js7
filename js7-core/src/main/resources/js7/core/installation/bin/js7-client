@@ -41,7 +41,7 @@ $arg"
 
 for arg in "$@"; do :
   case "$arg" in
-    -data-directory=*)
+    --data-directory=*)
       data="${arg#*=}"
       shift
       ;;
@@ -54,7 +54,7 @@ done
 
 sessionTokenFile="$data/state/session-token"
 if [ ! -f "$sessionTokenFile" ]; then
-  echo "Invalid argument -data-directory=$data (missing file $data/state/session-token)"
+  echo "Invalid argument --data-directory=$data (missing file $data/state/session-token)"
   exit 1
 fi
 

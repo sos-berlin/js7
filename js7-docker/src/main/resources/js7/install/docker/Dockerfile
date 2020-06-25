@@ -22,7 +22,7 @@ ENV LANG=en_US.UTF-8
 #    --output /opt/js7-java
 #ENV JAVA_HOME /opt/js7-java
 
-# To find libjdwp.so for -debug-port=
+# To find libjdwp.so for --debug-port=
 ENV LD_LIBRARY_PATH "$JAVA_HOME/lib"
 
 ADD files /

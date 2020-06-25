@@ -54,8 +54,8 @@ object AgentClientMain
   private def parseArgs(args: Seq[String]) =
     CommandLineArguments.parse(args) { arguments =>
       val agentUri = Uri(arguments.keylessValue(0))
-      val configDirectory = arguments.optionAs[Path]("-config-directory=")
-      val dataDirectory = arguments.as[Path]("-data-directory=")
+      val configDirectory = arguments.optionAs[Path]("--config-directory=")
+      val dataDirectory = arguments.as[Path]("--data-directory=")
       val operations = arguments.keylessValues.tail map {
         case url if url.startsWith("?") || url.startsWith("/") => Get(url)
         case "-" => StdinCommand

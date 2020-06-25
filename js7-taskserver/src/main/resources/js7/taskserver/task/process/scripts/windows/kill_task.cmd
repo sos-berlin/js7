@@ -18,19 +18,19 @@ shift
 set OPTION_VALUE=%~2
 if "%~1" == "" goto read_command_line_options_end
 
-if "%~1" == "-kill-agent-task-id" (
+if "%~1" == "--kill-agent-task-id" (
   if "%OPTION_VALUE%" == "" goto read_command_line_options
   if "%OPTION_VALUE:~0,1" == "-" goto read_command_line_options
   set KILL_TASK_ID=%~2
 )
 
-if "%~1" == "-controller-task-id" (
+if "%~1" == "--controller-task-id" (
   if "%OPTION_VALUE%" == "" goto read_command_line_options
   if "%OPTION_VALUE:~0,1" == "-" goto read_command_line_options
   set CONTROLLER_TASK_ID=%~2
 )
 
-if "%~1" == "-job" (
+if "%~1" == "--job" (
   if "%OPTION_VALUE%" == "" goto read_command_line_options
   if "%OPTION_VALUE:~0,1" == "-" goto read_command_line_options
   set JOB_PATH=%~2
@@ -47,10 +47,10 @@ if not defined KILL_TASK_ID (
 if defined JOB_PATH echo %DATE% %TIME% [info]  Task "%CONTROLLER_TASK_ID%" of Job "%JOB_PATH%" with Agent task id "%KILL_TASK_ID%" will be killed. 1>&2
 if not defined JOB_PATH echo %DATE% %TIME% [info]  Task with Agent task id "%KILL_TASK_ID%" will be killed. 1>&2
 
-for /f "usebackq tokens=2 delims==" %%i in (`wmic process where "commandline like '%% -agent-task-id=%KILL_TASK_ID%%%' and not commandline like '%%-kill-agent-task-id%%'" get processid /format:value 2^>nul`) do set KILL_TASK_PID=%%i
+for /f "usebackq tokens=2 delims==" %%i in (`wmic process where "commandline like '%% --agent-task-id=%KILL_TASK_ID%%%' and not commandline like '%%-kill-agent-task-id%%'" get processid /format:value 2^>nul`) do set KILL_TASK_PID=%%i
 
 if x%KILL_TASK_PID% == x (
-  echo %DATE% %TIME% [info]  process with -agent-task-id=%KILL_TASK_ID% doesn't exist. 1>&2
+  echo %DATE% %TIME% [info]  process with --agent-task-id=%KILL_TASK_ID% doesn't exist. 1>&2
   exit /b 0
 )
 

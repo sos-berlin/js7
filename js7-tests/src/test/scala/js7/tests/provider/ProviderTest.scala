@@ -57,8 +57,8 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
   private lazy val live = providerDirectory / "config/live"
   private lazy val orderGeneratorsDir = providerDirectory / "config/order-generators"
   private lazy val providerConfiguration = ProviderConfiguration.fromCommandLine(
-    "-config-directory=" + providerDirectory / "config" ::
-    "-controller-uri=" + controller.localUri :: Nil,
+    "--config-directory=" + providerDirectory / "config" ::
+    "--controller-uri=" + controller.localUri :: Nil,
     testConfig)
   private lazy val provider = Provider(providerConfiguration).orThrow
   private lazy val v1Time = now

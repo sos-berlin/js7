@@ -458,7 +458,7 @@ Das ist ein Dienst, der Verzeichnisse mit Konfiguration überwacht, Änderungen 
 
 Der Provider wird gestartet mit
 ```
-java js7.provider.ProviderMain -config-directory=.../config
+java js7.provider.ProviderMain --config-directory=.../config
 ```
 Ein Startskript (bash) steht bereit unter ```bin/jobscheduler-provider```.
 

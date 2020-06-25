@@ -53,7 +53,7 @@ object TestControllerAgent
   def main(args: Array[String]): Unit = {
     lazy val directory =
       temporaryDirectory / "TestControllerAgent" sideEffect { directory =>
-        println(s"Using -directory=$directory")
+        println(s"Using --directory=$directory")
         if (!Files.exists(directory))
           createDirectory(directory)
         else {
@@ -203,30 +203,30 @@ object TestControllerAgent
   private object Conf {
     def parse(args: Seq[String], directory: () => Path): Conf =
       CommandLineArguments.parse(args) { a: CommandLineArguments =>
-        val agentCount = a.as[Int]("-agents=", 1)
+        val agentCount = a.as[Int]("--agents=", 1)
         require(agentCount > 0)
         val conf = Conf(
-          directory = a.as[Path]("-directory=", directory()),
+          directory = a.as[Path]("--directory=", directory()),
           agentCount = agentCount,
-          workflowLength = a.as[Int]("-jobs-per-agent=", 1),
-          tasksPerJob = a.as[Int]("-tasks=", (sys.runtime.availableProcessors + agentCount - 1) / agentCount),
-          jobDuration = a.as[FiniteDuration]("-job-duration=", 0.s),
-          stdoutSize = a.as("-stdout-size=", StdoutRowSize)(o => DecimalPrefixes.toInt(o).orThrowWithoutStacktrace),
-          period = a.as[FiniteDuration]("-period=", 1.s),
-          orderGeneratorCount = a.as[Int]("-orders=", 1))
-        if (a.boolean("-?") || a.boolean("-help") || a.boolean("--help")) {
+          workflowLength = a.as[Int]("--jobs-per-agent=", 1),
+          tasksPerJob = a.as[Int]("--tasks=", (sys.runtime.availableProcessors + agentCount - 1) / agentCount),
+          jobDuration = a.as[FiniteDuration]("--job-duration=", 0.s),
+          stdoutSize = a.as("--stdout-size=", StdoutRowSize)(o => DecimalPrefixes.toInt(o).orThrowWithoutStacktrace),
+          period = a.as[FiniteDuration]("--period=", 1.s),
+          orderGeneratorCount = a.as[Int]("--orders=", 1))
+        if (a.boolean("-?") || a.boolean("--help")) {
           print(usage(conf))
         }
         conf
       }
 
     def usage(conf: Conf) =
-      s"""Usage: -agents=${conf.agentCount}
-         |       -jobs-per-agent=${conf.workflowLength}
-         |       -tasks=${conf.tasksPerJob}
-         |       -job-duration=${conf.jobDuration}
-         |       -period=${conf.period}
-         |       -orders=${conf.orderGeneratorCount}
+      s"""Usage: --agents=${conf.agentCount}
+         |       --jobs-per-agent=${conf.workflowLength}
+         |       --tasks=${conf.tasksPerJob}
+         |       --job-duration=${conf.jobDuration}
+         |       --period=${conf.period}
+         |       --orders=${conf.orderGeneratorCount}
          |""".stripMargin
   }
 }

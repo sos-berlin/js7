@@ -69,7 +69,7 @@ extends HasCloser with ClosedFuture {
         case SIGKILL =>
           processConfiguration.toKillScriptCommandArgumentsOption(pidOption) match {
             case Some(args) =>
-              val pidArgs = pidOption map { o => s"-pid=${o.string}" }
+              val pidArgs = pidOption map { o => s"--pid=${o.string}" }
               executeKillScript(args ++ pidArgs) recover {
                 case t => logger.error(s"Cannot start kill script command '$args': $t")
               } onComplete { _ =>

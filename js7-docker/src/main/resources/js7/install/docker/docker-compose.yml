@@ -55,7 +55,7 @@ services:
   provider:
     image: js7
     container_name: js7-provider
-    command: ["provider", "-J-Xmx100m", "-controller-uri=http://controller:4444"]
+    command: ["provider", "-J-Xmx100m", "--controller-uri=http://controller:4444"]
     hostname: provider
     working_dir: /var/opt/js7/provider/data
     volumes:

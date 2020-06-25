@@ -16,7 +16,7 @@ log4jAsync=false
 
 for arg in "$@"; do :
   case "$arg" in
-    -rmx-port=*)
+    --rmx-port=*)
       a="${arg#*=}"
       javaOptions+=(
         "-Dcom.sun.management.jmxremote"
@@ -25,12 +25,12 @@ for arg in "$@"; do :
         "-Dcom.sun.management.jmxremote.port=$a")
       shift
       ;;
-    -debug-port=*)
+    --debug-port=*)
       a="${arg#*=}"
       javaOptions+=("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=$a")
       shift
       ;;
-    -java-option=*)
+    --java-option=*)
       a="${arg#*=}"
       javaOptions+=("$a")
       shift
@@ -40,20 +40,20 @@ for arg in "$@"; do :
       javaOptions+=("$a")
       shift
       ;;
-    -directory=*)
+    --directory=*)
       config="${arg#*=}"/config
       data="${arg#*=}"/data
       shift
       ;;
-    -config-directory=*)
+    --config-directory=*)
       config="${arg#*=}"
       shift
       ;;
-    -data-directory=*)
+    --data-directory=*)
       data="${arg#*=}"
       shift
       ;;
-    -log4j-async)
+    --log4j-async)
       log4jAsync=true
       shift
       ;;
@@ -65,13 +65,13 @@ for arg in "$@"; do :
 done
 
 if [ ! -d "$config" ]; then :
-  echo "No such directory: -config-directory=$config"
+  echo "No such directory: --config-directory=$config"
   exit 1
 fi
 config="$(toSystemPath "$config")"
 
 if [ ! -d "$data" ]; then :
-  echo "No such directory: -data-directory=$data"
+  echo "No such directory: --data-directory=$data"
   exit 1
 fi
 data="$(toSystemPath "$data")"
@@ -94,9 +94,7 @@ if $log4jAsync; then :
   javaOptions+=("-Djs7.log4j.immediateFlush=false")
 fi
 
-providerOptions+=("-config-directory=$config")
-#normalizedData="$(toSystemPath "$data")"
-#providerOptions+=("-data-directory=$normalizedData")
+providerOptions+=("--config-directory=$config")
 
 live="$config/live"
 if [ ! -d "$live" ]; then :

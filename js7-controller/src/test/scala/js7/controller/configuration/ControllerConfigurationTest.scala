@@ -34,7 +34,7 @@ final class ControllerConfigurationTest extends AnyFreeSpec with BeforeAndAfterA
   }
 
   private lazy val configuration = ControllerConfiguration.fromCommandLine(CommandLineArguments(
-    Vector(s"-config-directory=$directory/CONFIG", s"-data-directory=$directory/DATA")))
+    Vector(s"--config-directory=$directory/CONFIG", s"--data-directory=$directory/DATA")))
 
   "Empty argument list" in {
     assert(configuration.copy(config = DefaultConfig) == ControllerConfiguration(
@@ -57,20 +57,20 @@ final class ControllerConfigurationTest extends AnyFreeSpec with BeforeAndAfterA
       config = DefaultConfig))
   }
 
-  "-id=" in {
+  "--id=" in {
     assert(conf().controllerId == ControllerId("Controller"))
-    assert(conf("-id=CONTROLLER").controllerId == ControllerId("CONTROLLER"))
+    assert(conf("--id=CONTROLLER").controllerId == ControllerId("CONTROLLER"))
   }
 
-  "-http-port=" in {
+  "--http-port=" in {
     // For more tests see CommonConfigurationTest
-    intercept[IllegalArgumentException] { conf("-http-port=65536") }
-    assert(conf("-http-port=1234").webServerPorts == WebServerPort.Http(new InetSocketAddress("0.0.0.0", 1234)) :: Nil)
+    intercept[IllegalArgumentException] { conf("--http-port=65536") }
+    assert(conf("--http-port=1234").webServerPorts == WebServerPort.Http(new InetSocketAddress("0.0.0.0", 1234)) :: Nil)
   }
 
-  "-https-port=" in {
+  "--https-port=" in {
     // For more tests see CommonConfigurationTest
-    assert(conf("-https-port=1234").webServerPorts == WebServerPort.Https(new InetSocketAddress("0.0.0.0", 1234), mutual = false) :: Nil)
+    assert(conf("--https-port=1234").webServerPorts == WebServerPort.Https(new InetSocketAddress("0.0.0.0", 1234), mutual = false) :: Nil)
   }
 
   "System property" in {
@@ -79,6 +79,6 @@ final class ControllerConfigurationTest extends AnyFreeSpec with BeforeAndAfterA
 
   private def conf(args: String*) =
     ControllerConfiguration.fromCommandLine(
-      CommandLineArguments(Vector(s"-config-directory=$directory/CONFIG", s"-data-directory=$directory/DATA") ++ args),
+      CommandLineArguments(Vector(s"--config-directory=$directory/CONFIG", s"--data-directory=$directory/DATA") ++ args),
       ConfigFactory.parseString("user.name = ControllerConfigurationTest"/*Will be overridden*/))
 }

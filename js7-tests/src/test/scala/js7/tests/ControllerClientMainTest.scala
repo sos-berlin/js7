@@ -33,7 +33,7 @@ final class ControllerClientMainTest extends AnyFreeSpec with ControllerAgentFor
     val output = mutable.Buffer[String]()
     assertResult(0) {
       ControllerClientMain.run(
-        s"-config-directory=$configDirectory" :: s"-data-directory=$dataDirectory" ::
+        s"--config-directory=$configDirectory" :: s"--data-directory=$dataDirectory" ::
           s"https://localhost:$httpsPort" :: Nil,
         output += _)
     }
@@ -44,7 +44,7 @@ final class ControllerClientMainTest extends AnyFreeSpec with ControllerAgentFor
     val output = mutable.Buffer[String]()
     assertResult(0) {
       ControllerClientMain.run(
-        s"-config-directory=$configDirectory" :: s"-data-directory=$dataDirectory" ::
+        s"--config-directory=$configDirectory" :: s"--data-directory=$dataDirectory" ::
           s"https://localhost:$httpsPort" ::
           "?" :: "/order" :: Nil,
         output += _)
@@ -59,7 +59,7 @@ final class ControllerClientMainTest extends AnyFreeSpec with ControllerAgentFor
     val output = mutable.Buffer[String]()
     assertResult(1) {
       ControllerClientMain.run(
-        s"-config-directory=$configDirectory" :: s"-data-directory=$dataDirectory" ::
+        s"--config-directory=$configDirectory" :: s"--data-directory=$dataDirectory" ::
           s"https://localhost:$unusedPort" ::
           Nil,
         output += _)
@@ -72,7 +72,7 @@ final class ControllerClientMainTest extends AnyFreeSpec with ControllerAgentFor
     val output = mutable.Buffer[String]()
     val commandYaml = """{ TYPE: ShutDown }"""
     ControllerClientMain.run(
-      s"-config-directory=$configDirectory" :: s"-data-directory=$dataDirectory" ::
+      s"--config-directory=$configDirectory" :: s"--data-directory=$dataDirectory" ::
         s"https://localhost:$httpsPort" ::
         commandYaml :: Nil,
       output += _)

@@ -16,7 +16,7 @@ terminateCommand='{ "TYPE": "ShutDown" }'
 
 for arg in "$@"; do
   case "$arg" in
-    -rmx-port=*)
+    --rmx-port=*)
       a="${arg#*=}"
       javaOptions+=(
         "-Dcom.sun.management.jmxremote"
@@ -25,12 +25,12 @@ for arg in "$@"; do
         "-Dcom.sun.management.jmxremote.port=$a")
       shift
       ;;
-    -debug-port=*)
+    --debug-port=*)
       a="${arg#*=}"
       javaOptions+=("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=$a")
       shift
       ;;
-    -java-option=*)
+    --java-option=*)
       a="${arg#*=}"
       javaOptions+=("$a")
       shift
@@ -40,24 +40,24 @@ for arg in "$@"; do
       javaOptions+=("$a")
       shift
       ;;
-    -directory=*)
+    --directory=*)
       config="${arg#*=}"/config
       data="${arg#*=}"/data
       shift
       ;;
-    -config-directory=*)
+    --config-directory=*)
       config="${arg#*=}"
       shift
       ;;
-    -data-directory=*)
+    --data-directory=*)
       data="${arg#*=}"
       shift
       ;;
-    -http-port=*)
+    --http-port=*)
       httpPort="${arg#*=}"
       shift
       ;;
-    -log4j-async)
+    --log4j-async)
       log4Async=true
       shift
       ;;
@@ -69,13 +69,13 @@ for arg in "$@"; do
 done
 
 if [ ! -d "$config" ]; then :
-  echo "No such directory: -config-directory=$config"
+  echo "No such directory: --config-directory=$config"
   exit 1
 fi
 config="$(toSystemPath "$config")"
 
 if [ ! -d "$data" ]; then :
-  echo "No such directory: -data-directory=$data"
+  echo "No such directory: --data-directory=$data"
   exit 1
 fi
 data="$(toSystemPath "$data")"
@@ -97,9 +97,9 @@ if $log4Async; then :
   javaOptions+=("-Djs7.log4j.immediateFlush=false")
 fi
 
-agentOptions+=("-config-directory=$config")
-agentOptions+=("-data-directory=$data")
-[ -z "$httpPort" ] || agentOptions+=("-http-port=$httpPort")
+agentOptions+=("--config-directory=$config")
+agentOptions+=("--data-directory=$data")
+[ -z "$httpPort" ] || agentOptions+=("--http-port=$httpPort")
 
 crashKillScript=$([ -n "$data" ] && echo "$data/kill_tasks_after_crash.sh")
 echo "crashKillScript=$crashKillScript"
@@ -127,13 +127,13 @@ while true; do
     # Add some seconds to start Java with AgentClientMain
     terminateTimeout=30
     if [ "$SHELL" = "/bin/bash" ]; then
-      "$JOBSCHEDULER_HOME"/bin/js7-client -data-directory="$data" "$terminateCommand" &
+      "$JOBSCHEDULER_HOME"/bin/js7-client --data-directory="$data" "$terminateCommand" &
     else
       "$java" -Xmx50m \
         -Dlog4j.configurationFile=js7/agent/client/main/log4j2.xml \
         -classpath "$classpathString" \
         js7.agent.client.main.AgentClientMain \
-        -data-directory="$data" \
+        --data-directory="$data" \
         http://127.0.0.1:"$httpPort" \
         "$terminateCommand" \
         >/dev/null &

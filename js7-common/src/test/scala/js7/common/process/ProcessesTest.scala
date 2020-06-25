@@ -82,7 +82,7 @@ private object ProcessesTest {
   // Different character combinations should not be changed (interpreted) by the operating systems shell script invoker.
   private val Args =
     if (isWindows)
-      List("1-one", "2-'two", "3\\three", "4-*")  // "-key=value" and several other strings do not work !!!
+      List("1-one", "2-'two", "3\\three", "4-*")  // "--key=value" and several other strings do not work !!!
     else
       List("1 one",
         "2 'two",
@@ -91,7 +91,7 @@ private object ProcessesTest {
           "4 four"  // Backslash is not useable as shell script argument !!!
         else "4\\four",
         "5 *",
-        "-key=value")
+        "--key=value")
 
   private val ShellScript =
     if (isWindows)

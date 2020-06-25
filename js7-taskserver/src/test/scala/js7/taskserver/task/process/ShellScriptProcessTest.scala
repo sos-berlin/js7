@@ -111,8 +111,8 @@ final class ShellScriptProcessTest extends AnyFreeSpec
         shellProcess.close()
 
         assert(stdFileMap(Stdout).contentString contains "SCRIPT-ARGUMENTS=")
-        assert(stdFileMap(Stdout).contentString contains s"SCRIPT-ARGUMENTS=-agent-task-id=${agentTaskId.string}")
-        assert(killScriptOutputFile.contentString contains s"KILL-ARGUMENTS=-kill-agent-task-id=${agentTaskId.string}")
+        assert(stdFileMap(Stdout).contentString contains s"SCRIPT-ARGUMENTS=--agent-task-id=${agentTaskId.string}")
+        assert(killScriptOutputFile.contentString contains s"KILL-ARGUMENTS=--kill-agent-task-id=${agentTaskId.string}")
       }
     }
   }

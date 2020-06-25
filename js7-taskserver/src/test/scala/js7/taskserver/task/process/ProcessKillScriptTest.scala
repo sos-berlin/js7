@@ -65,7 +65,7 @@ final class ProcessKillScriptTest extends AnyFreeSpec {
   private def startNestedProcess(agentTaskId: AgentTaskId, out: Path): (Path, Process) = {
     val file = Processes.newTemporaryShellFile("test")
     file := Script
-    val args = List(file.toString, s"-agent-task-id=${agentTaskId.string}")
+    val args = List(file.toString, s"--agent-task-id=${agentTaskId.string}")
     val process = new ProcessBuilder(args.asJava).redirectOutput(out).redirectError(INHERIT).startRobustly()
     logger.info(s"Started process ${processToPidOption(process)}")
     (file, process)

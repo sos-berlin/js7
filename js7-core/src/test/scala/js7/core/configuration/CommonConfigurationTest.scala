@@ -16,31 +16,31 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class CommonConfigurationTest extends AnyFreeSpec
 {
-  "-config-directory=" in {
+  "--config-directory=" in {
     assert(conf().configDirectory == Paths.get("CONFIG").toAbsolutePath)
   }
 
-  "-data-directory=" in {
+  "--data-directory=" in {
     assert(conf().dataDirectory == Paths.get("DATA").toAbsolutePath)
   }
 
-  "-http-port=" in {
-    intercept[IllegalArgumentException] { conf("-http-port=65536") }
-    assert(conf("-http-port=1234"              ).webServerBindings == WebServerBinding.Http(new InetSocketAddress("0.0.0.0", 1234)) :: Nil)
-    assert(conf("-http-port=11.22.33.44:1234"  ).webServerBindings == WebServerBinding.Http(new InetSocketAddress("11.22.33.44", 1234)) :: Nil)
-    assert(conf("-http-port=[1:2:3:4:5:6]:1234").webServerBindings == WebServerBinding.Http(new InetSocketAddress("1:2:3:4:5:6", 1234)) :: Nil)
-    assert(conf("-http-port=[::1]:1234"        ).webServerBindings == WebServerBinding.Http(new InetSocketAddress("::1", 1234)) :: Nil)
-    assert(conf("-http-port=1111", "-http-port=2222").webServerBindings ==
+  "--http-port=" in {
+    intercept[IllegalArgumentException] { conf("--http-port=65536") }
+    assert(conf("--http-port=1234"              ).webServerBindings == WebServerBinding.Http(new InetSocketAddress("0.0.0.0", 1234)) :: Nil)
+    assert(conf("--http-port=11.22.33.44:1234"  ).webServerBindings == WebServerBinding.Http(new InetSocketAddress("11.22.33.44", 1234)) :: Nil)
+    assert(conf("--http-port=[1:2:3:4:5:6]:1234").webServerBindings == WebServerBinding.Http(new InetSocketAddress("1:2:3:4:5:6", 1234)) :: Nil)
+    assert(conf("--http-port=[::1]:1234"        ).webServerBindings == WebServerBinding.Http(new InetSocketAddress("::1", 1234)) :: Nil)
+    assert(conf("--http-port=1111", "--http-port=2222").webServerBindings ==
       WebServerBinding.Http(new InetSocketAddress("0.0.0.0", 1111)) ::
       WebServerBinding.Http(new InetSocketAddress("0.0.0.0", 2222)) :: Nil)
   }
 
-  "-https-port=" in {
+  "--https-port=" in {
     intercept[IllegalArgumentException] {
-      conf("-https-port=65536")
+      conf("--https-port=65536")
     }
     val config = Paths.get("CONFIG").toAbsolutePath
-    assert(conf("-https-port=1234").webServerBindings == List(WebServerBinding.Https(
+    assert(conf("--https-port=1234").webServerBindings == List(WebServerBinding.Https(
       new InetSocketAddress("0.0.0.0", 1234),
       KeyStoreRef(
         url = (config / "private/https-keystore.p12").toUri.toURL,
@@ -54,7 +54,7 @@ final class CommonConfigurationTest extends AnyFreeSpec
           url = (config / "private/second-https-truststore.p12").toUri.toURL,
           storePassword = SecretString("SECOND-TRUSTSTORE-PASSWORD"))),
       mutual = false)))
-    assert(conf("-https-port=11.22.33.44:1234").webServerBindings == List(WebServerBinding.Https(
+    assert(conf("--https-port=11.22.33.44:1234").webServerBindings == List(WebServerBinding.Https(
       new InetSocketAddress("11.22.33.44", 1234),
       KeyStoreRef(
         url = (config / "private/https-keystore.p12").toUri.toURL,
@@ -70,9 +70,9 @@ final class CommonConfigurationTest extends AnyFreeSpec
       mutual = false)))
   }
 
-  "-https-port=n,mutual" in {
+  "--https-port=n,mutual" in {
     val config = Paths.get("CONFIG").toAbsolutePath
-    assert(conf("-https-port=1234,mutual").webServerBindings == List(WebServerBinding.Https(
+    assert(conf("--https-port=1234,mutual").webServerBindings == List(WebServerBinding.Https(
       new InetSocketAddress("0.0.0.0", 1234),
       KeyStoreRef(
         url = (config / "private/https-keystore.p12").toUri.toURL,
@@ -86,7 +86,7 @@ final class CommonConfigurationTest extends AnyFreeSpec
           url = (config / "private/second-https-truststore.p12").toUri.toURL,
           storePassword = SecretString("SECOND-TRUSTSTORE-PASSWORD"))),
       mutual = true)))
-    assert(conf("-https-port=11.22.33.44:1234,mutual").webServerBindings == List(WebServerBinding.Https(
+    assert(conf("--https-port=11.22.33.44:1234,mutual").webServerBindings == List(WebServerBinding.Https(
       new InetSocketAddress("11.22.33.44", 1234),
       KeyStoreRef(
         url = (config / "private/https-keystore.p12").toUri.toURL,
@@ -109,7 +109,7 @@ private object CommonConfigurationTest {
 
   private def conf(args: String*): TestConf = {
     val common = CommonConfiguration.Common.fromCommandLineArguments(CommandLineArguments(
-      Vector("-config-directory=CONFIG", "-data-directory=DATA") ++ args))
+      Vector("--config-directory=CONFIG", "--data-directory=DATA") ++ args))
     TestConf(
       configDirectory = common.configDirectory,
       dataDirectory = common.dataDirectory,

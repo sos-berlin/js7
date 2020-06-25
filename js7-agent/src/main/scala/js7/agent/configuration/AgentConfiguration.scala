@@ -54,15 +54,15 @@ extends CommonConfiguration
     val common = CommonConfiguration.Common.fromCommandLineArguments(a)
     copy(
       webServerPorts = common.webServerPorts,
-      logDirectory = a.optionAs("-log-directory=")(asAbsolutePath) getOrElse logDirectory,
-      jobJavaOptions = a.optionAs[String]("-job-java-options=").fold(jobJavaOptions) { _ :: Nil },
-      jobWorkingDirectory = a.as("-job-working-directory=", jobWorkingDirectory)(asAbsolutePath))
-    .withKillScript(a.optionAs[String]("-kill-script="))
+      logDirectory = a.optionAs("--log-directory=")(asAbsolutePath) getOrElse logDirectory,
+      jobJavaOptions = a.optionAs[String]("--job-java-options=").fold(jobJavaOptions) { _ :: Nil },
+      jobWorkingDirectory = a.as("--job-working-directory=", jobWorkingDirectory)(asAbsolutePath))
+    .withKillScript(a.optionAs[String]("--kill-script="))
   }
 
   private def withKillScript(killScriptPath: Option[String]) = killScriptPath match {
-    case None => this  // -kill-script= not given: Agent uses the internally provided kill script
-    case Some("") => copy(killScript = None)      // -kill-script= (empty argument) means: don't use any kill script
+    case None => this  // --kill-script= not given: Agent uses the internally provided kill script
+    case Some("") => copy(killScript = None)      // --kill-script= (empty argument) means: don't use any kill script
     case Some(o) => copy(killScript = Some(ProcessKillScript(Paths.get(o).toAbsolutePath)))
   }
 

@@ -54,8 +54,8 @@ object ControllerClientMain {
   private def parseArgs(args: Seq[String]): (Uri, Option[Path], Path, Vector[Operation]) =
     CommandLineArguments.parse(args) { arguments =>
       val controllerUri = Uri(arguments.keylessValue(0))
-      val configDirectory = arguments.optionAs[Path]("-config-directory=")
-      val dataDirectory = arguments.as[Path]("-data-directory=")
+      val configDirectory = arguments.optionAs[Path]("--config-directory=")
+      val dataDirectory = arguments.as[Path]("--data-directory=")
       val operations = arguments.keylessValues.tail map {
         case uri if uri.startsWith("?") || uri.startsWith("/") => Get(uri)
         case "-" => StdinCommand

@@ -12,7 +12,7 @@ javaOptions=(-Xmx100m -Xms50m)
 
 for arg in "$@"; do :
   case "$arg" in
-    -java-option=*)
+    --java-option=*)
       a="${arg#*=}"
       javaOptions+=("$a")
       shift
@@ -22,7 +22,7 @@ for arg in "$@"; do :
       javaOptions+=("$a")
       shift
       ;;
-    -http-port=*)
+    --http-port=*)
       httpPort="${arg#*=}"
       shift
       ;;

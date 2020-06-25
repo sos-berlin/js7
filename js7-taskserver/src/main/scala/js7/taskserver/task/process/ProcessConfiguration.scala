@@ -25,7 +25,7 @@ final case class ProcessConfiguration(
 
   def files: Seq[Path] = stdFileMap.values.toList
 
-  def idArgumentOption = agentTaskIdOption map { o => s"-agent-task-id=${o.string}" }
+  def idArgumentOption = agentTaskIdOption map { o => s"--agent-task-id=${o.string}" }
 
   def toKillScriptCommandArgumentsOption(pid: Option[Pid]) =
     for (id <- agentTaskIdOption; killScript <- killScriptOption) yield killScript.toCommandArguments(id, pid)

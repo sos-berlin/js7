@@ -13,23 +13,23 @@ log() {
 PID=""
 for arg in "$@"; do
     case "$arg" in
-        -kill-agent-task-id=*)
-            AGENT_TASK_ID=`echo "$arg" | sed 's/-kill-agent-task-id=//'`
+        --kill-agent-task-id=*)
+            AGENT_TASK_ID=`echo "$arg" | sed 's/--kill-agent-task-id=//'`
             ;;
-        -controller-task-id=*)
-            CONTROLLER_TASK_ID=`echo "$arg" | sed 's/-controller-task-id=//'`
+        --controller-task-id=*)
+            CONTROLLER_TASK_ID=`echo "$arg" | sed 's/--controller-task-id=//'`
              ;;
-        -job=*)
-            JOB_PATH=`echo "$arg" | sed 's/-job=//'`
+        --job=*)
+            JOB_PATH=`echo "$arg" | sed 's/--job=//'`
             ;;
-        -pid=*)
-            PID=`echo "$arg" | sed 's/-pid=//'`
+        --pid=*)
+            PID=`echo "$arg" | sed 's/--pid=//'`
             ;;
     esac
 done
 
 if [ -z "$AGENT_TASK_ID$PID" ]; then
-    log error "Option -kill-agent-task-id is not set"
+    log error "Option --kill-agent-task-id is not set"
     exit 2
 fi
 if [ ! -z "$JOB_PATH" ]; then
@@ -38,10 +38,10 @@ else
     log info "Task with Agent task id '$AGENT_TASK_ID' is being killed"
 fi
 
-TASK_PID=`ps ww | grep " -agent-task-id[=]$AGENT_TASK_ID\\b" | awk '{ print $1 }'`
+TASK_PID=`ps ww | grep " --agent-task-id[=]$AGENT_TASK_ID\\b" | awk '{ print $1 }'`
 [ ! -z "$TASK_PID" ] || TASK_PID="$PID"
 if [ -z "$TASK_PID" ]; then
-    log info "Process with -agent-task-id=$AGENT_TASK_ID doesn't exist"
+    log info "Process with --agent-task-id=$AGENT_TASK_ID doesn't exist"
     exit 0
 fi
 

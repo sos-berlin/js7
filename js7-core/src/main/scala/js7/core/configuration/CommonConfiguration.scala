@@ -71,11 +71,11 @@ object CommonConfiguration
   object Common {
     def fromCommandLineArguments(a: CommandLineArguments): Common =
       Common(
-        dataDirectory = a.as[Path]("-data-directory=").toAbsolutePath,
-        configDirectory = a.as[Path]("-config-directory=").toAbsolutePath,
+        dataDirectory = a.as[Path]("--data-directory=").toAbsolutePath,
+        configDirectory = a.as[Path]("--config-directory=").toAbsolutePath,
         webServerPorts =
-          a.seqAs("-http-port=")(StringToServerInetSocketAddress).map(WebServerPort.Http) ++
-          a.seqAs("-https-port=")(AddressAndMutual).map {
+          a.seqAs("--http-port=")(StringToServerInetSocketAddress).map(WebServerPort.Http) ++
+          a.seqAs("--https-port=")(AddressAndMutual).map {
             case (address, mutual) => WebServerPort.Https(address, mutual = mutual)
           })
   }

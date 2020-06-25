@@ -43,7 +43,7 @@ final case class ControllerConfiguration(
 extends CommonConfiguration
 {
   private def withCommandLineArguments(a: CommandLineArguments): ControllerConfiguration =
-    copy(controllerId = a.as("-id=", controllerId))
+    copy(controllerId = a.as("--id=", controllerId))
 
   def fileBasedDirectory: Path = configDirectory / "live"
 

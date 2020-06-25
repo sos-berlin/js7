@@ -12,7 +12,7 @@ args=()
 
 for arg in "$@"; do :
   case "$arg" in
-    -rmx-port=*)
+    --rmx-port=*)
       a="${arg#*=}"
       javaOptions+=(
         "-Dcom.sun.management.jmxremote"
@@ -21,12 +21,12 @@ for arg in "$@"; do :
         "-Dcom.sun.management.jmxremote.port=$a")
       shift
       ;;
-    -debug-port=*)
+    --debug-port=*)
       a="${arg#*=}"
       javaOptions+=("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=$a")
       shift
       ;;
-    -java-option=*)
+    --java-option=*)
       a="${arg#*=}"
       javaOptions+=("$a")
       shift
@@ -49,7 +49,7 @@ execute=(
   "${javaOptions[@]}"
   -classpath "$classpathString"
   "js7.tests.TestControllerAgent"
-  "-directory=$directory"
+  "--directory=$directory"
   "${args[@]}"
 )
 echo "${execute[@]}"

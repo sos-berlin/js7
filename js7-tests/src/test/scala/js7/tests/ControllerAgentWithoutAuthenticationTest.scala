@@ -78,13 +78,13 @@ final class ControllerAgentWithoutAuthenticationTest extends AnyFreeSpec
 
       val controllerPort :: agentPort :: Nil = FreeTcpPortFinder.findFreeTcpPorts(2)
       val agentConfiguration = AgentConfiguration.fromCommandLine(CommandLineArguments(
-        "-config-directory=" + dir / "agent/config" ::
-        "-data-directory=" + dir / "agent/data" ::
-        "-http-port=" + agentPort :: Nil))
+        "--config-directory=" + dir / "agent/config" ::
+        "--data-directory=" + dir / "agent/data" ::
+        "--http-port=" + agentPort :: Nil))
       val controllerConfiguration = ControllerConfiguration.fromCommandLine(CommandLineArguments(
-        "-config-directory=" + dir / "controller/config" ::
-        "-data-directory=" + dir / "controller/data" ::
-        "-http-port=" + controllerPort :: Nil))
+        "--config-directory=" + dir / "controller/config" ::
+        "--data-directory=" + dir / "controller/data" ::
+        "--http-port=" + controllerPort :: Nil))
 
       val agentRef = AgentRef(agentRefPath ~ versionId, Uri(s"http://127.0.0.1:$agentPort"))
       val agent = RunningAgent(agentConfiguration) await 99.seconds
