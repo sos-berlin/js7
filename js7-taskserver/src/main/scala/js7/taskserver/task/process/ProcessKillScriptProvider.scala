@@ -1,7 +1,9 @@
 package js7.taskserver.task.process
 
-import java.nio.file.Files.{delete, exists}
+import java.io.IOException
+import java.nio.file.Files.{delete, exists, setPosixFilePermissions}
 import java.nio.file.Path
+import java.nio.file.attribute.PosixFilePermissions
 import js7.agent.data.ProcessKillScript
 import js7.base.time.ScalaTime._
 import js7.base.utils.HasCloser
@@ -24,6 +26,10 @@ final class ProcessKillScriptProvider extends HasCloser
     val file = directory / resource.simpleName
     val content = resource.contentBytes
     if (!isUnchanged(file, content)) {
+      if (isUnix) {
+        try setPosixFilePermissions(file, PosixFilePermissions.fromString("rw-------"))
+        catch { case _: IOException => }
+      }
       file := content
       file.makeExecutable()
       onClose {
