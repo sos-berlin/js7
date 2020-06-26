@@ -1,7 +1,6 @@
-SOS GmbH repositories
+JS7 JobScheduler Controller and Agent
+=====================================
 
-You will find basic information about JS7 and YADE repositories at: https://sos-berlin.github.io
+Not yet released
 
-# JS7 JobScheduler
-
-[Änderungen](doc/src/doc.de/Änderungen/README.md)
+You will find more information about JS7 at http://js7.sh
