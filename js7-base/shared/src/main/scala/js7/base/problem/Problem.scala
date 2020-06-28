@@ -67,6 +67,9 @@ object Problem
     apply(message, cause)
 
   def pure(throwable: Throwable): Problem =
+    fromThrowable(throwable)
+
+  def fromThrowable(throwable: Throwable): Problem =
     new FromEagerThrowable(throwable)
 
   def fromLazyThrowable(throwable: => Throwable): Problem =

@@ -288,15 +288,24 @@ final class Cluster[S <: JournaledState[S]: Diff](
       otherFailedOver, journalConf, clusterConf, eventIdGenerator, common)
   }
 
-  private def automaticallyAppointConfiguredBackupNode: Task[Checked[Completed]] =
+  private def automaticallyAppointConfiguredBackupNode: Task[Completed] =
     Task.defer {
       clusterConf.maybeIdToUri match {
         case Some(idToUri) =>
-          appointNodes(idToUri, ownId).map {
-            case Left(ClusterNodesAlreadyAppointed) => Right(Completed)
-            case o => o
-          }
-        case _ => Task.pure(Right(Completed))
+          appointNodes(idToUri, ownId)
+            .onErrorHandle(t => Left(Problem.fromThrowable(t)))  // We want only to log the exception
+            .map {
+              case Left(ClusterNodesAlreadyAppointed) => Completed
+              case Left(problem) =>
+                // If we return Left(problem), Agent would fail. Better we return Completed.
+                // JS7 Suite does not use configured appointment, anyway.
+                // Should we notify someone ???
+                logger.error(s"Configured cluster node appointment failed due to failed access to ClusterWatch: $problem",
+                  problem.throwableOption.orNull)
+                Completed
+              case Right(completed) => completed
+            }
+        case _ => Task.pure(Completed)
       }
     }
 
@@ -436,14 +445,11 @@ final class Cluster[S <: JournaledState[S]: Diff](
       Task.pure(Right(Completed))
 
   def afterJounalingStarted: Task[Checked[Completed]] =
-    Task {
+    Task.defer {
       _currentClusterState = persistence.currentState.map(_.clusterState)
-    } >>
-      ( for {
-          _ <- EitherT(automaticallyAppointConfiguredBackupNode)
-          x <- EitherT(onRestartActiveNode)
-        } yield x
-      ).value
+      automaticallyAppointConfiguredBackupNode >>
+        onRestartActiveNode
+    }
 
   private def onRestartActiveNode: Task[Checked[Completed]] =
     persistence.currentState.map(_.clusterState).flatMap {
