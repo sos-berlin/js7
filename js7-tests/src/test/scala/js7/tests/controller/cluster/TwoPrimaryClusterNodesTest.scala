@@ -8,7 +8,7 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import js7.controller.data.ControllerCommand.ClusterAppointNodes
 import js7.core.problems.PrimaryMayNotBecomeBackupProblem
-import js7.data.cluster.ClusterNodeId
+import js7.data.node.NodeId
 import monix.execution.Scheduler.Implicits.global
 final class TwoPrimaryClusterNodesTest extends ControllerClusterTester
 {
@@ -24,9 +24,9 @@ final class TwoPrimaryClusterNodesTest extends ControllerClusterTester
         ) { backupController =>
           val cmd = ClusterAppointNodes(
             Map(
-              ClusterNodeId("Primary") -> primaryController.localUri,
-              ClusterNodeId("Backup") -> backupController.localUri),
-            ClusterNodeId("Primary"))
+              NodeId("Primary-Controller") -> primaryController.localUri,
+              NodeId("Backup-Controller") -> backupController.localUri),
+            NodeId("Primary-Controller"))
           primaryController.executeCommandAsSystemUser(cmd).await(99.s).orThrow
           sleep(5.s)
           //assert(primaryController.executeCommandAsSystemUser(cmd).await(99.s) == Left(ClusterNodeIsNotBackupProblem))

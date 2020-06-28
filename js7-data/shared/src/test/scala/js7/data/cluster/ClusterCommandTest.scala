@@ -6,6 +6,7 @@ import js7.base.web.Uri
 import js7.data.cluster.ClusterCommand._
 import js7.data.cluster.ClusterState.FailedOver
 import js7.data.event.JournalPosition
+import js7.data.node.NodeId
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -15,9 +16,9 @@ final class ClusterCommandTest extends AnyFreeSpec
     testJson[ClusterCommand](
       ClusterStartBackupNode(
         Map(
-          ClusterNodeId("A") -> Uri("http://A"),
-          ClusterNodeId("B") -> Uri("http://B")),
-        ClusterNodeId("A"),
+          NodeId("A") -> Uri("http://A"),
+          NodeId("B") -> Uri("http://B")),
+        NodeId("A"),
         1000L),
       json"""{
         "TYPE": "ClusterStartBackupNode",
@@ -32,7 +33,7 @@ final class ClusterCommandTest extends AnyFreeSpec
 
   "ClusterPrepareCoupling" in {
     testJson[ClusterCommand](
-      ClusterPrepareCoupling(ClusterNodeId("A"), ClusterNodeId("B")),
+      ClusterPrepareCoupling(NodeId("A"), NodeId("B")),
       json"""{
         "TYPE": "ClusterPrepareCoupling",
         "activeId": "A",
@@ -42,7 +43,7 @@ final class ClusterCommandTest extends AnyFreeSpec
 
   "ClusterCouple" in {
     testJson[ClusterCommand](
-      ClusterCouple(ClusterNodeId("A"), ClusterNodeId("B")),
+      ClusterCouple(NodeId("A"), NodeId("B")),
       json"""{
         "TYPE": "ClusterCouple",
         "activeId": "A",
@@ -52,7 +53,7 @@ final class ClusterCommandTest extends AnyFreeSpec
 
   "ClusterRecouple" in {
     testJson[ClusterCommand](
-      ClusterRecouple(ClusterNodeId("A"), ClusterNodeId("B")),
+      ClusterRecouple(NodeId("A"), NodeId("B")),
       json"""{
         "TYPE": "ClusterRecouple",
         "activeId": "A",
@@ -71,9 +72,9 @@ final class ClusterCommandTest extends AnyFreeSpec
   "ClusterInhibitActivation.Response" in {
     testJson[ClusterCommand.Response](ClusterInhibitActivation.Response(Some(FailedOver(
       Map(
-        ClusterNodeId("A") -> Uri("http://A"),
-        ClusterNodeId("B") -> Uri("http://B")),
-      activeId = ClusterNodeId("A"),
+        NodeId("A") -> Uri("http://A"),
+        NodeId("B") -> Uri("http://B")),
+      activeId = NodeId("A"),
       JournalPosition(0L, 1000)))),
       json"""{
         "TYPE": "ClusterInhibitActivation.Response",

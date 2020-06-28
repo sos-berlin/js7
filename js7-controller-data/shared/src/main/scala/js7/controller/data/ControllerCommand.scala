@@ -13,11 +13,12 @@ import js7.base.utils.Big
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
-import js7.data.cluster.{ClusterCommand, ClusterNodeId, ClusterSetting}
+import js7.data.cluster.{ClusterCommand, ClusterSetting}
 import js7.data.command.{CancelMode, CommonCommand}
 import js7.data.controller.ControllerFileBaseds.typedPathJsonDecoder
 import js7.data.event.EventId
 import js7.data.filebased.{TypedPath, VersionId}
+import js7.data.node.NodeId
 import js7.data.order.{FreshOrder, OrderId}
 
 /**
@@ -159,7 +160,7 @@ object ControllerCommand extends CommonCommand.Companion
     override def toString = s"ReplaceRepo($versionId, ${objects.size} objects)"
   }
 
-  final case class ClusterAppointNodes(idToUri: Map[ClusterNodeId, Uri], activeId: ClusterNodeId)
+  final case class ClusterAppointNodes(idToUri: Map[NodeId, Uri], activeId: NodeId)
   extends ControllerCommand {
     type Response = Response.Accepted
     ClusterSetting.checkUris(idToUri, activeId).orThrow

@@ -12,8 +12,8 @@ import js7.common.scalautil.FileUtils.syntax._
 import js7.controller.cluster.ClusterConf
 import js7.controller.configuration.ControllerConfiguration.DefaultConfig
 import js7.core.event.journal.JournalConf
-import js7.data.cluster.ClusterNodeId
 import js7.data.controller.ControllerId
+import js7.data.node.NodeId
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -39,14 +39,15 @@ final class ControllerConfigurationTest extends AnyFreeSpec with BeforeAndAfterA
   "Empty argument list" in {
     assert(configuration.copy(config = DefaultConfig) == ControllerConfiguration(
       controllerId = ControllerId("Controller"),
+      nodeId = NodeId("Primary-Controller"),
       dataDirectory = (directory / "DATA").toAbsolutePath,
-      configDirectory = (directory /"CONFIG").toAbsolutePath,
+      configDirectory = (directory / "CONFIG").toAbsolutePath,
       webServerPorts = Nil,
       ZoneId.systemDefault,
       akkaAskTimeout = 1.h,
       journalConf = JournalConf.fromConfig(DefaultConfig)
         .copy(slowCheckState = true/*set by build.sbt*/),
-      clusterConf = ClusterConf(ClusterNodeId("Primary"), isBackup = false, None, None,
+      clusterConf = ClusterConf(isBackup = false, None, None,
         RecouplingStreamReaderConf(
           timeout = 6500.ms,  // Between 3s and 10s
           delay = 1.s),

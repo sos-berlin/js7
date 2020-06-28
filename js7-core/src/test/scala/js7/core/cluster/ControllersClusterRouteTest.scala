@@ -12,8 +12,9 @@ import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import js7.common.akkahttp.web.session.SimpleSession
 import js7.common.http.CirceJsonSupport._
 import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
-import js7.data.cluster.{ClusterNodeId, ClusterState}
+import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerId
+import js7.data.node.NodeId
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -42,14 +43,14 @@ final class ControllersClusterRouteTest extends AnyFreeSpec with ScalatestRouteT
   }
 
   private val idToUri = Map(
-    ClusterNodeId("A") -> Uri("http://A"),
-    ClusterNodeId("B") -> Uri("http://B"))
-  private val primaryId = ClusterNodeId("A")
+    NodeId("A") -> Uri("http://A"),
+    NodeId("B") -> Uri("http://B"))
+  private val primaryId = NodeId("A")
 
   "Post" in {
     Post[ClusterWatchMessage]("/cluster",
       ClusterWatchEvents(
-        ClusterNodeId("A"),
+        NodeId("A"),
         ClusterNodesAppointed(idToUri, primaryId) :: Nil,
         ClusterState.NodesAppointed(idToUri, primaryId))
     ) ~>

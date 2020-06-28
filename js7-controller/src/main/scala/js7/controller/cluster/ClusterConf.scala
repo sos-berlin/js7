@@ -9,15 +9,15 @@ import js7.base.web.Uri
 import js7.common.configutils.Configs._
 import js7.common.http.configuration.{RecouplingStreamReaderConf, RecouplingStreamReaderConfs}
 import js7.common.time.JavaTimeConverters.AsScalaDuration
-import js7.data.cluster.{ClusterNodeId, ClusterSetting}
+import js7.data.cluster.ClusterSetting
+import js7.data.node.NodeId
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
 
 final case class ClusterConf(
-  ownId: ClusterNodeId,
   isBackup: Boolean,
   /** None if id is Backup. */
-  maybeIdToUri: Option[Map[ClusterNodeId, Uri]],
+  maybeIdToUri: Option[Map[NodeId, Uri]],
   userAndPassword: Option[UserAndPassword],
   recouplingStreamReader: RecouplingStreamReaderConf,
   heartbeat: FiniteDuration,
@@ -30,8 +30,6 @@ object ClusterConf
   def fromConfig(userId: UserId, config: Config): Checked[ClusterConf] = {
     val isBackup = config.getBoolean("js7.journal.cluster.node.is-backup")
     for {
-      ownId <- config.checkedOptionAs[ClusterNodeId]("js7.journal.cluster.node.id")
-        .map(_ getOrElse ClusterNodeId(if (isBackup) "Backup" else "Primary"))
       maybeIdToUri <- {
         val key = "js7.journal.cluster.nodes"
         if (!config.hasPath(key))
@@ -43,7 +41,7 @@ object ClusterConf
             .asScala
             .map { case (k, v) =>
               v.unwrapped match {
-                case v: String => ClusterNodeId.checked(k).flatMap(id => Uri.checked(v).map(id -> _))
+                case v: String => NodeId.checked(k).flatMap(id => Uri.checked(v).map(id -> _))
                 case _ => Left(Problem("A cluster node URI is expected to be configured as a string"))
               }
             }
@@ -61,7 +59,6 @@ object ClusterConf
       testHeartbeatLoss <- Right(config.optionAs[String]("js7.journal.cluster.TEST-HEARTBEAT-LOSS"))
     } yield
       new ClusterConf(
-        ownId,
         isBackup = isBackup,
         maybeIdToUri,
         userAndPassword,

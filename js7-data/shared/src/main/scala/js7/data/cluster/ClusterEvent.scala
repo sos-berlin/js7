@@ -9,12 +9,13 @@ import js7.base.problem.Checked._
 import js7.base.web.Uri
 import js7.data.cluster.ClusterSetting.checkUris
 import js7.data.event.{JournalPosition, NoKeyEvent}
+import js7.data.node.NodeId
 
 sealed trait ClusterEvent extends NoKeyEvent
 
 object ClusterEvent
 {
-  private type Id = ClusterNodeId
+  private type Id = NodeId
 
   final case class ClusterNodesAppointed(idToUri: Map[Id, Uri], activeId: Id)
   extends ClusterEvent

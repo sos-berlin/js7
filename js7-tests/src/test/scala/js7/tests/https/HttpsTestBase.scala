@@ -52,8 +52,8 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest with
   override protected lazy val config = ConfigFactory.empty  // for ProviderActorSystem
   override protected lazy val controllerConfig = ConfigFactory.parseString(
     useCluster ?: s"""
-      js7.journal.cluster.nodes.Primary: "https://localhost:${controllerHttpsPort.get}"
-      js7.journal.cluster.nodes.Backup: "https://localhost:$backupHttpsPort"
+      js7.journal.cluster.nodes.Primary-Controller: "https://localhost:${controllerHttpsPort.get}"
+      js7.journal.cluster.nodes.Backup-Controller: "https://localhost:$backupHttpsPort"
       js7.journal.cluster.watches = [ "https://localhost:$agentHttpsPort" ]""" + """
     js7.auth.users.Controller.password = "plain:PRIMARY-CONTROLLER-PASSWORD"
     js7.auth.users.TEST.password = "plain:TEST-PASSWORD"

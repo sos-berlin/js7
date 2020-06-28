@@ -17,8 +17,9 @@ import js7.common.http.CirceJsonSupport._
 import js7.common.scalautil.MonixUtils.syntax.RichTask
 import js7.core.cluster.HttpClusterWatchTest._
 import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
-import js7.data.cluster.{ClusterNodeId, ClusterState}
+import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerId
+import js7.data.node.NodeId
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll
@@ -52,8 +53,8 @@ final class HttpClusterWatchTest extends AnyFreeSpec with BeforeAndAfterAll with
 
   "HttpClusterWatch" in {
     val clusterWatch = new HttpClusterWatch(server.localUri, userAndPassword = None, HttpsConfig.empty, actorSystem)
-    val idToUri = Map(ClusterNodeId("A") -> Uri("http://A"), ClusterNodeId("B") -> Uri("http://B"))
-    val primaryUri = ClusterNodeId("A")
+    val idToUri = Map(NodeId("A") -> Uri("http://A"), NodeId("B") -> Uri("http://B"))
+    val primaryUri = NodeId("A")
     val expectedClusterState = ClusterState.NodesAppointed(idToUri, primaryUri)
     assert(clusterWatch.applyEvents(primaryUri, ClusterNodesAppointed(idToUri, primaryUri) :: Nil, expectedClusterState).await(99.s) ==
       Right(Completed))

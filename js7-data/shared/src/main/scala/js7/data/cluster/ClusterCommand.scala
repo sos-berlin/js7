@@ -10,6 +10,7 @@ import js7.base.web.Uri
 import js7.data.cluster.ClusterSetting.syntax._
 import js7.data.command.CommonCommand
 import js7.data.event.EventId
+import js7.data.node.NodeId
 import scala.concurrent.duration.FiniteDuration
 
 sealed trait ClusterCommand extends CommonCommand {
@@ -18,30 +19,30 @@ sealed trait ClusterCommand extends CommonCommand {
 
 object ClusterCommand
 {
-  final case class ClusterStartBackupNode(idToUri: Map[ClusterNodeId, Uri], activeId: ClusterNodeId, fileEventId: EventId)
+  final case class ClusterStartBackupNode(idToUri: Map[NodeId, Uri], activeId: NodeId, fileEventId: EventId)
   extends ClusterCommand {
     type Response = Response.Accepted
     ClusterSetting.checkUris(idToUri, activeId).orThrow
 
-    def passiveId: ClusterNodeId =
+    def passiveId: NodeId =
       idToUri.peerOf(activeId)
   }
 
-  final case class ClusterPrepareCoupling(activeId: ClusterNodeId, passiveId: ClusterNodeId)
+  final case class ClusterPrepareCoupling(activeId: NodeId, passiveId: NodeId)
   extends ClusterCommand {
     type Response = Response.Accepted
     assertThat(activeId != passiveId)
     override def toString = s"ClusterPrepareCoupling(activeId=$activeId passiveId=$passiveId)"
   }
 
-  final case class ClusterCouple(activeId: ClusterNodeId, passiveId: ClusterNodeId)
+  final case class ClusterCouple(activeId: NodeId, passiveId: NodeId)
   extends ClusterCommand {
     type Response = Response.Accepted
     assertThat(activeId != passiveId)
     override def toString = s"ClusterCouple(activeId=$activeId passiveId=$passiveId)"
   }
 
-  final case class ClusterRecouple(activeId: ClusterNodeId, passiveId: ClusterNodeId)
+  final case class ClusterRecouple(activeId: NodeId, passiveId: NodeId)
   extends ClusterCommand {
     type Response = Response.Accepted
     assertThat(activeId != passiveId)

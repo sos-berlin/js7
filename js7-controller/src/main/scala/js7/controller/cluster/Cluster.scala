@@ -46,10 +46,11 @@ import js7.core.startup.Halt.haltJava
 import js7.data.cluster.ClusterCommand.{ClusterInhibitActivation, ClusterStartBackupNode}
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{Coupled, CoupledActiveShutDown, Decoupled, Empty, FailedOver, HasNodes, NodesAppointed, PassiveLost, PreparedToBeCoupled}
-import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeId, ClusterState}
+import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterState}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{Event, EventId, EventRequest, EventSeqTornProblem, JournaledState, KeyedEvent, Stamped}
+import js7.data.node.NodeId
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean
 import monix.execution.cancelables.SerialCancelable
@@ -64,6 +65,7 @@ final class Cluster[S <: JournaledState[S]: Diff](
   persistence: JournaledStatePersistence[S],
   eventWatch: RealEventWatch,
   controllerId: ControllerId,
+  ownId: NodeId,
   journalConf: JournalConf,
   val clusterConf: ClusterConf,
   httpsConfig: HttpsConfig,
@@ -76,8 +78,6 @@ final class Cluster[S <: JournaledState[S]: Diff](
     scheduler: Scheduler,
     actorSystem: ActorSystem)
 {
-  import clusterConf.ownId
-
   private val journalActor = persistence.journalActor
   private val activationInhibitor = new ActivationInhibitor
   private val fetchingAcks = AtomicBoolean(false)
@@ -276,14 +276,14 @@ final class Cluster[S <: JournaledState[S]: Diff](
     }
 
   private def newPassiveClusterNode(
-    idToUri: Map[ClusterNodeId, Uri],
-    activeId: ClusterNodeId,
+    idToUri: Map[NodeId, Uri],
+    activeId: NodeId,
     recovered: Recovered[S],
     otherFailedOver: Boolean = false,
     initialFileEventId: Option[EventId] = None)
   : PassiveClusterNode[S]
   = {
-    val common = new ClusterCommon(activationInhibitor, clusterWatch, clusterConf, httpsConfig, testEventPublisher)
+    val common = new ClusterCommon(activationInhibitor, clusterWatch, ownId, clusterConf, httpsConfig, testEventPublisher)
     new PassiveClusterNode(ownId, idToUri, activeId, journalMeta, initialFileEventId, recovered,
       otherFailedOver, journalConf, clusterConf, eventIdGenerator, common)
   }
@@ -309,7 +309,7 @@ final class Cluster[S <: JournaledState[S]: Diff](
       }
     }
 
-  def appointNodes(idToUri: Map[ClusterNodeId, Uri], activeId: ClusterNodeId): Task[Checked[Completed]] =
+  def appointNodes(idToUri: Map[NodeId, Uri], activeId: NodeId): Task[Checked[Completed]] =
     persist {
       case Empty =>
         ClusterNodesAppointed.checked(idToUri, activeId).map(Some.apply)
@@ -538,7 +538,7 @@ final class Cluster[S <: JournaledState[S]: Diff](
 
     private def proceedNodesAppointed(state: ClusterState.NodesAppointed): Unit =
       if (state.activeId == ownId && !startingBackupNode.getAndSet(true)) {
-        val common = new ClusterCommon(activationInhibitor, clusterWatch, clusterConf, httpsConfig, testEventPublisher)
+        val common = new ClusterCommon(activationInhibitor, clusterWatch, ownId, clusterConf, httpsConfig, testEventPublisher)
         eventWatch.started.flatMap(_ =>
           common.tryEndlesslyToSendCommand(
             state.passiveUri,
@@ -572,7 +572,7 @@ final class Cluster[S <: JournaledState[S]: Diff](
               logger.warn("No heartbeat from passive cluster node - continuing as single active cluster node")
               assertThat(id != ownId)
               val passiveLost = ClusterPassiveLost(id)
-              val common = new ClusterCommon(activationInhibitor, clusterWatch, clusterConf, httpsConfig, testEventPublisher)
+              val common = new ClusterCommon(activationInhibitor, clusterWatch, ownId, clusterConf, httpsConfig, testEventPublisher)
               // FIXME (1) Exklusiver Zugriff (Lock) wegen parallelen ClusterCommand.ClusterRecouple,
               //  das ein ClusterPassiveLost auslöst, mit ClusterCouplingPrepared infolge.
               //  Dann können wir kein ClusterPassiveLost ausgeben.
@@ -638,7 +638,7 @@ final class Cluster[S <: JournaledState[S]: Diff](
       }
     }
 
-  private def fetchAndHandleAcknowledgedEventIds(passiveId: ClusterNodeId, passiveUri: Uri, after: EventId): Task[Checked[Completed]] =
+  private def fetchAndHandleAcknowledgedEventIds(passiveId: NodeId, passiveUri: Uri, after: EventId): Task[Checked[Completed]] =
     Task {
       logger.info(s"Fetching acknowledgements from passive cluster node, after=${EventId.toString(after)}")
     } >>

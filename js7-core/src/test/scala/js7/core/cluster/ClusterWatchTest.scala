@@ -9,10 +9,11 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.core.cluster.ClusterWatch._
 import js7.core.message.ProblemCodeMessages
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver}
-import js7.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
+import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalPosition}
+import js7.data.node.NodeId
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.schedulers.TestScheduler
 import org.scalatest.freespec.AnyFreeSpec
@@ -24,8 +25,8 @@ final class ClusterWatchTest extends AnyFreeSpec
 {
   ProblemCodeMessages.initialize()
 
-  private val aId = ClusterNodeId("A")
-  private val bId = ClusterNodeId("B")
+  private val aId = NodeId("A")
+  private val bId = NodeId("B")
   private val aUri = Uri("http://A")
   private val bUri = Uri("http://B")
   private val idToUri = Map(aId -> aUri, bId -> bUri)
@@ -151,7 +152,7 @@ final class ClusterWatchTest extends AnyFreeSpec
       assert(watch.get.await(99.s) == Right(coupled))
     }
 
-    def applyEvents(from: ClusterNodeId, events: Seq[ClusterEvent]): Checked[Completed] = {
+    def applyEvents(from: NodeId, events: Seq[ClusterEvent]): Checked[Completed] = {
       val expectedClusterState = clusterState.applyEvents(events.map(NoKey <-: _)).orThrow
       val response = watch.applyEvents(from, events, expectedClusterState).await(99.s)
       for (_ <- response) {

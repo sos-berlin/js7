@@ -253,6 +253,7 @@ object RunningController
         persistence,
         recovered.eventWatch,
         controllerConfiguration.controllerId,
+        controllerConfiguration.nodeId,
         controllerConfiguration.journalConf,
         controllerConfiguration.clusterConf,
         controllerConfiguration.httpsConfig,

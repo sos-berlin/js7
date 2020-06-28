@@ -7,9 +7,10 @@ import js7.base.process.ProcessSignal.SIGTERM
 import js7.base.web.Uri
 import js7.controller.data.ControllerCommand._
 import js7.data.agent.AgentRefPath
-import js7.data.cluster.{ClusterCommand, ClusterNodeId}
+import js7.data.cluster.ClusterCommand
 import js7.data.command.CancelMode
 import js7.data.filebased.VersionId
+import js7.data.node.NodeId
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
@@ -287,9 +288,9 @@ final class ControllerCommandTest extends AnyFreeSpec
     testJson[ControllerCommand](
       ClusterAppointNodes(
         Map(
-          ClusterNodeId("A") -> Uri("http://A"),
-          ClusterNodeId("B") -> Uri("http://B")),
-        ClusterNodeId("A")),
+          NodeId("A") -> Uri("http://A"),
+          NodeId("B") -> Uri("http://B")),
+        NodeId("A")),
       json"""{
         "TYPE": "ClusterAppointNodes",
         "idToUri": {
@@ -311,8 +312,8 @@ final class ControllerCommandTest extends AnyFreeSpec
   "InternalClusterCommand" in {
     testJson[ControllerCommand](InternalClusterCommand(
       ClusterCommand.ClusterCouple(
-        ClusterNodeId("A"),
-        ClusterNodeId("B"))),
+        NodeId("A"),
+        NodeId("B"))),
       json"""{
         "TYPE": "InternalClusterCommand",
         "clusterCommand": {

@@ -7,7 +7,7 @@ import js7.base.time.ScalaTime._
 import js7.base.web.Uri
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.core.message.ProblemCodeMessages
-import js7.data.cluster.ClusterNodeId
+import js7.data.node.NodeId
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
@@ -29,7 +29,6 @@ final class ClusterConfTest extends AnyFreeSpec
       val clusterConf = ClusterConf.fromConfig(UserId("USER"), config)
       assert(clusterConf == Right(
         ClusterConf(
-          ClusterNodeId("Primary"),
           isBackup = false,
           None,
           None,
@@ -43,7 +42,6 @@ final class ClusterConfTest extends AnyFreeSpec
 
     "Full configuration" in {
       val config = ConfigFactory.parseString("""
-        js7.journal.cluster.node.id = A
         js7.journal.cluster.node.is-backup = no
         js7.journal.cluster.nodes = {
           A: "http://A"
@@ -58,11 +56,10 @@ final class ClusterConfTest extends AnyFreeSpec
       val checkedClusterConf = ClusterConf.fromConfig(UserId("USER"), config)
       assert(checkedClusterConf == Right(
         ClusterConf(
-          ClusterNodeId("A"),
           isBackup = false,
           Some(Map(
-            ClusterNodeId("A") -> Uri("http://A"),
-            ClusterNodeId("B") -> Uri("http://B"))),
+            NodeId("A") -> Uri("http://A"),
+            NodeId("B") -> Uri("http://B"))),
           Some(UserAndPassword(UserId("USER"), SecretString("PASSWORD"))),
           RecouplingStreamReaderConf(
             timeout = 6.s,  // Between 5s and 7s

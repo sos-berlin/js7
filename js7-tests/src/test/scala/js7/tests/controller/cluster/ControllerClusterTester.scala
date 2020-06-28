@@ -19,14 +19,15 @@ import js7.controller.data.ControllerCommand.ShutDown
 import js7.core.event.journal.files.JournalFiles.listJournalFiles
 import js7.core.message.ProblemCodeMessages
 import js7.data.agent.AgentRefPath
-import js7.data.cluster.ClusterNodeId
 import js7.data.job.ExecutablePath
+import js7.data.node.NodeId
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.parser.WorkflowParser
 import js7.tests.controller.cluster.ControllerClusterTester._
 import js7.tests.testenv.DirectoryProvider
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.scalactic.source
 import org.scalatest.Assertions._
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -34,8 +35,8 @@ private[cluster] trait ControllerClusterTester extends AnyFreeSpec
 {
   protected def configureClusterNodes = true
   protected def removeObsoleteJournalFiles = true
-  protected final val primaryId = ClusterNodeId("Primary")
-  protected final val backupId = ClusterNodeId("Backup")
+  protected final val primaryId = NodeId("Primary-Controller")
+  protected final val backupId = NodeId("Backup-Controller")
 
   coupleScribeWithSlf4j()
   ProblemCodeMessages.initialize()
@@ -51,8 +52,8 @@ private[cluster] trait ControllerClusterTester extends AnyFreeSpec
       val primary = new DirectoryProvider(agentRefPath :: Nil, TestWorkflow :: Nil, testName = Some(s"$testName-Primary"),
         controllerConfig = ConfigFactory.parseString((configureClusterNodes ?: s"""
           js7.journal.cluster.nodes = {
-            Primary: "http://127.0.0.1:$primaryHttpPort"
-            Backup: "http://127.0.0.1:$backupHttpPort"
+            Primary-Controller: "http://127.0.0.1:$primaryHttpPort"
+            Backup-Controller: "http://127.0.0.1:$backupHttpPort"
           }""") + s"""
           js7.journal.cluster.heartbeat = 3s
           js7.journal.cluster.fail-after = 5s
@@ -127,7 +128,12 @@ object ControllerClusterTester
         .mkString
   }
 
-  private[cluster] def assertEqualJournalFiles(primary: DirectoryProvider.ControllerTree, backup: DirectoryProvider.ControllerTree, n: Int): Unit = {
+  private[cluster] def assertEqualJournalFiles(
+    primary: DirectoryProvider.ControllerTree,
+    backup: DirectoryProvider.ControllerTree,
+    n: Int)
+    (implicit pos: source.Position)
+  : Unit = {
     waitForCondition(9.s, 10.ms) { listJournalFiles(primary.stateDir / "controller").size == n }
     val journalFiles = listJournalFiles(primary.stateDir / "controller")
     // Snapshot is not being acknowledged, so a new journal file starts asynchronously (or when one event has been written)

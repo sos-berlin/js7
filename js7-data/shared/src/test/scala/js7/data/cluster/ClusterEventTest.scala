@@ -4,6 +4,7 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.web.Uri
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.event.{EventId, JournalPosition}
+import js7.data.node.NodeId
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -12,7 +13,7 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class ClusterEventTest extends AnyFreeSpec
 {
-  private val Id = ClusterNodeId
+  private val Id = NodeId
 
   "ClusterNodesAppointed" in {
     testJson[ClusterEvent](ClusterNodesAppointed(
@@ -39,7 +40,7 @@ final class ClusterEventTest extends AnyFreeSpec
   }
 
   "ClusterCoupled" in {
-    testJson[ClusterEvent](ClusterCoupled(ClusterNodeId("A")),
+    testJson[ClusterEvent](ClusterCoupled(NodeId("A")),
       json"""{
         "TYPE": "ClusterCoupled",
         "activeId": "A"

@@ -13,12 +13,13 @@ import js7.data.cluster.ClusterState._
 import js7.data.event.JournaledState.EventNotApplicableProblem
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventDrivenState, JournalPosition, KeyedEvent}
+import js7.data.node.NodeId
 import monix.reactive.Observable
 
 sealed trait ClusterState
 extends EventDrivenState[ClusterState, ClusterEvent]
 {
-  def isNonEmptyActive(id: ClusterNodeId): Boolean
+  def isNonEmptyActive(id: NodeId): Boolean
 
   final def applyEvent(keyedEvent: KeyedEvent[ClusterEvent]): Checked[ClusterState] =
     keyedEvent match {
@@ -64,7 +65,7 @@ extends EventDrivenState[ClusterState, ClusterEvent]
 
 object ClusterState
 {
-  private type Id = ClusterNodeId
+  private type Id = NodeId
 
   final case class ClusterStateSnapshot(clusterState: ClusterState)
 

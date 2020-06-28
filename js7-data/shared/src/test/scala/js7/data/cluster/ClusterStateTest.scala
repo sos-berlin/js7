@@ -4,6 +4,7 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.web.Uri
 import js7.data.cluster.ClusterState.{Coupled, CoupledActiveShutDown, Empty, FailedOver, NodesAppointed, PassiveLost, PreparedToBeCoupled, SwitchedOver}
 import js7.data.event.{EventId, JournalPosition}
+import js7.data.node.NodeId
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -14,8 +15,8 @@ final class ClusterStateTest extends AnyFreeSpec
 {
   "JSON" - {
     val idToUri = Map(
-      ClusterNodeId("A") -> Uri("http://A"),
-      ClusterNodeId("B") -> Uri("http://B"))
+      NodeId("A") -> Uri("http://A"),
+      NodeId("B") -> Uri("http://B"))
     "Empty" in {
       testJson[ClusterState](
         Empty,
@@ -26,7 +27,7 @@ final class ClusterStateTest extends AnyFreeSpec
 
     "NodesAppointed" in {
       testJson[ClusterState](
-        NodesAppointed(idToUri, ClusterNodeId("A")),
+        NodesAppointed(idToUri, NodeId("A")),
         json"""{
           "TYPE": "NodesAppointed",
           "idToUri": {
@@ -39,7 +40,7 @@ final class ClusterStateTest extends AnyFreeSpec
 
     "PreparedToBeCoupled" in {
       testJson[ClusterState](
-        PreparedToBeCoupled(idToUri, ClusterNodeId("A")),
+        PreparedToBeCoupled(idToUri, NodeId("A")),
         json"""{
           "TYPE": "PreparedToBeCoupled",
           "idToUri": {
@@ -52,7 +53,7 @@ final class ClusterStateTest extends AnyFreeSpec
 
     "Coupled" in {
       testJson[ClusterState](
-        Coupled(idToUri, ClusterNodeId("A")),
+        Coupled(idToUri, NodeId("A")),
         json"""{
           "TYPE": "Coupled",
           "idToUri": {
@@ -65,7 +66,7 @@ final class ClusterStateTest extends AnyFreeSpec
 
     "CoupledActiveShutDown" in {
       testJson[ClusterState](
-        CoupledActiveShutDown(idToUri, ClusterNodeId("A")),
+        CoupledActiveShutDown(idToUri, NodeId("A")),
         json"""{
           "TYPE": "CoupledActiveShutDown",
           "idToUri": {
@@ -78,7 +79,7 @@ final class ClusterStateTest extends AnyFreeSpec
 
     "PassiveLost" in {
       testJson[ClusterState](
-        PassiveLost(idToUri, ClusterNodeId("A")),
+        PassiveLost(idToUri, NodeId("A")),
         json"""{
           "TYPE": "PassiveLost",
           "idToUri": {
@@ -91,7 +92,7 @@ final class ClusterStateTest extends AnyFreeSpec
 
     "SwitchedOver" in {
       testJson[ClusterState](
-        SwitchedOver(idToUri, ClusterNodeId("A")),
+        SwitchedOver(idToUri, NodeId("A")),
         json"""{
           "TYPE": "SwitchedOver",
           "idToUri": {
@@ -104,7 +105,7 @@ final class ClusterStateTest extends AnyFreeSpec
 
     "FailedOver" in {
       testJson[ClusterState](
-        FailedOver(idToUri, ClusterNodeId("A"), JournalPosition(EventId(0), 1234)),
+        FailedOver(idToUri, NodeId("A"), JournalPosition(EventId(0), 1234)),
         json"""{
           "TYPE": "FailedOver",
           "idToUri": {

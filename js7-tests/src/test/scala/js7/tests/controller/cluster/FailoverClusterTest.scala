@@ -13,10 +13,10 @@ import js7.controller.configuration.ControllerConfiguration
 import js7.controller.data.ControllerCommand.{ClusterSwitchOver, ShutDown}
 import js7.core.event.journal.files.JournalFiles.JournalMetaOps
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterSwitchedOver}
-import js7.data.cluster.ClusterNodeId
 import js7.data.cluster.ClusterState.{Coupled, FailedOver}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event._
+import js7.data.node.NodeId
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.tests.controller.cluster.ControllerClusterTester._
@@ -30,8 +30,8 @@ final class FailoverClusterTest extends ControllerClusterTester
     withControllerAndBackup(primaryHttpPort, backupHttpPort) { (primary, backup) =>
       var primaryController = primary.startController(httpPort = Some(primaryHttpPort)) await 99.s
       var backupController = backup.startController(httpPort = Some(backupHttpPort)) await 99.s
-      val primaryId = ClusterNodeId("Primary")
-      val backupId = ClusterNodeId("Backup")
+      val primaryId = NodeId("Primary-Controller")
+      val backupId = NodeId("Backup-Controller")
       val idToUri = Map(
         primaryId -> primaryController.localUri,
         backupId -> backupController.localUri)

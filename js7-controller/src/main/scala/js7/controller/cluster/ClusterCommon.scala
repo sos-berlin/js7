@@ -23,11 +23,13 @@ import js7.controller.data.ControllerCommand.InternalClusterCommand
 import js7.core.cluster.ClusterWatch.ClusterWatchHeartbeatFromInactiveNodeProblem
 import js7.core.cluster.ClusterWatchApi
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterState}
+import js7.data.node.NodeId
 import monix.eval.Task
 
 private[cluster] final class ClusterCommon(
   activationInhibitor: ActivationInhibitor,
   val clusterWatch: ClusterWatchApi,
+  ownId: NodeId,
   clusterConf: ClusterConf,
   httpsConfig: HttpsConfig,
   testEventPublisher: EventPublisher[Any])
@@ -42,7 +44,7 @@ private[cluster] final class ClusterCommon(
           case Left(problem) => Task.pure(Left(problem))
           case Right(updatedClusterState) =>
             val eventName = s"'${event.getClass.simpleScalaName}' event"
-            clusterWatch.applyEvents(from = clusterConf.ownId, event :: Nil, updatedClusterState).flatMap {
+            clusterWatch.applyEvents(from = ownId, event :: Nil, updatedClusterState).flatMap {
               case Left(problem) =>
                 if (problem is ClusterWatchHeartbeatFromInactiveNodeProblem) {
                   logger.info(s"ClusterWatch did not agree to $eventName: $problem")

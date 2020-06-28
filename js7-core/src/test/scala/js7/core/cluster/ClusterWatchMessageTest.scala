@@ -3,7 +3,8 @@ package js7.core.cluster
 import js7.base.circeutils.CirceUtils._
 import js7.base.web.Uri
 import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
-import js7.data.cluster.{ClusterNodeId, ClusterState}
+import js7.data.cluster.ClusterState
+import js7.data.node.NodeId
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -16,18 +17,18 @@ final class ClusterWatchMessageTest extends AnyFreeSpec
     "ClusterWatchEvents" in {
       testJson[ClusterWatchMessage](
         ClusterWatchEvents(
-          from = ClusterNodeId("A"),
+          from = NodeId("A"),
           List(
             ClusterNodesAppointed(
               Map(
-                ClusterNodeId("A") -> Uri("http://A"),
-                ClusterNodeId("B") -> Uri("http://B")),
-              ClusterNodeId("A"))),
+                NodeId("A") -> Uri("http://A"),
+                NodeId("B") -> Uri("http://B")),
+              NodeId("A"))),
           ClusterState.NodesAppointed(
             Map(
-              ClusterNodeId("A") -> Uri("http://A"),
-              ClusterNodeId("B") -> Uri("http://B")),
-            ClusterNodeId("A")),
+              NodeId("A") -> Uri("http://A"),
+              NodeId("B") -> Uri("http://B")),
+            NodeId("A")),
           force = true),
         json"""{
           "TYPE": "ClusterWatchEvents",
@@ -57,12 +58,12 @@ final class ClusterWatchMessageTest extends AnyFreeSpec
     "ClusterWatchHeartbeat" in {
       testJson[ClusterWatchMessage](
         ClusterWatchHeartbeat(
-          from = ClusterNodeId("A"),
+          from = NodeId("A"),
           ClusterState.Coupled(
             Map(
-              ClusterNodeId("A") -> Uri("http://A"),
-              ClusterNodeId("B") -> Uri("http://B")),
-            ClusterNodeId("A"))),
+              NodeId("A") -> Uri("http://A"),
+              NodeId("B") -> Uri("http://B")),
+            NodeId("A"))),
         json"""{
           "TYPE": "ClusterWatchHeartbeat",
           "from": "A",

@@ -2,10 +2,11 @@ package js7.data.event
 import js7.base.auth.UserId
 import js7.base.problem.Checked.Ops
 import js7.base.web.Uri
-import js7.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
+import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.event.JournaledState.EventNotApplicableProblem
-import js7.data.event.JournaledStateTest.{MyState, _}
+import js7.data.event.JournaledStateTest._
 import js7.data.event.KeyedEvent.NoKey
+import js7.data.node.NodeId
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
@@ -38,10 +39,10 @@ final class JournaledStateTest extends AnyFreeSpec
 
 private object JournaledStateTest
 {
-  private val primaryNodeId = ClusterNodeId("Primary")
+  private val primaryNodeId = NodeId("Primary-Controller")
   private val idToNode = Map(
     primaryNodeId -> Uri("http://PRIMARY"),
-    ClusterNodeId("Backup") -> Uri("http://BACKUP"))
+    NodeId("Backup-Controller") -> Uri("http://BACKUP"))
 
   private case class MyState(standards: JournaledState.Standards) extends JournaledState[MyState]
   {

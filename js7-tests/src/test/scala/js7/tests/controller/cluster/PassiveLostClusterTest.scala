@@ -5,8 +5,9 @@ import js7.base.time.ScalaTime._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import js7.controller.data.ControllerCommand.ClusterAppointNodes
+import js7.data.cluster.ClusterEvent
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterPassiveLost}
-import js7.data.cluster.{ClusterEvent, ClusterNodeId}
+import js7.data.node.NodeId
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.tests.controller.cluster.ControllerClusterTester._
@@ -25,9 +26,9 @@ final class PassiveLostClusterTest extends ControllerClusterTester
       primaryController.executeCommandAsSystemUser(
         ClusterAppointNodes(
           Map(
-            ClusterNodeId("Primary") -> primaryController.localUri,
-            ClusterNodeId("Backup") -> backupController.localUri),
-          ClusterNodeId("Primary"))
+            NodeId("Primary-Controller") -> primaryController.localUri,
+            NodeId("Backup-Controller") -> backupController.localUri),
+          NodeId("Primary-Controller"))
       ).await(99.s).orThrow
       primaryController.eventWatch.await[ClusterEvent.ClusterCoupled]()
 

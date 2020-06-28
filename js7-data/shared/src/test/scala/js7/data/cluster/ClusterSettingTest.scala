@@ -3,6 +3,7 @@ package js7.data.cluster
 import js7.base.web.Uri
 import js7.data.cluster.ClusterSetting._
 import js7.data.cluster.ClusterSetting.syntax._
+import js7.data.node.NodeId
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
@@ -11,21 +12,21 @@ import org.scalatest.freespec.AnyFreeSpec
 final class ClusterSettingTest extends AnyFreeSpec
 {
   private val idToUri = Map(
-    ClusterNodeId("A") -> Uri("http://A"),
-    ClusterNodeId("B") -> Uri("http://B"))
+    NodeId("A") -> Uri("http://A"),
+    NodeId("B") -> Uri("http://B"))
 
   "checkUris" in {
     assert(checkUris(Map.empty).isLeft)
-    assert(checkUris(Map(ClusterNodeId("A") -> Uri("http://A"))).isLeft)
-    assert(checkUris(Map(ClusterNodeId("A") -> Uri("http://SAME"), ClusterNodeId("B") -> Uri("http://SAME"))).isLeft)
-    assert(checkUris(idToUri, ClusterNodeId("X")).isLeft)
+    assert(checkUris(Map(NodeId("A") -> Uri("http://A"))).isLeft)
+    assert(checkUris(Map(NodeId("A") -> Uri("http://SAME"), NodeId("B") -> Uri("http://SAME"))).isLeft)
+    assert(checkUris(idToUri, NodeId("X")).isLeft)
 
-    assert(checkUris(idToUri, ClusterNodeId("A")).isRight)
+    assert(checkUris(idToUri, NodeId("A")).isRight)
     assert(checkUris(idToUri).isRight)
   }
 
   "peerOf" in {
-    assert(idToUri.peerOf(ClusterNodeId("A")) == ClusterNodeId("B"))
-    assert(idToUri.peerOf(ClusterNodeId("B")) == ClusterNodeId("A"))
+    assert(idToUri.peerOf(NodeId("A")) == NodeId("B"))
+    assert(idToUri.peerOf(NodeId("B")) == NodeId("A"))
   }
 }

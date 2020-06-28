@@ -7,9 +7,10 @@ import js7.base.problem.{Checked, Problem, ProblemCode}
 import js7.base.time.ScalaTime._
 import js7.common.scalautil.Logger
 import js7.core.cluster.ClusterWatch._
-import js7.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
+import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
+import js7.data.node.NodeId
 import monix.catnap.MVar
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -24,7 +25,7 @@ extends ClusterWatchApi
   logger.trace(toString)
 
   @TestOnly
-  private[cluster] def isActive(id: ClusterNodeId): Task[Checked[Boolean]] =
+  private[cluster] def isActive(id: NodeId): Task[Checked[Boolean]] =
     get.map(_.map {
       case o: ClusterState.HasNodes => o.activeId == id
       case _ => sys.error("ClusterState must be a HasNodes")
@@ -36,7 +37,7 @@ extends ClusterWatchApi
 
   /**
     * @param reportedClusterState the expected ClusterState after applying the `events` */
-  def applyEvents(from: ClusterNodeId, events: Seq[ClusterEvent], reportedClusterState: ClusterState, force: Boolean): Task[Checked[Completed]] =
+  def applyEvents(from: NodeId, events: Seq[ClusterEvent], reportedClusterState: ClusterState, force: Boolean): Task[Checked[Completed]] =
     update(from, force, s"ControllerId '$controllerId': applyEvents($from, $events, $reportedClusterState)") {
       case None =>  // Not yet initialized: we accept anything
         Right(reportedClusterState)
@@ -58,7 +59,7 @@ extends ClusterWatchApi
         Right(reportedClusterState)
     } .map(_.toCompleted)
 
-  def heartbeat(from: ClusterNodeId, reportedClusterState: ClusterState): Task[Checked[Completed]] =
+  def heartbeat(from: NodeId, reportedClusterState: ClusterState): Task[Checked[Completed]] =
     update(from, false, s"heartbeat($from, $reportedClusterState)")(current =>
       if (!reportedClusterState.isNonEmptyActive(from))
         Left(InvalidClusterWatchHeartbeatProblem(from, reportedClusterState))
@@ -70,7 +71,7 @@ extends ClusterWatchApi
       }
     ).map(_.toCompleted)
 
-  private def update(from: ClusterNodeId, force: Boolean, logLine: => String)(body: Option[State] => Checked[ClusterState])
+  private def update(from: NodeId, force: Boolean, logLine: => String)(body: Option[State] => Checked[ClusterState])
   : Task[Checked[ClusterState]] =
     stateMVar.flatMap(mvar =>
       mvar.take.flatMap { current =>
@@ -91,7 +92,7 @@ extends ClusterWatchApi
           }
       })
 
-  private def mustBeStillActive(from: ClusterNodeId, state: Option[State], force: Boolean): Checked[Completed.type] =
+  private def mustBeStillActive(from: NodeId, state: Option[State], force: Boolean): Checked[Completed.type] =
     state match {
       case Some(State(clusterState, lastHeartbeat))
         if !clusterState.isNonEmptyActive(from) && (lastHeartbeat + timeout).hasTimeLeft =>
@@ -149,14 +150,14 @@ object ClusterWatch
   }
   object ClusterWatchEventMismatchProblem extends Problem.Coded.Companion
 
-  final case class ClusterWatchHeartbeatFromInactiveNodeProblem(from: ClusterNodeId, clusterState: ClusterState) extends Problem.Coded {
+  final case class ClusterWatchHeartbeatFromInactiveNodeProblem(from: NodeId, clusterState: ClusterState) extends Problem.Coded {
     def arguments = Map(
       "from" -> from.string,
       "clusterState" -> clusterState.toString)
   }
   object ClusterWatchHeartbeatFromInactiveNodeProblem extends Problem.Coded.Companion
 
-  final case class InvalidClusterWatchHeartbeatProblem(from: ClusterNodeId, clusterState: ClusterState) extends Problem.Coded {
+  final case class InvalidClusterWatchHeartbeatProblem(from: NodeId, clusterState: ClusterState) extends Problem.Coded {
     def arguments = Map(
       "from" -> from.string,
       "clusterState" -> clusterState.toString)

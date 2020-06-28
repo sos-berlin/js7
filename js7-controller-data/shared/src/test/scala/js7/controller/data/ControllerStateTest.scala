@@ -9,11 +9,12 @@ import js7.base.web.Uri
 import js7.controller.data.ControllerSnapshots.ControllerMetaState
 import js7.controller.data.agent.AgentSnapshot
 import js7.data.agent.AgentRefPath
-import js7.data.cluster.{ClusterNodeId, ClusterState}
+import js7.data.cluster.ClusterState
 import js7.data.controller.{ControllerFileBaseds, ControllerId}
 import js7.data.event.{EventId, JournalState, JournaledState}
 import js7.data.filebased.RepoEvent.VersionAdded
 import js7.data.filebased.{Repo, VersionId}
+import js7.data.node.NodeId
 import js7.data.order.{Order, OrderId}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
@@ -32,9 +33,9 @@ final class ControllerStateTest extends AsyncFreeSpec
       JournalState(Map(UserId("A") -> EventId(1000))),
       ClusterState.Coupled(
         Map(
-          ClusterNodeId("A") -> Uri("http://A"),
-          ClusterNodeId("B") -> Uri("http://B")),
-        ClusterNodeId("A"))),
+          NodeId("A") -> Uri("http://A"),
+          NodeId("B") -> Uri("http://B")),
+        NodeId("A"))),
     ControllerMetaState(ControllerId("CONTROLLER-ID"), Timestamp("2019-05-24T12:00:00Z"), timezone = "Europe/Berlin"),
     Repo.ofJsonDecoder(ControllerFileBaseds.jsonCodec).applyEvent(VersionAdded(VersionId("1.0"))).orThrow,
     (AgentSnapshot(AgentRefPath("/AGENT"), None, EventId(7)) :: Nil).toKeyedMap(_.agentRefPath),

@@ -35,19 +35,20 @@ import js7.core.event.journal.recover.{FileJournaledStateBuilder, JournalProgres
 import js7.data.cluster.ClusterCommand.{ClusterCouple, ClusterPrepareCoupling, ClusterRecouple}
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{Coupled, Decoupled, PreparedToBeCoupled}
-import js7.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
+import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalEvent, JournalId, JournalPosition, JournalSeparators, JournaledState, JournaledStateBuilder, KeyedEvent, Stamped}
+import js7.data.node.NodeId
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import scodec.bits.ByteVector
 
 /*private[cluster]*/ final class PassiveClusterNode[S <: JournaledState[S]: Diff](
-  ownId: ClusterNodeId,
-  idToUri: Map[ClusterNodeId, Uri],
-  activeId: ClusterNodeId,
+  ownId: NodeId,
+  idToUri: Map[NodeId, Uri],
+  activeId: NodeId,
   journalMeta: JournalMeta,
   /** For backup initialization, only when ClusterState.Empty. */
   initialFileEventId: Option[EventId],
