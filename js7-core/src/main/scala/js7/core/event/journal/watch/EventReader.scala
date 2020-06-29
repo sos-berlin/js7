@@ -163,7 +163,7 @@ extends AutoCloseable
                   val maybeLine = jsonSeqReader.readRaw()
                   lastPosition = jsonSeqReader.position
                   maybeLine.map(PositionAnd(lastPosition, _))
-                }.takeWhileAndOne(_ => isFlushedAfterPosition(lastPosition))
+                }.takeWhileInclusive(_ => isFlushedAfterPosition(lastPosition))
                 if (onlyLastOfChunk) {
                   // TODO Optimierung: Bei onlyLastOfChunk interessiert nur die geschriebene Dateilänge.
                   //  Dann brauchen wir die Datei nicht zu lesen, sondern nur die geschriebene Dateilänge zurückzugeben.

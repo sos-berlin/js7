@@ -87,14 +87,14 @@ final class CollectionsTest extends AnyFreeSpec
     intercept[DuplicateKeyException] { List(1 -> "eins", 1 -> "ett") toKeyedMap { _._1 } }
   }
 
-  "takeWhileAndOne" in {
+  "takeWhileInclusive" in {
     var next = 0
     val it = Iterator.continually { next += 1; next }
-    assert(it.takeWhileAndOne(_ <= 3).toList == 1 :: 2 :: 3 :: 4 :: Nil)
+    assert(it.takeWhileInclusive(_ <= 3).toList == 1 :: 2 :: 3 :: 4 :: Nil)
     assert(next == 4)
 
-    assert(Iterator[Int]().takeWhileAndOne(_ <= 3).isEmpty)
-    assert(Iterator(1, 1, 1).takeWhileAndOne(_ < 1).toList == 1 :: Nil)
+    assert(Iterator[Int]().takeWhileInclusive(_ <= 3).isEmpty)
+    assert(Iterator(1, 1, 1).takeWhileInclusive(_ < 1).toList == 1 :: Nil)
   }
 
   "duplicate" in {

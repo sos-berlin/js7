@@ -101,7 +101,7 @@ object Collections
     }
 
     implicit final class RichIterator[A](private val underlying: Iterator[A]) extends AnyVal {
-      def takeWhileAndOne(predicate: A => Boolean): Iterator[A] = {
+      def takeWhileInclusive(predicate: A => Boolean): Iterator[A] = {
         var firstNonMatching: Iterator[A] = Iterator.empty
         underlying.takeWhile { a =>
           val p = predicate(a)
