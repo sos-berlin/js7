@@ -79,7 +79,7 @@ trait SessionRouteTester extends BeforeAndAfterAll with ScalatestRouteTest with 
         }
       })
 
-  protected final lazy val server = new AkkaWebServer.ForTest(system, route)
+  protected final lazy val server = AkkaWebServer.forTest(route)
 
   protected lazy val localUri = server.localUri
 

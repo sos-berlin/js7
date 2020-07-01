@@ -51,6 +51,7 @@ trait AkkaWebServer extends AutoCloseable
    */
   def start(): Task[Completed] =
     Task.deferAction { scheduler =>
+      shutdownTimeout
       this.scheduler := scheduler  // For close()
       if (bindings.isEmpty)
         Task.raiseError(new IllegalArgumentException("Web server needs a configured HTTP or HTTPS port"))
@@ -99,12 +100,14 @@ trait AkkaWebServer extends AutoCloseable
   }
 
   def close() =
-    try terminate().runToFuture(scheduler.get) await shutdownTimeout + 99.s
-    catch {
-      case NonFatal(t: TimeoutException) =>
-        logger.warn(s"$toString while shuttig down the web server: " + t.toStringWithCauses)
-      case NonFatal(t) =>
-        logger.warn(s"$toString close(): " + t.toStringWithCauses, t.nullIfNoStackTrace)
+    for (scheduler <- scheduler) {
+      try terminate().runToFuture(scheduler) await shutdownTimeout + 99.s
+      catch {
+        case NonFatal(t: TimeoutException) =>
+          logger.warn(s"$toString while shuttig down the web server: " + t.toStringWithCauses)
+        case NonFatal(t) =>
+          logger.warn(s"$toString close(): " + t.toStringWithCauses, t.nullIfNoStackTrace)
+      }
     }
 
   def terminate(): Task[Unit] =
@@ -134,14 +137,23 @@ trait AkkaWebServer extends AutoCloseable
 object AkkaWebServer
 {
   private val logger = Logger(getClass)
+  private val testConfig = ConfigFactory.parseString("js7.web.server.shutdown-timeout = 10s")
 
-  def http(port: Int, config: Config = ConfigFactory.empty)(route: Route)(implicit as: ActorSystem)
-  : AkkaWebServer with HasUri = {
+  @TestOnly
+  def forTest(route: Route)(implicit as: ActorSystem): AkkaWebServer with HasUri =
+    forTest(findFreeTcpPort(), ConfigFactory.empty, route = route)
+
+  @TestOnly
+  def forTest(port: Int = findFreeTcpPort(), config: Config = ConfigFactory.empty, route: Route)(implicit as: ActorSystem)
+  : AkkaWebServer with HasUri =
+    http(port = port, config, route)
+
+  def http(port: Int = findFreeTcpPort(), config: Config = testConfig, route: Route)(implicit as: ActorSystem)
+  : AkkaWebServer with HasUri =
     new Standard(
       WebServerBinding.http(port) :: Nil,
       (_, whenTerminating) => BoundRoute(route, whenTerminating), config
     ) with AkkaWebServer.HasUri
-  }
 
   class Standard(
     protected val bindings: Seq[WebServerBinding],
@@ -196,13 +208,5 @@ object AkkaWebServer
       new BoundRoute {
         def webServerRoute = route
       }
-  }
-
-  final class ForTest(protected val actorSystem: ActorSystem, route: Route) extends AkkaWebServer with AkkaWebServer.HasUri {
-    protected val config = ConfigFactory.parseString("js7.web.server.shutdown-timeout = 10s")
-    protected def scheduler = Scheduler.global
-    protected lazy val bindings = WebServerBinding.Http(new InetSocketAddress("127.0.0.1", findFreeTcpPort())) :: Nil
-    protected def newRoute(binding: WebServerBinding, whenTerminating: Future[Deadline]) =
-      AkkaWebServer.BoundRoute(route, whenTerminating)
   }
 }

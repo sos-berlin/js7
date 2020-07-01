@@ -87,7 +87,7 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with H
     implicit val aJsonCodec = deriveCodec[A]
 
     lazy val webServer = {
-      val server = AkkaWebServer.http(findFreeTcpPort()) {
+      val server = AkkaWebServer.forTest {
         import CirceJsonOrYamlSupport.{jsonOrYamlMarshaller, jsonUnmarshaller}
         decodeRequest {
           post {
