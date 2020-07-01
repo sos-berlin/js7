@@ -78,6 +78,7 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
   }
 
   "/controller/api/journal" in {
+    // TODO Duplicate with JournalRouteTest
     var replicated = ByteVector.empty
     controller.eventWatch.await[AgentReady](_ => true)  // Await last event
 
