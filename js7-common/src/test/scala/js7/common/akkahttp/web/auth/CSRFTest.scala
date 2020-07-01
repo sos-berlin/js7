@@ -37,7 +37,7 @@ final class CSRFTest extends AnyFreeSpec with ScalatestRouteTest {
     }
   }
 
-  "POST plain/text is forbidden" in {
+  "POST text/plain is forbidden" in {
     Post(uri, "STRING") ~> route ~> check {
       assert(status == Forbidden)
       assert(responseAs[String] == Forbidden.defaultMessage)

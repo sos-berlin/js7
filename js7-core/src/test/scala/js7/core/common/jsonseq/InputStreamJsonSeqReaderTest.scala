@@ -74,7 +74,7 @@ final class InputStreamJsonSeqReaderTest extends AnyFreeSpec
     assert(reader.read() == Some(Chunk(2)._2))
   }
 
-  "Last truncate record of truncated file is ignored" - {
+  "Last truncated record of truncated file is ignored" - {
     "Last record is not truncated" in {
       assert(read("").isEmpty)
     }
