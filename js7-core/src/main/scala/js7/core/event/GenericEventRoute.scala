@@ -138,10 +138,8 @@ trait GenericEventRoute extends RouteProvider
 
             case EventSeq.NonEmpty(events) =>
               implicit val x = NonEmptyEventSeqJsonStreamingSupport
-              monixObservableToMarshallable(
-                closeableIteratorToObservable(events)
-                  .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
-                    Task { logger.debug("whenShuttingDown completed") }))
+              observableToMarshallable(
+                closeableIteratorToObservable(events))
           })
       }
 
