@@ -24,11 +24,13 @@ final class ProblemTest extends AnyFreeSpec
       }
 
       "with TYPE" in {
+        implicit val x = Problem.typedJsonEncoder
+        implicit val y = implicitly[Decoder[Problem]]
         testJson(Problem("A problem"),
           json"""{
             "TYPE": "Problem",
             "message": "A problem"
-          }""")(Problem.typedJsonEncoder, implicitly[Decoder[Problem]])
+          }""")
       }
     }
 

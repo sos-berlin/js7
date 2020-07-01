@@ -3,6 +3,7 @@ package js7.tester
 import io.circe.parser.parse
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json, Printer}
+import org.scalactic.source
 import org.scalatest.Assertion
 import org.scalatest.Assertions._
 
@@ -17,7 +18,7 @@ object CirceJsonTester
   def testJson[A: Encoder: Decoder](a: A, jsonString: String): Assertion =
     testJson(a, parseJson(jsonString))
 
-  def testJson[A: Encoder: Decoder](a: A, json: => Json): Assertion = {
+  def testJson[A: Encoder: Decoder](a: A, json: => Json)(implicit pos: source.Position): Assertion = {
     // Do a.asJson first to get the JSON string, then evaluate lazy json (which may have syntax errors during development).
     val asJson: Json = removeJNull(a.asJson)  // Circe converts None to JNull which we remove here (like Printer dropNullValues = true)
     if (asJson != json) fail(s"${prettyPrinter.print(normalize(asJson))} did not equal ${prettyPrinter.print(normalize(json))}")
