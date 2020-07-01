@@ -106,7 +106,8 @@ object ControllerCommand extends CommonCommand.Companion
   /** Shut down the Controller properly. */
   final case class ShutDown(
     restart: Boolean = false,
-    clusterAction: Option[ShutDown.ClusterAction] = None)
+    clusterAction: Option[ShutDown.ClusterAction] = None,
+    suppressSnapshot: Boolean = false)
   extends ControllerCommand {
     type Response = Response.Accepted
   }
@@ -124,13 +125,15 @@ object ControllerCommand extends CommonCommand.Companion
       JsonObject.fromIterable(
         o.restart.thenList("restart" -> Json.True) :::
         ("clusterAction" -> o.clusterAction.asJson) ::
+        o.suppressSnapshot.thenList("suppressSnapshot" -> Json.True) :::
         Nil)
 
     implicit val jsonDecoder: Decoder[ShutDown] = c =>
       for {
         restart <- c.get[Option[Boolean]]("restart").map(_ getOrElse false)
         cluster <- c.get[Option[ClusterAction]]("clusterAction")
-      } yield ShutDown(restart, cluster)
+        suppressSnapshot <- c.get[Option[Boolean]]("suppressSnapshot").map(_ getOrElse false)
+      } yield ShutDown(restart, cluster, suppressSnapshot)
   }
 
   case object TakeSnapshot extends ControllerCommand {

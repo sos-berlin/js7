@@ -113,7 +113,8 @@ extends HasCloser
   def runController[A](
     httpPort: Option[Int] = Some(findFreeTcpPort()),
     dontWaitUntilReady: Boolean = false,
-    config: Config = ConfigFactory.empty)
+    config: Config = ConfigFactory.empty,
+    suppressSnapshot: Boolean = false)
     (body: RunningController => A)
   : A = {
     val runningController = startController(httpPort = httpPort, config = config) await 99.s

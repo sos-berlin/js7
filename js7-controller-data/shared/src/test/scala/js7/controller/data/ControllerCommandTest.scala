@@ -273,6 +273,14 @@ final class ControllerCommandTest extends AnyFreeSpec
           }
         }""")
     }
+
+    "suppressSnapshot=true" in {
+      testJson[ControllerCommand](ShutDown(suppressSnapshot = true),
+        json"""{
+          "TYPE": "ShutDown",
+          "suppressSnapshot": true
+        }""")
+    }
   }
 
   "ClusterAppointNodes" in {

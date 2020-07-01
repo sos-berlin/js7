@@ -147,8 +147,8 @@ with MainJournalingActor[ControllerState, Event]
       }
 
     def continue() =
-      if (shuttingDown) {
-        logger.trace(s"shutdown.continue: ${agentRegister.runningActorCount} AgentDrivers${snapshotTaken ?: ", snapshot taken"}")
+      for (shutDown <- shutDown) {
+        logger.trace(s"shutdown.continue: ${agentRegister.runningActorCount} AgentDrivers${!snapshotTaken ?: ", snapshot required"}")
         if (!terminatingAgentDrivers) {
           terminatingAgentDrivers = true
           agentRegister.values foreach {
@@ -158,7 +158,11 @@ with MainJournalingActor[ControllerState, Event]
         if (agentRegister.runningActorCount == 0) {
           if (!takingSnapshot) {
             takingSnapshot = true
-            journalActor ! JournalActor.Input.TakeSnapshot
+            if (shutDown.suppressSnapshot) {
+              snapshotTaken = true
+            } else {
+              journalActor ! JournalActor.Input.TakeSnapshot
+            }
           }
           if (snapshotTaken && !terminatingJournal) {
             // The event forces the cluster to acknowledge this event and the snapshot taken

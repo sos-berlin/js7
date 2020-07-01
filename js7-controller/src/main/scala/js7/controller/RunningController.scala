@@ -96,7 +96,7 @@ extends AutoCloseable
       o
     }
 
-  def terminate(): Task[ControllerTermination] =
+  def terminate(suppressSnapshot: Boolean = false): Task[ControllerTermination] =
     if (terminated.isCompleted)  // Works only if previous termination has been completed
       Task.fromFuture(terminated)
     else
@@ -108,7 +108,7 @@ extends AutoCloseable
         case None =>
           logger.debug("terminate")
           for {
-            _ <- executeCommandAsSystemUser(ControllerCommand.ShutDown()).map(_.orThrow)
+            _ <- executeCommandAsSystemUser(ControllerCommand.ShutDown(suppressSnapshot = suppressSnapshot)).map(_.orThrow)
             t <- Task.fromFuture(terminated)
           } yield t
       }
