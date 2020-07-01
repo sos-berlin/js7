@@ -18,7 +18,7 @@ import scala.concurrent.duration.FiniteDuration
 /**
   * @author Joacim Zschimmer
   */
-private[journal] final class EventJournalWriter(
+final class EventJournalWriter(
   protected val journalMeta: JournalMeta,
   val file: Path,
   after: EventId,

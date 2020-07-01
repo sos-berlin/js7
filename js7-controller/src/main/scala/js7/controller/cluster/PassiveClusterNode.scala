@@ -348,6 +348,7 @@ import scodec.bits.ByteVector
             Observable.empty
 
           case Some((fileLength, JournalSeparators.EndOfJournalFileMarker, _)) =>
+            // fileLength may be advanced to end of file when file's last record is truncated
             logger.debug(s"End of replicated journal file reached: ${file.getFileName} eventId=${builder.eventId} fileLength=$fileLength")
             _eof = true
             Observable.pure(Left(EndOfJournalFileMarker))

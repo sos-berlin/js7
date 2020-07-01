@@ -24,6 +24,7 @@ import js7.common.time.JavaTimeConverters.AsScalaDuration
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Deadline
 import scala.concurrent.{Future, Promise, TimeoutException}
 import scala.util.control.NonFatal
@@ -152,7 +153,8 @@ object AkkaWebServer
   : AkkaWebServer with HasUri =
     new Standard(
       WebServerBinding.http(port) :: Nil,
-      (_, whenTerminating) => BoundRoute(route, whenTerminating), config
+      (_, whenTerminating) => BoundRoute(route, whenTerminating),
+      config withFallback testConfig
     ) with AkkaWebServer.HasUri
 
   class Standard(

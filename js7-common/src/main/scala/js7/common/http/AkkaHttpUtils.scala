@@ -3,7 +3,7 @@ package js7.common.http
 import akka.http.scaladsl.coding.{Coder, Deflate, Gzip, NoCoding, StreamDecoder}
 import akka.http.scaladsl.model.headers.HttpEncodings.gzip
 import akka.http.scaladsl.model.headers.{HttpEncoding, HttpEncodings, `Accept-Encoding`}
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse, ResponseEntity, Uri => AkkaUri}
+import akka.http.scaladsl.model.{HttpEntity, HttpRequest, HttpResponse, Uri => AkkaUri}
 import akka.stream.Materializer
 import akka.util.ByteString
 import js7.base.web.Uri
@@ -31,7 +31,7 @@ object AkkaHttpUtils
       case o => throw new RuntimeException(s"Unsupported Encoding: $o")
     }
 
-  private implicit final class RichResponseEntity(private val underlying: ResponseEntity) extends AnyVal {
+  private implicit final class RichResponseEntity(private val underlying: HttpEntity) extends AnyVal {
     // TODO Fail if Content-Type is not a (UTF-8 or other) String.
     // TODO Parameter maxLength to truncateWithEllipsis.
     /**
@@ -39,7 +39,7 @@ object AkkaHttpUtils
       * May return a very big String.
       */
     def utf8StringFuture(timeout: FiniteDuration)(implicit mat: Materializer, ec: ExecutionContext): Future[String] =
-      byteStringFuture(timeout) map (_.utf8String)  // Possible OutOfMemoryError
+      byteStringFuture(timeout).map(_.utf8String)  // Possible OutOfMemoryError
 
     /**
       * Returns the HttpResponse content as a `Future[ByteString]`.

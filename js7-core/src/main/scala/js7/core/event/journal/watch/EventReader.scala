@@ -158,9 +158,10 @@ extends AutoCloseable
                 Observable.empty
               case true =>  // Data may be available
                 var lastPosition = position
-                var eofMarked = false
+                var eof = false
                 var iterator = UntilNoneIterator {
                   val maybeLine = jsonSeqReader.readRaw()
+                  eof = maybeLine.isEmpty
                   lastPosition = jsonSeqReader.position
                   maybeLine.map(PositionAnd(lastPosition, _))
                 }.takeWhileInclusive(_ => isFlushedAfterPosition(lastPosition))
@@ -168,22 +169,17 @@ extends AutoCloseable
                   // TODO Optimierung: Bei onlyLastOfChunk interessiert nur die geschriebene Dateilänge.
                   //  Dann brauchen wir die Datei nicht zu lesen, sondern nur die geschriebene Dateilänge zurückzugeben.
                   var last = null.asInstanceOf[PositionAnd[ByteVector]]
-                  iterator.foreach(last = _)
+                  iterator foreach { last = _ }
                   iterator = Option(last).iterator
                 }
-                if (markEOF && isEOF(lastPosition)) {
-                  iterator = iterator
-                    .tapEach { o =>
-                      if (o.value == EndOfJournalFileMarker) sys.error(s"Journal file must not contain a line like $o")
-                    } ++ {
-                      eofMarked = true
-                      Iterator.single(PositionAnd(lastPosition, EndOfJournalFileMarker))
-                    }
-                }
+                iterator = iterator
+                  .tapEach { o =>
+                    if (o.value == EndOfJournalFileMarker) sys.error(s"Journal file must not contain a line like $o")
+                  } ++
+                    (eof && markEOF).thenIterator(PositionAnd(lastPosition, EndOfJournalFileMarker))
                 Observable.fromIteratorUnsafe(iterator map Right.apply) ++
                   Observable.fromIterable(
-                    ((lastPosition > position/*something read*/ && !eofMarked) ?
-                      Left(lastPosition)))
+                    !eof ? Left(lastPosition))
               })
       }
 

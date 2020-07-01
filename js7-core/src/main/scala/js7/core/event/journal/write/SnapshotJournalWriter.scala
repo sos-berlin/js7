@@ -15,7 +15,7 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-private[journal] final class SnapshotJournalWriter(
+final class SnapshotJournalWriter(
   protected val journalMeta: JournalMeta,
   val file: Path,
   after: EventId,
