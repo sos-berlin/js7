@@ -313,6 +313,11 @@ final class ScalaUtilsTest extends AnyFreeSpec
     assert((false thenSet 7: Set[Int]) == Set())
   }
 
+  "Boolean.thenIterator" in {
+    assert((true thenIterator 7: Iterator[Int]).toList == List(7))
+    assert((false thenIterator 7: Iterator[Int]).isEmpty)
+  }
+
   "shortStringToInputStream" in {
     val in = shortStringToInputStream("heiß")
     assert(in.read() == 'h'.toByte)

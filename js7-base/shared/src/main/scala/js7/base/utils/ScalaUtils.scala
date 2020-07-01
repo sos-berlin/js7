@@ -222,6 +222,14 @@ object ScalaUtils
         */
       def thenSet[A](a: => A): Set[A] =
         if (underlying) Set(a) else Set.empty
+
+      /**
+        * Conditional `Iterator`.
+        * <p>`(true option a) == Iterator(a)`
+        * <br>`(false option a) == Iterator.empty`
+        */
+      def thenIterator[A](a: => A): Iterator[A] =
+        if (underlying) Iterator.single(a) else Iterator.empty
     }
 
     implicit final class RichEither[L, R](private val underlying: Either[L, R]) extends AnyVal
