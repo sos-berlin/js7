@@ -129,7 +129,6 @@ with MainJournalingActor[ControllerState, Event]
         stillShuttingDownCancelable := scheduler.scheduleAtFixedRates(controllerConfiguration.journalConf.ackWarnDurations/*?*/) {
           self ! Internal.StillShuttingDown
         }
-        journalActor ! JournalActor.Input.TakeSnapshot  // Take snapshot before OrderActors are stopped
         continue()
       }
 
