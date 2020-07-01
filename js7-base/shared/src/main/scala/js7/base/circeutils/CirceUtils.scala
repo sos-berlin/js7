@@ -227,19 +227,31 @@ object CirceUtils
   //  }
 
   implicit final class JsonStringInterpolator(private val sc: StringContext) extends AnyVal {
-    def json(args: Any*): Json = {
+    def json(args: Any*): Json =
+      JsonStringInterpolator.interpolate(sc, args).parseJsonOrThrow
+
+    /** Dummy interpolator returning the string itself, to allow syntax checking by IntelliJ IDEA. */
+    def jsonString(args: Any*): String = {
+      require(args.isEmpty, "jsonString string interpolator does not accept variables")
+      sc.parts mkString ""
+    }
+  }
+
+  object JsonStringInterpolator
+  {
+    def interpolate(sc: StringContext, args: Seq[Any]): String = {
       StringContext.checkLengths(args, sc.parts)
       val p = sc.parts.iterator
       val builder = new StringBuilder(sc.parts.map(_.length).sum + 50)
       builder.append(p.next())
       for (arg <- args) {
-        builder.append(toJson(arg))
+        builder.append(toJsonString(arg))
         builder.append(p.next())
       }
-      builder.toString.parseJsonOrThrow
+      builder.toString
     }
 
-    private def toJson(arg: Any): String =
+    private def toJsonString(arg: Any): String =
       arg match {
         case arg @ (_: String | _: GenericString) =>
           val j = Json.fromString(arg.toString).toString
@@ -247,12 +259,6 @@ object CirceUtils
         case _ =>
           anyToJson(arg).toString
       }
-
-    /** Dummy interpolator returning the string itself, to allow syntax checking by IntelliJ IDEA. */
-    def jsonString(args: Any*): String = {
-      require(args.isEmpty, "jsonString string interpolator does not accept variables")
-      sc.parts mkString ""
-    }
   }
 
   private def throwUnexpected(expected: String, found: String) =
