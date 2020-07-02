@@ -64,11 +64,11 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest with
           js7.auth.users {
             Controller {
               password = "plain:PRIMARY-CONTROLLER-PASSWORD"
-              distinguished-name = "CN=Backup Controller,DC=backup-controller,DC=HttpsTestBase,DC=tests,DC=js7,DC=sh"
+              distinguished-names = [ "CN=Backup Controller,DC=backup-controller,DC=HttpsTestBase,DC=tests,DC=js7,DC=sh" ]
             }
             TEST {
               password = "plain:TEST-PASSWORD"
-              distinguished-name = "CN=Test client,DC=test-client,DC=HttpsTestBase,DC=tests,DC=js7,DC=sh"
+              distinguished-names = [ "CN=Test client,DC=test-client,DC=HttpsTestBase,DC=tests,DC=js7,DC=sh" ]
             }
           }
         """) ++
@@ -89,7 +89,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest with
       js7.auth.users {
         Controller {
           password = "plain:BACKUP-CONTROLLER-PASSWORD"
-          distinguished-name = "CN=Primary Controller,DC=primary-controller,DC=DirectoryProvider,DC=tests,DC=js7,DC=sh"
+          distinguished-names = [ "CN=Primary Controller,DC=primary-controller,DC=DirectoryProvider,DC=tests,DC=js7,DC=sh" ]
         }
       }
     """ + !controllerHttpsMutual ?: s"""

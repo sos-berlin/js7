@@ -10,7 +10,7 @@ final case class SimpleUser private(
   id: UserId,
   hashedPassword: HashedPassword,
   grantedPermissions: Set[Permission],
-  distinguishedName: Option[DistinguishedName] = None)
+  distinguishedNames: Seq[DistinguishedName] = Nil)
 extends User
 {
   if (id.isAnonymous && grantedPermissions.contains(ValidUserPermission))
@@ -33,10 +33,11 @@ object SimpleUser extends User.Companion[SimpleUser]
     id: UserId,
     hashedPassword: HashedPassword = HashedPassword.MatchesNothing,
     grantedPermissions: Set[Permission] = Set.empty,
-    distinguishedName: Option[DistinguishedName] = None)
-  : SimpleUser = new SimpleUser(
-    id,
-    hashedPassword,
-    grantedPermissions ++ (!id.isAnonymous thenSet ValidUserPermission),
-    distinguishedName)
+    distinguishedNames: Seq[DistinguishedName] = Nil)
+  : SimpleUser =
+    new SimpleUser(
+      id,
+      hashedPassword,
+      grantedPermissions ++ (!id.isAnonymous thenSet ValidUserPermission),
+      distinguishedNames)
 }

@@ -304,7 +304,10 @@ object DirectoryProvider
          |js7.auth.users {
          |  Controller {
          |    password = ${quoteString("plain:" + password.string)}
-         |    distinguished-name = "CN=Primary Controller, DC=primary-controller, DC=DirectoryProvider, DC=tests, DC=js7, DC=sh"
+         |    distinguished-names = [
+         |      "CN=Primary Controller, DC=primary-controller, DC=DirectoryProvider, DC=tests, DC=js7, DC=sh",
+         |      "CN=Backup Controller,DC=backup-controller,DC=HttpsTestBase,DC=tests,DC=js7,DC=sh"
+         |    ]
          |  }
          |}
          |js7.https.keystore {

@@ -52,7 +52,7 @@ final class IdToUserTest extends AnyFreeSpec
           |  }
           |  D {
           |    password = "plain:PLAIN-PASSWORD"
-          |    distinguished-name = "CN=IdToUserTest"
+          |    distinguished-names = [ "CN=IdToUserTest", "CN=D" ]
           |  }
           |}""".stripMargin),
       SimpleUser.apply)
@@ -69,10 +69,12 @@ final class IdToUserTest extends AnyFreeSpec
       assert(b.hashedPassword equalsClearText Sha512Password)
       assert(c.hashedPassword equalsClearText PlainPassword)
       assert(d.hashedPassword equalsClearText PlainPassword)
-      assert(d.distinguishedName == Some(DistinguishedName("CN=IdToUserTest")))
+      assert(d.distinguishedNames == List(DistinguishedName("CN=IdToUserTest"), DistinguishedName("CN=D")))
 
       assert(idToUser.distinguishedNameToUser(DistinguishedName("CN=IdToUserTest")).get eq d)
       assert(idToUser.distinguishedNameToUser(DistinguishedName("CN = IdToUserTest")).get eq d)
+      assert(idToUser.distinguishedNameToUser(DistinguishedName("CN = IdToUserTest")).get eq d)
+      assert(idToUser.distinguishedNameToUser(DistinguishedName("CN=D")).get eq d)
       assert(idToUser.distinguishedNameToUser(DistinguishedName("CN=UNKNOWN")) == None)
     }
 

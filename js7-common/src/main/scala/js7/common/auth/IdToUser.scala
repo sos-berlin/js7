@@ -9,7 +9,7 @@ import js7.base.utils.Collections.implicits._
 import js7.base.utils.Memoizer
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.auth.IdToUser._
-import js7.common.configutils.Configs.ConvertibleConfig
+import js7.common.configutils.Configs.{ConvertibleConfig, _}
 import js7.common.scalautil.Logger
 import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
@@ -32,11 +32,11 @@ import scala.util.{Failure, Success, Try}
 final class IdToUser[U <: User](
   userIdToRaw: UserId => Option[RawUserAccount],
   distinguishedNameToUserId: DistinguishedName => Option[UserId],
-  toUser: (UserId, HashedPassword, Set[Permission], Option[DistinguishedName]) => U,
+  toUser: (UserId, HashedPassword, Set[Permission], Seq[DistinguishedName]) => U,
   toPermission: PartialFunction[String, Permission])
 extends (UserId => Option[U])
 {
-  private lazy val someAnonymous = Some(toUser(UserId.Anonymous, HashedPassword.newEmpty, Set.empty, None))
+  private lazy val someAnonymous = Some(toUser(UserId.Anonymous, HashedPassword.newEmpty, Set.empty, Nil))
   private val memoizedToUser = Memoizer.strict((userId: UserId) =>
     if (userId.isAnonymous)
       someAnonymous
@@ -54,7 +54,7 @@ extends (UserId => Option[U])
         raw.userId,
         hashedPassword.hashAgainRandom,
         raw.permissions.flatMap(toPermission.lift),
-        raw.distinguishedName)
+        raw.distinguishedNames)
 }
 
 object IdToUser
@@ -65,7 +65,7 @@ object IdToUser
 
   def fromConfig[U <: User](
     config: Config,
-    toUser: (UserId, HashedPassword, Set[Permission], Option[DistinguishedName]) => U,
+    toUser: (UserId, HashedPassword, Set[Permission], Seq[DistinguishedName]) => U,
     toPermission: PartialFunction[String, Permission] = PartialFunction.empty)
   : IdToUser[U] = {
     val cfg = config.getConfig(UsersConfigPath)
@@ -91,27 +91,38 @@ object IdToUser
         case Success(c) =>
           for {
             encodedPassword <- c.optionAs[SecretString]("password")
-            permissions = c.hasPath("permissions").thenList(c.getStringList("permissions").asScala).flatten.toSet
-            distinguishedName = c.optionAs[DistinguishedName]("distinguished-name")
-          } yield RawUserAccount(userId, encodedPassword = encodedPassword, permissions = permissions, distinguishedName)
+            permissions = c.stringSeq("permissions", Nil).toSet
+            distinguishedNames = c.seqAs[DistinguishedName]("distinguished-names", Nil)
+          } yield RawUserAccount(userId, encodedPassword = encodedPassword, permissions = permissions, distinguishedNames)
       }
 
     val distinguishedNameToUserId: Map[DistinguishedName, UserId] =
       cfgObject.asScala.view
-        .flatMap(entry =>
-          UserId.checked(entry._1)
+        .flatMap { case (key, value) =>
+          UserId.checked(key)
             .toOption/*ignore error*/
+            .view
             .flatMap(userId =>
-              entry._2 match {
-                case v: ConfigObject =>
-                  Option(v.get("distinguished-name"))
+              value match {
+                case value: ConfigObject =>
+                  Option(value.get("distinguished-names"))
+                    .view
                     .flatMap(_.unwrapped match {
-                      case o: String => DistinguishedName.checked(o).toOption/*ignore error*/.map(_ -> userId)
-                      case _ => None/*ignore error*/
+                      case list: java.util.List[_] =>
+                        list.asScala.flatMap {
+                          case o: String =>
+                            DistinguishedName.checked(o)
+                              .toOption/*ignore error*/
+                              .map(_ -> userId)
+                          case o =>
+                            println(s"### ? $o")
+                            Nil/*ignore error*/
+                        }
                     })
                 case _=>
-                  None/*ignore error*/
-              }))
+                  Nil/*ignore type mismatch*/
+              })
+        }
         .uniqueToMap/*throws*/
 
     logger.trace("distinguishedNameToUserId=" + distinguishedNameToUserId.map { case (k, v) => s"\n  $k --> $v" }.mkString)
@@ -143,5 +154,5 @@ object IdToUser
     userId: UserId,
     encodedPassword: SecretString,
     permissions: Set[String] = Set.empty,
-    distinguishedName: Option[DistinguishedName] = None)
+    distinguishedNames: Seq[DistinguishedName] = Nil)
 }

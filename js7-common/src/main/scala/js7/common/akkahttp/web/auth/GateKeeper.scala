@@ -232,7 +232,7 @@ object GateKeeper
   object Configuration {
     def fromConfig[U <: User](
       config: Config,
-      toUser: (UserId, HashedPassword, Set[Permission], Option[DistinguishedName]) => U,
+      toUser: (UserId, HashedPassword, Set[Permission], Seq[DistinguishedName]) => U,
       toPermission: PartialFunction[String, Permission] = PartialFunction.empty)
     = {
       val idToUser = IdToUser.fromConfig(config, toUser, toPermission)
