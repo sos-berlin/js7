@@ -106,6 +106,7 @@ with MainJournalingActor[ControllerState, Event]
   private val recoveredJournalHeader = SetOnce[JournalHeader]
   private val suppressOrderIdCheckFor = config.optionAs[String]("js7.TEST-ONLY.suppress-order-id-check-for")
   private val testAddOrderDelay = config.optionAs[FiniteDuration]("js7.TEST-ONLY.add-order-delay").fold(Task.unit)(Task.sleep)
+  private var journalTerminated = false
 
   private def repo = controllerState.repo
 
@@ -151,7 +152,7 @@ with MainJournalingActor[ControllerState, Event]
         if (!terminatingAgentDrivers) {
           terminatingAgentDrivers = true
           agentRegister.values foreach {
-            _.actor ! AgentDriver.Input.Terminate
+            _.actor ! AgentDriver.Input.Terminate()
           }
         }
         if (agentRegister.runningActorCount == 0) {
@@ -505,7 +506,11 @@ with MainJournalingActor[ControllerState, Event]
 
     case Terminated(a) if agentRegister contains a =>
       agentRegister(a).actorTerminated = true
-      shutdown.continue()
+      if (switchover.isDefined && journalTerminated && agentRegister.runningActorCount == 0) {
+        context.stop(self)
+      } else {
+        shutdown.continue()
+      }
   }
 
   // JournalActor's termination must be handled in any `become`-state and must lead to ControllerOrderKeeper's termination
@@ -513,8 +518,15 @@ with MainJournalingActor[ControllerState, Event]
 
   private def handleExceptionalMessage: Receive = {
     case Terminated(`journalActor`) =>
+      journalTerminated = true
       if (!shuttingDown && switchover.isEmpty) logger.error("JournalActor terminated")
-      context.stop(self)
+      if (switchover.isDefined && agentRegister.runningActorCount > 0) {
+        agentRegister.values foreach {
+          _.actor ! AgentDriver.Input.Terminate(noJournal = true)
+        }
+      } else {
+        context.stop(self)
+      }
 
     case Internal.ClusterModuleTerminatedUnexpectedly(tried) =>
       // Stacktrace has been debug-logged by Cluster

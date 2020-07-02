@@ -85,6 +85,7 @@ with ReceiveLoggingActor.WithStash
   private var changingUri: Option[Uri] = None
   private val sessionNumber = AtomicInt(0)
   private val eventFetcherTerminated = Promise[Completed]()
+  private var noJournal = false
 
   private val eventFetcher = new RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], AgentClient](
     _.eventId, conf.recouplingStreamReader)
@@ -116,9 +117,12 @@ with ReceiveLoggingActor.WithStash
           lastProblem = Some(problem)
           logger.warn(s"Coupling failed: $problem")
           for (t <- problem.throwableOption if t.getStackTrace.nonEmpty) logger.debug(s"Coupling failed: $problem", t)
-          persistTask(AgentCouplingFailed(problem), async = true) { (_, _) =>
-            Completed
-          }.map(_.orThrow)
+          if (noJournal)
+            Task.pure(Completed)
+          else
+            persistTask(AgentCouplingFailed(problem), async = true) { (_, _) =>
+              Completed
+            }.map(_.orThrow)
         }
       }
 
@@ -224,7 +228,8 @@ with ReceiveLoggingActor.WithStash
         changingUri = None
       }
 
-    case Input.Terminate =>
+    case Input.Terminate(emergency) =>
+      this.noJournal = emergency
       // Wait until all pending Agent commands are responded, and do not accept further commands
       if (!isTerminating) {
         logger.debug("Terminate")
@@ -389,11 +394,14 @@ with ReceiveLoggingActor.WithStash
           agentRunId <- EitherT(
             client.commandExecute(RegisterAsController(agentRefPath)).map(_.map(_.agentRunId)))
           completed <- EitherT(
-            persistTask(AgentRegisteredController(agentRunId), async = true) { (_, _) =>
-              // asynchronous
-              agentRunIdOnce := agentRunId
-              Completed
-            })
+            if (noJournal)
+              Task.pure(Right(Completed))
+            else
+              persistTask(AgentRegisteredController(agentRunId), async = true) { (_, _) =>
+                // asynchronous
+                agentRunIdOnce := agentRunId
+                Completed
+              })
         } yield completed).value
     }
 
@@ -467,7 +475,7 @@ private[controller] object AgentDriver
 
     final case class CancelOrder(orderId: OrderId, mode: CancelMode) extends Input with Queueable
 
-    case object Terminate
+    final case class Terminate(noJournal: Boolean = false) extends DeadLetterSuppression
   }
 
   object Output {
