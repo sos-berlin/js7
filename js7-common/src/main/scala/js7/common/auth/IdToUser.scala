@@ -1,10 +1,12 @@
 package js7.common.auth
 
 import com.google.common.hash.Hashing.sha512
-import com.typesafe.config.Config
+import com.typesafe.config.{Config, ConfigObject}
 import java.nio.charset.StandardCharsets.UTF_8
-import js7.base.auth.{HashedPassword, Permission, User, UserId}
+import js7.base.auth.{DistinguishedName, HashedPassword, Permission, User, UserId}
 import js7.base.generic.SecretString
+import js7.base.utils.Collections.implicits._
+import js7.base.utils.Memoizer
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.auth.IdToUser._
 import js7.common.configutils.Configs.ConvertibleConfig
@@ -29,35 +31,45 @@ import scala.util.{Failure, Success, Try}
   */
 final class IdToUser[U <: User](
   userIdToRaw: UserId => Option[RawUserAccount],
-  toUser: (UserId, HashedPassword, Set[Permission]) => U,
+  distinguishedNameToUserId: DistinguishedName => Option[UserId],
+  toUser: (UserId, HashedPassword, Set[Permission], Option[DistinguishedName]) => U,
   toPermission: PartialFunction[String, Permission])
-extends (UserId => Option[U]) {
-
-  private lazy val someAnonymous = Some(toUser(UserId.Anonymous, HashedPassword.newEmpty, Set.empty))
-
-  def apply(userId: UserId) =
+extends (UserId => Option[U])
+{
+  private lazy val someAnonymous = Some(toUser(UserId.Anonymous, HashedPassword.newEmpty, Set.empty, None))
+  private val memoizedToUser = Memoizer.strict((userId: UserId) =>
     if (userId.isAnonymous)
       someAnonymous
     else
-      userIdToRaw(userId).flatMap(o => rawToUser(userId, o))
+      userIdToRaw(userId).flatMap(rawToUser))
 
-  private def rawToUser(userId: UserId, raw: RawUserAccount): Option[U] =
-    for (hashedPassword <- toHashedPassword(userId, raw.encodedPassword))
-      yield toUser(userId, hashedPassword.hashAgainRandom, raw.permissions.map(toPermission.lift).flatten)
+  def apply(userId: UserId): Option[U] = memoizedToUser(userId)
+
+  def distinguishedNameToUser(distinguishedName: DistinguishedName): Option[U] =
+    distinguishedNameToUserId(distinguishedName) flatMap apply
+
+  private def rawToUser(raw: RawUserAccount): Option[U] =
+    for (hashedPassword <- toHashedPassword(raw.userId, raw.encodedPassword))
+      yield toUser(
+        raw.userId,
+        hashedPassword.hashAgainRandom,
+        raw.permissions.flatMap(toPermission.lift),
+        raw.distinguishedName)
 }
 
 object IdToUser
 {
   private val logger = Logger(getClass)
-  private val EntryRegex = "([^:]+):(.*)".r
   private val UsersConfigPath = "js7.auth.users"
+  private val PasswordRegex = "([^:]+):(.*)".r
 
   def fromConfig[U <: User](
     config: Config,
-    toUser: (UserId, HashedPassword, Set[Permission]) => U,
+    toUser: (UserId, HashedPassword, Set[Permission], Option[DistinguishedName]) => U,
     toPermission: PartialFunction[String, Permission] = PartialFunction.empty)
   : IdToUser[U] = {
     val cfg = config.getConfig(UsersConfigPath)
+    val cfgObject = config.getValue(UsersConfigPath).asInstanceOf[ConfigObject]
 
     def userIdToRaw(userId: UserId): Option[RawUserAccount] =
       if (cfg.hasPath(userId.string))
@@ -67,11 +79,11 @@ object IdToUser
         None
       }
 
-    def existentUserIdToRaw(userId: UserId) =
+    def existentUserIdToRaw(userId: UserId): Option[RawUserAccount] =
       Try(cfg.getConfig(userId.string)) match {
         case Failure(_: com.typesafe.config.ConfigException.WrongType) =>  // Entry is not a configuration object {...} but a string (the password)
           cfg.optionAs[SecretString](userId.string) map (o =>
-            RawUserAccount(encodedPassword = o, permissions = Set.empty))
+            RawUserAccount(userId, encodedPassword = o))
 
         case Failure(t) =>
           throw t
@@ -80,10 +92,31 @@ object IdToUser
           for {
             encodedPassword <- c.optionAs[SecretString]("password")
             permissions = c.hasPath("permissions").thenList(c.getStringList("permissions").asScala).flatten.toSet
-          } yield RawUserAccount(encodedPassword = encodedPassword, permissions = permissions)
+            distinguishedName = c.optionAs[DistinguishedName]("distinguished-name")
+          } yield RawUserAccount(userId, encodedPassword = encodedPassword, permissions = permissions, distinguishedName)
       }
 
-    new IdToUser(userIdToRaw, toUser, toPermission)
+    val distinguishedNameToUserId: Map[DistinguishedName, UserId] =
+      cfgObject.asScala.view
+        .flatMap(entry =>
+          UserId.checked(entry._1)
+            .toOption/*ignore error*/
+            .flatMap(userId =>
+              entry._2 match {
+                case v: ConfigObject =>
+                  Option(v.get("distinguished-name"))
+                    .flatMap(_.unwrapped match {
+                      case o: String => DistinguishedName.checked(o).toOption/*ignore error*/.map(_ -> userId)
+                      case _ => None/*ignore error*/
+                    })
+                case _=>
+                  None/*ignore error*/
+              }))
+        .uniqueToMap/*throws*/
+
+    logger.trace("distinguishedNameToUserId=" + distinguishedNameToUserId.map { case (k, v) => s"\n  $k --> $v" }.mkString)
+
+    new IdToUser(userIdToRaw, distinguishedNameToUserId.lift, toUser, toPermission)
   }
 
   private val sha512Hasher = { o: String => sha512.hashString(o: String, UTF_8).toString } withToString "sha512"
@@ -91,13 +124,13 @@ object IdToUser
 
   private def toHashedPassword(userId: UserId, encodedPassword: SecretString) =
     encodedPassword.string match {
-      case EntryRegex("plain", pw) =>
+      case PasswordRegex("plain", pw) =>
         Some(HashedPassword(SecretString(pw), identityHasher))
 
-      case EntryRegex("sha512", pw) =>
+      case PasswordRegex("sha512", pw) =>
         Some(HashedPassword(SecretString(pw), sha512Hasher))
 
-      case EntryRegex(_, _) =>
+      case PasswordRegex(_, _) =>
         logger.error(s"Unknown password encoding scheme for User '$userId'")
         None
 
@@ -106,5 +139,9 @@ object IdToUser
         None
     }
 
-  private[auth] final case class RawUserAccount(encodedPassword: SecretString, permissions: Set[String])
+  private[auth] final case class RawUserAccount(
+    userId: UserId,
+    encodedPassword: SecretString,
+    permissions: Set[String] = Set.empty,
+    distinguishedName: Option[DistinguishedName] = None)
 }

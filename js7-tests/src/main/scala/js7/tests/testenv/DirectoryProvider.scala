@@ -58,7 +58,6 @@ final class DirectoryProvider(
   agentPorts: Iterable[Int] = Nil,
   provideAgentHttpsCertificate: Boolean = false,
   provideAgentClientCertificate: Boolean = false,
-  controllerHttpsMutual: Boolean = false,
   controllerKeyStore: Option[JavaResource] = Some(ControllerKeyStoreResource),
   controllerTrustStores: Iterable[JavaResource] = Nil,
   signer: MessageSigner = defaultSigner,
@@ -76,7 +75,8 @@ extends HasCloser
       })
 
   val controller = new ControllerTree(directory / "controller",
-    mutualHttps = controllerHttpsMutual, keyStore = controllerKeyStore, trustStores = controllerTrustStores)
+    keyStore = controllerKeyStore, trustStores = controllerTrustStores,
+    agentHttpsMutual = agentHttpsMutual)
   val agentToTree: Map[AgentRefPath, AgentTree] =
     agentRefPaths
       .zip(agentPorts ++ Vector.fill(agentRefPaths.size - agentPorts.size)(findFreeTcpPort()))
@@ -113,8 +113,7 @@ extends HasCloser
   def runController[A](
     httpPort: Option[Int] = Some(findFreeTcpPort()),
     dontWaitUntilReady: Boolean = false,
-    config: Config = ConfigFactory.empty,
-    suppressSnapshot: Boolean = false)
+    config: Config = ConfigFactory.empty)
     (body: RunningController => A)
   : A = {
     val runningController = startController(httpPort = httpPort, config = config) await 99.s
@@ -180,7 +179,7 @@ extends HasCloser
     }
 
   def startAgents(): Future[Seq[RunningAgent]] =
-    Future.sequence(agents map (_.agentRefPath) map startAgent)
+    Future.sequence(agents.map(_.agentRefPath) map startAgent)
 
   def startAgent(agentRefPath: AgentRefPath): Future[RunningAgent] =
     RunningAgent.startForTest(agentToTree(agentRefPath).agentConfiguration)
@@ -226,8 +225,8 @@ object DirectoryProvider
     }
   }
 
-  final class ControllerTree(val directory: Path, mutualHttps: Boolean,
-    keyStore: Option[JavaResource], trustStores: Iterable[JavaResource])
+  final class ControllerTree(val directory: Path,
+    keyStore: Option[JavaResource], trustStores: Iterable[JavaResource], agentHttpsMutual: Boolean)
   extends Tree
   {
     override private[DirectoryProvider] def createDirectoriesAndFiles(): Unit = {
@@ -259,9 +258,13 @@ object DirectoryProvider
     }
 
     def writeAgentAuthentication(agentTree: AgentTree): Unit =
-      (configDir / "private" / "private.conf") ++=
-        "js7.auth.agents." + quoteString(agentTree.agentRefPath.string) + " = " + quoteString(agentTree.password.string) + "\n" +
-        "js7.auth.agents." + quoteString(agentTree.localUri.toString) + " = " + quoteString(agentTree.password.string) + "\n"
+      if (!agentHttpsMutual) {
+        (configDir / "private" / "private.conf") ++=
+          "js7.auth.agents." + quoteString(agentTree.agentRefPath.string) + " = " + quoteString(agentTree.password.string) + "\n" +
+          "js7.auth.agents." + quoteString(agentTree.localUri.toString) + " = " + quoteString(agentTree.password.string) + "\n"
+      } else {
+        // Agent uses the distinguished name of the Controller's HTTPS certificate
+      }
   }
 
   final class AgentTree(rootDirectory: Path, val agentRefPath: AgentRefPath, name: String,
@@ -299,7 +302,10 @@ object DirectoryProvider
       }
       configDir / "private" / "private.conf" ++= s"""
          |js7.auth.users {
-         |  Controller = ${quoteString("plain:" + password.string)}
+         |  Controller {
+         |    password = ${quoteString("plain:" + password.string)}
+         |    distinguished-name = "CN=Primary Controller, DC=primary-controller, DC=DirectoryProvider, DC=tests, DC=js7, DC=sh"
+         |  }
          |}
          |js7.https.keystore {
          |  store-password = "jobscheduler"
@@ -343,13 +349,23 @@ object DirectoryProvider
          |""".stripMargin
   }
 
-  // Following resources have been generated with the command line:
-  // common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=controller -config-directory=tests/src/test/resources/js7/tests/controller/config
+  /* Following resources have been generated with the command line:
+     js7-common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh \
+        --distinguished-name="CN=Primary Controller, DC=primary-controller, DC=DirectoryProvider, DC=tests, DC=js7, DC=sh" \
+        --alias=controller \
+        --host=localhost \
+        --config-directory=js7-tests/src/test/resources/js7/tests/controller/config
+   */
   val ControllerKeyStoreResource = JavaResource("js7/tests/controller/config/private/https-keystore.p12")
   val ExportedControllerTrustStoreResource = JavaResource("js7/tests/controller/config/export/https-truststore.p12")
 
-  // Following resources have been generated with the command line:
-  // common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=agent -config-directory=tests/src/test/resources/js7/tests/agent/config
+  /* Following resources have been generated with the command line:
+     js7-common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh \
+        --distinguished-name="CN=Agent, DC=agent, DC=DirectoryProvider, DC=tests, DC=js7, DC=sh" \
+        --alias=agent \
+        --host=localhost \
+        --config-directory=js7-tests/src/test/resources/js7/tests/agent/config
+   */
   private val AgentKeyStoreResource   = JavaResource("js7/tests/agent/config/private/https-keystore.p12")
   private val AgentTrustStoreResource = JavaResource("js7/tests/agent/config/export/https-truststore.p12")
 

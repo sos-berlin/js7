@@ -1,7 +1,7 @@
 package js7.tests.https
 
+import js7.common.configutils.Hocon._
 import com.typesafe.config.ConfigFactory
-import com.typesafe.config.ConfigUtil.quoteString
 import java.nio.file.Files.{createTempFile, delete}
 import js7.base.auth.UserId
 import js7.base.generic.SecretString
@@ -50,14 +50,35 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest with
   override protected final lazy val agentPorts = agentHttpsPort :: Nil
   private lazy val backupHttpsPort = findFreeTcpPort()
   override protected lazy val config = ConfigFactory.empty  // for ProviderActorSystem
-  override protected lazy val controllerConfig = ConfigFactory.parseString(
-    useCluster ?: s"""
-      js7.journal.cluster.nodes.Primary-Controller: "https://localhost:${controllerHttpsPort.get}"
-      js7.journal.cluster.nodes.Backup-Controller: "https://localhost:$backupHttpsPort"
-      js7.journal.cluster.watches = [ "https://localhost:$agentHttpsPort" ]""" + """
-    js7.auth.users.Controller.password = "plain:PRIMARY-CONTROLLER-PASSWORD"
-    js7.auth.users.TEST.password = "plain:TEST-PASSWORD"
-    js7.auth.cluster.password = "BACKUP-CONTROLLER-PASSWORD" """)
+
+  override protected lazy val controllerConfig =
+    ((useCluster ? hocon"""
+      js7.journal.cluster {
+        nodes {
+          Primary-Controller: "https://localhost:${controllerHttpsPort.get}"
+          Backup-Controller: "https://localhost:$backupHttpsPort"
+        }
+        watches = [ "https://localhost:$agentHttpsPort" ]
+      }""") ++
+        Some(hocon"""
+          js7.auth.users {
+            Controller {
+              password = "plain:PRIMARY-CONTROLLER-PASSWORD"
+              distinguished-name = "CN=Backup Controller,DC=backup-controller,DC=HttpsTestBase,DC=tests,DC=js7,DC=sh"
+            }
+            TEST {
+              password = "plain:TEST-PASSWORD"
+              distinguished-name = "CN=Test client,DC=test-client,DC=HttpsTestBase,DC=tests,DC=js7,DC=sh"
+            }
+          }
+        """) ++
+        (!controllerHttpsMutual ? hocon"""
+          js7.auth.cluster {
+            user-id = "backup-controller"
+            password = "BACKUP-CONTROLLER-PASSWORD"
+          }""")
+    ).reduce(_ withFallback _)
+
   private lazy val clientKeyStore = createTempFile(getClass.getSimpleName + "-keystore-", ".p12")
 
   private lazy val backupDirectoryProvider = new DirectoryProvider(
@@ -65,21 +86,28 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest with
     controllerConfig = ConfigFactory.parseString(s"""
       js7.journal.cluster.node.is-backup = yes
       js7.journal.cluster.watches = [ "https://localhost:$agentHttpsPort" ]
-      js7.auth.users.Controller.password = "plain:BACKUP-CONTROLLER-PASSWORD"
+      js7.auth.users {
+        Controller {
+          password = "plain:BACKUP-CONTROLLER-PASSWORD"
+          distinguished-name = "CN=Primary Controller,DC=primary-controller,DC=DirectoryProvider,DC=tests,DC=js7,DC=sh"
+        }
+      }
+    """ + !controllerHttpsMutual ?: s"""
       js7.auth.users.TEST.password = "plain:TEST-PASSWORD"
       js7.auth.cluster.password = "PRIMARY-CONTROLLER-PASSWORD" """),
-    controllerHttpsMutual = controllerHttpsMutual,
     controllerKeyStore = Some(BackupKeyStoreResource),
     controllerTrustStores = ExportedControllerTrustStoreResource :: Nil,
     agentHttps = true,
     agentHttpsMutual = provideControllerClientCertificate,
     testName = Some(getClass.simpleScalaName + "-Backup"))
-  protected final lazy val backupController = backupDirectoryProvider.startController(httpPort = None, httpsPort = Some(backupHttpsPort))
-    .await(99.s)
+
+  protected final lazy val backupController = backupDirectoryProvider.startController(
+    httpPort = None, httpsPort = Some(backupHttpsPort), mutualHttps = controllerHttpsMutual
+  ).await(99.s)
 
   protected lazy val controllerApi = new AkkaHttpControllerApi(
     controller.localUri,
-    Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD")),
+    !controllerHttpsMutual ? (UserId("TEST") -> SecretString("TEST-PASSWORD")),
     actorSystem,
     config,
     keyStoreRef = Some(KeyStoreRef(clientKeyStore,
@@ -112,13 +140,24 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest with
 
 private[https] object HttpsTestBase
 {
-  // Following resources have been generated with the command line:
-  // js7-common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh \
-  // -host=localhost -alias=client -config-directory=js7-tests/src/test/resources/js7/tests/https/resources -prefix="client-"
+  /* Following resources have been generated with the command line:
+     js7-common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh \
+        --alias=client \
+        --distinguished-name="CN=Test client, DC=test-client, DC=HttpsTestBase, DC=tests, DC=js7, DC=sh" \
+        --host=localhost \
+        --prefix="client-" \
+        --config-directory=js7-tests/src/test/resources/js7/tests/https/resources
+   */
   private val ClientKeyStoreResource = JavaResource("js7/tests/https/resources/private/client-https-keystore.p12")
   private val ExportedClientTrustStoreResource = JavaResource("js7/tests/https/resources/export/client-https-truststore.p12")
-  // js7-common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh \
-  // -host=localhost -alias=backup-controller -config-directory=js7-tests/src/test/resources/js7/tests/https/resources -prefix="backup-controller-"
+
+  /* js7-common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh \
+        --alias=backup-controller \
+        --distinguished-name="CN=Backup Controller, DC=backup-controller, DC=HttpsTestBase, DC=tests, DC=js7, DC=sh" \
+        --host=localhost \
+        --prefix="backup-controller-" \
+        --config-directory=js7-tests/src/test/resources/js7/tests/https/resources
+   */
   private val BackupKeyStoreResource = JavaResource("js7/tests/https/resources/private/backup-controller-https-keystore.p12")
   private val ExportedBackupTrustStoreResource = JavaResource("js7/tests/https/resources/export/backup-controller-https-truststore.p12")
 
@@ -127,14 +166,8 @@ private[https] object HttpsTestBase
       execute executable="/TEST$sh", agent="/TEST-AGENT";
     }""").orThrow
 
-  private def provideAgentConfiguration(agent: DirectoryProvider.AgentTree): Unit = {
-    (agent.configDir / "private/private.conf").append(
-      s"""js7.auth.users {
-         |  Controller = ${quoteString("plain:" + agent.password.string)}
-         |}
-         |""".stripMargin)
+  private def provideAgentConfiguration(agent: DirectoryProvider.AgentTree): Unit =
     agent.writeExecutable(ExecutablePath(s"/TEST$sh"), operatingSystem.sleepingShellScript(0.seconds))
-  }
 
   private def provideControllerConfiguration(controller: DirectoryProvider.ControllerTree): Unit =
     controller.configDir / "private/private.conf" ++= """

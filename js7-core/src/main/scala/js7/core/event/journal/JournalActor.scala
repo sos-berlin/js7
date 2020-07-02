@@ -111,7 +111,6 @@ extends Actor with Stash
 
   def receive = {
     case Input.Start(journaledState_, RecoveredJournalingActors(keyToActor), observer_, header, totalRunningSince_) =>
-      logger.debug(s"Thread ${Thread.currentThread.getName}")
       uncommittedJournaledState = journaledState_.asInstanceOf[S]
       journaledState = uncommittedJournaledState
       requireClusterAcknowledgement = journaledState.clusterState.isInstanceOf[ClusterState.Coupled]

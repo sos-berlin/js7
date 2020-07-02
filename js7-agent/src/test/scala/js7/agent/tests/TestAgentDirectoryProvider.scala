@@ -75,8 +75,11 @@ object TestAgentDirectoryProvider
   def apply() = new TestAgentDirectoryProvider {}
 
   /* Following resources have been generated with the command lines:
-     common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=agent-https -config-directory=agent/src/test/resources/js7/agent/test/config
-
+     js7-common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh \
+        --distinguished-name="CN=Web server, DC=webserver, DC=TestAgentDirectoryProvider, DC=tests, DC=js7, DC=sh" \
+        --alias=webserver \
+        --host=localhost \
+        --config-directory=js7-agent/src/test/resources/js7/agent/tests/config
   */
   private val PrivateHttpJksResource = JavaResource("js7/agent/tests/config/private/https-keystore.p12")
   private val PrivateConfResource = JavaResource("js7/agent/tests/config/private/private.conf")

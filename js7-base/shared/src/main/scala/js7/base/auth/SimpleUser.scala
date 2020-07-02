@@ -9,7 +9,8 @@ import js7.base.utils.ScalaUtils.syntax._
 final case class SimpleUser private(
   id: UserId,
   hashedPassword: HashedPassword,
-  grantedPermissions: Set[Permission])
+  grantedPermissions: Set[Permission],
+  distinguishedName: Option[DistinguishedName] = None)
 extends User
 {
   if (id.isAnonymous && grantedPermissions.contains(ValidUserPermission))
@@ -31,9 +32,11 @@ object SimpleUser extends User.Companion[SimpleUser]
   def apply(
     id: UserId,
     hashedPassword: HashedPassword = HashedPassword.MatchesNothing,
-    grantedPermissions: Set[Permission] = Set.empty)
-  = new SimpleUser(
-      id,
-      hashedPassword,
-      grantedPermissions ++ (!id.isAnonymous thenSet ValidUserPermission))
+    grantedPermissions: Set[Permission] = Set.empty,
+    distinguishedName: Option[DistinguishedName] = None)
+  : SimpleUser = new SimpleUser(
+    id,
+    hashedPassword,
+    grantedPermissions ++ (!id.isAnonymous thenSet ValidUserPermission),
+    distinguishedName)
 }

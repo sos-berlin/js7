@@ -17,8 +17,8 @@ import monix.execution.Scheduler
 /**
   * @author Joacim Zschimmer
   */
-trait SessionRoute extends RouteProvider {
-
+trait SessionRoute extends RouteProvider
+{
   private implicit def implictScheduler: Scheduler = scheduler
 
   protected final lazy val sessionRoute =
@@ -40,31 +40,33 @@ trait SessionRoute extends RouteProvider {
       }
     }
 
-  private def execute(command: SessionCommand, httpUser: Session#User, sessionTokenOption: Option[SessionToken]): Task[Checked[SessionCommand.Response]] =
+  private def execute(command: SessionCommand, httpUser: Session#User, sessionTokenOption: Option[SessionToken])
+  : Task[Checked[SessionCommand.Response]] =
     command match {
       case Login(userAndPasswordOption) =>
-        authenticateOrUseHttpUser(userAndPasswordOption, httpUser)
-        .map(user =>
-          sessionRegister.login(user, sessionTokenOption).map(Login.LoggedIn.apply)
-        ).evert
+        authenticateOrUseHttpUser(httpUser, userAndPasswordOption)
+          .traverse(user =>
+            sessionRegister.login(user, sessionTokenOption)
+              .map(Login.LoggedIn.apply))
 
       case Logout(sessionToken) =>
         sessionRegister.logout(sessionToken)
           .map { _: Completed => Right(SessionCommand.Response.Accepted) }
     }
 
-  private def authenticateOrUseHttpUser(userAndPasswordOption: Option[UserAndPassword], httpUser: Session#User) =
+  private def authenticateOrUseHttpUser(httpUser: Session#User, userAndPasswordOption: Option[UserAndPassword]) =
     userAndPasswordOption match {
       case Some(userAndPassword) =>
-        if (!httpUser.id.isAnonymous)
-          Left(Problem("Both command Login and HTTP header authentication?"))
+        if (!httpUser.id.isAnonymous/* && httpUser.id != userAndPassword.userId*/)
+          Left(Problem.pure("Pointless Login authentication after HTTP(S) authentication"))
         else if (userAndPassword.userId.isAnonymous)
           Left(AnonymousLoginProblem)
         else
           gateKeeper.authenticateUser(userAndPassword) toChecked InvalidLoginProblem
 
       case None =>
-        Right(httpUser)  // Take authenticated user from HTTP header `Authorization` or Anonymous
+        // Authenticated user from HTTP header `Authorization` or HTTPS client certificate, or Anonymous
+        Right(httpUser)
     }
 }
 

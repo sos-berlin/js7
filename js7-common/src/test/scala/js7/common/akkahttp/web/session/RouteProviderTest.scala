@@ -37,7 +37,8 @@ final class RouteProviderTest extends AnyFreeSpec with RouteProvider with Scalat
       invalidAuthenticationDelay = 100.millis,
       idToUser = IdToUser.fromConfig(
         ConfigFactory.parseString("""js7.auth.users.TEST-USER: "plain:123" """),
-        SimpleUser.apply)))
+        SimpleUser.apply),
+      distinguishedNameToUser = Map.empty))
 
   private var sessionToken = SessionToken(SecretString("INVALID"))
 

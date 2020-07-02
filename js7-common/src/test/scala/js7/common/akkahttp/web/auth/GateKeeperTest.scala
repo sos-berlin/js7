@@ -46,7 +46,8 @@ final class GateKeeperTest extends AnyFreeSpec with ScalatestRouteTest
         |   }
         |}""".stripMargin),
       SimpleUser.apply,
-      toStringToPermission(List(TestPermission))))
+      toStringToPermission(List(TestPermission))),
+    distinguishedNameToUser = Map.empty)
 
   // Anonymous with added permissions due isPublic or loopbackIsPublic
   private val publicAnonymous = defaultConf.idToUser(UserId.Anonymous).get.copy(grantedPermissions = Set(SuperPermission))

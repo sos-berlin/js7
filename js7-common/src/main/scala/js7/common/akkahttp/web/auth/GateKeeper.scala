@@ -10,7 +10,7 @@ import akka.http.scaladsl.server.Route.seal
 import akka.http.scaladsl.server.{AuthenticationFailedRejection, Directive1, ExceptionHandler, RejectionHandler, Route}
 import com.typesafe.config.{Config, ConfigFactory}
 import java.security.cert.X509Certificate
-import js7.base.auth.{GetPermission, HashedPassword, Permission, SimpleUser, SuperPermission, User, UserAndPassword, UserId, ValidUserPermission}
+import js7.base.auth.{DistinguishedName, GetPermission, HashedPassword, Permission, SimpleUser, SuperPermission, User, UserAndPassword, UserId, ValidUserPermission}
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
@@ -27,13 +27,13 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class GateKeeper[U <: User](configuraton: Configuration[U], isLoopback: Boolean = false, mutualHttps: Boolean = false)
+final class GateKeeper[U <: User](configuration: Configuration[U], isLoopback: Boolean = false, mutualHttps: Boolean = false)
   (implicit U: User.Companion[U],
     scheduler: Scheduler,
     /** For `Route` `seal`. */
     exceptionHandler: ExceptionHandler)
 {
-  import configuraton.{getIsPublic, idToUser, isPublic, loopbackIsPublic, realm}
+  import configuration.{getIsPublic, idToUser, isPublic, loopbackIsPublic, realm}
 
   private val authenticator = new OurMemoizingAuthenticator(idToUser)
   private val basicChallenge = HttpChallenges.basic(realm)
@@ -112,12 +112,11 @@ final class GateKeeper[U <: User](configuraton: Configuration[U], isLoopback: Bo
               .flatMap(_
                 .peerCertificates match {
                   case (cert: X509Certificate) :: Nil =>
-                    val distinguishedName = cert.getSubjectX500Principal.getName
-                    logger.debug(s"distinguishedName=$distinguishedName")
-                    Right(None)
-                    // TODO val userId = distinguishedNameToUserId(distinguishedName)
-                    //  idToUser(userId)
-                    //    .toChecked(Problem.pure("Unknown subject distinguished name in client's HTTPS certificate"))
+                    DistinguishedName.checked(cert.getSubjectX500Principal.getName)
+                      .flatMap(dn =>
+                        configuration.distinguishedNameToUser(dn)
+                          .toChecked(Problem.pure(s"Unknown distinguished name '$dn'")))
+                      .map(Some.apply)
 
                   case certs =>
                     if (certs.nonEmpty) logger.debug(s"HTTPS client certificates rejected: ${certs.mkString(", ")}")
@@ -127,7 +126,7 @@ final class GateKeeper[U <: User](configuraton: Configuration[U], isLoopback: Bo
                     }
                 })
               match {
-                case Left(problem) => complete(Forbidden -> problem)
+                case Left(problem) => complete(Unauthorized -> problem)
                 case Right(user) => inner(Tuple1(user))
               }
           }
@@ -162,8 +161,8 @@ final class GateKeeper[U <: User](configuraton: Configuration[U], isLoopback: Bo
       case Some(reason) =>
         //??? if (!user.isAnonymous) logger.warn(s"User '${user.id.string}' has logged in despite $reason")
         val empoweredUser = U.addPermissions(user, reason match {
-          case IsPublic | LoopbackIsPublic => configuraton.publicPermissions
-          case GetIsPublic                 => configuraton.publicGetPermissions
+          case IsPublic | LoopbackIsPublic => configuration.publicPermissions
+          case GetIsPublic                 => configuration.publicGetPermissions
         })
         if (empoweredUser.grantedPermissions != user.grantedPermissions) {
           logger.debug(s"Granting user '${empoweredUser.id.string}' all rights for ${request.method.value} ${request.uri.path} due to $reason")
@@ -191,16 +190,16 @@ final class GateKeeper[U <: User](configuraton: Configuration[U], isLoopback: Bo
       user.hasPermission(ValidUserPermission) ||            // ... then allow Anonymous ... (only unempowered Anonymous does not have ValidUserPermission)
       isGet(method))                                        // ... only to read
 
-  def invalidAuthenticationDelay = configuraton.invalidAuthenticationDelay
+  def invalidAuthenticationDelay = configuration.invalidAuthenticationDelay
 
   def secureStateString: String =
-    if (configuraton.isPublic)
+    if (configuration.isPublic)
       " - ACCESS IS PUBLIC - EVERYONE HAS ACCESS (public = true)"
-    else if (configuraton.loopbackIsPublic && configuraton.getIsPublic)
+    else if (configuration.loopbackIsPublic && configuration.getIsPublic)
       " - ACCESS VIA LOOPBACK (127.*.*.*) INTERFACE OR VIA HTTP METHODS GET OR HEAD IS PUBLIC (loopback-is-public = true, get-is-public = true) "
-    else if (configuraton.loopbackIsPublic)
+    else if (configuration.loopbackIsPublic)
       " - ACCESS VIA LOOPBACK (127.*.*.*) INTERFACE IS PUBLIC (loopback-is-public = true)"
-    else if (configuraton.getIsPublic)
+    else if (configuration.getIsPublic)
       " - ACCESS VIA HTTP METHODS GET OR HEAD IS PUBLIC (get-is-public = true)"
     else
       ""
@@ -223,7 +222,8 @@ object GateKeeper
     loopbackIsPublic: Boolean = false,
     /** HTTP GET is allowed for Anonymous */
     getIsPublic: Boolean = false,
-    idToUser: UserId => Option[U])
+    idToUser: UserId => Option[U],
+    distinguishedNameToUser: DistinguishedName => Option[U])
   {
     val publicPermissions = Set[Permission](SuperPermission)
     val publicGetPermissions = Set[Permission](GetPermission)
@@ -232,16 +232,19 @@ object GateKeeper
   object Configuration {
     def fromConfig[U <: User](
       config: Config,
-      toUser: (UserId, HashedPassword, Set[Permission]) => U,
+      toUser: (UserId, HashedPassword, Set[Permission], Option[DistinguishedName]) => U,
       toPermission: PartialFunction[String, Permission] = PartialFunction.empty)
-    =
+    = {
+      val idToUser = IdToUser.fromConfig(config, toUser, toPermission)
       Configuration[U](
         realm                       = config.getString  ("js7.web.server.auth.realm"),
         invalidAuthenticationDelay  = config.getDuration("js7.web.server.auth.invalid-authentication-delay").toFiniteDuration,
         isPublic                    = config.getBoolean ("js7.web.server.auth.public"),
         loopbackIsPublic            = config.getBoolean ("js7.web.server.auth.loopback-is-public"),
         getIsPublic                 = config.getBoolean ("js7.web.server.auth.get-is-public"),
-        idToUser = IdToUser.fromConfig(config, toUser, toPermission))
+        idToUser = idToUser,
+        distinguishedNameToUser = idToUser.distinguishedNameToUser)
+    }
   }
 
   private[auth] sealed trait AuthorizationReason

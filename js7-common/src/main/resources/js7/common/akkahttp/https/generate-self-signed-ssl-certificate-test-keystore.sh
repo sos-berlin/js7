@@ -19,27 +19,27 @@ storePassword="jobscheduler"
 
 for arg in "$@"; do
   case "$arg" in
-    -alias=*)
+    --alias=*)
       alias="${arg#*=}"
       shift
       ;;
-    -host=*)
+    --host=*)
       host="${arg#*=}"
       shift
       ;;
-    -distinguished-name=*)
+    --distinguished-name=*)
       distinguishedName="${arg#*=}"
       shift
       ;;
-    -config-directory=*)
+    --config-directory=*)
       configDirectory="${arg#*=}"
       shift
       ;;
-    -days=*)
+    --days=*)
       days="${arg#*=}"
       shift
       ;;
-    -prefix=*)
+    --prefix=*)
       prefix="${arg#*=}"
       shift
       ;;

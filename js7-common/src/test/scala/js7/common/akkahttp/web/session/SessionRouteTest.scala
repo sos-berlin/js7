@@ -134,7 +134,8 @@ extends AnyFreeSpec with SessionRouteTester
         api.login() await 99.s
       }
       assert(exception.status == BadRequest)
-      assert(exception.dataAsString.parseJsonOrThrow.as[Problem] == Right(Problem("Both command Login and HTTP header authentication?")))
+      assert(exception.dataAsString.parseJsonOrThrow.as[Problem] ==
+        Right(Problem("Pointless Login authentication after HTTP(S) authentication")))
       requireAuthorizedAccess(api)
     }
   }

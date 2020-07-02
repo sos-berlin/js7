@@ -112,13 +112,19 @@ final class AkkaWebServerTest extends AnyFreeSpec with BeforeAndAfterAll
   }
 }
 
-object AkkaWebServerTest {
-  // Following resources have been generated with the command line:
-  // common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=test -config-directory=common/src/test/resources/js7/common/akkahttp/https/config
+object AkkaWebServerTest
+{
+  /* Following resources have been generated with the command line:
+     js7-common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh \
+        --alias=webserver \
+        --distinguished-name="CN=web server, DC=AkkaWebServerTest, DC=tests, DC=js7, DC=sh" \
+        --host=localhost \
+        --config-directory=js7-common/src/test/resources/js7/common/akkahttp/https/test-resources
+   */
   private val KeyStoreResource = JavaResource(getClass.getClassLoader,
-    "js7/common/akkahttp/https/config/private/https-keystore.p12")
+    "js7/common/akkahttp/https/test-resources/private/https-keystore.p12")
   private val TrustStoreResource = JavaResource(getClass.getClassLoader,
-    "js7/common/akkahttp/https/config/export/https-truststore.p12")
+    "js7/common/akkahttp/https/test-resources/export/https-truststore.p12")
 
   private val ClientTrustStoreRef = TrustStoreRef(TrustStoreResource.url, storePassword = SecretString("jobscheduler"))
 }

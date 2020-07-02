@@ -1,7 +1,7 @@
 package js7.common.auth
 
 import com.typesafe.config.ConfigFactory
-import js7.base.auth.{SimpleUser, UserId}
+import js7.base.auth.{DistinguishedName, SimpleUser, UserId}
 import js7.base.generic.SecretString
 import js7.base.time.ScalaTime._
 import js7.common.auth.IdToUser.RawUserAccount
@@ -50,6 +50,10 @@ final class IdToUserTest extends AnyFreeSpec
           |  C {
           |    password = "plain:PLAIN-PASSWORD"
           |  }
+          |  D {
+          |    password = "plain:PLAIN-PASSWORD"
+          |    distinguished-name = "CN=IdToUserTest"
+          |  }
           |}""".stripMargin),
       SimpleUser.apply)
 
@@ -57,20 +61,29 @@ final class IdToUserTest extends AnyFreeSpec
       val Some(a) = idToUser(UserId("A"))
       val Some(b) = idToUser(UserId("B"))
       val Some(c) = idToUser(UserId("C"))
+      val Some(d) = idToUser(UserId("D"))
       assert(a.id == UserId("A"))
       assert(b.id == UserId("B"))
       assert(c.id == UserId("C"))
       assert(a.hashedPassword equalsClearText PlainPassword)
       assert(b.hashedPassword equalsClearText Sha512Password)
       assert(c.hashedPassword equalsClearText PlainPassword)
+      assert(d.hashedPassword equalsClearText PlainPassword)
+      assert(d.distinguishedName == Some(DistinguishedName("CN=IdToUserTest")))
+
+      assert(idToUser.distinguishedNameToUser(DistinguishedName("CN=IdToUserTest")).get eq d)
+      assert(idToUser.distinguishedNameToUser(DistinguishedName("CN = IdToUserTest")).get eq d)
+      assert(idToUser.distinguishedNameToUser(DistinguishedName("CN=UNKNOWN")) == None)
     }
 
     "thread-safe" in {
       val n = 10000
-      val a = Future.sequence(for (i <- 1 to n) yield
-        Future { assert(idToUser(UserId("A")).get.hashedPassword equalsClearText PlainPassword, s"#$i identity") })
-      val b = Future.sequence((1 to n).map(i =>
-        Future { assert(idToUser(UserId("B")).get.hashedPassword equalsClearText Sha512Password, s"#$i SHA-512") }))
+      val a = Future.sequence(
+        for (i <- 1 to n) yield
+          Future { assert(idToUser(UserId("A")).get.hashedPassword equalsClearText PlainPassword, s"#$i identity") })
+      val b = Future.sequence(
+        for (i <- 1 to n) yield
+          Future { assert(idToUser(UserId("B")).get.hashedPassword equalsClearText Sha512Password, s"#$i SHA-512") })
       List(a, b) await 99.s
     }
   }
@@ -91,7 +104,8 @@ private object IdToUserTest
     Sha512UserId.string -> Sha512ConfiguredPassword.string).asJava)
 
   private val idToUser = new IdToUser(
-    userId => TestConfigValidator.optionAs[SecretString](userId.string).map(o => RawUserAccount(o, Set.empty)),
+    userId => TestConfigValidator.optionAs[SecretString](userId.string).map(o => RawUserAccount(userId, o)),
+    distinguishedNameToUserId = Map.empty,
     SimpleUser.apply,
     toPermission = Map.empty)
 }
