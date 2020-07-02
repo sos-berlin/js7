@@ -1,16 +1,13 @@
 package js7.common.akkautils
 
 import akka.actor.{Actor, ActorPath, ActorSystem, Props}
-import akka.util.{ByteString, Timeout}
-import com.typesafe.config.ConfigFactory
+import akka.util.ByteString
 import js7.base.time.ScalaTime._
 import js7.common.akkautils.Akkas._
-import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration._
 import scala.util.Random
 
 /**
@@ -18,32 +15,6 @@ import scala.util.Random
  */
 final class AkkasTest extends AnyFreeSpec
 {
-  "maximumTimeout" in {
-    val millis = Int.MaxValue * 10L - 2000
-    assert(millis / 1000 / 3600 / 24 / 30 == 8)  // Months
-    val actorSystem = ActorSystem("AkkasTest")
-    assert(maximumTimeout(actorSystem.settings) == Timeout.apply(millis, MILLISECONDS))
-    actorSystem.terminate()
-  }
-
-  "maximumTimeout with tick-duration = 1s" in {
-    val millis = Int.MaxValue * 1000L - 2000
-    assert(millis / 1000 / 3600 / 24 / 365 == 68)  // Years
-    val config = ConfigFactory.parseString("akka.scheduler.tick-duration = 1s")
-    val actorSystem = ActorSystem("AkkasTest", config)
-    assert(maximumTimeout(actorSystem.settings) == Timeout.apply(millis, MILLISECONDS))
-    actorSystem.terminate()
-  }
-
-  "DummyCancellable" in {
-    val c = new DummyCancellable
-    assert(!c.isCancelled)
-    assert(c.cancel())
-    assert(c.isCancelled)
-    assert(!c.cancel())
-    assert(c.isCancelled)
-  }
-
   "byteStringToTruncatedString" in {
     val byteString = ByteString(0, 1, 30, 31)
     assert(byteStringToTruncatedString(byteString) == "4 bytes 00 01 1e 1f")
@@ -95,7 +66,7 @@ final class AkkasTest extends AnyFreeSpec
   }
 
   "SupervisorStrategy" in {
-    val actorSystem = ActorSystem("AkkasTest")
+    val actorSystem = newActorSystem("AkkasTest")
     try {
       actorSystem.actorOf(Props { new Actor {
         def receive = {
@@ -103,7 +74,7 @@ final class AkkasTest extends AnyFreeSpec
         }
       }})
     }
-    finally actorSystem.terminate() await 99.s
+    finally Akkas.terminateAndWait(actorSystem, 99.s)
   }
 
   "actorSystemResource" in {

@@ -1,6 +1,5 @@
 package js7.common.http
 
-import akka.actor.ActorSystem
 import akka.http.scaladsl.model.ContentTypes.{`application/json`, `text/plain(UTF-8)`}
 import akka.http.scaladsl.model.HttpMethods.POST
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, InternalServerError, OK}
@@ -8,12 +7,12 @@ import akka.http.scaladsl.model.headers.`Content-Type`
 import akka.http.scaladsl.model.{HttpEntity, HttpResponse}
 import akka.http.scaladsl.server.Directives._
 import cats.syntax.option._
-import java.net.ServerSocket
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.auth.SessionToken
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
+import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.HasCloser
 import js7.base.web.HttpClient.liftProblem
@@ -21,6 +20,8 @@ import js7.base.web.Uri
 import js7.common.akkahttp.CirceJsonOrYamlSupport
 import js7.common.akkahttp.StandardMarshallers._
 import js7.common.akkahttp.web.AkkaWebServer
+import js7.common.akkautils.Akkas
+import js7.common.akkautils.Akkas.newActorSystem
 import js7.common.http.AkkaHttpClient.HttpException
 import js7.common.http.AkkaHttpClientTest._
 import js7.common.scalautil.MonixUtils.syntax._
@@ -38,11 +39,12 @@ import scala.concurrent.{Await, TimeoutException}
   */
 final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with HasCloser
 {
-  implicit private lazy val actorSystem = ActorSystem("AkkaHttpClientTest")
+  implicit private lazy val actorSystem = newActorSystem("AkkaHttpClientTest")
 
   override def afterAll() = {
     closer.close()
-    actorSystem.terminate()
+    // FIXME shutdownAllConnectionPools blocks longer than 99s after "connection refused"
+    Akkas.terminateAndWait(actorSystem, 9.s)
     super.afterAll()
   }
 
@@ -205,16 +207,10 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with H
     }
   }
 
-  "Unreachable port, try several times" - {
-    lazy val port = {
-      val socket = new ServerSocket(0)
-      val port = socket.getLocalPort
-      socket.close()
-      port
-    }
-    lazy val uri = Uri(s"http://127.0.0.1:$port")
+  "Connection refused, try two times" - {
+    lazy val uri = Uri(s"http://127.0.0.1:${findFreeTcpPort()}")
 
-    def newHttpClient(timeout: FiniteDuration) = new AkkaHttpClient {
+    def newHttpClient() = new AkkaHttpClient {
       protected val actorSystem = AkkaHttpClientTest.this.actorSystem
       protected val baseUri = uri
       protected val name = "AkkaHttpClientTest"
@@ -223,29 +219,29 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with H
       protected def trustStoreRefs = Nil
     }
     var duration: FiniteDuration = null
+    implicit val sessionToken = Task.pure(none[SessionToken])
 
     "First call" in {
-      val httpClient = newHttpClient(99.s)
-      try {
+      autoClosing(newHttpClient()) { httpClient =>
         val since = now
-        implicit val s = Task.pure(none[SessionToken])
-        val a = Await.ready(httpClient.get_(Uri(s"$uri/PREFIX/TEST")).runToFuture, 99.s - 1.s)
+        val whenGot = httpClient.get_(Uri(s"$uri/PREFIX/TEST")).runToFuture
+        val a = Await.ready(whenGot, 99.s - 1.s)
         duration = since.elapsed
         assert(a.value.get.isFailure)
-      } finally httpClient.close()
+        whenGot.cancel()
+      }
     }
 
     "Second call lets akka-http block for a very long time" in {
-      // Akka 2.5.30 blocks on next call after connection failure (why?),
+      // Akka 2.6.5 blocks on next call after connection failure (why?),
       // so our responseTimeout kicks in.
       // TODO Replace by http4s ?
-      val httpClient = newHttpClient(duration - 1.s max 5.s)
-      intercept[TimeoutException] {
-        try {
-          implicit val s = Task.pure(none[SessionToken])
-          val a = Await.ready(httpClient.get_(Uri(s"$uri/PREFIX/TEST")).runToFuture, duration + 1.s)
-          assert(a.value.get.isFailure)
-        } finally httpClient.close()
+      autoClosing(newHttpClient()) { httpClient =>
+        val whenGot = httpClient.get_(Uri(s"$uri/PREFIX/TEST")).runToFuture
+        intercept[TimeoutException] {
+          Await.ready(whenGot, duration + 1.s)
+        }
+        whenGot.cancel()
       }
     }
   }

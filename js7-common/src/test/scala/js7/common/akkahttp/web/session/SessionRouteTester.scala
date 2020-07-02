@@ -12,6 +12,7 @@ import js7.base.web.Uri
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.auth.GateKeeper
+import js7.common.akkautils.Akkas
 import js7.common.http.AkkaHttpClient
 import js7.common.http.AkkaHttpClient.HttpException
 import js7.common.http.CirceJsonSupport._
@@ -84,6 +85,7 @@ trait SessionRouteTester extends BeforeAndAfterAll with ScalatestRouteTest with 
   protected lazy val localUri = server.localUri
 
   override def afterAll() = {
+    Akkas.shutDownHttpConnectionPools(system)
     server.close()
     super.afterAll()
   }

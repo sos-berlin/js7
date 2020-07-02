@@ -3,6 +3,7 @@ package js7.common.async.synchronizer
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer.syntax._
 import js7.base.utils.Closer.withCloser
+import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
 import js7.common.scalautil.Futures.blockingThreadFuture
 import js7.common.scalautil.Futures.implicits.RichFutures
@@ -16,7 +17,8 @@ final class OwnActorSynchronizerTest extends AnyFreeSpec {
 
   "test" in {
     withCloser { implicit closer =>
-      val actorSystem = newActorSystem("ShellProcessTaskTest") withCloser { _.terminate() }
+      val actorSystem = newActorSystem("ShellProcessTaskTest")
+        .withCloser(Akkas.terminateAndWait(_, 99.s))
       import actorSystem.dispatcher
       val synchronizer =
         new OwnActorSynchronizer[Int] {

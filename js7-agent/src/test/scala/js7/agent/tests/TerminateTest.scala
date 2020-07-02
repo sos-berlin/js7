@@ -11,6 +11,7 @@ import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
 import js7.base.process.ProcessSignal.SIGKILL
 import js7.base.time.ScalaTime._
+import js7.common.akkautils.Akkas
 import js7.common.event.collector.EventCollector
 import js7.common.guice.GuiceImplicits.RichInjector
 import js7.common.scalautil.FileUtils.syntax._
@@ -44,7 +45,7 @@ final class TerminateTest extends AnyFreeSpec with AgentTester
 
   "ShutDown" in {
     implicit val actorSystem = newAgentActorSystem("TerminateTest")
-    closer onClose actorSystem.terminate()
+    closer onClose Akkas.terminateAndWait(actorSystem, 10.s)
 
     val client = AgentClient(agentUri = agent.localUri, Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD")))
     client.login() await 99.s

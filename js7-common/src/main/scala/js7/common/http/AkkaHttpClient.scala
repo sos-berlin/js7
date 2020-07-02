@@ -203,6 +203,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
               })
               .doOnCancel(Task.defer {
                 // TODO Cancelling does not cancel the ongoing Akka operation. Akka does not free the connection.
+                logger.trace(s"$responseLogPrefix => cancel")
                 cancelled = true
                 responseFuture match {
                   case null => Task.unit
@@ -242,15 +243,9 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
     if (logger.underlying.isDebugEnabled)
       Resource.make(
         Task.deferAction(scheduler => Task {
-          var timer: Cancelable = null
-          timer = scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
-            if (closed) {
-              logger.debug(s"$logPrefix => Closed while waiting for response")
-              if (timer != null) timer.cancel()
-            } else
-              logger.debug(s"$logPrefix => Still waiting for response")
+          scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
+            logger.debug(s"$logPrefix => Still waiting for response" + (closed ?: " (after having been closed)"))
           }
-          timer
         })
       )(timer => Task { timer.cancel() })
     else

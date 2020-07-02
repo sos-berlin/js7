@@ -6,6 +6,6 @@ if [ "$OSTYPE" = "cygwin" ]; then
   exec cmd /c sbt-batch.cmd "$@"
 else
   # See also files .sbtopts and .javaopts
-  export JAVA_OPTS="-Dakka.stdout-loglevel=OFF -Dsbt.log.noformat=true $JAVA_OPTS"
+  export JAVA_OPTS="-Dsbt.log.noformat=true $JAVA_OPTS"
   exec sbt -batch -J-Xmx2500M "$@"
 fi

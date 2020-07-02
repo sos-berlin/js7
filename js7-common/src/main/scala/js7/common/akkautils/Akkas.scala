@@ -1,20 +1,21 @@
 package js7.common.akkautils
 
-import akka.actor.ActorSystem.Settings
-import akka.actor.{ActorContext, ActorPath, ActorSystem, Cancellable, ChildActorPath, RootActorPath}
+import akka.actor.{ActorContext, ActorPath, ActorSystem, ChildActorPath, RootActorPath, Terminated}
+import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.Uri
-import akka.util.{ByteString, Timeout}
+import akka.util.ByteString
 import cats.effect.Resource
 import com.typesafe.config.{Config, ConfigFactory}
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.configuration.JobSchedulerConfiguration
-import js7.common.configutils.Configs
+import js7.common.scalautil.Futures.implicits.SuccessFuture
 import js7.common.scalautil.Logger
-import js7.common.utils.JavaResource
 import monix.eval.Task
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
+import scala.concurrent.{Future, Promise}
+import scala.util.control.NonFatal
 
 /**
  * @author Joacim Zschimmer
@@ -22,56 +23,59 @@ import scala.concurrent.duration._
 object Akkas
 {
   private val logger = Logger(getClass)
-  private val configResource = JavaResource(getClass.getClassLoader, "js7/common/akkautils/akka.conf")
-  private lazy val defaultConfig = Configs.loadResource(configResource, internal = true)
 
   def newActorSystem(name: String, config: Config = ConfigFactory.empty) = {
     logger.debug(s"new ActorSystem('$name')")
     val myConfig = ConfigFactory.systemProperties
       .withFallback(config)
-      .withFallback(defaultConfig)
       .withFallback(JobSchedulerConfiguration.defaultConfig)
       .resolve
     ActorSystem(name, myConfig, getClass.getClassLoader)
   }
 
-  /**
-   * Returns the a Timeout accepted for HTTP request, dependent on Akkas configuration akka.scheduler.tick-duration.
-   * <ul>
-   * <li>68 years for akka.scheduler.tick-duration = 1s</li>
-   * <li>8 month for akka.scheduler.tick-duration = 10ms (the default)</li>
-   * <li>24 days for akka.scheduler.tick-duration = 1ms</li>
-   * </ul>
-   *
-   * @see https://github.com/typesafehub/akka-contrib-extra/issues/21
-   * @param settings = actorSystem.settings
-   * @return A Timeout which Akka http accepts
-   */
-  def maximumTimeout(settings: Settings) =
-    tickDurationToMaximumTimeout(tickMillis = settings.config.getDuration("akka.scheduler.tick-duration", MILLISECONDS))
-
-  def tickDurationToMaximumTimeout(tickMillis: Long): Timeout = {
-    // 68 years, maximum for scheduler.tick-duration = 1s, 8 months when tick-duration = 10ms
-    Timeout(1000L * Int.MaxValue / (1000 / tickMillis) - 2000, MILLISECONDS)
+  def terminateAndWait(actorSystem: ActorSystem, timeout: FiniteDuration): Unit = {
+    logger.debug(s"ActorSystem('${actorSystem.name}') terminate ...")
+    try {
+      val since = now
+      Akkas.terminate(actorSystem)
+        .await(timeout)
+      logger.debug(s"ActorSystem('${actorSystem.name}') terminated (${since.elapsed.pretty})")
+    } catch {
+      case NonFatal(t) => logger.warn(s"ActorSystem('${actorSystem.name}').terminate(): $t")
+    }
   }
+
+  /** Shut down connection pool and terminate ActorSystem.
+    * Only once callable.
+    */
+  def terminate(actorSystem: ActorSystem): Future[Terminated] = {
+    import actorSystem.dispatcher  // The ExecutionContext will be shut down here !!!
+    val poolShutdownTimeout = 5.s/*TODO*/
+    val timeoutPromise = Promise[Unit]()
+    val timer = actorSystem.scheduler.scheduleOnce(poolShutdownTimeout) {
+      timeoutPromise.success(())
+    }
+    Future.firstCompletedOf(Seq(
+      shutDownHttpConnectionPools(actorSystem),  // May block a long time (>99s)
+      timeoutPromise.future)
+    ).flatMap { _ =>
+      if (timeoutPromise.isCompleted) {
+        logger.debug(s"ActorSystem('${actorSystem.name}') shutdownAllConnectionPools() timed out after ${poolShutdownTimeout.pretty}")
+      }
+      timer.cancel()
+      actorSystem.terminate()
+    }
+}
+
+  def shutDownHttpConnectionPools(actorSystem: ActorSystem): Future[Unit] =
+    if (actorSystem.hasExtension(Http)) {
+      logger.debug(s"ActorSystem('${actorSystem.name}') shutdownAllConnectionPools()")
+      Http(actorSystem).shutdownAllConnectionPools()
+    } else
+      Future.successful(())
 
   def byteStringToTruncatedString(byteString: ByteString, size: Int = 100, name: String = "ByteString") =
     s"${byteString.size} bytes " + (byteString take size map { c => f"$c%02x" } mkString " ") + ((byteString.sizeIs > size) ?: " ...")
-
-  final class DummyCancellable extends Cancellable {
-    private var _isCancelled = false
-
-    def cancel() = {
-      if (_isCancelled)
-        false
-      else {
-        _isCancelled = true
-        true
-      }
-    }
-
-    def isCancelled = _isCancelled
-  }
 
   def encodeAsActorName(o: String): String = {
     val a = Uri.Path.Segment(o, Uri.Path.Empty).toString
@@ -134,9 +138,9 @@ object Akkas
     )(release =
       actorSystem =>
         Task.deferFutureAction { implicit s =>
-          logger.debug(s"ActorSystem('$name') terminate")
+          logger.debug(s"ActorSystem('$name') terminate ...")
           val since = now
-          actorSystem.terminate()
+          terminate(actorSystem)
             .map { _ =>
               logger.debug(s"ActorSystem('$name') terminated (${since.elapsed.pretty})")
               ()

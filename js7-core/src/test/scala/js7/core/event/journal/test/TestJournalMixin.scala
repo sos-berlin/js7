@@ -16,7 +16,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkautils.Akkas.newActorSystem
-import js7.common.akkautils.DeadLetterActor
+import js7.common.akkautils.{Akkas, DeadLetterActor}
 import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
@@ -61,7 +61,7 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
       (actor ? TestActor.Input.Terminate) await 99.s
       assert(whenJournalStopped.future.await(99.s) == JournalActor.Stopped(keyedEventJournalingActorCount = 0))  // No memory leak
     }
-    finally actorSystem.terminate() await 99.s
+    finally Akkas.terminateAndWait(actorSystem, 99.s)
   }
 
   protected final def simpleExecute(actor: ActorRef, key: String, command: TestAggregateActor.Command) =

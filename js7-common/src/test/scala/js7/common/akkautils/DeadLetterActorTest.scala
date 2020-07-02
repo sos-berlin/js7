@@ -23,7 +23,7 @@ final class DeadLetterActorTest extends AnyFreeSpec {
     actorRef ! new SuppressedMessage
     actorRef ! new TestMessage
     waitForCondition(10.s, 10.ms) { buffer.size == 1 }
-    actorSystem.terminate()
+    Akkas.terminateAndWait(actorSystem, 99.s)
     assert(buffer.size == 1)
     assert(buffer.head startsWith "DeadLetter ")
     assert(buffer.head contains classOf[TestMessage].getName)

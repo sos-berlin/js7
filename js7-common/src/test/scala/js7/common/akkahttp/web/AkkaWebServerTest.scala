@@ -10,10 +10,12 @@ import java.nio.file.Files.{createDirectory, createTempDirectory}
 import javax.net.ssl.SSLHandshakeException
 import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
+import js7.base.time.ScalaTime._
 import js7.common.akkahttp.https.{AkkaHttps, KeyStoreRef, TrustStoreRef}
 import js7.common.akkahttp.web.AkkaWebServer.HasUri
 import js7.common.akkahttp.web.AkkaWebServerTest._
 import js7.common.akkahttp.web.data.WebServerBinding
+import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
 import js7.common.http.AkkaHttpUtils.RichHttpResponse
 import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
@@ -74,7 +76,7 @@ final class AkkaWebServerTest extends AnyFreeSpec with BeforeAndAfterAll
   }
 
   override def afterAll(): Unit = {
-    actorSystem.terminate()
+    Akkas.terminateAndWait(actorSystem, 10.s)
     deleteDirectoryRecursively(directory)
     super.afterAll()
   }

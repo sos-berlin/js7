@@ -1,7 +1,9 @@
 package js7.common.tcp
 
 import akka.util.ByteString
+import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
+import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
 import js7.common.tcp.TcpToRequestResponseTest._
 import org.scalatest.BeforeAndAfterAll
@@ -18,7 +20,7 @@ final class TcpToRequestResponseTest extends AnyFreeSpec with BeforeAndAfterAll
   private lazy val actorSystem = newActorSystem(getClass.getSimpleName)
 
   override protected def afterAll() = {
-    actorSystem.terminate()
+    Akkas.terminateAndWait(actorSystem, 99.s)
     super.afterAll()
   }
 

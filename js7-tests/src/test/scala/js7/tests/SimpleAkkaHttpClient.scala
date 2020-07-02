@@ -2,9 +2,9 @@ package js7.tests
 
 import js7.base.time.ScalaTime._
 import js7.base.web.Uri
+import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
 import js7.common.http.AkkaHttpClient
-import js7.common.scalautil.Futures.implicits._
 
 /**
   * @author Joacim Zschimmer
@@ -25,6 +25,6 @@ final class SimpleAkkaHttpClient(
 
   override def close() = {
     super.close()
-    actorSystem.terminate() await 99.s
+    Akkas.terminateAndWait(actorSystem, 99.s)
   }
 }

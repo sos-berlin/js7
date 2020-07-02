@@ -11,6 +11,7 @@ import js7.base.web.Uri
 import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import js7.common.akkautils.ProvideActorSystem
 import js7.common.configutils.Configs.parseConfigIfExists
+import js7.common.configutils.Hocon._
 import js7.common.http.{AkkaHttpClient, TextApi}
 import js7.common.scalautil.FileUtils.syntax._
 
@@ -25,7 +26,7 @@ private[agent] final class AkkaHttpAgentTextApi(
 extends HasCloser with ProvideActorSystem with TextApi with HttpSessionApi with AkkaHttpClient
 {
   protected val name = "AkkaHttpAgentTextApi"
-  protected val config = ConfigFactory.empty
+  protected val config = hocon"akka.log-dead-letters = 0"
 
   private val agentUris = AgentUris(agentUri)
 

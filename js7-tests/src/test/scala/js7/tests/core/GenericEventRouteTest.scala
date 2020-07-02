@@ -12,7 +12,7 @@ import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import js7.common.akkautils.ProvideActorSystem
+import js7.common.akkautils.{Akkas, ProvideActorSystem}
 import js7.common.event.collector.EventCollector
 import js7.common.http.AkkaHttpClient
 import js7.common.http.AkkaHttpClient.HttpException
@@ -34,9 +34,9 @@ import monix.reactive.Observable
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
-import scala.concurrent.{Future, Promise}
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
+import scala.concurrent.{Future, Promise}
 import scala.reflect.runtime.universe._
 
 final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with GenericEventRoute
@@ -117,7 +117,7 @@ final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll wit
 
   override def afterAll() = {
     server.close()
-    actorSystem.terminate() await 9.s
+    Akkas.terminateAndWait(actorSystem, 99.s)
     super.afterAll()
   }
 

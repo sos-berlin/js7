@@ -6,14 +6,12 @@ import com.typesafe.config.Config
 import javax.inject.Singleton
 import js7.base.auth.{Permission, SimpleUser, UpdateRepoPermission}
 import js7.base.eventbus.StandardEventBus
-import js7.base.time.ScalaTime._
 import js7.base.utils.Closer
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import js7.common.akkautils.DeadLetterActor
+import js7.common.akkautils.{Akkas, DeadLetterActor}
 import js7.common.event.{EventIdClock, EventIdGenerator}
-import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.Logger
 import js7.common.time.JavaTimeConverters._
 import js7.controller.configuration.ControllerConfiguration
@@ -21,8 +19,6 @@ import js7.controller.configuration.inject.ControllerModule._
 import js7.core.system.ThreadPools
 import monix.execution.Scheduler
 import scala.concurrent.ExecutionContext
-import scala.concurrent.duration.Deadline.now
-import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
@@ -65,18 +61,15 @@ final class ControllerModule(configuration: ControllerConfiguration) extends Abs
 
   @Provides @Singleton
   def actorSystem(closer: Closer, executionContext: ExecutionContext): ActorSystem = {
-    val actorSystem = ActorSystem(configuration.name, config = Some(configuration.config),
+    import configuration.name
+    logger.debug(s"new ActorSystem('$name')")
+    val actorSystem = ActorSystem(
+      name,
+      config = Some(configuration.config),
+      Some(getClass.getClassLoader),
       defaultExecutionContext = config.getBoolean("js7.akka.use-js7-thread-pool") ? executionContext)
     closer.onClose {
-      logger.debug("ActorSystem.terminate ...")
-      try {
-        val since = now
-        actorSystem.terminate() await config.getDuration("js7.akka.shutdown-timeout").toFiniteDuration
-        logger.debug(s"ActorSystem terminated (${since.elapsed.pretty})")
-      }
-      catch {
-        case NonFatal(t) => logger.warn(s"ActorSystem.terminate(): $t")
-      }
+      Akkas.terminateAndWait(actorSystem, config.getDuration("js7.akka.shutdown-timeout").toFiniteDuration)
     }
     DeadLetterActor.subscribe(actorSystem)
     actorSystem

@@ -1,10 +1,11 @@
 package js7.common.akkautils
 
-import akka.actor.{Actor, ActorSystem, Props}
+import akka.actor.{Actor, Props}
 import akka.pattern.ask
 import akka.util.Timeout
 import js7.base.generic.Completed
 import js7.base.time.ScalaTime._
+import js7.common.akkautils.Akkas.newActorSystem
 import js7.common.akkautils.CatchingActorTest._
 import js7.common.scalautil.Futures.implicits.SuccessFuture
 import org.scalatest.BeforeAndAfterAll
@@ -19,10 +20,10 @@ import scala.util.control.NoStackTrace
   */
 final class CatchingActorTest extends AnyFreeSpec with BeforeAndAfterAll {
 
-  private implicit lazy val actorSystem = ActorSystem("CatchingActorTest")
+  private implicit lazy val actorSystem = newActorSystem("CatchingActorTest")
 
   override protected def afterAll() = {
-    actorSystem.terminate()
+    Akkas.terminateAndWait(actorSystem, 99.s)
     super.afterAll()
   }
 

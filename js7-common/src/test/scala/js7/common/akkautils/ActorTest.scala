@@ -1,9 +1,9 @@
 package js7.common.akkautils
 
 import akka.actor.{Actor, Props}
-import com.typesafe.config.ConfigFactory
 import js7.base.time.ScalaTime._
 import js7.common.akkautils.ActorTest._
+import js7.common.configutils.Hocon._
 import js7.common.scalautil.Futures.implicits.SuccessFuture
 import js7.common.scalautil.Logger
 import monix.execution.atomic.{AtomicBoolean, AtomicInt}
@@ -14,10 +14,10 @@ import scala.util.control.NoStackTrace
 
 final class ActorTest extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem
 {
-  protected def config = ConfigFactory.empty
+  protected def config = hocon"akka.actor.guardian-supervisor-strategy = akka.actor.StoppingSupervisorStrategy"
 
   override def afterAll() = {
-    actorSystem.terminate() await 99.s
+    Akkas.terminateAndWait(actorSystem, 99.s)
     super.afterAll()
   }
 

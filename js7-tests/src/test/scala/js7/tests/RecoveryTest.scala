@@ -8,6 +8,7 @@ import js7.base.crypt.silly.{SillySignature, SillySigner}
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.{autoClosing, multipleAutoClosing}
 import js7.base.utils.ScalaUtils.syntax._
+import js7.common.akkautils.Akkas
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.Logger
@@ -118,7 +119,7 @@ final class RecoveryTest extends AnyFreeSpec
       body(controller)
       logger.info("🔥🔥🔥 TERMINATE CONTROLLER 🔥🔥🔥")
       // Kill Controller ActorSystem
-      controller.actorSystem.terminate() await 99.s
+      Akkas.terminateAndWait(controller.actorSystem, 99.s)
     }
 
   private def runAgents(directoryProvider: DirectoryProvider)(body: IndexedSeq[RunningAgent] => Unit): Unit =
@@ -126,7 +127,7 @@ final class RecoveryTest extends AnyFreeSpec
       body(agents)
       logger.info("🔥🔥🔥 TERMINATE AGENTS 🔥🔥🔥")
       // Kill Agents ActorSystems
-      for (agent <- agents) agent.actorSystem.terminate() await 99.s
+      for (agent <- agents) Akkas.terminateAndWait(agent.actorSystem, 99.s)
     }
 
   private def readAgentEvents(journalFile: Path): Vector[Stamped[KeyedEvent[AgentEvent]]] =

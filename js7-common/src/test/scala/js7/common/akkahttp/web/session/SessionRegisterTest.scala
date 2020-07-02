@@ -5,9 +5,10 @@ import js7.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
 import js7.base.generic.{Completed, SecretString}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problems.InvalidSessionTokenProblem
+import js7.base.time.ScalaTime._
 import js7.common.akkahttp.web.session.SessionRegisterTest._
+import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
-import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.schedulers.TestScheduler
@@ -67,7 +68,7 @@ final class SessionRegisterTest extends AnyFreeSpec with ScalatestRouteTest
     assert(mySessionRegister.session(sessionToken, Some(BUser)).await(99.seconds) == Left(InvalidSessionTokenProblem))
     assert(mySessionRegister.session(sessionToken, None).runSyncUnsafe(99.seconds).toOption.get.currentUser == AUser)
 
-    mySystem.terminate() await 99.seconds
+    Akkas.terminateAndWait(mySystem, 10.s)
   }
 
   "logout" in {
