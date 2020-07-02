@@ -206,7 +206,7 @@ with Stash {
       logger.info(s"${orderRegister.size} Orders and ${workflowRegister.size} Workflows recovered")
       if (!journalState.userIdToReleasedEventId.contains(controllerId.toUserId)) {
         // Automatically add Controller's UserId to list of users allowed to release events,
-        // to avoid deletion of journal files due to an empty list, becore controller has read the events.
+        // to avoid deletion of journal files due to an empty list, before controller has read the events.
         // The controller has to send ReleaseEvents commands to release obsolete journal files.
         persist(JournalEventsReleased(controllerId.toUserId, EventId.BeforeFirst)) {
           case (Stamped(_,_, _ <-: event), journaledState) =>
