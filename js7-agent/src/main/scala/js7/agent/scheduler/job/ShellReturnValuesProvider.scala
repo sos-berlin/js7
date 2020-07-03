@@ -23,7 +23,7 @@ final class ShellReturnValuesProvider(temporaryDirectory: Path)
 
   def variables: Map[String, String] =
     autoClosing(scala.io.Source.fromFile(file.toFile)(FileEncoding)) { source =>
-      (source.getLines map lineToKeyValue).toMap
+      (source.getLines() map lineToKeyValue).toMap
     }
 
   override def toString = s"ShellReturnValuesProvider($file)"

@@ -43,7 +43,7 @@ final class JournaledProxy[S <: JournaledState[S]] private[proxy](
       currentStateFilled.future
     }
 
-  def stop(): Task[Unit] =
+  def stop: Task[Unit] =
     Task { cleanUp() }
       .flatMap(_ => Task.fromFuture(observingStopped.future))
 

@@ -52,9 +52,9 @@ final class ActorTest extends AnyFreeSpec with BeforeAndAfterAll with ProvideAct
 
     actor ! "CRASH"
     stopped.future await 99.s
-    assert(!restarted.get && startCounter.get == 1)
+    assert(!restarted.get() && startCounter.get() == 1)
     sleep(1.s)
-    assert(!restarted.get && startCounter.get == 1)
+    assert(!restarted.get() && startCounter.get() == 1)
   }
 }
 

@@ -43,7 +43,7 @@ extends AutoCloseable
   private var lineNumber: Long = 1  // -1 for unknown line number after seek
   lazy val iterator: Iterator[PositionAnd[Json]] = UntilNoneIterator(read())
 
-  private def in = inAtomic.get match {
+  private def in = inAtomic.get() match {
     case null => throw new ClosedException(name)
     case o => o
   }
@@ -56,7 +56,7 @@ extends AutoCloseable
       }
     }
 
-  private def isClosed = inAtomic.get == null
+  private def isClosed = inAtomic.get() == null
 
   def read(): Option[PositionAnd[Json]] =
     synchronized {

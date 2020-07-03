@@ -105,7 +105,7 @@ extends AutoCloseable
 
     def hasNext =
       !eof && {  // Avoid exception in iterator in case of automatically closed iterator (closeAtEnd, for testing)
-        iteratorAtomic.get match {
+        iteratorAtomic.get() match {
           case null =>
             logger.debug(JsonSeqFileClosedProblem(iteratorName).toString)
             eof = true  // EOF to avoid exception logging (when closed (cancelled) asynchronously before hasNext, but not before `next`).
@@ -124,7 +124,7 @@ extends AutoCloseable
       }
 
     def next() =
-      iteratorAtomic.get match {
+      iteratorAtomic.get() match {
         case null => throw new ClosedException(iterator_.journalFile)
         case iterator =>
           _lastUsed = Timestamp.currentTimeMillis

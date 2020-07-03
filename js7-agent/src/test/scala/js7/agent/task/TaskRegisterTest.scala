@@ -127,7 +127,7 @@ final class TaskRegisterTest extends AnyFreeSpec with HasCloser with BeforeAndAf
   }
 
   private def crashKillScript =
-    autoClosing(scala.io.Source.fromFile(agentConfiguration.killScriptConf.get.crashKillScriptFile.toFile)) { _.getLines.toSet }
+    autoClosing(scala.io.Source.fromFile(agentConfiguration.killScriptConf.get.crashKillScriptFile.toFile)) { _.getLines().toSet }
 
   private def killFile = agentConfiguration.killScript.get.file
 }

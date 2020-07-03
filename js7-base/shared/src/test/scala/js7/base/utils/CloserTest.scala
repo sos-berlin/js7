@@ -149,7 +149,7 @@ object CloserTest
         for (t <- throwable) throw t
       }
 
-      def isClosed = closed.get
+      def isClosed = closed.get()
     }
   }
 

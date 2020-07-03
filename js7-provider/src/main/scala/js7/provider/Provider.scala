@@ -123,7 +123,7 @@ extends HasCloser with Observing with ProvideActorSystem
   def updateControllerConfiguration(versionId: Option[VersionId] = None): Task[Checked[Completed]] =
     for {
       _ <- loginUntilReachable
-      last = lastEntries.get
+      last = lastEntries.get()
       currentEntries = readDirectory
       checkedCompleted <- toFileBasedDiff(PathSeqDiffer.diff(currentEntries, last))
         .traverse(

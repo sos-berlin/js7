@@ -66,9 +66,9 @@ final class ManyOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
       .observe(EventRequest.singleClass[OrderFinished](after = EventId.BeforeFirst, timeout = Some(99.s)))
       .takeWhile { _ =>
         finishedCount += 1
-        val m = finishedCount.get
+        val m = finishedCount.get()
         if (n >= 10000 && m % 1000 == 0) println(stopwatch.itemsPerSecondString(m, s"orders finished"))
-        finishedCount.get < n
+        finishedCount.get() < n
       }
       .completedL
       .runToFuture.await(longTimeout)

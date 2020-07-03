@@ -38,7 +38,7 @@ trait HttpSessionApi extends SessionApi.HasUserAndPassword with HasSessionToken
 
   final def logout(): Task[Completed] =
     Task.defer {
-      sessionTokenRef.get match {
+      sessionTokenRef.get() match {
         case None => Task.pure(Completed)
         case sometoken @ Some(sessionToken) =>
           executeSessionCommand(Logout(sessionToken), suppressSessionToken = true)
@@ -65,5 +65,5 @@ trait HttpSessionApi extends SessionApi.HasUserAndPassword with HasSessionToken
     sessionTokenRef := Some(sessionToken)
 
   final def sessionToken: Option[SessionToken] =
-    sessionTokenRef.get
+    sessionTokenRef.get()
 }

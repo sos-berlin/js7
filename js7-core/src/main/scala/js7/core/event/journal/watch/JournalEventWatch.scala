@@ -258,14 +258,14 @@ with JournalingObserver
     private val _eventReader = AtomicAny[EventReader](initialEventReader.orNull)
 
     def closeAfterUse(): Unit =
-      for (r <- Option(_eventReader.get)) r.closeAfterUse()
+      for (r <- Option(_eventReader.get())) r.closeAfterUse()
 
     def close(): Unit =
-      for (r <- Option(_eventReader.get)) r.close()
+      for (r <- Option(_eventReader.get())) r.close()
 
     @tailrec
     def eventReader: EventReader =
-      _eventReader.get match {
+      _eventReader.get() match {
         case null =>
           val r = new HistoricEventReader(journalMeta,
             Some(journalId.getOrElse(throw JournalIsNotYetReadyProblem(file).throwable)),
@@ -281,7 +281,7 @@ with JournalingObserver
       }
 
     def evictEventReader(): Unit = {
-      val reader = _eventReader.get
+      val reader = _eventReader.get()
       if (reader != null) {
         if (!reader.isInUse && _eventReader.compareAndSet(reader, null)) {  // Race condition, may be become in-use before compareAndSet
           logger.debug(s"Evict HistoricEventReader(${file.getFileName}' lastUsedAt=${Timestamp.ofEpochMilli(reader.lastUsedAt)})")
@@ -291,13 +291,13 @@ with JournalingObserver
     }
 
     def lastUsedAt: Long =
-      _eventReader.get match {
+      _eventReader.get() match {
         case null => 0L
         case reader => reader.lastUsedAt
       }
 
     def isEvictable: Boolean = {
-      val reader = _eventReader.get
+      val reader = _eventReader.get()
       reader != null && !reader.isInUse
     }
 

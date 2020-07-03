@@ -47,14 +47,14 @@ final class Closer extends AutoCloseable
   def close(): Unit =
     stack.pollLast() match {
       case null =>  // finish
-        if (throwable.get != null) throw throwable.get
+        for (t <- Option(throwable.get())) throw t
 
       case closeable =>
         try closeable.close()
         catch {
           case NonFatal(t) =>
             if (!throwable.compareAndSet(null, t)) {
-              val tt = throwable.get
+              val tt = throwable.get()
               if (tt ne t) {
                 scribe.debug(s"Throwable.addSuppressed($t)")
                 tt.addSuppressed(t)

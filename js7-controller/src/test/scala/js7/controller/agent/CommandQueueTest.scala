@@ -103,8 +103,8 @@ final class CommandQueueTest extends AnyFreeSpec
       commandQueue.enqueue(AgentDriver.Input.AttachOrder(order, TestAgentRefPath, signedWorkflow))
     }
     commandQueue.maySend()
-    waitForCondition(9.s, 10.ms) { commandQueue.succeeded.get == n }
-    assert(commandQueue.succeeded.get == n)
+    waitForCondition(9.s, 10.ms) { commandQueue.succeeded.get() == n }
+    assert(commandQueue.succeeded.get() == n)
   }
 }
 

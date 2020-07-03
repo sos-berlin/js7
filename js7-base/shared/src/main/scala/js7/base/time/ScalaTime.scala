@@ -102,7 +102,7 @@ object ScalaTime
   private def parse(string: String, factor: Int): FiniteDuration =
     (BigDecimal(string) * factor).toLongExact.nanoseconds.toCoarsest
 
-  def randomDuration(maximum: Duration): Duration = Duration(maximum.toNanos * Random.nextFloat, NANOSECONDS)
+  def randomDuration(maximum: Duration): Duration = Duration(maximum.toNanos * Random.nextFloat(), NANOSECONDS)
 
   implicit final class RichDuration(private val delegate: Duration) extends AnyVal with Ordered[RichDuration]
   {

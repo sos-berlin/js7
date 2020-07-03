@@ -103,7 +103,7 @@ extends AutoCloseable {
       case _: EndDocument =>
     }
     g()
-    results.result
+    results.result()
   }
 
   private[xmls] def parseStartElementAlternative[A](body: String => Option[A]): Option[A] =

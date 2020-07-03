@@ -149,7 +149,7 @@ with ReceiveLoggingActor.WithStash
     protected def commandParallelism = conf.commandParallelism
 
     protected def executeCommand(command: AgentCommand.Batch) = {
-      val expectedSessionNumber: Int = sessionNumber.get
+      val expectedSessionNumber: Int = sessionNumber.get()
       for {
         _ <- Task.defer {
           val delay = delayCommandExecutionAfterErrorUntil.timeLeft
@@ -162,7 +162,7 @@ with ReceiveLoggingActor.WithStash
             // Fail on recoupling, later read restarted Agent's attached OrderIds before issuing again AttachOrder
             api <- EitherT(Task.pure(checkedApi))
             response <- EitherT(
-              if (sessionNumber.get != expectedSessionNumber)
+              if (sessionNumber.get() != expectedSessionNumber)
                 Task.pure(Left(DecoupledProblem))
               else
                 // TODO Still a small possibility for race-condition? May log a AgentDuplicateOrder

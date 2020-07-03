@@ -118,11 +118,11 @@ final class MonixBaseTest extends AsyncFreeSpec
       val cancelable = scheduler.scheduleAtFixedRates(Array(2.s, 3.s, 4.s)) { i += 1 }
       for (expected <- Array(0, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6)) {
         scheduler.tick(1.s)
-        assert(i.get == expected)
+        assert(i.get() == expected)
       }
       cancelable.cancel()
       scheduler.tick(100.s)
-      assert(i.get == 6)
+      assert(i.get() == 6)
     }
   }
 

@@ -15,9 +15,9 @@ final class UntilNoneIteratorTest extends AnyFreeSpec {
 
   "Exception is delayed until next()" in {
     def read(): Option[Int] = throw new IndexOutOfBoundsException()
-    assert(untilNoneIterator(read).hasNext)
+    assert(untilNoneIterator(read()).hasNext)
     intercept[IndexOutOfBoundsException] {
-      untilNoneIterator(read).next()
+      untilNoneIterator(read()).next()
     }
   }
 }

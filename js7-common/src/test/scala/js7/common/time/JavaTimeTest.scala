@@ -323,5 +323,5 @@ final class JavaTimeTest extends AnyFreeSpec {
   }
 
   private def randomDuration(maximum: Duration): Duration =
-    Duration.ofNanos((maximum.toNanos * Random.nextFloat).toLong)
+    Duration.ofNanos((maximum.toNanos * Random.nextFloat()).toLong)
 }

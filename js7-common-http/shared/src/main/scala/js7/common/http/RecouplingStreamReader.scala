@@ -38,7 +38,7 @@ abstract class RecouplingStreamReader[
     Task {
       var logged = false
       lazy val msg = s"$api: coupling failed: $problem"
-      if (inUse.get && !stopRequested && !coupledApiVar.isStopped) {
+      if (inUse.get() && !stopRequested && !coupledApiVar.isStopped) {
         scribe.warn(msg)
         logged = true
       }
@@ -65,7 +65,7 @@ abstract class RecouplingStreamReader[
   // TODO Genügt nicht `terminate` ?
   protected def stopRequested: Boolean
 
-  private def isStopped = stopRequested || coupledApiVar.isStopped || !inUse.get
+  private def isStopped = stopRequested || coupledApiVar.isStopped || !inUse.get()
 
   private val coupledApiVar = new CoupledApiVar[Api]
   private val recouplingPause = new RecouplingPause

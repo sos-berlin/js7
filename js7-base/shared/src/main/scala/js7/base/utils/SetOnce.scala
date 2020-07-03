@@ -14,7 +14,7 @@ import scala.util.Success
  */
 class SetOnce[A](label: String)
 {
-  protected[this] val promise = Promise[A]
+  protected[this] val promise = Promise[A]()
 
   final override def toString = toStringOr(s"SetOnce[$label](not yet set)")
 

@@ -37,7 +37,7 @@ object VariablesXmlParser {
           nextEvent()
           eat[EndElement]
         }
-        builder.result
+        builder.result()
       }
     }
 

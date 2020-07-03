@@ -47,8 +47,8 @@ final class ControllerModule(configuration: ControllerConfiguration) extends Abs
 
   @Provides @Singleton
   def monixScheduler(): Scheduler = {
-    val scheduler = ThreadPools.newStandardScheduler(configuration.name, config)
-    closer.onClose {
+    val scheduler = ThreadPools.newStandardScheduler(configuration.name, config())
+    closer().onClose {
       scheduler.shutdown()
       //scheduler.awaitTermination(xxx, SECONDS, ???)
     }
@@ -67,9 +67,9 @@ final class ControllerModule(configuration: ControllerConfiguration) extends Abs
       name,
       config = Some(configuration.config),
       Some(getClass.getClassLoader),
-      defaultExecutionContext = config.getBoolean("js7.akka.use-js7-thread-pool") ? executionContext)
+      defaultExecutionContext = config().getBoolean("js7.akka.use-js7-thread-pool") ? executionContext)
     closer.onClose {
-      Akkas.terminateAndWait(actorSystem, config.getDuration("js7.akka.shutdown-timeout").toFiniteDuration)
+      Akkas.terminateAndWait(actorSystem, config().getDuration("js7.akka.shutdown-timeout").toFiniteDuration)
     }
     DeadLetterActor.subscribe(actorSystem)
     actorSystem

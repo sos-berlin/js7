@@ -71,7 +71,7 @@ extends Actor {
   =
     command match {
       case Batch(commands) =>
-        val responses = Vector.fill(commands.size) { Promise[Checked[Response]] }
+        val responses = Vector.fill(commands.size) { Promise[Checked[Response]]() }
         for ((c, r) <- commands zip responses)
           executeCommand(c, meta, r, batchId orElse Some(id))
         val singleResponseFutures = responses map (_.future)

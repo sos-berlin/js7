@@ -31,7 +31,7 @@ extends SessionApi.HasUserAndPassword with HasIsIgnorableStackTrace
   def clearSession() =
     sessionTokenRef := None
 
-  def hasSession = sessionTokenRef.get.isDefined
+  def hasSession = sessionTokenRef.get().isDefined
 
   protected def isTemporaryUnreachable(throwable: Throwable) = false
 

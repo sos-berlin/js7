@@ -132,7 +132,7 @@ final class RecoveryTest extends AnyFreeSpec
 
   private def readAgentEvents(journalFile: Path): Vector[Stamped[KeyedEvent[AgentEvent]]] =
     autoClosing(InputStreamJsonSeqReader.open(journalFile)) { reader =>
-      UntilNoneIterator(reader.read).toVector
+      UntilNoneIterator(reader.read()).toVector
         .map(_.value)
         .collect {
           case json if AgentEvent.KeyedEventJsonCodec.canDeserialize(json) =>

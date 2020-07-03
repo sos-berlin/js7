@@ -319,11 +319,11 @@ with MainJournalingActor[ControllerState, Event]
 
       case Command.Execute(cmd, _) =>
         logger.warn(s"$ControllerIsNotYetReadyProblem: $cmd")
-        sender ! Left(ControllerIsNotYetReadyProblem)
+        sender() ! Left(ControllerIsNotYetReadyProblem)
 
       case cmd: Command =>
         logger.warn(s"$ControllerIsNotYetReadyProblem: $cmd")
-        sender ! Status.Failure(ControllerIsNotYetReadyProblem.throwable)
+        sender() ! Status.Failure(ControllerIsNotYetReadyProblem.throwable)
 
       case _ => stash()
     }
@@ -368,11 +368,11 @@ with MainJournalingActor[ControllerState, Event]
 
     case Command.Execute(cmd, _) =>
       logger.warn(s"$ControllerIsNotYetReadyProblem: $cmd")
-      sender ! Left(ControllerIsNotYetReadyProblem)
+      sender() ! Left(ControllerIsNotYetReadyProblem)
 
     case cmd: Command =>
       logger.warn(s"$ControllerIsNotYetReadyProblem: $cmd")
-      sender ! Status.Failure(ControllerIsNotYetReadyProblem.throwable)
+      sender() ! Status.Failure(ControllerIsNotYetReadyProblem.throwable)
 
     case _ => stash()
   }

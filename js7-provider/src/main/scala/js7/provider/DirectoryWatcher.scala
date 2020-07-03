@@ -37,7 +37,7 @@ extends AutoCloseable
     watchService.close()
   }
 
-  def isClosed = closed.get
+  def isClosed = closed.get()
 
   /** Observable may only be subscribed to once, because it uses the outer WatchService. */
   def singleUseObservable: Observable[Unit] =

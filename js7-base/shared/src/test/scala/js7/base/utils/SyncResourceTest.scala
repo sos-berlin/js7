@@ -19,7 +19,7 @@ final class SyncResourceTest extends AnyFreeSpec
       private val value = AtomicAny[java.lang.Long](Random.nextLong())
       opened += this
 
-      def isOpened = value.get != null
+      def isOpened = value.get() != null
 
       def close() = {
         assert(value.getAndSet(null) != null)

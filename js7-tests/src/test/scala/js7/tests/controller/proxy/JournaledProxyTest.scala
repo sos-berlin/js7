@@ -54,7 +54,7 @@ final class JournaledProxyTest extends AnyFreeSpec with DirectoryProviderForScal
         assert(processed.state.idToOrder(OrderId("🔺")).state == Order.Processed)
 
         whenFinished await 99.s  // Await order termination before shutting down the JS7
-      } finally proxy.stop() await 99.s
+      } finally proxy.stop await 99.s
     }
   }
 

@@ -88,14 +88,14 @@ object OperatingSystem {
     lazy val distributionNameAndVersionOption: Option[String] = {
       def readFirstLine(file: Path): String =
         autoClosing(new FileInputStream(file.toFile)) { in =>
-          fromInputStream(in).getLines.next().trim
+          fromInputStream(in).getLines().next().trim
         }
 
       def readFileOsRelease() = {
         val prettyNamePrefix = "PRETTY_NAME="
         val file = "/etc/os-release"
         autoClosing(new FileInputStream(file)) { in =>    // http://man7.org/linux/man-pages/man5/os-release.5.html
-          fromInputStream(in).getLines collectFirst {
+          fromInputStream(in).getLines() collectFirst {
             case line if line startsWith prettyNamePrefix =>
               line.stripPrefix(prettyNamePrefix).stripPrefix("\"").stripPrefix("'").stripSuffix("\"").stripSuffix("'").trim
           }
@@ -131,7 +131,7 @@ object OperatingSystem {
         Try {
           val CpuModelRegex = """model name[ \t]*:[ \t]*(.+)""".r
           autoClosing(new FileInputStream("/proc/cpuinfo")) { in =>
-            fromInputStream(in).getLines collectFirst {  // Assuming all cores are of same model
+            fromInputStream(in).getLines() collectFirst {  // Assuming all cores are of same model
               case CpuModelRegex(model) => model.trim.replaceAll("""[ \t\n]+""", " ")
             }
           }

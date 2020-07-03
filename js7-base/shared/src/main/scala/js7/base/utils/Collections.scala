@@ -94,9 +94,9 @@ object Collections
         val b = Vector.newBuilder[(K, Vector[A])]
         b.sizeHint(m.size)
         for ((k, vectorBuilder) <- m) {
-          b += ((k, vectorBuilder.result))
+          b += ((k, vectorBuilder.result()))
         }
-        b.result
+        b.result()
       }
     }
 
