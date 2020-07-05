@@ -6,8 +6,8 @@ import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.Problems.TamperedWithSignedMessageProblem
 import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.InputStreams.inputStreamToByteArray
 import js7.base.utils.SyncResource.syntax.RichResource
-import scodec.bits.ByteVector
 
 /**
   * @author Joacim Zschimmer
@@ -56,19 +56,5 @@ object SillySignatureVerifier extends SignatureVerifier.Companion
   def genericSignatureToSignature(signature: GenericSignature) = {
     assertThat(signature.typeName == typeName)
     SillySignature(signature.signatureString)
-  }
-
-  private def inputStreamToByteArray(in: InputStream): Array[Byte] = {
-    var result = ByteVector.empty
-    val bytes = new Array[Byte](4096)
-    var eof = false
-    while (!eof) {
-      val len = in.read(bytes)
-      eof = len <= 0
-      if (!eof) {
-        result ++= ByteVector(bytes, 0, len)
-      }
-    }
-    result.toArray
   }
 }
