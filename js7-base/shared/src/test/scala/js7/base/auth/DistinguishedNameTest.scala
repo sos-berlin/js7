@@ -11,15 +11,20 @@ final class DistinguishedNameTest extends AnyFreeSpec
 {
   "check" in {
     assert(DistinguishedName.checked("") == Left(EmptyStringProblem("DistinguishedName")))
-    assert(DistinguishedName.checked(" ") == Left(Problem("Invalid Distinguished Name - Invalid name:  ")))
-    assert(DistinguishedName.checked("X") == Left(Problem("Invalid Distinguished Name - Invalid name: X")))
+    assert(DistinguishedName.checked(" ") == Left(EmptyStringProblem("DistinguishedName")))
+    assert(DistinguishedName.checked("X") == Left(Problem("Invalid Distinguished Name - improperly specified input name: X")))
+    assert(DistinguishedName.checked("UNKNOWN=X") == Left(Problem("Invalid Distinguished Name - improperly specified input name: UNKNOWN=X")))
     assert(DistinguishedName.checked("CN=common name") == Right(DistinguishedName("CN=common name")))
   }
 
-  "DistinguishedName" in {
+  "DistinguishedName, equal" in {
     val a = DistinguishedName("CN=common name,L=Lummerland")
     val b = DistinguishedName("CN=common name, L=Lummerland")
     assert(a == b)
-    assert(a.string == "CN=common name,L=Lummerland")
+  }
+
+  "string representation is normalized" in {
+    assert(DistinguishedName("CN=common name,L=Lummerland").string == "CN=common name, L=Lummerland")
+    assert(DistinguishedName(" CN=common name ,  L=Lummerland ").string == "CN=common name, L=Lummerland")
   }
 }
