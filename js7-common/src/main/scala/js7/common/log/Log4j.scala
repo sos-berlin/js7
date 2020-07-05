@@ -29,7 +29,7 @@ object Log4j
       for (logManager <- Try(Class.forName("org.apache.logging.log4j.LogManager"))) {
         // Log complete timestamp in case of short log timestamp
         logger.debug(s"log4j.LogManager.shutdown at ${LocalDateTime.now.toString.replace('T', ' ')}")
-        logManager.getMethod("shutdown", classOf[Boolean]).invoke(null, Boolean.box(true))
+        logManager.getMethod("shutdown").invoke(null)
       }
     }
 }
