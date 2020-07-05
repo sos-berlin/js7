@@ -48,7 +48,7 @@ extends Actor {
         session.touch(sessionTimeout)
       }
       tokenToSession.insert(session.sessionToken -> session)
-      logger.info(s"Session #${session.sessionNumber} for User '${user.id}' added${session.isEternal ?: " (eternal)"}")
+      logger.info(s"Session #${session.sessionNumber} for User '${user.id}' added${session.isEternal ?? " (eternal)"}")
       sender() ! token
       scheduleNextCleanup()
 

@@ -94,7 +94,7 @@ trait AkkaWebServer extends AutoCloseable
       serverBinding
     } .map { serverBinding =>
         logger.info(s"Bound ${binding.scheme}://${serverBinding.localAddress.getAddress.getHostAddress}:${serverBinding.localAddress.getPort}" +
-          (binding.mutual ?: ", client certificate required") +
+          (binding.mutual ?? ", client certificate required") +
           boundRoute.boundMessageSuffix)
         serverBinding
       }

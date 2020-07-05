@@ -77,7 +77,7 @@ object TestControllerAgent
               if (isWindows) s"""
                  |@echo off
                  |echo Hello
-                 |${(conf.jobDuration.toSeconds > 0) ?: s"ping -n ${conf.jobDuration.toSeconds + 1} 127.0.0.1 >nul"}
+                 |${(conf.jobDuration.toSeconds > 0) ?? s"ping -n ${conf.jobDuration.toSeconds + 1} 127.0.0.1 >nul"}
                  |echo result=TEST-RESULT-%SCHEDULER_PARAM_VAR1% >>"%SCHEDULER_RETURN_VALUES%"
                  |""".stripMargin
               else s"""

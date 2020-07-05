@@ -70,7 +70,7 @@ private[state] final class LockKeeper[K]
   {
     private[LockKeeper] val released = AtomicBoolean(false)
 
-    override def toString = s"LockKeeper.Token($key${released.get() ?: ", released"})"
+    override def toString = s"LockKeeper.Token($key${released.get() ?? ", released"})"
   }
 }
 

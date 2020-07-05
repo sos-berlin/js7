@@ -56,7 +56,7 @@ final class ControllerMain
       }
     } while (restartInProcess)
     // Log complete timestamp in case of short log timestamp
-    val msg = s"JS7 Controller terminates at ${Timestamp.now.show}" + (terminate.restart ?: " – will try to restart")
+    val msg = s"JS7 Controller terminates at ${Timestamp.now.show}" + (terminate.restart ?? " – will try to restart")
     logger.info(msg)
     printlnWithClock(msg)
     terminate

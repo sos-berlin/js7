@@ -39,7 +39,7 @@ private[journal] trait StatisticsCounter
     s"$flushes flushes, $syncs syncs"
 
   protected def flushesTimingString =
-    (flushes > 0) ?:
+    (flushes > 0) ??
       (t(flushNanos, flushes, "flush") ++ t(syncNanos, syncs, "sync")).mkString(", ")
 
   final def flushCount = flushes

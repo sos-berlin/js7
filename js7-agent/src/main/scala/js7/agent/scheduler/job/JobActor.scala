@@ -59,7 +59,7 @@ extends Actor with Stash {
         Left(SignedInjectionNotAllowed)
       else
         Checked.catchNonFatal {
-          val ext = isWindows ?: ".cmd"
+          val ext = isWindows ?? ".cmd"
           val file = createTempFile(temporaryDirectory, "script-", ext, ShellFileAttributes: _*)
           file.write(script.string, AgentConfiguration.FileEncoding)
           Executable(file, "tmp/" + file.getFileName, true)

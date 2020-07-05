@@ -26,12 +26,12 @@ private[journal] final class EventStatisticsCounter(initialEventCount: Int) exte
   def debugString: Option[String] =
     (events > 0) ? (
       s"$events events, $commits commits ($flushesDebugString) " +
-        (((flushCount > 0 && stopwatch.duration >= 1.s) ?: s"$flushesTimingString, ") + {
+        (((flushCount > 0 && stopwatch.duration >= 1.s) ?? s"$flushesTimingString, ") + {
           val factorFormat = NumberFormat.getInstance(Locale.ROOT)  // Not thread-safe
           factorFormat.setMaximumFractionDigits(1)
           factorFormat.setGroupingUsed(false)  // For MacOS
-          ((flushCount > 0) ?: factorFormat.format(commits.toDouble / flushCount) + " commits/flush") +
-          ((syncCount >= 10) ?: // syncOnCommit?
+          ((flushCount > 0) ?? factorFormat.format(commits.toDouble / flushCount) + " commits/flush") +
+          ((syncCount >= 10) ?? // syncOnCommit?
             (", " +
               factorFormat.format(commits.toDouble / syncCount) + s" commits/sync, " +
               factorFormat.format(events.toDouble / syncCount) + s" events/sync"))

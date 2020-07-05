@@ -34,14 +34,14 @@ private[fatevent] final class FatStateCache(controllerId: ControllerId, eventWat
     lastDelivered match {
       case Some(fatState) if fatState.eventId <= after =>
         logger.trace(s"Using last lastDelivered FatState ${EventId.toString(fatState.eventId)}" +
-          ((after > fatState.eventId) ?: s", after=${EventId.toString(after)}"))
+          ((after > fatState.eventId) ?? s", after=${EventId.toString(after)}"))
         Some(fatState)
 
       case _ =>
         lastRequested match {
           case Some(fatState) if fatState.eventId <= after =>
             logger.trace(s"Using last requested FatState ${EventId.toString(fatState.eventId)}" +
-              ((after > fatState.eventId) ?: s", after=${EventId.toString(after)}"))
+              ((after > fatState.eventId) ?? s", after=${EventId.toString(after)}"))
             Some(fatState)
 
           case _ =>

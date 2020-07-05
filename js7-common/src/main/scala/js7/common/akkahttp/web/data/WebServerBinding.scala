@@ -52,7 +52,7 @@ object WebServerBinding
     def toWebServerPort = WebServerPort.Https(address, mutual)
 
     override def toString = s"https://${address.getAddress.getHostAddress}:${address.getPort} ($keyStoreRef" +
-      (mutual ?: ", client certificate required") +
+      (mutual ?? ", client certificate required") +
       ", " + (trustStoreRefs.map(_.toString).mkString(", ")) +
       ")"
   }

@@ -24,6 +24,6 @@ object WebServerPort
   final case class Https(address: InetSocketAddress, mutual: Boolean) extends WebServerPort {
     def scheme = WebServerBinding.Https
     override def toString = s"https://${address.getAddress.getHostAddress}:${address.getPort}" +
-      (mutual ?: " (client certificate required)")
+      (mutual ?? " (client certificate required)")
   }
 }

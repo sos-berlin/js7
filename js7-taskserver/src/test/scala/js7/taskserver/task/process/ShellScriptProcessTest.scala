@@ -30,7 +30,7 @@ final class ShellScriptProcessTest extends AnyFreeSpec
     val envValue = "ENVVALUE"
     val exitCode = 42
     val processConfig = ProcessConfiguration.forTest.copy(additionalEnvironment = Map(envName -> envValue))
-    val shellProcess = startShellScript(processConfig, name = "TEST", (isWindows ?: "@") + s"exit $exitCode")
+    val shellProcess = startShellScript(processConfig, name = "TEST", (isWindows ?? "@") + s"exit $exitCode")
     val returnCode = shellProcess.terminated await 99.s
     assert(returnCode == ReturnCode(exitCode))
     assert(!shellProcess.closed.isCompleted)

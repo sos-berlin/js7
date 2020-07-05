@@ -50,7 +50,7 @@ private[cluster] trait ControllerClusterTester extends AnyFreeSpec
       val testName = ControllerClusterTester.this.getClass.getSimpleName
       val agentPort = findFreeTcpPort()
       val primary = new DirectoryProvider(agentRefPath :: Nil, TestWorkflow :: Nil, testName = Some(s"$testName-Primary"),
-        controllerConfig = ConfigFactory.parseString((configureClusterNodes ?: s"""
+        controllerConfig = ConfigFactory.parseString((configureClusterNodes ?? s"""
           js7.journal.cluster.nodes = {
             Primary-Controller: "http://127.0.0.1:$primaryHttpPort"
             Backup-Controller: "http://127.0.0.1:$backupHttpPort"

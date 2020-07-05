@@ -74,7 +74,7 @@ extends AutoCloseable
                 case t => t.toString
               }
               logger.warn(s"JSON sequence read from '$name' is corrupt at " +
-                ((lineNr >= 0) ?: s"line $lineNr, ") +
+                ((lineNr >= 0) ?? s"line $lineNr, ") +
                 s"file position $pos (blockPos=${blockPos_} blockRead=${blockRead_}): " +
                 s"$extra: ${bytes.utf8StringTruncateAt(200)}")  // Do not expose JSON content with exception
               throwCorrupt2(lineNr, pos, extra)

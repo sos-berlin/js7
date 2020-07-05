@@ -92,7 +92,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest with
           distinguished-names = [ "CN=Primary Controller,DC=primary-controller,DC=DirectoryProvider,DC=tests,DC=js7,DC=sh" ]
         }
       }
-    """ + !controllerHttpsMutual ?: s"""
+    """ + !controllerHttpsMutual ?? s"""
       js7.auth.users.TEST.password = "plain:TEST-PASSWORD"
       js7.auth.cluster.password = "PRIMARY-CONTROLLER-PASSWORD" """),
     controllerKeyStore = Some(BackupKeyStoreResource),

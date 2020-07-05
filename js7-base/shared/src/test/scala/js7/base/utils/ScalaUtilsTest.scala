@@ -387,11 +387,9 @@ final class ScalaUtilsTest extends AnyFreeSpec
     assert("/abc//".reverseDropWhile(_ == '/') == "/abc")
   }
 
-  "String ?" in {
-    assert((false ?: "STRING") == "")
-    assert((true ?: "STRING") == "STRING")
-    assert(("STRING" when false) == "")
-    assert(("STRING" when true) == "STRING")
+  "Boolean ?? String" in {
+    assert((false ?? "STRING") == "")
+    assert((true ?? "STRING") == "STRING")
   }
 }
 

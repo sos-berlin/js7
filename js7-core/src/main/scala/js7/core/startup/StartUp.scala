@@ -32,7 +32,7 @@ object StartUp
       totalPhysicalMemory.fold("")(o => " " + toKiBGiB(o)) +
       " · " +
       (maybeOwnPid.fold("")(pid => s"pid=${pid.number} ")) +
-      (hostname.nonEmpty ?: s"host=$hostname ") +
+      (hostname.nonEmpty ?? s"host=$hostname ") +
       s"config=$configDir " +
         dataDir.fold("")("data=".+))
 

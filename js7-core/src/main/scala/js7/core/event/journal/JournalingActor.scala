@@ -246,7 +246,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
     }
   }
 
-  private def stashingCountRemaining = (stashingCount > 0) ?: s", $stashingCount remaining"
+  private def stashingCountRemaining = (stashingCount > 0) ?? s", $stashingCount remaining"
 
   protected def toTimestamped[EE <: E](keyEvents: collection.Iterable[KeyedEvent[EE]]): Seq[Timestamped[EE]] =
     keyEvents.view.map(e => Timestamped(e)).toVector
@@ -260,11 +260,11 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
     async: Boolean,
     callback: (Seq[Stamped[KeyedEvent[E]]], S) => Unit)
   extends Item {
-    override def toString = s"EventsCallback(${async ?: "async"})"
+    override def toString = s"EventsCallback(${async ?? "async"})"
   }
 
   private case class Deferred(async: Boolean, callback: Checked[Accepted] => Unit) extends Item {
-    override def toString = s"Deferred${async ?: "async"}"
+    override def toString = s"Deferred${async ?? "async"}"
   }
 
   private case class Persist[A](

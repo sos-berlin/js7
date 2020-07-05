@@ -90,7 +90,7 @@ final class OrderActorTest extends AnyFreeSpec with HasCloser with BeforeAndAfte
     val expectedStdout = (for (i <- 1 to n) yield line("o", i) + Nl).mkString
     val executablePath = ExecutablePath(s"/TEST-2$sh")
     executablePath.toFile(directoryProvider.agentDirectory / "config" / "executables").writeExecutable(
-      (isWindows ?: "@echo off\n") +
+      (isWindows ?? "@echo off\n") +
         (for (i <- 1 to n) yield
           s"""echo ${line("o", i)}
              |echo ${line("e", i)}>&2

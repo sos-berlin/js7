@@ -68,7 +68,7 @@ object ScalaUtils
 
       def toStringWithCausesAndStackTrace: String =
         delegate.toStringWithCauses +
-          (delegate.getStackTrace.nonEmpty ?: ("\n" + delegate.stackTraceAsString))
+          (delegate.getStackTrace.nonEmpty ?? ("\n" + delegate.stackTraceAsString))
 
       def toStringWithCauses: String = {
         val strings = mutable.Buffer[String]()
@@ -181,7 +181,7 @@ object ScalaUtils
       def callIfDefined(a: A): Unit = delegate.getOrElse(a, ())
     }
 
-    implicit final class OptionRichBoolean(private val underlying: Boolean) extends AnyVal
+    implicit final class RichBoolean(private val underlying: Boolean) extends AnyVal
     {
       /**
         * Conditional `Option`.
@@ -230,6 +230,10 @@ object ScalaUtils
         */
       def thenIterator[A](a: => A): Iterator[A] =
         if (underlying) Iterator.single(a) else Iterator.empty
+
+      /** The string on the right side if true, otherwise the empty string. */
+      def ??(string: => String): String =
+        if (underlying) string else ""
     }
 
     implicit final class RichEither[L, R](private val underlying: Either[L, R]) extends AnyVal
@@ -312,14 +316,6 @@ object ScalaUtils
         while (i > 0 && predicate(underlying(i - 1))) i = i -1
         underlying.substring(0, i)
       }
-
-      /** The string on the right side if `condition` is true, otherwise the empty string. */
-      @inline def ?:(condition: Boolean): String =
-        when(condition)
-
-      /** The string on the right side if `condition` is true, otherwise the empty string. */
-      @inline def when(condition: Boolean): String =
-        if (condition) underlying else ""
     }
   }
   import syntax._

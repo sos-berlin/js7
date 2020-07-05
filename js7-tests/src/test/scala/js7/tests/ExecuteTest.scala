@@ -71,7 +71,7 @@ final class ExecuteTest extends AnyFreeSpec
 object ExecuteTest
 {
   private val TestAgentRefPath = AgentRefPath("/AGENT")
-  private val ScriptProlog = isWindows ?: "@echo off\n"
+  private val ScriptProlog = isWindows ?? "@echo off\n"
   private val workflowNotation = s"""
     define workflow {
       execute executable="/SCRIPT-0a.cmd", agent="AGENT";

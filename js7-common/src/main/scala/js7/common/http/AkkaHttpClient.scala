@@ -244,7 +244,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
       Resource.make(
         Task.deferAction(scheduler => Task {
           scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
-            logger.debug(s"$logPrefix => Still waiting for response" + (closed ?: " (after having been closed)"))
+            logger.debug(s"$logPrefix => Still waiting for response" + (closed ?? " (after having been closed)"))
           }
         })
       )(timer => Task { timer.cancel() })

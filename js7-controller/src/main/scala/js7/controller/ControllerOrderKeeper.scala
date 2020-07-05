@@ -138,7 +138,7 @@ with MainJournalingActor[ControllerState, Event]
 
     def onStillShuttingDown() =
       logger.info(s"Still shutting down, waiting for ${agentRegister.runningActorCount} AgentDrivers" +
-        (!snapshotTaken ?: " and the snapshot"))
+        (!snapshotTaken ?? " and the snapshot"))
 
     def onSnapshotTaken(): Unit =
       if (shuttingDown) {
@@ -148,7 +148,7 @@ with MainJournalingActor[ControllerState, Event]
 
     def continue() =
       for (shutDown <- shutDown) {
-        logger.trace(s"shutdown.continue: ${agentRegister.runningActorCount} AgentDrivers${!snapshotTaken ?: ", snapshot required"}")
+        logger.trace(s"shutdown.continue: ${agentRegister.runningActorCount} AgentDrivers${!snapshotTaken ?? ", snapshot required"}")
         if (!terminatingAgentDrivers) {
           terminatingAgentDrivers = true
           agentRegister.values foreach {

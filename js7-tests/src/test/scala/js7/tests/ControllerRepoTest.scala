@@ -42,7 +42,7 @@ final class ControllerRepoTest extends AnyFreeSpec
   "test" in {
     autoClosing(new DirectoryProvider(List(TestAgentRefPath), testName = Some("ControllerRepoTest"))) { provider =>
       for (v <- 1 to 4)  // For each version, we use a dedicated job which echos the VersionId
-        provider.agents.head.writeExecutable(ExecutablePath(s"/EXECUTABLE-V$v$sh"), (isWindows ?: "@") + s"echo /VERSION-$v/")
+        provider.agents.head.writeExecutable(ExecutablePath(s"/EXECUTABLE-V$v$sh"), (isWindows ?? "@") + s"echo /VERSION-$v/")
       provider.controller.configDir / "controller.conf" ++=
         """js7.auth.users.TEST-USER {
           |  password = "plain:TEST-PASSWORD"

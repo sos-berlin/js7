@@ -91,7 +91,7 @@ object ClusterState
     final def passiveUri = idToUri(passiveId)
 
     protected final def nodesString =
-      (for ((id, uri) <- idToUri) yield s"$id${(activeId == id) ?: " is active"}: $uri")
+      (for ((id, uri) <- idToUri) yield s"$id${(activeId == id) ?? " is active"}: $uri")
         .mkString(", ")
 
     override def toString = s"$productPrefix($nodesString)"
