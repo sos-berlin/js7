@@ -34,7 +34,7 @@ object SillySigner extends MessageSigner.Companion
 
   def typeName = SillySignature.TypeName
 
-  def checked(privateKey: collection.Seq[Byte], password: SecretString = SecretString("")) =
+  def checked(privateKey: collection.Seq[Byte], password: SecretString = SecretString.empty) =
     if (!password.string.isEmpty )
       Left(Problem("Password for SillySigner must be empty"))
     else

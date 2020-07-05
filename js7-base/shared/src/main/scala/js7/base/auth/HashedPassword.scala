@@ -27,11 +27,13 @@ sealed case class HashedPassword(hashed: SecretString, hasher: String => String)
 object HashedPassword
 {
   private val RehashSaltLength = 20
+
   /** No clear-text password matches this unknown password. */
   object MatchesNothing extends HashedPassword(SecretString("MatchesNothing"), _ => "") {
     override def toString = "HashedPassword(MatchesNothing)"
   }
-  private val Empty = HashedPassword(SecretString(""), identity)
+
+  private val Empty = HashedPassword(SecretString.empty, identity)
   private val toUrlBase64 = Base64.getUrlEncoder.withoutPadding.encodeToString _
 
   /** The empty clear-text password, differently hashed at each invocation. */

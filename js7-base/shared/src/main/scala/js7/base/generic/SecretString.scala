@@ -35,6 +35,8 @@ final case class SecretString(string: String) {
 
 object SecretString
 {
+  val empty = SecretString("")
+
   object implicits {
     // Import explicitly, it's secret.
 
