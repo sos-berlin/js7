@@ -1,13 +1,19 @@
 package js7.common.akkahttp.https
 
-import java.net.URL
+import java.io.InputStream
 import java.security.KeyStore
-import java.security.cert.{Certificate, X509Certificate}
+import java.security.cert.{Certificate, CertificateFactory, X509Certificate}
 import javax.net.ssl.{KeyManager, KeyManagerFactory, SSLContext, TrustManagerFactory, X509TrustManager}
+import js7.base.generic.SecretString
 import js7.base.utils.AutoClosing._
+import js7.base.utils.InputStreams.inputStreamToByteVectorLimited
 import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScodecUtils.RichByteVector
 import js7.common.scalautil.Logger
+import scala.collection.mutable
 import scala.jdk.CollectionConverters._
+import scala.util.control.NonFatal
+import scodec.bits.ByteVector
 
 /**
   * Provides HTTPS keystore and truststore..
@@ -26,6 +32,7 @@ import scala.jdk.CollectionConverters._
 object Https
 {
   private val logger = Logger(getClass)
+  private val PemHeader = ByteVector.encodeUtf8("-----BEGIN CERTIFICATE-----").orThrow
 
   def loadSSLContext(keyStoreRef: Option[KeyStoreRef] = None, trustStoreRefs: Seq[TrustStoreRef] = Nil): SSLContext = {
     val keyManagers = keyStoreRef match {
@@ -53,27 +60,52 @@ object Https
     sslContext
   }
 
-  private def loadKeyStore(storeRef: StoreRef, name: String): KeyStore = {
-    val keyStore = KeyStore.getInstance("PKCS12")
-    autoClosing(storeRef.url.openStream()) { inputStream =>
-      storeRef.storePassword.provideCharArray(
-        keyStore.load(inputStream, _))
-    }
-    log(storeRef.url, keyStore, name)
+  private[https] def loadKeyStore(storeRef: StoreRef, kind: String): KeyStore = {
+    autoClosing(storeRef.url.openStream())(
+      loadKeyStoreFromInputStream(_, storeRef.storePassword, storeRef.url.toString, kind))
+  }
+
+  private[https] def loadKeyStoreFromInputStream(in: InputStream, password: SecretString, sourcePath: String, kind: String)
+  : KeyStore = {
+    val sizeLimit = 10_000_000
+    val keyStore =
+      try {
+        val content = inputStreamToByteVectorLimited(in, sizeLimit)
+            .getOrElse(throw new RuntimeException(s"Certificate store must have more than $sizeLimit bytes: $sourcePath"))
+        if (content startsWith PemHeader)
+          pemToKeyStore(content.toInputStream,
+            name = sourcePath.replace('\\', '/').indexOf('/') match {
+              case -1 => sourcePath
+              case i => sourcePath.take(i + 1)
+            })
+        else
+          pkcs12ToKeyStore(content.toInputStream, password)
+      } catch { case NonFatal(t) =>
+        throw new RuntimeException(s"Cannot load keystore '$sourcePath': $t", t)
+      }
+    log(keyStore, sourcePath, kind)
     keyStore
   }
 
-  private def log(url: URL, keyStore: KeyStore, name: String): Unit = {
+  private def pkcs12ToKeyStore(in: InputStream, password: SecretString): KeyStore = {
+    val keyStore = KeyStore.getInstance("PKCS12")
+    password.provideCharArray(
+      keyStore.load(in, _))
+    keyStore
+  }
+
+  private def log(keyStore: KeyStore, sourcePath: String, kind: String): Unit = {
     val iterator = keyStore.aliases.asScala.flatMap(a => Option(keyStore.getCertificate(a)) map a.->)
     if (iterator.isEmpty) {
-      logger.warn(s"Loaded empty $name keystore $url")
+      logger.warn(s"Loaded empty $kind keystore $sourcePath")
     } else {
-      logger.info(s"Loaded $name keystore $url" +
+      logger.info(s"Loaded $kind keystore $sourcePath" +
         iterator.map { case (alias, cert)  =>
           s"\n  " +
             (keyStore.isKeyEntry(alias) ?? "Private key ") +
             (keyStore.isCertificateEntry(alias) ?? "Trusted ") +
             certificateToString(cert) +
+            " alias=" + alias +
             " (hashCode=" + cert.hashCode + ")"
         }.mkString(""))
     }
@@ -82,8 +114,71 @@ object Https
   private def certificateToString(cert: Certificate): String =
     (cert match {
       case cert: X509Certificate =>
-        s"X.509 '${cert.getSubjectX500Principal}'"
+        "X.509 '" + cert.getSubjectX500Principal + "'" +
+          " keyUsage=" + keyUsageToString(cert.getKeyUsage) +
+          " subjectAlternativeNames=" + subjectAlternativeNamesToString(cert.getSubjectAlternativeNames)
       case o =>
         o.getType
     })
+
+  private def pemToKeyStore(in: InputStream, name: String): KeyStore = {
+    val certs = mutable.Buffer[Certificate]()
+    var eof = false
+    while (!eof) {
+      certs += CertificateFactory.getInstance("X.509").generateCertificate(in)
+      in.mark(1)
+      eof = in.read() < 0
+      if (!eof) in.reset()
+    }
+    val keyStore = KeyStore.getInstance(KeyStore.getDefaultType)
+    keyStore.load(null, null)
+    for ((cert, i) <- certs.zipWithIndex) {
+      keyStore.setCertificateEntry(name + (certs.length > 1) ?? ("#" + (i + 1)), cert)
+    }
+    keyStore
+  }
+
+  private val keyUsages = Vector(
+    "digitalSignature",
+    "nonRepudiation",
+    "keyEncipherment",
+    "dataEncipherment",
+    "keyAgreement",
+    "keyCertSign",
+    "crlSign",
+    "encipherOnly",
+    "decipherOnly")
+
+  private def keyUsageToString(keyUsage: Array[Boolean]): String =
+    "{" +
+      (keyUsage != null) ??
+        keyUsages.indices.flatMap(i => keyUsage(i) ? keyUsages(i)).mkString(" ") +
+      "}"
+
+  private val subjectAlternativeKeys = Map(
+    0 -> "other",
+    1 -> "rfc822",
+    2 -> "DNS",
+    3 -> "x400Address",
+    4 -> "directory",
+    5 -> "ediParty",
+    6 -> "uniformResourceIdentifier",
+    7 -> "IP",
+    8 -> "registeredID")
+
+  private def subjectAlternativeNamesToString(collection: java.util.Collection[java.util.List[_]]): String =
+    "{" +
+      ((collection != null) ?? (
+        collection.asScala.map(_.asScala.to(Array) match {
+          case Array(i, value) =>
+            (i match {
+              case i: java.lang.Integer => subjectAlternativeKeys.getOrElse(i, i.toString)
+              case i => i.toString
+            }) + "=" + (value match {
+              case value: String => value
+              case _ => "..."
+            })
+        })
+      ).mkString(" ")) +
+      "}"
 }
