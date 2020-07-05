@@ -64,26 +64,18 @@ object Https
   }
 
   private def log(url: URL, keyStore: KeyStore, name: String): Unit = {
-    val aliasIterator = keyStore.aliases.asScala
-    if (aliasIterator.isEmpty)
-      logger.info(s"Loaded empty $name keystore $url")
-    else {
-      logger.info(s"Loaded $name $url" +
-        aliasIterator.map { a =>
-          s"\n  Alias '$a': " +
-            Option(keyStore.getCertificate(a))
-              .fold("no certificate")(cert =>
-                (keyStore.isKeyEntry(a) ?: "private ") +
-                (keyStore.isCertificateEntry(a) ?: "trusted ") +
-                certificateToString(cert))
+    val iterator = keyStore.aliases.asScala.flatMap(a => Option(keyStore.getCertificate(a)) map a.->)
+    if (iterator.isEmpty) {
+      logger.warn(s"Loaded empty $name keystore $url")
+    } else {
+      logger.info(s"Loaded $name keystore $url" +
+        iterator.map { case (alias, cert)  =>
+          s"\n  " +
+            (keyStore.isKeyEntry(alias) ?? "Private key ") +
+            (keyStore.isCertificateEntry(alias) ?? "Trusted ") +
+            certificateToString(cert) +
+            " (hashCode=" + cert.hashCode + ")"
         }.mkString(""))
-      logger.whenDebugEnabled {
-        val line = keyStore.aliases.asScala
-          .flatMap(a => Option(keyStore.getCertificate(a))
-            .map(cert => s"Alias '$a': hashCode=${cert.hashCode}")
-        ).mkString(", ")
-        if (line.nonEmpty) logger.debug(line)
-      }
     }
   }
 

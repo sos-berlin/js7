@@ -108,7 +108,7 @@ final class GateKeeper[U <: User](configuration: Configuration[U], isLoopback: B
         else
           optionalHeaderValueByType[`Tls-Session-Info`](()) { maybeTlsSessionInfo =>
             maybeTlsSessionInfo
-              .toChecked(Problem.pure("Client HTTPS certificate is required"))
+              .toChecked(Problem.pure("A client HTTPS certificate is required"))
               .flatMap(_
                 .peerCertificates match {
                   case (cert: X509Certificate) :: Nil =>
@@ -122,7 +122,7 @@ final class GateKeeper[U <: User](configuration: Configuration[U], isLoopback: B
                     if (certs.nonEmpty) logger.debug(s"HTTPS client certificates rejected: ${certs.mkString(", ")}")
                     certs.length match {
                       case n if n > 1 => Problem.pure(s"One and only one peer certificate is required (not $n)")
-                      case _ => Problem.pure(s"Client X.509 certificate is required")
+                      case _ => Problem.pure("A client X.509 certificate is required")
                     }
                 })
               match {

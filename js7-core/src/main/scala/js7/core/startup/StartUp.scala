@@ -53,5 +53,5 @@ object StartUp
     catch { case _: Throwable => }
 
   def printlnWithClock(line: String) =
-    System.err.println(s"${LocalDateTime.now.toString.replace('T', ' ')} $line")
+    System.err.println(s"${LocalDateTime.now.toString.replace('T', ' ') take 26/*µs*/} $line")
 }
