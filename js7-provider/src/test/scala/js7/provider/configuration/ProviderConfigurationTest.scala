@@ -2,6 +2,7 @@ package js7.provider.configuration
 
 import com.typesafe.config.ConfigFactory
 import js7.base.web.Uri
+import js7.common.akkahttp.https.HttpsConfig
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.FileUtils.withTemporaryDirectory
 import org.scalatest.freespec.AnyFreeSpec
@@ -21,7 +22,7 @@ final class ProviderConfigurationTest extends AnyFreeSpec
         s"--config-directory=$dir" ::
         "--controller-uri=http://example.com" :: Nil
       ).copy(config = ConfigFactory.empty)
-        == ProviderConfiguration(dir, Uri("http://example.com")))
+        == ProviderConfiguration(dir, Uri("http://example.com"), HttpsConfig.empty))
     }
   }
 
@@ -31,7 +32,7 @@ final class ProviderConfigurationTest extends AnyFreeSpec
       assert(ProviderConfiguration.fromCommandLine(
         s"--config-directory=$dir" ::Nil
       ).copy(config = ConfigFactory.empty)
-        == ProviderConfiguration(dir, Uri("http://example.com")))
+        == ProviderConfiguration(dir, Uri("http://example.com"), HttpsConfig.empty))
     }
   }
 }

@@ -4,12 +4,14 @@ import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Path
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.web.Uri
+import js7.common.akkahttp.https.HttpsConfig
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.JobSchedulerConfiguration
 import js7.common.configutils.Configs
 import js7.common.configutils.Configs.parseConfigIfExists
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.utils.JavaResource
+import scala.collection.immutable.Seq
 import scala.jdk.CollectionConverters._
 
 /**
@@ -18,6 +20,7 @@ import scala.jdk.CollectionConverters._
 final case class ProviderConfiguration(
   configDirectory: Path,
   controllerUri: Uri,
+  httpsConfig: HttpsConfig,
   config: Config = ConfigFactory.empty)
 {
   val liveDirectory = configDirectory / "live"
@@ -47,6 +50,7 @@ object ProviderConfiguration
       new ProviderConfiguration(
         configDirectory = configDir,
         controllerUri = a.optionAs[Uri]("--controller-uri=") getOrElse Uri(config.getString("js7.provider.controller.uri")),
+        HttpsConfig.fromConfig(config, configDir),
         config = config)
     }
 }
