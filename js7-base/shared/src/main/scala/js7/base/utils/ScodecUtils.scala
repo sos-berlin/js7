@@ -6,10 +6,23 @@ import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax._
+import scala.util.Random
 import scodec.bits.ByteVector
 
 object ScodecUtils
 {
+  object syntax
+  {
+    implicit final class RichByteVectorCompanion(private val underlying: ByteVector.type) extends AnyVal
+    {
+      def random(size: Int): ByteVector = {
+        val bytes = new Array[Byte](size)
+        Random.nextBytes(bytes)
+        ByteVector.view(bytes)
+      }
+    }
+  }
+
   implicit final class RichByteVector(private val underlying: ByteVector) extends AnyVal
   {
     def utf8StringTruncateAt(truncateAt: Int): String =  // TODO Truncate big ByteVector before decoding
@@ -37,6 +50,8 @@ object ScodecUtils
       }
       -1
     }
+
+    def toInputStream = new ByteVectorInputStream(underlying)
 
     def parseJsonAs[A: Decoder]: Checked[A] =
       parseJson flatMap (_.checkedAs[A])
