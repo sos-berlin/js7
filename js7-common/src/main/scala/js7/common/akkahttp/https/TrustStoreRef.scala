@@ -37,7 +37,7 @@ object TrustStoreRef
         .map(obj =>
           TrustStoreRef(
             file = obj.toConfig.as[Path]("file"),
-            password = obj.toConfig.as[SecretString]("store-password")))
+            password = obj.toConfig.as[SecretString]("store-password", SecretString.empty)))
 
   def fromKeyStore(keyStoreRef: KeyStoreRef): TrustStoreRef =
     new TrustStoreRef(keyStoreRef.url, keyStoreRef.storePassword)
