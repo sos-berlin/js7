@@ -15,11 +15,12 @@ services:
         - UID
     image: js7
     container_name: js7-controller
-    command: ["controller", "-J-Xmx200m"]
+    command: ["js7-controller", "-J-Xmx200m"]
     hostname: controller
     networks:
     - default
     ports:
+    - "127.0.0.1:4443:4443"
     - "127.0.0.1:4444:4444"
     working_dir: /var/opt/js7/controller/data
     volumes:
@@ -39,7 +40,7 @@ services:
         - UID
     image: js7
     container_name: js7-backup-controller
-    command: ["controller", "-J-Xmx200m"]
+    command: ["js7-controller", "-J-Xmx200m"]
     hostname: backup-controller
     networks:
     - default
@@ -55,7 +56,7 @@ services:
   provider:
     image: js7
     container_name: js7-provider
-    command: ["provider", "-J-Xmx100m", "--controller-uri=http://controller:4444"]
+    command: ["js7-provider", "-J-Xmx100m", "--controller-uri=https://controller:4443"]
     hostname: provider
     working_dir: /var/opt/js7/provider/data
     volumes:
@@ -66,7 +67,7 @@ services:
   agent-1:
     image: js7
     container_name: js7-agent-1
-    command: ["agent", "-J-Xmx200m"]
+    command: ["js7-agent", "-J-Xmx200m"]
     hostname: agent-1
     working_dir: /var/opt/js7/agent/data
     volumes:
@@ -78,7 +79,7 @@ services:
   agent-2:
     image: js7
     container_name: js7-agent-2
-    command: ["agent", "-J-Xmx200m"]
+    command: ["js7-agent", "-J-Xmx200m"]
     hostname: agent-2
     working_dir: /var/opt/js7/agent/data
     volumes:

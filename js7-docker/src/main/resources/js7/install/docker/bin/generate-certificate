@@ -1,0 +1,138 @@
+#!/usr/bin/env bash
+set -e
+
+cd "$(cd "$(realpath "${0%/*}")"/../../build/bin/../.. && pwd)"
+
+commonDnPart="/DC=sh/DC=js7/DC=docker-example"
+caKeySize=4096
+keySize=2048
+validity=366
+password=jobscheduler
+client=""
+install=false
+CACN="### JS7 Example CA"  # Start with "#" to place it at the top of a long certificate list
+
+for arg in "$@"; do
+  case "$arg" in
+    --install)
+      install=true
+      ;;
+    --client=*)
+      client="${arg#*=}"
+      ;;
+    *)
+      echo "Unknown option: $arg"
+      exit 1
+  esac
+done
+
+opensslCnf=$(
+  if [ ! -e /etc/ssl/openssl.cnf ] && [ -f /etc/pki/tls/openssl.cnf ]; then
+    echo /etc/pki/tls/openssl.cnf
+  else
+    echo /etc/ssl/openssl.cnf
+  fi)
+
+
+[ -d https ] || mkdir -p https && chmod 700 https
+(
+  cd https
+
+  if [ ! -f CA.key ] || [ ! -f CA.crt ]; then
+    openssl genrsa -out CA.key "$caKeySize"
+    openssl req -x509 -new -nodes -key CA.key -sha256 -days "$validity" \
+      -subj "$commonDnPart/CN=$CACN" \
+      -extensions "SAN" \
+      -config <(cat "$opensslCnf" && echo "
+[SAN]
+basicConstraints = critical, CA:TRUE
+keyUsage = cRLSign, keyCertSign
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always, issuer:always
+") \
+      -out CA.crt
+  fi
+
+  generateCertificate() {
+    host=""
+    cn=""
+    dns=false
+    for arg in "$@"; do
+      case "$arg" in
+      --host=*)
+        host="${arg#*=}"
+        ;;
+      --cn=*)
+        cn="${arg#*=}"
+        ;;
+      --dns)
+        dns=true
+        ;;
+      *)
+        echo "Unknown option: $arg"
+        return 1
+      esac
+    done
+
+    if [ -z "$host" ] || [ -z "$cn" ]; then
+      echo "generateCertificate: Missing argument"
+      return 1
+    fi
+    ext=""
+    if $dns; then
+      ext="
+subjectAltName=DNS:$host
+keyUsage = critical, nonRepudiation, digitalSignature, keyEncipherment
+extendedKeyUsage = serverAuth, clientAuth"
+    else
+      ext="
+keyUsage = critical, nonRepudiation, digitalSignature, keyEncipherment
+extendedKeyUsage = clientAuth"
+    fi
+
+    openssl genrsa -out "$host.key" "$keySize"
+
+    openssl req \
+      -new \
+      -subj "$commonDnPart/CN=$cn" \
+      -key "$host.key" \
+      -out "$host.csr"
+
+    openssl x509 -req \
+      -CA CA.crt \
+      -CAkey CA.key \
+      -CAcreateserial \
+      -days "$validity" \
+      -sha256 \
+      -extfile <(echo "$ext") \
+      -in "$host.csr" \
+      -out "$host.crt"
+
+    rm "$host.csr"
+  }
+
+  if $install; then
+    generateCertificate --dns --host=controller --cn="JS7 Example Primary Controller"
+    generateCertificate --dns --host=backup-controller --cn="JS7 Example Backup Controller"
+    generateCertificate --dns --host=agent-1 --cn="JS7 Example Agent 1"
+    generateCertificate --dns --host=agent-2 --cn="JS7 Example Agent 2"
+    generateCertificate --dns --host=provider --cn="JS7 Example Provider"
+  fi
+  if [ -n "$client" ]; then
+    generateCertificate --host="$client" --cn="$client"
+  fi
+)
+
+if $install; then
+  for host in controller backup-controller provider agent-1 agent-2; do
+    dir="volumes/$host/config/private"
+    echo "$dir/https-keystore.p12"
+    [ -d "$dir" ] || mkdir "$dir"
+
+    openssl pkcs12 -export \
+      -in "https/$host.crt" \
+      -inkey "https/$host.key" \
+      -out "$dir/https-keystore.p12" -passout "pass:$password"
+    cp -p "https/CA.crt" "$dir/CA.crt"
+  done
+fi

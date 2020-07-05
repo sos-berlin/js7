@@ -6,3 +6,5 @@ cd "$(cd "$(realpath "${0%/*}")"/../../build/bin/../.. && pwd)"
 rm -rf volumes/{controller,backup-controller,provider,agent-1,agent-2}/data/*
 rm -rf volumes/testControllerAgent/controller/data/*
 rm -rf volumes/testControllerAgent/AGENT-*/data/*
+
+# Keep 'https' directory with CA certificate

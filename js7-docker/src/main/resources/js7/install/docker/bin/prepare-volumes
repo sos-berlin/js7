@@ -16,4 +16,5 @@ cp -Rnv build/volumes . || true
 chmod -R go-wrx volumes/*/config/private
 chmod -R +x volumes/agent-*/config/executables/*
 
+build/bin/generate-certificate --install
 build/bin/prepare-pgp-keys

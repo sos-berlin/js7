@@ -11,6 +11,7 @@ declare classpathString java  # returned by set-context.sh
 config=/var/opt/js7/controller/config
 data=/var/opt/js7/controller/data
 httpPort=4444
+httpsPort=4443
 controllerOptions=()
 javaOptions=(-XX:+UseStringDeduplication)
 log4jAsync=false
@@ -50,6 +51,9 @@ for arg in "$@"; do :
       ;;
     --http-port=*)
       httpPort="${arg#*=}"
+      ;;
+    --https-port=*)
+      httpsPort="${arg#*=}"
       ;;
     --log4j-async)
       log4jAsync=true
@@ -91,6 +95,7 @@ fi
 controllerOptions+=("--config-directory=$config")
 controllerOptions+=("--data-directory=$data")
 [ -z "$httpPort" ] || controllerOptions+=("--http-port=$httpPort")
+[ -z "$httpsPort" ] || controllerOptions+=("--https-port=$httpsPort,mutual")
 
 execute=(
   "$java"

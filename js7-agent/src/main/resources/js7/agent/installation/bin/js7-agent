@@ -8,7 +8,8 @@ declare classpathString java  # returned by set-context.sh
 
 config=/var/opt/js7/agent/config
 data=/var/opt/js7/agent/data
-httpPort=4445
+httpPort=127.0.0.1:4444
+httpsPort=4443
 agentOptions=()
 javaOptions=(-XX:+UseStringDeduplication)
 log4Async=false
@@ -48,6 +49,9 @@ for arg in "$@"; do
       ;;
     --http-port=*)
       httpPort="${arg#*=}"
+      ;;
+    --https-port=*)
+      httpsPort="${arg#*=}"
       ;;
     --log4j-async)
       log4Async=true
@@ -89,7 +93,8 @@ fi
 
 agentOptions+=("--config-directory=$config")
 agentOptions+=("--data-directory=$data")
-[ -z "$httpPort" ] || agentOptions+=("--http-port=$httpPort")
+[ -z "$httpPort" ] || agentOptions+=("--https-port=$httpPort")
+[ -z "$httpsPort" ] || agentOptions+=("--https-port=$httpsPort,mutual")
 
 crashKillScript=$([ -n "$data" ] && echo "$data/kill_tasks_after_crash.sh")
 echo "crashKillScript=$crashKillScript"
