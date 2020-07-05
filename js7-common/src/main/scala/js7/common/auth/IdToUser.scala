@@ -48,13 +48,16 @@ extends (UserId => Option[U])
   def distinguishedNameToUser(distinguishedName: DistinguishedName): Option[U] =
     distinguishedNameToUserId(distinguishedName) flatMap apply
 
-  private def rawToUser(raw: RawUserAccount): Option[U] =
-    for (hashedPassword <- toHashedPassword(raw.userId, raw.encodedPassword))
-      yield toUser(
+  private def rawToUser(raw: RawUserAccount): Option[U] = {
+    (raw.encodedPassword match {
+      case None => Some(HashedPassword.MatchesNothing)
+      case Some(pw) => toHashedPassword(raw.userId, pw).map(_.hashAgainRandom)
+    }).map(hashedPassword => toUser(
         raw.userId,
-        hashedPassword.hashAgainRandom,
+        hashedPassword,
         raw.permissions.flatMap(toPermission.lift),
-        raw.distinguishedNames)
+        raw.distinguishedNames))
+  }
 }
 
 object IdToUser
@@ -83,17 +86,16 @@ object IdToUser
       Try(cfg.getConfig(userId.string)) match {
         case Failure(_: com.typesafe.config.ConfigException.WrongType) =>  // Entry is not a configuration object {...} but a string (the password)
           cfg.optionAs[SecretString](userId.string) map (o =>
-            RawUserAccount(userId, encodedPassword = o))
+            RawUserAccount(userId, encodedPassword = Some(o)))
 
         case Failure(t) =>
           throw t
 
         case Success(c) =>
-          for {
-            encodedPassword <- c.optionAs[SecretString]("password")
-            permissions = c.stringSeq("permissions", Nil).toSet
-            distinguishedNames = c.seqAs[DistinguishedName]("distinguished-names", Nil)
-          } yield RawUserAccount(userId, encodedPassword = encodedPassword, permissions = permissions, distinguishedNames)
+          val encodedPassword = c.optionAs[SecretString]("password")
+          val permissions = c.stringSeq("permissions", Nil).toSet
+          val distinguishedNames = c.seqAs[DistinguishedName]("distinguished-names", Nil)
+         Some(RawUserAccount(userId, encodedPassword = encodedPassword, permissions = permissions, distinguishedNames))
       }
 
     val distinguishedNameToUserId: Map[DistinguishedName, UserId] =
@@ -152,7 +154,7 @@ object IdToUser
 
   private[auth] final case class RawUserAccount(
     userId: UserId,
-    encodedPassword: SecretString,
+    encodedPassword: Option[SecretString],
     permissions: Set[String] = Set.empty,
     distinguishedNames: Seq[DistinguishedName] = Nil)
 }

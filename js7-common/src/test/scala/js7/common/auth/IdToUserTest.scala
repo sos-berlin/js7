@@ -106,7 +106,7 @@ private object IdToUserTest
     Sha512UserId.string -> Sha512ConfiguredPassword.string).asJava)
 
   private val idToUser = new IdToUser(
-    userId => TestConfigValidator.optionAs[SecretString](userId.string).map(o => RawUserAccount(userId, o)),
+    userId => TestConfigValidator.optionAs[SecretString](userId.string).map(o => RawUserAccount(userId, Some(o))),
     distinguishedNameToUserId = Map.empty,
     SimpleUser.apply,
     toPermission = Map.empty)
