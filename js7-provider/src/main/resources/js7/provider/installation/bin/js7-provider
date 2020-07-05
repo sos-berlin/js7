@@ -23,44 +23,34 @@ for arg in "$@"; do :
         "-Dcom.sun.management.jmxremote.ssl=false"
         "-Dcom.sun.management.jmxremote.authenticate=false"
         "-Dcom.sun.management.jmxremote.port=$a")
-      shift
       ;;
     --debug-port=*)
       a="${arg#*=}"
       javaOptions+=("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=$a")
-      shift
       ;;
     --java-option=*)
       a="${arg#*=}"
       javaOptions+=("$a")
-      shift
       ;;
     -J*)
       a="${arg#-J}"
       javaOptions+=("$a")
-      shift
       ;;
     --directory=*)
       config="${arg#*=}"/config
       data="${arg#*=}"/data
-      shift
       ;;
     --config-directory=*)
       config="${arg#*=}"
-      shift
       ;;
     --data-directory=*)
       data="${arg#*=}"
-      shift
       ;;
     --log4j-async)
       log4jAsync=true
-      shift
       ;;
     *)
       providerOptions+=("$arg")
-      shift
-      ;;
   esac
 done
 

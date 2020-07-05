@@ -21,32 +21,25 @@ for arg in "$@"; do
   case "$arg" in
     --alias=*)
       alias="${arg#*=}"
-      shift
       ;;
     --host=*)
       host="${arg#*=}"
-      shift
       ;;
     --distinguished-name=*)
       distinguishedName="${arg#*=}"
-      shift
       ;;
     --config-directory=*)
       configDirectory="${arg#*=}"
-      shift
       ;;
     --days=*)
       days="${arg#*=}"
-      shift
       ;;
     --prefix=*)
       prefix="${arg#*=}"
-      shift
       ;;
     *)
       echo Unknown argument: $arg
       exit 1
-      ;;
   esac
 done
 

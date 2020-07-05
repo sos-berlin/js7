@@ -43,11 +43,9 @@ for arg in "$@"; do :
   case "$arg" in
     --data-directory=*)
       data="${arg#*=}"
-      shift
       ;;
     *)
       args+=("$arg")
-      shift
       ;;
   esac
 done

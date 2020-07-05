@@ -15,11 +15,9 @@ for arg in "$@"; do :
     -J*)
       a="${arg#-J}"
       javaOptions+=("$a")
-      shift
       ;;
     *)
       args+=("$arg")
-      ;;
   esac
 done
 

@@ -15,21 +15,16 @@ for arg in "$@"; do :
     --java-option=*)
       a="${arg#*=}"
       javaOptions+=("$a")
-      shift
       ;;
     -J*)
       a="${arg#-J}"
       javaOptions+=("$a")
-      shift
       ;;
     --http-port=*)
       httpPort="${arg#*=}"
-      shift
       ;;
     *)
       args+=("$arg")
-      shift
-      ;;
   esac
 done
 
