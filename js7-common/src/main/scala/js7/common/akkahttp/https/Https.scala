@@ -115,8 +115,12 @@ object Https
     (cert match {
       case cert: X509Certificate =>
         "X.509 '" + cert.getSubjectX500Principal + "'" +
-          " keyUsage=" + keyUsageToString(cert.getKeyUsage) +
-          " subjectAlternativeNames=" + subjectAlternativeNamesToString(cert.getSubjectAlternativeNames)
+          (cert.getKeyUsage != null) ??
+            (" keyUsage=" + keyUsageToString(cert.getKeyUsage)) +
+          (cert.getExtendedKeyUsage != null) ??
+            (" extendedKeyUsage=" + cert.getExtendedKeyUsage.asScala.map(o => oidToString.getOrElse(o, o)).mkString(",")) +
+          (cert.getSubjectAlternativeNames != null) ??
+            (" subjectAlternativeNames=" + subjectAlternativeNamesToString(cert.getSubjectAlternativeNames))
       case o =>
         o.getType
     })
@@ -150,10 +154,7 @@ object Https
     "decipherOnly")
 
   private def keyUsageToString(keyUsage: Array[Boolean]): String =
-    "{" +
-      (keyUsage != null) ??
-        keyUsages.indices.flatMap(i => keyUsage(i) ? keyUsages(i)).mkString(" ") +
-      "}"
+    keyUsages.indices.flatMap(i => keyUsage(i) ? keyUsages(i)).mkString(",")
 
   private val subjectAlternativeKeys = Map(
     0 -> "other",
@@ -167,18 +168,18 @@ object Https
     8 -> "registeredID")
 
   private def subjectAlternativeNamesToString(collection: java.util.Collection[java.util.List[_]]): String =
-    "{" +
-      ((collection != null) ?? (
-        collection.asScala.map(_.asScala.to(Array) match {
-          case Array(i, value) =>
-            (i match {
-              case i: java.lang.Integer => subjectAlternativeKeys.getOrElse(i, i.toString)
-              case i => i.toString
-            }) + "=" + (value match {
-              case value: String => value
-              case _ => "..."
-            })
+    collection.asScala.map(_.asScala.to(Array) match {
+      case Array(i, value) =>
+        (i match {
+          case i: java.lang.Integer => subjectAlternativeKeys.getOrElse(i, i.toString)
+          case i => i.toString
+        }) + "=" + (value match {
+          case value: String => value
+          case _ => "..."
         })
-      ).mkString(" ")) +
-      "}"
+    }).mkString(",")
+
+  private val oidToString = Map[String, String](
+    "1.3.6.1.5.5.7.3.1" -> "serverAuth",
+    "1.3.6.1.5.5.7.3.2" -> "clientAuth")
 }

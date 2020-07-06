@@ -12,7 +12,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import java.security.cert.X509Certificate
 import js7.base.auth.{DistinguishedName, GetPermission, HashedPassword, Permission, SimpleUser, SuperPermission, User, UserAndPassword, UserId, ValidUserPermission}
 import js7.base.problem.Checked._
-import js7.base.problem.Problem
+import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.StandardMarshallers._
@@ -112,17 +112,22 @@ final class GateKeeper[U <: User](configuration: Configuration[U], isLoopback: B
               .flatMap(_
                 .peerCertificates match {
                   case (cert: X509Certificate) :: Nil =>
-                    DistinguishedName.checked(cert.getSubjectX500Principal.getName)
-                      .flatMap(dn =>
-                        configuration.distinguishedNameToUser(dn)
-                          .toChecked(Problem.pure(s"Unknown distinguished name '$dn'")))
-                      .map(Some.apply)
+                    certToUser(cert).map(Some.apply)
 
                   case certs =>
-                    if (certs.nonEmpty) logger.debug(s"HTTPS client certificates rejected: ${certs.mkString(", ")}")
-                    certs.length match {
-                      case n if n > 1 => Problem.pure(s"One and only one peer certificate is required (not $n)")
-                      case _ => Problem.pure("A client X.509 certificate is required")
+                    // Safari sends the CA certificate with the client certicate. Why this? Due to generate-certificate ???
+                    certs.collect {
+                      case o: X509Certificate if Option(o.getBasicConstraints).forall(_ == -1) => o
+                    } match {
+                      case cert :: Nil =>
+                        logger.debug("HTTPS client has sent the client and a CA certificate. We ignore the latter")
+                        certToUser(cert).map(Some.apply)
+                      case _ =>
+                        if (certs.nonEmpty) logger.debug(s"HTTPS client certificates rejected: ${certs.mkString(", ")}")
+                        certs.length match {
+                          case n if n > 1 => Problem.pure(s"One and only one peer certificate is required (not $n)")
+                          case _ => Problem.pure("A client X.509 certificate is required")
+                        }
                     }
                 })
               match {
@@ -131,6 +136,12 @@ final class GateKeeper[U <: User](configuration: Configuration[U], isLoopback: B
               }
           }
     }
+
+  private def certToUser(cert: X509Certificate): Checked[U] =
+    DistinguishedName.checked(cert.getSubjectX500Principal.getName)
+      .flatMap(dn =>
+        configuration.distinguishedNameToUser(dn)
+          .toChecked(Problem.pure(s"Unknown distinguished name '$dn'")))
 
   /** Continues with authenticated user or `Anonymous`, or completes with Unauthorized or Forbidden. */
   def authorize(user: U, requiredPermissions: Set[Permission]): Directive1[U] =
