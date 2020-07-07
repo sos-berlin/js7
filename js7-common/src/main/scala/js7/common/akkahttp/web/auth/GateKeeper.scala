@@ -1,5 +1,6 @@
 package js7.common.akkahttp.web.auth
 
+import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.model.HttpMethods.{GET, HEAD}
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
 import akka.http.scaladsl.model.headers.{HttpChallenges, `Tls-Session-Info`, `WWW-Authenticate`}
@@ -45,8 +46,8 @@ final class GateKeeper[U <: User](configuration: Configuration[U], isLoopback: B
       case AuthenticationFailedRejection(AuthenticationFailedRejection.CredentialsRejected, challenge) =>
         logger.warn(s"HTTP request with invalid authentication rejected - delaying response for ${invalidAuthenticationDelay.pretty}")
         respondWithHeader(`WWW-Authenticate`(challenge)) {
-          complete(
-            Task.pure(Unauthorized).delayExecution(invalidAuthenticationDelay).runToFuture)
+          completeDelayed(
+            Unauthorized)
         }
 
       case AuthenticationFailedRejection(AuthenticationFailedRejection.CredentialsMissing, challenge) =>
@@ -66,7 +67,7 @@ final class GateKeeper[U <: User](configuration: Configuration[U], isLoopback: B
     authenticator.authenticate(userAndPassword)
   }
 
-  /** Continues with authenticated user or `Anonymous`, or completes with Unauthorized or Forbidden. */
+  /** Continues with authenticated user or `Anonymous`, or completes with Unauthorized. */
   val authenticate: Directive1[U] =
     new Directive1[U] {
       def tapply(inner: Tuple1[U] => Route) =
@@ -131,7 +132,7 @@ final class GateKeeper[U <: User](configuration: Configuration[U], isLoopback: B
                     }
                 })
               match {
-                case Left(problem) => complete(Unauthorized -> problem)
+                case Left(problem) => completeDelayed(Unauthorized -> problem)
                 case Right(user) => inner(Tuple1(user))
               }
           }
@@ -200,6 +201,9 @@ final class GateKeeper[U <: User](configuration: Configuration[U], isLoopback: B
       requiredPermissions.contains(ValidUserPermission) ||  // If ValidUserPermission is not required (Anonymous is allowed)...
       user.hasPermission(ValidUserPermission) ||            // ... then allow Anonymous ... (only unempowered Anonymous does not have ValidUserPermission)
       isGet(method))                                        // ... only to read
+
+  private def completeDelayed(body: => ToResponseMarshallable): Route =
+    complete(Task(body).delayExecution(invalidAuthenticationDelay).runToFuture)
 
   def invalidAuthenticationDelay = configuration.invalidAuthenticationDelay
 
