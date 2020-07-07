@@ -10,6 +10,7 @@ import js7.base.annotation.javaApi
 import js7.base.circeutils.CirceUtils.{RichCirceEither, RichJson}
 import js7.base.problem.Problem
 import js7.base.web.Uri
+import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.scalautil.Logger
 import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
 import js7.controller.data.{ControllerCommand, ControllerState}
@@ -83,6 +84,8 @@ object JControllerProxy
 {
   private val logger = Logger(getClass)
   private val MaxThreads = 100  // Some limit, just in case
+
+  coupleScribeWithSlf4j()
 
   def start(uri: String, credentials: JCredentials, httpsConfig: JHttpsConfig)
   : CompletableFuture[JControllerProxy] =
