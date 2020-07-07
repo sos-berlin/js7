@@ -114,9 +114,10 @@ object ControllerConfiguration
       controllerId = controllerId,
       nodeId = config.optionAs[NodeId]("js7.journal.cluster.node.id")
         .getOrElse(NodeId(
-          (if (config.getBoolean("js7.journal.cluster.node.is-backup")) "Backup-"
-           else "Primary-"
-          ) + controllerId.string)),
+          if (config.getBoolean("js7.journal.cluster.node.is-backup"))
+            "Backup"
+           else
+            "Primary")),
       dataDirectory = dataDir,
       configDirectory = configDir,
       webServerPorts = Nil,

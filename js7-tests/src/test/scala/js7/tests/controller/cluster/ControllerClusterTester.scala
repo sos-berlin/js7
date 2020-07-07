@@ -35,8 +35,8 @@ private[cluster] trait ControllerClusterTester extends AnyFreeSpec
 {
   protected def configureClusterNodes = true
   protected def removeObsoleteJournalFiles = true
-  protected final val primaryId = NodeId("Primary-Controller")
-  protected final val backupId = NodeId("Backup-Controller")
+  protected final val primaryId = NodeId("Primary")
+  protected final val backupId = NodeId("Backup")
 
   coupleScribeWithSlf4j()
   ProblemCodeMessages.initialize()
@@ -52,8 +52,8 @@ private[cluster] trait ControllerClusterTester extends AnyFreeSpec
       val primary = new DirectoryProvider(agentRefPath :: Nil, TestWorkflow :: Nil, testName = Some(s"$testName-Primary"),
         controllerConfig = ConfigFactory.parseString((configureClusterNodes ?? s"""
           js7.journal.cluster.nodes = {
-            Primary-Controller: "http://127.0.0.1:$primaryHttpPort"
-            Backup-Controller: "http://127.0.0.1:$backupHttpPort"
+            Primary: "http://127.0.0.1:$primaryHttpPort"
+            Backup: "http://127.0.0.1:$backupHttpPort"
           }""") + s"""
           js7.journal.cluster.heartbeat = 3s
           js7.journal.cluster.fail-after = 5s

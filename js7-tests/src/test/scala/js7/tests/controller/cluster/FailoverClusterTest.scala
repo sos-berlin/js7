@@ -30,8 +30,8 @@ final class FailoverClusterTest extends ControllerClusterTester
     withControllerAndBackup(primaryHttpPort, backupHttpPort) { (primary, backup) =>
       var primaryController = primary.startController(httpPort = Some(primaryHttpPort)) await 99.s
       var backupController = backup.startController(httpPort = Some(backupHttpPort)) await 99.s
-      val primaryId = NodeId("Primary-Controller")
-      val backupId = NodeId("Backup-Controller")
+      val primaryId = NodeId("Primary")
+      val backupId = NodeId("Backup")
       val idToUri = Map(
         primaryId -> primaryController.localUri,
         backupId -> backupController.localUri)

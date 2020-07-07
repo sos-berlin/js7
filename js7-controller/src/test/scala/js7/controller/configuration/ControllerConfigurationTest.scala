@@ -39,7 +39,7 @@ final class ControllerConfigurationTest extends AnyFreeSpec with BeforeAndAfterA
   "Empty argument list" in {
     assert(configuration.copy(config = DefaultConfig) == ControllerConfiguration(
       controllerId = ControllerId("Controller"),
-      nodeId = NodeId("Primary-Controller"),
+      nodeId = NodeId("Primary"),
       dataDirectory = (directory / "DATA").toAbsolutePath,
       configDirectory = (directory / "CONFIG").toAbsolutePath,
       webServerPorts = Nil,

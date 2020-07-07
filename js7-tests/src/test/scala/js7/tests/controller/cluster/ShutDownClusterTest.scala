@@ -150,7 +150,7 @@ final class ShutDownClusterTest extends ControllerClusterTester
     //    backup.runController(httpPort = Some(backupHttpPort), dontWaitUntilReady = true) { _ =>
     //      primary.runController(httpPort = Some(primaryHttpPort)) { primaryController =>
     //        val clusterCoupled = primaryController.eventWatch.await[ClusterCoupled]().head.value.event
-    //        assert(clusterCoupled.activeId == NodeId("Primary-Controller"))
+    //        assert(clusterCoupled.activeId == NodeId("Primary"))
     //      }
     //    }
     //  }

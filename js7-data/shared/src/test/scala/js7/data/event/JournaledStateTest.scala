@@ -39,10 +39,10 @@ final class JournaledStateTest extends AnyFreeSpec
 
 private object JournaledStateTest
 {
-  private val primaryNodeId = NodeId("Primary-Controller")
+  private val primaryNodeId = NodeId("Primary")
   private val idToNode = Map(
     primaryNodeId -> Uri("http://PRIMARY"),
-    NodeId("Backup-Controller") -> Uri("http://BACKUP"))
+    NodeId("Backup") -> Uri("http://BACKUP"))
 
   private case class MyState(standards: JournaledState.Standards) extends JournaledState[MyState]
   {

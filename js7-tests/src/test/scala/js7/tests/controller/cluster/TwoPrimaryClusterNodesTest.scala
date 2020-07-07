@@ -24,9 +24,9 @@ final class TwoPrimaryClusterNodesTest extends ControllerClusterTester
         ) { backupController =>
           val cmd = ClusterAppointNodes(
             Map(
-              NodeId("Primary-Controller") -> primaryController.localUri,
-              NodeId("Backup-Controller") -> backupController.localUri),
-            NodeId("Primary-Controller"))
+              NodeId("Primary") -> primaryController.localUri,
+              NodeId("Backup") -> backupController.localUri),
+            NodeId("Primary"))
           primaryController.executeCommandAsSystemUser(cmd).await(99.s).orThrow
           sleep(5.s)
           //assert(primaryController.executeCommandAsSystemUser(cmd).await(99.s) == Left(ClusterNodeIsNotBackupProblem))

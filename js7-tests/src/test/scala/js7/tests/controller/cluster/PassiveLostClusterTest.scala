@@ -26,9 +26,9 @@ final class PassiveLostClusterTest extends ControllerClusterTester
       primaryController.executeCommandAsSystemUser(
         ClusterAppointNodes(
           Map(
-            NodeId("Primary-Controller") -> primaryController.localUri,
-            NodeId("Backup-Controller") -> backupController.localUri),
-          NodeId("Primary-Controller"))
+            NodeId("Primary") -> primaryController.localUri,
+            NodeId("Backup") -> backupController.localUri),
+          NodeId("Primary"))
       ).await(99.s).orThrow
       primaryController.eventWatch.await[ClusterEvent.ClusterCoupled]()
 

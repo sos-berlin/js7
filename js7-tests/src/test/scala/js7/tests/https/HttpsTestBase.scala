@@ -55,8 +55,8 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest with
     ((useCluster ? hocon"""
       js7.journal.cluster {
         nodes {
-          Primary-Controller: "https://localhost:${controllerHttpsPort.get}"
-          Backup-Controller: "https://localhost:$backupHttpsPort"
+          Primary: "https://localhost:${controllerHttpsPort.get}"
+          Backup: "https://localhost:$backupHttpsPort"
         }
         watches = [ "https://localhost:$agentHttpsPort" ]
       }""") ++
