@@ -29,6 +29,7 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
 import scala.concurrent.duration._
+import js7.common.configutils.Hocon._
 
 /**
   * @author Joacim Zschimmer
@@ -41,7 +42,10 @@ final class AkkaWebServerTest extends AnyFreeSpec with BeforeAndAfterAll
   private lazy val http = Http()
 
   private lazy val webServer = new AkkaWebServer with HasUri {
-    protected val config = ConfigFactory.parseString("js7.web.server.shutdown-timeout = 10s")
+    // TODO Add test with client certificate
+    protected val config = hocon"""
+      js7.web.server.auth.https-client-authentication = off
+      js7.web.server.shutdown-timeout = 10s"""
     protected def actorSystem = AkkaWebServerTest.this.actorSystem
 
     private val keyStoreRef: KeyStoreRef = {
@@ -60,7 +64,7 @@ final class AkkaWebServerTest extends AnyFreeSpec with BeforeAndAfterAll
 
     val bindings =
       WebServerBinding.Http(new InetSocketAddress("127.0.0.1", httpPort)) ::
-      WebServerBinding.Https(new InetSocketAddress("127.0.0.1", httpsPort), keyStoreRef, mutual = false) :: Nil
+      WebServerBinding.Https(new InetSocketAddress("127.0.0.1", httpsPort), keyStoreRef) :: Nil
 
     def newRoute(binding: WebServerBinding, whenTerminating: Future[Deadline]) =
       AkkaWebServer.BoundRoute(
@@ -99,7 +103,7 @@ final class AkkaWebServerTest extends AnyFreeSpec with BeforeAndAfterAll
       val e = intercept[javax.net.ssl.SSLHandshakeException] {
         http.singleRequest(HttpRequest(GET, s"https://127.0.0.1:$httpsPort/TEST"), httpsConnectionContext) await 99.seconds
       }
-      assert(e.getMessage == "No subject alternative names present" ||
+      assert(e.getMessage == "No subject alternative names matching IP address 127.0.0.1 found" ||
              e.getMessage == "General SSLEngine problem")
     }
 

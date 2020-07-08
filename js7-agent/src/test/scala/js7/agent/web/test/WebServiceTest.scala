@@ -10,6 +10,7 @@ import js7.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
 import js7.base.utils.HasCloser
 import js7.common.akkahttp.WebLogDirectives
 import js7.common.akkahttp.web.auth.GateKeeper
+import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.core.message.ProblemCodeMessages
@@ -28,6 +29,7 @@ trait WebServiceTest extends HasCloser with BeforeAndAfterAll with ScalatestRout
   protected def uriPathPrefix = ""
 
   protected final val gateKeeper = new GateKeeper(
+    WebServerBinding.Http,
     GateKeeper.Configuration.fromConfig(testConfig, SimpleUser.apply))
 
   protected final val sessionRegister = SessionRegister.start[SimpleSession](

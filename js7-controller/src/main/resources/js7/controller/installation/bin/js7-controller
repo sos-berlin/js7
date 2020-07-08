@@ -95,7 +95,7 @@ fi
 controllerOptions+=("--config-directory=$config")
 controllerOptions+=("--data-directory=$data")
 [ -z "$httpPort" ] || controllerOptions+=("--http-port=$httpPort")
-[ -z "$httpsPort" ] || controllerOptions+=("--https-port=$httpsPort,mutual")
+[ -z "$httpsPort" ] || controllerOptions+=("--https-port=$httpsPort")
 
 execute=(
   "$java"

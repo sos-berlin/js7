@@ -17,6 +17,7 @@ import js7.base.generic.SecretString
 import js7.base.time.ScalaTime._
 import js7.common.akkahttp.web.auth.GateKeeper.{GetIsPublic, IsPublic, LoopbackIsPublic}
 import js7.common.akkahttp.web.auth.GateKeeperTest._
+import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.auth.IdToUser
 import js7.common.http.CirceJsonSupport._
 import js7.common.scalautil.Futures.implicits.SuccessFuture
@@ -465,7 +466,7 @@ final class GateKeeperTest extends AnyFreeSpec with ScalatestRouteTest
   private def newGateKeeper[U <: User: User.Companion ](conf: GateKeeper.Configuration[U], isLoopback: Boolean = false) = {
     implicit val exceptionHandler: ExceptionHandler = null  // Use default ExceptionHandler, see Route.seal
     implicit val s = Scheduler.global
-    new GateKeeper(conf, isLoopback = isLoopback)
+    new GateKeeper(WebServerBinding.Http, conf, isLoopback = isLoopback)
   }
 
   /** Error message does not contain a hint. */

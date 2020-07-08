@@ -71,7 +71,7 @@ final class ControllerConfigurationTest extends AnyFreeSpec with BeforeAndAfterA
 
   "--https-port=" in {
     // For more tests see CommonConfigurationTest
-    assert(conf("--https-port=1234").webServerPorts == WebServerPort.Https(new InetSocketAddress("0.0.0.0", 1234), mutual = false) :: Nil)
+    assert(conf("--https-port=1234").webServerPorts == WebServerPort.Https(new InetSocketAddress("0.0.0.0", 1234)) :: Nil)
   }
 
   "System property" in {

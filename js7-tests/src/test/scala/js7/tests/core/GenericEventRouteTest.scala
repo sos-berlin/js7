@@ -55,6 +55,7 @@ final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll wit
        |    verbose-error-messages = on
        |    shutdown-timeout = 10s
        |    auth {
+       |      https-client-authentication = off
        |      realm = "TEST Server"
        |      invalid-authentication-delay = 1s
        |      loopback-is-public = off
@@ -76,7 +77,7 @@ final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll wit
        |  }
        |}""".stripMargin)
 
-  protected val gateKeeper = new GateKeeper(GateKeeper.Configuration.fromConfig(config, SimpleUser.apply))
+  protected val gateKeeper = new GateKeeper(WebServerBinding.Http, GateKeeper.Configuration.fromConfig(config, SimpleUser.apply))
   protected final val sessionRegister = SessionRegister.start[SimpleSession](
     actorSystem, SimpleSession.apply, SessionRegister.TestConfig)
   private val shuttingDown = Promise[Deadline]()

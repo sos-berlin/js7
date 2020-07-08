@@ -48,20 +48,16 @@ trait CommonConfiguration extends WebServerBinding.HasLocalUris
       case WebServerPort.Http(port) =>
         WebServerBinding.Http(port)
 
-      case WebServerPort.Https(port, mutual) =>
+      case WebServerPort.Https(port) =>
         WebServerBinding.Https(port,
           keyStoreRef.mapProblem(Problem("HTTPS requires a key store:") |+| _).orThrow,
-          trustStoreRefs,
-          mutual = mutual)
+          trustStoreRefs)
     }
 }
 
 object CommonConfiguration
 {
   private val logger = Logger(getClass)
-
-  private val AddressAndMutual: As[String, (InetSocketAddress, Boolean)] =
-    string => (StringToServerInetSocketAddress.apply(string stripSuffix ",mutual"), string endsWith ",mutual")
 
   final case class Common(
     configDirectory: Path,
@@ -75,8 +71,7 @@ object CommonConfiguration
         configDirectory = a.as[Path]("--config-directory=").toAbsolutePath,
         webServerPorts =
           a.seqAs("--http-port=")(StringToServerInetSocketAddress).map(WebServerPort.Http) ++
-          a.seqAs("--https-port=")(AddressAndMutual).map {
-            case (address, mutual) => WebServerPort.Https(address, mutual = mutual)
-          })
+          a.seqAs("--https-port=")(StringToServerInetSocketAddress).map(WebServerPort.Https)
+      )
   }
 }

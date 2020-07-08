@@ -7,7 +7,6 @@ import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsUtils._
-import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
 import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import js7.common.http.AkkaHttpUtils.RichAkkaAsUri
@@ -15,10 +14,10 @@ import js7.common.http.AkkaHttpUtils.RichAkkaAsUri
 /**
   * @author Joacim Zschimmer
   */
-sealed trait WebServerBinding {
+sealed trait WebServerBinding
+{
   def address: InetSocketAddress
   def scheme: WebServerBinding.Scheme
-  def mutual: Boolean
 
   def toWebServerPort: WebServerPort
 }
@@ -33,7 +32,6 @@ object WebServerBinding
   final case class Http(address: InetSocketAddress)
   extends WebServerBinding {
     def scheme = Http
-    def mutual = false
     def toWebServerPort = WebServerPort.Http(address)
 
     override def toString = s"http://${address.getAddress.getHostAddress}:${address.getPort}"
@@ -45,16 +43,13 @@ object WebServerBinding
   final case class Https(
     address: InetSocketAddress,
     keyStoreRef: KeyStoreRef,
-    trustStoreRefs: Seq[TrustStoreRef] = Nil,
-    mutual: Boolean)
+    trustStoreRefs: Seq[TrustStoreRef] = Nil)
   extends WebServerBinding {
     def scheme = Https
-    def toWebServerPort = WebServerPort.Https(address, mutual)
+    def toWebServerPort = WebServerPort.Https(address)
 
     override def toString = s"https://${address.getAddress.getHostAddress}:${address.getPort} ($keyStoreRef" +
-      (mutual ?? ", client certificate required") +
-      ", " + (trustStoreRefs.map(_.toString).mkString(", ")) +
-      ")"
+      ", " + (trustStoreRefs.map(_.toString).mkString(", ")) + ")"
   }
   object Https extends Scheme {
     override def toString = "https"

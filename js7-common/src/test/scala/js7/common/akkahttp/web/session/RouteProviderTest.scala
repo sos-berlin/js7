@@ -9,6 +9,7 @@ import com.typesafe.config.ConfigFactory
 import js7.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
 import js7.base.generic.SecretString
 import js7.common.akkahttp.web.auth.GateKeeper
+import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.RouteProviderTest._
 import js7.common.auth.IdToUser
 import js7.common.http.CirceJsonSupport._
@@ -32,6 +33,7 @@ final class RouteProviderTest extends AnyFreeSpec with RouteProvider with Scalat
   private implicit val routeTestTimeout = RouteTestTimeout(99.seconds)
 
   protected val gateKeeper = new GateKeeper(
+    WebServerBinding.Http,
     GateKeeper.Configuration[SimpleUser](
       realm = "TEST-REALM",
       invalidAuthenticationDelay = 100.millis,

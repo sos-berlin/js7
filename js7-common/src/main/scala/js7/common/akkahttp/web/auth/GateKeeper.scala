@@ -18,6 +18,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.StandardMarshallers._
 import js7.common.akkahttp.web.auth.GateKeeper._
+import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.auth.IdToUser
 import js7.common.scalautil.Logger
 import js7.common.time.JavaTimeConverters._
@@ -28,14 +29,18 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class GateKeeper[U <: User](configuration: Configuration[U], isLoopback: Boolean = false, mutualHttps: Boolean = false)
+final class GateKeeper[U <: User](scheme: WebServerBinding.Scheme, configuration: Configuration[U], isLoopback: Boolean = false)
   (implicit U: User.Companion[U],
     scheduler: Scheduler,
     /** For `Route` `seal`. */
     exceptionHandler: ExceptionHandler)
 {
+  // https://tools.ietf.org/html/rfc7235#section-3.1: "A server generating a 401 (Unauthorized) response
+  // MUST send a WWW-Authenticate header field containing at least one challenge."
+
   import configuration.{getIsPublic, idToUser, isPublic, loopbackIsPublic, realm}
 
+  private val htttpClientAuthRequired = scheme == WebServerBinding.Https && configuration.httpsClientAuthRequired
   private val authenticator = new OurMemoizingAuthenticator(idToUser)
   private val basicChallenge = HttpChallenges.basic(realm)
   val credentialsMissing = AuthenticationFailedRejection(CredentialsMissing, basicChallenge)
@@ -73,7 +78,7 @@ final class GateKeeper[U <: User](configuration: Configuration[U], isLoopback: B
       def tapply(inner: Tuple1[U] => Route) =
         seal {
           httpAuthenticate { httpUser =>
-            if (!mutualHttps)
+            if (!htttpClientAuthRequired)
               inner(Tuple1(httpUser))
             else clientHttpsAuthenticate { maybeHttpsUser =>
               ((httpUser.id, maybeHttpsUser) match {
@@ -104,38 +109,39 @@ final class GateKeeper[U <: User](configuration: Configuration[U], isLoopback: B
   private def clientHttpsAuthenticate: Directive1[Option[U]] =
     new Directive1[Option[U]] {
       def tapply(inner: Tuple1[Option[U]] => Route) =
-        if (!mutualHttps)
-          inner(Tuple1(None))
-        else
-          optionalHeaderValueByType[`Tls-Session-Info`](()) { maybeTlsSessionInfo =>
-            maybeTlsSessionInfo
-              .toChecked(Problem.pure("A client HTTPS certificate is required"))
-              .flatMap(_
-                .peerCertificates match {
-                  case (cert: X509Certificate) :: Nil =>
-                    certToUser(cert).map(Some.apply)
+        optionalHeaderValueByType[`Tls-Session-Info`](()) {
+          case None =>
+            if (htttpClientAuthRequired)
+              complete(Unauthorized -> Problem.pure("A client HTTPS certificate is required"))
+            else
+              inner(Tuple1(None))
 
-                  case certs =>
-                    // Safari sends the CA certificate with the client certicate. Why this? Due to generate-certificate ???
-                    certs.collect {
-                      case o: X509Certificate if Option(o.getBasicConstraints).forall(_ == -1) => o
-                    } match {
-                      case cert :: Nil =>
-                        logger.debug("HTTPS client has sent the client and a CA certificate. We ignore the latter")
-                        certToUser(cert).map(Some.apply)
-                      case _ =>
-                        if (certs.nonEmpty) logger.debug(s"HTTPS client certificates rejected: ${certs.mkString(", ")}")
-                        certs.length match {
-                          case n if n > 1 => Problem.pure(s"One and only one peer certificate is required (not $n)")
-                          case _ => Problem.pure("A client X.509 certificate is required")
-                        }
-                    }
-                })
-              match {
-                case Left(problem) => completeDelayed(Unauthorized -> problem)
-                case Right(user) => inner(Tuple1(user))
+          case Some(tlsSessionInfo) =>
+            val checkedUser = tlsSessionInfo.peerCertificates match {
+              case (cert: X509Certificate) :: Nil =>
+                certToUser(cert).map(Some.apply)
+
+              case certs =>
+                // Safari sends the CA certificate with the client certicate. Why this? Due to generate-certificate ???
+                certs.collect {
+                  case o: X509Certificate if Option(o.getBasicConstraints).forall(_ == -1) => o
+                } match {
+                  case cert :: Nil =>
+                    logger.debug("HTTPS client has sent the client and a CA certificate. We ignore the latter")
+                    certToUser(cert).map(Some.apply)
+                  case _ =>
+                    if (certs.nonEmpty) logger.debug(s"HTTPS client certificates rejected: ${certs.mkString(", ")}")
+                    Left(certs.length match {
+                      case n if n > 1 => Problem.pure(s"One and only one peer certificate is required (not $n)")
+                      case _ => Problem.pure("A client X.509 certificate is required")
+                    })
+                }
               }
-          }
+            checkedUser match {
+              case Left(problem) => completeDelayed(Unauthorized -> problem)
+              case Right(user) => inner(Tuple1(user))
+            }
+        }
     }
 
   private def certToUser(cert: X509Certificate): Checked[U] =
@@ -216,6 +222,8 @@ final class GateKeeper[U <: User](configuration: Configuration[U], isLoopback: B
       " - ACCESS VIA LOOPBACK (127.*.*.*) INTERFACE IS PUBLIC (loopback-is-public = true)"
     else if (configuration.getIsPublic)
       " - ACCESS VIA HTTP METHODS GET OR HEAD IS PUBLIC (get-is-public = true)"
+    else if (htttpClientAuthRequired)
+      " - HTTPS client authentication (mutual TLS) required"
     else
       ""
 }
@@ -237,6 +245,7 @@ object GateKeeper
     loopbackIsPublic: Boolean = false,
     /** HTTP GET is allowed for Anonymous */
     getIsPublic: Boolean = false,
+    httpsClientAuthRequired: Boolean = false,
     idToUser: UserId => Option[U],
     distinguishedNameToUser: DistinguishedName => Option[U])
   {
@@ -257,6 +266,7 @@ object GateKeeper
         isPublic                    = config.getBoolean ("js7.web.server.auth.public"),
         loopbackIsPublic            = config.getBoolean ("js7.web.server.auth.loopback-is-public"),
         getIsPublic                 = config.getBoolean ("js7.web.server.auth.get-is-public"),
+        httpsClientAuthRequired     = config.getBoolean ("js7.web.server.auth.https-client-authentication"),
         idToUser = idToUser,
         distinguishedNameToUser = idToUser.distinguishedNameToUser)
     }
@@ -273,14 +283,17 @@ object GateKeeper
     override def toString = "get-is-public=true"
   }
 
-  def forTest(isPublic: Boolean = false, config: Config = ConfigFactory.empty)(implicit eh: ExceptionHandler, s: Scheduler)
+  def forTest(scheme: WebServerBinding.Scheme = WebServerBinding.Http, isPublic: Boolean = false,
+    config: Config = ConfigFactory.empty)(implicit eh: ExceptionHandler, s: Scheduler)
   : GateKeeper[SimpleUser] =
     new GateKeeper(
+      scheme = scheme,
       GateKeeper.Configuration.fromConfig(
         config.withFallback(ConfigFactory.parseString(
          s"""js7.web.server.auth {
             |  realm = "TEST REALM"
             |  invalid-authentication-delay = 100ms
+            |  https-client-authentication = on
             |  loopback-is-public = false
             |  get-is-public = false
             |  public = $isPublic

@@ -94,7 +94,7 @@ fi
 agentOptions+=("--config-directory=$config")
 agentOptions+=("--data-directory=$data")
 [ -z "$httpPort" ] || agentOptions+=("--https-port=$httpPort")
-[ -z "$httpsPort" ] || agentOptions+=("--https-port=$httpsPort,mutual")
+[ -z "$httpsPort" ] || agentOptions+=("--https-port=$httpsPort")
 
 crashKillScript=$([ -n "$data" ] && echo "$data/kill_tasks_after_crash.sh")
 echo "crashKillScript=$crashKillScript"

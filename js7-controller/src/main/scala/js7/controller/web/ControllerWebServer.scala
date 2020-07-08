@@ -60,9 +60,8 @@ extends AkkaWebServer with AkkaWebServer.HasUri
       protected implicit def actorRefFactory = ControllerWebServer.this.actorSystem
       protected implicit val scheduler      = ControllerWebServer.this.scheduler
       protected val config                  = ControllerWebServer.this.config
-      protected val gateKeeper              = new GateKeeper(gateKeeperConfiguration,
-        isLoopback = binding.address.getAddress.isLoopbackAddress,
-        mutualHttps = binding.mutual)
+      protected val gateKeeper              = new GateKeeper(binding.scheme, gateKeeperConfiguration,
+        isLoopback = binding.address.getAddress.isLoopbackAddress)
       protected val sessionRegister     = ControllerWebServer.this.sessionRegister
       protected val eventWatch          = ControllerWebServer.this.eventWatch
       protected val fileBasedApi = ControllerWebServer.this.fileBasedApi

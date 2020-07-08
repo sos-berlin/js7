@@ -14,6 +14,7 @@ import js7.base.web.Uri
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.auth.GateKeeper
+import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.akkautils.Akkas.actorSystemResource
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
@@ -68,6 +69,7 @@ final class CommandWebServerTest extends AsyncFreeSpec
               })
 
           protected val gateKeeper = new GateKeeper(
+            WebServerBinding.Http,
             GateKeeper.Configuration.fromConfig(config, SimpleUser.apply))
 
           protected val sessionRegister = SessionRegister.start[SimpleSession](

@@ -29,14 +29,16 @@ import org.scalatest.Assertions._
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
+import js7.common.configutils.Hocon._
 
 /**
  * @author Joacim Zschimmer
  */
 final class AkkaHttpAgentTextApiTest
-extends AnyFreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider {
-
+extends AnyFreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider
+{
   override protected lazy val agentConfiguration = AgentConfiguration.forTest(configAndData = agentDirectory,
+    hocon"js7.web.server.auth.https-client-authentication = off",   // TODO Test with client certificate
     httpPort = None, httpsPort = Some(findFreeTcpPort()))
 
   override protected def extraAgentModule = new AbstractModule {

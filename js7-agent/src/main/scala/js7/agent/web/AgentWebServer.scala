@@ -50,9 +50,8 @@ extends AkkaWebServer with AkkaWebServer.HasUri
       protected def whenShuttingDown = whenTerminating
       protected implicit def scheduler: Scheduler = AgentWebServer.this.scheduler
 
-      protected val gateKeeper = new GateKeeper(gateKeeperConfiguration,
-        isLoopback = binding.address.getAddress.isLoopbackAddress,
-        mutualHttps = binding.mutual)
+      protected val gateKeeper = new GateKeeper(binding.scheme, gateKeeperConfiguration,
+        isLoopback = binding.address.getAddress.isLoopbackAddress)
       protected def sessionRegister = AgentWebServer.this.sessionRegister
 
       protected def agentApi(meta: CommandMeta) = api(meta)

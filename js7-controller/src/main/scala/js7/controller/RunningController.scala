@@ -199,7 +199,6 @@ object RunningController
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(findFreeTcpPort()),
     httpsPort: Option[Int] = None,
-    mutualHttps: Boolean = false,
     name: String)
   : Injector =
     Guice.createInjector(DEVELOPMENT,
@@ -208,7 +207,6 @@ object RunningController
         config,
         httpPort = httpPort,
         httpsPort = httpsPort,
-        mutualHttps = mutualHttps,
         name = name))
       `with` module)
 

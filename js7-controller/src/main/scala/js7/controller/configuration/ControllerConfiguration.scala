@@ -66,7 +66,6 @@ object ControllerConfiguration
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(findFreeTcpPort()),
     httpsPort: Option[Int] = None,
-    mutualHttps: Boolean = false,
     name: String = DefaultName
   ) = {
     val data = configAndData / "data"
@@ -81,7 +80,8 @@ object ControllerConfiguration
     .copy(
       webServerPorts =
         httpPort.map(o => WebServerPort.localhost(o)) ++:
-        httpsPort.map(o => WebServerPort.Https(new InetSocketAddress("127.0.0.1", o), mutual = mutualHttps)).toList)
+        httpsPort.map(o => WebServerPort.Https(new InetSocketAddress("127.0.0.1", o)))
+          .toList)
   }
 
   lazy val DefaultConfig = Configs.loadResource(

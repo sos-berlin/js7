@@ -137,7 +137,6 @@ extends HasCloser
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(findFreeTcpPort()),
     httpsPort: Option[Int] = None,
-    mutualHttps: Boolean = false,
     fileBased: Seq[FileBased] = fileBased,
     name: String = controllerName)
   : Task[RunningController]
@@ -145,7 +144,7 @@ extends HasCloser
     Task.deferFuture(
       RunningController.fromInjector(
         RunningController.newInjectorForTest(controller.directory, module, config withFallback controllerConfig,
-          httpPort = httpPort, httpsPort = httpsPort, mutualHttps = mutualHttps, name = name)))
+          httpPort = httpPort, httpsPort = httpsPort, name = name)))
     .map { runningController =>
       if (!suppressRepo) {
         val myFileBased = agentRefs ++ fileBased
@@ -277,8 +276,7 @@ object DirectoryProvider
     lazy val agentConfiguration = (AgentConfiguration.forTest(directory,
         config,
         httpPort = !https ? port,
-        httpsPort = https ? port,
-        mutualHttps = mutualHttps))
+        httpsPort = https ? port))
       .copy(name = name)
     lazy val localUri = Uri((if (https) "https://localhost" else "http://127.0.0.1") + ":" + port)
     lazy val password = SecretString(Array.fill(8)(Random.nextPrintableChar()).mkString)
@@ -310,6 +308,7 @@ object DirectoryProvider
          |    ]
          |  }
          |}
+         |js7.web.server.auth.https-client-authentication = $mutualHttps
          |js7.https.keystore {
          |  store-password = "jobscheduler"
          |  key-password = "jobscheduler"

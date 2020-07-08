@@ -48,7 +48,6 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
   protected lazy val controllerHttpPort = findFreeTcpPort().some
   protected lazy val controllerHttpsPort = none[Int]
   protected def agentHttpsMutual = false
-  protected def controllerHttpsMutual = false
   protected def provideAgentHttpsCertificate = false
   protected def provideAgentClientCertificate = false
   protected def controllerTrustStores: Iterable[JavaResource] = Nil

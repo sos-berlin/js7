@@ -10,6 +10,7 @@ import js7.controller.data.ControllerCommand.UpdateRepo
 import js7.data.filebased.{FileBased, TypedPath, VersionId}
 import monix.execution.Scheduler.Implicits.global
 import scala.collection.mutable
+import js7.common.configutils.Hocon._
 
 /**
   * @author Joacim Zschimmer
@@ -21,10 +22,11 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
   protected final lazy val agent: RunningAgent = agents.head
   protected final lazy val controller: RunningController = directoryProvider.startController(
     controllerModule,
+    hocon"""js7.web.server.auth.https-client-authentication = $controllerHttpsMutual""",
     httpPort = controllerHttpPort,
-    httpsPort = controllerHttpsPort,
-    mutualHttps = controllerHttpsMutual,
+    httpsPort = controllerHttpsPort
   ) await 99.s
+  protected def controllerHttpsMutual = false
 
   protected def waitUntilReady = true
 

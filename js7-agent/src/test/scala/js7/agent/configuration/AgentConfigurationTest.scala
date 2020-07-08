@@ -52,7 +52,7 @@ final class AgentConfigurationTest extends AnyFreeSpec
 
   "--https-port=" in {
     // For more tests see CommonConfigurationTest
-    assert(dummyDirectoriesConf("--https-port=1234").webServerPorts == WebServerPort.Https(new InetSocketAddress("0.0.0.0", 1234), mutual = false) :: Nil)
+    assert(dummyDirectoriesConf("--https-port=1234").webServerPorts == WebServerPort.Https(new InetSocketAddress("0.0.0.0", 1234)) :: Nil)
   }
 
   "--log-directory=" in {

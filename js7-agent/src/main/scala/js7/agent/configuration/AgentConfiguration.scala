@@ -178,9 +178,7 @@ object AgentConfiguration
       configAndData: Path,
       config: Config = ConfigFactory.empty,
       httpPort: Option[Int] = Some(findFreeTcpPort()),
-      httpsPort: Option[Int] = None,
-      mutualHttps: Boolean = false
-    ) =
+      httpsPort: Option[Int] = None) =
       fromDirectories(
         configDirectory = configAndData / "config",
         dataDirectory = configAndData / "data",
@@ -188,7 +186,7 @@ object AgentConfiguration
       .copy(
         webServerPorts  =
           httpPort.map(port => WebServerPort.localhost(port)) ++:
-          httpsPort.map(port => WebServerPort.Https(new InetSocketAddress("127.0.0.1", port), mutual = mutualHttps)).toList,
+          httpsPort.map(port => WebServerPort.Https(new InetSocketAddress("127.0.0.1", port))).toList,
         jobJavaOptions =
           s"-Dlog4j.configurationFile=${TaskServerLog4jResource.path}" ::
             sys.props.get("agent.job.javaOptions").toList)

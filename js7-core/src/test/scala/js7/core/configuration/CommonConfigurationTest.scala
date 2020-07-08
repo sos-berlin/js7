@@ -52,8 +52,7 @@ final class CommonConfigurationTest extends AnyFreeSpec
           storePassword = SecretString("TRUSTSTORE-PASSWORD")),
         TrustStoreRef(
           url = (config / "private/second-https-truststore.p12").toUri.toURL,
-          storePassword = SecretString("SECOND-TRUSTSTORE-PASSWORD"))),
-      mutual = false)))
+          storePassword = SecretString("SECOND-TRUSTSTORE-PASSWORD"))))))
     assert(conf("--https-port=11.22.33.44:1234").webServerBindings == List(WebServerBinding.Https(
       new InetSocketAddress("11.22.33.44", 1234),
       KeyStoreRef(
@@ -66,40 +65,7 @@ final class CommonConfigurationTest extends AnyFreeSpec
           storePassword = SecretString("TRUSTSTORE-PASSWORD")),
         TrustStoreRef(
           url = (config / "private/second-https-truststore.p12").toUri.toURL,
-          storePassword = SecretString("SECOND-TRUSTSTORE-PASSWORD"))),
-      mutual = false)))
-  }
-
-  "--https-port=n,mutual" in {
-    val config = Paths.get("CONFIG").toAbsolutePath
-    assert(conf("--https-port=1234,mutual").webServerBindings == List(WebServerBinding.Https(
-      new InetSocketAddress("0.0.0.0", 1234),
-      KeyStoreRef(
-        url = (config / "private/https-keystore.p12").toUri.toURL,
-        storePassword = SecretString("KEYSTORE-STORE-PASSWORD"),
-        keyPassword = SecretString("KEYSTORE-KEY-PASSWORD")),
-      List(
-        TrustStoreRef(
-          url = (config / "private/https-truststore.p12").toUri.toURL,
-          storePassword = SecretString("TRUSTSTORE-PASSWORD")),
-        TrustStoreRef(
-          url = (config / "private/second-https-truststore.p12").toUri.toURL,
-          storePassword = SecretString("SECOND-TRUSTSTORE-PASSWORD"))),
-      mutual = true)))
-    assert(conf("--https-port=11.22.33.44:1234,mutual").webServerBindings == List(WebServerBinding.Https(
-      new InetSocketAddress("11.22.33.44", 1234),
-      KeyStoreRef(
-        url = (config / "private/https-keystore.p12").toUri.toURL,
-        storePassword = SecretString("KEYSTORE-STORE-PASSWORD"),
-        keyPassword = SecretString("KEYSTORE-KEY-PASSWORD")),
-      List(
-        TrustStoreRef(
-          url = (config / "private/https-truststore.p12").toUri.toURL,
-          storePassword = SecretString("TRUSTSTORE-PASSWORD")),
-        TrustStoreRef(
-          url = (config / "private/second-https-truststore.p12").toUri.toURL,
-          storePassword = SecretString("SECOND-TRUSTSTORE-PASSWORD"))),
-      mutual = true)))
+          storePassword = SecretString("SECOND-TRUSTSTORE-PASSWORD"))))))
   }
 }
 

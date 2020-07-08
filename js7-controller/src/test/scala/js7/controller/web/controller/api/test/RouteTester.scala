@@ -5,6 +5,7 @@ import com.typesafe.config.ConfigFactory
 import js7.base.auth.SimpleUser
 import js7.common.akkahttp.ExceptionHandling
 import js7.common.akkahttp.web.auth.GateKeeper
+import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.controller.configuration.ControllerConfiguration.DefaultConfig
 import js7.core.message.ProblemCodeMessages
@@ -26,6 +27,7 @@ trait RouteTester extends ScalatestRouteTest with ExceptionHandling
   private implicit val routeTestTimeout = RouteTestTimeout(9.seconds)
 
   protected final lazy val gateKeeper = new GateKeeper(
+    WebServerBinding.Http,
     GateKeeper.Configuration.fromConfig(
       ConfigFactory.parseString("js7.web.server.auth.loopback-is-public = true")
         withFallback DefaultConfig,

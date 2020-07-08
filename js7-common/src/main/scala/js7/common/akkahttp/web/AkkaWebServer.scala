@@ -43,6 +43,7 @@ trait AkkaWebServer extends AutoCloseable
   protected final def isShuttingDown = shuttingDownPromise.future.isCompleted
   private lazy val akkaHttp = Http(actorSystem)
   private lazy val shutdownTimeout = config.getDuration("js7.web.server.shutdown-timeout").toFiniteDuration
+  private lazy val httpsClientAuthRequired = config.getBoolean("js7.web.server.auth.https-client-authentication")
   private val scheduler = SetOnce[Scheduler]
 
   private var activeBindings: Seq[Task[Http.ServerBinding]] = null
@@ -75,7 +76,7 @@ trait AkkaWebServer extends AutoCloseable
       https,
       ConnectionContext.https(
         loadSSLContext(Some(https.keyStoreRef), https.trustStoreRefs),
-        clientAuth = https.mutual ? TLSClientAuth.Need,
+        clientAuth = httpsClientAuthRequired ? TLSClientAuth.Need,
         sslConfig = None,
         enabledCipherSuites = None,
         enabledProtocols = None,
@@ -94,7 +95,7 @@ trait AkkaWebServer extends AutoCloseable
       serverBinding
     } .map { serverBinding =>
         logger.info(s"Bound ${binding.scheme}://${serverBinding.localAddress.getAddress.getHostAddress}:${serverBinding.localAddress.getPort}" +
-          (binding.mutual ?? ", client certificate required") +
+          (httpsClientAuthRequired ?? ", client certificate required") +
           boundRoute.boundMessageSuffix)
         serverBinding
       }
@@ -138,7 +139,10 @@ trait AkkaWebServer extends AutoCloseable
 object AkkaWebServer
 {
   private val logger = Logger(getClass)
-  private val testConfig = ConfigFactory.parseString("js7.web.server.shutdown-timeout = 10s")
+  private[web] val testConfig = ConfigFactory.parseString(
+    """js7.web.server.auth.https-client-authentication = off
+      |js7.web.server.shutdown-timeout = 10s
+      |""".stripMargin)
 
   @TestOnly
   def forTest(route: Route)(implicit as: ActorSystem): AkkaWebServer with HasUri =

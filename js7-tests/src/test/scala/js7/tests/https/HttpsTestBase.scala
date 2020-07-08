@@ -61,6 +61,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest with
         watches = [ "https://localhost:$agentHttpsPort" ]
       }""") ++
         Some(hocon"""
+          js7.web.server.auth.https-client-authentication = $controllerHttpsMutual
           js7.auth.users {
             Controller {
               password = "plain:PRIMARY-CONTROLLER-PASSWORD"
@@ -86,6 +87,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest with
     controllerConfig = ConfigFactory.parseString(s"""
       js7.journal.cluster.node.is-backup = yes
       js7.journal.cluster.watches = [ "https://localhost:$agentHttpsPort" ]
+      js7.web.server.auth.https-client-authentication = $controllerHttpsMutual
       js7.auth.users {
         Controller {
           password = "plain:BACKUP-CONTROLLER-PASSWORD"
@@ -102,7 +104,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest with
     testName = Some(getClass.simpleScalaName + "-Backup"))
 
   protected final lazy val backupController = backupDirectoryProvider.startController(
-    httpPort = None, httpsPort = Some(backupHttpsPort), mutualHttps = controllerHttpsMutual
+    httpPort = None, httpsPort = Some(backupHttpsPort)
   ).await(99.s)
 
   protected lazy val controllerApi = new AkkaHttpControllerApi(
