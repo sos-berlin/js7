@@ -1,6 +1,5 @@
 package js7.tests.https
 
-import js7.common.configutils.Hocon._
 import com.typesafe.config.ConfigFactory
 import java.nio.file.Files.{createTempFile, delete}
 import js7.base.auth.UserId
@@ -11,6 +10,7 @@ import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import js7.common.akkautils.ProvideActorSystem
+import js7.common.configutils.Configs._
 import js7.common.process.Processes.{ShellFileExtension => sh}
 import js7.common.scalautil.FileUtils.syntax.RichPath
 import js7.common.scalautil.MonixUtils.syntax._
@@ -52,7 +52,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest with
   override protected lazy val config = ConfigFactory.empty  // for ProviderActorSystem
 
   override protected lazy val controllerConfig =
-    ((useCluster ? hocon"""
+    ((useCluster ? config"""
       js7.journal.cluster {
         nodes {
           Primary: "https://localhost:${controllerHttpsPort.get}"
@@ -60,7 +60,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest with
         }
         watches = [ "https://localhost:$agentHttpsPort" ]
       }""") ++
-        Some(hocon"""
+        Some(config"""
           js7.web.server.auth.https-client-authentication = $controllerHttpsMutual
           js7.auth.users {
             Controller {
@@ -73,7 +73,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest with
             }
           }
         """) ++
-        (!controllerHttpsMutual ? hocon"""
+        (!controllerHttpsMutual ? config"""
           js7.auth.cluster {
             user-id = "backup-controller"
             password = "BACKUP-CONTROLLER-PASSWORD"

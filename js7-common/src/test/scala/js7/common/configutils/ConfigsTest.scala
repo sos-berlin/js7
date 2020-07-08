@@ -1,12 +1,14 @@
 package js7.common.configutils
 
 import com.typesafe.config.{ConfigException, ConfigFactory}
+import js7.base.generic.GenericString
 import js7.base.problem.Problem
 import js7.common.configutils.Configs._
 import js7.common.configutils.ConfigsTest._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.FileUtils.withTemporaryDirectory
 import org.scalatest.freespec.AnyFreeSpec
+import scala.jdk.CollectionConverters._
 
 /**
   * @author Joacim Zschimmer
@@ -68,11 +70,41 @@ final class ConfigsTest extends AnyFreeSpec
       assert(renderConfig(config) == s"KEY=VALUE ($file: 1)" :: "SECRET-KEY=(secret)" :: Nil)
     }
   }
+
+  "config string interpolator" - {
+    "Simple string" in {
+      assert(config"""A = "STRING" """ == ConfigFactory.parseMap(Map("A" -> "STRING").asJava))
+      assert(config"""A = "STRING\"\u007f." """ == ConfigFactory.parseMap(Map("A" -> "STRING\"\u007f.").asJava))
+    }
+
+    for (string <- "STRING" :: "STRING\"" :: "STRING\"\u007f." :: Nil) {
+      s"Interpolating String: $string" in {
+        assert(config"""A = "!$string" """ == ConfigFactory.parseMap(Map("A" -> s"!$string").asJava))
+      }
+    }
+
+    case class MyGenericString(string: String) extends GenericString
+    for (string <- MyGenericString("STRING") :: MyGenericString("STRING\")") :: MyGenericString("STRING\"\u007f.") :: Nil) {
+      s"Interpolating GenericString: $string" in {
+        assert(config"""A = "!$string" """ == ConfigFactory.parseMap(Map("A" -> s"!$string").asJava))
+      }
+    }
+
+    "Interpolating Int value" in {
+      val i = 7
+      assert(config"""A = $i""" == ConfigFactory.parseMap(Map("A" -> 7).asJava))
+    }
+
+    "Interpolating Array value" in {
+      val array = List(1, 2, 3)
+      assert(config"""A = $array""" == ConfigFactory.parseMap(Map("A" -> Seq(1, 2, 3).asJava).asJava))
+    }
+  }
 }
 
 object ConfigsTest
 {
-  private val TestConfig = ConfigFactory.parseString("""
+  private val TestConfig = config"""
     string = STRING
     int = 42
     float = 12.9
@@ -83,5 +115,6 @@ object ConfigsTest
     on = on
     yes = yes
     seq = [1, 2, 3]
-    emptySeq = []""".stripMargin)
+    emptySeq = []
+    """
 }

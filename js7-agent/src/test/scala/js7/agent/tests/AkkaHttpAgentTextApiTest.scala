@@ -19,6 +19,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.HasCloser
 import js7.base.web.Uri
 import js7.common.akkahttp.web.auth.OurMemoizingAuthenticator
+import js7.common.configutils.Configs._
 import js7.common.http.AkkaHttpClient
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
@@ -29,7 +30,6 @@ import org.scalatest.Assertions._
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
-import js7.common.configutils.Hocon._
 
 /**
  * @author Joacim Zschimmer
@@ -38,7 +38,7 @@ final class AkkaHttpAgentTextApiTest
 extends AnyFreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider
 {
   override protected lazy val agentConfiguration = AgentConfiguration.forTest(configAndData = agentDirectory,
-    hocon"js7.web.server.auth.https-client-authentication = off",   // TODO Test with client certificate
+    config"js7.web.server.auth.https-client-authentication = off",   // TODO Test with client certificate
     httpPort = None, httpsPort = Some(findFreeTcpPort()))
 
   override protected def extraAgentModule = new AbstractModule {

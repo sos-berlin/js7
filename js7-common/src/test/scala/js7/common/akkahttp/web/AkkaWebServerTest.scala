@@ -17,6 +17,7 @@ import js7.common.akkahttp.web.AkkaWebServerTest._
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
+import js7.common.configutils.Configs._
 import js7.common.http.AkkaHttpUtils.RichHttpResponse
 import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
 import js7.common.scalautil.FileUtils.syntax._
@@ -29,7 +30,6 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
 import scala.concurrent.duration._
-import js7.common.configutils.Hocon._
 
 /**
   * @author Joacim Zschimmer
@@ -43,7 +43,7 @@ final class AkkaWebServerTest extends AnyFreeSpec with BeforeAndAfterAll
 
   private lazy val webServer = new AkkaWebServer with HasUri {
     // TODO Add test with client certificate
-    protected val config = hocon"""
+    protected val config = config"""
       js7.web.server.auth.https-client-authentication = off
       js7.web.server.shutdown-timeout = 10s"""
     protected def actorSystem = AkkaWebServerTest.this.actorSystem

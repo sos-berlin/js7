@@ -5,6 +5,7 @@ import com.typesafe.config.{Config, ConfigFactory, ConfigParseOptions, ConfigVal
 import java.nio.file.Files.exists
 import java.nio.file.Path
 import java.time.Duration
+import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.convert.ConvertiblePartialFunctions.wrappedConvert
 import js7.base.convert.{As, ConvertiblePartialFunction}
 import js7.base.problem.{Checked, Problem}
@@ -108,5 +109,12 @@ object Configs
 
     def ifPath[A](path: String)(f: String => A): Option[A] =
       underlying.hasPath(path) ? f(path)
+  }
+
+  implicit final class HoconStringInterpolator(private val sc: StringContext) extends AnyVal
+  {
+    def config(args: Any*): Config =
+      ConfigFactory.parseString(
+        JsonStringInterpolator.interpolate(sc, args))
   }
 }
