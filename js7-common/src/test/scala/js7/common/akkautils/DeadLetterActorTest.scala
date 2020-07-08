@@ -1,10 +1,10 @@
 package js7.common.akkautils
 
 import akka.actor.{Actor, DeadLetterSuppression, Props}
-import com.typesafe.config.ConfigFactory
 import js7.base.time.ScalaTime._
 import js7.common.akkautils.Akkas.newActorSystem
 import js7.common.akkautils.DeadLetterActorTest._
+import js7.common.configutils.Configs._
 import js7.common.time.WaitForCondition.waitForCondition
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
@@ -15,7 +15,7 @@ import scala.collection.mutable
 final class DeadLetterActorTest extends AnyFreeSpec {
 
   "DeadLetterActor.subscribe" in {
-    val actorSystem = newActorSystem(classOf[DeadLetterActorTest].getSimpleName, ConfigFactory.parseString("akka.log-dead-letters = 0"))
+    val actorSystem = newActorSystem(classOf[DeadLetterActorTest].getSimpleName, config"akka.log-dead-letters = 0")
     val buffer = mutable.Buffer[String]()
     DeadLetterActor.subscribe(actorSystem, o => buffer += o)
     val actorRef = actorSystem.actorOf(Props[TestActor]())

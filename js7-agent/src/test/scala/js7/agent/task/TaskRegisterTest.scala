@@ -3,7 +3,7 @@ package js7.agent.task
 import akka.actor.{Actor, Props, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
-import com.typesafe.config.ConfigFactory
+import js7.common.configutils.Configs._
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.Akkas.newAgentActorSystem
 import js7.agent.data.AgentTaskId
@@ -39,7 +39,7 @@ final class TaskRegisterTest extends AnyFreeSpec with HasCloser with BeforeAndAf
 
   private implicit val timeout = Timeout(99.seconds)
   private implicit lazy val actorSystem = newAgentActorSystem("TaskRegisterTest",
-    ConfigFactory.parseMap(Map("akka.scheduler.tick-duration" -> "100 millis").asJava))  // Our default of 1s slows down this test
+    config"akka.scheduler.tick-duration = 100ms")  // Our default of 1s slows down this test
   TestAgentDirectoryProvider
   private implicit lazy val agentConfiguration = AgentConfiguration.forTest(agentDirectory).finishAndProvideFiles
   private lazy val actor = actorSystem.actorOf(TaskRegisterActor.props(agentConfiguration.killScriptConf) )

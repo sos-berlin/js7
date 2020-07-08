@@ -33,6 +33,7 @@ import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
+import js7.common.configutils.Configs._
 
 /**
   * @author Joacim Zschimmer
@@ -164,12 +165,12 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
 private[journal] object TestJournalMixin
 {
   private val logger = Logger(getClass)
-  private val TestConfig = ConfigFactory.parseString("""
-     |js7.akka.actor-message-log-level = Trace
-     |js7.journal.dispatcher {
-     |  type = PinnedDispatcher
-     |}
-     |""".stripMargin)
+  private val TestConfig = config"""
+    js7.akka.actor-message-log-level = Trace
+    js7.journal.dispatcher {
+      type = PinnedDispatcher
+    }
+    """
 
   private def normalizeValues(json: Json): Json = json.asObject match {
     case Some(jsonObject) =>

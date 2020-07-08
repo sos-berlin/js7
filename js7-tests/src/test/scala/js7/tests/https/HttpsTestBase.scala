@@ -1,5 +1,6 @@
 package js7.tests.https
 
+import js7.common.configutils.Configs._
 import com.typesafe.config.ConfigFactory
 import java.nio.file.Files.{createTempFile, delete}
 import js7.base.auth.UserId
@@ -84,7 +85,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest with
 
   private lazy val backupDirectoryProvider = new DirectoryProvider(
     Nil,
-    controllerConfig = ConfigFactory.parseString(s"""
+    controllerConfig = config"""
       js7.journal.cluster.node.is-backup = yes
       js7.journal.cluster.watches = [ "https://localhost:$agentHttpsPort" ]
       js7.web.server.auth.https-client-authentication = $controllerHttpsMutual
@@ -94,9 +95,12 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest with
           distinguished-names = [ "CN=Primary Controller,DC=primary-controller,DC=DirectoryProvider,DC=tests,DC=js7,DC=sh" ]
         }
       }
-    """ + !controllerHttpsMutual ?? s"""
-      js7.auth.users.TEST.password = "plain:TEST-PASSWORD"
-      js7.auth.cluster.password = "PRIMARY-CONTROLLER-PASSWORD" """),
+    """.withFallback(
+      if (controllerHttpsMutual)
+        ConfigFactory.empty
+      else config"""
+        js7.auth.users.TEST.password = "plain:TEST-PASSWORD"
+        js7.auth.cluster.password = "PRIMARY-CONTROLLER-PASSWORD" """),
     controllerKeyStore = Some(BackupKeyStoreResource),
     controllerTrustStores = ExportedControllerTrustStoreResource :: Nil,
     agentHttps = true,

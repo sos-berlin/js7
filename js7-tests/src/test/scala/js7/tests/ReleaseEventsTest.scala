@@ -1,6 +1,6 @@
 package js7.tests
 
-import com.typesafe.config.ConfigFactory
+import js7.common.configutils.Configs._
 import js7.agent.data.commands.AgentCommand
 import js7.base.auth.{SimpleUser, UserAndPassword, UserId}
 import js7.base.generic.SecretString
@@ -38,16 +38,16 @@ final class ReleaseEventsTest extends AnyFreeSpec with DirectoryProviderForScala
 {
   protected val agentRefPaths = TestAgentRefPath :: Nil
   protected val fileBased = TestWorkflow :: Nil
-  override protected val controllerConfig = ConfigFactory.parseString(
-     """js7 {
-       |  journal.users-allowed-to-release-events = [ "A", "B" ]
-       |  auth.users {
-       |    A = "plain:PASSWORD"
-       |    B = "plain:PASSWORD"
-       |    X = "plain:PASSWORD"
-       |  }
-       |  controller.agent-driver.release-events-period = 0ms
-       |}""".stripMargin)
+  override protected val controllerConfig = config"""
+    js7 {
+      journal.users-allowed-to-release-events = [ "A", "B" ]
+      auth.users {
+        A = "plain:PASSWORD"
+        B = "plain:PASSWORD"
+        X = "plain:PASSWORD"
+      }
+      controller.agent-driver.release-events-period = 0ms
+    }"""
 
   "ReleaseEvents" in {
     for ((_, tree) <- directoryProvider.agentToTree) {

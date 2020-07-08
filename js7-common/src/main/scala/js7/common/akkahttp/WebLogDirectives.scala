@@ -5,7 +5,7 @@ import akka.http.scaladsl.model.ContentTypes.{`application/json`, `text/plain(UT
 import akka.http.scaladsl.model.{HttpEntity, HttpRequest, HttpResponse, StatusCode}
 import akka.http.scaladsl.server.Directive0
 import akka.http.scaladsl.server.Directives._
-import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.config.Config
 import io.circe.parser.{parse => parseJson}
 import java.lang.System.nanoTime
 import js7.base.auth.UserId
@@ -13,6 +13,7 @@ import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.WebLogDirectives._
+import js7.common.configutils.Configs._
 import js7.common.log.LogLevel
 import js7.common.log.LogLevel._
 import js7.common.scalautil.Logger
@@ -119,13 +120,13 @@ object WebLogDirectives
 {
   private val webLogger = Logger("js7.web.log")
 
-  val TestConfig = ConfigFactory.parseString("""
-     |js7.web.server.log.level = debug
-     |js7.web.server.log.error-level = debug
-     |js7.web.server.log.500-level = info
-     |js7.web.server.log.duration = off
-     |js7.web.server.verbose-error-messages = true
-     |js7.web.server.shutdown-timeout = 10s""")
+  val TestConfig = config"""
+    js7.web.server.log.level = debug
+    js7.web.server.log.error-level = debug
+    js7.web.server.log.500-level = info
+    js7.web.server.log.duration = off
+    js7.web.server.verbose-error-messages = true
+    js7.web.server.shutdown-timeout = 10s"""
 
   private def appendQuotedString(sb: StringBuilder, string: String) = {
     sb.append('"')

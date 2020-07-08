@@ -1,7 +1,6 @@
 package js7.tests.provider
 
 import cats.syntax.option._
-import com.typesafe.config.ConfigFactory
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.{createDirectories, delete}
 import java.nio.file.{Files, Paths}
@@ -14,6 +13,7 @@ import js7.base.problem.Problems.DuplicateKey
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
+import js7.common.configutils.Configs._
 import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
@@ -310,10 +310,10 @@ object ProviderTest
 {
   private val loginName = "ProviderTest"
   private val loginPassword = "ProviderTest-PASSWORD"
-  private val testConfig = ConfigFactory.parseString(
-    s"""js7.provider.directory-watch.minimum-silence = 50ms
-       |js7.provider.directory-watch.poll-interval = ${if (isMac) "100ms" else "300s"}
-       |""".stripMargin)
+  private val testConfig = config"""
+    js7.provider.directory-watch.minimum-silence = 50ms
+    js7.provider.directory-watch.poll-interval = ${if (isMac) "100ms" else "300s"}
+    """
 
   private val agentRefPath = AgentRefPath("/AGENT")
   private val AWorkflowPath = WorkflowPath("/A")

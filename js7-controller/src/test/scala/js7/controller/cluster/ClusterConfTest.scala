@@ -1,10 +1,10 @@
 package js7.controller.cluster
 
-import com.typesafe.config.ConfigFactory
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
 import js7.base.time.ScalaTime._
 import js7.base.web.Uri
+import js7.common.configutils.Configs._
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.core.message.ProblemCodeMessages
 import js7.data.node.NodeId
@@ -19,13 +19,13 @@ final class ClusterConfTest extends AnyFreeSpec
 
   "fromConfig" - {
     "Minimum configuration" in {
-      val config = ConfigFactory.parseString("""
+      val config = config"""
         js7.journal.cluster.node.is-backup = no
         js7.journal.cluster.heartbeat = 7s
         js7.journal.cluster.fail-after = 5s
         js7.journal.cluster.watches = [ "http://AGENT-1", "http://AGENT-2" ]
         js7.web.client.idle-get-timeout = 50s
-        js7.web.client.delay-between-polling-gets = 1s""")
+        js7.web.client.delay-between-polling-gets = 1s"""
       val clusterConf = ClusterConf.fromConfig(UserId("USER"), config)
       assert(clusterConf == Right(
         ClusterConf(
@@ -41,7 +41,7 @@ final class ClusterConfTest extends AnyFreeSpec
     }
 
     "Full configuration" in {
-      val config = ConfigFactory.parseString("""
+      val config = config"""
         js7.journal.cluster.node.is-backup = no
         js7.journal.cluster.nodes = {
           A: "http://A"
@@ -52,7 +52,7 @@ final class ClusterConfTest extends AnyFreeSpec
         js7.journal.cluster.fail-after = 5s
         js7.auth.cluster.password = "PASSWORD"
         js7.web.client.idle-get-timeout = 50s
-        js7.web.client.delay-between-polling-gets = 1s""")
+        js7.web.client.delay-between-polling-gets = 1s"""
       val checkedClusterConf = ClusterConf.fromConfig(UserId("USER"), config)
       assert(checkedClusterConf == Right(
         ClusterConf(

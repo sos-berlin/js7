@@ -1,9 +1,9 @@
 package js7.tests
 
-import com.typesafe.config.ConfigFactory
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
+import js7.common.configutils.Configs._
 import js7.common.process.Processes.{ShellFileExtension => sh}
 import js7.common.scalautil.Logger
 import js7.common.scalautil.MonixUtils.syntax._
@@ -27,10 +27,8 @@ import scala.reflect.runtime.universe._
 
 final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  override protected val controllerConfig = ConfigFactory.parseString(
-    s"""js7.journal.simulate-sync = 10ms""")  // Avoid excessive syncs in case of test failure
-  override protected val agentConfig = ConfigFactory.parseString(
-    s"""js7.journal.simulate-sync = 10ms""")  // Avoid excessive syncs in case of test failure
+  override protected val controllerConfig = config"js7.journal.simulate-sync = 10ms"  // Avoid excessive syncs in case of test failure
+  override protected val agentConfig = config"js7.journal.simulate-sync = 10ms"  // Avoid excessive syncs in case of test failure
   protected val agentRefPaths = TestAgentRefPath :: Nil
   protected val fileBased = Nil
 

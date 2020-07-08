@@ -5,7 +5,7 @@ import akka.http.scaladsl.model.headers.{HttpChallenges, `WWW-Authenticate`}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import com.typesafe.config.ConfigFactory
+import js7.common.configutils.Configs._
 import js7.base.auth.{SessionToken, ValidUserPermission}
 import js7.base.time.ScalaTime._
 import js7.base.web.Uri
@@ -34,23 +34,22 @@ trait SessionRouteTester extends BeforeAndAfterAll with ScalatestRouteTest with 
   protected type Session = SimpleSession
 
   protected final def whenShuttingDown = Future.never
-  protected final val config = ConfigFactory.parseString("js7.web.server.verbose-error-messages = on")
+  protected final val config = config"js7.web.server.verbose-error-messages = on"
 
-  override def testConfig = ConfigFactory.parseString(s"""
-     |akka.http.host-connection-pool.base-connection-backoff = 10ms
-     |akka.http.host-connection-pool.max-connection-backoff = 10ms
-     |""".stripMargin
-  ).withFallback(super.testConfig)
+  override def testConfig = config"""
+    akka.http.host-connection-pool.base-connection-backoff = 10ms
+    akka.http.host-connection-pool.max-connection-backoff = 10ms
+  """.withFallback(super.testConfig)
 
   private implicit def implicitScheduler = scheduler
 
   protected final lazy val gateKeeper = GateKeeper.forTest(
     isPublic = isPublic,
-    config = ConfigFactory.parseString("""
-       |js7.auth.users {
-       |  A-USER = "plain:A-PASSWORD"
-       |  B-USER = "plain:B-PASSWORD"
-       |}""".stripMargin))
+    config = config"""
+      js7.auth.users {
+        A-USER = "plain:A-PASSWORD"
+        B-USER = "plain:B-PASSWORD"
+      }""")
 
   protected final lazy val sessionRegister =
     SessionRegister.start[SimpleSession](system, SimpleSession.apply, SessionRegister.TestConfig)

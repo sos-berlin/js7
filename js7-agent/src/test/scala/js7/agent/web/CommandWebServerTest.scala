@@ -3,7 +3,6 @@ package js7.agent.web
 import akka.actor.ActorSystem
 import akka.http.scaladsl.server.Directives.decodeRequest
 import cats.effect.Resource
-import com.typesafe.config.ConfigFactory
 import js7.agent.client.AgentClient
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.commands.AgentCommand
@@ -17,6 +16,7 @@ import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.akkautils.Akkas.actorSystemResource
+import js7.common.configutils.Configs._
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.core.command.CommandMeta
@@ -82,9 +82,9 @@ final class CommandWebServerTest extends AsyncFreeSpec
 private object CommandWebServerTest
 {
   private val testConfig =
-    ConfigFactory.parseString("""
-       js7.web.server.auth.public = on
-       js7.web.server.shutdown-timeout = 10s
-       akka.http.client.parsing.max-content-length = 100MB"""
-    ).withFallback(AgentConfiguration.DefaultConfig)
+    config"""
+      js7.web.server.auth.public = on
+      js7.web.server.shutdown-timeout = 10s
+      akka.http.client.parsing.max-content-length = 100MB
+    """.withFallback(AgentConfiguration.DefaultConfig)
 }

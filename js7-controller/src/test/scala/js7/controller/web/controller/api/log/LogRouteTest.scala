@@ -4,7 +4,7 @@ import akka.http.scaladsl.model.MediaTypes.`text/plain`
 import akka.http.scaladsl.model.StatusCodes.{NotFound, OK}
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.testkit.RouteTestTimeout
-import com.typesafe.config.ConfigFactory
+import js7.common.configutils.Configs._
 import java.io.{FileOutputStream, OutputStreamWriter}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.delete
@@ -33,9 +33,7 @@ final class LogRouteTest extends AnyFreeSpec with RouteTester with LogRoute
   protected def whenShuttingDown = Future.never
   protected def currentLogFile = requireNonNull/*call lazily!*/(_currentLogFile)
 
-  override protected def config = ConfigFactory.parseString(
-    """js7.web.server.services.log.poll-interval = 1.ms
-      |""".stripMargin)
+  override protected def config = config"js7.web.server.services.log.poll-interval = 1.ms"
     .withFallback(super.config)
 
   implicit protected def scheduler = Scheduler.global

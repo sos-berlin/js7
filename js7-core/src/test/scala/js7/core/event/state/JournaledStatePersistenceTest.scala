@@ -2,7 +2,7 @@ package js7.core.event.state
 
 import akka.pattern.ask
 import akka.util.Timeout
-import com.typesafe.config.ConfigFactory
+import js7.common.configutils.Configs._
 import io.circe.generic.JsonCodec
 import java.nio.file.Files.createTempDirectory
 import java.nio.file.Path
@@ -168,12 +168,12 @@ final class JournaledStatePersistenceTest extends AnyFreeSpec with BeforeAndAfte
 private object JournaledStatePersistenceTest
 {
   private val TestConfig = TestData.TestConfig
-    .withFallback(ConfigFactory.parseString("""
-     |js7.akka.actor-message-log-level = Trace
-     |js7.journal.remove-obsolete-files = true
-     |js7.journal.users-allowed-to-release-events = []
-     |js7.journal.dispatcher.type = PinnedDispatcher
-     |""".stripMargin))
+    .withFallback(config"""
+      js7.akka.actor-message-log-level = Trace
+      js7.journal.remove-obsolete-files = true
+      js7.journal.users-allowed-to-release-events = []
+      js7.journal.dispatcher.type = PinnedDispatcher
+      """)
 
   private class TestStateBuilder extends JournaledStateBuilder[TestState]
   {

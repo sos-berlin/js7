@@ -1,7 +1,7 @@
 package js7.tests
 
 import cats.syntax.option._
-import com.typesafe.config.ConfigFactory
+import js7.common.configutils.Configs._
 import java.nio.file.Path
 import js7.base.auth.UserAndPassword
 import js7.base.convert.AsJava.StringAsPath
@@ -33,9 +33,9 @@ final class TestAddWorkflows(settings: Settings)
   def run(): Unit = {
     val directoryProvider = new DirectoryProvider(
       agentRefPath :: Nil,
-      controllerConfig = ConfigFactory.parseString(
-       """js7.web.server.auth.public = true
-         |akka.stdout-loglevel = "OFF"""".stripMargin),
+      controllerConfig = config"""
+        js7.web.server.auth.public = true
+        akka.stdout-loglevel = "OFF"""",
       useDirectory = settings.directory)
     autoClosing(directoryProvider) { _ =>
       directoryProvider.run { (controller, _)  =>

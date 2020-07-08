@@ -1,9 +1,9 @@
 package js7.tests.controller.load
 
-import com.typesafe.config.ConfigFactory
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
 import js7.base.time.{Stopwatch, Timestamp}
+import js7.common.configutils.Configs._
 import js7.common.process.Processes.{ShellFileExtension => sh}
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
@@ -26,9 +26,9 @@ final class ManyOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentRefPaths = agentRefPath :: Nil
   protected val fileBased = workflow :: Nil
-  override protected val controllerConfig = ConfigFactory.parseString("""
+  override protected val controllerConfig = config"""
     js7.web.server.auth.public = on
-    js7.journal.remove-obsolete-files = false""")
+    js7.journal.remove-obsolete-files = false"""
 
   private lazy val n = sys.props.get("ManyOrdersTest").map(_.toInt) getOrElse 1000
 

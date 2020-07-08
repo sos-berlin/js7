@@ -1,7 +1,7 @@
 package js7.core.event.journal.test
 
 import akka.pattern.ask
-import com.typesafe.config.ConfigFactory
+import js7.common.configutils.Configs._
 import java.nio.file.Files.{delete, deleteIfExists}
 import js7.base.BuildInfo
 import js7.base.circeutils.CirceUtils._
@@ -114,7 +114,7 @@ final class JournalTest extends AnyFreeSpec with BeforeAndAfterAll with TestJour
   "Massive parallel" - {
     def run(n: Int, eventBufferSize: Int): Unit = {
       listJournalFiles(journalMeta.fileBase) map (_.file) foreach delete
-      withTestActor(ConfigFactory.parseString(s"""js7.journal.event-buffer-size = $eventBufferSize""")) { (_, actor) =>
+      withTestActor(config"js7.journal.event-buffer-size = $eventBufferSize") { (_, actor) =>
         val prefixes = for (i <- 1 to n) yield i.toString
         val stopwatch = new Stopwatch
         // Add "$p-A"

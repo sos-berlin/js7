@@ -1,6 +1,5 @@
 package js7.agent.configuration
 
-import com.typesafe.config.ConfigFactory
 import java.net.InetSocketAddress
 import java.nio.file.Files.createTempDirectory
 import java.nio.file.{Path, Paths}
@@ -10,6 +9,7 @@ import js7.agent.data.ProcessKillScript
 import js7.base.time.ScalaTime._
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
+import js7.common.configutils.Configs._
 import js7.common.scalautil.FileUtils._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.system.OperatingSystem.isWindows
@@ -97,7 +97,7 @@ final class AgentConfigurationTest extends AnyFreeSpec
   private def conf(args: String*) = {
     AgentConfiguration.fromCommandLine(
       CommandLineArguments(args.toVector),
-      ConfigFactory.parseString("user.name = ControllerConfigurationTest"/*Will be overridden*/))
+      config"user.name = ControllerConfigurationTest"/*Will be overridden*/)
   }
 }
 

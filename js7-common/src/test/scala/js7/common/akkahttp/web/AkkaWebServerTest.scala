@@ -4,7 +4,6 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.HttpMethods.GET
 import akka.http.scaladsl.model.{HttpRequest, StatusCodes}
 import akka.http.scaladsl.server.Directives._
-import com.typesafe.config.ConfigFactory
 import java.net.{InetAddress, InetSocketAddress}
 import java.nio.file.Files.{createDirectory, createTempDirectory}
 import javax.net.ssl.SSLHandshakeException
@@ -52,12 +51,11 @@ final class AkkaWebServerTest extends AnyFreeSpec with BeforeAndAfterAll
       createDirectory(directory / "private")
       KeyStoreResource copyToFile directory / "private" / "https-keystore.p12"
       KeyStoreRef.fromConfig(
-        ConfigFactory.parseString(
-          """js7.web.https.keystore {
-            |  key-password = "jobscheduler"
-            |  store-password = "jobscheduler"
-            |}
-            |""".stripMargin),
+        config"""
+          js7.web.https.keystore {
+            key-password = "jobscheduler"
+            store-password = "jobscheduler"
+          }""",
         directory / "private/https-keystore.p12")
       .orThrow
     }

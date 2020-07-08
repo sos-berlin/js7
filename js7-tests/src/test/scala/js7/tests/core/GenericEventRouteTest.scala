@@ -1,5 +1,6 @@
 package js7.tests.core
 
+import js7.common.configutils.Configs._
 import com.typesafe.config.ConfigFactory
 import io.circe.Decoder
 import java.net.{InetAddress, InetSocketAddress}
@@ -44,38 +45,38 @@ final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll wit
   protected type Session = SimpleSession
 
   protected implicit def scheduler = Scheduler.global
-  protected val config = ConfigFactory.parseString(
-     """js7 {
-       |  auth.users {}
-       |  auth.session {
-       |    timeout = 1 minute
-       |  }
-       |  akka.shutdown-timeout = 10s
-       |  web.server {
-       |    verbose-error-messages = on
-       |    shutdown-timeout = 10s
-       |    auth {
-       |      https-client-authentication = off
-       |      realm = "TEST Server"
-       |      invalid-authentication-delay = 1s
-       |      loopback-is-public = off
-       |      get-is-public = on
-       |      public = off
-       |    }
-       |    log {
-       |      level = Debug
-       |      response = on
-       |    }
-       |    services {
-       |      event {
-       |        streaming {
-       |          chunk-timeout = 24h
-       |          delay = 20ms
-       |        }
-       |      }
-       |    }
-       |  }
-       |}""".stripMargin)
+  protected val config = config"""
+    js7 {
+      auth.users {}
+      auth.session {
+        timeout = 1 minute
+      }
+      akka.shutdown-timeout = 10s
+      web.server {
+        verbose-error-messages = on
+        shutdown-timeout = 10s
+        auth {
+          https-client-authentication = off
+          realm = "TEST Server"
+          invalid-authentication-delay = 1s
+          loopback-is-public = off
+          get-is-public = on
+          public = off
+        }
+        log {
+          level = Debug
+          response = on
+        }
+        services {
+          event {
+            streaming {
+              chunk-timeout = 24h
+              delay = 20ms
+            }
+          }
+        }
+      }
+    }"""
 
   protected val gateKeeper = new GateKeeper(WebServerBinding.Http, GateKeeper.Configuration.fromConfig(config, SimpleUser.apply))
   protected final val sessionRegister = SessionRegister.start[SimpleSession](

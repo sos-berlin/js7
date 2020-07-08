@@ -1,9 +1,9 @@
 package js7.tests.controller.commands
 
 import akka.http.scaladsl.model.StatusCodes.ServiceUnavailable
-import com.typesafe.config.ConfigFactory
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
+import js7.common.configutils.Configs._
 import js7.common.http.AkkaHttpClient.HttpException
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.data.order.{FreshOrder, OrderId}
@@ -18,11 +18,11 @@ final class AddOrderTimeoutTest extends AnyFreeSpec with ControllerAgentForScala
 {
   protected val agentRefPaths = Nil
   protected val fileBased = workflow :: Nil
-  override protected val controllerConfig = ConfigFactory.parseString("""
+  override protected val controllerConfig = config"""
     js7.web.server.auth.public = on
     js7.akka.ask-timeout = 1s
     js7.TEST-ONLY.add-order-delay = 10s
-    """)
+    """
 
   "AddOrder timeout is returned as 403 Service Unavailable" in {
     val status = intercept[HttpException] {

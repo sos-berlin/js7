@@ -3,13 +3,14 @@ package js7.common.akkahttp.web.session
 import akka.actor.{ActorRef, ActorRefFactory}
 import akka.pattern.ask
 import akka.util.Timeout
-import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.config.Config
 import java.nio.file.Files.{createFile, deleteIfExists}
 import java.nio.file.Path
 import js7.base.auth.SessionToken
 import js7.base.generic.Completed
 import js7.base.problem.Checked
 import js7.common.akkahttp.web.session.SessionRegister._
+import js7.common.configutils.Configs._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Logger
 import js7.common.system.OperatingSystem.operatingSystem
@@ -70,8 +71,8 @@ object SessionRegister
       akkaAskTimeout = config.getDuration("js7.akka.ask-timeout").toFiniteDuration)
   }
 
-  val TestConfig: Config = ConfigFactory.parseString(
-    """js7.akka.ask-timeout = 99.s
-      |js7.auth.session.timeout = 1 minute
-      |""".stripMargin)
+  val TestConfig: Config = config"""
+    js7.akka.ask-timeout = 99.s
+    js7.auth.session.timeout = 1 minute
+    """
 }

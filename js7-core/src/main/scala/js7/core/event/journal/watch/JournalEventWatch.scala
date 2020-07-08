@@ -1,6 +1,6 @@
 package js7.core.event.journal.watch
 
-import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.config.Config
 import java.io.IOException
 import java.nio.file.Files.delete
 import java.nio.file.Path
@@ -11,6 +11,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.implicits._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{CloseableIterator, SetOnce}
+import js7.common.configutils.Configs._
 import js7.common.event.{PositionAnd, RealEventWatch}
 import js7.common.scalautil.Logger
 import js7.core.event.journal.data.JournalMeta
@@ -316,12 +317,12 @@ object JournalEventWatch
     def arguments = Map("file" -> file.getFileName.toString)
   }
 
-  val TestConfig = ConfigFactory.parseString("""
-     |js7.journal.watch.keep-open = 2
-     |js7.journal.watch.index-size = 100
-     |js7.journal.watch.index-factor = 10
-     |js7.journal.remove-obsolete-files = true
-     |js7.journal.users-allowed-to-release-events = []
-     |js7.monix.tailrecm-limit = 1000
-    """.stripMargin)
+  val TestConfig = config"""
+    js7.journal.watch.keep-open = 2
+    js7.journal.watch.index-size = 100
+    js7.journal.watch.index-factor = 10
+    js7.journal.remove-obsolete-files = true
+    js7.journal.users-allowed-to-release-events = []
+    js7.monix.tailrecm-limit = 1000
+    """
 }

@@ -1,7 +1,7 @@
 package js7.agent.tests
 
 import akka.http.scaladsl.model.StatusCodes.Unauthorized
-import com.typesafe.config.ConfigFactory
+import js7.common.configutils.Configs._
 import js7.agent.RunningAgent
 import js7.agent.client.AgentClient
 import js7.agent.configuration.AgentConfiguration
@@ -94,13 +94,13 @@ final class OrderAgentTest extends AnyFreeSpec
       val executableDir = directory / "config" / "executables"
       AExecutablePath.toFile(executableDir).writeExecutable(TestScript)
       BExecutablePath.toFile(executableDir).writeExecutable(TestScript)
-      val agentConf = AgentConfiguration.forTest(directory, ConfigFactory.parseString("""
-         |js7.journal.sync = on
-         |js7.journal.delay = 0ms
-         |js7.journal.simulate-sync = 10ms
-         |js7.journal.snapshot.log-period = 1ms
-         |js7.journal.snapshot.log-actor-limit = 10
-         |""".stripMargin))
+      val agentConf = AgentConfiguration.forTest(directory, config"""
+        js7.journal.sync = on
+        js7.journal.delay = 0ms
+        js7.journal.simulate-sync = 10ms
+        js7.journal.snapshot.log-period = 1ms
+        js7.journal.snapshot.log-actor-limit = 10
+        """)
       val timeout = 1.hour
       RunningAgent.run(agentConf, timeout = Some(timeout)) { agent =>
         withCloser { implicit closer =>

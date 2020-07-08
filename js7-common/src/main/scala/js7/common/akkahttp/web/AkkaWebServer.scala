@@ -17,6 +17,7 @@ import js7.base.utils.SetOnce
 import js7.common.akkahttp.https.Https.loadSSLContext
 import js7.common.akkahttp.web.AkkaWebServer._
 import js7.common.akkahttp.web.data.WebServerBinding
+import js7.common.configutils.Configs._
 import js7.common.http.JsonStreamingSupport
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.Logger
@@ -139,10 +140,10 @@ trait AkkaWebServer extends AutoCloseable
 object AkkaWebServer
 {
   private val logger = Logger(getClass)
-  private[web] val testConfig = ConfigFactory.parseString(
-    """js7.web.server.auth.https-client-authentication = off
-      |js7.web.server.shutdown-timeout = 10s
-      |""".stripMargin)
+  private[web] val testConfig = config"""
+    js7.web.server.auth.https-client-authentication = off
+    js7.web.server.shutdown-timeout = 10s
+    """
 
   @TestOnly
   def forTest(route: Route)(implicit as: ActorSystem): AkkaWebServer with HasUri =

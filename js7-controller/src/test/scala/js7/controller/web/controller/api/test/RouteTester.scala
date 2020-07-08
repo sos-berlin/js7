@@ -1,7 +1,7 @@
 package js7.controller.web.controller.api.test
 
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
-import com.typesafe.config.ConfigFactory
+import js7.common.configutils.Configs._
 import js7.base.auth.SimpleUser
 import js7.common.akkahttp.ExceptionHandling
 import js7.common.akkahttp.web.auth.GateKeeper
@@ -29,7 +29,7 @@ trait RouteTester extends ScalatestRouteTest with ExceptionHandling
   protected final lazy val gateKeeper = new GateKeeper(
     WebServerBinding.Http,
     GateKeeper.Configuration.fromConfig(
-      ConfigFactory.parseString("js7.web.server.auth.loopback-is-public = true")
+      config"js7.web.server.auth.loopback-is-public = true"
         withFallback DefaultConfig,
       SimpleUser.apply),
     isLoopback = true)
@@ -37,9 +37,9 @@ trait RouteTester extends ScalatestRouteTest with ExceptionHandling
   protected final lazy val sessionRegister =
     SessionRegister.start[SimpleSession](system, SimpleSession.apply, SessionRegister.TestConfig)
 
-  protected def config = ConfigFactory.parseString(
-    """js7.web.server.verbose-error-messages = on
-      |js7.web.server.services.event.streaming.delay = 20ms
-      |js7.web.server.services.event.streaming.chunk-timeout = 1h
-      |""".stripMargin)
+  protected def config = config"""
+    js7.web.server.verbose-error-messages = on
+    js7.web.server.services.event.streaming.delay = 20ms
+    js7.web.server.services.event.streaming.chunk-timeout = 1h
+    """
 }

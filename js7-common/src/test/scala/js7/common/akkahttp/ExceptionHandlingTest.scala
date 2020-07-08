@@ -5,9 +5,9 @@ import akka.http.scaladsl.model.StatusCodes.{Forbidden, InternalServerError}
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import com.typesafe.config.ConfigFactory
 import js7.base.problem.Problem
 import js7.common.akkahttp.ExceptionHandlingTest._
+import js7.common.configutils.Configs._
 import js7.common.http.CirceJsonSupport._
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
@@ -18,7 +18,7 @@ import scala.util.control.NoStackTrace
   */
 final class ExceptionHandlingTest extends AnyFreeSpec with ScalatestRouteTest with ExceptionHandling
 {
-  protected val config = ConfigFactory.parseString("js7.web.server.verbose-error-messages = true")
+  protected val config = config"js7.web.server.verbose-error-messages = true"
   protected def whenShuttingDown = Future.never
 
   protected def actorSystem = system

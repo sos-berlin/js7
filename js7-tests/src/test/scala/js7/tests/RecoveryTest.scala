@@ -1,6 +1,6 @@
 package js7.tests
 
-import com.typesafe.config.ConfigFactory
+import js7.common.configutils.Configs._
 import java.nio.file.Path
 import js7.agent.RunningAgent
 import js7.agent.scheduler.AgentEvent
@@ -148,7 +148,7 @@ final class RecoveryTest extends AnyFreeSpec
 private object RecoveryTest {
   private val logger = Logger(getClass)
 
-  private val TestConfig = ConfigFactory.parseString("js7.journal.remove-obsolete-files = false")
+  private val TestConfig = config"js7.journal.remove-obsolete-files = false"
   private val AgentRefPaths = AgentRefPath("/agent-111") :: AgentRefPath("/agent-222") :: Nil
   private val TestExecutablePath = ExecutablePath("/TEST.cmd")
 

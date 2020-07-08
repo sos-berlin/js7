@@ -1,6 +1,5 @@
 package js7.tests.controller.cluster
 
-import com.typesafe.config.ConfigFactory
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import js7.base.problem.Checked._
@@ -9,6 +8,7 @@ import js7.base.utils.Closer.syntax._
 import js7.base.utils.Closer.withCloser
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.auth.SecretStringGenerator
+import js7.common.configutils.Configs._
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.system.OperatingSystem.isWindows
@@ -50,25 +50,28 @@ private[cluster] trait ControllerClusterTester extends AnyFreeSpec
       val testName = ControllerClusterTester.this.getClass.getSimpleName
       val agentPort = findFreeTcpPort()
       val primary = new DirectoryProvider(agentRefPath :: Nil, TestWorkflow :: Nil, testName = Some(s"$testName-Primary"),
-        controllerConfig = ConfigFactory.parseString((configureClusterNodes ?? s"""
-          js7.journal.cluster.nodes = {
-            Primary: "http://127.0.0.1:$primaryHttpPort"
-            Backup: "http://127.0.0.1:$backupHttpPort"
-          }""") + s"""
-          js7.journal.cluster.heartbeat = 3s
-          js7.journal.cluster.fail-after = 5s
-          js7.journal.cluster.watches = [ "http://127.0.0.1:$agentPort" ]
-          js7.journal.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"
-          js7.journal.use-journaled-state-as-snapshot = true
-          js7.journal.remove-obsolete-files = $removeObsoleteJournalFiles
-          js7.auth.users.TEST.password = "plain:TEST-PASSWORD"
-          js7.auth.users.Controller.password = "plain:PRIMARY-CONTROLLER-PASSWORD"
-          js7.auth.cluster.password = "BACKUP-CONTROLLER-PASSWORD""""),
+        controllerConfig = (
+          (configureClusterNodes ? config"""
+            js7.journal.cluster.nodes = {
+              Primary: "http://127.0.0.1:$primaryHttpPort"
+              Backup: "http://127.0.0.1:$backupHttpPort"
+            }"""
+          ) ++ Some(config"""
+            js7.journal.cluster.heartbeat = 3s
+            js7.journal.cluster.fail-after = 5s
+            js7.journal.cluster.watches = [ "http://127.0.0.1:$agentPort" ]
+            js7.journal.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"
+            js7.journal.use-journaled-state-as-snapshot = true
+            js7.journal.remove-obsolete-files = $removeObsoleteJournalFiles
+            js7.auth.users.TEST.password = "plain:TEST-PASSWORD"
+            js7.auth.users.Controller.password = "plain:PRIMARY-CONTROLLER-PASSWORD"
+            js7.auth.cluster.password = "BACKUP-CONTROLLER-PASSWORD" """)
+          ).reduce(_ withFallback _),
         agentPorts = agentPort :: Nil
       ).closeWithCloser
 
       val backup = new DirectoryProvider(Nil, Nil, testName = Some(s"$testName-Backup"),
-        controllerConfig = ConfigFactory.parseString(s"""
+        controllerConfig = config"""
           js7.journal.cluster.node.is-backup = yes
           js7.journal.cluster.heartbeat = 3s
           js7.journal.cluster.fail-after = 5s
@@ -78,7 +81,7 @@ private[cluster] trait ControllerClusterTester extends AnyFreeSpec
           js7.journal.remove-obsolete-files = $removeObsoleteJournalFiles
           js7.auth.users.Controller.password = "plain:BACKUP-CONTROLLER-PASSWORD"
           js7.auth.users.TEST.password = "plain:TEST-PASSWORD"
-          js7.auth.cluster.password = "PRIMARY-CONTROLLER-PASSWORD""""),
+          js7.auth.cluster.password = "PRIMARY-CONTROLLER-PASSWORD"""",
       ).closeWithCloser
 
       // Replicate credentials required for agents

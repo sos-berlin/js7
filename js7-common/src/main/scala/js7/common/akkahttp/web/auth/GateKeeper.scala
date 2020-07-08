@@ -25,6 +25,7 @@ import js7.common.time.JavaTimeConverters._
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.duration._
+import js7.common.configutils.Configs._
 
 /**
   * @author Joacim Zschimmer
@@ -289,15 +290,15 @@ object GateKeeper
     new GateKeeper(
       scheme = scheme,
       GateKeeper.Configuration.fromConfig(
-        config.withFallback(ConfigFactory.parseString(
-         s"""js7.web.server.auth {
-            |  realm = "TEST REALM"
-            |  invalid-authentication-delay = 100ms
-            |  https-client-authentication = on
-            |  loopback-is-public = false
-            |  get-is-public = false
-            |  public = $isPublic
-            |}
-            |""".stripMargin)),
+        config withFallback config"""
+          js7.web.server.auth {
+            realm = "TEST REALM"
+            invalid-authentication-delay = 100ms
+            https-client-authentication = on
+            loopback-is-public = false
+            get-is-public = false
+            public = $isPublic
+          }
+          """,
         SimpleUser.apply))
 }

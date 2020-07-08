@@ -1,6 +1,6 @@
 package js7.core.crypt.generic
 
-import com.typesafe.config.ConfigFactory
+import js7.common.configutils.Configs._
 import js7.base.Problems.TamperedWithSignedMessageProblem
 import js7.base.problem.Checked.Ops
 import js7.common.scalautil.FileUtils.syntax._
@@ -28,8 +28,8 @@ final class GenericSignatureVerifierTest extends AnyFreeSpec
       directory / "test-2.asc" := PgpTest.publicKeyResource2.contentBytes
       directory / ".ignore" := "NOT A SIGNATURE FILE"
 
-      val verifier = GenericSignatureVerifier(ConfigFactory.parseString(
-        s"""js7.configuration.trusted-signature-keys.PGP = "$directory" """)
+      val verifier = GenericSignatureVerifier(config"""
+        js7.configuration.trusted-signature-keys.PGP = "$directory" """
       ).orThrow
       assert(verifier.verify(messages(0), signatures(0)) == Right(PgpTest.signerIds))
       assert(verifier.verify("TAMPERED", signatures(0)) == Left(TamperedWithSignedMessageProblem))

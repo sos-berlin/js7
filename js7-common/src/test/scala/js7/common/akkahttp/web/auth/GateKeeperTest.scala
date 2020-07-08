@@ -9,7 +9,7 @@ import akka.http.scaladsl.server.{ExceptionHandler, Route}
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import akka.http.scaladsl.unmarshalling.Unmarshaller
 import akka.testkit.TestDuration
-import com.typesafe.config.ConfigFactory
+import js7.common.configutils.Configs._
 import io.circe.Json
 import js7.base.auth.Permission.toStringToPermission
 import js7.base.auth.{GetPermission, HashedPassword, Permission, SimpleUser, SuperPermission, User, UserAndPassword, UserId, ValidUserPermission}
@@ -40,12 +40,12 @@ final class GateKeeperTest extends AnyFreeSpec with ScalatestRouteTest
   private val defaultConf = GateKeeper.Configuration(
     realm = "REALM",
     invalidAuthenticationDelay = 100.millis,
-    idToUser = IdToUser.fromConfig(ConfigFactory.parseString("""
-        |js7.auth.users {
-        |   USER {
-        |     password = "plain:PASSWORD"
-        |   }
-        |}""".stripMargin),
+    idToUser = IdToUser.fromConfig(config"""
+      js7.auth.users {
+         USER {
+           password = "plain:PASSWORD"
+         }
+      }""",
       SimpleUser.apply,
       toStringToPermission(List(TestPermission))),
     distinguishedNameToUser = Map.empty)

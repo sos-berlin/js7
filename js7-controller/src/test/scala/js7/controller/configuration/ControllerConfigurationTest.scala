@@ -1,12 +1,12 @@
 package js7.controller.configuration
 
-import com.typesafe.config.ConfigFactory
 import java.net.InetSocketAddress
 import java.nio.file.Files.{createDirectories, createTempDirectory, delete}
 import java.time.ZoneId
 import js7.base.time.ScalaTime._
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
+import js7.common.configutils.Configs._
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.common.scalautil.FileUtils.syntax._
 import js7.controller.cluster.ClusterConf
@@ -81,5 +81,5 @@ final class ControllerConfigurationTest extends AnyFreeSpec with BeforeAndAfterA
   private def conf(args: String*) =
     ControllerConfiguration.fromCommandLine(
       CommandLineArguments(Vector(s"--config-directory=$directory/CONFIG", s"--data-directory=$directory/DATA") ++ args),
-      ConfigFactory.parseString("user.name = ControllerConfigurationTest"/*Will be overridden*/))
+      config"user.name = ControllerConfigurationTest"/*Will be overridden*/)
 }

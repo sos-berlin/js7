@@ -5,7 +5,7 @@ import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
-import com.typesafe.config.ConfigFactory
+import js7.common.configutils.Configs._
 import js7.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
 import js7.base.generic.SecretString
 import js7.common.akkahttp.web.auth.GateKeeper
@@ -28,7 +28,7 @@ final class RouteProviderTest extends AnyFreeSpec with RouteProvider with Scalat
 
   protected def whenShuttingDown = Future.never
   implicit protected def scheduler = Scheduler.global
-  protected val config = ConfigFactory.parseString("js7.web.server.verbose-error-messages = on")
+  protected val config = config"js7.web.server.verbose-error-messages = on"
   protected lazy val sessionRegister = SessionRegister.start[MySession](system, MySession.apply, SessionRegister.TestConfig)
   private implicit val routeTestTimeout = RouteTestTimeout(99.seconds)
 
@@ -38,7 +38,7 @@ final class RouteProviderTest extends AnyFreeSpec with RouteProvider with Scalat
       realm = "TEST-REALM",
       invalidAuthenticationDelay = 100.millis,
       idToUser = IdToUser.fromConfig(
-        ConfigFactory.parseString("""js7.auth.users.TEST-USER: "plain:123" """),
+        config"""js7.auth.users.TEST-USER: "plain:123" """,
         SimpleUser.apply),
       distinguishedNameToUser = Map.empty))
 

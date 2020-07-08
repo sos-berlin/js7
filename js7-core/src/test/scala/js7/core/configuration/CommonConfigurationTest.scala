@@ -1,12 +1,13 @@
 package js7.core.configuration
 
-import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.config.Config
 import java.net.InetSocketAddress
 import java.nio.file.{Path, Paths}
 import js7.base.generic.SecretString
 import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import js7.common.akkahttp.web.data.{WebServerBinding, WebServerPort}
 import js7.common.commandline.CommandLineArguments
+import js7.common.configutils.Configs._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.core.configuration.CommonConfigurationTest._
 import org.scalatest.freespec.AnyFreeSpec
@@ -80,20 +81,20 @@ private object CommonConfigurationTest {
       configDirectory = common.configDirectory,
       dataDirectory = common.dataDirectory,
       webServerPorts = common.webServerPorts,
-      ConfigFactory.parseString(
-        s"""js7.web.https.keystore {
-           |  store-password = "KEYSTORE-STORE-PASSWORD"
-           |  key-password = "KEYSTORE-KEY-PASSWORD"
-           |}
-           |js7.web.https.truststores = [
-           |  {
-           |    file = "${common.configDirectory}/private/https-truststore.p12"
-           |    store-password = "TRUSTSTORE-PASSWORD"
-           |  }, {
-           |    file = "${common.configDirectory}/private/second-https-truststore.p12"
-           |    store-password = "SECOND-TRUSTSTORE-PASSWORD"
-           |  }
-           |]
-           |""".stripMargin))
+      config"""
+        js7.web.https.keystore {
+          store-password = "KEYSTORE-STORE-PASSWORD"
+          key-password = "KEYSTORE-KEY-PASSWORD"
+        }
+        js7.web.https.truststores = [
+          {
+            file = "${common.configDirectory}/private/https-truststore.p12"
+            store-password = "TRUSTSTORE-PASSWORD"
+          }, {
+            file = "${common.configDirectory}/private/second-https-truststore.p12"
+            store-password = "SECOND-TRUSTSTORE-PASSWORD"
+          }
+        ]
+        """)
   }
 }

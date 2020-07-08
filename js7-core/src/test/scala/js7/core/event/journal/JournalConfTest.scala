@@ -1,6 +1,6 @@
 package js7.core.event.journal
 
-import com.typesafe.config.ConfigFactory
+import js7.common.configutils.Configs._
 import js7.base.time.ScalaTime._
 import js7.core.event.journal.JournalConfTest._
 import org.scalatest.freespec.AnyFreeSpec
@@ -15,26 +15,26 @@ final class JournalConfTest extends AnyFreeSpec
   }
 
   "delay is maximum of delay and sync-delay if sync-delay=on (1)" in {
-    val c = ConfigFactory.parseString("""
+    val c = config"""
       js7.journal.delay = 1ms
-      js7.journal.sync-delay = 222ms""")
+      js7.journal.sync-delay = 222ms"""
     assert(JournalConf.fromConfig(c withFallback config) ==
       journalConf.copy(delay = 222.ms))
   }
 
   "delay is maximum of delay and sync-delay if sync-delay=on (2)" in {
-    val c = ConfigFactory.parseString("""
+    val c = config"""
       js7.journal.delay = 333ms
-      js7.journal.sync-delay = 1ms""")
+      js7.journal.sync-delay = 1ms"""
     assert(JournalConf.fromConfig(c withFallback config) ==
       journalConf.copy(delay = 333.ms))
   }
 
   "On sync=off sync-delay is not respected" in {
-    val c = ConfigFactory.parseString("""
+    val c = config"""
       js7.journal.sync = off
       js7.journal.delay = 1ms
-      js7.journal.sync-delay = 222ms""")
+      js7.journal.sync-delay = 222ms"""
     assert(JournalConf.fromConfig(c withFallback config) ==
       journalConf.copy(syncOnCommit = false, delay = 1.ms))
   }
@@ -42,7 +42,7 @@ final class JournalConfTest extends AnyFreeSpec
 
 object JournalConfTest
 {
-  private[journal] val config = ConfigFactory.parseString("""
+  private[journal] val config = config"""
      js7.journal {
        sync = on
        delay = 1ms
@@ -59,7 +59,7 @@ object JournalConfTest
        ack-warn-durations = [ 10s, 15s ]
        remove-obsolete-files = true
        users-allowed-to-release-events = []
-     }""")
+     }"""
 
   private val journalConf = JournalConf(
     syncOnCommit = true,

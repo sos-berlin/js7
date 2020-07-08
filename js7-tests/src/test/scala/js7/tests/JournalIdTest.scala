@@ -1,6 +1,6 @@
 package js7.tests
 
-import com.typesafe.config.ConfigFactory
+import js7.common.configutils.Configs._
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.{RichCirceString, RichJson}
 import js7.base.problem.Checked.Ops
@@ -29,12 +29,8 @@ final class JournalIdTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
   protected val agentRefPaths = agentRefPath :: Nil
   protected val fileBased = TestWorkflow :: Nil
-  override protected val controllerConfig = ConfigFactory.parseString(
-     """js7.journal.remove-obsolete-files = false
-       |""".stripMargin)
-  override protected val agentConfig = ConfigFactory.parseString(
-     """js7.journal.remove-obsolete-files = false
-       |""".stripMargin)
+  override protected val controllerConfig = config"js7.journal.remove-obsolete-files = false"
+  override protected val agentConfig = config"js7.journal.remove-obsolete-files = false"
 
   private lazy val agentStateDir = directoryProvider.agents.head.dataDir / "state"
   private lazy val firstJournalFile = agentStateDir / "controller-Controller--0.journal"

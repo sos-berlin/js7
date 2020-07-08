@@ -1,7 +1,6 @@
 package js7.tests.controller.web
 
 import akka.http.scaladsl.model.StatusCodes.Unauthorized
-import com.typesafe.config.ConfigFactory
 import java.nio.file.Files
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
@@ -10,6 +9,7 @@ import js7.base.utils.Closer.syntax._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.ScodecUtils._
 import js7.base.web.Uri
+import js7.common.configutils.Configs._
 import js7.common.guice.GuiceImplicits.RichInjector
 import js7.common.http.AkkaHttpClient.HttpException
 import js7.common.scalautil.FileUtils.syntax._
@@ -58,13 +58,13 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
     directoryProvider.agents(0).writeExecutable(executablePath, script(1.s))
   }
 
-  override protected val controllerConfig = ConfigFactory.parseString("""
+  override protected val controllerConfig = config"""
     js7.auth.users {
       TEST-USER {
         password = "plain:TEST-PASSWORD",
       }
     }
-    js7.journal.remove-obsolete-files = false""")
+    js7.journal.remove-obsolete-files = false"""
 
   "/controller/api/journal requires authentication" in {
     val e = intercept[HttpException] {
