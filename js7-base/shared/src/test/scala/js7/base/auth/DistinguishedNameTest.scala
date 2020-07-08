@@ -27,4 +27,9 @@ final class DistinguishedNameTest extends AnyFreeSpec
     assert(DistinguishedName("CN=common name,L=Lummerland").string == "CN=common name, L=Lummerland")
     assert(DistinguishedName(" CN=common name ,  L=Lummerland ").string == "CN=common name, L=Lummerland")
   }
+
+  "openssh notation is rejected" in {
+    assert(DistinguishedName.checked("/L=Lummerland/CN=common name") ==
+      Left(Problem("Invalid Distinguished Name - improperly specified input name: /L=Lummerland/CN=common name")))
+  }
 }
