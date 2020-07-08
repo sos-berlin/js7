@@ -232,7 +232,7 @@ object DirectoryProvider
       super.createDirectoriesAndFiles()
       for (keyStore <- keyStore) {
         configDir / "private/private.conf" ++=
-          s"""js7.https.keystore {
+          s"""js7.web.https.keystore {
              |  store-password = "jobscheduler"
              |  key-password = "jobscheduler"
              |}
@@ -249,7 +249,7 @@ object DirectoryProvider
       val trustStore = configDir / "private" / filename
       trustStore := resource.contentBytes
       configDir / "private/private.conf" ++= s"""
-         |js7.https.truststores += {
+         |js7.web.https.truststores += {
          |  file = "$trustStore"
          |  store-password = "jobscheduler"
          |}
@@ -290,7 +290,7 @@ object DirectoryProvider
         if (provideClientCertificate) {
           configDir / "private/controller-https-truststore.p12" := ExportedControllerTrustStoreResource.contentBytes
           configDir / "private/private.conf" ++= s"""
-             |js7.https.truststores = [
+             |js7.web.https.truststores = [
              |  {
              |    file = "$configDir/private/controller-https-truststore.p12"
              |    store-password = "jobscheduler"
@@ -309,7 +309,7 @@ object DirectoryProvider
          |  }
          |}
          |js7.web.server.auth.https-client-authentication = $mutualHttps
-         |js7.https.keystore {
+         |js7.web.https.keystore {
          |  store-password = "jobscheduler"
          |  key-password = "jobscheduler"
          |}

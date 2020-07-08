@@ -53,7 +53,7 @@ final class AkkaWebServerTest extends AnyFreeSpec with BeforeAndAfterAll
       KeyStoreResource copyToFile directory / "private" / "https-keystore.p12"
       KeyStoreRef.fromConfig(
         ConfigFactory.parseString(
-          """js7.https.keystore {
+          """js7.web.https.keystore {
             |  key-password = "jobscheduler"
             |  store-password = "jobscheduler"
             |}

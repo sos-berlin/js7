@@ -147,7 +147,7 @@ object AgentConfiguration
       name = DefaultName,
       config = config)
     v = v.withKillScript(config.optionAs[String]("js7.job.execution.kill.script"))
-    //for (o <- config.optionAs("js7.https.port")(StringToServerInetSocketAddress)) {
+    //for (o <- config.optionAs("js7.web.server.https-port")(StringToServerInetSocketAddress)) {
     //  v = v addHttps o
     //}
     v

@@ -81,11 +81,11 @@ private object CommonConfigurationTest {
       dataDirectory = common.dataDirectory,
       webServerPorts = common.webServerPorts,
       ConfigFactory.parseString(
-        s"""js7.https.keystore {
+        s"""js7.web.https.keystore {
            |  store-password = "KEYSTORE-STORE-PASSWORD"
            |  key-password = "KEYSTORE-KEY-PASSWORD"
            |}
-           |js7.https.truststores = [
+           |js7.web.https.truststores = [
            |  {
            |    file = "${common.configDirectory}/private/https-truststore.p12"
            |    store-password = "TRUSTSTORE-PASSWORD"

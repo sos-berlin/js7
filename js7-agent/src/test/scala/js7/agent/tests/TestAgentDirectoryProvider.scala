@@ -53,7 +53,7 @@ trait TestAgentDirectoryProvider extends HasCloser
     // Certificate files are under src/test/resources and only available for module "agent".
     PrivateHttpJksResource.copyToFile(agentDirectory / "config/private/https-keystore.p12") withCloser delete
     (agentDirectory / "config/private/private.conf").append(
-      s"""js7.https.keystore {
+      s"""js7.web.https.keystore {
          |  store-password = "jobscheduler"
          |  key-password = "jobscheduler"
          |}

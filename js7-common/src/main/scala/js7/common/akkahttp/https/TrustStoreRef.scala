@@ -22,7 +22,7 @@ extends StoreRef
 
 object TrustStoreRef
 {
-  private val configKey = "js7.https.truststores"
+  private val configKey = "js7.web.https.truststores"
 
   def apply(file: Path, password: SecretString): TrustStoreRef =
     new TrustStoreRef(file.toAbsolutePath.toUri.toURL, password)

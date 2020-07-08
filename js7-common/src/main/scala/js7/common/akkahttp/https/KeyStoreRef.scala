@@ -33,10 +33,10 @@ object KeyStoreRef
   = new KeyStoreRef(file.toUri.toURL, storePassword, keyPassword)
 
   def fromConfig(config: Config, default: Path): Checked[KeyStoreRef] =
-    config.checkedPath("js7.https.keystore.store-password")(path =>
+    config.checkedPath("js7.web.https.keystore.store-password")(path =>
       Right(
         KeyStoreRef(
-          config.as[Path]("js7.https.keystore.file", default).toAbsolutePath,
+          config.as[Path]("js7.web.https.keystore.file", default).toAbsolutePath,
           storePassword = config.as[SecretString](path),
-          keyPassword = config.as[SecretString]("js7.https.keystore.key-password"))))
+          keyPassword = config.as[SecretString]("js7.web.https.keystore.key-password"))))
 }
