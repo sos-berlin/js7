@@ -52,7 +52,7 @@ object Dependencies
   val diffxScalaTest      = "com.softwaremill.diffx" %% "diffx-scalatest" % "0.3.28"
 
   val javaxInject         = "javax.inject" % "javax.inject" % "1"
-  val guice               = ("com.google.inject" % "guice" % "4.2.2" classifier "no_aop") :: javaxInject :: Nil
+  val guice               = ("com.google.inject" % "guice" % "4.2.3" classifier "no_aop") :: javaxInject :: Nil
 
   val typesafeConfig      = "com.typesafe" % "config" % "1.3.4"
   val akkaActor           = "com.typesafe.akka" %% "akka-actor" % akkaVersion
