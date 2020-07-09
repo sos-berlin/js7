@@ -14,7 +14,9 @@ import js7.common.time.JavaTimeConverters.AsScalaDuration
 import js7.common.utils.ByteUnits.toKiBGiB
 import monix.execution.schedulers.ExecutorScheduler
 import monix.execution.{ExecutionModel, UncaughtExceptionReporter}
+import scala.concurrent.duration.Duration
 import scala.util.control.NonFatal
+import scala.jdk.CollectionConverters._
 
 /**
   * @author Joacim Zschimmer
@@ -55,11 +57,33 @@ object ThreadPools
     }
   }
 
-  def newStandardScheduler(name: String, config: Config): ExecutorScheduler =
-    ExecutorScheduler.forkJoinDynamic(name,
+  def newStandardScheduler(name: String, config: Config, closer: Closer): ExecutorScheduler = {
+    val shutdownTimeout = config.getDuration("js7.thread-pools.standard.shutdown-timeout").toFiniteDuration
+    val scheduler = ExecutorScheduler.forkJoinDynamic(name,
       parallelism = config.as("js7.thread-pools.standard.parallelism")(ThreadCount),
       maxThreads = config.as("js7.thread-pools.standard.maximum")(ThreadCount),
       daemonic = true,
       reporter = uncaughtExceptionReporter,
       ExecutionModel.Default)
+
+    closer.onClose {
+      logger.debug("shutdown")
+      scheduler.shutdown()
+      if (shutdownTimeout > Duration.Zero) {
+        logger.debug(s"awaitTermination(${shutdownTimeout.pretty}) ...")
+        if (!scheduler.awaitTermination(shutdownTimeout)) {
+          logger.debug(s"awaitTermination(${shutdownTimeout.pretty}) timed out" +
+            Thread.getAllStackTraces.asScala
+              .filter(_._1.getName startsWith name)
+              .toSeq.sortBy(_._1.getId)
+              .map { case (thread, stacktrace) => s"\nThread #${ thread.getId } ${ thread.getName }:" + stacktrace.map(o => s"\n  $o").mkString }
+              .mkString)
+        } else {
+          logger.debug(s"awaitTermination() finished")
+        }
+      }
+    }
+
+    scheduler
+  }
 }

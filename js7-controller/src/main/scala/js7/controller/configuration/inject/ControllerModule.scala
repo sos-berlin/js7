@@ -25,6 +25,8 @@ import scala.concurrent.ExecutionContext
   */
 final class ControllerModule(configuration: ControllerConfiguration) extends AbstractModule
 {
+  import configuration.config
+
   @Provides @Singleton
   def eventIdGenerator(eventIdClock: EventIdClock): EventIdGenerator =
     new EventIdGenerator(eventIdClock)
@@ -46,14 +48,8 @@ final class ControllerModule(configuration: ControllerConfiguration) extends Abs
     scheduler
 
   @Provides @Singleton
-  def monixScheduler(): Scheduler = {
-    val scheduler = ThreadPools.newStandardScheduler(configuration.name, config())
-    closer().onClose {
-      scheduler.shutdown()
-      //scheduler.awaitTermination(xxx, SECONDS, ???)
-    }
-    scheduler
-  }
+  def monixScheduler(closer: Closer): Scheduler =
+    ThreadPools.newStandardScheduler(configuration.name, config, closer)
 
   @Provides @Singleton
   def actorRefFactory(actorSystem: ActorSystem): ActorRefFactory =
@@ -67,9 +63,9 @@ final class ControllerModule(configuration: ControllerConfiguration) extends Abs
       name,
       config = Some(configuration.config),
       Some(getClass.getClassLoader),
-      defaultExecutionContext = config().getBoolean("js7.akka.use-js7-thread-pool") ? executionContext)
+      defaultExecutionContext = config.getBoolean("js7.akka.use-js7-thread-pool") ? executionContext)
     closer.onClose {
-      Akkas.terminateAndWait(actorSystem, config().getDuration("js7.akka.shutdown-timeout").toFiniteDuration)
+      Akkas.terminateAndWait(actorSystem, config.getDuration("js7.akka.shutdown-timeout").toFiniteDuration)
     }
     DeadLetterActor.subscribe(actorSystem)
     actorSystem
@@ -80,7 +76,7 @@ final class ControllerModule(configuration: ControllerConfiguration) extends Abs
     new StandardEventBus[Any]
 
   @Provides @Singleton
-  def config(): Config =
+  def provideConfig(): Config =
     configuration.config
 
   @Provides @Singleton
