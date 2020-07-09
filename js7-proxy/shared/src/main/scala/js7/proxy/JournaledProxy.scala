@@ -3,6 +3,7 @@ package js7.proxy
 import cats.effect.Resource
 import io.circe.Decoder
 import js7.base.problem.Checked.Ops
+import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax._
@@ -115,15 +116,25 @@ object JournaledProxy
                 }
             }))
 
-  private def observeEvents(api: EventApi, after: EventId)
-    (implicit kd: Decoder[KeyedEvent[Event]])
+  private def observeEvents(api: EventApi, after: EventId)(implicit kd: Decoder[KeyedEvent[Event]])
   : Observable[Stamped[AnyKeyedEvent]] =
-    RecouplingStreamReader.observe[EventId, Stamped[AnyKeyedEvent], EventApi](
-      _.eventId,
-      api,
-      recouplingStreamReaderConf,
-      after = after,
-      after => HttpClient.liftProblem(
-        api.eventObservable(
-          EventRequest.singleClass[Event](after = after, delay = 50.ms, timeout = Some(55.s/*TODO*/)))))
+    new RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], EventApi](_.eventId, recouplingStreamReaderConf)
+    {
+      def getObservable(api: EventApi, after: EventId) =
+        HttpClient.liftProblem(
+          api.eventObservable(
+            EventRequest.singleClass[Event](after = after, delay = 50.ms, timeout = Some(55.s/*TODO*/))))
+
+      //override def onCoupled(api: EventApi, after: EventId) =
+      //  super.onCoupled(api, after)
+      //
+      //override protected def onCouplingFailed(api: EventApi, problem: Problem) =
+      //  super.onCouplingFailed(api, problem)
+      //
+      //override protected def onDecoupled =
+      //  super.onDecoupled
+
+      override def eof(index: EventId) = false
+      def stopRequested = false
+    }.observe(api, after)
 }

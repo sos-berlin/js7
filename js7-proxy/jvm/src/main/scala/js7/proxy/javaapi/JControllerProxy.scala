@@ -9,9 +9,14 @@ import java.util.concurrent.CompletableFuture
 import js7.base.annotation.javaApi
 import js7.base.circeutils.CirceUtils.{RichCirceEither, RichJson}
 import js7.base.problem.Problem
+import js7.base.utils.Closer
 import js7.base.web.Uri
+import js7.common.configuration.JobSchedulerConfiguration
+import js7.common.configutils.Configs
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.scalautil.Logger
+import js7.common.system.ThreadPools
+import js7.common.utils.JavaResource
 import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
 import js7.controller.data.{ControllerCommand, ControllerState}
 import js7.proxy.javaapi.JControllerProxy._
@@ -27,19 +32,18 @@ import monix.execution.schedulers.ExecutorScheduler
 final class JControllerProxy private(
   journaledProxy: JournaledProxy[ControllerState],
   val eventBus: JProxyEventBus,
-  apiResource: Resource[Task, HttpControllerApi])
+  apiResource: Resource[Task, HttpControllerApi],
+  closer: Closer)
   (implicit scheduler: ExecutorScheduler)
 extends AutoCloseable
 {
   private val commandProxy = new ControllerCommandProxy(apiResource)
 
-  //eventBus.underlying.subscribe[Event](e => _currentState = e.state)
-
-  /** If stop() has been called before, this call will not block the thread. */
+  /** If stop() has been called and completed before, this call will not block the thread. */
   def close() = {
     logger.debug("close() ...")
     stop().get()/*blocking*/
-    scheduler.shutdown()
+    closer.close()
     logger.debug("close() finished")
   }
 
@@ -82,10 +86,13 @@ extends AutoCloseable
 @javaApi
 object JControllerProxy
 {
-  private val logger = Logger(getClass)
-  private val MaxThreads = 100  // Some limit, just in case
-
   coupleScribeWithSlf4j()
+
+  private val logger = Logger(getClass)
+
+  private val defaultConfig =
+    Configs.loadResource(JavaResource("js7/proxy/configuration/proxy.conf"), internal = true)
+      .withFallback(JobSchedulerConfiguration.defaultConfig)
 
   def start(uri: String, credentials: JCredentials, httpsConfig: JHttpsConfig)
   : CompletableFuture[JControllerProxy] =
@@ -93,13 +100,14 @@ object JControllerProxy
 
   def start(uri: String, credentials: JCredentials, httpsConfig: JHttpsConfig, eventBus: JProxyEventBus, config: Config)
   : CompletableFuture[JControllerProxy] = {
-    implicit val scheduler = JThreadPools.newStandardScheduler(
-      parallelism = sys.runtime.availableProcessors, maxThreads = MaxThreads, name = "JControllerProxy")
+    val closer = new Closer
+    implicit val scheduler = ThreadPools.newStandardScheduler("JControllerProxy", config withFallback defaultConfig, closer)
 
-    val apiResource = AkkaHttpControllerApi.separateAkkaResource(Uri(uri), credentials.toUnderlying, httpsConfig.toScala, config = config)
+    val apiResource = AkkaHttpControllerApi.separateAkkaResource(Uri(uri), credentials.toUnderlying,
+      httpsConfig.toScala, config = config)
 
     JournaledProxy.start[ControllerState](apiResource, eventBus.underlying.publish)
-      .map(proxy => new JControllerProxy(proxy, eventBus, apiResource)(scheduler))
+      .map(proxy => new JControllerProxy(proxy, eventBus, apiResource, closer))
       .runToFuture
       .asJava
   }
