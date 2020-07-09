@@ -26,8 +26,8 @@ import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.Futures.promiseFuture
 import js7.common.scalautil.Logger
+import js7.common.system.startup.StartUp
 import js7.core.command.CommandMeta
-import js7.core.startup.StartUp
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly

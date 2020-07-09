@@ -6,7 +6,7 @@ import js7.base.time.ScalaTime._
 import js7.base.web.Uri
 import js7.common.configutils.Configs._
 import js7.common.http.configuration.RecouplingStreamReaderConf
-import js7.core.message.ProblemCodeMessages
+import js7.common.message.ProblemCodeMessages
 import js7.data.node.NodeId
 import org.scalatest.freespec.AnyFreeSpec
 

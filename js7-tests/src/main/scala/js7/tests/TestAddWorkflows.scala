@@ -1,7 +1,6 @@
 package js7.tests
 
 import cats.syntax.option._
-import js7.common.configutils.Configs._
 import java.nio.file.Path
 import js7.base.auth.UserAndPassword
 import js7.base.convert.AsJava.StringAsPath
@@ -10,10 +9,11 @@ import js7.base.time.Stopwatch
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.web.Uri
 import js7.common.commandline.CommandLineArguments
+import js7.common.configutils.Configs._
 import js7.common.scalautil.MonixUtils.syntax._
+import js7.common.system.startup.JavaMain.runMain
 import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.data.ControllerCommand.UpdateRepo
-import js7.core.startup.JavaMain.runMain
 import js7.data.agent.AgentRefPath
 import js7.data.filebased.{FileBased, FileBasedSigner, VersionId}
 import js7.data.job.ExecutablePath

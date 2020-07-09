@@ -1,4 +1,4 @@
-package js7.core.startup
+package js7.common.system.startup
 
 import java.io.File
 import java.nio.file.Path

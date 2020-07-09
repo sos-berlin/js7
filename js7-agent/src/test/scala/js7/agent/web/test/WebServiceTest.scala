@@ -12,8 +12,8 @@ import js7.common.akkahttp.WebLogDirectives
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
+import js7.common.message.ProblemCodeMessages
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.core.message.ProblemCodeMessages
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import scala.concurrent.duration._

@@ -1,4 +1,4 @@
-package js7.core.message
+package js7.common.message
 
 import js7.base.problem.{CodedMessages, ProblemCode}
 import js7.common.configutils.Configs
@@ -11,7 +11,7 @@ import scala.util.Try
   */
 object ProblemCodeMessages
 {
-  private val resource = JavaResource("js7/core/message/messages-en.conf")
+  private val resource = JavaResource("js7/common/message/messages-en.conf")
   private val config = Configs.loadResource(resource, internal = true)
 
   private[message] val problemCodeToPattern: ProblemCode => Option[String] =

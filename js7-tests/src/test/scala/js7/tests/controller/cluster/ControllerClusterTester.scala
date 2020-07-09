@@ -10,6 +10,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.common.auth.SecretStringGenerator
 import js7.common.configutils.Configs._
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
+import js7.common.message.ProblemCodeMessages
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.system.OperatingSystem.isWindows
 import js7.common.time.WaitForCondition.waitForCondition
@@ -17,7 +18,6 @@ import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.RunningController
 import js7.controller.data.ControllerCommand.ShutDown
 import js7.core.event.journal.files.JournalFiles.listJournalFiles
-import js7.core.message.ProblemCodeMessages
 import js7.data.agent.AgentRefPath
 import js7.data.job.ExecutablePath
 import js7.data.node.NodeId

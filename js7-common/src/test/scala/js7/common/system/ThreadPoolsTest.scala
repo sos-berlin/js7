@@ -1,8 +1,7 @@
-package js7.core.system
+package js7.common.system
 
 import js7.common.configutils.Configs._
-import js7.common.configutils.Configs.ConvertibleConfig
-import js7.core.system.ThreadPools._
+import js7.common.system.ThreadPools._
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

@@ -12,9 +12,9 @@ import js7.common.commandline.CommandLineArguments
 import js7.common.configutils.Configs.logConfig
 import js7.common.scalautil.Futures.implicits.SuccessFuture
 import js7.common.scalautil.Logger
-import js7.core.startup.JavaMain.withShutdownHooks
-import js7.core.startup.JavaMainLockfileSupport.lockAndRunMain
-import js7.core.startup.StartUp.printlnWithClock
+import js7.common.system.startup.JavaMain.withShutdownHooks
+import js7.common.system.startup.JavaMainLockfileSupport.lockAndRunMain
+import js7.common.system.startup.StartUp.printlnWithClock
 
 /**
  * JS7 Agent Server.

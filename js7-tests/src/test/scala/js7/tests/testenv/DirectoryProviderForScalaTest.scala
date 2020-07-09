@@ -6,9 +6,9 @@ import com.google.inject.util.Modules.EMPTY_MODULE
 import com.typesafe.config.{Config, ConfigFactory}
 import js7.base.crypt.MessageSigner
 import js7.base.utils.HasCloser
+import js7.common.message.ProblemCodeMessages
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.common.utils.JavaResource
-import js7.core.message.ProblemCodeMessages
 import js7.data.agent.AgentRefPath
 import js7.data.filebased.FileBased
 import org.scalatest.BeforeAndAfterAll

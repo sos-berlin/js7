@@ -5,9 +5,9 @@ import js7.base.problem.Checked
 import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
 import js7.base.web.Uri
+import js7.common.message.ProblemCodeMessages
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.core.cluster.ClusterWatch._
-import js7.core.message.ProblemCodeMessages
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.controller.ControllerId

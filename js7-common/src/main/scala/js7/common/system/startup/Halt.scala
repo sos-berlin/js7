@@ -1,8 +1,8 @@
-package js7.core.startup
+package js7.common.system.startup
 
 import js7.common.log.Log4j
 import js7.common.scalautil.Logger
-import js7.core.startup.StartUp.printlnWithClockIgnoringException
+import js7.common.system.startup.StartUp.printlnWithClockIgnoringException
 
 /**
   * @author Joacim Zschimmer

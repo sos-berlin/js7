@@ -1,14 +1,14 @@
 package js7.controller.web.controller.api.test
 
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
-import js7.common.configutils.Configs._
 import js7.base.auth.SimpleUser
 import js7.common.akkahttp.ExceptionHandling
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
+import js7.common.configutils.Configs._
+import js7.common.message.ProblemCodeMessages
 import js7.controller.configuration.ControllerConfiguration.DefaultConfig
-import js7.core.message.ProblemCodeMessages
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Suite
 import scala.concurrent.duration._

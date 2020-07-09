@@ -1,4 +1,4 @@
-package js7.core.message
+package js7.common.message
 
 import js7.base.problem.{ProblemCode, TestCodeProblem}
 import org.scalatest.freespec.AnyFreeSpec

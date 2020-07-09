@@ -28,6 +28,7 @@ import js7.common.configutils.Configs.ConvertibleConfig
 import js7.common.event.{EventIdGenerator, RealEventWatch}
 import js7.common.http.RecouplingStreamReader
 import js7.common.scalautil.Logger
+import js7.common.system.startup.Halt.haltJava
 import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
 import js7.controller.cluster.Cluster._
 import js7.controller.cluster.ClusterCommon.{clusterEventAndStateToString, truncateFile}
@@ -42,7 +43,6 @@ import js7.core.event.journal.recover.{JournaledStateRecoverer, Recovered}
 import js7.core.event.journal.{JournalActor, JournalConf}
 import js7.core.event.state.JournaledStatePersistence
 import js7.core.problems.{ClusterNodeIsNotBackupProblem, ClusterNodesAlreadyAppointed, MissingPassiveClusterNodeHeartbeatProblem, PrimaryMayNotBecomeBackupProblem}
-import js7.core.startup.Halt.haltJava
 import js7.data.cluster.ClusterCommand.{ClusterInhibitActivation, ClusterStartBackupNode}
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{Coupled, CoupledActiveShutDown, Decoupled, Empty, FailedOver, HasNodes, NodesAppointed, PassiveLost, PreparedToBeCoupled}
