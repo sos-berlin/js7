@@ -35,7 +35,7 @@ final class HasUserAndPasswordTest extends AnyFreeSpec with SessionRouteTester
         protected def trustStoreRefs = Nil
       }
     }).use(api =>
-      api.retryUntilReachable {
+      api.retryUntilReachable() {
         import api.implicitSessionToken
         progress.flatMap(mvar =>
           Task.defer {

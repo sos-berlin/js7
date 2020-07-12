@@ -42,7 +42,7 @@ extends ClusterWatchApi with AkkaHttpClient with HttpSessionApi
   def applyEvents(from: NodeId, events: Seq[ClusterEvent], reportedClusterState: ClusterState, force: Boolean = false)
   : Task[Checked[Completed]] =
     liftProblem(
-      retryUntilReachable(
+      retryUntilReachable()(
         post[ClusterWatchMessage, JsonObject](clusterUri, ClusterWatchEvents(from, events, reportedClusterState, force))
       ) .onErrorRestartLoop(()) { (throwable, _, retry) =>
           logger.warn(throwable.toStringWithCauses)
@@ -60,7 +60,7 @@ extends ClusterWatchApi with AkkaHttpClient with HttpSessionApi
 
   def heartbeat(from: NodeId, reportedClusterState: ClusterState): Task[Checked[Completed]] =
     liftProblem(
-      retryUntilReachable(
+      retryUntilReachable()(
         post[ClusterWatchMessage, JsonObject](clusterUri, ClusterWatchHeartbeat(from, reportedClusterState))
       ).map((_: JsonObject) => Completed))
 

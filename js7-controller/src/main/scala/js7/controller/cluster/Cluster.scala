@@ -751,7 +751,7 @@ final class Cluster[S <: JournaledState[S]: Diff](
           Task {
             heartbeatSender := Cancelable.empty
           } >>
-            clusterWatch.retryUntilReachable(
+            clusterWatch.retryUntilReachable()(
               clusterWatch.applyEvents(from = ownId, events, clusterState)
             ) .map(_.map { completed =>
                 scheduleHeartbeats(clusterState, delay = true)
@@ -785,7 +785,7 @@ final class Cluster[S <: JournaledState[S]: Diff](
             currentClusterState.flatMap {
               case clusterState: ClusterState.HasNodes if clusterState.activeId == ownId && !cancelled =>
                 Task(now).flatMap(since =>
-                  clusterWatch.retryUntilReachable(
+                  clusterWatch.retryUntilReachable()(
                     clusterWatch.heartbeat(from = ownId, clusterState)
                   ) .materializeIntoChecked
                     .flatMap { checked =>

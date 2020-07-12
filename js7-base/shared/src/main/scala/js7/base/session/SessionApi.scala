@@ -3,6 +3,7 @@ package js7.base.session
 import js7.base.auth.UserAndPassword
 import js7.base.generic.Completed
 import js7.base.problem.Problems.InvalidSessionTokenProblem
+import js7.base.session.SessionApi._
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.HttpClient.HttpException
@@ -22,7 +23,7 @@ trait SessionApi
   def clearSession(): Unit
 
   // overrideable
-  def retryUntilReachable[A](body: => Task[A]): Task[A] =
+  def retryUntilReachable[A](onError: Throwable => Task[Boolean] = onErrorDoNothing)(body: => Task[A]): Task[A] =
     body
 
   final def logoutOrTimeout(timeout: FiniteDuration): Task[Completed] =
@@ -96,20 +97,24 @@ object SessionApi
     protected val loginDelays: () => Iterator[FiniteDuration] =
       () => defaultLoginDelays()
 
-    override final def retryUntilReachable[A](body: => Task[A]): Task[A] =
+    override final def retryUntilReachable[A](onError: Throwable => Task[Boolean] = logError)(body: => Task[A]): Task[A] =
       Task.defer {
         val delays = loginDelays()
-        loginUntilReachable(delays, onlyIfNotLoggedIn = true)
+        loginUntilReachable(delays, onError = onError, onlyIfNotLoggedIn = true)
           .flatMap((_: Completed) =>
             body.onErrorRestartLoop(()) { (throwable, _, retry) =>
               (throwable match {
                 case HttpException.HasProblem(problem) if problem.is(InvalidSessionTokenProblem) && delays.hasNext =>
+                  // Do not call onError on this minor problem
                   scribe.debug(problem.toString)
-                  loginUntilReachable(delays)
+                  loginUntilReachable(delays, onError = onError)
 
                 case e: HttpException if isTemporaryUnreachable(e) && delays.hasNext =>
-                  scribe.warn(s"$toString: ${e.toStringWithCauses}")
-                  loginUntilReachable(delays, onlyIfNotLoggedIn = true)
+                  onError(e).flatMap {
+                    case false => Task.raiseError(e)
+                    case true =>
+                      loginUntilReachable(delays, onError = onError, onlyIfNotLoggedIn = true)
+                  }
 
                 case _ =>
                   Task.raiseError(throwable)
@@ -128,8 +133,16 @@ object SessionApi
       onlyIfNotLoggedIn: Boolean = false)
     : Task[Completed] =
       loginUntilReachable_(userAndPassword, delays, onError, onlyIfNotLoggedIn = onlyIfNotLoggedIn)
+
+    private def logError(throwable: Throwable) = Task {
+      scribe.warn(s"$toString: ${throwable.toStringWithCauses}")
+      scribe.debug(throwable.toStringWithCauses)
+      true
+    }
   }
 
   def defaultLoginDelays(): Iterator[FiniteDuration] =
     Iterator(1.s, 1.s, 1.s, 2.s, 3.s, 5.s) ++ Iterator.continually(10.s)/*TODO*/
+
+  private def onErrorDoNothing(throwable: Throwable) = Task.pure(false)
 }

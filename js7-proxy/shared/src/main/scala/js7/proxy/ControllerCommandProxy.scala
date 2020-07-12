@@ -10,7 +10,7 @@ final class ControllerCommandProxy(apiResource: Resource[Task, HttpControllerApi
 {
   def execute(command: ControllerCommand): Task[Checked[command.Response]] =
     apiResource.use(api =>
-      api.retryUntilReachable(
+      api.retryUntilReachable()(
         api.httpClient.liftProblem(
           api.executeCommand(command))))
 }
