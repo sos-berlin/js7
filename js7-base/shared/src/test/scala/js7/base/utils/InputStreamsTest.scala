@@ -41,9 +41,13 @@ final class InputStreamsTest extends AnyFreeSpec
   "inputStreamToByteArrayLimited" in {
     val bytes = new Array[Byte](101)
     Random.nextBytes(bytes)
-    assert(inputStreamToByteArrayLimited(new ByteArrayInputStream(bytes), 99).left.get sameElements bytes.take(99))
-    assert(inputStreamToByteArrayLimited(new ByteArrayInputStream(bytes), 100).left.get sameElements bytes.take(100))
-    assert(inputStreamToByteArrayLimited(new ByteArrayInputStream(bytes), 101).getOrElse(fail()) sameElements bytes)
-    assert(inputStreamToByteArrayLimited(new ByteArrayInputStream(bytes), 102).getOrElse(fail()) sameElements bytes)
+    assert(inputStreamToByteArrayLimited(new ByteArrayInputStream(bytes), 99).swap.getOrElse(fail())
+      sameElements bytes.take(99))
+    assert(inputStreamToByteArrayLimited(new ByteArrayInputStream(bytes), 100).swap.getOrElse(fail())
+      sameElements bytes.take(100))
+    assert(inputStreamToByteArrayLimited(new ByteArrayInputStream(bytes), 101).getOrElse(fail())
+      sameElements bytes)
+    assert(inputStreamToByteArrayLimited(new ByteArrayInputStream(bytes), 102).getOrElse(fail())
+      sameElements bytes)
   }
 }
