@@ -9,9 +9,11 @@ import js7.data.event.KeyedEvent;
 import js7.data.event.Stamped;
 import js7.data.order.OrderEvent;
 import js7.data.order.OrderId;
+import js7.proxy.ProxyEvent;
 import js7.proxy.javaapi.JControllerProxy;
+import js7.proxy.javaapi.JControllerEventBus;
 import js7.proxy.javaapi.JCredentials;
-import js7.proxy.javaapi.JProxyEventBus;
+import js7.proxy.javaapi.JStandardEventBus;
 import js7.proxy.javaapi.data.JControllerState;
 import js7.proxy.javaapi.data.JHttpsConfig;
 import static java.lang.System.out;
@@ -76,14 +78,18 @@ public final class TestJControllerProxy implements AutoCloseable
     }
 
     private static CompletableFuture<Void> start(String uri, JCredentials credentials) {
-        JProxyEventBus eventBus = new JProxyEventBus();
+        JStandardEventBus<ProxyEvent> proxyEventBus = new JStandardEventBus<>(ProxyEvent.class);
+        proxyEventBus.subscribe(
+            asList(ProxyEvent.class),
+            proxyEvent -> out.println(proxyEvent));
+        JControllerEventBus eventBus = new JControllerEventBus();
         eventBus.<OrderEvent>subscribe(
             asList(OrderEvent.OrderStarted$.class, OrderEvent.OrderFinished$.class),
             (stampedEvent, controllerState) -> out.println(orderEventToString(stampedEvent))
         );
 
         return JControllerProxy
-            .start(uri, credentials, JHttpsConfig.empty(), eventBus, ConfigFactory.empty())
+            .start(uri, credentials, JHttpsConfig.empty(), proxyEventBus, eventBus, ConfigFactory.empty())
             .thenAccept(proxy -> {
                 try (TestJControllerProxy test = new TestJControllerProxy(proxy)) {
                     test.run();

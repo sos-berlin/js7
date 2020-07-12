@@ -1,12 +1,15 @@
 package js7.tests.controller.proxy
 
 import js7.base.auth.{UserAndPassword, UserId}
+import js7.base.eventbus.StandardEventBus
 import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
+import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import js7.controller.RunningController
 import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.data.ControllerState
 import js7.data.agent.AgentRefPath
@@ -17,7 +20,7 @@ import js7.data.workflow.WorkflowPath
 import js7.data.workflow.parser.WorkflowParser
 import js7.proxy.javaapi.JCredentials
 import js7.proxy.javaapi.data.JHttpsConfig
-import js7.proxy.{JournaledProxy, ProxyEventBus}
+import js7.proxy.{JournaledProxy, JournaledStateEventBus, ProxyEvent}
 import js7.tests.controller.proxy.JournaledProxyTest._
 import js7.tests.testenv.DirectoryProvider.script
 import js7.tests.testenv.DirectoryProviderForScalaTest
@@ -41,12 +44,12 @@ final class JournaledProxyTest extends AnyFreeSpec with DirectoryProviderForScal
   "JournaledProxy[JControllerState]" in {
     directoryProvider.run { (controller, _) =>
       val controllerApiResource = AkkaHttpControllerApi.separateAkkaResource(controller.localUri, Some(userAndPassword), name = "JournaledProxy")
-      val eventBus = new ProxyEventBus[ControllerState]
-      //val eventBus = new ProxyEventBus[JControllerState]
-      val proxy = JournaledProxy.start(controllerApiResource, eventBus.publish) await 99.s
+      val proxyEventBus = new StandardEventBus[ProxyEvent]
+      val controllerEventBus = new JournaledStateEventBus[ControllerState]
+      val proxy = JournaledProxy.start[ControllerState](controllerApiResource, proxyEventBus.publish, controllerEventBus.publish) await 99.s
       try {
-        val whenProcessed = eventBus.when[OrderProcessed].runToFuture
-        val whenFinished = eventBus.when[OrderFinished.type].runToFuture
+        val whenProcessed = controllerEventBus.when[OrderProcessed].runToFuture
+        val whenFinished = controllerEventBus.when[OrderFinished.type].runToFuture
         controller.addOrder(FreshOrder(OrderId("🔺"), workflow.id.path)).runAsyncAndForget
 
         val processed = whenProcessed.await(99.s)
@@ -59,8 +62,12 @@ final class JournaledProxyTest extends AnyFreeSpec with DirectoryProviderForScal
   }
 
   "JControllerProxy" in {
-    directoryProvider.run { (controller, _) =>
-      JControllerProxyTester.start(controller.localUri.string, JCredentials.JUserAndPassword(userAndPassword), JHttpsConfig.empty)
+    directoryProvider.runAgents() { _ =>
+      val port = findFreeTcpPort()
+      lazy val controller: RunningController = directoryProvider.startController(httpPort = Some(port)).await(99.s)
+      val startController: Runnable = () => controller
+      val uri = s"http://127.0.0.1:$port"
+      JControllerProxyTester.start(uri, JCredentials.JUserAndPassword(userAndPassword), JHttpsConfig.empty, startController)
         .asScala
         .flatMap { tester =>
           tester.test()

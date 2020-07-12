@@ -22,7 +22,7 @@ import js7.controller.data.{ControllerCommand, ControllerState}
 import js7.proxy.javaapi.JControllerProxy._
 import js7.proxy.javaapi.data.{JControllerState, JHttpsConfig}
 import js7.proxy.javaapi.utils.VavrConversions._
-import js7.proxy.{ControllerCommandProxy, JournaledProxy}
+import js7.proxy.{ControllerCommandProxy, JournaledProxy, ProxyEvent}
 import monix.eval.Task
 import monix.execution.FutureUtils.Java8Extensions
 import monix.execution.schedulers.ExecutorScheduler
@@ -31,7 +31,8 @@ import monix.execution.schedulers.ExecutorScheduler
 @javaApi
 final class JControllerProxy private(
   journaledProxy: JournaledProxy[ControllerState],
-  val eventBus: JProxyEventBus,
+  val proxyEventBus: JStandardEventBus[ProxyEvent],
+  val controllerEventBus: JControllerEventBus,
   apiResource: Resource[Task, HttpControllerApi],
   closer: Closer)
   (implicit scheduler: ExecutorScheduler)
@@ -96,9 +97,15 @@ object JControllerProxy
 
   def start(uri: String, credentials: JCredentials, httpsConfig: JHttpsConfig)
   : CompletableFuture[JControllerProxy] =
-    start(uri, credentials, httpsConfig, new JProxyEventBus, ConfigFactory.empty)
+    start(uri, credentials, httpsConfig,
+      new JStandardEventBus[ProxyEvent],
+      new JControllerEventBus,
+      ConfigFactory.empty)
 
-  def start(uri: String, credentials: JCredentials, httpsConfig: JHttpsConfig, eventBus: JProxyEventBus, config: Config)
+  def start(uri: String, credentials: JCredentials, httpsConfig: JHttpsConfig,
+    proxyEventBus: JStandardEventBus[ProxyEvent],
+    controllerEventBus: JControllerEventBus,
+    config: Config)
   : CompletableFuture[JControllerProxy] = {
     val closer = new Closer
     implicit val scheduler = ThreadPools.newStandardScheduler("JControllerProxy", config withFallback defaultConfig, closer)
@@ -106,8 +113,8 @@ object JControllerProxy
     val apiResource = AkkaHttpControllerApi.separateAkkaResource(Uri(uri), credentials.toUnderlying,
       httpsConfig.toScala, config = config)
 
-    JournaledProxy.start[ControllerState](apiResource, eventBus.underlying.publish)
-      .map(proxy => new JControllerProxy(proxy, eventBus, apiResource, closer))
+    JournaledProxy.start[ControllerState](apiResource, proxyEventBus.underlying.publish, controllerEventBus.underlying.publish)
+      .map(proxy => new JControllerProxy(proxy, proxyEventBus, controllerEventBus, apiResource, closer))
       .runToFuture
       .asJava
   }

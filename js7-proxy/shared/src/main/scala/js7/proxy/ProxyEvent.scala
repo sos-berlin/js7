@@ -1,10 +1,18 @@
 package js7.proxy
 
-import js7.data.event.NoKeyEvent
+import js7.base.problem.Problem
+import js7.data.event.EventId
 
-sealed trait ProxyEvent extends NoKeyEvent
+sealed trait ProxyEvent
 
 object ProxyEvent
 {
-  case object ProxyStarted extends ProxyEvent
+  final case class ProxyCouplingError(problem: Problem)
+  extends ProxyEvent
+
+  final case class ProxyCoupled(after: EventId)
+  extends ProxyEvent
+
+  final case object ProxyDecoupled
+  extends ProxyEvent
 }

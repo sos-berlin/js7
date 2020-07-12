@@ -19,7 +19,8 @@ import js7.controller.data.ControllerSnapshots.SnapshotJsonCodec
 import js7.controller.data.ControllerState
 import js7.core.web.StampedStreamingSupport.stampedCirceStreamingSupport
 import js7.data.event.{Event, EventId}
-import js7.proxy.{JournaledProxy, ProxyEventBus}
+import js7.proxy.javaapi.JStandardEventBus
+import js7.proxy.{JournaledProxy, JournaledStateEventBus, ProxyEvent}
 import js7.tests.controller.proxy.TestControllerProxy._
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -31,10 +32,11 @@ private final class TestControllerProxy(controllerUri: Uri, httpPort: Int)(impli
     Akkas.actorSystemResource("TestControllerProxy")
       .use { implicit actorSystem =>
         val apiResource = AkkaHttpControllerApi.resource(controllerUri, userAndPassword)
-        val eventBus = new ProxyEventBus[ControllerState]
+        val proxyEventBus = new JStandardEventBus[ProxyEvent]
+        val eventBus = new JournaledStateEventBus[ControllerState]
         var currentState: (EventId, ControllerState) = null
         eventBus.subscribe[Event] { e => currentState = e.stampedEvent.eventId -> e.state }
-        JournaledProxy.start[ControllerState](apiResource, eventBus.publish)
+        JournaledProxy.start[ControllerState](apiResource, proxyEventBus.underlying.publish, eventBus.publish)
           .flatMap { proxy =>
             AkkaWebServer.resourceForHttp(httpPort, webServiceRoute(Task(currentState)))
               .use(_ =>

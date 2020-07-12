@@ -1,7 +1,7 @@
 package js7.proxy
 
 import cats.effect.Resource
-import io.circe.Decoder
+import js7.base.generic.Completed
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
@@ -11,8 +11,8 @@ import js7.base.utils.SetOnce
 import js7.base.web.HttpClient
 import js7.common.http.RecouplingStreamReader
 import js7.common.http.configuration.RecouplingStreamReaderConf
-import js7.data.event.{AnyKeyedEvent, Event, EventApi, EventId, EventRequest, JournaledState, KeyedEvent, Stamped}
-import js7.proxy.ProxyEvent.ProxyStarted
+import js7.data.event.{AnyKeyedEvent, Event, EventApi, EventId, EventRequest, JournaledState, NoKeyEvent, Stamped}
+import js7.proxy.ProxyEvent.{ProxyCoupled, ProxyCouplingError, ProxyDecoupled}
 import monix.eval.Task
 import monix.execution.CancelableFuture
 import monix.reactive.Observable
@@ -75,66 +75,88 @@ object JournaledProxy
 
   private val recouplingStreamReaderConf = RecouplingStreamReaderConf(timeout = 55.s, delay = 1.s)
 
-  def start[S <: JournaledState[S]](apiResource: ApiResource, onEvent: EventAndState[Event, S] => Unit)
+  def start[S <: JournaledState[S]](
+    apiResource: ApiResource,
+    onProxyEvent: ProxyEvent => Unit,
+    onEvent: EventAndState[Event, S] => Unit)
     (implicit S: JournaledState.Companion[S])
   : Task[JournaledProxy[S]] = {
-    val proxy = JournaledProxy.prepare[S](apiResource, onEvent)
+    val proxy = JournaledProxy.prepare[S](apiResource, onProxyEvent, onEvent)
     proxy.start().map(_ => proxy)
   }
 
   private def prepare[S <: JournaledState[S]](
     apiResource: ApiResource,
+    onProxyEvent: ProxyEvent => Unit,
     onEvent: EventAndState[Event, S] => Unit)
     (implicit S: JournaledState.Companion[S])
   : JournaledProxy[S] =
-    new JournaledProxy[S](observe(apiResource), onEvent)
+  {
+    import S.keyedEventJsonDecoder
 
-  private def observe[S <: JournaledState[S]](apiResource: ApiResource)
-    (implicit S: JournaledState.Companion[S])
-  : Observable[EventAndState[Event, S]] =
-    Observable.fromResource(apiResource)
-      .flatMap(api =>
-        Observable.tailRecM(())(_ =>
-          Observable
-            .fromTask(
-              api.loginUntilReachable() >>
-                api.retryUntilReachable(api.snapshot)
-                  .map(_.map(snapshot => snapshot.eventId -> S.fromIterable(snapshot.value).withEventId(snapshot.eventId))))
-            .map(_.orThrow/*???*/)
-            .flatMap { case (eventId, snapshotState) =>
-              val seed = EventAndState(Stamped(eventId, KeyedEvent(ProxyStarted): AnyKeyedEvent), snapshotState)
-              import S.keyedEventJsonDecoder
-              observeEvents(api, after = eventId)
-                .scan0(seed)((s, stampedEvent) =>
-                  EventAndState(stampedEvent, s.state.applyEvent(stampedEvent.value).orThrow/*TODO Restart*/))
-                .map(Right.apply)
-                .onErrorHandleWith { t =>
-                  scribe.error(t.toStringWithCauses, t.nullIfNoStackTrace)
-                  scribe.warn("Restarting observation from a new snapshot, loosing some events")
-                  Observable.pure(Left(())/*TODO Observable.tailRecM: Left leaks memory, https://github.com/monix/monix/issues/791*/)
-                    .delayExecution(1.s/*TODO*/)
-                }
-            }))
+    def observe: Observable[EventAndState[Event, S]] =
+      Observable.fromResource(apiResource)
+        .flatMap(api =>
+          Observable.tailRecM(())(_ =>
+            Observable
+              .fromTask(
+                api.loginUntilReachable(onError = onCouplingError) >>
+                  api.retryUntilReachable(onError = onCouplingError)(api.snapshot)
+                    .map(_.map(snapshot => snapshot.eventId -> S.fromIterable(snapshot.value).withEventId(snapshot.eventId))))
+              .map(_.orThrow/*???*/)
+              .flatMap { case (eventId, snapshotState) =>
+                val seed = EventAndState(Stamped(eventId, ProxyStartedSeed: AnyKeyedEvent), snapshotState)
+                val recouplingStreamReader = newRecouplingStreamReader()
+                recouplingStreamReader.observe(api, after = eventId)
+                  .scan0(seed)((s, stampedEvent) =>
+                    EventAndState(stampedEvent, s.state.applyEvent(stampedEvent.value).orThrow/*TODO Restart*/))
+                  .map(Right.apply)
+                  .onErrorHandleWith { t =>
+                    scribe.error(t.toStringWithCauses, t.nullIfNoStackTrace)
+                    scribe.warn("Restarting observation from a new snapshot, loosing some events")
+                    Observable.pure(Left(())/*TODO Observable.tailRecM: Left leaks memory, https://github.com/monix/monix/issues/791*/)
+                      .delayExecution(1.s/*TODO*/)
+                  }
+                  .guarantee(recouplingStreamReader.decouple.map(_ => ()))
+              }))
 
-  private def observeEvents(api: EventApi, after: EventId)(implicit kd: Decoder[KeyedEvent[Event]])
-  : Observable[Stamped[AnyKeyedEvent]] =
-    new RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], EventApi](_.eventId, recouplingStreamReaderConf)
-    {
-      def getObservable(api: EventApi, after: EventId) =
-        HttpClient.liftProblem(
-          api.eventObservable(
-            EventRequest.singleClass[Event](after = after, delay = 50.ms, timeout = Some(55.s/*TODO*/))))
+    def onCouplingError(throwable: Throwable) = Task {
+      onProxyEvent(ProxyCouplingError(Problem.fromThrowable(throwable)))
+      true
+    }
 
-      //override def onCoupled(api: EventApi, after: EventId) =
-      //  super.onCoupled(api, after)
-      //
-      //override protected def onCouplingFailed(api: EventApi, problem: Problem) =
-      //  super.onCouplingFailed(api, problem)
-      //
-      //override protected def onDecoupled =
-      //  super.onDecoupled
+    def newRecouplingStreamReader() =
+      new RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], EventApi](_.eventId, recouplingStreamReaderConf)
+      {
+        def getObservable(api: EventApi, after: EventId) =
+          HttpClient.liftProblem(
+            api.eventObservable(
+              EventRequest.singleClass[Event](after = after, delay = 50.ms, timeout = Some(55.s/*TODO*/))))
 
-      override def eof(index: EventId) = false
-      def stopRequested = false
-    }.observe(api, after)
+        override def onCoupled(api: EventApi, after: EventId) =
+          Task {
+            onProxyEvent(ProxyCoupled(after))
+            Completed
+          }
+
+        override protected def onCouplingFailed(api: EventApi, problem: Problem) =
+          super.onCouplingFailed(api, problem) >>
+            Task {
+              onProxyEvent(ProxyCouplingError(problem))
+              Completed
+            }
+
+        override protected val onDecoupled =
+          Task {
+            onProxyEvent(ProxyDecoupled)
+            Completed
+          }
+
+        def stopRequested = false
+      }
+
+    new JournaledProxy[S](observe, onEvent)
+  }
+
+  private case object ProxyStartedSeed extends NoKeyEvent
 }

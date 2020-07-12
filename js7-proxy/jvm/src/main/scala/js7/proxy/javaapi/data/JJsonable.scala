@@ -10,10 +10,6 @@ import js7.proxy.javaapi.utils.VavrConversions._
 @javaApi
 trait JJsonable[A <: JJsonable[A]] extends JavaWrapper
 {
-  protected type Underlying
-
-  protected def underlying: Underlying
-
   protected def companion: JJsonable.Companion[A]
 
   final def toJson: String = {

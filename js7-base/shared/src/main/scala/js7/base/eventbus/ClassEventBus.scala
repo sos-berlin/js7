@@ -30,7 +30,7 @@ trait ClassEventBus[E] extends EventPublisher[E]
           for (subscription <- subscriptions) {
             try subscription.call(event)
             catch { case NonFatal(t) =>
-              scribe.warn(s"Error in event handler ignore d: $t", t)
+              scribe.error(s"Error in event handler ignored: $t", t)
             }
           }
       }

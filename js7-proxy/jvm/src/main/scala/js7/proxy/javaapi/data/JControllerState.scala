@@ -14,10 +14,8 @@ import scala.jdk.StreamConverters._
 
 @javaApi
 final class JControllerState(val underlying: ControllerState)
-extends JavaWrapper
+extends JJournaledState[JControllerState, ControllerState]
 {
-  protected type Underlying = ControllerState
-
   def eventId: Long =
     underlying.eventId
 
@@ -46,4 +44,11 @@ extends JavaWrapper
       .filter(predicate)
       .map(JOrder.apply)
       .asJavaSeqStream
+}
+
+object JControllerState
+{
+  implicit val companion = new JJournaledState.Companion[JControllerState, ControllerState] {
+    def apply(underlying: ControllerState) = new JControllerState(underlying)
+  }
 }
