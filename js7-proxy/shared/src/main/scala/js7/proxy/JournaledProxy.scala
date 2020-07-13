@@ -51,18 +51,16 @@ final class JournaledProxy[S <: JournaledState[S]] private[proxy](
     }
 
   private def observe: Observable[EventAndState[Event, S]] =
-    subscriber =>
-      observable
-        .map { eventAndState =>
-          _currentState = eventAndState.stampedEvent.eventId -> eventAndState.state
-          currentStateFilled.trySuccess(())
-          onEvent(eventAndState)
-          eventAndState
-        }
-        .guarantee(Task {
-          observingStopped.success(())
-        })
-        .subscribe(subscriber)
+    observable
+      .map { eventAndState =>
+        _currentState = eventAndState.stampedEvent.eventId -> eventAndState.state
+        currentStateFilled.trySuccess(())
+        onEvent(eventAndState)
+        eventAndState
+      }
+      .guarantee(Task {
+        observingStopped.success(())
+      })
 
   def currentState: (EventId, S) =
     _currentState
