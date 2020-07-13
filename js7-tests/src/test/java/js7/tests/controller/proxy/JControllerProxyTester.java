@@ -94,6 +94,8 @@ final class JControllerProxyTester
     void test() throws Exception {
         couplingState.coupled.get();
 
+        String overview = getOrThrowProblem(proxy.httpGet("controller/api").get(99, SECONDS));
+        assertThat(overview.contains("\"id\":\"Controller\""), equalTo(true));
         //ControllerCommand.AddOrder.Response addOrderResponse = (ControllerCommand.AddOrder.Response)
         //    proxy.executeCommand(
         //        JControllerCommand.addOrder(

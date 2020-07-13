@@ -40,7 +40,10 @@ extends ControllerApi with HttpSessionApi with HasIsIgnorableStackTrace
       else Uri(baseUri.string.stripSuffix("/") + "/controller"))
 
   final def post[A: Encoder, B: Decoder](uriTail: String, data: A): Task[B] =
-    httpClient.post[A, B](Uri(baseUri.string.stripSuffix("/") + "/" + uriTail.stripPrefix("/")), data)
+    httpClient.post[A, B](baseUri / uriTail, data)
+
+  final def get[B: Decoder](uriTail: String): Task[B] =
+    httpClient.get[B](baseUri / uriTail)
 
   final def executeCommand(command: ControllerCommand): Task[command.Response] =
     httpClient.post[ControllerCommand, ControllerCommand.Response](uris.command, command)

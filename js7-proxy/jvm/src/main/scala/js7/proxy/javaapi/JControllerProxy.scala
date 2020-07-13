@@ -78,7 +78,23 @@ extends AutoCloseable
               api.post[Json, Json](uriTail, requestJson))))
     } yield responseJson).value
       .map(_
-        .map(_.compactPrint)
+        .map(_.compactPrint)  // TODO Return original JSON string response ?
+        .asVavr)
+      .runToFuture
+      .asJava
+
+  /** HTTP GET
+    * @param uriTail path and query of the URI
+    * @return `Either.Left(Problem)` or `Either.Right(json: String)`
+    */
+  def httpGet(uriTail: String): CompletableFuture[VEither[Problem, String]] =
+    apiResource
+      .use(api =>
+        api.login(onlyIfNotLoggedIn = true) >>
+          api.httpClient.liftProblem(
+            api.get[Json](uriTail)))
+      .map(_
+        .map(_.compactPrint)  // TODO Return original JSON string response ?
         .asVavr)
       .runToFuture
       .asJava
