@@ -2,51 +2,32 @@ package js7.proxy.javaapi
 
 import cats.data.EitherT
 import cats.effect.Resource
-import com.typesafe.config.{Config, ConfigFactory}
 import io.circe.Json
 import io.vavr.control.{Either => VEither}
 import java.util.concurrent.CompletableFuture
 import js7.base.annotation.javaApi
 import js7.base.circeutils.CirceUtils.{RichCirceEither, RichJson}
 import js7.base.problem.Problem
-import js7.base.utils.Closer
-import js7.base.web.Uri
-import js7.common.configuration.JobSchedulerConfiguration
-import js7.common.configutils.Configs
-import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
-import js7.common.scalautil.Logger
-import js7.common.system.ThreadPools
-import js7.common.utils.JavaResource
-import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
+import js7.controller.client.HttpControllerApi
 import js7.controller.data.{ControllerCommand, ControllerState}
-import js7.proxy.javaapi.JControllerProxy._
-import js7.proxy.javaapi.data.{JControllerCommand, JControllerState, JFreshOrder, JHttpsConfig}
+import js7.proxy.javaapi.data.{JControllerCommand, JControllerState, JFreshOrder}
 import js7.proxy.javaapi.utils.VavrConversions._
 import js7.proxy.{ControllerCommandProxy, JournaledProxy, ProxyEvent}
 import monix.eval.Task
 import monix.execution.FutureUtils.Java8Extensions
-import monix.execution.schedulers.ExecutorScheduler
 
 /** Java adapter for `JournaledProxy[JControllerState]`. */
 @javaApi
-final class JControllerProxy private(
+final class JControllerProxy private[proxy](
   journaledProxy: JournaledProxy[ControllerState],
   val proxyEventBus: JStandardEventBus[ProxyEvent],
   val controllerEventBus: JControllerEventBus,
   apiResource: Resource[Task, HttpControllerApi],
-  closer: Closer)
-  (implicit scheduler: ExecutorScheduler)
-extends AutoCloseable
+  context: JProxyContext)
 {
-  private val commandProxy = new ControllerCommandProxy(apiResource)
+  import context.scheduler
 
-  /** If stop() has been called and completed before, this call will not block the thread. */
-  def close() = {
-    logger.debug("close() ...")
-    stop().get()/*blocking*/
-    closer.close()
-    logger.debug("close() finished")
-  }
+  private val commandProxy = new ControllerCommandProxy(apiResource)
 
   def stop(): CompletableFuture[java.lang.Void] =
     journaledProxy.stop
@@ -108,40 +89,4 @@ extends AutoCloseable
         .asVavr)
       .runToFuture
       .asJava
-}
-
-@javaApi
-object JControllerProxy
-{
-  coupleScribeWithSlf4j()
-
-  private val logger = Logger(getClass)
-
-  private val defaultConfig =
-    Configs.loadResource(JavaResource("js7/proxy/configuration/proxy.conf"), internal = true)
-      .withFallback(JobSchedulerConfiguration.defaultConfig)
-
-  def start(uri: String, credentials: JCredentials, httpsConfig: JHttpsConfig)
-  : CompletableFuture[JControllerProxy] =
-    start(uri, credentials, httpsConfig,
-      new JStandardEventBus[ProxyEvent],
-      new JControllerEventBus,
-      ConfigFactory.empty)
-
-  def start(uri: String, credentials: JCredentials, httpsConfig: JHttpsConfig,
-    proxyEventBus: JStandardEventBus[ProxyEvent],
-    controllerEventBus: JControllerEventBus,
-    config: Config)
-  : CompletableFuture[JControllerProxy] = {
-    val closer = new Closer
-    implicit val scheduler = ThreadPools.newStandardScheduler("JControllerProxy", config withFallback defaultConfig, closer)
-
-    val apiResource = AkkaHttpControllerApi.separateAkkaResource(Uri(uri), credentials.toUnderlying,
-      httpsConfig.toScala, config = config)
-
-    JournaledProxy.start[ControllerState](apiResource, proxyEventBus.underlying.publish, controllerEventBus.underlying.publish)
-      .map(proxy => new JControllerProxy(proxy, proxyEventBus, controllerEventBus, apiResource, closer))
-      .runToFuture
-      .asJava
-  }
 }

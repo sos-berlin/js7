@@ -5,11 +5,11 @@ import js7.base.eventbus.StandardEventBus
 import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
+import js7.base.utils.Lazy
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import js7.controller.RunningController
 import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.data.ControllerState
 import js7.data.agent.AgentRefPath
@@ -26,7 +26,6 @@ import js7.tests.testenv.DirectoryProvider.script
 import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
-import scala.jdk.FutureConverters._
 
 final class JournaledProxyTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
@@ -64,16 +63,15 @@ final class JournaledProxyTest extends AnyFreeSpec with DirectoryProviderForScal
   "JControllerProxy" in {
     directoryProvider.runAgents() { _ =>
       val port = findFreeTcpPort()
-      lazy val controller: RunningController = directoryProvider.startController(httpPort = Some(port)).await(99.s)
-      val startController: Runnable = () => controller
-      val uri = s"http://127.0.0.1:$port"
-      JControllerProxyTester.start(uri, JCredentials.JUserAndPassword(userAndPassword), JHttpsConfig.empty, startController)
-        .asScala
-        .flatMap { tester =>
-          tester.test()
-          tester.stop().asScala
+      val controller = Lazy { directoryProvider.startController(httpPort = Some(port)).await(99.s) }
+      try {
+        val uri = s"http://127.0.0.1:$port"
+        JControllerProxyTester.run(uri, JCredentials.JUserAndPassword(userAndPassword), JHttpsConfig.empty, () => controller())
+      } finally
+        for (controller <- controller) {
+          controller.terminate() await 99.s
+          controller.close()
         }
-        .await(99.s)
     }
   }
 }

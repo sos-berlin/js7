@@ -45,11 +45,10 @@ final class JournaledProxy[S <: JournaledState[S]] private[proxy](
     }
 
   def stop: Task[Unit] =
-    Task { cleanUp() }
-      .flatMap(_ => Task.fromFuture(observingStopped.future))
-
-  private def cleanUp(): Unit =
-    for (o <- observing) o.cancel()
+    Task.deferFuture {
+      for (o <- observing) o.cancel()
+      observingStopped.future
+    }
 
   private def observe: Observable[EventAndState[Event, S]] =
     subscriber =>

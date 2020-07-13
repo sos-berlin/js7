@@ -1,13 +1,11 @@
 package js7.tests.controller.proxy;
 
-import com.typesafe.config.ConfigFactory;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import js7.base.problem.Problem;
@@ -24,9 +22,9 @@ import js7.proxy.ProxyEvent;
 import js7.proxy.ProxyEvent.ProxyCoupled;
 import js7.proxy.ProxyEvent.ProxyCouplingError;
 import js7.proxy.ProxyEvent.ProxyDecoupled$;
-import js7.proxy.javaapi.JControllerEventBus;
 import js7.proxy.javaapi.JControllerProxy;
 import js7.proxy.javaapi.JCredentials;
+import js7.proxy.javaapi.JProxyContext;
 import js7.proxy.javaapi.JStandardEventBus;
 import js7.proxy.javaapi.data.JControllerCommand;
 import js7.proxy.javaapi.data.JControllerState;
@@ -80,35 +78,13 @@ final class JControllerProxyTester
         }
     }
 
-    static CompletableFuture<JControllerProxyTester> start(String uri, JCredentials credentials, JHttpsConfig httpsConfig,
-        Runnable startController) throws ExecutionException, InterruptedException
-    {
-        JStandardEventBus<ProxyEvent> proxyEventBus = new JStandardEventBus<>(ProxyEvent.class);
-        JControllerEventBus controllerEventBus = new JControllerEventBus();
-
-        CouplingState couplingState = new CouplingState();
-        proxyEventBus.subscribe(asList(ProxyCoupled.class), couplingState::onProxyCoupled);
-        proxyEventBus.subscribe(asList(ProxyDecoupled$.class), couplingState::onProxyDecoupled);
-        proxyEventBus.subscribe(asList(ProxyCouplingError.class), couplingState::onProxyCouplingError);
-
-        CompletableFuture<JControllerProxyTester> whenStarted =
-            JControllerProxy.start(uri, credentials, httpsConfig, proxyEventBus, controllerEventBus, ConfigFactory.empty())
-                .thenApply(proxy -> new JControllerProxyTester(proxy, couplingState));
-
-        Problem problem = couplingState.firstProblem.get();
-        assertThat(problem.toString().contains("java.net.ConnectException: Connection refused"), equalTo(true));
-        startController.run();
-
-        return whenStarted;
-    }
-
-    CompletableFuture<Void> stop() {
+    private CompletableFuture<Void> stop() {
         return CompletableFuture.allOf(
             couplingState.decoupled,
             proxy.stop());
     }
 
-    void test() throws Exception {
+    private void test() throws Exception {
         couplingState.coupled.get();
 
         String overview = getOrThrowProblem(
@@ -164,6 +140,39 @@ final class JControllerProxyTester
         assertThat(keyedEventToJson(events.get(2)), equalTo("{\"key\":\"TEST-ORDER-0\",\"TYPE\":\"OrderFinished\"}"));
     }
 
+    private JFreshOrder newOrder(int index) {
+        return JFreshOrder.of(
+            orderIds.get(index),
+            WorkflowPath.of("/WORKFLOW"),
+            java.util.Optional.empty(),
+            java.util.Collections.emptyMap());
+    }
+
+    static void run(String uri, JCredentials credentials, JHttpsConfig httpsConfig,
+        Runnable startController) throws Exception
+    {
+        JStandardEventBus<ProxyEvent> proxyEventBus = new JStandardEventBus<>(ProxyEvent.class);
+        CouplingState couplingState = new CouplingState();
+        proxyEventBus.subscribe(asList(ProxyCoupled.class), couplingState::onProxyCoupled);
+        proxyEventBus.subscribe(asList(ProxyDecoupled$.class), couplingState::onProxyDecoupled);
+        proxyEventBus.subscribe(asList(ProxyCouplingError.class), couplingState::onProxyCouplingError);
+
+        try (JProxyContext context = new JProxyContext()) {
+            CompletableFuture<JControllerProxy> whenStarted = context.start(uri, credentials, httpsConfig, proxyEventBus);
+
+            Problem problem = couplingState.firstProblem.get();
+            assertThat(problem.toString().contains("java.net.ConnectException: Connection refused"), equalTo(true));
+
+            startController.run();
+            JControllerProxy proxy = whenStarted.get(99, SECONDS);
+
+            JControllerProxyTester tester = new JControllerProxyTester(proxy, couplingState);
+            tester.test();
+
+            tester.stop().get(99, SECONDS);
+        }
+    }
+
     private static final class CouplingState
     {
         final CompletableFuture<Void> coupled = new CompletableFuture<>();
@@ -186,13 +195,5 @@ final class JControllerProxyTester
             firstProblem.complete(proxyCouplingError.problem());
             lastProblem = Optional.of(proxyCouplingError.problem());
         }
-    }
-
-    JFreshOrder newOrder(int index) {
-        return JFreshOrder.of(
-            orderIds.get(index),
-            WorkflowPath.of("/WORKFLOW"),
-            java.util.Optional.empty(),
-            java.util.Collections.emptyMap());
     }
 }
