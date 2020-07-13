@@ -20,7 +20,7 @@ import js7.common.utils.JavaResource
 import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
 import js7.controller.data.{ControllerCommand, ControllerState}
 import js7.proxy.javaapi.JControllerProxy._
-import js7.proxy.javaapi.data.{JControllerState, JHttpsConfig}
+import js7.proxy.javaapi.data.{JControllerCommand, JControllerState, JFreshOrder, JHttpsConfig}
 import js7.proxy.javaapi.utils.VavrConversions._
 import js7.proxy.{ControllerCommandProxy, JournaledProxy, ProxyEvent}
 import monix.eval.Task
@@ -57,8 +57,18 @@ extends AutoCloseable
   def currentState: JControllerState =
     new JControllerState(journaledProxy.currentState._2)
 
-  def executeCommand(command: ControllerCommand): CompletableFuture[VEither[Problem, ControllerCommand.Response]] =
-    commandProxy.execute(command)
+  /** @return true iff added, false iff not added because of duplicate OrderId. */
+  def addOrder(order: JFreshOrder): CompletableFuture[VEither[Problem, java.lang.Boolean]] =
+    commandProxy.execute(ControllerCommand.AddOrder(order.underlying))
+      .map(_
+        .map(o => java.lang.Boolean.valueOf(!o.ignoredBecauseDuplicate))
+        .asVavr)
+      .runToFuture
+      .asJava
+
+
+  def executeCommand(command: JControllerCommand): CompletableFuture[VEither[Problem, ControllerCommand.Response]] =
+    commandProxy.execute(command.underlying)
       .map(_
         .map(o => (o: ControllerCommand.Response))
         .asVavr)
@@ -66,9 +76,9 @@ extends AutoCloseable
       .asJava
 
   def executeCommandJson(command: String): CompletableFuture[VEither[Problem, String]] =
-    httpPost("/controller/api/command", command)
+    httpPostJson("/controller/api/command", command)
 
-  def httpPost(uriTail: String, jsonString: String): CompletableFuture[VEither[Problem, String]] =
+  def httpPostJson(uriTail: String, jsonString: String): CompletableFuture[VEither[Problem, String]] =
     (for {
       requestJson <- EitherT(Task(io.circe.parser.parse(jsonString).toChecked))
       responseJson <- EitherT(
@@ -78,7 +88,7 @@ extends AutoCloseable
               api.post[Json, Json](uriTail, requestJson))))
     } yield responseJson).value
       .map(_
-        .map(_.compactPrint)  // TODO Return original JSON string response ?
+        .map(_.compactPrint)
         .asVavr)
       .runToFuture
       .asJava
@@ -87,14 +97,14 @@ extends AutoCloseable
     * @param uriTail path and query of the URI
     * @return `Either.Left(Problem)` or `Either.Right(json: String)`
     */
-  def httpGet(uriTail: String): CompletableFuture[VEither[Problem, String]] =
+  def httpGetJson(uriTail: String): CompletableFuture[VEither[Problem, String]] =
     apiResource
       .use(api =>
         api.login(onlyIfNotLoggedIn = true) >>
           api.httpClient.liftProblem(
             api.get[Json](uriTail)))
       .map(_
-        .map(_.compactPrint)  // TODO Return original JSON string response ?
+        .map(_.compactPrint)
         .asVavr)
       .runToFuture
       .asJava

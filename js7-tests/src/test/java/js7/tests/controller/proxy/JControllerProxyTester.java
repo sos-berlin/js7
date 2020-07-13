@@ -2,11 +2,16 @@ package js7.tests.controller.proxy;
 
 import com.typesafe.config.ConfigFactory;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import js7.base.problem.Problem;
+import js7.controller.data.ControllerCommand$AddOrder$Response;
 import js7.data.event.KeyedEvent;
 import js7.data.event.Stamped;
 import js7.data.order.OrderEvent;
@@ -19,8 +24,8 @@ import js7.proxy.ProxyEvent;
 import js7.proxy.ProxyEvent.ProxyCoupled;
 import js7.proxy.ProxyEvent.ProxyCouplingError;
 import js7.proxy.ProxyEvent.ProxyDecoupled$;
-import js7.proxy.javaapi.JControllerProxy;
 import js7.proxy.javaapi.JControllerEventBus;
+import js7.proxy.javaapi.JControllerProxy;
 import js7.proxy.javaapi.JCredentials;
 import js7.proxy.javaapi.JStandardEventBus;
 import js7.proxy.javaapi.data.JControllerCommand;
@@ -43,7 +48,10 @@ import static org.hamcrest.MatcherAssert.assertThat;
 final class JControllerProxyTester
 {
     private static final Logger logger = LoggerFactory.getLogger(JControllerProxyTester.class);
-    private static final OrderId orderId = OrderId.of("TEST-ORDER");
+    private static final List<OrderId> orderIds = IntStream.rangeClosed(0, 3)
+        .mapToObj(i -> OrderId.of("TEST-ORDER-" + i))
+        .collect(Collectors.toList());
+    private static final Set<OrderId> finishedOrders = new HashSet<>();
     private final JControllerProxy proxy;
     private final CouplingState couplingState;
     private final List<KeyedEvent<OrderEvent>> events = new ArrayList<>();
@@ -58,10 +66,16 @@ final class JControllerProxyTester
     }
 
     private void onOrderEvent(Stamped<KeyedEvent<OrderEvent>> stampedEvent, JControllerState controllerState) {
-        if (stampedEvent.value().key().equals(orderId)) {
-            events.add(stampedEvent.value());
+        OrderId orderId = (OrderId)stampedEvent.value().key();
+        if (orderIds.contains(orderId)) {
+            if (orderId.equals(orderIds.get(0))) {
+                events.add(stampedEvent.value());
+            }
             if (stampedEvent.value().event() instanceof OrderFinished$) {
-                finished.complete(null);
+                finishedOrders.add(orderId);
+                if (finishedOrders.size() == orderIds.size()) {
+                    finished.complete(null);
+                }
             }
         }
     }
@@ -76,12 +90,15 @@ final class JControllerProxyTester
         proxyEventBus.subscribe(asList(ProxyCoupled.class), couplingState::onProxyCoupled);
         proxyEventBus.subscribe(asList(ProxyDecoupled$.class), couplingState::onProxyDecoupled);
         proxyEventBus.subscribe(asList(ProxyCouplingError.class), couplingState::onProxyCouplingError);
+
         CompletableFuture<JControllerProxyTester> whenStarted =
             JControllerProxy.start(uri, credentials, httpsConfig, proxyEventBus, controllerEventBus, ConfigFactory.empty())
                 .thenApply(proxy -> new JControllerProxyTester(proxy, couplingState));
+
         Problem problem = couplingState.firstProblem.get();
         assertThat(problem.toString().contains("java.net.ConnectException: Connection refused"), equalTo(true));
         startController.run();
+
         return whenStarted;
     }
 
@@ -94,43 +111,57 @@ final class JControllerProxyTester
     void test() throws Exception {
         couplingState.coupled.get();
 
-        String overview = getOrThrowProblem(proxy.httpGet("controller/api").get(99, SECONDS));
+        String overview = getOrThrowProblem(
+            proxy.httpGetJson("/controller/api")
+                .get(99, SECONDS));
         assertThat(overview.contains("\"id\":\"Controller\""), equalTo(true));
-        //ControllerCommand.AddOrder.Response addOrderResponse = (ControllerCommand.AddOrder.Response)
-        //    proxy.executeCommand(
-        //        JControllerCommand.addOrder(
-        //            JFreshOrder.of(
-        //                orderId,
-        //                WorkflowPath.of("/WORKFLOW"),
-        //                java.util.Optional.empty(),
-        //                java.util.Collections.emptyMap())))
-        //        .get()
-        //        .get();
-        String responseJson = getOrThrowProblem(
+
+
+        // FOUR WAYS TO ADD AN ORDER (first way is recommended)
+
+        // #0 addOrder
+
+        Boolean addOrderResponse = proxy.addOrder(newOrder(0)).get().get();
+        assertThat(addOrderResponse, equalTo(true/*added, no duplicate*/));
+
+        // #1 JControllerCommand.addOrder
+        // Red in IntelliJ IDE, but it compiles
+        ControllerCommand$AddOrder$Response commandResponse0 = (ControllerCommand$AddOrder$Response)
+            proxy.executeCommand(
+                JControllerCommand.addOrder(newOrder(1))
+            ).get().get();
+        assertThat(commandResponse0.ignoredBecauseDuplicate(), equalTo(false));
+
+
+        // #2 JControllerCommand.addOrder
+
+        String commandResponse1 = getOrThrowProblem(
             proxy.executeCommandJson(
-                JControllerCommand.addOrder(
-                    JFreshOrder.of(
-                        orderId,
-                        WorkflowPath.of("/WORKFLOW"),
-                        java.util.Optional.empty(),
-                        java.util.Collections.emptyMap())
-                ).toJson()
+                JControllerCommand.addOrder(newOrder(2)).toJson()
             ).get(99, SECONDS));
-        assertThat(responseJson, equalTo(
+        assertThat(commandResponse1, equalTo(
             "{\"TYPE\":\"AddOrder.Response\",\"ignoredBecauseDuplicate\":false}"));
 
+
+        // #3 POST JFreshOrder
+        String postResponse = getOrThrowProblem(
+            proxy.httpPostJson("/controller/api/order", newOrder(3).toJson())
+                .get(99, SECONDS));
+        assertThat(postResponse, equalTo("{}"));
+
+
         finished.get(99, SECONDS);
-        assertThat(events.get(0).key(), equalTo(orderId));
+        assertThat(events.get(0).key(), equalTo(orderIds.get(0)));
         assertThat(events.get(0).event(), instanceOf(OrderStarted$.class));
-        assertThat(keyedEventToJson(events.get(0)), equalTo("{\"key\":\"TEST-ORDER\",\"TYPE\":\"OrderStarted\"}"));
+        assertThat(keyedEventToJson(events.get(0)), equalTo("{\"key\":\"TEST-ORDER-0\",\"TYPE\":\"OrderStarted\"}"));
 
-        assertThat(events.get(1).key(), equalTo(orderId));
+        assertThat(events.get(1).key(), equalTo(orderIds.get(0)));
         assertThat(events.get(1).event(), instanceOf(OrderMoved.class));
-        assertThat(keyedEventToJson(events.get(1)), equalTo("{\"key\":\"TEST-ORDER\",\"TYPE\":\"OrderMoved\",\"to\":[1]}"));
+        assertThat(keyedEventToJson(events.get(1)), equalTo("{\"key\":\"TEST-ORDER-0\",\"TYPE\":\"OrderMoved\",\"to\":[1]}"));
 
-        assertThat(events.get(2).key(), equalTo(orderId));
+        assertThat(events.get(2).key(), equalTo(orderIds.get(0)));
         assertThat(events.get(2).event(), instanceOf(OrderFinished$.class));
-        assertThat(keyedEventToJson(events.get(2)), equalTo("{\"key\":\"TEST-ORDER\",\"TYPE\":\"OrderFinished\"}"));
+        assertThat(keyedEventToJson(events.get(2)), equalTo("{\"key\":\"TEST-ORDER-0\",\"TYPE\":\"OrderFinished\"}"));
     }
 
     private static final class CouplingState
@@ -155,5 +186,13 @@ final class JControllerProxyTester
             firstProblem.complete(proxyCouplingError.problem());
             lastProblem = Optional.of(proxyCouplingError.problem());
         }
+    }
+
+    JFreshOrder newOrder(int index) {
+        return JFreshOrder.of(
+            orderIds.get(index),
+            WorkflowPath.of("/WORKFLOW"),
+            java.util.Optional.empty(),
+            java.util.Collections.emptyMap());
     }
 }
