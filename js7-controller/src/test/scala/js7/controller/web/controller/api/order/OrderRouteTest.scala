@@ -4,8 +4,10 @@ import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, Conflict, Created, OK}
 import akka.http.scaladsl.model.headers.{Accept, Location}
 import akka.http.scaladsl.server.Route
+import io.circe.Json
+import io.circe.syntax._
 import js7.base.generic.Completed
-import js7.base.problem.Checked
+import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.Collections.implicits.RichTraversable
@@ -92,34 +94,38 @@ final class OrderRouteTest extends AnyFreeSpec with RouteTester with OrderRoute
 
   "POST new order" in {
     val order = FreshOrder(OrderId("ORDER-🔵"), WorkflowPath("/WORKFLOW"), Some(Timestamp.parse("2017-03-07T12:00:00Z")), Map("KEY" -> "VALUE"))
-    Post(s"/controller/api/order", order) ~> route ~> check {
+    Post(s"/controller/api/order", order) ~> Accept(`application/json`) ~> route ~> check {
       assert(status == Created)  // New order
       assert(response.header[Location] contains Location("http://example.com/controller/api/order/ORDER-%F0%9F%94%B5"))
+      assert(responseAs[Json] == Json.obj())
     }
   }
 
   "POST duplicate order" in {
     val order = FreshOrder(DuplicateOrderId, WorkflowPath("/WORKFLOW"))
-    Post("/controller/api/order", order) ~> route ~> check {
+    Post("/controller/api/order", order) ~> Accept(`application/json`) ~> route ~> check {
       assert(status == Conflict)  // Duplicate order
       assert(response.header[Location] contains Location(s"http://example.com/controller/api/order/DUPLICATE"))
+      assert(responseAs[Json] == Problem("Order 'DUPLICATE' has already been added").asJson(Problem.typedJsonEncoder))
     }
   }
 
   "POST multiple orders" in {
     val orders = FreshOrder(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW")) :: FreshOrder(DuplicateOrderId, WorkflowPath("/WORKFLOW")) :: Nil
-    Post("/controller/api/order", orders) ~> route ~> check {
+    Post("/controller/api/order", orders) ~> Accept(`application/json`) ~> route ~> check {
       assert(status == OK)
       assert(response.header[Location].isEmpty)
+      assert(responseAs[Json] == Json.obj())
     }
   }
 }
 
-object OrderRouteTest {
+object OrderRouteTest
+{
   private val TestWorkflowId = WorkflowPath("/WORKFLOW") ~ "VERSION"
   private val TestOrders: Map[OrderId, Order[Order.State]] = List(
     Order(OrderId("/PATH/ORDER-1"), TestWorkflowId, Order.Fresh.StartImmediately),
     Order(OrderId("ORDER-2"), TestWorkflowId /: Position(2), Order.Finished)
-  ).toKeyedMap { _.id }
+  ).toKeyedMap(_.id)
   private val DuplicateOrderId = OrderId("DUPLICATE")
 }

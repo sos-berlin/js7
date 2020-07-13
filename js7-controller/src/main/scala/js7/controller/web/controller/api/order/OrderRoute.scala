@@ -42,7 +42,7 @@ trait OrderRoute extends ControllerRouteProvider
                 case Right(orders) =>
                   completeTask(
                     orderApi.addOrders(orders)
-                      .map[ToResponseMarshallable](_.map((_: Completed) => OK)))
+                      .map[ToResponseMarshallable](_.map((_: Completed) => OK -> emptyJsonObject)))
               }
             else
               json.as[FreshOrder] match {
@@ -54,7 +54,7 @@ trait OrderRoute extends ControllerRouteProvider
                       case Right(isNoDuplicate) =>
                         respondWithHeader(Location(uri.withPath(uri.path / order.id.string))) {
                           complete(
-                            if (isNoDuplicate) Created
+                            if (isNoDuplicate) Created -> emptyJsonObject
                             else Conflict -> Problem.pure(s"Order '${order.id.string}' has already been added"))
                         }
                     }
@@ -98,8 +98,9 @@ trait OrderRoute extends ControllerRouteProvider
       }))
 }
 
-object OrderRoute {
-  intelliJuseImport(keyedEventJsonCodec)
+object OrderRoute
+{
+  private val emptyJsonObject = Json.obj()
 
   private val matchOrderId = new Directive[Tuple1[OrderId]] {
     def tapply(inner: Tuple1[OrderId] => Route) =
@@ -113,4 +114,6 @@ object OrderRoute {
           complete(NotFound)  // Invalid OrderId syntax
       }
   }
+
+  intelliJuseImport(keyedEventJsonCodec)
 }
