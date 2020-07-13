@@ -14,7 +14,7 @@ import scala.language.implicitConversions
   */
 sealed trait Problem
 {
-  def codeOption: Option[ProblemCode] = None
+  def maybeCode: Option[ProblemCode] = None
 
   def throwable: Throwable
 
@@ -29,7 +29,7 @@ sealed trait Problem
   def withPrefix(prefix: String): Problem = Problem.pure(prefix) |+| this
 
   final def is(companion: Coded.Companion): Boolean =
-    codeOption contains companion.code
+    maybeCode contains companion.code
 
   final def wrapProblemWith(message: String) = new Lazy(message, Some(this))
 
@@ -100,7 +100,7 @@ object Problem
     def code: ProblemCode
     def arguments: Map[String, String]
 
-    override final def codeOption = Some(code)
+    override final def maybeCode = Some(code)
 
     final def cause = None
 

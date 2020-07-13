@@ -122,7 +122,7 @@ object ClusterWatch
     InvalidClusterWatchHeartbeatProblem.code)
 
   def isClusterWatchProblem(problem: Problem): Boolean =
-    problem.codeOption exists isClusterWatchProblemCode
+    problem.maybeCode exists isClusterWatchProblemCode
 
   final case class ClusterWatchHeartbeatMismatchProblem(
     currentClusterState: ClusterState,

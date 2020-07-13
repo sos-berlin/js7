@@ -62,7 +62,7 @@ final class JournalIdTest extends AnyFreeSpec with DirectoryProviderForScalaTest
       directoryProvider.runController() { controller =>
         controller.eventWatch.await[AgentCouplingFailed](after = lastEventId, predicate = ke =>
           ke.key == agentRefPath &&
-            //ke.event.problem.codeOption.contains(JournalIdMismatchProblem.code))   -- It's thrown as ProblemException
+            //ke.event.problem.maybeCode.contains(JournalIdMismatchProblem.code))   -- It's thrown as ProblemException
             ke.event.problem.toString.contains(JournalIdMismatchProblem.code.string))
       }
     }
@@ -97,7 +97,7 @@ final class JournalIdTest extends AnyFreeSpec with DirectoryProviderForScalaTest
         lastEventId = lastEventIdOf(controller.eventWatch.await[OrderFinished](after = lastEventId, predicate = _.key == order.id))
         //controller.eventWatch.await[AgentCouplingFailed](after = lastEventId, predicate = ke =>
         //  ke.key == agentRefPath &&
-        //    ke.event.problem.codeOption.contains(JournalIdMismatchProblem.code))
+        //    ke.event.problem.maybeCode.contains(JournalIdMismatchProblem.code))
       }
     }
     */
