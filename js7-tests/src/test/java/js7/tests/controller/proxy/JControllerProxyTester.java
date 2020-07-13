@@ -158,7 +158,7 @@ final class JControllerProxyTester
         proxyEventBus.subscribe(asList(ProxyCouplingError.class), couplingState::onProxyCouplingError);
 
         try (JProxyContext context = new JProxyContext()) {
-            CompletableFuture<JControllerProxy> whenStarted = context.start(uri, credentials, httpsConfig, proxyEventBus);
+            CompletableFuture<JControllerProxy> whenStarted = context.startControllerProxy(uri, credentials, httpsConfig, proxyEventBus);
 
             Problem problem = couplingState.firstProblem.get();
             assertThat(problem.toString().contains("java.net.ConnectException: Connection refused"), equalTo(true));

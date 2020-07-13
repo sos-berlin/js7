@@ -88,6 +88,13 @@ object JournaledProxy
     onEvent: EventAndState[Event, S] => Unit)
     (implicit S: JournaledState.Companion[S])
   : JournaledProxy[S] =
+    new JournaledProxy(observable(apiResource, onProxyEvent), onEvent)
+
+  private def observable[S <: JournaledState[S]](
+    apiResource: ApiResource,
+    onProxyEvent: ProxyEvent => Unit)
+    (implicit S: JournaledState.Companion[S])
+  : Observable[EventAndState[Event, S]] =
   {
     import S.keyedEventJsonDecoder
 
@@ -152,7 +159,7 @@ object JournaledProxy
         def stopRequested = false
       }
 
-    new JournaledProxy[S](observe, onEvent)
+    observe
   }
 
   private case object ProxyStartedSeed extends NoKeyEvent

@@ -26,12 +26,12 @@ extends HasCloser
   private[proxy] implicit val scheduler = ThreadPools.newStandardScheduler("JControllerProxy", _config, closer)
 
   @javaApi
-  def start(uri: String, credentials: JCredentials, httpsConfig: JHttpsConfig, proxyEventBus: JStandardEventBus[ProxyEvent])
+  def startControllerProxy(uri: String, credentials: JCredentials, httpsConfig: JHttpsConfig, proxyEventBus: JStandardEventBus[ProxyEvent])
   : CompletableFuture[JControllerProxy] =
-    start(uri, credentials, httpsConfig, proxyEventBus, new JControllerEventBus)
+    startControllerProxy(uri, credentials, httpsConfig, proxyEventBus, new JControllerEventBus)
 
   @javaApi
-  def start(uri: String, credentials: JCredentials, httpsConfig: JHttpsConfig,
+  def startControllerProxy(uri: String, credentials: JCredentials, httpsConfig: JHttpsConfig,
     proxyEventBus: JStandardEventBus[ProxyEvent],
     controllerEventBus: JControllerEventBus)
   : CompletableFuture[JControllerProxy] = {
