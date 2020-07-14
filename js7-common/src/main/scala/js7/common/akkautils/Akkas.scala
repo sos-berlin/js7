@@ -11,10 +11,11 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.common.configuration.JobSchedulerConfiguration
 import js7.common.scalautil.Futures.implicits.SuccessFuture
 import js7.common.scalautil.Logger
+import js7.common.time.JavaTimeConverters._
 import monix.eval.Task
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.control.NonFatal
 
 /**
@@ -24,14 +25,22 @@ object Akkas
 {
   private val logger = Logger(getClass)
 
-  def newActorSystem(name: String, config: Config = ConfigFactory.empty) = {
+  def newActorSystem(name: String, config: Config = ConfigFactory.empty, defaultExecutionContext: ExecutionContext = ExecutionContext.global) = {
     logger.debug(s"new ActorSystem('$name')")
     val myConfig = ConfigFactory.systemProperties
       .withFallback(config)
       .withFallback(JobSchedulerConfiguration.defaultConfig)
       .resolve
-    ActorSystem(name, myConfig, getClass.getClassLoader)
+    ActorSystem(
+      name,
+      Some(myConfig),
+      Some(getClass.getClassLoader),
+      myConfig.getBoolean("js7.akka.use-js7-thread-pool") ? defaultExecutionContext)
   }
+
+  def terminateAndWait(actorSystem: ActorSystem): Unit =
+    terminateAndWait(actorSystem,
+      actorSystem.settings.config.getDuration("js7.akka.shutdown-timeout").toFiniteDuration)
 
   def terminateAndWait(actorSystem: ActorSystem, timeout: FiniteDuration): Unit = {
     logger.debug(s"ActorSystem('${actorSystem.name}') terminate ...")

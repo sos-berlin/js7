@@ -7,7 +7,6 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SideEffect._
 import js7.common.akkautils.Akkas.terminateAndWait
 import js7.common.akkautils.DeadLetterActor
-import js7.common.time.JavaTimeConverters._
 import scala.concurrent.ExecutionContext
 
 /**
@@ -23,7 +22,7 @@ object Akkas
     ActorSystem(name, config = Some(myConfig), defaultExecutionContext = ec) sideEffect { o =>
       DeadLetterActor.subscribe(o)
       closer.onClose {
-        terminateAndWait(o, myConfig.getDuration("js7.akka.shutdown-timeout").toFiniteDuration)
+        terminateAndWait(o)
       }
     }
   }
