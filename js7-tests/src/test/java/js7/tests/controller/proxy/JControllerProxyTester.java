@@ -3,7 +3,6 @@ package js7.tests.controller.proxy;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -30,8 +29,6 @@ import js7.proxy.javaapi.data.JControllerCommand;
 import js7.proxy.javaapi.data.JControllerState;
 import js7.proxy.javaapi.data.JFreshOrder;
 import js7.proxy.javaapi.data.JHttpsConfig;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static js7.proxy.javaapi.data.JKeyedEvent.keyedEventToJson;
@@ -45,11 +42,10 @@ import static org.hamcrest.MatcherAssert.assertThat;
  */
 final class JControllerProxyTester
 {
-    private static final Logger logger = LoggerFactory.getLogger(JControllerProxyTester.class);
     private static final List<OrderId> orderIds = IntStream.rangeClosed(0, 3)
         .mapToObj(i -> OrderId.of("TEST-ORDER-" + i))
         .collect(Collectors.toList());
-    private static final Set<OrderId> finishedOrders = new HashSet<>();
+    private final Set<OrderId> finishedOrders = new HashSet<>();
     private final JControllerProxy proxy;
     private final CouplingState couplingState;
     private final List<KeyedEvent<OrderEvent>> events = new ArrayList<>();
@@ -140,12 +136,8 @@ final class JControllerProxyTester
         assertThat(keyedEventToJson(events.get(2)), equalTo("{\"key\":\"TEST-ORDER-0\",\"TYPE\":\"OrderFinished\"}"));
     }
 
-    private JFreshOrder newOrder(int index) {
-        return JFreshOrder.of(
-            orderIds.get(index),
-            WorkflowPath.of("/WORKFLOW"),
-            java.util.Optional.empty(),
-            java.util.Collections.emptyMap());
+    private static JFreshOrder newOrder(int index) {
+        return JFreshOrder.of(orderIds.get(index), WorkflowPath.of("/WORKFLOW"));
     }
 
     static void run(String uri, JCredentials credentials, JHttpsConfig httpsConfig,
@@ -158,7 +150,8 @@ final class JControllerProxyTester
         proxyEventBus.subscribe(asList(ProxyCouplingError.class), couplingState::onProxyCouplingError);
 
         try (JProxyContext context = new JProxyContext()) {
-            CompletableFuture<JControllerProxy> whenStarted = context.startControllerProxy(uri, credentials, httpsConfig, proxyEventBus);
+            CompletableFuture<JControllerProxy> whenStarted =
+                context.startControllerProxy(uri, credentials, httpsConfig, proxyEventBus);
 
             Problem problem = couplingState.firstProblem.get();
             assertThat(problem.toString().contains("java.net.ConnectException: Connection refused"), equalTo(true));
@@ -170,30 +163,6 @@ final class JControllerProxyTester
             tester.test();
 
             tester.stop().get(99, SECONDS);
-        }
-    }
-
-    private static final class CouplingState
-    {
-        final CompletableFuture<Void> coupled = new CompletableFuture<>();
-        final CompletableFuture<Void> decoupled = new CompletableFuture<>();
-        final CompletableFuture<Problem> firstProblem = new CompletableFuture<>();
-        Optional<Problem> lastProblem = Optional.empty();
-
-        void onProxyCoupled(ProxyCoupled proxyCoupled) {
-            logger.info(proxyCoupled.toString());
-            coupled.complete(null);
-        }
-
-        void onProxyDecoupled(ProxyDecoupled$ proxyDecoupled) {
-            logger.info(proxyDecoupled.toString());
-            decoupled.complete(null);
-        }
-
-        void onProxyCouplingError(ProxyCouplingError proxyCouplingError) {
-            logger.info(proxyCouplingError.toString());
-            firstProblem.complete(proxyCouplingError.problem());
-            lastProblem = Optional.of(proxyCouplingError.problem());
         }
     }
 }

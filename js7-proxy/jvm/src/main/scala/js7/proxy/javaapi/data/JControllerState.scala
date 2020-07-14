@@ -13,7 +13,7 @@ import scala.jdk.OptionConverters._
 import scala.jdk.StreamConverters._
 
 @javaApi
-final class JControllerState(val underlying: ControllerState)
+final case class JControllerState(underlying: ControllerState)
 extends JJournaledState[JControllerState, ControllerState]
 {
   def eventId: Long =

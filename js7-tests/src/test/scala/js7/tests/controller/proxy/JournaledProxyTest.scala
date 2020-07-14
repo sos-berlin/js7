@@ -74,6 +74,24 @@ final class JournaledProxyTest extends AnyFreeSpec with DirectoryProviderForScal
         }
     }
   }
+
+  "JControllerProxy with Flux" in {
+    directoryProvider.runAgents() { _ =>
+      val port = findFreeTcpPort()
+      val controller = Lazy { directoryProvider.startController(httpPort = Some(port)).await(99.s) }
+      try {
+        val uri = s"http://127.0.0.1:$port"
+        val tester = new JControllerFluxTester(uri, JCredentials.JUserAndPassword(userAndPassword), JHttpsConfig.empty)
+        tester.test(() => controller())
+        tester.testReusage();
+        tester.close()
+      } finally
+        for (controller <- controller) {
+          controller.terminate() await 99.s
+          controller.close()
+        }
+    }
+  }
 }
 
 object JournaledProxyTest
@@ -83,7 +101,7 @@ object JournaledProxyTest
     WorkflowPath("/WORKFLOW") ~ "INITIAL",
     s"""
       define workflow {
-        execute executable="/test.cmd", agent="AGENT";
+        execute executable="/test.cmd", agent="AGENT", taskLimit=10;
       }"""
   ).orThrow
 

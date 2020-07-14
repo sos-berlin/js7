@@ -394,6 +394,7 @@ lazy val `js7-proxy` = crossProject(JSPlatform, JVMPlatform)
     libraryDependencies ++= {
       import Dependencies._
       akkaHttp ++
+      "io.projectreactor" % "reactor-core" % "3.3.7.RELEASE" ++
       "org.scala-lang.modules" %% "scala-java8-compat" % "0.9.1" ++
       hamcrest % "test" ++
       log4j % "test"

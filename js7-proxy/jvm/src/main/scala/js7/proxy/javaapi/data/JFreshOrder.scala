@@ -23,15 +23,18 @@ extends JJsonable[JFreshOrder]
 @javaApi
 object JFreshOrder extends JJsonable.Companion[JFreshOrder]
 {
+  def of(id: OrderId, workflowPath: WorkflowPath): JFreshOrder =
+    JFreshOrder(FreshOrder(id, workflowPath, None, Map.empty))
+
   def of(
     id: OrderId,
     workflowPath: WorkflowPath,
     scheduledFor: java.util.Optional[Instant],
     arguments: java.util.Map[String, String] = java.util.Collections.emptyMap())
   : JFreshOrder =
-  JFreshOrder(FreshOrder(id, workflowPath,
-    scheduledFor.toScala.map(o => Timestamp.ofEpochMilli(o.toEpochMilli)),
-    arguments.asScala.toMap))
+    JFreshOrder(FreshOrder(id, workflowPath,
+      scheduledFor.toScala.map(o => Timestamp.ofEpochMilli(o.toEpochMilli)),
+      arguments.asScala.toMap))
 
   override def fromJson(jsonString: String): VEither[Problem, JFreshOrder] =
     super.fromJson(jsonString)

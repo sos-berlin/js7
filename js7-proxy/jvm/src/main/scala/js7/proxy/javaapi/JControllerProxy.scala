@@ -10,11 +10,13 @@ import js7.base.circeutils.CirceUtils.{RichCirceEither, RichJson}
 import js7.base.problem.Problem
 import js7.controller.client.HttpControllerApi
 import js7.controller.data.{ControllerCommand, ControllerState}
+import js7.data.event.Event
 import js7.proxy.javaapi.data.{JControllerCommand, JControllerState, JFreshOrder}
 import js7.proxy.javaapi.utils.VavrConversions._
 import js7.proxy.{ControllerCommandProxy, JournaledProxy, ProxyEvent}
 import monix.eval.Task
 import monix.execution.FutureUtils.Java8Extensions
+import reactor.core.publisher.Flux
 
 /** Java adapter for `JournaledProxy[JControllerState]`. */
 @javaApi
@@ -29,14 +31,25 @@ final class JControllerProxy private[proxy](
 
   private val commandProxy = new ControllerCommandProxy(apiResource)
 
-  def stop(): CompletableFuture[java.lang.Void] =
+  def startObserving: CompletableFuture[Unit] =
+    journaledProxy.startObserving
+      .runToFuture
+      .asJava
+
+  def flux: Flux[JEventAndControllerState[Event]] =
+    Flux.from(
+      journaledProxy.observe
+        .map(JEventAndControllerState.fromScala)
+        .toReactivePublisher)
+
+  def stop: CompletableFuture[java.lang.Void] =
     journaledProxy.stop
       .map(_ => null: java.lang.Void)
       .runToFuture
       .asJava
 
   def currentState: JControllerState =
-    new JControllerState(journaledProxy.currentState._2)
+    JControllerState(journaledProxy.currentState._2)
 
   /** @return true iff added, false iff not added because of duplicate OrderId. */
   def addOrder(order: JFreshOrder): CompletableFuture[VEither[Problem, java.lang.Boolean]] =
@@ -46,7 +59,6 @@ final class JControllerProxy private[proxy](
         .asVavr)
       .runToFuture
       .asJava
-
 
   def executeCommand(command: JControllerCommand): CompletableFuture[VEither[Problem, ControllerCommand.Response]] =
     commandProxy.execute(command.underlying)

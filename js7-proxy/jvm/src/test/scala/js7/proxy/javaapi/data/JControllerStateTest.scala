@@ -30,7 +30,7 @@ import org.scalatest.freespec.AnyFreeSpec
 @javaApi
 final class JControllerStateTest extends AnyFreeSpec
 {
-  private val jControllerState = new JControllerState(controllerState)
+  private val jControllerState = JControllerState(controllerState)
   private val tester = new JControllerStateTester(jControllerState)
 
   "workflow" in {

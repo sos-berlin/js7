@@ -15,20 +15,23 @@ import js7.data.event.{AnyKeyedEvent, Event, EventApi, EventId, EventRequest, Jo
 import js7.proxy.ProxyEvent.{ProxyCoupled, ProxyCouplingError, ProxyDecoupled}
 import monix.eval.Task
 import monix.execution.CancelableFuture
+import monix.execution.atomic.AtomicBoolean
 import monix.reactive.Observable
-import scala.concurrent.Promise
+import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success}
 
 final class JournaledProxy[S <: JournaledState[S]] private[proxy](
   observable: Observable[EventAndState[Event, S]],
   onEvent: EventAndState[Event, S] => Unit)
 {
+  private val observeCalled = AtomicBoolean(false)
+  private val subscribed = AtomicBoolean(false)
   private val currentStateFilled = Promise[Unit]()
   @volatile private var _currentState: (EventId, S) = null
   private val observing = SetOnce[CancelableFuture[Unit]]("observing")
   private val observingStopped = Promise[Unit]()
 
-  private def start(): Task[Unit] =
+  private[proxy] def startObserving: Task[Unit] =
     Task.deferFutureAction { implicit scheduler =>
       assertThat(observing.isEmpty)
       val obs = observe.completedL.runToFuture
@@ -41,8 +44,11 @@ final class JournaledProxy[S <: JournaledState[S]] private[proxy](
           scribe.error(t.toStringWithCauses, t.nullIfNoStackTrace)
           // ???
       }
-      currentStateFilled.future
+      whenStarted
     }
+
+  def whenStarted: Future[Unit] =
+    currentStateFilled.future
 
   def stop: Task[Unit] =
     Task.deferFuture {
@@ -50,8 +56,12 @@ final class JournaledProxy[S <: JournaledState[S]] private[proxy](
       observingStopped.future
     }
 
-  private def observe: Observable[EventAndState[Event, S]] =
+  def observe: Observable[EventAndState[Event, S]] = {
+    assertObserveNotCalled()
     observable
+      .doOnSubscribe(Task {
+        assertNotSubscribed()
+      })
       .map { eventAndState =>
         _currentState = eventAndState.stampedEvent.eventId -> eventAndState.state
         currentStateFilled.trySuccess(())
@@ -61,9 +71,16 @@ final class JournaledProxy[S <: JournaledState[S]] private[proxy](
       .guarantee(Task {
         observingStopped.success(())
       })
+  }
 
   def currentState: (EventId, S) =
     _currentState
+
+  private def assertObserveNotCalled(): Unit =
+    if (observeCalled.getAndSet(true)) throw new IllegalStateException("JournalProxy is already in use")
+
+  private def assertNotSubscribed(): Unit =
+    if (subscribed.getAndSet(true)) throw new IllegalStateException("JournalProxy is already in use")
 }
 
 object JournaledProxy
@@ -78,11 +95,11 @@ object JournaledProxy
     onEvent: EventAndState[Event, S] => Unit)
     (implicit S: JournaledState.Companion[S])
   : Task[JournaledProxy[S]] = {
-    val proxy = JournaledProxy.prepare[S](apiResource, onProxyEvent, onEvent)
-    proxy.start().map(_ => proxy)
+    val proxy = apply[S](apiResource, onProxyEvent, onEvent)
+    proxy.startObserving.map(_ => proxy)
   }
 
-  private def prepare[S <: JournaledState[S]](
+  def apply[S <: JournaledState[S]](
     apiResource: ApiResource,
     onProxyEvent: ProxyEvent => Unit,
     onEvent: EventAndState[Event, S] => Unit)
@@ -90,7 +107,7 @@ object JournaledProxy
   : JournaledProxy[S] =
     new JournaledProxy(observable(apiResource, onProxyEvent), onEvent)
 
-  private def observable[S <: JournaledState[S]](
+  def observable[S <: JournaledState[S]](
     apiResource: ApiResource,
     onProxyEvent: ProxyEvent => Unit)
     (implicit S: JournaledState.Companion[S])
