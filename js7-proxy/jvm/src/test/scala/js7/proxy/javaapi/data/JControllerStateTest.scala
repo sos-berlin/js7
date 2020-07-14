@@ -52,6 +52,10 @@ final class JControllerStateTest extends AnyFreeSpec
   "testOrderByWorkflowPath" in {
     tester.testOrdersBy()
   }
+
+  "testStateToOrder" in {
+    tester.testOrderStateToCount()
+  }
 }
 
 private object JControllerStateTest

@@ -9,6 +9,10 @@ object JOrderPredicates
 {
   type Predicate = Order[Order.State] => Boolean
 
+  val any: Predicate = _ => true
+
+  val none: Predicate = _ => false
+
   def by(workflowId: JWorkflowId): Predicate =
     byWorkflowId(workflowId)
 

@@ -7,12 +7,14 @@ import java.util.Map;
 import java.util.Set;
 import js7.data.order.Order;
 import js7.data.order.OrderId;
+import js7.data.workflow.WorkflowPath;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toList;
 import static js7.proxy.javaapi.data.JOrderPredicates.and;
 import static js7.proxy.javaapi.data.JOrderPredicates.by;
 import static js7.proxy.javaapi.data.JOrderPredicates.byOrderState;
+import static js7.proxy.javaapi.data.JOrderPredicates.byWorkflowPath;
 import static js7.proxy.javaapi.data.JOrderPredicates.not;
 import static js7.proxy.javaapi.data.JOrderPredicates.or;
 import static js7.proxy.javaapi.data.JOrderTester.aOrder;
@@ -89,6 +91,18 @@ final class JControllerStateTester
             asList(aOrder));
         testOrdersBy(byOrderState(Order.Ready$.class),  // Ready$, weil dieser Order.State keine Parameter hat
             asList(bOrder));
+    }
+
+    void testOrderStateToCount() {
+        assertThat(controllerState.orderStateToCount(), equalTo(
+            new HashMap<Class<? extends Order.State>, Integer>() {{
+                put(Order.Fresh.class, 1);
+                put(Order.Ready$.class, 1);
+            }}));
+        assertThat(controllerState.orderStateToCount(byWorkflowPath(WorkflowPath.of("/A-WORKFLOW"))), equalTo(
+            new HashMap<Class<? extends Order.State>, Integer>() {{
+                put(Order.Fresh.class, 1);
+            }}));
     }
 
     private void testOrdersBy(scala.Function1<Order<Order.State>,Object> predicate, List<JOrder> expected) {

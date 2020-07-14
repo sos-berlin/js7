@@ -7,6 +7,7 @@ import js7.base.utils.Collections.implicits.RichTraversable
 import js7.controller.data.ControllerState
 import js7.data.order.{Order, OrderId}
 import js7.data.workflow.Workflow
+import js7.proxy.javaapi.data.JOrderPredicates.any
 import js7.proxy.javaapi.utils.VavrConversions._
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
@@ -44,6 +45,16 @@ extends JJournaledState[JControllerState, ControllerState]
       .filter(predicate)
       .map(JOrder.apply)
       .asJavaSeqStream
+
+  def orderStateToCount(): java.util.Map[Class[_ <: Order.State], Int] =
+    orderStateToCount(any)
+
+  def orderStateToCount(predicate: Order[Order.State] => Boolean): java.util.Map[Class[_ <: Order.State], Int] =
+    underlying.idToOrder.values.view
+      .filter(predicate)
+      .groupBy(_.state.getClass)
+      .view.mapValues(_.size)
+      .toMap.asJava
 }
 
 object JControllerState
