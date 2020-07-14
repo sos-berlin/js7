@@ -549,7 +549,6 @@ with MainJournalingActor[ControllerState, Event]
         else
           addOrder(order)
             .map(_.map(added => ControllerCommand.AddOrder.Response(ignoredBecauseDuplicate = !added)))
-            .pipeTo(sender())
 
       case ControllerCommand.CancelOrder(orderId, mode) =>
         orderRegister.checked(orderId) map (_.order) match {
