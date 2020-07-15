@@ -12,6 +12,11 @@ final case class Uri(string: String) extends GenericString
       Uri(string + tail.tail)
     else
       Uri(string + '/' + tail)
+
+  /** Concats with exactly one slash between the parts but returns `this` if `tail` is empty. */
+  def /?(tail: String): Uri =
+    if (tail.isEmpty) this
+    else this / tail
 }
 
 object Uri extends GenericString.NonEmpty[Uri]

@@ -8,12 +8,23 @@ import org.scalatest.freespec.AnyFreeSpec
 final class UriTest extends AnyFreeSpec
 {
   "/" in {
+    assert(Uri("/") / "" == Uri("/"))
     assert(Uri("/") / "/" == Uri("/"))
     assert(Uri("/") / "B" == Uri("/B"))
     assert(Uri("/") / "B/" == Uri("/B/"))
-    assert(Uri("/A") / "B" == Uri("/A/B"))
-    assert(Uri("/A/") / "/B" == Uri("/A/B"))
-    assert(Uri("/A/") / "/B/" == Uri("/A/B/"))
-    assert(Uri("/A") / "B" == Uri("/A/B"))
+    assert(Uri("http://example.com") / "B" == Uri("http://example.com/B"))
+    assert(Uri("http://example.com/") / "/B" == Uri("http://example.com/B"))
+    assert(Uri("http://example.com/") / "/B/" == Uri("http://example.com/B/"))
+    assert(Uri("http://example.com") / "B" == Uri("http://example.com/B"))
+  }
+
+  "/?" in {
+    assert(Uri("/") /? "" == Uri("/"))
+    assert(Uri("/") /? "B" == Uri("/B"))
+    assert(Uri("/") /? "B/" == Uri("/B/"))
+    assert(Uri("http://example.com") /? "B" == Uri("http://example.com/B"))
+    assert(Uri("http://example.com/") /? "/B" == Uri("http://example.com/B"))
+    assert(Uri("http://example.com/") /? "/B/" == Uri("http://example.com/B/"))
+    assert(Uri("http://example.com") /? "B" == Uri("http://example.com/B"))
   }
 }
