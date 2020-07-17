@@ -4,7 +4,6 @@ import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.generic.SecretString
 import scala.language.implicitConversions
 
-
 /**
   * @author Joacim Zschimmer
   */

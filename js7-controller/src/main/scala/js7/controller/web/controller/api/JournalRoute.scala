@@ -46,7 +46,7 @@ trait JournalRoute extends ControllerRouteProvider
   private lazy val defaultJsonSeqChunkTimeout = config.getDuration("js7.web.server.services.event.streaming.chunk-timeout")
     .toFiniteDuration
 
-  protected final def journalRoute: Route =
+  protected final lazy val journalRoute: Route =
     get {
       pathEnd {
         handleExceptions(exceptionHandler) {
