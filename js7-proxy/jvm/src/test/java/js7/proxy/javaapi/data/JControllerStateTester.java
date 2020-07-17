@@ -94,12 +94,16 @@ final class JControllerStateTester
     }
 
     void testOrderStateToCount() {
-        assertThat(controllerState.orderStateToCount(), equalTo(
+        Map<Class<? extends Order.State>,Integer> allCounters = controllerState.orderStateToCount();
+        assertThat(allCounters, equalTo(
             new HashMap<Class<? extends Order.State>, Integer>() {{
                 put(Order.Fresh.class, 1);
                 put(Order.Ready$.class, 1);
             }}));
-        assertThat(controllerState.orderStateToCount(byWorkflowPath(WorkflowPath.of("/A-WORKFLOW"))), equalTo(
+
+        Map<Class<? extends Order.State>,Integer> workflowCounters =
+            controllerState.orderStateToCount(byWorkflowPath(WorkflowPath.of("/A-WORKFLOW")));
+        assertThat(workflowCounters, equalTo(
             new HashMap<Class<? extends Order.State>, Integer>() {{
                 put(Order.Fresh.class, 1);
             }}));

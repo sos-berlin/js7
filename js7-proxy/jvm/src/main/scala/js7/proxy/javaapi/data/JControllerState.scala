@@ -46,14 +46,14 @@ extends JJournaledState[JControllerState, ControllerState]
       .map(JOrder.apply)
       .asJavaSeqStream
 
-  def orderStateToCount(): java.util.Map[Class[_ <: Order.State], Int] =
+  def orderStateToCount(): java.util.Map[Class[_ <: Order.State], java.lang.Integer] =
     orderStateToCount(any)
 
-  def orderStateToCount(predicate: Order[Order.State] => Boolean): java.util.Map[Class[_ <: Order.State], Int] =
+  def orderStateToCount(predicate: Order[Order.State] => Boolean): java.util.Map[Class[_ <: Order.State], java.lang.Integer] =
     underlying.idToOrder.values.view
       .filter(predicate)
       .groupBy(_.state.getClass)
-      .view.mapValues(_.size)
+      .view.mapValues(o => java.lang.Integer.valueOf(o.size))
       .toMap.asJava
 }
 
