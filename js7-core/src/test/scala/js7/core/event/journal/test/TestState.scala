@@ -8,6 +8,7 @@ import monix.reactive.Observable
   * @author Joacim Zschimmer
   */
 final case class TestState(
+  eventId: EventId,
   standards: JournaledState.Standards = JournaledState.Standards.empty,
   keyToAggregate: Map[String, TestAggregate])
 extends JournaledState[TestState]
@@ -48,7 +49,7 @@ extends JournaledState[TestState]
     }
 
   def withEventId(eventId: EventId): TestState =
-    this
+    copy(eventId = eventId)
 
   def withStandards(standards: JournaledState.Standards) =
     copy(standards = standards)
@@ -56,5 +57,5 @@ extends JournaledState[TestState]
 
 object TestState
 {
-  val empty = TestState(JournaledState.Standards.empty, Map.empty)
+  val empty = TestState(EventId.BeforeFirst, JournaledState.Standards.empty, Map.empty)
 }

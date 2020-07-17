@@ -8,11 +8,13 @@ import js7.data.event.{Event, EventId, JournalState, JournaledState, KeyedEvent}
 import monix.reactive.Observable
 
 final case class AgentServerState(
+  eventId: EventId,
   standards: JournaledState.Standards,
   idToController: Map[ControllerId, RegisteredController])
 extends JournaledState[AgentServerState]
 {
-  def withEventId(eventId: EventId) = this  // ???
+  def withEventId(eventId: EventId) =
+    copy(eventId = eventId)
 
   def withStandards(standards: JournaledState.Standards) =
     copy(standards = standards)
@@ -54,5 +56,5 @@ extends JournaledState[AgentServerState]
 
 object AgentServerState
 {
-  val empty = AgentServerState(JournaledState.Standards.empty, Map.empty)
+  val empty = AgentServerState(EventId.BeforeFirst, JournaledState.Standards.empty, Map.empty)
 }

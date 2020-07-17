@@ -26,7 +26,7 @@ final class JournaledStateTest extends AnyFreeSpec
       Nil
     ).orThrow
 
-    assert(s == MyState(JournaledState.Standards(
+    assert(s == MyState(0L, JournaledState.Standards(
       JournalState(Map(UserId("USER") -> EventId(333))),
       ClusterState.Coupled(idToNode, primaryNodeId))))
   }
@@ -44,7 +44,8 @@ private object JournaledStateTest
     primaryNodeId -> Uri("http://PRIMARY"),
     NodeId("Backup") -> Uri("http://BACKUP"))
 
-  private case class MyState(standards: JournaledState.Standards) extends JournaledState[MyState]
+  private case class MyState(eventId: EventId, standards: JournaledState.Standards)
+  extends JournaledState[MyState]
   {
     def toSnapshotObservable = standards.toSnapshotObservable
 
@@ -54,9 +55,9 @@ private object JournaledStateTest
     def applyEvent(keyedEvent: KeyedEvent[Event]) =
       applyStandardEvent(keyedEvent)
 
-    def withEventId(eventId: EventId) = throw new NotImplementedError
+    def withEventId(eventId: EventId) = copy(eventId = eventId)
   }
   private object MyState {
-    val empty = MyState(JournaledState.Standards.empty)
+    val empty = MyState(EventId.BeforeFirst, JournaledState.Standards.empty)
   }
 }

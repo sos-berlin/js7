@@ -54,6 +54,7 @@ extends EventDrivenState[This, Event]
       case _ => eventNotApplicable(keyedEvent)
     }
 
+  def eventId: EventId
 }
 
 object JournaledState
