@@ -12,7 +12,7 @@ final class JavaCheckedTester
     @SuppressWarnings({"unchecked","rawtypes"})
     private static final JavaChecked<String> valid = new JavaChecked<>(new Right("VALID"));
     @SuppressWarnings({"unchecked","rawtypes"})
-    private static final JavaChecked<String> invalid = new JavaChecked<>(new Left(Problem$.MODULE$.pure("PROBLEM")));
+    private static final JavaChecked<String> invalid = new JavaChecked<>(new Left(Problem.singleton().pure("PROBLEM")));
 
     private JavaCheckedTester() {}
 

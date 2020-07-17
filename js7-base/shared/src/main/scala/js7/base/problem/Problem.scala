@@ -4,6 +4,7 @@ import cats.syntax.semigroup._
 import cats.{Eq, Semigroup}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json, JsonObject}
+import js7.base.annotation.javaApi
 import js7.base.problem.Problem._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.StackTraces._
@@ -54,6 +55,9 @@ sealed trait Problem
 
 object Problem
 {
+  @javaApi
+  def singleton = this
+
   implicit def toInvalid[A](problem: Problem): Left[Problem, A] =
     Left(problem)
 
