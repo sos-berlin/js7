@@ -33,6 +33,10 @@ final class JControllerStateTest extends AnyFreeSpec
   private val jControllerState = JControllerState(controllerState)
   private val tester = new JControllerStateTester(jControllerState)
 
+  "clusterState" in {
+    tester.testClusterState()
+  }
+
   "workflow" in {
     tester.testWorkflows()
   }

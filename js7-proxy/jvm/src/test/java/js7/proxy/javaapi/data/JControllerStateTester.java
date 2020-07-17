@@ -5,6 +5,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import js7.base.web.Uri;
+import js7.data.node.NodeId;
 import js7.data.order.Order;
 import js7.data.order.OrderId;
 import js7.data.workflow.WorkflowPath;
@@ -29,16 +31,25 @@ import static org.hamcrest.Matchers.equalTo;
 final class JControllerStateTester
 {
     static final OrderId aOrderId = OrderId.of("A-ORDER");
-    private static final Map<OrderId,JOrder> expectedIdToOrder = new HashMap<>();
-    static {
-        expectedIdToOrder.put(aOrder.id(), aOrder);
-        expectedIdToOrder.put(bOrder.id(), bOrder);
-    }
+    private static final Map<OrderId,JOrder> expectedIdToOrder = new HashMap<OrderId, JOrder>(){{
+        put(aOrder.id(), aOrder);
+        put(bOrder.id(), bOrder);
+    }};
 
     private final JControllerState controllerState;
 
     JControllerStateTester(JControllerState controllerState) {
         this.controllerState = controllerState;
+    }
+
+    void testClusterState() {
+        JClusterState.Coupled clusterState = (JClusterState.Coupled)controllerState.clusterState();
+        assertThat(clusterState.idToUri(), equalTo(
+                new HashMap<NodeId, Uri>(){{
+                    put(NodeId.unchecked("A"), Uri.unchecked("http://A"));
+                    put(NodeId.unchecked("B"), Uri.unchecked("http://B"));
+                }}));
+        assertThat(clusterState.activeId(), equalTo(NodeId.unchecked("A")));
     }
 
     void testWorkflows() {

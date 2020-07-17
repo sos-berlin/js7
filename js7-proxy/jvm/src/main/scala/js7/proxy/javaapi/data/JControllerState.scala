@@ -20,6 +20,9 @@ extends JJournaledState[JControllerState, ControllerState]
   def eventId: Long =
     underlying.eventId
 
+  def clusterState: JClusterState =
+    JClusterState(underlying.clusterState)
+
   def idToWorkflow(workflowId: JWorkflowId): VEither[Problem, JWorkflow] =
     underlying.repo.idTo[Workflow](workflowId.underlying)
       .map(JWorkflow.apply)

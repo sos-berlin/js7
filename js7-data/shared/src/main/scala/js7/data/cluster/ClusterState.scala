@@ -130,7 +130,7 @@ object ClusterState
       After restart, the active node will stil be active.
     */
   final case class CoupledActiveShutDown(idToUri: Map[Id, Uri], activeId: Id)
-  extends Decoupled
+  extends Decoupled  // CoupledActiveShutDown is Decoupled ???
   {
     assertIsValid()
   }
