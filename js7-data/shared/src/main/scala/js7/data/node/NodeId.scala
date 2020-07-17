@@ -7,7 +7,7 @@ import js7.base.problem.Checked
 final case class NodeId private(string: String)
 extends GenericString
 
-object NodeId extends GenericString.Checked_[NodeId]
+object NodeId extends GenericString.NonEmpty[NodeId]
 {
   def unchecked(string: String): NodeId =
     new NodeId(string)
