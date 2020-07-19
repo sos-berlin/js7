@@ -42,7 +42,7 @@ import js7.core.event.journal.files.JournalFiles.JournalMetaOps
 import js7.core.event.journal.recover.{JournaledStateRecoverer, Recovered}
 import js7.core.event.journal.{JournalActor, JournalConf}
 import js7.core.event.state.JournaledStatePersistence
-import js7.core.problems.{ClusterNodeIsNotBackupProblem, ClusterNodesAlreadyAppointed, MissingPassiveClusterNodeHeartbeatProblem, PrimaryMayNotBecomeBackupProblem}
+import js7.core.problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotBackupProblem, ClusterNodesAlreadyAppointed, MissingPassiveClusterNodeHeartbeatProblem, PrimaryMayNotBecomeBackupProblem}
 import js7.data.cluster.ClusterCommand.{ClusterInhibitActivation, ClusterStartBackupNode}
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{Coupled, CoupledActiveShutDown, Decoupled, Empty, FailedOver, HasNodes, NodesAppointed, PassiveLost, PreparedToBeCoupled}
@@ -116,21 +116,20 @@ final class Cluster[S <: JournaledState[S]: Diff](
 
   /**
     * Returns a pair of `Task`s
-    * - `(Task[None], _)` if this node starts as an active node
-    * - `(Task[Some[S]], _)` with the other's node S if this node starts as a passive node.
-    * - `(_, Task[Checked[ClusterFollowUp]]` when this node should be activated or terminated
+    * - `(Task[None], _)` no replicated state available, because it's an active node or the backup has not yet appointed.
+    * - `(Task[Some[Checked[S]]], _)` with the current replicated state if this node has started as a passive node.
+    * - `(_, Task[Checked[ClusterFollowUp]]` when this node should be activated
     * @return A pair of `Task`s with maybe the current `S` of this passive node (if so)
     *         and ClusterFollowUp.
     */
-  def start(recovered: Recovered[S], recoveredState: S)
-  : (Task[Option[S]], Task[Checked[ClusterFollowUp[S]]]) = {
-    if (recovered.clusterState != Empty) {
-      logger.info(s"Recovered ClusterState is ${recovered.clusterState}")
-    }
-    val (passiveState, followUp) = startCluster(recovered, recoveredState)
-    _currentClusterState = passiveState.map(_.fold(recovered.clusterState)(_.clusterState))
+  def start(recovered: Recovered[S], recoveredState: S): (Task[Option[Checked[S]]], Task[Checked[ClusterFollowUp[S]]]) = {
+    if (recovered.clusterState != Empty) logger.info(s"Recovered ClusterState is ${recovered.clusterState}")
+
+    val (replicatedState, followUp) = startCluster(recovered, recoveredState)
+
+    _currentClusterState = replicatedState.map(_.fold(recovered.clusterState)(_.map(_.clusterState).orThrow/*???*/))
     started.success(())
-    passiveState ->
+    replicatedState ->
       followUp.map(_.map { case (clusterState, followUp) =>
         activated = followUp.isInstanceOf[ClusterFollowUp.BecomeActive[_]]
         clusterWatchSynchronizer.scheduleHeartbeats(clusterState)
@@ -139,12 +138,12 @@ final class Cluster[S <: JournaledState[S]: Diff](
   }
 
   private def startCluster(recovered: Recovered[S], recoveredState: S)
-  : (Task[Option[S]], Task[Checked[(ClusterState, ClusterFollowUp[S])]])
+  : (Task[Option[Checked[S]]], Task[Checked[(ClusterState, ClusterFollowUp[S])]])
   =
     (recovered.clusterState, recovered.recoveredJournalFile) match {
       case (Empty, _) =>
         if (!clusterConf.isBackup) {
-          logger.debug(s"Active primary cluster node '$ownId', still with no passive node appointed")
+          logger.debug(s"Active primary cluster node '$ownId', still with no backup node appointed")
           Task.pure(None) ->
             (activationInhibitor.startActive >>
               Task.pure(Right(recovered.clusterState -> ClusterFollowUp.BecomeActive(recovered))))
@@ -152,13 +151,18 @@ final class Cluster[S <: JournaledState[S]: Diff](
           Task.pure(None) -> Task.pure(Left(PrimaryMayNotBecomeBackupProblem))
         else {
           logger.info(s"Backup cluster node '$ownId', awaiting appointment from a primary node")
-          val promise = Promise[ClusterStartBackupNode]()
-          expectingStartBackupCommand := promise
-          val passiveClusterNode = Task.deferFuture(promise.future)
+          val startedPromise = Promise[ClusterStartBackupNode]()
+          expectingStartBackupCommand := startedPromise
+          val passiveClusterNode = Task.deferFuture(startedPromise.future)
             .map(cmd => newPassiveClusterNode(cmd.idToUri, cmd.activeId, recovered,
               initialFileEventId = Some(cmd.fileEventId)))
             .memoize
-          passiveClusterNode.flatMap(_.state.map(Some.apply)) ->
+          Task.defer(
+            if (startedPromise.future.isCompleted)
+              passiveClusterNode.flatMap(_.state.map(s => Some(Right(s))))
+            else
+              Task.pure(Some(Left(BackupClusterNodeNotAppointed)))
+          ) ->
             passiveClusterNode.flatMap(passive =>
               activationInhibitor.startPassive >>
                 passive.run(recoveredState))
@@ -242,7 +246,7 @@ final class Cluster[S <: JournaledState[S]: Diff](
 
             failedOver.flatMap {
               case None => Task.pure(None)
-              case Some((_, passiveClusterNode)) => passiveClusterNode.state map Some.apply
+              case Some((_, passiveClusterNode)) => passiveClusterNode.state.map(s => Some(Right(s)))
             } ->
               failedOver.flatMap {
                 case None =>
@@ -267,7 +271,7 @@ final class Cluster[S <: JournaledState[S]: Diff](
           else
             s"Remaining a passive cluster node trying to follow the active node '${state.activeId}'")
         val passive = newPassiveClusterNode(state.idToUri, state.activeId, recovered)
-        passive.state.map(Some.apply) ->
+        passive.state.map(s => Some(Right(s))) ->
           passive.run(recoveredState)
 
       case _ =>
@@ -422,7 +426,7 @@ final class Cluster[S <: JournaledState[S]: Diff](
             case Right(/*inhibited=*/true) => Task.pure(Right(Response(None)))
             case Right(/*inhibited=*/false) =>
               // Could not inhibit, so this node is already active
-              currentClusterState.map {
+              persistence.currentState.map(_.clusterState).map {
                 case failedOver: FailedOver =>
                   logger.debug(s"inhibitActivation(${duration.pretty}) => $failedOver")
                   Right(Response(Some(failedOver)))
@@ -505,7 +509,7 @@ final class Cluster[S <: JournaledState[S]: Diff](
         })
         .guaranteeCase {
           case ExitCase.Error(_) =>
-            currentClusterState.flatMap(clusterState =>  // TODO Lock currentClusterState (instead in JournalStatePersistence)
+            persistence.currentState.map(_.clusterState).flatMap(clusterState =>  // TODO Lock currentClusterState (instead in JournalStatePersistence)
               Task { clusterWatchSynchronizer.scheduleHeartbeats(clusterState) })
           case _ => Task.unit
         }
@@ -520,7 +524,7 @@ final class Cluster[S <: JournaledState[S]: Diff](
       } .map(_.map((_: (Seq[Stamped[_]], _)) => Completed))
         .guaranteeCase {
           case ExitCase.Error(_) =>
-            currentClusterState.flatMap(clusterState =>  // TODO Lock currentClusterState (instead in JournalStatePersistence)
+            persistence.currentState.map(_.clusterState).flatMap(clusterState =>  // TODO Lock currentClusterState (instead in JournalStatePersistence)
               Task { clusterWatchSynchronizer.scheduleHeartbeats(clusterState) })
           case _ => Task.unit
         }
@@ -842,7 +846,7 @@ final class Cluster[S <: JournaledState[S]: Diff](
   /** Returns the current or at start the recovered ClusterState.
     * Required for the /api/cluster web service used by the restarting active node
     * asking the peer about its current (maybe failed-over) ClusterState. */
-  def currentClusterState: Task[ClusterState] =
+  private def currentClusterState: Task[ClusterState] =
     Task.deferFuture {
       if (!started.future.isCompleted) logger.debug("currentClusterState: waiting for start")
       started.future

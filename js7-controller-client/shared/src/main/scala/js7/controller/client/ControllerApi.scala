@@ -25,7 +25,7 @@ extends EventApi
 
   def overview: Task[ControllerOverview]
 
-  def clusterState: Task[ClusterState]
+  def clusterState: Task[Checked[ClusterState]]
 
   def events[E <: Event: ClassTag](eventRequest: EventRequest[E])(implicit kd: Decoder[KeyedEvent[E]], ke: Encoder.AsObject[KeyedEvent[E]])
     : Task[TearableEventSeq[Seq, KeyedEvent[E]]]

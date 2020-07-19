@@ -32,6 +32,10 @@ package object problems
     override val httpStatusCode = ServiceUnavailable.intValue/*503*/
   }
 
+  final case object BackupClusterNodeNotAppointed extends Problem.ArgumentlessCoded {
+    override val httpStatusCode = ServiceUnavailable.intValue/*503*/
+  }
+
   final case class MissingPassiveClusterNodeHeartbeatProblem(passiveId: NodeId) extends Problem.Coded {
     override def arguments = Map("passiveId" -> passiveId.toString)
   }

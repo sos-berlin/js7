@@ -260,8 +260,14 @@ object RunningController
         testEventBus)
 
       // clusterFollowUpFuture terminates when this cluster node becomes active or terminates
-      // maybePassiveState accesses the current ControllerState while this node is passive, otherwise it is None
-      val (currentPassiveControllerState, clusterFollowUpTask) = startCluster(cluster, recovered)
+      // replicatedState accesses the current ControllerState while this node is passive, otherwise it is None
+      val (replicatedState, clusterFollowUpTask) = startCluster(cluster, recovered)
+      val controllerState = Task.defer {
+        if (persistence.isStarted)
+          persistence.currentState map Right.apply
+        else
+          replicatedState.map(_.toChecked(ClusterNodeIsNotYetReadyProblem).flatten)
+      }
       val clusterFollowUpFuture = clusterFollowUpTask
         .flatTap {
           case Right(ClusterFollowUp.BecomeActive(recovered)) =>
@@ -306,18 +312,12 @@ object RunningController
             clusterFollowUpFuture.cancel()
           },
           orderKeeperStarted.map(_.toOption)))
-      val controllerState = Task.defer {
-        if (persistence.isStarted)
-          persistence.currentState map Right.apply
-        else
-          currentPassiveControllerState.map(_.toChecked(ClusterNodeIsNotYetReadyProblem))
-      }
       val fileBasedApi = new MainFileBasedApi(controllerState)
       val orderApi = new MainOrderApi(controllerState, orderKeeperTask)
 
       val webServer = injector.instance[ControllerWebServer.Factory]
         .apply(fileBasedApi, orderApi, commandExecutor,
-          cluster.currentClusterState,
+          controllerState.map(_.map(_.clusterState)),  // ??? cluster.currentClusterState,
           controllerState,
           recovered.totalRunningSince,  // Maybe different from JournalHeader
           recovered.eventWatch
@@ -326,7 +326,8 @@ object RunningController
       for (_ <- webServer.start().runToFuture) yield {
         createSessionTokenFile(injector.instance[SessionRegister[SimpleSession]])
         controllerConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", o => s"$o/controller")
-        new RunningController(recovered.eventWatch.strict, webServer, fileBasedApi, orderApi, cluster.currentClusterState,
+        new RunningController(recovered.eventWatch.strict, webServer, fileBasedApi, orderApi,
+          controllerState.map(_.map(_.clusterState).orThrow),
           commandExecutor,
           whenReady, orderKeeperTerminated, testEventBus, closer, injector)
       }
@@ -345,12 +346,12 @@ object RunningController
     private def startCluster(
       cluster: Cluster[ControllerState],
       recovered: Recovered[ControllerState])
-    : (Task[Option[ControllerState]], Task[Either[ControllerTermination.Terminate, ClusterFollowUp[ControllerState]]]) =
+    : (Task[Option[Checked[ControllerState]]], Task[Either[ControllerTermination.Terminate, ClusterFollowUp[ControllerState]]]) =
     {
       class StartingClusterCancelledException extends NoStackTrace
       val recoveredState = recovered.recoveredState getOrElse ControllerState.Undefined
-      val (passiveState, followUpTask) = cluster.start(recovered, recoveredState)
-      passiveState ->
+      val (replicatedState, followUpTask) = cluster.start(recovered, recoveredState)
+      replicatedState ->
         followUpTask
           .doOnCancel(Task { logger.debug("Cancel Cluster") })
           .onCancelRaiseError(new StartingClusterCancelledException)
@@ -369,9 +370,6 @@ object RunningController
     : Either[ControllerTermination.Terminate, OrderKeeperStarted] = {
       logger.debug(s"startControllerOrderKeeper(clusterFollowUp=${followUp.getClass.simpleScalaName})")
       followUp match {
-        //case _: ClusterFollowUp.Terminate[ControllerState, Event] =>
-        //  Left(ControllerTermination.Terminate(restart = false))
-
         case ClusterFollowUp.BecomeActive(recovered: Recovered[ControllerState @unchecked]) =>
           val terminationPromise = Promise[ControllerTermination]()
           val actor = actorSystem.actorOf(

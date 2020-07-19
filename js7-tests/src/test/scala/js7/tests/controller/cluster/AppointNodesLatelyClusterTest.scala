@@ -1,5 +1,7 @@
 package js7.tests.controller.cluster
 
+import js7.base.auth.UserId
+import js7.base.generic.SecretString
 import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
 import js7.common.scalautil.FileUtils.syntax._
@@ -7,6 +9,7 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import js7.controller.data.ControllerCommand.ClusterAppointNodes
 import js7.core.event.journal.files.JournalFiles.listJournalFiles
+import js7.core.problems.BackupClusterNodeNotAppointed
 import js7.data.cluster.ClusterEvent
 import js7.data.event.EventId
 import js7.data.node.NodeId
@@ -32,6 +35,11 @@ final class AppointNodesLatelyClusterTest extends ControllerClusterTester
         assert(listJournalFiles(primary.controller.dataDir / "state" / "controller").head.afterEventId > EventId.BeforeFirst)
 
         val backupController = backup.startController(httpPort = Some(backupHttpPort)) await 99.s
+
+        backupController.httpApiDefaultLogin(Some(UserId("TEST") -> SecretString("TEST-PASSWORD")))
+        backupController.httpApi.login() await 99.s
+        assert(backupController.httpApi.clusterState.await(99.s) == Left(BackupClusterNodeNotAppointed))
+
         primaryController.executeCommandAsSystemUser(
           ClusterAppointNodes(
             Map(

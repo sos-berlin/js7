@@ -52,8 +52,9 @@ extends ControllerApi with HttpSessionApi with HasIsIgnorableStackTrace
   final def overview: Task[ControllerOverview] =
     httpClient.get[ControllerOverview](uris.overview)
 
-  final def clusterState: Task[ClusterState] =
-    httpClient.get[ClusterState](uris.clusterState)
+  final def clusterState: Task[Checked[ClusterState]] =
+    httpClient.liftProblem(
+      httpClient.get[ClusterState](uris.clusterState))
 
   final def extendedClusterState: Task[Checked[ExtendedClusterState]] =
     httpClient.liftProblem(
