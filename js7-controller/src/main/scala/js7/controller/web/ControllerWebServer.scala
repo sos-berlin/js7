@@ -37,7 +37,7 @@ final class ControllerWebServer private(
   fileBasedApi: FileBasedApi,
   orderApi: OrderApi.WithCommands,
   commandExecutor: ControllerCommandExecutor,
-  clusterState: Task[ClusterState],
+  checkedClusterState: Task[Checked[ClusterState]],
   controllerState: Task[Checked[ControllerState]],
   totalRunningSince: Deadline,
   sessionRegister: SessionRegister[SimpleSession],
@@ -55,6 +55,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri
       protected def whenShuttingDown        = whenTerminating
       protected val controllerConfiguration = ControllerWebServer.this.controllerConfiguration
       protected val controllerId            = controllerConfiguration.controllerId
+      protected val nodeId                  = controllerConfiguration.nodeId
       protected val injector                = ControllerWebServer.this.injector
       protected val actorSystem             = ControllerWebServer.this.actorSystem
       protected implicit def actorRefFactory = ControllerWebServer.this.actorSystem
@@ -67,7 +68,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri
       protected val fileBasedApi = ControllerWebServer.this.fileBasedApi
       protected val orderApi = ControllerWebServer.this.orderApi
       protected def executeCommand(command: ControllerCommand, meta: CommandMeta) = commandExecutor.executeCommand(command, meta)
-      protected def clusterState = ControllerWebServer.this.clusterState
+      protected def checkedClusterState = ControllerWebServer.this.checkedClusterState
       protected def controllerState = ControllerWebServer.this.controllerState
       protected def totalRunningSince = ControllerWebServer.this.totalRunningSince
       protected val currentLogFile = config.as[Path]("js7.log.file")
@@ -93,7 +94,8 @@ object ControllerWebServer
   {
     def apply(fileBasedApi: FileBasedApi, orderApi: OrderApi.WithCommands,
       commandExecutor: ControllerCommandExecutor,
-      clusterState: Task[ClusterState], controllerState: Task[Checked[ControllerState]],
+      clusterState: Task[Checked[ClusterState]],
+      controllerState: Task[Checked[ControllerState]],
       totalRunningSince: Deadline,
       eventWatch: EventWatch)
     : ControllerWebServer =

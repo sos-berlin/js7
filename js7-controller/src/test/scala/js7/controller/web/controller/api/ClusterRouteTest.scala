@@ -6,7 +6,8 @@ import akka.http.scaladsl.server.Route
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import js7.common.http.CirceJsonSupport._
 import js7.controller.web.controller.api.test.RouteTester
-import js7.data.cluster.ClusterState
+import js7.data.cluster.{ClusterState, ExtendedClusterState}
+import js7.data.node.NodeId
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
@@ -21,16 +22,23 @@ final class ClusterRouteTest extends AnyFreeSpec with RouteTester with ClusterRo
 
   protected def whenShuttingDown = Future.never
 
-  protected def clusterState = Task.pure(ClusterState.Empty)
+  protected val nodeId = NodeId("NODE-ID")
+  protected val checkedClusterState = Task.pure(Right(ClusterState.Empty))
 
-  private def route: Route =
+  private lazy val route: Route =
     pathSegment("cluster") {
       clusterRoute
     }
 
-  "ClusterRoute" in {
+  "/cluster" in {
     Get("/cluster") ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[ClusterState] == ClusterState.Empty)
+    }
+  }
+
+  "/cluster?return=ExtendedClusterState" in {
+    Get("/cluster?return=ExtendedClusterState") ~> Accept(`application/json`) ~> route ~> check {
+      assert(responseAs[ExtendedClusterState] == ExtendedClusterState(nodeId, ClusterState.Empty))
     }
   }
 }

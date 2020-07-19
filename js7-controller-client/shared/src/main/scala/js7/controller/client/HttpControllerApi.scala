@@ -12,7 +12,7 @@ import js7.base.web.{HttpClient, Uri}
 import js7.controller.client.HttpControllerApi._
 import js7.controller.data.{ControllerCommand, ControllerOverview, ControllerSnapshots}
 import js7.data.agent.AgentRef
-import js7.data.cluster.ClusterState
+import js7.data.cluster.{ClusterState, ExtendedClusterState}
 import js7.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
 import js7.data.fatevent.FatEvent
 import js7.data.order.{FreshOrder, Order, OrdersOverview}
@@ -54,6 +54,10 @@ extends ControllerApi with HttpSessionApi with HasIsIgnorableStackTrace
 
   final def clusterState: Task[ClusterState] =
     httpClient.get[ClusterState](uris.clusterState)
+
+  final def extendedClusterState: Task[Checked[ExtendedClusterState]] =
+    httpClient.liftProblem(
+      httpClient.get[ExtendedClusterState](uris.extendedClusterState))
 
   final def addOrder(order: FreshOrder): Task[Boolean] = {
     val uri = uris.order.add
