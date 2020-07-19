@@ -1,9 +1,9 @@
 package js7.base.monixutils
 
 import cats.effect.Resource
+import js7.base.monixutils.MonixDeadline.syntax._
 import js7.base.problem.Checked
 import js7.base.time.Timestamp
-import MonixDeadline.syntax._
 import js7.base.utils.CloseableIterator
 import monix.eval.Task
 import monix.execution.cancelables.MultiAssignCancelable
@@ -111,7 +111,7 @@ object MonixBase
   //def deferFutureAndLog[A](f: => Future[A])(implicit A: TypeTag[A]): Task[A] =
   //  deferFutureAndLog(s"Future[${A.tpe.toString}]", f)
 
-  def deferFutureAndLog[A](name: => String, f: => Future[A]): Task[A] =
+  def deferFutureAndLog[A](f: => Future[A], name: => String): Task[A] =
     Task.deferFutureAction { implicit s =>
       val future = f
       if (future.isCompleted)

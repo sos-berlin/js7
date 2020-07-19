@@ -89,16 +89,16 @@ extends AutoCloseable
   private def requireStarted() =
     if (actorOnce.isEmpty) throw new IllegalStateException(s"$toString has not yet been started")
 
-  def waitUntilStarted: Task[JournaledStatePersistence[S]] =
-    deferFutureAndLog(s"ActorRef for $toString", actorOnce.future)
-      .map(_ => this)
-
   def currentState: Task[S] =
     waitUntilStarted >>
     Task.deferFuture {
       logger.debug(s"JournalActor.Input.GetJournaledState")
       (journalActor ? JournalActor.Input.GetJournaledState).mapTo[JournaledState[S]]
     }.map(_.asInstanceOf[S])
+
+  def waitUntilStarted: Task[Unit] =
+    deferFutureAndLog(actorOnce.future, s"StateJournalingActor for $toString")
+      .map(_ => ())
 
   override def toString = s"JournaledStatePersistence[${S.tpe}]"
 }

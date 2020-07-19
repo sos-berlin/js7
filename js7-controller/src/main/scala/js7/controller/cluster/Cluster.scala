@@ -148,7 +148,7 @@ final class Cluster[S <: JournaledState[S]: Diff](
             (activationInhibitor.startActive >>
               Task.pure(Right(recovered.clusterState -> ClusterFollowUp.BecomeActive(recovered))))
         } else if (recovered.eventId != EventId.BeforeFirst)
-          Task.pure(None) -> Task.pure(Left(PrimaryMayNotBecomeBackupProblem))
+          Task.pure(Some(Left(PrimaryMayNotBecomeBackupProblem))) -> Task.pure(Left(PrimaryMayNotBecomeBackupProblem))
         else {
           logger.info(s"Backup cluster node '$ownId', awaiting appointment from a primary node")
           val startedPromise = Promise[ClusterStartBackupNode]()
@@ -168,8 +168,7 @@ final class Cluster[S <: JournaledState[S]: Diff](
                 passive.run(recoveredState))
         }
 
-      case (recoveredClusterState: HasNodes, Some(recoveredJournalFile))
-        if recoveredClusterState.activeId == ownId =>
+      case (recoveredClusterState: HasNodes, Some(recoveredJournalFile)) if recoveredClusterState.activeId == ownId =>
         assertThat(recoveredClusterState == recoveredJournalFile.state.clusterState)
         recoveredClusterState match {
           case recoveredClusterState: Coupled =>
@@ -296,6 +295,7 @@ final class Cluster[S <: JournaledState[S]: Diff](
     Task.defer {
       clusterConf.maybeIdToUri match {
         case Some(idToUri) =>
+          Task(logger.trace("automaticallyAppointConfiguredBackupNode")) >>
           appointNodes(idToUri, ownId)
             .onErrorHandle(t => Left(Problem.fromThrowable(t)))  // We want only to log the exception
             .map {
@@ -438,18 +438,22 @@ final class Cluster[S <: JournaledState[S]: Diff](
     }
 
   def beforeJournalingStarted: Task[Checked[Completed]] =
-    if (remainingActiveAfterRestart)
-      inhibitActivationOfPeer.map {
-        case Some(otherFailedOver) =>
-          Left(Problem.pure(s"While activating this node, the other node has failed-over: $otherFailedOver"))
-        case None =>
-          Right(Completed)
-      }
-    else
-      Task.pure(Right(Completed))
+    Task.defer {
+      logger.trace("beforeJournalingStarted")
+      if (remainingActiveAfterRestart)
+        inhibitActivationOfPeer.map {
+          case Some(otherFailedOver) =>
+            Left(Problem.pure(s"While activating this node, the other node has failed-over: $otherFailedOver"))
+          case None =>
+            Right(Completed)
+        }
+      else
+        Task.pure(Right(Completed))
+    }
 
   def afterJounalingStarted: Task[Checked[Completed]] =
     Task.defer {
+      logger.trace("afterJounalingStarted")
       _currentClusterState = persistence.currentState.map(_.clusterState)
       automaticallyAppointConfiguredBackupNode >>
         onRestartActiveNode
@@ -786,7 +790,7 @@ final class Cluster[S <: JournaledState[S]: Diff](
 
         def doAHeartbeat: Task[Option[MonixDeadline]] =
           lock.use(_ =>
-            currentClusterState.flatMap {
+            (persistence.waitUntilStarted >> _currentClusterState).flatMap {
               case clusterState: ClusterState.HasNodes if clusterState.activeId == ownId && !cancelled =>
                 Task(now).flatMap(since =>
                   clusterWatch.retryUntilReachable()(
@@ -843,15 +847,15 @@ final class Cluster[S <: JournaledState[S]: Diff](
     }
   }
 
-  /** Returns the current or at start the recovered ClusterState.
-    * Required for the /api/cluster web service used by the restarting active node
-    * asking the peer about its current (maybe failed-over) ClusterState. */
-  private def currentClusterState: Task[ClusterState] =
-    Task.deferFuture {
-      if (!started.future.isCompleted) logger.debug("currentClusterState: waiting for start")
-      started.future
-    } >>
-      _currentClusterState
+  ///** Returns the current or at start the recovered ClusterState.
+  //  * Required for the /api/cluster web service used by the restarting active node
+  //  * asking the peer about its current (maybe failed-over) ClusterState. */
+  //private def currentClusterState: Task[ClusterState] =
+  //  Task.deferFuture {
+  //    if (!started.future.isCompleted) logger.debug("currentClusterState: waiting for start")
+  //    started.future
+  //  } >>
+  //    _currentClusterState
 
   def isActive: Task[Boolean] =
     Task.pure(activated)
