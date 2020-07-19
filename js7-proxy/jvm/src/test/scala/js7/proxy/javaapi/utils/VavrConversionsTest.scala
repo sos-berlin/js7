@@ -12,7 +12,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class VavrConversionsTest extends AnyFreeSpec
 {
   "Either" in {
-    assert(Left(7).asVavr == VEither.left(7))
-    assert(Right(7).asVavr == VEither.right(7))
+    assert(Left(7).toVavr == VEither.left(7))
+    assert(Right(7).toVavr == VEither.right(7))
   }
 }

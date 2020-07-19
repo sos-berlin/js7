@@ -26,7 +26,7 @@ extends JJournaledState[JControllerState, ControllerState]
   def idToWorkflow(workflowId: JWorkflowId): VEither[Problem, JWorkflow] =
     underlying.repo.idTo[Workflow](workflowId.underlying)
       .map(JWorkflow.apply)
-      .asVavr
+      .toVavr
 
   def orderIds: java.util.Set[OrderId] =
     underlying.idToOrder.keySet.asJava

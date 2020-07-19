@@ -56,7 +56,7 @@ final class JControllerProxy private[proxy](
     commandProxy.execute(ControllerCommand.AddOrder(order.underlying))
       .map(_
         .map(o => java.lang.Boolean.valueOf(!o.ignoredBecauseDuplicate))
-        .asVavr)
+        .toVavr)
       .runToFuture
       .asJava
 
@@ -64,7 +64,7 @@ final class JControllerProxy private[proxy](
     commandProxy.execute(command.underlying)
       .map(_
         .map(o => (o: ControllerCommand.Response))
-        .asVavr)
+        .toVavr)
       .runToFuture
       .asJava
 
@@ -82,7 +82,7 @@ final class JControllerProxy private[proxy](
     } yield responseJson).value
       .map(_
         .map(_.compactPrint)
-        .asVavr)
+        .toVavr)
       .runToFuture
       .asJava
 
@@ -98,7 +98,7 @@ final class JControllerProxy private[proxy](
             api.get[Json](uriTail)))
       .map(_
         .map(_.compactPrint)
-        .asVavr)
+        .toVavr)
       .runToFuture
       .asJava
 }

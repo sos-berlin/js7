@@ -34,6 +34,6 @@ object JJsonable
     def fromJson(jsonString: String): VEither[Problem, A] =
       io.circe.parser.parse(jsonString).toChecked
         .flatMap(_.as[A#Underlying].toChecked map apply)
-        .asVavr
+        .toVavr
   }
 }

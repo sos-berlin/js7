@@ -13,5 +13,5 @@ object JWorkflowParser
   def parse(jWorkflowId: JWorkflowId, workflowNotation: String): VEither[Problem, JWorkflow] =
       WorkflowParser.parse(jWorkflowId.underlying, workflowNotation)
       .map(JWorkflow.apply)
-      .asVavr
+      .toVavr
 }
