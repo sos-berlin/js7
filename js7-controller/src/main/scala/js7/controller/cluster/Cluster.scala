@@ -25,7 +25,7 @@ import js7.base.utils.{LockResource, SetOnce}
 import js7.base.web.{HttpClient, Uri}
 import js7.common.akkahttp.https.HttpsConfig
 import js7.common.configutils.Configs.ConvertibleConfig
-import js7.common.event.{EventIdGenerator, RealEventWatch}
+import js7.common.event.{EventIdGenerator, RealEventWatch, TornException}
 import js7.common.http.RecouplingStreamReader
 import js7.common.scalautil.Logger
 import js7.common.system.startup.Halt.haltJava
@@ -703,12 +703,15 @@ final class Cluster[S <: JournaledState[S]: Diff](
               api.eventIdObservable(
                 EventRequest.singleClass[Event](after = after2, timeout = None),
                 heartbeat = Some(clusterConf.heartbeat))
-            ).flatMap {
-              case Left(torn: EventSeqTornProblem) =>
-                logger.debug(s"observeEventIds: $torn")
-                Task.pure(Left(torn.tornEventId)).delayExecution(1.s/*!!!*/)  // Repeat with last avaiable EventId
-              case o => Task.pure(Right(o))
-            })
+            ) .onErrorRecover {
+                case t: TornException => Left(t.problem)
+              }
+              .flatMap {
+                case Left(torn: EventSeqTornProblem) =>
+                  logger.debug(s"observeEventIds: $torn")
+                  Task.pure(Left(torn.tornEventId)).delayExecution(1.s/*!!!*/)  // Repeat with last avaiable EventId
+                case o => Task.pure(Right(o))
+              })
         },
         stopRequested = () => stopRequested)
 
