@@ -204,7 +204,7 @@ lazy val `js7-docker` = project
   .settings(commonSettings)
   .settings {
     import Dependencies._
-    libraryDependencies ++= log4j ++ Dependencies.lmaxDisruptor
+    libraryDependencies ++= log4j ++ lmaxDisruptor
   }
   .enablePlugins(JavaAppPackaging, UniversalDeployPlugin)
   .settings(
@@ -323,7 +323,8 @@ lazy val `js7-common` = project.dependsOn(`js7-base`.jvm, `js7-data`.jvm, `js7-t
       findbugs % "compile" ++
       scalaTest % "test" ++
       mockito % "test" ++
-      log4j % "test"
+      log4j % "test" ++
+      lmaxDisruptor % "test"
     }
   .enablePlugins(GitVersioning)
 
@@ -344,7 +345,8 @@ lazy val `js7-common-http` = crossProject(JSPlatform, JVMPlatform)
       akkaHttp ++
       snakeYaml ++
       scalaLogging ++
-      log4j % "test"
+      log4j % "test" ++
+      lmaxDisruptor % "test"
   }
   .jsSettings(
     libraryDependencies += "org.scala-js" %%% "scalajs-dom" % Dependencies.scalaJsDomVersion)
@@ -362,7 +364,8 @@ lazy val `js7-controller` = project.dependsOn(`js7-controller-data`.jvm, `js7-co
       "org.sangria-graphql" %% "sangria-circe" % sangriaCirceVersion ++
       scalaTest % "test" ++
       akkaHttpTestkit % "test" ++
-      log4j % "test"
+      log4j % "test" ++
+      lmaxDisruptor % "test"
   }
 
 lazy val `js7-provider` = project.dependsOn(`js7-controller-data`.jvm, `js7-controller`, `js7-controller-client`.jvm, `js7-core`, `js7-common`, `js7-tester`.jvm % "test")
@@ -374,7 +377,8 @@ lazy val `js7-provider` = project.dependsOn(`js7-controller-data`.jvm, `js7-cont
     import Dependencies._
     libraryDependencies ++=
       scalaTest % "test" ++
-      log4j % "test"
+      log4j % "test" ++
+      lmaxDisruptor % "test"
   }
 
 lazy val `js7-proxy` = crossProject(JSPlatform, JVMPlatform)
@@ -397,7 +401,8 @@ lazy val `js7-proxy` = crossProject(JSPlatform, JVMPlatform)
       "io.projectreactor" % "reactor-core" % "3.3.7.RELEASE" ++
       "org.scala-lang.modules" %% "scala-java8-compat" % "0.9.1" ++
       hamcrest % "test" ++
-      log4j % "test"
+      log4j % "test" ++
+        lmaxDisruptor % "test"
     })
 
 lazy val `js7-controller-data` = crossProject(JSPlatform, JVMPlatform)
@@ -428,7 +433,8 @@ lazy val `js7-controller-client` = crossProject(JSPlatform, JVMPlatform)
     libraryDependencies ++= {
       import Dependencies._
       akkaHttp ++
-      log4j % "test"
+      log4j % "test" ++
+        lmaxDisruptor % "test"
     })
 
 lazy val `js7-core` = project.dependsOn(`js7-common`, `js7-tester`.jvm % "test")
@@ -443,7 +449,8 @@ lazy val `js7-core` = project.dependsOn(`js7-common`, `js7-tester`.jvm % "test")
       akkaHttpTestkit % "test" ++
       scalaTest % "test" ++
       scalaCheck % "test" ++
-      log4j % "test"
+      log4j % "test" ++
+      lmaxDisruptor % "test"
   }
   .settings(
     resourceGenerators in Compile += Def.task {
@@ -471,7 +478,8 @@ lazy val `js7-agent` = project.dependsOn(`js7-agent-data`, `js7-core`, `js7-comm
       guice ++
       mockito % "test" ++
       scalaTest % "test" ++
-      log4j % "test"
+      log4j % "test" ++
+      lmaxDisruptor % "test"
   }
 
 lazy val `js7-agent-client` = project.dependsOn(`js7-data`.jvm, `js7-common-http`.jvm, `js7-common`, `js7-agent-data`, `js7-tester`.jvm % "test")
@@ -486,7 +494,8 @@ lazy val `js7-agent-client` = project.dependsOn(`js7-data`.jvm, `js7-common-http
       akkaActor ++
       akkaHttp ++
       scalaTest % "test" ++
-      log4j % "test"
+      log4j % "test" ++
+      lmaxDisruptor % "test"
   }
 
 lazy val `js7-agent-data` = project.dependsOn(`js7-common`, `js7-data`.jvm, `js7-tester`.jvm % "test")
@@ -501,7 +510,8 @@ lazy val `js7-agent-data` = project.dependsOn(`js7-common`, `js7-data`.jvm, `js7
       findbugs % "compile" ++
       intelliJAnnotations % "compile" ++
       scalaTest % "test" ++
-      log4j % "test"
+      log4j % "test" ++
+      lmaxDisruptor % "test"
   }
 
 lazy val `js7-taskserver` = project
@@ -522,7 +532,8 @@ lazy val `js7-taskserver` = project
       guava ++
       mockito % "test" ++
       scalaTest % "test" ++
-      log4j % "test"
+      log4j % "test" ++
+      lmaxDisruptor % "test"
   }
 
 lazy val `js7-tests` = project.dependsOn(`js7-controller`, `js7-agent`, `js7-proxy`.jvm, `js7-agent-client`, `js7-provider`, `js7-tester`.jvm % "test", `js7-docker` % "test")
@@ -538,7 +549,8 @@ lazy val `js7-tests` = project.dependsOn(`js7-controller`, `js7-agent`, `js7-pro
       scalaTest % "test" ++
       mockito % "test" ++
       hamcrest % "test" ++
-      log4j % "test"
+      log4j % "test" ++
+      lmaxDisruptor % "test"
   }
 
 Global / concurrentRestrictions += Tags.limit(Tags.Test, max = testParallelization)

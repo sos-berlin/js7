@@ -1,14 +1,14 @@
 package js7.common.log
 
 import java.util.concurrent.ConcurrentHashMap
-import scribe.format._
+import scribe.format.Formatter
 import scribe.output.LogOutput
 import scribe.{Level, LogRecord}
 
 object ScribeUtils
 {
   private var initialized = false
-  private val classToLoggerNameCache = new ConcurrentHashMap[String, String]
+  private val classToLoggerCache = new ConcurrentHashMap[String, org.slf4j.Logger]
 
   def coupleScribeWithSlf4j(): Unit =
     synchronized {
@@ -16,41 +16,50 @@ object ScribeUtils
         scribe.Logger.root
           .clearHandlers()
           .clearModifiers()
-          .withHandler(formatter"$message$mdc", Log4jWriter, Some(Level.Trace))
+          .withHandler(Log4jFormatter, Log4jWriter, Some(Level.Trace))
+          //.withHandler(Formatter.simple, Log4jWriter, Some(Level.Trace))
           .replace()
         initialized = true
       }
     }
 
+  private object DummyLogOutput extends LogOutput {
+    override def plainText = throw new NotImplementedError("DummyLogOutput.plainText")
+    override def map(f: String => String) = this
+  }
+
+  private object Log4jFormatter extends Formatter {
+    def format[M](record: LogRecord[M]) = DummyLogOutput
+  }
+
   private object Log4jWriter extends scribe.writer.Writer {
     def write[M](record: LogRecord[M], output: LogOutput): Unit = {
-      val slf4jLogger = org.slf4j.LoggerFactory.getLogger(
-        classToLoggerNameCache.computeIfAbsent(record.className, o => classToLoggerName(o)))
-      lazy val msg = record.messageFunction().toString
-      if (record.level >= Level.Error) {
+      val slf4jLogger = classToLoggerCache.computeIfAbsent(record.className,
+        o => org.slf4j.LoggerFactory.getLogger(classToLoggerName(o)))
+      if (record.level.value >= Level.Error.value) {
         if (slf4jLogger.isErrorEnabled) {
-          slf4jLogger.error(msg, record.throwable.orNull)
+          slf4jLogger.error("{}", record.m, record.throwable.orNull)
         }
-      } else if (record.level >= Level.Warn) {
+      } else if (record.level.value >= Level.Warn.value) {
         if (slf4jLogger.isWarnEnabled) {
-          slf4jLogger.warn(msg, record.throwable.orNull)
+          slf4jLogger.warn("{}", record.m, record.throwable.orNull)
         }
-      } else if (record.level >= Level.Info) {
+      } else if (record.level.value >= Level.Info.value) {
         if (slf4jLogger.isInfoEnabled) {
-          slf4jLogger.info(msg, record.throwable.orNull)
+          slf4jLogger.info("{}", record.m, record.throwable.orNull)
         }
-      } else if (record.level >= Level.Debug) {
+      } else if (record.level.value >= Level.Debug.value) {
         if (slf4jLogger.isDebugEnabled) {
-          slf4jLogger.debug(msg, record.throwable.orNull)
+          slf4jLogger.debug("{}", record.m, record.throwable.orNull)
         }
       } else {
         if (slf4jLogger.isTraceEnabled) {
-          slf4jLogger.trace(msg, record.throwable.orNull)
+          slf4jLogger.trace("{}", record.m, record.throwable.orNull)
         }
       }
     }
   }
 
   private def classToLoggerName(className: String) =
-    className.replaceFirst("""\.\$.*""", "")   // Cut off ".$anonfun"
+    className.replaceFirst("""([.$]\$|\.<).*""", "")   // Cut off ".$anon" or "$$anon$1"  or .<...>
 }
