@@ -1,10 +1,10 @@
 package js7.tests
 
-import js7.common.configutils.Configs._
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.{RichCirceString, RichJson}
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
+import js7.common.configutils.Configs._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.controller.data.events.ControllerAgentEvent.AgentCouplingFailed
 import js7.data.agent.AgentRefPath
@@ -63,7 +63,7 @@ final class JournalIdTest extends AnyFreeSpec with DirectoryProviderForScalaTest
         controller.eventWatch.await[AgentCouplingFailed](after = lastEventId, predicate = ke =>
           ke.key == agentRefPath &&
             //ke.event.problem.maybeCode.contains(JournalIdMismatchProblem.code))   -- It's thrown as ProblemException
-            ke.event.problem.toString.contains(JournalIdMismatchProblem.code.string))
+            ke.event.problem.is(JournalIdMismatchProblem))
       }
     }
 
