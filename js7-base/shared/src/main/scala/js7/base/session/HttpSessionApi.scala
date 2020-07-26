@@ -23,11 +23,15 @@ trait HttpSessionApi extends SessionApi.HasUserAndPassword with HasSessionToken
     Task.defer {
       if (onlyIfNotLoggedIn && hasSession)
         Task.pure(Completed)
-      else
-        for (response <- executeSessionCommand(Login(userAndPassword))) yield {
-          setSessionToken(response.sessionToken)
-          Completed
-        }
+      else {
+        val cmd = Login(userAndPassword)
+        Task { scribe.debug(s"$toString: $cmd") } >>
+        executeSessionCommand(cmd)
+          .map { response =>
+            setSessionToken(response.sessionToken)
+            Completed
+          }
+      }
     }
 
   protected def isTemporaryUnreachable(throwable: Throwable) =
@@ -41,21 +45,20 @@ trait HttpSessionApi extends SessionApi.HasUserAndPassword with HasSessionToken
       sessionTokenRef.get() match {
         case None => Task.pure(Completed)
         case sometoken @ Some(sessionToken) =>
-          executeSessionCommand(Logout(sessionToken), suppressSessionToken = true)
+          val cmd = Logout(sessionToken)
+          Task { scribe.debug(s"$toString: $cmd ${userAndPassword.fold("")(_.userId.string)}") } >>
+          executeSessionCommand(cmd, suppressSessionToken = true)
             .doOnFinish(_ => Task {
               sessionTokenRef.compareAndSet(sometoken, None)   // Changes nothing in case of a concurrent successful Logout or Login
             })
-            .map { _: SessionCommand.Response.Accepted =>
-              Completed
-            }
+            .map((_: SessionCommand.Response.Accepted) => Completed)
       }
     }
 
   private def executeSessionCommand(command: SessionCommand, suppressSessionToken: Boolean = false): Task[command.Response] = {
     implicit def implicitSessionToken = if (suppressSessionToken) Task.pure(None) else Task(sessionToken)
-    Task { scribe.debug(s"$toString: $command") } >>
-      httpClient.post[SessionCommand, SessionCommand.Response](sessionUri, command)
-        .map(_.asInstanceOf[command.Response])
+    httpClient.post[SessionCommand, SessionCommand.Response](sessionUri, command)
+      .map(_.asInstanceOf[command.Response])
   }
 
   final def clearSession(): Unit =

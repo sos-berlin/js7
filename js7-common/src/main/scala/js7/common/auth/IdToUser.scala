@@ -117,7 +117,6 @@ object IdToUser
                               .toOption/*ignore error*/
                               .map(_ -> userId)
                           case o =>
-                            println(s"### ? $o")
                             Nil/*ignore error*/
                         }
                     })

@@ -42,6 +42,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
+import scala.util.control.NoStackTrace
 import scala.util.{Failure, Success}
 import scodec.bits.ByteVector
 
@@ -181,7 +182,8 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
             Task.deferFutureAction { implicit s =>
               logger.trace(s"$toString: #$number ${requestToString(req, logData)}")
               since = now
-              if (closed) throw new IllegalStateException(s"$toString has been closed")
+              if (closed) throw new IllegalStateException(s"AkkaHttpClient has been closed: ${requestToString(request, logData)}")
+                with NoStackTrace
               val httpsContext = if (request.uri.scheme == "https") httpsConnectionContext else http.defaultClientHttpsContext
               responseFuture = http.singleRequest(req, httpsContext)
               responseFuture.recover {
