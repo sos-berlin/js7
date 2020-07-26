@@ -381,6 +381,16 @@ object ScalaUtils
       Left(problem)
   }
 
+  def ifCast[A: ClassTag](o: Any): Option[A] = {
+    val A = implicitClass[A]
+    if (o == null)
+      None
+    else if (A isAssignableFrom o.getClass)
+      Some(o.asInstanceOf[A])
+    else
+      None
+  }
+
   def someUnless[A](a: A, none: A): Option[A] =
     if (a == none) None else Some(a)
 

@@ -141,6 +141,14 @@ final class ScalaUtilsTest extends AnyFreeSpec
     assert(checkedCast[String](null).left.exists(_.throwable.isInstanceOf[NullPointerException]))
   }
 
+  "ifCast" in {
+    val s: Any = "Hej!"
+    val string = ifCast[String](s)
+    assert(string == Some("Hej!"))
+    assert(ifCast[String](123) == None)
+    assert(ifCast[String](null) == None)
+  }
+
   "someUnless" in {
     someUnless(7, none = 0) shouldEqual Some(7)
     someUnless(0, none = 0) shouldEqual None
