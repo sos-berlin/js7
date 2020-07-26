@@ -45,7 +45,7 @@ object ClusterEvent
     override def toString = s"ClusterCoupled(activeId=$activeId)"
   }
 
-  final case class ClusterSwitchedOver(toId: Id)
+  final case class ClusterSwitchedOver(activatedId: Id)
   extends ClusterEvent
 
   final case class ClusterFailedOver(failedActiveId: Id, activatedId: Id, failedAt: JournalPosition)

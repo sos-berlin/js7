@@ -51,7 +51,7 @@ final class ClusterEventTest extends AnyFreeSpec
     testJson[ClusterEvent](ClusterSwitchedOver(Id("B")),
       json"""{
         "TYPE": "ClusterSwitchedOver",
-        "toId": "B"
+        "activatedId": "B"
       }""")
   }
 
