@@ -6,6 +6,7 @@ import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
 import js7.base.utils.Lazy
+import js7.common.configutils.Configs._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
@@ -18,17 +19,26 @@ import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed}
 import js7.data.order.{FreshOrder, Order, OrderId, Outcome}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.parser.WorkflowParser
-import js7.proxy.javaapi.JCredentials
 import js7.proxy.javaapi.data.JHttpsConfig
-import js7.proxy.{JournaledProxy, JournaledStateEventBus, ProxyEvent}
+import js7.proxy.javaapi.{JAdmission, JCredentials}
+import js7.proxy.{ControllerProxy, JournaledStateEventBus, ProxyEvent}
 import js7.tests.controller.proxy.JournaledProxyTest._
 import js7.tests.testenv.DirectoryProvider.script
 import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
+import scala.jdk.CollectionConverters._
 
 final class JournaledProxyTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
+  override protected def controllerConfig = config"""
+    js7.auth.users {
+      Proxy {
+        password = "plain:PROXYS-PASSWORD-FOR-PRIMARY"
+      }
+    }
+    """
+
   protected val fileBased = workflow :: Nil
   protected val agentRefPaths = agentRefPath :: Nil
 
@@ -45,7 +55,8 @@ final class JournaledProxyTest extends AnyFreeSpec with DirectoryProviderForScal
       val controllerApiResource = AkkaHttpControllerApi.separateAkkaResource(controller.localUri, Some(userAndPassword), name = "JournaledProxy")
       val proxyEventBus = new StandardEventBus[ProxyEvent]
       val controllerEventBus = new JournaledStateEventBus[ControllerState]
-      val proxy = JournaledProxy.start[ControllerState](controllerApiResource, proxyEventBus.publish, controllerEventBus.publish) await 99.s
+      val proxy = ControllerProxy.start(controllerApiResource :: Nil, proxyEventBus.publish, controllerEventBus.publish)
+        .await(99.s)
       try {
         val whenProcessed = controllerEventBus.when[OrderProcessed].runToFuture
         val whenFinished = controllerEventBus.when[OrderFinished.type].runToFuture
@@ -65,8 +76,8 @@ final class JournaledProxyTest extends AnyFreeSpec with DirectoryProviderForScal
       val port = findFreeTcpPort()
       val controller = Lazy { directoryProvider.startController(httpPort = Some(port)).await(99.s) }
       try {
-        val uri = s"http://127.0.0.1:$port"
-        JControllerProxyTester.run(uri, JCredentials.JUserAndPassword(userAndPassword), JHttpsConfig.empty, () => controller())
+        val admissions = List(JAdmission.of(s"http://127.0.0.1:$port", primaryCredentials)).asJava
+        JControllerProxyTester.run(admissions, JHttpsConfig.empty, () => controller())
       } finally
         for (controller <- controller) {
           controller.terminate() await 99.s
@@ -80,10 +91,10 @@ final class JournaledProxyTest extends AnyFreeSpec with DirectoryProviderForScal
       val port = findFreeTcpPort()
       val controller = Lazy { directoryProvider.startController(httpPort = Some(port)).await(99.s) }
       try {
-        val uri = s"http://127.0.0.1:$port"
-        val tester = new JControllerFluxTester(uri, JCredentials.JUserAndPassword(userAndPassword), JHttpsConfig.empty)
+        val admissions = List(JAdmission.of(s"http://127.0.0.1:$port", primaryCredentials)).asJava
+        val tester = new JControllerFluxTester(admissions, JHttpsConfig.empty)
         tester.test(() => controller())
-        tester.testReusage();
+        tester.testReusage()
         tester.close()
       } finally
         for (controller <- controller) {
@@ -96,8 +107,8 @@ final class JournaledProxyTest extends AnyFreeSpec with DirectoryProviderForScal
 
 object JournaledProxyTest
 {
-  private val agentRefPath = AgentRefPath("/AGENT")
-  private val workflow = WorkflowParser.parse(
+  private[proxy] val agentRefPath = AgentRefPath("/AGENT")
+  private[proxy] val workflow = WorkflowParser.parse(
     WorkflowPath("/WORKFLOW") ~ "INITIAL",
     s"""
       define workflow {
@@ -105,5 +116,6 @@ object JournaledProxyTest
       }"""
   ).orThrow
 
-  private val userAndPassword = UserAndPassword(UserId("TEST-USER") -> SecretString("TEST-PASSWORD"))
+  private[proxy] val userAndPassword = UserAndPassword(UserId("Proxy") -> SecretString("PROXYS-PASSWORD-FOR-PRIMARY"))
+  private[proxy] val primaryCredentials = JCredentials.JUserAndPassword(userAndPassword)
 }

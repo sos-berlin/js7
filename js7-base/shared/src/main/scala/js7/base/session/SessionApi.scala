@@ -9,8 +9,8 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.HttpClient.HttpException
 import monix.eval.Task
 import scala.concurrent.duration.FiniteDuration
-// Test in SessionRouteTest
 
+// Test in SessionRouteTest
 /**
   * @author Joacim Zschimmer
   */
@@ -58,7 +58,7 @@ object SessionApi
     final def loginUntilReachable_(
       userAndPassword: Option[UserAndPassword],
       delays: Iterator[FiniteDuration] = defaultLoginDelays(),
-      onError: Throwable => Task[Boolean] = logThrowable,
+      onError: Throwable => Task[Boolean] = logError,
       onlyIfNotLoggedIn: Boolean = false)
     : Task[Completed] =
       Task.defer {
@@ -76,7 +76,10 @@ object SessionApi
             }
       }
 
-    protected def logThrowable(throwable: Throwable): Task[Boolean] =
+    def logErrorAndTerminate(throwable: Throwable): Task[Boolean] =
+      logError(throwable).map(_ => false)
+
+    def logError(throwable: Throwable): Task[Boolean] =
       Task {
         scribe.warn(s"$toString: ${throwable.toStringWithCauses}")
         throwable match {
@@ -129,16 +132,10 @@ object SessionApi
 
     final def loginUntilReachable(
       delays: Iterator[FiniteDuration] = defaultLoginDelays(),
-      onError: Throwable => Task[Boolean] = logThrowable,
+      onError: Throwable => Task[Boolean] = logError,
       onlyIfNotLoggedIn: Boolean = false)
     : Task[Completed] =
       loginUntilReachable_(userAndPassword, delays, onError, onlyIfNotLoggedIn = onlyIfNotLoggedIn)
-
-    private def logError(throwable: Throwable) = Task {
-      scribe.warn(s"$toString: ${throwable.toStringWithCauses}")
-      scribe.debug(throwable.toStringWithCauses)
-      true
-    }
   }
 
   def defaultLoginDelays(): Iterator[FiniteDuration] =

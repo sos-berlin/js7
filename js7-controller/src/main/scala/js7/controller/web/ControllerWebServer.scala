@@ -69,6 +69,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri
       protected val orderApi = ControllerWebServer.this.orderApi
       protected def executeCommand(command: ControllerCommand, meta: CommandMeta) = commandExecutor.executeCommand(command, meta)
       protected def checkedClusterState = ControllerWebServer.this.checkedClusterState
+      protected def clusterNodeIsBackup = controllerConfiguration.clusterConf.isBackup
       protected def controllerState = ControllerWebServer.this.controllerState
       protected def totalRunningSince = ControllerWebServer.this.totalRunningSince
       protected val currentLogFile = config.as[Path]("js7.log.file")

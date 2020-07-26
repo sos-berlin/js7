@@ -8,13 +8,14 @@ import org.scalatest.freespec.AnyFreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class ExtendedClusterStateTest extends AnyFreeSpec
+final class ClusterNodeStateTest extends AnyFreeSpec
 {
   "JSON" in {
-    testJson[ExtendedClusterState](
-      ExtendedClusterState(NodeId("MY-NODE"), ClusterState.Empty),
+    testJson[ClusterNodeState](
+      ClusterNodeState(NodeId("MY-NODE"), true, ClusterState.Empty),
       json"""{
         "nodeId": "MY-NODE",
+        "isBackup": true,
         "clusterState": {
           "TYPE": "Empty"
         }

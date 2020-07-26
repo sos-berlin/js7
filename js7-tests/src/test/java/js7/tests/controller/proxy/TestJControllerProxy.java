@@ -9,6 +9,7 @@ import js7.data.event.Stamped;
 import js7.data.order.OrderEvent;
 import js7.data.order.OrderId;
 import js7.proxy.ProxyEvent;
+import js7.proxy.javaapi.JAdmission;
 import js7.proxy.javaapi.JControllerProxy;
 import js7.proxy.javaapi.JCredentials;
 import js7.proxy.javaapi.JProxyContext;
@@ -17,6 +18,7 @@ import js7.proxy.javaapi.data.JControllerState;
 import js7.proxy.javaapi.data.JHttpsConfig;
 import static java.lang.System.out;
 import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 /** Example for usage of JControllerProxy.
@@ -24,11 +26,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  */
 public final class TestJControllerProxy
 {
-    private final JControllerProxy proxy;
-
-    private TestJControllerProxy(JControllerProxy proxy) {
-        this.proxy = proxy;
-    }
+    private TestJControllerProxy() {}
 
     private static String controllerStateToString(JControllerState controllerState) {
         return //Instant.ofEpochMilli(EventId.toEpochMilli(controllerState.eventId())) + " " +
@@ -63,10 +61,10 @@ public final class TestJControllerProxy
         if (args.length != 1 && args.length != 3) throw new IllegalArgumentException("One or three arguments required: URI USERID PASSWORD");
         String uri = args[0];
         final JCredentials credentials = args.length == 3 ? JCredentials.of(args[1], args[2]) : JCredentials.noCredentials();
-        run(uri, credentials);
+        run(singletonList(JAdmission.of(uri, credentials)));
     }
 
-    private static void run(String uri, JCredentials credentials) throws InterruptedException, ExecutionException, TimeoutException {
+    private static void run(Iterable<JAdmission> admissions) throws InterruptedException, ExecutionException, TimeoutException {
         try(JProxyContext context = new JProxyContext()) {
             JStandardEventBus<ProxyEvent> proxyEventBus = new JStandardEventBus<>(ProxyEvent.class);
             proxyEventBus.subscribe(
@@ -74,7 +72,7 @@ public final class TestJControllerProxy
                 out::println);
 
             JControllerProxy proxy = context
-                .startControllerProxy(uri, credentials, JHttpsConfig.empty(), proxyEventBus)
+                .startControllerProxy(admissions, JHttpsConfig.empty(), proxyEventBus)
                 .get(99, SECONDS);
             try {
                 proxy.controllerEventBus().<OrderEvent>subscribe(

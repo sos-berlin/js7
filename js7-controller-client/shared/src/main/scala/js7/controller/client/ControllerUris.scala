@@ -46,7 +46,7 @@ final class ControllerUris private(controllerUri: Uri)
 
   def clusterState = api("/cluster")
 
-  def extendedClusterState = api("/cluster?return=ExtendedClusterState")
+  def clusterNodeState = api("/cluster?return=ClusterNodeState")
 
   def journal(fileEventId: EventId, position: Long, heartbeat: Option[FiniteDuration] = None,
     timeout: Option[FiniteDuration] = None, markEOF: Boolean = false, returnLength: Boolean = false)

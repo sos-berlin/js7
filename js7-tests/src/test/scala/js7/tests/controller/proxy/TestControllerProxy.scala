@@ -20,7 +20,7 @@ import js7.controller.data.ControllerState
 import js7.core.web.StampedStreamingSupport.stampedCirceStreamingSupport
 import js7.data.event.{Event, EventId}
 import js7.proxy.javaapi.JStandardEventBus
-import js7.proxy.{JournaledProxy, JournaledStateEventBus, ProxyEvent}
+import js7.proxy.{ControllerProxy, JournaledStateEventBus, ProxyEvent}
 import js7.tests.controller.proxy.TestControllerProxy._
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -36,7 +36,7 @@ private final class TestControllerProxy(controllerUri: Uri, httpPort: Int)(impli
         val eventBus = new JournaledStateEventBus[ControllerState]
         var currentState: (EventId, ControllerState) = null
         eventBus.subscribe[Event] { e => currentState = e.stampedEvent.eventId -> e.state }
-        JournaledProxy.start[ControllerState](apiResource, proxyEventBus.underlying.publish, eventBus.publish)
+        ControllerProxy.start(apiResource :: Nil, proxyEventBus.underlying.publish, eventBus.publish)
           .flatMap { proxy =>
             AkkaWebServer.resourceForHttp(httpPort, webServiceRoute(Task(currentState)))
               .use(_ =>
@@ -48,8 +48,7 @@ private final class TestControllerProxy(controllerUri: Uri, httpPort: Int)(impli
                           controllerState.idToOrder.size + " orders: " + (controllerState.idToOrder.keys.take(5).map(_.string).mkString(", "))
                       }.fold(identity, identity))
                     Left(())
-                  }.delayResult(1.s))
-            )
+                  }.delayResult(1.s)))
           }
       }
 }

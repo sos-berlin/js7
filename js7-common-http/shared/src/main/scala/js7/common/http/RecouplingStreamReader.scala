@@ -25,8 +25,7 @@ abstract class RecouplingStreamReader[
   @specialized(Long/*EventId or file position*/) I,
   V,
   Api <: SessionApi.HasUserAndPassword with HasIsIgnorableStackTrace
-](
-  toIndex: V => I,
+](toIndex: V => I,
   conf: RecouplingStreamReaderConf)
 {
   protected def couple(index: I): Task[Checked[Completed]] =
@@ -34,7 +33,7 @@ abstract class RecouplingStreamReader[
 
   protected def getObservable(api: Api, after: I): Task[Checked[Observable[V]]]
 
-  protected def onCouplingFailed(api: Api, problem: Problem): Task[Completed] =
+  protected def onCouplingFailed(api: Api, problem: Problem): Task[Boolean] =
     Task {
       var logged = false
       lazy val msg = s"$api: coupling failed: $problem"
@@ -49,7 +48,7 @@ abstract class RecouplingStreamReader[
       if (!logged) {
         scribe.debug(msg)
       }
-      Completed
+      true  // Recouple and continue
     }
 
   protected def onCoupled(api: Api, after: I): Task[Completed] =
@@ -140,23 +139,27 @@ abstract class RecouplingStreamReader[
     @volatile private var lastIndex = initialAfter
 
     def observeAgainAndAgain: Observable[V] =
-      Observable.tailRecM(initialAfter) { after =>
+      Observable.tailRecM(initialAfter)(after =>
         if (eof(after) || isStopped)
           Observable.pure(Right(Observable.empty))
-        else
-          // Memory leak due to https://github.com/monix/monix/issues/791 ???
-          Observable.pure(Right(
-            observe(after)
-              .doOnError(t => onCouplingFailed(api, Problem.pure(t)).void)
-              .onErrorRecoverWith {
-                case t: ProblemException if t.problem is EventSeqTornProblem =>
-                  Observable.raiseError(t)
-                case _ => Observable.empty
-              }
-          )) ++
-            (Observable.fromTask(pauseBeforeNextTry(conf.delay)) >>
-              Observable.delay(Left(lastIndex)/*FIXME Observable.tailRecM: Left leaks memory, https://github.com/monix/monix/issues/791*/))
-      }.flatten
+        else {
+          Observable
+            .pure(Right(
+              observe(after)
+                .onErrorHandleWith {
+                  case t: ProblemException if t.problem is EventSeqTornProblem =>
+                    Observable.raiseError(t)
+                  case t =>
+                    Observable.fromTask(
+                      onCouplingFailed(api, Problem.pure(t)) map {
+                        case false => Observable.raiseError(t)
+                        case true => Observable.empty[V]
+                      }).flatten
+                })) ++
+              (Observable.fromTask(pauseBeforeNextTry(conf.delay)) >>
+                Observable.delay(Left(lastIndex)/*FIXME Observable.tailRecM: Left leaks memory, https://github.com/monix/monix/issues/791*/))
+        }
+      ).flatten
 
     private def observe(after: I): Observable[V] =
       Observable.fromTask(tryEndlesslyToGetObservable(after))
@@ -185,13 +188,18 @@ abstract class RecouplingStreamReader[
                   else
                     (problem match {
                       case InvalidSessionTokenProblem =>
-                        Task { scribe.debug(s"$api: $InvalidSessionTokenProblem") }
+                        Task {
+                          scribe.debug(s"$api: $InvalidSessionTokenProblem")
+                          true
+                        }
                       case _ =>
                         onCouplingFailed(api, problem)
-                    }) >>
+                    }).flatMap(continue =>
                       decouple >>
-                      pauseBeforeRecoupling >>
-                      Task.pure(Left(()))
+                        (if (continue)
+                          pauseBeforeRecoupling >> Task.pure(Left(()))
+                        else
+                          Task.pure(Right(Observable.empty))))
 
                 case Right(observable) =>
                   Task.pure(Right(observable))
@@ -227,7 +235,8 @@ abstract class RecouplingStreamReader[
         else
           (for {
             otherCoupledClient <- coupledApiVar.tryRead
-            _ <- otherCoupledClient.fold(Task.unit)(_ => Task.raiseError(new IllegalStateException("Coupling while already coupled")))
+            _ <- otherCoupledClient.fold(Task.unit)(_ =>
+              Task.raiseError(new IllegalStateException("Coupling while already coupled")))
             _ <- Task { recouplingPause.onCouple() }
             _ <- api.login(onlyIfNotLoggedIn = true).timeout(idleTimeout)
             checkedCompleted <- couple(index = lastIndex)
@@ -240,9 +249,14 @@ abstract class RecouplingStreamReader[
                 else
                   for {
                     _ <- api.logoutOrTimeout(idleTimeout)
-                    _ <- onCouplingFailed(api, problem)
-                    _ <- pauseBeforeRecoupling
-                  } yield Left(())
+                    continue <- onCouplingFailed(api, problem)
+                    either <-
+                      if (continue)
+                        pauseBeforeRecoupling.map(_ => Left(()))
+                      else
+                        Task.raiseError(problem.throwable)
+                        //Task.pure(Right(Completed))
+                  } yield either
 
               case Right(Completed) =>
                 for {

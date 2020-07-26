@@ -12,7 +12,7 @@ import js7.base.web.{HttpClient, Uri}
 import js7.controller.client.HttpControllerApi._
 import js7.controller.data.{ControllerCommand, ControllerOverview, ControllerSnapshots}
 import js7.data.agent.AgentRef
-import js7.data.cluster.{ClusterState, ExtendedClusterState}
+import js7.data.cluster.{ClusterNodeState, ClusterState}
 import js7.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
 import js7.data.fatevent.FatEvent
 import js7.data.order.{FreshOrder, Order, OrdersOverview}
@@ -56,9 +56,9 @@ extends ControllerApi with HttpSessionApi with HasIsIgnorableStackTrace
     httpClient.liftProblem(
       httpClient.get[ClusterState](uris.clusterState))
 
-  final def extendedClusterState: Task[Checked[ExtendedClusterState]] =
+  final def clusterNodeState: Task[Checked[ClusterNodeState]] =
     httpClient.liftProblem(
-      httpClient.get[ExtendedClusterState](uris.extendedClusterState))
+      httpClient.get[ClusterNodeState](uris.clusterNodeState))
 
   final def addOrder(order: FreshOrder): Task[Boolean] = {
     val uri = uris.order.add
@@ -158,7 +158,7 @@ object HttpControllerApi
   private class Standard(
     val baseUri: Uri,
     protected final val userAndPassword: Option[UserAndPassword],
-    final val httpClient: HttpClient,
+    val httpClient: HttpClient,
     override protected final val loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays)
   extends HttpControllerApi
 }

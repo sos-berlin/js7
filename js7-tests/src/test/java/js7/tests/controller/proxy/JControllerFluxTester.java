@@ -14,8 +14,8 @@ import js7.data.event.Stamped;
 import js7.data.order.OrderEvent;
 import js7.data.order.OrderId;
 import js7.data.workflow.WorkflowPath;
+import js7.proxy.javaapi.JAdmission;
 import js7.proxy.javaapi.JControllerProxy;
-import js7.proxy.javaapi.JCredentials;
 import js7.proxy.javaapi.JEventAndControllerState;
 import js7.proxy.javaapi.JProxyContext;
 import js7.proxy.javaapi.data.JControllerState;
@@ -52,8 +52,8 @@ implements AutoCloseable
     private final List<KeyedEvent<OrderEvent>> events = new ArrayList<>();
     private final CompletableFuture<Void> finished = new CompletableFuture<>();
 
-    public JControllerFluxTester(String uri, JCredentials credentials, JHttpsConfig httpsConfig) {
-        proxy = context.newControllerProxy(uri, credentials, httpsConfig);
+    public JControllerFluxTester(Iterable<JAdmission> admissions, JHttpsConfig httpsConfig) {
+        proxy = context.newControllerProxy(admissions, httpsConfig);
         couplingState.subscribe(proxy.proxyEventBus());
         proxy.controllerEventBus().subscribe(
             asList(OrderEvent.OrderStarted$.class, OrderEvent.OrderMoved.class, OrderEvent.OrderFinished$.class),

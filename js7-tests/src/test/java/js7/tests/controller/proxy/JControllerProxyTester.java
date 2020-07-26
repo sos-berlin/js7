@@ -21,8 +21,8 @@ import js7.proxy.ProxyEvent;
 import js7.proxy.ProxyEvent.ProxyCoupled;
 import js7.proxy.ProxyEvent.ProxyCouplingError;
 import js7.proxy.ProxyEvent.ProxyDecoupled$;
+import js7.proxy.javaapi.JAdmission;
 import js7.proxy.javaapi.JControllerProxy;
-import js7.proxy.javaapi.JCredentials;
 import js7.proxy.javaapi.JProxyContext;
 import js7.proxy.javaapi.JStandardEventBus;
 import js7.proxy.javaapi.data.JControllerCommand;
@@ -140,8 +140,7 @@ final class JControllerProxyTester
         return JFreshOrder.of(orderIds.get(index), WorkflowPath.of("/WORKFLOW"));
     }
 
-    static void run(String uri, JCredentials credentials, JHttpsConfig httpsConfig,
-        Runnable startController) throws Exception
+    static void run(List<JAdmission> admissions, JHttpsConfig httpsConfig, Runnable startController) throws Exception
     {
         JStandardEventBus<ProxyEvent> proxyEventBus = new JStandardEventBus<>(ProxyEvent.class);
         CouplingState couplingState = new CouplingState();
@@ -151,7 +150,7 @@ final class JControllerProxyTester
 
         try (JProxyContext context = new JProxyContext()) {
             CompletableFuture<JControllerProxy> whenStarted =
-                context.startControllerProxy(uri, credentials, httpsConfig, proxyEventBus);
+                context.startControllerProxy(admissions, httpsConfig, proxyEventBus);
 
             Problem problem = couplingState.firstProblem.get();
             assertThat(problem.toString().contains("java.net.ConnectException: Connection refused"), equalTo(true));

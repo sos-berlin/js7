@@ -112,16 +112,16 @@ with ReceiveLoggingActor.WithStash
       Task.defer {
         if (lastProblem.contains(problem)) {
           logger.debug(s"Coupling failed: $problem")
-          Task.pure(Completed)
+          Task.pure(true)
         } else {
           lastProblem = Some(problem)
           logger.warn(s"Coupling failed: $problem")
           for (t <- problem.throwableOption if t.getStackTrace.nonEmpty) logger.debug(s"Coupling failed: $problem", t)
           if (noJournal)
-            Task.pure(Completed)
+            Task.pure(true)
           else
             persistTask(AgentCouplingFailed(problem), async = true) { (_, _) =>
-              Completed
+              true  // recouple and continue after onCouplingFailed
             }.map(_.orThrow)
         }
       }
