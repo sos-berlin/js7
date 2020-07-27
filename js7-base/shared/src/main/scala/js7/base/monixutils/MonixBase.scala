@@ -1,6 +1,7 @@
 package js7.base.monixutils
 
 import cats.effect.Resource
+import js7.base.monixutils.MonixDeadline.now
 import js7.base.monixutils.MonixDeadline.syntax._
 import js7.base.problem.Checked
 import js7.base.time.Timestamp
@@ -110,6 +111,12 @@ object MonixBase
 
   //def deferFutureAndLog[A](f: => Future[A])(implicit A: TypeTag[A]): Task[A] =
   //  deferFutureAndLog(s"Future[${A.tpe.toString}]", f)
+
+  def durationOfTask[A](task: Task[A]): Task[(A, FiniteDuration)] =
+    Task.deferAction { implicit s =>
+      val t = now
+      task.map(_ -> t.elapsed)
+    }
 
   def deferFutureAndLog[A](f: => Future[A], name: => String): Task[A] =
     Task.deferFutureAction { implicit s =>

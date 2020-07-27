@@ -126,6 +126,13 @@ final class MonixBaseTest extends AsyncFreeSpec
     }
   }
 
+  "durationOfTask" in {
+    durationOfTask(Task.pure(7).delayResult(10.ms))
+      .map(o =>
+        assert(o._1 == 7 && o._2 >= 10.ms))
+      .runToFuture
+  }
+
   //"takeUntil memory leak" in {
   //  val promise = Promise[Unit]()
   //  val stop = Observable.empty //Observable.fromFuture(promise.future)  // Memory leak - doesn't matter if called only once
