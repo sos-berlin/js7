@@ -744,7 +744,7 @@ extends Actor with Stash
 
   private def eventLimitReached: Boolean = {
     // Slow in Scala 2.13 (due to boxing?): writtenBuffer.iterator.map(_.eventCount) >= conf.eventLimit
-    // TODO For even better performance, use an updated counter in a seperate class WrittenBuffer
+    // TODO For even better performance, use an updated counter in a separate class WrittenBuffer
     var remaining = conf.eventLimit
     val iterator = writtenBuffer.iterator
     while (remaining > 0 && iterator.hasNext) {
