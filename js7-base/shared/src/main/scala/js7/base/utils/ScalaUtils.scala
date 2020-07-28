@@ -17,6 +17,7 @@ import scala.util.chaining._
 object ScalaUtils
 {
   private val Ellipsis = "..."
+  private val RightUnit = Right(())
 
   object syntax
   {
@@ -156,13 +157,11 @@ object ScalaUtils
         }
       }
 
-      def checkNoDuplicate(key: A)(implicit A: ClassTag[A]): Checked[Unit] = {
-        val lifted = underlying.lift
-        lifted(key) match {
-          case Some(_) => Left(DuplicateKey(A.runtimeClass.shortClassName, key))
-          case None => Right(())
-        }
-      }
+      def checkNoDuplicate(key: A)(implicit A: ClassTag[A]): Checked[Unit] =
+        if (underlying isDefinedAt key)
+          Left(DuplicateKey(A.runtimeClass.shortClassName, key))
+        else
+          RightUnit
 
       def getOrElse[BB >: B](key: A, default: => BB): BB =
         underlying.applyOrElse(key, (_: A) => default)
