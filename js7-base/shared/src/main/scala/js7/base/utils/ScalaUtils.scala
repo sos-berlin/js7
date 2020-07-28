@@ -317,6 +317,16 @@ object ScalaUtils
         underlying.substring(0, i)
       }
     }
+
+    implicit final class RichByteArray(private val underlying: Array[Byte]) extends AnyVal
+    {
+      def indexOfByte(byte: Byte) = {
+        val len = underlying.length
+        var i = 0
+        while (i < len && underlying(i) != byte) i = i + 1
+        if (i == len) -1 else i
+      }
+    }
   }
   import syntax._
 

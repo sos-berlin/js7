@@ -6,6 +6,7 @@ import io.circe.Json
 import java.io.{BufferedOutputStream, OutputStream}
 import js7.base.circeutils.CirceUtils._
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.ScalaUtils.syntax._
 import js7.core.common.jsonseq.OutputStreamJsonSeqWriter._
 import org.jetbrains.annotations.TestOnly
 
@@ -41,7 +42,7 @@ extends AutoCloseable
     }
     byteString.copyToArray(array)
     array(length) = '\n'
-    assertThat(array.indexOf('\n') == length, "OutputStreamJsonSeqWriter: JSON contains a forbidden LF")
+    assertThat(array.indexOfByte('\n') == length, "OutputStreamJsonSeqWriter: JSON contains a forbidden LF")
     buffered.write(array, 0, length + 1)
     _written += length + extraLength
   }
