@@ -8,9 +8,10 @@ import js7.base.problem.Checked
 import js7.base.problem.Checked._
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
+import js7.data.event.KeyedEvent
 import js7.data.filebased.VersionId
+import js7.data.order.OrderEvent.OrderAdded
 import js7.data.workflow.WorkflowPath
-import js7.data.workflow.position.{Position, WorkflowPosition}
 import org.jetbrains.annotations.TestOnly
 
 /**
@@ -24,10 +25,8 @@ final case class FreshOrder private(
 {
   workflowPath.requireNonAnonymous()
 
-  def toOrder(versionId: VersionId): Order[Order.Fresh] = {
-    val firstPosition = Position(0)
-    Order(id, WorkflowPosition(workflowPath ~ versionId, firstPosition), Order.Fresh(scheduledFor), arguments)
-  }
+  def toOrderAdded(versionId: VersionId): KeyedEvent[OrderAdded] =
+    id <-: OrderAdded(workflowPath ~ versionId, scheduledFor, arguments)
 }
 
 object FreshOrder

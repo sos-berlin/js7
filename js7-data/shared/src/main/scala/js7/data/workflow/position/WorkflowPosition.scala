@@ -20,7 +20,7 @@ object WorkflowPosition
 {
   // TODO Should be explicit
   implicit def apply(workflowId: WorkflowId): WorkflowPosition =
-    WorkflowPosition(workflowId, Position(InstructionNr.First))
+    WorkflowPosition(workflowId, Position.First)
 
   // TODO require workflowId.versionId != VersionId.Anonymous ?
 

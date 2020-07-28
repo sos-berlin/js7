@@ -103,6 +103,7 @@ final case class Position(branchPath: BranchPath, nr: InstructionNr)
 
 object Position
 {
+  val First = Position(InstructionNr.First)
   private val NoTryBlockProblem = Problem.pure("Retry, but not in a catch-block")
 
   def apply(nr: InstructionNr): Position =

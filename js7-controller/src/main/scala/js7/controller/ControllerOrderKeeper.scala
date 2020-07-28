@@ -757,8 +757,7 @@ with MainJournalingActor[ControllerState, Event]
         repo.pathTo[Workflow](freshOrder.workflowPath) match {
           case Left(problem) => Future.successful(Left(problem))
           case Right(workflow) =>
-            val order = freshOrder.toOrder(workflow.id.versionId)
-            persist/*Async?*/(order.id <-: OrderAdded(workflow.id, order.state.scheduledFor, order.arguments)) { (stamped, updatedState) =>
+            persist/*Async?*/(freshOrder.toOrderAdded(workflow.id.versionId)) { (stamped, updatedState) =>
               controllerState = updatedState
               handleOrderEvent(stamped)
               checkForEqualOrdersState()
