@@ -26,7 +26,7 @@ import js7.core.event.journal.JournalActor._
 import js7.core.event.journal.data.{JournalMeta, RecoveredJournalingActors}
 import js7.core.event.journal.files.JournalFiles.{JournalMetaOps, listJournalFiles}
 import js7.core.event.journal.watch.JournalingObserver
-import js7.core.event.journal.write.{EventJournalWriter, ParallelExecutingPipeline, SnapshotJournalWriter}
+import js7.core.event.journal.write.{EventJournalWriter, SnapshotJournalWriter}
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.ClusterStateSnapshot
 import js7.data.cluster.{ClusterEvent, ClusterState}
@@ -593,7 +593,7 @@ extends Actor with Stash
         self ! Internal.LogSnapshotProgress
       }
       val remaining = mutable.Set.empty ++ journalingActors
-      val pipeline = new ParallelExecutingPipeline[ByteString](snapshotWriter.writeSnapshot)(scheduler)
+      //val pipeline = new ParallelExecutingPipeline[ByteString](snapshotWriter.writeSnapshot)(scheduler)
 
       for (a <- journalingActors) {
         a ! JournalingActor.Input.GetSnapshot  // DeadLetter when actor just now terminates (a terminating JournalingActor must not have a snapshot)
@@ -602,7 +602,9 @@ extends Actor with Stash
         case JournalingActor.Output.GotSnapshot(snapshots) =>
           try blocking {  // blockingAdd blocks
             for (snapshot <- snapshots) {
-              pipeline.blockingAdd { ByteString(journalMeta.snapshotJsonCodec(snapshot).compactPrint) }   // TODO Crash with SerializationException like EventSnapshotWriter
+              // TODO Crash with SerializationException like EventSnapshotWriter
+              snapshotWriter.writeSnapshot(ByteString(journalMeta.snapshotJsonCodec(snapshot).compactPrint))
+              //pipeline.blockingAdd { ByteString(journalMeta.snapshotJsonCodec(snapshot).compactPrint) }
               logger.trace(s"Snapshot $snapshot")
             }
             onDone(sender())
@@ -634,7 +636,6 @@ extends Actor with Stash
         remaining -= actor
         if (remaining.isEmpty) {
           logProgressCancelable.cancel()
-          pipeline.flush()
           unstashAll()
           andThen()
         }
