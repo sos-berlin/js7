@@ -1,6 +1,6 @@
 package js7.base.convert
 
-import js7.base.convert.As.StringAsIntOrUnlimited
+import js7.base.convert.As.{StringAsIntOrUnlimited, StringAsPercentage}
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
 
@@ -56,5 +56,14 @@ final class AsTest extends AnyFreeSpec {
     assert(!conv("off"))
     assert(!conv("no"))
     for (o <- List(true, false)) assert(conv(o.toString) == o)
+  }
+
+  "StringAsPercentage" in {
+    intercept[IllegalArgumentException] { StringAsPercentage("") }
+    assert(StringAsPercentage("1") == BigDecimal("1.0"))
+    assert(StringAsPercentage("1%") == BigDecimal("0.01"))
+    assert(StringAsPercentage("-1%") == BigDecimal("-0.01"))
+    assert(StringAsPercentage("100") == BigDecimal("100"))
+    assert(StringAsPercentage("100%") == BigDecimal("1.0"))
   }
 }
