@@ -511,7 +511,7 @@ extends Actor with Stash
               " ACK"    // Last event of an acknowledged event bundle. Caller may continue
           val committed = if (stampedIterator.hasNext) "committed" else "COMMITTED"
           val t = if (stampedIterator.hasNext) "       " else ((nw - written.since).msPretty + "      ") take 7
-          logger.trace(s"#$nr $flushOrSync$a $committed $t ${stamped.eventId} ${stamped.value.toString.takeWhile(_ != '\n')}")
+          logger.trace(s"#$nr $flushOrSync$a $committed $t ${stamped.eventId} ${stamped.value.toString.takeWhile(_ != '\n').truncateWithEllipsis(200)}")
           nr += 1
           firstInCommit = false
         }
@@ -581,7 +581,7 @@ extends Actor with Stash
           })
         .foreach { case (snapshotObject, byteString) =>
           snapshotWriter.writeSnapshot(byteString)
-          logger.trace(s"Snapshot $snapshotObject")
+          logger.trace(s"Snapshot ${snapshotObject.toString.truncateWithEllipsis(200)}")
         }(scheduler),
       999.s)  // TODO Do not block the thread - Muss es ein Observable sein? Vielleicht LazyList oder Iterator?
 
