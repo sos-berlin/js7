@@ -488,15 +488,15 @@ extends Actor with Stash
       while (writtenIterator.hasNext) {
         val written = writtenIterator.next()
         var nr = written.eventNumber
-        var firstInCommit = true
+        var isFirst = true
         val stampedIterator = written.stampedSeq.iterator
         while (stampedIterator.hasNext) {
           val stamped = stampedIterator.next()
-          val n = written.stampedSeq.length
+          val isLast = !stampedIterator.hasNext
           val flushOrSync =
-            if (written.isLastOfFlushedOrSynced && !stampedIterator.hasNext)
+            if (written.isLastOfFlushedOrSynced && isLast)
               syncOrFlushString
-            else if (n > 1 && firstInCommit)
+            else if (written.stampedSeq.lengthIs > 1 && isFirst)
               f"${written.stampedSeq.length}%4d×"  // Neither flushed nor synced, and not the only event of a commit
             else
               "     "
@@ -505,15 +505,15 @@ extends Actor with Stash
               ""        // No cluster. Caller may continue if flushed or synced
             else if (!ack)
               "    "    // Only SnapshotWritten event
-            else if (writtenIterator.hasNext || stampedIterator.hasNext)
+            else if (writtenIterator.hasNext || !isLast)
               " ack"    // Event is part of an acknowledged event bundle
             else
               " ACK"    // Last event of an acknowledged event bundle. Caller may continue
-          val committed = if (stampedIterator.hasNext) "committed" else "COMMITTED"
-          val t = if (stampedIterator.hasNext) "       " else ((nw - written.since).msPretty + "      ") take 7
+          val committed = if (isLast) "COMMITTED" else "committed"
+          val t = if (isLast) ((nw - written.since).msPretty + "      ") take 7 else "       "
           logger.trace(s"#$nr $flushOrSync$a $committed $t ${stamped.eventId} ${stamped.value.toString.takeWhile(_ != '\n').truncateWithEllipsis(200)}")
           nr += 1
-          firstInCommit = false
+          isFirst = false
         }
       }
     }

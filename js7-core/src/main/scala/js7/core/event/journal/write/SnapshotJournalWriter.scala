@@ -58,5 +58,5 @@ extends JournalWriter(after = after, append = false)
 object SnapshotJournalWriter
 {
   def forTest(journalMeta: JournalMeta, after: EventId) =
-    new SnapshotJournalWriter(journalMeta, journalMeta.file(after), after =after, simulateSync = None)
+    new SnapshotJournalWriter(journalMeta, journalMeta.file(after), after = after, simulateSync = None)
 }
