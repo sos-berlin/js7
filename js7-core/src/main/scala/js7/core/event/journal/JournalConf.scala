@@ -34,7 +34,7 @@ object JournalConf
     val syncOnCommit = config.getBoolean("js7.journal.sync")
     val delay = config.getDuration("js7.journal.delay").toFiniteDuration
     lazy val syncDelay = config.getDuration("js7.journal.sync-delay").toFiniteDuration
-    val checkJournaledState = config.getBoolean(checkStateKey) || sys.props.contains("TEST")
+    val checkJournaledState = config.getBoolean(checkStateKey)
     if (checkJournaledState) logger.warn(s"Slowing down due to $checkStateKey = true")
     new JournalConf(
       syncOnCommit = syncOnCommit,

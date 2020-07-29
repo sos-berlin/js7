@@ -45,8 +45,7 @@ final class ControllerConfigurationTest extends AnyFreeSpec with BeforeAndAfterA
       webServerPorts = Nil,
       ZoneId.systemDefault,
       akkaAskTimeout = 1.h,
-      journalConf = JournalConf.fromConfig(DefaultConfig)
-        .copy(slowCheckState = true/*set by build.sbt*/),
+      journalConf = JournalConf.fromConfig(DefaultConfig),
       clusterConf = ClusterConf(isBackup = false, None, None,
         RecouplingStreamReaderConf(
           timeout = 6500.ms,  // Between 3s and 10s
