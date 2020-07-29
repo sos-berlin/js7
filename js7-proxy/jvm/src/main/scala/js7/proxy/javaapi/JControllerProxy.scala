@@ -3,13 +3,16 @@ package js7.proxy.javaapi
 import io.vavr.control.{Either => VEither}
 import java.util.concurrent.CompletableFuture
 import js7.base.annotation.javaApi
+import js7.base.generic.Completed
 import js7.base.problem.Problem
 import js7.controller.data.ControllerCommand
 import js7.data.event.Event
 import js7.proxy.javaapi.data.{JControllerCommand, JControllerState, JFreshOrder}
+import js7.proxy.javaapi.utils.JavaUtils.Void
 import js7.proxy.javaapi.utils.VavrConversions._
 import js7.proxy.{ControllerProxy, ProxyEvent}
 import monix.execution.FutureUtils.Java8Extensions
+import monix.reactive.Observable
 import reactor.core.publisher.Flux
 
 /** Java adapter for `JournaledProxy[JControllerState]`. */
@@ -46,6 +49,15 @@ final class JControllerProxy private[proxy](
   def addOrder(order: JFreshOrder): CompletableFuture[VEither[Problem, java.lang.Boolean]] =
     controllerProxy.addOrder(order.underlying)
       .map(_.map(o => java.lang.Boolean.valueOf(o)).toVavr)
+      .runToFuture
+      .asJava
+
+  def addOrders(orders: java.lang.Iterable[JFreshOrder]): CompletableFuture[VEither[Problem, java.lang.Void]] =
+    addOrders(Flux.fromIterable(orders))
+
+  def addOrders(orders: Flux[JFreshOrder]): CompletableFuture[VEither[Problem, java.lang.Void]] =
+    controllerProxy.addOrders(Observable.fromReactivePublisher(orders).map(_.underlying))
+      .map(_.map((_: Completed) => Void).toVavr)
       .runToFuture
       .asJava
 

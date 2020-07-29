@@ -29,6 +29,7 @@ import js7.proxy.javaapi.data.JControllerCommand;
 import js7.proxy.javaapi.data.JControllerState;
 import js7.proxy.javaapi.data.JFreshOrder;
 import js7.proxy.javaapi.data.JHttpsConfig;
+import reactor.core.publisher.Flux;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static js7.proxy.javaapi.data.JKeyedEvent.keyedEventToJson;
@@ -42,7 +43,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
  */
 final class JControllerProxyTester
 {
-    private static final List<OrderId> orderIds = IntStream.rangeClosed(0, 3)
+    private static final List<OrderId> orderIds = IntStream.rangeClosed(0, 5)
         .mapToObj(i -> OrderId.of("TEST-ORDER-" + i))
         .collect(Collectors.toList());
     private final Set<OrderId> finishedOrders = new HashSet<>();
@@ -89,35 +90,49 @@ final class JControllerProxyTester
         assertThat(overview.contains("\"id\":\"Controller\""), equalTo(true));
 
 
-        // FOUR WAYS TO ADD AN ORDER (first way is recommended)
+        // SIX WAYS TO ADD AN ORDER (first way is recommended)
 
-        // #0 addOrder
+        // #0 addOrders(Iterable)
+        // Idempotent: already existent order (with same OrderId) are silently ignored
+        proxy.addOrders(asList(newOrder(0) /*, more*/))
+            .get()
+            .get();
 
-        Boolean addOrderResponse = proxy.addOrder(newOrder(0)).get().get();
+
+        // #1 addOrders(Flux)
+        // Idempotent: already existent order (with same OrderId) are silently ignored
+        proxy.addOrders(Flux.fromIterable(asList(newOrder(1) /*, more.*/)))
+            .get()
+            .get();
+
+
+        // #2 addOrder
+        Boolean addOrderResponse = proxy.addOrder(newOrder(2))
+            .get()
+            .get();
         assertThat(addOrderResponse, equalTo(true/*added, no duplicate*/));
 
-        // #1 JControllerCommand.addOrder
+        // #3 JControllerCommand.addOrder (not recommended, just an example a command)
         // Red in IntelliJ IDE, but it compiles
         ControllerCommand$AddOrder$Response commandResponse0 = (ControllerCommand$AddOrder$Response)
             proxy.executeCommand(
-                JControllerCommand.addOrder(newOrder(1))
+                JControllerCommand.addOrder(newOrder(3))
             ).get().get();
         assertThat(commandResponse0.ignoredBecauseDuplicate(), equalTo(false));
 
 
-        // #2 JControllerCommand.addOrder
-
+        // #4 JControllerCommand.addOrder (not recommended)
         String commandResponse1 = getOrThrow(
             proxy.executeCommandJson(
-                JControllerCommand.addOrder(newOrder(2)).toJson()
+                JControllerCommand.addOrder(newOrder(4)).toJson()
             ).get(99, SECONDS));
         assertThat(commandResponse1, equalTo(
             "{\"TYPE\":\"AddOrder.Response\",\"ignoredBecauseDuplicate\":false}"));
 
 
-        // #3 POST JFreshOrder
+        // #5 POST JFreshOrder (low-level programming)
         String postResponse = getOrThrow(
-            proxy.httpPostJson("/controller/api/order", newOrder(3).toJson())
+            proxy.httpPostJson("/controller/api/order", newOrder(5).toJson())
                 .get(99, SECONDS));
         assertThat(postResponse, equalTo("{}"));
 
