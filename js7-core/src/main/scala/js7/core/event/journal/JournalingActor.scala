@@ -5,6 +5,7 @@ import js7.base.circeutils.typed.TypedJsonCodec.typeName
 import js7.base.generic.Accepted
 import js7.base.monixutils.MonixBase.syntax.RichScheduler
 import js7.base.problem.{Checked, ProblemException}
+import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax._
@@ -223,9 +224,11 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
     if (stashingCount == 1) {
       logBecome("journaling")
       context.become(journaling, discardOld = false)
-      logger.whenDebugEnabled {
-        journalingTimer := scheduler.scheduleAtFixedRates(journalConf.ackWarnDurations) {
-          logger.debug(s"“$toString” is still waiting for JournalActor")
+      logger.whenWarnEnabled {
+        val since = now
+        journalingTimer := scheduler.scheduleAtFixedRates(journalConf.persistWarnDurations) {
+          // Under load it may be normal to be busy for some time ???
+          logger.warn(s"“$toString” is still busy with persisting for ${since.elapsed.pretty} ($stashingCount commits in progress)")
         }
       }
     }

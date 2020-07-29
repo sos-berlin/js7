@@ -47,6 +47,8 @@ object JournalConf
       snapshotLogProgressActorLimit = config.getInt("js7.journal.snapshot.log-actor-limit"),
       ackWarnDurations = config.getDurationList("js7.journal.ack-warn-durations")
         .asScala.toSeq.map(_.toFiniteDuration),
+      persistWarnDurations = config.getDurationList("js7.journal.persist-warn-durations")
+        .asScala.toSeq.map(_.toFiniteDuration),
       deleteObsoleteFiles = config.getBoolean("js7.journal.remove-obsolete-files"),
       releaseEventsUserIds = config.seqAs[UserId]("js7.journal.users-allowed-to-release-events").toSet,
       slowCheckState = checkJournaledState,

@@ -24,6 +24,7 @@ private[event] object TestData
     js7.journal.snapshot.period = 1h
     js7.journal.snapshot.when-bigger-than = 1G
     js7.journal.ack-warn-durations = [ 10s ]
+    js7.journal.persist-warn-durations = [ 10s ]
     js7.journal.remove-obsolete-files = false  # DIFFERS FROM DEFAULT TO ALLOW AWAITNG FOR OLD EVENTS !
     js7.journal.users-allowed-to-release-events = []
     """

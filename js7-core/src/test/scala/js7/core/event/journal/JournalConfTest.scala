@@ -57,6 +57,7 @@ object JournalConfTest
        snapshot.log-period = 9ms
        snapshot.log-actor-limit = 11
        ack-warn-durations = [ 10s, 15s ]
+       persist-warn-durations = [ 20s, 30s ]
        remove-obsolete-files = true
        users-allowed-to-release-events = []
      }"""
@@ -71,6 +72,7 @@ object JournalConfTest
     snapshotLogProgressPeriod = 9.ms,
     snapshotLogProgressActorLimit = 11,
     ackWarnDurations = List(10.s, 15.s),
+    persistWarnDurations = List(20.s, 30.s),
     deleteObsoleteFiles = true,
     slowCheckState = true/*set by build.sbt*/)
 }
