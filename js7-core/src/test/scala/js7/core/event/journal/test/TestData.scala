@@ -18,7 +18,7 @@ private[event] object TestData
     js7.journal.simulate-sync = 1ms
     js7.journal.snapshot.log-period = 10ms
     js7.journal.snapshot.log-actor-limit = 1
-    js7.journal.event-buffer-size = 1000
+    js7.journal.coalesce-event-limit = 1000
     js7.journal.use-journaled-state-as-snapshot = true
     js7.journal.slow-check-state = true
     js7.journal.snapshot.period = 1h

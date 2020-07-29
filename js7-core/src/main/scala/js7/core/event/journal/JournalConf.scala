@@ -13,12 +13,13 @@ final case class JournalConf(
   syncOnCommit: Boolean,
   simulateSync: Option[FiniteDuration],
   delay: FiniteDuration,
-  eventLimit: Int,
+  coalesceEventLimit: Int,
   snapshotPeriod: FiniteDuration,
   snapshotSizeLimit: Long,
   snapshotLogProgressPeriod: FiniteDuration,
   snapshotLogProgressActorLimit: Int,
   ackWarnDurations: Seq[FiniteDuration],
+  persistWarnDurations: Seq[FiniteDuration],
   deleteObsoleteFiles: Boolean,
   releaseEventsUserIds: Set[UserId] = Set.empty,
   slowCheckState: Boolean = false,
@@ -39,7 +40,7 @@ object JournalConf
       syncOnCommit = syncOnCommit,
       simulateSync = config.durationOption("js7.journal.simulate-sync") map (_.toFiniteDuration),
       delay = (if (syncOnCommit) syncDelay max delay else delay) min 1.second,
-      eventLimit = config.as[Int]("js7.journal.event-buffer-size"),  // TODO Limit byte count to avoid OutOfMemoryError?
+      coalesceEventLimit = config.as[Int]("js7.journal.coalesce-event-limit"),  // TODO Limit byte count to avoid OutOfMemoryError?
       snapshotPeriod = config.getDuration("js7.journal.snapshot.period").toFiniteDuration,
       snapshotSizeLimit = config.as("js7.journal.snapshot.when-bigger-than")(StringAsByteCountWithDecimalPrefix),
       snapshotLogProgressPeriod = config.getDuration("js7.journal.snapshot.log-period").toFiniteDuration,

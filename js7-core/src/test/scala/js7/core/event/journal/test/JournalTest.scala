@@ -112,9 +112,9 @@ final class JournalTest extends AnyFreeSpec with BeforeAndAfterAll with TestJour
   }
 
   "Massive parallel" - {
-    def run(n: Int, eventBufferSize: Int): Unit = {
+    def run(n: Int, coalesceEventLimit: Int): Unit = {
       listJournalFiles(journalMeta.fileBase) map (_.file) foreach delete
-      withTestActor(config"js7.journal.event-buffer-size = $eventBufferSize") { (_, actor) =>
+      withTestActor(config"js7.journal.coalesce-event-limit = $coalesceEventLimit") { (_, actor) =>
         val prefixes = for (i <- 1 to n) yield i.toString
         val stopwatch = new Stopwatch
         // Add "$p-A"
@@ -128,7 +128,7 @@ final class JournalTest extends AnyFreeSpec with BeforeAndAfterAll with TestJour
         // DisturbAndRespond responds with String, not Done. See TestActor
         val disturbed = for (p <- prefixes) yield simpleExecute(actor, s"$p-A", TestAggregateActor.Command.DisturbAndRespond)
         (executed ++ disturbed) await 99.s
-        info(s"$n actors, event-buffer-size=$eventBufferSize " + stopwatch.itemsPerSecondString(n, "commands"))
+        info(s"$n actors, coalesce-event-limit=$coalesceEventLimit " + stopwatch.itemsPerSecondString(n, "commands"))
         assert(journalAggregates.isEmpty)
         val prefixToKeyedEvents = journalKeyedTestEvents groupBy { _.key.split("-").head }
         assert(prefixToKeyedEvents.keySet == prefixes.toSet)
@@ -142,9 +142,9 @@ final class JournalTest extends AnyFreeSpec with BeforeAndAfterAll with TestJour
       assert(journalFileNames.length == 1)
     }
 
-    for ((n, eventBufferSize) <- Vector(1000 -> 1000) ++ (if (sys.props.contains("test.speed")) Array(1000 -> 300, 100 -> 100, 100 -> 30, 100 -> 10) else Nil)) {
-      s"$n actors, event-buffer-size=$eventBufferSize" in {
-        run(n = n, eventBufferSize = eventBufferSize)
+    for ((n, coalesceEventLimit) <- Vector(1000 -> 1000) ++ (if (sys.props.contains("test.speed")) Array(1000 -> 300, 100 -> 100, 100 -> 30, 100 -> 10) else Nil)) {
+      s"$n actors, coalesce-event-limit=$coalesceEventLimit" in {
+        run(n = n, coalesceEventLimit = coalesceEventLimit)
       }
     }
   }

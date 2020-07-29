@@ -219,7 +219,14 @@ extends Actor with Stash
               case Some(Stamped(_, _, KeyedEvent(_, event: ClusterPassiveLost))) =>
                 commitWithoutAcknowledgement(event)
 
-              case _ => forwardCommit((delay max conf.delay) - alreadyDelayed)
+              case _ =>
+                if (eventLimitReached) {
+                  // Shrink writtenBuffer
+                  // TODO coalesce-event-limit has no effect in cluster mode, writtenBuffer does not shrink
+                  commit()
+                } else {
+                  forwardCommit((delay max conf.delay) - alreadyDelayed)
+                }
             }
           }
       }
@@ -746,7 +753,7 @@ extends Actor with Stash
   private def eventLimitReached: Boolean = {
     // Slow in Scala 2.13 (due to boxing?): writtenBuffer.iterator.map(_.eventCount) >= conf.eventLimit
     // TODO For even better performance, use an updated counter in a separate class WrittenBuffer
-    var remaining = conf.eventLimit
+    var remaining = conf.coalesceEventLimit
     val iterator = writtenBuffer.iterator
     while (remaining > 0 && iterator.hasNext) {
       remaining -= iterator.next().eventCount
