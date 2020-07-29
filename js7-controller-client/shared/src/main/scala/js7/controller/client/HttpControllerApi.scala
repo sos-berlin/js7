@@ -131,10 +131,10 @@ extends ControllerApi with HttpSessionApi with HasIsIgnorableStackTrace
     httpClient.liftProblem(
       httpClient.get[Seq[AgentRef]](uris.agent.list[AgentRef]))
 
-  final def snapshot: Task[Checked[Stamped[Seq[Any]]]] = {
+  final def snapshot: Task[Checked[Observable[Any]]] = {
     implicit val x = ControllerSnapshots.SnapshotJsonCodec
     httpClient.liftProblem(
-      httpClient.get[Stamped[Seq[Any]]](uris.snapshot.list))
+      httpClient.getDecodedLinesObservable[Any](uris.snapshot.list))
   }
 
   override def toString = s"HttpControllerApi($baseUri)"

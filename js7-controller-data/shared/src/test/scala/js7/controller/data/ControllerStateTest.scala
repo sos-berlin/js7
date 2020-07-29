@@ -48,7 +48,7 @@ final class ControllerStateTest extends AsyncFreeSpec
   "fromIterator is the reverse of toSnapshotObservable + EventId" in {
     controllerState.toSnapshotObservable.toListL.runToFuture
       .map(snapshotObjects =>
-        assert(controllerState == ControllerState.fromIterator(snapshotObjects.iterator).withEventId(controllerState.eventId)))
+        assert(controllerState == ControllerState.fromIterator(snapshotObjects.iterator)))
   }
 
   "toSnapshotObservable JSON" in {
@@ -57,6 +57,9 @@ final class ControllerStateTest extends AsyncFreeSpec
       testJson(snapshotObjects,
         json"""[
           {
+            "TYPE": "SnapshotEventId",
+            "eventId": 1001
+          }, {
             "TYPE": "JournalState",
             "userIdToReleasedEventId": {
               "A": 1000

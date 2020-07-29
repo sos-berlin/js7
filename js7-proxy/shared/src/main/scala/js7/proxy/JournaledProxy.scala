@@ -154,7 +154,10 @@ object JournaledProxy
       recouplingStreamReader.observe(api, after = state.eventId)
         .guarantee(recouplingStreamReader.decouple.map(_ => ()))
         .scan0(seed)((s, stampedEvent) =>
-          EventAndState(stampedEvent, s.state.applyEvent(stampedEvent.value).orThrow/*TODO Restart*/))
+          EventAndState(stampedEvent,
+            s.state.applyEvent(stampedEvent.value)
+              .orThrow/*TODO Restart*/
+              .withEventId(stampedEvent.eventId)))
     }
 
     def onCouplingError(throwable: Throwable) = Task {

@@ -8,14 +8,13 @@ import js7.base.problem.Checked
 import js7.base.utils.FutureCompletion
 import js7.base.utils.FutureCompletion.syntax._
 import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
-import js7.common.akkahttp.StandardMarshallers.monixObservableToMarshallable
-import js7.common.http.CirceJsonSupport.jsonMarshaller
+import js7.common.akkahttp.StandardMarshallers._
+import js7.common.http.JsonStreamingSupport.{NdJsonStreamingSupport, jsonSeqMarshaller}
 import js7.common.scalautil.Logger
 import js7.controller.data.ControllerSnapshots.SnapshotJsonCodec
 import js7.controller.data.ControllerState
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.SnapshotRoute._
-import js7.core.web.StampedStreamingSupport.stampedCirceStreamingSupport
 import monix.eval.Task
 import monix.execution.Scheduler
 
@@ -34,12 +33,13 @@ trait SnapshotRoute extends ControllerRouteProvider
           completeTask(
             for (checkedState <- controllerState) yield
               for (state <- checkedState) yield {
-                implicit val x = stampedCirceStreamingSupport(eventId = state.eventId)
+                implicit val x = NdJsonStreamingSupport
                 implicit val y = SnapshotJsonCodec
+                implicit val z = jsonSeqMarshaller[Any]
                 monixObservableToMarshallable(
                   state.toSnapshotObservable
-                  .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
-                    Task { logger.debug("whenShuttingDown completed") }))
+                    .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
+                      Task { logger.debug("whenShuttingDown completed") }))
               })
         }
       }

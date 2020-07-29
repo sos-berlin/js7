@@ -34,8 +34,7 @@ import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.system.OperatingSystem.operatingSystem
 import js7.common.time.WaitForCondition
-import js7.controller.data.ControllerSnapshots
-import js7.controller.data.ControllerSnapshots.ControllerMetaState
+import js7.controller.data.ControllerSnapshots.{ControllerMetaState, SnapshotJsonCodec}
 import js7.controller.data.events.ControllerAgentEvent
 import js7.controller.data.events.ControllerAgentEvent.AgentRegisteredController
 import js7.controller.data.events.ControllerEvent.ControllerReady
@@ -506,15 +505,18 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
   }
 
   "/controller/api/snapshot/ (only JSON)" in {
-    val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
-    val snapshots = httpClient.get[Json](Uri(s"$uri/controller/api/snapshot/"), headers) await 99.s
-    assert(snapshots.asObject.get("eventId") == Some(orderFinishedEventId.asJson))
-    val array = snapshots.asObject.get("array").get.asArray.get
-    val shortenedArray = Json.fromValues(array.filterNot(o => o.asObject.get("TYPE").contains("AgentSnapshot".asJson)))  // Delete AgentSnapshot in `array` (for easy comparison)
-    val controllerMetaState = array.iterator.map(_.as(ControllerSnapshots.SnapshotJsonCodec).orThrow)
+    val observable = httpClient.getRawLinesObservable(Uri(s"$uri/controller/api/snapshot/")) await 99.s
+    val shortenedArray =
+      observable.map(_.decodeUtf8.orThrow.parseJsonOrThrow)
+        .filterNot(_.asObject.get("TYPE").contains("AgentSnapshot".asJson))
+        .toListL await 99.s  // Delete AgentSnapshot in `array` (for easy comparison)
+    val controllerMetaState = shortenedArray.iterator.map(_.as(SnapshotJsonCodec).orThrow)
       .collectFirst { case o: ControllerMetaState => o }.get
-    assert(shortenedArray == json"""[
+    assert(Json.fromValues(shortenedArray) == json"""[
       {
+        "TYPE": "SnapshotEventId",
+        "eventId": $orderFinishedEventId
+      }, {
         "TYPE": "ControllerMetaState",
         "controllerId": "Controller",
         "startedAt": ${controllerMetaState.startedAt.toEpochMilli},

@@ -8,16 +8,15 @@ import js7.base.generic.SecretString
 import js7.base.time.ScalaTime._
 import js7.base.web.Uri
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import js7.common.akkahttp.CirceJsonOrYamlSupport._
 import js7.common.akkahttp.StandardMarshallers.monixObservableToMarshallable
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkautils.Akkas
 import js7.common.commandline.CommandLineArguments
+import js7.common.http.JsonStreamingSupport.{NdJsonStreamingSupport, jsonSeqMarshaller}
 import js7.common.log.ScribeUtils
 import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.data.ControllerSnapshots.SnapshotJsonCodec
 import js7.controller.data.ControllerState
-import js7.core.web.StampedStreamingSupport.stampedCirceStreamingSupport
 import js7.data.event.{Event, EventId}
 import js7.proxy.javaapi.JStandardEventBus
 import js7.proxy.{ControllerProxy, JournaledStateEventBus, ProxyEvent}
@@ -34,8 +33,8 @@ private final class TestControllerProxy(controllerUri: Uri, httpPort: Int)(impli
         val apiResource = AkkaHttpControllerApi.resource(controllerUri, userAndPassword)
         val proxyEventBus = new JStandardEventBus[ProxyEvent]
         val eventBus = new JournaledStateEventBus[ControllerState]
-        var currentState: (EventId, ControllerState) = null
-        eventBus.subscribe[Event] { e => currentState = e.stampedEvent.eventId -> e.state }
+        var currentState: ControllerState = null
+        eventBus.subscribe[Event] { e => currentState = e.state }
         ControllerProxy.start(apiResource :: Nil, proxyEventBus.underlying.publish, eventBus.publish)
           .flatMap { proxy =>
             AkkaWebServer.resourceForHttp(httpPort, webServiceRoute(Task(currentState)))
@@ -43,10 +42,10 @@ private final class TestControllerProxy(controllerUri: Uri, httpPort: Int)(impli
                 Task.tailRecM(())(_ =>
                   Task {
                     println(
-                      Try(currentState).map { case (eventId, controllerState) =>
-                        EventId.toTimestamp(eventId).show + " " +
+                      Try(currentState).map(controllerState =>
+                        EventId.toTimestamp(controllerState.eventId).show + " " +
                           controllerState.idToOrder.size + " orders: " + (controllerState.idToOrder.keys.take(5).map(_.string).mkString(", "))
-                      }.fold(identity, identity))
+                      ).fold(identity, identity))
                     Left(())
                   }.delayResult(1.s)))
           }
@@ -70,14 +69,15 @@ object TestControllerProxy
     }
   }
 
-  private def webServiceRoute(snapshot: Task[(EventId, ControllerState)])(implicit s: Scheduler) =
+  private def webServiceRoute(snapshot: Task[ControllerState])(implicit s: Scheduler) =
     pathSegments("proxy/api/snapshot") {
       pathSingleSlash {
         get {
           complete(
-            snapshot.map { case (eventId, controllerState) =>
-              implicit val x = stampedCirceStreamingSupport(eventId = eventId)
+            snapshot.map { controllerState =>
+              implicit val x = NdJsonStreamingSupport
               implicit val y = SnapshotJsonCodec
+              implicit val z = jsonSeqMarshaller[Any]
               monixObservableToMarshallable(controllerState.toSnapshotObservable)
             }.runToFuture)
         }

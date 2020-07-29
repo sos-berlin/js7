@@ -29,7 +29,7 @@ object JsonStreamingSupport
       MediaRange.One(`application/json`, 0.9f)) ::    // For Problem response
     Nil
 
-  val JsonObjectMaxSize = 100*1000  // TODO Maybe 10MB? For very big Workflows or snapshot objects
+  val JsonObjectMaxSize = 1024*1024  // TODO Maybe 10MB? For very big Workflows or snapshot objects
   private val RS = ByteString(Ascii.RS)
   private val LF = ByteString(Ascii.LF)
 
@@ -40,7 +40,7 @@ object JsonStreamingSupport
     EntityStreamingSupport
       .json(maxObjectLength = JsonObjectMaxSize)
       .withContentType(ContentType(mediaType))
-      .withParallelMarshalling(parallelism = sys.runtime.availableProcessors, unordered = false)
+      .withParallelMarshalling(parallelism = sys.runtime.availableProcessors, unordered = false)  // TODO Does this improve performance?
       .withFramingRenderer(Flow[ByteString].map(frame))
 
   def jsonSeqMarshaller[A: Encoder](implicit streamingSupport: JsonEntityStreamingSupport): ToEntityMarshaller[A] =

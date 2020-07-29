@@ -8,7 +8,6 @@ import js7.base.web.Uri
 import js7.data.cluster.ClusterNodeState
 import monix.eval.Task
 import monix.reactive.Observable
-import scala.collection.immutable.Seq
 import scala.reflect.ClassTag
 
 trait EventApi
@@ -19,13 +18,15 @@ with HasIsIgnorableStackTrace
 
   def clusterNodeState: Task[Checked[ClusterNodeState]]
 
-  def snapshot: Task[Checked[Stamped[Seq[Any]]]]
+  def snapshot: Task[Checked[Observable[Any]]]
 
   def eventObservable[E <: Event: ClassTag](request: EventRequest[E])
     (implicit kd: Decoder[KeyedEvent[E]])
     : Task[Observable[Stamped[KeyedEvent[E]]]]
 
   final def snapshotAs[S <: JournaledState[S]](implicit S: JournaledState.Companion[S]): Task[Checked[S]] =
-    snapshot.map(_.map(s =>
-      S.fromIterable(s.value) withEventId s.eventId))
+    snapshot.flatMap {
+      case Left(problem) => Task.pure(Left(problem))
+      case Right(o) => S.fromObservable(o) map Right.apply
+    }
 }

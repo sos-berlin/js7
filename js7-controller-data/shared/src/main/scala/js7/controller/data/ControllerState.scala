@@ -11,10 +11,12 @@ import js7.data.agent.AgentRefPath
 import js7.data.controller.ControllerFileBaseds
 import js7.data.controller.ControllerFileBaseds.ControllerTypedPathCompanions
 import js7.data.event.KeyedEvent.NoKey
+import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{Event, EventId, JournaledState, KeyedEvent}
 import js7.data.filebased.{Repo, RepoEvent}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderOffered, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
+import monix.eval.Task
 import monix.reactive.Observable
 
 /**
@@ -30,6 +32,7 @@ final case class ControllerState(
 extends JournaledState[ControllerState]
 {
   def toSnapshotObservable: Observable[Any] =
+    Observable.pure(SnapshotEventId(eventId)) ++
     standards.toSnapshotObservable ++
     Observable.fromIterable(controllerMetaState.isDefined ? controllerMetaState) ++
     Observable.fromIterable(repo.eventsFor(ControllerTypedPathCompanions)) ++
@@ -152,21 +155,23 @@ object ControllerState
   implicit val journaledStateCompanion: JournaledState.Companion[ControllerState] =
     new JournaledState.Companion[ControllerState] {
       val empty = Undefined
-
-      def fromIterable(snapshotObjects: Iterable[Any]) =
-        ControllerState.fromIterable(snapshotObjects)
-
-      implicit def snapshotObjectJsonCodec = ControllerSnapshots.SnapshotJsonCodec
-
+      implicit val snapshotObjectJsonCodec = ControllerSnapshots.SnapshotJsonCodec
       implicit val keyedEventJsonDecoder = ControllerKeyedEventJsonCodec
-    }
 
-  def fromIterable(snapshotObjects: Iterable[Any]): ControllerState =
-    fromIterator(snapshotObjects.iterator)
+      def fromObservable(snapshotObjects: Observable[Any]) =
+        ControllerState.fromObservable(snapshotObjects)
+    }
 
   def fromIterator(snapshotObjects: Iterator[Any]): ControllerState = {
     val builder = new ControllerStateBuilder
     snapshotObjects foreach builder.addSnapshot
     builder.state
   }
+
+  def fromObservable(snapshotObjects: Observable[Any]): Task[ControllerState] =
+    Task.defer {
+      val builder = new ControllerStateBuilder
+      snapshotObjects.foreachL(builder.addSnapshot)
+        .map(_ => builder.state)
+    }
 }

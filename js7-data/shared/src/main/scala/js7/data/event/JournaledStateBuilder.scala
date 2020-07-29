@@ -5,6 +5,7 @@ import js7.base.time.{Stopwatch, Timestamp}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.data.cluster.ClusterState
+import js7.data.event.SnapshotMeta.SnapshotEventId
 import monix.eval.Task
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Future, Promise}
@@ -46,9 +47,16 @@ trait JournaledStateBuilder[S <: JournaledState[S]]
     snapshot match {
       case journalHeader: JournalHeader =>
         this._journalHeader := journalHeader
-        require(_firstEventId == EventId.BeforeFirst && _eventId == EventId.BeforeFirst)
+        require(_firstEventId == EventId.BeforeFirst && _eventId == EventId.BeforeFirst, "EventId mismatch in snapshot")
         _firstEventId = journalHeader.eventId
         _eventId = journalHeader.eventId
+
+      case SnapshotEventId(eventId) =>
+        require(eventId == _firstEventId && eventId == _eventId ||
+                _firstEventId == EventId.BeforeFirst && _eventId == EventId.BeforeFirst,
+          "EventId mismatch in snapshot")
+        _firstEventId = eventId
+        _eventId = eventId
 
       case _ =>
         _snapshotCount += 1

@@ -32,6 +32,7 @@ import js7.data.cluster.ClusterState.ClusterStateSnapshot
 import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.KeyedEvent.NoKey
+import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{AnyKeyedEvent, EventId, JournalEvent, JournalHeader, JournalId, JournalState, JournaledState, KeyedEvent, Stamped}
 import monix.eval.Task
 import monix.execution.cancelables.SerialCancelable
@@ -567,6 +568,7 @@ extends Actor with Stash
     Await.result(
       journaledState.toSnapshotObservable
         .filter {
+          case SnapshotEventId(_) => false  // JournalHeader contains already the EventId
           case _ if useJournaledStateAsSnapshot => true
           case _: ClusterStateSnapshot | _: JournalState => true
           case _ => false
