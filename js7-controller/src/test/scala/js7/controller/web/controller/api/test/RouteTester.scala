@@ -37,6 +37,9 @@ trait RouteTester extends ScalatestRouteTest with ExceptionHandling
   protected final lazy val sessionRegister =
     SessionRegister.start[SimpleSession](system, SimpleSession.apply, SessionRegister.TestConfig)
 
+  override def testConfig = config"js7.web.client.compression = off"
+    .withFallback(super.testConfig)
+
   protected def config = config"""
     js7.web.server.verbose-error-messages = on
     js7.web.server.services.event.streaming.delay = 20ms

@@ -59,6 +59,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
 
   private lazy val http = Http(actorSystem)
   private lazy val baseAkkaUri = AkkaUri(baseUri.string)
+  private lazy val useCompression = http.system.settings.config.getBoolean("js7.web.client.compression")
   @volatile private var closed = false
   private val counter = AtomicLong(0)
 
@@ -173,7 +174,8 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
         withCheckedAgentUri(request) { request =>
           val number = counter.incrementAndGet()
           val headers = sessionToken.map(token => RawHeader(SessionToken.HeaderName, token.secret.string))
-          val req = encodeGzip(request.withHeaders(headers ++: request.headers ++: standardHeaders))
+          val req = request.withHeaders(headers ++: request.headers ++: standardHeaders)
+            .pipeIf(useCompression, encodeGzip)
           var since = now
           def responseLogPrefix = s"$toString: #$number ${requestToString(req, logData, isResponse = true)} ${since.elapsed.pretty}"
           loggingTimerResource(responseLogPrefix).use { _ =>
