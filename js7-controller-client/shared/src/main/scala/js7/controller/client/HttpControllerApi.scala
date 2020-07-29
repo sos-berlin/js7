@@ -21,6 +21,7 @@ import monix.eval.Task
 import monix.reactive.Observable
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
+import scala.reflect.runtime.universe._
 import scodec.bits.ByteVector
 
 trait HttpControllerApi
@@ -41,6 +42,9 @@ extends ControllerApi with HttpSessionApi with HasIsIgnorableStackTrace
 
   final def post[A: Encoder, B: Decoder](uriTail: String, data: A): Task[B] =
     httpClient.post[A, B](baseUri /? uriTail, data)
+
+  final def postObservable[A: Encoder: TypeTag, B: Decoder](uriTail: String, data: Observable[A]): Task[B] =
+    httpClient.postObservable[A, B](baseUri /? uriTail, data)
 
   final def get[B: Decoder](uriTail: String): Task[B] =
     httpClient.get[B](baseUri /? uriTail)

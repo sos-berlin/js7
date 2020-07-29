@@ -6,14 +6,10 @@ import js7.base.annotation.javaApi
 import js7.base.utils.{HasCloser, Lazy}
 import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
-import js7.common.configuration.JobSchedulerConfiguration
-import js7.common.configutils.Configs
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.system.ThreadPools
-import js7.common.time.JavaTimeConverters.AsScalaDuration
-import js7.common.utils.JavaResource
 import js7.controller.client.AkkaHttpControllerApi
-import js7.proxy.javaapi.JProxyContext._
+import js7.proxy.configuration.ProxyConfs
 import js7.proxy.javaapi.data.JHttpsConfig
 import js7.proxy.{ControllerProxy, ProxyEvent}
 import scala.jdk.CollectionConverters._
@@ -23,9 +19,13 @@ extends HasCloser
 {
   def this() = this(ConfigFactory.empty)
 
-  private val _config = config withFallback defaultConfig
-  private val tornOlder = _config.getDuration("js7.proxy.event-stream.torn-older").toFiniteDuration
-  private[proxy] implicit val scheduler = ThreadPools.newStandardScheduler("JControllerProxy", _config, closer)
+  private val config_ = config
+    .withFallback(ConfigFactory.systemProperties)
+    .withFallback(ProxyConfs.defaultConfig)
+
+  private val proxyConf = ProxyConfs.fromConfig(config)
+
+  private[proxy] implicit val scheduler = ThreadPools.newStandardScheduler("JControllerProxy", config_, closer)
   private val actorSystemLazy = Lazy(newActorSystem("JS7-Proxy", defaultExecutionContext = scheduler))
 
   onClose {
@@ -65,7 +65,7 @@ extends HasCloser
       apiResources,
       proxyEventBus.underlying.publish,
       controllerEventBus.underlying.publish,
-      tornOlder = Some(tornOlder))
+      proxyConf)
     new JControllerProxy(proxy, proxyEventBus, controllerEventBus, this)
   }
 }
@@ -73,8 +73,4 @@ extends HasCloser
 object JProxyContext
 {
   coupleScribeWithSlf4j()
-
-  private val defaultConfig =
-    Configs.loadResource(JavaResource("js7/proxy/configuration/proxy.conf"), internal = true)
-      .withFallback(JobSchedulerConfiguration.defaultConfig)
 }

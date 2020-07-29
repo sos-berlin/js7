@@ -7,6 +7,7 @@ import cats.syntax.foldable._
 import cats.syntax.option._
 import cats.syntax.traverse._
 import js7.base.generic.Completed
+import js7.base.monixutils.MonixBase.durationOfTask
 import js7.base.monixutils.MonixBase.syntax.RichCheckedTask
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
@@ -21,12 +22,13 @@ import js7.common.http.RecouplingStreamReader
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.data.event.{AnyKeyedEvent, Event, EventApi, EventId, EventRequest, EventSeqTornProblem, JournaledState, NoKeyEvent, Stamped}
 import js7.proxy.ProxyEvent.{ProxyCoupled, ProxyCouplingError, ProxyDecoupled}
+import js7.proxy.configuration.ProxyConf
 import monix.eval.Task
 import monix.execution.CancelableFuture
 import monix.execution.atomic.AtomicBoolean
 import monix.reactive.Observable
 import scala.collection.immutable.Seq
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NoStackTrace
 import scala.util.{Failure, Success}
@@ -106,8 +108,8 @@ object JournaledProxy
 
   def observable[S <: JournaledState[S]](
     apiResources: Seq[ApiResource],
-    onProxyEvent: ProxyEvent => Unit,
-    tornOlder: Option[FiniteDuration] = None)
+    onProxyEvent: ProxyEvent => Unit = _ => (),
+    proxyConf: ProxyConf)
     (implicit S: JournaledState.Companion[S])
   : Observable[EventAndState[Event, S]] =
   {
@@ -120,10 +122,11 @@ object JournaledProxy
             Observable.fromTask(selectActiveNodeApi(apis, _ => onCouplingError)).flatMap(api =>
               Observable
                 .fromTask(
-                  maybeState.fold(api.snapshotAs[S])(s => Task.pure(Right(s))))
-                .map(_.orThrow/*TODO What happens then?*/)
-                .flatMap(state =>
-                  observeWithState(api, state)
+                  durationOfTask(
+                    maybeState.fold(api.snapshotAs[S])(s => Task.pure(Right(s)))))
+                .map(o => o._1.orThrow/*TODO What happens then?*/ -> o._2)
+                .flatMap { case (state, stateFetchDuration) =>
+                  observeWithState(api, state, stateFetchDuration)
                     .map(Right.apply)
                     .onErrorHandleWith { t =>
                       val continueWithState =
@@ -138,12 +141,13 @@ object JournaledProxy
                         }
                       Observable.pure(Left(continueWithState)/*TODO Observable.tailRecM: Left leaks memory, https://github.com/monix/monix/issues/791*/)
                         .delayExecution(1.s/*TODO*/)
-                    })))
+                    }
+                }))
         }
 
-    def observeWithState(api: EventApi, state: S): Observable[EventAndState[Event, S]] = {
+    def observeWithState(api: EventApi, state: S, stateFetchDuration: FiniteDuration): Observable[EventAndState[Event, S]] = {
       val seed = EventAndState(Stamped(state.eventId, ProxyStartedSeed: AnyKeyedEvent), state)
-      val recouplingStreamReader = new MyRecouplingStreamReader(onProxyEvent, tornOlder)
+      val recouplingStreamReader = new MyRecouplingStreamReader(onProxyEvent, stateFetchDuration, proxyConf)
       recouplingStreamReader.observe(api, after = state.eventId)
         .guarantee(recouplingStreamReader.decouple.map(_ => ()))
         .scan0(seed)((s, stampedEvent) =>
@@ -158,38 +162,47 @@ object JournaledProxy
     observe
   }
 
-  private class MyRecouplingStreamReader[S <: JournaledState[S]](onProxyEvent: ProxyEvent => Unit, tornOlder: Option[FiniteDuration])
+  private class MyRecouplingStreamReader[S <: JournaledState[S]](onProxyEvent: ProxyEvent => Unit,
+    stateFetchDuration: FiniteDuration, proxyConf: ProxyConf)
     (implicit S: JournaledState.Companion[S])
-    extends RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], EventApi](_.eventId, recouplingStreamReaderConf)
-    {
-      def getObservable(api: EventApi, after: EventId) = {
-        import S.keyedEventJsonDecoder
-        HttpClient.liftProblem(
-          api.eventObservable(
-            EventRequest.singleClass[Event](after = after, delay = 1.s, tornOlder = tornOlder, timeout = Some(55.s/*TODO*/))))
+  extends RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], EventApi](_.eventId, recouplingStreamReaderConf)
+  {
+    private var addToTornOlder = stateFetchDuration
+
+    def getObservable(api: EventApi, after: EventId) = {
+      import S.keyedEventJsonDecoder
+      HttpClient.liftProblem(
+        api.eventObservable(
+          EventRequest.singleClass[Event](after = after, delay = 1.s,
+            tornOlder = proxyConf.tornOlder.map(_ + addToTornOlder),
+            timeout = Some(55.s/*TODO*/)))
+      .doOnFinish {
+        case None => Task { addToTornOlder = Duration.Zero }
+        case _ => Task.unit
+      })
+    }
+
+    override def onCoupled(api: EventApi, after: EventId) =
+      Task {
+        onProxyEvent(ProxyCoupled(after))
+        Completed
       }
 
-      override def onCoupled(api: EventApi, after: EventId) =
+    override protected def onCouplingFailed(api: EventApi, problem: Problem) =
+      super.onCouplingFailed(api, problem) >>
         Task {
-          onProxyEvent(ProxyCoupled(after))
-          Completed
+          onProxyEvent(ProxyCouplingError(problem))
+          false  // Terminate RecouplingStreamReader to allow to reselect a reachable Node (via EventApi)
         }
 
-      override protected def onCouplingFailed(api: EventApi, problem: Problem) =
-        super.onCouplingFailed(api, problem) >>
-          Task {
-            onProxyEvent(ProxyCouplingError(problem))
-            false  // Terminate RecouplingStreamReader to allow to reselect a reachable Node (via EventApi)
-          }
+    override protected val onDecoupled =
+      Task {
+        onProxyEvent(ProxyDecoupled)
+        Completed
+      }
 
-      override protected val onDecoupled =
-        Task {
-          onProxyEvent(ProxyDecoupled)
-          Completed
-        }
-
-      def stopRequested = false
-    }
+    def stopRequested = false
+  }
 
   /** Selects the API for the active node's, waiting until one is active.
     * The return EventApi is logged-in.

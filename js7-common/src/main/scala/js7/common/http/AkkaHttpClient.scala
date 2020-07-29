@@ -4,6 +4,7 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshalling.Marshal
 import akka.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
+import akka.http.scaladsl.model.HttpEntity.{ChunkStreamPart, LastChunk}
 import akka.http.scaladsl.model.HttpMethods.{GET, POST}
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
@@ -14,10 +15,12 @@ import akka.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshal}
 import akka.stream.Materializer
 import akka.util.ByteString
 import cats.effect.{ExitCase, Resource}
+import io.circe.syntax._
 import io.circe.{Decoder, Encoder}
 import java.util.Locale
 import js7.base.auth.SessionToken
-import js7.base.circeutils.CirceUtils.RichCirceString
+import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.implicits._
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
@@ -29,9 +32,9 @@ import js7.base.web.{HttpClient, Uri}
 import js7.common.akkahttp.https.AkkaHttps.loadHttpsConnectionContext
 import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import js7.common.http.AkkaHttpClient._
-import js7.common.http.AkkaHttpUtils.{RichAkkaAsUri, RichAkkaUri, decodeResponse, encodeGzip}
+import js7.common.http.AkkaHttpUtils.{RichAkkaAsUri, RichAkkaUri, ScodecByteString, decodeResponse, encodeGzip}
 import js7.common.http.CirceJsonSupport._
-import js7.common.http.JsonStreamingSupport.StreamingJsonHeaders
+import js7.common.http.JsonStreamingSupport.{StreamingJsonHeaders, `application/x-ndjson`}
 import js7.common.http.StreamingSupport._
 import js7.common.scalautil.Logger
 import monix.eval.Task
@@ -42,6 +45,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
+import scala.reflect.runtime.universe._
 import scala.util.control.NoStackTrace
 import scala.util.{Failure, Success}
 import scodec.bits.ByteVector
@@ -91,7 +95,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
     get_[HttpResponse](uri, StreamingJsonHeaders)
       .map(_.entity.withoutSizeLimit.dataBytes
         .toObservable
-        .map(o => ByteVector.view(o.toArray))
+        .map(_.toByteVector)
         .flatMap(new ByteVectorToLinesObservable))
 
   /** HTTP Get with Accept: application/json. */
@@ -122,6 +126,20 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
 
   final def post[A: Encoder, B: Decoder](uri: Uri, data: A)(implicit s: Task[Option[SessionToken]]): Task[B] =
     post2[A, B](uri, data, Nil)
+
+  final def postObservable[A: Encoder: TypeTag, B: Decoder](uri: Uri, data: Observable[A])
+    (implicit s: Task[Option[SessionToken]])
+  : Task[B] = {
+    val chunks = data.map(a => ChunkStreamPart(ByteString(a.asJson.compactPrint) ++ LF))
+      .append(LastChunk)
+    Task.deferAction(implicit s => Task(chunks.toAkkaSource))
+      .flatMap(akkaChunks =>
+        sendReceive(
+          HttpRequest(POST, uri.asAkka, Accept(`application/json`) :: Nil,
+            HttpEntity.Chunked(`application/x-ndjson`.toContentType, akkaChunks)),
+          logData = Some(data.toString)))
+      .flatMap(unmarshal[B](POST, uri))
+  }
 
   final def postWithHeaders[A: Encoder, B: Decoder](uri: Uri, data: A, headers: List[HttpHeader])
     (implicit s: Task[Option[SessionToken]])
@@ -301,14 +319,14 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
   }
 
   private def requestToString(request: HttpRequest, logData: => Option[String], isResponse: Boolean = false): String = {
-    val b = new StringBuilder(200)
+    val b = new StringBuilder(300)
     b.append(request.method.value.pipeIf(isResponse, _.toLowerCase(Locale.ROOT)))
     b.append(' ')
     b.append(request.uri)
     if (!request.entity.isKnownEmpty) {
       for (o <- logData) {
         b.append(' ')
-        b.append(o)
+        b.append(o.truncateWithEllipsis(200, showLength = true))
       }
     }
     b.toString
@@ -328,6 +346,7 @@ object AkkaHttpClient
   private val HttpErrorContentSizeMaximum = ErrorMessageLengthMaximum + 100
   private val FailureTimeout = 10.seconds
   private val logger = Logger(getClass)
+  private val LF = ByteString("\n")
 
   final class Standard(
     protected val baseUri: Uri,

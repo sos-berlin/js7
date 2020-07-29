@@ -10,7 +10,7 @@ import akka.stream.scaladsl.Flow
 import akka.util.ByteString
 import io.circe.Encoder
 import io.circe.syntax.EncoderOps
-import js7.base.circeutils.CirceUtils.implicits.CompactPrinter
+import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.utils.Ascii
 
 /**
@@ -45,6 +45,6 @@ object JsonStreamingSupport
 
   def jsonSeqMarshaller[A: Encoder](implicit streamingSupport: JsonEntityStreamingSupport): ToEntityMarshaller[A] =
     Marshaller.withFixedContentType(streamingSupport.contentType)(value =>
-      HttpEntity.Strict(streamingSupport.contentType, ByteString(CompactPrinter.print(value.asJson))))
+      HttpEntity.Strict(streamingSupport.contentType, ByteString(value.asJson.compactPrint)))
 }
 

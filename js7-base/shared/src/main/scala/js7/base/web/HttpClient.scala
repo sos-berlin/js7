@@ -7,6 +7,7 @@ import js7.base.utils.StackTraces.StackTraceThrowable
 import monix.eval.Task
 import monix.reactive.Observable
 import scala.concurrent.duration.Duration
+import scala.reflect.runtime.universe._
 import scala.util.{Failure, Success}
 import scodec.bits.ByteVector
 
@@ -22,6 +23,8 @@ trait HttpClient
   def get[A: Decoder](uri: Uri, timeout: Duration = Duration.Inf)(implicit s: Task[Option[SessionToken]]): Task[A]
 
   def post[A: Encoder, B: Decoder](uri: Uri, data: A)(implicit s: Task[Option[SessionToken]]): Task[B]
+
+  def postObservable[A: Encoder: TypeTag, B: Decoder](uri: Uri, data: Observable[A])(implicit s: Task[Option[SessionToken]]): Task[B]
 
   /** Returns the HTTP status code, discarding the response data. */
   def postDiscardResponse[A: Encoder](uri: Uri, data: A, allowedStatusCodes: Set[Int] = Set.empty)

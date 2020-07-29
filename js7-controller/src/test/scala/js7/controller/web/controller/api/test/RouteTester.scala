@@ -44,5 +44,6 @@ trait RouteTester extends ScalatestRouteTest with ExceptionHandling
     js7.web.server.verbose-error-messages = on
     js7.web.server.services.event.streaming.delay = 20ms
     js7.web.server.services.event.streaming.chunk-timeout = 1h
+    js7.web.server.services.order.post-size-limit = 50%
     """
 }

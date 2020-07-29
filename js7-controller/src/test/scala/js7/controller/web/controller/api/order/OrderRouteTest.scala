@@ -33,6 +33,7 @@ final class OrderRouteTest extends AnyFreeSpec with RouteTester with OrderRoute
 {
   protected def whenShuttingDown = Future.never
   protected implicit def scheduler: Scheduler = Scheduler.global
+  protected def actorSystem = system
   protected val orderApi = new OrderApi.WithCommands {
     def addOrder(order: FreshOrder) = Task(Right(order.id != DuplicateOrderId))
     def addOrders(orders: Seq[FreshOrder]) = Task(Right(Completed))
@@ -87,7 +88,7 @@ final class OrderRouteTest extends AnyFreeSpec with RouteTester with OrderRoute
   "POST invalid order" in {
     val order = FreshOrder.unchecked(OrderId("ORDER/🔵"), WorkflowPath("/WORKFLOW"))
     Post(s"/controller/api/order", order) ~> route ~> check {
-      assert(status == BadRequest)  // New order
+      assert(status == BadRequest)
       assert(response.utf8StringFuture.await(99.s) == "JSON DecodingFailure at : OrderId must not contain reserved characters /\n")
     }
   }

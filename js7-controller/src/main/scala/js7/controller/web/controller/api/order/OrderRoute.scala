@@ -1,20 +1,31 @@
 package js7.controller.web.controller.api.order
 
+import akka.actor.ActorSystem
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.model.StatusCodes.{Conflict, Created, NotFound, OK}
-import akka.http.scaladsl.model.Uri
 import akka.http.scaladsl.model.headers.Location
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.model.{HttpEntity, Uri}
+import akka.http.scaladsl.server.Directives.{entity, _}
 import akka.http.scaladsl.server.{Directive, Route}
+import com.typesafe.config.Config
 import io.circe.Json
 import js7.base.auth.ValidUserPermission
 import js7.base.circeutils.CirceUtils._
+import js7.base.convert.As.StringAsPercentage
 import js7.base.generic.Completed
+import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
+import js7.base.utils.ByteVectorToLinesObservable
 import js7.base.utils.IntelliJUtils.intelliJuseImport
+import js7.base.utils.ScalaUtils.syntax.RichThrowableEither
 import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
-import js7.common.akkahttp.CirceJsonOrYamlSupport._
+import js7.common.akkahttp.CirceJsonOrYamlSupport.{jsonOrYamlMarshaller, jsonUnmarshaller}
 import js7.common.akkahttp.StandardMarshallers._
+import js7.common.configutils.Configs.ConvertibleConfig
+import js7.common.http.AkkaHttpUtils.ScodecByteString
+import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
+import js7.common.http.StreamingSupport._
+import js7.common.scalautil.Logger
 import js7.controller.OrderApi
 import js7.controller.data.events.ControllerKeyedEventJsonCodec.keyedEventJsonCodec
 import js7.controller.web.common.ControllerRouteProvider
@@ -28,39 +39,57 @@ import monix.execution.Scheduler
 trait OrderRoute extends ControllerRouteProvider
 {
   protected def orderApi: OrderApi.WithCommands
+  protected def config: Config
+  protected def actorSystem: ActorSystem
 
+  protected lazy val orderEntitySizeLimit = config.as("js7.web.server.services.order.post-size-limit")(StringAsPercentage)
   private implicit def implicitScheduler: Scheduler = scheduler
+  private implicit def implicitActorsystem = actorSystem
 
   final lazy val orderRoute: Route =
     authorizedUser(ValidUserPermission) { _ =>
       post {
         pathEnd {
-          entity(as[Json]) { json =>
-            if (json.isArray)
-              json.as[Seq[FreshOrder]] match {
-                case Left(failure) => complete(failure.toProblem)
-                case Right(orders) =>
-                  completeTask(
-                    orderApi.addOrders(orders)
-                      .map[ToResponseMarshallable](_.map((_: Completed) => OK -> emptyJsonObject)))
-              }
-            else
-              json.as[FreshOrder] match {
-                case Left(failure) => complete(failure.toProblem)
-                case Right(order) =>
-                  extractUri { uri =>
-                    onSuccess(orderApi.addOrder(order).runToFuture) {
-                      case Left(problem) => complete(problem)
-                      case Right(isNoDuplicate) =>
-                        respondWithHeader(Location(uri.withPath(uri.path / order.id.string))) {
-                          complete(
-                            if (isNoDuplicate) Created -> emptyJsonObject
-                            else Conflict -> Problem.pure(s"Order '${order.id.string}' has already been added"))
+          withSizeLimit(entitySizeLimit)/*call before entity*/(
+            entity(as[HttpEntity])(httpEntity =>
+              if (httpEntity.contentType == `application/x-ndjson`.toContentType)
+                completeTask(httpEntity
+                  .dataBytes
+                  .toObservable
+                  .map(_.toByteVector)
+                  .flatMap(new ByteVectorToLinesObservable)
+                  .map(_.decodeUtf8.orThrow.parseJsonCheckedAs[FreshOrder].orThrow)
+                  .toListL
+                  .flatMap(orderApi.addOrders)
+                  .map[ToResponseMarshallable](_.map((_: Completed) =>
+                    OK -> emptyJsonObject)))
+              else
+                entity(as[Json]) { json =>
+                  if (json.isArray)
+                    json.as[Seq[FreshOrder]] match {
+                      case Left(failure) => complete(failure.toProblem)
+                      case Right(orders) =>
+                        completeTask(
+                          orderApi.addOrders(orders)
+                            .map[ToResponseMarshallable](_.map((_: Completed) => OK -> emptyJsonObject)))
+                    }
+                  else
+                    json.as[FreshOrder] match {
+                      case Left(failure) => complete(failure.toProblem)
+                      case Right(order) =>
+                        extractUri { uri =>
+                          onSuccess(orderApi.addOrder(order).runToFuture) {
+                            case Left(problem) => complete(problem)
+                            case Right(isNoDuplicate) =>
+                              respondWithHeader(Location(uri.withPath(uri.path / order.id.string))) {
+                                complete(
+                                  if (isNoDuplicate) Created -> emptyJsonObject
+                                  else Conflict -> Problem.pure(s"Order '${order.id.string}' has already been added"))
+                              }
+                          }
                         }
                     }
-                  }
-              }
-          }
+                }))
         }
       } ~
       get {
@@ -88,6 +117,12 @@ trait OrderRoute extends ControllerRouteProvider
       }
     }
 
+  private def entitySizeLimit = {
+    val limit = (orderEntitySizeLimit * sys.runtime.maxMemory).toLong
+    logger.debug(s"withSizeLimit($limit)")
+    limit
+  }
+
   private def singleOrder(orderId: OrderId): Route =
     completeTask(
       orderApi.order(orderId).map(_.map {
@@ -101,6 +136,7 @@ trait OrderRoute extends ControllerRouteProvider
 object OrderRoute
 {
   private val emptyJsonObject = Json.obj()
+  private val logger = Logger(getClass)
 
   private val matchOrderId = new Directive[Tuple1[OrderId]] {
     def tapply(inner: Tuple1[OrderId] => Route) =

@@ -421,6 +421,7 @@ with MainJournalingActor[ControllerState, Event]
         addOrder(order) map Response.ForAddOrder.apply pipeTo sender()
 
     case Command.AddOrders(orders) =>
+      logger.debug(s"Adding ${orders.size} orders")
       if (shuttingDown)
         sender() ! Status.Failure(ControllerIsShuttingDownProblem.throwable)
       else if (switchover.isDefined)
