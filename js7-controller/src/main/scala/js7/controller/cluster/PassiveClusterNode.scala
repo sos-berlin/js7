@@ -502,7 +502,7 @@ import scodec.bits.ByteVector
   private def shouldActivate(clusterState: ClusterState) =
     !dontActivateBecauseOtherFailedOver && clusterState.isNonEmptyActive(ownId)
 
-  private def ensureEqualState(continuation: Continuation.Replicatable, snapshot: S)(implicit s: Scheduler): Unit =
+  private def ensureEqualState(continuation: Continuation.Replicatable, snapshot: S): Unit =
     for (recoveredJournalFile <- continuation.maybeRecoveredJournalFile if recoveredJournalFile.state != snapshot) {
       val msg = s"State from recovered journal file ${recoveredJournalFile.fileEventId} does not match snapshot in next journal file"
       logger.error(msg)
