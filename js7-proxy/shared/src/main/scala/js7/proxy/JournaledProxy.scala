@@ -46,7 +46,7 @@ trait JournaledProxy[S <: JournaledState[S]]
   private val observing = SetOnce[CancelableFuture[Unit]]("observing")
   private val observingStopped = Promise[Unit]()
 
-  private[proxy] final def startObserving: Task[Unit] =
+  final def startObserving: Task[Unit] =
     Task.deferFutureAction { implicit scheduler =>
       assertThat(observing.isEmpty)
       val obs = observe.completedL.runToFuture
@@ -91,7 +91,10 @@ trait JournaledProxy[S <: JournaledState[S]]
   }
 
   final def currentState: (EventId, S) =
-    _currentState
+    _currentState match {
+      case null => throw new IllegalStateException("JournaledProxy has not yet started")
+      case o => o
+    }
 
   private def assertObserveNotCalled(): Unit =
     if (observeCalled.getAndSet(true)) throw new IllegalStateException("JournalProxy is already in use")

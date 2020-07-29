@@ -78,7 +78,7 @@ extends Actor with Stash
   private var lastWrittenEventId = EventId.BeforeFirst
   private var lastAcknowledgedEventId = EventId.BeforeFirst
   private var commitDeadline: Deadline = null
-  private var delayedCommit: Cancelable = null
+  private var delayedCommit = SerialCancelable()
   private var totalEventCount = 0L
   private var requireClusterAcknowledgement = false
   private val waitingForAcknowledgeTimer = SerialCancelable()
@@ -91,7 +91,7 @@ extends Actor with Stash
 
   override def postStop() = {
     if (snapshotSchedule != null) snapshotSchedule.cancel()
-    if (delayedCommit != null) delayedCommit.cancel()  // Discard commit for fast exit
+    delayedCommit := Cancelable.empty // Discard commit for fast exit
     stopped.trySuccess(Stopped(keyedEventJournalingActorCount = journalingActors.size))
     if (!switchedOver) {
       for (a <- journalingActors) logger.debug(s"Journal stopped while a JournalingActor is still running: ${a.path.pretty}")
@@ -231,19 +231,11 @@ extends Actor with Stash
           }
       }
 
-    case Internal.Commit(level) =>
-      commitDeadline = null
-      if (eventLimitReached)
-        commit()
-      else if (level < writtenBuffer.length) {
-        // writtenBuffer has grown? Queue again to coalesce two commits (and flushs and maybe syncs)
-        forwardCommit()
-      } else if (level == writtenBuffer.length) {  // writtenBuffer has not grown since last emitted Commit
-        commit()
-      } else if (writtenBuffer.nonEmpty) {
-        logger.trace(s"Commit($level) but writtenBuffer.length=${writtenBuffer.length}")
-        commit()
+    case Internal.Commit =>
+      if (writtenBuffer.isEmpty) {
+        logger.trace("Commit but writtenBuffer.isEmpty")
       }
+      commit()
 
     case Input.TakeSnapshot if !switchedOver =>
       logger.debug(s"TakeSnapshot ${sender()}")
@@ -312,17 +304,15 @@ extends Actor with Stash
   }
 
   private def forwardCommit(delay: FiniteDuration = Duration.Zero): Unit = {
-    val sender = context.sender()
-    def commit = Internal.Commit(writtenBuffer.length)
-    if (delay <= Duration.Zero)
-      self.forward(commit)
-    else {
-      val deadline = now + delay
-      if (commitDeadline == null || deadline < commitDeadline) {
-        commitDeadline = deadline
-        if (delayedCommit != null) delayedCommit.cancel()
-        delayedCommit = scheduler.scheduleOnce(deadline.timeLeft) {
-          self.tell(commit, sender)  // Don't  use forward in async operation
+    val deadline = now + delay
+    if (commitDeadline == null || deadline < commitDeadline) {
+      commitDeadline = deadline
+      if (delay <= Duration.Zero) {
+        self.forward(Internal.Commit)
+      } else {
+        val sender = context.sender()
+        delayedCommit := scheduler.scheduleOnce(deadline.timeLeft) {
+          self.tell(Internal.Commit, sender)  // Don't  use forward in async operation
         }
       }
     }
@@ -331,6 +321,7 @@ extends Actor with Stash
   /** Flushes and syncs the already written events to disk, then notifying callers and EventBus. */
   private def commit(terminating: Boolean = false): Unit = {
     commitDeadline = null
+    delayedCommit := Cancelable.empty
     if (writtenBuffer.nonEmpty) {
       try eventWriter.flush(sync = conf.syncOnCommit)
       catch { case NonFatal(t) if !terminating =>
@@ -839,7 +830,7 @@ object JournalActor
   final case class Stopped(keyedEventJournalingActorCount: Int)
 
   private object Internal {
-    final case class Commit(writtenLevel: Int)
+    final case object Commit
     case object LogSnapshotProgress extends DeadLetterSuppression
     case object StillWaitingForAcknowledge extends DeadLetterSuppression
   }

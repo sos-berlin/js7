@@ -14,6 +14,7 @@ import js7.common.configutils.Configs._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
+import js7.common.time.WaitForCondition.waitForCondition
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.data.ControllerState
