@@ -4,7 +4,7 @@ import js7.data.filebased.VersionId;
 import js7.data.workflow.WorkflowPath;
 import js7.data.workflow.WorkflowPrinter;
 import js7.proxy.javaapi.utils.JWorkflowParser;
-import static js7.proxy.javaapi.utils.VavrUtils.getOrThrowProblem;
+import static js7.proxy.javaapi.utils.VavrUtils.getOrThrow;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.endsWith;
 import static org.hamcrest.CoreMatchers.startsWith;
@@ -52,10 +52,10 @@ class JWorkflowTester
         assertThat(json, endsWith("}"));
         assertThat(json, containsString("\"path\":\"/A-WORKFLOW\""));
 
-        JWorkflow decodedOrder = getOrThrowProblem(JWorkflow.fromJson(json));
+        JWorkflow decodedOrder = getOrThrow(JWorkflow.fromJson(json));
         assertThat(decodedOrder, equalTo(workflow));
 
-        assertThat(getOrThrowProblem(JWorkflow.fromJson(json)),
+        assertThat(getOrThrow(JWorkflow.fromJson(json)),
             equalTo(workflow));
     }
 

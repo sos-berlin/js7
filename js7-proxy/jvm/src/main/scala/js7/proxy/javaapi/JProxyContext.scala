@@ -7,6 +7,7 @@ import js7.base.utils.{HasCloser, Lazy}
 import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
+import js7.common.message.ProblemCodeMessages
 import js7.common.system.ThreadPools
 import js7.controller.client.AkkaHttpControllerApi
 import js7.proxy.configuration.ProxyConfs
@@ -73,4 +74,5 @@ extends HasCloser
 object JProxyContext
 {
   coupleScribeWithSlf4j()
+  ProblemCodeMessages.initialize()
 }

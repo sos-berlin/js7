@@ -32,7 +32,7 @@ import js7.proxy.javaapi.data.JHttpsConfig;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static js7.proxy.javaapi.data.JKeyedEvent.keyedEventToJson;
-import static js7.proxy.javaapi.utils.VavrUtils.getOrThrowProblem;
+import static js7.proxy.javaapi.utils.VavrUtils.getOrThrow;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -83,7 +83,7 @@ final class JControllerProxyTester
     private void test() throws Exception {
         couplingState.coupled.get();
 
-        String overview = getOrThrowProblem(
+        String overview = getOrThrow(
             proxy.httpGetJson("/controller/api")
                 .get(99, SECONDS));
         assertThat(overview.contains("\"id\":\"Controller\""), equalTo(true));
@@ -107,7 +107,7 @@ final class JControllerProxyTester
 
         // #2 JControllerCommand.addOrder
 
-        String commandResponse1 = getOrThrowProblem(
+        String commandResponse1 = getOrThrow(
             proxy.executeCommandJson(
                 JControllerCommand.addOrder(newOrder(2)).toJson()
             ).get(99, SECONDS));
@@ -116,7 +116,7 @@ final class JControllerProxyTester
 
 
         // #3 POST JFreshOrder
-        String postResponse = getOrThrowProblem(
+        String postResponse = getOrThrow(
             proxy.httpPostJson("/controller/api/order", newOrder(3).toJson())
                 .get(99, SECONDS));
         assertThat(postResponse, equalTo("{}"));

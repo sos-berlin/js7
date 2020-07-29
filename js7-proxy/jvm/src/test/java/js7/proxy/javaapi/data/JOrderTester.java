@@ -1,7 +1,7 @@
 package js7.proxy.javaapi.data;
 
 import js7.data.order.OrderId;
-import static js7.proxy.javaapi.utils.VavrUtils.getOrThrowProblem;
+import static js7.proxy.javaapi.utils.VavrUtils.getOrThrow;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.endsWith;
 import static org.hamcrest.CoreMatchers.startsWith;
@@ -29,7 +29,7 @@ public class JOrderTester
        "  \"arguments\": {},\n" +
        "  \"historicOutcomes\": []\n" +
        "}";
-    static final JOrder aOrder = getOrThrowProblem(JOrder.fromJson(aOrderJson));
+    static final JOrder aOrder = getOrThrow(JOrder.fromJson(aOrderJson));
     static final String bOrderJson =
        "{" +
        "  \"id\":\"B-ORDER\"," +
@@ -49,7 +49,7 @@ public class JOrderTester
        "  },\n" +
        "  \"historicOutcomes\": []\n" +
        "}";
-    static final JOrder bOrder = getOrThrowProblem(JOrder.fromJson(bOrderJson));
+    static final JOrder bOrder = getOrThrow(JOrder.fromJson(bOrderJson));
 
     private final JOrder order;
 
@@ -79,10 +79,10 @@ public class JOrderTester
         assertThat(json, endsWith("}"));
         assertThat(json, containsString("\"id\":\"A-ORDER\""));
 
-        JOrder decodedOrder = getOrThrowProblem(JOrder.fromJson(json));
+        JOrder decodedOrder = getOrThrow(JOrder.fromJson(json));
         assertThat(decodedOrder, equalTo(order));
 
-        assertThat(getOrThrowProblem(JOrder.fromJson(aOrderJson)),
+        assertThat(getOrThrow(JOrder.fromJson(aOrderJson)),
             equalTo(order));
     }
 }
