@@ -2,12 +2,15 @@ package js7.data.event
 
 import io.circe.Decoder
 import js7.base.exceptions.HasIsIgnorableStackTrace
+import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked
 import js7.base.session.SessionApi
+import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.web.Uri
 import js7.data.cluster.ClusterNodeState
 import monix.eval.Task
 import monix.reactive.Observable
+import scala.concurrent.duration.Deadline.now
 import scala.reflect.ClassTag
 
 trait EventApi
@@ -25,8 +28,14 @@ with HasIsIgnorableStackTrace
     : Task[Observable[Stamped[KeyedEvent[E]]]]
 
   final def snapshotAs[S <: JournaledState[S]](implicit S: JournaledState.Companion[S]): Task[Checked[S]] =
-    snapshot.flatMap {
-      case Left(problem) => Task.pure(Left(problem))
-      case Right(o) => S.fromObservable(o) map Right.apply
+    Task.defer {
+      val startedAt = now
+      snapshot
+        .logTiming(startedAt = startedAt, onComplete = (d, n, exitCase) =>
+          scribe.debug(s"$S snapshot received $exitCase · ${itemsPerSecondString(d, n, "objects")}"))
+        .flatMap {
+          case Left(problem) => Task.pure(Left(problem))
+          case Right(obs) => S.fromObservable(obs).map(Right(_))
+        }
     }
 }

@@ -21,9 +21,11 @@ import js7.base.auth.SessionToken
 import js7.base.circeutils.CirceUtils._
 import js7.base.circeutils.CirceUtils.implicits._
 import js7.base.exceptions.HasIsIgnorableStackTrace
+import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
+import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.ByteVectorToLinesObservable
 import js7.base.utils.MonixAntiBlocking.executeOn
 import js7.base.utils.ScalaUtils.syntax._
@@ -93,8 +95,10 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
 
   final def getRawLinesObservable(uri: Uri)(implicit s: Task[Option[SessionToken]]): Task[Observable[ByteVector]] =
     get_[HttpResponse](uri, StreamingJsonHeaders)
-      .map(_.entity.withoutSizeLimit.dataBytes
-        .toObservable
+      .map(_.entity.withoutSizeLimit.dataBytes.toObservable)
+      .pipeIf(logger.underlying.isDebugEnabled, _.logTiming(_.size, (d, s, _) =>
+        if (d >= 1.s && s > 10_000_000) logger.debug(s"$toString: get $uri: ${bytesPerSecondString(d, s)}")))
+      .map(_
         .map(_.toByteVector)
         .flatMap(new ByteVectorToLinesObservable))
 
