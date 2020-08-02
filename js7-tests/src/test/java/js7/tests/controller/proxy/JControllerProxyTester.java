@@ -100,11 +100,11 @@ final class JControllerProxyTester
                 .get(99, SECONDS));
         assertThat(overview.contains("\"id\":\"Controller\""), equalTo(true));
 
-        addVersionedObjects();
+        addItems();
         testOrders();
     }
 
-    private void addVersionedObjects() throws Exception {
+    private void addItems() throws Exception {
         VersionId versionId = VersionId.of("MY-VERSION");  // Must match the versionId in added or replaced objects
 
         JWorkflowId workflowId = JWorkflowId.of(WorkflowPath.of("/WORKFLOW"), versionId);

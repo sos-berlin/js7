@@ -13,13 +13,13 @@ object UpdateRepoOperation
   final case class AddVersion(versionId: VersionId)
   extends UpdateRepoOperation
 
-  sealed trait ObjectOperation extends UpdateRepoOperation
+  sealed trait ItemOperation extends UpdateRepoOperation
 
   final case class AddOrReplace(signedString: SignedString)
-  extends ObjectOperation
+  extends ItemOperation
 
   final case class Delete(path: TypedPath)
-  extends ObjectOperation
+  extends ItemOperation
 
   implicit val jsonCodec = TypedJsonCodec[UpdateRepoOperation](
     Subtype(deriveCodec[AddVersion]),

@@ -4,7 +4,7 @@ import js7.base.annotation.javaApi
 import js7.data.filebased.{FileBasedId, TypedPath, VersionId}
 
 @javaApi
-trait JFileBasedId[P <: TypedPath]
+trait JItemId[P <: TypedPath]
 {
   final type Path = P
   protected type ScalaPath <: TypedPath

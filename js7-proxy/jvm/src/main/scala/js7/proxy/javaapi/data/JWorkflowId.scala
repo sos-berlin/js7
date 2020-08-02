@@ -6,7 +6,7 @@ import js7.data.workflow.{WorkflowId, WorkflowPath}
 
 @javaApi
 final case class JWorkflowId(underlying: WorkflowId)
-extends JFileBasedId[WorkflowPath]
+extends JItemId[WorkflowPath]
 {
   protected type ScalaPath = WorkflowPath
   protected type Underlying = WorkflowId

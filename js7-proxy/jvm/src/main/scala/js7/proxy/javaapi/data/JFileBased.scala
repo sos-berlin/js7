@@ -9,5 +9,5 @@ extends JJsonable[A]
 {
   protected type Underlying <: FileBased
 
-  def id: JFileBasedId[P]
+  def id: JItemId[P]
 }

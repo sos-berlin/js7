@@ -24,7 +24,7 @@ final class ControllerProxy private(
 extends JournaledProxy[ControllerState]
 with ControllerProxyWithHttp
 {
-  def updateRepo(versionId: VersionId, operations: Observable[UpdateRepoOperation.ObjectOperation]): Task[Checked[Completed]] =
+  def updateRepo(versionId: VersionId, operations: Observable[UpdateRepoOperation.ItemOperation]): Task[Checked[Completed]] =
     apiResource.use(api =>
       api.retryUntilReachable()(
         HttpClient.liftProblem(
