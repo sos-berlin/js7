@@ -1,5 +1,6 @@
 package js7.base.monixutils
 
+import cats.effect.ExitCase
 import js7.base.monixutils.MonixBase._
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.{Checked, Problem}
@@ -11,6 +12,7 @@ import monix.execution.Cancelable
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.atomic.AtomicInt
 import monix.execution.schedulers.TestScheduler
+import monix.reactive.Observable
 import org.scalatest.freespec.AsyncFreeSpec
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration._
@@ -130,6 +132,41 @@ final class MonixBaseTest extends AsyncFreeSpec
     durationOfTask(Task.pure(7).delayResult(10.ms))
       .map(o =>
         assert(o._1 == 7 && o._2 >= 10.ms))
+      .runToFuture
+  }
+
+  "mapParallelOrderedBatch" in {
+    val n = 7777
+    Observable.range(0, n)
+      //.mapParallelOrderedBatch()(o => {println(s"### $o"); o * -1})
+      .mapParallelOrdered(sys.runtime.availableProcessors)(o => Task(o * -1))
+      .toListL
+      .map(list => assert(list == (0 until n).map(_ * -1)))
+      .runToFuture
+  }
+
+  "mapParallelUnorderedBatch" in {
+    val n = 7777
+    Observable.range(0, n)
+      .mapParallelUnorderedBatch()(_ * -1)
+      .toListL
+      .map(list => assert(list.toSet == (0 until n).map(_ * -1).toSet))
+      .runToFuture
+  }
+
+  "logTiming" in {
+    val n = 7777
+    var duration: FiniteDuration = null
+    var count: Long = 0
+    var exitCase: ExitCase[Throwable] = null
+    Observable.range(0, n)
+      .logTiming(_ => 2, (d, n, e) => {
+        duration = d
+        count = n
+        exitCase = e
+      })
+      .completedL
+      .map(_ => assert(duration > 0.s && count == 2 * n && exitCase == ExitCase.Completed))
       .runToFuture
   }
 

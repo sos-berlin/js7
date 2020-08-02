@@ -1,15 +1,18 @@
 package js7.base.monixutils
 
-import cats.effect.Resource
-import js7.base.monixutils.MonixDeadline.now
+import cats.effect.{ExitCase, Resource}
 import js7.base.monixutils.MonixDeadline.syntax._
 import js7.base.problem.Checked
+import js7.base.problem.Checked._
+import js7.base.time.ScalaTime.RichDeadline
 import js7.base.time.Timestamp
 import js7.base.utils.CloseableIterator
+import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import monix.eval.Task
 import monix.execution.cancelables.MultiAssignCancelable
 import monix.execution.{Cancelable, Scheduler}
-import monix.reactive.Observable
+import monix.reactive.{Observable, OverflowStrategy}
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.concurrent.{Future, TimeoutException}
 import scala.util.{Failure, Success, Try}
@@ -18,6 +21,8 @@ object MonixBase
 {
   private val FalseTask = Task.pure(false)
   private val TrueTask = Task.pure(true)
+  private val DefaultBatchSize = 200
+  private val logger = scribe.Logger(getClass.scalaName)
 
   object syntax
   {
@@ -66,7 +71,83 @@ object MonixBase
           heartbeatValue +: underlying,   // Insert heartbeats from start
           timeout, onlyOnce = false, heartbeatValue
         ).drop(1)  // Remove inserted initial heartbeat
+
+      def mapParallelOrderedBatch[B](
+        batchSize: Int = DefaultBatchSize,
+        parallelism: Int = sys.runtime.availableProcessors)
+        (f: A => B)
+        (implicit os: OverflowStrategy[B] = OverflowStrategy.Default)
+      : Observable[B] =
+         underlying
+           .bufferTumbling(batchSize)
+           .mapParallelOrdered(parallelism)(seq => Task(seq map f))
+           .flatMap(Observable.fromIterable)
+
+      //def mapParallelOrderedTimedBatch[B](
+      //  maxDelay: FiniteDuration,
+      //  batchSize: Int = DefaultBatchSize,
+      //  parallelism: Int = sys.runtime.availableProcessors)
+      //  (f: A => B)
+      //  (implicit os: OverflowStrategy[B] = OverflowStrategy.Default)
+      //: Observable[Seq[B]] =
+      //  if (maxDelay <= Duration.Zero)
+      //    underlying.map(f)
+      //  else
+      //    underlying
+      //      .bufferTimedAndCounted(maxDelay, batchSize)
+      //      .mapParallelOrdered(parallelism)(seq => Task(seq map f))
+
+      def mapParallelUnorderedBatch[B](
+        batchSize: Int = DefaultBatchSize,
+        parallelism: Int = sys.runtime.availableProcessors)
+        (f: A => B)
+        (implicit os: OverflowStrategy[B] = OverflowStrategy.Default)
+      : Observable[B] =
+         underlying
+           .bufferTumbling(batchSize)
+           .mapParallelUnordered(parallelism)(seq => Task(seq map f))
+           .flatMap(Observable.fromIterable)
+
+      def logTiming(
+        toCount: A => Long = simpleCount,
+        onComplete: (FiniteDuration, Long, ExitCase[Throwable]) => Unit,
+        startedAt: Deadline = now)
+      : Observable[A] =
+        Observable.fromTask(
+          Task.pure(underlying).logTiming(toCount, onComplete, startedAt)
+        ).flatten
     }
+
+    implicit class RichMonixObservableTask[A](private val underlying: Task[Observable[A]]) extends AnyVal
+    {
+      def logTiming(
+        toCount: A => Long = simpleCount,
+        onComplete: (FiniteDuration, Long, ExitCase[Throwable]) => Unit,
+        startedAt: Deadline = now)
+      : Task[Observable[A]] =
+        underlying
+          .map(Right(_))
+          .logTiming(toCount, onComplete, startedAt)
+          .map(_.orThrow/*never throws*/)
+    }
+
+    implicit class RichMonixObservableCheckedTask[A](private val underlying: Task[Checked[Observable[A]]]) extends AnyVal
+    {
+      def logTiming(
+        toCount: A => Long = simpleCount,
+        onComplete: (FiniteDuration, Long, ExitCase[Throwable]) => Unit,
+        startedAt: => Deadline = now)
+      : Task[Checked[Observable[A]]] =
+        Task.defer {
+          val startedAt_ = startedAt
+          var counter = 0L
+          underlying.map(_.map(_
+            .map { a => counter += toCount(a); a }
+            .guaranteeCase(exitCase => Task(onComplete(startedAt_.elapsed, counter, exitCase)))))
+        }
+    }
+
+    private def simpleCount[A](a: A) = 1L
 
     implicit class RichCheckedTask[A](private val underlying: Task[Checked[A]]) extends AnyVal
     {
@@ -124,9 +205,9 @@ object MonixBase
       if (future.isCompleted)
         future
       else {
-        scribe.debug(s"Waiting for Future '$name' ...")
+        logger.debug(s"Waiting for Future '$name' ...")
         future.transform { o =>
-          scribe.debug(s"Future $name completed")
+          logger.debug(s"Future $name completed")
           o
         }
       }
@@ -139,11 +220,11 @@ object MonixBase
     closingIteratorToObservable(iterator.closeAtEnd)
 
   private def closingIteratorToObservable[A](iterator: CloseableIterator[A]): Observable[A] = {
-    //scribe.trace(s"closeableIteratorToObservable($iterator)")
+    //logger.trace(s"closeableIteratorToObservable($iterator)")
     Observable.fromIterator(Task(iterator))
       .guaranteeCase { exitCase =>
         Task {
-          scribe.trace(s"Close $iterator $exitCase")
+          logger.trace(s"Close $iterator $exitCase")
           iterator.close()
         }
       }
@@ -161,7 +242,7 @@ object MonixBase
         f(a).flatMap {
           case o @ Left(_) =>
             if (leftCounter >= limit) {
-              scribe.debug(s"Limit Observable.tailRecM after $leftCounter× Left to reduce memory leakage")
+              logger.debug(s"Limit Observable.tailRecM after $leftCounter× Left to reduce memory leakage")
               Observable.empty
             } else {
               leftCounter += 1
