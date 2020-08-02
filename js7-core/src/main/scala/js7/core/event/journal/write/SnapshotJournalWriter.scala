@@ -50,6 +50,7 @@ extends JournalWriter(after = after, append = false)
 
   def endSnapshotSection(): Unit = {
     jsonWriter.write(ByteString(SnapshotFooter.compactPrint))
+    statistics.setFileLength(jsonWriter.fileLength)
   }
 
   override def toString = s"SnapshotJournalWriter(${file.getFileName})"

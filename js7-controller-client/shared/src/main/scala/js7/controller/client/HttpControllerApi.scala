@@ -157,7 +157,10 @@ object HttpControllerApi
     )(release = api =>
       api.logout()
         .map(_ => ())
-        .onErrorHandle(_ => ()))
+        .onErrorHandle { t =>
+          scribe.debug(s"logout() => ${t.toStringWithCauses}")
+          ()
+        })
 
   private class Standard(
     val baseUri: Uri,

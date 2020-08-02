@@ -79,6 +79,8 @@ object JournaledState
 
   trait Companion[S <: JournaledState[S]]
   {
+    def name: String
+
     def empty: S
 
     def fromObservable(snapshotObjects: Observable[Any]): Task[S]
@@ -86,5 +88,7 @@ object JournaledState
     implicit def snapshotObjectJsonCodec: Encoder[Any]
 
     implicit def keyedEventJsonDecoder: Decoder[KeyedEvent[Event]]
+
+    override def toString = name
   }
 }

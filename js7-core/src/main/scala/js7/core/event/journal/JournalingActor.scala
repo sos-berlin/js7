@@ -6,6 +6,7 @@ import js7.base.generic.Accepted
 import js7.base.monixutils.MonixBase.syntax.RichScheduler
 import js7.base.problem.{Checked, ProblemException}
 import js7.base.time.ScalaTime._
+import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax._
@@ -38,6 +39,8 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
   protected def scheduler: Scheduler
 
   private var stashingCount = 0
+  private var actorTransactionStartedAt = now/*dummy*/
+  private var actorTransactionEventCount = 0
   private var _persistedEventId = EventId.BeforeFirst
   private var journalingTimer = SerialCancelable()
 
@@ -166,6 +169,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
 
     case JournalActor.Output.Stored(stampedSeq, journaledState, item: Item) =>
       // sender() is from persistKeyedEvent or deferAsync
+      actorTransactionEventCount += stampedSeq.size
       stampedSeq.lastOption foreach { last =>
         _persistedEventId = last.eventId
       }
@@ -222,6 +226,8 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
   private def beginStashing(): Unit = {
     stashingCount += 1
     if (stashingCount == 1) {
+      actorTransactionStartedAt = now
+      actorTransactionEventCount = 0
       logBecome("journaling")
       context.become(journaling, discardOld = false)
       logger.whenWarnEnabled {
@@ -243,9 +249,13 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
     stashingCount -= 1
     if (stashingCount == 0) {
       journalingTimer := Cancelable.empty
+      unstashAll()
+      val duration = actorTransactionStartedAt.elapsed
+      if (duration >= BigStoreThreshold) {
+        logger.debug(s"Long transaction completed: " + itemsPerSecondString(duration, actorTransactionEventCount, "events"));
+      }
       logger.trace(s"“$toString” unbecome")
       context.unbecome()
-      unstashAll()
     }
   }
 
@@ -282,6 +292,7 @@ object JournalingActor
   private val Inhibited = -1
   private val logger = Logger(getClass)
   private val TraceLog = true
+  private val BigStoreThreshold = 1.s
 
   object Input {
     private[journal] final case object GetSnapshot extends DeadLetterSuppression  // Actor may terminate

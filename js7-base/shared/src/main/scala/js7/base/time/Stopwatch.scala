@@ -61,14 +61,30 @@ object Stopwatch
   def itemsPerSecondString(duration: FiniteDuration, n: Long, ops: String = "ops"): String =
     Result(duration, n, ops).toString
 
+  def bytesPerSecondString(duration: FiniteDuration, n: Long): String =
+    if (n < 10_000_000)
+      perSecondString(duration, n / 1_000, "kB")
+    else
+      perSecondString(duration, n / 1_000_000, "MB")
+
+  def perSecondString(duration: FiniteDuration, n: Long, ops: String = "ops"): String =
+    Result(duration, n, ops).toShortString
+
   final case class Result(duration: FiniteDuration, n: Long, ops: String = "ops") {
     def singleDuration = duration / n
     def perSecondString = if (duration.toNanos == 0) "∞" else (n * 1000L*1000*1000 / duration.toNanos).toString
+
     override def toString =
       if (n == 0)
         s"0 $ops"
       else
         s"${duration.pretty}/$n $ops (⌀${singleDuration.pretty}) $perSecondString $ops/s"
+
+    def toShortString =
+      if (n == 0)
+        s"0 $ops"
+      else
+        s"${duration.pretty}/$n $ops $perSecondString $ops/s"
   }
   object Result {
     implicit def resultToString(result: Result) = result.toString

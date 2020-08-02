@@ -717,10 +717,10 @@ with MainJournalingActor[ControllerState, Event]
 
   private def logRepoEvent(event: RepoEvent): Unit =
     event match {
-      case VersionAdded(version)     => logger.info(s"Version '${version.string}' added")
-      case FileBasedAdded(path, _)   => logger.info(s"$path added")
-      case FileBasedChanged(path, _) => logger.info(s"$path changed")
-      case FileBasedDeleted(path)    => logger.info(s"$path deleted")
+      case VersionAdded(version)     => logger.trace(s"Version '${version.string}' added")
+      case FileBasedAdded(path, _)   => logger.trace(s"$path added")
+      case FileBasedChanged(path, _) => logger.trace(s"$path changed")
+      case FileBasedDeleted(path)    => logger.trace(s"$path deleted")
     }
 
   private def updateRepo(): Unit =

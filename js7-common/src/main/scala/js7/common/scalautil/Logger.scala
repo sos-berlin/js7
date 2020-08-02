@@ -14,6 +14,8 @@ object Logger
   //val Event: Marker = MarkerFactory.getMarker("Event")
   val Actor: Marker = MarkerFactory.getMarker("Actor")
   val Java: Marker = MarkerFactory.getMarker("Java")
+  //val Repo: Marker = MarkerFactory.getMarker("Repo")
+  val Signature: Marker = MarkerFactory.getMarker("Signature")
 
   def apply[A: ClassTag]: ScalaLogger =
     apply(implicitClass[A])

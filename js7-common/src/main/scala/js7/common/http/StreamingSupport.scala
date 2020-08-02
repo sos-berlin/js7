@@ -32,5 +32,9 @@ object StreamingSupport
     def toObservable(implicit materializer: Materializer): Observable[Out] =
       Observable.fromReactivePublisher(
         underlying.runWith(Sink.asPublisher(fanout = false)))
+        .guaranteeCase {
+          case ExitCase.Completed => Task.unit
+          case exitCase => Task { logger.trace(s"toObservable: $exitCase") }
+        }
   }
 }

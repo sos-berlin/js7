@@ -154,6 +154,7 @@ object ControllerState
 
   implicit val journaledStateCompanion: JournaledState.Companion[ControllerState] =
     new JournaledState.Companion[ControllerState] {
+      val name = "ControllerState"
       val empty = Undefined
       implicit val snapshotObjectJsonCodec = ControllerSnapshots.SnapshotJsonCodec
       implicit val keyedEventJsonDecoder = ControllerKeyedEventJsonCodec
