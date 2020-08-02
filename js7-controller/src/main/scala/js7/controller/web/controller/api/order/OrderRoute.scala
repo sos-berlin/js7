@@ -11,6 +11,7 @@ import io.circe.Json
 import js7.base.auth.ValidUserPermission
 import js7.base.circeutils.CirceUtils._
 import js7.base.generic.Completed
+import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.utils.ByteVectorToLinesObservable
@@ -53,7 +54,9 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                   .toObservable
                   .map(_.toByteVector)
                   .flatMap(new ByteVectorToLinesObservable)
-                  .map(_.decodeUtf8.orThrow.parseJsonCheckedAs[FreshOrder].orThrow)
+                  .mapParallelOrderedBatch()(_
+                    .decodeUtf8.orThrow
+                    .parseJsonCheckedAs[FreshOrder].orThrow)
                   .toListL
                   .flatMap(orderApi.addOrders)
                   .map[ToResponseMarshallable](_.map((_: Completed) =>
