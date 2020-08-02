@@ -31,7 +31,9 @@ object ScalaTime
     /**
      * Duration, counted in seconds.
      */
-    def s = Duration(delegate, SECONDS)
+    def s =
+      if (delegate == 0) Duration.Zero
+      else Duration(delegate, SECONDS)
 
     /**
      * Duration, counted in hours.

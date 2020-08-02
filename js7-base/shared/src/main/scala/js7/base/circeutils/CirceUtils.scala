@@ -7,7 +7,6 @@ import io.circe.generic.extras.decoding.ConfiguredDecoder
 import io.circe.generic.extras.encoding.ConfiguredAsObjectEncoder
 import io.circe.syntax.EncoderOps
 import io.circe.{CursorOp, Decoder, DecodingFailure, Encoder, HCursor, Json, JsonNumber, JsonObject, Printer}
-import java.nio.file.Path
 import js7.base.circeutils.AnyJsonCodecs.anyToJson
 import js7.base.generic.GenericString
 import js7.base.problem.{Checked, Problem}

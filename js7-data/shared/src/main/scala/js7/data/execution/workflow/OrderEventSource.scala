@@ -136,13 +136,13 @@ final class OrderEventSource(
 
   /** Returns a `Right(Some(OrderCancelled | OrderCancellationMarked))` iff order is not already marked as cancelable. */
   def cancel(orderId: OrderId, mode: CancelMode, isAgent: Boolean): Checked[Option[OrderActorEvent]] =
-    idToOrder.checked(orderId) flatMap (order =>
+    idToOrder.checked(orderId).flatMap(order =>
       if (order.parent.isDefined)
         Left(CancelChildOrderProblem(orderId))
       else if (mode == CancelMode.NotStarted && order.isStarted)
         Left(CancelStartedOrderProblem(orderId))
       else if (order.cancel.nonEmpty)
-        Right(None)  // Already marked as being cancelled
+        Right(None)  // Already marked as in cancellation
       else if (isAgent)
         if (isOrderCancelable(order, mode))
           Right(Some(OrderDetachable))

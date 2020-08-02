@@ -183,7 +183,7 @@ final case class Repo private(
     copy(pathToVersionToSignedFileBased =
       pathToVersionToSignedFileBased +
         (path ->
-          (Entry(version,fileBasedOption) :: (pathToVersionToSignedFileBased.getOrElse(path, Nil)))))
+          (Entry(version, fileBasedOption) :: (pathToVersionToSignedFileBased.getOrElse(path, Nil)))))
   }
 
   def exists(path: TypedPath): Boolean =
