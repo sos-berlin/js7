@@ -93,6 +93,14 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
     getRawLinesObservable(uri)
       .map(_.map(_.decodeUtf8.orThrow.parseJsonCheckedAs[A].orThrow))
 
+  final def getDecodedLinesObservableBatch[A: Decoder](uri: Uri)(implicit s: Task[Option[SessionToken]])
+  : Task[Observable[A]] =
+    getRawLinesObservable(uri)
+      .map(_
+        .mapParallelOrderedBatch()(_
+          .decodeUtf8.orThrow
+          .parseJsonCheckedAs[A].orThrow))
+
   final def getRawLinesObservable(uri: Uri)(implicit s: Task[Option[SessionToken]]): Task[Observable[ByteVector]] =
     get_[HttpResponse](uri, StreamingJsonHeaders)
       .map(_.entity.withoutSizeLimit.dataBytes.toObservable)

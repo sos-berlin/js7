@@ -18,6 +18,8 @@ trait HttpClient
 {
   def getDecodedLinesObservable[A: Decoder](uri: Uri)(implicit s: Task[Option[SessionToken]]): Task[Observable[A]]
 
+  def getDecodedLinesObservableBatch[A: Decoder](uri: Uri)(implicit s: Task[Option[SessionToken]]): Task[Observable[A]]
+
   def getRawLinesObservable(uri: Uri)(implicit s: Task[Option[SessionToken]]): Task[Observable[ByteVector]]
 
   def get[A: Decoder](uri: Uri, timeout: Duration = Duration.Inf)(implicit s: Task[Option[SessionToken]]): Task[A]
