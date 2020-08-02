@@ -57,7 +57,7 @@ private[cluster] trait ControllerClusterTester extends AnyFreeSpec
               Backup: "http://127.0.0.1:$backupHttpPort"
             }"""
           ) ++ Some(config"""
-            js7.journal.cluster.heartbeat = 3s
+            js7.journal.cluster.heartbeat = 0.5s
             js7.journal.cluster.fail-after = 5s
             js7.journal.cluster.watches = [ "http://127.0.0.1:$agentPort" ]
             js7.journal.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"

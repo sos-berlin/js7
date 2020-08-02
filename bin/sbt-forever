@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -e
 
-export JAVA_OPTS="-Dsbt.log.noformat=false $JAVA_OPTS"
 for i in {1..999999}; do
   echo -e "\n\n-------------------- $i -------------------\n"
-  ./sbt-batch "$@"
+  rm -f target/build.log
+  ./sbt-batch -Dsbt.log.noformat=false "$@"
 done

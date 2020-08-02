@@ -1,12 +1,12 @@
 package js7.tests
 
-import js7.common.configutils.Configs._
 import js7.agent.data.commands.AgentCommand
 import js7.base.auth.{SimpleUser, UserAndPassword, UserId}
 import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
 import js7.base.session.SessionApi
 import js7.base.time.ScalaTime._
+import js7.common.configutils.Configs._
 import js7.common.process.Processes.{ShellFileExtension => sh}
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.MonixUtils.syntax._
@@ -120,7 +120,7 @@ final class ReleaseEventsTest extends AnyFreeSpec with DirectoryProviderForScala
       assert(tornEventId < lastFileTornEventId)
       a.executeCommand(ReleaseEvents(lastFileTornEventId)).await(99.s)
       b.executeCommand(ReleaseEvents(lastFileTornEventId)).await(99.s)
-      //waitForCondition(5.s, 10.ms) { tornEventId == last }
+      waitForCondition(5.s, 10.ms) { tornEventId == lastFileTornEventId }
       assert(tornEventId == lastFileTornEventId)
 
       // Agent's journal file count should be 1 after TakeSnapshot and after Controller has read all events
