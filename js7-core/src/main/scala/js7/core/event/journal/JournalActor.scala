@@ -2,12 +2,13 @@ package js7.core.event.journal
 
 import akka.actor.{Actor, ActorRef, DeadLetterSuppression, Props, Stash, Terminated}
 import akka.util.ByteString
+import io.circe.syntax.EncoderOps
 import java.nio.file.Files.{delete, exists, move}
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import js7.base.circeutils.CirceUtils._
 import js7.base.generic.Completed
-import js7.base.monixutils.MonixBase.syntax.RichScheduler
+import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
@@ -34,7 +35,6 @@ import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{AnyKeyedEvent, EventId, JournalEvent, JournalHeader, JournalId, JournalState, JournaledState, KeyedEvent, Stamped}
-import monix.eval.Task
 import monix.execution.cancelables.SerialCancelable
 import monix.execution.{Cancelable, Scheduler}
 import org.scalactic.Requirements._
@@ -573,12 +573,10 @@ extends Actor with Stash
           case _: ClusterStateSnapshot | _: JournalState => true
           case _ => false
         }
-        .mapParallelOrdered(sys.runtime.availableProcessors)(snapshotObject =>
-          Task {
-            // TODO Crash with SerializationException like EventSnapshotWriter
-            val json = journalMeta.snapshotJsonCodec(snapshotObject)
-            snapshotObject -> ByteString(json.compactPrint)
-          })
+        .mapParallelOrderedBatch() { snapshotObject =>
+          // TODO Crash with SerializationException like EventSnapshotWriter ?
+          snapshotObject -> ByteString(snapshotObject.asJson(journalMeta.snapshotJsonCodec).compactPrint)
+        }
         .foreach { case (snapshotObject, byteString) =>
           snapshotWriter.writeSnapshot(byteString)
           logger.trace(s"Snapshot ${snapshotObject.toString.truncateWithEllipsis(200)}")
