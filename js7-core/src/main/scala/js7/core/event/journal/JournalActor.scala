@@ -555,7 +555,7 @@ extends Actor with Stash
     val file = journalMeta.file(after = lastWrittenEventId)
     logger.info(s"Starting new journal file #${journalHeader.generation} '${file.getFileName}' with a snapshot")
     snapshotWriter = new SnapshotJournalWriter(journalMeta, toSnapshotTemporary(file), after = lastWrittenEventId,
-      simulateSync = conf.simulateSync)
+      simulateSync = conf.simulateSync)(scheduler)
     snapshotWriter.writeHeader(journalHeader)
     snapshotWriter.beginSnapshotSection()
     takeSnapshotNow(
@@ -688,7 +688,8 @@ extends Actor with Stash
     assertThat(journalHeader != null)
     val file = journalMeta.file(after = after)
     val w = new EventJournalWriter(journalMeta, file, after = after, journalHeader.journalId,
-      journalingObserver.orThrow, simulateSync = conf.simulateSync, withoutSnapshots = withoutSnapshots, initialEventCount = 1/*SnapshotTaken*/)
+      journalingObserver.orThrow, simulateSync = conf.simulateSync,
+      withoutSnapshots = withoutSnapshots, initialEventCount = 1/*SnapshotTaken*/)(scheduler)
     journalMeta.updateSymbolicLink(file)
     w
   }

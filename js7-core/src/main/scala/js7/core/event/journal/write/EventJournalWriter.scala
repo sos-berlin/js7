@@ -13,6 +13,7 @@ import js7.core.event.journal.watch.JournalingObserver
 import js7.core.event.journal.write.EventJournalWriter._
 import js7.data.event.JournalSeparators.{Commit, Transaction}
 import js7.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
+import monix.execution.Scheduler
 import scala.concurrent.duration.FiniteDuration
 
 /**
@@ -27,6 +28,7 @@ final class EventJournalWriter(
   protected val simulateSync: Option[FiniteDuration],
   withoutSnapshots: Boolean = false,
   initialEventCount: Int = 0)
+  (implicit protected val scheduler: Scheduler)
 extends JournalWriter(after = after, append = !withoutSnapshots)
 with AutoCloseable
 {
@@ -70,7 +72,7 @@ with AutoCloseable
     statistics.countEventsToBeCommitted(stampedEvents.size)
     val ta = transaction && stampedEvents.lengthIs > 1
     if (ta) jsonWriter.write(TransactionByteString)
-    stampedEvents foreach writeEvent
+    writeEvents_(stampedEvents)
     if (ta) jsonWriter.write(CommitByteString)
   }
 
@@ -109,6 +111,7 @@ private[journal] object EventJournalWriter
 
   def forTest(journalMeta: JournalMeta, after: EventId, journalId: JournalId,
     observer: Option[JournalingObserver] = None, withoutSnapshots: Boolean = true)
+    (implicit scheduler: Scheduler)
   =
     new EventJournalWriter(journalMeta, journalMeta.file(after), after, journalId, observer,
       simulateSync = None, withoutSnapshots = withoutSnapshots)

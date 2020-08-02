@@ -1,15 +1,21 @@
 package js7.core.event.journal.write
 
 import akka.util.ByteString
+import io.circe.Encoder
 import io.circe.syntax.EncoderOps
 import java.nio.file.{Files, Path}
 import js7.base.circeutils.CirceUtils.RichJson
+import js7.base.monixutils.MonixBase.syntax._
 import js7.common.utils.ByteUnits.toMB
 import js7.core.event.journal.data.JournalMeta
 import js7.core.event.journal.write.EventJournalWriter.SerializationException
+import js7.core.event.journal.write.JournalWriter._
 import js7.data.event.JournalSeparators.EventHeader
 import js7.data.event.{Event, EventId, JournalHeader, KeyedEvent, Stamped}
-import scala.concurrent.duration.FiniteDuration
+import monix.execution.Scheduler
+import monix.reactive.Observable
+import scala.concurrent.Await
+import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.util.control.NonFatal
 
 /**
@@ -22,6 +28,8 @@ extends AutoCloseable
   def file: Path
   protected def simulateSync: Option[FiniteDuration]
   protected val statistics: StatisticsCounter
+  protected def scheduler: Scheduler
+
   private var _eventsStarted = append
   private var _lastEventId = after
 
@@ -44,16 +52,39 @@ extends AutoCloseable
     _eventsStarted = true
   }
 
-  def writeEvent(stamped: Stamped[KeyedEvent[Event]]): Unit = {
+  def writeEvent(stamped: Stamped[KeyedEvent[Event]]): Unit =
+    writeEvents_(stamped :: Nil)
+
+  protected def writeEvents_(stampedEvents: Seq[Stamped[KeyedEvent[Event]]]): Unit = {
+    for (stamped <- stampedEvents) {
+      if (stamped.eventId <= _lastEventId)
+        throw new IllegalArgumentException(s"EventJournalWriter.writeEvent with EventId ${EventId.toString(stamped.eventId)} <= lastEventId ${EventId.toString(_lastEventId)}")
+      _lastEventId = stamped.eventId
+    }
     import journalMeta.eventJsonCodec
-    if (stamped.eventId <= _lastEventId)
-      throw new IllegalArgumentException(s"EventJournalWriter.writeEvent with EventId ${EventId.toString(stamped.eventId)} <= lastEventId ${EventId.toString(_lastEventId)}")
-    _lastEventId = stamped.eventId
-    val byteString =
-      try ByteString(stamped.asJson.compactPrint)
-      catch { case t: Exception => throw new SerializationException(t) }
-    jsonWriter.write(byteString)
+    if (sys.runtime.availableProcessors >= 4 && stampedEvents.sizeIs < JsonParallelizationThreshold)
+      writeJsonSerially(stampedEvents)
+    else
+      writeJsonInParallel(stampedEvents)
   }
+
+  private def writeJsonSerially[A: Encoder](seq: Seq[A]): Unit =
+    for (a <- seq) {
+      jsonWriter.write(serialize(a))
+    }
+
+  private def writeJsonInParallel[A: Encoder](seq: Seq[A]): Unit =
+    // TODO Try to do it asynchronously (in JournalActor)
+    Await.result(
+      Observable.fromIterable(seq)
+        .mapParallelOrderedBatch(batchSize = JsonBatchSize)(
+          serialize[A])
+        .foreach(jsonWriter.write)(scheduler),
+      Duration.Inf)
+
+  private def serialize[A: Encoder](a: A): ByteString =
+    try ByteString(a.asJson.compactPrint)
+    catch { case t: Exception => throw new SerializationException(t) }
 
   protected final def eventsStarted = _eventsStarted
 
@@ -82,4 +113,9 @@ extends AutoCloseable
   final def fileLength = jsonWriter.fileLength
 
   final def bytesWritten = jsonWriter.bytesWritten
+}
+
+object JournalWriter {
+  private val JsonBatchSize = 1000
+  private val JsonParallelizationThreshold = 16 * JsonBatchSize
 }
