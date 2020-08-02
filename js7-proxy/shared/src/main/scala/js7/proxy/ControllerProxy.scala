@@ -10,6 +10,7 @@ import js7.base.web.HttpClient
 import js7.controller.client.HttpControllerApi
 import js7.controller.data.{ControllerCommand, ControllerState}
 import js7.data.event.Event
+import js7.data.filebased.{UpdateRepoOperation, VersionId}
 import js7.data.order.FreshOrder
 import js7.proxy.configuration.ProxyConf
 import monix.eval.Task
@@ -23,8 +24,14 @@ final class ControllerProxy private(
 extends JournaledProxy[ControllerState]
 with ControllerProxyWithHttp
 {
-  def addOrders(orders: Seq[FreshOrder]): Task[Checked[Completed]] =
-    addOrders(Observable.fromIterable(orders))
+  def updateRepo(versionId: VersionId, operations: Observable[UpdateRepoOperation.ObjectOperation]): Task[Checked[Completed]] =
+    apiResource.use(api =>
+      api.retryUntilReachable()(
+        HttpClient.liftProblem(
+          api.postObservable[UpdateRepoOperation, JsonObject](
+            "controller/api/repo",
+            UpdateRepoOperation.AddVersion(versionId) +: operations)
+            .map(_ => Completed))))
 
   def addOrders(orders: Observable[FreshOrder]): Task[Checked[Completed]] =
     apiResource.use(api =>

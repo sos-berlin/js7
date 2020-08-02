@@ -10,13 +10,14 @@ import cats.syntax.flatMap._
 import cats.syntax.traverse._
 import java.time.ZoneId
 import js7.agent.data.event.AgentControllerEvent
-import js7.base.crypt.{SignatureVerifier, Signed}
+import js7.base.crypt.Signed
 import js7.base.eventbus.EventPublisher
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
+import js7.base.time.Stopwatch
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.implicits._
 import js7.base.utils.IntelliJUtils.intelliJuseImport
@@ -39,7 +40,7 @@ import js7.controller.data.events.ControllerEvent
 import js7.controller.data.events.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.controller.data.{ControllerCommand, ControllerState}
 import js7.controller.problems.ControllerIsNotYetReadyProblem
-import js7.controller.repo.RepoCommandExecutor
+import js7.controller.repo.{RepoCommandExecutor, VerifiedUpdateRepo}
 import js7.core.command.CommandMeta
 import js7.core.common.ActorRegister
 import js7.core.event.journal.recover.{JournalRecoverer, Recovered}
@@ -48,7 +49,6 @@ import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.Problems.UnknownOrderProblem
 import js7.data.agent.{AgentRef, AgentRefPath, AgentRunId}
 import js7.data.cluster.ClusterState
-import js7.data.controller.ControllerFileBaseds
 import js7.data.crypt.FileBasedVerifier
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
@@ -82,7 +82,7 @@ final class ControllerOrderKeeper(
   protected val journalActor: ActorRef @@ JournalActor.type,
   cluster: Cluster[ControllerState],
   controllerConfiguration: ControllerConfiguration,
-  signatureVerifier: SignatureVerifier,
+  fileBasedVerifier: FileBasedVerifier[FileBased],
   testEventPublisher: EventPublisher[Any])
   (implicit protected val scheduler: Scheduler)
 extends Stash
@@ -96,7 +96,7 @@ with MainJournalingActor[ControllerState, Event]
 
   private val agentDriverConfiguration = AgentDriverConfiguration.fromConfig(config, controllerConfiguration.journalConf).orThrow
   private var controllerState: ControllerState = ControllerState.Undefined
-  private val repoCommandExecutor = new RepoCommandExecutor(new FileBasedVerifier(signatureVerifier, ControllerFileBaseds.jsonCodec))
+  private val repoCommandExecutor = new RepoCommandExecutor(fileBasedVerifier)
   private val agentRegister = new AgentRegister
   private object orderRegister extends mutable.HashMap[OrderId, OrderEntry] {
     def checked(orderId: OrderId) = get(orderId).toChecked(UnknownOrderProblem(orderId))
@@ -321,6 +321,10 @@ with MainJournalingActor[ControllerState, Event]
         logger.warn(s"$ControllerIsNotYetReadyProblem: $cmd")
         sender() ! Left(ControllerIsNotYetReadyProblem)
 
+      case Command.VerifiedUpdateRepoCmd(_) =>
+        logger.warn(s"$ControllerIsNotYetReadyProblem: VerifiedUpdateRepoCmd")
+        sender() ! Left(ControllerIsNotYetReadyProblem)
+
       case cmd: Command =>
         logger.warn(s"$ControllerIsNotYetReadyProblem: $cmd")
         sender() ! Status.Failure(ControllerIsNotYetReadyProblem.throwable)
@@ -411,6 +415,31 @@ with MainJournalingActor[ControllerState, Event]
           case Failure(t) => sender ! Status.Failure(t)
           case Success(response) => sender ! response
         }
+
+    case Command.VerifiedUpdateRepoCmd(verifiedUpdateRepo) =>
+      val sender = this.sender()
+      val t = now
+      (Try(
+        repo.fileBasedToEvents(
+          verifiedUpdateRepo.versionId,
+          verifiedUpdateRepo.verifiedFileBased.map(_.signedFileBased),
+          verifiedUpdateRepo.delete)
+      ) match {
+        // TODO Duplicate code
+        case Failure(t) => Future.failed(t)
+        case Success(Left(problem)) => Future.successful(Left(problem))
+        case Success(Right(repoEvents)) =>
+          applyRepoEvents(repoEvents)
+            .traverse((effect: SyncIO[Future[Completed]]) =>
+              (SyncIO(if (t.elapsed > 1.s)
+                logger.debug(s"RepoEvent calculation: ${Stopwatch.itemsPerSecondString(t.elapsed, repoEvents.size, "items")}")
+              ) >>
+                effect
+              ).unsafeRunSync())  // Persist events!
+      }) onComplete {
+        case Failure(t) => sender ! Status.Failure(t)
+        case Success(response) => sender ! (response: Checked[Completed])
+      }
 
     case Command.AddOrder(order) =>
       if (shuttingDown)
@@ -965,6 +994,7 @@ private[controller] object ControllerOrderKeeper
   sealed trait Command
   object Command {
     final case class Execute(command: ControllerCommand, meta: CommandMeta) extends Command
+    final case class VerifiedUpdateRepoCmd(verifiedUpdateRepo: VerifiedUpdateRepo) extends Command
     final case class AddOrder(order: FreshOrder) extends Command
     final case class AddOrders(order: Seq[FreshOrder]) extends Command
   }

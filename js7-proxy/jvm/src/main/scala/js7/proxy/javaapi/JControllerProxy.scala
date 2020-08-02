@@ -7,7 +7,8 @@ import js7.base.generic.Completed
 import js7.base.problem.Problem
 import js7.controller.data.ControllerCommand
 import js7.data.event.Event
-import js7.proxy.javaapi.data.{JControllerCommand, JControllerState, JFreshOrder}
+import js7.data.filebased.VersionId
+import js7.proxy.javaapi.data.{JControllerCommand, JControllerState, JFreshOrder, JUpdateRepoOperation}
 import js7.proxy.javaapi.utils.JavaUtils.Void
 import js7.proxy.javaapi.utils.VavrConversions._
 import js7.proxy.{ControllerProxy, ProxyEvent}
@@ -38,12 +39,18 @@ final class JControllerProxy private[proxy](
 
   def stop: CompletableFuture[java.lang.Void] =
     controllerProxy.stop
-      .map(_ => null: java.lang.Void)
+      .map(_ => Void)
       .runToFuture
       .asJava
 
   def currentState: JControllerState =
     JControllerState(controllerProxy.currentState._2)
+
+  def updateRepo(versionId: VersionId, operations: Flux[JUpdateRepoOperation]): CompletableFuture[VEither[Problem, Void]] =
+    controllerProxy.updateRepo(versionId, Observable.fromReactivePublisher(operations).map(_.underlying))
+      .map(_.map((_: Completed) => Void).toVavr)
+      .runToFuture
+      .asJava
 
   /** @return true iff added, false iff not added because of duplicate OrderId. */
   def addOrder(order: JFreshOrder): CompletableFuture[VEither[Problem, java.lang.Boolean]] =

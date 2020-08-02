@@ -1,6 +1,7 @@
 package js7.proxy.javaapi
 
 import io.vavr.control.{Either => VEither}
+import js7.base.annotation.javaApi
 import js7.base.auth.Admission
 import js7.base.problem.Problem
 import js7.base.web.Uri
@@ -15,6 +16,7 @@ extends JavaWrapper
 
 object JAdmission
 {
+  @javaApi @throws[RuntimeException]("on invalid syntax")
   def of(uri: String, credentials: JCredentials) =
     new JAdmission(Admission(Uri(uri), credentials.toUnderlying))
 

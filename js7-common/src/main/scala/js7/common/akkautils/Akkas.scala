@@ -25,7 +25,11 @@ object Akkas
 {
   private val logger = Logger(getClass)
 
-  def newActorSystem(name: String, config: Config = ConfigFactory.empty, defaultExecutionContext: ExecutionContext = ExecutionContext.global) = {
+  def newActorSystem(
+    name: String,
+    config: Config = ConfigFactory.empty,
+    defaultExecutionContext: ExecutionContext = ExecutionContext.global)
+  = {
     logger.debug(s"new ActorSystem('$name')")
     val myConfig = ConfigFactory.systemProperties
       .withFallback(config)
@@ -141,9 +145,13 @@ object Akkas
       }
   }
 
-  def actorSystemResource(name: String, config: Config = ConfigFactory.empty): Resource[Task, ActorSystem] =
+  def actorSystemResource(
+    name: String,
+    config: Config = ConfigFactory.empty,
+    defaultExecutionContext: ExecutionContext = ExecutionContext.global):
+  Resource[Task, ActorSystem] =
     Resource.make(
-      acquire = Task { newActorSystem(name, config) }
+      acquire = Task { newActorSystem(name, config, defaultExecutionContext) }
     )(release =
       actorSystem =>
         Task.deferFutureAction { implicit s =>

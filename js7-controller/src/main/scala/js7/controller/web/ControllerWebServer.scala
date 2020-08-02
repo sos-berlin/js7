@@ -20,6 +20,7 @@ import js7.controller.OrderApi
 import js7.controller.command.ControllerCommandExecutor
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.data.{ControllerCommand, ControllerState}
+import js7.controller.repo.RepoUpdater
 import js7.core.command.CommandMeta
 import js7.core.filebased.FileBasedApi
 import js7.data.cluster.ClusterState
@@ -37,6 +38,7 @@ final class ControllerWebServer private(
   fileBasedApi: FileBasedApi,
   orderApi: OrderApi.WithCommands,
   commandExecutor: ControllerCommandExecutor,
+  repoUpdater: RepoUpdater,
   checkedClusterState: Task[Checked[ClusterState]],
   controllerState: Task[Checked[ControllerState]],
   totalRunningSince: Deadline,
@@ -67,6 +69,8 @@ extends AkkaWebServer with AkkaWebServer.HasUri
       protected val eventWatch          = ControllerWebServer.this.eventWatch
       protected val fileBasedApi = ControllerWebServer.this.fileBasedApi
       protected val orderApi = ControllerWebServer.this.orderApi
+      protected val repoUpdater = ControllerWebServer.this.repoUpdater
+
       protected def executeCommand(command: ControllerCommand, meta: CommandMeta) = commandExecutor.executeCommand(command, meta)
       protected def checkedClusterState = ControllerWebServer.this.checkedClusterState
       protected def clusterNodeIsBackup = controllerConfiguration.clusterConf.isBackup
@@ -95,6 +99,7 @@ object ControllerWebServer
   {
     def apply(fileBasedApi: FileBasedApi, orderApi: OrderApi.WithCommands,
       commandExecutor: ControllerCommandExecutor,
+      repoUpdater: RepoUpdater,
       clusterState: Task[Checked[ClusterState]],
       controllerState: Task[Checked[ControllerState]],
       totalRunningSince: Deadline,
@@ -102,7 +107,8 @@ object ControllerWebServer
     : ControllerWebServer =
       new ControllerWebServer(
         controllerConfiguration, gateKeeperConfiguration,
-        fileBasedApi, orderApi, commandExecutor, clusterState, controllerState, totalRunningSince,
+        fileBasedApi, orderApi, commandExecutor, repoUpdater,
+        clusterState, controllerState, totalRunningSince,
         sessionRegister, eventWatch, config, injector,
         actorSystem, scheduler)
       .closeWithCloser(closer)

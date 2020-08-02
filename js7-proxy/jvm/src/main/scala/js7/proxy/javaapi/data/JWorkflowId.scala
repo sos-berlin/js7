@@ -1,6 +1,7 @@
 package js7.proxy.javaapi.data
 
 import js7.base.annotation.javaApi
+import js7.data.filebased.VersionId
 import js7.data.workflow.{WorkflowId, WorkflowPath}
 
 @javaApi
@@ -16,6 +17,11 @@ extends JFileBasedId[WorkflowPath]
 @javaApi
 object JWorkflowId
 {
-  def of(path: String, commitId: String): JWorkflowId =
-    JWorkflowId(WorkflowPath(path) ~ commitId)
+  @javaApi @throws[RuntimeException]("on invalid syntax")
+  def of(path: String, versionId: String): JWorkflowId =
+    JWorkflowId(WorkflowPath(path) ~ versionId)
+
+  @javaApi
+  def of(path: WorkflowPath, versionId: VersionId): JWorkflowId =
+    JWorkflowId(path ~ versionId)
 }

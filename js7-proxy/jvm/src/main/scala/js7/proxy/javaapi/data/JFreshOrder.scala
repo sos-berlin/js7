@@ -23,9 +23,11 @@ extends JJsonable[JFreshOrder]
 @javaApi
 object JFreshOrder extends JJsonable.Companion[JFreshOrder]
 {
+  @throws[RuntimeException]("on invalid syntax")
   def of(id: OrderId, workflowPath: WorkflowPath): JFreshOrder =
     JFreshOrder(FreshOrder(id, workflowPath, None, Map.empty))
 
+  @throws[RuntimeException]("on invalid syntax")
   def of(
     id: OrderId,
     workflowPath: WorkflowPath,

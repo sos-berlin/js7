@@ -51,7 +51,7 @@ final class RepoCommandExecutor(fileBasedVerifier: FileBasedVerifier[FileBased])
 
   private def verify(signedString: SignedString): Checked[Signed[FileBased]] =
     for (verified <- fileBasedVerifier.verify(signedString)) yield {
-      logger.info(verified.toString)
+      logger.info(Logger.Signature, verified.toString)
       verified.signedFileBased
     }
 }

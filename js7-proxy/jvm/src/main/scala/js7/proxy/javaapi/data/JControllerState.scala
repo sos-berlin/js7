@@ -36,6 +36,7 @@ extends JJournaledState[JControllerState, ControllerState]
         .map(JOrder.apply)
         .toJava
 
+  @Deprecated
   lazy val eagerIdToOrder: java.util.Map[OrderId, JOrder] =
     underlying.idToOrder
       .view.values.map(JOrder.apply)

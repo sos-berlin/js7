@@ -1,5 +1,6 @@
 package js7.base.crypt
 
+import js7.base.annotation.javaApi
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.utils.ScalaUtils.syntax._
 
@@ -13,5 +14,9 @@ final case class SignedString(string: String, signature: GenericSignature)
 
 object SignedString
 {
+  @javaApi
+  def of(string: String, signatureTypeName: String, signatureString: String) =
+    SignedString(string, GenericSignature(signatureTypeName, signatureString))
+
   implicit val jsonCodec = deriveCodec[SignedString]
 }

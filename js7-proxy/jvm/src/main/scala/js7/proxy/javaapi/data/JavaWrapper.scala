@@ -7,7 +7,7 @@ trait JavaWrapper
 {
   protected type Underlying
 
-  protected def underlying: Underlying
+  def underlying: Underlying
 
   override def toString = underlying.toString
 }

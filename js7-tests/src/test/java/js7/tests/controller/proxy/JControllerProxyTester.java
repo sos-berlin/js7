@@ -1,5 +1,6 @@
 package js7.tests.controller.proxy;
 
+import io.vavr.control.Either;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -7,10 +8,13 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import js7.base.crypt.SignedString;
 import js7.base.problem.Problem;
+import js7.base.problem.ProblemCode;
 import js7.controller.data.ControllerCommand$AddOrder$Response;
 import js7.data.event.KeyedEvent;
 import js7.data.event.Stamped;
+import js7.data.filebased.VersionId;
 import js7.data.order.OrderEvent;
 import js7.data.order.OrderEvent.OrderFinished$;
 import js7.data.order.OrderEvent.OrderMoved;
@@ -29,6 +33,9 @@ import js7.proxy.javaapi.data.JControllerCommand;
 import js7.proxy.javaapi.data.JControllerState;
 import js7.proxy.javaapi.data.JFreshOrder;
 import js7.proxy.javaapi.data.JHttpsConfig;
+import js7.proxy.javaapi.data.JUpdateRepoOperation;
+import js7.proxy.javaapi.data.JWorkflow;
+import js7.proxy.javaapi.data.JWorkflowId;
 import reactor.core.publisher.Flux;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -47,12 +54,16 @@ final class JControllerProxyTester
         .mapToObj(i -> OrderId.of("TEST-ORDER-" + i))
         .collect(Collectors.toList());
     private final Set<OrderId> finishedOrders = new HashSet<>();
+    private final String workflowJson;
+    private final String agentRefJson;
     private final JControllerProxy proxy;
     private final CouplingState couplingState;
     private final List<KeyedEvent<OrderEvent>> events = new ArrayList<>();
     private final CompletableFuture<Void> finished = new CompletableFuture<>();
 
-    private JControllerProxyTester(JControllerProxy proxy, CouplingState couplingState) {
+    private JControllerProxyTester(String workflowJson, String agentRefJson, JControllerProxy proxy, CouplingState couplingState) {
+        this.workflowJson = workflowJson;
+        this.agentRefJson = agentRefJson;
         this.proxy = proxy;
         this.couplingState = couplingState;
         proxy.controllerEventBus().subscribe(
@@ -89,7 +100,45 @@ final class JControllerProxyTester
                 .get(99, SECONDS));
         assertThat(overview.contains("\"id\":\"Controller\""), equalTo(true));
 
+        addVersionedObjects();
+        testOrders();
+    }
 
+    private void addVersionedObjects() throws Exception {
+        VersionId versionId = VersionId.of("MY-VERSION");  // Must match the versionId in added or replaced objects
+
+        JWorkflowId workflowId = JWorkflowId.of(WorkflowPath.of("/WORKFLOW"), versionId);
+        assertThat(proxy.currentState().idToWorkflow(workflowId).mapLeft(Problem::codeOrNull),
+            equalTo(Either.left(ProblemCode.of("UnknownKey"/*may change*/))));
+
+        getOrThrow(proxy
+            .updateRepo(
+                versionId,
+                Flux.fromIterable(asList(
+                    JUpdateRepoOperation.addOrReplace(sign(workflowJson)),
+                    JUpdateRepoOperation.addOrReplace(sign(agentRefJson))
+                )))
+            .get());
+
+        // TODO Delete workflows
+
+        JWorkflow workflow = null;
+        while (workflow == null) {  // TODO Auf Event warten
+            Thread.sleep(100);
+            workflow = proxy.currentState().idToWorkflow(workflowId).getOrNull();
+
+        }
+        assertThat(workflow.id(), equalTo(workflowId));
+    }
+
+    private static SignedString sign(String json) {
+        return SignedString.of(
+            json,                       // The string to be be signed
+            "Silly",                    // Thy signature type, "PGP" (or "Silly" for silly testing)
+            "MY-SILLY-SIGNATURE");      // The signature of string
+    }
+
+    private void testOrders() throws Exception {
         // SIX WAYS TO ADD AN ORDER (first way is recommended)
 
         // #0 addOrders(Iterable)
@@ -155,7 +204,9 @@ final class JControllerProxyTester
         return JFreshOrder.of(orderIds.get(index), WorkflowPath.of("/WORKFLOW"));
     }
 
-    static void run(List<JAdmission> admissions, JHttpsConfig httpsConfig, Runnable startController) throws Exception
+    static void run(List<JAdmission> admissions, JHttpsConfig httpsConfig,
+        String workflowJson, String agentRefJson,
+        Runnable startController) throws Exception
     {
         JStandardEventBus<ProxyEvent> proxyEventBus = new JStandardEventBus<>(ProxyEvent.class);
         CouplingState couplingState = new CouplingState();
@@ -173,7 +224,7 @@ final class JControllerProxyTester
             startController.run();
             JControllerProxy proxy = whenStarted.get(99, SECONDS);
 
-            JControllerProxyTester tester = new JControllerProxyTester(proxy, couplingState);
+            JControllerProxyTester tester = new JControllerProxyTester(workflowJson, agentRefJson, proxy, couplingState);
             tester.test();
 
             tester.stop().get(99, SECONDS);

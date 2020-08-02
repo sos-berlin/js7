@@ -38,6 +38,7 @@ import js7.controller.configuration.ControllerConfiguration
 import js7.controller.configuration.inject.ControllerModule
 import js7.controller.data.{ControllerCommand, ControllerState}
 import js7.controller.problems.ControllerIsNotYetReadyProblem
+import js7.controller.repo.{RepoUpdater, VerifiedUpdateRepo}
 import js7.controller.web.ControllerWebServer
 import js7.core.command.{CommandExecutor, CommandMeta}
 import js7.core.crypt.generic.GenericSignatureVerifier
@@ -49,7 +50,10 @@ import js7.core.event.state.JournaledStatePersistence
 import js7.core.problems.{ClusterNodeIsNotActiveProblem, ClusterNodeIsNotYetReadyProblem, JobSchedulerIsShuttingDownProblem}
 import js7.data.Problems.PassiveClusterNodeShutdownNotAllowedProblem
 import js7.data.cluster.ClusterState
+import js7.data.controller.ControllerFileBaseds
+import js7.data.crypt.FileBasedVerifier
 import js7.data.event.{EventRequest, Stamped}
+import js7.data.filebased.FileBased
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderEvent}
 import monix.eval.Task
@@ -227,7 +231,9 @@ object RunningController
     private implicit val scheduler = injector.instance[Scheduler]
     private implicit lazy val closer = injector.instance[Closer]
     private implicit lazy val actorSystem = injector.instance[ActorSystem]
-    private lazy val signatureVerifier = GenericSignatureVerifier(controllerConfiguration.config).orThrow
+    private lazy val fileBasedVerifier = new FileBasedVerifier(
+      GenericSignatureVerifier(controllerConfiguration.config).orThrow,
+      ControllerFileBaseds.jsonCodec)
     import controllerConfiguration.{akkaAskTimeout, journalMeta}
     @volatile private var clusterStartupTermination = ControllerTermination.Terminate()
 
@@ -243,7 +249,7 @@ object RunningController
           injector.instance[StampedKeyedEventBus], scheduler, injector.instance[EventIdGenerator],
           useJournaledStateAsSnapshot = true),
         "Journal"))
-      signatureVerifier
+      fileBasedVerifier
       val persistence = new JournaledStatePersistence[ControllerState](journalActor, controllerConfiguration.journalConf).closeWithCloser
       val recovered = Await.result(whenRecovered, Duration.Inf).closeWithCloser
       val cluster = new Cluster(
@@ -312,11 +318,12 @@ object RunningController
             clusterFollowUpFuture.cancel()
           },
           orderKeeperStarted.map(_.toOption)))
+      val repoUpdater = new MyRepoUpdater(fileBasedVerifier, orderKeeperStarted.map(_.toOption))
       val fileBasedApi = new MainFileBasedApi(controllerState)
       val orderApi = new MainOrderApi(controllerState, orderKeeperTask)
 
       val webServer = injector.instance[ControllerWebServer.Factory]
-        .apply(fileBasedApi, orderApi, commandExecutor,
+        .apply(fileBasedApi, orderApi, commandExecutor, repoUpdater,
           controllerState.map(_.map(_.clusterState)),  // ??? cluster.currentClusterState,
           controllerState,
           recovered.totalRunningSince,  // Maybe different from JournalHeader
@@ -375,7 +382,7 @@ object RunningController
           val actor = actorSystem.actorOf(
             Props {
               new ControllerOrderKeeper(terminationPromise, journalActor, cluster, controllerConfiguration,
-                signatureVerifier, testEventPublisher)
+                fileBasedVerifier, testEventPublisher)
             },
             "ControllerOrderKeeper")
           actor ! ControllerOrderKeeper.Input.Start(recovered)
@@ -440,6 +447,29 @@ object RunningController
                   .mapTo[Checked[command.Response]])
           }
       }).map(_.map((_: ControllerCommand.Response).asInstanceOf[command.Response]))
+  }
+
+  private class MyRepoUpdater(
+    val fileBasedVerifier: FileBasedVerifier[FileBased],
+    orderKeeperStarted: Future[Option[ActorRef @@ ControllerOrderKeeper]])
+    (implicit timeout: Timeout)
+  extends RepoUpdater
+  {
+    def updateRepo(verifiedUpdateRepo: VerifiedUpdateRepo) =
+      Task.defer(
+        // TODO Duplicate code
+        orderKeeperStarted.value match {
+          case None =>  // Cluster node is still waiting for activation
+            Task.pure(Left(ClusterNodeIsNotActiveProblem))
+          case Some(Failure(t)) =>
+            Task.raiseError(t)
+          case Some(Success(None)) =>   // ControllerOrderKeeper does not start
+            Task.pure(Left(JobSchedulerIsShuttingDownProblem))
+          case Some(Success(Some(actor))) =>
+            Task.deferFuture(
+              (actor ? ControllerOrderKeeper.Command.VerifiedUpdateRepoCmd(verifiedUpdateRepo))
+                .mapTo[Checked[Completed]])
+        })
   }
 
   private case class OrderKeeperStarted(actor: ActorRef @@ ControllerOrderKeeper, termination: Future[ControllerTermination])

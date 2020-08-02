@@ -2,6 +2,7 @@ package js7.base.crypt
 
 import io.circe.generic.extras.defaults.defaultGenericConfiguration
 import io.circe.generic.extras.{ConfiguredJsonCodec, JsonKey}
+import js7.base.annotation.javaApi
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 
 /**
@@ -21,6 +22,11 @@ extends Signature
     ")"
 }
 
-object GenericSignature {
+object GenericSignature
+{
+  @javaApi
+  def of(typeName: String, signatureString: String) =
+    new GenericSignature(typeName, signatureString)
+
   intelliJuseImport(defaultGenericConfiguration)
 }

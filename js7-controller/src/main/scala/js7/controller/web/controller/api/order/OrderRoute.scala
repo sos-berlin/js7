@@ -5,13 +5,11 @@ import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.model.StatusCodes.{Conflict, Created, NotFound, OK}
 import akka.http.scaladsl.model.headers.Location
 import akka.http.scaladsl.model.{HttpEntity, Uri}
-import akka.http.scaladsl.server.Directives.{entity, _}
+import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive, Route}
-import com.typesafe.config.Config
 import io.circe.Json
 import js7.base.auth.ValidUserPermission
 import js7.base.circeutils.CirceUtils._
-import js7.base.convert.As.StringAsPercentage
 import js7.base.generic.Completed
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
@@ -21,14 +19,12 @@ import js7.base.utils.ScalaUtils.syntax.RichThrowableEither
 import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
 import js7.common.akkahttp.CirceJsonOrYamlSupport.{jsonOrYamlMarshaller, jsonUnmarshaller}
 import js7.common.akkahttp.StandardMarshallers._
-import js7.common.configutils.Configs.ConvertibleConfig
 import js7.common.http.AkkaHttpUtils.ScodecByteString
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.StreamingSupport._
-import js7.common.scalautil.Logger
 import js7.controller.OrderApi
 import js7.controller.data.events.ControllerKeyedEventJsonCodec.keyedEventJsonCodec
-import js7.controller.web.common.ControllerRouteProvider
+import js7.controller.web.common.{ControllerRouteProvider, EntitySizeLimitProvider}
 import js7.controller.web.controller.api.order.OrderRoute._
 import js7.data.order.{FreshOrder, OrderId}
 import monix.execution.Scheduler
@@ -36,13 +32,12 @@ import monix.execution.Scheduler
 /**
   * @author Joacim Zschimmer
   */
-trait OrderRoute extends ControllerRouteProvider
+trait OrderRoute
+extends ControllerRouteProvider with EntitySizeLimitProvider
 {
   protected def orderApi: OrderApi.WithCommands
-  protected def config: Config
   protected def actorSystem: ActorSystem
 
-  protected lazy val orderEntitySizeLimit = config.as("js7.web.server.services.order.post-size-limit")(StringAsPercentage)
   private implicit def implicitScheduler: Scheduler = scheduler
   private implicit def implicitActorsystem = actorSystem
 
@@ -117,12 +112,6 @@ trait OrderRoute extends ControllerRouteProvider
       }
     }
 
-  private def entitySizeLimit = {
-    val limit = (orderEntitySizeLimit * sys.runtime.maxMemory).toLong
-    logger.debug(s"withSizeLimit($limit)")
-    limit
-  }
-
   private def singleOrder(orderId: OrderId): Route =
     completeTask(
       orderApi.order(orderId).map(_.map {
@@ -136,7 +125,6 @@ trait OrderRoute extends ControllerRouteProvider
 object OrderRoute
 {
   private val emptyJsonObject = Json.obj()
-  private val logger = Logger(getClass)
 
   private val matchOrderId = new Directive[Tuple1[OrderId]] {
     def tapply(inner: Tuple1[OrderId] => Route) =

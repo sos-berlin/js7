@@ -26,6 +26,7 @@ with FatEventRoute
 with CommandRoute
 with GraphqlRoute
 with OrderRoute
+with RepoRoute
 with WorkflowRoute
 with AgentRefRoute
 with AgentProxyRoute
@@ -48,6 +49,7 @@ with LogRoute
         case "agent-proxy" => agentProxyRoute
         case "snapshot"    => snapshotRoute
         case "session"     => sessionRoute
+        case "repo"        => repoRoute
         case "graphql"     => graphqlRoute
         case "log"         => logRoute
         case _ => complete(NotFound)

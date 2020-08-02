@@ -1,5 +1,6 @@
 package js7.data.agent
 
+import js7.base.annotation.javaApi
 import js7.data.filebased.{SourceType, TypedPath}
 
 /**
@@ -18,4 +19,7 @@ object AgentRefPath extends TypedPath.Companion[AgentRefPath]
     SourceType.Xml -> ".agent.xml")
 
   protected def unchecked(string: String) = new AgentRefPath(string)
+
+  @javaApi @throws[RuntimeException]("on invalid syntax")
+  def of(validPath: String) = apply(validPath)
 }

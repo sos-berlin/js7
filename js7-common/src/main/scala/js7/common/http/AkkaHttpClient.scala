@@ -15,7 +15,6 @@ import akka.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshal}
 import akka.stream.Materializer
 import akka.util.ByteString
 import cats.effect.{ExitCase, Resource}
-import io.circe.syntax._
 import io.circe.{Decoder, Encoder}
 import java.util.Locale
 import js7.base.auth.SessionToken
@@ -31,6 +30,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.{HttpClient, Uri}
 import js7.common.akkahttp.https.AkkaHttps.loadHttpsConnectionContext
 import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
+import js7.common.akkautils.JsonObservableForAkka.syntax._
 import js7.common.http.AkkaHttpClient._
 import js7.common.http.AkkaHttpUtils.{RichAkkaAsUri, RichAkkaUri, ScodecByteString, decodeResponse, encodeGzip}
 import js7.common.http.CirceJsonSupport._
@@ -129,17 +129,18 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
 
   final def postObservable[A: Encoder: TypeTag, B: Decoder](uri: Uri, data: Observable[A])
     (implicit s: Task[Option[SessionToken]])
-  : Task[B] = {
-    val chunks = data.map(a => ChunkStreamPart(ByteString(a.asJson.compactPrint) ++ LF))
+  : Task[B] =
+    Task.deferAction(implicit s => Task(data
+      .encodeJson
+      .map(o => ChunkStreamPart(o ++ LF))
       .append(LastChunk)
-    Task.deferAction(implicit s => Task(chunks.toAkkaSource))
-      .flatMap(akkaChunks =>
+      .toAkkaSource)
+    ) .flatMap(akkaChunks =>
         sendReceive(
           HttpRequest(POST, uri.asAkka, Accept(`application/json`) :: Nil,
             HttpEntity.Chunked(`application/x-ndjson`.toContentType, akkaChunks)),
-          logData = Some(data.toString)))
+          logData = Some("postObservable")))
       .flatMap(unmarshal[B](POST, uri))
-  }
 
   final def postWithHeaders[A: Encoder, B: Decoder](uri: Uri, data: A, headers: List[HttpHeader])
     (implicit s: Task[Option[SessionToken]])

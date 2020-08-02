@@ -4,18 +4,22 @@ import cats.syntax.semigroup._
 import cats.{Eq, Semigroup}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json, JsonObject}
+import javax.annotation.Nullable
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.StackTraces._
 import scala.language.implicitConversions
-
 /**
   * @author Joacim Zschimmer
   */
 sealed trait Problem
 {
   def maybeCode: Option[ProblemCode] = None
+
+  @javaApi @Nullable
+  final def codeOrNull: ProblemCode =
+    maybeCode.orNull
 
   def throwable: Throwable
 
