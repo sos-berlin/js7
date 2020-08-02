@@ -65,14 +65,14 @@ trait JournalRoute extends ControllerRouteProvider
                                 markEOF = markEOF, onlyLastOfChunk = returnLength)
                             } yield {
                               val f = if (returnLength) toLength _ else toContent _
-                              HttpEntity(JournalContentType,
-                                logAkkaStreamErrorToWebLogAndIgnore(
-                                  observable.takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
-                                    Task { logger.debug("whenShuttingDown completed") }
-                                  ) .map(f)
-                                    .pipe(o => heartbeat.fold(o)(o.insertHeartbeatsOnSlowUpstream(_, HeartbeatMarker)))
-                                    .map(_.toByteString)
-                                    .toAkkaSource))
+                              HttpEntity(
+                                JournalContentType,
+                                observable.takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
+                                  Task { logger.debug("whenShuttingDown completed") }
+                                ) .map(f)
+                                  .pipe(o => heartbeat.fold(o)(o.insertHeartbeatsOnSlowUpstream(_, HeartbeatMarker)))
+                                  .map(_.toByteString)
+                                  .toAkkaSourceForHttpResponse)
                             })
                         }
                       }

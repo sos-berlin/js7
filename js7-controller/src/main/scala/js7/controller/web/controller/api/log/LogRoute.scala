@@ -14,7 +14,6 @@ import js7.base.utils.FutureCompletion
 import js7.base.utils.FutureCompletion.syntax._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.AkkaHttpServerUtils.passIf
-import js7.common.akkahttp.StandardMarshallers.logAkkaStreamErrorToWebLogAndIgnore
 import js7.common.files.GrowingFileObservable
 import js7.common.http.AkkaHttpUtils.AkkaByteVector
 import js7.common.http.StreamingSupport._
@@ -49,12 +48,11 @@ trait LogRoute extends ControllerRouteProvider
       complete(
         HttpEntity(
           contentType,  // Ignore requester's `Accept` header
-          logAkkaStreamErrorToWebLogAndIgnore(
-            new GrowingFileObservable(file, endless ? pollDuration)
-              .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
-                Task { logger.debug("whenShuttingDown completed") })
-              .map(_.toByteString)
-              .toAkkaSource))))
+          new GrowingFileObservable(file, endless ? pollDuration)
+            .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
+              Task { logger.debug("whenShuttingDown completed") })
+            .map(_.toByteString)
+            .toAkkaSourceForHttpResponse)))
 }
 
 object LogRoute

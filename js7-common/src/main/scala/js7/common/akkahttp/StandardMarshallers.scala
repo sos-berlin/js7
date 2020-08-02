@@ -8,7 +8,6 @@ import akka.http.scaladsl.unmarshalling.{FromStringUnmarshaller, Unmarshaller}
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.syntax._
 import js7.common.http.CirceJsonSupport.jsonMarshaller
 import js7.common.http.StreamingSupport.AkkaObservable
 import js7.common.scalautil.Logger
@@ -46,22 +45,7 @@ object StandardMarshallers
   def monixObservableToMarshallable[A: TypeTag](observable: Observable[A])
     (implicit s: Scheduler, q: Source[A, NotUsed] => ToResponseMarshallable)
   : ToResponseMarshallable =
-    logAkkaStreamErrorToWebLogAndIgnore(observable.toAkkaSource)
-
-  def logAkkaStreamErrorToWebLogAndIgnore[A: TypeTag](source: Source[A, NotUsed]): Source[A, NotUsed] =
-    source.recoverWithRetries(1, { case throwable =>
-      // These are the only messages logged
-      val isDebug = throwable.isInstanceOf[akka.stream.AbruptTerminationException]
-      val msg = s"Terminating stream Source[${implicitly[TypeTag[A]].tpe}] due to error: ${throwable.toStringWithCauses}"
-      if (isDebug) ExceptionHandling.webLogger.debug(msg) else ExceptionHandling.webLogger.warn(msg)
-      if (throwable.getStackTrace.nonEmpty) logger.debug(msg, throwable)
-
-      // Letting the throwable pass would close the connection,
-      // and the HTTP client sees only: The request's encoding is corrupt:
-      // The connection closed with error: Connection reset by peer.
-      // => So it seems best to end the stream silently.
-      Source.empty
-    })
+    observable.toAkkaSourceForHttpResponse
 
   implicit val problemToEntityMarshaller: ToEntityMarshaller[Problem] =
     Marshaller.oneOf(

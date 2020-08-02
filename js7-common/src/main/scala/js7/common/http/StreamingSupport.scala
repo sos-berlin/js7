@@ -5,6 +5,8 @@ import akka.stream.Materializer
 import akka.stream.scaladsl.{Sink, Source}
 import cats.effect.ExitCase
 import com.typesafe.scalalogging.Logger
+import js7.base.utils.ScalaUtils.syntax.RichThrowable
+import js7.common.akkahttp.ExceptionHandling.webLogger
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
@@ -17,7 +19,11 @@ object StreamingSupport
 {
   private val logger = Logger("js7.common.http.StreamingSupport")  // TODO Use Logger adapter (unreachable in module common)
 
-  implicit final class AkkaObservable[A](private val underlying: Observable[A]) extends AnyVal {
+  implicit final class AkkaObservable[A](private val underlying: Observable[A]) extends AnyVal
+  {
+    def toAkkaSourceForHttpResponse(implicit scheduler: Scheduler, A: TypeTag[A]): Source[A, NotUsed] =
+      logAkkaStreamErrorToWebLogAndIgnore(toAkkaSource)
+
     def toAkkaSource(implicit scheduler: Scheduler, A: TypeTag[A]): Source[A, NotUsed] =
       Source.fromPublisher(
         underlying
@@ -27,6 +33,22 @@ object StreamingSupport
           }
           .toReactivePublisher(scheduler))
   }
+
+  def logAkkaStreamErrorToWebLogAndIgnore[A: TypeTag](source: Source[A, NotUsed]): Source[A, NotUsed] =
+    source.recoverWithRetries(1, { case throwable =>
+      // These are the only messages logged
+      val isDebug = throwable.isInstanceOf[akka.stream.AbruptTerminationException]
+      val msg = s"Terminating stream Source[${implicitly[TypeTag[A]].tpe}] due to error: ${throwable.toStringWithCauses}"
+      if (isDebug) webLogger.debug(msg)
+      else webLogger.warn(msg)
+      if (throwable.getStackTrace.nonEmpty) logger.debug(msg, throwable)
+
+      // Letting the throwable pass would close the connection,
+      // and the HTTP client sees only: The request's encoding is corrupt:
+      // The connection closed with error: Connection reset by peer.
+      // => So it seems best to end the stream silently.
+      Source.empty
+    })
 
   implicit final class ObservableAkkaSource[Out, Mat](private val underlying: Source[Out, Mat]) extends AnyVal {
     def toObservable(implicit materializer: Materializer): Observable[Out] =
