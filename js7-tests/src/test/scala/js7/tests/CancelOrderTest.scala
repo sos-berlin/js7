@@ -106,7 +106,7 @@ final class CancelOrderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderCancelled))
   }
 
-  "Cancel an order and a the first job" in {
+  "Cancel an order and the first job" in {
     testCancelFirstJob(FreshOrder(OrderId("⭕️"), singleJobWorkflow.id.path), Some(singleJobWorkflow.id /: Position(0)), SIGTERM)
   }
 
