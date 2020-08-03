@@ -15,7 +15,7 @@ import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.{RichDeadline, _}
-import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
+import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString, perSecondString}
 import js7.base.utils.ScalaUtils.syntax.{RichAny, RichThrowableEither}
 import js7.base.utils.{ByteVectorToLinesObservable, FutureCompletion, IntelliJUtils, SetOnce}
 import js7.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
@@ -56,7 +56,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
               complete {
                 var byteCount = 0L
                 val versionId = SetOnce[VersionId]
-                val addOrReplace = mutable.Buffer[Verified[FileBased]]()
+                val addOrReplace = Vector.newBuilder[Verified[FileBased]]
                 val delete = mutable.Buffer[TypedPath]()
                 httpEntity
                   .dataBytes
@@ -80,20 +80,26 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                     case UpdateRepoOperation.AddVersion(v) =>
                       versionId := v  // throws
                   }
-                  .doOnFinish(_ => Task {
+                  .map(_ => addOrReplace.result() -> delete.toSeq)
+                  .map { case (addOrReplace, delete) =>
                     val d = startedAt.elapsed
-                    if (d > 1.s) logger.debug(s"controller/api/repo received and verified: " +
+                    if (d > 1.s) logger.debug(s"post controller/api/repo received and verified - " +
                       itemsPerSecondString(d, delete.size + addOrReplace.size, "items") + " · " +
                       bytesPerSecondString(d, byteCount))
-                  })
-                  .flatMap(_ =>
+                      addOrReplace -> delete
+                  }
+                  .flatMap { case (addOrReplace, delete) =>
                     repoUpdater.updateRepo(VerifiedUpdateRepo(
                       versionId.getOrElse(throw ExitStreamException(Problem(s"Missing VersionId in stream"))),
-                      addOrReplace.toSeq,
-                      delete.toSeq)))
+                      addOrReplace,
+                      delete))
+                      .map { o =>
+                        if (startedAt.elapsed > 1.s) logger.debug("post controller/api/repo totally: " +
+                          itemsPerSecondString(startedAt.elapsed, delete.size + addOrReplace.size, "items"))
+                        o
+                      }
+                  }
                   .onErrorRecover { case ExitStreamException(problem) => Left(problem) }
-                  .doOnFinish(_ => Task(if (startedAt.elapsed > 1.s) logger.debug("controller/api/repo totally: " +
-                    itemsPerSecondString(startedAt.elapsed, delete.size + addOrReplace.size, "items"))))
                   .map[ToResponseMarshallable](_.map((_: Completed) =>
                     OK -> emptyJsonObject))
                   .runToFuture

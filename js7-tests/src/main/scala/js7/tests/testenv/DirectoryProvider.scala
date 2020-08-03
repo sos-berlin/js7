@@ -9,7 +9,7 @@ import java.nio.file.Path
 import java.util.Locale
 import js7.agent.RunningAgent
 import js7.agent.configuration.AgentConfiguration
-import js7.base.crypt.{MessageSigner, SignatureVerifier, SignedString}
+import js7.base.crypt.{MessageSigner, SignatureVerifier, Signed, SignedString}
 import js7.base.generic.SecretString
 import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
@@ -103,6 +103,7 @@ extends HasCloser
 
   val fileBasedSigner = new FileBasedSigner(signer, ControllerFileBaseds.jsonCodec)
 
+  val toSigned: FileBased => Signed[FileBased] = o => Signed(o, sign(o))
   val sign: FileBased => SignedString = fileBasedSigner.sign
 
   def run[A](body: (RunningController, IndexedSeq[RunningAgent]) => A): A =

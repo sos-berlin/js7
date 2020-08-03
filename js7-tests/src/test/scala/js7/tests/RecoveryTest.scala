@@ -65,14 +65,14 @@ final class RecoveryTest extends AnyFreeSpec
             lastEventId = controller.eventWatch.tornEventId
           }
           controller.eventWatch.await[ControllerEvent.ControllerReady](after = lastEventId)
-          import directoryProvider.sign
+          import directoryProvider.toSigned
           assert(controller.eventWatch.await[RepoEvent]().map(_.value).sortBy(_.toString) ==
             Vector(
               NoKey <-: VersionAdded(VersionId("INITIAL")),
-              NoKey <-: FileBasedAdded(AgentRefPaths(0), sign(AgentRef(AgentRefPaths(0) ~ "INITIAL", directoryProvider.agents(0).localUri))),
-              NoKey <-: FileBasedAdded(AgentRefPaths(1), sign(AgentRef(AgentRefPaths(1) ~ "INITIAL", directoryProvider.agents(1).localUri))),
-              NoKey <-: FileBasedAdded(TestWorkflow.path, sign(TestWorkflow)),
-              NoKey <-: FileBasedAdded(QuickWorkflow.path, sign(QuickWorkflow)))
+              NoKey <-: FileBasedAdded(toSigned(AgentRef(AgentRefPaths(0) ~ "INITIAL", directoryProvider.agents(0).localUri))),
+              NoKey <-: FileBasedAdded(toSigned(AgentRef(AgentRefPaths(1) ~ "INITIAL", directoryProvider.agents(1).localUri))),
+              NoKey <-: FileBasedAdded(toSigned(TestWorkflow)),
+              NoKey <-: FileBasedAdded(toSigned(QuickWorkflow)))
             .sortBy(_.toString))
           runAgents(directoryProvider) { _ =>
             controller.addOrderBlocking(order1)

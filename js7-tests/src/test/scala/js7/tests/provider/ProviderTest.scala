@@ -230,7 +230,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       val versionId = controller.eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
       val events = controller.eventWatch.await[FileBasedEvent](after = lastEventId).map(_.value)
       assert(events == Vector(BWorkflowPath)
-        .map(path => NoKey <-: FileBasedAdded(path, sign(TestWorkflow withId path ~ versionId))))
+        .map(path => NoKey <-: FileBasedAdded(toSigned(TestWorkflow withId path ~ versionId))))
     }
 
     "Delete a workflow" in {
@@ -247,7 +247,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       writeWorkflowFile(CWorkflowPath)
       val versionId = controller.eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
       assert(controller.eventWatch.await[FileBasedEvent](after = lastEventId).map(_.value) ==
-        Vector(NoKey <-: FileBasedAdded(CWorkflowPath, sign(TestWorkflow withId CWorkflowPath ~ versionId))))
+        Vector(NoKey <-: FileBasedAdded(toSigned(TestWorkflow withId CWorkflowPath ~ versionId))))
     }
 
     "Change a workflow" in {
@@ -256,7 +256,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       live.resolve(CWorkflowPath toFile SourceType.Json) := ChangedWorkflowJson
       val versionId = controller.eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
       assert(controller.eventWatch.await[FileBasedEvent](after = lastEventId).map(_.value) ==
-        Vector(NoKey <-: FileBasedChanged(CWorkflowPath, sign(ChangedWorkflow withId CWorkflowPath ~ versionId))))
+        Vector(NoKey <-: FileBasedChanged(toSigned(ChangedWorkflow withId CWorkflowPath ~ versionId))))
     }
 
     "Add an order generator" in {

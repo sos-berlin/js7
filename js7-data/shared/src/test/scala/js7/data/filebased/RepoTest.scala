@@ -4,7 +4,7 @@ import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.silly.{SillySignatureVerifier, SillySigner}
-import js7.base.crypt.{GenericSignature, SignedString}
+import js7.base.crypt.{GenericSignature, Signed, SignedString}
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
@@ -32,7 +32,7 @@ final class RepoTest extends AnyFreeSpec
     assert(emptyRepo.idTo[AFileBased](APath("/UNKNOWN-PATH") ~ "UNKNOWN-VERSION") ==
       Left(UnknownKeyProblem("TypedPath", APath("/UNKNOWN-PATH"))))
 
-    assert(emptyRepo.applyEvent(FileBasedAdded(a1.path, SignedString(a1.asJson.compactPrint, GenericSignature("SILLY", "SIGNED")))) ==
+    assert(emptyRepo.applyEvent(FileBasedAdded(Signed(a1, SignedString(a1.asJson.compactPrint, GenericSignature("SILLY", "SIGNED"))))) ==
       Left(Problem("Missing initial VersionAdded event for Repo")))
 
     assert(!emptyRepo.exists(APath("/A")))
@@ -79,9 +79,9 @@ final class RepoTest extends AnyFreeSpec
   "eventsFor" in {
     assert(testRepo.eventsFor(Set(APath, BPath)) == TestEvents)
     assert(testRepo.eventsFor(Set(APath)) == List(
-      VersionAdded(V1), FileBasedAdded(a1.path, sign(a1)),
-      VersionAdded(V2), FileBasedChanged(a2.path, sign(a2)),
-      VersionAdded(V3), FileBasedChanged(a3.path, sign(a3))))
+      VersionAdded(V1), FileBasedAdded(toSigned(a1)),
+      VersionAdded(V2), FileBasedChanged(toSigned(a2)),
+      VersionAdded(V3), FileBasedChanged(toSigned(a3))))
     assert(testRepo.eventsFor(Set(AgentRefPath)) == List(VersionAdded(V1), VersionAdded(V2), VersionAdded(V3)))
   }
 
@@ -140,7 +140,7 @@ final class RepoTest extends AnyFreeSpec
 
     "FileBased with matching version" in {
       assert(emptyRepo.fileBasedToEvents(V1, toSigned(a1) :: Nil)
-        == Right(VersionAdded(V1) :: FileBasedAdded(a1.path, sign(a1)) :: Nil))
+        == Right(VersionAdded(V1) :: FileBasedAdded(toSigned(a1)) :: Nil))
     }
 
     "Deleting unknown" in {
@@ -155,21 +155,21 @@ final class RepoTest extends AnyFreeSpec
 
     "Other" in {
       assert(emptyRepo.fileBasedToEvents(V1, toSigned(a1) :: toSigned(b1) :: Nil, deleted = bx2.path :: Nil)
-        == Right(VersionAdded(V1) :: FileBasedAdded(a1.path, sign(a1)) :: FileBasedAdded(b1.path, sign(b1)) :: Nil))
+        == Right(VersionAdded(V1) :: FileBasedAdded(toSigned(a1)) :: FileBasedAdded(toSigned(b1)) :: Nil))
     }
 
     "More" in {
       var repo = emptyRepo
       repo = repo.fileBasedToEvents(V1, toSigned(a1) :: toSigned(b1) :: Nil).flatMap(repo.applyEvents).orThrow
-      assert(repo == Repo.fromOp(V1 :: Nil, Changed(toSigned(a1)) :: Changed(toSigned(b1)) :: Nil, fileBasedVerifier))
+      assert(repo == Repo.fromOp(V1 :: Nil, Changed(toSigned(a1)) :: Changed(toSigned(b1)) :: Nil, Some(fileBasedVerifier)))
 
       val events = repo.fileBasedToEvents(V2, toSigned(a2) :: toSigned(bx2) :: Nil, deleted = b1.path :: Nil).orThrow
-      assert(events == VersionAdded(V2) :: FileBasedDeleted(b1.path) :: FileBasedChanged(a2.path, sign(a2)) :: FileBasedAdded(bx2.path, sign(bx2)) :: Nil)
+      assert(events == VersionAdded(V2) :: FileBasedDeleted(b1.path) :: FileBasedChanged(toSigned(a2)) :: FileBasedAdded(toSigned(bx2)) :: Nil)
 
       repo = repo.applyEvents(events).orThrow
       assert(repo == Repo.fromOp(V2 :: V1 :: Nil,
         Changed(toSigned(a1)) :: Changed(toSigned(a2)) :: Changed(toSigned(b1)) :: Deleted(b1.path ~ V2) :: Changed(toSigned(bx2)) :: Nil,
-        fileBasedVerifier))
+        Some(fileBasedVerifier)))
 
       assert(repo.applyEvents(events) == Left(DuplicateKey("VersionId", VersionId("2"))))
     }
@@ -179,7 +179,7 @@ final class RepoTest extends AnyFreeSpec
     var repo = emptyRepo.applyEvent(VersionAdded(V1)).orThrow
 
     "FileBasedChanged for unknown path" in {
-      assert(repo.applyEvent(FileBasedChanged(APath("/A"), sign(AFileBased(APath("/A") ~ V1, "A")))) ==
+      assert(repo.applyEvent(FileBasedChanged(toSigned(AFileBased(APath("/A") ~ V1, "A")))) ==
         Left(UnknownKeyProblem("TypedPath", APath("/A"))))
     }
 
@@ -189,19 +189,19 @@ final class RepoTest extends AnyFreeSpec
     }
 
     "FileBasedAdded for existent path" in {
-      repo = repo.applyEvent(FileBasedAdded(APath("/A"), sign(AFileBased(APath("/A") ~ V1, "A")))).orThrow
-      assert(repo.applyEvent(FileBasedAdded(APath("/A"), sign(AFileBased(APath("/A") ~ V1, "A")))) ==
+      repo = repo.applyEvent(FileBasedAdded(toSigned(AFileBased(APath("/A") ~ V1, "A")))).orThrow
+      assert(repo.applyEvent(FileBasedAdded(toSigned(AFileBased(APath("/A") ~ V1, "A")))) ==
         Left(DuplicateKey("TypedPath", APath("/A"))))
     }
 
     "FileBaseAdded with different VersionId" in {
-      val event = FileBasedAdded(APath("/B"), sign(AFileBased(APath("/B") ~ V3, "B")))
+      val event = FileBasedAdded(toSigned(AFileBased(APath("/B") ~ V3, "B")))
       assert(repo.applyEvent(event) ==
         Left(EventVersionDoesNotMatchProblem(V1, event)))
     }
 
     "FileBaseChanged with different VersionId" in {
-      val event = FileBasedChanged(APath("/A"), sign(AFileBased(APath("/A") ~ V3, "A")))
+      val event = FileBasedChanged(toSigned(AFileBased(APath("/A") ~ V3, "A")))
       assert(repo.applyEvent(event) == Left(EventVersionDoesNotMatchProblem(V1, event)))
     }
 
@@ -209,7 +209,7 @@ final class RepoTest extends AnyFreeSpec
       repo = repo.applyEvent(VersionAdded(V2)).orThrow
       repo = repo.applyEvent(FileBasedDeleted(APath("/A"))).orThrow
       repo = repo.applyEvent(VersionAdded(V3)).orThrow
-      assert(repo.applyEvent(FileBasedChanged(APath("/A"), sign(AFileBased(APath("/A") ~ V3, "A")))) ==
+      assert(repo.applyEvent(FileBasedChanged(toSigned(AFileBased(APath("/A") ~ V3, "A")))) ==
         Left(FileBasedDeletedProblem(APath("/A") ~ V2)))
     }
 
@@ -269,12 +269,12 @@ object RepoTest
   private val fileBasedVerifier = new FileBasedVerifier(new SillySignatureVerifier, fileBasedJsonCodec)
   private val emptyRepo = Repo.signatureVerifying(fileBasedVerifier)
 
-  import fileBasedSigner.sign
+  import fileBasedSigner.toSigned
 
   private val TestEvents =
-    VersionAdded(V1) :: FileBasedAdded(a1.path, sign(a1)) ::
-    VersionAdded(V2) :: FileBasedChanged(a2.path, sign(a2)) :: FileBasedAdded(bx2.path, sign(bx2)) :: FileBasedAdded(by2.path, sign(by2)) ::
-    VersionAdded(V3) :: FileBasedChanged(a3.path, sign(a3)) :: FileBasedDeleted(bx2.path) :: Nil
+    VersionAdded(V1) :: FileBasedAdded(toSigned(a1)) ::
+    VersionAdded(V2) :: FileBasedChanged(toSigned(a2)) :: FileBasedAdded(toSigned(bx2)) :: FileBasedAdded(toSigned(by2)) ::
+    VersionAdded(V3) :: FileBasedChanged(toSigned(a3)) :: FileBasedDeleted(bx2.path) :: Nil
 
   private def v(version: String) = VersionId(version)
 }

@@ -5,7 +5,6 @@ import cats.instances.vector._
 import cats.syntax.traverse._
 import io.circe.Decoder
 import js7.base.crypt.Signed
-import js7.base.crypt.donotcrypt.DoNotVerifySignatureVerifier
 import js7.base.problem.Checked._
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem}
@@ -29,7 +28,7 @@ final case class Repo private(
   versions: List[VersionId],
   versionSet: Set[VersionId],
   pathToVersionToSignedFileBased: Map[TypedPath, List[Entry]],
-  fileBasedVerifier: FileBasedVerifier[FileBased])
+  fileBasedVerifier: Option[FileBasedVerifier[FileBased]])
 {
   assertThat(versions.nonEmpty || pathToVersionToSignedFileBased.isEmpty)
 
@@ -103,8 +102,8 @@ final case class Repo private(
     val path = signedFileBased.value.path
     pathToSigned(path) match {
       case Right(`signedFileBased`) => None
-      case Right(_) => Some(FileBasedChanged(path, signedFileBased.signedString))
-      case Left(_) => Some(FileBasedAdded(path, signedFileBased.signedString))
+      case Right(_) => Some(FileBasedChanged(signedFileBased))
+      case Left(_) => Some(FileBasedAdded(signedFileBased))
     }
   }
 
@@ -167,16 +166,35 @@ final case class Repo private(
     }
 
   private def addOrChange(event: FileBasedAddedOrChanged): Checked[Repo] = {
-    fileBasedVerifier.verify(event.signed).map(_.fileBased).flatMap(fileBased =>
-      if (event.path != fileBased.path)
-        Problem.pure(s"Error in FileBasedAddedOrChanged event: path=${event.path} does not equal path=${fileBased.path}")
-      else if (fileBased.path.isAnonymous)
-        Problem.pure(s"Adding an anonymous ${fileBased.companion.name} is not allowed")
-      else if (fileBased.id.versionId != versionId)
-        EventVersionDoesNotMatchProblem(versionId, event)
-      else
-        Right(addEntry(fileBased.path, Some(js7.base.crypt.Signed(fileBased withVersion versionId, event.signed)))))
+    fileBasedVerifier match {
+      case Some(verifier) =>
+        verifier.verify(event.signedString).map(_.fileBased).flatMap(fileBased =>
+          if (event.path != fileBased.path)
+            Problem.pure(s"Error in FileBasedAddedOrChanged event: path=${event.path} does not equal path=${fileBased.path}")
+          else if (fileBased.path.isAnonymous)
+            Problem.pure(s"Adding an anonymous ${fileBased.companion.name} is not allowed")
+          else if (fileBased.id.versionId != versionId)
+            EventVersionDoesNotMatchProblem(versionId, event)
+          else
+            Right(addEntry(fileBased.path, Some(js7.base.crypt.Signed(fileBased withVersion versionId, event.signedString)))))
+
+      case None =>
+        Right(addEntry(event.path, Some(event.signed)))
+    }
   }
+
+  def verify[A <: FileBased](signed: Signed[A]): Checked[A] =
+    fileBasedVerifier match {
+      case Some(verifier) =>
+        verifier.verify(signed.signedString).map(_.fileBased).flatMap(fileBased =>
+          if (fileBased != signed.value)
+            Left(Problem.pure("fileBased != signed.value"))
+          else
+            Right(signed.value))
+
+      case None =>
+        Right(signed.value)
+    }
 
   private def addEntry(path: TypedPath, fileBasedOption: Option[Signed[FileBased]]): Repo = {
     val version = versions.head
@@ -266,9 +284,9 @@ final case class Repo private(
           case Right(signedFileBased) =>
             val entries = pathToVersionToSignedFileBased(signedFileBased.value.path)
             if (findInHistory(entries, versionSet).flatten.isDefined)
-              FileBasedChanged(signedFileBased.value.path, signedFileBased.signedString)
+              FileBasedChanged(signedFileBased)
             else
-              FileBasedAdded(signedFileBased.value.path, signedFileBased.signedString)
+              FileBasedAdded(signedFileBased)
         }
       }
       .toVector.reverse.flatten
@@ -295,15 +313,15 @@ final case class Repo private(
 object Repo
 {
   def ofJsonDecoder(fileBasedJsonDecoder: Decoder[FileBased]): Repo =
-    signatureVerifying(new FileBasedVerifier(DoNotVerifySignatureVerifier, fileBasedJsonDecoder))
+    new Repo(Nil, Set.empty, Map.empty, None)
 
   def signatureVerifying(fileBasedVerifier: FileBasedVerifier[FileBased]): Repo =
-    new Repo(Nil, Set.empty, Map.empty, fileBasedVerifier)
+    new Repo(Nil, Set.empty, Map.empty, Some(fileBasedVerifier))
 
   @TestOnly
   private[filebased] object testOnly {
     implicit final class OpRepo(private val underlying: Repo.type) extends AnyVal {
-      def fromOp(versionIds: Seq[VersionId], operations: Iterable[Operation], fileBasedVerifier: FileBasedVerifier[FileBased]) =
+      def fromOp(versionIds: Seq[VersionId], operations: Iterable[Operation], fileBasedVerifier: Option[FileBasedVerifier[FileBased]]) =
         new Repo(
           versionIds.toList,
           versionIds.toSet,

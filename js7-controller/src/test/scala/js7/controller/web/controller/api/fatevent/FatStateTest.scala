@@ -23,7 +23,7 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class FatStateTest extends AnyFreeSpec
 {
-  private val sign = new FileBasedSigner(SillySigner.Default, ControllerFileBaseds.jsonCodec).sign _
+  private val toSigned = new FileBasedSigner(SillySigner.Default, ControllerFileBaseds.jsonCodec).toSigned _
   private val repo = Repo.signatureVerifying(new FileBasedVerifier(new SillySignatureVerifier, ControllerFileBaseds.jsonCodec))
   private val eventIds = Iterator.from(1)
   private var fatState = FatState(ControllerId("CONTROLLER-ID"), eventIds.next(), repo, Map.empty)
@@ -35,12 +35,12 @@ final class FatStateTest extends AnyFreeSpec
   }
 
   "RepoAdded AgentRef" in {
-    check(RepoEvent.FileBasedAdded(agentRef.path, sign(agentRef)),
+    check(RepoEvent.FileBasedAdded(toSigned(agentRef)),
       None)
   }
 
   "RepoAdded Workflow" in {
-    check(RepoEvent.FileBasedAdded(workflow.path, sign(workflow)),
+    check(RepoEvent.FileBasedAdded(toSigned(workflow)),
       None)
   }
 

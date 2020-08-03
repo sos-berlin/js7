@@ -267,7 +267,7 @@ final class FatEventRouteTest extends AnyFreeSpec with RouteTester with FatEvent
 object FatEventRouteTest
 {
   private val logger = Logger(getClass)
-  private val sign = new FileBasedSigner(SillySigner.Default, ControllerFileBaseds.jsonCodec).sign _
+  private val toSigned = new FileBasedSigner(SillySigner.Default, ControllerFileBaseds.jsonCodec).toSigned _
   private val TestVersionId = VersionId("VERSION")
   private val TestAgentRefId = AgentRefPath("/AGENT") ~ TestVersionId
   private val TestWorkflow = Workflow.of(
@@ -277,8 +277,8 @@ object FatEventRouteTest
   private val InitialEvents =
     //Stamped(EventId(1), NoKey <-: ControllerReady("UTC", 0.s)) ::  // Not required
     Stamped(EventId(2), NoKey <-: VersionAdded(TestVersionId)) ::
-    Stamped(EventId(3), NoKey <-: FileBasedAdded(TestAgentRefId.path, sign(AgentRef(TestAgentRefId, Uri("http://127.0.0.1:0"))))) ::
-    Stamped(EventId(4), NoKey <-: FileBasedAdded(TestWorkflow.path, sign(TestWorkflow))) :: Nil
+    Stamped(EventId(3), NoKey <-: FileBasedAdded(toSigned(AgentRef(TestAgentRefId, Uri("http://127.0.0.1:0"))))) ::
+    Stamped(EventId(4), NoKey <-: FileBasedAdded(toSigned(TestWorkflow))) :: Nil
 
   private val TestEvents: Seq[Seq[Stamped[AnyKeyedEvent]]] =
     (1 to 18).map(i =>

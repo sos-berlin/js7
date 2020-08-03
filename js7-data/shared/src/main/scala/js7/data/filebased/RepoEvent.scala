@@ -4,7 +4,8 @@ import io.circe.syntax._
 import io.circe.{Decoder, DecodingFailure, Encoder, JsonObject}
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import js7.base.crypt.SignedString
+import js7.base.crypt.{Signed, SignedString}
+import js7.base.problem.Problem
 import js7.data.event.NoKeyEvent
 
 /**
@@ -20,27 +21,54 @@ object RepoEvent {
   }
 
   sealed trait FileBasedAddedOrChanged extends FileBasedEvent with Product {
-    def signed: SignedString
+    def signedString = signed.signedString
+    def signed: Signed[FileBased]
+    def path: TypedPath = signed.value.path
     def toShortString = s"$productPrefix($path)"
   }
-  object FileBasedAddedOrChanged {
-    def unapply(o: FileBasedAddedOrChanged) = Some((o.path, o.signed))
-
+  object FileBasedAddedOrChanged
+  {
     private[RepoEvent] def jsonEncoder: Encoder.AsObject[FileBasedAddedOrChanged] = o =>
-      JsonObject("signed" -> o.signed.asJson)
+      JsonObject(
+        "path" -> o.signed.value.path.toTypedString.asJson,
+        "signed" -> o.signed.signedString.asJson)
 
-    private[RepoEvent] def jsonDecoder(implicit x: Decoder[FileBased]): Decoder[(FileBased, SignedString)] = c =>
-      for {
+    private[RepoEvent] def jsonDecoder(implicit x: Decoder[FileBased], y: Decoder[TypedPath]): Decoder[(FileBased, SignedString)] =
+      c => for {
+        path <- c.get[TypedPath]("path")
         signed <- c.get[SignedString]("signed")
         parsed <- io.circe.parser.parse(signed.string).left.map(error => DecodingFailure(error.toString, c.history))
-        fileBased <- parsed.as[FileBased]
+        fileBased <- parsed.as[FileBased].flatMap(o =>
+          if (o.path != path) Left(DecodingFailure(s"Path in event '$path' does not equal path in signed string", c.history))
+          else Right(o))
       } yield (fileBased, signed)
   }
 
-  final case class FileBasedAdded(path: TypedPath, signed: SignedString) extends FileBasedAddedOrChanged
+  final case class FileBasedAdded(signed: Signed[FileBased]) extends FileBasedAddedOrChanged
+  object FileBasedAdded
+  {
+    private[RepoEvent] implicit val jsonEncoder: Encoder.AsObject[FileBasedAdded] =
+      o => FileBasedAddedOrChanged.jsonEncoder.encodeObject(o)
 
-  final case class FileBasedChanged(path: TypedPath, signed: SignedString) extends FileBasedAddedOrChanged
+    private[RepoEvent] implicit def jsonDecoder(implicit x: Decoder[FileBased], y: Decoder[TypedPath]): Decoder[FileBasedAdded] =
+      hCursor =>
+        FileBasedAddedOrChanged.jsonDecoder.decodeJson(hCursor.value).map { case (fileBased, signedString) =>
+          new FileBasedAdded(Signed(fileBased, signedString))
+        }
+  }
 
+  final case class FileBasedChanged(signed: Signed[FileBased]) extends FileBasedAddedOrChanged
+  object FileBasedChanged
+  {
+    private[RepoEvent] implicit val jsonEncoder: Encoder.AsObject[FileBasedChanged] =
+      o => FileBasedAddedOrChanged.jsonEncoder.encodeObject(o)
+
+    private[RepoEvent] implicit def jsonDecoder(implicit x: Decoder[FileBased], y: Decoder[TypedPath]): Decoder[FileBasedChanged] =
+      hCursor =>
+        FileBasedAddedOrChanged.jsonDecoder.decodeJson(hCursor.value).map { case (fileBased, signedString) =>
+          new FileBasedChanged(Signed(fileBased, signedString))
+        }
+  }
   final case class FileBasedDeleted(path: TypedPath) extends FileBasedEvent {
     require(!path.isAnonymous, "FileChangedChanged event requires a path")
   }
@@ -48,7 +76,7 @@ object RepoEvent {
   implicit def jsonCodec(implicit w: Encoder.AsObject[FileBased], x: Decoder[FileBased], y: Encoder[TypedPath], z: Decoder[TypedPath])
   : TypedJsonCodec[RepoEvent] = TypedJsonCodec(
       Subtype(deriveCodec[VersionAdded]),
-      Subtype(deriveCodec[FileBasedAdded]),
-      Subtype(deriveCodec[FileBasedChanged]),
+      Subtype[FileBasedAdded],
+      Subtype[FileBasedChanged],
       Subtype(deriveCodec[FileBasedDeleted]))
 }

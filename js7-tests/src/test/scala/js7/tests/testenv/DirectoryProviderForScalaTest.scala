@@ -55,6 +55,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
   protected def fileBased: Seq[FileBased]
   protected def signer: MessageSigner = DirectoryProvider.defaultSigner
 
+  protected final def toSigned(fileBased: FileBased) = directoryProvider.toSigned(fileBased)
   protected final def sign(fileBased: FileBased) = directoryProvider.sign(fileBased)
 
   override def beforeAll() = {

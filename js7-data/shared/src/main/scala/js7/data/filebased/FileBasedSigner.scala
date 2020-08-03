@@ -11,6 +11,9 @@ import js7.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged}
 final class FileBasedSigner[A <: FileBased](val signer: MessageSigner, jsonEncoder: Encoder[A])
 {
   def toSigned(fileBased: A): Signed[A] =
+    toSigned_(fileBased)
+
+  private def toSigned_[B >: A <: FileBased](fileBased: A): Signed[B] =
     js7.base.crypt.Signed(fileBased, sign(fileBased))
 
   def sign(fileBased: A): SignedString = {
@@ -19,8 +22,8 @@ final class FileBasedSigner[A <: FileBased](val signer: MessageSigner, jsonEncod
   }
 
   def toAddedEvent(fileBased: A): FileBasedAdded =
-    FileBasedAdded(fileBased.path, sign(fileBased))
+    FileBasedAdded(toSigned_(fileBased))
 
   def toChangedEvent(fileBased: A): FileBasedChanged =
-    FileBasedChanged(fileBased.path, sign(fileBased))
+    FileBasedChanged(toSigned_(fileBased))
 }

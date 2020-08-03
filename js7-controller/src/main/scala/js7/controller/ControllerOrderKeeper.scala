@@ -736,20 +736,17 @@ with MainJournalingActor[ControllerState, Event]
 
   private def toRepoChange(event: FileBasedEvent): Checked[RepoChange] =
     event match {
-      case FileBasedAdded(_, signed) =>
-        repo.fileBasedVerifier.verify(signed).map(o => RepoChange.Added(o.signedFileBased.value))
-      case FileBasedChanged(_, signed) =>
-        repo.fileBasedVerifier.verify(signed).map(o => RepoChange.Updated(o.signedFileBased.value))
-      case FileBasedDeleted(path) =>
-        Right(RepoChange.Deleted(path))
+      case FileBasedAdded(signed) => repo.verify(signed) map RepoChange.Added
+      case FileBasedChanged(signed) => repo.verify(signed) map RepoChange.Updated
+      case FileBasedDeleted(path) => Right(RepoChange.Deleted(path))
     }
 
   private def logRepoEvent(event: RepoEvent): Unit =
     event match {
-      case VersionAdded(version)     => logger.trace(s"Version '${version.string}' added")
-      case FileBasedAdded(path, _)   => logger.trace(s"$path added")
-      case FileBasedChanged(path, _) => logger.trace(s"$path changed")
-      case FileBasedDeleted(path)    => logger.trace(s"$path deleted")
+      case VersionAdded(version)  => logger.trace(s"Version '${version.string}' added")
+      case o: FileBasedAdded      => logger.trace(s"${o.path} } added")
+      case o: FileBasedChanged    => logger.trace(s"${o.path} } changed")
+      case FileBasedDeleted(path) => logger.trace(s"$path deleted")
     }
 
   private def updateRepo(): Unit =

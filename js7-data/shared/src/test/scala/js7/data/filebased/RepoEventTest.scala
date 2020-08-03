@@ -3,7 +3,7 @@ package js7.data.filebased
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils._
 import js7.base.circeutils.typed.TypedJsonCodec
-import js7.base.crypt.{GenericSignature, SignedString}
+import js7.base.crypt.{GenericSignature, Signed, SignedString}
 import js7.data.controller.ControllerFileBaseds._
 import js7.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
 import js7.data.filebased.RepoEventTest._
@@ -31,7 +31,7 @@ final class RepoEventTest extends AnyFreeSpec {
 
     "FileBasedAdded" in {
       testJson[RepoEvent](
-        FileBasedAdded(workflow.path, SignedString((workflow: FileBased).asJson.compactPrint, GenericSignature("PGP", "SIGNATURE"))),
+        FileBasedAdded(Signed(workflow, SignedString((workflow: FileBased).asJson.compactPrint, GenericSignature("PGP", "SIGNATURE")))),
         json"""{
           "TYPE": "FileBasedAdded",
           "path": "Workflow:/WORKFLOW",
@@ -47,7 +47,7 @@ final class RepoEventTest extends AnyFreeSpec {
 
     "FileBasedChanged" in {
       testJson[RepoEvent](
-        FileBasedChanged(workflow.path, SignedString((workflow: FileBased).asJson.compactPrint, GenericSignature("PGP", "SIGNATURE"))),
+        FileBasedChanged(Signed(workflow, SignedString((workflow: FileBased).asJson.compactPrint, GenericSignature("PGP", "SIGNATURE")))),
         json"""{
           "TYPE": "FileBasedChanged",
           "path": "Workflow:/WORKFLOW",
