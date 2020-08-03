@@ -8,6 +8,7 @@ import js7.base.web.Uri
 import js7.proxy.javaapi.data.JavaWrapper
 import js7.proxy.javaapi.utils.VavrConversions._
 
+@javaApi
 final case class JAdmission(underlying: Admission)
 extends JavaWrapper
 {
@@ -20,6 +21,7 @@ object JAdmission
   def of(uri: String, credentials: JCredentials) =
     new JAdmission(Admission(Uri(uri), credentials.toUnderlying))
 
+  @javaApi
   def checked(uri: String, credentials: JCredentials): VEither[Problem, JAdmission] =
     Uri.checked(uri)
       .map(uri => new JAdmission(Admission(uri, credentials.toUnderlying)))

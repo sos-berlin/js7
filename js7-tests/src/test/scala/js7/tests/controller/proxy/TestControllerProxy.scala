@@ -4,6 +4,7 @@ import akka.http.scaladsl.server.Directives.{complete, get, pathSingleSlash}
 import java.time.LocalDateTime
 import js7.base.BuildInfo
 import js7.base.auth.{UserAndPassword, UserId}
+import js7.base.eventbus.StandardEventBus
 import js7.base.generic.SecretString
 import js7.base.time.ScalaTime._
 import js7.base.web.Uri
@@ -18,7 +19,6 @@ import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.data.ControllerSnapshots.SnapshotJsonCodec
 import js7.controller.data.ControllerState
 import js7.data.event.{Event, EventId}
-import js7.proxy.javaapi.JStandardEventBus
 import js7.proxy.{ControllerProxy, JournaledStateEventBus, ProxyEvent}
 import js7.tests.controller.proxy.TestControllerProxy._
 import monix.eval.Task
@@ -31,11 +31,11 @@ private final class TestControllerProxy(controllerUri: Uri, httpPort: Int)(impli
     Akkas.actorSystemResource("TestControllerProxy", defaultExecutionContext = scheduler)
       .use { implicit actorSystem =>
         val apiResource = AkkaHttpControllerApi.resource(controllerUri, userAndPassword)
-        val proxyEventBus = new JStandardEventBus[ProxyEvent]
+        val proxyEventBus = new StandardEventBus[ProxyEvent]
         val eventBus = new JournaledStateEventBus[ControllerState]
         var currentState: ControllerState = null
         eventBus.subscribe[Event] { e => currentState = e.state }
-        ControllerProxy.start(apiResource :: Nil, proxyEventBus.underlying.publish, eventBus.publish)
+        ControllerProxy.start(apiResource :: Nil, proxyEventBus, eventBus)
           .flatMap { proxy =>
             AkkaWebServer.resourceForHttp(httpPort, webServiceRoute(Task(currentState)))
               .use(_ =>

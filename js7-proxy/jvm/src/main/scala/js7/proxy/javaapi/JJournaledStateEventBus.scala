@@ -41,11 +41,11 @@ class JJournaledStateEventBus[JS <: JJournaledState[JS, S], S <: JournaledState[
     subscription.internalAddToEventBus()
   }
 
-  @javaApi
-  final def removeSubscription[E <: Event](subscription: EventSubscription[E]): Unit = {
-    assertThat(subscription.eventBus eq underlying)
-    underlying.removeSubscription(subscription.underlying)
-  }
+  //@javaApi
+  //final def removeSubscription[E <: Event](subscription: EventSubscription[E]): Unit = {
+  //  assertThat(subscription.eventBus eq underlying)
+  //  underlying.removeSubscription(subscription.underlying)
+  //}
 
   @javaApi
   final def removeAllSubscriptions(): Unit =

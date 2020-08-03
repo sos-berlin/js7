@@ -72,7 +72,8 @@ public final class TestJControllerProxy
                 out::println);
 
             JControllerProxy proxy = context
-                .startControllerProxy(admissions, JHttpsConfig.empty(), proxyEventBus)
+                .newControllerApi(admissions, JHttpsConfig.empty())
+                .startProxy(proxyEventBus)
                 .get(99, SECONDS);
             try {
                 proxy.controllerEventBus().<OrderEvent>subscribe(

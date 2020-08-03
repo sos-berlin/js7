@@ -1,95 +1,38 @@
 package js7.proxy.javaapi
 
-import io.vavr.control.{Either => VEither}
 import java.util.concurrent.CompletableFuture
 import js7.base.annotation.javaApi
-import js7.base.generic.Completed
-import js7.base.problem.Problem
-import js7.controller.data.ControllerCommand
 import js7.data.event.Event
-import js7.data.filebased.VersionId
-import js7.proxy.javaapi.data.{JControllerCommand, JControllerState, JFreshOrder, JUpdateRepoOperation}
+import js7.proxy.ControllerProxy
+import js7.proxy.javaapi.data.JControllerState
 import js7.proxy.javaapi.utils.JavaUtils.Void
-import js7.proxy.javaapi.utils.VavrConversions._
-import js7.proxy.{ControllerProxy, ProxyEvent}
 import monix.execution.FutureUtils.Java8Extensions
-import monix.reactive.Observable
+import monix.execution.Scheduler
 import reactor.core.publisher.Flux
 
-/** Java adapter for `JournaledProxy[JControllerState]`. */
+/** Observes the Controller's event stream and provides the current JControllerState.
+  * After use, stop with `stop()`.
+  *
+  * Java adapter for `JournaledProxy[JControllerState]`. */
 @javaApi
 final class JControllerProxy private[proxy](
-  private[js7] val controllerProxy: ControllerProxy,
-  val proxyEventBus: JStandardEventBus[ProxyEvent],
-  val controllerEventBus: JControllerEventBus,
-  context: JProxyContext)
+  controllerProxy: ControllerProxy,
+  val api: JControllerApi,
+  val controllerEventBus: JControllerEventBus)
+  (implicit scheduler: Scheduler)
 {
-  import context.scheduler
-
-  def startObserving: CompletableFuture[Unit] =
-    controllerProxy.startObserving
-      .runToFuture
-      .asJava
-
-  def flux: Flux[JEventAndControllerState[Event]] =
+  def flux(): Flux[JEventAndControllerState[Event]] =
     Flux.from(
-      controllerProxy.observe
-        .map(JEventAndControllerState.fromScala)
+      controllerProxy.observable
+        .map(JEventAndControllerState .fromScala)
         .toReactivePublisher)
 
-  def stop: CompletableFuture[java.lang.Void] =
+  def stop(): CompletableFuture[java.lang.Void] =
     controllerProxy.stop
       .map(_ => Void)
       .runToFuture
       .asJava
 
   def currentState: JControllerState =
-    JControllerState(controllerProxy.currentState._2)
-
-  def updateRepo(versionId: VersionId, operations: Flux[JUpdateRepoOperation]): CompletableFuture[VEither[Problem, Void]] =
-    controllerProxy.updateRepo(versionId, Observable.fromReactivePublisher(operations).map(_.underlying))
-      .map(_.map((_: Completed) => Void).toVavr)
-      .runToFuture
-      .asJava
-
-  /** @return true iff added, false iff not added because of duplicate OrderId. */
-  def addOrder(order: JFreshOrder): CompletableFuture[VEither[Problem, java.lang.Boolean]] =
-    controllerProxy.addOrder(order.underlying)
-      .map(_.map(o => java.lang.Boolean.valueOf(o)).toVavr)
-      .runToFuture
-      .asJava
-
-  def addOrders(orders: java.lang.Iterable[JFreshOrder]): CompletableFuture[VEither[Problem, java.lang.Void]] =
-    addOrders(Flux.fromIterable(orders))
-
-  def addOrders(orders: Flux[JFreshOrder]): CompletableFuture[VEither[Problem, java.lang.Void]] =
-    controllerProxy.addOrders(Observable.fromReactivePublisher(orders).map(_.underlying))
-      .map(_.map((_: Completed) => Void).toVavr)
-      .runToFuture
-      .asJava
-
-  def executeCommand(command: JControllerCommand): CompletableFuture[VEither[Problem, ControllerCommand.Response]] =
-    controllerProxy.executeCommand(command.underlying)
-      .map(_.map(o => (o: ControllerCommand.Response)).toVavr)
-      .runToFuture
-      .asJava
-
-  def executeCommandJson(command: String): CompletableFuture[VEither[Problem, String]] =
-    httpPostJson("/controller/api/command", command)
-
-  def httpPostJson(uriTail: String, jsonString: String): CompletableFuture[VEither[Problem, String]] =
-    controllerProxy.httpPostJson(uriTail, jsonString)
-      .map(_.toVavr)
-      .runToFuture
-      .asJava
-
-  /** HTTP GET
-    * @param uriTail path and query of the URI
-    * @return `Either.Left(Problem)` or `Either.Right(json: String)`
-    */
-  def httpGetJson(uriTail: String): CompletableFuture[VEither[Problem, String]] =
-    controllerProxy.httpGetJson(uriTail)
-      .map(_.toVavr)
-      .runToFuture
-      .asJava
+    JControllerState(controllerProxy.currentState)
 }

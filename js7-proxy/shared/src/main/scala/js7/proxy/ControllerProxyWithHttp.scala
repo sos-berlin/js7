@@ -11,7 +11,7 @@ import monix.eval.Task
 
 trait ControllerProxyWithHttp
 {
-  def apiResource: Resource[Task, HttpControllerApi]
+  protected def apiResource: Resource[Task, HttpControllerApi]
 
   def httpPostJson(uriTail: String, jsonString: String): Task[Checked[String]] =
     (for {

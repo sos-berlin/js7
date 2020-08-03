@@ -24,9 +24,9 @@ import js7.data.event.{AnyKeyedEvent, Event, EventApi, EventId, EventRequest, Ev
 import js7.proxy.ProxyEvent.{ProxyCoupled, ProxyCouplingError, ProxyDecoupled}
 import js7.proxy.configuration.ProxyConf
 import monix.eval.Task
-import monix.execution.CancelableFuture
-import monix.execution.atomic.AtomicBoolean
+import monix.execution.{Cancelable, Scheduler}
 import monix.reactive.Observable
+import monix.reactive.observables.ConnectableObservable
 import scala.collection.immutable.Seq
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.concurrent.{Future, Promise}
@@ -35,25 +35,42 @@ import scala.util.{Failure, Success}
 
 trait JournaledProxy[S <: JournaledState[S]]
 {
-  protected val observable: Observable[EventAndState[Event, S]]
-
+  protected val baseObservable: Observable[EventAndState[Event, S]]
+  protected def scheduler: Scheduler
   protected val onEvent: EventAndState[Event, S] => Unit
+  protected def S: JournaledState.Companion[S]
 
-  private val observeCalled = AtomicBoolean(false)
-  private val subscribed = AtomicBoolean(false)
-  private val currentStateFilled = Promise[Unit]()
-  @volatile private var _currentState: (EventId, S) = null
-  private val observing = SetOnce[CancelableFuture[Unit]]("observing")
+  private val observing = SetOnce[Cancelable]("connectableObservingCompleted")
+  private val stopRequested = Promise[Unit]()
   private val observingStopped = Promise[Unit]()
+
+  private val currentStateFilled = Promise[Unit]()
+  @volatile private var _currentState = S.empty
+
+  final val connectableObservable: ConnectableObservable[EventAndState[Event, S]] = {
+    baseObservable
+      .map { eventAndState =>
+        _currentState = eventAndState.state
+        currentStateFilled.trySuccess(())
+        onEvent(eventAndState)
+        eventAndState
+      }
+      .takeUntil(Observable.fromFuture(stopRequested.future))
+      .publish(scheduler)
+  }
 
   final def startObserving: Task[Unit] =
     Task.deferFutureAction { implicit scheduler =>
       assertThat(observing.isEmpty)
-      val obs = observe.completedL.runToFuture
+      val obs = connectableObservable.connect()
       observing := obs
-      obs.onComplete {
+      val whenCompleted = connectableObservable.completedL.runToFuture
+      observingStopped.completeWith(whenCompleted)
+      whenCompleted.onComplete {
         case Success(()) =>
-          scribe.error("Observable has terminated")
+          if (!stopRequested.isCompleted) {
+            scribe.error("Observable has terminated")
+          }
           // ???
         case Failure(t) =>
           scribe.error(t.toStringWithCauses, t.nullIfNoStackTrace)
@@ -67,40 +84,20 @@ trait JournaledProxy[S <: JournaledState[S]]
 
   final def stop: Task[Unit] =
     Task.deferFuture {
-      observing.toOption.fold(Future.successful(())) { observing =>
-        observing.cancel()
+      observing.toOption.fold(Future.successful(())) { _ =>
+        stopRequested.trySuccess(())
         observingStopped.future
       }
     }
 
-  final def observe: Observable[EventAndState[Event, S]] = {
-    assertObserveNotCalled()
-    observable
-      .doOnSubscribe(Task {
-        assertNotSubscribed()
-      })
-      .map { eventAndState =>
-        _currentState = eventAndState.stampedEvent.eventId -> eventAndState.state
-        currentStateFilled.trySuccess(())
-        onEvent(eventAndState)
-        eventAndState
-      }
-      .guarantee(Task {
-        observingStopped.success(())
-      })
-  }
+  final def observable: Observable[EventAndState[Event, S]] =
+    connectableObservable
 
-  final def currentState: (EventId, S) =
+  final def currentState: S =
     _currentState match {
       case null => throw new IllegalStateException("JournaledProxy has not yet started")
       case o => o
     }
-
-  private def assertObserveNotCalled(): Unit =
-    if (observeCalled.getAndSet(true)) throw new IllegalStateException("JournalProxy is already in use")
-
-  private def assertNotSubscribed(): Unit =
-    if (subscribed.getAndSet(true)) throw new IllegalStateException("JournalProxy is already in use")
 }
 
 object JournaledProxy

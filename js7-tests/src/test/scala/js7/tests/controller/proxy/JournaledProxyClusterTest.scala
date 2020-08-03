@@ -1,12 +1,10 @@
 package js7.tests.controller.proxy
 
 import js7.base.auth.{Admission, UserAndPassword, UserId}
-import js7.base.eventbus.StandardEventBus
 import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.Lazy
 import js7.base.web.Uri
 import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
@@ -15,7 +13,7 @@ import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import js7.controller.client.AkkaHttpControllerApi
-import js7.controller.data.{ControllerCommand, ControllerState}
+import js7.controller.data.ControllerCommand
 import js7.data.agent.AgentRefPath
 import js7.data.cluster.ClusterEvent.ClusterCoupled
 import js7.data.event.{KeyedEvent, Stamped}
@@ -24,7 +22,7 @@ import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.proxy.javaapi.JAdmission
 import js7.proxy.javaapi.data.JHttpsConfig
-import js7.proxy.{ControllerProxy, EventAndState, JournaledStateEventBus, ProxyEvent}
+import js7.proxy.{ControllerApi, EventAndState}
 import js7.tests.controller.proxy.JournaledProxyClusterTest._
 import js7.tests.controller.proxy.JournaledProxyTest.{primaryCredentials, workflow}
 import js7.tests.testenv.DirectoryProvider
@@ -89,7 +87,7 @@ final class JournaledProxyClusterTest extends AnyFreeSpec
         Admission(Uri(s"http://127.0.0.1:$backupPort"), Some(backupCredentials)))
 
       primaryDirectoryProvider.runAgents() { _ =>
-        val controllers = Lazy {
+        val controllers = {
           val primary :: backup :: Nil = Task.parSequence(List(
             primaryDirectoryProvider.startController(httpPort = Some(primaryPort)),
             backupDirectoryProvider.startController(httpPort = Some(backupPort)))
@@ -100,29 +98,26 @@ final class JournaledProxyClusterTest extends AnyFreeSpec
 
         // Run a non-cluster test
         autoClosing(new JControllerFluxTester(admissions.map(JAdmission.apply).asJava, JHttpsConfig.empty)) { tester =>
-          tester.test(() => controllers())
+          tester.test()
         }
 
-        val primary = controllers()(0)
-        var backup = controllers()(1)
+        val primary = controllers(0)
+        var backup = controllers(1)
         implicit val actorSystem = newActorSystem("JournaledProxyClusterTest")
         val apiResources = for ((a, i) <- admissions.zipWithIndex)
           yield AkkaHttpControllerApi.resource(a.uri, a.userAndPassword, name = s"JournaledProxy-$i")
-        val proxyEventBus = new StandardEventBus[ProxyEvent]
-        val eventBus = new JournaledStateEventBus[ControllerState]
-        val proxy = ControllerProxy(apiResources, proxyEventBus.publish, eventBus.publish)
+        val api = new ControllerApi(apiResources)
+        val proxy = api.startProxy().await(99.s)
         try {
-          val hotObservable = proxy.observe.publish
-          val observing = hotObservable.connect()
-
           def runOrder(orderId: OrderId): Unit = {
-            val whenFinished = hotObservable
+            val whenFinished = proxy.observable
               .find {
                 case EventAndState(Stamped(_, _, KeyedEvent(`orderId`, _: OrderFinished)), _) => true
                 case _ => false
               }
+              .timeoutOnSlowUpstream(99.s)
               .headL.runToFuture
-            proxy.addOrder(FreshOrder(orderId, JournaledProxyTest.workflow.path)).await(99.s).orThrow
+            api.addOrder(FreshOrder(orderId, JournaledProxyTest.workflow.path)).await(99.s).orThrow
             whenFinished await 99.s
           }
 
@@ -138,8 +133,6 @@ final class JournaledProxyClusterTest extends AnyFreeSpec
           backup.waitUntilReady()
           backup = backupDirectoryProvider.startController(httpPort = Some(backupPort)) await 99.s
           runOrder(OrderId("ORDER-ON-BACKUP-RESTARTED"))
-
-          observing.cancel()
         } finally {
           proxy.stop.runToFuture await 99.s
           Akkas.terminateAndWait(actorSystem)

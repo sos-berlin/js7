@@ -142,7 +142,7 @@ extends JournaledState[ControllerState]
     s"ControllerState(${EventId.toString(eventId)} ${idToOrder.size} orders, Repo(${repo.currentVersionSize} objects, ...))"
 }
 
-object ControllerState
+object ControllerState extends JournaledState.Companion[ControllerState]
 {
   val Undefined = ControllerState(
     EventId.BeforeFirst,
@@ -152,16 +152,12 @@ object ControllerState
     Map.empty,
     Map.empty)
 
-  implicit val journaledStateCompanion: JournaledState.Companion[ControllerState] =
-    new JournaledState.Companion[ControllerState] {
-      val name = "ControllerState"
-      val empty = Undefined
-      implicit val snapshotObjectJsonCodec = ControllerSnapshots.SnapshotJsonCodec
-      implicit val keyedEventJsonDecoder = ControllerKeyedEventJsonCodec
+  val name = "ControllerState"
+  val empty = Undefined
+  implicit val snapshotObjectJsonCodec = ControllerSnapshots.SnapshotJsonCodec
+  implicit val keyedEventJsonDecoder = ControllerKeyedEventJsonCodec
 
-      def fromObservable(snapshotObjects: Observable[Any]) =
-        ControllerState.fromObservable(snapshotObjects)
-    }
+  implicit val journaledStateCompanion: JournaledState.Companion[ControllerState] = ControllerState
 
   def fromIterator(snapshotObjects: Iterator[Any]): ControllerState = {
     val builder = new ControllerStateBuilder

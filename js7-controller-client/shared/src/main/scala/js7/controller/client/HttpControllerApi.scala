@@ -13,7 +13,7 @@ import js7.controller.client.HttpControllerApi._
 import js7.controller.data.{ControllerCommand, ControllerOverview, ControllerSnapshots}
 import js7.data.agent.AgentRef
 import js7.data.cluster.{ClusterNodeState, ClusterState}
-import js7.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
+import js7.data.event.{Event, EventApi, EventId, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
 import js7.data.fatevent.FatEvent
 import js7.data.order.{FreshOrder, Order, OrdersOverview}
 import js7.data.workflow.Workflow
@@ -25,7 +25,7 @@ import scala.reflect.runtime.universe._
 import scodec.bits.ByteVector
 
 trait HttpControllerApi
-extends ControllerApi with HttpSessionApi with HasIsIgnorableStackTrace
+extends EventApi with HttpSessionApi with HasIsIgnorableStackTrace
 {
   def httpClient: HttpClient
   /** Host URI or empty for addressing base on "controller/" */

@@ -24,7 +24,7 @@ extends JavaWrapper
   def subscribe[E1 <: E](
     eventClasses: java.lang.Iterable[Class[_ <: E1]],
     callback: java.util.function.Consumer[E1])
-  : AutoCloseable = {
+  : EventSubscription = {
     val subscription = newSubscription(eventClasses, callback)
     addSubscription(subscription)
     subscription

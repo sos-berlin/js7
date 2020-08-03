@@ -4,13 +4,11 @@ import io.circe.Encoder
 import io.circe.syntax._
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.circeutils.CirceUtils._
-import js7.base.eventbus.StandardEventBus
 import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.measureTimeOfSingleRun
 import js7.base.time.{Stopwatch, Timestamp}
-import js7.base.utils.Lazy
 import js7.common.configutils.Configs._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
@@ -19,7 +17,6 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.time.WaitForCondition.waitForCondition
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.client.AkkaHttpControllerApi
-import js7.controller.data.ControllerState
 import js7.data.agent.AgentRefPath
 import js7.data.controller.ControllerFileBaseds.jsonCodec
 import js7.data.event.{KeyedEvent, Stamped}
@@ -29,9 +26,9 @@ import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.parser.WorkflowParser
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.proxy.ControllerApi
 import js7.proxy.javaapi.data.JHttpsConfig
 import js7.proxy.javaapi.{JAdmission, JCredentials}
-import js7.proxy.{ControllerProxy, JournaledStateEventBus, ProxyEvent}
 import js7.tests.controller.proxy.JournaledProxyTest._
 import js7.tests.testenv.DirectoryProvider.script
 import js7.tests.testenv.DirectoryProviderForScalaTest
@@ -67,13 +64,10 @@ final class JournaledProxyTest extends AnyFreeSpec with DirectoryProviderForScal
   "JournaledProxy[ControllerState]" in {
     directoryProvider.run { (controller, _) =>
       val controllerApiResource = AkkaHttpControllerApi.separateAkkaResource(controller.localUri, Some(userAndPassword), name = "JournaledProxy")
-      val proxyEventBus = new StandardEventBus[ProxyEvent]
-      val controllerEventBus = new JournaledStateEventBus[ControllerState]
-      val proxy = ControllerProxy.start(controllerApiResource :: Nil, proxyEventBus.publish, controllerEventBus.publish)
-        .await(99.s)
+      val proxy = new ControllerApi(controllerApiResource :: Nil).startProxy().await(99.s)
       try {
-        val whenProcessed = controllerEventBus.when[OrderProcessed].runToFuture
-        val whenFinished = controllerEventBus.when[OrderFinished.type].runToFuture
+        val whenProcessed = proxy.eventBus.when[OrderProcessed].runToFuture
+        val whenFinished = proxy.eventBus.when[OrderFinished.type].runToFuture
         controller.addOrder(FreshOrder(OrderId("🔺"), workflow.id.path)).runAsyncAndForget
 
         val processed = whenProcessed.await(99.s)
@@ -88,18 +82,16 @@ final class JournaledProxyTest extends AnyFreeSpec with DirectoryProviderForScal
   "JControllerProxy with Flux" in {
     directoryProvider.runAgents() { _ =>
       val port = findFreeTcpPort()
-      val controller = Lazy { directoryProvider.startController(httpPort = Some(port)).await(99.s) }
+      val controller = directoryProvider.startController(httpPort = Some(port)).await(99.s)
       try {
         val admissions = List(JAdmission.of(s"http://127.0.0.1:$port", primaryCredentials)).asJava
         val tester = new JControllerFluxTester(admissions, JHttpsConfig.empty)
-        tester.test(() => controller())
-        tester.testReusage()
+        tester.test()
         tester.close()
-      } finally
-        for (controller <- controller) {
-          controller.terminate() await 99.s
-          controller.close()
-        }
+      } finally {
+        controller.terminate() await 99.s
+        controller.close()
+      }
     }
   }
 
@@ -113,7 +105,7 @@ final class JournaledProxyTest extends AnyFreeSpec with DirectoryProviderForScal
     val n = calculateNumberOf[FileBased](workflow.withId(WorkflowPath("/WORKFLOW-XXXXX") ~ versionId))
     directoryProvider.runController() { controller =>
       val controllerApiResource = AkkaHttpControllerApi.separateAkkaResource(controller.localUri, Some(userAndPassword), name = "JournaledProxy")
-      val proxy = ControllerProxy(controllerApiResource :: Nil)
+      val api = new ControllerApi(controllerApiResource :: Nil)
       val workflowPaths = (1 to n).map(i => WorkflowPath(s"/WORKFLOW-$i"))
       val sw = new Stopwatch
       val operations = Observable.fromIterable(workflowPaths)
@@ -122,16 +114,16 @@ final class JournaledProxyTest extends AnyFreeSpec with DirectoryProviderForScal
             sign(workflow.copy(id = path ~ versionId)))))
           .toListL await 99.s
       logger.info(sw.itemsPerSecondString(n, "signatures"))
+      val logLine = measureTimeOfSingleRun(n, "workflows") {
+        api.updateRepo(versionId, Observable.fromIterable(operations))
+          .await(999.s).orThrow
+      }
+      logger.info(logLine.toString)
+      // TODO Await Event
+      val proxy = api.startProxy().await(99.s)
       try {
-        val logLine = measureTimeOfSingleRun(n, "workflows") {
-          proxy.updateRepo(versionId, Observable.fromIterable(operations))
-            .await(999.s).orThrow
-        }
-        logger.info(logLine.toString)
-        proxy.startObserving await 99.s
-        // TODO Await Event
-        waitForCondition(30.s, 50.ms)(proxy.currentState._2.repo.currentTyped[Workflow].sizeIs == n + 1)
-        assert(proxy.currentState._2.repo.currentTyped[Workflow].keys.toVector.sorted == (
+        waitForCondition(30.s, 50.ms)(proxy.currentState.repo.currentTyped[Workflow].sizeIs == n + 1)
+        assert(proxy.currentState.repo.currentTyped[Workflow].keys.toVector.sorted == (
           workflowPaths :+ JournaledProxyTest.workflow.path).sorted)
       } finally proxy.stop await 99.s
     }
@@ -143,19 +135,19 @@ final class JournaledProxyTest extends AnyFreeSpec with DirectoryProviderForScal
     val n = calculateNumberOf(Stamped(0L, bigOrder.toOrderAdded(workflow.id.versionId): KeyedEvent[OrderEvent]))
     directoryProvider.runController() { controller =>
       val controllerApiResource = AkkaHttpControllerApi.separateAkkaResource(controller.localUri, Some(userAndPassword), name = "JournaledProxy")
-      val proxy = ControllerProxy(controllerApiResource :: Nil)
+      val api = new ControllerApi(controllerApiResource :: Nil)
       val orderIds = (1 to n).map(i => OrderId(s"ORDER-$i"))
+      val logLine = measureTimeOfSingleRun(n, "orders") {
+        api.addOrders(
+          Observable.fromIterable(orderIds)
+            .map(orderId => bigOrder.copy(id = orderId))
+        ).await(199.s).orThrow
+      }
+      logger.info(logLine.toString)
+      val proxy = api.startProxy().await(99.s)
       try {
-        val logLine = measureTimeOfSingleRun(n, "orders") {
-          proxy.addOrders(
-            Observable.fromIterable(orderIds)
-              .map(orderId => bigOrder.copy(id = orderId))
-          ).await(199.s).orThrow
-        }
-        logger.info(logLine.toString)
-        proxy.startObserving await 99.s
-        waitForCondition(30.s, 50.ms)(proxy.currentState._2.idToOrder.sizeIs == n)
-        assert(proxy.currentState._2.idToOrder.keys.toVector.sorted == orderIds.sorted)
+        waitForCondition(30.s, 50.ms)(proxy.currentState.idToOrder.sizeIs == n)
+        assert(proxy.currentState.idToOrder.keys.toVector.sorted == orderIds.sorted)
       } finally proxy.stop await 99.s
     }
   }
