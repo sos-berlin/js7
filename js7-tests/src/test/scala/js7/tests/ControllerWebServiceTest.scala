@@ -512,7 +512,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         .toListL await 99.s  // Delete AgentSnapshot in `array` (for easy comparison)
     val controllerMetaState = shortenedArray.iterator.map(_.as(SnapshotJsonCodec).orThrow)
       .collectFirst { case o: ControllerMetaState => o }.get
-    assert(Json.fromValues(shortenedArray) == json"""[
+    assert(shortenedArray.toSet/*ignore ordering*/ == json"""[
       {
         "TYPE": "SnapshotEventId",
         "eventId": $orderFinishedEventId
@@ -568,7 +568,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           }
         }
       }
-    ]""")   // Any orders would be added to `array`.
+    ]""".asArray.get.toSet)   // Any orders would be added to `array`.
   }
 
   "/controller/api/event (only JSON)" in {

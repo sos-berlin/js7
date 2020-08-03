@@ -249,7 +249,7 @@ final case class Repo private(
   private[filebased] def toEvents: Seq[RepoEvent] = {
     type DeletedOrUpdated = Either[TypedPath/*deleted*/, Signed[FileBased/*added/updated*/]]
     val versionToChanges: Map[VersionId, Seq[DeletedOrUpdated]] =
-      pathToVersionToSignedFileBased.toVector.sortBy(_._1)/*for testing*/
+      pathToVersionToSignedFileBased.toVector
         .flatMap { case (path, entries) =>
           entries.map(entry =>
             entry.versionId -> entry.maybeSignedFileBased.fold[DeletedOrUpdated](Left(path))(Right.apply))
