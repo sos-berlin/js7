@@ -99,7 +99,7 @@ trait JournaledStateBuilder[S <: JournaledState[S]]
       val age = (Timestamp.now - EventId.toTimestamp(eventId)).withMillis(0).pretty
       val t = (stopwatch.duration >= 10.s) ?? s" in ${stopwatch.duration.pretty}"
       scribe.info(s"Recovered last EventId is ${EventId.toString(eventId)}, emitted $age ago " +
-        s"($snapshotCount snapshot elements and $eventCount events read$t)")
+        s"($snapshotCount snapshot objects and $eventCount events read$t)")
     }
   }
 

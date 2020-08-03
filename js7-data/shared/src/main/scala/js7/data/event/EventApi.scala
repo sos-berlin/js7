@@ -32,7 +32,7 @@ with HasIsIgnorableStackTrace
       val startedAt = now
       snapshot
         .logTiming(startedAt = startedAt, onComplete = (d, n, exitCase) =>
-          scribe.debug(s"$S snapshot received $exitCase · ${itemsPerSecondString(d, n, "objects")}"))
+          scribe.debug(s"$S snapshot receive $exitCase - ${itemsPerSecondString(d, n, "objects")}"))
         .flatMap {
           case Left(problem) => Task.pure(Left(problem))
           case Right(obs) => S.fromObservable(obs).map(Right(_))

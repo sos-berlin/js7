@@ -94,7 +94,7 @@ final class EventRouteTest extends AnyFreeSpec with RouteTester with EventRoute
   "/event application/x-ndjson with after=unknown fails" in {
     Get(s"/event?after=5") ~> Accept(`application/x-ndjson`) ~> route ~> check {
       assert(status == BadRequest)
-      assert(response.utf8StringFuture.await(99.s) == s"EventSeqTorn: Requested EventId after=5 is not available. Oldest available EventId is 0\n")
+      assert(response.utf8StringFuture.await(99.s) == s"EventSeqTorn: Requested EventId after=5/1970-01-01T00:00:00.000Z.005 is not available. Oldest available EventId is 0/BeforeFirst\n")
     }
   }
 

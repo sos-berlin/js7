@@ -14,7 +14,7 @@ import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkautils.Akkas
 import js7.common.commandline.CommandLineArguments
 import js7.common.http.JsonStreamingSupport.{NdJsonStreamingSupport, jsonSeqMarshaller}
-import js7.common.log.ScribeUtils
+import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.data.ControllerSnapshots.SnapshotJsonCodec
 import js7.controller.data.ControllerState
@@ -60,7 +60,7 @@ object TestControllerProxy
   def main(args: Array[String]): Unit = {
     implicit def scheduler = Scheduler.global
     println(s"${LocalDateTime.now.toString.replace('T', ' ')} JS7 TestControllerProxy ${BuildInfo.prettyVersion}")
-    ScribeUtils.coupleScribeWithSlf4j()
+    coupleScribeWithSlf4j()
     CommandLineArguments.parse(args.toSeq) { arguments =>
       val controllerUri = arguments.as[Uri]("--controller-uri=")
       val httpPort = arguments.as[Int]("--http-port=")

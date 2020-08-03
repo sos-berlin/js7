@@ -7,8 +7,8 @@ import js7.base.problem.Problem
   */
 final case class EventSeqTornProblem(requestedAfter: EventId, tornEventId: EventId) extends Problem.Coded {
   def arguments = Map(
-    "requestedAfter" -> requestedAfter.toString,
-    "tornEventId" -> tornEventId.toString)
+    "requestedAfter" -> EventId.toString(requestedAfter),
+    "tornEventId" -> EventId.toString(tornEventId))
 }
 
 object EventSeqTornProblem extends Problem.Coded.Companion

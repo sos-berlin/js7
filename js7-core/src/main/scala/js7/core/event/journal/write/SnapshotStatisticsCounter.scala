@@ -19,15 +19,15 @@ private[journal] final class SnapshotStatisticsCounter extends StatisticsCounter
     _fileLength = fileLength
 
   override def toString =
-    if (snapshots == 0) "(no snapshot elements)"
-    else s"$snapshots snapshot elements" //+ (if (syncs > 0) s", $syncs syncs" else "")
+    if (snapshots == 0) "(no snapshot objects)"
+    else s"$snapshots snapshot objects" //+ (if (syncs > 0) s", $syncs syncs" else "")
 
   def debugString: Option[String] =
     (snapshots > 0 && stopwatch.duration >= 1.s) ? timingString
 
   protected def timingString = {
     val duration = stopwatch.duration
-    itemsPerSecondString(duration, snapshots, "snapshot elements") + ", " +
+    itemsPerSecondString(duration, snapshots, "snapshot objects") + ", " +
       bytesPerSecondString(duration, _fileLength) + " written"
   }
 }

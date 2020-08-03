@@ -105,7 +105,7 @@ final class JournaledProxyClusterTest extends AnyFreeSpec
         var backup = controllers(1)
         implicit val actorSystem = newActorSystem("JournaledProxyClusterTest")
         val apiResources = for ((a, i) <- admissions.zipWithIndex)
-          yield AkkaHttpControllerApi.resource(a.uri, a.userAndPassword, name = s"JournaledProxy-$i")
+          yield AkkaHttpControllerApi.resource(a.uri, a.userAndPassword, name = s"JournaledProxyClusterTest-Controller-$i")
         val api = new ControllerApi(apiResources)
         val proxy = api.startProxy().await(99.s)
         try {

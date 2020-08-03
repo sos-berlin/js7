@@ -19,6 +19,9 @@ extends HasCloser
 {
   def this() = this(ConfigFactory.empty)
 
+  coupleScribeWithSlf4j()
+  ProblemCodeMessages.initialize()
+
   private val config_ = config
     .withFallback(ConfigFactory.systemProperties)
     .withFallback(ProxyConfs.defaultConfig)
@@ -38,13 +41,7 @@ extends HasCloser
   def newControllerApi(admissions: java.lang.Iterable[JAdmission], httpsConfig: JHttpsConfig): JControllerApi = {
     if (admissions.asScala.isEmpty) throw new IllegalArgumentException("admissions argument must not be empty")
     val apiResources = for ((a, i) <- admissions.asScala.map(_.underlying).zipWithIndex.toSeq)
-      yield AkkaHttpControllerApi.resource(a.uri, a.userAndPassword, httpsConfig.toScala, name = s"JournaledProxy-$i")
+      yield AkkaHttpControllerApi.resource(a.uri, a.userAndPassword, httpsConfig.toScala, name = s"JournaledProxy-Controller-$i")
     new JControllerApi(apiResources, new ControllerApi(apiResources, proxyConf), proxyConf)
   }
-}
-
-object JProxyContext
-{
-  coupleScribeWithSlf4j()
-  ProblemCodeMessages.initialize()
 }

@@ -33,7 +33,7 @@ extends JournalWriter(after = after, append = false)
 
   def closeAndLog(): Unit = {
     super.close()
-    logger.debug(s"Snapshot finished, $fileSizeString written ($snapshotCount snapshot objects in ${runningSince.elapsed.pretty})")
+    logger.debug(s"Snapshot finished - " + itemsPerSecondString(runningSince.elapsed, snapshotCount, "objects"))
     for (o <- statistics.debugString) logger.debug(o)
   }
 

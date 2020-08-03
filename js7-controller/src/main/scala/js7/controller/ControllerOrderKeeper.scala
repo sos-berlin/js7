@@ -432,7 +432,7 @@ with MainJournalingActor[ControllerState, Event]
           applyRepoEvents(repoEvents)
             .traverse((effect: SyncIO[Future[Completed]]) =>
               (SyncIO(if (t.elapsed > 1.s)
-                logger.debug(s"RepoEvent calculation: ${Stopwatch.itemsPerSecondString(t.elapsed, repoEvents.size, "items")}")
+                logger.debug(s"RepoEvents calculated - ${Stopwatch.itemsPerSecondString(t.elapsed, repoEvents.size, "items")}")
               ) >>
                 effect
               ).unsafeRunSync())  // Persist events!

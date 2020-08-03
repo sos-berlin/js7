@@ -66,6 +66,8 @@ final class DirectoryProvider(
   suppressRepo: Boolean = false)
 extends HasCloser
 {
+  coupleScribeWithSlf4j()
+
   val directory = useDirectory.getOrElse(
     createTempDirectory(testName.fold("test-")(_ + "-"))
       .withCloser { dir =>
@@ -207,8 +209,6 @@ extends HasCloser
 
 object DirectoryProvider
 {
-  coupleScribeWithSlf4j()
-
   val Vinitial = VersionId("INITIAL")
 
   sealed trait Tree {

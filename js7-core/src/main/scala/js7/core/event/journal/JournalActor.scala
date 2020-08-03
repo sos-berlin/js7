@@ -620,11 +620,11 @@ extends Actor with Stash
 
         case Internal.LogSnapshotProgress =>
           val limit = remaining.size min conf.snapshotLogProgressActorLimit
-          logger.info(s"Writing journal snapshot for ${snapshotRunningSince.elapsed.pretty}, ${remaining.size} snapshot elements remaining" +
+          logger.info(s"Writing journal snapshot for ${snapshotRunningSince.elapsed.pretty}, ${remaining.size} snapshot objects remaining" +
             (if (limit == remaining.size) "" else s" (showing $limit actors)") +
             ":")
           for (o <- remaining take limit) {
-            logger.info(s"... awaiting snapshot element from actor ${o.path.pretty}")
+            logger.info(s"... awaiting snapshot object from actor ${o.path.pretty}")
           }
 
         case _ => stash()
