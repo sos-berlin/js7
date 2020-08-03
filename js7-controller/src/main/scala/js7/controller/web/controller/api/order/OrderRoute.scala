@@ -57,7 +57,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                   .mapParallelOrderedBatch()(_
                     .decodeUtf8.orThrow
                     .parseJsonCheckedAs[FreshOrder].orThrow)
-                  .toListL
+                  .toL(Vector)
                   .flatMap(orderApi.addOrders)
                   .map[ToResponseMarshallable](_.map((_: Completed) =>
                     OK -> emptyJsonObject)))

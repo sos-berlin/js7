@@ -4,6 +4,7 @@ import cats.syntax.option._
 import java.nio.file.Path
 import js7.base.auth.UserAndPassword
 import js7.base.convert.AsJava.StringAsPath
+import js7.base.monixutils.MonixBase.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
 import js7.base.utils.AutoClosing.autoClosing
@@ -66,7 +67,7 @@ final class TestAddWorkflows(settings: Settings)
         val workflows = for (i <- is) yield workflow0.withId(WorkflowPath(s"/WORKFLOW-$i") ~ v)
         UpdateRepo(v, workflows map signer.sign)
       }
-    ).toListL.await(99.s)
+    ).toL(Vector).await(99.s)
   }
 
   private def executeCommands(uri: Uri, commands: Seq[UpdateRepo]): Unit =

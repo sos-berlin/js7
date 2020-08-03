@@ -5,7 +5,8 @@ import js7.base.monixutils.MonixBase._
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
-import js7.base.time.Timestamp
+import js7.base.time.Stopwatch.measureTimeOfSingleRun
+import js7.base.time.{Stopwatch, Timestamp}
 import js7.base.utils.CloseableIterator
 import monix.eval.Task
 import monix.execution.Cancelable
@@ -135,50 +136,64 @@ final class MonixBaseTest extends AsyncFreeSpec
       .runToFuture
   }
 
-  "mapParallelOrderedBatch" in {
-    val n = 7777
-    Observable.range(0, n)
-      //.mapParallelOrderedBatch()(o => {println(s"### $o"); o * -1})
-      .mapParallelOrdered(sys.runtime.availableProcessors)(o => Task(o * -1))
-      .toListL
-      .map(list => assert(list == (0 until n).map(_ * -1)))
-      .runToFuture
-  }
+  "Observable" - {
+    "to(List)" in {
+      Observable(1, 2, 3).toL(List)
+        .map((o: List[Int]) => assert(o  == List(1, 2, 3)))
+        .runToFuture
+    }
 
-  "mapParallelUnorderedBatch" in {
-    val n = 7777
-    Observable.range(0, n)
-      .mapParallelUnorderedBatch()(_ * -1)
-      .toListL
-      .map(list => assert(list.toSet == (0 until n).map(_ * -1).toSet))
-      .runToFuture
-  }
+    "to(Vector)" in {
+      Observable(1, 2, 3).toL(Vector)
+        .map((o: Vector[Int]) => assert(o  == Vector(1, 2, 3)))
+        .runToFuture
+    }
 
-  "logTiming" in {
-    val n = 7777
-    var duration: FiniteDuration = null
-    var count: Long = 0
-    var exitCase: ExitCase[Throwable] = null
-    Observable.range(0, n)
-      .logTiming(_ => 2, (d, n, e) => {
-        duration = d
-        count = n
-        exitCase = e
-      })
-      .completedL
-      .map(_ => assert(duration > 0.s && count == 2 * n && exitCase == ExitCase.Completed))
-      .runToFuture
-  }
+    "mapParallelOrderedBatch" in {
+      val n = 7777
+      Observable.range(0, n)
+        //.mapParallelOrderedBatch()(o => {println(s"### $o"); o * -1})
+        .mapParallelOrdered(sys.runtime.availableProcessors)(o => Task(o * -1))
+        .toListL
+        .map(list => assert(list == (0 until n).map(_ * -1)))
+        .runToFuture
+    }
 
-  //"takeUntil memory leak" in {
-  //  val promise = Promise[Unit]()
-  //  val stop = Observable.empty //Observable.fromFuture(promise.future)  // Memory leak - doesn't matter if called only once
-  //  val obs = Observable.tailRecM(10000000) {
-  //    case 0 => Observable.pure(Right(()))
-  //    case i => Observable.pure(Left(i - 1)) takeUntilEval Task.never
-  //  }
-  //  obs.completedL
-  //    .map(_ => assert(true))
-  //    .runToFuture
-  //}
+    "mapParallelUnorderedBatch" in {
+      val n = 7777
+      Observable.range(0, n)
+        .mapParallelUnorderedBatch()(_ * -1)
+        .toListL
+        .map(list => assert(list.toSet == (0 until n).map(_ * -1).toSet))
+        .runToFuture
+    }
+
+    "logTiming" in {
+      val n = 7777
+      var duration: FiniteDuration = null
+      var count: Long = 0
+      var exitCase: ExitCase[Throwable] = null
+      Observable.range(0, n)
+        .logTiming(_ => 2, (d, n, e) => {
+          duration = d
+          count = n
+          exitCase = e
+        })
+        .completedL
+        .map(_ => assert(duration > 0.s && count == 2 * n && exitCase == ExitCase.Completed))
+        .runToFuture
+    }
+
+    //"takeUntil memory leak" in {
+    //  val promise = Promise[Unit]()
+    //  val stop = Observable.empty //Observable.fromFuture(promise.future)  // Memory leak - doesn't matter if called only once
+    //  val obs = Observable.tailRecM(10000000) {
+    //    case 0 => Observable.pure(Right(()))
+    //    case i => Observable.pure(Left(i - 1)) takeUntilEval Task.never
+    //  }
+    //  obs.completedL
+    //    .map(_ => assert(true))
+    //    .runToFuture
+    //}
+  }
 }

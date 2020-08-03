@@ -19,6 +19,7 @@ import js7.agent.scheduler.order.{AgentOrderKeeper, OrderJournalRecoverer}
 import js7.base.auth.UserId
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.generic.Completed
+import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
 import js7.base.utils.Assertions.assertThat
@@ -78,7 +79,7 @@ extends MainJournalingActor[AgentServerState, AgentEvent] {
   private def terminating = shutDownCommand.isDefined
   private val terminateCompleted = Promise[Completed]()
 
-  def snapshots = state.toSnapshotObservable.toListL.runToFuture
+  def snapshots = state.toSnapshotObservable.toL(Vector).runToFuture
 
   override def preStart() = {
     super.preStart()

@@ -1,10 +1,11 @@
 package js7.controller.repo
 
 import cats.instances.either._
-import cats.instances.list._
+import cats.instances.vector._
 import cats.syntax.traverse._
 import js7.base.auth.UpdateRepoPermission
 import js7.base.crypt.{Signed, SignedString}
+import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked
 import js7.base.utils.Collections.implicits._
 import js7.common.scalautil.Logger
@@ -30,7 +31,7 @@ final class RepoCommandExecutor(fileBasedVerifier: FileBasedVerifier[FileBased])
       .flatMapF(_ =>
         Observable.fromIterable(replaceRepo.objects)
           .mapParallelOrdered(sys.runtime.availableProcessors)(o => Task(verify(o)))
-          .toListL
+          .toL(Vector)
           .map(_
             .sequence
             .flatMap(signedFileBasedSeq => repo.fileBasedToEvents(replaceRepo.versionId, signedFileBasedSeq,
@@ -44,7 +45,7 @@ final class RepoCommandExecutor(fileBasedVerifier: FileBasedVerifier[FileBased])
       .flatMapF(_ =>
         Observable.fromIterable(updateRepo.change)
           .mapParallelOrdered(sys.runtime.availableProcessors)(o => Task(verify(o)))
-          .toListL
+          .toL(Vector)
           .map(_
             .sequence
             .flatMap(repo.fileBasedToEvents(updateRepo.versionId, _, updateRepo.delete))))

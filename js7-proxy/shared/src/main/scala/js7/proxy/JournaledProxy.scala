@@ -8,7 +8,7 @@ import cats.syntax.option._
 import cats.syntax.traverse._
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.durationOfTask
-import js7.base.monixutils.MonixBase.syntax.RichCheckedTask
+import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
@@ -244,13 +244,13 @@ object JournaledProxy
             })
             .merge
             .takeWhileInclusive(o => !o._2.exists(_.isActive))
-            .toListL
-            .flatMap { list =>
-              val maybeActive = list.lastOption match {
+            .toL(Vector)
+            .flatMap { seq =>
+              val maybeActive = seq.lastOption match {
                 case Some((api, Right(clusterNodeState))) if clusterNodeState.isActive =>
                   Some(api -> clusterNodeState)
                 case _ =>
-                  list collectFirst { case (api, Right(clusterNodeState)) => api -> clusterNodeState }
+                  seq collectFirst { case (api, Right(clusterNodeState)) => api -> clusterNodeState }
               }
 
               val logoutOthers = apisAndFutures

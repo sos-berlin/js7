@@ -4,6 +4,7 @@ import akka.util.ByteString
 import java.nio.file.Path
 import js7.base.circeutils.CirceUtils._
 import js7.base.time.ScalaTime._
+import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.common.scalautil.Logger
 import js7.core.event.journal.data.JournalMeta
 import js7.core.event.journal.files.JournalFiles._

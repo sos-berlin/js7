@@ -12,6 +12,8 @@ import monix.eval.Task
 import monix.execution.cancelables.MultiAssignCancelable
 import monix.execution.{Cancelable, Scheduler}
 import monix.reactive.{Observable, OverflowStrategy}
+import scala.annotation.unchecked.uncheckedVariance
+import scala.collection.{Seq, SeqFactory, SeqOps}
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.concurrent.{Future, TimeoutException}
@@ -52,6 +54,9 @@ object MonixBase
 
     implicit class RichMonixObservable[A](private val underlying: Observable[A]) extends AnyVal
     {
+      def toL[Col[x] <: SeqOps[x, Seq, Seq[x]]](implicit factory: SeqFactory[Col]): Task[Col[A @uncheckedVariance]] =
+        underlying.foldLeftL(factory.newBuilder[A])(_ += _).map(_.result())
+
       // Copied from Monix echoRepeated
       /** Mirror the source observable as long as the source keeps emitting
         * items, otherwise if `timeout` passes without the source emitting

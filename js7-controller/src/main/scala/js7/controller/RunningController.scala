@@ -14,6 +14,7 @@ import java.nio.file.Path
 import js7.base.auth.{SimpleUser, UserAndPassword}
 import js7.base.eventbus.{EventPublisher, StandardEventBus}
 import js7.base.generic.Completed
+import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
@@ -142,7 +143,7 @@ extends AutoCloseable
       .takeWhile(_.value.key == order.id)
       .map(o => o.copy(value = o.value.event))
       .takeWhileInclusive(o => !o.value.isInstanceOf[OrderFinished])
-      .toListL
+      .toL(Vector)
       .await(timeout)
   }
 
