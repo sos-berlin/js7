@@ -8,7 +8,6 @@ import js7.controller.data.events.ControllerAgentEvent.{AgentCouplingFailed, Age
 import js7.controller.data.events.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.controller.data.events.{ControllerAgentEvent, ControllerEvent, ControllerKeyedEventJsonCodec}
 import js7.data.agent.AgentRefPath
-import js7.data.controller.ControllerItems
 import js7.data.controller.ControllerItems.ControllerTypedPathCompanions
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.SnapshotMeta.SnapshotEventId
@@ -155,7 +154,7 @@ object ControllerState extends JournaledState.Companion[ControllerState]
     EventId.BeforeFirst,
     JournaledState.Standards.empty,
     ControllerMetaState.Undefined,
-    Repo.ofJsonDecoder(ControllerItems.jsonCodec),
+    Repo.empty,
     Map.empty,
     Map.empty)
 

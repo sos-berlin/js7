@@ -89,7 +89,7 @@ private object JControllerStateTest
           NodeId("B") -> Uri("http://B")),
         NodeId("A"))),
     ControllerMetaState(ControllerId("CONTROLLER-ID"), Timestamp("2019-05-24T12:00:00Z"), timezone = "Europe/Berlin"),
-    Repo.ofJsonDecoder(ControllerItems.jsonCodec)
+    Repo.empty
       .applyEvents(List(
         VersionAdded(versionId),
         itemSigner.toAddedEvent(agentRef),

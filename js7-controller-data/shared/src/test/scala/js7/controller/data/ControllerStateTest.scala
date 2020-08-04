@@ -11,7 +11,7 @@ import js7.controller.data.agent.AgentSnapshot
 import js7.data.agent.AgentRefPath
 import js7.data.cluster.ClusterState
 import js7.data.cluster.ClusterState.ClusterStateSnapshot
-import js7.data.controller.{ControllerId, ControllerItems}
+import js7.data.controller.ControllerId
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{EventId, JournalState, JournaledState}
 import js7.data.item.RepoEvent.VersionAdded
@@ -39,7 +39,7 @@ final class ControllerStateTest extends AsyncFreeSpec
           NodeId("B") -> Uri("http://B")),
         NodeId("A"))),
     ControllerMetaState(ControllerId("CONTROLLER-ID"), Timestamp("2019-05-24T12:00:00Z"), timezone = "Europe/Berlin"),
-    Repo.ofJsonDecoder(ControllerItems.jsonCodec).applyEvent(VersionAdded(VersionId("1.0"))).orThrow,
+    Repo.empty.applyEvent(VersionAdded(VersionId("1.0"))).orThrow,
     (AgentSnapshot(AgentRefPath("/AGENT"), None, EventId(7)) :: Nil).toKeyedMap(_.agentRefPath),
     (Order(OrderId("ORDER"), WorkflowPath("/WORKFLOW") /: Position(1), Order.Fresh(None)) :: Nil).toKeyedMap(_.id))
 

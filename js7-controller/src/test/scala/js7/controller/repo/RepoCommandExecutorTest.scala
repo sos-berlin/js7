@@ -37,7 +37,7 @@ final class RepoCommandExecutorTest extends AnyFreeSpec
   private val workflow3 = workflow2 withVersion v3
   private val commandMeta = CommandMeta(SimpleUser(UserId("PROVIDER")).copy(grantedPermissions = Set(UpdateRepoPermission)))
 
-  private var repo = Repo.ofJsonDecoder(ControllerItems.jsonCodec)
+  private var repo = Repo.empty
 
   "replaceRepoCommandToEvents requires UpdateRepo permission" in {
     val commandMeta = CommandMeta(SimpleUser(UserId("HACKER")))

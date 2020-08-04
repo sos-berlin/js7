@@ -3,7 +3,6 @@ package js7.data.item
 import cats.instances.either._
 import cats.instances.vector._
 import cats.syntax.traverse._
-import io.circe.Decoder
 import js7.base.crypt.Signed
 import js7.base.problem.Checked._
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
@@ -318,9 +317,7 @@ final case class Repo private(
 
 object Repo
 {
-  @deprecated
-  def ofJsonDecoder(itemJsonDecoder: Decoder[InventoryItem]): Repo =
-    new Repo(Nil, Set.empty, Map.empty, None)
+  val empty = new Repo(Nil, Set.empty, Map.empty, None)
 
   def signatureVerifying(itemVerifier: InventoryItemVerifier[InventoryItem]): Repo =
     new Repo(Nil, Set.empty, Map.empty, Some(itemVerifier))
