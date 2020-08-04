@@ -10,14 +10,12 @@ import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.durationOfTask
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
-import js7.base.problem.Problem
+import js7.base.problem.{Problem, ProblemException}
 import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.ScalaUtils.ifCast
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.base.web.HttpClient
-import js7.base.web.HttpClient.HttpException
 import js7.common.http.RecouplingStreamReader
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.data.event.{AnyKeyedEvent, Event, EventApi, EventId, EventRequest, EventSeqTornProblem, JournaledState, NoKeyEvent, Stamped}
@@ -126,19 +124,25 @@ object JournaledProxy
                     maybeState.fold(api.snapshotAs[S])(s => Task.pure(Right(s)))))
                 .map(o => o._1.orThrow/*TODO What happens then?*/ -> o._2)
                 .flatMap { case (state, stateFetchDuration) =>
+                  var lastState = state
                   observeWithState(api, state, stateFetchDuration)
+                    .map { o =>
+                      lastState = o.state
+                      o
+                    }
                     .map(Right.apply)
                     .onErrorHandleWith { t =>
-                      val continueWithState =
-                        if (ifCast[HttpException](t).flatMap(_.problem).exists(_ is EventSeqTornProblem)) {
+                      val continueWithState = t match {
+                        case t: ProblemException if t.problem is EventSeqTornProblem =>
                           scribe.error(t.toStringWithCauses)
                           scribe.warn("Restarting observation from a new snapshot, loosing some events")
                           None
-                        } else {
-                          scribe.warn(t.toStringWithCauses, t.nullIfNoStackTrace)
-                          scribe.debug("Restarting observation and try to continue seamlessly")
-                          Some(state)
-                        }
+                        case t =>
+                          scribe.warn(t.toStringWithCauses)
+                          if (t.getStackTrace.nonEmpty) scribe.debug(t.toStringWithCauses, t.nullIfNoStackTrace)
+                          scribe.debug(s"Restarting observation and try to continue seamlessly after=${EventId.toString(state.eventId)}")
+                          Some(lastState)
+                      }
                       Observable.pure(Left(continueWithState)/*TODO Observable.tailRecM: Left leaks memory, https://github.com/monix/monix/issues/791*/)
                         .delayExecution(1.s/*TODO*/)
                     }
@@ -177,7 +181,7 @@ object JournaledProxy
       HttpClient.liftProblem(
         api.eventObservable(
           EventRequest.singleClass[Event](after = after, delay = 1.s,
-            tornOlder = proxyConf.tornOlder.map(_ + addToTornOlder),
+            tornOlder = proxyConf.tornOlder.map(o => (o + addToTornOlder).roundUpToNext(100.ms)),
             timeout = Some(55.s/*TODO*/)))
       .doOnFinish {
         case None => Task { addToTornOlder = Duration.Zero }
@@ -267,7 +271,7 @@ object JournaledProxy
             .map(_.orThrow)
             .onErrorRestartLoop(()) { (throwable, _, tryAgain) =>
               scribe.warn(throwable.toStringWithCauses)
-              for (t <- throwable.ifNoStackTrace) scribe.debug(t.toString, t)
+              if (throwable.getStackTrace.nonEmpty) scribe.debug(throwable.toString, throwable)
               tryAgain(()).delayExecution(5.s/*TODO*/)
             }
             .map { case (api, clusterNodeState) =>
