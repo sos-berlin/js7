@@ -47,6 +47,8 @@ private object JournaledStateTest
   private case class MyState(eventId: EventId, standards: JournaledState.Standards)
   extends JournaledState[MyState]
   {
+    def estimatedSnapshotSize = standards.snapshotSize
+
     def toSnapshotObservable = standards.toSnapshotObservable
 
     protected def withStandards(standards: JournaledState.Standards) =

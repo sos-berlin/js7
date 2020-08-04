@@ -19,8 +19,11 @@ extends JournaledState[AgentServerState]
   def withStandards(standards: JournaledState.Standards) =
     copy(standards = standards)
 
+  def estimatedSnapshotSize =
+    standards.snapshotSize + idToController.size
+
   def toSnapshotObservable =
-    journalState.toSnapshotObservable ++
+    standards.toSnapshotObservable ++
       Observable.fromIterable(idToController.values)
 
   def applySnapshot(snapshot: Any): Checked[AgentServerState] =

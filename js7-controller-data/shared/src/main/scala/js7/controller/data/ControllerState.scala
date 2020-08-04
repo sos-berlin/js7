@@ -31,6 +31,13 @@ final case class ControllerState(
   idToOrder: Map[OrderId, Order[Order.State]])
 extends JournaledState[ControllerState]
 {
+  def estimatedSnapshotSize: Int =
+    2 +
+    standards.snapshotSize +
+    repo.estimatedEventCount +
+    pathToAgentSnapshot.size +
+    idToOrder.size
+
   def toSnapshotObservable: Observable[Any] =
     Observable.pure(SnapshotEventId(eventId)) ++
     standards.toSnapshotObservable ++

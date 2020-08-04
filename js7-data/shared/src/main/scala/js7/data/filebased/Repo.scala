@@ -256,6 +256,12 @@ final case class Repo private(
       signedFileBased <- fileBasedOption.toChecked(FileBasedDeletedProblem(id))
     } yield signedFileBased.copy(signedFileBased.value.cast[A])
 
+  lazy val estimatedEventCount: Int = {
+    var sum = 1  // VersionAdded
+    for (o <- pathToVersionToSignedFileBased.values) sum += o.size
+    sum
+  }
+
   /** Converts the Repo to an event sequence, regarding only a given type. */
   def eventsFor(is: TypedPath.AnyCompanion => Boolean): Seq[RepoEvent] =
     toEvents collect {

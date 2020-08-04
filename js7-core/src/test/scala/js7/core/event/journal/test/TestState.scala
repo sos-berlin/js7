@@ -13,7 +13,9 @@ final case class TestState(
   keyToAggregate: Map[String, TestAggregate])
 extends JournaledState[TestState]
 {
-  override def toSnapshotObservable =
+  def estimatedSnapshotSize = standards.snapshotSize + keyToAggregate.size
+
+  def toSnapshotObservable =
     standards.toSnapshotObservable ++
       Observable.fromIterable(keyToAggregate.values)
 

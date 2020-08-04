@@ -21,6 +21,9 @@ final case class AgentState(
   idToWorkflow: Map[WorkflowId, Workflow])
 extends JournaledState[AgentState]
 {
+  def estimatedSnapshotSize =
+    standards.snapshotSize + idToWorkflow.size + idToOrder.size
+
   def toSnapshotObservable =
     standards.toSnapshotObservable ++
       Observable.fromIterable(idToWorkflow.values) ++

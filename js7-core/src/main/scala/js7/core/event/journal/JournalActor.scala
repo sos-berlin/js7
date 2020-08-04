@@ -441,7 +441,9 @@ extends Actor with Stash
   }
 
   private def maybeDoASnapshot(): Unit = {
-    if (eventWriter.bytesWritten > conf.snapshotSizeLimit && snapshotRequesters.isEmpty) {  // Snapshot is not counted
+    if (eventWriter.bytesWritten > conf.snapshotSizeLimit && snapshotRequesters.isEmpty &&
+        persistBuffer.eventCount >= 2 * journaledState.estimatedSnapshotSize)
+    {
       logger.debug(s"Take snapshot because written size ${toKBGB(eventWriter.bytesWritten)} is above the limit ${toKBGB(conf.snapshotSizeLimit)}")
       snapshotRequesters += self
     }

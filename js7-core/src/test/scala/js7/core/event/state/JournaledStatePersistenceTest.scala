@@ -253,6 +253,8 @@ private object JournaledStatePersistenceTest
         case keyedEvent => applyStandardEvent(keyedEvent)
       }
 
+    def estimatedSnapshotSize = numberThingCollection.numberThings.size
+
     def toSnapshotObservable = Observable.fromIterable(numberThingCollection.numberThings.values)
   }
   object TestState {

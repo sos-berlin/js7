@@ -8,6 +8,8 @@ import monix.reactive.Observable
 
 final case class JournalState(userIdToReleasedEventId: Map[UserId, EventId])
 {
+  def estimatedSnapshotSize = 1
+
   def toSnapshotObservable =
     Observable.fromIterable((this != JournalState.empty) ? this)
 

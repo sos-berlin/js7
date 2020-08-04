@@ -17,6 +17,8 @@ extends EventDrivenState[This, Event]
 
   def toSnapshotObservable: Observable[Any]
 
+  def estimatedSnapshotSize: Int
+
   protected def standards: Standards
 
   protected def withStandards(standards: Standards): This
@@ -62,6 +64,8 @@ object JournaledState
 {
   final case class Standards(journalState: JournalState, clusterState: ClusterState)
   {
+    def snapshotSize = 2
+
     def toSnapshotObservable: Observable[Any] =
       journalState.toSnapshotObservable ++
         clusterState.toSnapshotObservable

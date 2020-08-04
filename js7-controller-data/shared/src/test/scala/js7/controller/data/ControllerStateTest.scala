@@ -10,7 +10,9 @@ import js7.controller.data.ControllerSnapshots.ControllerMetaState
 import js7.controller.data.agent.AgentSnapshot
 import js7.data.agent.AgentRefPath
 import js7.data.cluster.ClusterState
+import js7.data.cluster.ClusterState.ClusterStateSnapshot
 import js7.data.controller.{ControllerFileBaseds, ControllerId}
+import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{EventId, JournalState, JournaledState}
 import js7.data.filebased.RepoEvent.VersionAdded
 import js7.data.filebased.{Repo, VersionId}
@@ -44,6 +46,31 @@ final class ControllerStateTest extends AsyncFreeSpec
   //"toSnapshot is equivalent to toSnapshotObservable" in {
   //  assert(controllerState.toSnapshots == controllerState.toSnapshotObservable.toListL.runToFuture.await(9.s))
   //}
+
+  "estimatedSnapshotSize" in {
+    assert(controllerState.estimatedSnapshotSize == 7)
+    for (list <- controllerState.toSnapshotObservable.toListL.runToFuture)
+      yield assert(list.size == controllerState.estimatedSnapshotSize)
+  }
+
+  "toSnapshotObservable" in {
+    for (list <- controllerState.toSnapshotObservable.toListL.runToFuture)
+      yield assert(list ==
+        List(
+          SnapshotEventId(1001L),
+          JournalState(Map(UserId("A") -> EventId(1000))),
+          ClusterStateSnapshot(
+            ClusterState.Coupled(
+              Map(
+                NodeId("A") -> Uri("http://A"),
+                NodeId("B") -> Uri("http://B")),
+              NodeId("A"))),
+          controllerState.controllerMetaState,
+          VersionAdded(VersionId("1.0"))
+        ) ++
+          controllerState.pathToAgentSnapshot.values ++
+          controllerState.idToOrder.values)
+  }
 
   "fromIterator is the reverse of toSnapshotObservable + EventId" in {
     controllerState.toSnapshotObservable.toListL.runToFuture
