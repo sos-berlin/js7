@@ -14,6 +14,7 @@ import js7.proxy.configuration.ProxyConfs
 import js7.proxy.javaapi.data.JHttpsConfig
 import scala.jdk.CollectionConverters._
 
+/** The class to start. */
 final class JProxyContext(config: Config)
 extends HasCloser
 {

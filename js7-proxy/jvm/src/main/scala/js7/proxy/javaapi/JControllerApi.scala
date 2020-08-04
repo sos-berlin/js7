@@ -11,6 +11,7 @@ import js7.controller.data.ControllerCommand
 import js7.data.item.VersionId
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.javaapi.data.{JControllerCommand, JFreshOrder, JUpdateRepoOperation}
+import js7.proxy.javaapi.eventbus.{JControllerEventBus, JStandardEventBus}
 import js7.proxy.javaapi.utils.JavaUtils.Void
 import js7.proxy.javaapi.utils.VavrConversions._
 import js7.proxy.{ControllerApi, ControllerProxy, ProxyEvent}
@@ -21,7 +22,7 @@ import monix.reactive.Observable
 import reactor.core.publisher.Flux
 
 @javaApi
-final class JControllerApi(
+final class JControllerApi private[proxy](
   apiResources: Seq[Resource[Task, HttpControllerApi]],
   private[js7] val api: ControllerApi,
   proxyConf: ProxyConf)

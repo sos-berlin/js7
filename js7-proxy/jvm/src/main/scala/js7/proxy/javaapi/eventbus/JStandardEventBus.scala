@@ -1,4 +1,4 @@
-package js7.proxy.javaapi
+package js7.proxy.javaapi.eventbus
 
 import js7.base.annotation.javaApi
 import js7.base.eventbus.StandardEventBus
@@ -51,7 +51,8 @@ extends JavaWrapper
 
   sealed/*instead of final in Scala 2: https://github.com/scala/bug/issues/4440*/
   case class EventSubscription private(underlying: JStandardEventBus.this.underlying.EventSubscription)
-  extends JavaWrapper
+  extends js7.proxy.javaapi.eventbus.EventSubscription
+  with JavaWrapper
   with AutoCloseable
   {
     protected type Underlying = JStandardEventBus.this.underlying.EventSubscription

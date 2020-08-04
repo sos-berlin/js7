@@ -13,7 +13,7 @@ import js7.proxy.javaapi.JAdmission;
 import js7.proxy.javaapi.JControllerProxy;
 import js7.proxy.javaapi.JCredentials;
 import js7.proxy.javaapi.JProxyContext;
-import js7.proxy.javaapi.JStandardEventBus;
+import js7.proxy.javaapi.eventbus.JStandardEventBus;
 import js7.proxy.javaapi.data.JControllerState;
 import js7.proxy.javaapi.data.JHttpsConfig;
 import static java.lang.System.out;

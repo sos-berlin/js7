@@ -1,4 +1,4 @@
-package js7.proxy.javaapi
+package js7.proxy.javaapi.eventbus
 
 import js7.base.annotation.javaApi
 import js7.base.utils.Assertions.assertThat
@@ -17,7 +17,7 @@ class JJournaledStateEventBus[JS <: JJournaledState[JS, S], S <: JournaledState[
   final def subscribe[E <: Event](
     eventClasses: java.lang.Iterable[Class[_ <: Event]],
     callback: java.util.function.BiConsumer[Stamped[KeyedEvent[E]], JS])
-  : AutoCloseable = {
+  : EventSubscription = {
     val subscription = newSubscription(eventClasses, callback)
     addSubscription(subscription)
     subscription
@@ -27,8 +27,8 @@ class JJournaledStateEventBus[JS <: JJournaledState[JS, S], S <: JournaledState[
   final def newSubscription[E <: Event](
     eventClasses: java.lang.Iterable[Class[_ <: Event]],
     callback: java.util.function.BiConsumer[Stamped[KeyedEvent[E]], JS])
-  : EventSubscription[E] =
-    EventSubscription[E](
+  : EventSubscription =
+    EventSubscription(
       new underlying.EventSubscription(
         eventClasses.asScala.toSet,
         o => callback.accept(
@@ -36,7 +36,7 @@ class JJournaledStateEventBus[JS <: JJournaledState[JS, S], S <: JournaledState[
           JS(o.state))))
 
   @javaApi
-  final def addSubscription[E <: Event](subscription: EventSubscription[E]): Unit = {
+  final def addSubscription[E <: Event](subscription: EventSubscription): Unit = {
     assertThat(subscription.eventBus eq underlying)
     subscription.internalAddToEventBus()
   }
@@ -53,8 +53,9 @@ class JJournaledStateEventBus[JS <: JJournaledState[JS, S], S <: JournaledState[
 
   @javaApi
   sealed/*instead of final in Scala 2: https://github.com/scala/bug/issues/4440*/
-  case class EventSubscription[E <: Event] private(underlying: JJournaledStateEventBus.this.underlying.EventSubscription)
-  extends JavaWrapper
+  case class EventSubscription private(underlying: JJournaledStateEventBus.this.underlying.EventSubscription)
+  extends js7.proxy.javaapi.eventbus.EventSubscription
+  with JavaWrapper
   with AutoCloseable
   {
     type Underlying = JJournaledStateEventBus.this.underlying.EventSubscription

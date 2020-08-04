@@ -1,4 +1,4 @@
-package js7.proxy.javaapi
+package js7.proxy.javaapi.eventbus
 
 import js7.base.annotation.javaApi
 import js7.controller.data.ControllerState

@@ -6,7 +6,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import js7.base.problem.Problem;
 import js7.proxy.ProxyEvent;
-import js7.proxy.javaapi.JStandardEventBus;
+import js7.proxy.javaapi.eventbus.JStandardEventBus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import static java.util.Arrays.asList;

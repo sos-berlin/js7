@@ -23,10 +23,11 @@ import js7.data.order.OrderEvent.OrderStarted$;
 import js7.data.order.OrderId;
 import js7.data.workflow.WorkflowPath;
 import js7.proxy.ProxyEvent;
+import js7.proxy.javaapi.eventbus.EventSubscription;
 import js7.proxy.javaapi.JAdmission;
 import js7.proxy.javaapi.JControllerProxy;
 import js7.proxy.javaapi.JProxyContext;
-import js7.proxy.javaapi.JStandardEventBus;
+import js7.proxy.javaapi.eventbus.JStandardEventBus;
 import js7.proxy.javaapi.data.JControllerState;
 import js7.proxy.javaapi.data.JFreshOrder;
 import js7.proxy.javaapi.data.JHttpsConfig;
@@ -46,7 +47,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 /**
  * @author Joacim Zschimmer
  */
-final class JControllerProxyTester
+final class JControllerProxyTester implements AutoCloseable
 {
     private static final List<OrderId> orderIds = IntStream.rangeClosed(0, 2)
         .mapToObj(i -> OrderId.of("TEST-ORDER-" + i))
@@ -56,6 +57,7 @@ final class JControllerProxyTester
     private final String agentRefJson;
     private final JControllerProxy proxy;
     private final CouplingState couplingState;
+    private final List<EventSubscription> eventSubscriptions = new ArrayList<>();
     private final List<KeyedEvent<OrderEvent>> events = new ArrayList<>();
     private final CompletableFuture<Void> finished = new CompletableFuture<>();
 
@@ -64,9 +66,14 @@ final class JControllerProxyTester
         this.agentRefJson = agentRefJson;
         this.proxy = proxy;
         this.couplingState = couplingState;
-        proxy.controllerEventBus().subscribe(
-            asList(OrderStarted$.class, OrderMoved.class, OrderFinished$.class),
-            this::onOrderEvent);
+        eventSubscriptions.add(
+            proxy.controllerEventBus().subscribe(
+                asList(OrderStarted$.class, OrderMoved.class, OrderFinished$.class),
+                this::onOrderEvent));
+    }
+
+    public void close() {
+        for (EventSubscription o: eventSubscriptions) o.close();
     }
 
     private void onOrderEvent(Stamped<KeyedEvent<OrderEvent>> stampedEvent, JControllerState controllerState) {
@@ -82,10 +89,6 @@ final class JControllerProxyTester
                 }
             }
         }
-    }
-
-    private CompletableFuture<Void> whenDecoupled() {
-        return couplingState.decoupled;
     }
 
     private void test() throws Exception {
@@ -210,7 +213,6 @@ final class JControllerProxyTester
                 try {
                     JControllerProxyTester tester = new JControllerProxyTester(workflowJson, agentRefJson, proxy, couplingState);
                     tester.test();
-                    //??? tester.whenDecoupled().get(99, SECONDS);
                 } finally {
                     proxy.stop().get(99, SECONDS);
                 }

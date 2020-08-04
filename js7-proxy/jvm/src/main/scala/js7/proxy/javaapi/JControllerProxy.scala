@@ -5,6 +5,7 @@ import js7.base.annotation.javaApi
 import js7.data.event.Event
 import js7.proxy.ControllerProxy
 import js7.proxy.javaapi.data.JControllerState
+import js7.proxy.javaapi.eventbus.JControllerEventBus
 import js7.proxy.javaapi.utils.JavaUtils.Void
 import monix.execution.FutureUtils.Java8Extensions
 import monix.execution.Scheduler
