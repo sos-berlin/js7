@@ -1,6 +1,8 @@
 package js7.proxy.javaapi
 
+import cats.effect.Resource
 import com.typesafe.config.{Config, ConfigFactory}
+import java.util.concurrent.CompletableFuture
 import js7.base.annotation.javaApi
 import js7.base.utils.{HasCloser, Lazy}
 import js7.common.akkautils.Akkas
@@ -8,10 +10,13 @@ import js7.common.akkautils.Akkas.newActorSystem
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.message.ProblemCodeMessages
 import js7.common.system.ThreadPools
-import js7.controller.client.AkkaHttpControllerApi
-import js7.proxy.ControllerApi
+import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
 import js7.proxy.configuration.ProxyConfs
+import js7.proxy.javaapi.JProxyContext._
 import js7.proxy.javaapi.data.JHttpsConfig
+import js7.proxy.javaapi.eventbus.{JControllerEventBus, JStandardEventBus}
+import js7.proxy.{ControllerApi, ProxyEvent}
+import monix.eval.Task
 import scala.jdk.CollectionConverters._
 
 /** The class to start. */
@@ -39,10 +44,36 @@ extends HasCloser
   private implicit def actorSystem = actorSystemLazy()
 
   @javaApi
-  def newControllerApi(admissions: java.lang.Iterable[JAdmission], httpsConfig: JHttpsConfig): JControllerApi = {
+  def newControllerApi(
+    admissions: java.lang.Iterable[JAdmission],
+    httpsConfig: JHttpsConfig)
+  : JControllerApi = {
+    val apiResources = admissionsToApiResources(admissions, httpsConfig)
+    new JControllerApi(
+      apiResources,
+      new ControllerApi(apiResources, proxyConf), proxyConf)
+  }
+
+  /** Convenience method, starts a `JControllerProxy`.
+    * After use, stop it with `JControllerProxy.stop()`. */
+  def startProxy(
+    admissions: java.lang.Iterable[JAdmission],
+    httpsConfig: JHttpsConfig,
+    proxyEventBus: JStandardEventBus[ProxyEvent],
+    controllerEventBus: JControllerEventBus)
+  : CompletableFuture[JControllerProxy] =
+    newControllerApi(admissions, httpsConfig)
+      .startProxy(proxyEventBus, controllerEventBus)
+}
+
+object JProxyContext
+{
+  private def admissionsToApiResources(
+    admissions: java.lang.Iterable[JAdmission],
+    httpsConfig: JHttpsConfig)
+  : Seq[Resource[Task, HttpControllerApi]] =   {
     if (admissions.asScala.isEmpty) throw new IllegalArgumentException("admissions argument must not be empty")
-    val apiResources = for ((a, i) <- admissions.asScala.map(_.underlying).zipWithIndex.toSeq)
+    for ((a, i) <- admissions.asScala.map(_.underlying).zipWithIndex.toSeq)
       yield AkkaHttpControllerApi.resource(a.uri, a.userAndPassword, httpsConfig.toScala, name = s"JournaledProxy-Controller-$i")
-    new JControllerApi(apiResources, new ControllerApi(apiResources, proxyConf), proxyConf)
   }
 }
