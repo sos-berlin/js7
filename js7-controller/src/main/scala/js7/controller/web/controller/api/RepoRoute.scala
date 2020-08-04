@@ -15,7 +15,7 @@ import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.{RichDeadline, _}
-import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString, perSecondString}
+import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
 import js7.base.utils.ScalaUtils.syntax.{RichAny, RichThrowableEither}
 import js7.base.utils.{ByteVectorToLinesObservable, FutureCompletion, IntelliJUtils, SetOnce}
 import js7.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
@@ -27,7 +27,6 @@ import js7.controller.web.common.{ControllerRouteProvider, EntitySizeLimitProvid
 import js7.controller.web.controller.api.RepoRoute.{ExitStreamException, _}
 import js7.data.crypt.FileBasedVerifier.Verified
 import js7.data.filebased.{FileBased, TypedPath, UpdateRepoOperation, VersionId}
-import monix.eval.Task
 import monix.execution.Scheduler
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
@@ -51,9 +50,9 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
         authorizedUser(Set[Permission](ValidUserPermission, UpdateRepoPermission)) { user =>
           withSizeLimit(entitySizeLimit)/*call before entity*/(
             entity(as[HttpEntity]) { httpEntity =>
-              // TODO eat observable even in case if error
-              val startedAt = now
               complete {
+                // TODO eat observable even in case if error
+                val startedAt = now
                 var byteCount = 0L
                 val versionId = SetOnce[VersionId]
                 val addOrReplace = Vector.newBuilder[Verified[FileBased]]
