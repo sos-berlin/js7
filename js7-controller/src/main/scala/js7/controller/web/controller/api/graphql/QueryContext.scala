@@ -2,7 +2,7 @@ package js7.controller.web.controller.api.graphql
 
 import java.util.regex.Pattern
 import js7.base.problem.Checked
-import js7.data.filebased.FileBased
+import js7.data.item.InventoryItem
 import js7.data.order.{Order, OrderId}
 import js7.data.workflow.WorkflowPath
 import monix.eval.Task
@@ -15,7 +15,7 @@ trait QueryContext {
   implicit def scheduler: Scheduler
   def order(orderId: OrderId): Task[Checked[Option[Order[Order.State]]]]
   def orders(filter: QueryContext.OrderFilter = QueryContext.OrderFilter.Default): Task[Checked[Seq[Order[Order.State]]]]
-  def idTo[A <: FileBased: FileBased.Companion](id: A#Id): Task[Checked[A]]
+  def idTo[A <: InventoryItem: InventoryItem.Companion](id: A#Id): Task[Checked[A]]
 }
 object QueryContext {
   final case class OrderFilter(

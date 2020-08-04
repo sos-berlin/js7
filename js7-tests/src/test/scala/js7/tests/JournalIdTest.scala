@@ -28,7 +28,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class JournalIdTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
   protected val agentRefPaths = agentRefPath :: Nil
-  protected val fileBased = TestWorkflow :: Nil
+  protected val inventoryItems = TestWorkflow :: Nil
   override protected val controllerConfig = config"js7.journal.remove-obsolete-files = false"
   override protected val agentConfig = config"js7.journal.remove-obsolete-files = false"
 

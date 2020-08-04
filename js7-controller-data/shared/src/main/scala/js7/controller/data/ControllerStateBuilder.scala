@@ -9,11 +9,11 @@ import js7.controller.data.events.ControllerEvent.{ControllerShutDown, Controlle
 import js7.controller.data.events.{ControllerAgentEvent, ControllerEvent}
 import js7.data.agent.AgentRefPath
 import js7.data.cluster.{ClusterEvent, ClusterState}
-import js7.data.controller.ControllerFileBaseds
+import js7.data.controller.ControllerItems
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalEvent, JournalState, JournaledState, JournaledStateBuilder, KeyedEvent, Stamped}
 import js7.data.execution.workflow.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
-import js7.data.filebased.{Repo, RepoEvent}
+import js7.data.item.{Repo, RepoEvent}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderOffered, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.workflow.Workflow
@@ -24,7 +24,7 @@ extends JournaledStateBuilder[ControllerState]
 {
   private var standards: JournaledState.Standards = JournaledState.Standards.empty
   private var controllerMetaState = ControllerMetaState.Undefined
-  private var repo = Repo.ofJsonDecoder(ControllerFileBaseds.jsonCodec)
+  private var repo = Repo.ofJsonDecoder(ControllerItems.jsonCodec)
   private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
   private val pathToAgent = mutable.Map[AgentRefPath, AgentSnapshot]()
 

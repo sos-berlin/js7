@@ -10,7 +10,7 @@ import js7.common.message.ProblemCodeMessages
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.common.utils.JavaResource
 import js7.data.agent.AgentRefPath
-import js7.data.filebased.FileBased
+import js7.data.item.InventoryItem
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.immutable.Iterable
 
@@ -29,7 +29,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
 
   protected final lazy val directoryProvider = new DirectoryProvider(
     agentRefPaths,
-    fileBased = fileBased,
+    inventoryItems = inventoryItems,
     controllerConfig = controllerConfig,
     agentHttps = agentHttps,
     agentHttpsMutual = agentHttpsMutual,
@@ -52,11 +52,11 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
   protected def provideAgentClientCertificate = false
   protected def controllerTrustStores: Iterable[JavaResource] = Nil
   protected def controllerConfig: Config = ConfigFactory.empty
-  protected def fileBased: Seq[FileBased]
+  protected def inventoryItems: Seq[InventoryItem]
   protected def signer: MessageSigner = DirectoryProvider.defaultSigner
 
-  protected final def toSigned(fileBased: FileBased) = directoryProvider.toSigned(fileBased)
-  protected final def sign(fileBased: FileBased) = directoryProvider.sign(fileBased)
+  protected final def toSigned(item: InventoryItem) = directoryProvider.toSigned(item)
+  protected final def sign(item: InventoryItem) = directoryProvider.sign(item)
 
   override def beforeAll() = {
     super.beforeAll()

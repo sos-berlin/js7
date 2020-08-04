@@ -8,7 +8,7 @@ import js7.base.generic.Completed
 import js7.base.problem.Problem
 import js7.controller.client.HttpControllerApi
 import js7.controller.data.ControllerCommand
-import js7.data.filebased.VersionId
+import js7.data.item.VersionId
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.javaapi.data.{JControllerCommand, JFreshOrder, JUpdateRepoOperation}
 import js7.proxy.javaapi.utils.JavaUtils.Void

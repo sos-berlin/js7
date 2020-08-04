@@ -18,9 +18,9 @@ import js7.common.time.WaitForCondition.waitForCondition
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.client.AkkaHttpControllerApi
 import js7.data.agent.AgentRefPath
-import js7.data.controller.ControllerFileBaseds.jsonCodec
+import js7.data.controller.ControllerItems.jsonCodec
 import js7.data.event.{KeyedEvent, Stamped}
-import js7.data.filebased.{FileBased, UpdateRepoOperation, VersionId}
+import js7.data.item.{InventoryItem, UpdateRepoOperation, VersionId}
 import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
@@ -50,7 +50,7 @@ final class JournaledProxyTest extends AnyFreeSpec with DirectoryProviderForScal
     }
     """
 
-  protected val fileBased = workflow :: Nil
+  protected val inventoryItems = workflow :: Nil
   protected val agentRefPaths = agentRefPath :: Nil
 
   override def beforeAll() = {
@@ -102,7 +102,7 @@ final class JournaledProxyTest extends AnyFreeSpec with DirectoryProviderForScal
         execute executable="/path-to-my-script", agent="/AGENT",
           arguments = { "A": "${"A" * 700}" };
       }""").orThrow.withoutSource
-    val n = calculateNumberOf[FileBased](workflow.withId(WorkflowPath("/WORKFLOW-XXXXX") ~ versionId))
+    val n = calculateNumberOf[InventoryItem](workflow.withId(WorkflowPath("/WORKFLOW-XXXXX") ~ versionId))
     directoryProvider.runController() { controller =>
       val controllerApiResource = AkkaHttpControllerApi.separateAkkaResource(controller.localUri, Some(userAndPassword), name = "JournaledProxy")
       val api = new ControllerApi(controllerApiResource :: Nil)

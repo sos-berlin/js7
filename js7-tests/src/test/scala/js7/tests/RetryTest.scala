@@ -30,7 +30,7 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
   override protected val controllerConfig = config"js7.journal.simulate-sync = 10ms"  // Avoid excessive syncs in case of test failure
   override protected val agentConfig = config"js7.journal.simulate-sync = 10ms"  // Avoid excessive syncs in case of test failure
   protected val agentRefPaths = TestAgentRefPath :: Nil
-  protected val fileBased = Nil
+  protected val inventoryItems = Nil
 
   import controller.eventWatch
 

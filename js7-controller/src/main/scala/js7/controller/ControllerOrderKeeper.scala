@@ -49,14 +49,14 @@ import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.Problems.UnknownOrderProblem
 import js7.data.agent.{AgentRef, AgentRefPath, AgentRunId}
 import js7.data.cluster.ClusterState
-import js7.data.crypt.FileBasedVerifier
+import js7.data.crypt.InventoryItemVerifier
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{Event, EventId, JournalHeader, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.OrderProcessor
-import js7.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, FileBasedEvent, VersionAdded}
-import js7.data.filebased.{FileBased, FileBaseds, RepoChange, RepoEvent, TypedPath}
+import js7.data.item.RepoEvent.{ItemAdded, ItemChanged, ItemDeleted, ItemEvent, VersionAdded}
+import js7.data.item.{IntenvoryItems, InventoryItem, RepoChange, RepoEvent, TypedPath}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderBroken, OrderCancellationMarked, OrderCoreEvent, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToController}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId}
 import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
@@ -82,7 +82,7 @@ final class ControllerOrderKeeper(
   protected val journalActor: ActorRef @@ JournalActor.type,
   cluster: Cluster[ControllerState],
   controllerConfiguration: ControllerConfiguration,
-  fileBasedVerifier: FileBasedVerifier[FileBased],
+  itemVerifier: InventoryItemVerifier[InventoryItem],
   testEventPublisher: EventPublisher[Any])
   (implicit protected val scheduler: Scheduler)
 extends Stash
@@ -96,7 +96,7 @@ with MainJournalingActor[ControllerState, Event]
 
   private val agentDriverConfiguration = AgentDriverConfiguration.fromConfig(config, controllerConfiguration.journalConf).orThrow
   private var controllerState: ControllerState = ControllerState.Undefined
-  private val repoCommandExecutor = new RepoCommandExecutor(fileBasedVerifier)
+  private val repoCommandExecutor = new RepoCommandExecutor(itemVerifier)
   private val agentRegister = new AgentRegister
   private object orderRegister extends mutable.HashMap[OrderId, OrderEntry] {
     def checked(orderId: OrderId) = get(orderId).toChecked(UnknownOrderProblem(orderId))
@@ -279,7 +279,7 @@ with MainJournalingActor[ControllerState, Event]
       this.controllerState = controllerState
       //controllerMetaState = controllerState.controllerMetaState.copy(totalRunningTime = recovered.totalRunningTime)
       updateRepo()
-      for (agentRef <- repo.currentFileBaseds collect { case o: AgentRef => o }) {
+      for (agentRef <- repo.currentItems collect { case o: AgentRef => o }) {
         val agentSnapshot = controllerState.pathToAgentSnapshot.getOrElse(agentRef.path,
           AgentSnapshot(agentRef.path, None, EventId.BeforeFirst))
         val e = registerAgent(agentRef, agentSnapshot.agentRunId, eventId = agentSnapshot.eventId)
@@ -420,9 +420,9 @@ with MainJournalingActor[ControllerState, Event]
       val sender = this.sender()
       val t = now
       (Try(
-        repo.fileBasedToEvents(
+        repo.itemToEvents(
           verifiedUpdateRepo.versionId,
-          verifiedUpdateRepo.verifiedFileBased.map(_.signedFileBased),
+          verifiedUpdateRepo.verifiedItem.map(_.signedItem),
           verifiedUpdateRepo.delete)
       ) match {
         // TODO Duplicate code
@@ -696,10 +696,10 @@ with MainJournalingActor[ControllerState, Event]
     }
 
   private def applyRepoEvents(events: Seq[RepoEvent]): Checked[SyncIO[Future[Completed]]] = {
-    def updateFileBaseds(diff: FileBaseds.Diff[TypedPath, FileBased]): Seq[Checked[SyncIO[Unit]]] =
+    def updateItems(diff: IntenvoryItems.Diff[TypedPath, InventoryItem]): Seq[Checked[SyncIO[Unit]]] =
       updateAgents(diff.select[AgentRefPath, AgentRef])
 
-    def updateAgents(diff: FileBaseds.Diff[AgentRefPath, AgentRef]): Seq[Checked[SyncIO[Unit]]] =
+    def updateAgents(diff: IntenvoryItems.Diff[AgentRefPath, AgentRef]): Seq[Checked[SyncIO[Unit]]] =
       deletionNotSupported(diff) :+
         Right(SyncIO {
           for (agentRef <- diff.added) {
@@ -712,15 +712,15 @@ with MainJournalingActor[ControllerState, Event]
           }
         })
 
-    def deletionNotSupported[P <: TypedPath, A <: FileBased](diff: FileBaseds.Diff[P, A])
-      (implicit A: FileBased.Companion[A]): Seq[Left[Problem, Nothing]] =
+    def deletionNotSupported[P <: TypedPath, A <: InventoryItem](diff: IntenvoryItems.Diff[P, A])
+      (implicit A: InventoryItem.Companion[A]): Seq[Left[Problem, Nothing]] =
       diff.deleted.map(o => Left(Problem.pure(s"Deletion of ${A.name} configuration objects is not supported: $o")))
 
     for {
       newVersionRepo <- repo.applyEvent(events.head) // May return DuplicateVersionProblem
       versionId = newVersionRepo.versionId
-      changes <- events.tail.toVector.traverse(event => toRepoChange(event.asInstanceOf[FileBasedEvent]/*???*/))
-      checkedSideEffects = updateFileBaseds(FileBaseds.Diff.fromRepoChanges(changes) withVersionId versionId)
+      changes <- events.tail.toVector.traverse(event => toRepoChange(event.asInstanceOf[ItemEvent]/*???*/))
+      checkedSideEffects = updateItems(IntenvoryItems.Diff.fromRepoChanges(changes) withVersionId versionId)
       foldedSideEffects <- checkedSideEffects.toVector.sequence.map(_.fold(SyncIO.unit)(_ >> _))  // One problem invalidates all side effects
     } yield
       SyncIO {
@@ -734,19 +734,19 @@ with MainJournalingActor[ControllerState, Event]
       }
   }
 
-  private def toRepoChange(event: FileBasedEvent): Checked[RepoChange] =
+  private def toRepoChange(event: ItemEvent): Checked[RepoChange] =
     event match {
-      case FileBasedAdded(signed) => repo.verify(signed) map RepoChange.Added
-      case FileBasedChanged(signed) => repo.verify(signed) map RepoChange.Updated
-      case FileBasedDeleted(path) => Right(RepoChange.Deleted(path))
+      case ItemAdded(signed)   => repo.verify(signed) map RepoChange.Added
+      case ItemChanged(signed) => repo.verify(signed) map RepoChange.Updated
+      case ItemDeleted(path)   => Right(RepoChange.Deleted(path))
     }
 
   private def logRepoEvent(event: RepoEvent): Unit =
     event match {
-      case VersionAdded(version)  => logger.trace(s"Version '${version.string}' added")
-      case o: FileBasedAdded      => logger.trace(s"${o.path} } added")
-      case o: FileBasedChanged    => logger.trace(s"${o.path} } changed")
-      case FileBasedDeleted(path) => logger.trace(s"$path deleted")
+      case VersionAdded(version) => logger.trace(s"Version '${version.string}' added")
+      case o: ItemAdded          => logger.trace(s"${o.path} } added")
+      case o: ItemChanged        => logger.trace(s"${o.path} } changed")
+      case ItemDeleted(path)     => logger.trace(s"$path deleted")
     }
 
   private def updateRepo(): Unit =

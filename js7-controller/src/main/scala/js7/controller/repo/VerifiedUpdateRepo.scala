@@ -1,10 +1,10 @@
 package js7.controller.repo
 
-import js7.data.crypt.FileBasedVerifier.Verified
-import js7.data.filebased.{FileBased, TypedPath, VersionId}
+import js7.data.crypt.InventoryItemVerifier.Verified
+import js7.data.item.{InventoryItem, TypedPath, VersionId}
 import scala.collection.immutable.Seq
 
 final case class VerifiedUpdateRepo(
   versionId: VersionId,
-  verifiedFileBased: Seq[Verified[FileBased]],
+  verifiedItem: Seq[Verified[InventoryItem]],
   delete: Seq[TypedPath])

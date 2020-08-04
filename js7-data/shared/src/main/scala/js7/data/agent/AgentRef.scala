@@ -5,23 +5,23 @@ import io.circe.{Decoder, Encoder, Json, JsonObject}
 import js7.base.circeutils.CirceUtils._
 import js7.base.utils.ScalaUtils.reuseIfEqual
 import js7.base.web.Uri
-import js7.data.filebased.{FileBased, FileBasedId}
+import js7.data.item.{InventoryItem, ItemId}
 
 /**
   * @author Joacim Zschimmer
   */
-final case class AgentRef(id: AgentRefId, uri: Uri) extends FileBased
+final case class AgentRef(id: AgentRefId, uri: Uri) extends InventoryItem
 {
   type Self = AgentRef
 
   val companion = AgentRef
 
-  def withId(id: FileBasedId[AgentRefPath]) = reuseIfEqual(this, copy(id = id))
+  def withId(id: ItemId[AgentRefPath]) = reuseIfEqual(this, copy(id = id))
 }
 
-object AgentRef extends FileBased.Companion[AgentRef]
+object AgentRef extends InventoryItem.Companion[AgentRef]
 {
-  type ThisFileBased = AgentRef
+  type ThisItem = AgentRef
   type Path = AgentRefPath
 
   implicit val jsonEncoder: Encoder.AsObject[AgentRef] = agent =>
@@ -36,6 +36,6 @@ object AgentRef extends FileBased.Companion[AgentRef]
     } yield AgentRef(id, uri)
 
   override implicit val self = this
-  implicit val fileBasedsOverview = AgentsOverview
+  implicit val itemsOverview = AgentsOverview
   val typedPathCompanion = AgentRefPath
 }

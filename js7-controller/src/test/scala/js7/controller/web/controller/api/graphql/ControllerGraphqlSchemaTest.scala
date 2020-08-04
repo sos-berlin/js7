@@ -9,7 +9,7 @@ import js7.base.utils.Collections.implicits.RichTraversable
 import js7.common.scalautil.Futures.implicits._
 import js7.controller.web.controller.api.graphql.ControllerGraphqlSchemaTest._
 import js7.data.agent.AgentRefPath
-import js7.data.filebased.{FileBased, FileBasedId, VersionId}
+import js7.data.item.{InventoryItem, ItemId, VersionId}
 import js7.data.job.{ExecutablePath, ReturnCode}
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -532,9 +532,9 @@ object ControllerGraphqlSchemaTest
 
     def orders(filter: QueryContext.OrderFilter) = Task.pure(Right(idToOrder.values.toVector take filter.limit))
 
-    def idTo[A <: FileBased: FileBased.Companion](id: A#Id) =
+    def idTo[A <: InventoryItem: InventoryItem.Companion](id: A#Id) =
       Task.pure(id match {
-        case FileBasedId(_: WorkflowPath, VersionId("1")) =>
+        case ItemId(_: WorkflowPath, VersionId("1")) =>
           Right(Workflow(
             WorkflowPath.NoId,
             Vector(

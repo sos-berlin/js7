@@ -27,7 +27,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class AkkaHttpControllerApiTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentRefPaths = Nil
-  protected val fileBased = TestWorkflow :: Nil
+  protected val inventoryItems = TestWorkflow :: Nil
 
   private lazy val api = new AkkaHttpControllerApi(controller.localUri, Some(userAndPassword), actorSystem = controller.actorSystem)
     .closeWithCloser

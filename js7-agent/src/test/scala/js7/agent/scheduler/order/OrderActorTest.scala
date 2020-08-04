@@ -34,7 +34,7 @@ import js7.core.event.journal.{JournalActor, JournalConf}
 import js7.data.agent.AgentRefPath
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped}
-import js7.data.filebased.VersionId
+import js7.data.item.VersionId
 import js7.data.job.{ExecutablePath, JobKey}
 import js7.data.order.OrderEvent.{OrderAttached, OrderDetachable, OrderDetached, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId, Outcome}

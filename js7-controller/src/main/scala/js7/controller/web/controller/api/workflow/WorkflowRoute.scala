@@ -8,7 +8,7 @@ import js7.common.akkahttp.CirceJsonOrYamlSupport._
 import js7.common.akkahttp.StandardDirectives.remainingSegmentOrPath
 import js7.common.akkahttp.StandardMarshallers._
 import js7.controller.web.common.ControllerRouteProvider
-import js7.core.filebased.FileBasedApi
+import js7.core.item.InventoryItemApi
 import js7.data.workflow.{Workflow, WorkflowPath}
 import monix.execution.Scheduler
 
@@ -17,7 +17,7 @@ import monix.execution.Scheduler
   */
 trait WorkflowRoute extends ControllerRouteProvider {
 
-  protected def fileBasedApi: FileBasedApi
+  protected def itemApi: InventoryItemApi
 
   private implicit def implicitScheduler: Scheduler = scheduler
 
@@ -26,17 +26,17 @@ trait WorkflowRoute extends ControllerRouteProvider {
       authorizedUser(ValidUserPermission) { _ =>
         pathEnd {
           completeTask(
-            fileBasedApi.overview[Workflow])
+            itemApi.overview[Workflow])
         } ~
         pathSingleSlash {
           parameter("return".?) {
             case None =>
               completeTask(
-                fileBasedApi.paths[Workflow])
+                itemApi.paths[Workflow])
 
             case Some("Workflow") =>
               completeTask(
-                fileBasedApi.fileBaseds[Workflow])
+                itemApi.items[Workflow])
 
             case _ =>
               reject
@@ -44,7 +44,7 @@ trait WorkflowRoute extends ControllerRouteProvider {
         } ~
         path(remainingSegmentOrPath[WorkflowPath]) { workflowPath =>
           completeTask(
-            fileBasedApi.pathToCurrentFileBased[Workflow](workflowPath))
+            itemApi.pathToCurrentItem[Workflow](workflowPath))
         }
       }
     }

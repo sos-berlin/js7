@@ -15,14 +15,14 @@ import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Logger
 import js7.common.utils.Exceptions.repeatUntilNoException
 import js7.common.utils.JavaResource
-import js7.data.filebased.FileBasedSigner
+import js7.data.item.InventoryItemSigner
 import js7.data.workflow.Workflow
 import scala.util.control.NonFatal
 
 trait TestAgentDirectoryProvider extends HasCloser
 {
   private val signature = SillySignature("MY-SILLY-SIGNATURE")
-  final val fileBasedSigner = new FileBasedSigner(new SillySigner(signature), Workflow.jsonEncoder)
+  final val itemSigner = new InventoryItemSigner(new SillySigner(signature), Workflow.jsonEncoder)
 
   final lazy val agentDirectory = {
     val agentDirectory = createTempDirectory("TestAgentDirectoryProvider-") withCloser { dir =>

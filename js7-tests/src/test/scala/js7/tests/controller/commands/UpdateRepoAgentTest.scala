@@ -17,7 +17,7 @@ import js7.controller.RunningController
 import js7.controller.data.ControllerCommand
 import js7.controller.data.ControllerCommand.UpdateRepo
 import js7.data.agent.{AgentRef, AgentRefPath}
-import js7.data.filebased.VersionId
+import js7.data.item.VersionId
 import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
@@ -67,7 +67,7 @@ final class UpdateRepoAgentTest extends AnyFreeSpec
 
           val versionId = VersionId(s"$i")
           val agentRef = AgentRef(agentRefPath ~ versionId, uri = agent2.localUri)
-          executeCommand(controller, UpdateRepo(versionId, provider.fileBasedSigner.sign(agentRef) :: Nil))
+          executeCommand(controller, UpdateRepo(versionId, provider.itemSigner.sign(agentRef) :: Nil))
 
           runOrder(controller, OrderId(s"🔵-$i"))
         }

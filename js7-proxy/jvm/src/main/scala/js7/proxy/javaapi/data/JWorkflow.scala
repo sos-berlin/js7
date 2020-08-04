@@ -7,7 +7,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 
 @javaApi
 final case class JWorkflow(underlying: Workflow)
-extends JFileBased[JWorkflow, WorkflowPath]
+extends JInventoryItem[JWorkflow, WorkflowPath]
 {
   protected type Underlying = Workflow
 

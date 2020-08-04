@@ -3,7 +3,7 @@ package js7.data.folder
 import java.util.UUID.randomUUID
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
-import js7.data.filebased.{SourceType, TypedPath}
+import js7.data.item.{SourceType, TypedPath}
 
 final case class FolderPath private(string: String) extends TypedPath {
   import FolderPath._

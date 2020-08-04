@@ -21,13 +21,13 @@ import js7.controller.data.ControllerSnapshots.ControllerMetaState
 import js7.controller.web.controller.api.fatevent.FatEventRouteTest._
 import js7.controller.web.controller.api.test.RouteTester
 import js7.data.agent.{AgentRef, AgentRefPath}
-import js7.data.controller.{ControllerFileBaseds, ControllerId}
+import js7.data.controller.{ControllerId, ControllerItems}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, EventId, EventSeq, JournalHeader, JournalId, KeyedEvent, Stamped, TearableEventSeq}
 import js7.data.fatevent.FatEvent
 import js7.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStdoutWrittenFat}
-import js7.data.filebased.RepoEvent.{FileBasedAdded, VersionAdded}
-import js7.data.filebased.{FileBasedSigner, VersionId}
+import js7.data.item.RepoEvent.{ItemAdded, VersionAdded}
+import js7.data.item.{InventoryItemSigner, VersionId}
 import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTransferredToAgent}
 import js7.data.order.{OrderId, Outcome}
@@ -267,7 +267,7 @@ final class FatEventRouteTest extends AnyFreeSpec with RouteTester with FatEvent
 object FatEventRouteTest
 {
   private val logger = Logger(getClass)
-  private val toSigned = new FileBasedSigner(SillySigner.Default, ControllerFileBaseds.jsonCodec).toSigned _
+  private val toSigned = new InventoryItemSigner(SillySigner.Default, ControllerItems.jsonCodec).toSigned _
   private val TestVersionId = VersionId("VERSION")
   private val TestAgentRefId = AgentRefPath("/AGENT") ~ TestVersionId
   private val TestWorkflow = Workflow.of(
@@ -277,8 +277,8 @@ object FatEventRouteTest
   private val InitialEvents =
     //Stamped(EventId(1), NoKey <-: ControllerReady("UTC", 0.s)) ::  // Not required
     Stamped(EventId(2), NoKey <-: VersionAdded(TestVersionId)) ::
-    Stamped(EventId(3), NoKey <-: FileBasedAdded(toSigned(AgentRef(TestAgentRefId, Uri("http://127.0.0.1:0"))))) ::
-    Stamped(EventId(4), NoKey <-: FileBasedAdded(toSigned(TestWorkflow))) :: Nil
+    Stamped(EventId(3), NoKey <-: ItemAdded(toSigned(AgentRef(TestAgentRefId, Uri("http://127.0.0.1:0"))))) ::
+    Stamped(EventId(4), NoKey <-: ItemAdded(toSigned(TestWorkflow))) :: Nil
 
   private val TestEvents: Seq[Seq[Stamped[AnyKeyedEvent]]] =
     (1 to 18).map(i =>

@@ -10,9 +10,9 @@ import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.http.CirceJsonSupport._
 import js7.controller.web.controller.api.AgentRefRouteTest._
 import js7.controller.web.controller.api.test.RouteTester
-import js7.core.filebased.FileBasedApi
+import js7.core.item.InventoryItemApi
 import js7.data.agent.{AgentRef, AgentRefPath}
-import js7.data.filebased.FileBasedsOverview
+import js7.data.item.InventoryItemOverview
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
@@ -24,18 +24,18 @@ final class AgentRefRouteTest extends AnyFreeSpec with RouteTester with AgentRef
 {
   protected def whenShuttingDown = Future.never
   protected implicit def scheduler: Scheduler = Scheduler.global
-  protected val fileBasedApi = FileBasedApi.forTest(pathToAgent)
+  protected val itemApi = InventoryItemApi.forTest(pathToAgent)
 
   private def route: Route =
     pathSegments("api/agent") {
       agentRefRoute
     }
 
-  // FileBasedsOverview
+  // InventoryItemOverview
   AgentUri in {
     Get(AgentUri) ~> Accept(`application/json`) ~> route ~> check {
       assert(status == OK)
-      assert(responseAs[FileBasedsOverview.Standard] == FileBasedsOverview.Standard(count = pathToAgent.size))
+      assert(responseAs[InventoryItemOverview.Standard] == InventoryItemOverview.Standard(count = pathToAgent.size))
     }
   }
 

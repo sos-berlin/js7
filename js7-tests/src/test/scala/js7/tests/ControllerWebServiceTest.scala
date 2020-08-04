@@ -67,7 +67,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
   private lazy val uri = controller.localUri
 
   protected val agentRefPaths = TestAgentRefPath :: AgentRefPath("/FOLDER/AGENT-A") :: Nil
-  protected val fileBased = Nil
+  protected val inventoryItems = Nil
   private lazy val agent1Uri = directoryProvider.agents(0).localUri
   private lazy val agent2Uri = directoryProvider.agents(1).localUri
   private lazy val httpClient = new SimpleAkkaHttpClient(label = "ControllerWebServiceTest", uri, "/controller")
@@ -525,7 +525,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         "TYPE": "VersionAdded",
         "versionId": "INITIAL"
       }, {
-        "TYPE": "FileBasedAdded",
+        "TYPE": "ItemAdded",
         "path": "AgentRef:/AGENT",
         "signed": {
           "string": "{\"TYPE\":\"AgentRef\",\"path\":\"/AGENT\",\"versionId\":\"INITIAL\",\"uri\":\"$agent1Uri\"}",
@@ -535,7 +535,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           }
         }
       }, {
-        "TYPE": "FileBasedAdded",
+        "TYPE": "ItemAdded",
         "path": "AgentRef:/FOLDER/AGENT-A",
         "signed": {
           "string": "{\"TYPE\":\"AgentRef\",\"path\":\"/FOLDER/AGENT-A\",\"versionId\":\"INITIAL\",\"uri\":\"$agent2Uri\"}",
@@ -548,7 +548,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         "TYPE": "VersionAdded",
         "versionId": "VERSION-1"
       }, {
-        "TYPE": "FileBasedAdded",
+        "TYPE": "ItemAdded",
         "path": "Workflow:/FOLDER/WORKFLOW-2",
         "signed": {
           "string": "{\"TYPE\":\"Workflow\",\"path\":\"/FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/B$sh\"},\"taskLimit\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/MISSING$sh\"},\"taskLimit\":1}}]}",
@@ -558,7 +558,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           }
         }
       }, {
-        "TYPE": "FileBasedAdded",
+        "TYPE": "ItemAdded",
         "path": "Workflow:/WORKFLOW",
         "signed": {
           "string": "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/A$sh\"},\"taskLimit\":1}}]}",
@@ -600,7 +600,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           "versionId": "INITIAL"
         }, {
           "eventId": 1004,
-          "TYPE": "FileBasedAdded",
+          "TYPE": "ItemAdded",
           "path": "AgentRef:/AGENT",
           "signed": {
             "string": "{\"TYPE\":\"AgentRef\",\"path\":\"/AGENT\",\"versionId\":\"INITIAL\",\"uri\":\"$agent1Uri\"}",
@@ -611,7 +611,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           }
         }, {
           "eventId": 1005,
-          "TYPE": "FileBasedAdded",
+          "TYPE": "ItemAdded",
           "path": "AgentRef:/FOLDER/AGENT-A",
           "signed": {
             "string": "{\"TYPE\":\"AgentRef\",\"path\":\"/FOLDER/AGENT-A\",\"versionId\":\"INITIAL\",\"uri\":\"$agent2Uri\"}",
@@ -636,7 +636,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           "versionId": "VERSION-1"
         }, {
           "eventId": 1009,
-          "TYPE": "FileBasedAdded",
+          "TYPE": "ItemAdded",
           "path": "Workflow:/WORKFLOW",
           "signed": {
             "string": "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/A$sh\"},\"taskLimit\":1}}]}",
@@ -647,7 +647,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           }
         }, {
           "eventId": 1010,
-          "TYPE": "FileBasedAdded",
+          "TYPE": "ItemAdded",
           "path": "Workflow:/FOLDER/WORKFLOW-2",
           "signed": {
             "string": "{\"TYPE\":\"Workflow\",\"path\":\"/FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/B$sh\"},\"taskLimit\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/MISSING$sh\"},\"taskLimit\":1}}]}",

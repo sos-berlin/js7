@@ -37,7 +37,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class ReleaseEventsTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
   protected val agentRefPaths = TestAgentRefPath :: Nil
-  protected val fileBased = TestWorkflow :: Nil
+  protected val inventoryItems = TestWorkflow :: Nil
   override protected val controllerConfig = config"""
     js7.journal.users-allowed-to-release-events = [ "A", "B" ]
     js7.auth.users {

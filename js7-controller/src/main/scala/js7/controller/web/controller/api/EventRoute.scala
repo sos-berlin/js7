@@ -7,7 +7,7 @@ import js7.controller.web.common.ControllerRouteProvider
 import js7.core.event.GenericEventRoute
 import js7.data.cluster.ClusterEvent
 import js7.data.event.{Event, KeyedEvent}
-import js7.data.filebased.RepoEvent
+import js7.data.item.RepoEvent
 import js7.data.order.OrderEvent
 import monix.eval.Task
 

@@ -9,7 +9,7 @@ import js7.base.problem.Checked._
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.KeyedEvent
-import js7.data.filebased.VersionId
+import js7.data.item.VersionId
 import js7.data.order.OrderEvent.OrderAdded
 import js7.data.workflow.WorkflowPath
 import org.jetbrains.annotations.TestOnly

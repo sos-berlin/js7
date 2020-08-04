@@ -6,7 +6,7 @@ import js7.base.problem.Checked.Ops
 import js7.common.http.CirceToYaml.ToYamlString
 import js7.common.scalautil.FileUtils
 import js7.common.scalautil.FileUtils.syntax._
-import js7.core.filebased.TypedSourceReader
+import js7.core.item.TypedSourceReader
 import js7.data.agent.AgentRefPath
 import js7.data.job.ExecutablePath
 import js7.data.workflow.instructions.Execute

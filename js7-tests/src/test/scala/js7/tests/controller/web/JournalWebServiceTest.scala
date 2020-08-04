@@ -42,7 +42,7 @@ import scodec.bits.ByteVector
 final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest
 {
   protected val agentRefPaths = agentRefPath :: Nil
-  protected val fileBased = workflow :: Nil
+  protected val inventoryItems = workflow :: Nil
   private lazy val uri = controller.localUri
   private lazy val controllerApi = new AkkaHttpControllerApi(
     uri,

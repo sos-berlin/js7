@@ -16,7 +16,7 @@ import js7.common.http.AkkaHttpUtils.RichAkkaUri
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.AgentProxyRoute._
-import js7.core.filebased.FileBasedApi
+import js7.core.item.InventoryItemApi
 import js7.data.agent.{AgentRef, AgentRefPath}
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -27,7 +27,7 @@ import monix.execution.Scheduler
 trait AgentProxyRoute extends ControllerRouteProvider
 {
   protected implicit def actorSystem: ActorSystem
-  protected def fileBasedApi: FileBasedApi
+  protected def itemApi: InventoryItemApi
   protected def controllerConfiguration: ControllerConfiguration
 
   private implicit def implicitScheduler: Scheduler = scheduler
@@ -39,7 +39,7 @@ trait AgentProxyRoute extends ControllerRouteProvider
           extractRequest { request =>
             completeTask(
               for {
-                checkedAgent <- fileBasedApi.pathToCurrentFileBased[AgentRef](AgentRefPath(s"/$pathString"))
+                checkedAgent <- itemApi.pathToCurrentItem[AgentRef](AgentRefPath(s"/$pathString"))
                 checkedResponse <- checkedAgent.map(forward(_, request)).evert
               } yield checkedResponse)
           }

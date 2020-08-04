@@ -13,7 +13,7 @@ import js7.base.utils.ScalaUtils.reuseIfEqual
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentRefPath
 import js7.data.expression.PositionSearch
-import js7.data.filebased.{FileBased, FileBasedId}
+import js7.data.item.{InventoryItem, ItemId}
 import js7.data.job.JobKey
 import js7.data.workflow.Instruction.{@:, Labeled}
 import js7.data.workflow.Workflow.isCorrectlyEnded
@@ -32,7 +32,7 @@ final case class Workflow private(
   nameToJob: Map[WorkflowJob.Name, WorkflowJob],
   source: Option[String],
   outer: Option[Workflow])
-extends FileBased
+extends InventoryItem
 {
   override def equals(o: Any) = o match {
     case o: Workflow =>
@@ -55,7 +55,7 @@ extends FileBased
     numberedInstructions.flatMap { case (nr, Instruction.Labeled(maybeLabel, _)) => maybeLabel map (_ -> nr) }
       .uniqueToMap(labels => throw new IllegalArgumentException(s"Duplicate labels in Workflow: ${labels mkString ","}"))
 
-  def withId(id: FileBasedId[WorkflowPath]) = reuseIfEqual(this, copy(id = id))
+  def withId(id: ItemId[WorkflowPath]) = reuseIfEqual(this, copy(id = id))
 
   private def checked: Checked[Workflow] = {
     val problems = labeledInstructions.map (_.instruction).collect {
@@ -373,11 +373,11 @@ extends FileBased
     s"{ ${labeledInstructions.mkString("; ")} ${nameToJob.map { case (k, v) => s"define job $k { $v }" }.mkString(" ")} }"
 }
 
-object Workflow extends FileBased.Companion[Workflow] {
-  type ThisFileBased = Workflow
+object Workflow extends InventoryItem.Companion[Workflow] {
+  type ThisItem = Workflow
   type Path = WorkflowPath
 
-  implicit val fileBasedsOverview = WorkflowsOverview
+  implicit val itemsOverview = WorkflowsOverview
   val typedPathCompanion = WorkflowPath
   val empty = Workflow(WorkflowPath.NoId, Vector.empty)
 

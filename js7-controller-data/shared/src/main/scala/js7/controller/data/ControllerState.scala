@@ -8,12 +8,12 @@ import js7.controller.data.events.ControllerAgentEvent.{AgentCouplingFailed, Age
 import js7.controller.data.events.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.controller.data.events.{ControllerAgentEvent, ControllerEvent, ControllerKeyedEventJsonCodec}
 import js7.data.agent.AgentRefPath
-import js7.data.controller.ControllerFileBaseds
-import js7.data.controller.ControllerFileBaseds.ControllerTypedPathCompanions
+import js7.data.controller.ControllerItems
+import js7.data.controller.ControllerItems.ControllerTypedPathCompanions
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{Event, EventId, JournaledState, KeyedEvent}
-import js7.data.filebased.{Repo, RepoEvent}
+import js7.data.item.{Repo, RepoEvent}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderOffered, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import monix.eval.Task
@@ -155,7 +155,7 @@ object ControllerState extends JournaledState.Companion[ControllerState]
     EventId.BeforeFirst,
     JournaledState.Standards.empty,
     ControllerMetaState.Undefined,
-    Repo.ofJsonDecoder(ControllerFileBaseds.jsonCodec),
+    Repo.ofJsonDecoder(ControllerItems.jsonCodec),
     Map.empty,
     Map.empty)
 

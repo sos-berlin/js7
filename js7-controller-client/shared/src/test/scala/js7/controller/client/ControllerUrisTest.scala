@@ -4,7 +4,7 @@ import js7.base.web.Uri
 import js7.data.agent.{AgentRef, AgentRefPath}
 import js7.data.event.{Event, EventRequest}
 import js7.data.fatevent.OrderFatEvent
-import js7.data.filebased.RepoEvent.FileBasedEvent
+import js7.data.item.RepoEvent.ItemEvent
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
@@ -34,8 +34,8 @@ final class ControllerUrisTest extends AnyFreeSpec
     // return EventId only
     assert(controllerUris.events(EventRequest.singleClass[Event](after = 7, timeout = Some(1.seconds)), eventIdOnly = true) ==
       Uri("http://example.com/controller/api/event?eventIdOnly=true&return=Event&delay=0&timeout=1&after=7"))
-    assert(controllerUris.events(EventRequest[Event](Set(classOf[OrderEvent], classOf[FileBasedEvent]), after = 7, Some(1.second)), eventIdOnly = true) ==
-      Uri("http://example.com/controller/api/event?eventIdOnly=true&return=OrderEvent,FileBasedEvent&delay=0&timeout=1&after=7"))
+    assert(controllerUris.events(EventRequest[Event](Set(classOf[OrderEvent], classOf[ItemEvent]), after = 7, Some(1.second)), eventIdOnly = true) ==
+      Uri("http://example.com/controller/api/event?eventIdOnly=true&return=OrderEvent,ItemEvent&delay=0&timeout=1&after=7"))
   }
 
   "clusterState" in {

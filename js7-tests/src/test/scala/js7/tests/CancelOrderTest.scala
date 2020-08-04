@@ -11,7 +11,7 @@ import js7.controller.data.ControllerCommand.{Batch, CancelOrder, Response}
 import js7.data.Problems.{CancelStartedOrderProblem, UnknownOrderProblem}
 import js7.data.agent.AgentRefPath
 import js7.data.command.CancelMode
-import js7.data.filebased.VersionId
+import js7.data.item.VersionId
 import js7.data.job.{ExecutablePath, ReturnCode}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancellationMarked, OrderCancelled, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingCancelled, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToController}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
@@ -33,7 +33,7 @@ import scala.concurrent.duration._
 final class CancelOrderTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentRefPaths = agentRefPath :: Nil
-  protected val fileBased = singleJobWorkflow :: twoJobsWorkflow :: forkWorkflow :: Nil
+  protected val inventoryItems = singleJobWorkflow :: twoJobsWorkflow :: forkWorkflow :: Nil
 
   override def beforeAll() = {
     for (a <- directoryProvider.agents) a.writeExecutable(TestExecutablePath, script(2.s))

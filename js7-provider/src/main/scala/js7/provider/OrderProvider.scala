@@ -6,7 +6,7 @@ import js7.base.problem.Checked
 import js7.base.utils.HasCloser
 import js7.common.files.DirectoryReader
 import js7.controller.client.HttpControllerApi
-import js7.core.filebased.TypedSourceReader
+import js7.core.item.TypedSourceReader
 import js7.data.order.FreshOrder
 import js7.provider.configuration.ProviderConfiguration
 import js7.provider.scheduledorder.{OrderScheduleGenerator, ScheduledOrderGenerator, ScheduledOrderGeneratorReader}
@@ -42,7 +42,7 @@ trait OrderProvider extends HasCloser
   }
 
   protected final def replaceOrderGenerators: Checked[Unit] =
-    typedSourceReader.readFileBaseds(DirectoryReader.entries(conf.orderGeneratorsDirectory).map(_.file))
+    typedSourceReader.readInventoryItems(DirectoryReader.entries(conf.orderGeneratorsDirectory).map(_.file))
       .map(_.map(_.asInstanceOf[ScheduledOrderGenerator]))
       .map(orderScheduleGenerator.replaceGenerators)
 }

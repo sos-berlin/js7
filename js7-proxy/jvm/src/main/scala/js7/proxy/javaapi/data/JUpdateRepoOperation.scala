@@ -1,7 +1,7 @@
 package js7.proxy.javaapi.data
 
 import js7.base.crypt.SignedString
-import js7.data.filebased.{TypedPath, UpdateRepoOperation}
+import js7.data.item.{TypedPath, UpdateRepoOperation}
 
 final case class JUpdateRepoOperation(underlying: UpdateRepoOperation.ItemOperation)
 extends JavaWrapper

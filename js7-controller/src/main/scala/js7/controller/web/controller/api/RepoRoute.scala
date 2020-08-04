@@ -25,8 +25,8 @@ import js7.common.scalautil.Logger
 import js7.controller.repo.{RepoUpdater, VerifiedUpdateRepo}
 import js7.controller.web.common.{ControllerRouteProvider, EntitySizeLimitProvider}
 import js7.controller.web.controller.api.RepoRoute.{ExitStreamException, _}
-import js7.data.crypt.FileBasedVerifier.Verified
-import js7.data.filebased.{FileBased, TypedPath, UpdateRepoOperation, VersionId}
+import js7.data.crypt.InventoryItemVerifier.Verified
+import js7.data.item.{InventoryItem, TypedPath, UpdateRepoOperation, VersionId}
 import monix.execution.Scheduler
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
@@ -55,7 +55,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                 val startedAt = now
                 var byteCount = 0L
                 val versionId = SetOnce[VersionId]
-                val addOrReplace = Vector.newBuilder[Verified[FileBased]]
+                val addOrReplace = Vector.newBuilder[Verified[InventoryItem]]
                 val delete = mutable.Buffer[TypedPath]()
                 httpEntity
                   .dataBytes
@@ -74,8 +74,8 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                   .foreachL {
                     case UpdateRepoOperation.Delete(path) =>
                       delete += path
-                    case verifiedFileBased: Verified[FileBased] @unchecked =>
-                      addOrReplace += verifiedFileBased
+                    case verifiedItem: Verified[InventoryItem] @unchecked =>
+                      addOrReplace += verifiedItem
                     case UpdateRepoOperation.AddVersion(v) =>
                       versionId := v  // throws
                   }
@@ -108,8 +108,8 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
       }
     }
 
-  private def verify(signedString: SignedString): Checked[Verified[FileBased]] =
-    for (verified <- repoUpdater.fileBasedVerifier.verify(signedString)) yield {
+  private def verify(signedString: SignedString): Checked[Verified[InventoryItem]] =
+    for (verified <- repoUpdater.itemVerifier.verify(signedString)) yield {
       logger.info(Logger.Signature, verified.toString)
       verified
     }

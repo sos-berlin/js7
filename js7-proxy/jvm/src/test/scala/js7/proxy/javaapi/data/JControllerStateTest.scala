@@ -12,10 +12,10 @@ import js7.controller.data.ControllerState
 import js7.controller.data.agent.AgentSnapshot
 import js7.data.agent.{AgentRef, AgentRefPath}
 import js7.data.cluster.ClusterState
-import js7.data.controller.{ControllerFileBaseds, ControllerId}
+import js7.data.controller.{ControllerId, ControllerItems}
 import js7.data.event.{EventId, JournalState, JournaledState}
-import js7.data.filebased.RepoEvent.VersionAdded
-import js7.data.filebased.{FileBasedSigner, Repo, VersionId}
+import js7.data.item.RepoEvent.VersionAdded
+import js7.data.item.{InventoryItemSigner, Repo, VersionId}
 import js7.data.node.NodeId
 import js7.data.order.{Order, OrderId}
 import js7.data.workflow.WorkflowPath
@@ -77,7 +77,7 @@ private object JControllerStateTest
        |""".stripMargin).orThrow
   private val agentRef = AgentRef(AgentRefPath("/AGENT") ~ versionId, Uri("http://agent.example.com"))
 
-  private val fileBasedSigner = new FileBasedSigner(SillySigner.Default, ControllerFileBaseds.jsonCodec)
+  private val itemSigner = new InventoryItemSigner(SillySigner.Default, ControllerItems.jsonCodec)
 
   private val controllerState = ControllerState(
     EventId(1001),
@@ -89,12 +89,12 @@ private object JControllerStateTest
           NodeId("B") -> Uri("http://B")),
         NodeId("A"))),
     ControllerMetaState(ControllerId("CONTROLLER-ID"), Timestamp("2019-05-24T12:00:00Z"), timezone = "Europe/Berlin"),
-    Repo.ofJsonDecoder(ControllerFileBaseds.jsonCodec)
+    Repo.ofJsonDecoder(ControllerItems.jsonCodec)
       .applyEvents(List(
         VersionAdded(versionId),
-        fileBasedSigner.toAddedEvent(agentRef),
-        fileBasedSigner.toAddedEvent(aWorkflow),
-        fileBasedSigner.toAddedEvent(bWorkflow)),
+        itemSigner.toAddedEvent(agentRef),
+        itemSigner.toAddedEvent(aWorkflow),
+        itemSigner.toAddedEvent(bWorkflow)),
       ).orThrow,
     (AgentSnapshot(AgentRefPath("/AGENT"), None, EventId(7)) :: Nil).toKeyedMap(_.agentRefPath),
     Vector(

@@ -1,11 +1,11 @@
 package js7.tests
 
-import js7.common.configutils.Configs._
 import js7.agent.data.commands.AgentCommand
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.process.ProcessSignal.SIGKILL
 import js7.base.time.ScalaTime._
+import js7.common.configutils.Configs._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.data.ControllerCommand.CancelOrder
@@ -24,14 +24,13 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.{StdoutOutput, script}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
-import js7.common.configutils.Configs._
 
 final class ForkTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentRefPaths = AAgentRefPath :: BAgentRefPath :: Nil
   override protected val controllerConfig = config"""
     js7.TEST-ONLY.suppress-order-id-check-for = "DUPLICATE/🥕" """
-  protected val fileBased = TestWorkflow :: DuplicateWorkflow :: Nil
+  protected val inventoryItems = TestWorkflow :: DuplicateWorkflow :: Nil
 
   override def beforeAll() = {
     directoryProvider.agents(0).writeExecutable(ExecutablePath("/SLOW.cmd"), script(60.s))

@@ -4,11 +4,11 @@ import js7.base.crypt.silly.{SillySignatureVerifier, SillySigner}
 import js7.base.web.Uri
 import js7.controller.web.controller.api.fatevent.FatStateTest._
 import js7.data.agent.{AgentRef, AgentRefPath}
-import js7.data.controller.{ControllerFileBaseds, ControllerId}
-import js7.data.crypt.FileBasedVerifier
+import js7.data.controller.{ControllerId, ControllerItems}
+import js7.data.crypt.InventoryItemVerifier
 import js7.data.event.{Event, KeyedEvent, Stamped}
 import js7.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderCancelledFat, OrderFailedFat, OrderFinishedFat, OrderForkedFat, OrderJoinedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStderrWrittenFat, OrderStdoutWrittenFat}
-import js7.data.filebased.{FileBasedSigner, Repo, RepoEvent, VersionId}
+import js7.data.item.{InventoryItemSigner, Repo, RepoEvent, VersionId}
 import js7.data.job.{ExecutablePath, ReturnCode}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancelled, OrderDetachable, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStderrWritten, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToController}
 import js7.data.order.{OrderId, Outcome}
@@ -23,8 +23,8 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class FatStateTest extends AnyFreeSpec
 {
-  private val toSigned = new FileBasedSigner(SillySigner.Default, ControllerFileBaseds.jsonCodec).toSigned _
-  private val repo = Repo.signatureVerifying(new FileBasedVerifier(new SillySignatureVerifier, ControllerFileBaseds.jsonCodec))
+  private val toSigned = new InventoryItemSigner(SillySigner.Default, ControllerItems.jsonCodec).toSigned _
+  private val repo = Repo.signatureVerifying(new InventoryItemVerifier(new SillySignatureVerifier, ControllerItems.jsonCodec))
   private val eventIds = Iterator.from(1)
   private var fatState = FatState(ControllerId("CONTROLLER-ID"), eventIds.next(), repo, Map.empty)
   private var beforeFinished: FatState = null
@@ -35,12 +35,12 @@ final class FatStateTest extends AnyFreeSpec
   }
 
   "RepoAdded AgentRef" in {
-    check(RepoEvent.FileBasedAdded(toSigned(agentRef)),
+    check(RepoEvent.ItemAdded(toSigned(agentRef)),
       None)
   }
 
   "RepoAdded Workflow" in {
-    check(RepoEvent.FileBasedAdded(toSigned(workflow)),
+    check(RepoEvent.ItemAdded(toSigned(workflow)),
       None)
   }
 

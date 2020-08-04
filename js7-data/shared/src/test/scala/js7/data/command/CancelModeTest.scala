@@ -2,7 +2,7 @@ package js7.data.command
 
 import js7.base.circeutils.CirceUtils._
 import js7.base.process.ProcessSignal.SIGTERM
-import js7.data.filebased.VersionId
+import js7.data.item.VersionId
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
 import js7.tester.CirceJsonTester.testJson

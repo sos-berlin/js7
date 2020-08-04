@@ -17,8 +17,8 @@ import js7.controller.configuration.ControllerConfiguration
 import js7.controller.data.ControllerCommand.ReplaceRepo
 import js7.controller.data.events.ControllerAgentEvent.AgentCouplingFailed
 import js7.data.agent.{AgentRef, AgentRefPath}
-import js7.data.controller.ControllerFileBaseds
-import js7.data.filebased.{FileBasedSigner, VersionId}
+import js7.data.controller.ControllerItems
+import js7.data.item.{InventoryItemSigner, VersionId}
 import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
@@ -62,7 +62,7 @@ final class ControllerAgentWithoutAuthenticationTest extends AnyFreeSpec
       }
       (dir / "agent/config/executables/EXECUTABLE.cmd").writeExecutable(":")
 
-      val fileBasedSigner = {
+      val itemSigner = {
         val signature = SillySignature("✘✘✘")
         for (x <- Array("controller", "agent")) {
           val keyDirectory = dir / x / "config/private/silly-signatures"
@@ -73,7 +73,7 @@ final class ControllerAgentWithoutAuthenticationTest extends AnyFreeSpec
             "js7.configuration.trusted-signature-keys.Silly = " +
               "\"" + keyDirectory.toString.replace("""\""", """\\""") + "\"\n"
         }
-        new FileBasedSigner(new SillySigner(signature), ControllerFileBaseds.jsonCodec)
+        new InventoryItemSigner(new SillySigner(signature), ControllerItems.jsonCodec)
       }
 
       val controllerPort :: agentPort :: Nil = FreeTcpPortFinder.findFreeTcpPorts(2)
@@ -91,7 +91,7 @@ final class ControllerAgentWithoutAuthenticationTest extends AnyFreeSpec
       val controller = RunningController(controllerConfiguration) await 99.seconds
       controller.waitUntilReady()
 
-      val replaceRepo = ReplaceRepo(versionId, (agentRef :: workflow :: Nil) map fileBasedSigner.sign)
+      val replaceRepo = ReplaceRepo(versionId, (agentRef :: workflow :: Nil) map itemSigner.sign)
       controller.executeCommandAsSystemUser(replaceRepo).runSyncUnsafe(99.seconds).orThrow
 
       body(controller, agentPort)

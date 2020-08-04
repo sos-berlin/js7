@@ -15,7 +15,7 @@ import js7.base.problem.Problem;
 import js7.base.problem.ProblemCode;
 import js7.data.event.KeyedEvent;
 import js7.data.event.Stamped;
-import js7.data.filebased.VersionId;
+import js7.data.item.VersionId;
 import js7.data.order.OrderEvent;
 import js7.data.order.OrderEvent.OrderFinished$;
 import js7.data.order.OrderEvent.OrderMoved;

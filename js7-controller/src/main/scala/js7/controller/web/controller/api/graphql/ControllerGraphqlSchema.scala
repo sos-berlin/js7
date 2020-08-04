@@ -6,7 +6,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentRefPath
-import js7.data.filebased.{FileBasedId, TypedPath, VersionId}
+import js7.data.item.{ItemId, TypedPath, VersionId}
 import js7.data.job.{ExecutablePath, ExecutableScript, ReturnCode}
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -112,12 +112,12 @@ object ControllerGraphqlSchema
     fields[QueryContext, Problem](
       Field("message", StringType, resolve = _.value.toString)))  // Not value.message, JSON differs from Scala !!!
 
-  private implicit val WorkflowIdType = fileBasedIdType[WorkflowPath]("WorkflowId", "Workflow's path and VersionId")
+  private implicit val WorkflowIdType = itemIdType[WorkflowPath]("WorkflowId", "Workflow's path and VersionId")
 
-  private def fileBasedIdType[P <: TypedPath: SomeType](name: String, description: String): ObjectType[QueryContext, FileBasedId[P]] = ObjectType(
+  private def itemIdType[P <: TypedPath: SomeType](name: String, description: String): ObjectType[QueryContext, ItemId[P]] = ObjectType(
     name,
     description,
-    fields[QueryContext, FileBasedId[P]](
+    fields[QueryContext, ItemId[P]](
       Field("path", implicitly[SomeType[P]], resolve = _.value.path),
       Field("versionId", VersionIdType, resolve = _.value.versionId)))
 

@@ -4,15 +4,15 @@ import akka.util.ByteString
 import io.circe.Json
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Checked
-import js7.core.filebased.FileBasedReader
-import js7.data.filebased.SourceType
+import js7.core.item.InventoryItemReader
+import js7.data.item.SourceType
 import js7.data.workflow.parser.WorkflowParser
 import js7.data.workflow.{Workflow, WorkflowId}
 
 /**
   * @author Joacim Zschimmer
   */
-object WorkflowReader extends FileBasedReader
+object WorkflowReader extends InventoryItemReader
 {
   val companion = Workflow
 

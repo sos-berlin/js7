@@ -1,12 +1,12 @@
 package js7.data
 
-import js7.data.filebased.FileBasedId
+import js7.data.item.ItemId
 
 /**
   * @author Joacim Zschimmer
   */
 package object workflow
 {
-  type WorkflowId = FileBasedId[WorkflowPath]
-  val WorkflowId = new FileBasedId.Companion[WorkflowPath] {}
+  type WorkflowId = ItemId[WorkflowPath]
+  val WorkflowId = new ItemId.Companion[WorkflowPath] {}
 }

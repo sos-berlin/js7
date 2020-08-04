@@ -21,13 +21,13 @@ import js7.common.scalautil.IOExecutor.Implicits.globalIOX
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.scalautil.xmls.ScalaXmls.implicits._
 import js7.common.system.OperatingSystem.isMac
-import js7.core.filebased.{FileBasedReader, TypedPaths}
+import js7.core.item.{InventoryItemReader, TypedPaths}
 import js7.data.agent.{AgentRef, AgentRefPath}
 import js7.data.event.EventId
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.filebased.Repo.Entry
-import js7.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, FileBasedEvent, VersionAdded}
-import js7.data.filebased.{FileBaseds, Repo, SourceType, VersionId}
+import js7.data.item.Repo.Entry
+import js7.data.item.RepoEvent.{ItemAdded, ItemChanged, ItemDeleted, ItemEvent, VersionAdded}
+import js7.data.item.{IntenvoryItems, Repo, SourceType, VersionId}
 import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.OrderAdded
 import js7.data.workflow.parser.WorkflowParser
@@ -48,7 +48,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   override protected def suppressRepoInitialization = true
   protected val agentRefPaths = agentRefPath :: Nil
-  protected val fileBased = Nil
+  protected val inventoryItems = Nil
   private lazy val agentRef = directoryProvider.agentRefs.head
   private lazy val privateKeyPassword = SecretString("")
   override protected val signer = SillySigner.checked("SILLY".getBytes(UTF_8), privateKeyPassword).orThrow
@@ -62,7 +62,6 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
     testConfig)
   private lazy val provider = Provider(providerConfiguration).orThrow
   private lazy val v1Time = now
-  import provider.fileBasedSigner.toSigned
 
   override def beforeAll() = {
     createDirectories(providerDirectory / "config" / "private")
@@ -112,7 +111,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
     }
 
     "Initially, JS7's Repo is empty" in {
-      assert(checkedRepo.map(_.pathToVersionToSignedFileBased.isEmpty) == Right(true))
+      assert(checkedRepo.map(_.pathToVersionToSignedItems.isEmpty) == Right(true))
     }
 
     "Start with one AgentRef and two workflows" in {
@@ -122,11 +121,11 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       v1Time
 
       // `initiallyUpdateControllerConfiguration` will send this diff to the Controller
-      assert(provider.testControllerDiff.await(99.seconds).orThrow == FileBaseds.Diff(
+      assert(provider.testControllerDiff.await(99.seconds).orThrow == IntenvoryItems.Diff(
         added = agentRef :: TestWorkflow.withId(AWorkflowPath) :: TestWorkflow.withId(BWorkflowPath) :: Nil))
 
       provider.initiallyUpdateControllerConfiguration(V1.some).await(99.seconds).orThrow
-      assert(controller.fileBasedApi.checkedRepo.await(99.seconds).map(_.pathToVersionToSignedFileBased) == Right(Map(
+      assert(controller.itemApi.checkedRepo.await(99.seconds).map(_.pathToVersionToSignedItems) == Right(Map(
         agentRef.path -> List(
           Entry(V1, Some(toSigned(agentRef withVersion V1)))),
         AWorkflowPath -> List(
@@ -154,9 +153,9 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       assert(provider.updateControllerConfiguration(V2.some).await(99.seconds) ==
         Left(Problem.Combined(Set(
           TypedPaths.AlienFileProblem(Paths.get("UNKNOWN.tmp")),
-          FileBasedReader.SourceProblem(WorkflowPath("/NO-JSON"), SourceType.Json, Problem("JSON ParsingFailure: expected json value got 'INVALI...' (line 1, column 1)")),
-          FileBasedReader.SourceProblem(WorkflowPath("/ERROR-1"), SourceType.Json, Problem("JSON DecodingFailure at .instructions: Attempt to decode value on failed cursor")),
-          FileBasedReader.SourceProblem(WorkflowPath("/ERROR-2"), SourceType.Json, Problem("JSON DecodingFailure at .instructions: C[A]"))))))
+          InventoryItemReader.SourceProblem(WorkflowPath("/NO-JSON"), SourceType.Json, Problem("JSON ParsingFailure: expected json value got 'INVALI...' (line 1, column 1)")),
+          InventoryItemReader.SourceProblem(WorkflowPath("/ERROR-1"), SourceType.Json, Problem("JSON DecodingFailure at .instructions: Attempt to decode value on failed cursor")),
+          InventoryItemReader.SourceProblem(WorkflowPath("/ERROR-2"), SourceType.Json, Problem("JSON DecodingFailure at .instructions: C[A]"))))))
     }
 
     "Delete invalid files" in {
@@ -165,7 +164,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       delete(live / "ERROR-1.workflow.json")
       delete(live / "ERROR-2.workflow.json")
       provider.updateControllerConfiguration(V2.some).await(99.seconds).orThrow
-      assert(controller.fileBasedApi.checkedRepo.await(99.seconds).map(_.pathToVersionToSignedFileBased) == Right(Map(
+      assert(controller.itemApi.checkedRepo.await(99.seconds).map(_.pathToVersionToSignedItems) == Right(Map(
         agentRef.path -> List(
           Entry(V1, Some(toSigned(agentRef withVersion V1)))),
         AWorkflowPath -> List(
@@ -181,7 +180,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       delete(live / "B.workflow.json")
       provider.updateControllerConfiguration(V3.some).await(99.seconds).orThrow
       assert(checkedRepo.map(_.versions) == Right(V3 :: V2 :: V1 :: Nil))
-      assert(checkedRepo.map(_.pathToVersionToSignedFileBased) == Right(Map(
+      assert(checkedRepo.map(_.pathToVersionToSignedItems) == Right(Map(
         agentRef.path -> List(
           Entry(V1, Some(toSigned(agentRef withVersion V1)))),
         AWorkflowPath -> List(
@@ -204,7 +203,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       val workflow = WorkflowParser.parse(workflowPath, notation).orThrow
       live.resolve(workflowPath.toFile(SourceType.Txt)) := notation
 
-      assert(provider.testControllerDiff.await(99.seconds).orThrow == FileBaseds.Diff(added = workflow :: Nil))
+      assert(provider.testControllerDiff.await(99.seconds).orThrow == IntenvoryItems.Diff(added = workflow :: Nil))
       provider.updateControllerConfiguration(V4.some).await(99.seconds).orThrow
       assert(provider.testControllerDiff.await(99.seconds).orThrow.isEmpty)
     }
@@ -228,17 +227,17 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
       whenObserved
       val versionId = controller.eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
-      val events = controller.eventWatch.await[FileBasedEvent](after = lastEventId).map(_.value)
+      val events = controller.eventWatch.await[ItemEvent](after = lastEventId).map(_.value)
       assert(events == Vector(BWorkflowPath)
-        .map(path => NoKey <-: FileBasedAdded(toSigned(TestWorkflow withId path ~ versionId))))
+        .map(path => NoKey <-: ItemAdded(toSigned(TestWorkflow withId path ~ versionId))))
     }
 
     "Delete a workflow" in {
       whenObserved
       lastEventId = controller.eventWatch.lastAddedEventId
       delete(live resolve CWorkflowPath.toFile(SourceType.Json))
-      assert(controller.eventWatch.await[FileBasedEvent](after = lastEventId).map(_.value) ==
-        Vector(NoKey <-: FileBasedDeleted(CWorkflowPath)))
+      assert(controller.eventWatch.await[ItemEvent](after = lastEventId).map(_.value) ==
+        Vector(NoKey <-: ItemDeleted(CWorkflowPath)))
     }
 
     "Add a workflow" in {
@@ -246,8 +245,8 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       lastEventId = controller.eventWatch.lastAddedEventId
       writeWorkflowFile(CWorkflowPath)
       val versionId = controller.eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
-      assert(controller.eventWatch.await[FileBasedEvent](after = lastEventId).map(_.value) ==
-        Vector(NoKey <-: FileBasedAdded(toSigned(TestWorkflow withId CWorkflowPath ~ versionId))))
+      assert(controller.eventWatch.await[ItemEvent](after = lastEventId).map(_.value) ==
+        Vector(NoKey <-: ItemAdded(toSigned(TestWorkflow withId CWorkflowPath ~ versionId))))
     }
 
     "Change a workflow" in {
@@ -255,8 +254,8 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       lastEventId = controller.eventWatch.lastAddedEventId
       live.resolve(CWorkflowPath toFile SourceType.Json) := ChangedWorkflowJson
       val versionId = controller.eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
-      assert(controller.eventWatch.await[FileBasedEvent](after = lastEventId).map(_.value) ==
-        Vector(NoKey <-: FileBasedChanged(toSigned(ChangedWorkflow withId CWorkflowPath ~ versionId))))
+      assert(controller.eventWatch.await[ItemEvent](after = lastEventId).map(_.value) ==
+        Vector(NoKey <-: ItemChanged(toSigned(ChangedWorkflow withId CWorkflowPath ~ versionId))))
     }
 
     "Add an order generator" in {
@@ -300,7 +299,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
   }
 
   private def checkedRepo: Checked[Repo] =
-    controller.fileBasedApi.checkedRepo.await(99.seconds)
+    controller.itemApi.checkedRepo.await(99.seconds)
 
   private def writeWorkflowFile(workflowPath: WorkflowPath): Unit =
     live.resolve(workflowPath.toFile(SourceType.Json)) := TestWorkflowJson

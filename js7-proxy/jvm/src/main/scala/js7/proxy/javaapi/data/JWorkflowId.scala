@@ -1,7 +1,7 @@
 package js7.proxy.javaapi.data
 
 import js7.base.annotation.javaApi
-import js7.data.filebased.VersionId
+import js7.data.item.VersionId
 import js7.data.workflow.{WorkflowId, WorkflowPath}
 
 @javaApi

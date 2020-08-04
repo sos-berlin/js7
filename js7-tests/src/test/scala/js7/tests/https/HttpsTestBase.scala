@@ -1,6 +1,5 @@
 package js7.tests.https
 
-import js7.common.configutils.Configs._
 import com.typesafe.config.ConfigFactory
 import java.nio.file.Files.{createTempFile, delete}
 import js7.base.auth.UserId
@@ -124,7 +123,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest with
 
   override protected final def agentHttps = true
   protected final val agentRefPaths = AgentRefPath("/TEST-AGENT") :: Nil
-  protected final val fileBased = TestWorkflow :: Nil
+  protected final val inventoryItems = TestWorkflow :: Nil
 
   override def beforeAll() = {
     clientKeyStore := ClientKeyStoreResource.contentBytes

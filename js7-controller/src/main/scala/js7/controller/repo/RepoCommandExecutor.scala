@@ -12,17 +12,17 @@ import js7.common.scalautil.Logger
 import js7.controller.data.ControllerCommand
 import js7.controller.repo.RepoCommandExecutor._
 import js7.core.command.CommandMeta
-import js7.data.crypt.FileBasedVerifier
-import js7.data.filebased.{FileBased, Repo, RepoEvent}
+import js7.data.crypt.InventoryItemVerifier
+import js7.data.item.{InventoryItem, Repo, RepoEvent}
 import monix.eval.Task
 import monix.reactive.Observable
 
 /**
   * @author Joacim Zschimmer
   */
-final class RepoCommandExecutor(fileBasedVerifier: FileBasedVerifier[FileBased])
+final class RepoCommandExecutor(itemVerifier: InventoryItemVerifier[InventoryItem])
 {
-  // ReplaceRepo and UpdateRepo may detect equal objects and optimize the FileBasedChanged away,
+  // ReplaceRepo and UpdateRepo may detect equal objects and optimize the ItemChanged away,
   // if we can make sure that the different signature (due to different VersionId) refer the same trusted signer key.
   // Signatures refering different signer keys must be kept to allow the operator to delete old signer keys.
 
@@ -34,10 +34,10 @@ final class RepoCommandExecutor(fileBasedVerifier: FileBasedVerifier[FileBased])
           .toL(Vector)
           .map(_
             .sequence
-            .flatMap(signedFileBasedSeq => repo.fileBasedToEvents(replaceRepo.versionId, signedFileBasedSeq,
-              deleted = repo.currentFileBaseds.view
+            .flatMap(signedItemSeq => repo.itemToEvents(replaceRepo.versionId, signedItemSeq,
+              deleted = repo.currentItems.view
                 .map(_.path)
-                .filterNot(signedFileBasedSeq.view.map(_.value.path).toSet)
+                .filterNot(signedItemSeq.view.map(_.value.path).toSet)
                 .to(Vector)))))
 
   def updateRepoCommandToEvents(repo: Repo, updateRepo: ControllerCommand.UpdateRepo, meta: CommandMeta): Task[Checked[Seq[RepoEvent]]] =
@@ -48,12 +48,12 @@ final class RepoCommandExecutor(fileBasedVerifier: FileBasedVerifier[FileBased])
           .toL(Vector)
           .map(_
             .sequence
-            .flatMap(repo.fileBasedToEvents(updateRepo.versionId, _, updateRepo.delete))))
+            .flatMap(repo.itemToEvents(updateRepo.versionId, _, updateRepo.delete))))
 
-  private def verify(signedString: SignedString): Checked[Signed[FileBased]] =
-    for (verified <- fileBasedVerifier.verify(signedString)) yield {
+  private def verify(signedString: SignedString): Checked[Signed[InventoryItem]] =
+    for (verified <- itemVerifier.verify(signedString)) yield {
       logger.info(Logger.Signature, verified.toString)
-      verified.signedFileBased
+      verified.signedItem
     }
 }
 

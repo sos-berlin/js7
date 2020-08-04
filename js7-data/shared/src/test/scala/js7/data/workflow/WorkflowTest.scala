@@ -7,7 +7,7 @@ import js7.base.problem.Problems.UnknownKeyProblem
 import js7.data.agent.AgentRefPath
 import js7.data.expression.Expression.{BooleanConstant, Equal, LastReturnCode, NumericConstant}
 import js7.data.expression.PositionSearch
-import js7.data.filebased.VersionId
+import js7.data.item.VersionId
 import js7.data.job.{ExecutablePath, ExecutableScript, JobKey}
 import js7.data.workflow.WorkflowTest._
 import js7.data.workflow.instructions.executable.WorkflowJob

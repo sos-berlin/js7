@@ -7,7 +7,7 @@ import js7.common.http.CirceToYaml.ToYamlString
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.FileUtils.withTemporaryDirectory
 import js7.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
-import js7.core.filebased.TypedSourceReader
+import js7.core.item.TypedSourceReader
 import js7.data.agent.{AgentRef, AgentRefPath}
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable

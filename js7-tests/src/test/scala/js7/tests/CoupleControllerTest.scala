@@ -26,7 +26,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class CoupleControllerTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
   protected val agentRefPaths = agentRefPath :: Nil
-  protected val fileBased = TestWorkflow :: Nil
+  protected val inventoryItems = TestWorkflow :: Nil
 
   private lazy val agentStateDir = directoryProvider.agents.head.dataDir / "state"
   private lazy val firstJournalFile = agentStateDir / "controller-Controller--0.journal"

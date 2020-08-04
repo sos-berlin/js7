@@ -1,6 +1,6 @@
 package js7.proxy.javaapi.data;
 
-import js7.data.filebased.VersionId;
+import js7.data.item.VersionId;
 import js7.data.workflow.WorkflowPath;
 import js7.data.workflow.WorkflowPrinter;
 import js7.proxy.javaapi.utils.JWorkflowParser;

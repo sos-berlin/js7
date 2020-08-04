@@ -17,8 +17,8 @@ import js7.common.utils.JavaResource
 import js7.controller.OrderApi
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.graphql.GraphqlRoute._
-import js7.core.filebased.FileBasedApi
-import js7.data.filebased.FileBased
+import js7.core.item.InventoryItemApi
+import js7.data.item.InventoryItem
 import js7.data.order.{Order, OrderId}
 import monix.execution.Scheduler
 import sangria.ast.Document
@@ -34,7 +34,7 @@ import scala.util.{Failure, Success}
 trait GraphqlRoute extends ControllerRouteProvider
 {
   protected def orderApi: OrderApi
-  protected def fileBasedApi: FileBasedApi
+  protected def itemApi: InventoryItemApi
 
   private implicit def implicitScheduler: Scheduler = scheduler
 
@@ -61,8 +61,8 @@ trait GraphqlRoute extends ControllerRouteProvider
       orderApi.orders.map(_.map(_.view.filter(matches).take(selector.limit).toSeq))
     }
 
-    def idTo[A <: FileBased: FileBased.Companion](id: A#Id) =
-      fileBasedApi.idTo[A](id)
+    def idTo[A <: InventoryItem: InventoryItem.Companion](id: A#Id) =
+      itemApi.idTo[A](id)
   }
 
   final val graphqlRoute: Route =

@@ -1,6 +1,5 @@
 package js7.tests
 
-import js7.common.configutils.Configs._
 import java.nio.file.Path
 import js7.agent.RunningAgent
 import js7.agent.scheduler.AgentEvent
@@ -9,6 +8,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.{autoClosing, multipleAutoClosing}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkautils.Akkas
+import js7.common.configutils.Configs._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.Logger
@@ -20,8 +20,8 @@ import js7.data.agent.{AgentRef, AgentRefPath}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{<-:, Event, EventId, KeyedEvent, Stamped}
-import js7.data.filebased.RepoEvent.{FileBasedAdded, VersionAdded}
-import js7.data.filebased.{RepoEvent, VersionId}
+import js7.data.item.RepoEvent.{ItemAdded, VersionAdded}
+import js7.data.item.{RepoEvent, VersionId}
 import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToController}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
@@ -69,10 +69,10 @@ final class RecoveryTest extends AnyFreeSpec
           assert(controller.eventWatch.await[RepoEvent]().map(_.value).sortBy(_.toString) ==
             Vector(
               NoKey <-: VersionAdded(VersionId("INITIAL")),
-              NoKey <-: FileBasedAdded(toSigned(AgentRef(AgentRefPaths(0) ~ "INITIAL", directoryProvider.agents(0).localUri))),
-              NoKey <-: FileBasedAdded(toSigned(AgentRef(AgentRefPaths(1) ~ "INITIAL", directoryProvider.agents(1).localUri))),
-              NoKey <-: FileBasedAdded(toSigned(TestWorkflow)),
-              NoKey <-: FileBasedAdded(toSigned(QuickWorkflow)))
+              NoKey <-: ItemAdded(toSigned(AgentRef(AgentRefPaths(0) ~ "INITIAL", directoryProvider.agents(0).localUri))),
+              NoKey <-: ItemAdded(toSigned(AgentRef(AgentRefPaths(1) ~ "INITIAL", directoryProvider.agents(1).localUri))),
+              NoKey <-: ItemAdded(toSigned(TestWorkflow)),
+              NoKey <-: ItemAdded(toSigned(QuickWorkflow)))
             .sortBy(_.toString))
           runAgents(directoryProvider) { _ =>
             controller.addOrderBlocking(order1)

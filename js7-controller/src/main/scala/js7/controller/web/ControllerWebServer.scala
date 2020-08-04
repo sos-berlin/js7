@@ -22,7 +22,7 @@ import js7.controller.configuration.ControllerConfiguration
 import js7.controller.data.{ControllerCommand, ControllerState}
 import js7.controller.repo.RepoUpdater
 import js7.core.command.CommandMeta
-import js7.core.filebased.FileBasedApi
+import js7.core.item.InventoryItemApi
 import js7.data.cluster.ClusterState
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -35,7 +35,7 @@ import scala.concurrent.duration.Deadline
 final class ControllerWebServer private(
   controllerConfiguration: ControllerConfiguration,
   gateKeeperConfiguration: GateKeeper.Configuration[SimpleUser],
-  fileBasedApi: FileBasedApi,
+  itemApi: InventoryItemApi,
   orderApi: OrderApi.WithCommands,
   commandExecutor: ControllerCommandExecutor,
   repoUpdater: RepoUpdater,
@@ -67,7 +67,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri
         isLoopback = binding.address.getAddress.isLoopbackAddress)
       protected val sessionRegister     = ControllerWebServer.this.sessionRegister
       protected val eventWatch          = ControllerWebServer.this.eventWatch
-      protected val fileBasedApi = ControllerWebServer.this.fileBasedApi
+      protected val itemApi = ControllerWebServer.this.itemApi
       protected val orderApi = ControllerWebServer.this.orderApi
       protected val repoUpdater = ControllerWebServer.this.repoUpdater
 
@@ -97,7 +97,7 @@ object ControllerWebServer
     scheduler: Scheduler,
     closer: Closer)
   {
-    def apply(fileBasedApi: FileBasedApi, orderApi: OrderApi.WithCommands,
+    def apply(itemApi: InventoryItemApi, orderApi: OrderApi.WithCommands,
       commandExecutor: ControllerCommandExecutor,
       repoUpdater: RepoUpdater,
       clusterState: Task[Checked[ClusterState]],
@@ -107,7 +107,7 @@ object ControllerWebServer
     : ControllerWebServer =
       new ControllerWebServer(
         controllerConfiguration, gateKeeperConfiguration,
-        fileBasedApi, orderApi, commandExecutor, repoUpdater,
+        itemApi, orderApi, commandExecutor, repoUpdater,
         clusterState, controllerState, totalRunningSince,
         sessionRegister, eventWatch, config, injector,
         actorSystem, scheduler)

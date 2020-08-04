@@ -15,9 +15,9 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
 import js7.data.cluster.{ClusterCommand, ClusterSetting}
 import js7.data.command.{CancelMode, CommonCommand}
-import js7.data.controller.ControllerFileBaseds.typedPathJsonDecoder
+import js7.data.controller.ControllerItems.typedPathJsonDecoder
 import js7.data.event.EventId
-import js7.data.filebased.{TypedPath, VersionId}
+import js7.data.item.{TypedPath, VersionId}
 import js7.data.node.NodeId
 import js7.data.order.{FreshOrder, OrderId}
 

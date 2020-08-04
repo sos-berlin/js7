@@ -45,11 +45,11 @@ final class AgentActorTest extends AnyFreeSpec
         val orderIds = for (i <- 0 until n) yield OrderId(s"TEST-ORDER-$i")
         orderIds.map(orderId =>
           executeCommand(
-            AttachOrder(TestOrder.copy(id = orderId), TestAgentRefPath, provider.fileBasedSigner.sign(SimpleTestWorkflow)))
+            AttachOrder(TestOrder.copy(id = orderId), TestAgentRefPath, provider.itemSigner.sign(SimpleTestWorkflow)))
         ).await(99.s).foreach(o => assert(o.isRight))
         assert(
           executeCommand(
-            AttachOrder(TestOrder.copy(id = orderIds.head), TestAgentRefPath, provider.fileBasedSigner.sign(SimpleTestWorkflow))
+            AttachOrder(TestOrder.copy(id = orderIds.head), TestAgentRefPath, provider.itemSigner.sign(SimpleTestWorkflow))
           ).await(99.s) == Left(AgentDuplicateOrder(orderIds.head)))
         assert(executeCommand(CoupleController(agentRefPath, agentRunId, EventId.BeforeFirst)).await(99.s) ==
           Right(CoupleController.Response(orderIds.toSet)))

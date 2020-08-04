@@ -59,7 +59,7 @@ final class AgentTest extends AnyFreeSpec with AgentTester
               .isInstanceOf[RegisterAsController.Response])
 
             val order = Order(OrderId("TEST"), TestWorkflow.id, Order.Ready)
-            assert(agentApi.commandExecute(AttachOrder(order, TestAgentRefPath, fileBasedSigner.sign(TestWorkflow))).await(99.s)
+            assert(agentApi.commandExecute(AttachOrder(order, TestAgentRefPath, itemSigner.sign(TestWorkflow))).await(99.s)
               == Right(AgentCommand.Response.Accepted))
             val Right(eventWatch) = agentApi.eventWatchForController(TestControllerId).await(99.seconds)
             val orderProcessed = eventWatch.await[OrderProcessed]().head.value.event

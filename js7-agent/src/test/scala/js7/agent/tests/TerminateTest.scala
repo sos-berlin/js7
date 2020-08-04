@@ -62,7 +62,7 @@ final class TerminateTest extends AnyFreeSpec with AgentTester
           Order.Ready,
           Map("a" -> "A")),
         TestAgentRefPath,
-        fileBasedSigner.sign(SimpleTestWorkflow)))
+        itemSigner.sign(SimpleTestWorkflow)))
     ) await 99.s
 
     val whenStepEnded: Future[Seq[OrderProcessed]] =

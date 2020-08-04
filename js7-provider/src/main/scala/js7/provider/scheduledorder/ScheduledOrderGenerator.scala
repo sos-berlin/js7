@@ -1,7 +1,7 @@
 package js7.provider.scheduledorder
 
 import js7.base.utils.ScalaUtils.reuseIfEqual
-import js7.data.filebased.{FileBased, FileBasedId}
+import js7.data.item.{InventoryItem, ItemId}
 import js7.data.workflow.WorkflowPath
 import js7.provider.scheduledorder.oldruntime.OldSchedule
 
@@ -10,21 +10,21 @@ import js7.provider.scheduledorder.oldruntime.OldSchedule
   * @author Joacim Zschimmer
   */
 final case class ScheduledOrderGenerator(
-  id: FileBasedId[ScheduledOrderGeneratorPath],
+  id: ItemId[ScheduledOrderGeneratorPath],
   workflowPath: WorkflowPath,
   arguments: Map[String, String],
   schedule: OldSchedule)
-extends FileBased
+extends InventoryItem
 {
   type Self = ScheduledOrderGenerator
 
   val companion = ScheduledOrderGenerator
 
-  def withId(id: FileBasedId[ScheduledOrderGeneratorPath]) = reuseIfEqual(this, copy(id = id))
+  def withId(id: ItemId[ScheduledOrderGeneratorPath]) = reuseIfEqual(this, copy(id = id))
 }
 
-object ScheduledOrderGenerator extends FileBased.Companion[ScheduledOrderGenerator] {
-  type ThisFileBased = ScheduledOrderGenerator
+object ScheduledOrderGenerator extends InventoryItem.Companion[ScheduledOrderGenerator] {
+  type ThisItem = ScheduledOrderGenerator
   type Path = ScheduledOrderGeneratorPath
 
   def typedPathCompanion = ScheduledOrderGeneratorPath

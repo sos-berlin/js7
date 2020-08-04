@@ -9,7 +9,7 @@ import js7.controller.data.ControllerCommand._
 import js7.data.agent.AgentRefPath
 import js7.data.cluster.ClusterCommand
 import js7.data.command.CancelMode
-import js7.data.filebased.VersionId
+import js7.data.item.VersionId
 import js7.data.node.NodeId
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.WorkflowPath

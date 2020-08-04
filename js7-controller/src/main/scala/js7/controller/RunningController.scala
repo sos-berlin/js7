@@ -51,10 +51,10 @@ import js7.core.event.state.JournaledStatePersistence
 import js7.core.problems.{ClusterNodeIsNotActiveProblem, ClusterNodeIsNotYetReadyProblem, JobSchedulerIsShuttingDownProblem}
 import js7.data.Problems.PassiveClusterNodeShutdownNotAllowedProblem
 import js7.data.cluster.ClusterState
-import js7.data.controller.ControllerFileBaseds
-import js7.data.crypt.FileBasedVerifier
+import js7.data.controller.ControllerItems
+import js7.data.crypt.InventoryItemVerifier
 import js7.data.event.{EventRequest, Stamped}
-import js7.data.filebased.FileBased
+import js7.data.item.InventoryItem
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderEvent}
 import monix.eval.Task
@@ -77,7 +77,7 @@ import shapeless.tag.@@
 final class RunningController private(
   val eventWatch: StrictEventWatch,
   webServer: ControllerWebServer,
-  val fileBasedApi: MainFileBasedApi,
+  val itemApi: DirectItemApi,
   val orderApi: OrderApi.WithCommands,
   val clusterState: Task[ClusterState],
   commandExecutor: ControllerCommandExecutor,
@@ -232,9 +232,9 @@ object RunningController
     private implicit val scheduler = injector.instance[Scheduler]
     private implicit lazy val closer = injector.instance[Closer]
     private implicit lazy val actorSystem = injector.instance[ActorSystem]
-    private lazy val fileBasedVerifier = new FileBasedVerifier(
+    private lazy val itemVerifier = new InventoryItemVerifier(
       GenericSignatureVerifier(controllerConfiguration.config).orThrow,
-      ControllerFileBaseds.jsonCodec)
+      ControllerItems.jsonCodec)
     import controllerConfiguration.{akkaAskTimeout, journalMeta}
     @volatile private var clusterStartupTermination = ControllerTermination.Terminate()
 
@@ -250,7 +250,7 @@ object RunningController
           injector.instance[StampedKeyedEventBus], scheduler, injector.instance[EventIdGenerator],
           useJournaledStateAsSnapshot = true),
         "Journal"))
-      fileBasedVerifier
+      itemVerifier
       val persistence = new JournaledStatePersistence[ControllerState](journalActor, controllerConfiguration.journalConf).closeWithCloser
       val recovered = Await.result(whenRecovered, Duration.Inf).closeWithCloser
       val cluster = new Cluster(
@@ -319,12 +319,12 @@ object RunningController
             clusterFollowUpFuture.cancel()
           },
           orderKeeperStarted.map(_.toOption)))
-      val repoUpdater = new MyRepoUpdater(fileBasedVerifier, orderKeeperStarted.map(_.toOption))
-      val fileBasedApi = new MainFileBasedApi(controllerState)
+      val repoUpdater = new MyRepoUpdater(itemVerifier, orderKeeperStarted.map(_.toOption))
+      val itemApi = new DirectItemApi(controllerState)
       val orderApi = new MainOrderApi(controllerState, orderKeeperTask)
 
       val webServer = injector.instance[ControllerWebServer.Factory]
-        .apply(fileBasedApi, orderApi, commandExecutor, repoUpdater,
+        .apply(itemApi, orderApi, commandExecutor, repoUpdater,
           controllerState.map(_.map(_.clusterState)),  // ??? cluster.currentClusterState,
           controllerState,
           recovered.totalRunningSince,  // Maybe different from JournalHeader
@@ -334,7 +334,7 @@ object RunningController
       for (_ <- webServer.start().runToFuture) yield {
         createSessionTokenFile(injector.instance[SessionRegister[SimpleSession]])
         controllerConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", o => s"$o/controller")
-        new RunningController(recovered.eventWatch.strict, webServer, fileBasedApi, orderApi,
+        new RunningController(recovered.eventWatch.strict, webServer, itemApi, orderApi,
           controllerState.map(_.map(_.clusterState).orThrow),
           commandExecutor,
           whenReady, orderKeeperTerminated, testEventBus, closer, injector)
@@ -383,7 +383,7 @@ object RunningController
           val actor = actorSystem.actorOf(
             Props {
               new ControllerOrderKeeper(terminationPromise, journalActor, cluster, controllerConfiguration,
-                fileBasedVerifier, testEventPublisher)
+                itemVerifier, testEventPublisher)
             },
             "ControllerOrderKeeper")
           actor ! ControllerOrderKeeper.Input.Start(recovered)
@@ -451,7 +451,7 @@ object RunningController
   }
 
   private class MyRepoUpdater(
-    val fileBasedVerifier: FileBasedVerifier[FileBased],
+    val itemVerifier: InventoryItemVerifier[InventoryItem],
     orderKeeperStarted: Future[Option[ActorRef @@ ControllerOrderKeeper]])
     (implicit timeout: Timeout)
   extends RepoUpdater

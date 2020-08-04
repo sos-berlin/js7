@@ -33,7 +33,7 @@ private class TestAgentActorProvider extends HasCloser {
 
   def startAgent() = agentActor
 
-  def fileBasedSigner = directoryProvider.fileBasedSigner
+  def itemSigner = directoryProvider.itemSigner
 
   def executeCommand(command: AgentCommand): Future[Checked[AgentCommand.Response]] = {
     val response = Promise[Checked[AgentCommand.Response]]()

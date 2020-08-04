@@ -1,7 +1,6 @@
 package js7.agent.tests
 
 import akka.http.scaladsl.model.StatusCodes.Unauthorized
-import js7.common.configutils.Configs._
 import js7.agent.RunningAgent
 import js7.agent.client.AgentClient
 import js7.agent.configuration.AgentConfiguration
@@ -18,6 +17,7 @@ import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
 import js7.base.utils.Closer.syntax._
 import js7.base.utils.Closer.withCloser
+import js7.common.configutils.Configs._
 import js7.common.http.AkkaHttpClient
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.MonixUtils.syntax._
@@ -25,7 +25,7 @@ import js7.common.system.OperatingSystem.isWindows
 import js7.core.crypt.pgp.PgpSigner
 import js7.data.agent.AgentRefPath
 import js7.data.event.{Event, EventRequest, EventSeq, KeyedEvent, Stamped}
-import js7.data.filebased.FileBasedSigner
+import js7.data.item.InventoryItemSigner
 import js7.data.order.OrderEvent.OrderDetachable
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.workflow.Workflow
@@ -151,8 +151,8 @@ private object OrderAgentTest
       |""".stripMargin
 
   private val signer = PgpSigner.forTest
-  private val fileBasedSigner = new FileBasedSigner(signer, Workflow.jsonEncoder)
-  private val SignedSimpleWorkflow = fileBasedSigner.sign(SimpleTestWorkflow)
+  private val itemSigner = new InventoryItemSigner(signer, Workflow.jsonEncoder)
+  private val SignedSimpleWorkflow = itemSigner.sign(SimpleTestWorkflow)
 
   private def toExpectedOrder(order: Order[Order.State]) =
     order.copy(

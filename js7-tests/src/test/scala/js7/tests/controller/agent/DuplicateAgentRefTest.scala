@@ -20,7 +20,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class DuplicateAgentRefTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentRefPaths = aAgentRefPath :: Nil
-  protected val fileBased = workflow :: Nil
+  protected val inventoryItems = workflow :: Nil
 
   import controller.scheduler
 

@@ -10,10 +10,10 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.data.ControllerCommand.{ReplaceRepo, UpdateRepo}
 import js7.core.command.CommandMeta
 import js7.data.agent.{AgentRef, AgentRefPath}
-import js7.data.controller.ControllerFileBaseds
-import js7.data.crypt.FileBasedVerifier
-import js7.data.filebased.Repo.Entry
-import js7.data.filebased.{FileBased, FileBasedSigner, Repo, VersionId}
+import js7.data.controller.ControllerItems
+import js7.data.crypt.InventoryItemVerifier
+import js7.data.item.Repo.Entry
+import js7.data.item.{InventoryItem, InventoryItemSigner, Repo, VersionId}
 import js7.data.workflow.instructions.Fail
 import js7.data.workflow.{Workflow, WorkflowPath}
 import monix.execution.Scheduler.Implicits.global
@@ -26,9 +26,9 @@ final class RepoCommandExecutorTest extends AnyFreeSpec
 {
   private lazy val signer = new SillySigner(SillySignature("RepoCommandExecutorTest"))
   private lazy val signatureVerifier = signer.toVerifier
-  private lazy val fileBasedVerifier = new FileBasedVerifier[FileBased](signatureVerifier, ControllerFileBaseds.jsonCodec)
-  private lazy val fileBasedSigner = new FileBasedSigner[FileBased](signer, ControllerFileBaseds.jsonCodec)
-  private lazy val repoCommandExecutor = new RepoCommandExecutor(fileBasedVerifier)
+  private lazy val itemVerifier = new InventoryItemVerifier[InventoryItem](signatureVerifier, ControllerItems.jsonCodec)
+  private lazy val itemSigner = new InventoryItemSigner[InventoryItem](signer, ControllerItems.jsonCodec)
+  private lazy val repoCommandExecutor = new RepoCommandExecutor(itemVerifier)
   private val v1 = VersionId("1")
   private val v2 = VersionId("2")
   private val v3 = VersionId("3")
@@ -37,7 +37,7 @@ final class RepoCommandExecutorTest extends AnyFreeSpec
   private val workflow3 = workflow2 withVersion v3
   private val commandMeta = CommandMeta(SimpleUser(UserId("PROVIDER")).copy(grantedPermissions = Set(UpdateRepoPermission)))
 
-  private var repo = Repo.ofJsonDecoder(ControllerFileBaseds.jsonCodec)
+  private var repo = Repo.ofJsonDecoder(ControllerItems.jsonCodec)
 
   "replaceRepoCommandToEvents requires UpdateRepo permission" in {
     val commandMeta = CommandMeta(SimpleUser(UserId("HACKER")))
@@ -52,27 +52,27 @@ final class RepoCommandExecutorTest extends AnyFreeSpec
   }
 
   "replaceRepoCommandToEvents" in {
-    repo = executeReplace(ReplaceRepo(v1, fileBasedSigner.sign(agentRef1) :: Nil))
-    assert(repo.pathToVersionToSignedFileBased == Map(
-      agentRef1.id.path -> List(Entry(agentRef1.id.versionId, Some(fileBasedSigner.toSigned(agentRef1))))))
+    repo = executeReplace(ReplaceRepo(v1, itemSigner.sign(agentRef1) :: Nil))
+    assert(repo.pathToVersionToSignedItems == Map(
+      agentRef1.id.path -> List(Entry(agentRef1.id.versionId, Some(itemSigner.toSigned(agentRef1))))))
   }
 
   "updateRepoCommandToEvents" in {
-    repo = executeUpdate(UpdateRepo(v2, fileBasedSigner.sign(workflow2) :: Nil))
-    assert(repo.pathToVersionToSignedFileBased == Map(
-      agentRef1.id.path -> List(Entry(agentRef1.id.versionId, Some(fileBasedSigner.toSigned(agentRef1)))),
-      workflow2.id.path -> List(Entry(workflow2.id.versionId, Some(fileBasedSigner.toSigned(workflow2))))))
+    repo = executeUpdate(UpdateRepo(v2, itemSigner.sign(workflow2) :: Nil))
+    assert(repo.pathToVersionToSignedItems == Map(
+      agentRef1.id.path -> List(Entry(agentRef1.id.versionId, Some(itemSigner.toSigned(agentRef1)))),
+      workflow2.id.path -> List(Entry(workflow2.id.versionId, Some(itemSigner.toSigned(workflow2))))))
   }
 
   "replaceRepoCommandToEvents #2" in {
-    repo = executeReplace(ReplaceRepo(v3, fileBasedSigner.sign(workflow3) :: Nil))
-    assert(repo.pathToVersionToSignedFileBased == Map(
+    repo = executeReplace(ReplaceRepo(v3, itemSigner.sign(workflow3) :: Nil))
+    assert(repo.pathToVersionToSignedItems == Map(
       agentRef1.id.path -> List(
         Entry(v3, None),
-        Entry(v1, Some(fileBasedSigner.toSigned(agentRef1)))),
+        Entry(v1, Some(itemSigner.toSigned(agentRef1)))),
       workflow2.id.path -> List(
-        Entry(v3, Some(fileBasedSigner.toSigned(workflow3))),
-        Entry(v2, Some(fileBasedSigner.toSigned(workflow2))))))
+        Entry(v3, Some(itemSigner.toSigned(workflow3))),
+        Entry(v2, Some(itemSigner.toSigned(workflow2))))))
   }
 
   private def executeReplace(replaceRepo: ReplaceRepo): Repo =

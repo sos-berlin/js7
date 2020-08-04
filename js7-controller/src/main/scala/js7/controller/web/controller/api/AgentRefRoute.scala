@@ -9,7 +9,7 @@ import js7.common.akkahttp.CirceJsonOrYamlSupport._
 import js7.common.akkahttp.StandardDirectives.remainingSegmentOrPath
 import js7.common.akkahttp.StandardMarshallers._
 import js7.controller.web.common.ControllerRouteProvider
-import js7.core.filebased.FileBasedApi
+import js7.core.item.InventoryItemApi
 import js7.data.agent.{AgentRef, AgentRefPath}
 import monix.execution.Scheduler
 
@@ -18,7 +18,7 @@ import monix.execution.Scheduler
   */
 trait AgentRefRoute extends ControllerRouteProvider
 {
-  protected def fileBasedApi: FileBasedApi
+  protected def itemApi: InventoryItemApi
 
   private implicit def implicitScheduler: Scheduler = scheduler
 
@@ -27,17 +27,17 @@ trait AgentRefRoute extends ControllerRouteProvider
       authorizedUser(ValidUserPermission) { _ =>
         pathEnd {
           completeTask(
-            fileBasedApi.overview[AgentRef])
+            itemApi.overview[AgentRef])
         } ~
           pathSingleSlash {
             parameter("return".?) {
               case None =>
                 completeTask(
-                  fileBasedApi.paths[AgentRef])
+                  itemApi.paths[AgentRef])
 
               case Some("AgentRef") =>
                 completeTask(
-                  fileBasedApi.fileBaseds[AgentRef])
+                  itemApi.items[AgentRef])
 
               case _ =>
                 reject
@@ -45,7 +45,7 @@ trait AgentRefRoute extends ControllerRouteProvider
           } ~
           path(remainingSegmentOrPath[AgentRefPath]) { agentRefPath =>
             completeTask(
-              fileBasedApi.pathToCurrentFileBased[AgentRef](agentRefPath))
+              itemApi.pathToCurrentItem[AgentRef](agentRefPath))
           }
       }
     }

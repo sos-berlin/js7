@@ -1,6 +1,6 @@
 package js7.provider
 
-import js7.data.filebased.VersionId
+import js7.data.item.VersionId
 import scala.collection.mutable
 
 /**

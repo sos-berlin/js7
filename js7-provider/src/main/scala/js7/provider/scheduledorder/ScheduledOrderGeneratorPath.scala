@@ -1,6 +1,6 @@
 package js7.provider.scheduledorder
 
-import js7.data.filebased.{SourceType, TypedPath}
+import js7.data.item.{SourceType, TypedPath}
 
 /**
   * @author Joacim Zschimmer

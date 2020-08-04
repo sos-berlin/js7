@@ -32,8 +32,8 @@ import js7.controller.configuration.ControllerConfiguration
 import js7.controller.data.ControllerCommand.{ReplaceRepo, UpdateRepo}
 import js7.core.crypt.pgp.PgpSigner
 import js7.data.agent.{AgentRef, AgentRefPath}
-import js7.data.controller.ControllerFileBaseds
-import js7.data.filebased.{FileBased, FileBasedSigner, TypedPath, VersionId}
+import js7.data.controller.ControllerItems
+import js7.data.item.{InventoryItem, InventoryItemSigner, TypedPath, VersionId}
 import js7.data.job.ExecutablePath
 import js7.tests.testenv.DirectoryProvider._
 import monix.eval.Task
@@ -50,7 +50,7 @@ import scala.util.control.NonFatal
   */
 final class DirectoryProvider(
   agentRefPaths: Seq[AgentRefPath],
-  fileBased: Seq[FileBased] = Nil,
+  inventoryItems: Seq[InventoryItem] = Nil,
   controllerConfig: Config = ConfigFactory.empty,
   agentHttps: Boolean = false,
   agentHttpsMutual: Boolean = false,
@@ -95,7 +95,7 @@ extends HasCloser
       .toMap
   val agents: Vector[AgentTree] = agentToTree.values.toVector
   lazy val agentRefs: Vector[AgentRef] = for (a <- agents) yield AgentRef(a.agentRefPath, uri = a.agentConfiguration.localUri)
-  private val filebasedHasBeenAdded = AtomicBoolean(false)
+  private val itemHasBeenAdded = AtomicBoolean(false)
 
   closeOnError(this) {
     controller.createDirectoriesAndFiles()
@@ -103,10 +103,10 @@ extends HasCloser
     agents foreach prepareAgentFiles
   }
 
-  val fileBasedSigner = new FileBasedSigner(signer, ControllerFileBaseds.jsonCodec)
+  val itemSigner = new InventoryItemSigner(signer, ControllerItems.jsonCodec)
 
-  val toSigned: FileBased => Signed[FileBased] = o => Signed(o, sign(o))
-  val sign: FileBased => SignedString = fileBasedSigner.sign
+  val toSigned: InventoryItem => Signed[InventoryItem] = o => Signed(o, sign(o))
+  val sign: InventoryItem => SignedString = itemSigner.sign
 
   def run[A](body: (RunningController, IndexedSeq[RunningAgent]) => A): A =
     runAgents()(agents =>
@@ -140,7 +140,7 @@ extends HasCloser
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(findFreeTcpPort()),
     httpsPort: Option[Int] = None,
-    fileBased: Seq[FileBased] = fileBased,
+    items: Seq[InventoryItem] = inventoryItems,
     name: String = controllerName)
   : Task[RunningController]
   =
@@ -150,13 +150,13 @@ extends HasCloser
           httpPort = httpPort, httpsPort = httpsPort, name = name)))
     .map { runningController =>
       if (!suppressRepo) {
-        val myFileBased = agentRefs ++ fileBased
-        if (!filebasedHasBeenAdded.getAndSet(true) && myFileBased.nonEmpty) {
+        val myItem = agentRefs ++ items
+        if (!itemHasBeenAdded.getAndSet(true) && myItem.nonEmpty) {
           // startController may be called several times. We configure only once.
           runningController.waitUntilReady()
           runningController.executeCommandAsSystemUser(ReplaceRepo(
             Vinitial,
-            myFileBased.map(_ withVersion Vinitial) map fileBasedSigner.sign)
+            myItem.map(_ withVersion Vinitial) map itemSigner.sign)
           ).await(99.s).orThrow
         }
       }
@@ -189,12 +189,12 @@ extends HasCloser
   def updateRepo(
     controller: RunningController,
     versionId: VersionId,
-    change: Seq[FileBased] = Nil,
+    change: Seq[InventoryItem] = Nil,
     delete: Seq[TypedPath] = Nil)
   : Unit =
     controller.executeCommandAsSystemUser(UpdateRepo(
       versionId,
-      change map (_ withVersion versionId) map fileBasedSigner.sign,
+      change map (_ withVersion versionId) map itemSigner.sign,
       delete)
     ).await(99.s).orThrow
 

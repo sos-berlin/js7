@@ -47,7 +47,7 @@ extends CommonConfiguration
   private def withCommandLineArguments(a: CommandLineArguments): ControllerConfiguration =
     copy(controllerId = a.as("--id=", controllerId))
 
-  def fileBasedDirectory: Path = configDirectory / "live"
+  def itemDirectory: Path = configDirectory / "live"
 
   def stateDirectory: Path = dataDirectory / "state"
 

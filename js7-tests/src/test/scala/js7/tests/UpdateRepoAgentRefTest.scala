@@ -13,7 +13,7 @@ import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import js7.controller.data.events.ControllerAgentEvent.AgentCouplingFailed
 import js7.data.agent.{AgentRef, AgentRefPath}
 import js7.data.controller.ControllerId
-import js7.data.filebased.VersionId
+import js7.data.item.VersionId
 import js7.data.job.ExecutablePath
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
@@ -28,7 +28,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class UpdateRepoAgentRefTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
   protected val agentRefPaths = Nil
-  protected val fileBased = workflow :: Nil
+  protected val inventoryItems = workflow :: Nil
   private lazy val agentPort1 :: agentPort2 :: agentPort3 :: Nil = findFreeTcpPorts(3)
   private lazy val agentFileTree = new DirectoryProvider.AgentTree(directoryProvider.directory, agentRefPath, "AGENT", agentPort1)
   private lazy val controller = directoryProvider.startController() await 99.s

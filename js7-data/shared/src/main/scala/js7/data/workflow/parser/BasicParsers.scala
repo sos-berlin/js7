@@ -7,8 +7,8 @@ import js7.base.utils.Collections.implicits._
 import js7.base.utils.Identifier.{isIdentifierPart, isIdentifierStart}
 import js7.base.utils.ScalaUtils._
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.filebased.TypedPath
 import js7.data.folder.FolderPath
+import js7.data.item.TypedPath
 import scala.reflect.ClassTag
 
 /**

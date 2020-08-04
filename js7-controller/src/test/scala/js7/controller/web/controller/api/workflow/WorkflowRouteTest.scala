@@ -9,8 +9,8 @@ import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.http.CirceJsonSupport._
 import js7.controller.web.controller.api.test.RouteTester
 import js7.controller.web.controller.api.workflow.WorkflowRouteTest._
-import js7.core.filebased.FileBasedApi
-import js7.data.filebased.FileBasedsOverview
+import js7.core.item.InventoryItemApi
+import js7.data.item.InventoryItemOverview
 import js7.data.workflow.test.ForkTestSetting
 import js7.data.workflow.{Workflow, WorkflowPath}
 import monix.execution.Scheduler
@@ -24,7 +24,7 @@ final class WorkflowRouteTest extends AnyFreeSpec with RouteTester with Workflow
 {
   protected def whenShuttingDown = Future.never
   protected implicit def scheduler: Scheduler = Scheduler.global
-  protected val fileBasedApi = FileBasedApi.forTest(pathToWorkflow)
+  protected val itemApi = InventoryItemApi.forTest(pathToWorkflow)
 
   private def route: Route =
     pathSegments("api/workflow") {
@@ -35,7 +35,7 @@ final class WorkflowRouteTest extends AnyFreeSpec with RouteTester with Workflow
   WorkflowUri in {
     Get(WorkflowUri) ~> Accept(`application/json`) ~> route ~> check {
       assert(status == OK)
-      assert(responseAs[FileBasedsOverview.Standard] == FileBasedsOverview.Standard(count = pathToWorkflow.size))
+      assert(responseAs[InventoryItemOverview.Standard] == InventoryItemOverview.Standard(count = pathToWorkflow.size))
     }
   }
 

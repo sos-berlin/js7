@@ -11,8 +11,8 @@ import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.agent.{AgentRef, AgentRefPath}
-import js7.data.controller.ControllerFileBaseds.jsonCodec
-import js7.data.filebased.{FileBased, VersionId}
+import js7.data.controller.ControllerItems.jsonCodec
+import js7.data.item.{InventoryItem, VersionId}
 import js7.data.job.ExecutablePath
 import js7.proxy.javaapi.JAdmission
 import js7.proxy.javaapi.data.JHttpsConfig
@@ -34,7 +34,7 @@ final class JControllerProxyTest extends AnyFreeSpec with DirectoryProviderForSc
     }
     """
 
-  protected val fileBased = Nil
+  protected val inventoryItems = Nil
   protected val agentRefPaths = JournaledProxyTest.agentRefPath :: Nil
 
   override def beforeAll() = {
@@ -61,8 +61,8 @@ final class JControllerProxyTest extends AnyFreeSpec with DirectoryProviderForSc
       try {
         val admissions = List(JAdmission.of(s"http://127.0.0.1:$port", JournaledProxyTest.primaryCredentials)).asJava
         JControllerProxyTester.run(admissions, JHttpsConfig.empty,
-          (JournaledProxyTest.workflow.withVersion(VersionId("MY-VERSION")): FileBased).asJson.compactPrint,
-          (unusedAgentRef.withVersion(VersionId("MY-VERSION")): FileBased).asJson.compactPrint,
+          (JournaledProxyTest.workflow.withVersion(VersionId("MY-VERSION")): InventoryItem).asJson.compactPrint,
+          (unusedAgentRef.withVersion(VersionId("MY-VERSION")): InventoryItem).asJson.compactPrint,
           () => controller())
       } finally
         for (controller <- controller) {

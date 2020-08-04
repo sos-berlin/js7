@@ -25,7 +25,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class ManyOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentRefPaths = agentRefPath :: Nil
-  protected val fileBased = workflow :: Nil
+  protected val inventoryItems = workflow :: Nil
   override protected val controllerConfig = config"""
     js7.web.server.auth.public = on
     js7.journal.remove-obsolete-files = false"""

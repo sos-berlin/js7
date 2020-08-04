@@ -16,7 +16,7 @@ import js7.common.system.startup.JavaMain.runMain
 import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.data.ControllerCommand.UpdateRepo
 import js7.data.agent.AgentRefPath
-import js7.data.filebased.{FileBased, FileBasedSigner, VersionId}
+import js7.data.item.{InventoryItem, InventoryItemSigner, VersionId}
 import js7.data.job.ExecutablePath
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -41,7 +41,7 @@ final class TestAddWorkflows(settings: Settings)
     autoClosing(directoryProvider) { _ =>
       directoryProvider.run { (controller, _)  =>
         val commands = measureTime(settings.workflowCount, "workflows signed") {
-          generateCommands(directoryProvider.fileBasedSigner)
+          generateCommands(directoryProvider.itemSigner)
         }
         measureTime(settings.workflowCount, "workflows") {
           executeCommands(controller.localUri, commands)
@@ -57,7 +57,7 @@ final class TestAddWorkflows(settings: Settings)
     a
   }
 
-  private def generateCommands(signer: FileBasedSigner[FileBased]): Seq[UpdateRepo] = {
+  private def generateCommands(signer: InventoryItemSigner[InventoryItem]): Seq[UpdateRepo] = {
     val workflow0 = Workflow.of(Execute(WorkflowJob(agentRefPath, ExecutablePath(s"/EXECUTABLE"))))
     val versionCounter = AtomicInt(0)
     Observable.fromIterable(1 to settings.workflowCount)

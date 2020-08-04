@@ -26,7 +26,7 @@ import js7.controller.web.controller.api.fatevent.FatEventRoute._
 import js7.core.event.journal.watch.ClosedException
 import js7.data.event.{Event, EventRequest, EventSeq, KeyedEvent, TearableEventSeq}
 import js7.data.fatevent.FatEvent
-import js7.data.filebased.RepoEvent
+import js7.data.item.RepoEvent
 import js7.data.order.OrderEvent
 import monix.eval.Task
 import monix.execution.{Scheduler, UncaughtExceptionReporter}

@@ -22,7 +22,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class ExpressionsTest extends AnyFreeSpec
 {
   "test" in {
-    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, fileBased = TestWorkflow :: Nil, testName = Some("ExpressionsTest"))) { directoryProvider =>
+    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, inventoryItems = TestWorkflow :: Nil, testName = Some("ExpressionsTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/TEST$sh"), ":")
       for (a <- directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/TEST-RC$sh"), jobScript)
 

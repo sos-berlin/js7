@@ -10,7 +10,7 @@ import js7.base.problem.Checked
 import js7.base.web.HttpClient
 import js7.controller.client.HttpControllerApi
 import js7.controller.data.{ControllerCommand, ControllerState}
-import js7.data.filebased.{UpdateRepoOperation, VersionId}
+import js7.data.item.{UpdateRepoOperation, VersionId}
 import js7.data.order.FreshOrder
 import js7.proxy.configuration.ProxyConf
 import monix.eval.Task

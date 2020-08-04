@@ -9,7 +9,7 @@ import js7.data.event.{Event, EventId, KeyedEvent, Stamped}
 import js7.data.fatevent.ControllerFatEvent.ControllerReadyFat
 import js7.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderCancelledFat, OrderFailedFat, OrderFinishedFat, OrderForkedFat, OrderJoinedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStdWrittenFat}
 import js7.data.fatevent.{AgentFatEvent, ControllerFatEvent, FatEvent, OrderFatEvent}
-import js7.data.filebased.{Repo, RepoEvent}
+import js7.data.item.{Repo, RepoEvent}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.workflow.Workflow

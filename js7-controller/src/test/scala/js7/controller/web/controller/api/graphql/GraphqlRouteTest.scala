@@ -18,7 +18,7 @@ import js7.common.scalautil.Futures.implicits._
 import js7.controller.OrderApi
 import js7.controller.web.controller.api.graphql.GraphqlRouteTest._
 import js7.controller.web.controller.api.test.RouteTester
-import js7.core.filebased.FileBasedApi
+import js7.core.item.InventoryItemApi
 import js7.data.order.{Order, OrderId}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
@@ -37,7 +37,7 @@ final class GraphqlRouteTest extends AnyFreeSpec with RouteTester with GraphqlRo
   private implicit val routeTestTimeout = RouteTestTimeout(10.seconds)
 
   protected implicit def scheduler: Scheduler = Scheduler.Implicits.global
-  protected val fileBasedApi = FileBasedApi.forTest(Map.empty)
+  protected val itemApi = InventoryItemApi.forTest(Map.empty)
   protected val orderApi = new OrderApi {
     def order(orderId: OrderId) = Task(Right(TestOrders.get(orderId)))
     def orders = Task(Right(TestOrders.values.toVector))

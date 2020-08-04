@@ -16,8 +16,8 @@ import js7.controller.data.ControllerCommand
 import js7.controller.data.ControllerCommand.{ReplaceRepo, UpdateRepo}
 import js7.data.agent.AgentRefPath
 import js7.data.event.{EventRequest, EventSeq}
-import js7.data.filebased.Repo.ObjectVersionDoesNotMatchProblem
-import js7.data.filebased.VersionId
+import js7.data.item.Repo.ObjectVersionDoesNotMatchProblem
+import js7.data.item.VersionId
 import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
@@ -38,7 +38,7 @@ import scala.concurrent.duration._
 final class UpdateRepoTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentRefPaths = TestAgentRefPath :: Nil
-  protected val fileBased = Nil
+  protected val inventoryItems = Nil
 
   override def beforeAll() = {
     (directoryProvider.controller.configDir / "private" / "private.conf") ++=
@@ -100,17 +100,17 @@ final class UpdateRepoTest extends AnyFreeSpec with ControllerAgentForScalaTest
     // First, add two workflows
     executeCommand(UpdateRepo(V4, sign(workflow4) :: sign(otherWorkflow4) :: Nil)).orThrow
     locally {
-      val checkedRepo = controller.fileBasedApi.checkedRepo.await(99.s)
+      val checkedRepo = controller.itemApi.checkedRepo.await(99.s)
       assert(checkedRepo.map(_.versions) == Right(V4 :: V3 :: V2 :: V1 :: Vinitial :: Nil))
-      assert(checkedRepo.map(_.currentFileBaseds.toSet) ==
+      assert(checkedRepo.map(_.currentItems.toSet) ==
         Right(Set(workflow4 withVersion V4, otherWorkflow4 withVersion V4) ++ directoryProvider.agentRefs.map(_ withVersion Vinitial)))
     }
 
     // Now replace: delete one workflow and change the other
     executeCommand(ReplaceRepo(V5, otherWorkflow5 +: Nil/*directoryProvider.agentRefs.map(_ withVersion V5)*/ map sign)).orThrow
-    val checkedRepo = controller.fileBasedApi.checkedRepo.await(99.s)
+    val checkedRepo = controller.itemApi.checkedRepo.await(99.s)
     assert(checkedRepo.map(_.versions) == Right(V5 :: V4 :: V3 :: V2 :: V1 :: Vinitial :: Nil))
-    assert(checkedRepo.map(_.currentFileBaseds.toSet) ==
+    assert(checkedRepo.map(_.currentItems.toSet) ==
       Right(Set(otherWorkflow5 withVersion V5) ++ directoryProvider.agentRefs.map(_ withVersion V5)))
 
     val orderId = OrderId("⭕️")
