@@ -709,7 +709,8 @@ extends Actor with Stash
     if (conf.deleteObsoleteFiles &&
       (journaledState.clusterState == ClusterState.Empty ||
         (journaledState.clusterState.isInstanceOf[ClusterState.Coupled] ||
-         journaledState.clusterState.isInstanceOf[ClusterState.CoupledActiveShutDown]) &&
+         journaledState.clusterState.isInstanceOf[ClusterState.CoupledActiveShutDown]
+        ) &&
           requireClusterAcknowledgement/*ClusterPassiveLost after SnapshotTaken in the same commit chunk
            has reset requireClusterAcknowledgement. We must not delete the file when cluster is being decoupled.*/))
     {
@@ -720,7 +721,7 @@ extends Actor with Stash
     logger.debug(s"releaseObsoleteEvents($untilEventId) ${journaledState.journalState}, clusterState=${journaledState.clusterState}")
     journalingObserver.orThrow match {
       case Some(o) =>
-        o.releaseEvents(untilEventId)
+        o.releaseEvents(untilEventId)(scheduler)
       case None =>
         // Without a JournalingObserver, we can delete all previous journal files (for Agent server)
         val until = untilEventId min journalHeader.eventId

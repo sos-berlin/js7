@@ -170,8 +170,9 @@ private object JournaledStatePersistenceTest
   private val TestConfig = TestData.TestConfig
     .withFallback(config"""
       js7.akka.actor-message-log-level = Trace
-      js7.journal.remove-obsolete-files = true
       js7.journal.users-allowed-to-release-events = []
+      js7.journal.release-events-delay = 0s
+      js7.journal.remove-obsolete-files = true
       js7.journal.dispatcher.type = PinnedDispatcher
       """)
 

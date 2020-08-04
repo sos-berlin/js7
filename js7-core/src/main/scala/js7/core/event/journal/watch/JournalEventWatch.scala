@@ -3,9 +3,10 @@ package js7.core.event.journal.watch
 import com.typesafe.config.Config
 import java.io.IOException
 import java.nio.file.Files.delete
-import java.nio.file.Path
+import java.nio.file.{Files, Path}
 import js7.base.problem.Checked.{CheckedOption, Ops}
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.ScalaTime.{DurationRichInt, RichDuration}
 import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.implicits._
@@ -14,11 +15,13 @@ import js7.base.utils.{CloseableIterator, SetOnce}
 import js7.common.configutils.Configs._
 import js7.common.event.{PositionAnd, RealEventWatch}
 import js7.common.scalautil.Logger
+import js7.common.time.JavaTimeConverters.AsScalaDuration
 import js7.core.event.journal.data.JournalMeta
 import js7.core.event.journal.files.JournalFiles.listJournalFiles
 import js7.core.event.journal.watch.JournalEventWatch._
 import js7.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
 import js7.data.problems.UnknownEventIdProblem
+import monix.execution.Scheduler
 import monix.execution.atomic.AtomicAny
 import monix.reactive.Observable
 import scala.annotation.tailrec
@@ -38,6 +41,7 @@ with RealEventWatch
 with JournalingObserver
 {
   private val keepOpenCount = config.getInt("js7.journal.watch.keep-open")
+  private val releaseEventsDelay = config.getDuration("js7.journal.release-events-delay").toFiniteDuration
   // Read journal file names from directory while constructing
   private val journalId = SetOnce[JournalId]
   @volatile
@@ -122,25 +126,43 @@ with JournalingObserver
         Left(UnknownEventIdProblem(requiredEventId = eventId))
     }
 
-  def releaseEvents(untilEventId: EventId): Unit = {
-    logger.debug(s"releaseEvents($untilEventId)")
-    val keepFileAfter = currentEventReaderOption match {
-      case Some(current) if current.tornEventId <= untilEventId =>
-        current.tornEventId
-      case _ =>
-        historicJournalFileAfter(untilEventId).fold(EventId.BeforeFirst)(_.afterEventId)  // Delete only journal files before the file containing `after`
-    }
-    for (historic <- afterEventIdToHistoric.values if historic.afterEventId < keepFileAfter) {
-      logger.info(s"Deleting obsolete journal file '$historic'")
-      historic.close()
-      try {
-        delete(historic.file)
-        afterEventIdToHistoric -= historic.afterEventId
-      } catch {
-        case e: IOException => logger.warn(s"Cannot delete obsolete journal file '$historic': ${e.toStringWithCauses}")
+  def releaseEvents(untilEventId: EventId)(implicit scheduler: Scheduler): Unit = {
+    val delay = (EventId.toTimestamp(untilEventId) + releaseEventsDelay) - Timestamp.now
+    if (delay <= 0.s) {
+      releaseEventsNow(untilEventId)
+    } else {
+      logger.debug(s"releaseEvents($untilEventId), delay ${delay.pretty}")
+      scheduler.scheduleOnce(delay) {
+        releaseEventsNow(untilEventId)
       }
     }
   }
+
+  private def releaseEventsNow(untilEventId: EventId): Unit =
+    synchronized {
+      logger.debug(s"releaseEventsNow($untilEventId)")
+      val keepFileAfter = currentEventReaderOption match {
+        case Some(current) if current.tornEventId <= untilEventId =>
+          current.tornEventId
+        case _ =>
+          historicJournalFileAfter(untilEventId).fold(EventId.BeforeFirst)(_.afterEventId)  // Delete only journal files before the file containing `after`
+      }
+      var continue = true
+      for (historic <- afterEventIdToHistoric.values.toVector.sortBy(_.afterEventId)
+           if historic.afterEventId < keepFileAfter && continue) {
+        logger.info(s"Deleting obsolete journal file '$historic'")
+        historic.close()
+        try {
+          delete(historic.file)
+          afterEventIdToHistoric -= historic.afterEventId
+        } catch { case e: IOException =>
+          continue = false
+          if (Files.exists(historic.file)) {
+            logger.warn(s"Cannot delete obsolete journal file '$historic': ${e.toStringWithCauses}")
+          }
+        }
+      }
+    }
 
   def onFileWritten(flushedPosition: Long): Unit =
     for (o <- currentEventReaderOption) {
@@ -321,8 +343,9 @@ object JournalEventWatch
     js7.journal.watch.keep-open = 2
     js7.journal.watch.index-size = 100
     js7.journal.watch.index-factor = 10
-    js7.journal.remove-obsolete-files = true
     js7.journal.users-allowed-to-release-events = []
+    js7.journal.release-events-delay = 0s
+    js7.journal.remove-obsolete-files = true
     js7.monix.tailrecm-limit = 1000
     """
 }

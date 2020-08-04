@@ -2,6 +2,7 @@ package js7.tests.controller
 
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
+import js7.common.configutils.Configs.HoconStringInterpolator
 import js7.common.process.Processes.{ShellFileExtension => sh}
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.MonixUtils.syntax._
@@ -27,6 +28,9 @@ final class ObsoleteJournalFilesRemovedTest extends AnyFreeSpec with DirectoryPr
 {
   protected val agentRefPaths = agentRefPath :: Nil
   protected val fileBased = workflow :: Nil
+  override protected def controllerConfig = config"js7.journal.release-events-delay = 0s"
+    .withFallback(super.controllerConfig)
+
 
   "Obsolete journal files are removed if nothing has been configured" in {
     for ((_, tree) <- directoryProvider.agentToTree) {

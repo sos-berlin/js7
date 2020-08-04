@@ -39,15 +39,15 @@ final class ReleaseEventsTest extends AnyFreeSpec with DirectoryProviderForScala
   protected val agentRefPaths = TestAgentRefPath :: Nil
   protected val fileBased = TestWorkflow :: Nil
   override protected val controllerConfig = config"""
-    js7 {
-      journal.users-allowed-to-release-events = [ "A", "B" ]
-      auth.users {
-        A = "plain:PASSWORD"
-        B = "plain:PASSWORD"
-        X = "plain:PASSWORD"
-      }
-      controller.agent-driver.release-events-period = 0ms
-    }"""
+    js7.journal.users-allowed-to-release-events = [ "A", "B" ]
+    js7.auth.users {
+      A = "plain:PASSWORD"
+      B = "plain:PASSWORD"
+      X = "plain:PASSWORD"
+    }
+    js7.journal.release-events-delay = 0s
+    js7.controller.agent-driver.release-events-period = 0ms
+    """
 
   "ReleaseEvents" in {
     for ((_, tree) <- directoryProvider.agentToTree) {

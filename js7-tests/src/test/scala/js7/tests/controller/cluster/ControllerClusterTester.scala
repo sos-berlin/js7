@@ -62,6 +62,7 @@ private[cluster] trait ControllerClusterTester extends AnyFreeSpec
             js7.journal.cluster.watches = [ "http://127.0.0.1:$agentPort" ]
             js7.journal.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"
             js7.journal.use-journaled-state-as-snapshot = true
+            js7.journal.release-events-delay = 0s
             js7.journal.remove-obsolete-files = $removeObsoleteJournalFiles
             js7.auth.users.TEST.password = "plain:TEST-PASSWORD"
             js7.auth.users.Controller.password = "plain:PRIMARY-CONTROLLER-PASSWORD"
@@ -78,6 +79,7 @@ private[cluster] trait ControllerClusterTester extends AnyFreeSpec
           js7.journal.cluster.watches = [ "http://127.0.0.1:$agentPort" ]
           js7.journal.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"
           js7.journal.use-journaled-state-as-snapshot = true
+          js7.journal.release-events-delay = 0s
           js7.journal.remove-obsolete-files = $removeObsoleteJournalFiles
           js7.auth.users.Controller.password = "plain:BACKUP-CONTROLLER-PASSWORD"
           js7.auth.users.TEST.password = "plain:TEST-PASSWORD"

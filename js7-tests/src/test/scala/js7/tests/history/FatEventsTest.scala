@@ -49,6 +49,7 @@ final class FatEventsTest extends AnyFreeSpec
       (provider.controller.configDir / "private/private.conf").append("""
         |js7.auth.users.TEST-USER = "plain:TEST-PASSWORD"
         |js7.journal.users-allowed-to-release-events = [ "TEST-USER" ]
+        |js7.journal.release-events-delay = 0s
         |""".stripMargin )
       for (a <- provider.agents) a.writeExecutable(TestExecutablePath, DirectoryProvider.script(0.s))
 
