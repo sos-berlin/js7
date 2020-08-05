@@ -14,9 +14,9 @@ import js7.common.scalautil.MonixUtils.syntax.RichTask
 import js7.common.system.OperatingSystem.operatingSystem.sleepingShellScript
 import js7.controller.data.ControllerCommand
 import js7.controller.data.ControllerCommand.{ReplaceRepo, UpdateRepo}
+import js7.data.Problems.{ItemDeletedProblem, ItemVersionDoesNotMatchProblem}
 import js7.data.agent.AgentRefPath
 import js7.data.event.{EventRequest, EventSeq}
-import js7.data.item.Repo.ObjectVersionDoesNotMatchProblem
 import js7.data.item.VersionId
 import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.OrderFinished
@@ -87,7 +87,7 @@ final class UpdateRepoTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     executeCommand(UpdateRepo(V3, delete = TestWorkflowPath :: Nil)).orThrow
     assert(controller.addOrder(FreshOrder(orderIds(1), TestWorkflowPath)).await(99.s) ==
-      Left(Problem("Has been deleted: Workflow:/WORKFLOW~3")))
+      Left(ItemDeletedProblem(TestWorkflowPath ~ V3)))
 
     withClue("Tampered with configuration: ") {
       val updateRepo = UpdateRepo(VersionId("vTampered"), sign(workflow2).copy(string = "TAMPERED") :: Nil)
@@ -127,13 +127,13 @@ final class UpdateRepoTest extends AnyFreeSpec with ControllerAgentForScalaTest
   "ControllerCommand.UpdateRepo with divergent VersionId is rejected" in {
     // The signer signs the VersionId, too
     assert(executeCommand(UpdateRepo(VersionId("DIVERGE"), sign(otherWorkflow5) :: Nil))
-      == Left(ObjectVersionDoesNotMatchProblem(VersionId("DIVERGE"), otherWorkflow5.id)))
+      == Left(ItemVersionDoesNotMatchProblem(VersionId("DIVERGE"), otherWorkflow5.id)))
   }
 
   "ControllerCommand.ReplaceRepo with divergent VersionId is rejected" in {
     // The signer signs the VersionId, too
     assert(executeCommand(ReplaceRepo(VersionId("DIVERGE"), sign(otherWorkflow5) :: Nil))
-      == Left(ObjectVersionDoesNotMatchProblem(VersionId("DIVERGE"), otherWorkflow5.id)))
+      == Left(ItemVersionDoesNotMatchProblem(VersionId("DIVERGE"), otherWorkflow5.id)))
   }
 
   private def executeCommand(cmd: ControllerCommand): Checked[cmd.Response] =

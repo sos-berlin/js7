@@ -14,6 +14,7 @@ import js7.data.agent.{AgentRef, AgentRefPath}
 import js7.data.controller.ControllerItems.jsonCodec
 import js7.data.item.{InventoryItem, VersionId}
 import js7.data.job.ExecutablePath
+import js7.data.workflow.WorkflowPath
 import js7.proxy.javaapi.JAdmission
 import js7.proxy.javaapi.data.JHttpsConfig
 import js7.tests.controller.proxy.JControllerProxyTest._
@@ -60,9 +61,13 @@ final class JControllerProxyTest extends AnyFreeSpec with DirectoryProviderForSc
       val controller = Lazy { directoryProvider.startController(httpPort = Some(port)).await(99.s) }
       try {
         val admissions = List(JAdmission.of(s"http://127.0.0.1:$port", JournaledProxyTest.primaryCredentials)).asJava
+        val myVersionId = VersionId("MY-VERSION")
         JControllerProxyTester.run(admissions, JHttpsConfig.empty,
-          (JournaledProxyTest.workflow.withVersion(VersionId("MY-VERSION")): InventoryItem).asJson.compactPrint,
-          (unusedAgentRef.withVersion(VersionId("MY-VERSION")): InventoryItem).asJson.compactPrint,
+          List[InventoryItem](
+            JournaledProxyTest.workflow.withVersion(myVersionId),
+            JournaledProxyTest.workflow.withId(WorkflowPath("/B-WORKFLOW") ~ myVersionId),
+            unusedAgentRef.withVersion(VersionId("MY-VERSION")),
+          ).map(_.asJson.compactPrint).asJava,
           () => controller())
       } finally
         for (controller <- controller) {

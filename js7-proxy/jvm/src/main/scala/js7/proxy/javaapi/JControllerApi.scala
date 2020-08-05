@@ -4,7 +4,6 @@ import cats.effect.Resource
 import io.vavr.control.{Either => VEither}
 import java.util.concurrent.CompletableFuture
 import js7.base.annotation.javaApi
-import js7.base.generic.Completed
 import js7.base.problem.Problem
 import js7.controller.client.HttpControllerApi
 import js7.controller.data.ControllerCommand
@@ -12,7 +11,6 @@ import js7.data.item.VersionId
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.javaapi.data.{JControllerCommand, JFreshOrder, JUpdateRepoOperation}
 import js7.proxy.javaapi.eventbus.{JControllerEventBus, JStandardEventBus}
-import js7.proxy.javaapi.utils.JavaUtils.Void
 import js7.proxy.javaapi.utils.VavrConversions._
 import js7.proxy.{ControllerApi, ControllerProxy, ProxyEvent}
 import monix.eval.Task
@@ -50,9 +48,11 @@ final class JControllerApi private[proxy](
       .asJava
   }
 
+  /** Update the Repo, i.e. add, change or delete inventory items.
+    */
   def updateRepo(versionId: VersionId, operations: Flux[JUpdateRepoOperation]): CompletableFuture[VEither[Problem, Void]] =
     api.updateRepo(versionId, Observable.fromReactivePublisher(operations).map(_.underlying))
-      .map(_.map((_: Completed) => Void).toVavr)
+      .map(_.toVoidVavr)
       .runToFuture
       .asJava
 
@@ -63,12 +63,15 @@ final class JControllerApi private[proxy](
       .runToFuture
       .asJava
 
-  def addOrders(orders: java.lang.Iterable[JFreshOrder]): CompletableFuture[VEither[Problem, java.lang.Void]] =
-    addOrders(Flux.fromIterable(orders))
-
-  def addOrders(orders: Flux[JFreshOrder]): CompletableFuture[VEither[Problem, java.lang.Void]] =
+  /** Add `Order`s provided by a Reactor stream.
+    *
+    * An `Iterable&lt;Order>` can be added using the call
+    *
+    * {{{api.addOrders(Flux.fromIterable(orders))}}}
+    * */
+  def addOrders(orders: Flux[JFreshOrder]): CompletableFuture[VEither[Problem, Void]] =
     api.addOrders(Observable.fromReactivePublisher(orders).map(_.underlying))
-      .map(_.map((_: Completed) => Void).toVavr)
+      .map(_.toVoidVavr)
       .runToFuture
       .asJava
 

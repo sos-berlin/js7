@@ -28,7 +28,7 @@ final class JControllerProxy private[proxy](
         .map(JEventAndControllerState .fromScala)
         .toReactivePublisher)
 
-  def stop(): CompletableFuture[java.lang.Void] =
+  def stop(): CompletableFuture[Void] =
     controllerProxy.stop
       .map(_ => Void)
       .runToFuture

@@ -12,6 +12,7 @@ import js7.base.utils.Collections._
 import js7.base.utils.Collections.implicits._
 import js7.base.utils.Memoizer
 import js7.base.utils.ScalaUtils.syntax._
+import js7.data.Problems.{EventVersionDoesNotMatchProblem, ItemDeletedProblem, ItemVersionDoesNotMatchProblem}
 import js7.data.crypt.InventoryItemVerifier
 import js7.data.item.Repo.Entry
 import js7.data.item.RepoEvent.{ItemAdded, ItemAddedOrChanged, ItemChanged, ItemDeleted, ItemEvent, VersionAdded}
@@ -94,7 +95,7 @@ final case class Repo private(
     signedItems.toVector.traverse(o =>
       o.value.id.versionId match {
         case `versionId` => Right(o)
-        case _ => Left(ObjectVersionDoesNotMatchProblem(versionId, o.value.id))
+        case _ => Left(ItemVersionDoesNotMatchProblem(versionId, o.value.id))
       })
 
   private def toAddedOrChanged(signedItem: Signed[InventoryItem]): Option[RepoEvent.ItemEvent] = {
@@ -354,15 +355,4 @@ object Repo
       .dropWhile(e => !isKnownVersion(e.versionId))
       .map(_.maybeSignedItems)
       .headOption
-
-  final case class ItemDeletedProblem private[Repo](id: ItemId_)
-    extends Problem.Lazy(s"Has been deleted: $id")
-
-  final case class ObjectVersionDoesNotMatchProblem(versionId: VersionId, itemId: ItemId[_ <: TypedPath]) extends Problem.Coded {
-    def arguments = Map("versionId" -> versionId.string, "id" -> itemId.toString)
-  }
-
-  final case class EventVersionDoesNotMatchProblem(versionId: VersionId, event: ItemAddedOrChanged) extends Problem.Coded {
-    def arguments = Map("versionId" -> versionId.string, "event" -> event.toShortString)
-  }
 }

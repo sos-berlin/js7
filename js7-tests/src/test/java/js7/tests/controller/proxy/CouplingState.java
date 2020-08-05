@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import js7.base.problem.Problem;
 import js7.proxy.ProxyEvent;
+import js7.proxy.javaapi.eventbus.EventSubscription;
 import js7.proxy.javaapi.eventbus.JStandardEventBus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,7 +22,7 @@ public final class CouplingState implements AutoCloseable
     final CompletableFuture<Void> decoupled = new CompletableFuture<>();
     final CompletableFuture<Problem> firstProblem = new CompletableFuture<>();
     Optional<Problem> lastProblem = Optional.empty();
-    private final List<AutoCloseable> subscriptions = new LinkedList<>();
+    private final List<EventSubscription> subscriptions = new LinkedList<>();
 
     public CouplingState(JStandardEventBus<ProxyEvent> eventBus) {
         subscriptions.add(eventBus.subscribe(asList(ProxyEvent.ProxyCoupled.class), this::onProxyCoupled));
@@ -29,8 +30,8 @@ public final class CouplingState implements AutoCloseable
         subscriptions.add(eventBus.subscribe(asList(ProxyEvent.ProxyCouplingError.class), this::onProxyCouplingError));
     }
 
-    public void close() throws Exception {
-        for (AutoCloseable o: subscriptions) o.close();
+    public void close() {
+        for (EventSubscription o: subscriptions) o.close();
     }
 
     private void onProxyCoupled(ProxyEvent.ProxyCoupled proxyCoupled) {

@@ -6,7 +6,7 @@ import js7.base.problem.Problem
 import js7.base.utils.Collections.implicits.RichTraversable
 import js7.controller.data.ControllerState
 import js7.data.order.{Order, OrderId}
-import js7.data.workflow.Workflow
+import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.proxy.javaapi.data.JOrderPredicates.any
 import js7.proxy.javaapi.utils.VavrConversions._
 import scala.jdk.CollectionConverters._
@@ -25,6 +25,11 @@ extends JJournaledState[JControllerState, ControllerState]
 
   def idToWorkflow(workflowId: JWorkflowId): VEither[Problem, JWorkflow] =
     underlying.repo.idTo[Workflow](workflowId.underlying)
+      .map(JWorkflow.apply)
+      .toVavr
+
+  def pathToWorkflow(workflowPath: WorkflowPath): VEither[Problem, JWorkflow] =
+    underlying.repo.pathTo[Workflow](workflowPath)
       .map(JWorkflow.apply)
       .toVavr
 

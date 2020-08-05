@@ -18,8 +18,8 @@ import js7.common.system.OperatingSystem.isWindows
 import js7.controller.RunningController
 import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.data.ControllerCommand.UpdateRepo
+import js7.data.Problems.ItemDeletedProblem
 import js7.data.agent.AgentRefPath
-import js7.data.item.Repo.ItemDeletedProblem
 import js7.data.item.VersionId
 import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.{OrderAdded, OrderFinished, OrderStdoutWritten}

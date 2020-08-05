@@ -8,7 +8,7 @@ import scala.concurrent.Promise
 import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 
-trait ClassEventBus[E] extends EventPublisher[E]
+trait ClassEventBus[E] extends EventPublisher[E] with AutoCloseable
 {
   protected type Classifier
   protected type ClassifierToEvent[C <: Classifier] <: E
@@ -21,6 +21,8 @@ trait ClassEventBus[E] extends EventPublisher[E]
   private val superclassCache = new SuperclassCache(classifierSuperclass)
 
   private[eventbus] def isEmpty = register.isEmpty
+
+  def close() = removeAllSubscriptions()
 
   final def publish(event: E): Unit =
     for (cls <- superclassCache.assignableClasses(classify(event))) {   // Optimizable in addSubscription ???

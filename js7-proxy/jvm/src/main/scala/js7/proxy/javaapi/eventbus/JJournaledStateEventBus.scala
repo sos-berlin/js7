@@ -9,9 +9,13 @@ import scala.jdk.CollectionConverters._
 
 class JJournaledStateEventBus[JS <: JJournaledState[JS, S], S <: JournaledState[S]](val underlying: JournaledStateEventBus[S])
   (implicit JS: JJournaledState.Companion[JS, S])
+extends AutoCloseable
 {
   def this()(implicit S: JJournaledState.Companion[JS, S]) =
     this(new JournaledStateEventBus[S])
+
+  /** Close all subscriptions. */
+  def close() = underlying.close()
 
   @javaApi
   final def subscribe[E <: Event](

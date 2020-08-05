@@ -9,7 +9,7 @@ import scala.reflect.ClassTag
 
 @javaApi
 final class JStandardEventBus[E](val underlying: StandardEventBus[E])
-extends JavaWrapper
+extends JavaWrapper with AutoCloseable
 {
   protected type Underlying = StandardEventBus[E]
 
@@ -19,6 +19,9 @@ extends JavaWrapper
   @javaApi
   def this(eventClass: Class[E]) =
     this(new StandardEventBus(eventClass))
+
+  /** Close all subscriptions. */
+  def close() = underlying.close()
 
   @javaApi
   def subscribe[E1 <: E](

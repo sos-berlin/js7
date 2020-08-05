@@ -11,6 +11,8 @@ extends JavaWrapper
 
 object JUpdateRepoOperation
 {
+  /** `signedString` contains the JSON-serialized `InventoryItem` including path and `VersionId`,
+    * signed with a signature. */
   def addOrReplace(signedString: SignedString) =
     new JUpdateRepoOperation(UpdateRepoOperation.AddOrReplace(signedString))
 

@@ -9,10 +9,10 @@ import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.time.Stopwatch
+import js7.data.Problems.{EventVersionDoesNotMatchProblem, ItemDeletedProblem, ItemVersionDoesNotMatchProblem}
 import js7.data.agent.AgentRefPath
 import js7.data.crypt.InventoryItemVerifier
 import js7.data.item.Repo.testOnly.{Changed, Deleted, OpRepo}
-import js7.data.item.Repo.{EventVersionDoesNotMatchProblem, ItemDeletedProblem, ObjectVersionDoesNotMatchProblem}
 import js7.data.item.RepoEvent.{ItemAdded, ItemChanged, ItemDeleted, VersionAdded}
 import js7.data.item.RepoTest._
 import org.scalatest.freespec.AnyFreeSpec
@@ -22,7 +22,7 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class RepoTest extends AnyFreeSpec
 {
-  import itemSigner.{sign, toSigned}
+  import itemSigner.toSigned
 
   private lazy val Right(testRepo) = emptyRepo.applyEvents(TestEvents)
 
@@ -130,12 +130,12 @@ final class RepoTest extends AnyFreeSpec
 
   "toEvent" - {
     "InventoryItem with alien version is rejected" in {
-      assert(emptyRepo.itemToEvents(V1, toSigned(a1.withVersion(V2)) :: Nil) == Left(ObjectVersionDoesNotMatchProblem(VersionId("1"), a1.path ~ V2)))
+      assert(emptyRepo.itemToEvents(V1, toSigned(a1.withVersion(V2)) :: Nil) == Left(ItemVersionDoesNotMatchProblem(VersionId("1"), a1.path ~ V2)))
     }
 
     "InventoryItem without version is rejected" in {
       // The signer signs the VersionId, too. It must not be diverge from the commands VersionId
-      assert(emptyRepo.itemToEvents(V1, toSigned(a1.withoutVersion)  :: Nil) == Left(ObjectVersionDoesNotMatchProblem(VersionId("1"), a1.path)))
+      assert(emptyRepo.itemToEvents(V1, toSigned(a1.withoutVersion)  :: Nil) == Left(ItemVersionDoesNotMatchProblem(VersionId("1"), a1.path)))
     }
 
     "InventoryItem with matching version" in {

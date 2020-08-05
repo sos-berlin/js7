@@ -2,5 +2,5 @@ package js7.proxy.javaapi.utils
 
 object JavaUtils
 {
-  val Void: Void = null.asInstanceOf[java.lang.Void]
+  val Void: Void = null.asInstanceOf[Void]
 }

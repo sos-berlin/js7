@@ -21,9 +21,9 @@ final case class ItemId[+P <: TypedPath](path: P, versionId: VersionId)
 
   def toSimpleString = if (versionId.isAnonymous) path.string else s"${path.string}$VersionSeparator${versionId.string}"
 
-  override def toString = if (versionId.isAnonymous) path.toString else s"$path$VersionSeparator${versionId.string}"
+  override def toString = if (versionId.isAnonymous) path.toString else s"${path.toTypedString}$VersionSeparator${versionId.string}"
 
-  def pretty = if (versionId.isAnonymous) path.string else s"${path.string}$VersionSeparator${versionId.string}"
+  def pretty = if (versionId.isAnonymous) path.string else s"${path.toTypedString}$VersionSeparator${versionId.string}"
 }
 
 object ItemId

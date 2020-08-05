@@ -12,7 +12,6 @@ import js7.common.message.ProblemCodeMessages
 import js7.common.system.ThreadPools
 import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
 import js7.proxy.configuration.ProxyConfs
-import js7.proxy.javaapi.JProxyContext._
 import js7.proxy.javaapi.data.JHttpsConfig
 import js7.proxy.javaapi.eventbus.{JControllerEventBus, JStandardEventBus}
 import js7.proxy.{ControllerApi, ProxyEvent}
@@ -64,10 +63,7 @@ extends HasCloser
   : CompletableFuture[JControllerProxy] =
     newControllerApi(admissions, httpsConfig)
       .startProxy(proxyEventBus, controllerEventBus)
-}
 
-object JProxyContext
-{
   private def admissionsToApiResources(
     admissions: java.lang.Iterable[JAdmission],
     httpsConfig: JHttpsConfig)
