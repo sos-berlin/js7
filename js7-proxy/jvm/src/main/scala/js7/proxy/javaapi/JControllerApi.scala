@@ -49,6 +49,39 @@ final class JControllerApi private[proxy](
   }
 
   /** Update the Repo, i.e. add, change or delete inventory items.
+    *
+    * Each `JUpdateRepoOperation` adds/replaces or deletes an item.
+    *
+    * '''To add or replace an item:'''
+    * {{{
+    * JUpdateRepoOperations.addOrReplace(
+    *   SignedString.of(
+    *     jsonString,
+    *     "PGP"/*for example*/,
+    *     signatureString)
+    * }}}
+    * `SignedString.of` requires three arguments:
+    *   - `jsonString` is the JSON-encoded `InventoryItem`, i.e. a Workflow or an AgentRefPath.
+    *     The item must include its id with `path` and `versionId`.
+    *     The `versionId` must be the same as the first argument for `updateRepo`.
+    *   - "PGP" or any supported signature type.
+    *   - `signatureString` is the the signature of the UTF-8 encoded `jsonString`.
+    *     {{{
+    * signatureString = sign(jsonString.getBytes(UTF_8))
+    *     }}}
+    *
+    * '''To delete an item:'''
+    *
+    * {{{
+    * JUpdateRepoOperations.addOrReplace(TypedPath)
+    * }}}
+    *
+    * `TypedPath` may be a [[js7.data.workflow.WorkflowPath]] or a [[js7.data.agent.AgentRefPath]]
+    * (both have a Java-compatible static factory method `of`).
+    *
+    * @param versionId `VersionId` of this new version
+    * @param operations Stream of JUpdateRepoOperations
+    *
     */
   def updateRepo(versionId: VersionId, operations: Flux[JUpdateRepoOperation]): CompletableFuture[VEither[Problem, Void]] =
     api.updateRepo(versionId, Observable.fromReactivePublisher(operations).map(_.underlying))
@@ -64,6 +97,10 @@ final class JControllerApi private[proxy](
       .asJava
 
   /** Add `Order`s provided by a Reactor stream.
+    *
+    * The Controller stores the whole stream as a single commit.
+    * The Controller adds the orders at the end of the stream, doing a single big commit.
+    * At any error, all orders are rejected.
     *
     * An `Iterable&lt;Order>` can be added using the call
     *
