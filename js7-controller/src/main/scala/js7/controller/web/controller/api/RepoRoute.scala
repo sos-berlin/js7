@@ -3,7 +3,7 @@ package js7.controller.web.controller.api
 import akka.actor.ActorSystem
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.model.HttpEntity
-import akka.http.scaladsl.model.StatusCodes.OK
+import akka.http.scaladsl.model.StatusCodes.{BadRequest, OK}
 import akka.http.scaladsl.server.Directives.{as, complete, entity, pathEnd, post, withSizeLimit}
 import akka.http.scaladsl.server.Route
 import io.circe.Json
@@ -88,10 +88,11 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                       addOrReplace -> delete
                   }
                   .flatMap { case (addOrReplace, delete) =>
-                    repoUpdater.updateRepo(VerifiedUpdateRepo(
-                      versionId.getOrElse(throw ExitStreamException(Problem(s"Missing VersionId in stream"))),
-                      addOrReplace,
-                      delete))
+                    repoUpdater
+                      .updateRepo(VerifiedUpdateRepo(
+                        versionId.getOrElse(throw ExitStreamException(Problem(s"Missing VersionId in stream"))),
+                        addOrReplace,
+                        delete))
                       .map { o =>
                         if (startedAt.elapsed > 1.s) logger.debug("post controller/api/repo totally: " +
                           itemsPerSecondString(startedAt.elapsed, delete.size + addOrReplace.size, "items"))
@@ -99,8 +100,13 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                       }
                   }
                   .onErrorRecover { case ExitStreamException(problem) => Left(problem) }
-                  .map[ToResponseMarshallable](_.map((_: Completed) =>
-                    OK -> emptyJsonObject))
+                  .map[ToResponseMarshallable] {
+                    case Left(problem) =>
+                      logger.debug(problem.toString)
+                      BadRequest -> problem
+                    case Right(Completed) =>
+                      OK -> emptyJsonObject
+                  }
                   .runToFuture
               }
             })

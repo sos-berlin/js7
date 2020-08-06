@@ -5,7 +5,6 @@ import js7.base.monixutils.MonixBase._
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
-import js7.base.time.Stopwatch.measureTimeOfSingleRun
 import js7.base.time.{Stopwatch, Timestamp}
 import js7.base.utils.CloseableIterator
 import monix.eval.Task
@@ -34,7 +33,7 @@ final class MonixBaseTest extends AsyncFreeSpec
 
   "maybeTimeout FiniteDuration" in {
     sleepyTask.map(_ => assert(false))
-      .maybeTimeout(10.ms)
+      .maybeTimeout(0.s)
       .onErrorHandle(t => assert(t.isInstanceOf[TimeoutException]))
       .runToFuture
   }
@@ -165,6 +164,24 @@ final class MonixBaseTest extends AsyncFreeSpec
         .mapParallelUnorderedBatch()(_ * -1)
         .toListL
         .map(list => assert(list.toSet == (0 until n).map(_ * -1).toSet))
+        .runToFuture
+    }
+
+    "updateState" in {
+      Observable(1, 2, 3, 4, 5)
+        .updateState(0) { case (state, int) => state + int }
+        .takeWhileInclusive(_._1 != 10)
+        .map(_._2)
+        .toListL
+        .map(list => assert(list == List(1, 2, 3, 4)))
+        .runToFuture
+    }
+
+    "updateStateWhileInclusive" in {
+      Observable(1, 2, 3, 4, 5)
+        .updateStateWhileInclusive(0)(_ != 10) { case (state, int) => state + int }
+        .toListL
+        .map(list => assert(list == List(1, 2, 3, 4)))
         .runToFuture
     }
 

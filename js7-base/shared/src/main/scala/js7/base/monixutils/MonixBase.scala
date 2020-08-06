@@ -113,6 +113,17 @@ object MonixBase
            .mapParallelUnordered(parallelism)(seq => Task(seq map f))
            .flatMap(Observable.fromIterable)
 
+       def updateState[S](seed: S)(f: (S, A) => S): Observable[(S, A)] =
+         underlying.scan((seed, null.asInstanceOf[A])) {
+           case ((state, _), a) => f(state, a) -> a
+         }
+
+       def updateStateWhileInclusive[S](seed: S)(predicate: S => Boolean)(f: (S, A) => S): Observable[A] = {
+         updateState(seed)(f)
+         .takeWhileInclusive(o => predicate(o._1))
+         .map(_._2)
+       }
+
       def logTiming(
         toCount: A => Long = simpleCount,
         onComplete: (FiniteDuration, Long, ExitCase[Throwable]) => Unit,
