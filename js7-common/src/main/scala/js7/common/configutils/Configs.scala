@@ -1,5 +1,6 @@
 package js7.common.configutils
 
+import cats.Monoid
 import com.typesafe.config.ConfigRenderOptions.concise
 import com.typesafe.config.{Config, ConfigFactory, ConfigParseOptions, ConfigValue}
 import java.nio.file.Files.exists
@@ -24,6 +25,10 @@ object Configs
   private val SecretOriginDescription = "JS7 Secret"
   private val Required = ConfigParseOptions.defaults.setAllowMissing(false)
   private val logger = Logger(getClass)
+
+  def configIf(predicate: Boolean, config: => Config): Config =
+    if (predicate) config
+    else ConfigFactory.empty
 
   def parseConfigIfExists(file: Path, secret: Boolean): Config =
     if (exists(file)) {
@@ -110,6 +115,12 @@ object Configs
     def ifPath[A](path: String)(f: String => A): Option[A] =
       underlying.hasPath(path) ? f(path)
   }
+
+  implicit val configMonoid: Monoid[Config] =
+    new Monoid[Config] {
+      val empty = ConfigFactory.empty
+      def combine(a: Config, b: Config) = a withFallback b
+    }
 
   implicit final class HoconStringInterpolator(private val sc: StringContext) extends AnyVal
   {
