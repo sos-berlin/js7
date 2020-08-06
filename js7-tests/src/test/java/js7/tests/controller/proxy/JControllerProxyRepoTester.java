@@ -41,7 +41,7 @@ final class JControllerProxyRepoTester
     void addItems(List<String> itemJsons) throws InterruptedException, ExecutionException, TimeoutException {
         VersionId versionId = VersionId.of("MY-VERSION");  // Must match the versionId in added or replaced objects
 
-        // Assure the specific workflow version is unknown
+        // The specific workflow version should be unknown
         JWorkflowId workflowId = JWorkflowId.of(bWorkflowPath, versionId);
         assertThat(proxy.currentState().idToWorkflow(workflowId).mapLeft(Problem::codeOrNull),
             equalTo(Either.left(ProblemCode.of("UnknownKey"/*may change*/))));
@@ -66,7 +66,7 @@ final class JControllerProxyRepoTester
     void deleteItem() throws InterruptedException, ExecutionException, TimeoutException {
         VersionId versionId = VersionId.of("MY-VERSION-2");  // Must match the versionId in added or replaced objects
 
-        // Assure the workflow is known (latest version)
+        // The workflow shoud be known (latest version)
         assertThat(proxy.currentState().pathToWorkflow(bWorkflowPath).isRight(), equalTo(true));
 
         CompletableFuture<JEventAndControllerState<Event>> whenWorkflowDeleted =
@@ -81,7 +81,7 @@ final class JControllerProxyRepoTester
 
         whenWorkflowDeleted.get(99, SECONDS);
 
-        // Assure the workflow is not known (latest version)
+        // The workflow should be deleted (latest version)
         assertThat(proxy.currentState().pathToWorkflow(bWorkflowPath).mapLeft(Problem::codeOrNull),
             equalTo(Either.left(ProblemCode.of("ItemDeleted"))));
     }
