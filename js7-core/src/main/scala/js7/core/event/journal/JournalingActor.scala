@@ -302,7 +302,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
     def endStashing(): Unit = {
       val duration = persistStartedAt.elapsed
       if (duration >= BigStoreThreshold) {
-        logger.debug(s"“$toString” Long persist completed ($persistCount×, $firstName ...) - " +
+        logger.debug(s"“${JournalingActor.this.toString}” Long persist completed ($persistCount×, $firstName ...) - " +
           itemsPerSecondString(duration, eventCount, "events"))
       }
     }

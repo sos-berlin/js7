@@ -110,7 +110,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
 
   private def verify(signedString: SignedString): Checked[Verified[InventoryItem]] =
     for (verified <- repoUpdater.itemVerifier.verify(signedString)) yield {
-      logger.info(Logger.Signature, verified.toString)
+      logger.info(Logger.SignatureVerified, verified.toString)
       verified
     }
 }

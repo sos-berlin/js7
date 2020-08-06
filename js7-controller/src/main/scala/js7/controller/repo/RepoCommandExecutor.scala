@@ -52,7 +52,7 @@ final class RepoCommandExecutor(itemVerifier: InventoryItemVerifier[InventoryIte
 
   private def verify(signedString: SignedString): Checked[Signed[InventoryItem]] =
     for (verified <- itemVerifier.verify(signedString)) yield {
-      logger.info(Logger.Signature, verified.toString)
+      logger.info(Logger.SignatureVerified, verified.toString)
       verified.signedItem
     }
 }

@@ -292,7 +292,7 @@ with Stash {
                 val workflow = verified.signedItem.value.reduceForAgent(agentRefPath)
                 (workflowRegister.get(order.workflowId) match {
                   case None =>
-                    logger.info(Logger.Signature, verified.toString)
+                    logger.info(Logger.SignatureVerified, verified.toString)
                     persist(WorkflowAttached(workflow)) { (stampedEvent, journaledState) =>
                       workflowRegister.handleEvent(stampedEvent.value)
                       startJobActors(workflow)

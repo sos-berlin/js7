@@ -48,7 +48,7 @@ extends Actor with Stash {
     case path: ExecutablePath =>
       val file = path.toFile(executablesDirectory)
       if (!exists(file)) {
-        logger.warn(s"Executable '$file' is not accessible")
+        logger.warn(s"Executable '$file' not found")
       } else if (isUnix && !Try(getPosixFilePermissions(file).contains(OWNER_EXECUTE)).getOrElse(true)) {
         logger.warn(s"Executable '$file' is not user executable")
       }
@@ -93,7 +93,7 @@ extends Actor with Stash {
             sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(problem), killed)  // Exception.toString is published !!!
           case Right(executable) =>
             if (!exists(executable.file)) {
-              val msg = s"Executable '${executable.file}' is not accessible"
+              val msg = s"Executable '${executable.file}' not found"
               logger.error(s"Order '${cmd.order.id.string}' step failed: $msg")
               sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Problem.pure(msg)), killed)
             } else

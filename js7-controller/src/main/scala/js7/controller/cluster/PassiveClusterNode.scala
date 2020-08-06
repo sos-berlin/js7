@@ -14,6 +14,7 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.circeutils.typed.TypedJsonCodec._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils._
@@ -203,6 +204,7 @@ import scodec.bits.ByteVector
         case Some(tmp) => FileChannel.open(tmp, CREATE, WRITE, TRUNCATE_EXISTING)
       }
       var isReplicatingHeadOfFile = maybeTmpFile.isDefined
+      val startedAt = now
       val replicatedFirstEventPosition = SetOnce.fromOption(continuation.firstEventPosition, "replicatedFirstEventPosition")
       var replicatedFileLength = continuation.fileLength
       var lastProperEventPosition = continuation.lastProperEventPosition
@@ -363,6 +365,7 @@ import scodec.bits.ByteVector
             builder.put(json)  // throws on invalid event
             if (isSnapshotTaken) {
               for (tmpFile <- maybeTmpFile) {
+                logger.info(s"Snapshot replicated - " + bytesPerSecondString(startedAt.elapsed, size(tmpFile)))
                 val journalId = builder.fileJournalHeader.map(_.journalId) getOrElse
                   sys.error(s"Missing JournalHeader in replicated journal file '$file'")
                 for (o <- continuation.maybeJournalId if o != journalId)
