@@ -48,7 +48,7 @@ extends ControllerProxyWithHttp
           api.postObservable[FreshOrder, JsonObject]("controller/api/order", orders)
             .map(_ => Completed))))
 
-  /** @return true iff added, false iff not added because of duplicate OrderId. */
+  /** @return true if added, otherwise false because of duplicate OrderId. */
   def addOrder(order: FreshOrder): Task[Checked[Boolean]] =
     execute(ControllerCommand.AddOrder(order))
       .map(_.map(o => !o.ignoredBecauseDuplicate))

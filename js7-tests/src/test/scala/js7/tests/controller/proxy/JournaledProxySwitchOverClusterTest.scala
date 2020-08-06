@@ -18,7 +18,7 @@ import js7.proxy.javaapi.JAdmission
 import js7.proxy.javaapi.data.JHttpsConfig
 import js7.proxy.{ControllerApi, EventAndState}
 import js7.tests.controller.proxy.ClusterProxyTest.{backupUserAndPassword, primaryUserAndPassword}
-import js7.tests.controller.proxy.JournaledProxyTest.workflow
+import js7.tests.controller.proxy.JournaledProxyClusterTest.workflow
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.jdk.CollectionConverters._
@@ -52,7 +52,7 @@ final class JournaledProxySwitchOverClusterTest extends AnyFreeSpec with Cluster
             }
             .timeoutOnSlowUpstream(99.s)
             .headL.runToFuture
-          api.addOrder(FreshOrder(orderId, JournaledProxyTest.workflow.path)).await(99.s).orThrow
+          api.addOrder(FreshOrder(orderId, JournaledProxyClusterTest.workflow.path)).await(99.s).orThrow
           whenFinished await 99.s
         }
 

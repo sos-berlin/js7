@@ -45,7 +45,7 @@ trait JournaledProxy[S <: JournaledState[S]]
   private val currentStateFilled = Promise[Unit]()
   @volatile private var _currentState = S.empty
 
-  final val connectableObservable: ConnectableObservable[EventAndState[Event, S]] = {
+  private val connectableObservable: ConnectableObservable[EventAndState[Event, S]] = {
     baseObservable
       .map { eventAndState =>
         _currentState = eventAndState.state
@@ -57,7 +57,10 @@ trait JournaledProxy[S <: JournaledState[S]]
       .publish(scheduler)
   }
 
-  final def startObserving: Task[Unit] =
+  final def observable: Observable[EventAndState[Event, S]] =
+    connectableObservable
+
+  protected final def startObserving: Task[Unit] =
     Task.deferFutureAction { implicit scheduler =>
       assertThat(observing.isEmpty)
       val obs = connectableObservable.connect()
@@ -74,11 +77,8 @@ trait JournaledProxy[S <: JournaledState[S]]
           scribe.error(t.toStringWithCauses, t.nullIfNoStackTrace)
           // ???
       }
-      whenStarted
+      currentStateFilled.future
     }
-
-  final def whenStarted: Future[Unit] =
-    currentStateFilled.future
 
   final def stop: Task[Unit] =
     Task.deferFuture {
@@ -87,9 +87,6 @@ trait JournaledProxy[S <: JournaledState[S]]
         observingStopped.future
       }
     }
-
-  final def observable: Observable[EventAndState[Event, S]] =
-    connectableObservable
 
   final def currentState: S =
     _currentState match {

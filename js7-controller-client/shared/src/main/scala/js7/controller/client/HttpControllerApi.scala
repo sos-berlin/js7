@@ -1,7 +1,7 @@
 package js7.controller.client
 
 import cats.effect.Resource
-import io.circe.{Decoder, Encoder}
+import io.circe.{Decoder, Encoder, Json}
 import js7.base.auth.UserAndPassword
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.Completed
@@ -19,6 +19,7 @@ import js7.data.order.{FreshOrder, Order, OrdersOverview}
 import js7.data.workflow.Workflow
 import monix.eval.Task
 import monix.reactive.Observable
+import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
@@ -45,6 +46,10 @@ extends EventApi with HttpSessionApi with HasIsIgnorableStackTrace
 
   final def postObservable[A: Encoder: TypeTag, B: Decoder](uriTail: String, data: Observable[A]): Task[B] =
     httpClient.postObservable[A, B](baseUri /? uriTail, data)
+
+  @TestOnly
+  final def postObservableJsonString(uriTail: String, data: Observable[String]): Task[Json] =
+    httpClient.postObservableJsonString(baseUri /? uriTail, data)
 
   final def get[B: Decoder](uriTail: String): Task[B] =
     httpClient.get[B](baseUri /? uriTail)
@@ -162,7 +167,7 @@ object HttpControllerApi
           ()
         })
 
-  private class Standard(
+  final class Standard(
     val baseUri: Uri,
     protected final val userAndPassword: Option[UserAndPassword],
     val httpClient: HttpClient,

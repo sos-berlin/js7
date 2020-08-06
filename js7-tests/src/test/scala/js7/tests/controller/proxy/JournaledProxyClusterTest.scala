@@ -3,16 +3,23 @@ package js7.tests.controller.proxy
 import io.circe.Encoder
 import io.circe.syntax._
 import js7.base.circeutils.CirceUtils._
+import js7.base.generic.Completed
 import js7.base.problem.Checked.Ops
+import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.measureTimeOfSingleRun
 import js7.base.time.{Stopwatch, Timestamp}
+import js7.base.utils.AutoClosing.autoClosing
+import js7.base.web.HttpClient
+import js7.common.akkautils.ProvideActorSystem
+import js7.common.http.AkkaHttpClient
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.Logger
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.time.WaitForCondition.waitForCondition
+import js7.common.utils.ByteUnits.toKBGB
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
-import js7.controller.client.AkkaHttpControllerApi
+import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
 import js7.data.controller.ControllerItems.jsonCodec
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.item.{InventoryItem, UpdateRepoOperation, VersionId}
@@ -21,26 +28,36 @@ import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.parser.WorkflowParser
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.proxy.ControllerApi
+import js7.proxy.configuration.ProxyConfs
 import js7.proxy.javaapi.JAdmission
 import js7.proxy.javaapi.data.JHttpsConfig
 import js7.tests.controller.proxy.ClusterProxyTest.{backupUserAndPassword, primaryCredentials, primaryUserAndPassword}
-import js7.tests.controller.proxy.JournaledProxyTest._
+import js7.tests.controller.proxy.JournaledProxyClusterTest._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import scala.jdk.CollectionConverters._
 import scala.reflect.runtime.universe._
 
-final class JournaledProxyTest extends AnyFreeSpec with ClusterProxyTest
+final class JournaledProxyClusterTest extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with ClusterProxyTest
 {
   protected val inventoryItems = workflow :: Nil
+  protected def config = ProxyConfs.defaultConfig
+
+  private implicit def implicitActorSystem = actorSystem
+
+  override def afterAll() = {
+    close()
+    super.afterAll()
+  }
 
   "JournaledProxy[ControllerState]" in {
     runControllerAndBackup() { (_, primaryController, _, backupController) =>
       val controllerApiResources = List(
-        AkkaHttpControllerApi.separateAkkaResource(primaryController.localUri, Some(primaryUserAndPassword), name = "JournaledProxy-Primary"),
-        AkkaHttpControllerApi.separateAkkaResource(backupController.localUri, Some(backupUserAndPassword), name = "JournaledProxy-Backup"))
+        AkkaHttpControllerApi.resource(primaryController.localUri, Some(primaryUserAndPassword), name = "JournaledProxy-Primary"),
+        AkkaHttpControllerApi.resource(backupController.localUri, Some(backupUserAndPassword), name = "JournaledProxy-Backup"))
       val proxy = new ControllerApi(controllerApiResources).startProxy().await(99.s)
       try {
         val whenProcessed = proxy.eventBus.when[OrderProcessed].runToFuture
@@ -75,7 +92,7 @@ final class JournaledProxyTest extends AnyFreeSpec with ClusterProxyTest
       }""").orThrow.withoutSource
     val n = calculateNumberOf[InventoryItem](workflow.withId(WorkflowPath("/WORKFLOW-XXXXX") ~ versionId))
     runControllerAndBackup() { (primary, primaryController, _, _) =>
-      val controllerApiResource = AkkaHttpControllerApi.separateAkkaResource(primaryController.localUri, Some(primaryUserAndPassword), name = "JournaledProxy")
+      val controllerApiResource = AkkaHttpControllerApi.resource(primaryController.localUri, Some(primaryUserAndPassword), name = "JournaledProxy")
       val api = new ControllerApi(controllerApiResource :: Nil)
       val workflowPaths = (1 to n).map(i => WorkflowPath(s"/WORKFLOW-$i"))
       val sw = new Stopwatch
@@ -95,18 +112,18 @@ final class JournaledProxyTest extends AnyFreeSpec with ClusterProxyTest
       try {
         waitForCondition(30.s, 50.ms)(proxy.currentState.repo.currentTyped[Workflow].sizeIs == n + 1)
         assert(proxy.currentState.repo.currentTyped[Workflow].keys.toVector.sorted == (
-          workflowPaths :+ JournaledProxyTest.workflow.path).sorted)
+          workflowPaths :+ JournaledProxyClusterTest.workflow.path).sorted)
       } finally proxy.stop await 99.s
     }
   }
 
   "addOrders" in {
-    val bigOrder = FreshOrder(OrderId("ORDER"), JournaledProxyTest.workflow.path, Some(Timestamp("2100-01-01T00:00:00Z")),
+    val bigOrder = FreshOrder(OrderId("ORDER"), JournaledProxyClusterTest.workflow.path, Some(Timestamp("2100-01-01T00:00:00Z")),
       arguments = Map("A" -> "*" * 800))
     val n = calculateNumberOf(Stamped(0L, bigOrder.toOrderAdded(workflow.id.versionId): KeyedEvent[OrderEvent]))
     runControllerAndBackup() { (_, primaryController, _, _) =>
-      val controllerApiResource = AkkaHttpControllerApi.separateAkkaResource(primaryController.localUri, Some(primaryUserAndPassword), name = "JournaledProxy")
-      val api = new ControllerApi(controllerApiResource :: Nil)
+      val api = new ControllerApi(List(
+        AkkaHttpControllerApi.resource(primaryController.localUri, Some(primaryUserAndPassword), name = "JournaledProxy")))
       val orderIds = (1 to n).map(i => OrderId(s"ORDER-$i"))
       val logLine = measureTimeOfSingleRun(n, "orders") {
         api.addOrders(
@@ -120,6 +137,38 @@ final class JournaledProxyTest extends AnyFreeSpec with ClusterProxyTest
         waitForCondition(30.s, 50.ms)(proxy.currentState.idToOrder.sizeIs == n)
         assert(proxy.currentState.idToOrder.keys.toVector.sorted == orderIds.sorted)
       } finally proxy.stop await 99.s
+    }
+  }
+
+  "addOrder, long stream containing an invalid item returns proper error message" in {
+    // The server must be able to respond with an error even if the posted stream has not completedly processed.
+    val order = FreshOrder(OrderId("ORDER"), workflow.path).asJson.compactPrint
+    val bigOrder = order + " "*(990_000 - order.length)
+    val n = 100_000_000/*bytes*/ / bigOrder.length
+    val orders = Observable.range(1, n + 1).map(_ => bigOrder)
+    runControllerAndBackup() { (_, primaryController, _, _) =>
+      logger.info(s"Adding $n invalid orders à ${bigOrder.length} bytes ${toKBGB(n * bigOrder.length)}")
+      val httpClient = new AkkaHttpClient.Standard(primaryController.localUri, HttpControllerApi.UriPrefixPath, actorSystem,
+        name = "JournaledProxy")
+      autoClosing(httpClient) { _ =>
+        val api = new HttpControllerApi.Standard(primaryController.localUri, Some(primaryUserAndPassword), httpClient)
+        api.login().await(99.s)
+        locally {
+          val response = HttpClient.liftProblem(
+            api.postObservableJsonString("controller/api/order", orders)
+              .map(_ => Completed)
+          ).await(99.s)
+          assert(response == Left(Problem("Unexpected duplicates: Order:ORDER")))
+        }
+
+        locally {
+          val response = HttpClient.liftProblem(
+            api.postObservableJsonString("controller/api/order", orders.map("¿" + _))
+              .map(_ => Completed)
+          ).await(99.s)
+          assert(response == Left(Problem("JSON ParsingFailure: expected json value got '¿{\"id\"...' (line 1, column 1)")))
+        }
+      }
     }
   }
 
@@ -138,7 +187,7 @@ final class JournaledProxyTest extends AnyFreeSpec with ClusterProxyTest
   }
 }
 
-object JournaledProxyTest
+object JournaledProxyClusterTest
 {
   private val logger = Logger(getClass)
   private[proxy] val workflow = WorkflowParser.parse(

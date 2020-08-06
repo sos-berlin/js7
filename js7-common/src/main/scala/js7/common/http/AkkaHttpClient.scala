@@ -15,7 +15,7 @@ import akka.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshal}
 import akka.stream.Materializer
 import akka.util.ByteString
 import cats.effect.{ExitCase, Resource}
-import io.circe.{Decoder, Encoder}
+import io.circe.{Decoder, Encoder, Json}
 import java.util.Locale
 import js7.base.auth.SessionToken
 import js7.base.circeutils.CirceUtils._
@@ -43,6 +43,7 @@ import monix.eval.Task
 import monix.execution.Cancelable
 import monix.execution.atomic.AtomicLong
 import monix.reactive.Observable
+import org.jetbrains.annotations.TestOnly
 import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
@@ -153,6 +154,19 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
             HttpEntity.Chunked(`application/x-ndjson`.toContentType, akkaChunks)),
           logData = Some("postObservable")))
       .flatMap(unmarshal[B](POST, uri))
+
+  @TestOnly
+  final def postObservableJsonString(uri: Uri, data: Observable[String])(implicit s: Task[Option[SessionToken]]): Task[Json] =
+    Task.deferAction(implicit s => Task(data
+      .map(o => ChunkStreamPart(ByteString(o) ++ LF))
+      .append(LastChunk)
+      .toAkkaSource)
+    ) .flatMap(akkaChunks =>
+        sendReceive(
+          HttpRequest(POST, uri.asAkka, Accept(`application/json`) :: Nil,
+            HttpEntity.Chunked(`application/x-ndjson`.toContentType, akkaChunks)),
+          logData = Some("postObservable")))
+      .flatMap(unmarshal[Json](POST, uri))
 
   final def postWithHeaders[A: Encoder, B: Decoder](uri: Uri, data: A, headers: List[HttpHeader])
     (implicit s: Task[Option[SessionToken]])

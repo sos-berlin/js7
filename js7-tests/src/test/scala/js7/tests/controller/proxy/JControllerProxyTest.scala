@@ -64,8 +64,8 @@ final class JControllerProxyTest extends AnyFreeSpec with DirectoryProviderForSc
         val myVersionId = VersionId("MY-VERSION")
         JControllerProxyTester.run(admissions, JHttpsConfig.empty,
           List[InventoryItem](
-            JournaledProxyTest.workflow.withVersion(myVersionId),
-            JournaledProxyTest.workflow.withId(WorkflowPath("/B-WORKFLOW") ~ myVersionId),
+            JournaledProxyClusterTest.workflow.withVersion(myVersionId),
+            JournaledProxyClusterTest.workflow.withId(WorkflowPath("/B-WORKFLOW") ~ myVersionId),
             unusedAgentRef.withVersion(VersionId("MY-VERSION")),
           ).map(_.asJson.compactPrint).asJava,
           () => controller())

@@ -1,11 +1,12 @@
 package js7.base.web
 
-import io.circe.{Decoder, Encoder}
+import io.circe.{Decoder, Encoder, Json}
 import js7.base.auth.SessionToken
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.StackTraces.StackTraceThrowable
 import monix.eval.Task
 import monix.reactive.Observable
+import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Duration
 import scala.reflect.runtime.universe._
 import scala.util.{Failure, Success}
@@ -27,6 +28,9 @@ trait HttpClient
   def post[A: Encoder, B: Decoder](uri: Uri, data: A)(implicit s: Task[Option[SessionToken]]): Task[B]
 
   def postObservable[A: Encoder: TypeTag, B: Decoder](uri: Uri, data: Observable[A])(implicit s: Task[Option[SessionToken]]): Task[B]
+
+  @TestOnly
+  def postObservableJsonString(uri: Uri, data: Observable[String])(implicit s: Task[Option[SessionToken]]): Task[Json]
 
   /** Returns the HTTP status code, discarding the response data. */
   def postDiscardResponse[A: Encoder](uri: Uri, data: A, allowedStatusCodes: Set[Int] = Set.empty)
