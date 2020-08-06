@@ -335,7 +335,7 @@ extends Actor with Stash
         //}
         throw tt;
       }
-      for (w <- persistBuffer.view.reverse collectFirst { case o: StandardPersist => o }) {
+      for (w <- persistBuffer.view.reverse collectFirst { case o: LoggablePersist => o }) {
         w.isLastOfFlushedOrSynced = true  // For logging: This last Persist (including all before) has been flushed or synced
       }
       if (!terminating) {
@@ -385,7 +385,7 @@ extends Actor with Stash
     val ackWritten = persistBuffer.view.take(n)
     val standardPersistSeq = ackWritten collect { case o: StandardPersist => o }
 
-    logCommitted(ack = requireClusterAcknowledgement, standardPersistSeq.iterator)
+    logCommitted(standardPersistSeq.iterator)
 
     for (lastFileLengthAndEventId <- ackWritten.flatMap(_.lastFileLengthAndEventId).lastOption) {
       lastAcknowledgedEventId = lastFileLengthAndEventId.value
@@ -485,41 +485,43 @@ extends Actor with Stash
     if (conf.syncOnCommit) if (conf.simulateSync.isDefined) "~sync" else "sync "
     else "flush"
 
-  private def logCommitted(ack: Boolean, persistIterator: Iterator[LoggablePersist]) =
+  private def logCommitted(persistIterator: Iterator[LoggablePersist]) =
     logger.whenTraceEnabled {
-      val nw = now
+      val committedAt = now
       while (persistIterator.hasNext) {
         val persist = persistIterator.next()
-        var nr = persist.eventNumber
-        var isFirst = true
-        val stampedIterator = persist.stampedSeq.iterator
-        while (stampedIterator.hasNext) {
-          val stamped = stampedIterator.next()
-          val isLast = !stampedIterator.hasNext
-          val flushOrSync =
-            if (persist.isLastOfFlushedOrSynced && isLast)
-              syncOrFlushString
-            else if (persist.stampedSeq.lengthIs > 1 && isFirst)
-              f"${persist.stampedSeq.length}%4d×"  // Neither flushed nor synced, and not the only event of a commit
-            else
-              "     "
-          val a =
-            if (!requireClusterAcknowledgement)
-              ""        // No cluster. Caller may continue if flushed or synced
-            else if (!ack)
-              "    "    // Only SnapshotWritten event
-            else if (persistIterator.hasNext || !isLast)
-              " ack"    // Event is part of an acknowledged event bundle
-            else
-              " ACK"    // Last event of an acknowledged event bundle. Caller may continue
-          val committed = if (isLast) "COMMITTED" else "committed"
-          val t = if (isLast) ((nw - persist.since).msPretty + "      ") take 7 else "       "
-          logger.trace(s"#$nr $flushOrSync$a $committed $t ${stamped.eventId} ${stamped.value.toString.takeWhile(_ != '\n').truncateWithEllipsis(200)}")
-          nr += 1
-          isFirst = false
-        }
+        logPersist(persist, isLastPersist = !persistIterator.hasNext, committedAt)
       }
     }
+
+  private def logPersist(persist: LoggablePersist, isLastPersist: Boolean, committedAt: Deadline) = {
+    var nr = persist.eventNumber
+    var isFirst = true
+    val stampedIterator = persist.stampedSeq.iterator
+    while (stampedIterator.hasNext) {
+      val stamped = stampedIterator.next()
+      val isLast = !stampedIterator.hasNext
+      val flushOrSync =
+        if (persist.isLastOfFlushedOrSynced && isLast)
+          syncOrFlushString
+        else if (persist.stampedSeq.lengthIs > 1 && isFirst)
+          f"${persist.stampedSeq.length}%4d×"  // Neither flushed nor synced, and not the only event of a commit
+        else
+          "     "
+      val a =
+        if (!requireClusterAcknowledgement)
+          ""        // No cluster. Caller may continue if flushed or synced
+        else if (!isLastPersist || !isLast)
+          " ack"    // Event is part of an acknowledged event bundle
+        else
+          " ACK"    // Last event of an acknowledged event bundle. Caller may continue
+      val committed = if (isLast) "COMMITTED" else "committed"
+      val t = if (isLast) ((committedAt - persist.since).msPretty + "      ") take 7 else "       "
+      logger.trace(s"#$nr $flushOrSync$a $committed $t ${stamped.eventId} ${stamped.value.toString.takeWhile(_ != '\n').truncateWithEllipsis(200)}")
+      nr += 1
+      isFirst = false
+    }
+  }
 
   def tryTakeSnapshotIfRequested(): Unit =
     if (snapshotRequesters.nonEmpty) {
@@ -878,7 +880,9 @@ object JournalActor
     def eventNumber: Long
     def stampedSeq: Seq[Stamped[AnyKeyedEvent]]
     def since: Deadline
-    def isLastOfFlushedOrSynced: Boolean
+
+    /** For logging: last stamped has been flushed */
+    final var isLastOfFlushedOrSynced = false
   }
 
   /** A bundle of written but not yet committed (flushed and acknowledged) Persists. */
@@ -892,9 +896,6 @@ object JournalActor
     callersItem: CallersItem)
   extends Persist with LoggablePersist
   {
-    /** For logging: last stamped has been flushed */
-    var isLastOfFlushedOrSynced = false
-
     def isEmpty = stampedSeq.isEmpty
 
     def eventCount = stampedSeq.size
