@@ -443,9 +443,6 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
             {
               "id": "ORDER-ID",
               "workflowPath": "/WORKFLOW"
-            }, {
-              "id": "ORDER-ID",
-              "workflowPath": "/WORKFLOW"
             }
           ]"""
         val headers = RawHeader("X-JS7-Session", sessionToken) :: Accept(`application/json`) :: Nil

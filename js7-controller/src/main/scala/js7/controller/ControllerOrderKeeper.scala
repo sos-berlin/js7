@@ -795,19 +795,22 @@ with MainJournalingActor[ControllerState, Event]
     }
 
   private def addOrders(freshOrders: Seq[FreshOrder]): Future[Checked[Completed]] =
-    freshOrders.toVector
-      .filterNot(o => orderRegister.contains(o.id))  // Ignore known orders
-      .traverse(o => repo.pathTo[Workflow](o.workflowPath).map(o.->))
-      .traverse { ordersAndWorkflows =>
-        val events = for ((order, workflow) <- ordersAndWorkflows) yield
-          order.id <-: OrderAdded(workflow.id/*reuse*/, order.scheduledFor, order.arguments)
-        persistMultiple(events) { (stampedEvents, updatedState) =>
-          controllerState = updatedState
-          for (o <- stampedEvents) handleOrderEvent(o)
-          checkForEqualOrdersState()
-          Completed
+    freshOrders.checkUniqueness(_.id) match {
+      case Left(problem) => Future.successful(Left(problem))
+      case _ => freshOrders.toVector
+        .filterNot(o => orderRegister.contains(o.id))  // Ignore known orders
+        .traverse(o => repo.pathTo[Workflow](o.workflowPath).map(o.->))
+        .traverse { ordersAndWorkflows =>
+          val events = for ((order, workflow) <- ordersAndWorkflows) yield
+            order.id <-: OrderAdded(workflow.id/*reuse*/, order.scheduledFor, order.arguments)
+          persistMultiple(events) { (stampedEvents, updatedState) =>
+            controllerState = updatedState
+            for (o <- stampedEvents) handleOrderEvent(o)
+            checkForEqualOrdersState()
+            Completed
+          }
         }
-      }
+    }
 
   private def handleOrderEvent(stamped: Stamped[KeyedEvent[OrderEvent]]): Unit =
     handleOrderEvent(stamped.value.key, stamped.value.event)
