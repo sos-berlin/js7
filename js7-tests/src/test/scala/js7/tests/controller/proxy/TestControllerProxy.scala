@@ -44,7 +44,8 @@ private final class TestControllerProxy(controllerUri: Uri, httpPort: Int)(impli
                     println(
                       Try(currentState).map(controllerState =>
                         EventId.toTimestamp(controllerState.eventId).show + " " +
-                          controllerState.idToOrder.size + " orders: " + (controllerState.idToOrder.keys.take(5).map(_.string).mkString(", "))
+                          controllerState.idToOrder.size + " orders: " +
+                          controllerState.idToOrder.keys.take(5).map(_.string).mkString(", ")
                       ).fold(identity, identity))
                     Left(())
                   }.delayResult(1.s)))

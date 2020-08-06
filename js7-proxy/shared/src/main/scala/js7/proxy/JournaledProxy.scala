@@ -244,9 +244,11 @@ object JournaledProxy
               Observable.fromFuture(future).map(api -> _)
             })
             .merge
-            .takeWhileInclusive(o => !o._2.exists(_.isActive))
+            .takeWhileInclusive(o => !o._2.forall(_.isActive))
             .toL(Vector)
             .flatMap { seq =>
+              for ((api, problem) <- seq.collect { case (api, Left(problem)) => api -> problem})
+                scribe.warn(s"Cluster node '${api.baseUri}' is node accessible: $problem")
               val maybeActive = seq.lastOption match {
                 case Some((api, Right(clusterNodeState))) if clusterNodeState.isActive =>
                   Some(api -> clusterNodeState)
@@ -268,7 +270,7 @@ object JournaledProxy
               logoutOthers.map((_: Completed) => maybeActive)
             }
             .map(_.toChecked(Problem.pure("No cluster node seems to be active")))
-            .map(_.orThrow)
+            .map(_.onProblemHandle(problem => throw new InternalProblemException(problem)))
             .onErrorRestartLoop(()) { (throwable, _, tryAgain) =>
               scribe.warn(throwable.toStringWithCauses)
               if (throwable.getStackTrace.nonEmpty) scribe.debug(throwable.toString, throwable)
@@ -286,4 +288,8 @@ object JournaledProxy
   private case object ProxyStartedSeed extends NoKeyEvent
 
   private case object CancelledException extends NoStackTrace
+
+  private class InternalProblemException(val problem: Problem) extends NoStackTrace {
+    override def toString = problem.toString
+  }
 }

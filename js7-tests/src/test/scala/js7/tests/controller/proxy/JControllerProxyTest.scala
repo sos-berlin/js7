@@ -35,8 +35,8 @@ final class JControllerProxyTest extends AnyFreeSpec with DirectoryProviderForSc
     }
     """
 
+  protected val agentRefPaths = AgentRefPath("/AGENT") :: Nil
   protected val inventoryItems = Nil
-  protected val agentRefPaths = JournaledProxyTest.agentRefPath :: Nil
 
   override def beforeAll() = {
     super.beforeAll()
@@ -52,7 +52,7 @@ final class JControllerProxyTest extends AnyFreeSpec with DirectoryProviderForSc
       configDir / "private/trusted-silly-signature-keys/key.silly" := "MY-SILLY-SIGNATURE"
     }
 
-    directoryProvider.agents.head.writeExecutable(ExecutablePath("/test.cmd"), script(1.s))
+    directoryProvider.agents.head.writeExecutable(ExecutablePath("/TEST.cmd"), script(1.s))
   }
 
   "JControllerProxy" in {
@@ -60,7 +60,7 @@ final class JControllerProxyTest extends AnyFreeSpec with DirectoryProviderForSc
       val port = findFreeTcpPort()
       val controller = Lazy { directoryProvider.startController(httpPort = Some(port)).await(99.s) }
       try {
-        val admissions = List(JAdmission.of(s"http://127.0.0.1:$port", JournaledProxyTest.primaryCredentials)).asJava
+        val admissions = List(JAdmission.of(s"http://127.0.0.1:$port", ClusterProxyTest.primaryCredentials)).asJava
         val myVersionId = VersionId("MY-VERSION")
         JControllerProxyTester.run(admissions, JHttpsConfig.empty,
           List[InventoryItem](

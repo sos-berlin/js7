@@ -6,6 +6,7 @@ import com.google.inject.util.Modules.EMPTY_MODULE
 import com.typesafe.config.{Config, ConfigFactory}
 import js7.base.crypt.MessageSigner
 import js7.base.utils.HasCloser
+import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.message.ProblemCodeMessages
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.common.utils.JavaResource
@@ -20,6 +21,7 @@ import scala.collection.immutable.Iterable
 trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
   this: org.scalatest.Suite =>
 
+  coupleScribeWithSlf4j()
   ProblemCodeMessages.initialize()
 
   protected def agentRefPaths: Seq[AgentRefPath]
