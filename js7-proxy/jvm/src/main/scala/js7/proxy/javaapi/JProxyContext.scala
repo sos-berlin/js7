@@ -2,7 +2,7 @@ package js7.proxy.javaapi
 
 import cats.effect.Resource
 import com.typesafe.config.{Config, ConfigFactory}
-import java.util.concurrent.CompletableFuture
+import java.util.concurrent.{CompletableFuture, ForkJoinPool}
 import js7.base.annotation.javaApi
 import js7.base.utils.{HasCloser, Lazy}
 import js7.common.akkautils.Akkas
@@ -16,6 +16,7 @@ import js7.proxy.javaapi.data.JHttpsConfig
 import js7.proxy.javaapi.eventbus.{JControllerEventBus, JStandardEventBus}
 import js7.proxy.{ControllerApi, ProxyEvent}
 import monix.eval.Task
+import monix.execution.Scheduler
 import scala.jdk.CollectionConverters._
 
 /** The class to start. */
@@ -33,7 +34,12 @@ extends HasCloser
 
   private val proxyConf = ProxyConfs.fromConfig(config)
 
-  private[proxy] implicit val scheduler = ThreadPools.newStandardScheduler("JControllerProxy", config_, closer)
+  private val useJavaThreadPool = config_.getBoolean("js7.thread-pools.use-java-thread-pool")
+  private[proxy] implicit val scheduler =
+    if (useJavaThreadPool)
+      ThreadPools.newStandardScheduler("JControllerProxy", config_, closer)
+    else
+      Scheduler(ForkJoinPool.commonPool)
   private val actorSystemLazy = Lazy(newActorSystem("JS7-Proxy", defaultExecutionContext = scheduler))
 
   onClose {
