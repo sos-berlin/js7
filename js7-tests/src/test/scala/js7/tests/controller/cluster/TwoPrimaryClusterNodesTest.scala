@@ -10,6 +10,7 @@ import js7.controller.data.ControllerCommand.ClusterAppointNodes
 import js7.core.problems.PrimaryMayNotBecomeBackupProblem
 import js7.data.node.NodeId
 import monix.execution.Scheduler.Implicits.global
+
 final class TwoPrimaryClusterNodesTest extends ControllerClusterTester
 {
   override protected def configureClusterNodes = false

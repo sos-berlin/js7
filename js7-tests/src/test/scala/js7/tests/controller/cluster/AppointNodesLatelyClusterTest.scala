@@ -36,7 +36,7 @@ final class AppointNodesLatelyClusterTest extends ControllerClusterTester
 
         val backupController = backup.startController(httpPort = Some(backupHttpPort)) await 99.s
 
-        backupController.httpApiDefaultLogin(Some(UserId("TEST") -> SecretString("TEST-PASSWORD")))
+        backupController.httpApiDefaultLogin(Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD")))
         backupController.httpApi.login() await 99.s
         assert(backupController.httpApi.clusterState.await(99.s) == Left(BackupClusterNodeNotAppointed))
 

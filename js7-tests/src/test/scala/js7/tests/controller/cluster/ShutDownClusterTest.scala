@@ -31,11 +31,11 @@ final class ShutDownClusterTest extends ControllerClusterTester
           backupId -> Uri(s"http://127.0.0.1:$backupHttpPort"))
 
         backup.runController(httpPort = Some(backupHttpPort), dontWaitUntilReady = true) { backupController =>
-          backupController.httpApi.login_(Some(UserAndPassword(UserId("TEST"), SecretString("TEST-PASSWORD")))).await(99.s)
+          backupController.httpApi.login_(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))).await(99.s)
 
           primary.runController(httpPort = Some(primaryHttpPort)) { primaryController =>
             primaryController.eventWatch.await[ClusterCoupled]()
-            primaryController.httpApi.login_(Some(UserAndPassword(UserId("TEST"), SecretString("TEST-PASSWORD")))).await(99.s)
+            primaryController.httpApi.login_(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))).await(99.s)
             assert(primaryController.httpApi.clusterState.await(99.s) == Right(Coupled(idToUri, primaryId)))
 
             primaryController.executeCommandAsSystemUser(ShutDown())

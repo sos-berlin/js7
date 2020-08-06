@@ -37,7 +37,7 @@ final class SwitchOverClusterTest extends ControllerClusterTester
           primaryController.eventWatch.await[ClusterCoupled]()
           val orderId = OrderId("⭕")
           primaryController.addOrderBlocking(FreshOrder(orderId, TestWorkflow.path))
-          primaryController.httpApiDefaultLogin(Some(UserId("TEST") -> SecretString("TEST-PASSWORD")))
+          primaryController.httpApiDefaultLogin(Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD")))
           addOrders(orderIds)
           primaryController.eventWatch.await[OrderProcessingStarted](_.key == orderId)
           backupController.eventWatch.await[OrderProcessingStarted](_.key == orderId)

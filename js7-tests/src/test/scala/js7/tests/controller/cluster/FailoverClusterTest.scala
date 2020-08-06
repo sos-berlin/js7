@@ -16,10 +16,10 @@ import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, Cluster
 import js7.data.cluster.ClusterState.{Coupled, FailedOver}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event._
-import js7.data.node.NodeId
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.tests.controller.cluster.ControllerClusterTester._
+import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
 import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.duration.Deadline.now
 
@@ -30,8 +30,6 @@ final class FailoverClusterTest extends ControllerClusterTester
     withControllerAndBackup(primaryHttpPort, backupHttpPort) { (primary, backup) =>
       var primaryController = primary.startController(httpPort = Some(primaryHttpPort)) await 99.s
       var backupController = backup.startController(httpPort = Some(backupHttpPort)) await 99.s
-      val primaryId = NodeId("Primary")
-      val backupId = NodeId("Backup")
       val idToUri = Map(
         primaryId -> primaryController.localUri,
         backupId -> backupController.localUri)

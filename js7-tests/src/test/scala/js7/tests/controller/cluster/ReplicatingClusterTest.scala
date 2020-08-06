@@ -12,6 +12,7 @@ import js7.data.cluster.ClusterEvent
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.tests.controller.cluster.ControllerClusterTester._
+import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
 import monix.execution.Scheduler.Implicits.global
 
 final class ReplicatingClusterTest extends ControllerClusterTester
@@ -57,7 +58,7 @@ final class ReplicatingClusterTest extends ControllerClusterTester
           backupController.eventWatch.await[OrderFinished](_.key == OrderId("🔹"), after = lastEventId)
 
           // Check acknowledgement of empty event list
-          primaryController.httpApi.login_(Some(UserId("TEST") -> SecretString("TEST-PASSWORD"))).await(99.s)
+          primaryController.httpApi.login_(Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD"))).await(99.s)
           primaryController.httpApi.addOrders(Nil).await(99.s)  // Emits no events
         }
       }
