@@ -7,7 +7,7 @@ import js7.data.workflow.WorkflowPath
 @javaApi
 object JOrderPredicates
 {
-  type Predicate = Order[Order.State] => Boolean
+  private type Predicate = Order[Order.State] => Boolean
 
   val any: Predicate = _ => true
 
