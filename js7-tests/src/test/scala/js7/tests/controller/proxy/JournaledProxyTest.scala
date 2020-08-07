@@ -24,7 +24,7 @@ import js7.proxy.JournaledProxyObservableTester.syntax._
 import js7.proxy.configuration.ProxyConfs
 import js7.proxy.{ControllerApi, EventAndState}
 import js7.tests.controller.proxy.ClusterProxyTest.primaryUserAndPassword
-import js7.tests.controller.proxy.JournalProxyTest._
+import js7.tests.controller.proxy.JournaledProxyTest._
 import js7.tests.controller.proxy.JournaledProxyClusterTest.workflow
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.script
@@ -33,7 +33,7 @@ import monix.reactive.Observable
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 
-final class JournalProxyTest
+final class JournaledProxyTest
 extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with ControllerAgentForScalaTest
 {
   override protected def agentRefPaths = agentRefPath :: Nil
@@ -52,7 +52,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with Controll
   private implicit def implicitActorSystem = actorSystem
   private val versionId = VersionId("MY-VERSION")
   private lazy val api = new ControllerApi(
-    AkkaHttpControllerApi.resource(controller.localUri, Some(primaryUserAndPassword), name = "JournalProxyTest") :: Nil)
+    AkkaHttpControllerApi.resource(controller.localUri, Some(primaryUserAndPassword), name = "JournaledProxyTest") :: Nil)
   private lazy val proxy = api.startProxy().await(99.s)
 
   override def beforeAll() = {
@@ -129,6 +129,6 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with Controll
   }
 }
 
-object JournalProxyTest {
+object JournaledProxyTest {
   private val agentRefPath = AgentRefPath("/AGENT")
 }
