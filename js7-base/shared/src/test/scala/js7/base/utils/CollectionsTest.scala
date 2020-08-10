@@ -4,7 +4,6 @@ import js7.base.problem.Problem
 import js7.base.utils.Collections._
 import js7.base.utils.Collections.implicits._
 import js7.base.utils.CollectionsTest._
-import monix.eval.Coeval
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
 import scala.collection.mutable
@@ -200,14 +199,6 @@ final class CollectionsTest extends AnyFreeSpec
       assert(m(1) == "A")
       assert(intercept[NoSuchElementException] { m(2) }.getMessage == "NO SUCH KEY: 2")
     }
-  }
-
-  "flatMapF" in {
-    type E = Either[String, Int]
-    assert(Coeval[E](Right(7)).flatMapF(o => Coeval.pure(Right(3 * o))).value() == Right(21))
-    assert(Coeval[E](Left("A")).flatMapF(o => Coeval.pure(Right(3 * o))).value() == Left("A"))
-    assert(Coeval[E](Left("A")).flatMapF(_ => Coeval.pure(Left("B"))).value() == Left("A"))
-    assert(Coeval[E](Right(7)).flatMapF(_ => Coeval.pure(Left("B"))).value() == Left("B"))
   }
 }
 

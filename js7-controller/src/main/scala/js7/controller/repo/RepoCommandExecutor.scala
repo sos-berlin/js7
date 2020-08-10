@@ -7,7 +7,7 @@ import js7.base.auth.UpdateRepoPermission
 import js7.base.crypt.{Signed, SignedString}
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked
-import js7.base.utils.Collections.implicits._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.Logger
 import js7.controller.data.ControllerCommand
 import js7.controller.repo.RepoCommandExecutor._
@@ -28,7 +28,7 @@ final class RepoCommandExecutor(itemVerifier: InventoryItemVerifier[InventoryIte
 
   def replaceRepoCommandToEvents(repo: Repo, replaceRepo: ControllerCommand.ReplaceRepo, meta: CommandMeta): Task[Checked[Seq[RepoEvent]]] =
     Task(meta.user.checkPermission(UpdateRepoPermission))
-      .flatMapF(_ =>
+      .flatMapT(_ =>
         Observable.fromIterable(replaceRepo.objects)
           .mapParallelOrdered(sys.runtime.availableProcessors)(o => Task(verify(o)))
           .toL(Vector)
@@ -42,7 +42,7 @@ final class RepoCommandExecutor(itemVerifier: InventoryItemVerifier[InventoryIte
 
   def updateRepoCommandToEvents(repo: Repo, updateRepo: ControllerCommand.UpdateRepo, meta: CommandMeta): Task[Checked[Seq[RepoEvent]]] =
     Task(meta.user.checkPermission(UpdateRepoPermission))
-      .flatMapF(_ =>
+      .flatMapT(_ =>
         Observable.fromIterable(updateRepo.change)
           .mapParallelOrdered(sys.runtime.availableProcessors)(o => Task(verify(o)))
           .toL(Vector)

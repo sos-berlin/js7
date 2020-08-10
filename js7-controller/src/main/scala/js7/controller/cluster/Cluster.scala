@@ -421,10 +421,9 @@ final class Cluster[S <: JournaledState[S]: Diff](
       case ClusterCommand.ClusterInhibitActivation(duration) =>
         import ClusterCommand.ClusterInhibitActivation.Response
         activationInhibitor.inhibitActivation(duration)
-          .flatMap {
-            case Left(problem) => Task.pure(Left(problem))
-            case Right(/*inhibited=*/true) => Task.pure(Right(Response(None)))
-            case Right(/*inhibited=*/false) =>
+          .flatMapT {
+            case /*inhibited=*/true => Task.pure(Right(Response(None)))
+            case /*inhibited=*/false =>
               // Could not inhibit, so this node is already active
               persistence.currentState.map(_.clusterState).map {
                 case failedOver: FailedOver =>

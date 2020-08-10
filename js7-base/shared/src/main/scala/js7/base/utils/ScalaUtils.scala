@@ -1,5 +1,6 @@
 package js7.base.utils
 
+import cats.{Functor, Monad}
 import java.io.{ByteArrayInputStream, InputStream, PrintWriter, StringWriter}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.concurrent.atomic.AtomicBoolean
@@ -21,6 +22,25 @@ object ScalaUtils
 
   object syntax
   {
+    implicit final class RichEitherF[F[_], L, R](private val underlying: F[Either[L, R]]) extends AnyVal
+    {
+      def mapt[R1](f: R => R1)(implicit F: Functor[F]): F[Either[L, R1]] =
+        F.map(underlying)(_.map(f))
+
+      def mapT[L1 >: L, R1](f: R => Either[L1, R1])(implicit F: Functor[F]): F[Either[L1, R1]] =
+        F.map(underlying) {
+          case Left(o) => Left(o)
+          case Right(o) => f(o)
+        }
+
+      /** Simple alernative to `EitherT` `flatMap` if for-comprehension is not needed. */
+      def flatMapT[R1](f: R => F[Either[L, R1]])(implicit F: Monad[F]): F[Either[L, R1]] =
+        F.flatMap(underlying) {
+          case Left(left) => F.pure(Left(left))
+          case Right(right) => f(right)
+        }
+    }
+
     implicit final class RichJavaClass[A](private val underlying: Class[A])
     {
       def scalaName: String = underlying.getName stripSuffix "$"

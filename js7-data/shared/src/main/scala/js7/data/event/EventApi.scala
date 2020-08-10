@@ -6,6 +6,7 @@ import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked
 import js7.base.session.SessionApi
 import js7.base.time.Stopwatch.itemsPerSecondString
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
 import js7.data.cluster.ClusterNodeState
 import monix.eval.Task
@@ -33,9 +34,7 @@ with HasIsIgnorableStackTrace
       snapshot
         .logTiming(startedAt = startedAt, onComplete = (d, n, exitCase) =>
           scribe.debug(s"$S snapshot receive $exitCase - ${itemsPerSecondString(d, n, "objects")}"))
-        .flatMap {
-          case Left(problem) => Task.pure(Left(problem))
-          case Right(obs) => S.fromObservable(obs).map(Right(_))
-        }
+        .flatMapT(obs =>
+          S.fromObservable(obs) map Right.apply)
     }
 }

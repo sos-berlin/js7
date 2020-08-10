@@ -40,9 +40,8 @@ private[cluster] final class ClusterCommon(
     activationInhibitor.tryToActivate(
       ifInhibited = Task.pure(Right(false)),  // Ignore heartbeat loss
       activate =
-        clusterState.applyEvent(event) match {
-          case Left(problem) => Task.pure(Left(problem))
-          case Right(updatedClusterState) =>
+        Task.pure(clusterState.applyEvent(event))
+          .flatMapT { updatedClusterState =>
             val eventName = s"'${event.getClass.simpleScalaName}' event"
             clusterWatch.applyEvents(from = ownId, event :: Nil, updatedClusterState).flatMap {
               case Left(problem) =>

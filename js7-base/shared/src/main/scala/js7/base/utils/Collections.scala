@@ -1,6 +1,5 @@
 package js7.base.utils
 
-import cats.Monad
 import javax.annotation.Nullable
 import js7.base.problem.{Checked, Problem}
 import scala.annotation.tailrec
@@ -138,16 +137,6 @@ object Collections
         if (delegate contains kv._1) throw new DuplicateKeyException(s"Key ${kv._1} is already known")
         delegate += kv
       }
-    }
-
-    implicit final class RichEitherTask[F[_], L, R](private val underlying: F[Either[L, R]]) extends AnyVal
-    {
-      /** Simple alernative to `EitherT` `flatMap` if for-comprehension is not needed. */
-      def flatMapF[R1](f: R => F[Either[L, R1]])(implicit F: Monad[F]): F[Either[L, R1]] =
-        F.flatMap(underlying) {
-          case Left(left) => F.pure(Left(left))
-          case Right(right) => f(right)
-        }
     }
   }
 

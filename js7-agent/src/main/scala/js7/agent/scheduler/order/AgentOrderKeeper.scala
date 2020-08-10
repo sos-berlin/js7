@@ -3,6 +3,7 @@ package js7.agent.scheduler.order
 import akka.actor.{ActorRef, DeadLetterSuppression, Stash, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
+import cats.instances.future._
 import java.time.ZoneId
 import js7.agent.AgentState
 import js7.agent.configuration.AgentConfiguration
@@ -303,14 +304,11 @@ with Stash {
                   case Some(_) =>
                     Future.successful(Left(Problem.pure(s"Changed ${order.workflowId}")))
                 })
-                .flatMap {
-                  case Left(problem) => Future.successful(Left(problem))
-                  case Right(registeredWorkflow) =>
-                    // Reuse registeredWorkflow to reduce memory usage!
-                    promiseFuture[Checked[AgentCommand.Response.Accepted]] { promise =>
-                      self ! Internal.ContinueAttachOrder(order, registeredWorkflow, promise)
-                    }
-                }
+                .flatMapT(registeredWorkflow =>
+                  // Reuse registeredWorkflow to reduce memory usage!
+                  promiseFuture[Checked[AgentCommand.Response.Accepted]] { promise =>
+                    self ! Internal.ContinueAttachOrder(order, registeredWorkflow, promise)
+                  })
               }
           }
       }

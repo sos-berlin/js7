@@ -1,11 +1,14 @@
 package js7.base.utils
 
+import cats.instances.option._
+import cats.syntax.option._
 import java.util.concurrent.atomic.AtomicBoolean
 import js7.base.exceptions.StandardPublicException
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils._
 import js7.base.utils.ScalaUtils.syntax._
+import monix.eval.Coeval
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
 import scala.reflect.ClassTag
@@ -13,6 +16,47 @@ import scala.util.control.NoStackTrace
 
 final class ScalaUtilsTest extends AnyFreeSpec
 {
+  "Monad transforming funtions" - {
+    def ignored = throw new RuntimeException("Nothing")
+    type E = Either[String, Int]
+    type O = Option[E]
+
+    "mapt" in {
+      assert((None: O).mapt(_ => ignored) == None)
+      assert((Some(Left("A")): O).mapt(_ => ignored) == Some(Left("A")))
+      assert((Some(Right(7)): O).mapt(3 * _) == Some(Right(21)))
+    }
+
+    "mapT" in {
+      assert((None: O).mapT(_ => ignored) == None)
+      assert((Some(Left("A")): O).mapT(_ => Left("B")) == Some(Left("A")))
+      assert((Some(Left("A")): O).mapT(o => Right(3 * o)) == Some(Left("A")))
+      assert((Some(Right(7)): O).mapT(_ => Left("B")) == Some(Left("B")))
+      assert((Some(Right(7)): O).mapT(o => Right(3 * o)) == Some(Right(21)))
+    }
+
+    "flatMapT" - {
+      "Option" in {
+        type O = Option[E]
+        assert(none[E].flatMapT(_ => ignored) == none[E])
+        assert((Some(Left("A")): O).flatMapT(_ => ignored) == Some(Left("A")))
+        assert((Some(Right(7)): O).flatMapT(_ => none[E]) == none[E])
+        assert((Some(Right(7)): O).flatMapT(_ => Some(Left("B"))) == Some(Left("B")))
+        assert((Some(Right(7)): O).flatMapT(o => Some(Right(3 * o))) == Some(Right(21)))
+
+        // flatMapT with Option[Either[String, Nothing]] does not compile:
+        //assert((Some(Left("A")): Option[Either[String, Nothing]]).flatMapT(_ => nothing) == Some(Left("A")))
+      }
+    }
+
+    "Coeval" in {
+      assert(Coeval[E](Left("A")).flatMapT(_ => Coeval.pure(Left("B"))).value() == Left("A"))
+      assert(Coeval[E](Left("A")).flatMapT(o => Coeval.pure(Right(3 * o))).value() == Left("A"))
+      assert(Coeval[E](Right(7)).flatMapT(_ => Coeval.pure(Left("B"))).value() == Left("B"))
+      assert(Coeval[E](Right(7)).flatMapT(o => Coeval.pure(Right(3 * o))).value() == Right(21))
+    }
+  }
+
   "reuseIfEqual" in {
     case class A(number: Int)
     val a = A(1)
