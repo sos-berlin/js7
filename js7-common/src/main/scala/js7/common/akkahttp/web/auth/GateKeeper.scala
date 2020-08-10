@@ -128,7 +128,7 @@ final class GateKeeper[U <: User](scheme: WebServerBinding.Scheme, configuration
                   case o: X509Certificate if Option(o.getBasicConstraints).forall(_ == -1) => o
                 } match {
                   case cert :: Nil =>
-                    logger.debug("HTTPS client has sent the client and a CA certificate. We ignore the latter")
+                    logger.debug("HTTPS client has sent the client certificate and some CA certificate. We ignore the latter")
                     certToUser(cert).map(Some.apply)
                   case _ =>
                     if (certs.nonEmpty) logger.debug(s"HTTPS client certificates rejected: ${certs.mkString(", ")}")

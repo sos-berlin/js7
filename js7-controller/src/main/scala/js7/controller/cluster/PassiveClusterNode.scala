@@ -215,7 +215,7 @@ import scodec.bits.ByteVector
 
       continuation match {
         case FirstPartialFile(recoveredJournalFile) =>
-          logger.info(s"Start replicating events into journal file ${file.getFileName()}")
+          logger.info(s"Start replicating '${file.getFileName()}' file after ${EventId.toString(recoveredJournalFile.eventId)}")
           builder.startWithState(JournalProgress.InCommittedEventsSection, Some(recoveredJournalFile.journalHeader),
             eventId = recoveredJournalFile.eventId,
             totalEventCount = recoveredJournalFile.calculatedJournalHeader.totalEventCount,
@@ -290,7 +290,7 @@ import scodec.bits.ByteVector
                             assertThat(exists(file))
                             autoClosing(FileChannel.open(file, APPEND)) { out =>
                               if (out.size > lastProperEventPosition) {
-                                logger.info(s"Truncating open transaction in journal '${file.getFileName}' at position $lastProperEventPosition")
+                                logger.info(s"Truncating open transaction in '${file.getFileName}' file at position $lastProperEventPosition")
                                 out.truncate(lastProperEventPosition)
                               }
                               out.write(ByteBuffer.wrap((failedOverStamped.asJson.compactPrint + "\n").getBytes(UTF_8)))
@@ -322,7 +322,7 @@ import scodec.bits.ByteVector
                           builder.rollbackToEventSection()
                           builder.put(failedOverJson)
                           if (out.size > lastProperEventPosition) {
-                            logger.info(s"Truncating open transaction in journal '${file.getFileName}' at position $lastProperEventPosition")
+                            logger.info(s"Truncating open transaction in '${file.getFileName}' file at position $lastProperEventPosition")
                             out.truncate(lastProperEventPosition)
                           }
                           out.write(ByteBuffer.wrap((failedOverJson.compactPrint + "\n").getBytes(UTF_8)))
@@ -366,7 +366,6 @@ import scodec.bits.ByteVector
             builder.put(json)  // throws on invalid event
             if (isSnapshotTaken) {
               for (tmpFile <- maybeTmpFile) {
-                logger.info(s"Snapshot replicated - " + bytesPerSecondString(startedAt.elapsed, size(tmpFile)))
                 val journalId = builder.fileJournalHeader.map(_.journalId) getOrElse
                   sys.error(s"Missing JournalHeader in replicated journal file '$file'")
                 for (o <- continuation.maybeJournalId if o != journalId)
@@ -377,8 +376,9 @@ import scodec.bits.ByteVector
                 out.close()
                 move(tmpFile, file, ATOMIC_MOVE)
                 journalMeta.updateSymbolicLink(file)
+                logger.info(s"Snapshot '${file.getFileName}' (${EventId.toString(continuation.fileEventId)}) replicated - " +
+                  bytesPerSecondString(startedAt.elapsed, size(file)))
                 out = FileChannel.open(file, APPEND)
-                logger.info(s"Continue replicating events into next journal file ${file.getFileName()}")
                 eventWatch.onJournalingStarted(file, journalId,
                   tornLengthAndEventId = PositionAnd(replicatedFileLength/*After EventHeader, before SnapshotTaken, */, continuation.fileEventId),
                   flushedLengthAndEventId = PositionAnd(fileLength, builder.eventId))
