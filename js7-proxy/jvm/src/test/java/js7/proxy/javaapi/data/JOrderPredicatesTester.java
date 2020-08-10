@@ -9,7 +9,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 /**
  * @author Joacim Zschimmer
  */
-public class JOrderPredicatesTester
+public final class JOrderPredicatesTester
 {
     private final Order<Order.State> aOrder;
     private final Order<Order.State> bOrder;
