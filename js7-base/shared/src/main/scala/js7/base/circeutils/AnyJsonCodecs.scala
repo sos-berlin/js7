@@ -1,11 +1,11 @@
 package js7.base.circeutils
 
 import io.circe.{Decoder, Encoder, Json, JsonObject}
-import java.nio.file.Path
 import js7.base.generic.GenericString
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax._
 import scala.jdk.CollectionConverters._
+
 /**
   * @author Joacim Zschimmer
   */
@@ -18,6 +18,9 @@ object AnyJsonCodecs
   }
 
   def anyToJson(value: Any, unknownToString: Boolean = false): Json =
+    PlatformAnyJsonCodecs.platformAnyToJson.applyOrElse(value, standardAnyToJson(_, unknownToString))
+
+  private def standardAnyToJson(value: Any, unknownToString: Boolean = false): Json =
     value match {
       case v: String => Json.fromString(v)
       case v: Boolean => Json.fromBoolean(v)
@@ -30,7 +33,6 @@ object AnyJsonCodecs
       case v: Map[_, _] => mapToJson(v.asInstanceOf[Map[String, Any]])
       case v: java.util.Map[_, _] => mapToJson(v.asInstanceOf[java.util.Map[String, Any]].asScala.toMap)
       case v: Array[_] => Json.fromValues(v.map(anyToJson(_, unknownToString)))
-      case v: Path => Json.fromString(v.toString)  // Do not iterate through Path's Iterable interface
       case v: Iterable[_] => Json.fromValues(v.map(anyToJson(_, unknownToString)))
       case v: java.lang.Iterable[_] => Json.fromValues(v.asScala.map(anyToJson(_, unknownToString)))
       case v: Json => v
