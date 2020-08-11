@@ -2,12 +2,12 @@ package js7.data.event
 
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, HCursor, Json}
-import js7.base.circeutils.typed.TypedJsonCodec.{TypeFieldName, UnknownClassForJsonException, UnknownJsonTypeException, typeName, unknownJsonTypeFailure}
+import js7.base.circeutils.typed.TypedJsonCodec.{TypeFieldName, UnknownClassForJsonException, typeName, unknownJsonTypeFailure}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.Collections._
 import js7.base.utils.Collections.implicits.RichPairTraversable
-import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.ScalaUtils.implicitClass
+import js7.base.utils.ScalaUtils.syntax._
 import scala.reflect.ClassTag
 
 /**
@@ -90,8 +90,8 @@ object KeyedEventTypedJsonCodec
       subtypes.flatMap(_.classToEncoder mapValuesStrict (_.asInstanceOf[Encoder.AsObject[KeyedEvent[E]]])).uniqueToMap withDefault (o => throw new UnknownClassForJsonException(o, cls)),
       subtypes.flatMap(_.nameToDecoder.mapValuesStrict (decoder =>
         Right(decoder.asInstanceOf[Decoder[KeyedEvent[E]]]))).uniqueToMap
-          .withDefault(typeName => Left(unknownJsonTypeFailure(typeName, cls))),
-      subtypes.flatMap(_.nameToClass).uniqueToMap withDefault (o => throw new UnknownJsonTypeException(o, cls)))
+          .withDefault(typeName => Left(unknownJsonTypeFailure(typeName, cls.shortClassName, Nil))),
+      subtypes.flatMap(_.nameToClass).uniqueToMap)
   }
 
   final class KeyedSubtype[E <: Event](

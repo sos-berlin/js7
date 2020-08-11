@@ -1,17 +1,17 @@
 package js7.base.circeutils.typed
 
-import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json, JsonObject}
+import io.circe.{CursorOp, Decoder, DecodingFailure, Encoder, HCursor, Json, JsonObject}
 import js7.base.circeutils.typed.TypedJsonCodec._
 import js7.base.utils.Collections.implicits._
-import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.ScalaUtils._
+import js7.base.utils.ScalaUtils.syntax._
 import scala.reflect.ClassTag
 
 /**
   * @author Joacim Zschimmer
   */
 final class TypedJsonCodec[A](
-  val printName: String,
+  val superclassName: String,
   val classToEncoder: Map[Class[_], Encoder.AsObject[_ <: A]],
   val nameToDecoder: Map[String, Decoder[_ <: A]],
   val nameToClass: Map[String, Class[_ <: A]])
@@ -33,7 +33,7 @@ extends Encoder.AsObject[A] with Decoder[A]
     if (sameDecoderNames.nonEmpty) throw new IllegalArgumentException(s"Union of TypedJsonCodec has non-unique class names: $sameDecoderNames")
 
     new TypedJsonCodec[Any](
-      s"$printName|${other.printName}",
+      s"$this|$other",
       classToEncoder ++ other.classToEncoder,
       nameToDecoder ++ other.nameToDecoder,
       nameToClass ++ other.nameToClass)
@@ -45,11 +45,15 @@ extends Encoder.AsObject[A] with Decoder[A]
     classToEncoder(a.getClass).asInstanceOf[Encoder.AsObject[A]].encodeObject(a)
 
   def decode(c: HCursor): Decoder.Result[A] =
-    c.get[String](TypeFieldName) flatMap (o => nameToDecoder(o).apply(c))
+    c.get[String](TypeFieldName)
+      .flatMap(name => nameToDecoder.get(name) match {
+        case None => Left(unknownJsonTypeFailure(name, superclassName, c.history))
+        case Some(decoder) => decoder.apply(c)
+      })
 
   def canDeserialize(json: Json): Boolean =
     json.asObject match {
-      case Some(o) => o.toMap.get(TypeFieldName) flatMap (_.asString) exists nameToDecoder.contains
+      case Some(o) => o.toMap.get(TypeFieldName).flatMap(_.asString) exists nameToDecoder.contains
       case _ => false
     }
 
@@ -70,7 +74,7 @@ extends Encoder.AsObject[A] with Decoder[A]
   def jsonToClass(json: Json): Option[Class[_ <: A]] =
     json.asObject.flatMap(_(TypeFieldName)).flatMap(_.asString).flatMap(nameToClass.get)
 
-  override def toString = s"TypedJsonCodec[$printName]"
+  override def toString = s"TypedJsonCodec[$superclassName]"
 }
 
 object TypedJsonCodec
@@ -86,10 +90,10 @@ object TypedJsonCodec
   def apply[A: ClassTag](subtypes: Subtype[_ <: A]*): TypedJsonCodec[A] = {
     val cls = implicitClass[A]
     new TypedJsonCodec[A](
-      implicitClass[A].simpleScalaName,
+      implicitClass[A].shortClassName,
       subtypes.flatMap(_.classToEncoder).uniqueToMap withDefault (o => throw new UnknownClassForJsonException(o, cls)),
-      subtypes.flatMap(_.nameToDecoder).uniqueToMap withDefault (o => throw new UnknownJsonTypeException(o, cls)),
-      subtypes.flatMap(_.nameToClass).uniqueToMap withDefault (o => throw new UnknownJsonTypeException(o, cls)))
+      subtypes.flatMap(_.nameToDecoder).uniqueToMap,
+      subtypes.flatMap(_.nameToClass).uniqueToMap)
   }
 
   implicit final class TypedJson(private val underlying: Json) extends AnyVal {
@@ -103,9 +107,6 @@ object TypedJsonCodec
   final class UnknownClassForJsonException(subclass: Class[_], superclass: Class[_])
     extends NoSuchElementException(s"Class ${subclass.getName} is not registered with TypedJsonCodec[${superclass.shortClassName}]")
 
-  final class UnknownJsonTypeException(typeName: String, superclass: Class[_])
-    extends RuntimeException(s"""Unexpected JSON {"$TypeFieldName": "$typeName"} for class '${superclass.shortClassName}'""")
-
-  final def unknownJsonTypeFailure(typeName: String, superclass: Class[_]): DecodingFailure =
-    DecodingFailure(s"""Unexpected JSON {"$TypeFieldName": "$typeName"} for class '${superclass.shortClassName}'""", Nil)
+  final def unknownJsonTypeFailure(typeName: String, superclassName: String, history: List[CursorOp]): DecodingFailure =
+    DecodingFailure(s"""Unexpected JSON {"$TypeFieldName": "$typeName", ...} for class '$superclassName'""", history)
 }

@@ -66,7 +66,7 @@ final class ControllerJsonValidatorTester
                 "\"TYPE\": \"INVALID\"" +
             "}");
         assertEqual(maybeProblem.get().toString(),
-            "js7.base.circeutils.typed.TypedJsonCodec$UnknownJsonTypeException: Unexpected JSON {\"TYPE\": \"INVALID\"} for class 'Instruction'");
+            "JSON DecodingFailure at : Unexpected JSON {\"TYPE\": \"INVALID\", ...} for class 'Instruction'");
     }
 
     private static void assertEqual(String string, String expected) {

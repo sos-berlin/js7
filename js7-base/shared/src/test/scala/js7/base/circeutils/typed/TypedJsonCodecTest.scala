@@ -4,7 +4,7 @@ import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils._
 import js7.base.circeutils.typed.TypedJsonCodec._
 import js7.base.circeutils.typed.TypedJsonCodecTest._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.problem.Problem
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
@@ -28,9 +28,8 @@ final class TypedJsonCodecTest extends AnyFreeSpec
   }
 
   "decode unknown subclass" in {
-    intercept[UnknownJsonTypeException] {
-      json"""{ "TYPE": "UNKNOWN" }""".as[A].orThrow
-    }.getMessage should include ("""Unexpected JSON {"TYPE": "UNKNOWN"} for class 'TypedJsonCodecTest.A'""")
+    json"""{ "TYPE": "UNKNOWN" }""".as[A] == Left(Problem(
+      """Unexpected JSON {"TYPE": "UNKNOWN", ...} for class 'TypedJsonCodecTest.A'"""))
   }
 
   "Nested TypedJsonCodec" in {

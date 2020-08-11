@@ -34,7 +34,7 @@ final class KeyedEventTypedJsonCodecTest extends AnyFreeSpec
 
   "decode unknown subclass" in {
     assert("""{ "TYPE": "UNKNOWN" }""".parseJsonOrThrow.as[KeyedEvent[TestEvent]] ==
-    Left(DecodingFailure("""Unexpected JSON {"TYPE": "UNKNOWN"} for class 'KeyedEventTypedJsonCodecTest.TestEvent'""", Nil)))
+      Left(DecodingFailure("""Unexpected JSON {"TYPE": "UNKNOWN", ...} for class 'KeyedEventTypedJsonCodecTest.TestEvent'""", Nil)))
   }
 
   "Union" in {
@@ -56,7 +56,7 @@ final class KeyedEventTypedJsonCodecTest extends AnyFreeSpec
     testJson[KeyedEvent[E0.type]](NoKey <-: E0,      json"""{ "TYPE": "E0" }""")
     assert(json"""{ "TYPE": "E0" }""".as[KeyedEvent[E0.type]].isRight)
     assert(json"""{ "TYPE": "UNKNOWN" }""".as[KeyedEvent[E0.type]] == Left(DecodingFailure(
-      """Unexpected JSON {"TYPE": "UNKNOWN"} for class 'KeyedEventTypedJsonCodecTest.E0'""", Nil)))
+      """Unexpected JSON {"TYPE": "UNKNOWN", ...} for class 'KeyedEventTypedJsonCodecTest.E0'""", Nil)))
   }
 
   "typenameToClassOption" in {
