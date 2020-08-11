@@ -19,7 +19,7 @@ object GenericInt {
 
     implicit val self = this
 
-    implicit val ordering: Ordering[A] = Ordering by { _.number }
+    implicit val ordering: Ordering[A] = Ordering.by(_.number)
 
     implicit def stringAsGenericInt: As[String, A] =
       As(o => apply(o.toInt))
