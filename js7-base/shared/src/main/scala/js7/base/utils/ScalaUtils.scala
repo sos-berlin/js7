@@ -398,7 +398,7 @@ object ScalaUtils
 
   def checkedCast[A: ClassTag](o: Any): Checked[A] =
     checkedCast[A](o,
-      Problem(s"Expected ${o.getClass.getName} but got ${implicitClass[A].getName}: ${o.toString.truncateWithEllipsis(30)}"))
+      Problem(s"Expected ${implicitClass[A].getName} but got ${o.getClass.getName}: ${o.toString.truncateWithEllipsis(30)}"))
 
   def checkedCast[A: ClassTag](o: Any, problem: => Problem): Checked[A] = {
     val A = implicitClass[A]
