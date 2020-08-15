@@ -1,20 +1,19 @@
-package js7.base.utils
+package js7.base.data
 
 import java.io.InputStream
-import scodec.bits.ByteVector
 
 /** Slow if ByteVector has many Chunks. */
-final class ByteVectorInputStream(byteVector: ByteVector) extends InputStream
+final class ByteSequenceInputStream[A](byteSeq: A)(implicit A: ByteSequence[A]) extends InputStream
 {
   private[this] var i = 0
   private[this] var marked = 0
 
   def read() = {
-    if (i == byteVector.length)
+    if (i == A.length(byteSeq))
       -1
     else {
       // SLOW: ByteVector.apply iterates through all Chunks until the index is found !!!
-      val byte = byteVector(i)
+      val byte = A.at(byteSeq, i)
       i += 1
       byte & 0xFF
     }

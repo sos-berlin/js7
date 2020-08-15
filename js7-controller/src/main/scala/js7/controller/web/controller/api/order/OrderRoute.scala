@@ -11,6 +11,7 @@ import cats.Monad.ops.toAllMonadOps
 import io.circe.Json
 import js7.base.auth.ValidUserPermission
 import js7.base.circeutils.CirceUtils._
+import js7.base.data.ByteSequence.ops._
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked.Ops
@@ -19,7 +20,8 @@ import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
 import js7.base.utils.ByteVectorToLinesObservable
 import js7.base.utils.IntelliJUtils.intelliJuseImport
-import js7.base.utils.ScalaUtils.syntax.{RichAny, RichThrowableEither}
+import js7.base.utils.ScalaUtils.syntax.RichAny
+import js7.base.utils.ScodecUtils.syntax._
 import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
 import js7.common.akkahttp.CirceJsonOrYamlSupport.{jsonOrYamlMarshaller, jsonUnmarshaller}
 import js7.common.akkahttp.StandardMarshallers._

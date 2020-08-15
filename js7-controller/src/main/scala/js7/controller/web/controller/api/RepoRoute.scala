@@ -8,15 +8,16 @@ import akka.http.scaladsl.server.Directives.{as, complete, entity, pathEnd, post
 import akka.http.scaladsl.server.Route
 import io.circe.Json
 import js7.base.auth.{Permission, UpdateRepoPermission, ValidUserPermission}
-import js7.base.circeutils.CirceUtils._
 import js7.base.crypt.SignedString
+import js7.base.data.ByteSequence.ops._
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.{RichDeadline, _}
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
-import js7.base.utils.ScalaUtils.syntax.{RichAny, RichThrowableEither}
+import js7.base.utils.ScalaUtils.syntax.RichAny
+import js7.base.utils.ScodecUtils.syntax._
 import js7.base.utils.{ByteVectorToLinesObservable, FutureCompletion, IntelliJUtils, SetOnce}
 import js7.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
 import js7.common.http.AkkaHttpUtils.ScodecByteString

@@ -4,10 +4,11 @@ import cats.effect.Resource
 import io.circe.Json
 import java.io.IOException
 import java.nio.file.Path
+import js7.base.data.ByteSequence.ops._
 import js7.base.problem.ProblemException
 import js7.base.utils.Ascii.{LF, RS}
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.ScodecUtils.RichByteVector
+import js7.base.utils.ScodecUtils.syntax._
 import js7.common.event.PositionAnd
 import js7.common.scalautil.Logger
 import js7.common.utils.UntilNoneIterator

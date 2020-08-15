@@ -1,43 +1,49 @@
 package js7.tests.special
 
-import akka.util.ByteString
 import io.circe._
 import io.circe.syntax._
+import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.circeutils.CirceObjectCodec
 import js7.base.circeutils.CirceUtils._
+import js7.base.data.ByteArray
+import js7.base.data.ByteSequence.ops._
+import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.measureTimeOfSingleRun
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScodecUtils.syntax._
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.tests.special.CirceParallelizationSpeedTest._
-import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.immutable.Seq
 import scala.util.Random
+import scodec.bits.ByteVector
 
 final class CirceParallelizationSpeedTest extends AnyFreeSpec
 {
+  private type MyByteSeq = ByteArray
+  private val MyByteSeq = ByteArray
+
   if (sys.props.contains("test.speed")) {
     coupleScribeWithSlf4j()
 
     val n = 1000000
     lazy val big = for (i <- 1 to n / 10) yield Big(i, Seq.fill(20)(Random.nextString(10)))
     lazy val small = for (i <- 1 to n) yield Small(i)
-    lazy val bigJson = encodeParallelBuffered(big)
-    lazy val smallJson = encodeParallelBuffered(small)
+    lazy val bigJson = encodeParallelBatch(big)
+    lazy val smallJson = encodeParallelBatch(small)
 
-    "encode parallel buffered" in {
-      testEncode(big, "Big")(encodeParallelBuffered)
-      testEncode(small, "Small")(encodeParallelBuffered)
+    "encode parallel batch" in {
+      testEncode(big, "Big")(encodeParallelBatch)
+      testEncode(small, "Small")(encodeParallelBatch)
     }
 
-    "decode parallel buffered" in {
-      testDecode[Big](bigJson, "Big")(decodeParallelBuffered[Big])
-      testDecode[Small](smallJson, "Small")(decodeParallelBuffered[Small])
+    "decode parallel batch" in {
+      testDecode[Big](bigJson, "Big")(decodeParallelBatch[Big])
+      testDecode[Small](smallJson, "Small")(decodeParallelBatch[Small])
     }
 
   if (false) { // too slow
@@ -54,20 +60,20 @@ final class CirceParallelizationSpeedTest extends AnyFreeSpec
 
   if (false) { // slow
     "encode sequential" in {
-      testEncode(big, "Big")(encodeSerial)
-      testEncode(small, "Small")(encodeSerial)
+      testEncode(big, "Big")(seq => encodeSerial(MyByteSeq, seq))
+      testEncode(small, "Small")(seq => encodeSerial(MyByteSeq, seq))
       succeed
     }
 
     "decode sequential" in {
-      testDecode[Big](bigJson, "Big")(decodeSerial[Big])
-      testDecode[Small](smallJson, "Small")(decodeSerial[Small])
+      testDecode[Big](bigJson, "Big")(decodeSerial[Big](MyByteSeq, _))
+      testDecode[Small](smallJson, "Small")(decodeSerial[Small](MyByteSeq, _))
       succeed
     }
   }
   }
 
-  private def testEncode[A: Encoder](seq: Seq[A], plural: String)(body: Seq[A] => Seq[ByteString]): Unit = {
+  private def testEncode[A: Encoder](seq: Seq[A], plural: String)(body: Seq[A] => Seq[MyByteSeq]): Unit = {
     val m = 20
     for (i <- 1 to m) {
       //System.gc()
@@ -78,7 +84,7 @@ final class CirceParallelizationSpeedTest extends AnyFreeSpec
     }
   }
 
-  private def testDecode[A: Decoder](seq: Seq[ByteString], plural: String)(body: Seq[ByteString] => Seq[A]): Unit = {
+  private def testDecode[A: Decoder](seq: Seq[MyByteSeq], plural: String)(body: Seq[MyByteSeq] => Seq[A]): Unit = {
     val m = 20
     for (i <- 1 to m) {
       //System.gc()
@@ -89,53 +95,58 @@ final class CirceParallelizationSpeedTest extends AnyFreeSpec
     }
   }
 
-  private def encodeParallelBuffered[A: Encoder](seq: Seq[A]): Seq[ByteString] =
+  private def encodeParallelBatch[A: Encoder](seq: Seq[A]): Seq[MyByteSeq] =
     Observable.fromIterable(seq)
-      .bufferTumbling(200)
-      .mapParallelOrdered(parallelization)(seq => Task(seq.map(a => ByteString(a.asJson.compactPrint))))
-      .flatMap(Observable.fromIterable)
+      .mapParallelOrderedBatch()(encode[A](MyByteSeq, _))
       .toListL
       .await(99.s)
 
-  private def decodeParallelBuffered[A: Decoder](seq: Seq[ByteString]): Seq[A] =
+  private def decodeParallelBatch[A: Decoder](seq: Seq[MyByteSeq]): Seq[A] =
     Observable.fromIterable(seq)
-      .bufferTumbling(200)
-      .mapParallelOrdered(parallelization)(seq => Task(seq map decode[A]))
-      .flatMap(Observable.fromIterable)
+      .mapParallelOrderedBatch()(decode[A])
       .toListL
       .await(99.s)
 
-  private def encodeParallel[A: Encoder](seq: Seq[A]): Seq[ByteString] =
+  private def encodeParallel[A: Encoder](seq: Seq[A]): Seq[MyByteSeq] =
     Observable.fromIterable(seq)
-      .mapParallelOrdered(parallelization)(a => Task(ByteString(a.asJson.compactPrint)))
+      .mapParallelOrderedBatch()(encode[A](MyByteSeq, _))
       .toListL
       .await(99.s)
 
-  private def decodeParallel[A: Decoder](seq: Seq[ByteString]): Seq[A] =
+  private def decodeParallel[A: Decoder](seq: Seq[MyByteSeq]): Seq[A] =
     Observable.fromIterable(seq)
-      .mapParallelOrdered(parallelization)(byteString => Task(decode(byteString)))
+      .mapParallelOrderedBatch()(bytes => decode(bytes))
       .toListL
       .await(99.s)
 
-  private def encodeSerial[A: Encoder](seq: Seq[A]): Seq[ByteString] =
-    seq map encode[A]
+  private def encodeSerial[A: Encoder](x: ByteArray.type, seq: Seq[A]): Seq[ByteArray] =
+    seq.map(encode[A](ByteArray, _))
 
-  private def decodeSerial[A: Decoder](seq: Seq[ByteString]): Seq[A] =
-    seq.map(_.utf8String.parseJsonChecked.orThrow.as[A].orThrow)
+  private def encodeSerial[A: Encoder](x: ByteVector.type, seq: Seq[A]): Seq[ByteVector] =
+    seq.map(encode[A](ByteVector, _))
 
+  private def decodeSerial[A: Decoder](x: ByteVector.type, seq: Seq[ByteVector]): Seq[A] =
+    seq.map(_.parseJsonAs[A].orThrow)
 
-  private def encode[A: Encoder](a: A): ByteString =
-    ByteString(a.asJson.compactPrint)
-    //ByteString.fromArrayUnsafe(CompactPrinter.printToByteBuffer(a.asJson).array())
+  private def decodeSerial[A: Decoder](x: ByteArray.type, seq: Seq[ByteArray]): Seq[A] =
+    seq.map(_.parseJsonAs[A].orThrow)
 
-  private def decode[A: Decoder](byteString: ByteString): A =
-    byteString.utf8String.parseJsonChecked.orThrow.as[A].orThrow
+  private def encode[A: Encoder](x: ByteArray.type, a: A): ByteArray =
+    ByteArray.fromString(a.asJson.compactPrint)
+    //MyByteSeq(a.asJson.compactPrint.getBytes(UTF_8))
+
+  private def encode[A: Encoder](x: ByteVector.type, a: A): ByteVector =
+    ByteVector(a.asJson.compactPrint.getBytes(UTF_8))
+
+  private def decode[A: Decoder](byteVector: ByteVector): A =
+    byteVector.parseJsonAs[A].orThrow
+
+  private def decode[A: Decoder](bytes: ByteArray): A =
+    bytes.parseJsonAs[A].orThrow
 }
 
 private object CirceParallelizationSpeedTest
 {
-  private val parallelization = sys.runtime.availableProcessors
-
   case class Small(int: Int, string: String = "STRING", boolean: Boolean = true)
   object Small {
     implicit val jsonCodec: CirceObjectCodec[Small] = deriveCodec[Small]

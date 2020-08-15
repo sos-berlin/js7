@@ -4,9 +4,10 @@ import akka.http.scaladsl.testkit.RouteTestTimeout
 import java.nio.file.Files.{createTempDirectory, size}
 import java.util.UUID
 import js7.base.auth.SessionToken
+import js7.base.data.ByteSequence.ops._
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.ScodecUtils.RichByteVector
+import js7.base.utils.ScodecUtils.syntax._
 import js7.base.web.Uri
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.web.AkkaWebServer

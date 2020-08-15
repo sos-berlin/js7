@@ -1,8 +1,9 @@
 package js7.base.utils
 
+import js7.base.data.ByteSequence.ops._
 import js7.base.problem.Problem
-import js7.base.utils.ScodecUtils._
 import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScodecUtils.syntax._
 import monix.reactive.Observable
 import scala.collection.mutable.ArrayBuffer
 import scodec.bits.ByteVector
@@ -22,8 +23,8 @@ extends (ByteVector => Observable[ByteVector])
       Observable.raiseError(Problem(s"Event streaming chunk does not contain whole lines: ${byteVector.utf8String.truncateWithEllipsis(50)}").throwable)
     else {
       lines.clear()
-      var p = 0L
-      val length = byteVector.length
+      var p = 0
+      val length = byteVector.intLength
       while (p < length) {
         byteVector.indexOf('\n'.toByte, p) match {
           case -1 =>

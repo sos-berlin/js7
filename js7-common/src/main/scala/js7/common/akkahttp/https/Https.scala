@@ -4,11 +4,12 @@ import java.io.InputStream
 import java.security.KeyStore
 import java.security.cert.{Certificate, CertificateFactory, X509Certificate}
 import javax.net.ssl.{KeyManager, KeyManagerFactory, SSLContext, TrustManagerFactory, X509TrustManager}
+import js7.base.data.ByteSequence.ops._
 import js7.base.generic.SecretString
 import js7.base.utils.AutoClosing._
 import js7.base.utils.InputStreams.inputStreamToByteVectorLimited
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.ScodecUtils.RichByteVector
+import js7.base.utils.ScodecUtils.syntax._
 import js7.common.scalautil.Logger
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._

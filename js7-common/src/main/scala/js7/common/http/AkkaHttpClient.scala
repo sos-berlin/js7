@@ -18,8 +18,8 @@ import cats.effect.{ExitCase, Resource}
 import io.circe.{Decoder, Encoder, Json}
 import java.util.Locale
 import js7.base.auth.SessionToken
-import js7.base.circeutils.CirceUtils._
 import js7.base.circeutils.CirceUtils.implicits._
+import js7.base.data.ByteSequence.ops._
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
@@ -29,6 +29,7 @@ import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.ByteVectorToLinesObservable
 import js7.base.utils.MonixAntiBlocking.executeOn
 import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScodecUtils.syntax._
 import js7.base.web.{HttpClient, Uri}
 import js7.common.akkahttp.https.AkkaHttps.loadHttpsConnectionContext
 import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}

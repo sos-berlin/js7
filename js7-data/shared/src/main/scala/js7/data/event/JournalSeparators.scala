@@ -2,8 +2,9 @@ package js7.data.event
 
 import io.circe.Json
 import js7.base.circeutils.CirceUtils.RichCirceString
+import js7.base.data.ByteSequence.ops._
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.ScodecUtils.RichByteVector
+import js7.base.utils.ScodecUtils.syntax._
 import scodec.bits.ByteVector
 
 /**

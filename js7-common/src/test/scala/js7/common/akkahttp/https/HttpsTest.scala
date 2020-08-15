@@ -5,10 +5,11 @@ import java.lang.{ProcessBuilder => JavaProcessBuilder}
 import java.nio.file.Path
 import java.security.KeyStore
 import java.security.cert.X509Certificate
+import js7.base.data.ByteSequence.ops._
 import js7.base.generic.SecretString
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.InputStreams.inputStreamToByteVector
-import js7.base.utils.ScodecUtils._
+import js7.base.utils.ScodecUtils.syntax._
 import js7.common.scalautil.FileUtils.{withTemporaryDirectory, withTemporaryFile}
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global

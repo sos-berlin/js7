@@ -20,7 +20,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils._
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.ScodecUtils.RichByteVector
+import js7.base.utils.ScodecUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.base.web.{HttpClient, Uri}
 import js7.common.event.{EventIdGenerator, PositionAnd}

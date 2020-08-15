@@ -15,6 +15,7 @@ import js7.base.BuildInfo
 import js7.base.auth.SessionToken
 import js7.base.circeutils.CirceUtils._
 import js7.base.crypt.silly.{SillySignature, SillySigner}
+import js7.base.data.ByteSequence.ops._
 import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
@@ -23,6 +24,7 @@ import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScodecUtils.syntax._
 import js7.base.web.Uri
 import js7.common.event.EventIdClock
 import js7.common.http.AkkaHttpClient.HttpException
