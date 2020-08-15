@@ -1,6 +1,7 @@
 package js7.tests.controller.web
 
 import akka.http.scaladsl.model.StatusCodes.Unauthorized
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
@@ -133,12 +134,12 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
     val u = Uri(s"$uri/controller/api/journal?markEOF=true&file=$fileAfter&position=0")
     httpClient.getRawLinesObservable(u).await(99.s)
       .foreach {
-        lines += _.decodeUtf8.orThrow
+        lines += _.decodeString(UTF_8).orThrow
       }
     httpClient.getRawLinesObservable(Uri(u.string + "&heartbeat=0.1")).await(99.s)
       .timeoutOnSlowUpstream(200.ms)  // Check heartbeat
       .foreach {
-        heartbeatLines += _.decodeUtf8.orThrow
+        heartbeatLines += _.decodeString(UTF_8).orThrow
       }
 
     val orderId = OrderId("🔵")

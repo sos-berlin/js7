@@ -2,6 +2,7 @@ package js7.controller.client
 
 import cats.effect.Resource
 import io.circe.{Decoder, Encoder, Json}
+import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.auth.UserAndPassword
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.Completed
@@ -120,7 +121,7 @@ extends EventApi with HttpSessionApi with HasIsIgnorableStackTrace
     */
   final def journalLengthObservable(fileEventId: EventId, position: Long, timeout: FiniteDuration, markEOF: Boolean = false): Task[Observable[Long]] =
     journalObservable(fileEventId, position, timeout = Some(timeout), markEOF = markEOF, returnLength = true)
-      .map(_.map(_.decodeUtf8.orThrow.stripSuffix("\n").toLong))
+      .map(_.map(_.decodeString(UTF_8).orThrow.stripSuffix("\n").toLong))
 
   final def fatEvents[E <: FatEvent: ClassTag](request: EventRequest[E])(implicit kd: Decoder[KeyedEvent[E]], ke: Encoder.AsObject[KeyedEvent[E]])
   : Task[TearableEventSeq[Seq, KeyedEvent[E]]] =
