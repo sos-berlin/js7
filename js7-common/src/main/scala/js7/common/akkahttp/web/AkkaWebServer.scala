@@ -59,7 +59,6 @@ trait AkkaWebServer extends AutoCloseable
       if (bindings.isEmpty)
         Task.raiseError(new IllegalArgumentException("Web server needs a configured HTTP or HTTPS port"))
       else {
-        logger.debug(bindings mkString ", ")
         activeBindings = bindings map {
           case o: WebServerBinding.Http => bindHttp(o).memoize
           case o: WebServerBinding.Https => bindHttps(o).memoize

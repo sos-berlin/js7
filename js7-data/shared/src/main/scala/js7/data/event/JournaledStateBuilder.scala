@@ -78,7 +78,7 @@ trait JournaledStateBuilder[S <: JournaledState[S]]
   final def addEvent(stamped: Stamped[KeyedEvent[Event]]) =
     synchronized {  // synchronize with asynchronous execution of synchronizedStateFuture
       if (stamped.eventId <= _eventId) {
-        throw new IllegalArgumentException(s"EventId out of order: ${EventId.toString(_eventId)} ≥ ${stamped.toString.truncateWithEllipsis(100)}")
+        throw new IllegalArgumentException(s"EventId out of order: ${EventId.toString(_eventId)} >= ${stamped.toString.truncateWithEllipsis(100)}")
       }
       try onAddEvent(stamped)
       catch { case NonFatal(t) =>

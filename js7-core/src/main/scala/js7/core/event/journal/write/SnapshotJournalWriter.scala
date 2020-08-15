@@ -4,7 +4,7 @@ import akka.util.ByteString
 import java.nio.file.Path
 import js7.base.circeutils.CirceUtils._
 import js7.base.time.ScalaTime._
-import js7.base.time.Stopwatch.itemsPerSecondString
+import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
 import js7.common.scalautil.Logger
 import js7.core.event.journal.data.JournalMeta
 import js7.core.event.journal.files.JournalFiles._
@@ -33,7 +33,9 @@ extends JournalWriter(after = after, append = false)
 
   def closeAndLog(): Unit = {
     super.close()
-    logger.debug(s"Snapshot finished - " + itemsPerSecondString(runningSince.elapsed, snapshotCount, "objects"))
+    val elapsed = runningSince.elapsed
+    logger.debug(s"Snapshot finished - " + itemsPerSecondString(elapsed, snapshotCount, "objects") + " · " +
+      bytesPerSecondString(elapsed, fileLength))
     for (o <- statistics.debugString) logger.debug(o)
   }
 
