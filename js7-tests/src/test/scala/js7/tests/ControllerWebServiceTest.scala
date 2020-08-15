@@ -506,7 +506,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
   "/controller/api/snapshot/ (only JSON)" in {
     val observable = httpClient.getRawLinesObservable(Uri(s"$uri/controller/api/snapshot/")) await 99.s
     val shortenedArray =
-      observable.map(_.decodeUtf8.orThrow.parseJsonOrThrow)
+      observable.map(_.parseJson.orThrow)
         .filterNot(_.asObject.get("TYPE").contains("AgentSnapshot".asJson))
         .toListL await 99.s  // Delete AgentSnapshot in `array` (for easy comparison)
     val controllerMetaState = shortenedArray.iterator.map(_.as(SnapshotJsonCodec).orThrow)

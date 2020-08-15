@@ -14,7 +14,7 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.data.ByteSequence.ops._
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
-import js7.base.problem.Checked.Ops
+import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
@@ -67,8 +67,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                     .pipeIf(logger.underlying.isDebugEnabled, _.map { o => byteCount += o.size; o })
                     .flatMap(new ByteVectorToLinesObservable)
                     .mapParallelOrderedBatch()(_
-                      .decodeUtf8.orThrow
-                      .parseJsonCheckedAs[FreshOrder].orThrow)
+                      .parseJsonAs[FreshOrder].orThrow)
                     .toL(Vector)
                     .flatTap(orders => Task {
                       val d = startedAt.elapsed

@@ -6,7 +6,8 @@ import io.circe.generic.encoding.DerivedAsObjectEncoder
 import io.circe.generic.extras.decoding.ConfiguredDecoder
 import io.circe.generic.extras.encoding.ConfiguredAsObjectEncoder
 import io.circe.syntax.EncoderOps
-import io.circe.{CursorOp, Decoder, DecodingFailure, Encoder, HCursor, Json, JsonNumber, JsonObject, Printer}
+import io.circe.{CursorOp, Decoder, DecodingFailure, Encoder, HCursor, Json, JsonNumber, JsonObject, ParsingFailure, Printer}
+import java.nio.ByteBuffer
 import js7.base.circeutils.AnyJsonCodecs.anyToJson
 import js7.base.generic.GenericString
 import js7.base.problem.{Checked, Problem}
@@ -19,6 +20,12 @@ import shapeless.Lazy
   */
 object CirceUtils
 {
+  def parseJsonByteArray(bytes: Array[Byte]): Either[ParsingFailure, Json] =
+    CirceUtilsForPlatform.parseJsonByteArray(bytes)
+
+  def parseJsonByteBuffer(bytes: ByteBuffer): Either[ParsingFailure, Json] =
+    CirceUtilsForPlatform.parseJsonByteBuffer(bytes)
+
   def toStringJsonCodec[A](from: String => A): CirceCodec[A] =
     stringJsonCodec(_.toString, from)
 
@@ -55,7 +62,7 @@ object CirceUtils
 
   implicit final class RichCirceError[R](private val underlying: io.circe.Error) extends AnyVal
   {
-    def toProblem = Problem.pure("JSON " + underlying.show)
+    def toProblem = Problem.pure("JSON " + underlying.show.replace("\n", "\\n"))
   }
 
   implicit final class RichCirceEither[R](private val underlying: Either[io.circe.Error, R]) extends AnyVal
@@ -138,7 +145,7 @@ object CirceUtils
 
   implicit final class RichCirceString(private val underlying: String) extends AnyVal {
     def parseJsonCheckedAs[A: Decoder]: Checked[A] =
-      parseJsonChecked flatMap (_.checkedAs[A])
+      io.circe.parser.parse(underlying).flatMap(_.as[A]).toChecked
 
     def parseJsonChecked: Checked[Json] =
       io.circe.parser.parse(underlying).toChecked

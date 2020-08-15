@@ -83,10 +83,13 @@ object MonixBase
         (f: A => B)
         (implicit os: OverflowStrategy[B] = OverflowStrategy.Default)
       : Observable[B] =
-         underlying
-           .bufferTumbling(batchSize)
-           .mapParallelOrdered(parallelism)(seq => Task(seq map f))
-           .flatMap(Observable.fromIterable)
+        if (parallelism == 1)
+          underlying.map(f)
+        else
+          underlying
+            .bufferTumbling(batchSize)
+            .mapParallelOrdered(parallelism)(seq => Task(seq map f))
+            .flatMap(Observable.fromIterable)
 
       //def mapParallelOrderedTimedBatch[B](
       //  maxDelay: FiniteDuration,
@@ -108,10 +111,13 @@ object MonixBase
         (f: A => B)
         (implicit os: OverflowStrategy[B] = OverflowStrategy.Default)
       : Observable[B] =
-         underlying
-           .bufferTumbling(batchSize)
-           .mapParallelUnordered(parallelism)(seq => Task(seq map f))
-           .flatMap(Observable.fromIterable)
+        if (parallelism == 1)
+          underlying.map(f)
+        else
+          underlying
+            .bufferTumbling(batchSize)
+            .mapParallelUnordered(parallelism)(seq => Task(seq map f))
+            .flatMap(Observable.fromIterable)
 
        def updateState[S](seed: S)(f: (S, A) => S): Observable[(S, A)] =
          underlying.scan((seed, null.asInstanceOf[A])) {

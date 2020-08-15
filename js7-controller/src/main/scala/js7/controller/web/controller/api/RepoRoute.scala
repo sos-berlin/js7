@@ -64,9 +64,8 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                   .map(_.toByteVector)
                   .pipeIf(logger.underlying.isDebugEnabled, _.map { o => byteCount += o.size; o })
                   .flatMap(new ByteVectorToLinesObservable)
-                  .mapParallelUnorderedBatch(batchSize = 200)(_
-                    .decodeUtf8.orThrow
-                    .parseJsonCheckedAs[UpdateRepoOperation].orThrow
+                  .mapParallelUnorderedBatch()(_
+                    .parseJsonAs[UpdateRepoOperation].orThrow
                     match {
                       case UpdateRepoOperation.AddOrReplace(signedJson) =>
                         verify(signedJson).fold(problem => throw ExitStreamException(problem), identity)

@@ -65,15 +65,14 @@ extends AutoCloseable
       val blockRead_ = blockRead
       val pos = position
       readRaw()
-        .map(bytes => bytes.decodeUtf8
-          .flatMap(io.circe.parser.parse) match {
-            case Left(throwable) =>
+        .map(bytes => bytes.parseJson match {
+            case Left(problem) =>
               val lineNr = lineNumber - 1
-              val extra = throwable match {
-                case failure: io.circe.ParsingFailure =>
-                  failure.message.replace(" (line 1, ", " (").replace("\n", "\\n")
-                case t => t.toString
-              }
+              val extra =
+                if (problem.toString startsWith "JSON ParsingFailure: ")
+                  problem.toString.stripPrefix("JSON ParsingFailure: ").replace(" (line 1, ", " (")
+                else
+                  problem.toString
               logger.warn(s"JSON sequence read from '$name' is corrupt at " +
                 ((lineNr >= 0) ?? s"line $lineNr, ") +
                 s"file position $pos (blockPos=${blockPos_} blockRead=${blockRead_}): " +
