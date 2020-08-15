@@ -89,20 +89,23 @@ object JournalHeader
           Problem.pure(
             s"Not a valid JS7 journal file: $journalFileForInfo. Expected a JournalHeader instead of ${json.compactPrint}:"
           ) |+| problem)
-      header <-
-        expectedJournalId match {
-          case Some(expected) if expected != header.journalId =>
-            Left(JournalIdMismatchProblem(journalFileForInfo, expectedJournalId = expected, foundJournalId = header.journalId))
-          case _ => Right(header)
-        }
-      header <-
+      _ <- checkedHeader(header, journalFileForInfo, expectedJournalId)
+    } yield header
+
+  def checkedHeader(header: JournalHeader, journalFileForInfo: Path, expectedJournalId: Option[JournalId]): Checked[Unit] =
+    for (header <-
+      expectedJournalId match {
+        case Some(expected) if expected != header.journalId =>
+          Left(JournalIdMismatchProblem(journalFileForInfo, expectedJournalId = expected, foundJournalId = header.journalId))
+        case _ => Right(header)
+      })
+      yield
         if (header.version != Version) Left(Problem(
           s"Journal file has version ${header.version} but $Version is expected. Incompatible journal file: $journalFileForInfo"))
         else {
           for (o <- expectedJournalId) scribe.debug(s"JournalHeader of file '${journalFileForInfo.getFileName}' is as expected, journalId=$o")
-          json.as[JournalHeader].toChecked
+          Right(())
         }
-    } yield header
 
   final case class JournalIdMismatchProblem(file: Path, expectedJournalId: JournalId, foundJournalId: JournalId) extends Problem.Coded {
     def arguments = Map(

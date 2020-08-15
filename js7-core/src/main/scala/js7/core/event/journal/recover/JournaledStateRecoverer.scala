@@ -35,7 +35,7 @@ private final class JournaledStateRecoverer[S <: JournaledState[S]](
     // TODO Use HistoricEventReader (and build JournalIndex only once, and reuse it for event reading)
     autoClosing(InputStreamJsonSeqReader.open(file)) { jsonReader =>
       for (json <- UntilNoneIterator(jsonReader.read()).map(_.value)) {
-        fileJournaledStateBuilder.put(json)
+        fileJournaledStateBuilder.put(if (json.isObject) journalMeta.decodeJsonOrThrow(json) else json)
         fileJournaledStateBuilder.journalProgress match {
           case AfterSnapshotSection =>
             _position = jsonReader.position
@@ -75,7 +75,6 @@ object JournaledStateRecoverer
   : Recovered[S] = {
     val file = JournalFiles.currentFile(journalMeta.fileBase).toOption
     val fileJournaledStateBuilder = new FileJournaledStateBuilder[S](
-      journalMeta,
       journalFileForInfo = file getOrElse journalMeta.file(EventId.BeforeFirst)/*the expected new filename*/,
       expectedJournalId = None,
       newStateBuilder)
@@ -83,7 +82,8 @@ object JournaledStateRecoverer
 
     file match {
       case Some(file) =>
-        val recoverer = new JournaledStateRecoverer(file, expectedJournalId = None, journalMeta, () => fileJournaledStateBuilder)
+        val recoverer = new JournaledStateRecoverer(file, expectedJournalId = None, journalMeta,
+          () => fileJournaledStateBuilder)
         recoverer.recoverAll()
         val calculatedJournalHeader = fileJournaledStateBuilder.calculatedJournalHeader
           .getOrElse(sys.error(s"Missing JournalHeader in file '${file.getFileName}'"))

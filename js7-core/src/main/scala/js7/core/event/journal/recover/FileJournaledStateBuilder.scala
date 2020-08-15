@@ -1,13 +1,10 @@
 package js7.core.event.journal.recover
 
-import cats.syntax.show.toShow
-import io.circe.Json
 import java.nio.file.Path
-import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.problem.Checked._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils._
+import js7.base.utils.ScalaUtils.syntax.RichString
 import js7.common.scalautil.Logger
-import js7.core.event.journal.data.JournalMeta
 import js7.core.event.journal.recover.FileJournaledStateBuilder._
 import js7.core.event.journal.recover.JournalProgress.{AfterHeader, AfterSnapshotSection, InCommittedEventsSection, InSnapshotSection, InTransaction, Initial}
 import js7.data.event.JournalSeparators.{Commit, EventHeader, SnapshotFooter, SnapshotHeader, Transaction}
@@ -19,7 +16,6 @@ import scala.collection.mutable.ArrayBuffer
   * @author Joacim Zschimmer
   */
 final class FileJournaledStateBuilder[S <: JournaledState[S]](
-  journalMeta: JournalMeta,
   journalFileForInfo: Path,
   expectedJournalId: Option[JournalId],
   newBuilder: () => JournaledStateBuilder[S])
@@ -52,52 +48,62 @@ final class FileJournaledStateBuilder[S <: JournaledState[S]](
     builder.initializeState(journalHeader, eventId, totalEventCount, state)
   }
 
-  def put(json: Json): Unit =
+  def put(journalRecord: Any): Unit =
     _progress match {
       case Initial =>
-        val header = JournalHeader.checkedHeader(json, journalFileForInfo, expectedJournalId).orThrow
-        builder.addSnapshot(header)
-        logger.debug(header.toString)
-        _progress = AfterHeader
+        journalRecord match {
+          case journalHeader: JournalHeader =>
+            JournalHeader.checkedHeader(journalHeader, journalFileForInfo, expectedJournalId)
+              .orThrow
+            builder.addSnapshot(journalHeader)
+            logger.debug(journalHeader.toString)
+            _progress = AfterHeader
+
+          case _ => throw new IllegalArgumentException(
+            s"Not a valid JS7 journal file: $journalFileForInfo. Expected a JournalHeader instead of " +
+              s"${journalRecord.toString.truncateWithEllipsis(100)}:")
+        }
 
       case AfterHeader =>
-        if (json != SnapshotHeader) throw new IllegalArgumentException("Missing SnapshotHeader in journal file")
+        if (journalRecord != SnapshotHeader) throw new IllegalArgumentException("Missing SnapshotHeader in journal file")
         _progress = InSnapshotSection
 
       case InSnapshotSection =>
-        if (json == SnapshotFooter) {
-          builder.onAllSnapshotsAdded()
-          _progress = AfterSnapshotSection
-        } else {
-          builder.addSnapshot(journalMeta.snapshotJsonCodec.decodeJson(json).orThrow)
+        journalRecord match {
+          case SnapshotFooter =>
+            builder.onAllSnapshotsAdded()
+            _progress = AfterSnapshotSection
+          case _ =>
+            builder.addSnapshot(journalRecord)
         }
 
       case AfterSnapshotSection =>
-        if (json != EventHeader) throw new IllegalArgumentException("Missing EventHeader in journal file")
+        if (journalRecord != EventHeader) throw new IllegalArgumentException("Missing EventHeader in journal file")
         _progress = InCommittedEventsSection
 
       case InCommittedEventsSection =>
-        json match {
+        journalRecord match {
           case Transaction =>
             transaction.begin()
             _progress = InTransaction
           case _ =>
-            builder.addEvent(deserialize(json))
+            builder.addEvent(cast[Stamped[KeyedEvent[Event]]](journalRecord))
        }
 
       case InTransaction =>
-        if (json == Commit) {
-          _progress = InCommittedEventsSection
-          for (stamped <- transaction.buffer) {
-            builder.addEvent(stamped)
-          }
-          transaction.clear()
-        } else {
-          transaction.add(deserialize(json))
+        journalRecord match {
+          case Commit =>
+            _progress = InCommittedEventsSection
+            for (stamped <- transaction.buffer) {
+              builder.addEvent(stamped)
+            }
+            transaction.clear()
+          case _ =>
+            transaction.add(cast[Stamped[KeyedEvent[Event]]](journalRecord))
         }
 
       case _ =>
-        throw new IllegalArgumentException(s"Illegal JSON while journal file reader is in state '$journalProgress': ${json.compactPrint.truncateWithEllipsis(100)}")
+        throw new IllegalArgumentException(s"Illegal JSON while journal file reader is in state '$journalProgress': ${journalRecord.toString.truncateWithEllipsis(100)}")
     }
 
   def rollbackToEventSection(): Unit =
@@ -137,17 +143,6 @@ final class FileJournaledStateBuilder[S <: JournaledState[S]](
   def isAcceptingEvents = _progress.isAcceptingEvents
 
   def logStatistics() = builder.logStatistics()
-
-  private def deserialize(json: Json): Stamped[KeyedEvent[Event]] = {
-    import journalMeta.eventJsonCodec
-    json.as[Stamped[KeyedEvent[Event]]]
-      .orThrow { t =>
-        val msg = s"Unexpected JSON: ${(t: io.circe.DecodingFailure).show}"
-        logger.error(s"$msg: ${json.compactPrint}")
-        new IllegalArgumentException(msg)
-      }
-      .asInstanceOf[Stamped[KeyedEvent[Event]]]
-  }
 }
 
 object FileJournaledStateBuilder

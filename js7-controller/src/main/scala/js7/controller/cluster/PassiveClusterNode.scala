@@ -1,7 +1,6 @@
 package js7.controller.cluster
 
 import com.softwaremill.diffx._
-import io.circe.Json
 import io.circe.syntax._
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
@@ -11,14 +10,13 @@ import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import java.nio.file.StandardOpenOption.{APPEND, CREATE, TRUNCATE_EXISTING, WRITE}
 import java.nio.file.{Path, Paths}
 import js7.base.circeutils.CirceUtils._
-import js7.base.circeutils.typed.TypedJsonCodec._
+import js7.base.data.ByteSequence.ops._
 import js7.base.monixutils.MonixDeadline.now
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.ScalaUtils._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.ScodecUtils.syntax._
 import js7.base.utils.SetOnce
@@ -40,7 +38,7 @@ import js7.data.cluster.ClusterState.{Coupled, Decoupled, PreparedToBeCoupled}
 import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{EventId, JournalEvent, JournalId, JournalPosition, JournalSeparators, JournaledState, JournaledStateBuilder, KeyedEvent, Stamped}
+import js7.data.event.{EventId, JournalId, JournalPosition, JournalSeparators, JournaledState, JournaledStateBuilder, KeyedEvent, Stamped}
 import js7.data.node.NodeId
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -210,7 +208,7 @@ import scodec.bits.ByteVector
       var replicatedFileLength = continuation.fileLength
       var lastProperEventPosition = continuation.lastProperEventPosition
       var _eof = false
-      val builder = new FileJournaledStateBuilder[S](journalMeta, journalFileForInfo = file.getFileName,
+      val builder = new FileJournaledStateBuilder[S](journalFileForInfo = file.getFileName,
         continuation.maybeJournalId, newStateBuilder)
 
       continuation match {
@@ -260,10 +258,22 @@ import scodec.bits.ByteVector
             s"position=${continuation.fileLength}) failed with ${t.toStringWithCauses}", t)
         })
         // detectPauses here ???
-        //.mapParallelOrdered(sys.runtime.availableProcessors) { case PositionAnd(fileLength, line) =>
-        //  Task((fileLength, line, line.parseJson.orThrow))
-        //} (OverflowStrategy.BackPressure(bufferSize = 2/*minimum*/))
-        .map { case PositionAnd(fileLength, line) => (fileLength, line, line.parseJson.orThrow) }
+        .bufferIntrospective(1024/*TODO Need not to be more than default backpressure size (active and passive node)*/)
+        // Parallelization effect on replication throughput is not as big as expected.
+        .flatMap { list =>
+          def f(positionAndLine: PositionAnd[ByteVector]) =
+            (positionAndLine.position,
+              positionAndLine.value,
+              journalMeta.decodeJsonOrThrow(positionAndLine.value.parseJson.orThrow))
+          val n = 128/*TODO*/
+          if (list.sizeIs <= n + n / 2)
+            Observable.fromIterable(list) map f
+          else
+            Observable.fromIteratorUnsafe(list.grouped(n))
+              .mapParallelOrdered(sys.runtime.availableProcessors)(list => Task(
+                list map f))
+              .flatMap(Observable.fromIterable)
+        }
         .filter(testHeartbeatSuppressor) // for testing
         .detectPauses(clusterConf.heartbeat + clusterConf.failAfter)
         .flatMap[Checked[Unit]] {
@@ -318,14 +328,13 @@ import scodec.bits.ByteVector
                       val failedOver = failedOverStamped.value.event
                       common.ifClusterWatchAllowsActivation(clusterState, failedOver,
                         Task {
-                          val failedOverJson = failedOverStamped.asJson
                           builder.rollbackToEventSection()
-                          builder.put(failedOverJson)
+                          builder.put(failedOverStamped)
                           if (out.size > lastProperEventPosition) {
                             logger.info(s"Truncating open transaction in '${file.getFileName}' file at position $lastProperEventPosition")
                             out.truncate(lastProperEventPosition)
                           }
-                          out.write(ByteBuffer.wrap((failedOverJson.compactPrint + "\n").getBytes(UTF_8)))
+                          out.write(ByteBuffer.wrap((failedOverStamped.asJson.compactPrint + "\n").getBytes(UTF_8)))
                           //out.force(true)  // sync
                           val fileSize = out.size
                           replicatedFileLength = fileSize
@@ -356,14 +365,17 @@ import scodec.bits.ByteVector
             _eof = true
             Observable.pure(Left(EndOfJournalFileMarker))
 
-          case Some((fileLength, line, json)) =>
+          case Some((fileLength, line, journalRecord)) =>
             out.write(line.toByteBuffer)
             logger.trace(s"Replicated ${continuation.fileEventId}:$fileLength ${line.utf8StringTruncateAt(200).trim}")
-            val isSnapshotTaken = isReplicatingHeadOfFile && json.isOfType[JournalEvent, SnapshotTaken.type]
+            val isSnapshotTaken = isReplicatingHeadOfFile && (journalRecord match {
+              case Stamped(_, _, KeyedEvent(_, _: SnapshotTaken)) => true
+              case _ => false
+            })
             if (isSnapshotTaken) {
               ensureEqualState(continuation, builder.state)
             }
-            builder.put(json)  // throws on invalid event
+            builder.put(journalRecord)  // throws on invalid event
             if (isSnapshotTaken) {
               for (tmpFile <- maybeTmpFile) {
                 val journalId = builder.fileJournalHeader.map(_.journalId) getOrElse
@@ -399,65 +411,73 @@ import scodec.bits.ByteVector
               if (builder.journalProgress == JournalProgress.InCommittedEventsSection) {
                 // An open transaction may be rolled back, so we do not notify about these
                 eventWatch.onFileWritten(fileLength)
-                for (eventId <- json.asObject.flatMap(_("eventId").flatMap(_.asNumber).flatMap(_.toLong))) {
-                  eventWatch.onEventsCommitted(PositionAnd(fileLength, eventId), 1)
+                journalRecord match {
+                  case Stamped(eventId, _, _) => eventWatch.onEventsCommitted(PositionAnd(fileLength, eventId), 1)
+                  case _ =>
                 }
               }
-              if (json == JournalSeparators.Commit) {
-                eventWatch.onEventsCommitted(PositionAnd(fileLength, builder.eventId), 1)
-                Observable.pure(Right(()))
-              } else if (journalMeta.eventJsonCodec.isOfType[JournalEventsReleased](json)) {
-                if (journalConf.deleteObsoleteFiles) {
-                  eventWatch.releaseEvents(
-                    builder.journalState.toReleaseEventId(eventWatch.lastFileTornEventId, journalConf.releaseEventsUserIds))
-                }
-                Observable.pure(Right(()))
-              } else if (json.toClass[ClusterEvent].isDefined) {
-                val clusterEvent = json.as[ClusterEvent].orThrow
-                logger.info(clusterEventAndStateToString(clusterEvent, builder.clusterState))
-                clusterEvent match {
-                  case _: ClusterNodesAppointed | _: ClusterPassiveLost | _: ClusterActiveNodeRestarted =>
-                    Observable.fromTask(
-                      sendClusterPrepareCoupling
-                        .map(Right.apply))  // TODO Handle heartbeat timeout !
+              journalRecord match {
+                case JournalSeparators.Commit =>
+                  eventWatch.onEventsCommitted(PositionAnd(fileLength, builder.eventId), 1)
+                  Observable.pure(Right(()))
 
-                  case _: ClusterFailedOver =>
-                    // Now, this node has switched from still-active (but failed for the other node) to passive.
-                    // It's time to recouple.
-                    // ClusterPrepareCoupling command requests an event acknowledgement.
-                    // To avoid a deadlock, we send ClusterPrepareCoupling command asynchronously and
-                    // continue immediately with acknowledgement of ClusterEvent.ClusterCoupled.
-                    if (!otherFailed)
-                      logger.error(s"Replicated unexpected FailedOver event")  // Should not happen
-                    dontActivateBecauseOtherFailedOver = false
-                    Observable.fromTask(
-                      sendClusterPrepareCoupling
-                        .map(Right.apply))  // TODO Handle heartbeat timeout !
+                case Stamped(_, _, KeyedEvent(_, event)) =>
+                  event match {
+                    case _: JournalEventsReleased =>
+                      if (journalConf.deleteObsoleteFiles) {
+                        eventWatch.releaseEvents(
+                          builder.journalState.toReleaseEventId(eventWatch.lastFileTornEventId, journalConf.releaseEventsUserIds))
+                      }
+                      Observable.pure(Right(()))
 
-                  case _: ClusterSwitchedOver =>
-                    // Notify ClusterWatch before starting heartbeating
-                    val switchedOver = cast[ClusterSwitchedOver](json.as[ClusterEvent].orThrow)
-                    Observable.fromTask(
-                      common.clusterWatch.applyEvents(from = ownId, switchedOver :: Nil, builder.clusterState, force = true)
-                        .map(_.map(_ => ())))
-                    // TODO sendClusterPassiveFollows ?
+                    case clusterEvent: ClusterEvent =>
+                      logger.info(clusterEventAndStateToString(clusterEvent, builder.clusterState))
+                      clusterEvent match {
+                        case _: ClusterNodesAppointed | _: ClusterPassiveLost | _: ClusterActiveNodeRestarted =>
+                          Observable.fromTask(
+                            sendClusterPrepareCoupling
+                              .map(Right.apply))  // TODO Handle heartbeat timeout !
 
-                  case ClusterCouplingPrepared(activeId) =>
-                    assertThat(activeId != ownId)
-                    Observable.fromTask(
-                      sendClusterCouple
-                        .map(Right.apply))  // TODO Handle heartbeat timeout !
+                        case _: ClusterFailedOver =>
+                          // Now, this node has switched from still-active (but failed for the other node) to passive.
+                          // It's time to recouple.
+                          // ClusterPrepareCoupling command requests an event acknowledgement.
+                          // To avoid a deadlock, we send ClusterPrepareCoupling command asynchronously and
+                          // continue immediately with acknowledgement of ClusterEvent.ClusterCoupled.
+                          if (!otherFailed)
+                            logger.error(s"Replicated unexpected FailedOver event")  // Should not happen
+                          dontActivateBecauseOtherFailedOver = false
+                          Observable.fromTask(
+                            sendClusterPrepareCoupling
+                              .map(Right.apply))  // TODO Handle heartbeat timeout !
 
-                  case ClusterCoupled(activeId) =>
-                    assertThat(activeId != ownId)
-                    awaitingCoupledEvent = false
-                    Observable.pure(Right(()))
+                        case switchedOver: ClusterSwitchedOver =>
+                          // Notify ClusterWatch before starting heartbeating
+                          Observable.fromTask(
+                            common.clusterWatch.applyEvents(from = ownId, switchedOver :: Nil, builder.clusterState, force = true)
+                              .map(_.map(_ => ())))
+                          // TODO sendClusterPassiveFollows ?
 
-                  case _ =>
-                    Observable.pure(Right(()))
-                }
-              } else
-                Observable.pure(Right(()))
+                        case ClusterCouplingPrepared(activeId) =>
+                          assertThat(activeId != ownId)
+                          Observable.fromTask(
+                            sendClusterCouple
+                              .map(Right.apply))  // TODO Handle heartbeat timeout !
+
+                        case ClusterCoupled(activeId) =>
+                          assertThat(activeId != ownId)
+                          awaitingCoupledEvent = false
+                          Observable.pure(Right(()))
+
+                        case _ =>
+                          Observable.pure(Right(()))
+                      }
+                    case _ =>
+                      Observable.pure(Right(()))
+                  }
+                case _ =>
+                  Observable.pure(Right(()))
+              }
             }
         }
         .takeWhile(_.left.forall(_ != EndOfJournalFileMarker))
@@ -494,7 +514,7 @@ import scodec.bits.ByteVector
             recouplingStreamReader.terminate.map(_ => ()))
     }
 
-  private def testHeartbeatSuppressor(tuple: (Long, ByteVector, Json)): Boolean =
+  private def testHeartbeatSuppressor(tuple: (Long, ByteVector, Any)): Boolean =
     tuple match {
       case (_, JournalSeparators.HeartbeatMarker, _)
         if clusterConf.testHeartbeatLossPropertyKey.fold(false)(k => sys.props(k).toBoolean) =>

@@ -24,7 +24,6 @@ import js7.data.event.JournalSeparators.{EndOfJournalFileMarker, HeartbeatMarker
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.duration.FiniteDuration
-import scala.util.chaining._
 import scodec.bits.ByteVector
 
 /** Returns the content of an old or currently written journal file as a live stream.
@@ -70,7 +69,8 @@ trait JournalRoute extends ControllerRouteProvider
                                 observable.takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
                                   Task { logger.debug("whenShuttingDown completed") }
                                 ) .map(f)
-                                  .pipe(o => heartbeat.fold(o)(o.insertHeartbeatsOnSlowUpstream(_, HeartbeatMarker)))
+                                  .pipeIf(heartbeat.isDefined,
+                                    _.insertHeartbeatsOnSlowUpstream(heartbeat.get, HeartbeatMarker))
                                   .map(_.toByteString)
                                   .toAkkaSourceForHttpResponse)
                             })
