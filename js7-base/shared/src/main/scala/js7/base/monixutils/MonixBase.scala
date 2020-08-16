@@ -57,6 +57,12 @@ object MonixBase
       def toL[Col[x] <: SeqOps[x, Seq, Seq[x]]](implicit factory: SeqFactory[Col]): Task[Col[A @uncheckedVariance]] =
         underlying.foldLeftL(factory.newBuilder[A])(_ += _).map(_.result())
 
+      def tapEach(f: A => Unit): Observable[A] =
+        underlying.map { a =>
+          f(a)
+          a
+        }
+
       // Copied from Monix echoRepeated
       /** Mirror the source observable as long as the source keeps emitting
         * items, otherwise if `timeout` passes without the source emitting

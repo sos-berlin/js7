@@ -5,7 +5,7 @@ import js7.base.monixutils.MonixBase._
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
-import js7.base.time.{Stopwatch, Timestamp}
+import js7.base.time.Timestamp
 import js7.base.utils.CloseableIterator
 import monix.eval.Task
 import monix.execution.Cancelable
@@ -145,6 +145,18 @@ final class MonixBaseTest extends AsyncFreeSpec
     "to(Vector)" in {
       Observable(1, 2, 3).toL(Vector)
         .map((o: Vector[Int]) => assert(o  == Vector(1, 2, 3)))
+        .runToFuture
+    }
+
+    "tapEach catches exception" in {
+      Observable.range(1, 100)
+        .tapEach {
+          case 2 => throw new IllegalArgumentException("TEST")
+          case _ =>
+        }
+        .onErrorRecover { case e: RuntimeException if e.getMessage == "TEST" => -1 }
+        .toListL
+        .map(list => assert(list == List(1, -1)))
         .runToFuture
     }
 
