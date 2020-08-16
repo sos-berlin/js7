@@ -3,7 +3,7 @@ package js7.proxy.javaapi.utils
 import io.vavr.control.{Either => VEither}
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem
-import js7.proxy.javaapi.utils.VavrConversions._
+import js7.proxy.javaapi.utils.VavrConverters._
 
 @javaApi
 object VavrUtils

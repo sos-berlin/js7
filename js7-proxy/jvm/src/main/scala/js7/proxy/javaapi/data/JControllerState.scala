@@ -8,7 +8,7 @@ import js7.controller.data.ControllerState
 import js7.data.order.{Order, OrderId}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.proxy.javaapi.data.JOrderPredicates.any
-import js7.proxy.javaapi.utils.VavrConversions._
+import js7.proxy.javaapi.utils.VavrConverters._
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
 import scala.jdk.StreamConverters._

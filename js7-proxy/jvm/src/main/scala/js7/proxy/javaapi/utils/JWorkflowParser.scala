@@ -5,7 +5,7 @@ import js7.base.annotation.javaApi
 import js7.base.problem.Problem
 import js7.data.workflow.parser.WorkflowParser
 import js7.proxy.javaapi.data.{JWorkflow, JWorkflowId}
-import js7.proxy.javaapi.utils.VavrConversions._
+import js7.proxy.javaapi.utils.VavrConverters._
 
 @javaApi
 object JWorkflowParser

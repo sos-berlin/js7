@@ -6,7 +6,7 @@ import js7.base.auth.Admission
 import js7.base.problem.Problem
 import js7.base.web.Uri
 import js7.proxy.javaapi.data.JavaWrapper
-import js7.proxy.javaapi.utils.VavrConversions._
+import js7.proxy.javaapi.utils.VavrConverters._
 
 @javaApi
 final case class JAdmission(underlying: Admission)

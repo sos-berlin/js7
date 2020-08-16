@@ -1,11 +1,9 @@
 package js7.proxy.javaapi.utils
 
 import io.vavr.control.{Either => VEither}
-import js7.base.annotation.javaApi
 import js7.proxy.javaapi.utils.JavaUtils.Void
 
-@javaApi
-object VavrConversions
+object VavrConverters
 {
   implicit final class VavrOption[L, R](private val underlying: Either[L, R]) extends AnyVal
   {

@@ -11,7 +11,7 @@ import js7.data.item.VersionId
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.javaapi.data.{JControllerCommand, JFreshOrder, JUpdateRepoOperation}
 import js7.proxy.javaapi.eventbus.{JControllerEventBus, JStandardEventBus}
-import js7.proxy.javaapi.utils.VavrConversions._
+import js7.proxy.javaapi.utils.VavrConverters._
 import js7.proxy.{ControllerApi, ControllerProxy, ProxyEvent}
 import monix.eval.Task
 import monix.execution.FutureUtils.Java8Extensions
