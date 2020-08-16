@@ -585,20 +585,23 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
       "stamped": [
         {
           "eventId" : 1001,
+          "TYPE" : "SnapshotTaken"
+        }, {
+          "eventId" : 1002,
           "TYPE" : "ControllerInitialized",
           "controllerId" : "Controller",
           "startedAt" : 111222333
-        },        {
-          "eventId": 1002,
+        }, {
+          "eventId": 1003,
           "TYPE": "ControllerReady",
           "timezone": "${ZoneId.systemDefault.getId}",
           "totalRunningTime": ${totalRunningTime.toBigDecimalSeconds}
         }, {
-          "eventId": 1003,
+          "eventId": 1004,
           "TYPE": "VersionAdded",
           "versionId": "INITIAL"
         }, {
-          "eventId": 1004,
+          "eventId": 1005,
           "TYPE": "ItemAdded",
           "path": "AgentRef:/AGENT",
           "signed": {
@@ -609,7 +612,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
             }
           }
         }, {
-          "eventId": 1005,
+          "eventId": 1006,
           "TYPE": "ItemAdded",
           "path": "AgentRef:/FOLDER/AGENT-A",
           "signed": {
@@ -620,21 +623,21 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
             }
           }
         }, {
-          "eventId": 1006,
+          "eventId": 1007,
           "key": "/AGENT",
           "TYPE": "AgentRegisteredController",
           "agentRunId": "${agentRunId.string}"
         }, {
-          "eventId": 1007,
+          "eventId": 1008,
           "TYPE": "AgentReady",
           "key": "/AGENT",
           "timezone": "${ZoneId.systemDefault.getId}"
         }, {
-          "eventId": 1008,
+          "eventId": 1009,
           "TYPE": "VersionAdded",
           "versionId": "VERSION-1"
         }, {
-          "eventId": 1009,
+          "eventId": 1010,
           "TYPE": "ItemAdded",
           "path": "Workflow:/WORKFLOW",
           "signed": {
@@ -645,7 +648,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
             }
           }
         }, {
-          "eventId": 1010,
+          "eventId": 1011,
           "TYPE": "ItemAdded",
           "path": "Workflow:/FOLDER/WORKFLOW-2",
           "signed": {
@@ -656,7 +659,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
             }
           }
         }, {
-          "eventId": 1011,
+          "eventId": 1012,
           "TYPE": "OrderAdded",
           "key": "ORDER-ID",
           "workflowId": {
@@ -664,25 +667,25 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
             "versionId": "VERSION-1"
           }
         }, {
-          "eventId": 1012,
+          "eventId": 1013,
           "TYPE": "OrderAttachable",
           "key": "ORDER-ID",
           "agentRefPath":"/AGENT"
         }, {
-          "eventId": 1013,
+          "eventId": 1014,
           "TYPE": "OrderTransferredToAgent",
           "key": "ORDER-ID",
           "agentRefPath": "/AGENT"
         }, {
-          "eventId": 1014,
+          "eventId": 1015,
           "TYPE": "OrderStarted",
           "key": "ORDER-ID"
         }, {
-          "eventId": 1015,
+          "eventId": 1016,
           "TYPE": "OrderProcessingStarted",
           "key": "ORDER-ID"
         }, {
-          "eventId": 1016,
+          "eventId": 1017,
           "TYPE": "OrderProcessed",
           "key": "ORDER-ID",
           "outcome": {
@@ -690,20 +693,20 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
             "returnCode": 0
           }
         }, {
-          "eventId": 1017,
+          "eventId": 1018,
           "TYPE": "OrderMoved",
           "key": "ORDER-ID",
           "to": [ 1 ]
         }, {
-          "eventId": 1018,
+          "eventId": 1019,
           "TYPE": "OrderDetachable",
           "key": "ORDER-ID"
         }, {
-          "eventId": 1019,
+          "eventId": 1020,
           "TYPE": "OrderTransferredToController",
           "key": "ORDER-ID"
         }, {
-          "eventId": 1020,
+          "eventId": 1021,
           "TYPE": "OrderFinished",
           "key": "ORDER-ID"
         }
@@ -715,7 +718,8 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         val obj = json.asObject.get.toMap
         (obj("TYPE") == Json.fromString("AgentReady") || obj("TYPE") == Json.fromString("AgentRegisteredController")) &&
             json.as[KeyedEvent[ControllerAgentEvent]].orThrow.key != TestAgentRefPath || // Let through only Events for one AgentRef, because ordering is undefined
-          obj("TYPE") == Json.fromString("AgentCouplingFailed")
+          obj("TYPE") == Json.fromString("AgentCouplingFailed") ||
+          obj("TYPE") == Json.fromString("AgentEventIdEvent")
       }
       val eventIds = Iterator.from(1001)
       def changeEvent(json: Json): Json = {
