@@ -11,14 +11,12 @@ import js7.base.time.Stopwatch.measureTimeOfSingleRun
 import js7.base.time.{Stopwatch, Timestamp}
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.web.HttpClient
-import js7.common.akkautils.ProvideActorSystem
 import js7.common.http.AkkaHttpClient
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.Logger
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.time.WaitForCondition.waitForCondition
 import js7.common.utils.ByteUnits.toKBGB
-import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
 import js7.data.controller.ControllerItems.jsonCodec
 import js7.data.event.{KeyedEvent, Stamped}
@@ -28,30 +26,20 @@ import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.parser.WorkflowParser
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.proxy.ControllerApi
-import js7.proxy.configuration.ProxyConfs
 import js7.proxy.javaapi.JAdmission
 import js7.proxy.javaapi.data.JHttpsConfig
-import js7.tests.controller.proxy.ClusterProxyTest.{backupUserAndPassword, primaryCredentials, primaryUserAndPassword}
+import js7.tests.controller.proxy.ClusterProxyTest.{backupUserAndPassword, primaryCredentials, primaryUserAndPassword, workflow}
 import js7.tests.controller.proxy.JournaledProxyClusterTest._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
-import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import scala.jdk.CollectionConverters._
 import scala.reflect.runtime.universe._
 
-final class JournaledProxyClusterTest extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with ClusterProxyTest
+final class JournaledProxyClusterTest extends AnyFreeSpec with ClusterProxyTest
 {
-  protected val inventoryItems = workflow :: Nil
-  protected def config = ProxyConfs.defaultConfig
-
   private implicit def implicitActorSystem = actorSystem
-
-  override def afterAll() = {
-    close()
-    super.afterAll()
-  }
 
   "JournaledProxy[ControllerState]" in {
     runControllerAndBackup() { (_, primaryController, _, backupController) =>
@@ -74,9 +62,8 @@ final class JournaledProxyClusterTest extends AnyFreeSpec with BeforeAndAfterAll
   }
 
   "JControllerProxy with Flux" in {
-    val List(primaryPort, backupPort) = findFreeTcpPorts(2)
-    runControllerAndBackup(primaryHttpPort = primaryPort, backupHttpPort = backupPort) { (_, _, _, _) =>
-      val admissions = List(JAdmission.of(s"http://127.0.0.1:$primaryPort", primaryCredentials)).asJava
+    runControllerAndBackup() { (_, _, _, _) =>
+      val admissions = List(JAdmission.of(s"http://127.0.0.1:$primaryControllerPort", primaryCredentials)).asJava
       val tester = new JControllerFluxTester(admissions, JHttpsConfig.empty)
       tester.test()
       tester.close()
@@ -112,13 +99,13 @@ final class JournaledProxyClusterTest extends AnyFreeSpec with BeforeAndAfterAll
       try {
         waitForCondition(30.s, 50.ms)(proxy.currentState.repo.currentTyped[Workflow].sizeIs == n + 1)
         assert(proxy.currentState.repo.currentTyped[Workflow].keys.toVector.sorted == (
-          workflowPaths :+ JournaledProxyClusterTest.workflow.path).sorted)
+          workflowPaths :+ ClusterProxyTest.workflow.path).sorted)
       } finally proxy.stop await 99.s
     }
   }
 
   "addOrders" in {
-    val bigOrder = FreshOrder(OrderId("ORDER"), JournaledProxyClusterTest.workflow.path, Some(Timestamp("2100-01-01T00:00:00Z")),
+    val bigOrder = FreshOrder(OrderId("ORDER"), workflow.path, Some(Timestamp("2100-01-01T00:00:00Z")),
       arguments = Map("A" -> "*" * 800))
     val n = calculateNumberOf(Stamped(0L, bigOrder.toOrderAdded(workflow.id.versionId): KeyedEvent[OrderEvent]))
     runControllerAndBackup() { (_, primaryController, _, _) =>
@@ -190,11 +177,4 @@ final class JournaledProxyClusterTest extends AnyFreeSpec with BeforeAndAfterAll
 object JournaledProxyClusterTest
 {
   private val logger = Logger(getClass)
-  private[proxy] val workflow = WorkflowParser.parse(
-    WorkflowPath("/WORKFLOW") ~ "INITIAL",
-    s"""
-      define workflow {
-        execute executable="/TEST.cmd", agent="AGENT", taskLimit=10;
-      }"""
-  ).orThrow
 }

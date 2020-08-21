@@ -18,13 +18,12 @@ import monix.execution.Scheduler.Implicits.global
 final class ReplicatingClusterTest extends ControllerClusterTester
 {
   "Cluster replicates journal files properly" in {
-    val primaryHttpPort :: backupHttpPort :: Nil = findFreeTcpPorts(2)
-    withControllerAndBackup(primaryHttpPort, backupHttpPort) { (primary, backup) =>
-      val primaryController = primary.startController(httpPort = Some(primaryHttpPort)) await 99.s
+    withControllerAndBackup() { (primary, backup) =>
+      val primaryController = primary.startController(httpPort = Some(primaryControllerPort)) await 99.s
       primaryController.waitUntilReady()
       primaryController.runOrder(FreshOrder(OrderId("🔶"), TestWorkflow.path))
 
-      val backupController = backup.startController(httpPort = Some(backupHttpPort)) await 99.s
+      val backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
       primaryController.eventWatch.await[ClusterEvent.ClusterCouplingPrepared]()
 
       primaryController.eventWatch.await[ClusterEvent.ClusterCoupled]()
@@ -46,8 +45,8 @@ final class ReplicatingClusterTest extends ControllerClusterTester
 
       // RESTART
 
-      backup.runController(httpPort = Some(backupHttpPort), dontWaitUntilReady = true) { backupController =>
-        primary.runController(httpPort = Some(primaryHttpPort)) { primaryController =>
+      backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
+        primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
           // Recoupling may take a short time
           waitForCondition(10.s, 10.ms)(primaryController.journalActorState.isRequiringClusterAcknowledgement)
           assert(primaryController.journalActorState.isRequiringClusterAcknowledgement)

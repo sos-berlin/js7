@@ -5,7 +5,6 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import js7.core.event.journal.files.JournalFiles.listJournalFiles
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.Coupled
@@ -19,10 +18,9 @@ final class TruncatedJournalFileClusterTest extends ControllerClusterTester
   override protected def removeObsoleteJournalFiles = false
 
   "Backup node replicates truncated journal file" in {
-    val primaryHttpPort :: backupHttpPort :: Nil = findFreeTcpPorts(2)
-    withControllerAndBackup(primaryHttpPort, backupHttpPort) { (primary, backup) =>
-      primary.runController(httpPort = Some(primaryHttpPort)) { primaryController =>
-        backup.runController(httpPort = Some(backupHttpPort), dontWaitUntilReady = true) { backupController =>
+    withControllerAndBackup() { (primary, backup) =>
+      primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
+        backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
           backupController.eventWatch.await[ClusterCoupled]()
           backupController.terminate() await 99.s
           primaryController.eventWatch.await[ClusterPassiveLost]()
@@ -33,8 +31,8 @@ final class TruncatedJournalFileClusterTest extends ControllerClusterTester
 
       truncateLastJournalFile(primary.controller)
 
-      primary.runController(httpPort = Some(primaryHttpPort)) { primaryController =>
-        backup.runController(httpPort = Some(backupHttpPort), dontWaitUntilReady = true) { _ =>
+      primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
+        backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { _ =>
           primaryController.eventWatch.await[ClusterCoupled](after = primaryController.eventWatch.lastFileTornEventId).head.eventId
           //assertEqualJournalFiles(primary.controller, backup.controller, n = 2)
           primaryController.runOrder(FreshOrder(OrderId("🔷"), TestWorkflow.path))

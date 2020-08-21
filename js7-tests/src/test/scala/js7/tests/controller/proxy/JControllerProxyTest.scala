@@ -17,6 +17,7 @@ import js7.data.job.ExecutablePath
 import js7.data.workflow.WorkflowPath
 import js7.proxy.javaapi.JAdmission
 import js7.proxy.javaapi.data.JHttpsConfig
+import js7.tests.controller.proxy.ClusterProxyTest.workflow
 import js7.tests.controller.proxy.JControllerProxyTest._
 import js7.tests.testenv.DirectoryProvider.script
 import js7.tests.testenv.DirectoryProviderForScalaTest
@@ -64,8 +65,8 @@ final class JControllerProxyTest extends AnyFreeSpec with DirectoryProviderForSc
         val myVersionId = VersionId("MY-VERSION")
         JControllerProxyTester.run(admissions, JHttpsConfig.empty,
           List[InventoryItem](
-            JournaledProxyClusterTest.workflow.withVersion(myVersionId),
-            JournaledProxyClusterTest.workflow.withId(WorkflowPath("/B-WORKFLOW") ~ myVersionId),
+            workflow.withVersion(myVersionId),
+            workflow.withId(WorkflowPath("/B-WORKFLOW") ~ myVersionId),
             unusedAgentRef.withVersion(VersionId("MY-VERSION")),
           ).map(_.asJson.compactPrint).asJava,
           () => controller())

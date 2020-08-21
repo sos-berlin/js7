@@ -17,24 +17,24 @@ import js7.data.order.OrderEvent.{OrderFinished, OrderStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.tests.controller.cluster.ControllerClusterTester._
 import monix.execution.Scheduler.Implicits.global
+import org.scalatest.freespec.AnyFreeSpec
 
-final class AppointNodesLatelyClusterTest extends ControllerClusterTester
+final class AppointNodesLatelyClusterTest extends AnyFreeSpec with ControllerClusterTester
 {
   override protected def configureClusterNodes = false
 
   "ClusterAppointNodes command after first journal file has been deleted" in {
-    val primaryHttpPort :: backupHttpPort :: Nil = findFreeTcpPorts(2)
-    withControllerAndBackup(primaryHttpPort, backupHttpPort) { (primary, backup) =>
-      primary.runController(httpPort = Some(primaryHttpPort)) { primaryController =>
+    withControllerAndBackup() { (primary, backup) =>
+      primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
         val orderId = OrderId("🔺")
         primaryController.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path))
         primaryController.eventWatch.await[OrderStarted](_.key == orderId)
       }
 
-      primary.runController(httpPort = Some(primaryHttpPort)) { primaryController =>
+      primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
         assert(listJournalFiles(primary.controller.dataDir / "state" / "controller").head.afterEventId > EventId.BeforeFirst)
 
-        val backupController = backup.startController(httpPort = Some(backupHttpPort)) await 99.s
+        val backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
 
         backupController.httpApiDefaultLogin(Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD")))
         backupController.httpApi.login() await 99.s

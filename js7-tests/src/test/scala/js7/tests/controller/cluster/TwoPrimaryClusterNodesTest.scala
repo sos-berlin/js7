@@ -10,17 +10,17 @@ import js7.controller.data.ControllerCommand.ClusterAppointNodes
 import js7.core.problems.PrimaryMayNotBecomeBackupProblem
 import js7.data.node.NodeId
 import monix.execution.Scheduler.Implicits.global
+import org.scalatest.freespec.AnyFreeSpec
 
-final class TwoPrimaryClusterNodesTest extends ControllerClusterTester
+final class TwoPrimaryClusterNodesTest extends AnyFreeSpec with ControllerClusterTester
 {
   override protected def configureClusterNodes = false
 
   "ClusterAppointNodes is rejected if backup cluster node is not configured as a backup" in {
-    val primaryHttpPort :: backupHttpPort :: Nil = findFreeTcpPorts(2)
-    withControllerAndBackup(primaryHttpPort, backupHttpPort) { (primary, backup) =>
-      primary.runController(httpPort = Some(primaryHttpPort)) { primaryController =>
+    withControllerAndBackup() { (primary, backup) =>
+      primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
         backup.runController(
-          httpPort = Some(backupHttpPort),
+          httpPort = Some(backupControllerPort),
           config = config"js7.journal.cluster.node.is-backup = false"
         ) { backupController =>
           val cmd = ClusterAppointNodes(
@@ -37,12 +37,11 @@ final class TwoPrimaryClusterNodesTest extends ControllerClusterTester
   }
 
   "An active primary may not be configured as a backup node" in {
-    val primaryHttpPort :: backupHttpPort :: Nil = findFreeTcpPorts(2)
-    withControllerAndBackup(primaryHttpPort, backupHttpPort) { (primary, _) =>
-      primary.runController(httpPort = Some(primaryHttpPort)) { _ => }
+    withControllerAndBackup() { (primary, _) =>
+      primary.runController(httpPort = Some(primaryControllerPort)) { _ => }
       val t = intercept[ProblemException] {
         primary.runController(
-          httpPort = Some(primaryHttpPort),
+          httpPort = Some(primaryControllerPort),
           config = config"js7.journal.cluster.node.is-backup = true",
           dontWaitUntilReady = true
         ) { _ =>

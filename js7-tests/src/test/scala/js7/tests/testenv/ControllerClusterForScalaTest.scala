@@ -14,7 +14,7 @@ import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.message.ProblemCodeMessages
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.time.WaitForCondition.waitForCondition
-import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import js7.common.utils.FreeTcpPortFinder.{findFreeTcpPort, findFreeTcpPorts}
 import js7.controller.RunningController
 import js7.controller.data.ControllerCommand.ShutDown
 import js7.core.event.journal.files.JournalFiles.listJournalFiles
@@ -23,16 +23,19 @@ import js7.data.cluster.ClusterEvent.ClusterCoupled
 import js7.data.item.InventoryItem
 import js7.data.job.ExecutablePath
 import js7.data.node.NodeId
+import js7.tests.testenv.ControllerClusterForScalaTest.TestExecutablePath
 import js7.tests.testenv.DirectoryProvider.script
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 import org.scalactic.source
 import org.scalatest.Assertions._
-import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.TestSuite
 
-trait ControllerClusterForScalaTest extends AnyFreeSpec
+trait ControllerClusterForScalaTest
 {
+  this: TestSuite =>
+
   protected def agentRefPaths: Seq[AgentRefPath] = AgentRefPath("/AGENT") :: Nil
   protected def inventoryItems: Seq[InventoryItem]
   protected def shellScript = script(0.s)
@@ -45,41 +48,40 @@ trait ControllerClusterForScalaTest extends AnyFreeSpec
   protected def primaryControllerConfig: Config = ConfigFactory.empty
   protected def backupControllerConfig: Config = ConfigFactory.empty
 
+  protected lazy val primaryControllerPort = findFreeTcpPort()
+  protected lazy val backupControllerPort = findFreeTcpPort()
+
   coupleScribeWithSlf4j()
   ProblemCodeMessages.initialize()
   protected final val testHeartbeatLossPropertyKey = "js7.TEST." + SecretStringGenerator.randomString()
   sys.props(testHeartbeatLossPropertyKey) = "false"
 
-  final def runControllerAndBackup(primaryHttpPort: Int = findFreeTcpPort(), backupHttpPort: Int = findFreeTcpPort())
-    (body: (DirectoryProvider, RunningController, DirectoryProvider, RunningController) => Unit)
+  final def runControllerAndBackup()(body: (DirectoryProvider, RunningController, DirectoryProvider, RunningController) => Unit)
   : Unit =
-    withControllerAndBackup(primaryHttpPort, backupHttpPort) { (primary, backup) =>
-      backup.runController(httpPort = Some(backupHttpPort), dontWaitUntilReady = true) { backupController =>
-        primary.runController(httpPort = Some(primaryHttpPort)) { primaryController =>
-          primaryController.eventWatch.await[ClusterCoupled]()
-          body(primary, primaryController, backup, backupController)
-        }
+    withControllerAndBackup() { (primary, backup) =>
+      runControllers(primary, backup) { (primaryController, backupController) =>
+        body(primary, primaryController, backup, backupController)
       }
     }
 
-  final def withControllerAndBackup(primaryHttpPort: Int = findFreeTcpPort(), backupHttpPort: Int = findFreeTcpPort())
+  final def withControllerAndBackup()
     (body: (DirectoryProvider, DirectoryProvider) => Unit)
   : Unit =
     withCloser { implicit closer =>
       val testName = ControllerClusterForScalaTest.this.getClass.getSimpleName
-      val agentPort = findFreeTcpPort()
+      val agentPorts = findFreeTcpPorts(agentRefPaths.size)
       val primary = new DirectoryProvider(agentRefPaths, inventoryItems, testName = Some(s"$testName-Primary"),
         controllerConfig = combineArgs(
           primaryControllerConfig,
           configIf(configureClusterNodes, config"""
             js7.journal.cluster.nodes = {
-              Primary: "http://127.0.0.1:$primaryHttpPort"
-              Backup: "http://127.0.0.1:$backupHttpPort"
+              Primary: "http://127.0.0.1:$primaryControllerPort"
+              Backup: "http://127.0.0.1:$backupControllerPort"
             }"""),
           config"""
             js7.journal.cluster.heartbeat = 0.5s
             js7.journal.cluster.fail-after = 5s
-            js7.journal.cluster.watches = [ "http://127.0.0.1:$agentPort" ]
+            js7.journal.cluster.watches = [ "http://127.0.0.1:${agentPorts.head}" ]
             js7.journal.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"
             js7.journal.use-journaled-state-as-snapshot = true
             js7.journal.release-events-delay = 0s
@@ -87,7 +89,7 @@ trait ControllerClusterForScalaTest extends AnyFreeSpec
             js7.auth.users.TEST-USER.password = "plain:TEST-PASSWORD"
             js7.auth.users.Controller.password = "plain:PRIMARY-CONTROLLER-PASSWORD"
             js7.auth.cluster.password = "BACKUP-CONTROLLER-PASSWORD" """),
-        agentPorts = agentPort :: Nil
+        agentPorts = agentPorts
       ).closeWithCloser
 
       val backup = new DirectoryProvider(Nil, Nil, testName = Some(s"$testName-Backup"),
@@ -97,7 +99,7 @@ trait ControllerClusterForScalaTest extends AnyFreeSpec
             js7.journal.cluster.node.is-backup = yes
             js7.journal.cluster.heartbeat = 3s
             js7.journal.cluster.fail-after = 5s
-            js7.journal.cluster.watches = [ "http://127.0.0.1:$agentPort" ]
+            js7.journal.cluster.watches = [ "http://127.0.0.1:${agentPorts.head}" ]
             js7.journal.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"
             js7.journal.use-journaled-state-as-snapshot = true
             js7.journal.release-events-delay = 0s
@@ -113,10 +115,20 @@ trait ControllerClusterForScalaTest extends AnyFreeSpec
         backup.controller.configDir / "private" / "private.conf",
         REPLACE_EXISTING)
 
-      for (a <- primary.agents) a.writeExecutable(ExecutablePath("/TEST.cmd"), shellScript)
+      for (a <- primary.agents) a.writeExecutable(TestExecutablePath, shellScript)
 
       primary.runAgents() { _ =>
         body(primary, backup)
+      }
+    }
+
+  protected final def runControllers(primary: DirectoryProvider, backup: DirectoryProvider)
+    (body: (RunningController, RunningController) => Unit)
+  : Unit =
+    backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
+      primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
+        primaryController.eventWatch.await[ClusterCoupled]()
+        body(primaryController, backupController)
       }
     }
 
@@ -130,6 +142,8 @@ trait ControllerClusterForScalaTest extends AnyFreeSpec
 
 object ControllerClusterForScalaTest
 {
+  val TestExecutablePath = ExecutablePath(s"/TEST.cmd")
+
   def assertEqualJournalFiles(
     primary: DirectoryProvider.ControllerTree,
     backup: DirectoryProvider.ControllerTree,

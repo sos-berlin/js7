@@ -23,9 +23,8 @@ import js7.data.workflow.position.Position
 import js7.proxy.JournaledProxyObservableTester.syntax._
 import js7.proxy.configuration.ProxyConfs
 import js7.proxy.{ControllerApi, EventAndState}
-import js7.tests.controller.proxy.ClusterProxyTest.primaryUserAndPassword
+import js7.tests.controller.proxy.ClusterProxyTest.{primaryUserAndPassword, workflow}
 import js7.tests.controller.proxy.JournaledProxyTest._
-import js7.tests.controller.proxy.JournaledProxyClusterTest.workflow
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.script
 import monix.execution.Scheduler.Implicits.global

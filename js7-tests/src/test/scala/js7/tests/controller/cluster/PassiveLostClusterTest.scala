@@ -18,10 +18,9 @@ final class PassiveLostClusterTest extends ControllerClusterTester
   override protected def configureClusterNodes = false
 
   "Passive lost" in {
-    val primaryHttpPort :: backupHttpPort :: Nil = findFreeTcpPorts(2)
-    withControllerAndBackup(primaryHttpPort, backupHttpPort) { (primary, backup) =>
-      val primaryController = primary.startController(httpPort = Some(primaryHttpPort)) await 99.s
-      var backupController = backup.startController(httpPort = Some(backupHttpPort)) await 99.s
+    withControllerAndBackup() { (primary, backup) =>
+      val primaryController = primary.startController(httpPort = Some(primaryControllerPort)) await 99.s
+      var backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
 
       primaryController.executeCommandAsSystemUser(
         ClusterAppointNodes(
@@ -45,7 +44,7 @@ final class PassiveLostClusterTest extends ControllerClusterTester
 
         primaryController.eventWatch.await[OrderFinished](_.key == firstOrderId, after = passiveLost)
 
-        backupController = backup.startController(httpPort = Some(backupHttpPort)) await 99.s
+        backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
         primaryController.eventWatch.await[ClusterCoupled]().head.eventId
 
         primaryController.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path))

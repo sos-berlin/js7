@@ -26,10 +26,9 @@ import scala.concurrent.duration.Deadline.now
 final class FailoverClusterTest extends ControllerClusterTester
 {
   "Failover and recouple" in {
-    val primaryHttpPort :: backupHttpPort :: Nil = findFreeTcpPorts(2)
-    withControllerAndBackup(primaryHttpPort, backupHttpPort) { (primary, backup) =>
-      var primaryController = primary.startController(httpPort = Some(primaryHttpPort)) await 99.s
-      var backupController = backup.startController(httpPort = Some(backupHttpPort)) await 99.s
+    withControllerAndBackup() { (primary, backup) =>
+      var primaryController = primary.startController(httpPort = Some(primaryControllerPort)) await 99.s
+      var backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
       val idToUri = Map(
         primaryId -> primaryController.localUri,
         backupId -> backupController.localUri)
@@ -60,7 +59,7 @@ final class FailoverClusterTest extends ControllerClusterTester
 
       backupController.eventWatch.await[OrderFinished](_.key == orderId, after = failedOverEventId)
 
-      primaryController = primary.startController(httpPort = Some(primaryHttpPort)) await 99.s
+      primaryController = primary.startController(httpPort = Some(primaryControllerPort)) await 99.s
       primaryController.eventWatch.await[ClusterCoupled](after = failedOverEventId)
       backupController.eventWatch.await[ClusterCoupled](after = failedOverEventId)
       assertEqualJournalFiles(primary.controller, backup.controller, n = 1)
@@ -69,7 +68,7 @@ final class FailoverClusterTest extends ControllerClusterTester
       val recoupledEventId = primaryController.eventWatch.await[ClusterSwitchedOver](after = failedOverEventId).head.eventId
 
       backupController.terminated await 99.s
-      backupController = backup.startController(httpPort = Some(backupHttpPort)) await 99.s
+      backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
       backupController.eventWatch.await[ClusterCoupled](after = recoupledEventId)
       primaryController.eventWatch.await[ClusterCoupled](after = recoupledEventId)
 

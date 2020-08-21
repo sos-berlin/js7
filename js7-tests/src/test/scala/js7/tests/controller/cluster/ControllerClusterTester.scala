@@ -6,8 +6,9 @@ import js7.data.workflow.WorkflowPath
 import js7.data.workflow.parser.WorkflowParser
 import js7.tests.controller.cluster.ControllerClusterTester._
 import js7.tests.testenv.ControllerClusterForScalaTest
+import org.scalatest.freespec.AnyFreeSpec
 
-private[cluster] trait ControllerClusterTester extends ControllerClusterForScalaTest
+private[cluster] trait ControllerClusterTester extends AnyFreeSpec with ControllerClusterForScalaTest
 {
   override protected def inventoryItems = TestWorkflow :: Nil
   override protected def shellScript = ControllerClusterTester.shellScript
