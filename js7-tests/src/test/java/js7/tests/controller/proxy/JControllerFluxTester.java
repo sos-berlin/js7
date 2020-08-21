@@ -50,8 +50,8 @@ implements AutoCloseable
         CompletableFuture<Void> orderFinished = new CompletableFuture<>();
         Flux<JEventAndControllerState<Event>> flux = proxy.flux()
             .doOnNext(eventAndState -> {
-                Event event = eventAndState.stampedEvent().value().event();
-                if (event instanceof OrderFinished$ && eventAndState.stampedEvent().value().key().equals(orderId)) {
+                if (eventAndState.stampedEvent().value().event() instanceof OrderFinished$ &&
+                    eventAndState.stampedEvent().value().key().equals(orderId)) {
                     orderFinished.complete(null);
                 }
             });

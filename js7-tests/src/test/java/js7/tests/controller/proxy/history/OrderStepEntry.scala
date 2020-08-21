@@ -1,0 +1,20 @@
+package js7.tests.controller.proxy.history
+
+import java.time.Instant
+import java.util.Optional
+import js7.base.web.Uri
+import js7.data.job.ReturnCode
+import js7.data.order.OrderId
+import js7.proxy.javaapi.data.JWorkflowPosition
+
+private[history] final case class OrderStepEntry(
+  orderId: OrderId,
+  workflowPosition: JWorkflowPosition,
+  agentUri: Uri,
+  jobName: Optional[String],
+  startVariables: java.util.Map[String, String],
+  startedAt: Instant,
+  endedAt: Optional[Instant] = Optional.empty,
+  returnCode: Optional[ReturnCode] = Optional.empty,
+  endVariables: Optional[java.util.Map[String, String]] = Optional.empty,
+  log: Optional[String] = Optional.empty)

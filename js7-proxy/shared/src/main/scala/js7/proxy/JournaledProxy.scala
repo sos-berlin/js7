@@ -1,6 +1,6 @@
 package js7.proxy
 
-import cats.effect.Resource
+import cats.effect.{ExitCase, Resource}
 import cats.instances.list._
 import cats.instances.vector._
 import cats.syntax.foldable._
@@ -13,12 +13,13 @@ import js7.base.problem.Checked._
 import js7.base.problem.{Problem, ProblemException}
 import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.base.web.HttpClient
 import js7.common.http.RecouplingStreamReader
 import js7.common.http.configuration.RecouplingStreamReaderConf
-import js7.data.event.{AnyKeyedEvent, Event, EventApi, EventId, EventRequest, EventSeqTornProblem, JournaledState, NoKeyEvent, Stamped}
+import js7.data.event.{AnyKeyedEvent, Event, EventApi, EventId, EventRequest, EventSeqTornProblem, JournaledState, Stamped}
 import js7.proxy.ProxyEvent.{ProxyCoupled, ProxyCouplingError, ProxyDecoupled}
 import js7.proxy.configuration.ProxyConf
 import monix.eval.Task
@@ -103,6 +104,7 @@ object JournaledProxy
 
   def observable[S <: JournaledState[S]](
     apiResources: Seq[ApiResource],
+    fromEventId: Option[EventId],
     onProxyEvent: ProxyEvent => Unit = _ => (),
     proxyConf: ProxyConf)
     (implicit S: JournaledState.Companion[S])
@@ -110,49 +112,52 @@ object JournaledProxy
   {
     if (apiResources.isEmpty) throw new IllegalArgumentException("apiResources must not be empty")
 
-    def observe: Observable[EventAndState[Event, S]] =
-      Observable.fromResource(apiResources.toVector.sequence)
-        .flatMap { apis =>
-          Observable.tailRecM(none[S])(maybeState =>
-            Observable.fromTask(selectActiveNodeApi(apis, _ => onCouplingError)).flatMap(api =>
-              Observable
-                .fromTask(
-                  durationOfTask(
-                    maybeState.fold(api.snapshotAs[S])(s => Task.pure(Right(s)))))
-                .map(o => o._1.orThrow/*TODO What happens then?*/ -> o._2)
-                .flatMap { case (state, stateFetchDuration) =>
-                  var lastState = state
-                  observeWithState(api, state, stateFetchDuration)
-                    .map { o =>
-                      lastState = o.state
-                      o
-                    }
-                    .map(Right.apply)
-                    .onErrorHandleWith { t =>
-                      val continueWithState = t match {
-                        case t: ProblemException if t.problem is EventSeqTornProblem =>
-                          scribe.error(t.toStringWithCauses)
-                          scribe.warn("Restarting observation from a new snapshot, loosing some events")
-                          None
-                        case t =>
-                          scribe.warn(t.toStringWithCauses)
-                          if (t.getStackTrace.nonEmpty) scribe.debug(t.toStringWithCauses, t.nullIfNoStackTrace)
-                          scribe.debug(s"Restarting observation and try to continue seamlessly after=${EventId.toString(state.eventId)}")
-                          Some(lastState)
+    def observable2(apis: Seq[EventApi]): Observable[EventAndState[Event, S]] =
+      Observable.tailRecM(none[S])(maybeState =>
+        Observable.fromTask(selectActiveNodeApi(apis, _ => onCouplingError))
+          .flatMap(api =>
+            Observable
+              .fromTask(
+                durationOfTask(
+                  maybeState.fold(api.snapshotAs[S](eventId = fromEventId))(s => Task.pure(Right(s)))))
+              .map(o => o._1.orThrow/*TODO What happens then?*/ -> o._2)
+              .flatMap { case (state, stateFetchDuration) =>
+                var lastState = state
+                observeWithState(api, state, stateFetchDuration)
+                  .map { o =>
+                    lastState = o.state
+                    o
+                  }
+                  .map(Right.apply)
+                  .onErrorHandleWith { case t if fromEventId.isEmpty || !isTorn(t) =>
+                    val continueWithState =
+                      if (isTorn(t)) {
+                        scribe.error(t.toStringWithCauses)
+                        scribe.warn("Restarting observation from a new snapshot, loosing some events")
+                        None
+                      } else {
+                        scribe.warn(t.toStringWithCauses)
+                        if (t.getStackTrace.nonEmpty) scribe.debug(t.toStringWithCauses, t.nullIfNoStackTrace)
+                        scribe.debug(s"Restarting observation and try to continue seamlessly after=${EventId.toString(state.eventId)}")
+                        Some(lastState)
                       }
-                      Observable.pure(Left(continueWithState)/*TODO Observable.tailRecM: Left leaks memory, https://github.com/monix/monix/issues/791*/)
-                        .delayExecution(1.s/*TODO*/)
-                    }
-                }))
-        }
+                    // TODO Observable.tailRecM: Left leaks memory, https://github.com/monix/monix/issues/791
+                    Observable.pure(Left(continueWithState))
+                      .delayExecution(1.s/*TODO*/)
+                  }
+              }))
+
+    def isTorn(t: Throwable) = checkedCast[ProblemException](t).exists(_.problem is EventSeqTornProblem)
 
     def observeWithState(api: EventApi, state: S, stateFetchDuration: FiniteDuration): Observable[EventAndState[Event, S]] = {
-      val seed = EventAndState(Stamped(state.eventId, ProxyStartedSeed: AnyKeyedEvent), state)
-      val recouplingStreamReader = new MyRecouplingStreamReader(onProxyEvent, stateFetchDuration, proxyConf)
+      val seed = EventAndState(Stamped(state.eventId, ProxyStarted: AnyKeyedEvent), state, state)
+      val recouplingStreamReader = new MyRecouplingStreamReader(onProxyEvent, stateFetchDuration,
+        tornOlder = fromEventId.flatMap(_ => proxyConf.tornOlder))
       recouplingStreamReader.observe(api, after = state.eventId)
         .guarantee(recouplingStreamReader.decouple.map(_ => ()))
         .scan0(seed)((s, stampedEvent) =>
           EventAndState(stampedEvent,
+            s.state,
             s.state.applyEvent(stampedEvent.value)
               .orThrow/*TODO Restart*/
               .withEventId(stampedEvent.eventId)))
@@ -163,11 +168,14 @@ object JournaledProxy
       true
     }
 
-    observe
+    Observable.fromResource(apiResources.toVector.sequence)
+      .flatMap(observable2)
   }
 
-  private class MyRecouplingStreamReader[S <: JournaledState[S]](onProxyEvent: ProxyEvent => Unit,
-    stateFetchDuration: FiniteDuration, proxyConf: ProxyConf)
+  private class MyRecouplingStreamReader[S <: JournaledState[S]](
+    onProxyEvent: ProxyEvent => Unit,
+    stateFetchDuration: FiniteDuration,
+    tornOlder: Option[FiniteDuration])
     (implicit S: JournaledState.Companion[S])
   extends RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], EventApi](_.eventId, recouplingStreamReaderConf)
   {
@@ -178,7 +186,7 @@ object JournaledProxy
       HttpClient.liftProblem(
         api.eventObservable(
           EventRequest.singleClass[Event](after = after, delay = 1.s,
-            tornOlder = proxyConf.tornOlder.map(o => (o + addToTornOlder).roundUpToNext(100.ms)),
+            tornOlder = tornOlder.map(o => (o + addToTornOlder).roundUpToNext(100.ms)),
             timeout = Some(55.s/*TODO*/)))
       .doOnFinish {
         case None => Task { addToTornOlder = Duration.Zero }
@@ -259,7 +267,7 @@ object JournaledProxy
                 .traverse { case (api, future) =>
                   future.cancel()
                   Task.fromFuture(future).void.onErrorRecover { case CancelledException => } >>
-                    Task(scribe.debug(s"Logout discard $api")) >>
+                    Task(scribe.debug(s"Logout discarded $api")) >>
                     api.logout()
                 }
                 .map(_.combineAll)
@@ -278,11 +286,15 @@ object JournaledProxy
               scribe.info(s"Coupling with $x node ${api.baseUri} '${clusterNodeState.nodeId}'")
               api
             }
+            .guaranteeCase(exitCase => Task {
+              if (exitCase != ExitCase.Completed) {
+                scribe.debug(exitCase.toString)
+                for (o <- apisAndFutures) o._2.cancel()  // Needed?
+              }
+            })
       }
     }
   }
-
-  private case object ProxyStartedSeed extends NoKeyEvent
 
   private case object CancelledException extends NoStackTrace
 

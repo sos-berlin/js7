@@ -3,6 +3,7 @@ package js7.controller.web.controller.api
 import akka.http.scaladsl.model.HttpEntity
 import akka.http.scaladsl.server.Directives.get
 import akka.http.scaladsl.server.Route
+import akka.http.scaladsl.server.directives.ParameterDirectives._
 import akka.http.scaladsl.server.directives.PathDirectives.pathSingleSlash
 import akka.util.ByteString
 import io.circe.syntax._
@@ -10,46 +11,90 @@ import js7.base.auth.ValidUserPermission
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked
+import js7.base.problem.Checked._
+import js7.base.time.ScalaTime._
+import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.FutureCompletion
 import js7.base.utils.FutureCompletion.syntax._
 import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
+import js7.common.akkahttp.ConcurrentRequestLimiter
 import js7.common.akkahttp.StandardMarshallers._
+import js7.common.event.EventWatch
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.StreamingSupport.AkkaObservable
 import js7.common.scalautil.Logger
+import js7.controller.configuration.ControllerConfiguration
 import js7.controller.data.ControllerSnapshots.SnapshotJsonCodec
 import js7.controller.data.ControllerState
+import js7.controller.problems.HistoricSnapshotServiceBusyProblem
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.SnapshotRoute._
+import js7.data.Problems.SnapshotForUnknownEventIdProblem
+import js7.data.event.{Event, EventId, EventRequest}
 import monix.eval.Task
-import monix.execution.Scheduler
 
 trait SnapshotRoute extends ControllerRouteProvider
 {
   protected def controllerState: Task[Checked[ControllerState]]
+  protected def eventWatch: EventWatch
+  protected def controllerConfiguration: ControllerConfiguration
 
-  private implicit def implicitScheduler: Scheduler = scheduler
+  private implicit def implicitScheduler = scheduler
 
   private lazy val whenShuttingDownCompletion = new FutureCompletion(whenShuttingDown)
 
-  final val snapshotRoute: Route =
+  // Rebuilding state may take a long time, so we allow only one per time.
+  // The client may impatiently abort and retry, overloading the server with multiple useless requests.
+  private lazy val concurrentRequestsLimiter =
+    new ConcurrentRequestLimiter(limit = 1, HistoricSnapshotServiceBusyProblem, timeout = 1.s, queueSize = 1)
+
+  final lazy val snapshotRoute: Route =
     get {
       authorizedUser(ValidUserPermission) { _ =>
         pathSingleSlash {
-          completeTask(
-            for (checkedState <- controllerState) yield
-              for (state <- checkedState) yield {
-                  HttpEntity(
-                    `application/x-ndjson`,
-                    state.toSnapshotObservable
-                      .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
-                        Task { logger.debug("whenShuttingDown completed") })
-                      .mapParallelOrderedBatch()(o => ByteString(o.asJson(SnapshotJsonCodec).compactPrint) ++ LF)
-                      .toAkkaSourceForHttpResponse)
-              })
+          parameter("eventId".as[Long].?) {
+            case None => currentSnapshot
+            case Some(eventId) => historicSnapshot(eventId)
+          }
         }
       }
     }
+
+  private lazy val currentSnapshot: Route =
+    completeTask(
+      for (checkedState <- controllerState) yield
+        for (state <- checkedState) yield
+          snapshotToHttpEntity(state))
+
+  private def historicSnapshot(eventId: EventId): Route =
+    concurrentRequestsLimiter(
+      completeTask(Task.defer {
+        eventWatch.snapshotObjectsFor(after = eventId)
+          .map { case (eventId, closeableIterator) =>
+            autoClosing(closeableIterator) { _ =>
+              ControllerState.fromIterator(closeableIterator)
+                .copy(eventId = eventId)
+            }
+          }
+          .toChecked(SnapshotForUnknownEventIdProblem(eventId))
+          .traverse(recoveredState =>
+            eventWatch.observe(EventRequest.singleClass[Event](after = recoveredState.eventId))
+              .takeWhile(_.eventId <= eventId)
+              .bufferTumbling(1024)
+              .foldLeft(recoveredState)((state, stampedEvents) => state.applyStampedEvents(stampedEvents).orThrow)
+              .lastL
+              //.flatTap(state => Task { stateCache.rememberReturnedState(state) })
+              .map(snapshotToHttpEntity))
+      }))
+
+  private def snapshotToHttpEntity(state: ControllerState): HttpEntity.Chunked =
+    HttpEntity(
+      `application/x-ndjson`,
+      state.toSnapshotObservable
+        .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
+          Task { logger.debug("whenShuttingDown completed") })
+        .mapParallelOrderedBatch()(o => ByteString(o.asJson(SnapshotJsonCodec).compactPrint) ++ LF)
+        .toAkkaSourceForHttpResponse)
 }
 
 object SnapshotRoute

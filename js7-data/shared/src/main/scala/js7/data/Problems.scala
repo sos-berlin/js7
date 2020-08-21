@@ -1,6 +1,7 @@
 package js7.data
 
 import js7.base.problem.Problem
+import js7.data.event.EventId
 import js7.data.item.RepoEvent.ItemAddedOrChanged
 import js7.data.item.{ItemId, ItemId_, TypedPath, VersionId}
 import js7.data.order.OrderId
@@ -32,4 +33,9 @@ object Problems
   final case class EventVersionDoesNotMatchProblem(versionId: VersionId, event: ItemAddedOrChanged) extends Problem.Coded {
     def arguments = Map("versionId" -> versionId.string, "event" -> event.toShortString)
   }
+
+  final case class SnapshotForUnknownEventIdProblem(eventId: EventId) extends Problem.Coded {
+    def arguments = Map("eventId" -> EventId.toString(eventId))
+  }
+  object SnapshotForUnknownEventIdProblem extends Problem.Coded.Companion
 }

@@ -7,9 +7,12 @@ import io.circe.JsonObject
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.Completed
 import js7.base.problem.Checked
+import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.base.web.HttpClient
 import js7.controller.client.HttpControllerApi
+import js7.controller.data.ControllerCommand.ReleaseEvents
 import js7.controller.data.{ControllerCommand, ControllerState}
+import js7.data.event.{Event, EventId}
 import js7.data.item.{UpdateRepoOperation, VersionId}
 import js7.data.order.FreshOrder
 import js7.proxy.configuration.ProxyConf
@@ -25,6 +28,10 @@ extends ControllerProxyWithHttp
     apiResources.toVector.sequence.flatMap(apis =>
       Resource.liftF(
         JournaledProxy.selectActiveNodeApi(apis, onCouplingError = _.logError)))
+
+  /** Read events and state from Controller. */
+  def observable(proxyEventBus: StandardEventBus[ProxyEvent], eventId: Option[EventId]): Observable[EventAndState[Event, ControllerState]] =
+    JournaledProxy.observable(apiResources, eventId, proxyEventBus.publish, proxyConf)
 
   def startProxy(
     proxyEventBus: StandardEventBus[ProxyEvent] = new StandardEventBus[ProxyEvent],
@@ -50,13 +57,14 @@ extends ControllerProxyWithHttp
 
   /** @return true if added, otherwise false because of duplicate OrderId. */
   def addOrder(order: FreshOrder): Task[Checked[Boolean]] =
-    execute(ControllerCommand.AddOrder(order))
-      .map(_.map(o => !o.ignoredBecauseDuplicate))
+    executeCommand(ControllerCommand.AddOrder(order))
+      .mapt(o => !o.ignoredBecauseDuplicate)
+
+  def releaseEvents(eventId: EventId): Task[Checked[Completed]] =
+    executeCommand(ReleaseEvents(eventId))
+      .mapt((_: ControllerCommand.Response.Accepted) => Completed)
 
   def executeCommand(command: ControllerCommand): Task[Checked[command.Response]] =
-    execute(command)
-
-  def execute(command: ControllerCommand): Task[Checked[command.Response]] =
     apiResource.use(api =>
       api.retryUntilReachable()(
         HttpClient.liftProblem(

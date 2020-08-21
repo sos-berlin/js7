@@ -1,6 +1,8 @@
 package js7.data.workflow.position
 
 import io.circe.generic.JsonCodec
+import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
+import io.circe.{Decoder, Encoder}
 import js7.base.utils.ScalaUtils.reuseIfEqual
 import js7.data.workflow.WorkflowId
 import scala.language.implicitConversions
@@ -24,26 +26,6 @@ object WorkflowPosition
 
   // TODO require workflowId.versionId != VersionId.Anonymous ?
 
-  //implicit val jsonEncoder: Encoder.AsArray[WorkflowPosition] =
-  //  absolute => absolute.workflowId.asJson +: Position.jsonEncoder.encodeArray(absolute.position)
-  //  //absolute => Json.fromString(absolute.workflowId.string) +: Position.jsonEncoder.encodeArray(absolute.position)
-  //
-  //implicit val jsonDecoder: Decoder[WorkflowPosition] =
-  //  cursor =>
-  //    for {
-  //      jsons <- cursor.as[Seq[Json]]
-  //      absolute <-
-  //        if (jsons.isEmpty)
-  //          Left(DecodingFailure("Empty JSON array as Position.WorkflowPosition?", cursor.history))
-  //        else
-  //          for {
-  //            workflowId <- jsons(0).as[WorkflowId]
-  //            p <- Json.fromValues(jsons.tail).as[Position]
-  //          } yield WorkflowPosition(workflowId, p)
-  //          //for {
-  //          //  idString <- jsons(0).as[String]
-  //          //  workflowId <- WorkflowId.checked(idString).toDecoderResult
-  //          //  p <- Json.fromValues(jsons.tail).as[Position]
-  //          //} yield WorkflowPosition(workflowId, p)
-  //    } yield absolute
+  val jsonEncoder: Encoder[WorkflowPosition] = deriveEncoder[WorkflowPosition]
+  val jsonDecoder: Decoder[WorkflowPosition] = deriveDecoder[WorkflowPosition]
 }

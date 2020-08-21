@@ -22,16 +22,16 @@ with HasIsIgnorableStackTrace
 
   def clusterNodeState: Task[Checked[ClusterNodeState]]
 
-  def snapshot: Task[Checked[Observable[Any]]]
+  def snapshot(eventId: Option[EventId]): Task[Checked[Observable[Any]]]
 
-  def eventObservable[E <: Event: ClassTag](request: EventRequest[E])
-    (implicit kd: Decoder[KeyedEvent[E]])
-    : Task[Observable[Stamped[KeyedEvent[E]]]]
+  def eventObservable[E <: Event: ClassTag](request: EventRequest[E])(implicit kd: Decoder[KeyedEvent[E]])
+  : Task[Observable[Stamped[KeyedEvent[E]]]]
 
-  final def snapshotAs[S <: JournaledState[S]](implicit S: JournaledState.Companion[S]): Task[Checked[S]] =
+  final def snapshotAs[S <: JournaledState[S]](eventId: Option[EventId] = None)(implicit S: JournaledState.Companion[S])
+  : Task[Checked[S]] =
     Task.defer {
       val startedAt = now
-      snapshot
+      snapshot(eventId)
         .logTiming(startedAt = startedAt, onComplete = (d, n, exitCase) =>
           scribe.debug(s"$S snapshot receive $exitCase - ${itemsPerSecondString(d, n, "objects")}"))
         .flatMapT(obs =>

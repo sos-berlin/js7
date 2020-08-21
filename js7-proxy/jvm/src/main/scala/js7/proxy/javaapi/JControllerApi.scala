@@ -2,30 +2,44 @@ package js7.proxy.javaapi
 
 import cats.effect.Resource
 import io.vavr.control.{Either => VEither}
+import java.util.OptionalLong
 import java.util.concurrent.CompletableFuture
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem
 import js7.controller.client.HttpControllerApi
 import js7.controller.data.ControllerCommand
+import js7.data.event.Event
 import js7.data.item.VersionId
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.javaapi.data.{JControllerCommand, JFreshOrder, JUpdateRepoOperation}
 import js7.proxy.javaapi.eventbus.{JControllerEventBus, JStandardEventBus}
+import js7.proxy.javaapi.utils.ReactorConverters._
 import js7.proxy.javaapi.utils.VavrConverters._
 import js7.proxy.{ControllerApi, ControllerProxy, ProxyEvent}
 import monix.eval.Task
 import monix.execution.FutureUtils.Java8Extensions
 import monix.execution.Scheduler
-import monix.reactive.Observable
 import reactor.core.publisher.Flux
+import scala.jdk.OptionConverters._
 
 @javaApi
-final class JControllerApi private[proxy](
+final class JControllerApi private[js7](
   apiResources: Seq[Resource[Task, HttpControllerApi]],
-  private[js7] val api: ControllerApi,
   proxyConf: ProxyConf)
   (implicit scheduler: Scheduler)
 {
+  private[js7] val underlying = new ControllerApi(apiResources, proxyConf)
+
+  /** Fetch event stream from Controller. */
+  def flux(proxyEventBus: JStandardEventBus[ProxyEvent]): Flux[JEventAndControllerState[Event]] =
+    flux(proxyEventBus, OptionalLong.empty())
+
+  /** Fetch event stream from Controller. */
+  def flux(proxyEventBus: JStandardEventBus[ProxyEvent], after: OptionalLong/*EventId*/): Flux[JEventAndControllerState[Event]] =
+    underlying.observable(proxyEventBus.underlying, after.toScala)
+      .map(JEventAndControllerState.apply)
+      .asFlux
+
   def startProxy(): CompletableFuture[JControllerProxy] =
     startProxy(new JStandardEventBus[ProxyEvent])
 
@@ -84,14 +98,14 @@ final class JControllerApi private[proxy](
     *
     */
   def updateRepo(versionId: VersionId, operations: Flux[JUpdateRepoOperation]): CompletableFuture[VEither[Problem, Void]] =
-    api.updateRepo(versionId, Observable.fromReactivePublisher(operations).map(_.underlying))
+    underlying.updateRepo(versionId, operations.asObservable.map(_.underlying))
       .map(_.toVoidVavr)
       .runToFuture
       .asJava
 
   /** @return true iff added, false iff not added because of duplicate OrderId. */
   def addOrder(order: JFreshOrder): CompletableFuture[VEither[Problem, java.lang.Boolean]] =
-    api.addOrder(order.underlying)
+    underlying.addOrder(order.underlying)
       .map(_.map(o => java.lang.Boolean.valueOf(o)).toVavr)
       .runToFuture
       .asJava
@@ -107,13 +121,13 @@ final class JControllerApi private[proxy](
     * {{{api.addOrders(Flux.fromIterable(orders))}}}
     * */
   def addOrders(orders: Flux[JFreshOrder]): CompletableFuture[VEither[Problem, Void]] =
-    api.addOrders(Observable.fromReactivePublisher(orders).map(_.underlying))
+    underlying.addOrders(orders.asObservable.map(_.underlying))
       .map(_.toVoidVavr)
       .runToFuture
       .asJava
 
   def executeCommand(command: JControllerCommand): CompletableFuture[VEither[Problem, ControllerCommand.Response]] =
-    api.executeCommand(command.underlying)
+    underlying.executeCommand(command.underlying)
       .map(_.map(o => (o: ControllerCommand.Response)).toVavr)
       .runToFuture
       .asJava
@@ -122,7 +136,7 @@ final class JControllerApi private[proxy](
     httpPostJson("/controller/api/command", command)
 
   def httpPostJson(uriTail: String, jsonString: String): CompletableFuture[VEither[Problem, String]] =
-    api.httpPostJson(uriTail, jsonString)
+    underlying.httpPostJson(uriTail, jsonString)
       .map(_.toVavr)
       .runToFuture
       .asJava
@@ -132,7 +146,7 @@ final class JControllerApi private[proxy](
     * @return `Either.Left(Problem)` or `Either.Right(json: String)`
     */
   def httpGetJson(uriTail: String): CompletableFuture[VEither[Problem, String]] =
-    api.httpGetJson(uriTail)
+    underlying.httpGetJson(uriTail)
       .map(_.toVavr)
       .runToFuture
       .asJava

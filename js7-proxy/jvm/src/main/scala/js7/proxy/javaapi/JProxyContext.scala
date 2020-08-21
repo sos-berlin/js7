@@ -11,10 +11,10 @@ import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.message.ProblemCodeMessages
 import js7.common.system.ThreadPools
 import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
+import js7.proxy.ProxyEvent
 import js7.proxy.configuration.ProxyConfs
 import js7.proxy.javaapi.data.JHttpsConfig
 import js7.proxy.javaapi.eventbus.{JControllerEventBus, JStandardEventBus}
-import js7.proxy.{ControllerApi, ProxyEvent}
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.jdk.CollectionConverters._
@@ -54,9 +54,7 @@ extends HasCloser
     httpsConfig: JHttpsConfig)
   : JControllerApi = {
     val apiResources = admissionsToApiResources(admissions, httpsConfig)
-    new JControllerApi(
-      apiResources,
-      new ControllerApi(apiResources, proxyConf), proxyConf)
+    new JControllerApi(apiResources, proxyConf)
   }
 
   /** Convenience method, starts a `JControllerProxy`.

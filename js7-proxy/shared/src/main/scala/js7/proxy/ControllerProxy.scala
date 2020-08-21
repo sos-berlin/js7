@@ -32,7 +32,7 @@ object ControllerProxy
   : Task[ControllerProxy] =
     Task.deferAction { implicit s =>
       val proxy = new ControllerProxy(
-        JournaledProxy.observable(apiResources, proxyEventBus.publish, proxyConf),
+        JournaledProxy.observable(apiResources, fromEventId = None, proxyEventBus.publish, proxyConf),
         proxyEventBus,
         eventBus)
       proxy.startObserving.map(_ => proxy)

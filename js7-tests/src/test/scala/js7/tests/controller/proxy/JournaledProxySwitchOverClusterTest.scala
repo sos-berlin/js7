@@ -38,7 +38,7 @@ final class JournaledProxySwitchOverClusterTest extends AnyFreeSpec with Cluster
         def runOrder(orderId: OrderId): Unit = {
           val whenFinished = proxy.observable
             .find {
-              case EventAndState(Stamped(_, _, KeyedEvent(`orderId`, _: OrderFinished)), _) => true
+              case EventAndState(Stamped(_, _, KeyedEvent(`orderId`, _: OrderFinished)), _, _) => true
               case _ => false
             }
             .timeoutOnSlowUpstream(99.s)

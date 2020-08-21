@@ -68,8 +68,8 @@ object OrderEvent {
 
   sealed trait OrderStdWritten extends OrderEvent {
 
-    def stdoutStderrType: StdoutOrStderr
-    protected def chunk: String
+    def stdoutStderr: StdoutOrStderr
+    def chunk: String
 
     override def toString = getClass.simpleScalaName + "(" +
       chunk.truncateWithEllipsis(80, showLength = true).replace("\n", "\\n").replace("\r", "\\r") + ")"
@@ -88,12 +88,12 @@ object OrderEvent {
   }
 
   final case class OrderStdoutWritten(chunk: String) extends OrderStdWritten {
-    def stdoutStderrType = Stdout
+    def stdoutStderr = Stdout
     override def toString = super.toString
   }
 
   final case class OrderStderrWritten(chunk: String) extends OrderStdWritten {
-    def stdoutStderrType = Stderr
+    def stdoutStderr = Stderr
     override def toString = super.toString
   }
 

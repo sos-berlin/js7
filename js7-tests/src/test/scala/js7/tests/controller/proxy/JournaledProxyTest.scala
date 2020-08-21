@@ -93,7 +93,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with Controll
       val orderIds = (1 to 2).map(i => OrderId(s"ORDER-$i")).toSet
       val whenFinished = proxy.observable
         .collect {
-          case EventAndState(Stamped(_, _, KeyedEvent(orderId: OrderId, event: OrderEvent)), _)
+          case EventAndState(Stamped(_, _, KeyedEvent(orderId: OrderId, event: OrderEvent)), _, _)
             if orderIds contains orderId =>
             orderId <-: event
         }

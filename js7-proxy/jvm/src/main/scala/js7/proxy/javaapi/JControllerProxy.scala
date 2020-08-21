@@ -2,11 +2,16 @@ package js7.proxy.javaapi
 
 import java.util.concurrent.CompletableFuture
 import js7.base.annotation.javaApi
-import js7.data.event.Event
-import js7.proxy.ControllerProxy
-import js7.proxy.javaapi.data.JControllerState
+import js7.base.problem.Checked._
+import js7.base.time.ScalaTime._
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.data.event.{Event, KeyedEvent, Stamped}
+import js7.data.order.OrderEvent.OrderTerminated
+import js7.proxy.javaapi.data.{JControllerState, JFreshOrder}
 import js7.proxy.javaapi.eventbus.JControllerEventBus
 import js7.proxy.javaapi.utils.JavaUtils.Void
+import js7.proxy.javaapi.utils.ReactorConverters._
+import js7.proxy.{ControllerProxy, EventAndState}
 import monix.execution.FutureUtils.Java8Extensions
 import monix.execution.Scheduler
 import reactor.core.publisher.Flux
@@ -17,23 +22,39 @@ import reactor.core.publisher.Flux
   * Java adapter for `JournaledProxy[JControllerState]`. */
 @javaApi
 final class JControllerProxy private[proxy](
-  controllerProxy: ControllerProxy,
+  underlying: ControllerProxy,
   val api: JControllerApi,
   val controllerEventBus: JControllerEventBus)
   (implicit scheduler: Scheduler)
 {
+  /** Listen to the already running event stream. */
   def flux(): Flux[JEventAndControllerState[Event]] =
-    Flux.from(
-      controllerProxy.observable
-        .map(JEventAndControllerState .fromScala)
-        .toReactivePublisher)
+    underlying.observable
+      .map(JEventAndControllerState.apply)
+      .asFlux
 
   def stop(): CompletableFuture[Void] =
-    controllerProxy.stop
+    underlying.stop
       .map(_ => Void)
       .runToFuture
       .asJava
 
   def currentState: JControllerState =
-    JControllerState(controllerProxy.currentState)
+    JControllerState(underlying.currentState)
+
+  private def runOrderForTest(order: JFreshOrder): CompletableFuture[Stamped[KeyedEvent[OrderTerminated]]] = {
+    val whenOrderTerminated = underlying.observable
+      .collect {
+        case EventAndState(stamped @ Stamped(_, _, KeyedEvent(orderId, _: OrderTerminated)), _, _)
+          if orderId == order.id =>
+          stamped.asInstanceOf[Stamped[KeyedEvent[OrderTerminated]]]
+      }
+      .headL
+      .runToFuture
+    val isAdded = api.underlying.addOrder(order.underlying)
+      .await(99.s)
+      .orThrow
+    if (!isAdded) throw new IllegalStateException(s"Order has already been added: ${order.id}")
+    whenOrderTerminated.asJava
+  }
 }

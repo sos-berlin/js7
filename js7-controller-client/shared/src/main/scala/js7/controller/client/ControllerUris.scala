@@ -88,8 +88,11 @@ final class ControllerUris private(controllerUri: Uri)
   }
 
   object snapshot {
-    val list: Uri =
-      api("/" + encodePath("snapshot", ""))
+    def list: Uri =
+      list(None)
+
+    def list(eventId: Option[EventId]) =
+      api("/" + encodePath("snapshot", ""), eventId.toList.map("eventId" -> _.toString): _*)
   }
 
   def api(query: (String, String)*): Uri =

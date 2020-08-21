@@ -1,6 +1,7 @@
 package js7.data.system
 
 import io.circe.{Decoder, DecodingFailure, Encoder, Json, KeyDecoder, KeyEncoder}
+import js7.base.annotation.javaApi
 import js7.base.generic.GenericString
 
 /**
@@ -31,9 +32,15 @@ object StdoutOrStderr {
 }
 
 case object Stdout extends StdoutOrStderr with GenericString {
+  @javaApi
+  val singleton = this
+
   val string = "stdout"
 }
 
 case object Stderr extends StdoutOrStderr with GenericString {
+  @javaApi
+  val singleton = this
+
   val string = "stderr"
 }

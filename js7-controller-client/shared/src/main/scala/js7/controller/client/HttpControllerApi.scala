@@ -137,10 +137,10 @@ extends EventApi with HttpSessionApi with HasIsIgnorableStackTrace
     httpClient.liftProblem(
       httpClient.get[Seq[AgentRef]](uris.agent.list[AgentRef]))
 
-  final def snapshot: Task[Checked[Observable[Any]]] = {
+  final def snapshot(eventId: Option[EventId] = None): Task[Checked[Observable[Any]]] = {
     implicit val x = ControllerSnapshots.SnapshotJsonCodec
     httpClient.liftProblem(
-      httpClient.getDecodedLinesObservableBatch[Any](uris.snapshot.list))
+      httpClient.getDecodedLinesObservableBatch[Any](uris.snapshot.list(eventId)))
   }
 
   override def toString = s"HttpControllerApi($baseUri)"
@@ -170,8 +170,8 @@ object HttpControllerApi
 
   final class Standard(
     val baseUri: Uri,
-    protected final val userAndPassword: Option[UserAndPassword],
+    protected val userAndPassword: Option[UserAndPassword],
     val httpClient: HttpClient,
-    override protected final val loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays)
+    override protected val loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays)
   extends HttpControllerApi
 }

@@ -34,7 +34,7 @@ object JournaledProxyObservableTester
         observingStarted.success(())
       })
       .collect {
-        case es @ EventAndState(Stamped(_, _, KeyedEvent(_, event)), _)
+        case es @ EventAndState(Stamped(_, _, KeyedEvent(_, event)), _, _)
           if implicitClass[E] isAssignableFrom event.getClass =>
           es.asInstanceOf[EventAndState[E, S]]
       }

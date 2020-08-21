@@ -1,4 +1,4 @@
-package js7.proxy.javaapi.data
+package js7.proxy.javaapi.data.item
 
 import js7.base.annotation.javaApi
 import js7.data.item.{ItemId, TypedPath, VersionId}

@@ -27,14 +27,17 @@ package object position
       segments.init
     }
 
-    private[workflow] def asJsonArray: Vector[Json] =
-      segments.toVector.flatMap(p => Array(p.nr.asJson, p.branchId.asJson))
+    private[workflow] def toJsonSeq: Vector[Json] =
+      segments.view.flatMap(p => Array(p.nr.asJson, p.branchId.asJson)).toVector
+
+    def toSeq: Vector[Any] =
+      segments.view.flatMap(p => Array(Int.box(p.nr.number), p.branchId.toSimpleType)).toVector
   }
 
   implicit val branchPathShow: Show[BranchPath] =
     _.map(p => s"${p.nr.number}/${p.branchId}").mkString(InstructionNr.Prefix)
 
-  implicit val jsonEncoder: Encoder.AsArray[BranchPath] = _.asJsonArray
+  implicit val jsonEncoder: Encoder.AsArray[BranchPath] = _.toJsonSeq
 
   implicit val jsonDecoder: Decoder[BranchPath] =
     cursor => cursor.as[List[Json]] flatMap (parts =>

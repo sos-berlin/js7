@@ -4,18 +4,20 @@ import js7.base.annotation.javaApi
 import js7.controller.data.ControllerState
 import js7.data.event.{Event, KeyedEvent, Stamped}
 import js7.proxy.EventAndState
-import js7.proxy.javaapi.data.JControllerState
+import js7.proxy.javaapi.data.{JControllerState, JavaWrapper}
 
 @javaApi
-final case class JEventAndControllerState[E <: Event](
-  stampedEvent: Stamped[KeyedEvent[E]],
-  state: JControllerState)
+final case class JEventAndControllerState[E <: Event](underlying: EventAndState[E, ControllerState])
+extends JavaWrapper
 {
-  def toScala = EventAndState(stampedEvent, state.underlying)
-}
+  protected type Underlying = EventAndState[E, ControllerState]
 
-object JEventAndControllerState
-{
-  def fromScala[E <: Event](eventAndState: EventAndState[E, ControllerState]) =
-    new JEventAndControllerState(eventAndState.stampedEvent, JControllerState(eventAndState.state))
+  def stampedEvent: Stamped[KeyedEvent[E]] =
+    underlying.stampedEvent
+
+  def state: JControllerState =
+    JControllerState(underlying.state)
+
+  def previousState: JControllerState =
+    JControllerState(underlying.previousState)
 }

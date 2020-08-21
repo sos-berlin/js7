@@ -5,9 +5,11 @@ import js7.base.annotation.javaApi
 import js7.base.problem.Problem
 import js7.base.utils.Collections.implicits.RichTraversable
 import js7.controller.data.ControllerState
+import js7.data.agent.{AgentRef, AgentRefPath}
 import js7.data.order.{Order, OrderId}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.proxy.javaapi.data.JOrderPredicates.any
+import js7.proxy.javaapi.data.agent.{JAgentRef, JAgentRefId}
 import js7.proxy.javaapi.utils.VavrConverters._
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
@@ -33,6 +35,16 @@ extends JJournaledState[JControllerState, ControllerState]
       .map(JWorkflow.apply)
       .toVavr
 
+  def idToAgentRef(workflowId: JAgentRefId): VEither[Problem, JAgentRef] =
+    underlying.repo.idTo[AgentRef](workflowId.underlying)
+      .map(JAgentRef.apply)
+      .toVavr
+
+  def pathToAgentRef(agentRefPath: AgentRefPath): VEither[Problem, JAgentRef] =
+    underlying.repo.pathTo[AgentRef](agentRefPath)
+      .map(JAgentRef.apply)
+      .toVavr
+
   def orderIds: java.util.Set[OrderId] =
     underlying.idToOrder.keySet.asJava
 
@@ -40,6 +52,13 @@ extends JJournaledState[JControllerState, ControllerState]
       underlying.idToOrder.get(orderId)
         .map(JOrder.apply)
         .toJava
+
+  def idToCheckedOrder(orderId: OrderId): VEither[Problem, JOrder] =
+    underlying.idToOrder.get(orderId)
+      .map(JOrder.apply) match {
+        case None => VEither.left(Problem(s"Unknown OrderId in JControllerState: ${orderId.string}"))
+        case Some(o) => VEither.right(o)
+      }
 
   @Deprecated
   lazy val eagerIdToOrder: java.util.Map[OrderId, JOrder] =
