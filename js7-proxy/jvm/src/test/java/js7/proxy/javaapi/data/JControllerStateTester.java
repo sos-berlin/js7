@@ -54,7 +54,7 @@ final class JControllerStateTester
 
     void testWorkflows() {
         new JWorkflowTester(
-            controllerState.idToWorkflow(JWorkflowId.of("/A-WORKFLOW", "COMMIT-ID")).get()
+            controllerState.idToWorkflow(JWorkflowId.of("/A-WORKFLOW", "VERSION-ID")).get()
         ).test();
     }
 

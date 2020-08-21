@@ -1,12 +1,11 @@
 package js7.data.command
 
-import js7.base.circeutils.CirceUtils
+import io.circe.generic.extras.Configuration.default.withDefaults
 import js7.base.circeutils.CirceUtils.{deriveCodec, deriveConfiguredCodec}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.process.ProcessSignal
 import js7.base.process.ProcessSignal.SIGTERM
 import js7.data.workflow.position.WorkflowPosition
-import io.circe.generic.extras.Configuration.default.withDefaults
 
 /**
   * @author Joacim Zschimmer

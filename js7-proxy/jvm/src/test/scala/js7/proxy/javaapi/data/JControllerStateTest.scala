@@ -64,7 +64,7 @@ final class JControllerStateTest extends AnyFreeSpec
 
 private object JControllerStateTest
 {
-  private val versionId = VersionId("COMMIT-ID")
+  private val versionId = VersionId("VERSION-ID")
   private val aWorkflow = WorkflowParser.parse(WorkflowPath("/A-WORKFLOW") ~ versionId,
     """|define workflow {
        |  execute agent="/AGENT", executable="/A-EXECUTABLE";
@@ -100,11 +100,11 @@ private object JControllerStateTest
     Vector(
       Order(
         OrderId("A-ORDER"),
-        (WorkflowPath("/A-WORKFLOW") ~ "COMMIT-ID") /: Position(0),
+        (WorkflowPath("/A-WORKFLOW") ~ "VERSION-ID") /: Position(0),
         Order.Fresh(None)),
       Order(
         OrderId("B-ORDER"),
-        (WorkflowPath("/B-WORKFLOW") ~ "COMMIT-ID") /: Position(0),
+        (WorkflowPath("/B-WORKFLOW") ~ "VERSION-ID") /: Position(0),
         Order.Ready,
         Map(
           "key1" -> "value1",

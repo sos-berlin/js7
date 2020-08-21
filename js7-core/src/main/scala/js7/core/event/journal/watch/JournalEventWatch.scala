@@ -148,8 +148,8 @@ with JournalingObserver
           historicJournalFileAfter(untilEventId).fold(EventId.BeforeFirst)(_.afterEventId)  // Delete only journal files before the file containing `after`
       }
       var continue = true
-      for (historic <- afterEventIdToHistoric.values.toVector.sortBy(_.afterEventId)
-           if historic.afterEventId < keepFileAfter && continue) {
+      for (historic <- afterEventIdToHistoric.values.toVector.sortBy(_.afterEventId).takeWhile(_.afterEventId < keepFileAfter)
+           if continue) {
         logger.info(s"Deleting obsolete journal file '$historic'")
         historic.close()
         try {

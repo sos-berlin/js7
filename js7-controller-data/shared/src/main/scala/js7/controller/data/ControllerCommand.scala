@@ -70,8 +70,8 @@ object ControllerCommand extends CommonCommand.Companion
       } yield CancelOrder(orderId, mode)
   }
 
-  sealed trait NoOperation extends ControllerCommand
-  case object NoOperation extends NoOperation {
+  type NoOperation = NoOperation.type
+  case object NoOperation extends ControllerCommand {
     type Response = Response.Accepted
   }
 
@@ -184,8 +184,8 @@ object ControllerCommand extends CommonCommand.Companion
   sealed trait Response
 
   object Response {
-    sealed trait Accepted extends Response
-    case object Accepted extends Accepted
+    type Accepted = Accepted.type
+    case object Accepted extends Response
 
     implicit val ResponseJsonCodec: TypedJsonCodec[Response] = TypedJsonCodec[Response](
       Subtype(Accepted),

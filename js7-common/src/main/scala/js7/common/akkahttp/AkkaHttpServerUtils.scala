@@ -37,15 +37,15 @@ object AkkaHttpServerUtils
     mapInnerRoute {
       _ andThen {
         _ transform {
-          case Success(c @ Complete(response)) =>
+          case Success(complete @ Complete(response)) =>
             Success(Complete(
               response mapEntity {
                 case entity if entity.isKnownEmpty || entity.isInstanceOf[HttpEntity.Strict] =>
-                  onTerminated(Success(c))
+                  onTerminated(Success(complete))
                   entity
                 case entity =>
                   entity.transformDataBytes(Flow[ByteString].watchTermination() { case (NotUsed, whenTerminated) =>
-                    whenTerminated.map((_: Done) => c).onComplete(onTerminated)
+                    whenTerminated.map((_: Done) => complete).onComplete(onTerminated)
                     NotUsed
                   })
               }))

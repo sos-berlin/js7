@@ -2,6 +2,7 @@ package js7.controller.web.common
 
 import js7.common.configutils.Configs.HoconStringInterpolator
 import org.scalatest.freespec.AnyFreeSpec
+import scala.language.reflectiveCalls
 
 /**
   * @author Joacim Zschimmer
