@@ -1,6 +1,12 @@
 package js7.proxy.javaapi.data;
 
+import java.util.HashMap;
+import java.util.Optional;
+import js7.data.item.VersionId;
 import js7.data.order.OrderId;
+import js7.data.workflow.WorkflowPath;
+import js7.proxy.javaapi.data.workflow.position.JPosition;
+import static java.util.Arrays.asList;
 import static js7.proxy.javaapi.utils.VavrUtils.getOrThrow;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.endsWith;
@@ -13,13 +19,13 @@ import static org.hamcrest.Matchers.equalTo;
  */
 public class JOrderTester
 {
-    static final String aOrderJson =
+    private static final String aOrderJson =
        "{" +
        "  \"id\":\"A-ORDER\"," +
        "  \"workflowPosition\": {\n" +
        "     \"workflowId\": {\n" +
        "      \"path\": \"/A-WORKFLOW\",\n" +
-       "      \"versionId\": \"COMMIT-ID\"\n" +
+       "      \"versionId\": \"VERSION-ID\"\n" +
        "    },\n" +
        "    \"position\": [ 0 ]\n" +
        "  },\n" +
@@ -30,13 +36,13 @@ public class JOrderTester
        "  \"historicOutcomes\": []\n" +
        "}";
     static final JOrder aOrder = getOrThrow(JOrder.fromJson(aOrderJson));
-    static final String bOrderJson =
+    private static final String bOrderJson =
        "{" +
        "  \"id\":\"B-ORDER\"," +
        "  \"workflowPosition\": {\n" +
        "     \"workflowId\": {\n" +
        "      \"path\": \"/B-WORKFLOW\",\n" +
-       "      \"versionId\": \"COMMIT-ID\"\n" +
+       "      \"versionId\": \"VERSION-ID\"\n" +
        "    },\n" +
        "    \"position\": [ 0 ]\n" +
        "  },\n" +
@@ -70,7 +76,7 @@ public class JOrderTester
 
     private void testWorkflowId() {
         JWorkflowId workflowId = order.workflowId();
-        assertThat(workflowId, equalTo(JWorkflowId.of("/A-WORKFLOW", "COMMIT-ID")));
+        assertThat(workflowId, equalTo(JWorkflowId.of("/A-WORKFLOW", "VERSION-ID")));
     }
 
     private void testJson() {
@@ -84,5 +90,21 @@ public class JOrderTester
 
         assertThat(getOrThrow(JOrder.fromJson(aOrderJson)),
             equalTo(order));
+    }
+
+    static void testForkedOrder(JOrder order) {
+        assertThat(order.id(), equalTo(OrderId.of("ORDER-ID/A")));
+        assertThat(order.workflowId(), equalTo(JWorkflowId.of(WorkflowPath.of("/WORKFLOW"), VersionId.of("1.0"))));
+        assertThat(order.position(), equalTo(getOrThrow(JPosition.fromList(asList(1, "fork+A", 2)))));
+        assertThat(order.position().toList(), equalTo(asList(1, "fork+A", 2)));
+        assertThat(order.position().toString(), equalTo("1/fork+A:2"));
+        assertThat(order.workflowPosition(),
+            equalTo(JWorkflowPosition.of(
+                JWorkflowId.of(WorkflowPath.of("/WORKFLOW"), VersionId.of("1.0")),
+                getOrThrow(JPosition.fromList(asList(1, "fork+A", 2))))));
+        assertThat(order.arguments(), equalTo(new HashMap<String, String>() {{
+            put("KEY", "VALUE");
+        }}));
+        assertThat(order.parent(), equalTo(Optional.of(OrderId.of("ORDER-ID"))));
     }
 }

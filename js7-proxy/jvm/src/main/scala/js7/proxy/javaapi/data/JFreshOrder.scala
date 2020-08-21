@@ -18,6 +18,9 @@ extends JJsonable[JFreshOrder]
   protected type Underlying = FreshOrder
 
   protected def companion = JFreshOrder
+
+  def id: OrderId =
+    underlying.id
 }
 
 @javaApi
