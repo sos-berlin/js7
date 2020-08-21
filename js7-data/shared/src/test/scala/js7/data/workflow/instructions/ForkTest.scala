@@ -79,7 +79,7 @@ final class ForkTest extends AnyFreeSpec {
   "workflow" in {
     assert(fork.workflow("fork+A") == Right(fork.branches(0).workflow))
     assert(fork.workflow("fork+B") == Right(fork.branches(1).workflow))
-    assert(fork.workflow(1).isLeft)
+    assert(fork.workflow("X").isLeft)
   }
 
   "flattenedWorkflows" in {
