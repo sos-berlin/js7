@@ -208,7 +208,7 @@ object ControllerGraphqlSchema
     "WorkflowId and Position in Workflow",
     fields[QueryContext, WorkflowPosition](
       Field("workflowId", WorkflowIdType, resolve = _.value.workflowId),
-      Field("position", PositionType, resolve = _.value.position.asSeq,
+      Field("position", PositionType, resolve = _.value.position.toSeq,
         description = "An array of a instruction number (starting with 0) followed by nested positions"),
       Field("instruction", OptionType(InstructionType), resolve = ctx =>
         ctx.ctx.idTo[Workflow](ctx.value.workflowId)

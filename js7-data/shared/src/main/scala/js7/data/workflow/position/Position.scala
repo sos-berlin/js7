@@ -89,11 +89,11 @@ final case class Position(branchPath: BranchPath, nr: InstructionNr)
   def forkBranchReversed: BranchPath =
     branchPath.reverse.dropWhile(o => !o.branchId.isFork)
 
-  def asSeq: IndexedSeq[Any] =
-    branchPath.toVector.flatMap(p => Array(p.nr.number, p.branchId.toSimpleType)) :+ nr.number
+  def toSeq: IndexedSeq[Any] =
+    branchPath.view.flatMap(p => Array(p.nr.number, p.branchId.toSimpleType)).toVector :+ nr.number
 
-  private[workflow] def asJsonArray: Vector[Json] =
-    branchPath.asJsonArray :+ nr.asJson
+  private[workflow] def toJsonSeq: Vector[Json] =
+    branchPath.toJsonSeq :+ nr.asJson
 
   override def toString = branchPath match {
     case Nil => nr.number.toString
@@ -112,7 +112,20 @@ object Position
   def apply(nr: Int): Position =
     Position(Nil, nr)
 
-  implicit val jsonEncoder: Encoder.AsArray[Position] = _.asJsonArray
+  def fromSeq(seq: Seq[Any]): Checked[Position] =
+    if (seq.size % 2 != 1)
+      Left(Problem.pure("Position sequence muss be of uneven length"))
+    else
+      for {
+        branchPath <- BranchPath.anySegmentsToCheckedBranchPath(seq dropRight 1 grouped 2)
+        nr <- seq.last match {
+          case i: Int => Right(InstructionNr(i))
+          case i: java.lang.Integer => Right(InstructionNr(i))
+          case o => Left(Problem(s"Instruction number (integer) expected in Position array instead of: $o"))
+        }
+      } yield Position(branchPath, nr)
+
+  implicit val jsonEncoder: Encoder.AsArray[Position] = _.toJsonSeq
 
   implicit val jsonDecoder: Decoder[Position] =
     cursor => cursor.as[List[Json]] flatMap (parts =>

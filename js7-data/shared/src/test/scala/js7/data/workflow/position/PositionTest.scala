@@ -12,29 +12,35 @@ import org.scalatest.freespec.AnyFreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class PositionTest extends AnyFreeSpec {
-
+final class PositionTest extends AnyFreeSpec
+{
   "JSON" in {
-    testJson(Position(1)               , json"""[ 1 ]""")
-    testJson(Position(1) / "BRANCH"    , json"""[ 1, "BRANCH" ]""")
-    testJson(Position(1) / "BRANCH" % 3, json"""[ 1, "BRANCH", 3 ]""")
-    testJson(Position(1) / 2           , json"""[ 1, 2 ]""")
-    testJson(Position(1) / 2 % 3       , json"""[ 1, 2, 3 ]""")
-    testJson(Position(1) / 2 % 3 / 4   , json"""[ 1, 2, 3, 4 ]""")
+    testJson(Position(1)                , json"""[ 1 ]""")
+    testJson(Position(1) / "BRANCH"     , json"""[ 1, "BRANCH" ]""")
+    testJson(Position(1) / "BRANCH" % 2 , json"""[ 1, "BRANCH", 2 ]""")
+    testJson(Position(1) / "A" % 2 / "B", json"""[ 1, "A", 2, "B" ]""")
 
     assert("""[ 1, 2 ]""".parseJsonOrThrow.as[Position].isLeft/*failed*/)
   }
 
-  "Represented as array of simple types" in {
-    assert(Position(1)                 .asSeq == Vector(1))
-    assert((Position(1) / "BRANCH" % 3).asSeq == Vector(1, "BRANCH", 3))
-    assert((Position(1) / 2 % 3)       .asSeq == Vector(1, 2, 3))
+  "toSeq - Represented as array of simple types" in {
+    assert(Position(1)                 .toSeq == Vector(1))
+    assert((Position(1) / "BRANCH" % 3).toSeq == Vector(1, "BRANCH", 3))
+  }
+
+  "fromSeq" in {
+    assert(Position.fromSeq(Nil) == Left(Problem("Position sequence muss be of uneven length")))
+    assert(Position.fromSeq(Vector("X")) == Left(Problem("Instruction number (integer) expected in Position array instead of: X")))
+    assert(Position.fromSeq(Vector(1, "BRANCH")) == Left(Problem("Position sequence muss be of uneven length")))
+    assert(Position.fromSeq(Vector(1, "BRANCH", "X")) == Left(Problem("Instruction number (integer) expected in Position array instead of: X")))
+    assert(Position.fromSeq(Vector(1, 2, 3)) == Left(Problem("BranchId (string) expected in Position array instead of: 2")))
+    assert(Position.fromSeq(Vector(1))              == Right(Position(1)))
+    assert(Position.fromSeq(Vector(1, "BRANCH", 3)) == Right((Position(1) / "BRANCH" % 3)))
   }
 
   "Represented as array of JSON types" in {
-    assert(Position(1)                 .asJsonArray == Vector(1.asJson))
-    assert((Position(1) / "BRANCH" % 3).asJsonArray == Vector(1.asJson, "BRANCH".asJson, 3.asJson))
-    assert((Position(1) / 2 % 3)       .asJsonArray == Vector(1.asJson, 2.asJson, 3.asJson))
+    assert(Position(1)                 .toJsonSeq == Vector(1.asJson))
+    assert((Position(1) / "BRANCH" % 3).toJsonSeq == Vector(1.asJson, "BRANCH".asJson, 3.asJson))
   }
 
   "test" in {
@@ -46,14 +52,14 @@ final class PositionTest extends AnyFreeSpec {
 
   "dropChild" in {
     assert(Position(1).dropChild == None)
-    assert((Position(1) / 2 % 3).dropChild == Some(Position(1)))
-    assert((Position(1) / 2 % 3 / 4 % 5).dropChild == Some(Position(1) / 2 % 3))
+    assert((Position(1) / "A" % 2).dropChild == Some(Position(1)))
+    assert((Position(1) / "A" % 2 / "B" % 3).dropChild == Some(Position(1) / "A" % 2))
   }
 
   "splitBranchAndNr" in {
     assert(Position(1).splitBranchAndNr == None)
-    assert((Position(1) / 2 % 3).splitBranchAndNr == Some((Position(1), BranchId(2), InstructionNr(3))))
-    assert((Position(1) / 2 % 3 / 4 % 5).splitBranchAndNr == Some((Position(1) / 2 % 3, BranchId(4), InstructionNr(5))))
+    assert((Position(1) / "A" % 2).splitBranchAndNr == Some((Position(1), BranchId("A"), InstructionNr(2))))
+    assert((Position(1) / "A" % 2 / "B" % 2).splitBranchAndNr == Some((Position(1) / "A" % 2, BranchId("B"), InstructionNr(2))))
   }
 
   "BranchPath" in {

@@ -18,12 +18,10 @@ object BranchPath
     def %(nr: InstructionNr): Position =
       Position(this :: Nil, nr)
   }
-  object Segment {
+  object Segment
+  {
     def apply(nr: InstructionNr, branchId: String): Segment =
       Segment(nr, BranchId.Named(branchId))
-
-    def apply(nr: InstructionNr, index: Int): Segment =
-      Segment(nr, BranchId.Indexed(index))
   }
 
   def normalize(branchPath: BranchPath): BranchPath =

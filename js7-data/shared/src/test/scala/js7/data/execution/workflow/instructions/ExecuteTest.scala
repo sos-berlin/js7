@@ -38,15 +38,15 @@ final class ExecuteTest extends AnyFreeSpec {
   }
 
   "toEvent" in {
-    assert(toEvent(Outcome.Succeeded(ReturnCode(0))) == Some(orderId <-: OrderMoved(Position(1) / 2 % 4)))
-    assert(toEvent(Outcome.Succeeded(ReturnCode(1))) == Some(orderId <-: OrderMoved(Position(1) / 2 % 4)))
+    assert(toEvent(Outcome.Succeeded(ReturnCode(0))) == Some(orderId <-: OrderMoved(Position(1) / "A" % 21)))
+    assert(toEvent(Outcome.Succeeded(ReturnCode(1))) == Some(orderId <-: OrderMoved(Position(1) / "A" % 21)))
     assert(toEvent(Outcome.Failed(ReturnCode(1))) == Some(orderId <-: OrderFailedCatchable(Outcome.Failed(ReturnCode(1)))))
     assert(toEvent(Outcome.Disrupted(Problem("DISRUPTION"))) == Some(orderId <-: OrderFailedCatchable(Outcome.Disrupted(Problem("DISRUPTION")))))
   }
 
   private def toEvent(outcome: Outcome): Option[KeyedEvent[OrderActorEvent]] = {
-    val order = Order(orderId, (WorkflowPath("/WORKFLOW") ~ "VERSION" ) /: (Position(1) / 2 % 3), Order.Processed,
-      historicOutcomes = HistoricOutcome(Position(1) / 2 % 2, outcome) :: Nil)
+    val order = Order(orderId, (WorkflowPath("/WORKFLOW") ~ "VERSION" ) /: (Position(1) / "A" % 20), Order.Processed,
+      historicOutcomes = HistoricOutcome(Position(1) / "B" % 20, outcome) :: Nil)
     ExecuteExecutor.toEvent(orderContext, order, executeAnonymous).orThrow
   }
 }
