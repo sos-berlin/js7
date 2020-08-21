@@ -229,7 +229,7 @@ final case class Order[+S <: Order.State](
     checkedState[A].orThrow
 
   def checkedState[A <: State: ClassTag]: Checked[Order[A]] =
-    Checked.fromOption(ifState[A], Problem(s"'$id' should be in state ${implicitClass[A].simpleScalaName}, but is in state $state"))
+    Checked.fromOption(ifState[A], Problem(s"'$id' is expected to be in state ${implicitClass[A].simpleScalaName}, but is in state $state"))
 
   def ifState[A <: State: ClassTag]: Option[Order[A]] =
     isState[A] ? this.asInstanceOf[Order[A]]
