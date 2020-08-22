@@ -68,7 +68,6 @@ object Dependencies
 
   val fastparse           = "com.lihaoyi" %% "fastparse" % fastparseVersion
 
-  val mockito             = "org.mockito" % "mockito-core" % "1.10.19"
   val intelliJAnnotations = "com.intellij" % "annotations" % "12.0"
   val snakeYaml           = "org.yaml" % "snakeyaml" % "1.24"
 

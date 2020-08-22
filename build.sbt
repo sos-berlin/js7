@@ -307,22 +307,19 @@ lazy val `js7-common` = project.dependsOn(`js7-base`.jvm, `js7-data`.jvm, `js7-t
   .settings {
     import Dependencies._
     libraryDependencies ++=
-      "io.monix" %%% "monix-eval" % monixVersion ++
-      "io.monix" %%% "monix-reactive" % monixVersion ++
       scalaXml ++
       scalaLogging ++
-      javaxInject ++
-      guice ++
       typesafeConfig ++
-      akkaHttpTestkit % "test" ++
       akkaHttp ++
       akkaActor ++
       akkaSlf4j ++
+      akkaHttpTestkit % "test" ++
+      javaxInject ++
+      guice ++
       guava ++
       snakeYaml ++
       findbugs % "compile" ++
       scalaTest % "test" ++
-      mockito % "test" ++
       log4j % "test" ++
       lmaxDisruptor % "test"
     }
@@ -476,7 +473,6 @@ lazy val `js7-agent` = project.dependsOn(`js7-agent-data`, `js7-core`, `js7-comm
       intelliJAnnotations % "compile" ++
       scalactic ++
       guice ++
-      mockito % "test" ++
       scalaTest % "test" ++
       log4j % "test" ++
       lmaxDisruptor % "test"
@@ -530,7 +526,6 @@ lazy val `js7-taskserver` = project
       akkaSlf4j ++
       scalactic ++
       guava ++
-      mockito % "test" ++
       scalaTest % "test" ++
       log4j % "test" ++
       lmaxDisruptor % "test"
@@ -547,7 +542,6 @@ lazy val `js7-tests` = project.dependsOn(`js7-controller`, `js7-agent`, `js7-pro
     libraryDependencies ++=
       akkaHttpTestkit % "test" ++  // For IntelliJ IDEA 2018.2
       scalaTest % "test" ++
-      mockito % "test" ++
       hamcrest % "test" ++
       log4j % "test" ++
       lmaxDisruptor % "test"
