@@ -26,8 +26,7 @@ import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.parser.WorkflowParser
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.proxy.ControllerApi
-import js7.proxy.javaapi.JAdmission
-import js7.proxy.javaapi.data.JHttpsConfig
+import js7.proxy.javaapi.data.auth.{JAdmission, JHttpsConfig}
 import js7.tests.controller.proxy.ClusterProxyTest.{backupUserAndPassword, primaryCredentials, primaryUserAndPassword, workflow}
 import js7.tests.controller.proxy.JournaledProxyClusterTest._
 import monix.eval.Task

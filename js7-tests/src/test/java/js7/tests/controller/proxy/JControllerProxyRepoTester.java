@@ -16,13 +16,13 @@ import js7.data.item.TypedPath;
 import js7.data.item.VersionId;
 import js7.data.workflow.WorkflowPath;
 import js7.proxy.javaapi.JControllerProxy;
-import js7.proxy.javaapi.JEventAndControllerState;
-import js7.proxy.javaapi.data.JUpdateRepoOperation;
-import js7.proxy.javaapi.data.JWorkflowId;
+import js7.proxy.javaapi.data.controller.JEventAndControllerState;
+import js7.proxy.javaapi.data.item.JUpdateRepoOperation;
+import js7.proxy.javaapi.data.workflow.JWorkflowId;
 import reactor.core.publisher.Flux;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static js7.proxy.javaapi.utils.VavrUtils.getOrThrow;
+import static js7.proxy.javaapi.data.common.VavrUtils.getOrThrow;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -55,7 +55,7 @@ final class JControllerProxyRepoTester
                 versionId,
                 Flux.fromStream(
                     itemJsons.stream()
-                        .map(o -> JUpdateRepoOperation.addOrReplace(sign(o)))))
+                        .map(json -> JUpdateRepoOperation.addOrReplace(sign(json)))))
             .get(99, SECONDS));
 
         whenWorkflowAdded.get(99, SECONDS);

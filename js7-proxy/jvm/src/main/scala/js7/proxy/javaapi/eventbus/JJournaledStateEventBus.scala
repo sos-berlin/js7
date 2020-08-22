@@ -4,7 +4,7 @@ import js7.base.annotation.javaApi
 import js7.base.utils.Assertions.assertThat
 import js7.data.event.{Event, JournaledState, KeyedEvent, Stamped}
 import js7.proxy.JournaledStateEventBus
-import js7.proxy.javaapi.data.{JJournaledState, JavaWrapper}
+import js7.proxy.javaapi.data.common.{JJournaledState, JavaWrapper}
 import scala.jdk.CollectionConverters._
 
 class JJournaledStateEventBus[JS <: JJournaledState[JS, S], S <: JournaledState[S]](val underlying: JournaledStateEventBus[S])

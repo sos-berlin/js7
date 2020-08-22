@@ -20,8 +20,10 @@ import js7.base.web.HttpClient
 import js7.common.http.RecouplingStreamReader
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.data.event.{AnyKeyedEvent, Event, EventApi, EventId, EventRequest, EventSeqTornProblem, JournaledState, Stamped}
-import js7.proxy.ProxyEvent.{ProxyCoupled, ProxyCouplingError, ProxyDecoupled}
 import js7.proxy.configuration.ProxyConf
+import js7.proxy.data.ProxyEvent
+import js7.proxy.data.ProxyEvent.{ProxyCoupled, ProxyCouplingError, ProxyDecoupled}
+import js7.proxy.data.event.{EventAndState, ProxyStarted}
 import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
 import monix.reactive.Observable

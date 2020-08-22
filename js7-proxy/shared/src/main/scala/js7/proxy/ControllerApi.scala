@@ -16,6 +16,8 @@ import js7.data.event.{Event, EventId}
 import js7.data.item.{UpdateRepoOperation, VersionId}
 import js7.data.order.FreshOrder
 import js7.proxy.configuration.ProxyConf
+import js7.proxy.data.ProxyEvent
+import js7.proxy.data.event.EventAndState
 import monix.eval.Task
 import monix.reactive.Observable
 

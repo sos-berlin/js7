@@ -25,8 +25,9 @@ import js7.data.order.{FreshOrder, OrderEvent, OrderId}
 import js7.data.workflow.parser.WorkflowParser
 import js7.data.workflow.position.Position
 import js7.proxy.configuration.ProxyConf
+import js7.proxy.data.event.{EventAndState, ProxyStarted}
 import js7.proxy.javaapi.JControllerApi
-import js7.proxy.{ControllerApi, EventAndState, JournaledProxy, ProxyStarted}
+import js7.proxy.{ControllerApi, JournaledProxy}
 import js7.tests.controller.proxy.ClusterProxyTest
 import js7.tests.controller.proxy.history.JControllerProxyHistoryTest._
 import js7.tests.controller.proxy.history.JControllerProxyHistoryTester.TestWorkflowId

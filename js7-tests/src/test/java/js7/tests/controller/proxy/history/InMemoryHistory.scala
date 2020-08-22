@@ -8,11 +8,11 @@ import js7.data.job.ReturnCode
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
-import js7.proxy.javaapi.JEventAndControllerState
-import js7.proxy.javaapi.data.order.JOrderEvent
+import js7.proxy.javaapi.data.common.VavrUtils.getOrThrow
+import js7.proxy.javaapi.data.controller.JEventAndControllerState
 import js7.proxy.javaapi.data.order.JOrderEvent.{JOrderAdded, JOrderCancelled, JOrderFailed, JOrderFinished, JOrderForked, JOrderJoined, JOrderProcessed, JOrderProcessingStarted, JOrderStdWritten}
-import js7.proxy.javaapi.data.{JOrder, JWorkflowPosition}
-import js7.proxy.javaapi.utils.VavrUtils.getOrThrow
+import js7.proxy.javaapi.data.order.{JOrder, JOrderEvent}
+import js7.proxy.javaapi.data.workflow.position.JWorkflowPosition
 import js7.tests.controller.proxy.history.InMemoryHistory.{terminatedAt, _}
 import js7.tests.controller.proxy.history.JControllerProxyHistoryTester.{TestOrderId, TestWorkflowId}
 import js7.tests.testenv.DirectoryProvider.StdoutOutput

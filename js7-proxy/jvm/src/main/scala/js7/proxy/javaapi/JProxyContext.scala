@@ -11,9 +11,9 @@ import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.message.ProblemCodeMessages
 import js7.common.system.ThreadPools
 import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
-import js7.proxy.ProxyEvent
 import js7.proxy.configuration.ProxyConfs
-import js7.proxy.javaapi.data.JHttpsConfig
+import js7.proxy.data.ProxyEvent
+import js7.proxy.javaapi.data.auth.{JAdmission, JHttpsConfig}
 import js7.proxy.javaapi.eventbus.{JControllerEventBus, JStandardEventBus}
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -74,6 +74,6 @@ extends HasCloser
   : Seq[Resource[Task, HttpControllerApi]] =   {
     if (admissions.asScala.isEmpty) throw new IllegalArgumentException("admissions argument must not be empty")
     for ((a, i) <- admissions.asScala.map(_.underlying).zipWithIndex.toSeq)
-      yield AkkaHttpControllerApi.resource(a.uri, a.userAndPassword, httpsConfig.toScala, name = s"JournaledProxy-Controller-$i")
+      yield AkkaHttpControllerApi.resource(a.uri, a.userAndPassword, httpsConfig.underlying, name = s"JournaledProxy-Controller-$i")
   }
 }

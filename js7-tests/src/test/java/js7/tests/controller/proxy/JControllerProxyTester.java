@@ -5,14 +5,14 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import js7.base.problem.Problem;
-import js7.proxy.ProxyEvent;
-import js7.proxy.javaapi.JAdmission;
+import js7.proxy.data.ProxyEvent;
 import js7.proxy.javaapi.JControllerProxy;
 import js7.proxy.javaapi.JProxyContext;
-import js7.proxy.javaapi.data.JHttpsConfig;
+import js7.proxy.javaapi.data.auth.JAdmission;
+import js7.proxy.javaapi.data.auth.JHttpsConfig;
 import js7.proxy.javaapi.eventbus.JStandardEventBus;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static js7.proxy.javaapi.utils.VavrUtils.getOrThrow;
+import static js7.proxy.javaapi.data.common.VavrUtils.getOrThrow;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 

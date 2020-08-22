@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import js7.base.problem.Problem;
-import js7.proxy.ProxyEvent;
+import js7.proxy.data.ProxyEvent;
 import js7.proxy.javaapi.eventbus.EventSubscription;
 import js7.proxy.javaapi.eventbus.JStandardEventBus;
 import org.slf4j.Logger;

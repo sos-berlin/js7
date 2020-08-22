@@ -12,7 +12,7 @@ import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.parser.WorkflowParser
 import js7.proxy.configuration.ProxyConfs
-import js7.proxy.javaapi.JCredentials
+import js7.proxy.javaapi.data.auth.JCredentials
 import js7.tests.controller.proxy.ClusterProxyTest._
 import js7.tests.testenv.ControllerClusterForScalaTest
 import monix.eval.Task

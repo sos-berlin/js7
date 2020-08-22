@@ -11,9 +11,9 @@ import js7.controller.data.ControllerCommand
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
-import js7.proxy.javaapi.JAdmission
-import js7.proxy.javaapi.data.JHttpsConfig
-import js7.proxy.{ControllerApi, EventAndState}
+import js7.proxy.ControllerApi
+import js7.proxy.data.event.EventAndState
+import js7.proxy.javaapi.data.auth.{JAdmission, JHttpsConfig}
 import js7.tests.controller.proxy.ClusterProxyTest.{backupUserAndPassword, primaryUserAndPassword, workflow}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec

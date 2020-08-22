@@ -11,11 +11,14 @@ import js7.controller.data.ControllerCommand
 import js7.data.event.Event
 import js7.data.item.VersionId
 import js7.proxy.configuration.ProxyConf
-import js7.proxy.javaapi.data.{JControllerCommand, JFreshOrder, JUpdateRepoOperation}
+import js7.proxy.data.ProxyEvent
+import js7.proxy.javaapi.data.common.ReactorConverters._
+import js7.proxy.javaapi.data.common.VavrConverters._
+import js7.proxy.javaapi.data.controller.{JControllerCommand, JEventAndControllerState}
+import js7.proxy.javaapi.data.item.JUpdateRepoOperation
+import js7.proxy.javaapi.data.order.JFreshOrder
 import js7.proxy.javaapi.eventbus.{JControllerEventBus, JStandardEventBus}
-import js7.proxy.javaapi.utils.ReactorConverters._
-import js7.proxy.javaapi.utils.VavrConverters._
-import js7.proxy.{ControllerApi, ControllerProxy, ProxyEvent}
+import js7.proxy.{ControllerApi, ControllerProxy}
 import monix.eval.Task
 import monix.execution.FutureUtils.Java8Extensions
 import monix.execution.Scheduler

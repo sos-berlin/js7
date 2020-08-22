@@ -4,7 +4,7 @@ import io.vavr.control.{Either => VEither}
 import js7.base.problem.Problem
 import js7.data.agent.{AgentRefId, AgentRefPath}
 import js7.data.item.{ItemId, VersionId}
-import js7.proxy.javaapi.data.JJsonable
+import js7.proxy.javaapi.data.common.JJsonable
 import js7.proxy.javaapi.data.item.JItemId
 
 final case class JAgentRefId(underlying: AgentRefId)

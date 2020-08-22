@@ -9,7 +9,7 @@ import js7.base.problem.Problem
 import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.system.StdoutOrStderr
-import js7.proxy.javaapi.data.JJsonable
+import js7.proxy.javaapi.data.common.JJsonable
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
 

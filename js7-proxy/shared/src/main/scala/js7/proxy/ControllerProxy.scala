@@ -6,6 +6,8 @@ import js7.controller.client.HttpControllerApi
 import js7.controller.data.ControllerState
 import js7.data.event.Event
 import js7.proxy.configuration.ProxyConf
+import js7.proxy.data.ProxyEvent
+import js7.proxy.data.event.EventAndState
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable

@@ -15,8 +15,7 @@ import js7.data.controller.ControllerItems.jsonCodec
 import js7.data.item.{InventoryItem, VersionId}
 import js7.data.job.ExecutablePath
 import js7.data.workflow.WorkflowPath
-import js7.proxy.javaapi.JAdmission
-import js7.proxy.javaapi.data.JHttpsConfig
+import js7.proxy.javaapi.data.auth.{JAdmission, JHttpsConfig}
 import js7.tests.controller.proxy.ClusterProxyTest.workflow
 import js7.tests.controller.proxy.JControllerProxyTest._
 import js7.tests.testenv.DirectoryProvider.script

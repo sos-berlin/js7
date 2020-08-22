@@ -3,7 +3,7 @@ package js7.proxy.javaapi.eventbus
 import js7.base.annotation.javaApi
 import js7.base.eventbus.StandardEventBus
 import js7.base.utils.Assertions.assertThat
-import js7.proxy.javaapi.data.JavaWrapper
+import js7.proxy.javaapi.data.common.JavaWrapper
 import scala.jdk.CollectionConverters._
 import scala.reflect.ClassTag
 

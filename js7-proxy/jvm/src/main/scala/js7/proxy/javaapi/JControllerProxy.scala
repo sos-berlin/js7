@@ -7,11 +7,13 @@ import js7.base.time.ScalaTime._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.data.event.{Event, KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.OrderTerminated
-import js7.proxy.javaapi.data.{JControllerState, JFreshOrder}
+import js7.proxy.ControllerProxy
+import js7.proxy.data.event.EventAndState
+import js7.proxy.javaapi.data.common.JavaUtils.Void
+import js7.proxy.javaapi.data.common.ReactorConverters._
+import js7.proxy.javaapi.data.controller.{JControllerState, JEventAndControllerState}
+import js7.proxy.javaapi.data.order.JFreshOrder
 import js7.proxy.javaapi.eventbus.JControllerEventBus
-import js7.proxy.javaapi.utils.JavaUtils.Void
-import js7.proxy.javaapi.utils.ReactorConverters._
-import js7.proxy.{ControllerProxy, EventAndState}
 import monix.execution.FutureUtils.Java8Extensions
 import monix.execution.Scheduler
 import reactor.core.publisher.Flux

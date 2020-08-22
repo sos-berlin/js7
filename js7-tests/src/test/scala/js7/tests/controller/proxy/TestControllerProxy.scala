@@ -19,7 +19,8 @@ import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.data.ControllerSnapshots.SnapshotJsonCodec
 import js7.controller.data.ControllerState
 import js7.data.event.{Event, EventId}
-import js7.proxy.{ControllerProxy, JournaledStateEventBus, ProxyEvent}
+import js7.proxy.data.ProxyEvent
+import js7.proxy.{ControllerProxy, JournaledStateEventBus}
 import js7.tests.controller.proxy.TestControllerProxy._
 import monix.eval.Task
 import monix.execution.Scheduler

@@ -1,7 +1,7 @@
 package js7.proxy.javaapi.data.workflow.position;
 
 import static java.util.Arrays.asList;
-import static js7.proxy.javaapi.utils.VavrUtils.getOrThrow;
+import static js7.proxy.javaapi.data.common.VavrUtils.getOrThrow;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 

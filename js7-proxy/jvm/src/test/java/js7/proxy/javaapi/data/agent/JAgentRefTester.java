@@ -3,7 +3,7 @@ package js7.proxy.javaapi.data.agent;
 import js7.base.web.Uri;
 import js7.data.agent.AgentRefPath;
 import js7.data.item.VersionId;
-import static js7.proxy.javaapi.utils.VavrUtils.getOrThrow;
+import static js7.proxy.javaapi.data.common.VavrUtils.getOrThrow;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 

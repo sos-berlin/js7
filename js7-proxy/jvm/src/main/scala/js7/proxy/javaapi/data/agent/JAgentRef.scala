@@ -4,7 +4,8 @@ import io.vavr.control.{Either => VEither}
 import js7.base.problem.Problem
 import js7.base.web.Uri
 import js7.data.agent.{AgentRef, AgentRefPath}
-import js7.proxy.javaapi.data.{JInventoryItem, JJsonable}
+import js7.proxy.javaapi.data.common.JJsonable
+import js7.proxy.javaapi.data.item.JInventoryItem
 
 final case class JAgentRef(underlying: AgentRef)
 extends JInventoryItem[JAgentRef, AgentRefPath]
