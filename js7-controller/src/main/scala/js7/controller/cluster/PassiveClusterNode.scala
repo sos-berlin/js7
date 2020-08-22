@@ -1,6 +1,6 @@
 package js7.controller.cluster
 
-import com.softwaremill.diffx._
+import com.softwaremill.diffx
 import io.circe.syntax._
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
@@ -45,7 +45,7 @@ import monix.execution.Scheduler
 import monix.reactive.Observable
 import scodec.bits.ByteVector
 
-/*private[cluster]*/ final class PassiveClusterNode[S <: JournaledState[S]: Diff](
+/*private[cluster]*/ final class PassiveClusterNode[S <: JournaledState[S]: diffx.Diff](
   ownId: NodeId,
   idToUri: Map[NodeId, Uri],
   activeId: NodeId,
@@ -530,7 +530,7 @@ import scodec.bits.ByteVector
     for (recoveredJournalFile <- continuation.maybeRecoveredJournalFile if recoveredJournalFile.state != snapshot) {
       val msg = s"State from recovered journal file ${recoveredJournalFile.fileEventId} does not match snapshot in next journal file"
       logger.error(msg)
-      logger.info(compare(recoveredJournalFile.state, snapshot).show)
+      logger.info(diffx.compare(recoveredJournalFile.state, snapshot).show)
       sys.error(msg)
     }
 

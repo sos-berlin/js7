@@ -6,7 +6,7 @@ import akka.util.Timeout
 import cats.data.EitherT
 import cats.effect.ExitCase
 import cats.syntax.flatMap._
-import com.softwaremill.diffx.Diff
+import com.softwaremill.diffx
 import com.typesafe.config.{Config, ConfigUtil}
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, Paths}
@@ -60,7 +60,7 @@ import scala.concurrent.Promise
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
-final class Cluster[S <: JournaledState[S]: Diff](
+final class Cluster[S <: JournaledState[S]: diffx.Diff](
   journalMeta: JournalMeta,
   persistence: JournaledStatePersistence[S],
   eventWatch: RealEventWatch,
