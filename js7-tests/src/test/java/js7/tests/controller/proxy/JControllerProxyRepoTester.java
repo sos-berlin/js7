@@ -1,7 +1,9 @@
 package js7.tests.controller.proxy;
 
+import io.vavr.Tuple2;
 import io.vavr.control.Either;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
@@ -48,6 +50,23 @@ final class JControllerProxyRepoTester
 
         CompletableFuture<JEventAndControllerState<Event>> whenWorkflowAdded =
             awaitEvent(keyedEvent -> isItemAdded(keyedEvent, bWorkflowPath));
+
+        // Try to add items with invalid signature
+        assertThat(
+            proxy.api()
+                .updateRepo(
+                    versionId,
+                    Flux.fromStream(
+                        itemJsons.stream()
+                            .map(json -> JUpdateRepoOperation.addOrReplace(SignedString.of(json, "Silly", "MY-SILLY-FAKE")))))
+                .get(99, SECONDS)
+                .mapLeft(problem -> new Tuple2<>(
+                    Optional.ofNullable(problem.codeOrNull()).map(ProblemCode::string),
+                    problem.toString())),
+            equalTo(
+                Either.left(new Tuple2<>(
+                    Optional.of("TamperedWithSignedMessage"),
+                    "TamperedWithSignedMessage: The message does not match its signature"))));
 
         // Add items
         getOrThrow(proxy.api()
