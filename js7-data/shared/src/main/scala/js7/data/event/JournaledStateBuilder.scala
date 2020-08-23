@@ -1,5 +1,6 @@
 package js7.data.event
 
+import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
 import js7.base.time.{Stopwatch, Timestamp}
 import js7.base.utils.ScalaUtils.syntax._
@@ -131,4 +132,31 @@ trait JournaledStateBuilder[S <: JournaledState[S]]
   private def lastEventIdTimestamp: Timestamp =
     if (eventId == EventId.BeforeFirst) Timestamp.now
     else EventId.toTimestamp(eventId)
+
+}
+
+object JournaledStateBuilder
+{
+  final class Simple[S <: JournaledState[S]](S: JournaledState.Companion[S]) extends JournaledStateBuilder[S] {
+    private var _state = S.empty
+
+    protected def onInitializeState(state: S) =
+      _state = state
+
+    protected def onAddSnapshot = {
+      case o => _state = _state.applySnapshotObject(o).orThrow
+    }
+
+    protected def onOnAllSnapshotsAdded() = {}
+
+    protected def onAddEvent = {
+      case stamped => _state = _state.applyStampedEvents(stamped :: Nil).orThrow
+    }
+
+    def state = _state
+
+    def journalState = _state.journalState
+
+    def clusterState = _state.clusterState
+  }
 }

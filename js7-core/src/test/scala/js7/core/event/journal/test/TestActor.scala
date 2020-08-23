@@ -14,13 +14,11 @@ import js7.common.scalautil.Futures.implicits.SuccessFuture
 import js7.common.scalautil.Logger
 import js7.core.event.StampedKeyedEventBus
 import js7.core.event.journal.data.JournalMeta
-import js7.core.event.journal.recover.JournalRecoverer
+import js7.core.event.journal.recover.{JournaledStateRecoverer, Recovered}
 import js7.core.event.journal.test.TestActor._
-import js7.core.event.journal.test.TestData.TestConfig
 import js7.core.event.journal.test.TestJsonCodecs.TestKeyedEventJsonCodec
-import js7.core.event.journal.watch.JournalEventWatch
 import js7.core.event.journal.{JournalActor, JournalConf}
-import js7.data.event.{JournalId, KeyedEvent, Stamped}
+import js7.data.event.{JournalId, JournaledStateBuilder}
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 import scala.collection.mutable
@@ -36,7 +34,7 @@ extends Actor with Stash
 {
   override val supervisorStrategy = SupervisorStrategies.escalate
   private implicit val askTimeout = Timeout(99.seconds)
-  private val journalConf = JournalConf.fromConfig(config withFallback TestConfig)
+  private val journalConf = JournalConf.fromConfig(config)
   private val journalActor = tag[JournalActor.type](context.watch(context.actorOf(
     JournalActor.props[TestState](journalMeta, journalConf, new StampedKeyedEventBus, Scheduler.global,
       new EventIdGenerator(new EventIdClock.Fixed(currentTimeMillis = 1000/*EventIds start at 1000000*/)),
@@ -47,41 +45,25 @@ extends Actor with Stash
 
   override def preStart() = {
     super.preStart()
-    val recoverer = new MyJournalRecoverer()
-    recoverer.recoverAllAndTransferTo(journalActor = journalActor)
-    keyToAggregate ++= recoverer.recoveredJournalingActors.keyToJournalingActor map {
-      case (k: String, a) => k -> a
-      case o => sys.error(s"UNEXPECTED: $o")
+    JournaledStateRecoverer.recover(journalMeta, TestState.empty, () => new JournaledStateBuilder.Simple(TestState), config)
+    val recovered = JournaledStateRecoverer.recover(
+      journalMeta,
+      TestState.empty,
+      () => new JournaledStateBuilder.Simple(TestState),
+      config,
+      expectedJournalId = Some(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))))
+    val state = recovered.state
+    for (aggregate <- state.keyToAggregate.values) {
+      val actor = newAggregateActor(aggregate.key)
+      actor ! TestAggregateActor.Input.RecoverFromSnapshot(aggregate)
+      keyToAggregate += aggregate.key -> actor
     }
-  }
-
-  private class MyJournalRecoverer extends JournalActorRecoverer {
-    protected val sender = TestActor.this.sender()
-    protected val journalMeta = TestActor.this.journalMeta
-    protected val expectedJournalId = Some(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")))
-    protected def newJournalEventWatch = new JournalEventWatch(journalMeta, JournalEventWatch.TestConfig)
-
-    protected def snapshotToKey = {
-      case a: TestAggregate => a.key
-    }
-
-    protected def isDeletedEvent = Set(TestEvent.Removed)
-
-    def recoverSnapshot = {
-      case snapshot: TestAggregate =>
-        recoverActorForSnapshot(snapshot, newAggregateActor(snapshot.key))
-    }
-
-    def recoverNewKey = {
-      case stamped @ Stamped(_, _, KeyedEvent(key: String, _: TestEvent.Added)) =>
-        recoverActorForNewKey(stamped, newAggregateActor(key))
-
-      case _ =>
-    }
+    recovered.startJournalAndFinishRecovery(journalActor,
+      initialJournalIdForTest = Some(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))))
   }
 
   def receive = {
-    case JournalRecoverer.Output.JournalIsReady(_) =>
+    case Recovered.Output.JournalIsReady(_) =>
       context.become(ready)
       unstashAll()
       logger.info("Ready")

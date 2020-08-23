@@ -30,7 +30,7 @@ import js7.common.scalautil.Futures.promiseFuture
 import js7.common.scalautil.Logger
 import js7.common.scalautil.Logger.ops._
 import js7.common.utils.Exceptions.wrapException
-import js7.core.event.journal.recover.JournalRecoverer
+import js7.core.event.journal.recover.Recovered
 import js7.core.event.journal.{JournalActor, MainJournalingActor}
 import js7.core.event.state.JournaledStatePersistence
 import js7.core.problems.ReverseReleaseEventsProblem
@@ -38,7 +38,7 @@ import js7.data.agent.AgentRefPath
 import js7.data.controller.ControllerId
 import js7.data.crypt.InventoryItemVerifier
 import js7.data.event.JournalEvent.JournalEventsReleased
-import js7.data.event.{<-:, Event, EventId, JournalState, JournaledState, KeyedEvent, Stamped}
+import js7.data.event.{<-:, Event, EventId, JournalState, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.OrderProcessor
 import js7.data.execution.workflow.Workflows.ExecutableWorkflow
@@ -64,7 +64,7 @@ import shapeless.tag
 final class AgentOrderKeeper(
   controllerId: ControllerId,
   ownAgentRefPath: AgentRefPath,
-  recovered_ : OrderJournalRecoverer.Recovered,
+  recovered_ : Recovered[AgentState],
   signatureVerifier: SignatureVerifier,
   newTaskRunner: TaskRunner.Factory,
   persistence: JournaledStatePersistence[AgentState],
@@ -170,8 +170,8 @@ with Stash {
     case _ => stash()
   }
 
-  private def recover(recovered: OrderJournalRecoverer.Recovered): Unit = {
-    val state = recovered.agentState
+  private def recover(recovered: Recovered[AgentState]): Unit = {
+    val state = recovered.state
     journalState = state.journalState
     for (workflow <- state.idToWorkflow.values)
       wrapException(s"Error when recovering ${workflow.path}") {
@@ -186,15 +186,8 @@ with Stash {
         orderRegister.recover(order, workflow, actor)
         actor ! OrderActor.Input.Recover(order)
       }
-    val agentState = AgentState(recovered.eventId,
-      JournaledState.Standards.empty.copy(journalState = journalState),
-      orderRegister.values.view.map(o => o.order.id -> o.order).toMap,
-      workflowRegister.workflows.view.map(o => o.id -> o).toMap)
-    persistence.start(agentState)
-    recovered.startJournalAndFinishRecovery(
-      journalActor = journalActor,
-      agentState,
-      orderRegister.recoveredJournalingActors)
+    persistence.start(state)
+    recovered.startJournalAndFinishRecovery(journalActor, orderRegister.recoveredJournalingActors)
     become("Recovering")(recovering)
   }
 
@@ -203,7 +196,7 @@ with Stash {
       orderRegister(order.id).order = order
       proceedWithOrder(order.id)
 
-    case JournalRecoverer.Output.JournalIsReady(journalHeader) =>
+    case Recovered.Output.JournalIsReady(journalHeader) =>
       logger.info(s"${orderRegister.size} Orders and ${workflowRegister.size} Workflows recovered")
       if (!journalState.userIdToReleasedEventId.contains(controllerId.toUserId)) {
         // Automatically add Controller's UserId to list of users allowed to release events,
@@ -575,7 +568,7 @@ object AgentOrderKeeper {
   }
 
   private object Internal {
-    final case class Recover(recovered: OrderJournalRecoverer.Recovered)
+    final case class Recover(recovered: Recovered[AgentState])
     final case class ContinueAttachOrder(order: Order[Order.IsFreshOrReady], workflow: Workflow, promise: Promise[Checked[AgentCommand.Response.Accepted]])
     final case class Due(orderId: OrderId)
     object StillTerminating extends DeadLetterSuppression

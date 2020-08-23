@@ -189,8 +189,6 @@ with ReceiveLoggingActor.WithStash
   }
 
   protected def key = agentRefPath  // Only one version is active at any time
-  protected def recoverFromSnapshot(snapshot: Any) = throw new NotImplementedError
-  protected def recoverFromEvent(event: ControllerAgentEvent) = throw new NotImplementedError
   protected def snapshot = None  // ControllerOrderKeeper provides the AgentSnapshot
 
   private def newAgentClient(uri: Uri): AgentClient =

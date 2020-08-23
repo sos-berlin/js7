@@ -10,6 +10,7 @@ import io.circe.syntax.EncoderOps
 import java.io.EOFException
 import java.nio.file.Files.createTempDirectory
 import java.nio.file.Path
+import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
 import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
@@ -24,16 +25,15 @@ import js7.common.scalautil.Logger
 import js7.core.common.jsonseq.InputStreamJsonSeqReader
 import js7.core.event.journal.JournalActor
 import js7.core.event.journal.files.JournalFiles
-import js7.core.event.journal.test.TestData.testJournalMeta
+import js7.core.event.journal.test.TestData.{TestConfig, testJournalMeta}
 import js7.core.event.journal.test.TestJournalMixin._
 import js7.core.event.journal.test.TestJsonCodecs.TestKeyedEventJsonCodec
-import js7.data.event.{Event, KeyedEvent, Stamped}
+import js7.data.event.{Event, JournalId, KeyedEvent, Stamped}
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
-import js7.common.configutils.Configs._
 
 /**
   * @author Joacim Zschimmer
@@ -52,11 +52,12 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
   }
 
   protected def withTestActor(config: Config = ConfigFactory.empty)(body: (ActorSystem, ActorRef) => Unit): Unit = {
-    val actorSystem = newActorSystem(getClass.simpleScalaName, TestConfig)
+    val config_ = config withFallback TestConfig
+    val actorSystem = newActorSystem(getClass.simpleScalaName, config_)
     try {
       DeadLetterActor.subscribe(actorSystem, o => logger.warn(o))
       val whenJournalStopped = Promise[JournalActor.Stopped]()
-      val actor = actorSystem.actorOf(Props { new TestActor(config, journalMeta, whenJournalStopped) }, "TestActor")
+      val actor = actorSystem.actorOf(Props { new TestActor(config_, journalMeta, whenJournalStopped) }, "TestActor")
       body(actorSystem, actor)
       sleep(100.ms)  // Wait to let Terminated message of aggregate actors arrive at JournalActor (???)
       (actor ? TestActor.Input.Terminate) await 99.s
@@ -130,7 +131,8 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
         o.as[TestAggregate].orThrow
     }).toSet
 
-  protected final def journalJsons: Vector[Json] = journalJsons(JournalFiles.currentFile(journalMeta.fileBase).orThrow)
+  protected final def journalJsons: Vector[Json] =
+    journalJsons(JournalFiles.currentFile(journalMeta.fileBase).orThrow)
 
   protected final def journalJsons(file: Path): Vector[Json] =
     autoClosing(InputStreamJsonSeqReader.open(file)) { reader =>
@@ -165,16 +167,11 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
 private[journal] object TestJournalMixin
 {
   private val logger = Logger(getClass)
-  private val TestConfig = config"""
-    js7.akka.actor-message-log-level = Trace
-    js7.journal.dispatcher {
-      type = PinnedDispatcher
-    }
-    """
 
   private def normalizeValues(json: Json): Json = json.asObject match {
     case Some(jsonObject) =>
       var o = jsonObject
+      for (_ <- o("journalId")) o = o.add("journalId", JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")).asJson)
       for (_ <- o("startedAt")) o = o.add("startedAt", "STARTED-AT".asJson)
       for (_ <- o("timestamp")) o = o.add("timestamp", "TIMESTAMP".asJson)
       for (_ <- o("totalRunningTime")) o = o.add("totalRunningTime", 3600.asJson)

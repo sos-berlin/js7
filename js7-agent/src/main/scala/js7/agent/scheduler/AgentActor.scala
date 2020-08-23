@@ -4,7 +4,6 @@ import akka.actor.{ActorRef, PoisonPill, Props, Terminated}
 import akka.pattern.{ask, pipe}
 import cats.data.EitherT
 import javax.inject.{Inject, Singleton}
-import js7.agent.AgentState
 import js7.agent.configuration.{AgentConfiguration, AgentStartInformation}
 import js7.agent.data.AgentTermination
 import js7.agent.data.Problems.{AgentIsShuttingDown, ControllerAgentMismatch, DuplicateAgentRef, UnknownController}
@@ -15,7 +14,8 @@ import js7.agent.data.views.AgentOverview
 import js7.agent.scheduler.AgentActor._
 import js7.agent.scheduler.job.JobActor
 import js7.agent.scheduler.job.task.TaskRunner
-import js7.agent.scheduler.order.{AgentOrderKeeper, OrderJournalRecoverer}
+import js7.agent.scheduler.order.AgentOrderKeeper
+import js7.agent.{AgentState, AgentStateBuilder}
 import js7.base.auth.UserId
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.generic.Completed
@@ -23,7 +23,6 @@ import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.Closer.syntax._
 import js7.base.utils.{Closer, SetOnce}
 import js7.common.akkautils.{Akkas, SupervisorStrategies}
 import js7.common.event.EventIdGenerator
@@ -35,14 +34,14 @@ import js7.core.common.ActorRegister
 import js7.core.crypt.generic.GenericSignatureVerifier
 import js7.core.event.StampedKeyedEventBus
 import js7.core.event.journal.data.JournalMeta
-import js7.core.event.journal.recover.JournalRecoverer
+import js7.core.event.journal.recover.{JournaledStateRecoverer, Recovered}
 import js7.core.event.journal.watch.JournalEventWatch
 import js7.core.event.journal.{JournalActor, MainJournalingActor}
 import js7.core.event.state.JournaledStatePersistence
 import js7.data.agent.{AgentRefPath, AgentRunId}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{EventId, JournalEvent, JournalId, JournalState, KeyedEvent, Stamped}
+import js7.data.event.{EventId, JournalId, JournalState, KeyedEvent, Stamped}
 import js7.data.order.Order
 import js7.data.workflow.Workflow
 import monix.eval.Task
@@ -83,9 +82,16 @@ extends MainJournalingActor[AgentServerState, AgentEvent] {
 
   override def preStart() = {
     super.preStart()
-    val recoverer = new MyJournalRecoverer()
-    recoverer.recoverAll()
-    recoverer.startJournalAndFinishRecovery(journalActor, state)
+    val recovered = JournaledStateRecoverer.recover[AgentServerState](
+      journalMeta,
+      AgentServerState.empty,
+      () => new AgentServerStateBuilder,
+      agentConfiguration.config)
+    state = recovered.state
+    for (o <- state.idToController.values) {
+      addOrderKeeper(o.controllerId, o.agentRefPath, o.agentRunId)
+    }
+    recovered.startJournalAndFinishRecovery(journalActor)
   }
 
   override def postStop() = {
@@ -95,27 +101,8 @@ extends MainJournalingActor[AgentServerState, AgentEvent] {
     logger.debug("Stopped")
   }
 
-  private class MyJournalRecoverer extends JournalRecoverer[AgentServerState]
-  {
-    protected val journalMeta = AgentActor.this.journalMeta
-    protected val expectedJournalId = None
-
-    def recoverSnapshot = {
-      case snapshot @ RegisteredController(controllerId, agentRefPath, agentRunId) =>
-        state = state.applySnapshot(snapshot).orThrow
-        addOrderKeeper(controllerId, agentRefPath, agentRunId)
-    }
-
-    def recoverEvent = {
-      case Stamped(_, _, KeyedEvent(_: NoKey, event: AgentEvent)) =>
-        update(event)
-
-      case Stamped(_, _, KeyedEvent(_, _: JournalEvent)) =>
-    }
-  }
-
   def receive = {
-    case JournalRecoverer.Output.JournalIsReady(_) =>
+    case Recovered.Output.JournalIsReady(_) =>
       if (controllerToOrderKeeper.nonEmpty) {
         logger.info(s"${controllerToOrderKeeper.size} recovered Controller registrations: ${controllerToOrderKeeper.keys.mkString(", ")}")
       }
@@ -185,7 +172,7 @@ extends MainJournalingActor[AgentServerState, AgentEvent] {
             val agentRunId = AgentRunId(JournalId.random())
             response completeWith
               persist(AgentEvent.ControllerRegistered(controllerId, agentRefPath, agentRunId)) {
-                case (Stamped(_, _, KeyedEvent(NoKey, event)), journaledState) =>
+                case (Stamped(_, _, KeyedEvent(NoKey, event)), _) =>
                   update(event)
                   Right(AgentCommand.RegisterAsController.Response(agentRunId))
                 }
@@ -250,8 +237,8 @@ extends MainJournalingActor[AgentServerState, AgentEvent] {
   private def terminateOrderKeepers(terminate: AgentCommand.ShutDown): Future[AgentCommand.Response.Accepted] =
     Future.sequence(
       for (a <- controllerToOrderKeeper.values.map(_.actor)) yield
-        (a ? terminate).mapTo[AgentCommand.Response.Accepted])
-    .map { _ => AgentCommand.Response.Accepted }
+        (a ? terminate).mapTo[AgentCommand.Response.Accepted]
+    ).map(_ => AgentCommand.Response.Accepted)
 
   private def update(event: AgentEvent): Unit = {
     state = state.applyEvent(event).orThrow
@@ -263,8 +250,14 @@ extends MainJournalingActor[AgentServerState, AgentEvent] {
 
   private def addOrderKeeper(controllerId: ControllerId, agentRefPath: AgentRefPath, agentRunId: AgentRunId): ActorRef = {
     val journalMeta = JournalMeta(SnapshotJsonFormat, AgentKeyedEventJsonCodec, stateDirectory / s"controller-$controllerId")
-    val recovered = OrderJournalRecoverer.recover(journalMeta, agentRunId.journalId, agentConfiguration)  // May take minutes !!!
-    recovered.closeWithCloser
+
+    // May take minutes !!!
+    val recovered = JournaledStateRecoverer.recover[AgentState](
+      journalMeta,
+      AgentState.empty,
+      () => new AgentStateBuilder,
+      agentConfiguration.config)
+
     val journalActor = tag[JournalActor.type](actorOf(
       JournalActor.props[AgentState](journalMeta, agentConfiguration.journalConf, keyedEventBus, scheduler, eventIdGenerator),
       Akkas.encodeAsActorName(s"JournalActor-for-$controllerId")))

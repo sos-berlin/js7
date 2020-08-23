@@ -3,7 +3,6 @@ package js7.core.event.journal.test
 import akka.Done
 import akka.actor.{ActorRef, Status}
 import js7.base.generic.Accepted
-import js7.base.utils.ScalaUtils.cast
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.Logger
 import js7.core.event.journal.test.TestAggregateActor._
@@ -25,14 +24,10 @@ extends KeyedJournalingActor[TestState, TestEvent] {
 
   protected def snapshot = Option(aggregate)
 
-  protected def recoverFromSnapshot(o: Any) = {
-    aggregate = cast[TestAggregate](o)
-  }
-
-  protected def recoverFromEvent(event: TestEvent) =
-    update(event)
-
   def receive = {
+    case Input.RecoverFromSnapshot(aggregate) =>
+      this.aggregate = aggregate
+
     case command: Command =>
       command match {
 
@@ -155,6 +150,7 @@ private[journal] object TestAggregateActor
   private val logger = Logger(getClass)
 
   object Input {
+    final case class RecoverFromSnapshot(snapshot: TestAggregate)
     final case object Get
   }
 

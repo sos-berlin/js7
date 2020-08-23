@@ -29,6 +29,19 @@ extends EventDrivenState[This, Event]
   final def clusterState: ClusterState =
     standards.clusterState
 
+  def applySnapshotObject(obj: Any) =
+    obj match {
+      case o: JournalState =>
+        Right(withStandards(standards.copy(
+          journalState = o)))
+
+      case o: ClusterState =>
+        Right(withStandards(standards.copy(
+          clusterState = o)))
+
+      case o => snapshotObjectNotApplicable(o)
+    }
+
   override def applyStampedEvents(stampedEvents: Iterable[Stamped[KeyedEvent[Event]]]): Checked[This] =
     if (stampedEvents.isEmpty)
       Right(this)
@@ -73,6 +86,12 @@ object JournaledState
   object Standards
   {
     def empty = Standards(JournalState.empty, ClusterState.Empty)
+  }
+
+  final case class SnapshotObjectNotApplicableProblem(obj: Any, state: Any) extends Problem.Coded {
+    def arguments = Map(
+      "object" -> obj.getClass.scalaName,
+      "state" -> state.toString.truncateWithEllipsis(100))
   }
 
   final case class EventNotApplicableProblem(keyedEvent: KeyedEvent[Event], state: Any) extends Problem.Coded {

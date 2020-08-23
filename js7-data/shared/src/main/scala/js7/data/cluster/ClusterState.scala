@@ -21,6 +21,12 @@ extends EventDrivenState[ClusterState, ClusterEvent]
 {
   def isNonEmptyActive(id: NodeId): Boolean
 
+  def applySnapshotObject(o: Any) =
+    o match {
+      case o: ClusterState => Right(o)
+      case o => super.snapshotObjectNotApplicable(o)
+    }
+
   final def applyEvent(keyedEvent: KeyedEvent[ClusterEvent]): Checked[ClusterState] =
     keyedEvent match {
       case KeyedEvent(_: NoKey, event) =>

@@ -1,7 +1,7 @@
 package js7.core.event.journal.test
 
 import js7.base.problem.Checked
-import js7.data.event.{Event, EventId, JournalState, JournaledState, KeyedEvent}
+import js7.data.event.{Event, EventId, JournaledState, KeyedEvent}
 import monix.reactive.Observable
 
 /**
@@ -19,15 +19,13 @@ extends JournaledState[TestState]
     standards.toSnapshotObservable ++
       Observable.fromIterable(keyToAggregate.values)
 
-  def applySnapshot(snapshot: Any): TestState =
-    snapshot match {
+  override def applySnapshotObject(obj: Any) =
+    obj match {
       case o: TestAggregate =>
-        copy(keyToAggregate =
-          keyToAggregate + (o.key -> o))
+        Right(copy(keyToAggregate =
+          keyToAggregate + (o.key -> o)))
 
-      case o: JournalState =>
-        copy(standards = standards.copy(
-          journalState = o))
+      case o => super.applySnapshotObject(o)
     }
 
   def applyEvent(keyedEvent: KeyedEvent[Event]): Checked[TestState] =
@@ -57,7 +55,18 @@ extends JournaledState[TestState]
     copy(standards = standards)
 }
 
-object TestState
+object TestState extends JournaledState.Companion[TestState]
 {
   val empty = TestState(EventId.BeforeFirst, JournaledState.Standards.empty, Map.empty)
+
+  def name = "TestState"
+
+  def fromObservable(snapshotObjects: Observable[Any]) =
+    throw new NotImplementedError
+
+  implicit def snapshotObjectJsonCodec =
+    throw new NotImplementedError
+
+  implicit def keyedEventJsonDecoder =
+    throw new NotImplementedError
 }

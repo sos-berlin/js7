@@ -43,7 +43,7 @@ import js7.controller.problems.ControllerIsNotYetReadyProblem
 import js7.controller.repo.{RepoCommandExecutor, VerifiedUpdateRepo}
 import js7.core.command.CommandMeta
 import js7.core.common.ActorRegister
-import js7.core.event.journal.recover.{JournalRecoverer, Recovered}
+import js7.core.event.journal.recover.Recovered
 import js7.core.event.journal.{JournalActor, MainJournalingActor}
 import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.Problems.UnknownOrderProblem
@@ -333,7 +333,7 @@ with MainJournalingActor[ControllerState, Event]
     }
 
   private def journalIsStarting: Receive = {
-    case JournalRecoverer.Output.JournalIsReady(journalHeader) =>
+    case Recovered.Output.JournalIsReady(journalHeader) =>
       recoveredJournalHeader := journalHeader
       become("becomingReady")(becomingReady)  // `become` must be called early, before any persist!
 

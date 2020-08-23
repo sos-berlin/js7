@@ -1,5 +1,6 @@
 package js7.data.event
 
+import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.time.Timestamp
 import js7.data.event.EventDrivenStateTest._
@@ -58,5 +59,8 @@ private object EventDrivenStateTest
         case _ =>
           eventNotApplicable(keyedEvent)
       }
+
+    override def applySnapshotObject(o: Any): Checked[TestState] =
+      throw new NotImplementedError
   }
 }

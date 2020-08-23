@@ -2,10 +2,9 @@ package js7.core.event.journal
 
 import js7.base.generic.Accepted
 import js7.base.problem.Checked
-import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax._
 import js7.core.event.journal.KeyedJournalingActor._
-import js7.data.event.{AnyKeyedEvent, Event, JournaledState, KeyedEvent, Stamped}
+import js7.data.event.{Event, JournaledState, KeyedEvent, Stamped}
 import monix.eval.Task
 import scala.concurrent.Future
 import scala.concurrent.duration.{Duration, FiniteDuration}
@@ -18,8 +17,6 @@ extends JournalingActor[S, E]
 {
   protected def key: E#Key
   protected def snapshot: Option[Any]
-  protected def recoverFromSnapshot(snapshot: Any): Unit
-  protected def recoverFromEvent(event: E): Unit
   protected def finishRecovery() = {}
 
   protected final def snapshots: Future[Iterable[Any]] =
@@ -45,13 +42,6 @@ extends JournalingActor[S, E]
     }
 
   override def journaling = super.journaling orElse {
-    case Input.RecoverFromSnapshot(o) =>
-      recoverFromSnapshot(o)
-
-    case Input.RecoverFromEvent(Stamped(_, _, KeyedEvent(k, event))) =>
-      assertThat(k == key)
-      recoverFromEvent(event.asInstanceOf[E])
-
     case Input.FinishRecovery =>
       callFinishRecovery()
       sender() ! KeyedJournalingActor.Output.RecoveryFinished
@@ -68,8 +58,6 @@ extends JournalingActor[S, E]
 
 object KeyedJournalingActor {
   object Input {
-    final case class RecoverFromSnapshot(snapshot: Any)
-    final case class RecoverFromEvent(eventStamped: Stamped[AnyKeyedEvent])
     final case object FinishRecovery
   }
 

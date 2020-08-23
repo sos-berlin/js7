@@ -71,18 +71,19 @@ object JournaledStateRecoverer
     initialState: S,
     newStateBuilder: () => JournaledStateBuilder[S],
     config: Config,
-    runningSince: Deadline = now)
+    runningSince: Deadline = now,
+    expectedJournalId: Option[JournalId] = None)
   : Recovered[S] = {
     val file = JournalFiles.currentFile(journalMeta.fileBase).toOption
     val fileJournaledStateBuilder = new FileJournaledStateBuilder[S](
       journalFileForInfo = file getOrElse journalMeta.file(EventId.BeforeFirst)/*the expected new filename*/,
-      expectedJournalId = None,
+      expectedJournalId,
       newStateBuilder)
     val eventWatch = new JournalEventWatch(journalMeta, config)  // Closed with `Recovered#close`
 
     file match {
       case Some(file) =>
-        val recoverer = new JournaledStateRecoverer(file, expectedJournalId = None, journalMeta,
+        val recoverer = new JournaledStateRecoverer(file, expectedJournalId, journalMeta,
           () => fileJournaledStateBuilder)
         recoverer.recoverAll()
         val calculatedJournalHeader = fileJournaledStateBuilder.calculatedJournalHeader

@@ -14,7 +14,6 @@ import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.process.ProcessSignal
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.ScalaUtils.cast
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.Logger
 import js7.common.time.JavaTimeConverters._
@@ -53,13 +52,6 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
     if (stdouterr != null) stdouterr.close()
     super.postStop()
   }
-
-  protected def recoverFromSnapshot(snapshot: Any) = {
-    assertThat(order == null)
-    order = cast[Order[Order.State]](snapshot)
-  }
-
-  protected def recoverFromEvent(event: OrderEvent) = throw new NotImplementedError
 
   override protected def finishRecovery() = {
     assertThat(order != null, "No Order")

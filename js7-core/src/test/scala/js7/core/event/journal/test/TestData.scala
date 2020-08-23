@@ -1,8 +1,9 @@
 package js7.core.event.journal.test
 
-import js7.common.configutils.Configs._
 import java.nio.file.Path
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.common.configuration.JobSchedulerConfiguration
+import js7.common.configutils.Configs._
 import js7.core.event.journal.data.JournalMeta
 import js7.core.event.journal.test.TestJsonCodecs.TestKeyedEventJsonCodec
 
@@ -18,17 +19,10 @@ private[event] object TestData
     js7.journal.simulate-sync = 1ms
     js7.journal.snapshot.log-period = 10ms
     js7.journal.snapshot.log-actor-limit = 1
-    js7.journal.coalesce-event-limit = 1000
-    js7.journal.use-journaled-state-as-snapshot = true
     js7.journal.slow-check-state = true
-    js7.journal.snapshot.period = 1h
-    js7.journal.snapshot.when-bigger-than = 1G
-    js7.journal.ack-warn-durations = [ 10s ]
-    js7.journal.persist-warn-durations = [ 10s ]
-    js7.journal.users-allowed-to-release-events = []
     js7.journal.release-events-delay = 0s
     js7.journal.remove-obsolete-files = false  # DIFFERS FROM DEFAULT TO ALLOW AWAITNG FOR OLD EVENTS !
-    """
+  """.withFallback(JobSchedulerConfiguration.defaultConfig)
 
   val SnapshotJsonFormat = TypedJsonCodec[Any](
     Subtype[TestAggregate])
