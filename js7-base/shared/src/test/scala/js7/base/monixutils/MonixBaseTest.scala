@@ -148,6 +148,12 @@ final class MonixBaseTest extends AsyncFreeSpec
         .runToFuture
     }
 
+    "to(Set)" in {
+      Observable(1, 2, 2, 3).toL(Set)
+        .map((o: Set[Int]) => assert(o  == Set(1, 2, 3)))
+        .runToFuture
+    }
+
     "tapEach catches exception" in {
       Observable.range(1, 100)
         .tapEach {

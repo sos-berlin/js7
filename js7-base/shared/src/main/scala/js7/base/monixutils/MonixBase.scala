@@ -13,7 +13,7 @@ import monix.execution.cancelables.MultiAssignCancelable
 import monix.execution.{Cancelable, Scheduler}
 import monix.reactive.{Observable, OverflowStrategy}
 import scala.annotation.unchecked.uncheckedVariance
-import scala.collection.{Seq, SeqFactory, SeqOps}
+import scala.collection.{IterableFactory, IterableOps}
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.concurrent.{Future, TimeoutException}
@@ -54,7 +54,7 @@ object MonixBase
 
     implicit class RichMonixObservable[A](private val underlying: Observable[A]) extends AnyVal
     {
-      def toL[Col[x] <: SeqOps[x, Seq, Seq[x]]](implicit factory: SeqFactory[Col]): Task[Col[A @uncheckedVariance]] =
+      def toL[Col[x] <: IterableOps[x, Iterable, Iterable[x]]](implicit factory: IterableFactory[Col]): Task[Col[A @uncheckedVariance]] =
         underlying.foldLeftL(factory.newBuilder[A])(_ += _).map(_.result())
 
       def tapEach(f: A => Unit): Observable[A] =
