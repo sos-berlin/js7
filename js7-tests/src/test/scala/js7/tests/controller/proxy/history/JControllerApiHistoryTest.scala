@@ -1,5 +1,6 @@
 package js7.tests.controller.proxy.history
 
+import com.softwaremill.diffx.scalatest.DiffMatcher._
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
@@ -29,22 +30,20 @@ import js7.proxy.data.event.{EventAndState, ProxyStarted}
 import js7.proxy.javaapi.JControllerApi
 import js7.proxy.{ControllerApi, JournaledProxy}
 import js7.tests.controller.proxy.ClusterProxyTest
-import js7.tests.controller.proxy.history.JControllerProxyHistoryTest._
-import js7.tests.controller.proxy.history.JControllerProxyHistoryTester.TestWorkflowId
+import js7.tests.controller.proxy.history.JControllerApiHistoryTest._
+import js7.tests.controller.proxy.history.JControllerApiHistoryTester.TestWorkflowId
 import js7.tests.testenv.ControllerClusterForScalaTest.TestExecutablePath
 import js7.tests.testenv.DirectoryProvider.StdoutOutput
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalactic.source
 import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers._
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
-import org.scalatest.matchers.should.Matchers._
-import com.softwaremill.diffx.scalatest.DiffMatcher._
-import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 
-final class JControllerProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with ClusterProxyTest
+final class JControllerApiHistoryTest extends AnyFreeSpec with ProvideActorSystem with ClusterProxyTest
 {
   override protected val inventoryItems = TestWorkflow :: Nil
   override protected val agentRefPaths = AAgentRefPath :: BAgentRefPath :: Nil
@@ -195,13 +194,13 @@ final class JControllerProxyHistoryTest extends AnyFreeSpec with ProvideActorSys
   "Java history" in {
     runControllerAndBackup() { (primary, _, _, _) =>
       val api = new JControllerApi(apiResources, ProxyConf.default)
-      new JControllerProxyHistoryTester(api, TestWorkflow.path, primary.agents.map(_.localUri).asJava)
+      new JControllerApiHistoryTester(api, TestWorkflow.path, primary.agents.map(_.localUri).asJava)
         .test()
     }
   }
 }
 
-object JControllerProxyHistoryTest
+object JControllerApiHistoryTest
 {
   private val AAgentRefPath = AgentRefPath("/AGENT-A")
   private val BAgentRefPath = AgentRefPath("/AGENT-B")

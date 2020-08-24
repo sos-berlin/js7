@@ -34,11 +34,11 @@ final class JControllerApi private[js7](
   private[js7] val underlying = new ControllerApi(apiResources, proxyConf)
 
   /** Fetch event stream from Controller. */
-  def flux(proxyEventBus: JStandardEventBus[ProxyEvent]): Flux[JEventAndControllerState[Event]] =
-    flux(proxyEventBus, OptionalLong.empty())
+  def eventFlux(proxyEventBus: JStandardEventBus[ProxyEvent]): Flux[JEventAndControllerState[Event]] =
+    eventFlux(proxyEventBus, OptionalLong.empty())
 
   /** Fetch event stream from Controller. */
-  def flux(proxyEventBus: JStandardEventBus[ProxyEvent], after: OptionalLong/*EventId*/): Flux[JEventAndControllerState[Event]] =
+  def eventFlux(proxyEventBus: JStandardEventBus[ProxyEvent], after: OptionalLong/*EventId*/): Flux[JEventAndControllerState[Event]] =
     underlying.observable(proxyEventBus.underlying, after.toScala)
       .map(JEventAndControllerState.apply)
       .asFlux

@@ -44,6 +44,7 @@ extends JJournaledState[JControllerState, ControllerState]
       .map(JAgentRef.apply)
       .toVavr
 
+  /** Looks up an AgentRefPath in the current version. */
   def pathToAgentRef(agentRefPath: AgentRefPath): VEither[Problem, JAgentRef] =
     underlying.repo.pathTo[AgentRef](agentRefPath)
       .map(JAgentRef.apply)
@@ -57,6 +58,7 @@ extends JJournaledState[JControllerState, ControllerState]
         .map(JOrder.apply)
         .toJava
 
+  /** Looks up an OrderId and returns a Left(Problem) if the OrderId is unknown. */
   def idToCheckedOrder(orderId: OrderId): VEither[Problem, JOrder] =
     underlying.idToOrder.get(orderId)
       .map(JOrder.apply) match {

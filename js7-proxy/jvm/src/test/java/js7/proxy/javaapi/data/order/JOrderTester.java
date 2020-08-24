@@ -97,9 +97,9 @@ public class JOrderTester
     static void testForkedOrder(JOrder order) {
         assertThat(order.id(), equalTo(OrderId.of("ORDER-ID/A")));
         assertThat(order.workflowId(), equalTo(JWorkflowId.of(WorkflowPath.of("/WORKFLOW"), VersionId.of("1.0"))));
-        assertThat(order.position(), equalTo(getOrThrow(JPosition.fromList(asList(1, "fork+A", 2)))));
-        assertThat(order.position().toList(), equalTo(asList(1, "fork+A", 2)));
-        assertThat(order.position().toString(), equalTo("1/fork+A:2"));
+        assertThat(order.workflowPosition().position(), equalTo(getOrThrow(JPosition.fromList(asList(1, "fork+A", 2)))));
+        assertThat(order.workflowPosition().position().toList(), equalTo(asList(1, "fork+A", 2)));
+        assertThat(order.workflowPosition().position().toString(), equalTo("1/fork+A:2"));
         assertThat(order.workflowPosition(),
             equalTo(JWorkflowPosition.of(
                 JWorkflowId.of(WorkflowPath.of("/WORKFLOW"), VersionId.of("1.0")),

@@ -25,7 +25,7 @@ import static js7.proxy.javaapi.data.common.VavrUtils.getOrThrow;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-class JControllerProxyHistoryTester
+class JControllerApiHistoryTester
 {
     static JWorkflowId TestWorkflowId = JWorkflowId.of(WorkflowPath.of("/WORKFLOW"), VersionId.of("INITIAL"));
     static final OrderId TestOrderId = OrderId.of("ORDER");
@@ -34,7 +34,7 @@ class JControllerProxyHistoryTester
     private final WorkflowPath workflowPath;
     private final List<Uri> agentUris;
 
-    JControllerProxyHistoryTester(JControllerApi api, WorkflowPath workflowPath, List<Uri> agentUris) {
+    JControllerApiHistoryTester(JControllerApi api, WorkflowPath workflowPath, List<Uri> agentUris) {
         this.api = api;
         this.workflowPath = workflowPath;
         this.agentUris = agentUris;
@@ -46,7 +46,7 @@ class JControllerProxyHistoryTester
             JFreshOrder freshOrder = JFreshOrder.of(TestOrderId, workflowPath, Optional.empty(), ImmutableMap.of("KEY", "VALUE"));
             CompletableFuture<JEventAndControllerState<Event>> whenOrderFinished = new CompletableFuture<>();
 
-            Disposable firstSubscription = api.flux(proxyEventBus, OptionalLong.of(EventId.BeforeFirst()))
+            Disposable firstSubscription = api.eventFlux(proxyEventBus, OptionalLong.of(EventId.BeforeFirst()))
                 .doOnNext(eventAndState -> {
                     // OrderFinished terminates this test
                     if(eventAndState.stampedEvent().value().event() instanceof OrderFinished$ &&
@@ -66,7 +66,7 @@ class JControllerProxyHistoryTester
             // A second call with same EventId returns equal JEventAndControllerState
             JEventAndControllerState<Event> expectedES = whenOrderFinished.get(0, SECONDS);
             JControllerState state = api
-                .flux(proxyEventBus, OptionalLong.of(expectedES.stampedEvent().eventId()))
+                .eventFlux(proxyEventBus, OptionalLong.of(expectedES.stampedEvent().eventId()))
                 .map(JEventAndControllerState::state)
                 .take(1)
                 .collectList()

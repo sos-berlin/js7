@@ -11,7 +11,7 @@ import js7.proxy.javaapi.data.common.VavrConverters._
 import js7.proxy.javaapi.data.common.{JJsonable, JavaWrapper}
 import js7.proxy.javaapi.data.order.JOrder.{Forked, State, StateType}
 import js7.proxy.javaapi.data.workflow.JWorkflowId
-import js7.proxy.javaapi.data.workflow.position.{JPosition, JWorkflowPosition}
+import js7.proxy.javaapi.data.workflow.position.JWorkflowPosition
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
 import scala.reflect.ClassTag
@@ -20,9 +20,6 @@ import scala.reflect.ClassTag
 final case class JOrder(underlying: Order[Order.State])
 extends JJsonable[JOrder]
 {
-  def workflowPosition: JWorkflowPosition =
-    JWorkflowPosition(underlying.workflowPosition)
-
   protected type Underlying = Order[Order.State]
 
   protected def companion = JOrder
@@ -30,11 +27,11 @@ extends JJsonable[JOrder]
   def id: OrderId =
     underlying.id
 
+  def workflowPosition: JWorkflowPosition =
+    JWorkflowPosition(underlying.workflowPosition)
+
   def workflowId: JWorkflowId =
     JWorkflowId(underlying.workflowId)
-
-  def position: JPosition =
-    JPosition(underlying.position)
 
   def arguments: java.util.Map[String, String] =
     underlying.arguments.asJava

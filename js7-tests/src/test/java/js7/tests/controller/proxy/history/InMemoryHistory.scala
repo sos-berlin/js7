@@ -14,7 +14,7 @@ import js7.proxy.javaapi.data.order.JOrderEvent.{JOrderAdded, JOrderCancelled, J
 import js7.proxy.javaapi.data.order.{JOrder, JOrderEvent}
 import js7.proxy.javaapi.data.workflow.position.JWorkflowPosition
 import js7.tests.controller.proxy.history.InMemoryHistory.{terminatedAt, _}
-import js7.tests.controller.proxy.history.JControllerProxyHistoryTester.{TestOrderId, TestWorkflowId}
+import js7.tests.controller.proxy.history.JControllerApiHistoryTester.{TestOrderId, TestWorkflowId}
 import js7.tests.testenv.DirectoryProvider.StdoutOutput
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
