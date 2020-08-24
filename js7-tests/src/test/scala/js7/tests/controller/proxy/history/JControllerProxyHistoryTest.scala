@@ -40,6 +40,8 @@ import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
+import org.scalatest.matchers.should.Matchers._
+import com.softwaremill.diffx.scalatest.DiffMatcher._
 
 final class JControllerProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with ClusterProxyTest
 {
@@ -66,45 +68,46 @@ final class JControllerProxyHistoryTest extends AnyFreeSpec with ProvideActorSys
 
       runControllers(primary, backup) { (primaryController, _) =>
         val api = new ControllerApi(apiResources)
-          api.executeCommand(TakeSnapshot).await(99.s).orThrow
-          assertJournalFileCount(2)
+        api.executeCommand(TakeSnapshot).await(99.s).orThrow
+        assertJournalFileCount(2)
 
-          api.addOrder(TestOrder).await(99.s).orThrow
-          val finishedEventId = primaryController.eventWatch.await[OrderFinished](_.key == TestOrder.id).head.eventId
+        api.addOrder(TestOrder).await(99.s).orThrow
+        val finishedEventId = primaryController.eventWatch.await[OrderFinished](_.key == TestOrder.id).head.eventId
 
-          var releaseEventsEventId = EventId.BeforeFirst
-          var lastAddedEventId = EventId.BeforeFirst
-          primaryController.httpApi.login_(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))) await 99.s
-          var lastState = ControllerState.empty
-          var finished = false
-          var rounds = 0
-          while (!finished && rounds <= 100) {
-            rounds += 1
-            JournaledProxy.observable[ControllerState](apiResources, fromEventId = Some(lastState.eventId), _ => (), ProxyConf.default)
-              .doOnNext {
-                case EventAndState(Stamped(eventId, _, KeyedEvent(TestOrder.id, _: OrderFinished)), _, _) => Task {
-                  finished = true
-                }
-                case _ => Task.unit
+        var releaseEventsEventId = EventId.BeforeFirst
+        var lastAddedEventId = EventId.BeforeFirst
+        primaryController.httpApi.login_(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))) await 99.s
+        var lastState = ControllerState.empty
+        var finished = false
+        var rounds = 0
+        while (!finished && rounds <= 100) {
+          rounds += 1
+          JournaledProxy.observable[ControllerState](apiResources, fromEventId = Some(lastState.eventId), _ => (), ProxyConf.default)
+            .doOnNext {
+              case EventAndState(Stamped(_, _, KeyedEvent(TestOrder.id, _: OrderFinished)), _, _) => Task {
+                finished = true
               }
-              .take(3)  // Process two events (and initial ProxyStarted) each test round
-              .takeWhileInclusive(_ => !finished)
-              //.doOnNext(es => Task(history.handleEventAndState(es)))
-              .doOnNext(es => Task {
-                if (es.stampedEvent.value.event == ProxyStarted) assert(es.state == lastState)
-                else assert(lastState.eventId < es.stampedEvent.eventId)
-                lastState = es.state
-                var keyedEvent = es.stampedEvent.value
-                for (controllerReady <- ifCast[ControllerReady](keyedEvent.event)) {
-                  keyedEvent = keyedEvent.copy(event = controllerReady.copy(totalRunningTime = 333.s))
-                }
-                es.stampedEvent.value match {
-                  case o @ KeyedEvent(orderId: OrderId, event: OrderEvent) => keyedEvents += orderId <-: event
-                  case _ =>
-                }
-              })
-              .completedL
-              .await(99.s)
+              case _ => Task.unit
+            }
+            .take(3)  // Process two events (and initial ProxyStarted) each test round
+            .takeWhileInclusive(_ => !finished)
+            .doOnNext(es => Task {
+              if (es.stampedEvent.value.event == ProxyStarted)
+                es.state should matchTo(lastState)
+              else
+                assert(lastState.eventId < es.stampedEvent.eventId)
+              lastState = es.state
+              var keyedEvent = es.stampedEvent.value
+              for (controllerReady <- ifCast[ControllerReady](keyedEvent.event)) {
+                keyedEvent = keyedEvent.copy(event = controllerReady.copy(totalRunningTime = 333.s))
+              }
+              es.stampedEvent.value match {
+                case KeyedEvent(orderId: OrderId, event: OrderEvent) => keyedEvents += orderId <-: event
+                case _ =>
+              }
+            })
+            .completedL
+            .await(99.s)
         }
         assert(rounds > 2)
 

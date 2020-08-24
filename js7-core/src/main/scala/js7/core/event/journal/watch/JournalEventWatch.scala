@@ -174,17 +174,18 @@ with JournalingObserver
     onEventsCommitted(positionAndEventId.value)
   }
 
-  def snapshotObjectsFor(after: EventId) =
+  def snapshotAfter(after: EventId) = {
     currentEventReaderOption match {
       case Some(current) if current.tornEventId <= after =>
-        Some(current.tornEventId -> current.snapshotObjects)
+        Some(current.snapshot)
       case _ =>
         historicJournalFileAfter(after)
-          .map { historyJournalFile =>
-            logger.debug(s"Reading snapshot from journal file '$historyJournalFile'")
-            historyJournalFile.afterEventId -> historyJournalFile.eventReader.snapshotObjects
+          .map { historicJournalFile =>
+            logger.debug(s"Reading snapshot from journal file '$historicJournalFile'")
+            historicJournalFile.eventReader.snapshot
           }
     }
+  }
 
   /**
     * @return `Task(None)` torn, `after` < `tornEventId`
@@ -229,7 +230,7 @@ with JournalingObserver
       .foreach(_.evictEventReader())
 
   private def historicJournalFileAfter(after: EventId): Option[HistoricJournalFile] =
-    afterEventIdToHistoric.values.toVector.reverseIterator find (_.afterEventId <= after)
+    afterEventIdToHistoric.values.toVector.reverseIterator.find(_.afterEventId <= after)
 
   def fileEventIds: Seq[EventId] =
     synchronized {

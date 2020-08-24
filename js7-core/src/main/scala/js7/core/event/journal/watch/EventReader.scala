@@ -140,8 +140,8 @@ extends AutoCloseable
     private def iteratorName = iterator_.toString
   }
 
-  final def snapshotObjects: CloseableIterator[Any] =
-    CloseableIterator.fromCloseable(new JournalReader(journalMeta, expectedJournalId, journalFile))(_.nextSnapshots())
+  final def snapshot: Observable[Any] =
+    JournalReader.snapshot(journalMeta, expectedJournalId, journalFile)
 
   /** Observes a journal file lines and length. */
   final def observeFile(position: Long, timeout: FiniteDuration, markEOF: Boolean = false, onlyLastOfChunk: Boolean)

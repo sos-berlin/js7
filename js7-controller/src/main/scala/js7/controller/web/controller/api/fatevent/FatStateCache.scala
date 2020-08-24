@@ -12,6 +12,7 @@ import js7.controller.web.controller.api.fatevent.FatStateCache._
 import js7.data.controller.ControllerId
 import js7.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import js7.data.fatevent.FatEvent
+import monix.eval.Task
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 
@@ -25,10 +26,11 @@ private[fatevent] final class FatStateCache(controllerId: ControllerId, eventWat
   @volatile
   private var lastDelivered: Option[FatState] = None  // Modified while on-the-fly built FatEvent stream is being sent to client !!!
 
-  def newAccessor(after: EventId) = fatStateFor(after).map(fatState => new Accessor(fatState, after))
+  def newAccessor(after: EventId): Option[Task[Accessor]] =
+    fatStateFor(after).map(_.map(fatState => new Accessor(fatState, after)))
 
-  private def fatStateFor(after: EventId): Option[FatState] =
-    useFatState(after) orElse recoverFatState(after)
+  private def fatStateFor(after: EventId): Option[Task[FatState]] =
+    useFatState(after).map(Task.pure) orElse recoverFatState(after)
 
   private def useFatState(after: EventId): Option[FatState] =
     lastDelivered match {
@@ -49,14 +51,11 @@ private[fatevent] final class FatStateCache(controllerId: ControllerId, eventWat
         }
     }
 
-  private def recoverFatState(after: EventId): Option[FatState] =
-    eventWatch.snapshotObjectsFor(after = after) map { case (eventId, snapshotObjectsCloseableIterator) =>
-      val controllerState = autoClosing(snapshotObjectsCloseableIterator) { _ =>
-        ControllerState.fromIterator(snapshotObjectsCloseableIterator)
-          .copy(eventId = eventId)
-      }
-      FatState(controllerId, controllerState.eventId, controllerState.repo, controllerState.idToOrder)
-    }
+  private def recoverFatState(after: EventId): Option[Task[FatState]] =
+    eventWatch.snapshotAfter(after = after).map(snapshotObservable =>
+      ControllerState.fromObservable(snapshotObservable)
+        .map(controllerState =>
+          FatState(controllerId, controllerState.eventId, controllerState.repo, controllerState.idToOrder)))
 
   final class Accessor(initialFatState: FatState, after: EventId)
   {

@@ -22,6 +22,7 @@ import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
 import js7.tester.CirceJsonTester.testJson
 import monix.execution.Scheduler.Implicits.global
+import monix.reactive.Observable
 import org.scalatest.freespec.AsyncFreeSpec
 
 /**
@@ -73,9 +74,12 @@ final class ControllerStateTest extends AsyncFreeSpec
   }
 
   "fromIterator is the reverse of toSnapshotObservable + EventId" in {
-    controllerState.toSnapshotObservable.toListL.runToFuture
-      .map(snapshotObjects =>
-        assert(controllerState == ControllerState.fromIterator(snapshotObjects.iterator)))
+    controllerState.toSnapshotObservable.toListL
+      .flatMap(snapshotObjects =>
+        ControllerState.fromObservable(Observable.fromIterable(snapshotObjects)))
+      .map(expectedState =>
+        assert(controllerState == expectedState))
+      .runToFuture
   }
 
   "toSnapshotObservable JSON" in {

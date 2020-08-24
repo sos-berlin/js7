@@ -1,5 +1,7 @@
 package js7.controller.web.controller.api.fatevent
 
+import cats.syntax.traverse._
+import cats.instances.option._
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.server.Directives.{complete, get, pathEnd}
 import akka.http.scaladsl.server.Route
@@ -83,8 +85,7 @@ trait FatEventRoute extends ControllerRouteProvider
 
   private def requestFatEvents(fatRequest: EventRequest[FatEvent]): Task[ToResponseMarshallable] = {
     val deadline = now + fatRequest.timeout.getOrElse(DefaultTimeout)
-    Task {
-      fatStateCache.newAccessor(fatRequest.after) match {
+      fatStateCache.newAccessor(fatRequest.after).sequence.map {
         case None =>
           ToResponseMarshallable(TearableEventSeq.Torn(fatRequest.after): TearableEventSeq[Seq, KeyedEvent[FatEvent]])
 
@@ -120,7 +121,6 @@ trait FatEventRoute extends ControllerRouteProvider
               limit = Int.MaxValue))
             .runToFuture
       }
-    }
   }
 }
 

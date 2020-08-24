@@ -26,14 +26,12 @@ private[history] final class InMemoryHistory
   def idToOrderEntry: java.util.Map[OrderId, OrderEntry] =
     _idToOrderEntry.toMap.asJava
 
-  def handleEventAndState(eventAndState: JEventAndControllerState[Event]): Unit = {
-    scribe.info(s"### ${eventAndState.stampedEvent.value} ${eventAndState.state.idToOrder(OrderId("ORDER-1"))}")
+  def handleEventAndState(eventAndState: JEventAndControllerState[Event]): Unit =
     eventAndState.stampedEvent.value match {
       case KeyedEvent(_: OrderId, _: OrderEvent) =>
         handleOrderEvent(eventAndState.asInstanceOf[JEventAndControllerState[OrderEvent]])
       case _ =>
     }
-  }
 
   private def handleOrderEvent(eventAndState: JEventAndControllerState[OrderEvent]): Unit = {
     val timestamp = eventAndState.stampedEvent.timestamp.toInstant

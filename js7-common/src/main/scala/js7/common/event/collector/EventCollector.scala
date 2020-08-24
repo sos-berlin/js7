@@ -46,6 +46,6 @@ object EventCollector
     (implicit scheduler: Scheduler)
     extends EventCollector(configuration)
   {
-    def snapshotObjectsFor(after: EventId) = None
+    def snapshotAfter(after: EventId) = None
   }
 }

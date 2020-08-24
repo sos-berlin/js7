@@ -9,7 +9,6 @@ import java.util.UUID.randomUUID
 import js7.base.crypt.silly.SillySigner
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
-import js7.base.utils.CloseableIterator
 import js7.base.web.Uri
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.event.collector.{EventCollector, EventDirectives}
@@ -36,6 +35,7 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import monix.execution.Scheduler
+import monix.reactive.Observable
 import org.scalatest.Args
 import org.scalatest.freespec.AnyFreeSpec
 import scala.annotation.tailrec
@@ -252,8 +252,8 @@ final class FatEventRouteTest extends AnyFreeSpec with RouteTester with FatEvent
     var lastEventsAfter = EventId(-1)
 
     // Return a minimum snapshot
-    def snapshotObjectsFor(after: EventId) = Some(EventId.BeforeFirst ->
-      CloseableIterator(
+    def snapshotAfter(after: EventId) = Some(
+      Observable(
         JournalHeader.initial(JournalId(randomUUID())),  // JournalHeader is implicitly a snapshot object
         controllerMetaState))
 

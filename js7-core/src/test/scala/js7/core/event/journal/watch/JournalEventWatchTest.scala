@@ -52,7 +52,7 @@ final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
       withJournal(journalMeta, MyEvents1.last.eventId) { (_, eventWatch) =>
         intercept[ProblemException] {
           // Read something to open the first journal file and to check its header
-          eventWatch.snapshotObjectsFor(EventId.BeforeFirst)
+          eventWatch.snapshotAfter(EventId.BeforeFirst).map(_.completedL await 99.s)
         } .problem == JournalIdMismatchProblem(file, expectedJournalId = myJournalId, foundJournalId = journalId)
       }
     }
@@ -286,7 +286,7 @@ final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
     }
   }
 
-  "snapshotObjectsFor" in {
+  "snapshotAfter" in {
     withJournalMeta { journalMeta_ =>
       val journalMeta = journalMeta_.copy(snapshotJsonCodec = SnapshotJsonCodec)
 
@@ -296,10 +296,9 @@ final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
         autoClosing(EventJournalWriter.forTest(journalMeta, after = EventId.BeforeFirst, journalId, Some(eventWatch), withoutSnapshots = false)) { writer =>
           writer.onJournalingStarted()  // Notifies eventWatch about this journal file
 
-          val Some((eventId, iterator)) = eventWatch.snapshotObjectsFor(EventId.BeforeFirst)
-          assert(eventId == EventId.BeforeFirst)
-          assert(iterator.toVector.map(_.isInstanceOf[JournalHeader]) == Vector(true))
-          iterator.close()
+          val Some(observable) = eventWatch.snapshotAfter(EventId.BeforeFirst)
+          // Contains only JournalHeader
+          assert(observable.toListL.await(99.s).map(_.asInstanceOf[JournalHeader].eventId) == List(EventId.BeforeFirst))
         }
       }
 
@@ -311,24 +310,28 @@ final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
         val lengthAndEventId = PositionAnd(Files.size(file), after)
         eventWatch.onJournalingStarted(journalMeta.file(after), journalId, lengthAndEventId, lengthAndEventId)
         locally {
-          val Some((eventId, iterator)) = eventWatch.snapshotObjectsFor(EventId.BeforeFirst)
-          assert(eventId == EventId.BeforeFirst && iterator.toVector.map(_.isInstanceOf[JournalHeader]) == Vector(true))  // Contains only JournalHeader
-          iterator.close()
+          val Some(observable) = eventWatch.snapshotAfter(EventId.BeforeFirst)
+          // Contains only JournalHeader
+          assert(observable.toListL.await(99.s).map(_.asInstanceOf[JournalHeader].eventId) == List(EventId.BeforeFirst))
         }
         locally {
-          val Some((eventId, iterator)) = eventWatch.snapshotObjectsFor(99L)
-          assert(eventId == EventId.BeforeFirst && iterator.toVector.map(_.isInstanceOf[JournalHeader]) == Vector(true))  // Contains only JournalHeader
-          iterator.close()
+          val Some(observable) = eventWatch.snapshotAfter(99L)
+          // Contains only JournalHeader
+          assert(observable.toListL.await(99.s).map(_.asInstanceOf[JournalHeader].eventId) == List(EventId.BeforeFirst))
         }
         locally {
-          val Some((eventId, iterator)) = eventWatch.snapshotObjectsFor(100L)
-          assert(eventId == 100 && iterator.filterNot(_.isInstanceOf[JournalHeader]).toList == snapshotObjects)
-          iterator.close()
+          val Some(observable) = eventWatch.snapshotAfter(100L)
+          assert(observable.map {
+            case o: JournalHeader => o.eventId
+            case o => o
+          }.toListL.await(99.s) == 100L :: snapshotObjects)
         }
         locally {
-          val Some((eventId, iterator)) = eventWatch.snapshotObjectsFor(101L)
-          assert(eventId == 100 && iterator.filterNot(_.isInstanceOf[JournalHeader]).toList == snapshotObjects)
-          iterator.close()
+          val Some(observable) = eventWatch.snapshotAfter(101L)
+          assert(observable.map {
+            case o: JournalHeader => o.eventId
+            case o => o
+          }.toListL.await(99.s) == 100L :: snapshotObjects)
         }
       }
     }

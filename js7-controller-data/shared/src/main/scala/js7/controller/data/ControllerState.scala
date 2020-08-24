@@ -165,12 +165,6 @@ object ControllerState extends JournaledState.Companion[ControllerState]
 
   implicit val journaledStateCompanion: JournaledState.Companion[ControllerState] = ControllerState
 
-  def fromIterator(snapshotObjects: Iterator[Any]): ControllerState = {
-    val builder = new ControllerStateBuilder
-    snapshotObjects foreach builder.addSnapshot
-    builder.state
-  }
-
   def fromObservable(snapshotObjects: Observable[Any]): Task[ControllerState] =
     Task.defer {
       val builder = new ControllerStateBuilder

@@ -542,6 +542,8 @@ lazy val `js7-tests` = project.dependsOn(`js7-controller`, `js7-agent`, `js7-pro
     libraryDependencies ++=
       akkaHttpTestkit % "test" ++  // For IntelliJ IDEA 2018.2
       scalaTest % "test" ++
+      diffx % "test" ++
+      diffxScalaTest % "test" ++
       hamcrest % "test" ++
       log4j % "test" ++
       lmaxDisruptor % "test"

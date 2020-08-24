@@ -65,7 +65,7 @@ trait EventWatch
     markEOF: Boolean = false, onlyLastOfChunk: Boolean = false)
   : Checked[Observable[PositionAnd[ByteVector]]]
 
-  def snapshotObjectsFor(after: EventId): Option[(EventId, CloseableIterator[Any])]
+  def snapshotAfter(after: EventId): Option[Observable[Any]]
 
   /** TEST ONLY - Blocking. */
   @TestOnly

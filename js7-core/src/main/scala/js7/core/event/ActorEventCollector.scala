@@ -20,7 +20,7 @@ final class ActorEventCollector private(
 extends EventCollector(configuration)(scheduler)
 with AutoCloseable
 {
-  def snapshotObjectsFor(after: EventId) = None
+  def snapshotAfter(after: EventId) = None
 
   private val actorRef = actorSystem.actorOf(
     Props {

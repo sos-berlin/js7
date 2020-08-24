@@ -13,7 +13,6 @@ import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
-import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.FutureCompletion
 import js7.base.utils.FutureCompletion.syntax._
 import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
@@ -69,22 +68,21 @@ trait SnapshotRoute extends ControllerRouteProvider
   private def historicSnapshot(eventId: EventId): Route =
     concurrentRequestsLimiter(
       completeTask(Task.defer {
-        eventWatch.snapshotObjectsFor(after = eventId)
-          .map { case (eventId, closeableIterator) =>
-            autoClosing(closeableIterator) { _ =>
-              ControllerState.fromIterator(closeableIterator)
-                .copy(eventId = eventId)
-            }
-          }
-          .toChecked(SnapshotForUnknownEventIdProblem(eventId))
-          .traverse(recoveredState =>
-            eventWatch.observe(EventRequest.singleClass[Event](after = recoveredState.eventId))
-              .takeWhile(_.eventId <= eventId)
-              .bufferTumbling(1024)
-              .foldLeft(recoveredState)((state, stampedEvents) => state.applyStampedEvents(stampedEvents).orThrow)
-              .lastL
-              //.flatTap(state => Task { stateCache.rememberReturnedState(state) })
-              .map(snapshotToHttpEntity))
+        eventWatch.snapshotAfter(after = eventId) match {
+          case None =>
+            Task.pure(Left(SnapshotForUnknownEventIdProblem(eventId)))
+
+          case Some(observable) =>
+            ControllerState.fromObservable(observable)
+              .flatMap(recoveredState =>
+                eventWatch.observe(EventRequest.singleClass[Event](after = recoveredState.eventId))
+                  .takeWhile(_.eventId <= eventId)
+                  .bufferTumbling(1024)
+                  .foldLeft(recoveredState)((state, stampedEvents) => state.applyStampedEvents(stampedEvents).orThrow)
+                  .lastL)
+              .map(snapshotToHttpEntity)
+              .map(Right.apply)
+        }
       }))
 
   private def snapshotToHttpEntity(state: ControllerState): HttpEntity.Chunked =

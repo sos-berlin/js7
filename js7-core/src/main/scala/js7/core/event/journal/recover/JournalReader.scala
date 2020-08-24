@@ -1,8 +1,10 @@
 package js7.core.event.journal.recover
 
+import cats.effect.Resource
 import io.circe.Json
 import java.nio.file.Path
 import js7.base.circeutils.CirceUtils._
+import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked._
 import js7.base.utils.AutoClosing.closeOnError
 import js7.base.utils.IntelliJUtils.intelliJuseImport
@@ -15,6 +17,8 @@ import js7.core.event.journal.data.JournalMeta
 import js7.core.event.journal.recover.JournalReader._
 import js7.data.event.JournalSeparators.{Commit, EventHeader, SnapshotFooter, SnapshotHeader, Transaction}
 import js7.data.event.{Event, EventId, JournalHeader, JournalId, KeyedEvent, Stamped}
+import monix.eval.Task
+import monix.reactive.Observable
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -102,7 +106,8 @@ extends AutoCloseable
       }
   }
 
-  def close() = jsonReader.close()
+  def close() =
+    jsonReader.close()
 
   /** For FileEventIterator */
   lazy val firstEventPosition: Long = {
@@ -120,11 +125,10 @@ extends AutoCloseable
     jsonReader.position
   }
 
-  def nextSnapshots(): Iterator[Any] =
-    Iterator(journalHeader) ++ nextSnapshotsWithoutJournalHeader()
-
-  def nextSnapshotsWithoutJournalHeader(): Iterator[Any] =
-    untilNoneIterator(nextSnapshotJson()).map(json => journalMeta.snapshotJsonCodec.decodeJson(json).orThrow)
+  private[recover] def readSnapshot: Observable[Any] =
+    journalHeader +:
+      Observable.fromIteratorUnsafe(untilNoneIterator(nextSnapshotJson()))
+        .mapParallelOrderedBatch()(json => journalMeta.snapshotJsonCodec.decodeJson(json).orThrow)
 
   @tailrec
   private def nextSnapshotJson(): Option[Json] = {
@@ -160,7 +164,7 @@ extends AutoCloseable
     transaction.clear()
   }
 
-  def nextEvents(): Iterator[Stamped[KeyedEvent[Event]]] =
+  private[recover] def readEvents(): Iterator[Stamped[KeyedEvent[Event]]] =
     untilNoneIterator(nextEvent())
 
   def nextEvent(): Option[Stamped[KeyedEvent[Event]]] = {
@@ -254,9 +258,15 @@ extends AutoCloseable
   def totalEventCount = _totalEventCount
 }
 
-private[recover] object JournalReader
+object JournalReader
 {
   private val logger = Logger(getClass)
+
+  def snapshot(journalMeta: JournalMeta, expectedJournalId: Option[JournalId], journalFile: Path): Observable[Any] =
+    Observable.fromResource(
+      Resource.fromAutoCloseable(Task(
+        new JournalReader(journalMeta, expectedJournalId, journalFile)))
+    ).flatMap(_.readSnapshot)
 
   private final class CorruptJournalException(message: String, journalFile: Path, positionAndJson: PositionAnd[Json])
   extends RuntimeException(
