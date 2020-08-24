@@ -19,6 +19,7 @@ import js7.base.utils.SetOnce
 import js7.base.web.HttpClient
 import js7.common.http.RecouplingStreamReader
 import js7.common.http.configuration.RecouplingStreamReaderConf
+import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventApi, EventId, EventRequest, EventSeqTornProblem, JournaledState, Stamped}
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.ProxyEvent
@@ -130,6 +131,20 @@ object JournaledProxy
                     lastState = o.state
                     o
                   }
+                  .pipeIf(fromEventId.isDefined, { obs =>
+                    // The returned snapshot probably is for an older EventId
+                    // (because it may be the original journal file snapshot).
+                    // So drop all events before the requested one and
+                    // replace the first event ProxyStarted (which we may have dropped)
+                    val from = fromEventId.get
+                    obs.dropWhile(_.stampedEvent.eventId < from)
+                      .map {
+                        case es if es.stampedEvent.eventId == from && es.stampedEvent.value.event != ProxyStarted =>
+                            es.copy(
+                              stampedEvent = es.stampedEvent.copy(value = NoKey <-: ProxyStarted),
+                              previousState = es.state)
+                        case o => o
+                      }})
                   .map(Right.apply)
                   .onErrorHandleWith { case t if fromEventId.isEmpty || !isTorn(t) =>
                     val continueWithState =
@@ -172,6 +187,7 @@ object JournaledProxy
 
     Observable.fromResource(apiResources.toVector.sequence)
       .flatMap(observable2)
+      .tapEach(o => scribe.trace(s"observable => ${o.stampedEvent.toString.truncateWithEllipsis(200)}"))
   }
 
   private class MyRecouplingStreamReader[S <: JournaledState[S]](

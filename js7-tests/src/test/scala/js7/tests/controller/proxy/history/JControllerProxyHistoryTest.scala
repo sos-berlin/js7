@@ -42,6 +42,7 @@ import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
 import org.scalatest.matchers.should.Matchers._
 import com.softwaremill.diffx.scalatest.DiffMatcher._
+import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 
 final class JControllerProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with ClusterProxyTest
 {
@@ -82,6 +83,7 @@ final class JControllerProxyHistoryTest extends AnyFreeSpec with ProvideActorSys
         var rounds = 0
         while (!finished && rounds <= 100) {
           rounds += 1
+          var proxyStartedReceived = false
           JournaledProxy.observable[ControllerState](apiResources, fromEventId = Some(lastState.eventId), _ => (), ProxyConf.default)
             .doOnNext {
               case EventAndState(Stamped(_, _, KeyedEvent(TestOrder.id, _: OrderFinished)), _, _) => Task {
@@ -92,10 +94,14 @@ final class JControllerProxyHistoryTest extends AnyFreeSpec with ProvideActorSys
             .take(3)  // Process two events (and initial ProxyStarted) each test round
             .takeWhileInclusive(_ => !finished)
             .doOnNext(es => Task {
-              if (es.stampedEvent.value.event == ProxyStarted)
-                es.state should matchTo(lastState)
-              else
-                assert(lastState.eventId < es.stampedEvent.eventId)
+              es.stampedEvent.value.event match {
+                case ProxyStarted =>
+                  assert(!proxyStartedReceived)
+                  proxyStartedReceived = true
+                  es.state should matchTo(lastState)
+                case _ =>
+                 assert(lastState.eventId < es.stampedEvent.eventId)
+              }
               lastState = es.state
               var keyedEvent = es.stampedEvent.value
               for (controllerReady <- ifCast[ControllerReady](keyedEvent.event)) {
@@ -108,6 +114,7 @@ final class JControllerProxyHistoryTest extends AnyFreeSpec with ProvideActorSys
             })
             .completedL
             .await(99.s)
+          assert(proxyStartedReceived)
         }
         assert(rounds > 2)
 

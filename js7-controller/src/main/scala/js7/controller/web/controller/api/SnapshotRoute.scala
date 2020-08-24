@@ -74,12 +74,13 @@ trait SnapshotRoute extends ControllerRouteProvider
 
           case Some(observable) =>
             ControllerState.fromObservable(observable)
-              .flatMap(recoveredState =>
-                eventWatch.observe(EventRequest.singleClass[Event](after = recoveredState.eventId))
-                  .takeWhile(_.eventId <= eventId)
-                  .bufferTumbling(1024)
-                  .foldLeft(recoveredState)((state, stampedEvents) => state.applyStampedEvents(stampedEvents).orThrow)
-                  .lastL)
+              // Let the client do this memory consuming work:
+              //.flatMap(recoveredState =>
+              //  eventWatch.observe(EventRequest.singleClass[Event](after = recoveredState.eventId))
+              //    .takeWhile(_.eventId <= eventId)
+              //    .bufferTumbling(1024)
+              //    .foldLeft(recoveredState)((state, stampedEvents) => state.applyStampedEvents(stampedEvents).orThrow)
+              //    .lastL)
               .map(snapshotToHttpEntity)
               .map(Right.apply)
         }
