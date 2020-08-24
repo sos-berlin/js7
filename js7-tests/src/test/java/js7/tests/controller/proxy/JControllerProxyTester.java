@@ -27,10 +27,11 @@ final class JControllerProxyTester
         this.proxy = proxy;
     }
 
-    private void test(List<String> itemJsons) throws Exception {
+    private void test(List<String> itemJsons, List<String> manyItemJsons) throws Exception {
         testHttpGet();
 
         JControllerProxyRepoTester repoTester = new JControllerProxyRepoTester(proxy);
+        repoTester.addTamperedItems(manyItemJsons);
         repoTester.addItems(itemJsons);
         repoTester.deleteItem();
 
@@ -47,7 +48,8 @@ final class JControllerProxyTester
         assertThat(overview.contains("\"id\":\"Controller\""), equalTo(true));
     }
 
-    static void run(List<JAdmission> admissions, JHttpsConfig httpsConfig, List<String> itemJsons, Runnable startController)
+    static void run(List<JAdmission> admissions, JHttpsConfig httpsConfig,
+        List<String> itemJsons, List<String> manyItemJsons, Runnable startController)
         throws Exception
     {
         try (JStandardEventBus<ProxyEvent> proxyEventBus = new JStandardEventBus<>(ProxyEvent.class)) {
@@ -69,7 +71,7 @@ final class JControllerProxyTester
                     try {
                         couplingState.coupled.get(99, SECONDS);
                         JControllerProxyTester tester = new JControllerProxyTester(proxy);
-                        tester.test(itemJsons);
+                        tester.test(itemJsons, manyItemJsons);
                     } finally {
                         proxy.stop().get(99, SECONDS);
                     }

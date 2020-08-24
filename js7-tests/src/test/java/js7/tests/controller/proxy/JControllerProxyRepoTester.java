@@ -27,6 +27,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static js7.proxy.javaapi.data.common.VavrUtils.getOrThrow;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.greaterThan;
 
 /**
  * @author Joacim Zschimmer
@@ -35,29 +36,23 @@ final class JControllerProxyRepoTester
 {
     private static final WorkflowPath bWorkflowPath = WorkflowPath.of("/B-WORKFLOW");  // As defined by ControllerProxyTest
     private final JControllerProxy proxy;
+    private static final VersionId versionId = VersionId.of("MY-VERSION");  // Must match the versionId in added or replaced objects
 
     JControllerProxyRepoTester(JControllerProxy proxy) {
         this.proxy = proxy;
     }
 
-    void addItems(List<String> itemJsons) throws InterruptedException, ExecutionException, TimeoutException {
-        VersionId versionId = VersionId.of("MY-VERSION");  // Must match the versionId in added or replaced objects
-
-        // The specific workflow version should be unknown
-        JWorkflowId workflowId = JWorkflowId.of(bWorkflowPath, versionId);
-        assertThat(proxy.currentState().idToWorkflow(workflowId).mapLeft(Problem::codeOrNull),
-            equalTo(Either.left(ProblemCode.of("UnknownKey"/*may change*/))));
-
-        CompletableFuture<JEventAndControllerState<Event>> whenWorkflowAdded =
-            awaitEvent(keyedEvent -> isItemAdded(keyedEvent, bWorkflowPath));
-
-        // Try to add items with invalid signature
+    void addTamperedItems(List<String> manyItemJsons)
+        throws InterruptedException, ExecutionException, TimeoutException
+    {
+        // Try to add many items with invalid signature
+        assertThat(manyItemJsons.stream().mapToInt(String::length).sum(), greaterThan(100_000_000/*bytes*/));
         assertThat(
             proxy.api()
                 .updateRepo(
                     versionId,
                     Flux.fromStream(
-                        itemJsons.stream()
+                        manyItemJsons.stream()
                             .map(json -> JUpdateRepoOperation.addOrReplace(SignedString.of(json, "Silly", "MY-SILLY-FAKE")))))
                 .get(99, SECONDS)
                 .mapLeft(problem -> new Tuple2<>(
@@ -67,6 +62,19 @@ final class JControllerProxyRepoTester
                 Either.left(new Tuple2<>(
                     Optional.of("TamperedWithSignedMessage"),
                     "TamperedWithSignedMessage: The message does not match its signature"))));
+
+    }
+
+    void addItems(List<String> itemJsons)
+        throws InterruptedException, ExecutionException, TimeoutException
+    {
+        // The specific workflow version should be unknown
+        JWorkflowId workflowId = JWorkflowId.of(bWorkflowPath, versionId);
+        assertThat(proxy.currentState().idToWorkflow(workflowId).mapLeft(Problem::codeOrNull),
+            equalTo(Either.left(ProblemCode.of("UnknownKey"/*may change*/))));
+
+        CompletableFuture<JEventAndControllerState<Event>> whenWorkflowAdded =
+            awaitEvent(keyedEvent -> isItemAdded(keyedEvent, bWorkflowPath));
 
         // Add items
         getOrThrow(proxy.api()
