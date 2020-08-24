@@ -80,7 +80,7 @@ trait GraphqlRoute extends ControllerRouteProvider
       getFromResource(GraphiqlResource.path, `text/html(UTF-8)`, GraphiqlResource.classLoader)
     } ~
     get {
-      parameters(("query", "operationName".?, "variables".?)) { (queryString, operationName, variables) =>
+      parameters("query", "operationName".?, "variables".?) { (queryString, operationName, variables) =>
         parseJson(variables getOrElse "{}") match {
           case Left(t) => completeWithFailure(t)
           case Right(json) => executeGraphql(queryString, operationName, json)
@@ -88,7 +88,7 @@ trait GraphqlRoute extends ControllerRouteProvider
       }
     } ~
     post {
-      parameters(("query".?, "operationName".?, "variables".?)) { (queryParam, operationNameParam, variablesParam) =>
+      parameters("query".?, "operationName".?, "variables".?) { (queryParam, operationNameParam, variablesParam) =>
         entity(as[JsonObject]) { body =>
           // GraphiQL GUI may send both query parameter and JSON content. For GraphiQL, POST content has precedence
           val queryString = body("query") flatMap (_.asString) orElse queryParam

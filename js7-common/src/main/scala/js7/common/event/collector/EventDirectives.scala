@@ -78,7 +78,7 @@ object EventDirectives
                 }
                 parameter("delay" ? defaultDelay) { delay =>
                   parameter("tornOlder" ? none[FiniteDuration]) { tornOlder =>
-                    optionalHeaderValueByType[`Timeout-Access`](()) { timeoutAccess =>  // Setting akka.http.server.request-timeout
+                    optionalHeaderValueByType(`Timeout-Access`) { timeoutAccess =>  // Setting akka.http.server.request-timeout
                       val eventRequest = EventRequest[E](eventClasses,
                         after = after,
                         timeout = timeoutAccess.map(_.timeoutAccess.timeout) match {

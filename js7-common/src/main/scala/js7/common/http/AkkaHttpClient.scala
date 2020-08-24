@@ -1,7 +1,6 @@
 package js7.common.http
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshalling.Marshal
 import akka.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
 import akka.http.scaladsl.model.HttpEntity.{ChunkStreamPart, LastChunk}
@@ -12,6 +11,7 @@ import akka.http.scaladsl.model.headers.CacheDirectives.{`no-cache`, `no-store`}
 import akka.http.scaladsl.model.headers.{Accept, CustomHeader, RawHeader, `Cache-Control`}
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpHeader, HttpMethod, HttpRequest, HttpResponse, RequestEntity, StatusCode, StatusCodes, Uri => AkkaUri}
 import akka.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshal}
+import akka.http.scaladsl.{ConnectionContext, Http}
 import akka.stream.Materializer
 import akka.util.ByteString
 import cats.effect.{ExitCase, Resource}
@@ -31,7 +31,7 @@ import js7.base.utils.MonixAntiBlocking.executeOn
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.ScodecUtils.syntax._
 import js7.base.web.{HttpClient, Uri}
-import js7.common.akkahttp.https.AkkaHttps.loadHttpsConnectionContext
+import js7.common.akkahttp.https.Https.loadSSLContext
 import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import js7.common.akkautils.JsonObservableForAkka.syntax._
 import js7.common.http.AkkaHttpClient._
@@ -79,7 +79,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
     if (keyStoreRef.isEmpty && trustStoreRefs.isEmpty)
       http.defaultClientHttpsContext
     else
-      loadHttpsConnectionContext(keyStoreRef, trustStoreRefs)
+      ConnectionContext.httpsClient(loadSSLContext(keyStoreRef, trustStoreRefs))
   }
 
   final def materializer: Materializer = implicitly[Materializer]
@@ -319,7 +319,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
 
   private def withCheckedAgentUri[A](request: HttpRequest)(body: HttpRequest => Task[A]): Task[A] =
     toCheckedAgentUri(request.uri.asUri) match {
-      case Right(uri) => body(request.copy(uri = uri.asAkka))
+      case Right(uri) => body(request.withUri(uri.asAkka))
       case Left(problem) => Task.raiseError(problem.throwable)
     }
 

@@ -1,16 +1,17 @@
 package js7.common.akkahttp.web
 
-import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.HttpMethods.GET
 import akka.http.scaladsl.model.{HttpRequest, StatusCodes}
 import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.{ConnectionContext, Http}
 import java.net.{InetAddress, InetSocketAddress}
 import java.nio.file.Files.{createDirectory, createTempDirectory}
 import javax.net.ssl.SSLHandshakeException
 import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
-import js7.common.akkahttp.https.{AkkaHttps, KeyStoreRef, TrustStoreRef}
+import js7.common.akkahttp.https.Https.loadSSLContext
+import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import js7.common.akkahttp.web.AkkaWebServer.HasUri
 import js7.common.akkahttp.web.AkkaWebServerTest._
 import js7.common.akkahttp.web.data.WebServerBinding
@@ -95,7 +96,8 @@ final class AkkaWebServerTest extends AnyFreeSpec with BeforeAndAfterAll
         http.singleRequest(HttpRequest(GET, s"https://127.0.0.1:$httpsPort/TEST")) await 99.seconds }
     }
 
-    lazy val httpsConnectionContext = AkkaHttps.loadHttpsConnectionContext(trustStoreRefs = ClientTrustStoreRef :: Nil)
+    lazy val httpsConnectionContext =
+      ConnectionContext.httpsClient(loadSSLContext(trustStoreRefs = ClientTrustStoreRef :: Nil))
 
     "Hostname verification rejects 127.0.0.1" in {
       val e = intercept[javax.net.ssl.SSLHandshakeException] {

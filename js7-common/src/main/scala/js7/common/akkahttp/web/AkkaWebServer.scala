@@ -3,7 +3,7 @@ package js7.common.akkahttp.web
 import akka.actor.ActorSystem
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.settings.{ParserSettings, ServerSettings}
-import akka.http.scaladsl.{ConnectionContext, Http}
+import akka.http.scaladsl.{ConnectionContext, Http, HttpsConnectionContext}
 import akka.stream.TLSClientAuth
 import cats.effect.Resource
 import cats.instances.vector._
@@ -68,29 +68,31 @@ trait AkkaWebServer extends AutoCloseable
     }
 
   private def bindHttp(http: WebServerBinding.Http): Task[Http.ServerBinding] =
-    bind(http, akkaHttp.defaultServerHttpContext)
+    bind(http)
 
   private def bindHttps(https: WebServerBinding.Https): Task[Http.ServerBinding] = {
     logger.info(s"Using HTTPS certificate in ${https.keyStoreRef.url} for port ${https.toWebServerPort}")
     bind(
       https,
-      ConnectionContext.https(
+      Some(ConnectionContext.https(
         loadSSLContext(Some(https.keyStoreRef), https.trustStoreRefs),
-        clientAuth = httpsClientAuthRequired ? TLSClientAuth.Need,
-        sslConfig = None,
-        enabledCipherSuites = None,
-        enabledProtocols = None,
-        sslParameters = None))
+        clientAuth = httpsClientAuthRequired ? TLSClientAuth.Need)))
   }
 
-  private def bind(binding: WebServerBinding, connectionContext: ConnectionContext): Task[Http.ServerBinding] = {
+  private def bind(binding: WebServerBinding, httpsConnectionContext: Option[HttpsConnectionContext] = None): Task[Http.ServerBinding] = {
     val whenTerminating = Promise[Deadline]()
     val boundRoute = newRoute(binding, whenTerminating.future)
     Task.deferFutureAction { implicit s =>
-      val serverBinding = akkaHttp.bindAndHandle(boundRoute.webServerRoute, interface = binding.address.getAddress.getHostAddress, port = binding.address.getPort,
-        connectionContext,
-        settings = ServerSettings(actorSystem)
-          .withParserSettings(ParserSettings(actorSystem).withCustomMediaTypes(JsonStreamingSupport.CustomMediaTypes: _*)))
+      var serverBuilder = akkaHttp.newServerAt(interface = binding.address.getAddress.getHostAddress, port = binding.address.getPort)
+      for (o <- httpsConnectionContext) serverBuilder = serverBuilder.enableHttps(o)
+      val serverBinding = serverBuilder
+        .withSettings(
+          ServerSettings(actorSystem)
+            .withParserSettings(
+              ParserSettings(actorSystem)
+                .withCustomMediaTypes(JsonStreamingSupport.CustomMediaTypes: _*)
+                .withMaxContentLength(JsonStreamingSupport.JsonObjectMaxSize)))
+        .bind(boundRoute.webServerRoute)
       whenTerminating.completeWith(serverBinding.flatMap(_.whenTerminationSignalIssued))
       serverBinding
     } .map { serverBinding =>

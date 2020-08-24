@@ -110,7 +110,7 @@ final class GateKeeper[U <: User](scheme: WebServerBinding.Scheme, configuration
   private def clientHttpsAuthenticate: Directive1[Option[U]] =
     new Directive1[Option[U]] {
       def tapply(inner: Tuple1[Option[U]] => Route) =
-        optionalHeaderValueByType[`Tls-Session-Info`](()) {
+        optionalHeaderValueByType(`Tls-Session-Info`) {
           case None =>
             if (htttpClientAuthRequired)
               complete(Unauthorized -> Problem.pure("A client HTTPS certificate is required"))

@@ -61,7 +61,7 @@ object AkkaHttpServerUtils
 
   def accept(mediaTypes: Set[MediaType]): Directive0 =
     mapInnerRoute { route =>
-      headerValueByType[Accept](()) {
+      headerValueByType(Accept) {
         case Accept(requestedMediaTypes) if requestedMediaTypes exists { o => mediaTypes exists o.matches } =>
           route
         case _ =>
@@ -105,7 +105,7 @@ object AkkaHttpServerUtils
     }
 
   def addHeader(header: HttpHeader): Directive0 =
-    mapRequest(o => o.copy(headers = o.headers :+ header))
+    mapRequest(o => o.withHeaders(o.headers :+ header))
 
   /*
   private type ParameterMap = Map[String, String]

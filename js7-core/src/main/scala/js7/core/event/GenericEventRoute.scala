@@ -226,7 +226,7 @@ trait GenericEventRoute extends RouteProvider
             s"data:${Problem("BUILD-CHANGED").asJson(Problem.typedJsonEncoder).printWith(CompactPrinter)}\n\n"))  // Exact this message is checked in experimental GUI
         else
           eventDirective(eventWatch.lastAddedEventId, defaultTimeout = defaultJsonSeqChunkTimeout) { request =>
-            optionalHeaderValueByType[`Last-Event-ID`](()) { lastEventIdHeader =>
+            optionalHeaderValueByType(`Last-Event-ID`) { lastEventIdHeader =>
               val req = lastEventIdHeader.fold(request)(header =>
                 request.copy[Event](after = toLastEventId(header)))
               complete(

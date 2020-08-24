@@ -1,6 +1,7 @@
 package js7.common.http
 
-import akka.http.scaladsl.coding.{Coder, Deflate, Gzip, NoCoding, StreamDecoder}
+import akka.http.scaladsl.coding.Coder
+import akka.http.scaladsl.coding.Coders.{Deflate, Gzip, NoCoding}
 import akka.http.scaladsl.model.headers.HttpEncodings.gzip
 import akka.http.scaladsl.model.headers.{HttpEncoding, HttpEncodings, `Accept-Encoding`}
 import akka.http.scaladsl.model.{HttpEntity, HttpRequest, HttpResponse, Uri => AkkaUri}
@@ -17,13 +18,13 @@ import scodec.bits.ByteVector
 object AkkaHttpUtils
 {
   def encodeGzip(request: HttpRequest): HttpRequest =
-    Gzip.encodeMessage(request.copy(headers = `Accept-Encoding`(gzip) :: request.headers.toList))
+    Gzip.encodeMessage(request.withHeaders(`Accept-Encoding`(gzip) :: request.headers.toList))
 
   /** Decompresses a `HttpResponse` according to `Content-Encoding`. */
   def decodeResponse(response: HttpResponse): HttpResponse =
     httpEncodingToCodec(response.encoding).decodeMessage(response)
 
-  private def httpEncodingToCodec(encoding: HttpEncoding): Coder with StreamDecoder =
+  private def httpEncodingToCodec(encoding: HttpEncoding): Coder  =
     encoding match {
       case HttpEncodings.gzip => Gzip
       case HttpEncodings.deflate => Deflate
