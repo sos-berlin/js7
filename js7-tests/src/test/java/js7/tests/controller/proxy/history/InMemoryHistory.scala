@@ -132,7 +132,7 @@ private[history] final class InMemoryHistory
 
 private[history] object InMemoryHistory
 {
-  private val workflowId = TestWorkflowId.underlying
+  private val workflowId = TestWorkflowId.asScala
   private val startedAt = Instant.ofEpochMilli(1)
   private val terminatedAt = Instant.ofEpochMilli(2)
 

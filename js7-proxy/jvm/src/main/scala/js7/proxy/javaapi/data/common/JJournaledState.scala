@@ -5,7 +5,7 @@ import js7.data.event.JournaledState
 trait JJournaledState[Self <: JJournaledState[Self, S], S <: JournaledState[S]]
 extends JavaWrapper
 {
-  protected type Underlying = S
+  protected type AsScala = S
 }
 
 object JJournaledState

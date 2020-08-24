@@ -17,33 +17,33 @@ import scala.jdk.OptionConverters._
 import scala.reflect.ClassTag
 
 @javaApi
-final case class JOrder(underlying: Order[Order.State])
+final case class JOrder(asScala: Order[Order.State])
 extends JJsonable[JOrder]
 {
-  protected type Underlying = Order[Order.State]
+  protected type AsScala = Order[Order.State]
 
   protected def companion = JOrder
 
   def id: OrderId =
-    underlying.id
+    asScala.id
 
   def workflowPosition: JWorkflowPosition =
-    JWorkflowPosition(underlying.workflowPosition)
+    JWorkflowPosition(asScala.workflowPosition)
 
   def workflowId: JWorkflowId =
-    JWorkflowId(underlying.workflowId)
+    JWorkflowId(asScala.workflowId)
 
   def arguments: java.util.Map[String, String] =
-    underlying.arguments.asJava
+    asScala.arguments.asJava
 
   def parent: Optional[OrderId] =
-    underlying.parent.toJava
+    asScala.parent.toJava
 
   def attached: VEither[Problem, AgentRefPath] =
-    underlying.attached.toVavr
+    asScala.attached.toVavr
 
   def checkedState[S <: State](s: StateType[S]): VEither[Problem, S] =
-    underlying.checkedState(ClassTag(s.underlyingClass))
+    asScala.checkedState(ClassTag(s.underlyingClass))
       .flatMap((o: Order[Order.State]) =>
         o.state match {
           case forked: Order.Forked => Right(Forked(forked).asInstanceOf[S])
@@ -65,11 +65,11 @@ object JOrder extends JJsonable.Companion[JOrder]
 
   sealed class StateType[S <: State](clas: Class[S], private[JOrder] val underlyingClass: Class[_ <: Order.State])
 
-  final case class Forked(underlying: Order.Forked) extends State {
-    protected type Underlying = Order.Forked
+  final case class Forked(asScala: Order.Forked) extends State {
+    protected type AsScala = Order.Forked
 
     def childOrderIds: java.util.List[OrderId] =
-      underlying.children.map(_.orderId).asJava
+      asScala.children.map(_.orderId).asJava
   }
   val forked = new StateType(classOf[Forked], classOf[Order.Forked])
 }

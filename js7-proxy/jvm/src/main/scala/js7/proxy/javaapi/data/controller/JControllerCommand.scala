@@ -9,10 +9,10 @@ import js7.proxy.javaapi.data.common.JJsonable
 import js7.proxy.javaapi.data.order.JFreshOrder
 
 @javaApi
-final case class JControllerCommand(underlying: ControllerCommand)
+final case class JControllerCommand(asScala: ControllerCommand)
 extends JJsonable[JControllerCommand]
 {
-  protected type Underlying = ControllerCommand
+  protected type AsScala = ControllerCommand
 
   protected def companion = JControllerCommand
 }
@@ -21,7 +21,7 @@ extends JJsonable[JControllerCommand]
 object JControllerCommand extends JJsonable.Companion[JControllerCommand]
 {
   def addOrder(jFreshOrder: JFreshOrder): JControllerCommand =
-    JControllerCommand(ControllerCommand.AddOrder(jFreshOrder.underlying))
+    JControllerCommand(ControllerCommand.AddOrder(jFreshOrder.asScala))
 
   override def fromJson(jsonString: String): VEither[Problem, JControllerCommand] =
     super.fromJson(jsonString)

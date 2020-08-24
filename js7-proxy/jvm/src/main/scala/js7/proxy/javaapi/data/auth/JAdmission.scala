@@ -9,10 +9,10 @@ import js7.proxy.javaapi.data.common.JavaWrapper
 import js7.proxy.javaapi.data.common.VavrConverters._
 
 @javaApi
-final case class JAdmission(underlying: Admission)
+final case class JAdmission(asScala: Admission)
 extends JavaWrapper
 {
-  protected type Underlying = Admission
+  protected type AsScala = Admission
 }
 
 object JAdmission

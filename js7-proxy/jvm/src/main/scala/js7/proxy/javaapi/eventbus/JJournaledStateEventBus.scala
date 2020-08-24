@@ -47,8 +47,8 @@ extends AutoCloseable
 
   //@javaApi
   //final def removeSubscription[E <: Event](subscription: EventSubscription[E]): Unit = {
-  //  assertThat(subscription.eventBus eq underlying)
-  //  underlying.removeSubscription(subscription.underlying)
+  //  assertThat(subscription.eventBus eq asScala)
+  //  asScala.removeSubscription(subscription.asScala)
   //}
 
   @javaApi
@@ -57,21 +57,21 @@ extends AutoCloseable
 
   @javaApi
   sealed/*instead of final in Scala 2: https://github.com/scala/bug/issues/4440*/
-  case class EventSubscription private(underlying: JJournaledStateEventBus.this.underlying.EventSubscription)
+  case class EventSubscription private(asScala: JJournaledStateEventBus.this.underlying.EventSubscription)
   extends js7.proxy.javaapi.eventbus.EventSubscription
   with JavaWrapper
   with AutoCloseable
   {
-    type Underlying = JJournaledStateEventBus.this.underlying.EventSubscription
+    type AsScala = JJournaledStateEventBus.this.underlying.EventSubscription
 
     /** For internal use only. */
     private[JJournaledStateEventBus] def eventBus = JJournaledStateEventBus.this.underlying
 
     @javaApi
-    def close() = underlying.close()
+    def close() = asScala.close()
 
     /** For internal use only. */
     private[JJournaledStateEventBus] def internalAddToEventBus(): Unit =
-      JJournaledStateEventBus.this.underlying.addSubscription(underlying)
+      JJournaledStateEventBus.this.underlying.addSubscription(asScala)
   }
 }

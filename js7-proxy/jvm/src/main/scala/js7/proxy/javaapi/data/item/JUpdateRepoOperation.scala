@@ -4,10 +4,10 @@ import js7.base.crypt.SignedString
 import js7.data.item.{TypedPath, UpdateRepoOperation}
 import js7.proxy.javaapi.data.common.JavaWrapper
 
-final case class JUpdateRepoOperation(underlying: UpdateRepoOperation.ItemOperation)
+final case class JUpdateRepoOperation(asScala: UpdateRepoOperation.ItemOperation)
 extends JavaWrapper
 {
-  type Underlying = UpdateRepoOperation.ItemOperation
+  type AsScala = UpdateRepoOperation.ItemOperation
 }
 
 object JUpdateRepoOperation

@@ -8,7 +8,7 @@ import scala.jdk.CollectionConverters._
 sealed trait JClusterState
 extends JJsonable[JClusterState]
 {
-  protected type Underlying = ClusterState
+  protected type AsScala = ClusterState
 
   def companion = JClusterState
 }
@@ -32,7 +32,7 @@ object JClusterState extends JJsonable.Companion[JClusterState]
   sealed trait Empty extends JClusterState
 
   case object Empty extends Empty {
-    val underlying = ClusterState.Empty
+    val asScala = ClusterState.Empty
   }
 
   val empty = Empty
@@ -41,13 +41,13 @@ object JClusterState extends JJsonable.Companion[JClusterState]
   {
     this: Product =>
 
-    def underlying: ClusterState.HasNodes
+    def asScala: ClusterState.HasNodes
 
-    def idToUri = underlying.idToUri.asJava
-    def activeId = underlying.activeId
-    final def isNonEmptyActive(id: Id) = underlying.isNonEmptyActive(id)
-    final def passiveId = underlying.passiveId
-    final def passiveUri = underlying.passiveUri
+    def idToUri = asScala.idToUri.asJava
+    def activeId = asScala.activeId
+    final def isNonEmptyActive(id: Id) = asScala.isNonEmptyActive(id)
+    final def passiveId = asScala.passiveId
+    final def passiveUri = asScala.passiveUri
   }
 
   sealed trait CoupledOrDecoupled extends HasNodes {
@@ -58,25 +58,25 @@ object JClusterState extends JJsonable.Companion[JClusterState]
     this: Product =>
   }
 
-  final case class NodesAppointed(underlying: ClusterState.NodesAppointed)
+  final case class NodesAppointed(asScala: ClusterState.NodesAppointed)
   extends Decoupled
 
-  final case class PreparedToBeCoupled(underlying: ClusterState.PreparedToBeCoupled)
+  final case class PreparedToBeCoupled(asScala: ClusterState.PreparedToBeCoupled)
   extends HasNodes
 
-  final case class Coupled(underlying: ClusterState.Coupled)
+  final case class Coupled(asScala: ClusterState.Coupled)
   extends CoupledOrDecoupled
 
-  final case class CoupledActiveShutDown(underlying: ClusterState.CoupledActiveShutDown)
+  final case class CoupledActiveShutDown(asScala: ClusterState.CoupledActiveShutDown)
   extends Decoupled
 
-  final case class PassiveLost(underlying: ClusterState.PassiveLost)
+  final case class PassiveLost(asScala: ClusterState.PassiveLost)
   extends Decoupled
 
-  final case class SwitchedOver(underlying: ClusterState.SwitchedOver)
+  final case class SwitchedOver(asScala: ClusterState.SwitchedOver)
   extends Decoupled
 
-  final case class FailedOver(underlying: ClusterState.FailedOver)
+  final case class FailedOver(asScala: ClusterState.FailedOver)
   extends Decoupled
 
   def jsonEncoder = ClusterState.jsonCodec

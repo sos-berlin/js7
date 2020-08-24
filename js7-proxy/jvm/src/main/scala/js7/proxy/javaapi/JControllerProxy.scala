@@ -53,7 +53,7 @@ final class JControllerProxy private[proxy](
       }
       .headL
       .runToFuture
-    val isAdded = api.underlying.addOrder(order.underlying)
+    val isAdded = api.underlying.addOrder(order.asScala)
       .await(99.s)
       .orThrow
     if (!isAdded) throw new IllegalStateException(s"Order has already been added: ${order.id}")

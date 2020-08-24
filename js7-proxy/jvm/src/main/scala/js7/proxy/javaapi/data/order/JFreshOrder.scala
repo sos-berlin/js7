@@ -13,15 +13,15 @@ import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
 
 @javaApi
-final case class JFreshOrder(underlying: FreshOrder)
+final case class JFreshOrder(asScala: FreshOrder)
 extends JJsonable[JFreshOrder]
 {
-  protected type Underlying = FreshOrder
+  protected type AsScala = FreshOrder
 
   protected def companion = JFreshOrder
 
   def id: OrderId =
-    underlying.id
+    asScala.id
 }
 
 @javaApi

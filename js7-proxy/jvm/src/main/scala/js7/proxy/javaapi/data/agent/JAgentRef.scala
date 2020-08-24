@@ -7,17 +7,17 @@ import js7.data.agent.{AgentRef, AgentRefPath}
 import js7.proxy.javaapi.data.common.JJsonable
 import js7.proxy.javaapi.data.item.JInventoryItem
 
-final case class JAgentRef(underlying: AgentRef)
+final case class JAgentRef(asScala: AgentRef)
 extends JInventoryItem[JAgentRef, AgentRefPath]
 {
-  protected type Underlying = AgentRef
+  protected type AsScala = AgentRef
   protected def companion = JAgentRef
 
-  def id = JAgentRefId(underlying.id)
+  def id = JAgentRefId(asScala.id)
 
-  def path = underlying.path
+  def path = asScala.path
 
-  def uri: Uri = underlying.uri
+  def uri: Uri = asScala.uri
 }
 
 object JAgentRef extends JJsonable.Companion[JAgentRef]

@@ -20,47 +20,47 @@ import scala.jdk.OptionConverters._
 import scala.jdk.StreamConverters._
 
 @javaApi
-final case class JControllerState(underlying: ControllerState)
+final case class JControllerState(asScala: ControllerState)
 extends JJournaledState[JControllerState, ControllerState]
 {
   def eventId: Long =
-    underlying.eventId
+    asScala.eventId
 
   def clusterState: JClusterState =
-    JClusterState(underlying.clusterState)
+    JClusterState(asScala.clusterState)
 
   def idToWorkflow(workflowId: JWorkflowId): VEither[Problem, JWorkflow] =
-    underlying.repo.idTo[Workflow](workflowId.underlying)
+    asScala.repo.idTo[Workflow](workflowId.asScala)
       .map(JWorkflow.apply)
       .toVavr
 
   def pathToWorkflow(workflowPath: WorkflowPath): VEither[Problem, JWorkflow] =
-    underlying.repo.pathTo[Workflow](workflowPath)
+    asScala.repo.pathTo[Workflow](workflowPath)
       .map(JWorkflow.apply)
       .toVavr
 
   def idToAgentRef(workflowId: JAgentRefId): VEither[Problem, JAgentRef] =
-    underlying.repo.idTo[AgentRef](workflowId.underlying)
+    asScala.repo.idTo[AgentRef](workflowId.asScala)
       .map(JAgentRef.apply)
       .toVavr
 
   /** Looks up an AgentRefPath in the current version. */
   def pathToAgentRef(agentRefPath: AgentRefPath): VEither[Problem, JAgentRef] =
-    underlying.repo.pathTo[AgentRef](agentRefPath)
+    asScala.repo.pathTo[AgentRef](agentRefPath)
       .map(JAgentRef.apply)
       .toVavr
 
   def orderIds: java.util.Set[OrderId] =
-    underlying.idToOrder.keySet.asJava
+    asScala.idToOrder.keySet.asJava
 
   def idToOrder(orderId: OrderId): java.util.Optional[JOrder] =
-      underlying.idToOrder.get(orderId)
+      asScala.idToOrder.get(orderId)
         .map(JOrder.apply)
         .toJava
 
   /** Looks up an OrderId and returns a Left(Problem) if the OrderId is unknown. */
   def idToCheckedOrder(orderId: OrderId): VEither[Problem, JOrder] =
-    underlying.idToOrder.get(orderId)
+    asScala.idToOrder.get(orderId)
       .map(JOrder.apply) match {
         case None => VEither.left(Problem(s"Unknown OrderId in JControllerState: ${orderId.string}"))
         case Some(o) => VEither.right(o)
@@ -68,13 +68,13 @@ extends JJournaledState[JControllerState, ControllerState]
 
   @Deprecated
   lazy val eagerIdToOrder: java.util.Map[OrderId, JOrder] =
-    underlying.idToOrder
+    asScala.idToOrder
       .view.values.map(JOrder.apply)
       .toKeyedMap(_.id)
       .asJava
 
   def ordersBy(predicate: Order[Order.State] => Boolean): java.util.stream.Stream[JOrder] =
-    underlying.idToOrder
+    asScala.idToOrder
       .valuesIterator
       .filter(predicate)
       .map(JOrder.apply)
@@ -84,7 +84,7 @@ extends JJournaledState[JControllerState, ControllerState]
     orderStateToCount(any)
 
   def orderStateToCount(predicate: Order[Order.State] => Boolean): java.util.Map[Class[_ <: Order.State], java.lang.Integer] =
-    underlying.idToOrder.values.view
+    asScala.idToOrder.values.view
       .filter(predicate)
       .groupBy(_.state.getClass)
       .view.mapValues(o => java.lang.Integer.valueOf(o.size))

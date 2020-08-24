@@ -9,14 +9,14 @@ import js7.proxy.javaapi.data.common.JJsonable
 import js7.proxy.javaapi.data.item.JItemId
 
 @javaApi
-final case class JWorkflowId(underlying: WorkflowId)
+final case class JWorkflowId(asScala: WorkflowId)
 extends JJsonable[JWorkflowId] with JItemId[WorkflowPath]
 {
-  protected type Underlying = WorkflowId
+  protected type AsScala = WorkflowId
   protected type ScalaPath = WorkflowPath
   protected def companion = JWorkflowId
 
-  def path = underlying.path
+  def path = asScala.path
 }
 
 @javaApi

@@ -7,14 +7,14 @@ import js7.data.item.{ItemId, VersionId}
 import js7.proxy.javaapi.data.common.JJsonable
 import js7.proxy.javaapi.data.item.JItemId
 
-final case class JAgentRefId(underlying: AgentRefId)
+final case class JAgentRefId(asScala: AgentRefId)
 extends JJsonable[JAgentRefId] with JItemId[AgentRefPath]
 {
-  protected type Underlying = AgentRefId
+  protected type AsScala = AgentRefId
   protected type ScalaPath = AgentRefPath
   protected def companion = JAgentRefId
 
-  def path = underlying.path
+  def path = asScala.path
 }
 
 object JAgentRefId extends JJsonable.Companion[JAgentRefId]

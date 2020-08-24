@@ -6,9 +6,9 @@ import js7.proxy.javaapi.data.common.JavaWrapper
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
 
-final case class JHttpsConfig(underlying: HttpsConfig) extends JavaWrapper
+final case class JHttpsConfig(asScala: HttpsConfig) extends JavaWrapper
 {
-  protected type Underlying = HttpsConfig
+  protected type AsScala = HttpsConfig
 }
 
 object JHttpsConfig

@@ -16,7 +16,7 @@ import scala.jdk.OptionConverters._
 trait JOrderEvent
 extends JJsonable[JOrderEvent]
 {
-  protected type Underlying <: OrderEvent
+  protected type AsScala <: OrderEvent
   protected def companion = JOrderEvent
 }
 
@@ -44,56 +44,56 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
       case event => JOrderEventOther(event)
     }
 
-  final case class JOrderEventOther(underlying: OrderEvent)
+  final case class JOrderEventOther(asScala: OrderEvent)
   extends JOrderEvent {
-    protected type Underlying = OrderEvent
+    protected type AsScala = OrderEvent
   }
 
-  final case class JOrderAdded(underlying: OrderAdded)
+  final case class JOrderAdded(asScala: OrderAdded)
   extends JOrderEvent {
-    protected type Underlying = OrderAdded
+    protected type AsScala = OrderAdded
 
     def arguments: java.util.Map[String, String] =
-      underlying.arguments.asJava
+      asScala.arguments.asJava
 
     def scheduledFor: Optional[Instant] =
-      underlying.scheduledFor.map(o => o.toInstant).toJava
+      asScala.scheduledFor.map(o => o.toInstant).toJava
   }
 
-  final case class JOrderProcessingStarted private(underlying: OrderProcessingStarted)
+  final case class JOrderProcessingStarted private(asScala: OrderProcessingStarted)
   extends JOrderEvent
   {
-    protected type Underlying = OrderProcessingStarted
+    protected type AsScala = OrderProcessingStarted
   }
   object JOrderProcessingStarted {
     val singleton = new JOrderProcessingStarted(OrderProcessingStarted)
     def apply(underlying: OrderProcessingStarted) = singleton
   }
 
-  final case class JOrderStdWritten(underlying: OrderStdWritten)
+  final case class JOrderStdWritten(asScala: OrderStdWritten)
   extends JOrderEvent {
-    protected type Underlying = OrderStdWritten
+    protected type AsScala = OrderStdWritten
 
     def stdoutOrStderr: StdoutOrStderr =
-      underlying.stdoutStderr
+      asScala.stdoutStderr
 
     def chunk: String =
-      underlying.chunk
+      asScala.chunk
   }
 
-  final case class JOrderProcessed(underlying: OrderProcessed)
+  final case class JOrderProcessed(asScala: OrderProcessed)
   extends JOrderEvent {
-    protected type Underlying = OrderProcessed
+    protected type AsScala = OrderProcessed
 
-    def outcome = underlying.outcome
+    def outcome = asScala.outcome
   }
 
-  final case class JOrderForked(underlying: OrderForked)
+  final case class JOrderForked(asScala: OrderForked)
   extends JOrderEvent {
-    protected type Underlying = OrderForked
+    protected type AsScala = OrderForked
 
     def children: java.util.List[JOrderForked.ForkedChild] =
-      underlying.children.map(JOrderForked.ForkedChild.fromUnderlying).asJava
+      asScala.children.map(JOrderForked.ForkedChild.fromUnderlying).asJava
   }
   object JOrderForked {
     final case class ForkedChild(branchId: ForkBranchId, orderId: OrderId)
@@ -103,35 +103,35 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
     }
   }
 
-  final case class JOrderJoined(underlying: OrderJoined)
+  final case class JOrderJoined(asScala: OrderJoined)
   extends JOrderEvent {
-    protected type Underlying = OrderJoined
+    protected type AsScala = OrderJoined
 
-    def outcome = underlying.outcome
+    def outcome = asScala.outcome
   }
 
-  final case class JOrderFailed private(underlying: OrderFailed)
+  final case class JOrderFailed private(asScala: OrderFailed)
   extends JOrderEvent
   {
-    protected type Underlying = OrderFailed
+    protected type AsScala = OrderFailed
 
-    def outcome = underlying.outcome
+    def outcome = asScala.outcome
   }
 
-  final case class JOrderFinished private(underlying: OrderFinished)
+  final case class JOrderFinished private(asScala: OrderFinished)
   extends JOrderEvent
   {
-    protected type Underlying = OrderFinished
+    protected type AsScala = OrderFinished
   }
   object JOrderFinished {
     val singleton = new JOrderFinished(OrderFinished)
     def apply(underlying: OrderFinished) = singleton
   }
 
-  final case class JOrderCancelled private(underlying: OrderCancelled)
+  final case class JOrderCancelled private(asScala: OrderCancelled)
   extends JOrderEvent
   {
-    protected type Underlying = OrderCancelled
+    protected type AsScala = OrderCancelled
   }
   object JOrderCancelled {
     val singleton = JOrderCancelled(OrderCancelled)

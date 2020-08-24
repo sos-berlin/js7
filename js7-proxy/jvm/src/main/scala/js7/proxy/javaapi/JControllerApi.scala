@@ -39,7 +39,7 @@ final class JControllerApi private[js7](
 
   /** Fetch event stream from Controller. */
   def eventFlux(proxyEventBus: JStandardEventBus[ProxyEvent], after: OptionalLong/*EventId*/): Flux[JEventAndControllerState[Event]] =
-    underlying.observable(proxyEventBus.underlying, after.toScala)
+    underlying.observable(proxyEventBus.asScala, after.toScala)
       .map(JEventAndControllerState.apply)
       .asFlux
 
@@ -57,7 +57,7 @@ final class JControllerApi private[js7](
   : CompletableFuture[JControllerProxy] = {
     ControllerProxy.start(
       apiResources,
-      proxyEventBus.underlying,
+      proxyEventBus.asScala,
       controllerEventBus.underlying,
       proxyConf
     ) .map(new JControllerProxy(_, this, controllerEventBus))
@@ -101,14 +101,14 @@ final class JControllerApi private[js7](
     *
     */
   def updateRepo(versionId: VersionId, operations: Flux[JUpdateRepoOperation]): CompletableFuture[VEither[Problem, Void]] =
-    underlying.updateRepo(versionId, operations.asObservable.map(_.underlying))
+    underlying.updateRepo(versionId, operations.asObservable.map(_.asScala))
       .map(_.toVoidVavr)
       .runToFuture
       .asJava
 
   /** @return true iff added, false iff not added because of duplicate OrderId. */
   def addOrder(order: JFreshOrder): CompletableFuture[VEither[Problem, java.lang.Boolean]] =
-    underlying.addOrder(order.underlying)
+    underlying.addOrder(order.asScala)
       .map(_.map(o => java.lang.Boolean.valueOf(o)).toVavr)
       .runToFuture
       .asJava
@@ -124,13 +124,13 @@ final class JControllerApi private[js7](
     * {{{api.addOrders(Flux.fromIterable(orders))}}}
     * */
   def addOrders(orders: Flux[JFreshOrder]): CompletableFuture[VEither[Problem, Void]] =
-    underlying.addOrders(orders.asObservable.map(_.underlying))
+    underlying.addOrders(orders.asObservable.map(_.asScala))
       .map(_.toVoidVavr)
       .runToFuture
       .asJava
 
   def executeCommand(command: JControllerCommand): CompletableFuture[VEither[Problem, ControllerCommand.Response]] =
-    underlying.executeCommand(command.underlying)
+    underlying.executeCommand(command.asScala)
       .map(_.map(o => (o: ControllerCommand.Response)).toVavr)
       .runToFuture
       .asJava

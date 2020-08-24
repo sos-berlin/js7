@@ -8,13 +8,12 @@ trait JItemId[P <: TypedPath]
 {
   final type Path = P
   protected type ScalaPath <: TypedPath
-  protected type Underlying <: ItemId[ScalaPath]
-  protected type UnderlyingPath <: ItemId[ScalaPath]
+  protected type AsScala <: ItemId[ScalaPath]
 
-  def underlying: Underlying
+  def asScala: AsScala
 
   def path: P
 
   def versionId: VersionId =
-    underlying.versionId
+    asScala.versionId
 }

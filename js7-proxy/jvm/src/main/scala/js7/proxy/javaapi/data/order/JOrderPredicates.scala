@@ -21,7 +21,7 @@ object JOrderPredicates
     byWorkflowPath(workflowPath)
 
   def byWorkflowId(workflowId: JWorkflowId): Predicate = {
-    val id = workflowId.underlying
+    val id = workflowId.asScala
     _.workflowId == id
   }
 

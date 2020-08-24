@@ -7,17 +7,17 @@ import js7.proxy.data.event.EventAndState
 import js7.proxy.javaapi.data.common.JavaWrapper
 
 @javaApi
-final case class JEventAndControllerState[E <: Event](underlying: EventAndState[E, ControllerState])
+final case class JEventAndControllerState[E <: Event](asScala: EventAndState[E, ControllerState])
 extends JavaWrapper
 {
-  protected type Underlying = EventAndState[E, ControllerState]
+  protected type AsScala = EventAndState[E, ControllerState]
 
   def stampedEvent: Stamped[KeyedEvent[E]] =
-    underlying.stampedEvent
+    asScala.stampedEvent
 
   def state: JControllerState =
-    JControllerState(underlying.state)
+    JControllerState(asScala.state)
 
   def previousState: JControllerState =
-    JControllerState(underlying.previousState)
+    JControllerState(asScala.previousState)
 }

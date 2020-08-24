@@ -73,7 +73,7 @@ extends HasCloser
     httpsConfig: JHttpsConfig)
   : Seq[Resource[Task, HttpControllerApi]] =   {
     if (admissions.asScala.isEmpty) throw new IllegalArgumentException("admissions argument must not be empty")
-    for ((a, i) <- admissions.asScala.map(_.underlying).zipWithIndex.toSeq)
-      yield AkkaHttpControllerApi.resource(a.uri, a.userAndPassword, httpsConfig.underlying, name = s"JournaledProxy-Controller-$i")
+    for ((a, i) <- admissions.asScala.map(_.asScala).zipWithIndex.toSeq)
+      yield AkkaHttpControllerApi.resource(a.uri, a.userAndPassword, httpsConfig.asScala, name = s"JournaledProxy-Controller-$i")
   }
 }

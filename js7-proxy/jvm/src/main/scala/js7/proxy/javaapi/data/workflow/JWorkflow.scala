@@ -12,17 +12,17 @@ import js7.proxy.javaapi.data.item.JInventoryItem
 import js7.proxy.javaapi.data.workflow.position.JPosition
 
 @javaApi
-final case class JWorkflow(underlying: Workflow)
+final case class JWorkflow(asScala: Workflow)
 extends JInventoryItem[JWorkflow, WorkflowPath]
 {
-  protected type Underlying = Workflow
+  protected type AsScala = Workflow
 
   def companion = JWorkflow
 
-  def id = JWorkflowId(underlying.id)
+  def id = JWorkflowId(asScala.id)
 
   def checkedJobName(position: JPosition): VEither[Problem, WorkflowJob.Name] =
-    underlying.checkedExecute(position.underlying)
+    asScala.checkedExecute(position.asScala)
       .flatMap {
         case named: Execute.Named => Right(named.name)
         case _ => Left(Problem(s"Job at position $position does not have a name"))

@@ -59,7 +59,7 @@ public class JWorkflowTester
     }
 
     private void testWorkflowPrinter() {
-        assertThat(WorkflowPrinter.print(workflow.underlying()), equalTo(expectedWorkflowNotation));
+        assertThat(WorkflowPrinter.print(workflow.asScala()), equalTo(expectedWorkflowNotation));
     }
 
     private void testWorkflowParser() {

@@ -128,7 +128,7 @@ final class JControllerApiHistoryTest extends AnyFreeSpec with ProvideActorSyste
 
         assert(keyedEvents.groupMap(_.key)(_.event).view.mapValues(_.toList).to(mutable.SortedMap) == mutable.SortedMap(
           OrderId("🔺") -> List(
-            OrderAdded(TestWorkflowId.underlying, None, Map("KEY" -> "VALUE")),
+            OrderAdded(TestWorkflowId.asScala, None, Map("KEY" -> "VALUE")),
             OrderAttachable(AAgentRefPath),
             OrderTransferredToAgent(AAgentRefPath),
             OrderStarted,
@@ -204,7 +204,7 @@ object JControllerApiHistoryTest
 {
   private val AAgentRefPath = AgentRefPath("/AGENT-A")
   private val BAgentRefPath = AgentRefPath("/AGENT-B")
-  private val TestWorkflow = WorkflowParser.parse(TestWorkflowId.underlying, s"""
+  private val TestWorkflow = WorkflowParser.parse(TestWorkflowId.asScala, s"""
      |define workflow {
      |  execute executable="${TestExecutablePath.string}", agent="AGENT-A";
      |  fork {

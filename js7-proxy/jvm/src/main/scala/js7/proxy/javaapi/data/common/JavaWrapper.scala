@@ -5,9 +5,9 @@ import js7.base.annotation.javaApi
 @javaApi
 trait JavaWrapper
 {
-  protected type Underlying
+  protected type AsScala
 
-  def underlying: Underlying
+  def asScala: AsScala
 
-  override def toString = underlying.toString
+  override def toString = asScala.toString
 }

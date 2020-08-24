@@ -10,7 +10,7 @@ import js7.proxy.javaapi.data.common.VavrConverters._
 object JWorkflowParser
 {
   def parse(jWorkflowId: JWorkflowId, workflowNotation: String): VEither[Problem, JWorkflow] =
-      WorkflowParser.parse(jWorkflowId.underlying, workflowNotation)
+      WorkflowParser.parse(jWorkflowId.asScala, workflowNotation)
       .map(JWorkflow.apply)
       .toVavr
 }

@@ -6,21 +6,21 @@ import js7.data.workflow.position.WorkflowPosition
 import js7.proxy.javaapi.data.common.JJsonable
 import js7.proxy.javaapi.data.workflow.JWorkflowId
 
-final case class JWorkflowPosition(underlying: WorkflowPosition)
+final case class JWorkflowPosition(asScala: WorkflowPosition)
 extends JJsonable [JWorkflowPosition]
 {
-  protected type Underlying = WorkflowPosition
+  protected type AsScala = WorkflowPosition
   protected def companion = JWorkflowPosition
 
-  def workflowId = JWorkflowId(underlying.workflowId)
+  def workflowId = JWorkflowId(asScala.workflowId)
 
-  def position = JPosition(underlying.position)
+  def position = JPosition(asScala.position)
 }
 
 object JWorkflowPosition extends JJsonable.Companion[JWorkflowPosition]
 {
   def of(workflowId: JWorkflowId, position: JPosition) =
-    new JWorkflowPosition(WorkflowPosition(workflowId.underlying, position.underlying))
+    new JWorkflowPosition(WorkflowPosition(workflowId.asScala, position.asScala))
 
   override def fromJson(jsonString: String): VEither[Problem, JWorkflowPosition] =
     super.fromJson(jsonString)

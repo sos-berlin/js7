@@ -9,10 +9,10 @@ import js7.proxy.javaapi.data.common.VavrConverters._
 import scala.jdk.CollectionConverters._
 
 /** Position in a Workflow. */
-final case class JPosition(underlying: Position)
+final case class JPosition(asScala: Position)
 extends JJsonable[JPosition]
 {
-  protected type Underlying = Position
+  protected type AsScala = Position
   protected def companion = JPosition
 
   /** The Position as a List of uneven size of Integers and Strings.
@@ -20,7 +20,7 @@ extends JJsonable[JPosition]
     * Pairs of BranchIds and instruction numbers may follow, if the position is deep in the workflow.
     */
   def toList: java.util.List[Any] =
-    underlying.toSeq.asJava
+    asScala.toSeq.asJava
 }
 
 object JPosition extends JJsonable.Companion[JPosition]

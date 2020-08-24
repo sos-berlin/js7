@@ -8,7 +8,7 @@ import js7.proxy.javaapi.data.common.JJsonable
 trait JInventoryItem[A <: JInventoryItem[A, P], P <: TypedPath]
 extends JJsonable[A]
 {
-  protected type Underlying <: InventoryItem
+  protected type AsScala <: InventoryItem
 
   def id: JItemId[P]
 }
