@@ -4,6 +4,7 @@ import com.typesafe.config.Config
 import java.io.IOException
 import java.nio.file.Files.delete
 import java.nio.file.{Files, Path}
+import js7.base.data.ByteArray
 import js7.base.problem.Checked.{CheckedOption, Ops}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.{DurationRichInt, RichDuration}
@@ -28,7 +29,6 @@ import scala.annotation.tailrec
 import scala.collection.immutable.SortedMap
 import scala.concurrent.Promise
 import scala.concurrent.duration.FiniteDuration
-import scodec.bits.ByteVector
 
 /**
   * Watches a complete journal consisting of n `JournalFile`.
@@ -238,7 +238,7 @@ with JournalingObserver
     }
 
   def observeFile(fileEventId: Option[EventId], position: Option[Long], timeout: FiniteDuration, markEOF: Boolean, onlyLastOfChunk: Boolean)
-  : Checked[Observable[PositionAnd[ByteVector]]] =
+  : Checked[Observable[PositionAnd[ByteArray]]] =
     checkedCurrentEventReader  // TODO Implement for historic journal files, too
       .flatMap(current =>
         // Use defaults for manual request of the current journal file stream, just to show something
@@ -250,7 +250,7 @@ with JournalingObserver
           onlyLastOfChunk = onlyLastOfChunk))
 
   private def observeFile(fileEventId: EventId, position: Long, timeout: FiniteDuration, markEOF: Boolean, onlyLastOfChunk: Boolean)
-  : Checked[Observable[PositionAnd[ByteVector]]] =
+  : Checked[Observable[PositionAnd[ByteArray]]] =
     (nextEventReaderPromise match {
       case Some((`fileEventId`, promise)) =>
         logger.debug(s"observeFile($fileEventId): waiting for this new journal file")

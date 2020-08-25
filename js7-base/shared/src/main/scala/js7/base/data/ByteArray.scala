@@ -11,10 +11,6 @@ final class ByteArray private(array: Array[Byte])
 
   def apply(i: Int) = array(i)
 
-  def lastOption: Option[Byte] =
-    if (array.isEmpty) None
-    else Some(array(array.length - 1))
-
   def slice(from: Int, to: Int) = {
     if (from <= 0 && to >= array.length)
       this
@@ -23,10 +19,16 @@ final class ByteArray private(array: Array[Byte])
   }
 
   def ++(o: ByteArray) = {
-    val a = new Array[Byte](length + o.length)
-    System.arraycopy(array, 0, a.array, 0, array.length)
-    System.arraycopy(o.unsafeArray, 0, a.array, array.length, a.array.length)
-    new ByteArray(a)
+    if (o.unsafeArray.isEmpty)
+      this
+    else if (array.isEmpty)
+      o
+    else {
+      val a = new Array[Byte](length + o.length)
+      System.arraycopy(array, 0, a, 0, array.length)
+      System.arraycopy(o.unsafeArray, 0, a, array.length, o.length)
+      ByteArray.unsafeWrap(a)
+    }
   }
 
   def unsafeArray = array
@@ -72,8 +74,11 @@ object ByteArray extends ByteSequence[ByteArray]
   def fromArray(bytes: Array[Byte]) =
     if (bytes.isEmpty)
       empty
-      else
+    else
       new ByteArray(bytes.clone())
+
+  override def toByteArray(a: ByteArray) =
+    a
 
   def unsafeWrap(bytes: Array[Byte]) =
     new ByteArray(bytes)
@@ -100,14 +105,18 @@ object ByteArray extends ByteSequence[ByteArray]
     unsafeWrap(array)
   }
 
-  override def combineAll(byteArrays_ : IterableOnce[ByteArray]): ByteArray = {
-    val byteArrays = byteArrays_.iterator.to(Iterable)
-    val array = new Array[Byte](byteArrays.map(_.length).sum)
-    var pos = 0
-    for (byteArray <- byteArrays) {
-      System.arraycopy(byteArray.unsafeArray, 0, array, pos, byteArray.length)
-      pos += byteArray.length
+  override def combineAll(byteArrays: IterableOnce[ByteArray]): ByteArray =
+    byteArrays.knownSize match {
+      case 0 => ByteArray.empty
+      case 1 => byteArrays.iterator.next()
+      case _ =>
+        val byteArrays_ = byteArrays.iterator.to(Iterable)
+        val array = new Array[Byte](byteArrays_.map(_.length).sum)
+        var pos = 0
+        for (byteArray <- byteArrays_) {
+          System.arraycopy(byteArray.unsafeArray, 0, array, pos, byteArray.length)
+          pos += byteArray.length
+        }
+        ByteArray(array)
     }
-    ByteArray(array)
-  }
 }

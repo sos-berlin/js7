@@ -7,11 +7,12 @@ import akka.http.scaladsl.model.headers.{HttpEncoding, HttpEncodings, `Accept-En
 import akka.http.scaladsl.model.{HttpEntity, HttpRequest, HttpResponse, Uri => AkkaUri}
 import akka.stream.Materializer
 import akka.util.ByteString
+import js7.base.data.ByteSequence
+import js7.base.data.ByteSequence.ops._
 import js7.base.web.Uri
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scodec.bits.ByteVector
-
 /**
   * @author Joacim Zschimmer
   */
@@ -77,8 +78,9 @@ object AkkaHttpUtils
       }
   }
 
-  implicit final class AkkaByteVector(private val underlying: ByteVector) extends AnyVal {
-    def toByteString = ByteString.fromArrayUnsafe(underlying.toArray)
+  implicit final class AkkaByteVector[A](private val underlying: A) extends AnyVal {
+    def toByteString(implicit A: ByteSequence[A]) =
+      ByteString.fromArrayUnsafe(underlying.unsafeArray)
   }
 
   implicit final class RichAkkaUri(private val underlying: Uri) extends AnyVal {

@@ -17,7 +17,7 @@ import scala.concurrent.duration.FiniteDuration
 final class RealEventWatchTest extends AnyFreeSpec
 {
   "tornOlder" in {
-    val events = Stamped(1, 1L <-: TestEvent(1)) :: Nil  // Event 1 = 1970-01-01, very old
+    val events = Stamped(1L, 1L <-: TestEvent(1)) :: Nil  // Event 1 = 1970-01-01, very old
     val eventWatch = new RealEventWatch {
       def fileEventIds = EventId.BeforeFirst :: Nil
       protected def eventsAfter(after: EventId) = Some(CloseableIterator.fromIterator(events.iterator dropWhile (_.eventId <= after)))
@@ -34,13 +34,13 @@ final class RealEventWatchTest extends AnyFreeSpec
     intercept[TornException] { observable await 99.s }
     observable.cancel()
 
-    assert(eventWatch.observe(EventRequest.singleClass[TestEvent](limit = 7, after = 1, tornOlder = Some(1.s)))
+    assert(eventWatch.observe(EventRequest.singleClass[TestEvent](limit = 7, after = 1L, tornOlder = Some(1.s)))
       .toListL.runToFuture.await(99.s).isEmpty)
   }
 
   "observe without stack overflow" in {
     val eventWatch = new EndlessEventWatch().strict
-    var expectedNext = Stamped(1, 1 <-: TestEvent(1))
+    var expectedNext = Stamped(1L, 1 <-: TestEvent(1))
     val events = mutable.Buffer[Stamped[KeyedEvent[TestEvent]]]()
     val n = 100000
     eventWatch.observe(EventRequest.singleClass[TestEvent](limit = n, timeout = Some(99.s)), onlyLastOfChunk = false)
@@ -69,7 +69,7 @@ object RealEventWatchTest {
 
     def snapshotAfter(after: EventId) = None
 
-    onEventsCommitted(1)
+    onEventsCommitted(1L)
 
     def eventsAfter(after: EventId) =
       Some(CloseableIterator.fromIterator(

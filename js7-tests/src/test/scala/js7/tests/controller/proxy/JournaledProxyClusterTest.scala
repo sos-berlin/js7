@@ -3,11 +3,12 @@ package js7.tests.controller.proxy
 import io.circe.Encoder
 import io.circe.syntax._
 import js7.base.circeutils.CirceUtils._
+import js7.base.eventbus.StandardEventBus
 import js7.base.generic.Completed
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
-import js7.base.time.Stopwatch.measureTimeOfSingleRun
+import js7.base.time.Stopwatch.{itemsPerSecondString, measureTimeOfSingleRun}
 import js7.base.time.{Stopwatch, Timestamp}
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.web.HttpClient
@@ -18,6 +19,7 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.time.WaitForCondition.waitForCondition
 import js7.common.utils.ByteUnits.toKBGB
 import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
+import js7.controller.data.ControllerCommand.TakeSnapshot
 import js7.data.controller.ControllerItems.jsonCodec
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.item.{InventoryItem, UpdateRepoOperation, VersionId}
@@ -26,6 +28,8 @@ import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.parser.WorkflowParser
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.proxy.ControllerApi
+import js7.proxy.data.ProxyEvent
+import js7.proxy.data.event.ProxyStarted
 import js7.proxy.javaapi.data.auth.{JAdmission, JHttpsConfig}
 import js7.tests.controller.proxy.ClusterProxyTest.{backupUserAndPassword, primaryCredentials, primaryUserAndPassword, workflow}
 import js7.tests.controller.proxy.JournaledProxyClusterTest._
@@ -33,6 +37,7 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.duration.Deadline.now
 import scala.jdk.CollectionConverters._
 import scala.reflect.runtime.universe._
 
@@ -100,6 +105,21 @@ final class JournaledProxyClusterTest extends AnyFreeSpec with ClusterProxyTest
         assert(proxy.currentState.repo.currentTyped[Workflow].keys.toVector.sorted == (
           workflowPaths :+ ClusterProxyTest.workflow.path).sorted)
       } finally proxy.stop await 99.s
+
+      locally {
+        // MEASURE SNAPSHOT TIMES
+        var t = now
+        api.executeCommand(TakeSnapshot).await(99.s).orThrow
+        logger.info(s"TakeSnapshot: ${itemsPerSecondString(t.elapsed, n, "items")}")
+
+        t = now
+        val es = api.eventObservable(new StandardEventBus[ProxyEvent], eventId = Some(primaryController.eventWatch.lastAddedEventId))
+          .headL
+          .await(99.s)
+        logger.info(s"Fetch snapshot: ${itemsPerSecondString(t.elapsed, n, "items")}")
+        assert(es.stampedEvent.value.event == ProxyStarted)
+        assert(es.state.repo.currentVersionSize == n + 2)
+      }
     }
   }
 

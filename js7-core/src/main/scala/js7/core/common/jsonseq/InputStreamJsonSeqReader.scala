@@ -1,14 +1,16 @@
 package js7.core.common.jsonseq
 
 import cats.effect.Resource
+import cats.instances.vector._
+import cats.syntax.foldable._
 import io.circe.Json
 import java.io.IOException
 import java.nio.file.Path
+import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops._
 import js7.base.problem.ProblemException
 import js7.base.utils.Ascii.{LF, RS}
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.ScodecUtils.syntax._
 import js7.common.event.PositionAnd
 import js7.common.scalautil.Logger
 import js7.common.utils.UntilNoneIterator
@@ -16,7 +18,7 @@ import js7.core.common.jsonseq.InputStreamJsonSeqReader._
 import js7.core.problems.JsonSeqFileClosedProblem
 import monix.eval.Task
 import monix.execution.atomic.AtomicAny
-import scodec.bits.ByteVector
+import scala.collection.mutable
 
 /**
   * MIME media type application/json-seq, RFC 7464 "JavaScript Object Notation (JSON) Text Sequences".
@@ -40,7 +42,7 @@ extends AutoCloseable
   private var blockPos = 0L
   private var blockLength = 0
   private var blockRead = 0
-  private var byteVectorBuffer = ByteVector.empty
+  private var byteArrays = mutable.Buffer[ByteArray]()
   private var lineNumber: Long = 1  // -1 for unknown line number after seek
   lazy val iterator: Iterator[PositionAnd[Json]] = UntilNoneIterator(read())
 
@@ -84,7 +86,7 @@ extends AutoCloseable
           })
     }
 
-  def readRaw(): Option[ByteVector] = {
+  def readRaw(): Option[ByteArray] = {
     val startPosition = position
     var rsReached = false
     var lfReached = false
@@ -104,20 +106,20 @@ extends AutoCloseable
       }
       val start = blockRead
       while (blockRead < blockLength && (block(blockRead) != LF || { lfReached = true; false })) { blockRead += 1 }
-      byteVectorBuffer ++= ByteVector(block, start, blockRead - start + (if (lfReached) 1 else 0))
+      byteArrays += ByteArray.unsafeWrap(java.util.Arrays.copyOfRange(block, start, blockRead + (if (lfReached) 1 else 0)))
       if (lfReached) {
         blockRead += 1
       }
     }
-    if ((!withRS && byteVectorBuffer.nonEmpty || rsReached) && !lfReached) {
-      logger.warn(s"Discarding truncated last record in '$name': ${byteVectorBuffer.utf8String} (terminating LF is missing)")
-      byteVectorBuffer = ByteVector.empty
+    if ((!withRS && byteArrays.nonEmpty || rsReached) && !lfReached) {
+      logger.warn(s"Discarding truncated last record in '$name': ${byteArrays.toVector.combineAll.utf8String} (terminating LF is missing)")
+      byteArrays.clear()
       seek(startPosition)  // Keep a proper file position at start of record
     }
     lfReached ? {
       if (lineNumber != -1) lineNumber += 1
-      val result = byteVectorBuffer.unbuffer
-      byteVectorBuffer = ByteVector.empty
+      val result = ByteArray.combineAll(byteArrays)
+      byteArrays.clear()
       result
     }
   }

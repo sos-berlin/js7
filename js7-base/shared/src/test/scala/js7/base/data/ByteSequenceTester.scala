@@ -31,6 +31,10 @@ extends AnyFreeSpec
     assert(ByteSeq.unsafeWrap(a).toArray sameElements a)
   }
 
+  "toByteArray" in {
+    assert(ByteSeq(1.toByte, 2.toByte).toByteArray == ByteArray(1.toByte, 2.toByte))
+  }
+
   "random" in {
     assert(ByteSeq.random(3).length == 3)
   }
@@ -52,27 +56,33 @@ extends AnyFreeSpec
   }
 
   "at" in {
-    val byteArray = ByteSeq("ab")
-    assert(byteArray(0) == 'a'.toByte)
-    assert(byteArray(1) == 'b'.toByte)
-    intercept[RuntimeException](byteArray(-1))
-    intercept[RuntimeException](byteArray(2))
+    val byteSeq = ByteSeq("ab")
+    assert(byteSeq(0) == 'a'.toByte)
+    assert(byteSeq(1) == 'b'.toByte)
+    intercept[RuntimeException](byteSeq(-1))
+    intercept[RuntimeException](byteSeq(2))
+  }
+
+  "headOption" in {
+    val byteSeq = ByteSeq("ab")
+    assert(byteSeq.headOption == Some('a'.toByte))
+    assert(ByteSeq.empty.headOption == None)
   }
 
   "lastOption" in {
-    val byteArray = ByteSeq("ab")
-    assert(byteArray.lastOption == Some('b'.toByte))
+    val byteSeq = ByteSeq("ab")
+    assert(byteSeq.lastOption == Some('b'.toByte))
     assert(ByteSeq.empty.lastOption == None)
   }
 
   "indexOf" in {
-    val byteArray = ByteSeq("aba")
-    assert(byteArray.indexOf('a') == 0)
-    assert(byteArray.indexOf('a', 0) == 0)
-    assert(byteArray.indexOf('a', 1) == 2)
-    assert(byteArray.indexOf('a', 2) == 2)
-    assert(byteArray.indexOf('a', 3) == -1)
-    assert(byteArray.indexOf('x') == -1)
+    val byteSeq = ByteSeq("aba")
+    assert(byteSeq.indexOf('a') == 0)
+    assert(byteSeq.indexOf('a', 0) == 0)
+    assert(byteSeq.indexOf('a', 1) == 2)
+    assert(byteSeq.indexOf('a', 2) == 2)
+    assert(byteSeq.indexOf('a', 3) == -1)
+    assert(byteSeq.indexOf('x') == -1)
   }
 
   "drop" in {
@@ -84,13 +94,13 @@ extends AnyFreeSpec
   }
 
   "slice" in {
-    val byteArray = ByteSeq("abc")
-    assert(byteArray.slice(0, 3) == byteArray)
-    assert(byteArray.slice(0, 99) == byteArray)
-    assert(byteArray.slice(1, 0) == ByteSeq.empty)
-    assert(byteArray.slice(1, 1) == ByteSeq.empty)
-    assert(byteArray.slice(1, 2) == ByteSeq("b"))
-    assert(byteArray.slice(99, 99) == ByteSeq.empty)
+    val byteSeq = ByteSeq("abc")
+    assert(byteSeq.slice(0, 3) == byteSeq)
+    assert(byteSeq.slice(0, 99) == byteSeq)
+    assert(byteSeq.slice(1, 0) == ByteSeq.empty)
+    assert(byteSeq.slice(1, 1) == ByteSeq.empty)
+    assert(byteSeq.slice(1, 2) == ByteSeq("b"))
+    assert(byteSeq.slice(99, 99) == ByteSeq.empty)
   }
 
   "utf8String" in {

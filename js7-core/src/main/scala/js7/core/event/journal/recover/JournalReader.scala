@@ -31,11 +31,9 @@ final class JournalReader(journalMeta: JournalMeta, expectedJournalId: Option[Jo
 extends AutoCloseable
 {
   private val jsonReader = InputStreamJsonSeqReader.open(journalFile)
-  val journalHeader = closeOnError(jsonReader) {
-    JournalHeader.checkedHeader(
-      jsonReader.read() map (_.value) getOrElse sys.error(s"Journal file '$journalFile' is empty"),
-      journalFile, expectedJournalId
-    ).orThrow
+  val (journalHeaderByteArray, journalHeader) = closeOnError(jsonReader) {
+    val byteArray = jsonReader.read().map(_.value) getOrElse sys.error(s"Journal file '$journalFile' is empty")
+    JournalHeader.checkedHeader(byteArray, journalFile, expectedJournalId).orThrow
   }
   logger.debug(journalHeader.toString)
 
@@ -109,7 +107,7 @@ extends AutoCloseable
   def close() =
     jsonReader.close()
 
-  /** For FileEventIterator */
+  /** For FileEventIterator, skips snapshot section */
   lazy val firstEventPosition: Long = {
     if (snapshotHeaderRead || eventHeaderRead) throw new IllegalStateException("JournalReader.firstEventPosition has been called after nextEvent")
     while (nextSnapshotJson().isDefined) {}

@@ -2,6 +2,8 @@ package js7.core.event.journal.watch
 
 import com.typesafe.config.Config
 import java.nio.file.Path
+import js7.base.data.ByteArray
+import js7.base.data.ByteSequence.ops._
 import js7.base.monixutils.MonixBase.memoryLeakLimitedObservableTailRecM
 import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
@@ -9,21 +11,21 @@ import js7.base.utils.AutoClosing.closeOnError
 import js7.base.utils.CloseableIterator
 import js7.base.utils.Collections.implicits.RichIterator
 import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScodecUtils.syntax._
 import js7.common.event.PositionAnd
 import js7.common.scalautil.Logger
 import js7.common.utils.UntilNoneIterator
 import js7.core.common.jsonseq.InputStreamJsonSeqReader
 import js7.core.event.journal.data.JournalMeta
 import js7.core.event.journal.recover.JournalReader
+import js7.core.event.journal.watch.EventReader._
 import js7.core.problems.JsonSeqFileClosedProblem
-import js7.data.event.JournalSeparators.EndOfJournalFileMarker
-import js7.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
+import js7.data.event.{Event, EventId, JournalId, JournalSeparators, KeyedEvent, Stamped}
 import monix.eval.Task
 import monix.execution.atomic.AtomicAny
 import monix.reactive.Observable
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, FiniteDuration}
-import scodec.bits.ByteVector
 
 /**
   * @author Joacim Zschimmer
@@ -145,7 +147,7 @@ extends AutoCloseable
 
   /** Observes a journal file lines and length. */
   final def observeFile(position: Long, timeout: FiniteDuration, markEOF: Boolean = false, onlyLastOfChunk: Boolean)
-  : Observable[PositionAnd[ByteVector]] =
+  : Observable[PositionAnd[ByteArray]] =
     Observable.fromResource(InputStreamJsonSeqReader.resource(journalFile))
       .flatMap { jsonSeqReader =>
         val until = now + timeout
@@ -168,7 +170,7 @@ extends AutoCloseable
                 if (onlyLastOfChunk) {
                   // TODO Optimierung: Bei onlyLastOfChunk interessiert nur die geschriebene Dateilänge.
                   //  Dann brauchen wir die Datei nicht zu lesen, sondern nur die geschriebene Dateilänge zurückzugeben.
-                  var last = null.asInstanceOf[PositionAnd[ByteVector]]
+                  var last = null.asInstanceOf[PositionAnd[ByteArray]]
                   iterator foreach { last = _ }
                   iterator = Option(last).iterator
                 }
@@ -191,5 +193,6 @@ extends AutoCloseable
 
 object EventReader
 {
+  private val EndOfJournalFileMarker = JournalSeparators.EndOfJournalFileMarker.toByteArray
   final class TimeoutException private[EventReader] extends scala.concurrent.TimeoutException
 }

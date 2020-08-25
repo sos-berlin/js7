@@ -52,6 +52,9 @@ trait ByteSequence[ByteSeq] extends Monoid[ByteSeq] with Eq[ByteSeq]
 
   @op("apply") def at(byteSequence: ByteSeq, i: Int): Byte
 
+  def headOption(byteSequence: ByteSeq): Option[Byte] =
+    nonEmpty(byteSequence) ? at(byteSequence, 0)
+
   def lastOption(byteSequence: ByteSeq): Option[Byte] =
     nonEmpty(byteSequence) ? at(byteSequence, length(byteSequence) - 1)
 
@@ -84,6 +87,9 @@ trait ByteSequence[ByteSeq] extends Monoid[ByteSeq] with Eq[ByteSeq]
 
   def unsafeArray(byteSequence: ByteSeq): Array[Byte] =
     toArray(byteSequence)
+
+  def toByteArray(byteSequence: ByteSeq): ByteArray =
+    ByteArray.unsafeWrap(unsafeArray(byteSequence))
 
   def toInputStream(byteSequence: ByteSeq): InputStream =
     new ByteSequenceInputStream(byteSequence)(this)

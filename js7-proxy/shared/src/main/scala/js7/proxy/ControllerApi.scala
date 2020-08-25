@@ -32,7 +32,8 @@ extends ControllerProxyWithHttp
         JournaledProxy.selectActiveNodeApi(apis, onCouplingError = _.logError)))
 
   /** Read events and state from Controller. */
-  def observable(proxyEventBus: StandardEventBus[ProxyEvent], eventId: Option[EventId]): Observable[EventAndState[Event, ControllerState]] =
+  def eventObservable(proxyEventBus: StandardEventBus[ProxyEvent], eventId: Option[EventId])
+  : Observable[EventAndState[Event, ControllerState]] =
     JournaledProxy.observable(apiResources, eventId, proxyEventBus.publish, proxyConf)
 
   def startProxy(

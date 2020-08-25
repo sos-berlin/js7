@@ -13,6 +13,7 @@ import js7.base.auth.ValidUserPermission
 import js7.base.utils.FutureCompletion
 import js7.base.utils.FutureCompletion.syntax._
 import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScodecUtils.syntax._
 import js7.common.akkahttp.AkkaHttpServerUtils.passIf
 import js7.common.files.GrowingFileObservable
 import js7.common.http.AkkaHttpUtils.AkkaByteVector

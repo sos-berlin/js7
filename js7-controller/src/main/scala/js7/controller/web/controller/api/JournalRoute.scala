@@ -4,11 +4,14 @@ import akka.http.scaladsl.model.HttpEntity
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import js7.base.auth.ValidUserPermission
+import js7.base.data.ByteSequence.ops._
+import js7.base.data.{ByteArray, ByteSequence}
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.FutureCompletion
 import js7.base.utils.FutureCompletion.syntax._
 import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScodecUtils.syntax._
 import js7.common.akkahttp.AkkaHttpServerUtils.accept
 import js7.common.akkahttp.StandardMarshallers._
 import js7.common.event.{EventWatch, PositionAnd}
@@ -19,12 +22,10 @@ import js7.common.scalautil.Logger
 import js7.common.time.JavaTimeConverters._
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.JournalRoute._
-import js7.data.event.EventId
-import js7.data.event.JournalSeparators.{EndOfJournalFileMarker, HeartbeatMarker}
+import js7.data.event.{EventId, JournalSeparators}
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.duration.FiniteDuration
-import scodec.bits.ByteVector
 
 /** Returns the content of an old or currently written journal file as a live stream.
   * Additional to EventRoute this web service returns the complete file including
@@ -86,12 +87,12 @@ trait JournalRoute extends ControllerRouteProvider
       }
     }
 
-  private def toContent(o: PositionAnd[ByteVector]) =
+  private def toContent(o: PositionAnd[ByteArray]) =
     o.value
 
-  private def toLength(o: PositionAnd[ByteVector]): ByteVector =
+  private def toLength(o: PositionAnd[ByteArray]): ByteArray =
     if (o.value != EndOfJournalFileMarker)
-      ByteVector.encodeUtf8(o.position.toString + '\n').orThrow
+      ByteArray(o.position.toString + '\n')
     else
       o.value
 }
@@ -100,6 +101,8 @@ object JournalRoute
 {
   private val logger = Logger(getClass)
   private val JournalContentType = `application/x-ndjson`
+  private val EndOfJournalFileMarker = JournalSeparators.EndOfJournalFileMarker.toByteArray
+  private val HeartbeatMarker = JournalSeparators.HeartbeatMarker.toByteArray
 
   private def parseReturnParameter(returnType: String): Checked[Boolean] =
     returnType match {

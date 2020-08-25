@@ -39,7 +39,7 @@ final class JControllerApi private[js7](
 
   /** Fetch event stream from Controller. */
   def eventFlux(proxyEventBus: JStandardEventBus[ProxyEvent], after: OptionalLong/*EventId*/): Flux[JEventAndControllerState[Event]] =
-    asScala.observable(proxyEventBus.asScala, after.toScala)
+    asScala.eventObservable(proxyEventBus.asScala, after.toScala)
       .map(JEventAndControllerState.apply)
       .asFlux
 

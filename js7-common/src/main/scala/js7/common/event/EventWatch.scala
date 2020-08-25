@@ -1,5 +1,6 @@
 package js7.common.event
 
+import js7.base.data.ByteArray
 import js7.base.problem.Checked
 import js7.base.utils.CloseableIterator
 import js7.base.utils.ScalaUtils.function1WithToString
@@ -13,7 +14,6 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
-import scodec.bits.ByteVector
 
 /**
   * @author Joacim Zschimmer
@@ -63,7 +63,7 @@ trait EventWatch
   /** Returns None as last element iff timeout has been elapsed. */
   def observeFile(fileEventId: Option[EventId], position: Option[Long], timeout: FiniteDuration,
     markEOF: Boolean = false, onlyLastOfChunk: Boolean = false)
-  : Checked[Observable[PositionAnd[ByteVector]]]
+  : Checked[Observable[PositionAnd[ByteArray]]]
 
   def snapshotAfter(after: EventId): Option[Observable[Any]]
 
