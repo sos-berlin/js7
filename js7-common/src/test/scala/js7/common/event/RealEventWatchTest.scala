@@ -22,6 +22,7 @@ final class RealEventWatchTest extends AnyFreeSpec
       def fileEventIds = EventId.BeforeFirst :: Nil
       protected def eventsAfter(after: EventId) = Some(CloseableIterator.fromIterator(events.iterator dropWhile (_.eventId <= after)))
       def snapshotAfter(after: EventId) = None
+      def rawSnapshotAfter(after: EventId) = None
       def observeFile(fileEventId: Option[EventId], position: Option[Long], timeout: FiniteDuration, markEOF: Boolean, onlyLastOfChunk: Boolean) =
         throw new NotImplementedError
       onEventsCommitted(events.last.eventId)
@@ -68,6 +69,8 @@ object RealEventWatchTest {
     def fileEventIds = EventId.BeforeFirst :: Nil
 
     def snapshotAfter(after: EventId) = None
+
+    def rawSnapshotAfter(after: EventId) = None
 
     onEventsCommitted(1L)
 

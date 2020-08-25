@@ -145,6 +145,9 @@ extends AutoCloseable
   final def snapshot: Observable[Any] =
     JournalReader.snapshot(journalMeta, expectedJournalId, journalFile)
 
+  final def rawSnapshot: Observable[ByteArray] =
+    JournalReader.rawSnapshot(journalMeta, expectedJournalId, journalFile)
+
   /** Observes a journal file lines and length. */
   final def observeFile(position: Long, timeout: FiniteDuration, markEOF: Boolean = false, onlyLastOfChunk: Boolean)
   : Observable[PositionAnd[ByteArray]] =
@@ -162,7 +165,7 @@ extends AutoCloseable
                 var lastPosition = position
                 var eof = false
                 var iterator = UntilNoneIterator {
-                  val maybeLine = jsonSeqReader.readRaw()
+                  val maybeLine = jsonSeqReader.readRaw().map(_.value)
                   eof = maybeLine.isEmpty
                   lastPosition = jsonSeqReader.position
                   maybeLine.map(PositionAnd(lastPosition, _))

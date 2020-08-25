@@ -47,5 +47,7 @@ object EventCollector
     extends EventCollector(configuration)
   {
     def snapshotAfter(after: EventId) = None
+
+    def rawSnapshotAfter(after: EventId) = None
   }
 }

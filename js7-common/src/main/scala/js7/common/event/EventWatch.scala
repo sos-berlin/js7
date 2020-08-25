@@ -67,6 +67,8 @@ trait EventWatch
 
   def snapshotAfter(after: EventId): Option[Observable[Any]]
 
+  def rawSnapshotAfter(after: EventId): Option[Observable[ByteArray]]
+
   /** TEST ONLY - Blocking. */
   @TestOnly
   def await[E <: Event: ClassTag: TypeTag](

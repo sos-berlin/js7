@@ -22,6 +22,8 @@ with AutoCloseable
 {
   def snapshotAfter(after: EventId) = None
 
+  def rawSnapshotAfter(after: EventId) = None
+
   private val actorRef = actorSystem.actorOf(
     Props {
       new Actor {

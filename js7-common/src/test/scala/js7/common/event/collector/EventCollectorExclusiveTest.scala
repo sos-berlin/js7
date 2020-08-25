@@ -89,6 +89,7 @@ private object EventCollectorExclusiveTest
   {
     def putEvent_(keyedEvent: AnyKeyedEvent) = putEvent(keyedEvent)
     def snapshotAfter(after: EventId) = None
+    def rawSnapshotAfter(after: EventId) = None
   }
 
   private trait AEvent extends Event {

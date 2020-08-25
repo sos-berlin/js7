@@ -257,6 +257,8 @@ final class FatEventRouteTest extends AnyFreeSpec with RouteTester with FatEvent
         JournalHeader.initial(JournalId(randomUUID())),  // JournalHeader is implicitly a snapshot object
         controllerMetaState))
 
+    def rawSnapshotAfter(after: EventId) = None
+
     override def eventsAfter(after: EventId) = {
       lastEventsAfter = after
       super.eventsAfter(after)

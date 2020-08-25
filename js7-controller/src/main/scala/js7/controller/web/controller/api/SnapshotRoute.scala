@@ -11,7 +11,6 @@ import js7.base.auth.ValidUserPermission
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked
-import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
 import js7.base.utils.FutureCompletion
 import js7.base.utils.FutureCompletion.syntax._
@@ -19,6 +18,7 @@ import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
 import js7.common.akkahttp.ConcurrentRequestLimiter
 import js7.common.akkahttp.StandardMarshallers._
 import js7.common.event.EventWatch
+import js7.common.http.AkkaHttpUtils.AkkaByteVector
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.StreamingSupport.AkkaObservable
 import js7.common.scalautil.Logger
@@ -29,7 +29,7 @@ import js7.controller.problems.HistoricSnapshotServiceBusyProblem
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.SnapshotRoute._
 import js7.data.Problems.SnapshotForUnknownEventIdProblem
-import js7.data.event.{Event, EventId, EventRequest}
+import js7.data.event.EventId
 import monix.eval.Task
 
 trait SnapshotRoute extends ControllerRouteProvider
@@ -68,21 +68,19 @@ trait SnapshotRoute extends ControllerRouteProvider
   private def historicSnapshot(eventId: EventId): Route =
     concurrentRequestsLimiter(
       completeTask(Task.defer {
-        eventWatch.snapshotAfter(after = eventId) match {
+        eventWatch.rawSnapshotAfter(after = eventId) match {
           case None =>
             Task.pure(Left(SnapshotForUnknownEventIdProblem(eventId)))
 
           case Some(observable) =>
-            ControllerState.fromObservable(observable)
-              // Let the client do this memory consuming work:
-              //.flatMap(recoveredState =>
-              //  eventWatch.observe(EventRequest.singleClass[Event](after = recoveredState.eventId))
-              //    .takeWhile(_.eventId <= eventId)
-              //    .bufferTumbling(1024)
-              //    .foldLeft(recoveredState)((state, stampedEvents) => state.applyStampedEvents(stampedEvents).orThrow)
-              //    .lastL)
-              .map(snapshotToHttpEntity)
-              .map(Right.apply)
+            Task.pure(Right(
+              HttpEntity(
+                `application/x-ndjson`,
+                observable
+                  .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
+                    Task { logger.debug("whenShuttingDown completed") })
+                  .map(_.toByteString)
+                  .toAkkaSourceForHttpResponse)))
         }
       }))
 

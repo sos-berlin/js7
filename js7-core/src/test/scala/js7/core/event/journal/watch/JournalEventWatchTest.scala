@@ -445,5 +445,6 @@ private object JournalEventWatchTest
   private case class ASnapshot(string: String)
 
   implicit private val SnapshotJsonCodec = TypedJsonCodec[Any](
+    Subtype[JournalHeader],
     Subtype(deriveCodec[ASnapshot]))
 }

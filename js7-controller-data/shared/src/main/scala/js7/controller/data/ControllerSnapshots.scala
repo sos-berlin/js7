@@ -10,7 +10,7 @@ import js7.controller.data.events.ControllerAgentEvent.AgentRegisteredController
 import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerId
 import js7.data.controller.ControllerItems._
-import js7.data.event.{JournalState, SnapshotMeta}
+import js7.data.event.{JournalHeader, JournalState, SnapshotMeta}
 import js7.data.item.RepoEvent
 import js7.data.order.Order
 
@@ -32,6 +32,7 @@ object ControllerSnapshots
 
   val SnapshotJsonCodec: TypedJsonCodec[Any] =
     TypedJsonCodec[Any](
+      Subtype[JournalHeader],
       Subtype[SnapshotMeta],
       Subtype[JournalState],
       Subtype(deriveCodec[ClusterState.ClusterStateSnapshot]),

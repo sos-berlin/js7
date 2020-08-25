@@ -5,6 +5,7 @@ import java.io.IOException
 import java.nio.file.Files.delete
 import java.nio.file.{Files, Path}
 import js7.base.data.ByteArray
+import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked.{CheckedOption, Ops}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.{DurationRichInt, RichDuration}
@@ -174,18 +175,21 @@ with JournalingObserver
     onEventsCommitted(positionAndEventId.value)
   }
 
-  def snapshotAfter(after: EventId) = {
+  def snapshotAfter(after: EventId) =
+    rawSnapshotAfter(after)
+      .map(_.mapParallelOrderedBatch()(_.parseJsonAs(journalMeta.snapshotJsonCodec).orThrow))
+
+  def rawSnapshotAfter(after: EventId) =
     currentEventReaderOption match {
       case Some(current) if current.tornEventId <= after =>
-        Some(current.snapshot)
+        Some(current.rawSnapshot)
       case _ =>
         historicJournalFileAfter(after)
           .map { historicJournalFile =>
             logger.debug(s"Reading snapshot from journal file '$historicJournalFile'")
-            historicJournalFile.eventReader.snapshot
+            historicJournalFile.eventReader.rawSnapshot
           }
     }
-  }
 
   /**
     * @return `Task(None)` torn, `after` < `tornEventId`

@@ -2,8 +2,11 @@ package js7.core.event.journal.recover
 
 import cats.effect.Resource
 import io.circe.Json
+import io.circe.syntax.EncoderOps
 import java.nio.file.Path
 import js7.base.circeutils.CirceUtils._
+import js7.base.data.ByteArray
+import js7.base.data.ByteSequence.ops._
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked._
 import js7.base.utils.AutoClosing.closeOnError
@@ -15,7 +18,7 @@ import js7.common.utils.untilNoneIterator
 import js7.core.common.jsonseq.InputStreamJsonSeqReader
 import js7.core.event.journal.data.JournalMeta
 import js7.core.event.journal.recover.JournalReader._
-import js7.data.event.JournalSeparators.{Commit, EventHeader, SnapshotFooter, SnapshotHeader, Transaction}
+import js7.data.event.JournalSeparators.{Commit, EventHeader, EventHeaderLine, SnapshotFooterLine, SnapshotHeaderLine, Transaction}
 import js7.data.event.{Event, EventId, JournalHeader, JournalId, KeyedEvent, Stamped}
 import monix.eval.Task
 import monix.reactive.Observable
@@ -31,7 +34,7 @@ final class JournalReader(journalMeta: JournalMeta, expectedJournalId: Option[Jo
 extends AutoCloseable
 {
   private val jsonReader = InputStreamJsonSeqReader.open(journalFile)
-  val (journalHeaderByteArray, journalHeader) = closeOnError(jsonReader) {
+  val journalHeader = closeOnError(jsonReader) {
     val byteArray = jsonReader.read().map(_.value) getOrElse sys.error(s"Journal file '$journalFile' is empty")
     JournalHeader.checkedHeader(byteArray, journalFile, expectedJournalId).orThrow
   }
@@ -117,7 +120,8 @@ extends AutoCloseable
           eventHeaderRead = true
         case None =>
         case Some(positionAndJson) =>
-          throw new CorruptJournalException("Event header is missing", journalFile, positionAndJson)
+          throw new CorruptJournalException("Event header is missing", journalFile,
+            positionAndJson.copy(value = ByteArray(positionAndJson.value.compactPrint)))
       }
     }
     jsonReader.position
@@ -128,28 +132,35 @@ extends AutoCloseable
       Observable.fromIteratorUnsafe(untilNoneIterator(nextSnapshotJson()))
         .mapParallelOrderedBatch()(json => journalMeta.snapshotJsonCodec.decodeJson(json).orThrow)
 
+  private[recover] def readSnapshotRaw: Observable[ByteArray] =
+    ByteArray(journalHeader.asJson.compactPrint + '\n'/*for application/x-ndjson*/) +:
+      Observable.fromIteratorUnsafe(untilNoneIterator(nextSnapshotRaw().map(_.value)))
+
+  private def nextSnapshotJson(): Option[Json] =
+    nextSnapshotRaw().map(jsonReader.toJson).map(_.value)
+
   @tailrec
-  private def nextSnapshotJson(): Option[Json] = {
+  private def nextSnapshotRaw(): Option[PositionAnd[ByteArray]] = {
     if (eventHeaderRead) throw new IllegalStateException("nextSnapshotJson has been called after nextEvent")
-    val positionAndJson = jsonReader.read() getOrElse sys.error(s"Journal file '$journalFile' is truncated in snapshot section")
-    val json = positionAndJson.value
+    val positionAndRaw = jsonReader.readRaw() getOrElse sys.error(s"Journal file '$journalFile' is truncated in snapshot section")
+    val record = positionAndRaw.value
     if (!snapshotHeaderRead)
-      json match {
-        case EventHeader =>  // Journal file does not have a snapshot section?
+      record match {
+        case EventHeaderLine =>  // Journal file does not have a snapshot section?
           eventHeaderRead = true
           None
-        case SnapshotHeader =>
+        case SnapshotHeaderLine =>
           snapshotHeaderRead = true
-          nextSnapshotJson()
+          nextSnapshotRaw()
         case _ =>
-          throw new CorruptJournalException("Snapshot header is missing", journalFile, positionAndJson)
+          throw new CorruptJournalException("Snapshot header is missing", journalFile, positionAndRaw)
       }
-    else if (json.isObject)
-      Some(positionAndJson.value)
-    else if (json == SnapshotFooter)
+    else if (record.headOption contains '{'/*JSON object?*/)
+      Some(positionAndRaw)
+    else if (record == SnapshotFooterLine)
       None
     else
-      throw new CorruptJournalException("Snapshot footer is missing", journalFile, positionAndJson)
+      throw new CorruptJournalException("Snapshot footer is missing", journalFile, positionAndRaw)
   }
 
   /** For FileEventIterator */
@@ -180,7 +191,9 @@ extends AutoCloseable
           eventHeaderRead = true
           nextEvent3()
         case Some(positionAndJson) =>
-          throw new CorruptJournalException(s"Event header is missing", journalFile, positionAndJson)
+          throw new CorruptJournalException(s"Event header is missing", journalFile,
+            positionAndJson.copy(value = ByteArray(positionAndJson.value.compactPrint)))
+
         case None =>
           None
       }
@@ -197,12 +210,14 @@ extends AutoCloseable
             val stampedEvent = deserialize(positionAndJson.value)
             if (stampedEvent.eventId <= _eventId)
               throw new CorruptJournalException(s"Journal is corrupt, EventIds are in wrong order: ${EventId.toString(stampedEvent.eventId)} follows ${EventId.toString(_eventId)}",
-                journalFile, positionAndJson)
+                journalFile, positionAndJson.copy(value = ByteArray(positionAndJson.value.compactPrint)))
+
             if (_totalEventCount != -1) _totalEventCount += 1
             Some(stampedEvent)
 
           case Transaction =>
-            if (transaction.isInTransaction) throw new CorruptJournalException("Duplicate/nested transaction", journalFile, positionAndJson)
+            if (transaction.isInTransaction) throw new CorruptJournalException("Duplicate/nested transaction", journalFile,
+              positionAndJson.copy(value = ByteArray(positionAndJson.value.compactPrint)))
             transaction.begin()
             def read() =
               try jsonReader.read()
@@ -235,7 +250,8 @@ extends AutoCloseable
           case Commit =>  // Only after seek into a transaction
             nextEvent3()
 
-          case _ => throw new CorruptJournalException(s"Unexpected JSON record", journalFile, positionAndJson)
+          case _ => throw new CorruptJournalException(s"Unexpected JSON record", journalFile,
+            positionAndJson.copy(value = ByteArray(positionAndJson.value.compactPrint)))
         }
     }
 
@@ -261,13 +277,20 @@ object JournalReader
   private val logger = Logger(getClass)
 
   def snapshot(journalMeta: JournalMeta, expectedJournalId: Option[JournalId], journalFile: Path): Observable[Any] =
+    snapshot_(_.readSnapshot)(journalMeta, expectedJournalId, journalFile)
+
+  def rawSnapshot(journalMeta: JournalMeta, expectedJournalId: Option[JournalId], journalFile: Path): Observable[ByteArray] =
+    snapshot_(_.readSnapshotRaw)(journalMeta, expectedJournalId, journalFile)
+
+  private def snapshot_[A](f: JournalReader => Observable[A])
+    (journalMeta: JournalMeta, expectedJournalId: Option[JournalId], journalFile: Path): Observable[A] =
     Observable.fromResource(
       Resource.fromAutoCloseable(Task(
         new JournalReader(journalMeta, expectedJournalId, journalFile)))
-    ).flatMap(_.readSnapshot)
+    ) flatMap f
 
-  private final class CorruptJournalException(message: String, journalFile: Path, positionAndJson: PositionAnd[Json])
+  private final class CorruptJournalException(message: String, journalFile: Path, positionAndJson: PositionAnd[ByteArray])
   extends RuntimeException(
     s"Journal file '$journalFile' has an error at byte position ${positionAndJson.position}:" +
-      s" $message - JSON=${positionAndJson.value.compactPrint.truncateWithEllipsis(50)}")
+      s" $message - JSON=${positionAndJson.value.utf8String.truncateWithEllipsis(50)}")
 }
