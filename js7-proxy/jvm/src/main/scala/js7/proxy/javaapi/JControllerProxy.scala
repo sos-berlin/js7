@@ -24,28 +24,28 @@ import reactor.core.publisher.Flux
   * Java adapter for `JournaledProxy[JControllerState]`. */
 @javaApi
 final class JControllerProxy private[proxy](
-  underlying: ControllerProxy,
+  asScala: ControllerProxy,
   val api: JControllerApi,
   val controllerEventBus: JControllerEventBus)
   (implicit scheduler: Scheduler)
 {
   /** Listen to the already running event stream. */
   def flux(): Flux[JEventAndControllerState[Event]] =
-    underlying.observable
+    asScala.observable
       .map(JEventAndControllerState.apply)
       .asFlux
 
   def stop(): CompletableFuture[Void] =
-    underlying.stop
+    asScala.stop
       .map(_ => Void)
       .runToFuture
       .asJava
 
   def currentState: JControllerState =
-    JControllerState(underlying.currentState)
+    JControllerState(asScala.currentState)
 
   private def runOrderForTest(order: JFreshOrder): CompletableFuture[Stamped[KeyedEvent[OrderTerminated]]] = {
-    val whenOrderTerminated = underlying.observable
+    val whenOrderTerminated = asScala.observable
       .collect {
         case EventAndState(stamped @ Stamped(_, _, KeyedEvent(orderId, _: OrderTerminated)), _, _)
           if orderId == order.id =>
@@ -53,7 +53,7 @@ final class JControllerProxy private[proxy](
       }
       .headL
       .runToFuture
-    val isAdded = api.underlying.addOrder(order.asScala)
+    val isAdded = api.asScala.addOrder(order.asScala)
       .await(99.s)
       .orThrow
     if (!isAdded) throw new IllegalStateException(s"Order has already been added: ${order.id}")

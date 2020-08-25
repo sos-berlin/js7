@@ -31,7 +31,7 @@ final class JControllerApi private[js7](
   proxyConf: ProxyConf)
   (implicit scheduler: Scheduler)
 {
-  private[js7] val underlying = new ControllerApi(apiResources, proxyConf)
+  private[js7] val asScala = new ControllerApi(apiResources, proxyConf)
 
   /** Fetch event stream from Controller. */
   def eventFlux(proxyEventBus: JStandardEventBus[ProxyEvent]): Flux[JEventAndControllerState[Event]] =
@@ -39,7 +39,7 @@ final class JControllerApi private[js7](
 
   /** Fetch event stream from Controller. */
   def eventFlux(proxyEventBus: JStandardEventBus[ProxyEvent], after: OptionalLong/*EventId*/): Flux[JEventAndControllerState[Event]] =
-    underlying.observable(proxyEventBus.asScala, after.toScala)
+    asScala.observable(proxyEventBus.asScala, after.toScala)
       .map(JEventAndControllerState.apply)
       .asFlux
 
@@ -58,7 +58,7 @@ final class JControllerApi private[js7](
     ControllerProxy.start(
       apiResources,
       proxyEventBus.asScala,
-      controllerEventBus.underlying,
+      controllerEventBus.asScala,
       proxyConf
     ) .map(new JControllerProxy(_, this, controllerEventBus))
       .runToFuture
@@ -101,14 +101,14 @@ final class JControllerApi private[js7](
     *
     */
   def updateRepo(versionId: VersionId, operations: Flux[JUpdateRepoOperation]): CompletableFuture[VEither[Problem, Void]] =
-    underlying.updateRepo(versionId, operations.asObservable.map(_.asScala))
+    asScala.updateRepo(versionId, operations.asObservable.map(_.asScala))
       .map(_.toVoidVavr)
       .runToFuture
       .asJava
 
   /** @return true iff added, false iff not added because of duplicate OrderId. */
   def addOrder(order: JFreshOrder): CompletableFuture[VEither[Problem, java.lang.Boolean]] =
-    underlying.addOrder(order.asScala)
+    asScala.addOrder(order.asScala)
       .map(_.map(o => java.lang.Boolean.valueOf(o)).toVavr)
       .runToFuture
       .asJava
@@ -124,13 +124,13 @@ final class JControllerApi private[js7](
     * {{{api.addOrders(Flux.fromIterable(orders))}}}
     * */
   def addOrders(orders: Flux[JFreshOrder]): CompletableFuture[VEither[Problem, Void]] =
-    underlying.addOrders(orders.asObservable.map(_.asScala))
+    asScala.addOrders(orders.asObservable.map(_.asScala))
       .map(_.toVoidVavr)
       .runToFuture
       .asJava
 
   def executeCommand(command: JControllerCommand): CompletableFuture[VEither[Problem, ControllerCommand.Response]] =
-    underlying.executeCommand(command.asScala)
+    asScala.executeCommand(command.asScala)
       .map(_.map(o => (o: ControllerCommand.Response)).toVavr)
       .runToFuture
       .asJava
@@ -139,7 +139,7 @@ final class JControllerApi private[js7](
     httpPostJson("/controller/api/command", command)
 
   def httpPostJson(uriTail: String, jsonString: String): CompletableFuture[VEither[Problem, String]] =
-    underlying.httpPostJson(uriTail, jsonString)
+    asScala.httpPostJson(uriTail, jsonString)
       .map(_.toVavr)
       .runToFuture
       .asJava
@@ -149,7 +149,7 @@ final class JControllerApi private[js7](
     * @return `Either.Left(Problem)` or `Either.Right(json: String)`
     */
   def httpGetJson(uriTail: String): CompletableFuture[VEither[Problem, String]] =
-    underlying.httpGetJson(uriTail)
+    asScala.httpGetJson(uriTail)
       .map(_.toVavr)
       .runToFuture
       .asJava

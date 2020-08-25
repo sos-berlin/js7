@@ -7,7 +7,7 @@ import js7.proxy.JournaledStateEventBus
 import js7.proxy.javaapi.data.common.{JJournaledState, JavaWrapper}
 import scala.jdk.CollectionConverters._
 
-class JJournaledStateEventBus[JS <: JJournaledState[JS, S], S <: JournaledState[S]](val underlying: JournaledStateEventBus[S])
+class JJournaledStateEventBus[JS <: JJournaledState[JS, S], S <: JournaledState[S]](val asScala: JournaledStateEventBus[S])
   (implicit JS: JJournaledState.Companion[JS, S])
 extends AutoCloseable
 {
@@ -15,7 +15,7 @@ extends AutoCloseable
     this(new JournaledStateEventBus[S])
 
   /** Close all subscriptions. */
-  def close() = underlying.close()
+  def close() = asScala.close()
 
   @javaApi
   final def subscribe[E <: Event](
@@ -33,7 +33,7 @@ extends AutoCloseable
     callback: java.util.function.BiConsumer[Stamped[KeyedEvent[E]], JS])
   : EventSubscription =
     EventSubscription(
-      new underlying.EventSubscription(
+      new asScala.EventSubscription(
         eventClasses.asScala.toSet,
         o => callback.accept(
           o.stampedEvent.asInstanceOf[Stamped[KeyedEvent[E]]],
@@ -41,7 +41,7 @@ extends AutoCloseable
 
   @javaApi
   final def addSubscription[E <: Event](subscription: EventSubscription): Unit = {
-    assertThat(subscription.eventBus eq underlying)
+    assertThat(subscription.eventBus eq asScala)
     subscription.internalAddToEventBus()
   }
 
@@ -53,25 +53,25 @@ extends AutoCloseable
 
   @javaApi
   final def removeAllSubscriptions(): Unit =
-    underlying.removeAllSubscriptions()
+    asScala.removeAllSubscriptions()
 
   @javaApi
   sealed/*instead of final in Scala 2: https://github.com/scala/bug/issues/4440*/
-  case class EventSubscription private(asScala: JJournaledStateEventBus.this.underlying.EventSubscription)
+  case class EventSubscription private(asScala: JJournaledStateEventBus.this.asScala.EventSubscription)
   extends js7.proxy.javaapi.eventbus.EventSubscription
   with JavaWrapper
   with AutoCloseable
   {
-    type AsScala = JJournaledStateEventBus.this.underlying.EventSubscription
+    protected type AsScala = JJournaledStateEventBus.this.asScala.EventSubscription
 
     /** For internal use only. */
-    private[JJournaledStateEventBus] def eventBus = JJournaledStateEventBus.this.underlying
+    private[JJournaledStateEventBus] def eventBus = JJournaledStateEventBus.this.asScala
 
     @javaApi
     def close() = asScala.close()
 
     /** For internal use only. */
     private[JJournaledStateEventBus] def internalAddToEventBus(): Unit =
-      JJournaledStateEventBus.this.underlying.addSubscription(asScala)
+      JJournaledStateEventBus.this.asScala.addSubscription(asScala)
   }
 }

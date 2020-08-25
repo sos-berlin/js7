@@ -8,10 +8,10 @@ import js7.proxy.javaapi.data.auth.JCredentials._
 @javaApi
 sealed trait JCredentials
 {
-  def toUnderlying: Option[UserAndPassword] =
+  def toScala: Option[UserAndPassword] =
     this match {
       case NoCredentials => None
-      case o: JUserAndPassword => Some(o.underlying)
+      case o: JUserAndPassword => Some(o.asScala)
     }
 }
 
@@ -25,6 +25,6 @@ object JCredentials
   def of(userId: String, password: String): JCredentials =
     JUserAndPassword(UserAndPassword(UserId(userId), SecretString(password)))
 
-  final case class JUserAndPassword(underlying: UserAndPassword)
+  final case class JUserAndPassword(asScala: UserAndPassword)
   extends JCredentials
 }

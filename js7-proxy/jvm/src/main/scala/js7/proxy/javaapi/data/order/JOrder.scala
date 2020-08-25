@@ -43,7 +43,7 @@ extends JJsonable[JOrder]
     asScala.attached.toVavr
 
   def checkedState[S <: State](s: StateType[S]): VEither[Problem, S] =
-    asScala.checkedState(ClassTag(s.underlyingClass))
+    asScala.checkedState(ClassTag(s.scalaClass))
       .flatMap((o: Order[Order.State]) =>
         o.state match {
           case forked: Order.Forked => Right(Forked(forked).asInstanceOf[S])
@@ -63,7 +63,7 @@ object JOrder extends JJsonable.Companion[JOrder]
 
   sealed trait State extends JavaWrapper
 
-  sealed class StateType[S <: State](clas: Class[S], private[JOrder] val underlyingClass: Class[_ <: Order.State])
+  sealed class StateType[S <: State](clas: Class[S], private[JOrder] val scalaClass: Class[_ <: Order.State])
 
   final case class Forked(asScala: Order.Forked) extends State {
     protected type AsScala = Order.Forked

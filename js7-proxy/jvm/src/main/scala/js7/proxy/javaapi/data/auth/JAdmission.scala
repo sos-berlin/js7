@@ -19,11 +19,11 @@ object JAdmission
 {
   @javaApi @throws[RuntimeException]("on invalid syntax")
   def of(uri: String, credentials: JCredentials) =
-    new JAdmission(Admission(Uri(uri), credentials.toUnderlying))
+    new JAdmission(Admission(Uri(uri), credentials.toScala))
 
   @javaApi
   def checked(uri: String, credentials: JCredentials): VEither[Problem, JAdmission] =
     Uri.checked(uri)
-      .map(uri => new JAdmission(Admission(uri, credentials.toUnderlying)))
+      .map(uri => new JAdmission(Admission(uri, credentials.toScala)))
       .toVavr
 }

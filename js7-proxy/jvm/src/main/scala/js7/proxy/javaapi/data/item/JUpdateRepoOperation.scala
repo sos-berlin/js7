@@ -7,7 +7,7 @@ import js7.proxy.javaapi.data.common.JavaWrapper
 final case class JUpdateRepoOperation(asScala: UpdateRepoOperation.ItemOperation)
 extends JavaWrapper
 {
-  type AsScala = UpdateRepoOperation.ItemOperation
+  protected type AsScala = UpdateRepoOperation.ItemOperation
 }
 
 object JUpdateRepoOperation

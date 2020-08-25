@@ -25,13 +25,13 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
   override def fromJson(jsonString: String): VEither[Problem, JOrderEvent] =
     super.fromJson(jsonString)
 
-  val jsonEncoder: Encoder[Underlying] = OrderEvent.jsonCodec.asInstanceOf[Encoder[Underlying]]
-  val jsonDecoder: Decoder[Underlying] = OrderEvent.jsonCodec.asInstanceOf[Decoder[Underlying]]
+  val jsonEncoder: Encoder[AsScala] = OrderEvent.jsonCodec.asInstanceOf[Encoder[AsScala]]
+  val jsonDecoder: Decoder[AsScala] = OrderEvent.jsonCodec.asInstanceOf[Decoder[AsScala]]
 
   def of(orderEvent: OrderEvent): JOrderEvent =
-    apply(orderEvent.asInstanceOf[Underlying])
+    apply(orderEvent.asInstanceOf[AsScala])
 
-  def apply(underlying: Underlying): JOrderEvent =
+  def apply(underlying: AsScala): JOrderEvent =
     underlying match {
       case event: OrderAdded => JOrderAdded(event)
       case event: OrderProcessingStarted => JOrderProcessingStarted(event)
@@ -93,12 +93,12 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
     protected type AsScala = OrderForked
 
     def children: java.util.List[JOrderForked.ForkedChild] =
-      asScala.children.map(JOrderForked.ForkedChild.fromUnderlying).asJava
+      asScala.children.map(JOrderForked.ForkedChild.fromScala).asJava
   }
   object JOrderForked {
     final case class ForkedChild(branchId: ForkBranchId, orderId: OrderId)
     object ForkedChild {
-      def fromUnderlying(child: OrderForked.Child) =
+      def fromScala(child: OrderForked.Child) =
         ForkedChild(ForkBranchId(child.branchId.string), child.orderId)
     }
   }
