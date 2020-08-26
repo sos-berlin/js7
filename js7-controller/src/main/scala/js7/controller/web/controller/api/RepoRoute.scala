@@ -6,6 +6,7 @@ import akka.http.scaladsl.model.HttpEntity
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, OK}
 import akka.http.scaladsl.server.Directives.{as, complete, entity, pathEnd, post, withSizeLimit}
 import akka.http.scaladsl.server.Route
+import cats.syntax.flatMap._
 import io.circe.Json
 import js7.base.auth.{Permission, UpdateRepoPermission, ValidUserPermission}
 import js7.base.crypt.SignedString
@@ -28,7 +29,9 @@ import js7.controller.web.common.{ControllerRouteProvider, EntitySizeLimitProvid
 import js7.controller.web.controller.api.RepoRoute.{ExitStreamException, _}
 import js7.data.crypt.InventoryItemVerifier.Verified
 import js7.data.item.{InventoryItem, TypedPath, UpdateRepoOperation, VersionId}
+import monix.eval.Task
 import monix.execution.Scheduler
+import monix.execution.atomic.{AtomicAny, AtomicBoolean}
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
 
@@ -52,12 +55,12 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
           withSizeLimit(entitySizeLimit)/*call before entity*/(
             entity(as[HttpEntity]) { httpEntity =>
               complete {
-                // TODO eat observable even in case if error
                 val startedAt = now
                 var byteCount = 0L
                 val versionId = SetOnce[VersionId]
                 val addOrReplace = Vector.newBuilder[Verified[InventoryItem]]
                 val delete = mutable.Buffer[TypedPath]()
+                val problemOccurred = AtomicAny[Problem](null)
                 httpEntity
                   .dataBytes
                   .toObservable
@@ -65,20 +68,35 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                   .pipeIf(logger.underlying.isDebugEnabled, _.map { o => byteCount += o.size; o })
                   .flatMap(new ByteVectorToLinesObservable)
                   .mapParallelUnorderedBatch()(_
-                    .parseJsonAs[UpdateRepoOperation].orThrow
-                    match {
+                    .parseJsonAs[UpdateRepoOperation].orThrow match {
                       case UpdateRepoOperation.AddOrReplace(signedJson) =>
-                        verify(signedJson).fold(problem => throw ExitStreamException(problem), identity)
+                        problemOccurred.get match {
+                          case null =>
+                            val checked = verify(signedJson)
+                            for (problem <- checked.left) {
+                              // Delay error until input stream is completely eaten
+                              problemOccurred := problem
+                            }
+                            checked
+                          case problem =>
+                            // After error, eat input stream
+                            Left(problem)
+                        }
                       case o => o
                     })
                   .foreachL {
                     case UpdateRepoOperation.Delete(path) =>
                       delete += path
-                    case verifiedItem: Verified[InventoryItem] @unchecked =>
+                    case Right(verifiedItem: Verified[InventoryItem] @unchecked) =>
                       addOrReplace += verifiedItem
+                    case Left(_) =>
                     case UpdateRepoOperation.AddVersion(v) =>
                       versionId := v  // throws
                   }
+                  .flatTap(_ => problemOccurred.get match {
+                    case null => Task.unit
+                    case problem => Task.raiseError(ExitStreamException(problem))
+                  })
                   .map(_ => addOrReplace.result() -> delete.toSeq)
                   .map { case (addOrReplace, delete) =>
                     val d = startedAt.elapsed

@@ -62,7 +62,6 @@ final class JControllerProxyTest extends AnyFreeSpec with DirectoryProviderForSc
       try {
         val admissions = List(JAdmission.of(s"http://127.0.0.1:$port", ClusterProxyTest.primaryCredentials)).asJava
         val myVersionId = VersionId("MY-VERSION")
-        val bigString = " " * 100_000
         JControllerProxyTester.run(admissions, JHttpsConfig.empty,
           List[InventoryItem](
             workflow.withVersion(myVersionId),
@@ -70,7 +69,7 @@ final class JControllerProxyTest extends AnyFreeSpec with DirectoryProviderForSc
             unusedAgentRef.withVersion(VersionId("MY-VERSION")),
           ).map(_.asJson.compactPrint).asJava,
           (1 to 1000).map(i => workflow.withId(WorkflowPath(s"/WORKFLOW-$i") ~ myVersionId))
-            .map(_.asJson.compactPrint + bigString).asJava,
+            .map(_.asJson.compactPrint).asJava,
           () => controller())
       } finally
         for (controller <- controller) {

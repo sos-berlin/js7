@@ -8,6 +8,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import js7.base.crypt.SignedString;
 import js7.base.problem.Problem;
 import js7.base.problem.ProblemCode;
@@ -46,14 +48,16 @@ final class JControllerProxyRepoTester
         throws InterruptedException, ExecutionException, TimeoutException
     {
         // Try to add many items with invalid signature
-        assertThat(manyItemJsons.stream().mapToInt(String::length).sum(), greaterThan(100_000_000/*bytes*/));
+        String bigSpace = Stream.generate(() -> "          ").limit(10_000).collect(Collectors.joining());
+        assertThat(bigSpace.length(), equalTo(100_000));
+        assertThat(manyItemJsons.stream().mapToInt(o -> o.length() + bigSpace.length()).sum(), greaterThan(100_000_000/*bytes*/));
         assertThat(
             proxy.api()
                 .updateRepo(
                     versionId,
                     Flux.fromStream(
                         manyItemJsons.stream()
-                            .map(json -> JUpdateRepoOperation.addOrReplace(SignedString.of(json, "Silly", "MY-SILLY-FAKE")))))
+                            .map(json -> JUpdateRepoOperation.addOrReplace(SignedString.of(json + bigSpace, "Silly", "MY-SILLY-FAKE")))))
                 .get(99, SECONDS)
                 .mapLeft(problem -> new Tuple2<>(
                     Optional.ofNullable(problem.codeOrNull()).map(ProblemCode::string),
