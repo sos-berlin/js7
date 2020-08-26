@@ -16,7 +16,7 @@ import js7.common.http.CirceJsonSupport._
 import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
 import js7.common.scalautil.Logger
 import js7.controller.configuration.ControllerConfiguration
-import js7.controller.data.ControllerSnapshots.ControllerMetaState
+import js7.controller.data.ControllerMetaState
 import js7.controller.web.controller.api.fatevent.FatEventRouteTest._
 import js7.controller.web.controller.api.test.RouteTester
 import js7.data.agent.{AgentRef, AgentRefPath}

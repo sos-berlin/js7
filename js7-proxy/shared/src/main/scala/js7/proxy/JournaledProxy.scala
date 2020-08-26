@@ -200,7 +200,7 @@ object JournaledProxy
     private var addToTornOlder = stateFetchDuration
 
     def getObservable(api: EventApi, after: EventId) = {
-      import S.keyedEventJsonDecoder
+      import S.keyedEventJsonCodec
       HttpClient.liftProblem(
         api.eventObservable(
           EventRequest.singleClass[Event](after = after, delay = 1.s,

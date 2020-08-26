@@ -51,7 +51,7 @@ private object JournaledStateTest
 
     def toSnapshotObservable = standards.toSnapshotObservable
 
-    protected def withStandards(standards: JournaledState.Standards) =
+    def withStandards(standards: JournaledState.Standards) =
       copy(standards = standards)
 
     def applyEvent(keyedEvent: KeyedEvent[Event]) =

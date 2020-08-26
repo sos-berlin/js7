@@ -226,8 +226,7 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff](
                   // TODO Recovering may be omitted because the new active node has written a snapshot immediately after failover
                   // May take a long time !!!
                   logger.info("Recovering again from properly truncated journal file")
-                  trunkRecovered = JournaledStateRecoverer.recover[S](
-                    journalMeta, S.empty, recovered.newStateBuilder, config /*, runningSince=???*/)
+                  trunkRecovered = JournaledStateRecoverer.recover[S](journalMeta, config /*, runningSince=???*/)
                   val truncatedRecoveredJournalFile = trunkRecovered.recoveredJournalFile
                     .getOrElse(sys.error(s"Unrecoverable journal file '${file.getFileName}''"))
                   assertThat(truncatedRecoveredJournalFile.state.clusterState == recoveredClusterState)

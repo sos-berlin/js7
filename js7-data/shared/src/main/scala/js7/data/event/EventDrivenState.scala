@@ -1,13 +1,11 @@
 package js7.data.event
 
 import js7.base.problem.{Checked, Problem}
-import js7.data.event.JournaledState.{EventNotApplicableProblem, SnapshotObjectNotApplicableProblem}
+import js7.data.event.JournaledState.EventNotApplicableProblem
 
 trait EventDrivenState[This <: EventDrivenState[This, E], E <: Event]
 {
   this: This =>
-
-  def applySnapshotObject(o: Any): Checked[This]
 
   def applyEvent(keyedEvent: KeyedEvent[E]): Checked[This]
 
@@ -34,9 +32,6 @@ trait EventDrivenState[This <: EventDrivenState[This, E], E <: Event]
     }
     if (problem != null) Left(problem) else Right(state)
   }
-
-  protected final def snapshotObjectNotApplicable(o: Any) =
-    Left(SnapshotObjectNotApplicableProblem(o, this))
 
   protected final def eventNotApplicable(keyedEvent: KeyedEvent[Event]) =
     Left(EventNotApplicableProblem(keyedEvent, this))

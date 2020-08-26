@@ -14,7 +14,7 @@ import js7.core.event.journal.files.JournalFiles.JournalMetaOps
 import js7.core.event.journal.recover.JournalProgress.{AfterSnapshotSection, InCommittedEventsSection}
 import js7.core.event.journal.recover.JournaledStateRecoverer._
 import js7.core.event.journal.watch.JournalEventWatch
-import js7.data.event.{EventId, JournalId, JournaledState, JournaledStateBuilder}
+import js7.data.event.{EventId, JournalId, JournaledState}
 import scala.concurrent.duration.Deadline
 import scala.concurrent.duration.Deadline.now
 
@@ -68,17 +68,15 @@ object JournaledStateRecoverer
 
   def recover[S <: JournaledState[S]](
     journalMeta: JournalMeta,
-    initialState: S,
-    newStateBuilder: () => JournaledStateBuilder[S],
     config: Config,
     runningSince: Deadline = now,
     expectedJournalId: Option[JournalId] = None)
+    (implicit S: JournaledState.Companion[S])
   : Recovered[S] = {
     val file = JournalFiles.currentFile(journalMeta.fileBase).toOption
-    val fileJournaledStateBuilder = new FileJournaledStateBuilder[S](
+    val fileJournaledStateBuilder = new FileJournaledStateBuilder(
       journalFileForInfo = file getOrElse journalMeta.file(EventId.BeforeFirst)/*the expected new filename*/,
-      expectedJournalId,
-      newStateBuilder)
+      expectedJournalId)
     val eventWatch = new JournalEventWatch(journalMeta, config)  // Closed with `Recovered#close`
 
     file match {
@@ -90,8 +88,8 @@ object JournaledStateRecoverer
           .getOrElse(sys.error(s"Missing JournalHeader in file '${file.getFileName}'"))
         val state = fileJournaledStateBuilder.state
         Recovered(
+          S,
           journalMeta,
-          initialState,
           Some(RecoveredJournalFile(
             file,
             length = recoverer.position,
@@ -101,12 +99,11 @@ object JournaledStateRecoverer
             firstEventPosition = recoverer.firstEventPosition getOrElse sys.error(s"Missing JournalHeader in file '${file.getFileName}'"),
             state)),
           totalRunningSince = runningSince - calculatedJournalHeader.totalRunningTime,
-          newStateBuilder,
           eventWatch,
           config)
 
       case None =>
-        Recovered(journalMeta, initialState, None, runningSince, newStateBuilder, eventWatch, config)
+        Recovered(S, journalMeta, None, runningSince, eventWatch, config)
     }
   }
 }

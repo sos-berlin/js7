@@ -6,6 +6,7 @@ import js7.base.time.{Stopwatch, Timestamp}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.data.cluster.ClusterState
+import js7.data.event.JournaledState.SnapshotObjectNotApplicableProblem
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import monix.eval.Task
 import scala.concurrent.duration.Duration
@@ -32,7 +33,7 @@ trait JournaledStateBuilder[S <: JournaledState[S]]
 
   protected def onInitializeState(state: S): Unit
 
-  protected def onAddSnapshot: PartialFunction[Any, Unit]
+  protected def onAddSnapshotObject: PartialFunction[Any, Unit]
 
   protected def onOnAllSnapshotsAdded(): Unit
 
@@ -44,8 +45,8 @@ trait JournaledStateBuilder[S <: JournaledState[S]]
 
   def clusterState: ClusterState
 
-  def addSnapshot(snapshot: Any): Unit =
-    snapshot match {
+  def addSnapshotObject(obj: Any): Unit =
+    obj match {
       case journalHeader: JournalHeader =>
         this._journalHeader := journalHeader
         require(_firstEventId == EventId.BeforeFirst && _eventId == EventId.BeforeFirst, "EventId mismatch in snapshot")
@@ -61,8 +62,11 @@ trait JournaledStateBuilder[S <: JournaledState[S]]
 
       case _ =>
         _snapshotCount += 1
-        onAddSnapshot(snapshot)
+        onAddSnapshotObject.applyOrElse(obj, onSnapshotObjectNoApplicable)
     }
+
+  protected def onSnapshotObjectNoApplicable(obj: Any): Unit =
+    throw SnapshotObjectNotApplicableProblem(obj, this).throwable
 
   def onAllSnapshotsAdded(): Unit = {
     onOnAllSnapshotsAdded()
@@ -123,6 +127,11 @@ trait JournaledStateBuilder[S <: JournaledState[S]]
 
   final def eventId = _eventId
 
+  protected def updateEventId(o: EventId) = {
+    assert(_eventId < o)
+    _eventId = o
+  }
+
   final def snapshotCount = _snapshotCount
 
   final def eventCount = _eventCount
@@ -137,23 +146,36 @@ trait JournaledStateBuilder[S <: JournaledState[S]]
 
 object JournaledStateBuilder
 {
-  final class Simple[S <: JournaledState[S]](S: JournaledState.Companion[S]) extends JournaledStateBuilder[S] {
+  abstract class Simple[S <: JournaledState[S]](S: JournaledState.Companion[S]) extends JournaledStateBuilder[S]
+  {
     private var _state = S.empty
 
     protected def onInitializeState(state: S) =
       _state = state
 
-    protected def onAddSnapshot = {
-      case o => _state = _state.applySnapshotObject(o).orThrow
+    override def addSnapshotObject(obj: Any) = obj match {
+      case o: JournalState =>
+        _state = _state.withStandards(_state.standards.copy(
+          journalState = o))
+
+      case o: ClusterState =>
+        _state = _state.withStandards(_state.standards.copy(
+          clusterState = o))
+
+      case o => super.addSnapshotObject(o)
     }
 
     protected def onOnAllSnapshotsAdded() = {}
 
     protected def onAddEvent = {
-      case stamped => _state = _state.applyStampedEvents(stamped :: Nil).orThrow
+      case stamped =>
+        _state = _state.applyEvent(stamped.value).orThrow
+        updateEventId(stamped.eventId)
     }
 
-    def state = _state
+    def state = _state withEventId eventId
+
+    protected def updateState(state: S) = _state = state
 
     def journalState = _state.journalState
 

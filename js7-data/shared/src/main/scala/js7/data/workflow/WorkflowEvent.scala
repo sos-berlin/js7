@@ -1,6 +1,6 @@
 package js7.data.workflow
 
-import io.circe.generic.JsonCodec
+import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.data.event.{Event, NoKeyEvent}
 
 /**
@@ -8,10 +8,13 @@ import js7.data.event.{Event, NoKeyEvent}
   */
 sealed trait WorkflowEvent extends Event
 
-object WorkflowEvent {
-  @JsonCodec
+object WorkflowEvent
+{
   final case class WorkflowAttached(workflow: Workflow)
   extends WorkflowEvent with NoKeyEvent
+  object WorkflowAttached {
+    implicit val jsonCodec = deriveCodec[WorkflowAttached]
+  }
 
   //TODO case object WorkflowDeleted   Wann wird ein Workflow vom AgentOrderKeeper gelöscht?
 

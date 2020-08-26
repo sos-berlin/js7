@@ -23,7 +23,6 @@ import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.StreamingSupport.AkkaObservable
 import js7.common.scalautil.Logger
 import js7.controller.configuration.ControllerConfiguration
-import js7.controller.data.ControllerSnapshots.SnapshotJsonCodec
 import js7.controller.data.ControllerState
 import js7.controller.problems.HistoricSnapshotServiceBusyProblem
 import js7.controller.web.common.ControllerRouteProvider
@@ -90,7 +89,7 @@ trait SnapshotRoute extends ControllerRouteProvider
       state.toSnapshotObservable
         .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
           Task { logger.debug("whenShuttingDown completed") })
-        .mapParallelOrderedBatch()(o => ByteString(o.asJson(SnapshotJsonCodec).compactPrint) ++ LF)
+        .mapParallelOrderedBatch()(o => ByteString(o.asJson(ControllerState.snapshotObjectJsonCodec).compactPrint) ++ LF)
         .toAkkaSourceForHttpResponse)
 }
 

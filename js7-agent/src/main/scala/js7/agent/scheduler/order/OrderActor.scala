@@ -4,7 +4,7 @@ import akka.actor.ActorRef.noSender
 import akka.actor.{ActorRef, DeadLetterSuppression, Props, Status, Terminated}
 import akka.pattern.pipe
 import com.typesafe.config.Config
-import js7.agent.AgentState
+import js7.agent.data.AgentState
 import js7.agent.scheduler.job.JobActor
 import js7.agent.scheduler.job.task.{TaskStepFailed, TaskStepSucceeded}
 import js7.agent.scheduler.order.OrderActor._

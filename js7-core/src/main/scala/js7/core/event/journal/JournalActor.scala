@@ -55,6 +55,7 @@ final class JournalActor[S <: JournaledState[S]] private(
   eventIdGenerator: EventIdGenerator,
   stopped: Promise[Stopped],
   useJournaledStateAsSnapshot: Boolean)
+  (implicit S: JournaledState.Companion[S])
 extends Actor with Stash
 {
   import context.{become, stop, watch}
@@ -581,7 +582,7 @@ extends Actor with Stash
         }
         .mapParallelOrderedBatch() { snapshotObject =>
           // TODO Crash with SerializationException like EventSnapshotWriter ?
-          snapshotObject -> ByteString(snapshotObject.asJson(journalMeta.snapshotJsonCodec).compactPrint)
+          snapshotObject -> ByteString(snapshotObject.asJson(S.snapshotObjectJsonCodec).compactPrint)
         }
         .foreach { case (snapshotObject, byteString) =>
           snapshotWriter.writeSnapshot(byteString)
@@ -607,7 +608,7 @@ extends Actor with Stash
           try blocking {  // blockingAdd blocks
             for (snapshot <- snapshots) {
               // TODO Crash with SerializationException like EventSnapshotWriter
-              snapshotWriter.writeSnapshot(ByteString(journalMeta.snapshotJsonCodec(snapshot).compactPrint))
+              snapshotWriter.writeSnapshot(ByteString(S.snapshotObjectJsonCodec(snapshot).compactPrint))
               //pipeline.blockingAdd { ByteString(journalMeta.snapshotJsonCodec(snapshot).compactPrint) }
               logger.trace(s"Snapshot $snapshot")
             }
@@ -759,7 +760,7 @@ object JournalActor
 
   //private val ClusterNodeHasBeenSwitchedOverProblem = Problem.pure("After switchover, this cluster node is no longer active")
 
-  def props[S <: JournaledState[S]](
+  def props[S <: JournaledState[S]: JournaledState.Companion](
     journalMeta: JournalMeta,
     conf: JournalConf,
     keyedEventBus: StampedKeyedEventBus,

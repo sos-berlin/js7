@@ -2,7 +2,6 @@ package js7.controller.data
 
 import js7.base.problem.Checked._
 import js7.base.utils.Collections.implicits._
-import js7.controller.data.ControllerSnapshots.ControllerMetaState
 import js7.controller.data.agent.{AgentEventIdEvent, AgentSnapshot}
 import js7.controller.data.events.ControllerAgentEvent.{AgentCouplingFailed, AgentReady, AgentRegisteredController}
 import js7.controller.data.events.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
@@ -37,7 +36,7 @@ extends JournaledStateBuilder[ControllerState]
     pathToAgent ++= state.pathToAgentSnapshot
   }
 
-  protected def onAddSnapshot = {
+  protected def onAddSnapshotObject = {
     case order: Order[Order.State] =>
       idToOrder.insert(order.id -> order)
 

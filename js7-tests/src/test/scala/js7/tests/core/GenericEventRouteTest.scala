@@ -1,7 +1,5 @@
 package js7.tests.core
 
-import js7.common.configutils.Configs._
-import com.typesafe.config.ConfigFactory
 import io.circe.Decoder
 import java.net.{InetAddress, InetSocketAddress}
 import js7.base.auth.{SessionToken, SimpleUser}
@@ -14,6 +12,7 @@ import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.akkautils.{Akkas, ProvideActorSystem}
+import js7.common.configutils.Configs._
 import js7.common.event.collector.EventCollector
 import js7.common.http.AkkaHttpClient
 import js7.common.http.AkkaHttpClient.HttpException
@@ -22,7 +21,7 @@ import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.time.WaitForCondition.waitForCondition
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import js7.controller.data.events.ControllerKeyedEventJsonCodec
+import js7.controller.data.ControllerState
 import js7.core.event.GenericEventRoute
 import js7.data.event.{Event, EventId, EventRequest, EventSeqTornProblem, KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.OrderAdded
@@ -88,7 +87,7 @@ final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll wit
 
   private lazy val route = pathSegments("event")(
     new GenericEventRouteProvider {
-      def keyedEventTypedJsonCodec = ControllerKeyedEventJsonCodec/*Example for test*/
+      def keyedEventTypedJsonCodec = ControllerState.keyedEventJsonCodec/*Example for test*/
       def eventWatchFor(user: SimpleUser) = Task.pure(Right(eventWatch))
       override def isRelevantEvent(keyedEvent: KeyedEvent[Event]) = true
     }.route)
@@ -246,10 +245,12 @@ final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll wit
     }
   }
 
-  private def getEventObservable(eventRequest: EventRequest[Event]): Observable[Stamped[KeyedEvent[Event]]] =
+  private def getEventObservable(eventRequest: EventRequest[Event]): Observable[Stamped[KeyedEvent[Event]]] = {
+    import ControllerState.keyedEventJsonCodec
     api.getDecodedLinesObservable[Stamped[KeyedEvent[Event]]](
       Uri("/" + encodePath("event") + encodeQuery(eventRequest.toQueryParameters))
     ).await(99.s)
+  }
 
   private def getEventsByUri(uri: Uri): Seq[Stamped[KeyedEvent[OrderEvent]]] =
     getDecodedLinesObservable[Stamped[KeyedEvent[OrderEvent]]](uri)

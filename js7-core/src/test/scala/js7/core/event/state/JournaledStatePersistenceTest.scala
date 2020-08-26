@@ -2,7 +2,6 @@ package js7.core.event.state
 
 import akka.pattern.ask
 import akka.util.Timeout
-import js7.common.configutils.Configs._
 import io.circe.generic.JsonCodec
 import java.nio.file.Files.createTempDirectory
 import java.nio.file.Path
@@ -16,6 +15,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.Collections.implicits._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkautils.ProvideActorSystem
+import js7.common.configutils.Configs._
 import js7.common.event.{EventIdClock, EventIdGenerator}
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
@@ -31,6 +31,7 @@ import js7.core.event.state.JournaledStatePersistenceTest._
 import js7.data.cluster.ClusterState
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, JournalEvent, JournalState, JournaledState, JournaledStateBuilder, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
+import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.scalatest.BeforeAndAfterAll
@@ -144,8 +145,7 @@ final class JournaledStatePersistenceTest extends AnyFreeSpec with BeforeAndAfte
           useJournaledStateAsSnapshot = true)))
 
     def start() = {
-      val recovered = JournaledStateRecoverer.recover(journalMeta,
-        TestState.empty, () => new TestStateBuilder, JournalEventWatch.TestConfig)
+      val recovered = JournaledStateRecoverer.recover[TestState](journalMeta, JournalEventWatch.TestConfig)
       recovered.startJournalAndFinishRecovery(journalActor)(actorSystem)
       implicit val a = actorSystem
       implicit val timeout = Timeout(99.s)
@@ -183,7 +183,7 @@ private object JournaledStatePersistenceTest
 
     protected def onInitializeState(state: TestState) = throw new NotImplementedError
 
-    protected def onAddSnapshot = {
+    protected def onAddSnapshotObject = {
       case numberThing: NumberThing =>
         if (numberThings.contains(numberThing.key)) throw Problem(s"Duplicate NumberThing: ${numberThing.key}").throwable
         numberThings += numberThing.key -> numberThing
@@ -208,7 +208,7 @@ private object JournaledStatePersistenceTest
   }
 
   private def testJournalMeta(fileBase: Path) =
-    new JournalMeta(SnapshotJsonFormat, TestKeyedEventJsonCodec, fileBase)
+    JournalMeta(TestState, fileBase)
 
   final case class NumberThing(key: NumberKey, number: Int) {
     def update(event: NumberEvent): Checked[NumberThing] =
@@ -226,39 +226,6 @@ private object JournaledStatePersistenceTest
 
         case _ => throw new MatchError(event)
       }
-  }
-
-  final case class TestState(
-    eventId: EventId,
-    numberThingCollection: NumberThingCollection,
-    standards: JournaledState.Standards = JournaledState.Standards.empty)
-  extends JournaledState[TestState]
-  {
-    protected type Self = NumberThingCollection
-    protected type Snapshot = NumberThing
-    protected type E = NumberEvent
-
-    def withEventId(eventId: EventId) =
-      copy(eventId = eventId)
-
-    def withStandards(standards: JournaledState.Standards) =
-      copy(standards = standards)
-
-    def applyEvent(keyedEvent: KeyedEvent[Event]) =
-      keyedEvent match {
-        case KeyedEvent(key: NumberKey, event: NumberEvent) =>
-          for (o <- numberThingCollection.applyEvent(key <-: event)) yield
-            copy(numberThingCollection = o)
-
-        case keyedEvent => applyStandardEvent(keyedEvent)
-      }
-
-    def estimatedSnapshotSize = numberThingCollection.numberThings.size
-
-    def toSnapshotObservable = Observable.fromIterable(numberThingCollection.numberThings.values)
-  }
-  object TestState {
-    val empty = TestState(EventId.BeforeFirst, NumberThingCollection(Map.empty))
   }
 
   final case class NumberThingCollection(numberThings: Map[NumberKey, NumberThing])
@@ -293,7 +260,7 @@ private object JournaledStatePersistenceTest
     type Key = NumberKey
   }
   object NumberEvent {
-    implicit val jsonFormat = TypedJsonCodec[NumberEvent](
+    implicit val jsonCodec = TypedJsonCodec[NumberEvent](
       Subtype(NumberAdded),
       Subtype(NumberRemoved),
       Subtype(NumberIncremented),
@@ -310,14 +277,53 @@ private object JournaledStatePersistenceTest
 
   case object NumberUnhandled  extends NumberEvent
 
-  private val SnapshotJsonFormat = TypedJsonCodec[Any](
-    Subtype(deriveCodec[NumberThing]),
-    Subtype(deriveCodec[StringThing]))
+  final case class TestState(
+    eventId: EventId,
+    numberThingCollection: NumberThingCollection,
+    standards: JournaledState.Standards = JournaledState.Standards.empty)
+  extends JournaledState[TestState]
+  {
+    protected type Self = NumberThingCollection
+    protected type Snapshot = NumberThing
+    protected type E = NumberEvent
 
-  private implicit val TestKeyedEventJsonCodec = KeyedEventTypedJsonCodec[Event](
-    KeyedSubtype[JournalEvent],
-    KeyedSubtype[NumberEvent])
+    def withEventId(eventId: EventId) =
+      copy(eventId = eventId)
 
-  implicit val jsonFormat = TypedJsonCodec[TestEvent](
-    Subtype[NumberEvent])
+    def withStandards(standards: JournaledState.Standards) =
+      copy(standards = standards)
+
+    def applyEvent(keyedEvent: KeyedEvent[Event]) =
+      keyedEvent match {
+        case KeyedEvent(key: NumberKey, event: NumberEvent) =>
+          for (o <- numberThingCollection.applyEvent(key <-: event)) yield
+            copy(numberThingCollection = o)
+
+        case keyedEvent => applyStandardEvent(keyedEvent)
+      }
+
+    def estimatedSnapshotSize = numberThingCollection.numberThings.size
+
+    def toSnapshotObservable = Observable.fromIterable(numberThingCollection.numberThings.values)
+  }
+  object TestState extends JournaledState.Companion[TestState] {
+    val empty = TestState(EventId.BeforeFirst, NumberThingCollection(Map.empty))
+
+    def newBuilder(): JournaledStateBuilder[TestState] =
+      new TestStateBuilder
+
+    override def fromObservable(snapshotObjects: Observable[Any]): Task[TestState] =
+      throw new NotImplementedError  // Require for HTTP EventApi only
+
+    def snapshotObjectJsonCodec: TypedJsonCodec[Any] =
+      TypedJsonCodec[Any](
+        Subtype(deriveCodec[NumberThing]),
+        Subtype(deriveCodec[StringThing]))
+
+
+    override implicit def keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
+      KeyedEventTypedJsonCodec[Event](
+          KeyedSubtype[JournalEvent],
+          KeyedSubtype[NumberEvent])
+  }
 }

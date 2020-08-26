@@ -1,11 +1,13 @@
-package js7.agent
+package js7.agent.data
 
 import js7.agent.data.event.AgentControllerEvent
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{Event, EventId, JournaledState, KeyedEvent}
+import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
+import js7.data.event.{Event, EventId, JournalEvent, JournalState, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec}
 import js7.data.order.OrderEvent.{OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.workflow.{Workflow, WorkflowEvent, WorkflowId}
@@ -98,7 +100,22 @@ extends JournaledState[AgentState]
     }
 }
 
-object AgentState
+object AgentState extends JournaledState.Companion[AgentState]
 {
   val empty = AgentState(EventId.BeforeFirst, JournaledState.Standards.empty, Map.empty, Map.empty)
+
+  override implicit val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
+    TypedJsonCodec[Any](
+      Subtype[JournalState],
+      Subtype[Workflow],
+      Subtype[Order[Order.State]])
+
+  override implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
+    KeyedEventTypedJsonCodec[Event](
+      KeyedSubtype[JournalEvent],
+      KeyedSubtype[OrderEvent],
+      KeyedSubtype.singleEvent[WorkflowEvent.WorkflowAttached],
+      KeyedSubtype[AgentControllerEvent])
+
+  def newBuilder() = new AgentStateBuilder
 }

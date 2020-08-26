@@ -58,6 +58,7 @@ import scodec.bits.ByteVector
   clusterConf: ClusterConf,
   eventIdGenerator: EventIdGenerator,
   common: ClusterCommon)
+  (implicit S: JournaledState.Companion[S])
 {
   assertThat(activeId != ownId)
   assertThat(initialFileEventId.isDefined == (recovered.clusterState == ClusterState.Empty))
@@ -65,7 +66,7 @@ import scodec.bits.ByteVector
   import recovered.eventWatch
   private val activeUri = idToUri(activeId)
 
-  private val stateBuilderAndAccessor = new StateBuilderAndAccessor[S](recovered.state, recovered.newStateBuilder)
+  private val stateBuilderAndAccessor = new StateBuilderAndAccessor(recovered.state)
   private var dontActivateBecauseOtherFailedOver = otherFailed
   @volatile var awaitingCoupledEvent = false
   @volatile private var stopped = false
@@ -208,7 +209,7 @@ import scodec.bits.ByteVector
       var replicatedFileLength = continuation.fileLength
       var lastProperEventPosition = continuation.lastProperEventPosition
       var _eof = false
-      val builder = new FileJournaledStateBuilder[S](journalFileForInfo = file.getFileName,
+      val builder = new FileJournaledStateBuilder(journalFileForInfo = file.getFileName,
         continuation.maybeJournalId, newStateBuilder)
 
       continuation match {

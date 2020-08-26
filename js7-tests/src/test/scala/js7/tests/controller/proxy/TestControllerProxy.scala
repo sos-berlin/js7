@@ -16,7 +16,6 @@ import js7.common.commandline.CommandLineArguments
 import js7.common.http.JsonStreamingSupport.{NdJsonStreamingSupport, jsonSeqMarshaller}
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.controller.client.AkkaHttpControllerApi
-import js7.controller.data.ControllerSnapshots.SnapshotJsonCodec
 import js7.controller.data.ControllerState
 import js7.data.event.{Event, EventId}
 import js7.proxy.data.ProxyEvent
@@ -78,7 +77,7 @@ object TestControllerProxy
           complete(
             snapshot.map { controllerState =>
               implicit val x = NdJsonStreamingSupport
-              implicit val y = SnapshotJsonCodec
+              implicit val y = ControllerState.snapshotObjectJsonCodec
               implicit val z = jsonSeqMarshaller[Any]
               monixObservableToMarshallable(controllerState.toSnapshotObservable)
             }.runToFuture)

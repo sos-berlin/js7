@@ -31,7 +31,7 @@ private object JournaledStateRecovererTest
 //
 //    protected def onInitializeState(state: TestState) = _state = state
 //
-//    protected def onAddSnapshot = {
+//    protected def onAddSnapshotObject = {
 //      case o: TestState => _state = o
 //    }
 //

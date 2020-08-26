@@ -11,12 +11,12 @@ import org.scalatest.freespec.AnyFreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class AgentEventTest extends AnyFreeSpec {
+final class AgentServerEventTest extends AnyFreeSpec {
 
   "JSON" - {
     "ControllerRegistered" in {
-      testJson[KeyedEvent[AgentEvent]](
-        AgentEvent.ControllerRegistered(
+      testJson[KeyedEvent[AgentServerEvent]](
+        AgentServerEvent.ControllerRegistered(
           ControllerId("CONTROLLER"),
           AgentRefPath("/AGENT"),
           AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")))),

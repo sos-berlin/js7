@@ -18,8 +18,7 @@ import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.common.utils.JavaResource
 import js7.common.utils.Tests.isTest
 import js7.controller.cluster.ClusterConf
-import js7.controller.data.ControllerSnapshots.SnapshotJsonCodec
-import js7.controller.data.events.ControllerKeyedEventJsonCodec
+import js7.controller.data.ControllerState
 import js7.core.configuration.CommonConfiguration
 import js7.core.event.journal.JournalConf
 import js7.core.event.journal.data.JournalMeta
@@ -51,7 +50,7 @@ extends CommonConfiguration
 
   def stateDirectory: Path = dataDirectory / "state"
 
-  lazy val journalMeta = JournalMeta(SnapshotJsonCodec, ControllerKeyedEventJsonCodec, stateDirectory / "controller")
+  lazy val journalMeta = JournalMeta(ControllerState, stateDirectory / "controller")
 
   // Suppresses Config (which may contain secrets)
   override def toString = s"ControllerConfiguration($controllerId,$dataDirectory,$configDirectory,$webServerPorts," +

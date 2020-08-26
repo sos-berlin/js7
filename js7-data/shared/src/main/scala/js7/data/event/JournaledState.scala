@@ -1,6 +1,6 @@
 package js7.data.event
 
-import io.circe.{Decoder, Encoder}
+import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.cluster.{ClusterEvent, ClusterState}
@@ -10,18 +10,18 @@ import js7.data.event.KeyedEvent.NoKey
 import monix.eval.Task
 import monix.reactive.Observable
 
-trait JournaledState[This <: JournaledState[This]]
-extends EventDrivenState[This, Event]
+trait JournaledState[S <: JournaledState[S]]
+extends EventDrivenState[S, Event]
 {
-  this: This =>
+  this: S =>
 
   def toSnapshotObservable: Observable[Any]
 
   def estimatedSnapshotSize: Int
 
-  protected def standards: Standards
+  def standards: Standards
 
-  protected def withStandards(standards: Standards): This
+  def withStandards(standards: Standards): S
 
   final def journalState: JournalState =
     standards.journalState
@@ -29,31 +29,18 @@ extends EventDrivenState[This, Event]
   final def clusterState: ClusterState =
     standards.clusterState
 
-  def applySnapshotObject(obj: Any) =
-    obj match {
-      case o: JournalState =>
-        Right(withStandards(standards.copy(
-          journalState = o)))
-
-      case o: ClusterState =>
-        Right(withStandards(standards.copy(
-          clusterState = o)))
-
-      case o => snapshotObjectNotApplicable(o)
-    }
-
-  override def applyStampedEvents(stampedEvents: Iterable[Stamped[KeyedEvent[Event]]]): Checked[This] =
+  override def applyStampedEvents(stampedEvents: Iterable[Stamped[KeyedEvent[Event]]]): Checked[S] =
     if (stampedEvents.isEmpty)
       Right(this)
     else
       super.applyStampedEvents(stampedEvents)
         .map(_.withEventId(stampedEvents.last.eventId))
 
-  def applyEvent(keyedEvent: KeyedEvent[Event]): Checked[This]
+  def applyEvent(keyedEvent: KeyedEvent[Event]): Checked[S]
 
-  def withEventId(eventId: EventId): This
+  def withEventId(eventId: EventId): S
 
-  protected final def applyStandardEvent(keyedEvent: KeyedEvent[Event]): Checked[This] =
+  protected final def applyStandardEvent(keyedEvent: KeyedEvent[Event]): Checked[S] =
     keyedEvent match {
       case KeyedEvent(_: NoKey, _: SnapshotTaken) =>
         Right(this)
@@ -102,15 +89,25 @@ object JournaledState
 
   trait Companion[S <: JournaledState[S]]
   {
-    def name: String
+    implicit final def implicitCompanion: Companion[S] = this
+
+    def name: String =
+      getClass.simpleScalaName
 
     def empty: S
 
-    def fromObservable(snapshotObjects: Observable[Any]): Task[S]
+    def fromObservable(snapshotObjects: Observable[Any]): Task[S] =
+      Task.defer {
+        val builder = newBuilder()
+        snapshotObjects.foreachL(builder.addSnapshotObject)
+          .map(_ => builder.state)
+      }
 
-    implicit def snapshotObjectJsonCodec: Encoder[Any]
+    implicit def snapshotObjectJsonCodec: TypedJsonCodec[Any]
 
-    implicit def keyedEventJsonDecoder: Decoder[KeyedEvent[Event]]
+    implicit def keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event]
+
+    def newBuilder(): JournaledStateBuilder[S]
 
     override def toString = name
   }

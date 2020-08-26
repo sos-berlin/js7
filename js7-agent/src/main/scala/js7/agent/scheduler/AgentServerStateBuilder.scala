@@ -12,7 +12,7 @@ extends JournaledStateBuilder[AgentServerState]
   protected def onInitializeState(state: AgentServerState) =
     _state = state
 
-  protected def onAddSnapshot = {
+  protected def onAddSnapshotObject = {
     case snapshot: RegisteredController =>
       _state = state.applySnapshot(snapshot).orThrow
   }

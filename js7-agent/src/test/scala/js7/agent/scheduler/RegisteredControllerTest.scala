@@ -14,7 +14,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class RegisteredControllerTest extends AnyFreeSpec
 {
   "JSON" in {
-    implicit val codec = AgentServerJsonCodecs.jsonCodec
+    import AgentServerState.snapshotObjectJsonCodec
     testJson[Any](
       RegisteredController(
         ControllerId("CONTROLLER"),

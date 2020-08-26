@@ -1,4 +1,4 @@
-package js7.agent
+package js7.agent.data
 
 import js7.data.event.{EventId, JournaledState}
 import js7.data.order.OrderEvent.OrderAdded

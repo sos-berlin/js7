@@ -1,21 +1,23 @@
 package js7.controller.data
 
+import js7.base.circeutils.CirceUtils.deriveCodec
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax._
-import js7.controller.data.ControllerSnapshots.ControllerMetaState
 import js7.controller.data.agent.{AgentEventIdEvent, AgentSnapshot}
 import js7.controller.data.events.ControllerAgentEvent.{AgentCouplingFailed, AgentReady, AgentRegisteredController}
 import js7.controller.data.events.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
-import js7.controller.data.events.{ControllerAgentEvent, ControllerEvent, ControllerKeyedEventJsonCodec}
+import js7.controller.data.events.{ControllerAgentEvent, ControllerEvent}
 import js7.data.agent.AgentRefPath
+import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.controller.ControllerItems.ControllerTypedPathCompanions
 import js7.data.event.KeyedEvent.NoKey
+import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.SnapshotMeta.SnapshotEventId
-import js7.data.event.{Event, EventId, JournaledState, KeyedEvent}
+import js7.data.event.{Event, EventId, JournalEvent, JournalHeader, JournalState, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotMeta}
 import js7.data.item.{Repo, RepoEvent}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderOffered, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
-import monix.eval.Task
 import monix.reactive.Observable
 
 /**
@@ -158,17 +160,33 @@ object ControllerState extends JournaledState.Companion[ControllerState]
     Map.empty,
     Map.empty)
 
-  val name = "ControllerState"
   val empty = Undefined
-  implicit val snapshotObjectJsonCodec = ControllerSnapshots.SnapshotJsonCodec
-  implicit val keyedEventJsonDecoder = ControllerKeyedEventJsonCodec
 
-  implicit val journaledStateCompanion: JournaledState.Companion[ControllerState] = ControllerState
+  def newBuilder() = new ControllerStateBuilder
 
-  def fromObservable(snapshotObjects: Observable[Any]): Task[ControllerState] =
-    Task.defer {
-      val builder = new ControllerStateBuilder
-      snapshotObjects.foreachL(builder.addSnapshot)
-        .map(_ => builder.state)
-    }
+  val snapshotObjectJsonCodec: TypedJsonCodec[Any] = {
+    import js7.data.controller.ControllerItems._
+    TypedJsonCodec[Any](
+      Subtype[JournalHeader],
+      Subtype[SnapshotMeta],
+      Subtype[JournalState],
+      Subtype(deriveCodec[ClusterState.ClusterStateSnapshot]),
+      Subtype(deriveCodec[ControllerMetaState]),
+      Subtype[RepoEvent],  // These events describe complete objects
+      Subtype[AgentSnapshot],
+      Subtype[AgentRegisteredController],  // These events describe complete objects
+      Subtype[Order[Order.State]])
+  }
+
+  implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] = {
+    import js7.data.controller.ControllerItems._
+    KeyedEventTypedJsonCodec[Event](
+      KeyedSubtype[JournalEvent],
+      KeyedSubtype[RepoEvent],
+      KeyedSubtype[ControllerEvent],
+      KeyedSubtype[ClusterEvent],
+      KeyedSubtype[ControllerAgentEvent],
+      KeyedSubtype[OrderEvent],
+      KeyedSubtype.singleEvent[AgentEventIdEvent])
+  }
 }

@@ -7,7 +7,6 @@ import akka.util.Timeout
 import com.typesafe.config.Config
 import java.util.UUID
 import js7.base.time.ScalaTime._
-import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.common.akkautils.SupervisorStrategies
 import js7.common.event.{EventIdClock, EventIdGenerator}
 import js7.common.scalautil.Futures.implicits.SuccessFuture
@@ -16,9 +15,8 @@ import js7.core.event.StampedKeyedEventBus
 import js7.core.event.journal.data.JournalMeta
 import js7.core.event.journal.recover.{JournaledStateRecoverer, Recovered}
 import js7.core.event.journal.test.TestActor._
-import js7.core.event.journal.test.TestJsonCodecs.TestKeyedEventJsonCodec
 import js7.core.event.journal.{JournalActor, JournalConf}
-import js7.data.event.{JournalId, JournaledStateBuilder}
+import js7.data.event.JournalId
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 import scala.collection.mutable
@@ -45,11 +43,9 @@ extends Actor with Stash
 
   override def preStart() = {
     super.preStart()
-    JournaledStateRecoverer.recover(journalMeta, TestState.empty, () => new JournaledStateBuilder.Simple(TestState), config)
-    val recovered = JournaledStateRecoverer.recover(
+    JournaledStateRecoverer.recover[TestState](journalMeta, config)
+    val recovered = JournaledStateRecoverer.recover[TestState](
       journalMeta,
-      TestState.empty,
-      () => new JournaledStateBuilder.Simple(TestState),
       config,
       expectedJournalId = Some(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))))
     val state = recovered.state
@@ -144,9 +140,8 @@ extends Actor with Stash
       s"Test-$key"))
 }
 
-private[journal] object TestActor {
-  intelliJuseImport(TestKeyedEventJsonCodec)
-
+private[journal] object TestActor
+{
   private val logger = Logger(getClass)
 
   object Input {

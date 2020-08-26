@@ -5,15 +5,13 @@ import akka.pattern.{ask, pipe}
 import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigValueFactory}
 import java.nio.file.{Files, Path}
-import js7.agent.AgentState
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.Akkas.newAgentActorSystem
-import js7.agent.data.AgentTaskId
+import js7.agent.data.{AgentState, AgentTaskId}
 import js7.agent.scheduler.job.JobActor
 import js7.agent.scheduler.job.task.{SimpleShellTaskRunner, TaskRunner}
 import js7.agent.scheduler.order.OrderActorTest._
 import js7.agent.tests.TestAgentDirectoryProvider
-import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.generic.Completed
 import js7.base.time.ScalaTime._
 import js7.base.utils.HasCloser
@@ -32,8 +30,7 @@ import js7.core.event.journal.data.JournalMeta
 import js7.core.event.journal.watch.JournalEventWatch
 import js7.core.event.journal.{JournalActor, JournalConf}
 import js7.data.agent.AgentRefPath
-import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped}
+import js7.data.event.{EventRequest, KeyedEvent, Stamped}
 import js7.data.item.VersionId
 import js7.data.job.{ExecutablePath, JobKey}
 import js7.data.order.OrderEvent.{OrderAttached, OrderDetachable, OrderDetached, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
@@ -158,10 +155,7 @@ private object OrderActorTest {
       new StandardRichProcessStartSynchronizer()(context.system),
       AgentConfiguration.forTest(configAndData = dir))
 
-    private val journalMeta = JournalMeta(
-      snapshotJsonCodec = TypedJsonCodec[Any](Subtype[Order[Order.State]]),
-      eventJsonCodec = KeyedEvent.typedJsonCodec[Event](KeyedSubtype[OrderEvent]),
-      dir / "data" / "state" / "agent")
+    private val journalMeta = JournalMeta(AgentState, dir / "data" / "state" / "agent")
 
     private val journalActor = tag[JournalActor.type](actorOf(
       JournalActor.props[AgentState](journalMeta, JournalConf.fromConfig(config), new StampedKeyedEventBus, Scheduler.global, new EventIdGenerator),

@@ -1,9 +1,9 @@
 package js7.agent.client
 
 import akka.actor.ActorSystem
+import js7.agent.data.AgentState.keyedEventJsonCodec
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand._
-import js7.agent.data.event.KeyedEventJsonFormats.keyedEventJsonCodec
 import js7.agent.data.views.{AgentOverview, TaskOverview, TaskRegisterOverview}
 import js7.agent.data.web.AgentUris
 import js7.agent.data.{AgentApi, AgentTaskId}

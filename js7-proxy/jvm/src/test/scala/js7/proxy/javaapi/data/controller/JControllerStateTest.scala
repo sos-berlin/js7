@@ -7,8 +7,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.time.Timestamp
 import js7.base.utils.Collections.implicits._
 import js7.base.web.Uri
-import js7.controller.data.ControllerSnapshots.ControllerMetaState
-import js7.controller.data.ControllerState
+import js7.controller.data.{ControllerMetaState, ControllerState}
 import js7.controller.data.agent.AgentSnapshot
 import js7.data.agent.{AgentRef, AgentRefPath}
 import js7.data.cluster.ClusterState

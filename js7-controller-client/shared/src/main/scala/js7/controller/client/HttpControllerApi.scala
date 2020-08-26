@@ -11,7 +11,7 @@ import js7.base.session.{HttpSessionApi, SessionApi}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.{HttpClient, Uri}
 import js7.controller.client.HttpControllerApi._
-import js7.controller.data.{ControllerCommand, ControllerOverview, ControllerSnapshots}
+import js7.controller.data.{ControllerCommand, ControllerOverview, ControllerState}
 import js7.data.agent.AgentRef
 import js7.data.cluster.{ClusterNodeState, ClusterState}
 import js7.data.event.{Event, EventApi, EventId, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
@@ -138,7 +138,7 @@ extends EventApi with HttpSessionApi with HasIsIgnorableStackTrace
       httpClient.get[Seq[AgentRef]](uris.agent.list[AgentRef]))
 
   final def snapshot(eventId: Option[EventId] = None): Task[Checked[Observable[Any]]] = {
-    implicit val x = ControllerSnapshots.SnapshotJsonCodec
+    implicit val x = ControllerState.snapshotObjectJsonCodec
     httpClient.liftProblem(
       httpClient.getDecodedLinesObservableBatch[Any](uris.snapshot.list(eventId)))
   }

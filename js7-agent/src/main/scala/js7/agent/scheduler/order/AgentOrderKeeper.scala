@@ -5,8 +5,8 @@ import akka.pattern.ask
 import akka.util.Timeout
 import cats.instances.future._
 import java.time.ZoneId
-import js7.agent.AgentState
 import js7.agent.configuration.AgentConfiguration
+import js7.agent.data.AgentState
 import js7.agent.data.Problems.{AgentDuplicateOrder, AgentIsShuttingDown}
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{AttachOrder, CancelOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, OrderCommand, ReleaseEvents, Response}

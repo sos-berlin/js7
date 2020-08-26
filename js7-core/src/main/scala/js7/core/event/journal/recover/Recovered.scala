@@ -8,21 +8,21 @@ import js7.core.event.journal.recover.Recovered._
 import js7.core.event.journal.watch.JournalEventWatch
 import js7.core.event.journal.{JournalActor, KeyedJournalingActor}
 import js7.data.cluster.ClusterState
-import js7.data.event.{EventId, JournalHeader, JournalId, JournaledState, JournaledStateBuilder}
+import js7.data.event.{EventId, JournalHeader, JournalId, JournaledState}
 import scala.concurrent.duration.Deadline
 import shapeless.tag.@@
 
 final case class Recovered[S <: JournaledState[S]](
+  journaledStateCompanion: JournaledState.Companion[S],
   journalMeta: JournalMeta,
-  initialState: S,
   recoveredJournalFile: Option[RecoveredJournalFile[S]],
   totalRunningSince: Deadline,
-  /** The recovered state */
-  newStateBuilder: () => JournaledStateBuilder[S],
   eventWatch: JournalEventWatch,
   config: Config)
 extends AutoCloseable
 {
+  private implicit def S = journaledStateCompanion
+
   def close() =
     eventWatch.close()
 
@@ -32,7 +32,7 @@ extends AutoCloseable
   def journalId: Option[JournalId] = recoveredJournalFile.map(_.journalId)
 
   def state: S =
-    recoveredJournalFile.fold(initialState)(_.state)
+    recoveredJournalFile.fold(S.empty)(_.state)
 
   def clusterState: ClusterState =
     state.clusterState

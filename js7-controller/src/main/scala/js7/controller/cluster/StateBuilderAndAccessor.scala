@@ -10,14 +10,14 @@ import monix.execution.Scheduler
 import scala.util.{Failure, Success}
 
 private final class StateBuilderAndAccessor[S <: JournaledState[S]](
-  initialState: S,
-  originalNewStateBuilder: () => JournaledStateBuilder[S])
+  initialState: S)
+  (implicit S: JournaledState.Companion[S])
 {
   private val getStateMVarTask = MVar.of[Task, Task[S]](Task.pure(initialState)).memoize
   val state: Task[S] = getStateMVarTask.flatMap(_.read.flatten)
 
   def newStateBuilder()(implicit s: Scheduler): JournaledStateBuilder[S] = {
-    val builder = originalNewStateBuilder()
+    val builder = S.newBuilder()
     (for {
         mVar <- getStateMVarTask
         s <- Task.fromFuture(builder.synchronizedStateFuture)  // May wait, but getStateMVarTask has a value anyway

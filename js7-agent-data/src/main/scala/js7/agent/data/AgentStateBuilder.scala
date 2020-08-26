@@ -1,4 +1,4 @@
-package js7.agent
+package js7.agent.data
 
 import js7.base.problem.Checked._
 import js7.base.utils.Collections.implicits._
@@ -23,7 +23,7 @@ extends JournaledStateBuilder[AgentState]
     idToWorkflow = mutable.Map() ++ state.idToWorkflow
   }
 
-  protected def onAddSnapshot = {
+  protected def onAddSnapshotObject = {
     case o: JournalState =>
       _journalState = o
 

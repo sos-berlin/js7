@@ -19,7 +19,6 @@ import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
 import js7.base.utils.ByteVectorToLinesObservable
-import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax.RichAny
 import js7.base.utils.ScodecUtils.syntax._
 import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
@@ -30,7 +29,6 @@ import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.StreamingSupport._
 import js7.common.scalautil.Logger
 import js7.controller.OrderApi
-import js7.controller.data.events.ControllerKeyedEventJsonCodec.keyedEventJsonCodec
 import js7.controller.web.common.{ControllerRouteProvider, EntitySizeLimitProvider}
 import js7.controller.web.controller.api.order.OrderRoute._
 import js7.data.order.{FreshOrder, OrderId}
@@ -160,6 +158,4 @@ object OrderRoute
           complete(NotFound)  // Invalid OrderId syntax
       }
   }
-
-  intelliJuseImport(keyedEventJsonCodec)
 }

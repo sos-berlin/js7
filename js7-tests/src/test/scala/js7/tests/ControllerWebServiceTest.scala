@@ -36,7 +36,7 @@ import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.system.OperatingSystem.operatingSystem
 import js7.common.time.WaitForCondition
-import js7.controller.data.ControllerSnapshots.{ControllerMetaState, SnapshotJsonCodec}
+import js7.controller.data.{ControllerMetaState, ControllerState}
 import js7.controller.data.events.ControllerAgentEvent
 import js7.controller.data.events.ControllerAgentEvent.AgentRegisteredController
 import js7.controller.data.events.ControllerEvent.ControllerReady
@@ -509,7 +509,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
       observable.map(_.parseJson.orThrow)
         .filterNot(_.asObject.get("TYPE").contains("AgentSnapshot".asJson))
         .toListL await 99.s  // Delete AgentSnapshot in `array` (for easy comparison)
-    val controllerMetaState = shortenedArray.iterator.map(_.as(SnapshotJsonCodec).orThrow)
+    val controllerMetaState = shortenedArray.iterator.map(_.as(ControllerState.snapshotObjectJsonCodec).orThrow)
       .collectFirst { case o: ControllerMetaState => o }.get
     assert(shortenedArray.toSet/*ignore ordering*/ == json"""[
       {
@@ -573,10 +573,8 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
   "/controller/api/event (only JSON)" in {
     val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
     val eventsJson = httpClient.get[Json](Uri(s"$uri/controller/api/event?after=0"), headers) await 99.s
-    val keyedEvents: Seq[KeyedEvent[Event]] = {
-      import js7.controller.data.events.ControllerKeyedEventJsonCodec
-      eventsJson.asObject.get("stamped").get.asArray.get.map(_.as[KeyedEvent[Event]].orThrow)
-    }
+    val keyedEvents: Seq[KeyedEvent[Event]] =
+      eventsJson.asObject.get("stamped").get.asArray.get.map(_.as(ControllerState.keyedEventJsonCodec).orThrow)
     val agentRunId = keyedEvents.collectFirst { case AgentRefPath("/AGENT") <-: (e: AgentRegisteredController) => e.agentRunId }.get
     val totalRunningTime = keyedEvents.collectFirst { case _ <-: (e: ControllerReady) => e.totalRunningTime }.get
     // Fields named "eventId" are renumbered for this test, "timestamp" are removed due to time-dependant values

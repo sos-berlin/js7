@@ -27,7 +27,7 @@ import js7.core.event.journal.JournalActor
 import js7.core.event.journal.files.JournalFiles
 import js7.core.event.journal.test.TestData.{TestConfig, testJournalMeta}
 import js7.core.event.journal.test.TestJournalMixin._
-import js7.core.event.journal.test.TestJsonCodecs.TestKeyedEventJsonCodec
+import js7.core.event.journal.test.TestState.keyedEventJsonCodec
 import js7.data.event.{Event, JournalId, KeyedEvent, Stamped}
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import scala.collection.immutable.VectorBuilder
@@ -120,14 +120,14 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
   protected final def journalKeyedTestEvents: Vector[KeyedEvent[TestEvent]] =
     journalJsons
       .collect {
-        case o if TestKeyedEventJsonCodec canDeserialize o =>
+        case o if TestState.keyedEventJsonCodec canDeserialize o =>
           o.as[Stamped[KeyedEvent[Event]]].map(_.value).orThrow
       }
       .collect { case KeyedEvent(k: String, e: TestEvent) => k <-: e }  // Ignore JournalEvent.SnapshotTaken
 
   protected final def journalAggregates =
     (journalJsons collect {
-      case o if TestData.SnapshotJsonFormat canDeserialize o =>
+      case o if TestState.snapshotObjectJsonCodec canDeserialize o =>
         o.as[TestAggregate].orThrow
     }).toSet
 

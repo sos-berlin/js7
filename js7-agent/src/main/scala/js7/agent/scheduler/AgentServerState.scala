@@ -1,10 +1,12 @@
 package js7.agent.scheduler
 
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{Event, EventId, JournalState, JournaledState, KeyedEvent}
+import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
+import js7.data.event.{Event, EventId, JournalEvent, JournalState, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec}
 import monix.reactive.Observable
 
 final case class AgentServerState(
@@ -45,7 +47,7 @@ extends JournaledState[AgentServerState]
 
   def applyEvent(keyedEvent: KeyedEvent[Event]) =
     keyedEvent match {
-      case KeyedEvent(_: NoKey, AgentEvent.ControllerRegistered(controllerId, agentRefPath, agentRunId)) =>
+      case KeyedEvent(_: NoKey, AgentServerEvent.ControllerRegistered(controllerId, agentRefPath, agentRunId)) =>
         if (idToController contains controllerId)
           Left(Problem.pure(s"Duplicate event for register Controller: $keyedEvent"))
         else
@@ -57,7 +59,19 @@ extends JournaledState[AgentServerState]
     }
 }
 
-object AgentServerState
+object AgentServerState extends JournaledState.Companion[AgentServerState]
 {
   val empty = AgentServerState(EventId.BeforeFirst, JournaledState.Standards.empty, Map.empty)
+
+  implicit val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
+    TypedJsonCodec[Any](
+      Subtype[JournalState],
+      Subtype[RegisteredController])
+
+  implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
+    KeyedEventTypedJsonCodec[Event](
+      KeyedSubtype[JournalEvent],
+      KeyedSubtype[AgentServerEvent])
+
+  def newBuilder() = new AgentServerStateBuilder
 }

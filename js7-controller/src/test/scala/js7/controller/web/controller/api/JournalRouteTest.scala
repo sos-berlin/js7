@@ -18,8 +18,7 @@ import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.time.WaitForCondition.waitForCondition
-import js7.controller.data.ControllerSnapshots.SnapshotJsonCodec
-import js7.controller.data.events.ControllerKeyedEventJsonCodec
+import js7.controller.data.ControllerState
 import js7.controller.web.controller.api.test.RouteTester
 import js7.core.event.journal.data.JournalMeta
 import js7.core.event.journal.files.JournalFiles._
@@ -49,7 +48,7 @@ final class JournalRouteTest extends AnyFreeSpec with RouteTester with JournalRo
   protected def whenShuttingDown = Future.never
   protected implicit def scheduler: Scheduler = Scheduler.global
   private lazy val directory = createTempDirectory("JournalRouteTest-")
-  private lazy val journalMeta =  JournalMeta(SnapshotJsonCodec, ControllerKeyedEventJsonCodec, directory / "test")
+  private lazy val journalMeta = JournalMeta(ControllerState, directory / "test")
   override protected def config = JournalEventWatch.TestConfig.withFallback(super.config)
   protected var eventWatch = new JournalEventWatch(journalMeta, config)
   private val journalId = JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))

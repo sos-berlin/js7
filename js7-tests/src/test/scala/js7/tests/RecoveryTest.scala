@@ -2,7 +2,7 @@ package js7.tests
 
 import java.nio.file.Path
 import js7.agent.RunningAgent
-import js7.agent.scheduler.AgentEvent
+import js7.agent.scheduler.{AgentServerEvent, AgentServerState}
 import js7.base.crypt.silly.{SillySignature, SillySigner}
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.{autoClosing, multipleAutoClosing}
@@ -82,7 +82,7 @@ final class RecoveryTest extends AnyFreeSpec
             controller.addOrderBlocking(order2)
             lastEventId = lastEventIdOf(controller.eventWatch.await[OrderProcessed](after = lastEventId, predicate = _.key == order1.id))
           }
-          val Vector(Stamped(_, _, NoKey <-: AgentEvent.ControllerRegistered(ControllerId("Controller")/*see default controller.conf*/, _, _/*agentRunId*/))) =
+          val Vector(Stamped(_, _, NoKey <-: AgentServerEvent.ControllerRegistered(ControllerId("Controller")/*see default controller.conf*/, _, _/*agentRunId*/))) =
             readAgentEvents(directoryProvider.agents(0).dataDir / "state/agent--0.journal")
 
           logger.info("\n\n*** RESTARTING AGENTS ***\n")
@@ -130,17 +130,17 @@ final class RecoveryTest extends AnyFreeSpec
       for (agent <- agents) Akkas.terminateAndWait(agent.actorSystem, 99.s)
     }
 
-  private def readAgentEvents(journalFile: Path): Vector[Stamped[KeyedEvent[AgentEvent]]] =
+  private def readAgentEvents(journalFile: Path): Vector[Stamped[KeyedEvent[AgentServerEvent]]] =
     autoClosing(InputStreamJsonSeqReader.open(journalFile)) { reader =>
       UntilNoneIterator(reader.read()).toVector
         .map(_.value)
         .collect {
-          case json if AgentEvent.KeyedEventJsonCodec.canDeserialize(json) =>
-            import AgentEvent.KeyedEventJsonCodec
+          case json if AgentServerState.keyedEventJsonCodec canDeserialize json =>
+            import AgentServerState.keyedEventJsonCodec
             json.as[Stamped[KeyedEvent[Event]]].orThrow
         }
         .collect {
-          case o @ Stamped(_, _, KeyedEvent(_, _: AgentEvent)) => o.asInstanceOf[Stamped[KeyedEvent[AgentEvent]]]  // Ignore SnapshotTaken
+          case o @ Stamped(_, _, KeyedEvent(_, _: AgentServerEvent)) => o.asInstanceOf[Stamped[KeyedEvent[AgentServerEvent]]]  // Ignore SnapshotTaken
         }
     }
 }

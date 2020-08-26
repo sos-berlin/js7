@@ -7,7 +7,7 @@ import java.nio.file.Path
 import js7.base.circeutils.CirceUtils._
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.utils.ScalaUtils.syntax.RichString
-import js7.data.event.{Event, JournalHeader, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
+import js7.data.event.{Event, JournalHeader, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
 
 /**
   * @author Joacim Zschimmer
@@ -37,4 +37,10 @@ final case class JournalMeta(
           new IllegalArgumentException(msg)
         case Right(o) => o
       }
+}
+
+object JournalMeta
+{
+  def apply[S <: JournaledState[S]](companion: JournaledState.Companion[S], fileBase: Path) =
+    new JournalMeta(companion.snapshotObjectJsonCodec, companion.keyedEventJsonCodec, fileBase)
 }

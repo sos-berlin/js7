@@ -20,6 +20,9 @@ final class FileJournaledStateBuilder[S <: JournaledState[S]](
   expectedJournalId: Option[JournalId],
   newBuilder: () => JournaledStateBuilder[S])
 {
+  def this(journalFileForInfo: Path, expectedJournalId: Option[JournalId])(implicit S: JournaledState.Companion[S]) =
+    this(journalFileForInfo, expectedJournalId, S.newBuilder)
+
   private val builder = newBuilder()
   private var _progress: JournalProgress = JournalProgress.Initial
 
@@ -55,7 +58,7 @@ final class FileJournaledStateBuilder[S <: JournaledState[S]](
           case journalHeader: JournalHeader =>
             JournalHeader.checkedHeader(journalHeader, journalFileForInfo, expectedJournalId)
               .orThrow
-            builder.addSnapshot(journalHeader)
+            builder.addSnapshotObject(journalHeader)
             logger.debug(journalHeader.toString)
             _progress = AfterHeader
 
@@ -74,7 +77,7 @@ final class FileJournaledStateBuilder[S <: JournaledState[S]](
             builder.onAllSnapshotsAdded()
             _progress = AfterSnapshotSection
           case _ =>
-            builder.addSnapshot(journalRecord)
+            builder.addSnapshotObject(journalRecord)
         }
 
       case AfterSnapshotSection =>
