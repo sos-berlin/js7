@@ -4,23 +4,30 @@ import cats.effect.Resource
 import io.circe.{Decoder, Encoder, Json}
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.auth.UserAndPassword
+import js7.base.data.ByteSequence.ops._
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.Completed
+import js7.base.monixutils.MonixBase.syntax.{RichMonixObservable, RichMonixObservableTask}
 import js7.base.problem.Checked
+import js7.base.problem.Checked._
 import js7.base.session.{HttpSessionApi, SessionApi}
+import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
 import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScodecUtils.syntax._
+import js7.base.web.HttpClient.liftProblem
 import js7.base.web.{HttpClient, Uri}
 import js7.controller.client.HttpControllerApi._
-import js7.controller.data.{ControllerCommand, ControllerOverview, ControllerState}
+import js7.controller.data.{ControllerCommand, ControllerOverview}
 import js7.data.agent.AgentRef
 import js7.data.cluster.{ClusterNodeState, ClusterState}
-import js7.data.event.{Event, EventApi, EventId, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
+import js7.data.event.{Event, EventApi, EventId, EventRequest, JournaledState, KeyedEvent, Stamped, TearableEventSeq}
 import js7.data.fatevent.FatEvent
 import js7.data.order.{FreshOrder, Order, OrdersOverview}
 import js7.data.workflow.Workflow
 import monix.eval.Task
 import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
@@ -63,11 +70,11 @@ extends EventApi with HttpSessionApi with HasIsIgnorableStackTrace
     httpClient.get[ControllerOverview](uris.overview)
 
   final def clusterState: Task[Checked[ClusterState]] =
-    httpClient.liftProblem(
+    liftProblem(
       httpClient.get[ClusterState](uris.clusterState))
 
   final def clusterNodeState: Task[Checked[ClusterNodeState]] =
-    httpClient.liftProblem(
+    liftProblem(
       httpClient.get[ClusterNodeState](uris.clusterNodeState))
 
   final def addOrder(order: FreshOrder): Task[Boolean] = {
@@ -84,7 +91,7 @@ extends EventApi with HttpSessionApi with HasIsIgnorableStackTrace
     httpClient.get[OrdersOverview](uris.order.overview)
 
   final def orders: Task[Checked[Seq[Order[Order.State]]]] =
-    httpClient.liftProblem(
+    liftProblem(
       httpClient.get[Seq[Order[Order.State]]](uris.order.list[Order[Order.State]]))
 
   final def events[E <: Event: ClassTag](request: EventRequest[E])
@@ -130,18 +137,28 @@ extends EventApi with HttpSessionApi with HasIsIgnorableStackTrace
       timeout = request.timeout.map(_ + ToleratedEventDelay) getOrElse Duration.Inf)
 
   final def workflows: Task[Checked[Seq[Workflow]]] =
-    httpClient.liftProblem(
+    liftProblem(
       httpClient.get[Seq[Workflow]](uris.workflow.list[Workflow]))
 
   final def agents: Task[Checked[Seq[AgentRef]]] =
-    httpClient.liftProblem(
+    liftProblem(
       httpClient.get[Seq[AgentRef]](uris.agent.list[AgentRef]))
 
-  final def snapshot(eventId: Option[EventId] = None): Task[Checked[Observable[Any]]] = {
-    implicit val x = ControllerState.snapshotObjectJsonCodec
-    httpClient.liftProblem(
-      httpClient.getDecodedLinesObservableBatch[Any](uris.snapshot.list(eventId)))
-  }
+  final def snapshotAs[S <: JournaledState[S]](eventId: Option[EventId] = None)(implicit S: JournaledState.Companion[S])
+  : Task[Checked[S]] =
+    Task.defer {
+      val startedAt = now
+      liftProblem(
+        httpClient.getRawLinesObservable(uris.snapshot.list(eventId))
+          .logTiming(_.length, startedAt = startedAt, onComplete = (d, n, exitCase) =>
+            scribe.debug(s"$S snapshot receive $exitCase - ${bytesPerSecondString(d, n)}"))
+          .map(_
+            .mapParallelOrderedBatch()(_
+              .parseJsonAs(S.snapshotObjectJsonCodec).orThrow))
+          .logTiming(startedAt = startedAt, onComplete = (d, n, exitCase) =>
+            scribe.debug(s"$S snapshot receive $exitCase - ${itemsPerSecondString(d, n, "objects")}"))
+          .flatMap(S.fromObservable))
+    }
 
   override def toString = s"HttpControllerApi($baseUri)"
 }
