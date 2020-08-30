@@ -1,6 +1,7 @@
 package js7.common.configutils
 
-import com.typesafe.config.{ConfigException, ConfigFactory}
+import cats.Monoid
+import com.typesafe.config.{Config, ConfigException, ConfigFactory}
 import js7.base.generic.GenericString
 import js7.base.problem.Problem
 import js7.common.configutils.Configs._
@@ -99,6 +100,17 @@ final class ConfigsTest extends AnyFreeSpec
       val array = List(1, 2, 3)
       assert(config"""A = $array""" == ConfigFactory.parseMap(Map("A" -> Seq(1, 2, 3).asJava).asJava))
     }
+  }
+
+  "Monoid[Config]" in {
+    assert(Monoid[Config].empty == ConfigFactory.empty)
+    val a = config"""
+      X = 1
+      Y = 2"""
+    val b = config"""
+      X = 10
+      Z = 30"""
+    assert(Monoid[Config].combine(a, b) == a.withFallback(b))
   }
 }
 
