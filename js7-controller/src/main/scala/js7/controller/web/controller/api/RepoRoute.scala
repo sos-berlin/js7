@@ -31,7 +31,7 @@ import js7.data.crypt.InventoryItemVerifier.Verified
 import js7.data.item.{InventoryItem, TypedPath, UpdateRepoOperation, VersionId}
 import monix.eval.Task
 import monix.execution.Scheduler
-import monix.execution.atomic.{AtomicAny, AtomicBoolean}
+import monix.execution.atomic.AtomicAny
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
 
@@ -93,7 +93,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                     case UpdateRepoOperation.AddVersion(v) =>
                       versionId := v  // throws
                   }
-                  .flatTap(_ => problemOccurred.get match {
+                  .flatTap(_ => problemOccurred.get() match {
                     case null => Task.unit
                     case problem => Task.raiseError(ExitStreamException(problem))
                   })
