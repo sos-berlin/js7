@@ -14,6 +14,8 @@ trait EventApi
 extends SessionApi.HasUserAndPassword
 with HasIsIgnorableStackTrace
 {
+  type State <: JournaledState[State]
+
   def baseUri: Uri
 
   def clusterNodeState: Task[Checked[ClusterNodeState]]
@@ -21,5 +23,5 @@ with HasIsIgnorableStackTrace
   def eventObservable[E <: Event: ClassTag](request: EventRequest[E])(implicit kd: Decoder[KeyedEvent[E]])
   : Task[Observable[Stamped[KeyedEvent[E]]]]
 
-  def snapshotAs[S <: JournaledState[S]: JournaledState.Companion](eventId: Option[EventId] = None): Task[Checked[S]]
+  def snapshot(eventId: Option[EventId] = None): Task[Checked[State]]
 }

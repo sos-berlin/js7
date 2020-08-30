@@ -101,12 +101,12 @@ trait JournaledProxy[S <: JournaledState[S]]
 
 object JournaledProxy
 {
-  type ApiResource = Resource[Task, EventApi]
+  private type Api[S <: JournaledState[S]] = EventApi { type State = S }
 
   private val recouplingStreamReaderConf = RecouplingStreamReaderConf(timeout = 55.s, delay = 1.s)
 
   def observable[S <: JournaledState[S]](
-    apiResources: Seq[ApiResource],
+    apiResources: Seq[Resource[Task, Api[S]]],
     fromEventId: Option[EventId],
     onProxyEvent: ProxyEvent => Unit = _ => (),
     proxyConf: ProxyConf)
@@ -115,14 +115,14 @@ object JournaledProxy
   {
     if (apiResources.isEmpty) throw new IllegalArgumentException("apiResources must not be empty")
 
-    def observable2(apis: Seq[EventApi]): Observable[EventAndState[Event, S]] =
+    def observable2(apis: Seq[Api[S]]): Observable[EventAndState[Event, S]] =
       Observable.tailRecM(none[S])(maybeState =>
         Observable.fromTask(selectActiveNodeApi(apis, _ => onCouplingError))
           .flatMap(api =>
             Observable
               .fromTask(
                 durationOfTask(
-                  maybeState.fold(api.snapshotAs[S](eventId = fromEventId))(s => Task.pure(Right(s)))))
+                  maybeState.fold(api.snapshot(eventId = fromEventId))(s => Task.pure(Right(s)))))
               .map(o => o._1.orThrow/*TODO What happens then?*/ -> o._2)
               .flatMap { case (state, stateFetchDuration) =>
                 var lastState = state
@@ -166,7 +166,7 @@ object JournaledProxy
 
     def isTorn(t: Throwable) = checkedCast[ProblemException](t).exists(_.problem is EventSeqTornProblem)
 
-    def observeWithState(api: EventApi, state: S, stateFetchDuration: FiniteDuration): Observable[EventAndState[Event, S]] = {
+    def observeWithState(api: Api[S], state: S, stateFetchDuration: FiniteDuration): Observable[EventAndState[Event, S]] = {
       val seed = EventAndState(Stamped(state.eventId, ProxyStarted: AnyKeyedEvent), state, state)
       val recouplingStreamReader = new MyRecouplingStreamReader(onProxyEvent, stateFetchDuration,
         tornOlder = fromEventId.flatMap(_ => proxyConf.tornOlder))
@@ -195,11 +195,11 @@ object JournaledProxy
     stateFetchDuration: FiniteDuration,
     tornOlder: Option[FiniteDuration])
     (implicit S: JournaledState.Companion[S])
-  extends RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], EventApi](_.eventId, recouplingStreamReaderConf)
+  extends RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], Api[S]](_.eventId, recouplingStreamReaderConf)
   {
     private var addToTornOlder = stateFetchDuration
 
-    def getObservable(api: EventApi, after: EventId) = {
+    def getObservable(api: Api[S], after: EventId) = {
       import S.keyedEventJsonCodec
       HttpClient.liftProblem(
         api.eventObservable(
@@ -212,17 +212,17 @@ object JournaledProxy
       })
     }
 
-    override def onCoupled(api: EventApi, after: EventId) =
+    override def onCoupled(api: Api[S], after: EventId) =
       Task {
         onProxyEvent(ProxyCoupled(after))
         Completed
       }
 
-    override protected def onCouplingFailed(api: EventApi, problem: Problem) =
+    override protected def onCouplingFailed(api: Api[S], problem: Problem) =
       super.onCouplingFailed(api, problem) >>
         Task {
           onProxyEvent(ProxyCouplingError(problem))
-          false  // Terminate RecouplingStreamReader to allow to reselect a reachable Node (via EventApi)
+          false  // Terminate RecouplingStreamReader to allow to reselect a reachable Node (via Api[S[S)
         }
 
     override protected val onDecoupled =

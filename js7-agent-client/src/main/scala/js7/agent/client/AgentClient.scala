@@ -9,12 +9,12 @@ import js7.agent.data.web.AgentUris
 import js7.agent.data.{AgentApi, AgentTaskId}
 import js7.base.auth.UserAndPassword
 import js7.base.problem.Checked
-import js7.base.session.HttpSessionApi
 import js7.base.web.Uri
 import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import js7.common.http.AkkaHttpClient
 import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
 import js7.data.order.{Order, OrderId}
+import js7.data.session.HttpSessionApi
 import monix.eval.Task
 import monix.reactive.Observable
 

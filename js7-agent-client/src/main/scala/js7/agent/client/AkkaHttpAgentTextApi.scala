@@ -5,7 +5,6 @@ import java.nio.file.Path
 import js7.agent.client.AkkaHttpAgentTextApi._
 import js7.agent.data.web.AgentUris
 import js7.base.auth.UserAndPassword
-import js7.base.session.HttpSessionApi
 import js7.base.utils.HasCloser
 import js7.base.web.Uri
 import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
@@ -13,6 +12,7 @@ import js7.common.akkautils.ProvideActorSystem
 import js7.common.configutils.Configs._
 import js7.common.http.{AkkaHttpClient, TextApi}
 import js7.common.scalautil.FileUtils.syntax._
+import js7.data.session.HttpSessionApi
 
 /**
   * @author Joacim Zschimmer
