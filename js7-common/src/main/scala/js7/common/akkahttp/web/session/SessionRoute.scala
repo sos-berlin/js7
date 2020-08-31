@@ -1,8 +1,9 @@
 package js7.common.akkahttp.web.session
 
 import akka.http.scaladsl.model.StatusCodes.Unauthorized
+import akka.http.scaladsl.server.Directive1
 import akka.http.scaladsl.server.Directives._
-import js7.base.auth.{SessionToken, UserAndPassword}
+import js7.base.auth.{SessionToken, UserAndPassword, UserId}
 import js7.base.generic.Completed
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
@@ -11,8 +12,10 @@ import js7.base.session.SessionCommand.{Login, Logout}
 import js7.common.akkahttp.CirceJsonOrYamlSupport._
 import js7.common.akkahttp.StandardMarshallers._
 import js7.common.akkahttp.web.session.SessionRoute._
+import js7.data.problems.InvalidLoginProblem
 import monix.eval.Task
 import monix.execution.Scheduler
+import scala.collection.immutable.Set
 
 /**
   * @author Joacim Zschimmer
@@ -20,14 +23,17 @@ import monix.execution.Scheduler
 trait SessionRoute extends RouteProvider
 {
   private implicit def implictScheduler: Scheduler = scheduler
+  protected[session] val specificLoginRequiredProblem: Problem = InvalidLoginProblem
+  protected[session] lazy val preAuthenticate: Directive1[Either[Set[UserId], Session#User]] =
+    gateKeeper.preAuthenticate
 
   protected final lazy val sessionRoute =
     pathEnd {
       post {
-        gateKeeper.authenticate { httpUser =>
-          sessionTokenOption(httpUser) { tokenOption =>
+        sessionTokenOption { tokenOption =>
+          preAuthenticate { idsOrUser =>
             entity(as[SessionCommand]) { command =>
-              onSuccess(execute(command, httpUser, tokenOption).runToFuture) {
+              onSuccess(execute(command, idsOrUser, tokenOption).runToFuture) {
                 case Left(problem @ (InvalidLoginProblem | AnonymousLoginProblem)) =>
                   completeUnauthenticatedLogin(Unauthorized, problem)
 
@@ -40,11 +46,11 @@ trait SessionRoute extends RouteProvider
       }
     }
 
-  private def execute(command: SessionCommand, httpUser: Session#User, sessionTokenOption: Option[SessionToken])
+  private def execute(command: SessionCommand, idsOrUser: Either[Set[UserId], Session#User], sessionTokenOption: Option[SessionToken])
   : Task[Checked[SessionCommand.Response]] =
     command match {
       case Login(userAndPasswordOption) =>
-        authenticateOrUseHttpUser(httpUser, userAndPasswordOption)
+        authenticateOrUseHttpUser(idsOrUser, userAndPasswordOption)
           .traverse(user =>
             sessionRegister.login(user, sessionTokenOption)
               .map(Login.LoggedIn.apply))
@@ -54,23 +60,47 @@ trait SessionRoute extends RouteProvider
           .map { _: Completed => Right(SessionCommand.Response.Accepted) }
     }
 
-  private def authenticateOrUseHttpUser(httpUser: Session#User, userAndPasswordOption: Option[UserAndPassword]) =
+  private def authenticateOrUseHttpUser(
+    idsOrUser: Either[Set[UserId], Session#User],
+    userAndPasswordOption: Option[UserAndPassword])
+  =
     userAndPasswordOption match {
-      case Some(userAndPassword) =>
-        if (!httpUser.id.isAnonymous/* && httpUser.id != userAndPassword.userId*/)
-          Left(Problem.pure("Pointless Login authentication after HTTP(S) authentication"))
-        else if (userAndPassword.userId.isAnonymous)
-          Left(AnonymousLoginProblem)
-        else
-          gateKeeper.authenticateUser(userAndPassword) toChecked InvalidLoginProblem
-
       case None =>
-        // Authenticated user from HTTP header `Authorization` or HTTPS client certificate, or Anonymous
-        Right(httpUser)
+        idsOrUser match {
+          case Left(_) =>
+            Left(specificLoginRequiredProblem)
+
+          case Right(u) => Right(u)
+        }
+
+      case Some(userAndPassword) =>
+        if (userAndPassword.userId.isAnonymous)
+          Left(InvalidLoginProblem)
+        else
+          gateKeeper.authenticateUser(userAndPassword)
+            .toChecked(InvalidLoginProblem)
+            .flatMap(authenticatedUser =>
+              idsOrUser match {
+                case Left(allowedUserIds) =>
+                  if (!allowedUserIds.contains(userAndPassword.userId))
+                    Left(specificLoginRequiredProblem)
+                  else
+                    Right(authenticatedUser)
+
+                case Right(httpUser) =>
+                  gateKeeper.authenticateUser(userAndPassword)
+                    .toChecked(InvalidLoginProblem)
+                    .flatMap(authenticatedUser =>
+                      if (!httpUser.id.isAnonymous && httpUser.id != userAndPassword.userId)
+                        Left(Problem("Login user does not match HTTP(S) user"))
+                      else
+                        Right(authenticatedUser))
+              }
+            )
     }
 }
 
-object SessionRoute {
-  object InvalidLoginProblem extends Problem.Eager("Login: unknown user or invalid password")
+object SessionRoute
+{
   private object AnonymousLoginProblem extends Problem.Eager("Login: user and password required")
 }

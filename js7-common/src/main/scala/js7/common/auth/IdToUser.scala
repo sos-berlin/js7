@@ -5,7 +5,7 @@ import com.typesafe.config.{Config, ConfigObject}
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.auth.{DistinguishedName, HashedPassword, Permission, User, UserId}
 import js7.base.generic.SecretString
-import js7.base.utils.Collections.implicits._
+import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Memoizer
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.auth.IdToUser._
@@ -31,7 +31,7 @@ import scala.util.{Failure, Success, Try}
   */
 final class IdToUser[U <: User](
   userIdToRaw: UserId => Option[RawUserAccount],
-  distinguishedNameToUserId: DistinguishedName => Option[UserId],
+  distinguishedNameToUserIds: DistinguishedName => Set[UserId],
   toUser: (UserId, HashedPassword, Set[Permission], Seq[DistinguishedName]) => U,
   toPermission: PartialFunction[String, Permission])
 extends (UserId => Option[U])
@@ -45,10 +45,23 @@ extends (UserId => Option[U])
 
   def apply(userId: UserId): Option[U] = memoizedToUser(userId)
 
-  def distinguishedNameToUser(distinguishedName: DistinguishedName): Option[U] =
-    distinguishedNameToUserId(distinguishedName) flatMap apply
+  def distinguishedNameToIdsOrUser(distinguishedName: DistinguishedName): Checked[Either[Set[UserId], U]] = {
+    val userIds = distinguishedNameToUserIds(distinguishedName)
+    def unknownDN = Problem(s"Unknown distinguished name '$distinguishedName'")
+    if (userIds.isEmpty)
+      Left(unknownDN)
+    else if (userIds.sizeIs == 1)
+      apply(userIds.head) match {
+        case None => Left(unknownDN)  // should not happen
+        case Some(user) => Right(Right(user))   // the authenticated user
+      }
+    else {
+      assert(userIds.sizeIs > 1)
+      Right(Left(userIds))  // Only one of these UserIds is allowed to authenticate
+    }
+  }
 
-  private def rawToUser(raw: RawUserAccount): Option[U] = {
+  private def rawToUser(raw: RawUserAccount): Option[U] =
     (raw.encodedPassword match {
       case None => Some(HashedPassword.MatchesNothing)
       case Some(pw) => toHashedPassword(raw.userId, pw).map(_.hashAgainRandom)
@@ -57,7 +70,6 @@ extends (UserId => Option[U])
         hashedPassword,
         raw.permissions.flatMap(toPermission.lift),
         raw.distinguishedNames))
-  }
 }
 
 object IdToUser
@@ -98,7 +110,7 @@ object IdToUser
          Some(RawUserAccount(userId, encodedPassword = encodedPassword, permissions = permissions, distinguishedNames))
       }
 
-    val distinguishedNameToUserId: Map[DistinguishedName, UserId] =
+    val distinguishedNameToUserIds: Map[DistinguishedName, Set[UserId]] =
       cfgObject.asScala.view
         .flatMap { case (key, value) =>
           UserId.checked(key)
@@ -116,19 +128,21 @@ object IdToUser
                             DistinguishedName.checked(o)
                               .toOption/*ignore error*/
                               .map(_ -> userId)
-                          case o =>
-                            Nil/*ignore error*/
+                          case _ =>
+                            Nil/*ignore type error*/
                         }
                     })
                 case _=>
                   Nil/*ignore type mismatch*/
               })
         }
-        .uniqueToMap/*throws*/
+        .groupMap(_._1)(_._2)
+        .map { case (k, v) => k -> v.toSet }
 
-    logger.trace("distinguishedNameToUserId=" + distinguishedNameToUserId.map { case (k, v) => s"\n  $k --> $v" }.mkString)
+    logger.trace("distinguishedNameToUserIds=" + distinguishedNameToUserIds.map { case (k, v) => s"\n  $k --> $v" }.mkString)
+    assert(distinguishedNameToUserIds.values.forall(_.nonEmpty))  // Set[UserId] is not empty
 
-    new IdToUser(userIdToRaw, distinguishedNameToUserId.lift, toUser, toPermission)
+    new IdToUser(userIdToRaw, dn => distinguishedNameToUserIds.getOrElse(dn, Set.empty), toUser, toPermission)
   }
 
   private val sha512Hasher = { o: String => sha512.hashString(o: String, UTF_8).toString } withToString "sha512"

@@ -3,16 +3,16 @@ package js7.common.akkahttp.web.session
 import akka.http.scaladsl.model.HttpHeader
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, Unauthorized}
 import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials, HttpChallenges, `WWW-Authenticate`}
+import akka.http.scaladsl.server.Directive
 import akka.http.scaladsl.testkit.RouteTestTimeout
 import js7.base.auth.{SessionToken, UserAndPassword, UserId}
-import js7.base.circeutils.CirceUtils.RichCirceString
 import js7.base.generic.{Completed, SecretString}
 import js7.base.problem.Problem
-import js7.base.session.HttpSessionApi
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
+import js7.common.akkahttp.StandardDirectives.lazyRoute
 import js7.common.akkahttp.web.session.SessionRouteTest._
 import js7.common.http.AkkaHttpClient
 import js7.common.http.AkkaHttpClient.HttpException
@@ -21,10 +21,13 @@ import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.Logger
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.time.WaitForCondition.waitForCondition
+import js7.data.problems.InvalidLoginProblem
+import js7.data.session.HttpSessionApi
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
+import scala.collection.immutable.Set
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 
@@ -36,6 +39,18 @@ extends AnyFreeSpec with SessionRouteTester
 {
   protected final implicit def scheduler = Scheduler.global
   private implicit val routeTestTimeout = RouteTestTimeout(10.seconds)
+
+  override protected[session] val specificLoginRequiredProblem = Problem.pure("specificLoginRequired")
+
+  override protected[session] lazy val preAuthenticate = Directive(inner =>
+    seal {
+      lazyRoute(preAuthenticateResult match {
+        case None => gateKeeper.preAuthenticate.tapply(inner)  // Production behaviour
+        case Some(testResult) => inner(Tuple1(testResult))     // For test, to simulate HTTPS multi-user distinguished names
+      })
+    })
+
+  private var preAuthenticateResult: Option[Either[Set[UserId], Session#User]] = None
 
   import gateKeeper.invalidAuthenticationDelay
 
@@ -97,7 +112,7 @@ extends AnyFreeSpec with SessionRouteTester
   }
 
   "Login without credentials and with wrong Authorization header is rejected with 401 Unauthorized and delayed" in {
-    withSessionApi(None, Authorization(BasicHttpCredentials("A-USER", "")) :: Nil) { api =>
+    withSessionApi(None, Right(Authorization(BasicHttpCredentials("A-USER", "")) :: Nil)) { api =>
       import api.implicitSessionToken
       val runningSince = now
       val exception = intercept[AkkaHttpClient.HttpException] {
@@ -112,7 +127,7 @@ extends AnyFreeSpec with SessionRouteTester
   }
 
   "Login without credentials and with Anonymous Authorization header is rejected and delayed" in {
-    withSessionApi(None, Authorization(BasicHttpCredentials(UserId.Anonymous.string, "")) :: Nil) { api =>
+    withSessionApi(None, Right(Authorization(BasicHttpCredentials(UserId.Anonymous.string, "")) :: Nil)) { api =>
       import api.implicitSessionToken
       val runningSince = now
       val exception = intercept[AkkaHttpClient.HttpException] {
@@ -126,23 +141,133 @@ extends AnyFreeSpec with SessionRouteTester
     }
   }
 
-  "Login with credentials and with Authorization header is rejected" in {
-    withSessionApi(Some(AUserAndPassword), Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil) { api =>
-      import api.implicitSessionToken
-      requireAuthorizedAccess(api)
-      val exception = intercept[AkkaHttpClient.HttpException] {
+  "Login with credentials and HTTP or HTTPS authorization" - {
+    "Credentials match" in {
+      withSessionApi(Some(AUserAndPassword), Right(Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil)) { api =>
+        import api.implicitSessionToken
+        requireAuthorizedAccess(api)
         api.login() await 99.s
+        assert(api.hasSession)
       }
-      assert(exception.status == BadRequest)
-      assert(exception.dataAsString.parseJsonOrThrow.as[Problem] ==
-        Right(Problem("Pointless Login authentication after HTTP(S) authentication")))
-      requireAuthorizedAccess(api)
+    }
+
+    "Login password does not match" in {
+      withSessionApi(
+        Some(AUserAndPassword.copy(password = SecretString("WRONG"))),
+        Right(Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil))
+      { api =>
+        import api.implicitSessionToken
+        requireAuthorizedAccess(api)
+        val exception = intercept[AkkaHttpClient.HttpException] {
+          api.login() await 99.s
+        }
+        assert(exception.status == Unauthorized)
+        assert(exception.problem == Some(InvalidLoginProblem))
+        requireAuthorizedAccess(api)
+      }
+    }
+
+    "Login with credentials and different Authorization header is rejected" in {
+      withSessionApi(
+        Some(UserAndPassword(UserId("B-USER"), SecretString("B-PASSWORD"))),
+        Right(Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil))
+      { api =>
+        import api.implicitSessionToken
+        requireAuthorizedAccess(api)
+        val exception = intercept[AkkaHttpClient.HttpException] {
+          api.login() await 99.s
+        }
+        assert(exception.status == BadRequest &&
+          exception.problem == Some(Problem("Login user does not match HTTP(S) user")))
+      }
+    }
+
+    "Login with credentials and equivalent Authorization header but wrong password is rejected" in {
+      withSessionApi(
+        Some(UserAndPassword(UserId("A-USER"), SecretString("WRONG-PASSWORD"))),
+        Right(Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil))
+      { api =>
+        import api.implicitSessionToken
+        requireAuthorizedAccess(api)
+        val exception = intercept[AkkaHttpClient.HttpException] {
+          api.login() await 99.s
+        }
+        assert(exception.status == Unauthorized && exception.problem == Some(InvalidLoginProblem))
+      }
+    }
+
+    "Login with credentials and equivalent Authorization header is accepted" in {
+      withSessionApi(
+        Some(UserAndPassword(UserId("A-USER"), SecretString("A-PASSWORD"))),
+        Right(Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil))
+      { api =>
+        import api.implicitSessionToken
+        requireAuthorizedAccess(api)
+        api.login() await 99.s
+        requireAuthorizedAccess(api)
+      }
+    }
+  }
+
+  "Login with credentials and HTTPS multi-UserId distinguished names" - {
+    "Credentials match" in {
+      withSessionApi(Some(AUserAndPassword), Left(Left(Set(UserId("A-USER"), UserId("B-USER"))))) { api =>
+        import api.implicitSessionToken
+        requireAccessIsUnauthorizedOrPublic(api)
+        api.login() await 99.s
+        assert(api.hasSession)
+      }
+    }
+
+    "Login UserId does not match" in {
+      withSessionApi(
+        Some(AUserAndPassword),
+        Left(Left(Set(UserId("X-USER"), UserId("B-USER")))))
+      { api =>
+        import api.implicitSessionToken
+        requireAccessIsUnauthorizedOrPublic(api)
+        val exception = intercept[AkkaHttpClient.HttpException] {
+          api.login() await 99.s
+        }
+        assert(exception.status == BadRequest &&
+          exception.problem == Some(specificLoginRequiredProblem))
+      }
+    }
+
+    "Login password does not match" in {
+      withSessionApi(
+        Some(AUserAndPassword.copy(password = SecretString("WRONG"))),
+        Left(Left(Set(UserId("A-USER"), UserId("B-USER")))))
+      { api =>
+        import api.implicitSessionToken
+        requireAccessIsUnauthorizedOrPublic(api)
+        val exception = intercept[AkkaHttpClient.HttpException] {
+          api.login() await 99.s
+        }
+        assert(exception.status == Unauthorized)
+        assert(exception.problem == Some(InvalidLoginProblem))
+      }
+    }
+
+    "Login with credentials but wrong password is rejected" in {
+      withSessionApi(
+        Some(UserAndPassword(UserId("A-USER"), SecretString("WRONG-PASSWORD"))),
+        Left(Left(Set(UserId("A-USER"), UserId("B-USER")))))
+      { api =>
+        import api.implicitSessionToken
+        requireAccessIsUnauthorizedOrPublic(api)
+        val exception = intercept[AkkaHttpClient.HttpException] {
+          api.login() await 99.s
+        }
+        assert(exception.status == Unauthorized && exception.problem == Some(InvalidLoginProblem))
+      }
     }
   }
 
   "Login without credentials but with Authorization header is accepted" in {
-    withSessionApi(None, Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil) { api =>
+    withSessionApi(None, Right(Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil)) { api =>
       import api.implicitSessionToken
+      requireAuthorizedAccess(api)
       api.login() await 99.s
       assert(api.hasSession)
       requireAuthorizedAccess(api)
@@ -173,7 +298,7 @@ extends AnyFreeSpec with SessionRouteTester
       assert(exception.status == Unauthorized)
       assert(exception.header[`WWW-Authenticate`] ==
         Some(`WWW-Authenticate`(HttpChallenges.basic("TEST REALM") :: Nil)))
-      assert(exception.dataAsString contains "Login: unknown user or invalid password")
+      assert(exception.problem == Some(InvalidLoginProblem))
       assert(runningSince.elapsed >= invalidAuthenticationDelay)
 
       requireAccessIsUnauthorizedOrPublic(api)  // public=true allows access
@@ -284,8 +409,8 @@ extends AnyFreeSpec with SessionRouteTester
 
   private def withSessionApi(
     userAndPassword_ : Option[UserAndPassword],
-    headers: List[HttpHeader] = Nil)(
-    body: HttpSessionApi with AkkaHttpClient => Unit)
+    idsOrUserOrHeaders: Either[Either[Set[UserId], Session#User], List[HttpHeader]] = Right(Nil))
+    (body: HttpSessionApi with AkkaHttpClient => Unit)
   : Unit = {
     val api = new HttpSessionApi with AkkaHttpClient {
       protected val name = "SessionRouteTest"
@@ -295,12 +420,15 @@ extends AnyFreeSpec with SessionRouteTester
       val actorSystem = SessionRouteTest.this.system
       def baseUri = localUri
       def uriPrefixPath = ""
-      override val standardHeaders = headers ::: super.standardHeaders
+      override val standardHeaders = idsOrUserOrHeaders.toOption.toList.flatten ::: super.standardHeaders
       def keyStoreRef = None
       def trustStoreRefs = Nil
     }
-    autoClosing(api) {
-      body
+    autoClosing(api) { _ =>
+      val saved = preAuthenticateResult
+      preAuthenticateResult = idsOrUserOrHeaders.left.toOption
+      try body(api)
+      finally preAuthenticateResult = saved
     }
   }
 }

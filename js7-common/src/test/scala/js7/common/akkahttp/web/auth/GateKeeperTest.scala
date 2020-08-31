@@ -9,7 +9,6 @@ import akka.http.scaladsl.server.{ExceptionHandler, Route}
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import akka.http.scaladsl.unmarshalling.Unmarshaller
 import akka.testkit.TestDuration
-import js7.common.configutils.Configs._
 import io.circe.Json
 import js7.base.auth.Permission.toStringToPermission
 import js7.base.auth.{GetPermission, HashedPassword, Permission, SimpleUser, SuperPermission, User, UserAndPassword, UserId, ValidUserPermission}
@@ -19,6 +18,7 @@ import js7.common.akkahttp.web.auth.GateKeeper.{GetIsPublic, IsPublic, LoopbackI
 import js7.common.akkahttp.web.auth.GateKeeperTest._
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.auth.IdToUser
+import js7.common.configutils.Configs._
 import js7.common.http.CirceJsonSupport._
 import js7.common.scalautil.Futures.implicits.SuccessFuture
 import monix.execution.Scheduler
@@ -48,7 +48,7 @@ final class GateKeeperTest extends AnyFreeSpec with ScalatestRouteTest
       }""",
       SimpleUser.apply,
       toStringToPermission(List(TestPermission))),
-    distinguishedNameToUser = Map.empty)
+    distinguishedNameToIdsOrUser = Map.empty)
 
   // Anonymous with added permissions due isPublic or loopbackIsPublic
   private val publicAnonymous = defaultConf.idToUser(UserId.Anonymous).get.copy(grantedPermissions = Set(SuperPermission))
@@ -288,21 +288,23 @@ final class GateKeeperTest extends AnyFreeSpec with ScalatestRouteTest
   private def route(conf: GateKeeper.Configuration[SimpleUser]): Route = route(newGateKeeper(conf))
 
   private def route(gateKeeper: GateKeeper[SimpleUser]): Route =
-    gateKeeper.authenticate { user =>
-      path("ValidUserPermission") {
-        gateKeeper.authorize(user, Set(ValidUserPermission)) { user =>
-          (get | post) {
-            complete(user.id.toString)
+    gateKeeper.preAuthenticate {
+      case Left(_/*userIds*/) => fail()
+      case Right(user) =>
+        path("ValidUserPermission") {
+          gateKeeper.authorize(user, Set(ValidUserPermission)) { user =>
+            (get | post) {
+              complete(user.id.toString)
+            }
+          }
+        } ~
+        path("OPEN") {
+          gateKeeper.authorize(user, Set.empty) { user =>  // GET is public, POST is public only with loopbackIsPublic on loopback interface
+            (get | post) {
+              complete(user.id.toString)
+            }
           }
         }
-      } ~
-      path("OPEN") {
-        gateKeeper.authorize(user, Set.empty) { user =>  // GET is public, POST is public only with loopbackIsPublic on loopback interface
-          (get | post) {
-            complete(user.id.toString)
-          }
-        }
-      }
     }
 
   private val validUserUri = Uri("/ValidUserPermission")

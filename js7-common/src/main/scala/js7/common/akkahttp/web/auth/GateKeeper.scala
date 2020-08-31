@@ -8,11 +8,10 @@ import akka.http.scaladsl.model.{HttpMethod, HttpRequest}
 import akka.http.scaladsl.server.AuthenticationFailedRejection.CredentialsMissing
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route.seal
-import akka.http.scaladsl.server.{AuthenticationFailedRejection, Directive1, ExceptionHandler, RejectionHandler, Route}
+import akka.http.scaladsl.server.{AuthenticationFailedRejection, Directive, Directive1, ExceptionHandler, RejectionHandler, Route}
 import com.typesafe.config.{Config, ConfigFactory}
 import java.security.cert.X509Certificate
 import js7.base.auth.{DistinguishedName, GetPermission, HashedPassword, Permission, SimpleUser, SuperPermission, User, UserAndPassword, UserId, ValidUserPermission}
-import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
@@ -20,12 +19,13 @@ import js7.common.akkahttp.StandardMarshallers._
 import js7.common.akkahttp.web.auth.GateKeeper._
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.auth.IdToUser
+import js7.common.configutils.Configs._
 import js7.common.scalautil.Logger
 import js7.common.time.JavaTimeConverters._
 import monix.eval.Task
 import monix.execution.Scheduler
+import scala.collection.immutable.Set
 import scala.concurrent.duration._
-import js7.common.configutils.Configs._
 
 /**
   * @author Joacim Zschimmer
@@ -46,6 +46,7 @@ final class GateKeeper[U <: User](scheme: WebServerBinding.Scheme, configuration
   private val basicChallenge = HttpChallenges.basic(realm)
   val credentialsMissing = AuthenticationFailedRejection(CredentialsMissing, basicChallenge)
   val wwwAuthenticateHeader = `WWW-Authenticate`(basicChallenge)  // Let's a browser show a authentication dialog
+  val anonymous: U = configuration.anonymous
 
   private val credentialRejectionHandler = RejectionHandler.newBuilder()
     .handle {
@@ -73,28 +74,38 @@ final class GateKeeper[U <: User](scheme: WebServerBinding.Scheme, configuration
     authenticator.authenticate(userAndPassword)
   }
 
-  /** Continues with authenticated user or `Anonymous`, or completes with Unauthorized. */
-  val authenticate: Directive1[U] =
-    new Directive1[U] {
-      def tapply(inner: Tuple1[U] => Route) =
-        seal {
-          httpAuthenticate { httpUser =>
-            if (!htttpClientAuthRequired)
-              inner(Tuple1(httpUser))
-            else clientHttpsAuthenticate { maybeHttpsUser =>
-              ((httpUser.id, maybeHttpsUser) match {
-                case (_, None) => Right(httpUser)
-                case (h, Some(t)) if h == t.id => Right(httpUser)
-                case (UserId.Anonymous, Some(httpsUser)) => Right(httpsUser)
-                case _ => Left(Problem.pure("HTTP logged-in user does not match client's HTTPS certificate user"))
-              }) match {
-                case Left(problem) => complete(Unauthorized -> problem)
-                case Right(user) => inner(Tuple1(user))
+  /** Continues with pre-authenticated UserIds or authenticated user or `Anonymous`,
+    * or completes with Unauthorized.
+    *
+    *   - Left(Set(UserId))
+    *     - iff the HTTPS distinguished name refers to more than one UserId, or
+    *   - Right(User)
+    *     - iff the the HTTPS distinguished name refers to only one UserId, or
+    *     - if !httpClientAuthRequired, the HTTP authenticated UserId, or
+    *     - if not HTTP authentication, User is Anonymous.
+    */
+  val preAuthenticate: Directive1[Either[Set[UserId], U]] =
+    Directive(inner =>
+      seal {
+        httpAuthenticate { httpUser =>
+          if (!htttpClientAuthRequired)
+            inner(Tuple1(Right(httpUser)))
+          else clientHttpsAuthenticate {
+            case idsOrUser if httpUser.isAnonymous || idsOrUser == Right(httpUser) =>
+              inner(Tuple1(idsOrUser))
+
+            case Left(allowedHttpsUserIds) if allowedHttpsUserIds contains httpUser.id =>
+              inner(Tuple1(Right(httpUser)))
+
+            case _ =>
+              respondWithHeader(wwwAuthenticateHeader) {
+                completeDelayed(
+                  Forbidden -> Problem.pure(
+                    "HTTP user does not match UserIds allowed by HTTPS client distinguished name"))
               }
-            }
           }
         }
-    }
+      })
 
   /** Continues with authenticated user or `Anonymous`, or completes with Unauthorized or Forbidden. */
   private val httpAuthenticate: Directive1[U] =
@@ -107,20 +118,18 @@ final class GateKeeper[U <: User](scheme: WebServerBinding.Scheme, configuration
         }
     }
 
-  private def clientHttpsAuthenticate: Directive1[Option[U]] =
-    new Directive1[Option[U]] {
-      def tapply(inner: Tuple1[Option[U]] => Route) =
+  private def clientHttpsAuthenticate: Directive1[Either[Set[UserId], U]] =
+    new Directive1[Either[Set[UserId], U]] {
+      def tapply(inner: Tuple1[Either[Set[UserId], U]] => Route) =
         optionalHeaderValueByType(`Tls-Session-Info`) {
           case None =>
-            if (htttpClientAuthRequired)
-              complete(Unauthorized -> Problem.pure("A client HTTPS certificate is required"))
-            else
-              inner(Tuple1(None))
+            // Unreachable code because Akka Http rejects requests without certificate
+            complete(Forbidden -> Problem.pure("A client HTTPS certificate is required"))
 
           case Some(tlsSessionInfo) =>
-            val checkedUser = tlsSessionInfo.peerCertificates match {
+            (tlsSessionInfo.peerCertificates match {
               case (cert: X509Certificate) :: Nil =>
-                certToUser(cert).map(Some.apply)
+                Right(cert)
 
               case certs =>
                 // Safari sends the CA certificate with the client certicate. Why this? Due to generate-certificate ???
@@ -129,7 +138,7 @@ final class GateKeeper[U <: User](scheme: WebServerBinding.Scheme, configuration
                 } match {
                   case cert :: Nil =>
                     logger.debug("HTTPS client has sent the client certificate and some CA certificate. We ignore the latter")
-                    certToUser(cert).map(Some.apply)
+                    Right(cert)
                   case _ =>
                     if (certs.nonEmpty) logger.debug(s"HTTPS client certificates rejected: ${certs.mkString(", ")}")
                     Left(certs.length match {
@@ -138,18 +147,16 @@ final class GateKeeper[U <: User](scheme: WebServerBinding.Scheme, configuration
                     })
                 }
               }
-            checkedUser match {
+            ).flatMap(certToUsers) match {
               case Left(problem) => completeDelayed(Unauthorized -> problem)
-              case Right(user) => inner(Tuple1(user))
+              case Right(o) => inner(Tuple1(o))
             }
         }
     }
 
-  private def certToUser(cert: X509Certificate): Checked[U] =
+  private def certToUsers(cert: X509Certificate): Checked[Either[Set[UserId], U]] =
     DistinguishedName.checked(cert.getSubjectX500Principal.getName)
-      .flatMap(dn =>
-        configuration.distinguishedNameToUser(dn)
-          .toChecked(Problem.pure(s"Unknown distinguished name '$dn'")))
+      .flatMap(configuration.distinguishedNameToIdsOrUser)
 
   /** Continues with authenticated user or `Anonymous`, or completes with Unauthorized or Forbidden. */
   def authorize(user: U, requiredPermissions: Set[Permission]): Directive1[U] =
@@ -248,10 +255,12 @@ object GateKeeper
     getIsPublic: Boolean = false,
     httpsClientAuthRequired: Boolean = false,
     idToUser: UserId => Option[U],
-    distinguishedNameToUser: DistinguishedName => Option[U])
+    distinguishedNameToIdsOrUser: DistinguishedName => Checked[Either[Set[UserId], U]])
   {
     val publicPermissions = Set[Permission](SuperPermission)
     val publicGetPermissions = Set[Permission](GetPermission)
+    val anonymous: U = idToUser(UserId.Anonymous)
+      .getOrElse(sys.error("Anonymous user has not been defined"))  // Should not happen
   }
 
   object Configuration {
@@ -269,7 +278,7 @@ object GateKeeper
         getIsPublic                 = config.getBoolean ("js7.web.server.auth.get-is-public"),
         httpsClientAuthRequired     = config.getBoolean ("js7.web.server.auth.https-client-authentication"),
         idToUser = idToUser,
-        distinguishedNameToUser = idToUser.distinguishedNameToUser)
+        distinguishedNameToIdsOrUser = idToUser.distinguishedNameToIdsOrUser)
     }
   }
 

@@ -1,14 +1,15 @@
 package js7.tests.https
 
+import cats.syntax.option._
 import com.typesafe.config.ConfigFactory
 import java.nio.file.Files.{createTempFile, delete}
-import js7.base.auth.UserId
+import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.ScalaUtils.syntax._
-import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
+import js7.common.akkahttp.https.KeyStoreRef
 import js7.common.akkautils.ProvideActorSystem
 import js7.common.configutils.Configs._
 import js7.common.process.Processes.{ShellFileExtension => sh}
@@ -23,7 +24,7 @@ import js7.data.job.ExecutablePath
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.parser.WorkflowParser
 import js7.tests.https.HttpsTestBase._
-import js7.tests.testenv.DirectoryProvider.ExportedControllerTrustStoreResource
+import js7.tests.testenv.DirectoryProvider.{ExportedControllerTrustStoreRef, ExportedControllerTrustStoreResource}
 import js7.tests.testenv.{ControllerAgentForScalaTest, DirectoryProvider}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll
@@ -50,9 +51,14 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest with
   override protected final lazy val agentPorts = agentHttpsPort :: Nil
   private lazy val backupHttpsPort = findFreeTcpPort()
   override protected lazy val config = ConfigFactory.empty  // for ProviderActorSystem
+  protected def extraDistringuishedNameUserAndPassword = none[UserAndPassword]
 
-  override protected lazy val controllerConfig =
-    ((useCluster ? config"""
+  protected final val otherUserAndPassword = UserAndPassword(UserId("OTHER") -> SecretString("OTHER-PASSWORD"))
+
+  override protected lazy val controllerConfig = {
+    val dn = "CN=Test client,DC=test-client,DC=HttpsTestBase,DC=tests,DC=js7,DC=sh"
+    ((useCluster ?
+      config"""
       js7.journal.cluster {
         nodes {
           Primary: "https://localhost:${controllerHttpsPort.get}"
@@ -61,6 +67,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest with
         watches = [ "https://localhost:$agentHttpsPort" ]
       }""") ++
         Some(config"""
+          js7.web.server.auth.invalid-authentication-delay = 10.ms
           js7.web.server.auth.https-client-authentication = $controllerHttpsMutual
           js7.auth.users {
             Controller {
@@ -69,16 +76,27 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest with
             }
             TEST {
               password = "plain:TEST-PASSWORD"
-              distinguished-names = [ "CN=Test client,DC=test-client,DC=HttpsTestBase,DC=tests,DC=js7,DC=sh" ]
+              distinguished-names = [ "$dn" ]
+            }
+            "${otherUserAndPassword.userId.string}" {
+              password = "plain:${otherUserAndPassword.password.string}"
             }
           }
         """) ++
+        extraDistringuishedNameUserAndPassword.map(uw => config"""
+          js7.auth.users {
+            "${uw.userId.string}" {
+              password = "plain:${uw.password.string}"
+              distinguished-names = [ "$dn" ]
+            }
+          }""") ++
         (!controllerHttpsMutual ? config"""
           js7.auth.cluster {
             user-id = "backup-controller"
             password = "BACKUP-CONTROLLER-PASSWORD"
           }""")
     ).reduce(_ withFallback _)
+  }
 
   private lazy val clientKeyStore = createTempFile(getClass.getSimpleName + "-keystore-", ".p12")
 
@@ -110,15 +128,19 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest with
     httpPort = None, httpsPort = Some(backupHttpsPort)
   ).await(99.s)
 
+  protected final val standardUserAndPassword: Option[UserAndPassword] =
+    (!controllerHttpsMutual || extraDistringuishedNameUserAndPassword.isDefined) ?
+      UserAndPassword(UserId("TEST"), SecretString("TEST-PASSWORD"))
+
   protected lazy val controllerApi = new AkkaHttpControllerApi(
     controller.localUri,
-    !controllerHttpsMutual ? (UserId("TEST") -> SecretString("TEST-PASSWORD")),
+    standardUserAndPassword,
     actorSystem,
     config,
     keyStoreRef = Some(KeyStoreRef(clientKeyStore,
       storePassword = SecretString("jobscheduler"),
       keyPassword = SecretString("jobscheduler"))),
-    trustStoreRefs = TrustStoreRef(ExportedControllerTrustStoreResource.url, SecretString("jobscheduler")) :: Nil,
+    trustStoreRefs = ExportedControllerTrustStoreRef :: Nil,
   ).closeWithCloser
 
   override protected final def agentHttps = true
@@ -138,8 +160,10 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest with
     close()
     delete(clientKeyStore)
     super.afterAll()
-    if (useCluster) backupController.terminate() await 99.s
-    backupDirectoryProvider.close()
+    if (useCluster) {
+      backupController.terminate() await 99.s
+      backupDirectoryProvider.close()
+    }
   }
 }
 
@@ -155,6 +179,7 @@ private[https] object HttpsTestBase
    */
   private val ClientKeyStoreResource = JavaResource("js7/tests/https/resources/private/client-https-keystore.p12")
   private val ExportedClientTrustStoreResource = JavaResource("js7/tests/https/resources/export/client-https-truststore.p12")
+  val ClientKeyStoreRef = KeyStoreRef(ClientKeyStoreResource.url, SecretString("jobscheduler"), SecretString("jobscheduler"))
 
   /* js7-common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh \
         --alias=backup-controller \

@@ -15,4 +15,8 @@ package object problems
   object UnknownEventIdProblem extends Problem.Coded.Companion
 
   case object UserIsNotEnabledToReleaseEventsProblem extends Problem.ArgumentlessCoded
+
+  case object InvalidLoginProblem extends Problem.ArgumentlessCoded {
+    override def httpStatusCode = 401/*Unauthorized*/
+  }
 }

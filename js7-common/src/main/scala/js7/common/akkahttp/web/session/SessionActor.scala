@@ -2,7 +2,7 @@ package js7.common.akkahttp.web.session
 
 import akka.actor.{Actor, DeadLetterSuppression, Props}
 import com.typesafe.config.Config
-import js7.base.auth.{SessionToken, User}
+import js7.base.auth.{SessionToken, User, UserId}
 import js7.base.generic.Completed
 import js7.base.problem.Checked._
 import js7.base.problem.Problems.InvalidSessionTokenProblem
@@ -56,20 +56,25 @@ extends Actor {
       delete(token, reason = "logout")
       sender() ! Completed
 
-    case Command.Get(token, _userOption: Option[User]) =>
-      val userOption = _userOption.asInstanceOf[Option[S#User]]
-      val sessionOption = (tokenToSession.get(token), userOption) match {
+    case Command.Get(token, _idsOrUser: Either[Set[UserId], User]) =>
+      val idsOrUser = _idsOrUser.map(_.asInstanceOf[S#User])
+      val sessionOption = (tokenToSession.get(token), idsOrUser) match {
         case (None, _) =>
-          logger.debug("Rejecting unknown session token" + userOption.fold("")(o => s" (user '${o.id.string}')"))
+          logger.debug(s"Rejecting unknown session token user '${idsOrUser.fold(identity, identity)}'")
           None
 
-        case (Some(session), Some(user)) if user.id != session.currentUser.id =>
+        case (Some(session), Right(user)) if !user.id.isAnonymous && user.id != session.currentUser.id =>
           tryUpdateLatelyAuthenticatedUser(user, session)
 
+        case (Some(session), Left(userIds)) if !userIds.contains(session.currentUser.id) =>
+          logger.debug(s"HTTPS distinguished name UserIds '${userIds.mkString(", ")}'" +
+            s" do not include Sessions's User '${session.currentUser.id}''")
+          None
+
         case (Some(session), _) =>
-          if (handleTimeout(session))
+          if (handleTimeout(session)) {
             None
-          else {
+          } else {
             if (!session.isEternal) {
               session.touch(sessionTimeout)
             }
@@ -140,7 +145,7 @@ object SessionActor
   private[session] object Command {
     final case class Login[U <: User](user: U, oldSessionTokenOption: Option[SessionToken], isEternalSession: Boolean) extends Command
     final case class Logout(token: SessionToken) extends Command
-    final case class Get[U <: User](token: SessionToken, userId: Option[U]) extends Command
+    final case class Get[U <: User](token: SessionToken, idsOrUser: Either[Set[UserId], U]) extends Command
     final case object GetCount extends Command
   }
 

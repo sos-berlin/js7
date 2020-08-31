@@ -1,13 +1,13 @@
 package js7.common.auth
 
 import com.typesafe.config.ConfigFactory
-import js7.common.configutils.Configs._
 import js7.base.auth.{DistinguishedName, SimpleUser, UserId}
 import js7.base.generic.SecretString
+import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.common.auth.IdToUser.RawUserAccount
 import js7.common.auth.IdToUserTest._
-import js7.common.configutils.Configs.ConvertibleConfig
+import js7.common.configutils.Configs._
 import js7.common.scalautil.Futures.implicits._
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -55,6 +55,12 @@ final class IdToUserTest extends AnyFreeSpec
             password = "plain:PLAIN-PASSWORD"
             distinguished-names = [ "CN=IdToUserTest", "CN=D" ]
           }
+          E1 {
+            distinguished-names = [ "CN=E" ]
+          }
+          E2 {
+            distinguished-names = [ "CN=E" ]
+          }
         }""",
       SimpleUser.apply)
 
@@ -63,20 +69,31 @@ final class IdToUserTest extends AnyFreeSpec
       val Some(b) = idToUser(UserId("B"))
       val Some(c) = idToUser(UserId("C"))
       val Some(d) = idToUser(UserId("D"))
+      val Some(e1) = idToUser(UserId("E1"))
+      val Some(e2) = idToUser(UserId("E2"))
       assert(a.id == UserId("A"))
       assert(b.id == UserId("B"))
       assert(c.id == UserId("C"))
+      assert(d.id == UserId("D"))
+      assert(e1.id == UserId("E1"))
+      assert(e2.id == UserId("E2"))
       assert(a.hashedPassword equalsClearText PlainPassword)
       assert(b.hashedPassword equalsClearText Sha512Password)
       assert(c.hashedPassword equalsClearText PlainPassword)
       assert(d.hashedPassword equalsClearText PlainPassword)
       assert(d.distinguishedNames == List(DistinguishedName("CN=IdToUserTest"), DistinguishedName("CN=D")))
+      assert(!e1.hashedPassword.equalsClearText(PlainPassword))
+      assert(!e2.hashedPassword.equalsClearText(PlainPassword))
+      assert(e1.distinguishedNames == List(DistinguishedName("CN=E")))
+      assert(e2.distinguishedNames == List(DistinguishedName("CN=E")))
 
-      assert(idToUser.distinguishedNameToUser(DistinguishedName("CN=IdToUserTest")).get eq d)
-      assert(idToUser.distinguishedNameToUser(DistinguishedName("CN = IdToUserTest")).get eq d)
-      assert(idToUser.distinguishedNameToUser(DistinguishedName("CN = IdToUserTest")).get eq d)
-      assert(idToUser.distinguishedNameToUser(DistinguishedName("CN=D")).get eq d)
-      assert(idToUser.distinguishedNameToUser(DistinguishedName("CN=UNKNOWN")) == None)
+      assert(idToUser.distinguishedNameToIdsOrUser(DistinguishedName("CN=IdToUserTest")) == Right(Right(d)))
+      assert(idToUser.distinguishedNameToIdsOrUser(DistinguishedName("CN=IdToUserTest")).toOption.get.toOption.get eq d)
+      assert(idToUser.distinguishedNameToIdsOrUser(DistinguishedName("CN = IdToUserTest")) == Right(Right(d)))
+      assert(idToUser.distinguishedNameToIdsOrUser(DistinguishedName("CN = IdToUserTest")) == Right(Right(d)))
+      assert(idToUser.distinguishedNameToIdsOrUser(DistinguishedName("CN=D")) == Right(Right(d)))
+      assert(idToUser.distinguishedNameToIdsOrUser(DistinguishedName("CN=E")) == Right(Left(Set(e1.id, e2.id))))
+      assert(idToUser.distinguishedNameToIdsOrUser(DistinguishedName("CN=UNKNOWN")) == Left(Problem("Unknown distinguished name 'CN=UNKNOWN'")))
     }
 
     "thread-safe" in {
@@ -108,7 +125,7 @@ private object IdToUserTest
 
   private val idToUser = new IdToUser(
     userId => TestConfigValidator.optionAs[SecretString](userId.string).map(o => RawUserAccount(userId, Some(o))),
-    distinguishedNameToUserId = Map.empty,
+    distinguishedNameToUserIds = Map.empty,
     SimpleUser.apply,
     toPermission = Map.empty)
 }

@@ -18,6 +18,7 @@ import js7.base.utils.Closer.syntax.RichClosersAny
 import js7.base.utils.HasCloser
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
+import js7.common.akkahttp.https.TrustStoreRef
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
 import js7.common.scalautil.FileUtils.syntax._
@@ -361,6 +362,7 @@ object DirectoryProvider
    */
   val ControllerKeyStoreResource = JavaResource("js7/tests/controller/config/private/https-keystore.p12")
   val ExportedControllerTrustStoreResource = JavaResource("js7/tests/controller/config/export/https-truststore.p12")
+  val ExportedControllerTrustStoreRef = TrustStoreRef(ExportedControllerTrustStoreResource.url, SecretString("jobscheduler"))
 
   /* Following resources have been generated with the command line:
      js7-common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh \

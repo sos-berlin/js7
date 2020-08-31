@@ -32,24 +32,35 @@ final class SessionRegisterTest extends AnyFreeSpec with ScalatestRouteTest
   }
 
   "session(unknown)" in {
-    assert(sessionRegister.session(unknownSessionToken, None).await(99.seconds).isLeft)
-    assert(sessionRegister.session(unknownSessionToken, Some(AUser)).await(99.seconds).isLeft)
+    assert(sessionRegister.session(unknownSessionToken, Right(Anonymous)).await(99.seconds).isLeft)
+    assert(sessionRegister.session(unknownSessionToken, Right(AUser)).await(99.seconds).isLeft)
   }
 
-  "login" in {
-    sessionToken = sessionRegister.login(AUser).await(99.seconds)
+  "login anonymously" in {
+    sessionToken = sessionRegister.login(Anonymous).await(99.seconds)
   }
 
-  "session" in {
-    val someToken = SessionToken(SecretString("X"))
-    for (user <- List(Some(AUser), None)) {
-      assert(sessionRegister.session(sessionToken, user).await(99.seconds).map(o => o.copy(sessionInit = o.sessionInit.copy(sessionToken = someToken))) ==
-        Right(MySession(SessionInit(1, someToken, AUser))))
-    }
+  "login and update User" in {
+    val originalSession = sessionRegister.session(sessionToken, Right(Anonymous)).await(99.seconds).orThrow
+    val updatedSession = sessionRegister.session(sessionToken, Right(AUser)).await(99.seconds).orThrow
+    assert(updatedSession.sessionToken == sessionToken)
+    assert(updatedSession.sessionInit == originalSession.sessionInit)
+    assert(updatedSession.currentUser == AUser)
+  }
+
+  "Session use does not match HTTPS distinguished name's UserIds" in {
+    assert(sessionRegister.session(sessionToken, Left(Set(AUser.id))).await(99.seconds).map(_.sessionToken) == Right(sessionToken))
+    assert(sessionRegister.session(sessionToken, Left(Set(BUser.id))).await(99.seconds).map(_.sessionToken) == Left(InvalidSessionTokenProblem))
   }
 
   "Changed UserId is rejected" in {
-    assert(sessionRegister.session(sessionToken, Some(BUser)).await(99.seconds) == Left(InvalidSessionTokenProblem))
+    assert(sessionRegister.session(sessionToken, Right(BUser)).await(99.seconds) == Left(InvalidSessionTokenProblem))
+  }
+
+  "session returns always the same Session" in {
+    val session = sessionRegister.session(sessionToken, Right(Anonymous)).await(99.seconds).orThrow
+    assert(session eq sessionRegister.session(sessionToken, Right(AUser)).await(99.seconds).orThrow)
+    assert(session eq sessionRegister.session(sessionToken, Left(Set(AUser.id))).await(99.seconds).orThrow)
   }
 
   "But late authentication is allowed, changing from anonymous to non-anonymous User" in {
@@ -57,23 +68,23 @@ final class SessionRegisterTest extends AnyFreeSpec with ScalatestRouteTest
     val mySessionRegister = SessionRegister.start[MySession](mySystem, MySession.apply, SessionRegister.TestConfig)(testScheduler)
     val sessionToken = mySessionRegister.login(SimpleUser.TestAnonymous).await(99.seconds)
 
-    mySessionRegister.session(sessionToken, None).runSyncUnsafe(99.seconds).orThrow
-    assert(mySessionRegister.session(sessionToken, None).runSyncUnsafe(99.seconds).toOption.get.currentUser == SimpleUser.TestAnonymous)
+    mySessionRegister.session(sessionToken, Right(Anonymous)).runSyncUnsafe(99.seconds).orThrow
+    assert(mySessionRegister.session(sessionToken, Right(Anonymous)).runSyncUnsafe(99.seconds).toOption.get.currentUser == SimpleUser.TestAnonymous)
 
     // Late authentication: change session's user from SimpleUser.Anonymous to AUser
-    assert(mySessionRegister.session(sessionToken, Some(AUser)).await(99.seconds) == Right(MySession(SessionInit(1, sessionToken, loginUser = SimpleUser.TestAnonymous))))
-    assert(mySessionRegister.session(sessionToken, None).runSyncUnsafe(99.seconds).toOption.get.currentUser == AUser/*changed*/)
+    assert(mySessionRegister.session(sessionToken, Right(AUser)).await(99.seconds) == Right(MySession(SessionInit(1, sessionToken, loginUser = SimpleUser.TestAnonymous))))
+    assert(mySessionRegister.session(sessionToken, Right(Anonymous)).runSyncUnsafe(99.seconds).toOption.get.currentUser == AUser/*changed*/)
 
-    assert(mySessionRegister.session(sessionToken, Some(AUser)).await(99.seconds) == Right(MySession(SessionInit(1, sessionToken, loginUser = SimpleUser.TestAnonymous))))
-    assert(mySessionRegister.session(sessionToken, Some(BUser)).await(99.seconds) == Left(InvalidSessionTokenProblem))
-    assert(mySessionRegister.session(sessionToken, None).runSyncUnsafe(99.seconds).toOption.get.currentUser == AUser)
+    assert(mySessionRegister.session(sessionToken, Right(AUser)).await(99.seconds) == Right(MySession(SessionInit(1, sessionToken, loginUser = SimpleUser.TestAnonymous))))
+    assert(mySessionRegister.session(sessionToken, Right(BUser)).await(99.seconds) == Left(InvalidSessionTokenProblem))
+    assert(mySessionRegister.session(sessionToken, Right(Anonymous)).runSyncUnsafe(99.seconds).toOption.get.currentUser == AUser)
 
     Akkas.terminateAndWait(mySystem, 10.s)
   }
 
   "logout" in {
     assert(sessionRegister.logout(sessionToken).await(99.seconds) == Completed)
-    assert(sessionRegister.session(sessionToken, None).await(99.seconds).isLeft)
+    assert(sessionRegister.session(sessionToken, Right(Anonymous)).await(99.seconds).isLeft)
   }
 
   "Session timeout" in {
@@ -82,11 +93,11 @@ final class SessionRegisterTest extends AnyFreeSpec with ScalatestRouteTest
     sessionToken = sessionRegister.login(AUser).await(99.seconds)
     val eternal = sessionRegister.login(BUser, isEternalSession = true).await(99.seconds)
     assert(sessionRegister.count.await(99.seconds) == 2)
-    assert(sessionRegister.session(sessionToken, None).await(99.seconds).isRight)
+    assert(sessionRegister.session(sessionToken, Right(Anonymous)).await(99.seconds).isRight)
 
     testScheduler.tick(TestSessionTimeout + 1.second)
-    assert(sessionRegister.session(sessionToken, None).await(99.seconds).isLeft)
-    assert(sessionRegister.session(eternal, None).await(99.seconds).isRight)
+    assert(sessionRegister.session(sessionToken, Right(Anonymous)).await(99.seconds).isLeft)
+    assert(sessionRegister.session(eternal, Right(Anonymous)).await(99.seconds).isRight)
     assert(sessionRegister.count.await(99.seconds) == 1)
   }
 }
@@ -94,6 +105,7 @@ final class SessionRegisterTest extends AnyFreeSpec with ScalatestRouteTest
 private object SessionRegisterTest
 {
   private val TestSessionTimeout = 1.hour
+  private val Anonymous = SimpleUser(UserId.Anonymous, HashedPassword.newEmpty())
   private val AUser = SimpleUser(UserId("A"), HashedPassword.newEmpty())
   private val BUser = SimpleUser(UserId("B"), HashedPassword.newEmpty())
 

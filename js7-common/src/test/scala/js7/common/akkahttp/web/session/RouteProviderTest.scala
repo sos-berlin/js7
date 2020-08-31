@@ -5,13 +5,13 @@ import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
-import js7.common.configutils.Configs._
 import js7.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
 import js7.base.generic.SecretString
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.RouteProviderTest._
 import js7.common.auth.IdToUser
+import js7.common.configutils.Configs._
 import js7.common.http.CirceJsonSupport._
 import js7.common.scalautil.MonixUtils.syntax._
 import monix.execution.Scheduler
@@ -40,7 +40,7 @@ final class RouteProviderTest extends AnyFreeSpec with RouteProvider with Scalat
       idToUser = IdToUser.fromConfig(
         config"""js7.auth.users.TEST-USER: "plain:123" """,
         SimpleUser.apply),
-      distinguishedNameToUser = Map.empty))
+      distinguishedNameToIdsOrUser = Map.empty))
 
   private var sessionToken = SessionToken(SecretString("INVALID"))
 
@@ -51,8 +51,8 @@ final class RouteProviderTest extends AnyFreeSpec with RouteProvider with Scalat
       }
     } ~
     path("sessionOption") {
-      gateKeeper.authenticate { user =>
-        sessionOption(user) {
+      gateKeeper.preAuthenticate { idsOrUser =>
+        sessionOption(idsOrUser) {
           case None => complete("NO SESSION")
           case Some(session) => complete("userId=" + session.currentUser.id.string)
         }

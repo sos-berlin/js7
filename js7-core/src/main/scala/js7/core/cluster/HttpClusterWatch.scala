@@ -5,7 +5,6 @@ import io.circe._
 import js7.base.auth.UserAndPassword
 import js7.base.generic.Completed
 import js7.base.problem.Checked
-import js7.base.session.HttpSessionApi
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.HttpClient.HttpException
 import js7.base.web.Uri
@@ -16,6 +15,7 @@ import js7.core.cluster.ClusterWatch.isClusterWatchProblem
 import js7.core.cluster.HttpClusterWatch._
 import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.node.NodeId
+import js7.data.session.HttpSessionApi
 import monix.eval.Task
 
 final class HttpClusterWatch(

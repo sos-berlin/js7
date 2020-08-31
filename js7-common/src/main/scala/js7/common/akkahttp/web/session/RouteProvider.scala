@@ -4,18 +4,17 @@ import akka.http.scaladsl.model.StatusCode
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
 import akka.http.scaladsl.server.Directives.{complete, onSuccess, optionalHeaderValueByName, pass, respondWithHeader}
 import akka.http.scaladsl.server.{Directive, Directive1, Route}
-import js7.base.auth.{Permission, SessionToken}
+import js7.base.auth.{Permission, SessionToken, UserId}
 import js7.base.generic.SecretString
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.ExceptionHandling
 import js7.common.akkahttp.StandardMarshallers._
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.session.RouteProvider._
-import js7.common.akkahttp.web.session.SessionRoute.InvalidLoginProblem
 import js7.common.akkahttp.web.session.{Session => Session_}
 import js7.common.scalautil.Logger
+import js7.data.problems.InvalidLoginProblem
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.duration.Duration
@@ -54,13 +53,20 @@ trait RouteProvider extends ExceptionHandling
     new Directive[Tuple1[(Session#User, Option[Session])]]
     {
       def tapply(inner: Tuple1[(Session#User, Option[Session])] => Route) =
-        gateKeeper.authenticate { authenticatedUser =>
-          // user == Anonymous iff no credentials are given
-          sessionOption(authenticatedUser) { sessionOption =>
-            gateKeeper.authorize(sessionOption.fold(authenticatedUser)(_.currentUser), requiredPermissions) { authorizedUser =>
-              // If and only if gateKeeper allows public access, the authorizedUser may be an empowered authenticatedUser.
-              inner(Tuple1((authorizedUser, sessionOption)))
-            }
+        gateKeeper.preAuthenticate { idsOrUser =>
+          // idsOrUser == Right(Anonymous) iff no credentials are given
+          sessionOption(idsOrUser) {
+            case None =>
+              gateKeeper.authorize(idsOrUser getOrElse gateKeeper.anonymous, requiredPermissions) { authorizedUser =>
+                // If and only if gateKeeper allows public access, the authorizedUser may be an empowered user.
+                inner(Tuple1((authorizedUser, None)))
+              }
+
+            case Some(session) =>
+              gateKeeper.authorize(session.currentUser, requiredPermissions) { authorizedUser =>
+                // If and only if gateKeeper allows public access, the authorizedUser may be an empowered session.currentUser.
+                inner(Tuple1((authorizedUser, Some(session))))
+              }
           }
         }
     }
@@ -69,15 +75,15 @@ trait RouteProvider extends ExceptionHandling
     * The request is `Forbidden` if
     * the SessionToken is invalid or
     * the given `userId` is not Anonymous and does not match the sessions UserId.*/
-  protected final def sessionOption(httpUser: Session#User): Directive[Tuple1[Option[Session]]] =
+  protected final def sessionOption(idsOrUser: Either[Set[UserId], Session#User]): Directive[Tuple1[Option[Session]]] =
     new Directive[Tuple1[Option[Session]]] {
       def tapply(inner: Tuple1[Option[Session]] => Route) =
-        sessionTokenOption(httpUser) {
+        sessionTokenOption {
           case None =>
             inner(Tuple1(None))
 
           case Some(sessionToken) =>
-            onSuccess(sessionRegister.sessionFuture(!httpUser.isAnonymous ? httpUser, sessionToken)) {
+            onSuccess(sessionRegister.sessionFuture(sessionToken, idsOrUser)) {
               case Left(problem) =>
                 completeUnauthenticatedLogin(Forbidden, problem)
 
@@ -87,8 +93,7 @@ trait RouteProvider extends ExceptionHandling
           }
     }
 
-  protected final def sessionTokenOption(httpUser: Session#User): Directive[Tuple1[Option[SessionToken]]] =
-    // user == Anonymous iff no credentials are given
+  protected final val sessionTokenOption: Directive[Tuple1[Option[SessionToken]]] =
     new Directive[Tuple1[Option[SessionToken]]] {
       def tapply(inner: Tuple1[Option[SessionToken]] => Route) =
         optionalHeaderValueByName(SessionToken.HeaderName) { option =>

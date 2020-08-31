@@ -31,7 +31,7 @@ trait CommandWebService extends AgentRouteProvider
     authorizedUser(ValidUserPermission) { user =>
       post {
         pathEnd {
-          sessionTokenOption(user) { maybeSessionToken =>
+          sessionTokenOption { maybeSessionToken =>
             entity(as[AgentCommand]) { command =>
               completeTask {
                 commandExecute(CommandMeta(user, maybeSessionToken), command)

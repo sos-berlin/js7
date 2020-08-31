@@ -6,7 +6,7 @@ import akka.util.Timeout
 import com.typesafe.config.Config
 import java.nio.file.Files.{createFile, deleteIfExists}
 import java.nio.file.Path
-import js7.base.auth.SessionToken
+import js7.base.auth.{SessionToken, UserId}
 import js7.base.generic.Completed
 import js7.base.problem.Checked
 import js7.common.akkahttp.web.session.SessionRegister._
@@ -18,7 +18,7 @@ import js7.common.time.JavaTimeConverters._
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.Promise
 
 /**
   * @author Joacim Zschimmer
@@ -34,7 +34,7 @@ final class SessionRegister[S <: Session] private[session](actor: ActorRef, impl
       createFile(file, operatingSystem.secretFileAttributes: _*)
       file := sessionToken.secret.string
       logger.info(s"Session token for internal user '${user.id.string}' placed in file $file")
-      systemSessionPromise.completeWith(sessionFuture(Some(user), sessionToken))
+      systemSessionPromise.completeWith(sessionFuture(sessionToken, Right(user)))
       sessionToken
     }
 
@@ -46,12 +46,12 @@ final class SessionRegister[S <: Session] private[session](actor: ActorRef, impl
     Task.deferFuture(
       (actor ? SessionActor.Command.Logout(sessionToken)).mapTo[Completed])
 
-  private[session] def session(sessionToken: SessionToken, user: Option[S#User]): Task[Checked[S]] =
+  private[session] def session(sessionToken: SessionToken, idsOrUser: Either[Set[UserId], S#User]): Task[Checked[S]] =
     Task.deferFuture(
-      sessionFuture(user, sessionToken))
+      sessionFuture(sessionToken, idsOrUser))
 
-  private[session] def sessionFuture(user: Option[Session#User], sessionToken: SessionToken): Future[Checked[S]] =
-    (actor ? SessionActor.Command.Get(sessionToken, user)).mapTo[Checked[S]]
+  private[session] def sessionFuture(sessionToken: SessionToken, idsOrUser: Either[Set[UserId], S#User]) =
+    (actor ? SessionActor.Command.Get(sessionToken, idsOrUser)).mapTo[Checked[S]]
 
   @TestOnly
   private[js7] def count: Task[Int] =
