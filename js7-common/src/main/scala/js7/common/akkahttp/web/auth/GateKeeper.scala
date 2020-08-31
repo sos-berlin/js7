@@ -109,50 +109,46 @@ final class GateKeeper[U <: User](scheme: WebServerBinding.Scheme, configuration
 
   /** Continues with authenticated user or `Anonymous`, or completes with Unauthorized or Forbidden. */
   private val httpAuthenticate: Directive1[U] =
-    new Directive1[U] {
-      def tapply(inner: Tuple1[U] => Route) =
-        handleRejections(credentialRejectionHandler) {
-          authenticateBasic(realm, authenticator).apply { user =>
-            inner(Tuple1(user))
-          }
+    Directive(inner =>
+      handleRejections(credentialRejectionHandler) {
+        authenticateBasic(realm, authenticator).apply { user =>
+          inner(Tuple1(user))
         }
-    }
+      })
 
   private def clientHttpsAuthenticate: Directive1[Either[Set[UserId], U]] =
-    new Directive1[Either[Set[UserId], U]] {
-      def tapply(inner: Tuple1[Either[Set[UserId], U]] => Route) =
-        optionalHeaderValueByType(`Tls-Session-Info`) {
-          case None =>
-            // Unreachable code because Akka Http rejects requests without certificate
-            complete(Forbidden -> Problem.pure("A client HTTPS certificate is required"))
+    Directive(inner =>
+      optionalHeaderValueByType(`Tls-Session-Info`) {
+        case None =>
+          // Unreachable code because Akka Http rejects requests without certificate
+          complete(Forbidden -> Problem.pure("A client HTTPS certificate is required"))
 
-          case Some(tlsSessionInfo) =>
-            (tlsSessionInfo.peerCertificates match {
-              case (cert: X509Certificate) :: Nil =>
-                Right(cert)
+        case Some(tlsSessionInfo) =>
+          (tlsSessionInfo.peerCertificates match {
+            case (cert: X509Certificate) :: Nil =>
+              Right(cert)
 
-              case certs =>
-                // Safari sends the CA certificate with the client certicate. Why this? Due to generate-certificate ???
-                certs.collect {
-                  case o: X509Certificate if Option(o.getBasicConstraints).forall(_ == -1) => o
-                } match {
-                  case cert :: Nil =>
-                    logger.debug("HTTPS client has sent the client certificate and some CA certificate. We ignore the latter")
-                    Right(cert)
-                  case _ =>
-                    if (certs.nonEmpty) logger.debug(s"HTTPS client certificates rejected: ${certs.mkString(", ")}")
-                    Left(certs.length match {
-                      case n if n > 1 => Problem.pure(s"One and only one peer certificate is required (not $n)")
-                      case _ => Problem.pure("A client X.509 certificate is required")
-                    })
-                }
+            case certs =>
+              // Safari sends the CA certificate with the client certicate. Why this? Due to generate-certificate ???
+              certs.collect {
+                case o: X509Certificate if Option(o.getBasicConstraints).forall(_ == -1) => o
+              } match {
+                case cert :: Nil =>
+                  logger.debug("HTTPS client has sent the client certificate and some CA certificate. We ignore the latter")
+                  Right(cert)
+                case _ =>
+                  if (certs.nonEmpty) logger.debug(s"HTTPS client certificates rejected: ${certs.mkString(", ")}")
+                  Left(certs.length match {
+                    case n if n > 1 => Problem.pure(s"One and only one peer certificate is required (not $n)")
+                    case _ => Problem.pure("A client X.509 certificate is required")
+                  })
               }
-            ).flatMap(certToUsers) match {
-              case Left(problem) => completeDelayed(Unauthorized -> problem)
-              case Right(o) => inner(Tuple1(o))
             }
-        }
-    }
+          ).flatMap(certToUsers) match {
+            case Left(problem) => completeDelayed(Unauthorized -> problem)
+            case Right(o) => inner(Tuple1(o))
+          }
+      })
 
   private def certToUsers(cert: X509Certificate): Checked[Either[Set[UserId], U]] =
     DistinguishedName.checked(cert.getSubjectX500Principal.getName)
@@ -160,22 +156,20 @@ final class GateKeeper[U <: User](scheme: WebServerBinding.Scheme, configuration
 
   /** Continues with authenticated user or `Anonymous`, or completes with Unauthorized or Forbidden. */
   def authorize(user: U, requiredPermissions: Set[Permission]): Directive1[U] =
-    new Directive1[U] {
-      def tapply(inner: Tuple1[U] => Route) =
-        seal {
-          extractRequest { request =>
-            allowedUser(user, request, requiredPermissions) match {
-              case Some(authorizedUser) =>
-                inner(Tuple1(authorizedUser))
-              case None =>
-                if (user.isAnonymous)
-                  reject(credentialsMissing)  // Let a browser show its authentication dialog
-                else
-                  complete(Forbidden)
-            }
+    Directive(inner =>
+      seal {
+        extractRequest { request =>
+          allowedUser(user, request, requiredPermissions) match {
+            case Some(authorizedUser) =>
+              inner(Tuple1(authorizedUser))
+            case None =>
+              if (user.isAnonymous)
+                reject(credentialsMissing)  // Let a browser show its authentication dialog
+              else
+                complete(Forbidden)
           }
         }
-    }
+      })
 
   /** If ValidUserPermission is not required (meaning Anonymous is allowed)
     * then loopbackIsPublic and getIsPublic determine the allowance.

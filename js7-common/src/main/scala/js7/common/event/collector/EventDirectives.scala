@@ -2,7 +2,7 @@ package js7.common.event.collector
 
 import akka.http.scaladsl.model.headers.`Timeout-Access`
 import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.{Directive1, Route, ValidationRejection}
+import akka.http.scaladsl.server.{Directive, Directive1, Route, ValidationRejection}
 import cats.syntax.option._
 import com.google.common.base.Splitter
 import js7.base.utils.ScalaUtils.implicitClass
@@ -34,27 +34,25 @@ object EventDirectives
     (implicit keyedEventTypedJsonCodec: KeyedEventTypedJsonCodec[E],
       classTag: ClassTag[E])
   : Directive1[EventRequest[E]] =
-    new Directive1[EventRequest[E]] {
-      def tapply(inner: Tuple1[EventRequest[E]] => Route) =
-        parameter("return".?) {
-          _ orElse defaultReturnType match {
-            case None => reject(ValidationRejection("Missing parameter return="))
-            case Some(returnType) =>
-              val eventSuperclass = implicitClass[E]
-              val returnTypeNames = ReturnSplitter.split(returnType).asScala.toSet
-              val eventClasses = returnTypeNames flatMap { t =>
-                keyedEventTypedJsonCodec.typenameToClassOption(t)
-              } collect {
-                case eventClass_ if eventSuperclass isAssignableFrom eventClass_ => eventClass_
-                case eventClass_ if eventClass_ isAssignableFrom eventSuperclass => eventSuperclass
-              }
-              if (eventClasses.size != returnTypeNames.size)
-                reject(ValidationRejection(s"Unrecognized event type: return=$returnType"))
-              else
-                eventRequestRoute[E](eventClasses, defaultAfter, defaultTimeout, defaultDelay, inner)
-          }
+    Directive(inner =>
+      parameter("return".?) {
+        _ orElse defaultReturnType match {
+          case None => reject(ValidationRejection("Missing parameter return="))
+          case Some(returnType) =>
+            val eventSuperclass = implicitClass[E]
+            val returnTypeNames = ReturnSplitter.split(returnType).asScala.toSet
+            val eventClasses = returnTypeNames flatMap { t =>
+              keyedEventTypedJsonCodec.typenameToClassOption(t)
+            } collect {
+              case eventClass_ if eventSuperclass isAssignableFrom eventClass_ => eventClass_
+              case eventClass_ if eventClass_ isAssignableFrom eventSuperclass => eventSuperclass
+            }
+            if (eventClasses.size != returnTypeNames.size)
+              reject(ValidationRejection(s"Unrecognized event type: return=$returnType"))
+            else
+              eventRequestRoute[E](eventClasses, defaultAfter, defaultTimeout, defaultDelay, inner)
         }
-    }
+      })
 
   private def eventRequestRoute[E <: Event](
     eventClasses: Set[Class[_ <: E]],

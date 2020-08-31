@@ -6,7 +6,7 @@ import akka.http.scaladsl.model.{HttpEntity, HttpHeader, MediaType, Uri}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.PathMatcher.{Matched, Unmatched}
 import akka.http.scaladsl.server.RouteResult.Complete
-import akka.http.scaladsl.server.{ContentNegotiator, Directive0, Directive1, PathMatcher, PathMatcher0, Route, RouteResult, UnacceptedResponseContentTypeRejection, ValidationRejection}
+import akka.http.scaladsl.server.{ContentNegotiator, Directive, Directive0, Directive1, PathMatcher, PathMatcher0, Route, RouteResult, UnacceptedResponseContentTypeRejection, ValidationRejection}
 import akka.shapeless.HNil
 import akka.stream.scaladsl.Flow
 import akka.util.ByteString
@@ -76,22 +76,18 @@ object AkkaHttpServerUtils
     * Passes x iff argument is Some(x).
     */
   def passSome[A](option: Option[A]): Directive1[A] =
-    new Directive1[A] {
-      def tapply(inner: Tuple1[A] => Route) =
-        option match {
-          case Some(o) => inner(Tuple1(o))
-          case None => reject
-        }
-    }
+    Directive(inner =>
+      option match {
+        case Some(o) => inner(Tuple1(o))
+        case None => reject
+      })
 
   def passRight[R](either: Either[String, R]): Directive1[R] =
-    new Directive1[R] {
-      def tapply(inner: Tuple1[R] => Route) =
-        either match {
-          case Right(r) => inner(Tuple1(r))
-          case Left(message) => reject(ValidationRejection(message))
-        }
-    }
+    Directive(inner =>
+      either match {
+        case Right(r) => inner(Tuple1(r))
+        case Left(message) => reject(ValidationRejection(message))
+      })
 
   /**
     * Passes x iff argument is true.

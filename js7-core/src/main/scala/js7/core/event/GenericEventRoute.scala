@@ -10,7 +10,7 @@ import akka.http.scaladsl.model.StatusCodes.{BadRequest, ServiceUnavailable}
 import akka.http.scaladsl.model.headers.`Last-Event-ID`
 import akka.http.scaladsl.model.sse.ServerSentEvent
 import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.{Directive1, ExceptionHandler, Route}
+import akka.http.scaladsl.server.{Directive, Directive1, ExceptionHandler, Route}
 import akka.stream.scaladsl.Source
 import io.circe.syntax.EncoderOps
 import js7.base.BuildInfo
@@ -243,16 +243,14 @@ trait GenericEventRoute extends RouteProvider
       defaultAfter: EventId,
       defaultTimeout: FiniteDuration = EventDirectives.DefaultTimeout,
       defaultDelay: FiniteDuration = EventDirectives.DefaultDelay)
-    =
-      new Directive1[EventRequest[Event]] {
-        def tapply(inner: Tuple1[EventRequest[Event]] => Route) =
-          eventRequest[Event](
-            defaultAfter = Some(defaultAfter),
-            defaultDelay = defaultDelay,
-            defaultTimeout = defaultTimeout,
-            defaultReturnType = defaultReturnType map (_.simpleScalaName))
-          .apply(eventRequest => inner(Tuple1(eventRequest)))
-      }
+    : Directive1[EventRequest[Event]] =
+      Directive(inner =>
+        eventRequest[Event](
+          defaultAfter = Some(defaultAfter),
+          defaultDelay = defaultDelay,
+          defaultTimeout = defaultTimeout,
+          defaultReturnType = defaultReturnType map (_.simpleScalaName))
+        .apply(eventRequest => inner(Tuple1(eventRequest))))
   }
 
   private def observableToMarshallable[A: TypeTag](observable: Observable[A])
