@@ -60,7 +60,7 @@ trait EventWatch
     predicate: E => Boolean = Every)
   : Task[TearableEventSeq[CloseableIterator, E]]
 
-  /** Returns None as last element iff timeout has been elapsed. */
+  /** Returns None as last element iff timeout has elapsed. */
   def observeFile(fileEventId: Option[EventId], position: Option[Long], timeout: FiniteDuration,
     markEOF: Boolean = false, onlyLastOfChunk: Boolean = false)
   : Checked[Observable[PositionAnd[ByteArray]]]
