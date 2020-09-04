@@ -24,6 +24,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class OfferAndAwaitOrderTest extends AnyFreeSpec
 {
   "Offer and Await after a job" in {
+    pending // TODO
     val workflows = List(
       WorkflowParser.parse(JoiningWorkflowId, s"""
         define workflow {
@@ -90,6 +91,7 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
   }
 
   "Offer and Await as first statements in a Workflow" in {
+    pending // TODO
     val workflows = List(
       WorkflowParser.parse(JoiningWorkflowId, s"""
         define workflow {

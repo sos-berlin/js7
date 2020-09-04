@@ -1,7 +1,6 @@
 package js7.data.execution.workflow
 
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.job.JobKey
@@ -16,7 +15,7 @@ import scala.collection.mutable
   */
 final class OrderEventHandler(
   idToWorkflow: WorkflowId => Checked[Workflow],
-  idToOrder: PartialFunction[OrderId, Order[Order.State]])
+  idToOrder: OrderId => Checked[Order[Order.State]])
 {
   private val _offeredToAwaitingOrder = mutable.Map[OrderId, Set[OrderId]]()  // FIXME Verschwindet, wenn InventoryItem erneut eingelesen werden. Event OrderOffered?
 
@@ -26,7 +25,7 @@ final class OrderEventHandler(
   def handleEvent(keyedEvent: KeyedEvent[OrderEvent]): Checked[Seq[FollowUp]] = {
     val KeyedEvent(orderId, event) = keyedEvent
     for {
-      previousOrder <- idToOrder.checked(orderId)
+      previousOrder <- idToOrder(orderId)
       followUps <- handleEvent(previousOrder, orderId, event)
     } yield followUps
   }

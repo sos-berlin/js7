@@ -1,5 +1,6 @@
 package js7.data.execution.workflow.instructions
 
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentRefPath
 import js7.data.execution.workflow.context.OrderContext
 import js7.data.execution.workflow.instructions.FailExecutorTest._
@@ -18,7 +19,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class FailExecutorTest extends AnyFreeSpec
 {
   private lazy val context = new OrderContext {
-    val idToOrder = Map(TestOrder.id -> TestOrder, ForkedOrder.id -> ForkedOrder, Carrot.id -> Carrot, Lemon.id -> Lemon)
+    val idToOrder = Map(TestOrder.id -> TestOrder, ForkedOrder.id -> ForkedOrder, Carrot.id -> Carrot, Lemon.id -> Lemon).checked
 
     def childOrderEnded(order: Order[Order.State]) = Set(Carrot.id, Lemon.id)(order.id)
 

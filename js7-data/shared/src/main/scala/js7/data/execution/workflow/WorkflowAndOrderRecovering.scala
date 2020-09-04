@@ -2,7 +2,8 @@ package js7.data.execution.workflow
 
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
-import js7.base.utils.Collections.implicits.InsertableMutableMap
+import js7.base.utils.Collections.implicits._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
@@ -22,7 +23,7 @@ object WorkflowAndOrderRecovering
   : (Iterable[Order[Order.State]], Iterable[OrderId]) = {
     val added = mutable.Map[OrderId, Order[Order.State]]()
     val removed = mutable.Buffer[OrderId]()
-    val orderProcessor = new OrderProcessor(idToWorkflow, idToOrder)
+    val orderProcessor = new OrderProcessor(idToWorkflow, idToOrder.checked)
     for (order <- idToOrder.values;
          event <- snapshotToEvent(order);
          followUps <- orderProcessor.handleEvent(event)

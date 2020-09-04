@@ -1,6 +1,7 @@
 package js7.data.execution.workflow.instructions
 
 import js7.base.time.Timestamp
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.<-:
 import js7.data.execution.workflow.context.OrderContext
 import js7.data.execution.workflow.instructions.AwaitOrderExecutorTest._
@@ -19,7 +20,7 @@ final class AwaitOrderExecutorTest extends AnyFreeSpec {
 
   "test" in {
     val context = new OrderContext {
-      def idToOrder = Map(awaitingOrder.id -> awaitingOrder, offeredOrder.id -> offeredOrder)
+      def idToOrder = Map(awaitingOrder.id -> awaitingOrder, offeredOrder.id -> offeredOrder).checked
       def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
       def instruction(position: WorkflowPosition) = throw new NotImplementedError
       def idToWorkflow(id: WorkflowId) = throw new NotImplementedError

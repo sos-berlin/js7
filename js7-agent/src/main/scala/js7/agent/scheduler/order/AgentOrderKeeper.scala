@@ -87,7 +87,7 @@ with Stash {
   private val workflowRegister = new WorkflowRegister
   private val orderActorConf = OrderActor.Conf(conf.config, conf.journalConf)
   private val orderRegister = new OrderRegister
-  private val orderProcessor = new OrderProcessor(workflowRegister.idToWorkflow.checked, orderRegister.idToOrder)
+  private val orderProcessor = new OrderProcessor(workflowRegister.idToWorkflow.checked, orderRegister.idToOrder.checked)
 
   private object shutdown {
     private var shutDownCommand: Option[AgentCommand.ShutDown] = None

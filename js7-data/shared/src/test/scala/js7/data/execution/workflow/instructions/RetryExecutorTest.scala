@@ -2,6 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import js7.base.problem.Problem
 import js7.base.time.Timestamp
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.execution.workflow.context.OrderContext
 import js7.data.execution.workflow.instructions.RetryExecutorTest._
 import js7.data.job.ReturnCode
@@ -51,7 +52,7 @@ object RetryExecutorTest
     val order = Order(orderId, workflowId /: position, Order.Ready,
       historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(ReturnCode(1))) :: Nil)
     val context = new OrderContext {
-      def idToOrder = Map(order.id -> order)
+      def idToOrder = Map(order.id -> order).checked
       def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
       def instruction(position: WorkflowPosition) =
         if (position == workflowId /: tryPosition) tryInstruction.copy(retryDelays = Some(delays.toVector))

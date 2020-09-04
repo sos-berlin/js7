@@ -14,7 +14,7 @@ import js7.data.workflow.{Workflow, WorkflowId}
   */
 final class OrderProcessor(
   idToWorkflow: WorkflowId => Checked[Workflow],
-  idToOrder: PartialFunction[OrderId, Order[Order.State]])  // TODO OrderId => Checked[Order]
+  idToOrder: OrderId => Checked[Order[Order.State]])
 {
   private val eventHandler = new OrderEventHandler(idToWorkflow, idToOrder)
   private val eventSource = new OrderEventSource(idToWorkflow, idToOrder)
@@ -29,7 +29,7 @@ final class OrderProcessor(
     eventSource.isOrderCancelable(order)
 
   def handleEvent(keyedEvent: KeyedEvent[OrderEvent]): Checked[Seq[FollowUp]] =
-    eventHandler.handleEvent(keyedEvent) mapProblem (_ withPrefix s"Problem with event $keyedEvent:")
+    eventHandler.handleEvent(keyedEvent).mapProblem(_ withPrefix s"Problem with event $keyedEvent:")
 
   def offeredToAwaitingOrder(orderId: OrderId): Set[OrderId] =
     eventHandler.offeredToAwaitingOrder(orderId)

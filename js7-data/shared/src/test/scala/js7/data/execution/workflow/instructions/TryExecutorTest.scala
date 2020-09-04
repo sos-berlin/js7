@@ -2,6 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Checked._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentRefPath
 import js7.data.execution.workflow.context.OrderContext
 import js7.data.execution.workflow.instructions.TryExecutorTest._
@@ -22,7 +23,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class TryExecutorTest extends AnyFreeSpec
 {
   private lazy val context = new OrderContext {
-    def idToOrder = Map(AOrder.id -> AOrder)
+    def idToOrder = Map(AOrder.id -> AOrder).checked
     def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
     def instruction(position: WorkflowPosition) = throw new NotImplementedError
     def idToWorkflow(id: WorkflowId) = throw new NotImplementedError

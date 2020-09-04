@@ -23,7 +23,7 @@ object AwaitOrderExecutor extends EventInstructionExecutor
       .orElse(
           for {
             order <- order.ifState[Order.Awaiting]
-            _ <- context.idToOrder.lift(instruction.orderId) flatMap (_.ifState[Order.Offering])
+            _ <- context.idToOrder(instruction.orderId).toOption.flatMap(_.ifState[Order.Offering])
           } yield
             order.id <-: OrderJoined(Outcome.succeeded))
       .orElse(

@@ -18,7 +18,7 @@ import scala.reflect.ClassTag
   */
 trait OrderContext
 {
-  def idToOrder: PartialFunction[OrderId, Order[Order.State]]
+  def idToOrder: OrderId => Checked[Order[Order.State]]
 
   def instruction(workflowPosition: WorkflowPosition): Instruction
 

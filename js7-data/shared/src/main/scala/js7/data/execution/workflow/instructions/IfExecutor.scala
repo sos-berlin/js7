@@ -23,7 +23,7 @@ object IfExecutor extends EventInstructionExecutor with PositionInstructionExecu
         .map(_ map (o => order.id <-: OrderMoved(o)))
 
   def nextPosition(context: OrderContext, order: Order[Order.State], instruction: If) = {
-    assertThat(order == context.idToOrder(order.id).withPosition(order.position))
+    assertThat(Right(order) == context.idToOrder(order.id).map(_ withPosition order.position))
     context.makeScope(order).evalBoolean(instruction.predicate)
       .map {
         case true => Some(Then)

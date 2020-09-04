@@ -38,7 +38,7 @@ object ForkExecutor extends EventInstructionExecutor
           }))))
 
   private def checkOrderForked(context: OrderContext, orderForked: KeyedEvent[OrderForked]): KeyedEvent[OrderActorEvent] = {
-    val duplicates = orderForked.event.children map (_.orderId) flatMap (o => context.idToOrder.lift(o))
+    val duplicates = orderForked.event.children.map(_.orderId).flatMap(o => context.idToOrder(o).toOption)
     if (duplicates.nonEmpty) {
       // Internal error, maybe a lost event OrderDetached
       val problem = Problem.pure(s"Forked OrderIds duplicate existing ${duplicates mkString ", "}")
@@ -55,7 +55,7 @@ object ForkExecutor extends EventInstructionExecutor
       if (order.isAttached)
         Some(order.id <-: OrderDetachable)
       else {
-        val childOrders = order.state.childOrderIds flatMap context.idToOrder.lift.apply
+        val childOrders = order.state.childOrderIds.flatMap(o => context.idToOrder(o).toOption)
         childOrders.forall(context.childOrderEnded) ? (
           order.id <-: OrderJoined(
             if (childOrders.exists(_.lastOutcome.isFailed))
@@ -70,6 +70,6 @@ object ForkExecutor extends EventInstructionExecutor
       Some(childOrder.id <-: OrderDetachable)
     else
       childOrder.parent
-        .flatMap(context.idToOrder.lift)
+        .flatMap(o => context.idToOrder(o).toOption)
         .flatMap(parentOrder => toJoined(context, parentOrder))
 }

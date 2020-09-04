@@ -21,7 +21,7 @@ import scala.annotation.tailrec
   */
 final class OrderEventSource(
   idToWorkflow: WorkflowId => Checked[Workflow],
-  idToOrder: PartialFunction[OrderId, Order[Order.State]])
+  idToOrder: OrderId => Checked[Order[Order.State]])
 {
   private val context = new OrderContext {
     // This and idToOrder are mutable, do not use in Future !!!
@@ -30,7 +30,7 @@ final class OrderEventSource(
     def idToWorkflow(id: WorkflowId)                = OrderEventSource.this.idToWorkflow(id)
 
     def childOrderEnded(order: Order[Order.State]): Boolean =
-      order.parent flatMap idToOrder.lift match {
+      order.parent.flatMap(o => idToOrder(o).toOption) match {
         case Some(parentOrder) =>
           lazy val endReached = instruction(order.workflowPosition).isInstanceOf[End] &&
             order.state == Order.Ready &&
@@ -42,7 +42,7 @@ final class OrderEventSource(
   }
 
   def nextEvent(orderId: OrderId): Option[KeyedEvent[OrderActorEvent]] = {
-    val order = idToOrder(orderId)
+    val order = idToOrder(orderId).orThrow
     if (order.isState[Order.Broken])
       None  // Avoid issuing a second OrderBroken (would be a loop)
     else
@@ -136,7 +136,7 @@ final class OrderEventSource(
 
   /** Returns a `Right(Some(OrderCancelled | OrderCancellationMarked))` iff order is not already marked as cancelable. */
   def cancel(orderId: OrderId, mode: CancelMode, isAgent: Boolean): Checked[Option[OrderActorEvent]] =
-    idToOrder.checked(orderId).flatMap(order =>
+    idToOrder(orderId).flatMap(order =>
       if (order.parent.isDefined)
         Left(CancelChildOrderProblem(orderId))
       else if (mode == CancelMode.NotStarted && order.isStarted)
@@ -173,7 +173,7 @@ final class OrderEventSource(
       !instruction(order.workflowPosition).isInstanceOf[End]  // End reached? Then normal OrderFinished (not OrderCancelled)
 
   private def applyMoveInstructions(orderId: OrderId, orderMoved: OrderMoved): Checked[KeyedEvent[OrderMoved]] =
-    for (pos <- applyMoveInstructions(idToOrder(orderId).withPosition(orderMoved.to)))
+    for (pos <- applyMoveInstructions(idToOrder(orderId).orThrow.withPosition(orderMoved.to)))
       yield orderId <-: OrderMoved(pos)
 
   private[workflow] def applyMoveInstructions(order: Order[Order.State]): Checked[Position] =
