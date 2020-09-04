@@ -4,7 +4,7 @@ set -e
 cd "$(cd "$(realpath "${0%/*}")"/../../build/bin/../.. && pwd)"
 
 # First, free some disk space
-rm -f volumes/*/data/logs
+rm -rf volumes/*/data/logs
 
 # Fails if disk is full:
 docker-compose kill
