@@ -336,7 +336,7 @@ extends Actor with Stash
         //}
         throw tt;
       }
-      for (w <- persistBuffer.view.reverse collectFirst { case o: LoggablePersist => o }) {
+      for (w <- persistBuffer.view.reverse collectFirst { case o: LoggablePersist if !o.isEmpty => o }) {
         w.isLastOfFlushedOrSynced = true  // For logging: This last Persist (including all before) has been flushed or synced
       }
       if (!terminating) {
@@ -660,19 +660,20 @@ extends Actor with Stash
 
     // TODO Similar code
     snapshotWriter.writeEvent(snapshotTaken)
-    persistBuffer.add(
-      StandardPersist(totalEventCount + 1, snapshotTaken :: Nil, since,
-        Some(PositionAnd(snapshotWriter.fileLength, snapshotTaken.eventId)), Actor.noSender, null, null))
     snapshotWriter.flush(sync = conf.syncOnCommit)
+    locally {
+      val standardPersist = StandardPersist(totalEventCount + 1, snapshotTaken :: Nil, since,
+        Some(PositionAnd(snapshotWriter.fileLength, snapshotTaken.eventId)), Actor.noSender, null, null)
+      standardPersist.isLastOfFlushedOrSynced = true
+      persistBuffer.add(standardPersist)
+    }
     lastWrittenEventId = snapshotTaken.eventId
     uncommittedJournaledState = uncommittedJournaledState.applyStampedEvents(snapshotTaken :: Nil).orThrow
     if (!requireClusterAcknowledgement) {
-      lastAcknowledgedEventId = lastWrittenEventId  // We do not care for the acknowledgement of SnapshotTaken only, to ease shutdown ???
+      lastAcknowledgedEventId = lastWrittenEventId
     }
     totalEventCount += 1
     lastSnapshotTakenEventId = snapshotTaken.eventId
-    //logCommitted(ack = false,
-    //  Iterator.single(LoggablePersist(totalEventCount + 1, snapshotTaken :: Nil, since, lastOfFlushedOrSynced = true)))
     snapshotWriter.closeAndLog()
 
     val file = journalMeta.file(after = fileEventId)
@@ -750,7 +751,6 @@ extends Actor with Stash
       watch(sender())
     }
   }
-
 }
 
 object JournalActor
