@@ -80,7 +80,7 @@ trait EventWatch
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def all[E <: Event: ClassTag: TypeTag](implicit s: Scheduler): TearableEventSeq[CloseableIterator, KeyedEvent[E]]
+  def all[E <: Event: ClassTag: TypeTag](after: EventId = tornEventId)(implicit s: Scheduler): TearableEventSeq[CloseableIterator, KeyedEvent[E]]
 
   def fileEventIds: Seq[EventId]
 
