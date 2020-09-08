@@ -79,7 +79,7 @@ final class RunningController private(
   webServer: ControllerWebServer,
   val itemApi: DirectItemApi,
   val orderApi: OrderApi.WithCommands,
-  val clusterState: Task[ClusterState],
+  val controllerState: Task[ControllerState],
   commandExecutor: ControllerCommandExecutor,
   whenReady: Future[ControllerOrderKeeper.ControllerReadyTestIncident.type],
   terminated1: Future[ControllerTermination],
@@ -157,6 +157,10 @@ extends AutoCloseable
 
   @TestOnly
   lazy val localUri = webServer.localUri
+
+  @TestOnly
+  def clusterState: Task[ClusterState] =
+    controllerState.map(_.clusterState)
 
   private val httpApiUserAndPassword = SetOnce[Option[UserAndPassword]]
   private val _httpApi = SetOnce[AkkaHttpControllerApi]
@@ -335,7 +339,7 @@ object RunningController
         createSessionTokenFile(injector.instance[SessionRegister[SimpleSession]])
         controllerConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", o => s"$o/controller")
         new RunningController(recovered.eventWatch.strict, webServer, itemApi, orderApi,
-          controllerState.map(_.map(_.clusterState).orThrow),
+          controllerState.map(_.orThrow),
           commandExecutor,
           whenReady, orderKeeperTerminated, testEventBus, closer, injector)
       }
