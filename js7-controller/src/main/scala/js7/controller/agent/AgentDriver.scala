@@ -33,9 +33,8 @@ import js7.controller.data.events.ControllerAgentEvent
 import js7.controller.data.events.ControllerAgentEvent.{AgentCouplingFailed, AgentRegisteredController}
 import js7.core.event.journal.{JournalActor, KeyedJournalingActor}
 import js7.data.agent.{AgentRefPath, AgentRunId}
-import js7.data.command.CancelMode
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, Stamped}
-import js7.data.order.{Order, OrderEvent, OrderId}
+import js7.data.order.{Order, OrderEvent, OrderId, OrderMark}
 import js7.data.workflow.Workflow
 import monix.eval.Task
 import monix.execution.atomic.{AtomicInt, AtomicLong}
@@ -197,8 +196,8 @@ with ReceiveLoggingActor.WithStash
 
   def receive = {
     case input: Input with Queueable if sender() == context.parent && !isTerminating =>
-      commandQueue.enqueue(input)
-      scheduler.scheduleOnce(conf.commandBatchDelay) {
+      val ok = commandQueue.enqueue(input)
+      if (ok) scheduler.scheduleOnce(conf.commandBatchDelay) {
         self ! Internal.CommandQueueReady  // (Even with commandBatchDelay == 0) delay maySend() such that Queueable pending in actor's mailbox can be queued
       }
 
@@ -330,9 +329,9 @@ with ReceiveLoggingActor.WithStash
         context.parent ! Output.OrdersDetached(detachedOrderIds.toSet)
       }
 
-      val cancelledOrderIds = succeededInputs collect { case o: Input.CancelOrder => o.orderId }
-      if (cancelledOrderIds.nonEmpty) {
-        context.parent ! Output.OrdersCancellationMarked(cancelledOrderIds.toSet)
+      val markedOrders = succeededInputs.view.collect { case o: Input.MarkOrder => o.orderId -> o.mark }.toMap
+      if (markedOrders.nonEmpty) {
+        context.parent ! Output.OrdersMarked(markedOrders)
       }
 
       val releaseEvents = succeededInputs collect { case o: ReleaseEventsQueueable => o }
@@ -471,7 +470,7 @@ private[controller] object AgentDriver
 
     final case class DetachOrder(orderId: OrderId) extends Input with Queueable
 
-    final case class CancelOrder(orderId: OrderId, mode: CancelMode) extends Input with Queueable
+    final case class MarkOrder(orderId: OrderId, mark: OrderMark) extends Input with Queueable
 
     final case class Terminate(noJournal: Boolean = false) extends DeadLetterSuppression
   }
@@ -479,7 +478,7 @@ private[controller] object AgentDriver
   object Output {
     final case class EventsFromAgent(stamped: Seq[Stamped[AnyKeyedEvent]], promise: Promise[Completed])
     final case class OrdersDetached(orderIds: Set[OrderId])
-    final case class OrdersCancellationMarked(orderIds: Set[OrderId])
+    final case class OrdersMarked(orderToMark: Map[OrderId, OrderMark])
   }
 
   private object Internal {

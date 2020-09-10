@@ -60,7 +60,7 @@ final class ForkTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     controller.addOrderBlocking(order)
     val expectedBroken = OrderBroken(Problem(
-      "Forked OrderIds duplicate existing Order(Order:DUPLICATE/🥕,/DUPLICATE~INITIAL:0,Processing,Map(),List(),Some(Attached(/AGENT-A)),None,None)"))
+      "Forked OrderIds duplicate existing Order(Order:DUPLICATE/🥕,/DUPLICATE~INITIAL:0,Processing,Map(),List(),Some(Attached(/AGENT-A)),None,None,false)"))
     assert(controller.eventWatch.await[OrderBroken](_.key == order.id).head.value.event == expectedBroken)
 
     controller.executeCommandAsSystemUser(CancelOrder(order.id, CancelMode.FreshOrStarted())).await(99.s).orThrow

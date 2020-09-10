@@ -10,7 +10,7 @@ import js7.base.process.ProcessSignal.SIGTERM
 import js7.data.agent.{AgentRefPath, AgentRunId}
 import js7.data.command.CancelMode
 import js7.data.event.JournalId
-import js7.data.order.{Order, OrderId}
+import js7.data.order.{Order, OrderId, OrderMark}
 import js7.data.workflow.position.Position
 import js7.data.workflow.test.TestSetting.SimpleTestWorkflow
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
@@ -51,13 +51,16 @@ final class AgentCommandTest extends AnyFreeSpec
       }""")
   }
 
-  "CancelOrder" in {
-    check(AgentCommand.CancelOrder(OrderId("ORDER"), CancelMode.NotStarted),
+  "MarkOrder" in {
+    check(AgentCommand.MarkOrder(OrderId("ORDER"), OrderMark.Cancelling(CancelMode.NotStarted)),
       json"""{
-        "TYPE": "CancelOrder",
+        "TYPE": "MarkOrder",
         "orderId": "ORDER",
-        "mode": {
-          "TYPE": "NotStarted"
+        "mark": {
+          "TYPE": "Cancelling",
+          "mode": {
+            "TYPE": "NotStarted"
+          }
         }
       }""")
   }

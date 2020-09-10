@@ -81,7 +81,7 @@ final class RunningController private(
   val orderApi: OrderApi.WithCommands,
   val controllerState: Task[ControllerState],
   commandExecutor: ControllerCommandExecutor,
-  whenReady: Future[ControllerOrderKeeper.ControllerReadyTestIncident.type],
+  whenReady: Future[Unit],
   terminated1: Future[ControllerTermination],
   val testEventBus: StandardEventBus[Any],
   closer: Closer,
@@ -247,7 +247,9 @@ object RunningController
         ControllerJournalRecoverer.recover(journalMeta, controllerConfiguration.config)
       }
       val testEventBus = injector.instance[StandardEventBus[Any]]
-      val whenReady = testEventBus.when[ControllerOrderKeeper.ControllerReadyTestIncident.type].runToFuture  // TODO Replace by a new StampedEventBus ?
+      val whenReady = Promise[Unit]()
+      whenReady.completeWith(
+        testEventBus.when[ControllerOrderKeeper.ControllerReadyTestIncident.type].void.runToFuture)
       // Start-up some stuff while recovering
       val journalActor = tag[JournalActor.type](actorSystem.actorOf(
         JournalActor.props[ControllerState](journalMeta, controllerConfiguration.journalConf,
@@ -255,8 +257,10 @@ object RunningController
           useJournaledStateAsSnapshot = true),
         "Journal"))
       itemVerifier
-      val persistence = new JournaledStatePersistence[ControllerState](journalActor, controllerConfiguration.journalConf).closeWithCloser
-      val recovered = Await.result(whenRecovered, Duration.Inf).closeWithCloser
+      val persistence = new JournaledStatePersistence[ControllerState](journalActor, controllerConfiguration.journalConf)
+        .closeWithCloser
+      val recovered = Await.result(whenRecovered, Duration.Inf)
+        .closeWithCloser
       val cluster = new Cluster(
         journalMeta,
         persistence,
@@ -304,7 +308,8 @@ object RunningController
           })
       }
       for (t <- orderKeeperStarted.failed) logger.debug("orderKeeperStarted => " + t.toStringWithCauses, t)
-      //for (t <- orderKeeperTerminated.failed) logger.debug("orderKeeperTerminated => " + t.toStringWithCauses, t)
+      orderKeeperStarted.failed foreach whenReady.tryFailure
+      orderKeeperTerminated.failed foreach whenReady.tryFailure
       val orderKeeperTask = Task.defer {
         orderKeeperStarted.value match {
           case None => Task.raiseError(ControllerIsNotYetReadyProblem.throwable)
@@ -341,7 +346,7 @@ object RunningController
         new RunningController(recovered.eventWatch.strict, webServer, itemApi, orderApi,
           controllerState.map(_.orThrow),
           commandExecutor,
-          whenReady, orderKeeperTerminated, testEventBus, closer, injector)
+          whenReady.future, orderKeeperTerminated, testEventBus, closer, injector)
       }
     }
 

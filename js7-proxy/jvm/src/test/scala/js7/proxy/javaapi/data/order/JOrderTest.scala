@@ -3,7 +3,7 @@ package js7.proxy.javaapi.data.order
 import js7.base.process.ProcessSignal.SIGTERM
 import js7.data.agent.AgentRefPath
 import js7.data.command.CancelMode
-import js7.data.order.{Order, OrderId}
+import js7.data.order.{Order, OrderId, OrderMark}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.Fork
 import js7.data.workflow.position.Position
@@ -19,7 +19,7 @@ final class JOrderTest extends AnyFreeSpec
     arguments = Map("KEY" -> "VALUE"),
     attachedState = Some(Order.Attached(AgentRefPath("/AGENT"))),
     parent = Some(OrderId("ORDER-ID")),
-    cancel = Some(CancelMode.FreshOrStarted(Some(CancelMode.Kill(SIGTERM)))))
+    mark = Some(OrderMark.Cancelling(CancelMode.FreshOrStarted(Some(CancelMode.Kill(SIGTERM))))))
 
   "Java" in {
     JOrderTester.testForkedOrder(JOrder(forkedOrder))

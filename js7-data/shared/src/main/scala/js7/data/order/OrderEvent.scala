@@ -47,8 +47,15 @@ object OrderEvent {
       } yield OrderAdded(workflowId, scheduledFor, arguments)
   }
 
-  final case class OrderAttached(arguments: Map[String, String], workflowPosition: WorkflowPosition, state: IsFreshOrReady, historicOutcomes: Seq[HistoricOutcome],
-    parent: Option[OrderId], agentRefPath: AgentRefPath)
+  final case class OrderAttached(
+    workflowPosition: WorkflowPosition,
+    state: IsFreshOrReady,
+    arguments: Map[String, String],
+    historicOutcomes: Seq[HistoricOutcome],
+    agentRefPath: AgentRefPath,
+    parent: Option[OrderId],
+    mark: Option[OrderMark],
+    isSuspended: Boolean)
   extends OrderCoreEvent {
     workflowPosition.workflowId.requireNonAnonymous()
   }
@@ -164,13 +171,26 @@ object OrderEvent {
   type OrderFinished = OrderFinished.type
   case object OrderFinished extends OrderActorEvent with OrderTerminated
 
-  /** A OrderCancellationMarked on Agent is different from same Event on Controller.
-    * Controller will ignore the Agent's OrderCancellationMarked.
-    * Controller should have emitted the event independendly. **/
-  final case class OrderCancellationMarked(mode: CancelMode) extends OrderActorEvent
+  /** A OrderCancelMarked on Agent is different from same Event on Controller.
+    * Controller will ignore the Agent's OrderCancelMarked.
+    * Controller should have emitted the event independendly.
+    **/
+  final case class OrderCancelMarked(mode: CancelMode) extends OrderActorEvent
 
   type OrderCancelled = OrderCancelled.type
   case object OrderCancelled extends OrderActorEvent with OrderTerminated
+
+  type OrderSuspendMarked = OrderSuspendMarked.type
+  final case object OrderSuspendMarked extends OrderActorEvent
+
+  type OrderSuspended = OrderSuspended.type
+  case object OrderSuspended extends OrderActorEvent
+
+  type OrderResumeMarked = OrderResumeMarked.type
+  case object OrderResumeMarked extends OrderActorEvent
+
+  type OrderResumed = OrderResumed.type
+  case object OrderResumed extends OrderActorEvent
 
   implicit val jsonCodec = TypedJsonCodec[OrderEvent](
     Subtype[OrderAdded],
@@ -188,10 +208,14 @@ object OrderEvent {
     Subtype(deriveCodec[OrderJoined]),
     Subtype(deriveCodec[OrderOffered]),
     Subtype(deriveCodec[OrderAwaiting]),
+    Subtype(OrderSuspendMarked),
+    Subtype(OrderSuspended),
+    Subtype(OrderResumeMarked),
+    Subtype(OrderResumed),
     Subtype(OrderFinished),
     Subtype(deriveCodec[OrderFailed]),
     Subtype(deriveCodec[OrderFailedInFork]),
-    Subtype(deriveCodec[OrderCancellationMarked]),
+    Subtype(deriveCodec[OrderCancelMarked]),
     Subtype(OrderCancelled),
     Subtype(deriveCodec[OrderTransferredToAgent]),
     Subtype(OrderTransferredToController),

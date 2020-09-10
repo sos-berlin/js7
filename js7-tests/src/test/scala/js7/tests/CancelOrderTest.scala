@@ -13,7 +13,7 @@ import js7.data.agent.AgentRefPath
 import js7.data.command.CancelMode
 import js7.data.item.VersionId
 import js7.data.job.{ExecutablePath, ReturnCode}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancellationMarked, OrderCancelled, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingCancelled, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToController}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancelMarked, OrderCancelled, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingCancelled, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToController}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fork}
@@ -50,7 +50,7 @@ final class CancelOrderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderAdded(singleJobWorkflow.id, order.scheduledFor),
       OrderAttachable(agentRefPath),
       OrderTransferredToAgent(agentRefPath),
-      OrderCancellationMarked(CancelMode.NotStarted),
+      OrderCancelMarked(CancelMode.NotStarted),
       OrderDetachable,
       OrderTransferredToController,
       OrderCancelled))
@@ -68,7 +68,7 @@ final class CancelOrderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderTransferredToAgent(agentRefPath),
       OrderStarted,
       OrderProcessingStarted,
-      OrderCancellationMarked(CancelMode.FreshOrStarted()),
+      OrderCancelMarked(CancelMode.FreshOrStarted()),
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(1)),
       OrderDetachable,
@@ -98,7 +98,7 @@ final class CancelOrderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderTransferredToAgent(agentRefPath),
       OrderStarted,
       OrderProcessingStarted,
-      OrderCancellationMarked(CancelMode.FreshOrStarted()),
+      OrderCancelMarked(CancelMode.FreshOrStarted()),
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(1)),
       OrderDetachable,
@@ -118,7 +118,7 @@ final class CancelOrderTest extends AnyFreeSpec with ControllerAgentForScalaTest
         OrderTransferredToAgent(agentRefPath),
         OrderStarted,
         OrderProcessingStarted,
-        OrderCancellationMarked(mode),
+        OrderCancelMarked(mode),
         OrderProcessed(Outcome.succeeded),
         OrderMoved(Position(1)),
         OrderDetachable,
@@ -142,7 +142,7 @@ final class CancelOrderTest extends AnyFreeSpec with ControllerAgentForScalaTest
         OrderTransferredToAgent(agentRefPath),
         OrderStarted,
         OrderProcessingStarted,
-        OrderCancellationMarked(mode),
+        OrderCancelMarked(mode),
         OrderProcessed(Outcome.Cancelled(Outcome.Failed(if (isWindows) ReturnCode(0) else ReturnCode(signal)))),
         OrderProcessingCancelled,
         OrderDetachable,
@@ -168,7 +168,7 @@ final class CancelOrderTest extends AnyFreeSpec with ControllerAgentForScalaTest
         OrderId("FORK/🥕") <-: OrderAttachable(agentRefPath),
         OrderId("FORK/🥕") <-: OrderTransferredToAgent(agentRefPath),
         OrderId("FORK/🥕") <-: OrderProcessingStarted,
-        OrderId("FORK") <-: OrderCancellationMarked(mode),
+        OrderId("FORK") <-: OrderCancelMarked(mode),
         OrderId("FORK/🥕") <-: OrderProcessed(Outcome.succeeded),
         OrderId("FORK/🥕") <-: OrderMoved(Position(0) / "fork+🥕" % 1),
         OrderId("FORK/🥕") <-: OrderDetachable,

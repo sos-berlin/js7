@@ -15,7 +15,7 @@ import js7.controller.agent.CommandQueueTest._
 import js7.data.agent.AgentRefPath
 import js7.data.item.InventoryItemSigner
 import js7.data.job.ExecutablePath
-import js7.data.order.{Order, OrderId}
+import js7.data.order.{Order, OrderId, OrderMark}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -50,7 +50,13 @@ final class CommandQueueTest extends AnyFreeSpec
 
     // The first Input is sent alone to the Agent regardless of commandBatchSize.
     val aOrder = toOrder("A")
-    commandQueue.enqueue(AgentDriver.Input.AttachOrder(aOrder, TestAgentRefPath, signedWorkflow))
+    var ok = commandQueue.enqueue(AgentDriver.Input.AttachOrder(aOrder, TestAgentRefPath, signedWorkflow))
+    assert(ok)
+
+    // Duplicate
+    ok = commandQueue.enqueue(AgentDriver.Input.AttachOrder(aOrder, TestAgentRefPath, signedWorkflow))
+    assert(!ok)
+
     expected += toQueuedInputResponse(aOrder) :: Nil
     waitForCondition(99.s, 10.ms) { commandQueue.succeeded == expected }
     assert(commandQueue.succeeded == expected)
@@ -86,7 +92,22 @@ final class CommandQueueTest extends AnyFreeSpec
     assert(commandQueue.failed.isEmpty)
   }
 
-  "Performany with any orders" in {
+  "Duplicate MarkOrder" in {
+    // ControllerOrderQueue may send MarkOrder for each OrderEvent received from Agent
+    // because MarkOrder is executeted asynchronously and effect occurs later.
+    val queue = new MyCommandQueue(logger, batchSize = 3) {
+      protected def asyncOnBatchSucceeded(queuedInputResponses: Seq[QueuedInputResponse]) = ()
+      protected def asyncOnBatchFailed(inputs: Vector[Queueable], problem: Problem) = ()
+    }
+    var ok = queue.enqueue(Input.MarkOrder(OrderId("ORDER"), OrderMark.Suspending))
+    assert(ok)
+    ok = queue.enqueue(Input.MarkOrder(OrderId("ORDER"), OrderMark.Suspending))
+    assert(!ok)
+    ok = queue.enqueue(Input.MarkOrder(OrderId("ORDER"), OrderMark.Resuming))
+    assert(ok)
+  }
+
+  "Performance with any orders" in {
     // Run with -DCommandQueueTest=10000000 (10 million) -Xmx3g
     val n = sys.props.get("CommandQueueTest").map(_.toInt) getOrElse 10000
     val orders = for (i <- 1 to n) yield toOrder(i.toString)

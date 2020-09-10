@@ -58,6 +58,9 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
 
     def view: View[Queueable] =
       detachQueue.view ++ queue.view
+
+    def contains(queueable: Queueable) =
+      queue.contains(queueable)
   }
 
   final def onCoupled(attachedOrderIds: Set[OrderId]) =
@@ -73,16 +76,23 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
   final def onDecoupled(): Unit =
     isCoupled = false
 
-  final def enqueue(input: Queueable): Unit =
+  final def enqueue(input: Queueable): Boolean =
     synchronized {
       assertThat(!isTerminating)
       input match {
         case Input.AttachOrder(order, _, _) if attachedOrderIds contains order.id =>
           logger.trace(s"AttachOrder(${order.id} ignored because Order is already attached to Agent")
+          false
         case _ =>
-          queue.enqueue(input)
-          if (queue.size == batchSize || freshlyCoupled) {
-            maySend()
+          if (queue.contains(input)) {
+            logger.trace(s"Ignore duplicate $input")
+            false
+          } else {
+            queue.enqueue(input)
+            if (queue.size == batchSize || freshlyCoupled) {
+              maySend()
+            }
+            true
           }
       }
     }
@@ -131,8 +141,8 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
         AgentCommand.AttachOrder(order, agentRefPath, signedWorkflow.signedString)
       case Input.DetachOrder(orderId) =>
         AgentCommand.DetachOrder(orderId)
-      case Input.CancelOrder(orderId, mode) =>
-        AgentCommand.CancelOrder(orderId, mode)
+      case Input.MarkOrder(orderId, mark) =>
+        AgentCommand.MarkOrder(orderId, mark)
       case ReleaseEventsQueueable(untilEventId) =>
         AgentCommand.ReleaseEvents(untilEventId)
     }
@@ -152,7 +162,7 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
         case QueuedInputResponse(_, Right(o)) =>
           sys.error(s"Unexpected response from Agent: $o")
         case QueuedInputResponse(input, Left(problem)) =>
-          // CancelOrder(NotStarted) fails if order has started !!!
+          // MarkOrder(NotStarted) fails if order has started !!!
           logger.error(s"Agent has rejected ${input.toShortString}: $problem")
           // Agent's state does not match controller's state ???
           // TODO: But "Agent is shutting down" is okay

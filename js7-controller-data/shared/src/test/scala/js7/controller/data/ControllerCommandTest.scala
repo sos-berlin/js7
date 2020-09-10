@@ -284,6 +284,22 @@ final class ControllerCommandTest extends AnyFreeSpec
     }
   }
 
+  "ResumeOrder" in {
+    testJson[ControllerCommand](ResumeOrder(OrderId("ORDER")), json"""
+      {
+        "TYPE": "ResumeOrder",
+        "orderId": "ORDER"
+      }""")
+  }
+
+  "SuspendOrder" in {
+    testJson[ControllerCommand](SuspendOrder(OrderId("ORDER")), json"""
+      {
+        "TYPE": "SuspendOrder",
+        "orderId": "ORDER"
+      }""")
+  }
+
   "ClusterAppointNodes" in {
     testJson[ControllerCommand](
       ClusterAppointNodes(

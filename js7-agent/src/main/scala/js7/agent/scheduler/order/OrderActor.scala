@@ -80,11 +80,13 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
 
     case command: Command =>
       command match {
-        case Command.Attach(attached @ Order(`orderId`, workflowPosition, state: Order.IsFreshOrReady, arguments, historicOutcomes, Some(Order.Attached(agentRefPath)), parent, cancellationMarked/*???*/)) =>
+        case Command.Attach(attached @ Order(`orderId`, wfPos, state: Order.IsFreshOrReady,
+        arguments, historicOutcomes, Some(Order.Attached(agentRefPath)), parent, mark, isSuspended)) =>
           becomeAsStateOf(attached, force = true)
-          persist(OrderAttached(arguments, workflowPosition, state, historicOutcomes, parent, agentRefPath)) { (event, updatedState) =>
-            update(event :: Nil, updatedState)
-            Completed
+          persist(OrderAttached(wfPos, state, arguments, historicOutcomes, agentRefPath, parent, mark, isSuspended = isSuspended)) {
+            (event, updatedState) =>
+              update(event :: Nil, updatedState)
+              Completed
           } pipeTo sender()
 
         case _ =>
@@ -194,7 +196,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
 
       case Right(updated) =>
         becomeAsStateOf(updated)
-        if (event.isInstanceOf[OrderCancellationMarked] && updated == order)  // Duplicate, already cancelling with same CancelMode?
+        if (event.isInstanceOf[OrderCancelMarked] && updated == order)  // Duplicate, already cancelling with same CancelMode?
           Future.successful(Completed)
         else
           persist(event) { (event, updatedState) =>
@@ -203,7 +205,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
               context.stop(self)
             } else
               event match {
-                case OrderCancellationMarked(CancelMode.FreshOrStarted(Some(CancelMode.Kill(signal, maybeWp))))
+                case OrderCancelMarked(CancelMode.FreshOrStarted(Some(CancelMode.Kill(signal, maybeWp))))
                   if maybeWp.forall(_ == order.workflowPosition) && jobActor != noSender =>
                   jobActor ! JobActor.Input.KillProcess(order.id, Some(signal))
                 case _ =>

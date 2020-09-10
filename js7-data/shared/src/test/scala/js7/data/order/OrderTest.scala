@@ -7,11 +7,12 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.problem.{Problem, ProblemException}
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.implicitClass
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentRefPath
 import js7.data.command.CancelMode
 import js7.data.job.ReturnCode
 import js7.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Cancelled, DelayedAfterError, Detaching, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, IsFreshOrReady, Offering, Processed, Processing, ProcessingCancelled, Ready, State}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingCancelled, OrderProcessingStarted, OrderRetrying, OrderStarted, OrderTransferredToAgent, OrderTransferredToController}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingCancelled, OrderProcessingStarted, OrderResumeMarked, OrderResumed, OrderRetrying, OrderStarted, OrderSuspendMarked, OrderSuspended, OrderTransferredToAgent, OrderTransferredToController}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.Fork
 import js7.data.workflow.position.BranchId.Then
@@ -76,9 +77,11 @@ final class OrderTest extends AnyFreeSpec
           }""")
       }
 
-      "cancel" in {
+      "mark" in {
         check(
-          Order(OrderId("ID"), WorkflowPath("/WORKFLOW") ~ "VERSION", Fresh(), cancel = Some(CancelMode.NotStarted)),
+          Order(OrderId("ID"), WorkflowPath("/WORKFLOW") ~ "VERSION", Fresh(),
+            mark = Some(OrderMark.Cancelling(CancelMode.NotStarted)),
+            isSuspended = true),
           json"""{
             "id": "ID",
             "workflowPosition": {
@@ -92,9 +95,13 @@ final class OrderTest extends AnyFreeSpec
               "TYPE": "Fresh"
             },
             "historicOutcomes": [],
-            "cancel": {
-              "TYPE": "NotStarted"
-            }
+            "mark": {
+              "TYPE": "Cancelling",
+              "mode": {
+                "TYPE": "NotStarted"
+              }
+            },
+            "isSuspended": true
           }""")
       }
 
@@ -179,6 +186,13 @@ final class OrderTest extends AnyFreeSpec
           }""")
       }
 
+      "Cancelled" in {
+        testJson[State](Cancelled,
+          json"""{
+            "TYPE": "Cancelled"
+          }""")
+      }
+
       "Finished" in {
         testJson[State](Finished,
           json"""{
@@ -224,7 +238,7 @@ final class OrderTest extends AnyFreeSpec
       OrderAdded(workflowId),
 
       OrderAttachable(agentRefPath),
-      OrderAttached(Map.empty, workflowId /: Position(0), Fresh(), Nil, None, agentRefPath),
+      OrderAttached(workflowId /: Position(0), Fresh(), Map.empty, Nil, agentRefPath, None, None, false),
       OrderTransferredToAgent(agentRefPath),
 
       OrderStarted,
@@ -246,8 +260,13 @@ final class OrderTest extends AnyFreeSpec
       OrderFailedInFork(Outcome.Failed(ReturnCode(1))),
       OrderFinished,
 
-      OrderCancellationMarked(CancelMode.NotStarted),
+      OrderCancelMarked(CancelMode.NotStarted),
       OrderCancelled,
+      OrderSuspendMarked,
+      OrderSuspended,
+      OrderResumeMarked,
+      OrderResumed,
+
       OrderBroken(Problem("Problem")),
 
       OrderDetachable,
@@ -255,143 +274,189 @@ final class OrderTest extends AnyFreeSpec
       OrderTransferredToController
     )
 
-    assert(allEvents.map(_.getClass) == OrderEvent.jsonCodec.classes[OrderCoreEvent])
-    val detached  = none[AttachedState]
-    val attaching = Some(Attaching(agentRefPath))
-    val attached  = Some(Attached(agentRefPath))
-    val detaching = Some(Detaching(agentRefPath))
+    "Event list is complete" in {
+      assert(allEvents.map(_.getClass) == OrderEvent.jsonCodec.classes[OrderCoreEvent])
+    }
+
+    val IsDetached  = none[AttachedState]
+    val IsAttaching = Some(Attaching(agentRefPath))
+    val IsAttached  = Some(Attached(agentRefPath))
+    val IsDetaching = Some(Detaching(agentRefPath))
+
+    val NoMark     = none[OrderMark]
+    val Cancelling = OrderMark.Cancelling(CancelMode.FreshOrStarted()).some
+    val Suspending = OrderMark.Suspending.some
+    val Resuming   = OrderMark.Resuming.some
+
+    case object IsSuspended {
+      def unapply(order: Order[Order.State]) = Some(order.isSuspended)
+    }
 
     "Fresh" - {
       checkAllEvents(Order(orderId, workflowId, Fresh()),
+        markable[Fresh] orElse
         attachingAllowed[Fresh] orElse
-        detachingAllowed[Fresh] orElse {
-          case (_: OrderMoved            , `detached` | `attached`              ) => _.isInstanceOf[Fresh]
-          case (_: OrderFailed           , `detached` | `attached`)               => _.isInstanceOf[FailedWhileFresh]  // Expression error
-          case (_: OrderStarted          , `detached` | `attached`              ) => _.isInstanceOf[Ready]
-          case (_: OrderCancellationMarked, `detached` | `attaching` | `attached`) => _.isInstanceOf[Fresh]
-          case (OrderCancelled           , `detached`                           ) => _.isInstanceOf[Cancelled]
-          case (_: OrderBroken           , _                                    ) => _.isInstanceOf[Broken]
+        detachingAllowed[Fresh] orElse
+        cancelMarkedAllowed[Fresh] orElse
+        suspendMarkedAllowed[Fresh] orElse {
+          case (_: OrderMoved    , _                 , IsDetached | IsAttached) => _.isInstanceOf[Fresh]
+          case (_: OrderFailed   , IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[FailedWhileFresh]  // Expression error
+          case (_: OrderStarted  , IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[Ready]
+          case (OrderCancelled   , _                 , IsDetached             ) => _.isInstanceOf[Cancelled]
+          case (OrderSuspended   , _                 , IsDetached             ) => _.isInstanceOf[Fresh]
+          case (OrderResumeMarked, _                 , _                      ) => _.isInstanceOf[Fresh]
+          case (OrderResumed     , IsSuspended(true) , IsDetached | IsAttached) => _.isInstanceOf[Fresh]
+          case (_: OrderBroken   , _                 , _                      ) => _.isInstanceOf[Broken]
         })
     }
 
     "Ready" - {
       checkAllEvents(Order(orderId, workflowId, Ready),
+        markable[Ready] orElse
         attachingAllowed[Ready] orElse
         detachingAllowed[Ready] orElse
-        cancelationMarkingAllowed[Ready] orElse {
-          case (_: OrderMoved            , `detached` | `attached`) => _.isInstanceOf[Ready]
-          case (_: OrderProcessingStarted, `attached`             ) => _.isInstanceOf[Processing]
-          case (_: OrderForked           , `detached` | `attached`) => _.isInstanceOf[Forked]
-          case (_: OrderOffered          , `detached`             ) => _.isInstanceOf[Processed]
-          case (_: OrderAwaiting         , `detached`             ) => _.isInstanceOf[Awaiting]
-          case (_: OrderFailedInFork     , `detached` | `attached`) => _.isInstanceOf[FailedInFork]
-          case (_: OrderCatched          , `detached` | `attached`) => _.isInstanceOf[Ready]
-          case (_: OrderFailed           , `detached` | `attached`) => _.isInstanceOf[Failed]
-          case (_: OrderRetrying         , `detached` | `attached`) => _.isInstanceOf[Ready]
-          case (_: OrderFinished         , `detached`             ) => _.isInstanceOf[Finished]
-          case (OrderCancelled           , `detached`             ) => _.isInstanceOf[Cancelled]
-          case (_: OrderBroken           , _                      ) => _.isInstanceOf[Broken]
+        cancelMarkedAllowed[Ready] orElse
+        suspendMarkedAllowed[Ready] orElse {
+          case (_: OrderMoved            , _                 , IsDetached | IsAttached) => _.isInstanceOf[Ready]
+          case (_: OrderProcessingStarted, IsSuspended(false), IsAttached             ) => _.isInstanceOf[Processing]
+          case (_: OrderForked           , IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[Forked]
+          case (_: OrderOffered          , IsSuspended(false), IsDetached             ) => _.isInstanceOf[Processed]
+          case (_: OrderAwaiting         , IsSuspended(false), IsDetached             ) => _.isInstanceOf[Awaiting]
+          case (_: OrderFailedInFork     , IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[FailedInFork]
+          case (_: OrderCatched          , IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[Ready]
+          case (_: OrderFailed           , IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[Failed]
+          case (_: OrderRetrying         , IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[Ready]
+          case (_: OrderFinished         , IsSuspended(false), IsDetached             ) => _.isInstanceOf[Finished]
+          case (OrderCancelled           , _                 , IsDetached             ) => _.isInstanceOf[Cancelled]
+          case (OrderSuspended           , _                 , IsDetached             ) => _.isInstanceOf[Ready]
+          case (OrderResumeMarked        , _                 , _                      ) => _.isInstanceOf[Ready]
+          case (OrderResumed             , IsSuspended(true) , IsDetached | IsAttached) => _.isInstanceOf[Ready]
+          case (_: OrderBroken           , _                 , _                      ) => _.isInstanceOf[Broken]
         })
     }
 
     "Processing" - {
       checkAllEvents(Order(orderId, workflowId, Processing),
-        cancelationMarkingAllowed[Processing] orElse {
-          case (_: OrderProcessed, `attached`) => _.isInstanceOf[Processed]
-          case (_: OrderBroken   , _         ) => _.isInstanceOf[Broken]
-      })
+        markable[Processing] orElse
+        cancelMarkedAllowed[Processing] orElse
+        suspendMarkedAllowed[Processing] orElse {
+          case (_: OrderProcessed, IsSuspended(false), IsAttached) => _.isInstanceOf[Processed]
+          case (_: OrderBroken   , _                 , _         ) => _.isInstanceOf[Broken]
+        })
     }
 
     "Processed" - {
       checkAllEvents(Order(orderId, workflowId, Processed,
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(ReturnCode(0))) :: Nil),
-        cancelationMarkingAllowed[Processed] orElse {
-          case (_: OrderMoved              , `detached` | `attached`) => _.isInstanceOf[Ready]
-          case (_: OrderProcessingCancelled,              `attached`) => _.isInstanceOf[ProcessingCancelled]
-          case (_: OrderFailed             , `detached` | `attached`) => _.isInstanceOf[Failed]
-          case (_: OrderFailedInFork       , `detached` | `attached`) => _.isInstanceOf[FailedInFork]
-          case (_: OrderCatched            , `detached` | `attached`) => _.isInstanceOf[Ready]
-          case (_: OrderBroken             , _                      ) => _.isInstanceOf[Broken]
+        markable[Processed] orElse
+        cancelMarkedAllowed[Processed] orElse
+        suspendMarkedAllowed[Processed] orElse {
+          case (_: OrderMoved              , _                 , IsDetached | IsAttached) => _.isInstanceOf[Ready]
+          case (_: OrderProcessingCancelled, IsSuspended(false),              IsAttached) => _.isInstanceOf[ProcessingCancelled]
+          case (_: OrderFailed             , IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[Failed]
+          case (_: OrderFailedInFork       , IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[FailedInFork]
+          case (_: OrderCatched            , IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[Ready]
+          case (_: OrderBroken             , _                               , _        ) => _.isInstanceOf[Broken]
         })
     }
 
     "ProcessingCancelled" - {
       checkAllEvents(Order(orderId, workflowId, ProcessingCancelled,
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(ReturnCode(0))) :: Nil),
-        detachingAllowed[ProcessingCancelled] orElse
-        {
-          case (_: OrderCancelled, `detached`) => _.isInstanceOf[Cancelled]
-          case (_: OrderBroken   , _         ) => _.isInstanceOf[Broken]
+        markable[ProcessingCancelled] orElse
+        detachingAllowed[ProcessingCancelled] orElse {
+          case (OrderCancelled, _, IsDetached) => _.isInstanceOf[Cancelled]
+          case (_: OrderBroken, _, _         ) => _.isInstanceOf[Broken]
         })
     }
 
     "FailedWhileFresh" - {
       checkAllEvents(Order(orderId, workflowId, FailedWhileFresh,
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Failed(ReturnCode(1))) :: Nil),
+        markable[FailedWhileFresh] orElse
         detachingAllowed[FailedWhileFresh] orElse
-        cancelationMarkingAllowed[FailedWhileFresh] orElse {
-          case (OrderCancelled, `detached`) => _.isInstanceOf[Cancelled]
-          case (_: OrderBroken, _         ) => _.isInstanceOf[Broken]
+        cancelMarkedAllowed[FailedWhileFresh] orElse
+        suspendMarkedAllowed[FailedWhileFresh] orElse {
+          case (OrderCancelled, _, IsDetached) => _.isInstanceOf[Cancelled]
+          case (_: OrderBroken, _, _         ) => _.isInstanceOf[Broken]
         })
     }
 
     "Failed" - {
       checkAllEvents(Order(orderId, workflowId, Failed(Outcome.Failed(ReturnCode(1))),
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Failed(ReturnCode(1))) :: Nil),
+        markable[Failed] orElse
         detachingAllowed[Failed] orElse
-        cancelationMarkingAllowed[Failed] orElse {
-          case (OrderCancelled, `detached`) => _.isInstanceOf[Cancelled]
-          case (_: OrderBroken, _         ) => _.isInstanceOf[Broken]
+        cancelMarkedAllowed[Failed] orElse {
+          case (OrderCancelled, _, IsDetached) => _.isInstanceOf[Cancelled]
+          case (_: OrderBroken, _, _         ) => _.isInstanceOf[Broken]
         })
     }
 
     "FailedInFork" - {
       checkAllEvents(Order(orderId, workflowId, FailedInFork(Outcome.Failed(ReturnCode(1))),
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Failed(ReturnCode(1))) :: Nil),
+        markable[FailedInFork] orElse
         detachingAllowed[FailedInFork])
     }
 
     "DelayedAfterError" - {
       checkAllEvents(Order(orderId, workflowId, DelayedAfterError(Timestamp("2019-03-07T12:00:00Z"))),
-        cancelationMarkingAllowed[DelayedAfterError] orElse {
-          case (OrderAwoke    , `attached`) => _.isInstanceOf[Order.Ready]
-          case (OrderCancelled, `detached`) => _.isInstanceOf[Cancelled]
-          case (_: OrderBroken, _         ) => _.isInstanceOf[Broken]
+        markable[DelayedAfterError] orElse
+        cancelMarkedAllowed[DelayedAfterError] orElse
+        suspendMarkedAllowed[DelayedAfterError] orElse {
+          case (OrderAwoke    , IsSuspended(false), IsAttached) => _.isInstanceOf[Order.Ready]
+          case (OrderCancelled, _     , IsDetached) => _.isInstanceOf[Cancelled]
+          case (_: OrderBroken, _     , _         ) => _.isInstanceOf[Broken]
         })
     }
 
     "Broken" - {
       checkAllEvents(Order(orderId, workflowId, Broken(Problem("PROBLEM"))),
+        markable[Broken] orElse
         detachingAllowed[Broken] orElse
-        cancelationMarkingAllowed[Broken] orElse {
-          case (OrderCancelled, `detached`) => _.isInstanceOf[Cancelled]
-          case (_: OrderBroken, _         ) => _.isInstanceOf[Broken]
+        cancelMarkedAllowed[Broken] orElse {
+          case (OrderCancelled   , _, IsDetached                           ) => _.isInstanceOf[Cancelled]
+          case (OrderResumeMarked, _, IsDetached | IsAttached | IsDetaching) => _.isInstanceOf[Broken]
+          case (OrderResumed     , _, IsDetached | IsAttached              ) => _.isInstanceOf[Ready]
+          case (_: OrderBroken   , _, _                                    ) => _.isInstanceOf[Broken]
         })
     }
 
     "Forked" - {
       checkAllEvents(Order(orderId, workflowId, Forked(Forked.Child("BRANCH", orderId / "CHILD") :: Nil)),
+        markable[Forked] orElse
         attachingAllowed[Forked] orElse
         detachingAllowed[Forked] orElse
-        cancelationMarkingAllowed[Forked] orElse {
-          case (_: OrderJoined, `detached` ) => _.isInstanceOf[Processed]
-          case (_: OrderBroken, _          ) => _.isInstanceOf[Broken]
+        cancelMarkedAllowed[Forked] orElse
+        suspendMarkedAllowed[Forked] orElse {
+          case (_: OrderJoined, IsSuspended(false), IsDetached) => _.isInstanceOf[Processed]
+          case (_: OrderBroken, _                 , _         ) => _.isInstanceOf[Broken]
         })
     }
 
     "Offering" - {
       checkAllEvents(Order(orderId, workflowId, Offering(Timestamp("2018-11-19T12:00:00Z"))),
-        cancelationMarkingAllowed[Offering] orElse {
-          case (_: OrderBroken, _) => _.isInstanceOf[Broken]
+        markable[Offering] orElse
+        cancelMarkedAllowed[Offering] orElse
+        suspendMarkedAllowed[Offering] orElse {
+          case (_: OrderBroken, _, _) => _.isInstanceOf[Broken]
         })
     }
 
     "Awaiting" - {
       checkAllEvents(Order(orderId, workflowId, Awaiting(OrderId("OFFERED"))),
-        cancelationMarkingAllowed[Awaiting] orElse {
-          case (_: OrderJoined, `detached`) => _.isInstanceOf[Processed]
-          case (_: OrderBroken, _         ) => _.isInstanceOf[Broken]
+        markable[Awaiting] orElse
+        cancelMarkedAllowed[Awaiting] orElse
+        suspendMarkedAllowed[Awaiting] orElse {
+          case (_: OrderJoined, IsSuspended(false), IsDetached) => _.isInstanceOf[Processed]
+          case (_: OrderBroken, _                 , _         ) => _.isInstanceOf[Broken]
         })
+    }
+
+    "Cancelled" - {
+      checkAllEvents(Order(orderId, workflowId, Cancelled),
+        PartialFunction.empty)
     }
 
     "Finished" - {
@@ -440,40 +505,60 @@ final class OrderTest extends AnyFreeSpec
       }
     }
 
-    type ToPredicate = PartialFunction[(OrderEvent, Option[AttachedState]), State => Boolean]
+    type ToPredicate = PartialFunction[(OrderEvent, Order[Order.State], Option[AttachedState]), State => Boolean]
 
-    def cancelationMarkingAllowed[S <: Order.State: ClassTag]: ToPredicate = {
-      case (_: OrderCancellationMarked, `detached` | `attaching` | `attached`) => implicitClass[S] isAssignableFrom _.getClass
+    def markable[S <: Order.State: ClassTag]: ToPredicate = {
+      case (_: OrderCancelMarked | OrderSuspendMarked | OrderResumeMarked, _, _) => implicitClass[S] isAssignableFrom _.getClass
+    }
+
+    def cancelMarkedAllowed[S <: Order.State: ClassTag]: ToPredicate = {
+      case (_: OrderCancelMarked, _, _) => implicitClass[S] isAssignableFrom _.getClass
+    }
+
+    def suspendMarkedAllowed[S <: Order.State: ClassTag]: ToPredicate = {
+      case (OrderSuspendMarked, IsSuspended(false)  , _) => implicitClass[S] isAssignableFrom _.getClass
+      case (OrderResumeMarked , _, _) => implicitClass[S] isAssignableFrom _.getClass
     }
 
     def attachingAllowed[S <: Order.State: ClassTag]: ToPredicate = {
-      case (_: OrderAttachable        , `detached` ) => implicitClass[S] isAssignableFrom _.getClass
-      case (_: OrderTransferredToAgent, `attaching`) => implicitClass[S] isAssignableFrom _.getClass
+      case (_: OrderAttachable        , _ , IsDetached) => implicitClass[S] isAssignableFrom _.getClass
+      case (_: OrderTransferredToAgent, _, IsAttaching) => implicitClass[S] isAssignableFrom _.getClass
     }
 
     def detachingAllowed[S <: Order.State: ClassTag]: ToPredicate = {
-      case (OrderDetachable         , `attached` ) => implicitClass[S] isAssignableFrom _.getClass
-      case (OrderDetached           , `detaching`) => implicitClass[S] isAssignableFrom _.getClass
-      case (OrderTransferredToController, `detaching`) => implicitClass[S] isAssignableFrom _.getClass
+      case (OrderDetachable             , _ , IsAttached) => implicitClass[S] isAssignableFrom _.getClass
+      case (OrderDetached               , _, IsDetaching) => implicitClass[S] isAssignableFrom _.getClass
+      case (OrderTransferredToController, _, IsDetaching) => implicitClass[S] isAssignableFrom _.getClass
     }
 
     /** Checks each event in `allEvents`. */
-    def checkAllEvents(order: Order[State], toPredicate: ToPredicate)
-      (implicit pos: source.Position)
-    : Unit =
+    def checkAllEvents(templateOrder: Order[State], toPredicate: ToPredicate)(implicit pos: source.Position): Unit =
       for (event <- allEvents) s"$event" - {
-        for (a <- None :: attached :: detaching :: Nil) s"${a getOrElse "Controller"}" in {
-          val updated = order.copy(attachedState = a).update(event)
-          val maybeState = updated.map(_.state)
-          val maybePredicate = toPredicate.lift((event, a))
-          (maybeState, maybePredicate) match {
-            case (Right(state), Some(predicate)) =>
-              assert(predicate(state), s"- for  ${order.state} $a -> $event -> $state")
-            case (Right(state), None) =>
-              fail(s"Missing test case for ${order.state} $a -> $event -> $state")
-            case (Left(problem), Some(_)) =>
-              fail(s"Non-matching test case for ${order.state} $a -> $event -> ?  $problem")
-            case (Left(_), None) =>
+        for (m <- Seq[Option[OrderMark]](NoMark, Cancelling, Suspending, Resuming)) s"$m" in {
+          for (isSuspended <- Seq(false, true)) {
+            for (a <- Seq(IsDetached, IsAttaching, IsAttached, IsDetaching)) /*SLOW (too many tests): s"${a getOrElse "Controller"}" -*/ {
+              val aString = a match {
+                case None => "detached"
+                case Some(o) => o.getClass.simpleScalaName
+              }
+              val mString = a match {
+                case None => "no mark"
+                case Some(o) => o.getClass.simpleScalaName
+              }
+              val order = templateOrder.copy(attachedState = a, mark = m, isSuspended = isSuspended)
+              val updated = order.update(event)
+              val maybeState = updated.map(_.state)
+              val maybePredicate = toPredicate.lift((event, order, a))
+              (maybeState, maybePredicate) match {
+                case (Right(state), Some(predicate)) =>
+                  assert(predicate(state), s"- for  ${templateOrder.state} ($mString, isSuspended=$isSuspended, $aString) -> $event -> $state")
+                case (Right(state), None) =>
+                  fail(s"Missing test case for ${templateOrder.state} ($mString, isSuspended=$isSuspended, $aString) -> $event -> $state")
+                case (Left(problem), Some(_)) =>
+                  fail(s"Non-matching test case for ${templateOrder.state} ($mString, isSuspended=$isSuspended, $aString) -> $event -> ?  $problem")
+                case (Left(_), None) =>
+              }
+            }
           }
         }
       }

@@ -90,5 +90,6 @@ object OrderContext
     outcome match {
       case o: Outcome.Completed => o.returnCode
       case _: Outcome.Disrupted => DisruptedReturnCode
+      case Outcome.Cancelled(nested) => nested.returnCode
     }
 }

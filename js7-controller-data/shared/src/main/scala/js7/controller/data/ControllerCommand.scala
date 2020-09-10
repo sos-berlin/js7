@@ -137,6 +137,14 @@ object ControllerCommand extends CommonCommand.Companion
       } yield ShutDown(restart, cluster, suppressSnapshot)
   }
 
+  final case class ResumeOrder(orderId: OrderId) extends ControllerCommand {
+    type Response = Response.Accepted
+  }
+
+  final case class SuspendOrder(orderId: OrderId) extends ControllerCommand {
+    type Response = Response.Accepted
+  }
+
   case object TakeSnapshot extends ControllerCommand {
     type Response = Response.Accepted
   }
@@ -205,6 +213,8 @@ object ControllerCommand extends CommonCommand.Companion
     Subtype[EmergencyStop],
     Subtype(deriveCodec[ReleaseEvents]),
     Subtype[ShutDown],
+    Subtype(deriveCodec[ResumeOrder]),
+    Subtype(deriveCodec[SuspendOrder]),
     Subtype(deriveCodec[ClusterAppointNodes]),
     Subtype(ClusterSwitchOver),
     Subtype(deriveCodec[InternalClusterCommand]),

@@ -1,5 +1,7 @@
 package js7.data.order
 
+import io.circe.Json
+import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
@@ -13,8 +15,6 @@ import js7.data.order.OrderEvent._
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
 import js7.tester.CirceJsonTester.testJson
-import io.circe.Json
-import io.circe.syntax.EncoderOps
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
 
@@ -49,15 +49,16 @@ final class OrderEventTest extends AnyFreeSpec {
   "OrderAttached" in {
     check(
       OrderAttached(
+        (WorkflowPath("/WORKFLOW") ~ "VERSION") /: Position(2),
+        Order.Ready,
         Map("KEY" -> "VALUE"),
-        (WorkflowPath("/WORKFLOW") ~ "VERSION") /: Position(2), Order.Ready,
         HistoricOutcome(Position(123), Outcome.succeeded) :: Nil,
-        Some(OrderId("PARENT")), AgentRefPath("/AGENT")),
+        AgentRefPath("/AGENT"),
+        Some(OrderId("PARENT")),
+        Some(OrderMark.Suspending),
+        isSuspended = true),
       json"""{
         "TYPE": "OrderAttached",
-        "arguments": {
-          "KEY": "VALUE"
-        },
         "workflowPosition": {
           "workflowId": {
             "path": "/WORKFLOW",
@@ -68,6 +69,9 @@ final class OrderEventTest extends AnyFreeSpec {
         "state": {
           "TYPE": "Ready"
         },
+        "arguments": {
+          "KEY": "VALUE"
+        },
         "historicOutcomes": [
           {
             "position": [123],
@@ -77,8 +81,10 @@ final class OrderEventTest extends AnyFreeSpec {
             }
           }
         ],
+        "agentRefPath":"/AGENT",
         "parent": "PARENT",
-        "agentRefPath":"/AGENT"
+        "mark": { "TYPE": "Suspending" },
+        "isSuspended":  true
       }""")
   }
 
@@ -318,10 +324,10 @@ final class OrderEventTest extends AnyFreeSpec {
       }""")
   }
 
-  "OrderCancellationMarked" in {
-    check(OrderCancellationMarked(CancelMode.NotStarted), json"""
+  "OrderCancelMarked" in {
+    check(OrderCancelMarked(CancelMode.NotStarted), json"""
       {
-        "TYPE": "OrderCancellationMarked",
+        "TYPE": "OrderCancelMarked",
         "mode": {
           "TYPE": "NotStarted"
         }
@@ -332,6 +338,34 @@ final class OrderEventTest extends AnyFreeSpec {
     check(OrderCancelled, json"""
       {
         "TYPE": "OrderCancelled"
+      }""")
+  }
+
+  "OrderSuspendMarked" in {
+    check(OrderSuspendMarked, json"""
+      {
+        "TYPE": "OrderSuspendMarked"
+      }""")
+  }
+
+  "OrderSuspended" in {
+    check(OrderSuspended, json"""
+      {
+        "TYPE": "OrderSuspended"
+      }""")
+  }
+
+  "OrderResumeMarked" in {
+    check(OrderResumeMarked, json"""
+      {
+        "TYPE": "OrderResumeMarked"
+      }""")
+  }
+
+  "OrderResumed" in {
+    check(OrderResumed, json"""
+      {
+        "TYPE": "OrderResumed"
       }""")
   }
 

@@ -10,7 +10,6 @@ import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentRefPath
-import js7.data.command.CancelMode
 import js7.data.order.Order._
 import js7.data.order.OrderEvent._
 import js7.data.workflow.WorkflowId
@@ -28,7 +27,8 @@ final case class Order[+S <: Order.State](
   historicOutcomes: Seq[HistoricOutcome] = Nil,
   attachedState: Option[AttachedState] = None,
   parent: Option[OrderId] = None,
-  cancel: Option[CancelMode] = None)
+  mark: Option[OrderMark] = None,
+  isSuspended: Boolean = false)
 {
   def newForkedOrders(event: OrderForked): Seq[Order[Order.Ready]] =
     for (child <- event.children) yield
@@ -62,7 +62,7 @@ final case class Order[+S <: Order.State](
 
   def update(event: OrderEvent.OrderCoreEvent): Checked[Order[State]] = {
     def inapplicable = Left(Problem(
-      s"Order '${id.string}' at position '$workflowPosition' in state '${state.getClass.simpleScalaName}' ($attachedStateString) has received an inapplicable event: $event"))
+      s"Order '${id.string}' at position '$workflowPosition' in state '${state.getClass.simpleScalaName}' (${markString.fold("")(o => s"$o, ")}$attachedStateString) has received an inapplicable event: $event"))
 
     def check[A](okay: Boolean, updated: A) =
       if (okay) Right(updated) else inapplicable
@@ -72,21 +72,21 @@ final case class Order[+S <: Order.State](
         Left(Problem("OrderAdded and OrderAttached events are not handled by the Order itself"))
 
       case OrderStarted =>
-        check(isState[Fresh] && (isDetached || isAttached),
+        check(isState[Fresh] && !isSuspended && (isDetached || isAttached),
           copy(state = Ready))
 
       case OrderProcessingStarted =>
-        check(isState[Ready] && isAttached,
+        check(isState[Ready] && !isSuspended && isAttached,
           copy(state = Processing))
 
       case OrderProcessed(outcome_) =>
-        check(isState[Processing] && isAttached,
+        check(isState[Processing] && !isSuspended && isAttached,
           copy(
             state = Processed,
             historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
 
       case OrderProcessingCancelled =>
-        check(isState[Processed] && isAttached,
+        check(isState[Processed] && !isSuspended && isAttached,
           copy(state = ProcessingCancelled))
 
       case OrderFailed(outcome_) =>
@@ -96,7 +96,7 @@ final case class Order[+S <: Order.State](
             historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
 
       case OrderFailedInFork(outcome_) =>
-        check((isState[Ready] || isState[Processed]) && (isDetached || isAttached),
+        check((isState[Ready] || isState[Processed]) && !isSuspended && (isDetached || isAttached),
           copy(
             state = FailedInFork(outcome_),
             historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
@@ -105,51 +105,56 @@ final case class Order[+S <: Order.State](
         inapplicable
 
       case OrderCatched(outcome_, movedTo) =>
-        check(isState[Ready] && (isDetached || isAttached)  ||  isState[Processed] && (isAttached | isDetached),
+        check((isState[Ready] || isState[Processed]) && !isSuspended && (isAttached | isDetached),
           copy(
             state = Ready,
             workflowPosition = workflowPosition.copy(position = movedTo),
             historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
 
       case OrderRetrying(to, maybeDelayUntil) =>
-        check(isState[Ready] && (isDetached || isAttached),
+        check(isState[Ready] && !isSuspended && (isDetached || isAttached),
           maybeDelayUntil.fold[Order[State]](this/*Ready*/)(o => copy(state = DelayedAfterError(o)))
             .withPosition(to))
 
       case OrderAwoke =>
-        check(isState[DelayedAfterError] && isAttached,
+        check(isState[DelayedAfterError] && !isSuspended && isAttached,
           copy(state = Ready))
 
       case OrderForked(children) =>
-        check(isState[Ready] && (isDetached || isAttached),
+        check(isState[Ready] && !isSuspended && (isDetached || isAttached),
           copy(state = Forked(children)))
 
       case OrderJoined(outcome_) =>
-        check((isState[Forked] || isState[Awaiting]) && isDetached,
+        check((isState[Forked] || isState[Awaiting]) && !isSuspended && isDetached,
           copy(
             state = Processed,
             historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
 
       case _: OrderOffered =>
-        check(isState[Ready] && isDetached,
+        check(isState[Ready] && !isSuspended && isDetached,
           copy(
             state = Processed,
             historicOutcomes = historicOutcomes :+ HistoricOutcome(position, Outcome.succeeded)))
 
       case OrderAwaiting(orderId) =>
-        check(isState[Ready] && isDetached,
+        check(isState[Ready] && !isSuspended && isDetached,
           copy(state = Awaiting(orderId)))
 
       case OrderMoved(to) =>
-        check((isState[IsFreshOrReady]/*before TryInstruction*/ || isState[Processed]) && (isDetached || isAttached),
+        check((isState[IsFreshOrReady]/*before TryInstruction*/ || isState[Processed]) &&
+          (isDetached || isAttached),
           withPosition(to).copy(
             state = if (isState[Fresh]) state else Ready))
 
       case OrderFinished =>
-        check(isState[Ready] && isDetached,
+        check(isState[Ready] && !isSuspended && isDetached,
           position.dropChild match {
-            case Some(position) => copy(workflowPosition = workflowPosition.copy(position = position))
-            case None => copy(state = Finished)
+            case Some(position) =>
+              copy(workflowPosition = workflowPosition.copy(position = position))
+            case None =>
+              copy(
+                state = Finished,
+                mark = None)
           })
 
       case OrderBroken(message) =>
@@ -157,13 +162,13 @@ final case class Order[+S <: Order.State](
           copy(state = Broken(message)))
 
       case OrderAttachable(agentRefPath) =>
-        check(isDetached && (isState[Fresh] || isState[Ready] || isState[Forked]),
+        check((isState[Fresh] || isState[Ready] || isState[Forked]) && isDetached,
           copy(attachedState = Some(Attaching(agentRefPath))))
 
       case OrderTransferredToAgent(agentRefPath) =>
         attachedState match {
           case Some(Attaching(`agentRefPath`)) =>
-            check(isAttaching && (isState[Fresh] || isState[Ready] || isState[Forked]),
+            check((isState[Fresh] || isState[Ready] || isState[Forked]) && isAttaching,
               copy(attachedState = Some(Attached(agentRefPath))))
           case _ => inapplicable
         }
@@ -188,21 +193,46 @@ final case class Order[+S <: Order.State](
                               isState[FailedWhileFresh] || isState[Failed] || isState[FailedInFork] || isState[Broken]),
           copy(attachedState = None))
 
-      case OrderCancellationMarked(mode) =>
-        check(!isState[IsFinal] && !isState[ProcessingCancelled] && !isDetaching,
-          copy(cancel = Some(mode)))
+      case OrderCancelMarked(mode) =>
+        check(parent.isEmpty && isMarkable,
+          copy(mark = Some(OrderMark.Cancelling(mode))))
 
       case OrderCancelled =>
-        check((isState[IsFreshOrReady] || isState[ProcessingCancelled] ||
-               isState[DelayedAfterError] || isState[FailedWhileFresh] || isState[Failed] || isState[Broken])
-            && isDetached,
-          copy(state = Cancelled))
+        check(isCancelable && isDetached,
+          copy(
+            state = Cancelled,
+            mark = None))
+
+      case OrderSuspendMarked =>
+        check(isMarkable,
+          copy(mark = Some(OrderMark.Suspending)))
+
+      case OrderSuspended =>
+        check(isSuspendible && isDetached,
+          copy(
+            isSuspended = true,
+            mark = None))
+
+      case OrderResumeMarked =>
+        check(isMarkable,
+          if (!isSuspended && isSuspending)
+            copy(mark = None/*revert OrderSuspendMarked*/)
+          else
+            copy(mark = Some(OrderMark.Resuming)))
+
+      case OrderResumed =>
+        check(isResumable,
+          copy(
+            isSuspended = false,
+            mark = None,
+            state = if (isState[Broken]) Ready else state))
     }
   }
 
   def isOrderFailedApplicable =
-    isState[IsFreshOrReady] && (isDetached || isAttached)  ||
-    isState[Processed] && (isDetached || isAttached)
+    !isSuspended &&
+      (isDetached || isAttached) &&
+      (isState[IsFreshOrReady] || isState[Processed])
 
   def withInstructionNr(to: InstructionNr): Order[S] =
     withPosition(position.copy(nr = to))
@@ -219,12 +249,6 @@ final case class Order[+S <: Order.State](
 
   def isStarted = isState[IsStarted]
 
-  def castAfterEvent(event: OrderProcessingStarted): Order[Order.Processing] =
-    castState[Order.Processing]
-
-  def castAfterEvent(event: OrderProcessed): Order[Order.Processed] =
-    castState[Order.Processed]
-
   def castState[A <: State: ClassTag]: Order[A] =
     checkedState[A].orThrow
 
@@ -237,6 +261,9 @@ final case class Order[+S <: Order.State](
   def isState[A <: State: ClassTag] =
     implicitClass[A] isAssignableFrom state.getClass
 
+  def markString: Option[String] =
+    mark.map(o => s"marked as $o")
+
   def attachedStateString: String =
     attachedState match {
       case None => "on Controller"
@@ -247,15 +274,15 @@ final case class Order[+S <: Order.State](
 
   /** `true` iff order is going to be attached to an Agent.. */
   def isAttaching: Boolean =
-    attachedState exists (_.isInstanceOf[Attaching])
+    attachedState.exists(_.isInstanceOf[Attaching])
 
   /** `true` iff order is attached to and processable on an Agent. */
   def isAttached: Boolean =
-    attachedState exists (_.isInstanceOf[Attached])
+    attachedState.exists(_.isInstanceOf[Attached])
 
   /** `true` iff order is going to be detached from an Agent. */
   def isDetaching: Boolean =
-    attachedState exists (_.isInstanceOf[Detaching])
+    attachedState.exists(_.isInstanceOf[Detaching])
 
   /** `true` iff order is processable on Controller.. */
   def isDetached: Boolean =
@@ -276,6 +303,43 @@ final case class Order[+S <: Order.State](
       case o =>
         Left(Problem(s"'$id' should be Detaching, but is $o"))
     }
+
+  def isMarkable =
+    !isState[IsFinal] ||
+      isState[FailedInFork]/*when asynchronously marked on Agent*/
+
+  def isCancelable =
+    parent.isEmpty &&
+      (isState[Order.IsFreshOrReady] ||
+       isState[Order.ProcessingCancelled] ||
+       isState[Order.FailedWhileFresh] ||
+       isState[Order.DelayedAfterError] ||
+       isState[Order.Failed] ||
+       isState[Order.Broken]) &&
+      (isDetached || isAttached)
+
+  def isCancelling =
+    mark.exists(_.isInstanceOf[OrderMark.Cancelling])
+
+  def isSuspendingOrSuspended = isSuspending || isSuspended
+
+  def isSuspendible =
+    (isState[Order.IsFreshOrReady] /*|| isState[DelayedAfterError]*/) &&
+    (isDetached || isAttached)
+
+  def isSuspending =
+    mark contains OrderMark.Suspending
+
+  def isResumable =
+    ((isState[Order.IsFreshOrReady] && isSuspended /*|| isState[Order.Failed]*/) ||
+      isState[Broken]) &&
+      (isDetached || isAttached)
+
+  def isResuming =
+    mark contains OrderMark.Resuming
+
+  def isProcessable =
+    isState[IsFreshOrReady] && !isSuspendingOrSuspended
 }
 
 object Order
@@ -285,7 +349,8 @@ object Order
   }
 
   def fromOrderAttached(id: OrderId, event: OrderAttached): Order[IsFreshOrReady] =
-    Order(id, event.workflowPosition, event.state, event.arguments, event.historicOutcomes, Some(Attached(event.agentRefPath)))
+    Order(id, event.workflowPosition, event.state, event.arguments, event.historicOutcomes, Some(Attached(event.agentRefPath)),
+      event.parent, event.mark, isSuspended = event.isSuspended)
 
   sealed trait AttachedState
   object AttachedState {
@@ -407,20 +472,22 @@ object Order
       "attachedState" -> order.attachedState.asJson,
       "parent" -> order.parent.asJson,
       "historicOutcomes" -> order.historicOutcomes.asJson,
-      "cancel" -> order.cancel.asJson)
+      "mark" -> order.mark.asJson,
+      "isSuspended" -> (order.isSuspended ? true).asJson)
 
   implicit val jsonDecoder: Decoder[Order[State]] = cursor =>
     for {
       id <- cursor.get[OrderId]("id")
-      arguments <- cursor.get[Option[Map[String, String]]]("arguments") map (_ getOrElse Map.empty)
+      arguments <- cursor.get[Option[Map[String, String]]]("arguments").map(_ getOrElse Map.empty)
       workflowPosition <- cursor.get[WorkflowPosition]("workflowPosition")
       state <- cursor.get[State]("state")
       attachedState <- cursor.get[Option[AttachedState]]("attachedState")
       parent <- cursor.get[Option[OrderId]]("parent")
       historicOutcomes <- cursor.get[Seq[HistoricOutcome]]("historicOutcomes")
-      cancel <- cursor.get[Option[CancelMode]]("cancel")
+      mark <- cursor.get[Option[OrderMark]]("mark")
+      isSuspended <- cursor.get[Option[Boolean]]("isSuspended").map(_ getOrElse false)
     } yield
-      Order(id, workflowPosition, state, arguments, historicOutcomes, attachedState, parent, cancel)
+      Order(id, workflowPosition, state, arguments, historicOutcomes, attachedState, parent, mark, isSuspended)
 
   implicit val FreshOrReadyOrderJsonEncoder: Encoder.AsObject[Order[IsFreshOrReady]] = o => jsonEncoder.encodeObject(o)
   implicit val FreshOrReadyOrderJsonDecoder: Decoder[Order[IsFreshOrReady]] = cursor =>

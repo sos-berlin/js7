@@ -9,7 +9,7 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.Problems.{AgentDuplicateOrder, AgentIsShuttingDown}
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{AttachOrder, CancelOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, OrderCommand, ReleaseEvents, Response}
+import js7.agent.data.commands.AgentCommand.{AttachOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, MarkOrder, OrderCommand, ReleaseEvents, Response}
 import js7.agent.data.event.AgentControllerEvent.AgentReadyForController
 import js7.agent.scheduler.job.JobActor
 import js7.agent.scheduler.job.task.TaskRunner
@@ -40,8 +40,8 @@ import js7.data.crypt.InventoryItemVerifier
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.{<-:, Event, EventId, JournalState, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
-import js7.data.execution.workflow.OrderProcessor
 import js7.data.execution.workflow.Workflows.ExecutableWorkflow
+import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
 import js7.data.job.JobKey
 import js7.data.order.OrderEvent.{OrderBroken, OrderDetached}
 import js7.data.order.{Order, OrderEvent, OrderId}
@@ -87,7 +87,13 @@ with Stash {
   private val workflowRegister = new WorkflowRegister
   private val orderActorConf = OrderActor.Conf(conf.config, conf.journalConf)
   private val orderRegister = new OrderRegister
-  private val orderProcessor = new OrderProcessor(workflowRegister.idToWorkflow.checked, orderRegister.idToOrder.checked)
+  private val orderEventSource = new OrderEventSource(
+    workflowRegister.idToWorkflow.checked,
+    orderRegister.idToOrder.checked,
+    isAgent = true)
+  private val orderEventHandler = new OrderEventHandler(
+    workflowRegister.idToWorkflow.checked,
+    orderRegister.idToOrder.checked)
 
   private object shutdown {
     private var shutDownCommand: Option[AgentCommand.ShutDown] = None
@@ -333,7 +339,7 @@ with Stash {
           Future.successful(Right(AgentCommand.Response.Accepted))
       }
 
-    case CancelOrder(orderId, mode) =>
+    case MarkOrder(orderId, mark) =>
       orderRegister.checked(orderId) match {
         case Left(problem) =>
           Future.failed(problem.throwable)
@@ -341,11 +347,17 @@ with Stash {
           if (orderEntry.isDetaching)
             Future.successful(Right(AgentCommand.Response.Accepted))
           else
-            orderProcessor.cancel(orderId, mode, isAgent = true) match {
+            orderEventSource.markOrder(orderId, mark) match {
               case Left(problem) => Future.failed(problem.throwable)
               case Right(None) => Future.successful(Right(AgentCommand.Response.Accepted))
               case Right(Some(event)) =>
-                (orderEntry.actor ? OrderActor.Command.HandleEvent(event)).mapTo[Completed] map { _ => Right(AgentCommand.Response.Accepted) }
+                // Several MarkOrder in sequence are not properly handled
+                // one after the other because execution is asynchronous.
+                // A second command may may see the same not yet updated order.
+                // TODO Queue for each order? And no more OrderActor?
+                (orderEntry.actor ? OrderActor.Command.HandleEvent(event))
+                  .mapTo[Completed]
+                  .map(_ => Right(AgentCommand.Response.Accepted))
             }
       }
 
@@ -412,13 +424,13 @@ with Stash {
       name = uniqueActorName(encodeAsActorName("Order-" + order.id.string))))
 
   private def handleOrderEvent(order: Order[Order.State], event: OrderEvent): Unit = {
-    val checkedFollowUps = orderProcessor.handleEvent(order.id <-: event)
+    val checkedFollowUps = orderEventHandler.handleEvent(order.id <-: event)
     orderRegister(order.id).order = order
-    for (followUps <- checkedFollowUps onProblem (p => logger.error(p))) {
+    for (followUps <- checkedFollowUps.onProblem(p => logger.error(p))) {
       followUps foreach {
         case FollowUp.Processed(jobKey) =>
           //TODO assertThat(orderEntry.jobOption exists (_.jobPath == job.jobPath))
-          for (jobEntry <- jobRegister.checked(jobKey) onProblem (p => logger.error(p withKey order.id))) {
+          for (jobEntry <- jobRegister.checked(jobKey).onProblem(p => logger.error(p withKey order.id))) {
             jobEntry.queue -= order.id
           }
 
@@ -447,7 +459,7 @@ with Stash {
             self ! Internal.Due(orderId)
           }
         case _ =>
-          orderProcessor.nextEvent(order.id) match {
+          orderEventSource.nextEvent(order.id) match {
             case Some(KeyedEvent(orderId, OrderBroken(problem))) =>
               logger.error(s"Order ${orderId.string} is broken: $problem")
 
@@ -455,24 +467,24 @@ with Stash {
               orderRegister(orderId_).actor ? OrderActor.Command.HandleEvent(event)  // Ignore response ???
 
             case None =>
-              if (order.isState[Order.IsFreshOrReady]) {
-                onOrderFreshOrReady(orderEntry)
+              if (order.isProcessable) {
+                onOrderIsProcessable(orderEntry)
               }
           }
       }
     }
   }
 
-  private def onOrderFreshOrReady(orderEntry: OrderEntry): Unit =
+  private def onOrderIsProcessable(orderEntry: OrderEntry): Unit =
     if (!shuttingDown) {
-      for (_ <- orderEntry.order.attached onProblem (p => logger.error(s"onOrderFreshOrReady: $p"))) {
+      for (_ <- orderEntry.order.attached.onProblem(p => logger.error(s"onOrderIsProcessable: $p"))) {
         orderEntry.instruction match {
           case execute: Execute =>
             val checkedJobKey = execute match {
               case _: Execute.Anonymous => Right(orderEntry.workflow.anonymousJobKey(orderEntry.order.workflowPosition))
               case o: Execute.Named     => orderEntry.workflow.jobKey(orderEntry.order.position.branchPath, o.name)  // defaultArguments are extracted later
             }
-            for (jobEntry <- checkedJobKey flatMap jobRegister.checked onProblem (p => logger.error(p))){
+            for (jobEntry <- checkedJobKey.flatMap(jobRegister.checked).onProblem(p => logger.error(p))) {
               onOrderAvailableForJob(orderEntry.order.id, jobEntry)
             }
 
@@ -498,7 +510,7 @@ with Stash {
             logger.warn(s"Unknown $orderId was enqueued for ${jobEntry.jobKey}. Order has been removed?")
 
           case Some(orderEntry) =>
-            for (workflowJob <- orderEntry.checkedJob onProblem (o => logger.error(o))) {
+            for (workflowJob <- orderEntry.checkedJob.onProblem(o => logger.error(o))) {
               startProcessing(orderEntry, jobEntry.jobKey, workflowJob, jobEntry)
             }
             jobEntry.waitingForOrder = false

@@ -23,10 +23,10 @@ object WorkflowAndOrderRecovering
   : (Iterable[Order[Order.State]], Iterable[OrderId]) = {
     val added = mutable.Map[OrderId, Order[Order.State]]()
     val removed = mutable.Buffer[OrderId]()
-    val orderProcessor = new OrderProcessor(idToWorkflow, idToOrder.checked)
+    val eventHandler = new OrderEventHandler(idToWorkflow, idToOrder.checked)
     for (order <- idToOrder.values;
          event <- snapshotToEvent(order);
-         followUps <- orderProcessor.handleEvent(event)
+         followUps <- eventHandler.handleEvent(event)
            .onProblem(p => scribe.error(p.toString, p.throwableOption.map(_.appendCurrentStackTrace).orNull)))  // TODO Really ignore error ?
     {
       followUps foreach {

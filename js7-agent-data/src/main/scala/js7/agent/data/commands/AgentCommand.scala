@@ -16,9 +16,9 @@ import js7.base.utils.Big
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.{AgentRefPath, AgentRunId}
-import js7.data.command.{CancelMode, CommonCommand}
+import js7.data.command.CommonCommand
 import js7.data.event.EventId
-import js7.data.order.{Order, OrderId}
+import js7.data.order.{Order, OrderId, OrderMark}
 
 /**
  * @author Joacim Zschimmer
@@ -55,7 +55,7 @@ object AgentCommand extends CommonCommand.Companion
     }
   }
 
-  final case class CancelOrder(orderId: OrderId, mode: CancelMode) extends OrderCommand {
+  final case class MarkOrder(orderId: OrderId, mark: OrderMark) extends OrderCommand {
     type Response = Response.Accepted
   }
 
@@ -171,7 +171,7 @@ object AgentCommand extends CommonCommand.Companion
   implicit val jsonCodec: TypedJsonCodec[AgentCommand] =
     TypedJsonCodec[AgentCommand](
       Subtype(deriveCodec[Batch]),
-      Subtype(deriveCodec[CancelOrder]),
+      Subtype(deriveCodec[MarkOrder]),
       Subtype[EmergencyStop],
       Subtype(deriveCodec[ReleaseEvents]),
       Subtype(NoOperation),
