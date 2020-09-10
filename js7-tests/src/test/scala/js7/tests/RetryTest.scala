@@ -11,7 +11,7 @@ import js7.common.system.OperatingSystem.isWindows
 import js7.data.agent.AgentRefPath
 import js7.data.event.{EventId, EventRequest, EventSeq}
 import js7.data.job.{ExecutablePath, ReturnCode}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCatched, OrderDetachable, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted, OrderTransferredToAgent, OrderTransferredToController}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCatched, OrderDetachable, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted, OrderAttached, OrderDetached}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.parser.WorkflowParser
@@ -59,7 +59,7 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderAdded(workflow.path ~ versionId),
       OrderMoved(Position(0) / try_(0) % 0),
       OrderAttachable(TestAgentRefPath),
-      OrderTransferredToAgent(TestAgentRefPath),
+      OrderAttached(TestAgentRefPath),
       OrderStarted,
 
       OrderProcessingStarted,
@@ -73,7 +73,7 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderCatched(Outcome.Failed(ReturnCode(1)), Position(1)),   // Retry limit reached
 
       OrderDetachable,
-      OrderTransferredToController,
+      OrderDetached,
       OrderFinished)
 
     val orderId = OrderId("🔺")
@@ -103,7 +103,7 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderAdded(workflow.path ~ versionId),
       OrderMoved(Position(0) / try_(0) % 0 / try_(0) % 0),
       OrderAttachable(TestAgentRefPath),
-      OrderTransferredToAgent(TestAgentRefPath),
+      OrderAttached(TestAgentRefPath),
       OrderStarted,
 
       OrderProcessingStarted,
@@ -157,7 +157,7 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderMoved(Position(1)),
 
       OrderDetachable,
-      OrderTransferredToController,
+      OrderDetached,
       OrderFinished)
 
     val orderId = OrderId("🔷")

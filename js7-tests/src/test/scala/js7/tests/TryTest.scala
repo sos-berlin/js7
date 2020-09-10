@@ -7,7 +7,7 @@ import js7.common.system.OperatingSystem.isWindows
 import js7.data.agent.AgentRefPath
 import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import js7.data.job.{ExecutablePath, ReturnCode}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCatched, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTerminated, OrderTransferredToAgent, OrderTransferredToController}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCatched, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTerminated, OrderAttached, OrderDetached}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.parser.WorkflowParser
@@ -77,7 +77,7 @@ final class TryTest extends AnyFreeSpec
           OrderAdded(workflow.id),
           OrderMoved(Position(0) / try_(0) % 0),
           OrderAttachable(TestAgentRefPath),
-          OrderTransferredToAgent(TestAgentRefPath),
+          OrderAttached(TestAgentRefPath),
           OrderStarted,
           OrderProcessingStarted,
           OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
@@ -90,7 +90,7 @@ final class TryTest extends AnyFreeSpec
           OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
           OrderMoved(Position(2)),
           OrderDetachable,
-          OrderTransferredToController,
+          OrderDetached,
           OrderFinished))
       }
     }
@@ -132,21 +132,21 @@ final class TryTest extends AnyFreeSpec
           OrderJoined(Outcome.Failed(ReturnCode(0))),
           OrderCatched(Outcome.Failed(ReturnCode(0)), Position(0) / "catch+0" % 0),
           OrderAttachable(TestAgentRefPath),
-          OrderTransferredToAgent(TestAgentRefPath),
+          OrderAttached(TestAgentRefPath),
           OrderProcessingStarted,
           OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
           OrderMoved(Position(1)),
           OrderDetachable,
-          OrderTransferredToController,
+          OrderDetached,
           OrderFinished))
         checkEventSeq(OrderId("🔴/🍋"), controller.eventWatch.all[OrderEvent], Vector(
           OrderAttachable(TestAgentRefPath),
-          OrderTransferredToAgent(TestAgentRefPath),
+          OrderAttached(TestAgentRefPath),
           OrderProcessingStarted,
           OrderProcessed(Outcome.Failed(None,ReturnCode(1))),
           OrderFailedInFork(Outcome.Failed(None,ReturnCode(1), Map.empty)),
           OrderDetachable,
-          OrderTransferredToController))
+          OrderDetached))
       }
     }
   }
@@ -183,7 +183,7 @@ object TryTest {
     OrderAdded(FinishingWorkflow.id),
     OrderMoved(Position(0) / "try+0" % 0 / "try+0" % 0),
     OrderAttachable(TestAgentRefPath),
-    OrderTransferredToAgent(TestAgentRefPath),
+    OrderAttached(TestAgentRefPath),
 
     OrderStarted,
     OrderProcessingStarted,
@@ -199,7 +199,7 @@ object TryTest {
     OrderMoved(Position(2)),
 
     OrderDetachable,
-    OrderTransferredToController,
+    OrderDetached,
     OrderFinished)
 
   private val stoppingScript = s"""
@@ -216,7 +216,7 @@ object TryTest {
     OrderAdded(StoppingWorkflow.id),
     OrderMoved(Position(0) / "try+0" % 0),
     OrderAttachable(TestAgentRefPath),
-    OrderTransferredToAgent(TestAgentRefPath),
+    OrderAttached(TestAgentRefPath),
 
     OrderStarted,
     OrderProcessingStarted,

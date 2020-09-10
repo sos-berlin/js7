@@ -58,7 +58,7 @@ import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
 import js7.data.item.RepoEvent.{ItemAdded, ItemChanged, ItemDeleted, ItemEvent, VersionAdded}
 import js7.data.item.{IntenvoryItems, InventoryItem, RepoChange, RepoEvent, TypedPath}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderBroken, OrderCancelMarked, OrderResumeMarked, OrderSuspendMarked, OrderTransferredToAgent, OrderTransferredToController}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancelMarked, OrderDetached, OrderResumeMarked, OrderSuspendMarked}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
 import js7.data.workflow.instructions.Execute
@@ -463,7 +463,7 @@ with MainJournalingActor[ControllerState, Event]
 
               case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
                 val ownEvent = event match {
-                  case _: OrderEvent.OrderAttached => OrderTransferredToAgent(agentRefPath) // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
+                  case _: OrderEvent.OrderAttachedToAgent => OrderAttached(agentRefPath) // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
                   case _ => event
                 }
                 Some(Timestamped(orderId <-: ownEvent, Some(timestamp)))
@@ -497,7 +497,7 @@ with MainJournalingActor[ControllerState, Event]
       if (unknown.nonEmpty) {
         logger.error(s"Response to AgentCommand.DetachOrder from Agent for unknown orders: "+ unknown.mkString(", "))
       }
-      persistMultipleAsync((orderIds -- unknown).map(_ <-: OrderTransferredToController))(handleOrderEvents)
+      persistMultipleAsync((orderIds -- unknown).map(_ <-: OrderDetached))(handleOrderEvents)
 
     case AgentDriver.Output.OrdersMarked(orderToMark) =>
       val unknown = orderToMark -- _controllerState.idToOrder.keySet

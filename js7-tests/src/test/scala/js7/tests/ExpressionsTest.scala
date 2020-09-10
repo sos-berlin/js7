@@ -8,7 +8,7 @@ import js7.common.system.OperatingSystem.isWindows
 import js7.data.agent.AgentRefPath
 import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import js7.data.job.{ExecutablePath, ReturnCode}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent, OrderTransferredToController}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.parser.WorkflowParser
@@ -95,7 +95,7 @@ object ExpressionsTest {
       OrderAdded(TestWorkflow.id, None, Map("ARG" -> "ARG-VALUE")),
       OrderMoved(Position(0) / Then % 0),
       OrderAttachable(TestAgentRefPath),
-      OrderTransferredToAgent(TestAgentRefPath),
+      OrderAttached(TestAgentRefPath),
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(Outcome.Succeeded(ReturnCode(0), Map("JOB-KEY" -> "JOB-RESULT"))),
@@ -104,7 +104,7 @@ object ExpressionsTest {
       OrderAdded(TestWorkflow.id, None, Map("ARG" -> "ARG-VALUE", "ARG2" -> "ARG2-VALUE", "RETURN_CODE" -> "1")),
       OrderMoved(Position(0) / Then % 0),
       OrderAttachable(TestAgentRefPath),
-      OrderTransferredToAgent(TestAgentRefPath),
+      OrderAttached(TestAgentRefPath),
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(Outcome.Succeeded(ReturnCode(1), Map("JOB-KEY" -> "JOB-RESULT"))),
@@ -116,6 +116,6 @@ object ExpressionsTest {
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(3)),
       OrderDetachable,
-      OrderTransferredToController,
+      OrderDetached,
       OrderFinished))
 }

@@ -5,7 +5,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.data.agent.AgentRefPath
 import js7.data.event.{EventSeq, KeyedEvent}
 import js7.data.job.{ExecutablePath, ReturnCode}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToController}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.Fork
@@ -30,13 +30,13 @@ final class FailUncatchableTest extends AnyFreeSpec
       Vector(
         OrderAdded(TestWorkflowId),
         OrderAttachable(TestAgentRefPath),
-        OrderTransferredToAgent(TestAgentRefPath),
+        OrderAttached(TestAgentRefPath),
         OrderStarted,
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
         OrderMoved(Position(1)),
         OrderDetachable,
-        OrderTransferredToController,
+        OrderDetached,
         OrderFailed(Outcome.Failed(ReturnCode(3)))))
   }
 
@@ -49,13 +49,13 @@ final class FailUncatchableTest extends AnyFreeSpec
       Vector(
         OrderAdded(TestWorkflowId),
         OrderAttachable(TestAgentRefPath),
-        OrderTransferredToAgent(TestAgentRefPath),
+        OrderAttached(TestAgentRefPath),
         OrderStarted,
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
         OrderMoved(Position(1)),
         OrderDetachable,
-        OrderTransferredToController,
+        OrderDetached,
         OrderFailed(Outcome.Failed(ReturnCode(7)))))
   }
 
@@ -68,13 +68,13 @@ final class FailUncatchableTest extends AnyFreeSpec
       Vector(
         OrderAdded(TestWorkflowId),
         OrderAttachable(TestAgentRefPath),
-        OrderTransferredToAgent(TestAgentRefPath),
+        OrderAttached(TestAgentRefPath),
         OrderStarted,
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
         OrderMoved(Position(1)),
         OrderDetachable,
-        OrderTransferredToController,
+        OrderDetached,
         OrderFailed(Outcome.Failed(Some("TEST-ERROR"), ReturnCode(7)))))
   }
 
@@ -105,23 +105,23 @@ final class FailUncatchableTest extends AnyFreeSpec
     assert(events.filter(_.key == orderId / "🥕").map(_.event) ==
       Vector(
         OrderAttachable(TestAgentRefPath),
-        OrderTransferredToAgent(TestAgentRefPath),
+        OrderAttached(TestAgentRefPath),
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
         OrderMoved(Position(0) / "fork+🥕" % 1),
         OrderFailedInFork(Outcome.Failed(Some("TEST-ERROR"), ReturnCode(3))),
         OrderDetachable,
-        OrderTransferredToController))
+        OrderDetached))
 
     assert(events.filter(_.key == orderId / "🍋").map(_.event) ==
       Vector(
         OrderAttachable(TestAgentRefPath),
-        OrderTransferredToAgent(TestAgentRefPath),
+        OrderAttached(TestAgentRefPath),
         OrderProcessingStarted,
         OrderProcessed(Outcome.succeeded),
         OrderMoved(Position(0) / "fork+🍋" % 1),
         OrderDetachable,
-        OrderTransferredToController))
+        OrderDetached))
   }
 
   "fail in fork, succeed first" in {
@@ -151,23 +151,23 @@ final class FailUncatchableTest extends AnyFreeSpec
     assert(events.filter(_.key == orderId / "🥕").map(_.event) ==
       Vector(
         OrderAttachable(TestAgentRefPath),
-        OrderTransferredToAgent(TestAgentRefPath),
+        OrderAttached(TestAgentRefPath),
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
         OrderMoved(Position(0) / "fork+🥕" % 1),
         OrderFailedInFork(Outcome.Failed(Some("TEST-ERROR"), ReturnCode(0))),
         OrderDetachable,
-        OrderTransferredToController))
+        OrderDetached))
 
     assert(events.filter(_.key == orderId / "🍋").map(_.event) ==
       Vector(
         OrderAttachable(TestAgentRefPath),
-        OrderTransferredToAgent(TestAgentRefPath),
+        OrderAttached(TestAgentRefPath),
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
         OrderMoved(Position(0) / "fork+🍋" % 1),
         OrderDetachable,
-        OrderTransferredToController))
+        OrderDetached))
   }
 
   private def checkEvents[E <: OrderEvent: ClassTag: TypeTag](workflowNotation: String, expectedEvents: Vector[OrderEvent]): Unit =

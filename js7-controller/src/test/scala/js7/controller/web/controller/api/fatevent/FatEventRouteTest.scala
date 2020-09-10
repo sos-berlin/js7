@@ -28,7 +28,7 @@ import js7.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderProcessedFat, OrderP
 import js7.data.item.RepoEvent.{ItemAdded, VersionAdded}
 import js7.data.item.{InventoryItemSigner, VersionId}
 import js7.data.job.ExecutablePath
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTransferredToAgent}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
 import js7.data.order.{OrderId, Outcome}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -165,7 +165,7 @@ final class FatEventRouteTest extends AnyFreeSpec with RouteTester with FatEvent
       assert(getFatEventSeq("/fatEvent?after=201") == EventSeq.Empty(200))
     }
 
-    "/fatEvent?after=193, intermediate event added (OrderDetached), with timeout" in {
+    "/fatEvent?after=193, intermediate event added (OrderDetachedFromAgent), with timeout" in {
       val runningSince = now
       assert(getFatEventSeq("/fatEvent?after=193&timeout=0.1") == EventSeq.Empty(200))
       assert(runningSince.elapsed >= 100.millis)
@@ -286,7 +286,7 @@ object FatEventRouteTest
     (1 to 18).map(i =>
       Stamped(EventId(i * 10    ), OrderId(i.toString) <-: OrderAdded(TestWorkflow.id, None, Map.empty)) ::     // Yields OrderFatEvent
       Stamped(EventId(i * 10 + 1), OrderId(i.toString) <-: OrderAttachable(TestAgentRefId.path)) ::     // No FatEvent
-      Stamped(EventId(i * 10 + 2), OrderId(i.toString) <-: OrderTransferredToAgent(TestAgentRefId.path)) ::  // No FatEvent
+      Stamped(EventId(i * 10 + 2), OrderId(i.toString) <-: OrderAttached(TestAgentRefId.path)) ::  // No FatEvent
       Nil)
   private val TestFatEvents: Seq[Stamped[KeyedEvent[OrderAddedFat]]] =
     TestEvents.flatMap(

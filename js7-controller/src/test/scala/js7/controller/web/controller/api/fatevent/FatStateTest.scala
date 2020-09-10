@@ -10,7 +10,7 @@ import js7.data.event.{Event, KeyedEvent, Stamped}
 import js7.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderCancelledFat, OrderFailedFat, OrderFinishedFat, OrderForkedFat, OrderJoinedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStderrWrittenFat, OrderStdoutWrittenFat}
 import js7.data.item.{InventoryItemSigner, Repo, RepoEvent, VersionId}
 import js7.data.job.{ExecutablePath, ReturnCode}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancelled, OrderDetachable, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStderrWritten, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToController}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStderrWritten, OrderStdoutWritten}
 import js7.data.order.{OrderId, Outcome}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -54,8 +54,8 @@ final class FatStateTest extends AnyFreeSpec
       None)
   }
 
-  "OrderTransferredToAgent" in {
-    check(orderId <-: OrderTransferredToAgent(agentRef.path),
+  "OrderAttached" in {
+    check(orderId <-: OrderAttached(agentRef.path),
       None)
   }
 
@@ -99,8 +99,8 @@ final class FatStateTest extends AnyFreeSpec
       None)
   }
 
-  "OrderTransferredToController" in {
-    check(orderId <-: OrderTransferredToController,
+  "OrderDetached" in {
+    check(orderId <-: OrderDetached,
       None)
   }
 

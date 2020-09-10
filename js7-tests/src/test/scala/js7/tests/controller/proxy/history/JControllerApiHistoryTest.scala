@@ -20,7 +20,7 @@ import js7.data.Problems.SnapshotForUnknownEventIdProblem
 import js7.data.agent.AgentRefPath
 import js7.data.event.{EventId, KeyedEvent, Stamped}
 import js7.data.job.ReturnCode
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToController}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderAttached, OrderDetached}
 import js7.data.order.Outcome.Succeeded
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
 import js7.data.workflow.parser.WorkflowParser
@@ -130,7 +130,7 @@ final class JControllerApiHistoryTest extends AnyFreeSpec with ProvideActorSyste
           OrderId("🔺") -> List(
             OrderAdded(TestWorkflowId.asScala, None, Map("KEY" -> "VALUE")),
             OrderAttachable(AAgentRefPath),
-            OrderTransferredToAgent(AAgentRefPath),
+            OrderAttached(AAgentRefPath),
             OrderStarted,
             OrderProcessingStarted,
             OrderStdoutWritten(StdoutOutput),
@@ -140,17 +140,17 @@ final class JControllerApiHistoryTest extends AnyFreeSpec with ProvideActorSyste
               OrderForked.Child("🥕",OrderId("🔺/🥕")),
               OrderForked.Child("🍋",OrderId("🔺/🍋")))),
             OrderDetachable,
-            OrderTransferredToController,
+            OrderDetached,
             OrderJoined(Succeeded(ReturnCode(0))),
             OrderMoved(Position(2)),
             OrderAttachable(AAgentRefPath),
-            OrderTransferredToAgent(AAgentRefPath),
+            OrderAttached(AAgentRefPath),
             OrderProcessingStarted,
             OrderStdoutWritten(StdoutOutput),
             OrderProcessed(Succeeded(ReturnCode(0))),
             OrderMoved(Position(3)),
             OrderDetachable,
-            OrderTransferredToController,
+            OrderDetached,
             OrderFinished),
           OrderId("🔺/🥕") -> List(
             OrderProcessingStarted,
@@ -162,22 +162,22 @@ final class JControllerApiHistoryTest extends AnyFreeSpec with ProvideActorSyste
             OrderProcessed(Succeeded(ReturnCode(0))),
             OrderMoved(Position(1) / "fork+🥕" % 2),
             OrderDetachable,
-            OrderTransferredToController),
+            OrderDetached),
         OrderId("🔺/🍋") -> List(
           OrderProcessingStarted,
           OrderStdoutWritten(StdoutOutput),
           OrderProcessed(Succeeded(ReturnCode(0))),
           OrderMoved(Position(1) / "fork+🍋" % 1),
           OrderDetachable,
-          OrderTransferredToController,
+          OrderDetached,
           OrderAttachable(BAgentRefPath),
-          OrderTransferredToAgent(BAgentRefPath),
+          OrderAttached(BAgentRefPath),
           OrderProcessingStarted,
           OrderStdoutWritten(StdoutOutput),
           OrderProcessed(Succeeded(ReturnCode(0))),
           OrderMoved(Position(1) / "fork+🍋" % 2),
           OrderDetachable,
-          OrderTransferredToController)))
+          OrderDetached)))
 
         // TORN EVENT STREAM
         val problem = JournaledProxy.observable[ControllerState](apiResources, fromEventId = Some(EventId.BeforeFirst), _ => (), ProxyConf.default)

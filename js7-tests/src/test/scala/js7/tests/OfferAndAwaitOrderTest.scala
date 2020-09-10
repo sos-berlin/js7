@@ -8,7 +8,7 @@ import js7.controller.RunningController
 import js7.data.agent.AgentRefPath
 import js7.data.event.{<-:, EventSeq, KeyedEvent, TearableEventSeq}
 import js7.data.job.ExecutablePath
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAwaiting, OrderDetachable, OrderFinished, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent, OrderTransferredToController}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAwaiting, OrderDetachable, OrderFinished, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderAttached, OrderDetached}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.parser.WorkflowParser
@@ -48,43 +48,43 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
           expectedOffering = Vector(
               OrderAdded(OfferingWorkflowId),
               OrderAttachable(TestAgentRefPath),
-              OrderTransferredToAgent(TestAgentRefPath),
+              OrderAttached(TestAgentRefPath),
               OrderStarted,
               OrderProcessingStarted,
               OrderProcessed(Outcome.succeeded),
               OrderMoved(Position(1)),
               OrderDetachable,
-              OrderTransferredToController,
+              OrderDetached,
               OrderOffered(OrderId("OFFERED-ORDER-ID"), TestOfferedUntil),
               OrderMoved(Position(2)),
               OrderAttachable(TestAgentRefPath),
-              OrderTransferredToAgent(TestAgentRefPath),
+              OrderAttached(TestAgentRefPath),
               OrderProcessingStarted,
               OrderProcessed(Outcome.succeeded),
               OrderMoved(Position(3)),
               OrderDetachable,
-              OrderTransferredToController,
+              OrderDetached,
               OrderFinished),
           expectedAwaiting = Vector(
             OrderAdded(JoiningWorkflowId),
             OrderAttachable(TestAgentRefPath),
-            OrderTransferredToAgent(TestAgentRefPath),
+            OrderAttached(TestAgentRefPath),
             OrderStarted,
             OrderProcessingStarted,
             OrderProcessed(Outcome.succeeded),
             OrderMoved(Position(1)),
             OrderDetachable,
-            OrderTransferredToController,
+            OrderDetached,
             OrderAwaiting(OrderId("OFFERED-ORDER-ID")),
             OrderJoined(Outcome.succeeded),
             OrderMoved(Position(2)),
             OrderAttachable(TestAgentRefPath),
-            OrderTransferredToAgent(TestAgentRefPath),
+            OrderAttached(TestAgentRefPath),
             OrderProcessingStarted,
             OrderProcessed(Outcome.succeeded),
             OrderMoved(Position(3)),
             OrderDetachable,
-            OrderTransferredToController,
+            OrderDetached,
             OrderFinished))
       }
     }

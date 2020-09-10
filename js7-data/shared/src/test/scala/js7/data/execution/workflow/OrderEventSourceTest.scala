@@ -12,7 +12,7 @@ import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.OrderEventSourceTest._
 import js7.data.expression.Expression.{Equal, LastReturnCode, NumericConstant}
 import js7.data.job.{ExecutablePath, ReturnCode}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderResumeMarked, OrderResumed, OrderStarted, OrderSuspendMarked, OrderSuspended, OrderTransferredToAgent, OrderTransferredToController}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderResumeMarked, OrderResumed, OrderStarted, OrderSuspendMarked, OrderSuspended, OrderAttached, OrderDetached}
 import js7.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, OrderMark, Outcome}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, ExplicitEnd, Gap, Goto, If, IfFailedGoto, TryInstruction}
@@ -92,21 +92,21 @@ final class OrderEventSourceTest extends AnyFreeSpec
 
     process.update(orderId <-: OrderAdded(TestWorkflowId))
     process.update(orderId <-: OrderAttachable(TestAgentRefPath))
-    process.update(orderId <-: OrderTransferredToAgent(TestAgentRefPath))
+    process.update(orderId <-: OrderAttached(TestAgentRefPath))
     assert(process.run(orderId) == List(
       orderId <-: OrderStarted,
       orderId <-: OrderForked(List(
         OrderForked.Child("🥕", orderId / "🥕"),
         OrderForked.Child("🍋", orderId / "🍋"))),
       orderId <-: OrderDetachable,
-      orderId <-: OrderTransferredToController))
+      orderId <-: OrderDetached))
 
     assert(process.run(orderId / "🥕") == List(
       orderId / "🥕" <-: OrderProcessingStarted,
       orderId / "🥕" <-: OrderProcessed(Outcome.succeeded),
       orderId / "🥕" <-: OrderMoved(Position(0) / "fork+🥕" % 1),
       orderId / "🥕" <-: OrderDetachable,
-      orderId / "🥕" <-: OrderTransferredToController))
+      orderId / "🥕" <-: OrderDetached))
 
     assert(process.step(orderId).isEmpty)  // Nothing to join
 
@@ -115,7 +115,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
       orderId / "🍋" <-: OrderProcessed(Outcome.succeeded),
       orderId / "🍋" <-: OrderMoved(Position(0) / "fork+🍋" % 1),
       orderId / "🍋" <-: OrderDetachable,
-      orderId / "🍋" <-: OrderTransferredToController,
+      orderId / "🍋" <-: OrderDetached,
       orderId <-: OrderJoined(Outcome.succeeded)))
     assert(process.step(orderId) == Some(orderId <-: OrderMoved(Position(1))))
 
@@ -125,28 +125,28 @@ final class OrderEventSourceTest extends AnyFreeSpec
 
     assert(process.run(orderId / "🥕") == List(
       orderId / "🥕" <-: OrderAttachable(TestAgentRefPath),
-      orderId / "🥕" <-: OrderTransferredToAgent(TestAgentRefPath),
+      orderId / "🥕" <-: OrderAttached(TestAgentRefPath),
       orderId / "🥕" <-: OrderProcessingStarted,
       orderId / "🥕" <-: OrderProcessed(Outcome.succeeded),
       orderId / "🥕" <-: OrderMoved(Position(1) / "fork+🥕" % 1),
       orderId / "🥕" <-: OrderDetachable,
-      orderId / "🥕" <-: OrderTransferredToController))
+      orderId / "🥕" <-: OrderDetached))
 
     assert(process.step(orderId).isEmpty)  // Nothing to join
 
     assert(process.run(orderId / "🍋") == List(
       orderId / "🍋" <-: OrderAttachable(TestAgentRefPath),
-      orderId / "🍋" <-: OrderTransferredToAgent(TestAgentRefPath),
+      orderId / "🍋" <-: OrderAttached(TestAgentRefPath),
       orderId / "🍋" <-: OrderProcessingStarted,
       orderId / "🍋" <-: OrderProcessed(Outcome.succeeded),
       orderId / "🍋" <-: OrderMoved(Position(1) / "fork+🍋" % 1),
       orderId / "🍋" <-: OrderDetachable,
-      orderId / "🍋" <-: OrderTransferredToController,
+      orderId / "🍋" <-: OrderDetached,
       orderId <-: OrderJoined(Outcome.succeeded)))
 
     assert(process.step(orderId) == Some(orderId <-: OrderMoved(Position(2))))
     assert(process.step(orderId) == Some(orderId <-: OrderAttachable(TestAgentRefPath)))
-    assert(process.step(orderId) == Some(orderId <-: OrderTransferredToAgent(TestAgentRefPath)))
+    assert(process.step(orderId) == Some(orderId <-: OrderAttached(TestAgentRefPath)))
     assert(process.step(orderId) == Some(orderId <-: OrderProcessingStarted))
     // and so forth...
   }
@@ -812,12 +812,12 @@ object OrderEventSourceTest {
 
     def transferToAgent(agentRefPath: AgentRefPath) = {
       update(OrderAttachable(agentRefPath))
-      update(OrderTransferredToAgent(agentRefPath))
+      update(OrderAttached(agentRefPath))
     }
 
     def transferToController() = {
       update(OrderDetachable)
-      update(OrderTransferredToController)
+      update(OrderDetached)
     }
 
     def jobStep(outcome: Outcome = Outcome.Succeeded(ReturnCode.Success)) =
@@ -856,14 +856,14 @@ object OrderEventSourceTest {
     private def nextEvent(orderId: OrderId): Option[KeyedEvent[OrderEvent]] = {
       val order = idToOrder(orderId)
       if (order.detaching.isRight)
-        Some(order.id <-: OrderTransferredToController)
+        Some(order.id <-: OrderDetached)
       else
         (order.state, workflow.instruction(order.position)) match {
           case (_: Order.Ready, _: Execute) =>
             if (order.isDetached)
               Some(order.id <-: OrderAttachable(TestAgentRefPath))
             else if (order.isAttaching)
-              Some(order.id <-: OrderTransferredToAgent(TestAgentRefPath))
+              Some(order.id <-: OrderAttached(TestAgentRefPath))
             else
               Some(order.id <-: OrderProcessingStarted)
 

@@ -46,9 +46,9 @@ final class OrderEventTest extends AnyFreeSpec {
       }""")
   }
 
-  "OrderAttached" in {
+  "OrderAttachedToAgent" in {
     check(
-      OrderAttached(
+      OrderAttachedToAgent(
         (WorkflowPath("/WORKFLOW") ~ "VERSION") /: Position(2),
         Order.Ready,
         Map("KEY" -> "VALUE"),
@@ -58,7 +58,7 @@ final class OrderEventTest extends AnyFreeSpec {
         Some(OrderMark.Suspending),
         isSuspended = true),
       json"""{
-        "TYPE": "OrderAttached",
+        "TYPE": "OrderAttachedToAgent",
         "workflowPosition": {
           "workflowId": {
             "path": "/WORKFLOW",
@@ -88,10 +88,10 @@ final class OrderEventTest extends AnyFreeSpec {
       }""")
   }
 
-  "OrderTransferredToAgent" in {
-    check(OrderTransferredToAgent(AgentRefPath("/AGENT")), json"""
+  "OrderAttached" in {
+    check(OrderAttached(AgentRefPath("/AGENT")), json"""
       {
-        "TYPE": "OrderTransferredToAgent",
+        "TYPE": "OrderAttached",
         "agentRefPath":"/AGENT"
       }""")
   }
@@ -310,10 +310,10 @@ final class OrderEventTest extends AnyFreeSpec {
       }""")
   }
 
-  "OrderDetached" in {
-    check(OrderDetached, json"""
+  "OrderDetachedFromAgent" in {
+    check(OrderDetachedFromAgent, json"""
       {
-        "TYPE": "OrderDetached"
+        "TYPE": "OrderDetachedFromAgent"
       }""")
   }
 

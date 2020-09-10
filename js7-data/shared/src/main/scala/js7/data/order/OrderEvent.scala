@@ -47,7 +47,8 @@ object OrderEvent {
       } yield OrderAdded(workflowId, scheduledFor, arguments)
   }
 
-  final case class OrderAttached(
+  /** Agent-only event. */
+  final case class OrderAttachedToAgent(
     workflowPosition: WorkflowPosition,
     state: IsFreshOrReady,
     arguments: Map[String, String],
@@ -60,11 +61,11 @@ object OrderEvent {
     workflowPosition.workflowId.requireNonAnonymous()
   }
 
-  final case class OrderTransferredToAgent(agentRefPath: AgentRefPath)
+  final case class OrderAttached(agentRefPath: AgentRefPath)
   extends OrderCoreEvent
 
-  type OrderTransferredToController = OrderTransferredToController.type
-  case object OrderTransferredToController
+  type OrderDetached = OrderDetached.type
+  case object OrderDetached
   extends OrderCoreEvent
 
   type OrderStarted = OrderStarted.type
@@ -162,11 +163,12 @@ object OrderEvent {
     */
   case object OrderDetachable extends OrderActorEvent
 
-  type OrderDetached = OrderDetached.type
+  type OrderDetachedFromAgent = OrderDetachedFromAgent.type
   /**
     * Order has been removed from the Agent and is held by the Controller.
+    * Agent-only event.
     */
-  case object OrderDetached extends OrderCoreEvent
+  case object OrderDetachedFromAgent extends OrderCoreEvent
 
   type OrderFinished = OrderFinished.type
   case object OrderFinished extends OrderActorEvent with OrderTerminated
@@ -217,11 +219,11 @@ object OrderEvent {
     Subtype(deriveCodec[OrderFailedInFork]),
     Subtype(deriveCodec[OrderCancelMarked]),
     Subtype(OrderCancelled),
-    Subtype(deriveCodec[OrderTransferredToAgent]),
-    Subtype(OrderTransferredToController),
     Subtype(deriveCodec[OrderAttached]),
     Subtype(deriveCodec[OrderAttachable]),
+    Subtype(deriveCodec[OrderAttachedToAgent]),
     Subtype(OrderDetachable),
+    Subtype(OrderDetachedFromAgent),
     Subtype(OrderDetached),
     Subtype(deriveCodec[OrderBroken]))
 }

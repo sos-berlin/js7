@@ -40,7 +40,7 @@ object ForkExecutor extends EventInstructionExecutor
   private def checkOrderForked(context: OrderContext, orderForked: KeyedEvent[OrderForked]): KeyedEvent[OrderActorEvent] = {
     val duplicates = orderForked.event.children.map(_.orderId).flatMap(o => context.idToOrder(o).toOption)
     if (duplicates.nonEmpty) {
-      // Internal error, maybe a lost event OrderDetached
+      // Internal error, maybe a lost event OrderDetachedFromAgent
       val problem = Problem.pure(s"Forked OrderIds duplicate existing ${duplicates mkString ", "}")
       scribe.error(problem.toString)
       orderForked.key <-: OrderBroken(problem)  // TODO Invalidate whole toEvent with order.key <-: OrderBroken

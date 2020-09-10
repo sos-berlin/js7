@@ -7,7 +7,7 @@ import js7.common.system.OperatingSystem.isWindows
 import js7.data.agent.AgentRefPath
 import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import js7.data.job.{ExecutablePath, ReturnCode}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.parser.WorkflowParser
 import js7.data.workflow.position.Position
@@ -30,7 +30,7 @@ final class FailTest extends AnyFreeSpec
       Vector(
         OrderAdded(TestWorkflowId),
         OrderAttachable(TestAgentRefPath),
-        OrderTransferredToAgent(TestAgentRefPath),
+        OrderAttached(TestAgentRefPath),
         OrderStarted,
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
@@ -47,7 +47,7 @@ final class FailTest extends AnyFreeSpec
       Vector(
         OrderAdded(TestWorkflowId),
         OrderAttachable(TestAgentRefPath),
-        OrderTransferredToAgent(TestAgentRefPath),
+        OrderAttached(TestAgentRefPath),
         OrderStarted,
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(ReturnCode(3))),

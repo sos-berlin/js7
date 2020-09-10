@@ -68,8 +68,8 @@ final case class Order[+S <: Order.State](
       if (okay) Right(updated) else inapplicable
 
     event match {
-      case _: OrderAdded | _: OrderAttached =>
-        Left(Problem("OrderAdded and OrderAttached events are not handled by the Order itself"))
+      case _: OrderAdded | _: OrderAttachedToAgent =>
+        Left(Problem("OrderAdded and OrderAttachedToAgent events are not handled by the Order itself"))
 
       case OrderStarted =>
         check(isState[Fresh] && !isSuspended && (isDetached || isAttached),
@@ -165,7 +165,7 @@ final case class Order[+S <: Order.State](
         check((isState[Fresh] || isState[Ready] || isState[Forked]) && isDetached,
           copy(attachedState = Some(Attaching(agentRefPath))))
 
-      case OrderTransferredToAgent(agentRefPath) =>
+      case OrderAttached(agentRefPath) =>
         attachedState match {
           case Some(Attaching(`agentRefPath`)) =>
             check((isState[Fresh] || isState[Ready] || isState[Forked]) && isAttaching,
@@ -183,12 +183,7 @@ final case class Order[+S <: Order.State](
             inapplicable
         }
 
-      case OrderDetached =>
-        check(isDetaching && (isState[Fresh] || isState[Ready] || isState[Forked] || isState[ProcessingCancelled] ||
-                              isState[FailedWhileFresh] || isState[Failed] || isState[FailedInFork] || isState[Broken]),
-          copy(attachedState = None))
-
-      case OrderTransferredToController =>
+      case OrderDetached | OrderDetachedFromAgent =>
         check(isDetaching && (isState[Fresh] || isState[Ready] || isState[Forked] || isState[ProcessingCancelled] ||
                               isState[FailedWhileFresh] || isState[Failed] || isState[FailedInFork] || isState[Broken]),
           copy(attachedState = None))
@@ -348,7 +343,7 @@ object Order
     Order(id, event.workflowId, Fresh(event.scheduledFor), event.arguments)
   }
 
-  def fromOrderAttached(id: OrderId, event: OrderAttached): Order[IsFreshOrReady] =
+  def fromOrderAttached(id: OrderId, event: OrderAttachedToAgent): Order[IsFreshOrReady] =
     Order(id, event.workflowPosition, event.state, event.arguments, event.historicOutcomes, Some(Attached(event.agentRefPath)),
       event.parent, event.mark, isSuspended = event.isSuspended)
 

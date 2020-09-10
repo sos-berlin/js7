@@ -9,7 +9,7 @@ import js7.core.command.CommandMeta
 import js7.core.event.GenericEventRoute
 import js7.data.controller.ControllerId
 import js7.data.event.{Event, KeyedEvent}
-import js7.data.order.OrderEvent.OrderDetached
+import js7.data.order.OrderEvent.OrderDetachedFromAgent
 
 /**
   * @author Joacim Zschimmer
@@ -28,6 +28,6 @@ trait ControllersEventRoute extends AgentRouteProvider with GenericEventRoute
     def eventWatchFor(user: SimpleUser) = agentApi(CommandMeta(user)).eventWatchForController(ControllerId.fromUserId(user.id))
 
     override def isRelevantEvent(keyedEvent: KeyedEvent[Event]) =
-      keyedEvent.event != OrderDetached  // Controller knows about detached order by successful executed AgentCommand.DetachOrder
+      keyedEvent.event != OrderDetachedFromAgent  // Controller knows about detached order by successful executed AgentCommand.DetachOrder
   }
 }

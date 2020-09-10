@@ -16,7 +16,7 @@ import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.item.RepoEvent.ItemAdded
 import js7.data.item.{UpdateRepoOperation, VersionId}
 import js7.data.job.{ExecutablePath, ReturnCode}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTerminated, OrderTransferredToAgent, OrderTransferredToController}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTerminated, OrderAttached, OrderDetached}
 import js7.data.order.Outcome.Succeeded
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
 import js7.data.workflow.position.Position
@@ -115,14 +115,14 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with Controll
           .map(_ -> List[OrderEvent](
             OrderAdded(workflow.path ~ versionId),
             OrderAttachable(agentRefPath),
-            OrderTransferredToAgent(agentRefPath),
+            OrderAttached(agentRefPath),
             OrderStarted,
             OrderProcessingStarted,
             OrderStdoutWritten("TEST ☘\n"),
             OrderProcessed(Succeeded(ReturnCode(0))),
             OrderMoved(Position(1)),
             OrderDetachable,
-            OrderTransferredToController,
+            OrderDetached,
             OrderFinished))
           .toMap)
     }

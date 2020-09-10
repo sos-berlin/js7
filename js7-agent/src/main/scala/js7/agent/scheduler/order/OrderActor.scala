@@ -83,7 +83,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
         case Command.Attach(attached @ Order(`orderId`, wfPos, state: Order.IsFreshOrReady,
         arguments, historicOutcomes, Some(Order.Attached(agentRefPath)), parent, mark, isSuspended)) =>
           becomeAsStateOf(attached, force = true)
-          persist(OrderAttached(wfPos, state, arguments, historicOutcomes, agentRefPath, parent, mark, isSuspended = isSuspended)) {
+          persist(OrderAttachedToAgent(wfPos, state, arguments, historicOutcomes, agentRefPath, parent, mark, isSuspended = isSuspended)) {
             (event, updatedState) =>
               update(event :: Nil, updatedState)
               Completed
@@ -269,8 +269,8 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
   private def update(events: Seq[OrderEvent], updatedState: AgentState) = {
     events foreach updateOrder
     context.parent ! Output.OrderChanged(order, events)
-    if (events.last == OrderDetached) {
-      logger.trace("Stopping after OrderDetached")
+    if (events.last == OrderDetachedFromAgent) {
+      logger.trace("Stopping after OrderDetachedFromAgent")
       order = null
       context.stop(self)
     }
@@ -278,7 +278,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
 
   private def updateOrder(event: OrderEvent) = {
     order = event match {
-      case event: OrderAttached =>
+      case event: OrderAttachedToAgent =>
         Order.fromOrderAttached(orderId, event)
 
       case _: OrderStdWritten =>

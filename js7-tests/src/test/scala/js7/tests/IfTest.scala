@@ -7,7 +7,7 @@ import js7.common.system.OperatingSystem.isWindows
 import js7.data.agent.AgentRefPath
 import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import js7.data.job.{ExecutablePath, ReturnCode}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent, OrderTransferredToController}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderAttached, OrderDetached}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.parser.WorkflowParser
@@ -91,7 +91,7 @@ object IfTest {
       OrderAdded(TestWorkflow.id, None, Map("ARG" -> "ARG-VALUE", "RETURN_CODE" -> "0")),
       OrderMoved(Position(0) / Then % 0 / Then % 0),
       OrderAttachable(TestAgentRefPath),
-      OrderTransferredToAgent(TestAgentRefPath),
+      OrderAttached(TestAgentRefPath),
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(Outcome.Succeeded(ReturnCode(0), Map("JOB-KEY" -> "JOB-RESULT"))),
@@ -103,13 +103,13 @@ object IfTest {
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(3)),
       OrderDetachable,
-      OrderTransferredToController,
+      OrderDetached,
       OrderFinished),
     ReturnCode(1) -> Vector(
       OrderAdded(TestWorkflow.id, None, Map("ARG" -> "ARG-VALUE", "RETURN_CODE" -> "1")),
       OrderMoved(Position(0) / Then % 0 / Then % 0),
       OrderAttachable(TestAgentRefPath),
-      OrderTransferredToAgent(TestAgentRefPath),
+      OrderAttached(TestAgentRefPath),
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(Outcome.Succeeded(ReturnCode(1), Map("JOB-KEY" -> "JOB-RESULT"))),
@@ -121,13 +121,13 @@ object IfTest {
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(3)),
       OrderDetachable,
-      OrderTransferredToController,
+      OrderDetached,
       OrderFinished),
     ReturnCode(2) ->  Vector(
       OrderAdded(TestWorkflow.id, None, Map("ARG" -> "ARG-VALUE", "RETURN_CODE" -> "2")),
       OrderMoved(Position(0) / Then % 0 / Then % 0),
       OrderAttachable(TestAgentRefPath),
-      OrderTransferredToAgent(TestAgentRefPath),
+      OrderAttached(TestAgentRefPath),
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(Outcome.Failed(ReturnCode(2), Map("JOB-KEY" -> "JOB-RESULT"))),

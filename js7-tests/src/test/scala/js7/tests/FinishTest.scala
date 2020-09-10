@@ -6,7 +6,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.data.agent.AgentRefPath
 import js7.data.event.{EventSeq, KeyedEvent}
 import js7.data.job.{ExecutablePath, ReturnCode}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToController}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderAttached, OrderDetached}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.Fork
@@ -32,13 +32,13 @@ final class FinishTest extends AnyFreeSpec
       Vector(
         OrderAdded(TestWorkflowId),
         OrderAttachable(TestAgentRefPath),
-        OrderTransferredToAgent(TestAgentRefPath),
+        OrderAttached(TestAgentRefPath),
         OrderStarted,
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
         OrderMoved(Position(1)),
         OrderDetachable,
-        OrderTransferredToController,
+        OrderDetached,
         OrderFinished))
   }
 
@@ -73,23 +73,23 @@ final class FinishTest extends AnyFreeSpec
     assert(events.filter(_.key == orderId / "🥕").map(_.event) ==
       Vector(
         OrderAttachable(TestAgentRefPath),
-        OrderTransferredToAgent(TestAgentRefPath),
+        OrderAttached(TestAgentRefPath),
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
         OrderMoved(Position(0) / "fork+🥕" % 1 / Then % 0),  // Position of Finish
         OrderDetachable,
-        OrderTransferredToController,
+        OrderDetached,
         OrderMoved(Position(0) / "fork+🥕" % 3)))    // Moved to end
 
     assert(events.filter(_.key == orderId / "🍋").map(_.event) ==
       Vector(
         OrderAttachable(TestAgentRefPath),
-        OrderTransferredToAgent(TestAgentRefPath),
+        OrderAttached(TestAgentRefPath),
         OrderProcessingStarted,
         OrderProcessed(Outcome.succeeded),
         OrderMoved(Position(0) / "fork+🍋" % 1),
         OrderDetachable,
-        OrderTransferredToController))
+        OrderDetached))
   }
 
   "finish in fork, succeed first" in {
@@ -123,23 +123,23 @@ final class FinishTest extends AnyFreeSpec
     assert(events.filter(_.key == orderId / "🥕").map(_.event) ==
       Vector(
         OrderAttachable(TestAgentRefPath),
-        OrderTransferredToAgent(TestAgentRefPath),
+        OrderAttached(TestAgentRefPath),
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
         OrderMoved(Position(0) / "fork+🥕" % 1 / Then % 0),  // Position of Finish
         OrderDetachable,
-        OrderTransferredToController,
+        OrderDetached,
         OrderMoved(Position(0) / "fork+🥕" % 3)))  // Moved to end
 
     assert(events.filter(_.key == orderId / "🍋").map(_.event) ==
       Vector(
         OrderAttachable(TestAgentRefPath),
-        OrderTransferredToAgent(TestAgentRefPath),
+        OrderAttached(TestAgentRefPath),
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
         OrderMoved(Position(0) / "fork+🍋" % 1),
         OrderDetachable,
-        OrderTransferredToController))
+        OrderDetached))
   }
 
 

@@ -9,7 +9,7 @@ import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
 import js7.core.common.ActorRegister
 import js7.data.event.KeyedEvent
-import js7.data.order.OrderEvent.OrderDetached
+import js7.data.order.OrderEvent.OrderDetachedFromAgent
 import js7.data.order.{Order, OrderId}
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -27,7 +27,7 @@ private[order] final class OrderRegister extends ActorRegister[OrderId, OrderEnt
     orderEntry
   }
 
-  def handleOrderDetached(keyedEvent: KeyedEvent[OrderDetached]): Unit = {
+  def handleOrderDetached(keyedEvent: KeyedEvent[OrderDetachedFromAgent]): Unit = {
     this -= keyedEvent.key
   }
 

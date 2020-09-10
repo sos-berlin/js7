@@ -23,7 +23,7 @@ import js7.data.event.{<-:, Event, EventId, KeyedEvent, Stamped}
 import js7.data.item.RepoEvent.{ItemAdded, VersionAdded}
 import js7.data.item.{RepoEvent, VersionId}
 import js7.data.job.ExecutablePath
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToController}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderAttached, OrderDetached}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -169,7 +169,7 @@ private object RecoveryTest {
   private val ExpectedOrderEvents = Vector(
     OrderAdded(TestWorkflow.id, None, Map.empty),
     OrderAttachable(AgentRefPaths(0)),
-    OrderTransferredToAgent(AgentRefPaths(0)),
+    OrderAttached(AgentRefPaths(0)),
     OrderStarted,
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
@@ -184,9 +184,9 @@ private object RecoveryTest {
     OrderProcessed(Outcome.Succeeded(Map("result" -> "SCRIPT-VARIABLE-VALUE-agent-111"))),
     OrderMoved(Position(3)),
     OrderDetachable,
-    OrderTransferredToController,
+    OrderDetached,
     OrderAttachable(AgentRefPaths(1)),
-    OrderTransferredToAgent(AgentRefPaths(1)),
+    OrderAttached(AgentRefPaths(1)),
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
     OrderProcessed(Outcome.Succeeded(Map("result" -> "SCRIPT-VARIABLE-VALUE-agent-222"))),
@@ -196,7 +196,7 @@ private object RecoveryTest {
     OrderProcessed(Outcome.Succeeded(Map("result" -> "SCRIPT-VARIABLE-VALUE-agent-222"))),
     OrderMoved(Position(5)),
     OrderDetachable,
-    OrderTransferredToController,
+    OrderDetached,
     OrderFinished)
 
   /** Deletes restart sequences to make event sequence comparable with ExpectedOrderEvents. */

@@ -56,14 +56,14 @@ extends JournaledState[AgentState]
 
   private def applyOrderEvent(orderId: OrderId, event: OrderEvent) =
     event match {
-      case event: OrderEvent.OrderAttached =>
+      case event: OrderEvent.OrderAttachedToAgent =>
         if (idToOrder.contains(orderId))
           Left(Problem.pure(s"Duplicate order attached: $orderId"))
         else
           Right(copy(
             idToOrder = idToOrder + (orderId -> Order.fromOrderAttached(orderId, event))))
 
-      case OrderEvent.OrderDetached =>
+      case OrderEvent.OrderDetachedFromAgent =>
         Right(copy(
           idToOrder = idToOrder - orderId))
 
