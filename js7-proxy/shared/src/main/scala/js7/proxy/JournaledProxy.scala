@@ -164,12 +164,13 @@ object JournaledProxy
                   }
               }))
 
-    def isTorn(t: Throwable) = checkedCast[ProblemException](t).exists(_.problem is EventSeqTornProblem)
+    def isTorn(t: Throwable) =
+      fromEventId.isEmpty && checkedCast[ProblemException](t).exists(_.problem is EventSeqTornProblem)
 
     def observeWithState(api: Api[S], state: S, stateFetchDuration: FiniteDuration): Observable[EventAndState[Event, S]] = {
       val seed = EventAndState(Stamped(state.eventId, ProxyStarted: AnyKeyedEvent), state, state)
       val recouplingStreamReader = new MyRecouplingStreamReader(onProxyEvent, stateFetchDuration,
-        tornOlder = fromEventId.flatMap(_ => proxyConf.tornOlder))
+        tornOlder = (fromEventId.isEmpty ? proxyConf.tornOlder).flatten)
       recouplingStreamReader.observe(api, after = state.eventId)
         .guarantee(recouplingStreamReader.decouple.map(_ => ()))
         .scan0(seed)((s, stampedEvent) =>
