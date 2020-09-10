@@ -1,5 +1,6 @@
 package js7.base.utils
 
+import cats.syntax.option._
 import cats.{Functor, Monad}
 import java.io.{ByteArrayInputStream, InputStream, PrintWriter, StringWriter}
 import java.nio.charset.StandardCharsets.UTF_8
@@ -38,6 +39,15 @@ object ScalaUtils
         F.flatMap(underlying) {
           case Left(left) => F.pure(Left(left))
           case Right(right) => f(right)
+        }
+    }
+
+    /** orElse inside a F[Option]. */
+    implicit final class RichOptionT[F[_], A](private val underlying: F[Option[A]]) extends AnyVal {
+      def orElseT(alternative: => F[Option[A]])(implicit F: Monad[F]): F[Option[A]] =
+        F.flatMap(underlying) {
+          case None => alternative
+          case Some(a) => F.pure(a.some)
         }
     }
 

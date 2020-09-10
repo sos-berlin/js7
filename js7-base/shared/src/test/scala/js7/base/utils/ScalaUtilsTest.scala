@@ -1,5 +1,6 @@
 package js7.base.utils
 
+import cats.instances.either._
 import cats.instances.option._
 import cats.syntax.option._
 import java.util.concurrent.atomic.AtomicBoolean
@@ -46,6 +47,21 @@ final class ScalaUtilsTest extends AnyFreeSpec
 
         // flatMapT with Option[Either[String, Nothing]] does not compile:
         //assert((Some(Left("A")): Option[Either[String, Nothing]]).flatMapT(_ => nothing) == Some(Left("A")))
+      }
+
+      "orElseT" in {
+        type E = Either[String, Option[Int]]
+        assert((Left("A"): E).orElseT(Left("B")) == Left("A"))
+        assert((Left("A"): E).orElseT(Right(None)) == Left("A"))
+        assert((Left("A"): E).orElseT(Right(Some(2))) == Left("A"))
+
+        assert((Right(None): E).orElseT(Left("B")) == Left("B"))
+        assert((Right(None): E).orElseT(Right(None)) == Right(None))
+        assert((Right(None): E).orElseT(Right(Some(2))) == Right(Some(2)))
+
+        assert((Right(Some(1)): E).orElseT(Left("B")) == Right(Some(1)))
+        assert((Right(Some(1)): E).orElseT(Right(None)) == Right(Some(1)))
+        assert((Right(Some(1)): E).orElseT(Right(Some(2))) == Right(Some(1)))
       }
     }
 
