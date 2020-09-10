@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 import js7.base.web.Uri;
 import js7.data.event.Event;
 import js7.data.event.EventId;
@@ -25,7 +27,7 @@ import static js7.proxy.javaapi.data.common.VavrUtils.getOrThrow;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-class JControllerApiHistoryTester
+final class JControllerApiHistoryTester
 {
     static JWorkflowId TestWorkflowId = JWorkflowId.of(WorkflowPath.of("/WORKFLOW"), VersionId.of("INITIAL"));
     static final OrderId TestOrderId = OrderId.of("ORDER");
@@ -54,7 +56,16 @@ class JControllerApiHistoryTester
                         whenOrderFinished.complete(eventAndState);
                     }
                 })
-                .subscribe(history::handleEventAndState);
+                .subscribe(eventAndState -> {
+                    history.handleEventAndState(eventAndState);
+                    try {
+                        // Do this only occassionally, may be one in a quarter hour, to avoid too much events and load:
+                        getOrThrow(
+                            api.releaseEvents(eventAndState.stampedEvent().eventId()).get(99, SECONDS));
+                    } catch (InterruptedException | ExecutionException | TimeoutException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
             try {
                 getOrThrow(api.addOrder(freshOrder).get(99, SECONDS));
                 whenOrderFinished.get(99, SECONDS);

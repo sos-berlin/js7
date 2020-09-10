@@ -6,12 +6,17 @@ import java.util.OptionalLong
 import java.util.concurrent.CompletableFuture
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem
+import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.controller.client.HttpControllerApi
 import js7.controller.data.ControllerCommand
-import js7.data.event.Event
+import js7.controller.data.ControllerCommand.{CancelOrder, ReleaseEvents, ResumeOrder, SuspendOrder}
+import js7.data.command.CancelMode
+import js7.data.event.{Event, EventId}
 import js7.data.item.VersionId
+import js7.data.order.OrderId
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.ProxyEvent
+import js7.proxy.javaapi.data.common.JavaUtils.Void
 import js7.proxy.javaapi.data.common.ReactorConverters._
 import js7.proxy.javaapi.data.common.VavrConverters._
 import js7.proxy.javaapi.data.controller.{JControllerCommand, JEventAndControllerState}
@@ -128,6 +133,24 @@ final class JControllerApi private[js7](
       .map(_.toVoidVavr)
       .runToFuture
       .asJava
+
+  def cancelOrder(orderId: OrderId): CompletableFuture[VEither[Problem, Void]] =
+    execute(CancelOrder(orderId, CancelMode.FreshOrStarted()))
+
+  def suspendOrder(orderId: OrderId): CompletableFuture[VEither[Problem, Void]] =
+    execute(SuspendOrder(orderId))
+
+  def resumeOrder(orderId: OrderId): CompletableFuture[VEither[Problem, Void]] =
+    execute(ResumeOrder(orderId))
+
+  def releaseEvents(until: EventId): CompletableFuture[VEither[Problem, Void]] =
+    execute(ReleaseEvents(until))
+
+  private def execute(command: ControllerCommand): CompletableFuture[VEither[Problem, Void]] =
+    asScala.executeCommand(command)
+      .mapt(_ => Void)
+      .map(_.toVoidVavr)
+      .runToFuture.asJava
 
   def executeCommand(command: JControllerCommand): CompletableFuture[VEither[Problem, ControllerCommand.Response]] =
     asScala.executeCommand(command.asScala)
