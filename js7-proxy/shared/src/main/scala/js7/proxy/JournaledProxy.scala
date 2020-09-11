@@ -146,21 +146,22 @@ object JournaledProxy
                         case o => o
                       }})
                   .map(Right.apply)
-                  .onErrorHandleWith { case t if fromEventId.isEmpty || !isTorn(t) =>
-                    val continueWithState =
-                      if (isTorn(t)) {
-                        scribe.error(t.toStringWithCauses)
-                        scribe.warn("Restarting observation from a new snapshot, loosing some events")
-                        None
-                      } else {
-                        scribe.warn(t.toStringWithCauses)
-                        if (t.getStackTrace.nonEmpty) scribe.debug(t.toStringWithCauses, t.nullIfNoStackTrace)
-                        scribe.debug(s"Restarting observation and try to continue seamlessly after=${EventId.toString(state.eventId)}")
-                        Some(lastState)
-                      }
-                    // TODO Observable.tailRecM: Left leaks memory, https://github.com/monix/monix/issues/791
-                    Observable.pure(Left(continueWithState))
-                      .delayExecution(1.s/*TODO*/)
+                  .onErrorRecoverWith {
+                    case t if fromEventId.isEmpty || !isTorn(t) =>
+                      val continueWithState =
+                        if (isTorn(t)) {
+                          scribe.error(t.toStringWithCauses)
+                          scribe.warn("Restarting observation from a new snapshot, loosing some events")
+                          None
+                        } else {
+                          scribe.warn(t.toStringWithCauses)
+                          if (t.getStackTrace.nonEmpty) scribe.debug(t.toStringWithCauses, t.nullIfNoStackTrace)
+                          scribe.debug(s"Restarting observation and try to continue seamlessly after=${EventId.toString(state.eventId)}")
+                          Some(lastState)
+                        }
+                      // TODO Observable.tailRecM: Left leaks memory, https://github.com/monix/monix/issues/791
+                      Observable.pure(Left(continueWithState))
+                        .delayExecution(1.s/*TODO*/)
                   }
               }))
 
