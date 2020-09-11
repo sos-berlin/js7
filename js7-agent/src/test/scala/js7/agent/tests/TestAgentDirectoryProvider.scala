@@ -10,6 +10,8 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer.syntax.RichClosersAny
 import js7.base.utils.HasCloser
+import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
+import js7.common.message.ProblemCodeMessages
 import js7.common.scalautil.FileUtils._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Logger
@@ -21,6 +23,9 @@ import scala.util.control.NonFatal
 
 trait TestAgentDirectoryProvider extends HasCloser
 {
+  ProblemCodeMessages.initialize()
+  coupleScribeWithSlf4j()
+
   private val signature = SillySignature("MY-SILLY-SIGNATURE")
   final val itemSigner = new InventoryItemSigner(new SillySigner(signature), Workflow.jsonEncoder)
 
