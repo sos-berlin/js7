@@ -6,6 +6,7 @@ import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
 import js7.base.problem.ProblemException
 import js7.base.time.ScalaTime._
+import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils._
 import js7.common.akkautils.ProvideActorSystem
 import js7.common.configutils.Configs.HoconStringInterpolator
@@ -20,14 +21,15 @@ import js7.data.Problems.SnapshotForUnknownEventIdProblem
 import js7.data.agent.AgentRefPath
 import js7.data.event.{EventId, KeyedEvent, Stamped}
 import js7.data.job.ReturnCode
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderAttached, OrderDetached}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
 import js7.data.order.Outcome.Succeeded
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
 import js7.data.workflow.parser.WorkflowParser
 import js7.data.workflow.position.Position
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.event.{EventAndState, ProxyStarted}
-import js7.proxy.javaapi.JControllerApi
+import js7.proxy.javaapi.JProxyContext
+import js7.proxy.javaapi.data.auth.{JAdmission, JHttpsConfig}
 import js7.proxy.{ControllerApi, JournaledProxy}
 import js7.tests.controller.proxy.ClusterProxyTest
 import js7.tests.controller.proxy.history.JControllerApiHistoryTest._
@@ -48,6 +50,7 @@ final class JControllerApiHistoryTest extends AnyFreeSpec with ProvideActorSyste
   override protected val inventoryItems = TestWorkflow :: Nil
   override protected val agentRefPaths = AAgentRefPath :: BAgentRefPath :: Nil
   private val controllerConfig = config"""
+    js7.proxy.event-stream.torn-older = 0s  # Should be irrelevant
     js7.journal.users-allowed-to-release-events = [ "Proxy" ]
     js7.journal.release-events-delay = 0s
     """
@@ -193,9 +196,11 @@ final class JControllerApiHistoryTest extends AnyFreeSpec with ProvideActorSyste
 
   "Java history" in {
     runControllerAndBackup() { (primary, _, _, _) =>
-      val api = new JControllerApi(apiResources, ProxyConf.default)
-      new JControllerApiHistoryTester(api, TestWorkflow.path, primary.agents.map(_.localUri).asJava)
-        .test()
+      autoClosing(new JProxyContext) { context =>
+        val api = context.newControllerApi(admissions.map(JAdmission.apply).asJava, JHttpsConfig.empty)
+        new JControllerApiHistoryTester(api, TestWorkflow.path, primary.agents.map(_.localUri).asJava)
+          .test()
+      }
     }
   }
 }

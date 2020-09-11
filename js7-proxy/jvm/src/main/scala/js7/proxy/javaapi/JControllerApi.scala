@@ -31,7 +31,7 @@ import reactor.core.publisher.Flux
 import scala.jdk.OptionConverters._
 
 @javaApi
-final class JControllerApi private[js7](
+final class JControllerApi private[javaapi](
   apiResources: Seq[Resource[Task, HttpControllerApi]],
   proxyConf: ProxyConf)
   (implicit scheduler: Scheduler)
