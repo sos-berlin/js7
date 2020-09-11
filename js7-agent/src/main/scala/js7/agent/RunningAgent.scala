@@ -129,7 +129,7 @@ object RunningAgent {
       val agentConfiguration = injector.instance[AgentConfiguration]
 
       if (agentConfiguration.scriptInjectionAllowed) logger.info("SIGNED SCRIPT INJECTION IS ALLOWED")
-      StartUp.logStartUp(agentConfiguration.configDirectory, Some(agentConfiguration.dataDirectory))
+      StartUp.logStartUp(Some(agentConfiguration.configDirectory), Some(agentConfiguration.dataDirectory))
 
       val actorSystem = injector.instance[ActorSystem]
       val closer = injector.instance[Closer]

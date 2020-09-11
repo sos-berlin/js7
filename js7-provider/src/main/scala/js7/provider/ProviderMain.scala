@@ -27,7 +27,7 @@ object ProviderMain
     logger.info(s"Provider ${BuildInfo.prettyVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
     runMain {
       val conf = ProviderConfiguration.fromCommandLine(args.toVector)
-      logStartUp(configDir = conf.configDirectory, dataDir = None)
+      logStartUp(configDir = Some(conf.configDirectory))
       val cancelable = Provider.observe(conf).orThrow.onCancelTriggerError foreach { _ => }
       withShutdownHooks(conf.config, "ProviderMain", () => onJavaShutdown(cancelable)) {
         awaitTermination(cancelable)

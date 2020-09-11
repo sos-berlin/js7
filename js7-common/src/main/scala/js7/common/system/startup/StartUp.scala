@@ -20,25 +20,15 @@ object StartUp
   private val logger = Logger(getClass)
   private val classPathLogged = AtomicBoolean(false)
 
-  Halt  // Initialize class and object for maybe quicker emergency stop
+  // Initialize class and object for possibly quicker emergency stop
+  Halt
 
   /** Log Java version, config and data directory, and classpath. */
-  def logStartUp(configDir: Path, dataDir: Option[Path]): Unit = {
-    logger.info(
-      s"Java " + JavaInformations.implementationVersion + " " +
-      "(" + toKiBGiB(sys.runtime.maxMemory) + ") · " +
-      sys.props("os.name") + distributionNameAndVersionOption.fold("")(o => s" ($o)") + " · " +
-      cpuModel.fold("")(o => s"$o ") + "(" + sys.runtime.availableProcessors + " threads)" +
-      totalPhysicalMemory.fold("")(o => " " + toKiBGiB(o)) +
-      " · " +
-      (maybeOwnPid.fold("")(pid => s"pid=${pid.number} ")) +
-      (hostname.nonEmpty ?? s"host=$hostname ") +
-      s"config=$configDir " +
-        dataDir.fold("")("data=".+))
-
+  def logStartUp(configDir: Option[Path] = None, dataDir: Option[Path] = None): Unit = {
+    logger.info(startUpLine(configDir, dataDir))
     if (!classPathLogged.getAndSet(true)) {  // Log only once (for tests running controller and agents in same JVM)
       val paths = sys.props("java.class.path") split File.pathSeparator filter (_.nonEmpty)
-      logger.debug(Logger.Java, s"Classpath contains ${paths.size} libraries:")
+      logger.debug(Logger.Java, s"Classpath contains ${paths.length} libraries:")
       for (o <- paths) {
         logger.debug(Logger.Java, s"Classpath $o")
       }
@@ -46,6 +36,20 @@ object StartUp
     logger.whenTraceEnabled {
       logger.debug("Logger TRACE enabled")
     }
+  }
+
+  /** Log Java version, config and data directory, and classpath. */
+  def startUpLine(configDir: Option[Path] = None, dataDir: Option[Path] = None): String = {
+    s"Java " + JavaInformations.implementationVersion + " " +
+    "(" + toKiBGiB(sys.runtime.maxMemory) + ") · " +
+    sys.props("os.name") + distributionNameAndVersionOption.fold("")(o => s" ($o)") + " · " +
+    cpuModel.fold("")(o => s"$o ") + "(" + sys.runtime.availableProcessors + " threads)" +
+    totalPhysicalMemory.fold("")(o => " " + toKiBGiB(o)) +
+    " · " +
+    maybeOwnPid.fold("")(pid => s"pid=${pid.number} ") +
+    (hostname.nonEmpty ?? s"host=$hostname ") +
+    configDir.fold("")(o => s"config=$o ") +
+    dataDir.fold("")("data=".+)
   }
 
   def printlnWithClockIgnoringException(line: String) =

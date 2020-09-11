@@ -10,8 +10,7 @@ import js7.common.scalautil.Futures.implicits.SuccessFuture
 import js7.common.scalautil.Logger
 import js7.common.system.startup.JavaMain.withShutdownHooks
 import js7.common.system.startup.JavaMainLockfileSupport.lockAndRunMain
-import js7.common.system.startup.StartUp
-import js7.common.system.startup.StartUp.printlnWithClock
+import js7.common.system.startup.StartUp.{logStartUp, printlnWithClock}
 import js7.controller.configuration.ControllerConfiguration
 import monix.execution.Scheduler
 
@@ -28,7 +27,7 @@ final class ControllerMain
     logger.info(s"JS7 JobScheduler Controller ${BuildInfo.prettyVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
     logger.debug(arguments.toString)
     val controllerConfiguration = ControllerConfiguration.fromCommandLine(arguments)
-    StartUp.logStartUp(controllerConfiguration.configDirectory, Some(controllerConfiguration.dataDirectory))
+    logStartUp(Some(controllerConfiguration.configDirectory), Some(controllerConfiguration.dataDirectory))
     logConfig(controllerConfiguration.config)
     var restartInProcess = false
     var terminate = ControllerTermination.Terminate()
