@@ -2,7 +2,7 @@ package js7.controller.data
 
 import js7.base.problem.Checked._
 import js7.base.utils.Collections.implicits._
-import js7.controller.data.agent.{AgentEventIdEvent, AgentSnapshot}
+import js7.controller.data.agent.{AgentEventsObserved, AgentSnapshot}
 import js7.controller.data.events.ControllerAgentEvent.{AgentCouplingFailed, AgentReady, AgentRegisteredController}
 import js7.controller.data.events.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.controller.data.events.{ControllerAgentEvent, ControllerEvent}
@@ -83,7 +83,7 @@ extends JournaledStateBuilder[ControllerState]
         case _: AgentReady | _: AgentCouplingFailed =>
       }
 
-    case Stamped(_, _, KeyedEvent(a: AgentRefPath, AgentEventIdEvent(agentEventId))) =>
+    case Stamped(_, _, KeyedEvent(a: AgentRefPath, AgentEventsObserved(agentEventId))) =>
       // Preceding AgentSnapshot is required (see recoverSnapshot)
       pathToAgent(a) = pathToAgent(a).copy(eventId = agentEventId)
 

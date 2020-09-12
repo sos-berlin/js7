@@ -4,7 +4,7 @@ import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax._
-import js7.controller.data.agent.{AgentEventIdEvent, AgentSnapshot}
+import js7.controller.data.agent.{AgentEventsObserved, AgentSnapshot}
 import js7.controller.data.events.ControllerAgentEvent.{AgentCouplingFailed, AgentReady, AgentRegisteredController}
 import js7.controller.data.events.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.controller.data.events.{ControllerAgentEvent, ControllerEvent}
@@ -85,7 +85,7 @@ extends JournaledState[ControllerState]
           Right(this)
       }
 
-    case KeyedEvent(a: AgentRefPath, AgentEventIdEvent(agentEventId)) =>
+    case KeyedEvent(a: AgentRefPath, AgentEventsObserved(agentEventId)) =>
       // Preceding AgentSnapshot is required (see recoverSnapshot)
       for (o <- pathToAgentSnapshot.checked(a)) yield
         copy(pathToAgentSnapshot = pathToAgentSnapshot + (a -> o.copy(eventId = agentEventId)))
@@ -187,6 +187,6 @@ object ControllerState extends JournaledState.Companion[ControllerState]
       KeyedSubtype[ClusterEvent],
       KeyedSubtype[ControllerAgentEvent],
       KeyedSubtype[OrderEvent],
-      KeyedSubtype.singleEvent[AgentEventIdEvent])
+      KeyedSubtype.singleEvent[AgentEventsObserved])
   }
 }

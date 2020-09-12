@@ -36,13 +36,12 @@ import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.system.OperatingSystem.operatingSystem
 import js7.common.time.WaitForCondition
-import js7.controller.data.agent.AgentEventIdEvent
 import js7.controller.data.events.ControllerAgentEvent
 import js7.controller.data.events.ControllerAgentEvent.AgentRegisteredController
 import js7.controller.data.events.ControllerEvent.ControllerReady
 import js7.controller.data.{ControllerMetaState, ControllerState}
 import js7.data.agent.AgentRefPath
-import js7.data.event.{<-:, Event, EventId, KeyedEvent}
+import js7.data.event.{<-:, Event, KeyedEvent}
 import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.{OrderFinished, OrderMoved, OrderProcessed}
 import js7.data.order.{FreshOrder, OrderId}
@@ -716,7 +715,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         (obj("TYPE") == Json.fromString("AgentReady") || obj("TYPE") == Json.fromString("AgentRegisteredController")) &&
             json.as[KeyedEvent[ControllerAgentEvent]].orThrow.key != TestAgentRefPath || // Let through only Events for one AgentRef, because ordering is undefined
           obj("TYPE") == Json.fromString("AgentCouplingFailed") ||
-          obj("TYPE") == Json.fromString("AgentEventIdEvent")
+          obj("TYPE") == Json.fromString("AgentEventsObserved")
       }
       val eventIds = Iterator.from(1001)
       def changeEvent(json: Json): Json = {
