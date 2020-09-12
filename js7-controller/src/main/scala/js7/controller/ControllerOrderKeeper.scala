@@ -31,11 +31,12 @@ import js7.common.configutils.Configs.ConvertibleConfig
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.Logger
 import js7.common.scalautil.Logger.ops._
+import js7.common.time.JavaTimeConverters.AsScalaDuration
 import js7.controller.ControllerOrderKeeper._
 import js7.controller.agent.{AgentDriver, AgentDriverConfiguration}
 import js7.controller.cluster.Cluster
 import js7.controller.configuration.ControllerConfiguration
-import js7.controller.data.agent.{AgentEventIdEvent, AgentSnapshot}
+import js7.controller.data.agent.{AgentEventsObserved, AgentSnapshot}
 import js7.controller.data.events.ControllerAgentEvent.AgentReady
 import js7.controller.data.events.ControllerEvent
 import js7.controller.data.events.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
@@ -108,6 +109,7 @@ with MainJournalingActor[ControllerState, Event]
   private var journalTerminated = false
 
   private object shutdown {
+    var delayUntil = now
     val since = SetOnce[Deadline]
     private val shutDown = SetOnce[ControllerCommand.ShutDown]
     private val stillShuttingDownCancelable = SerialCancelable()
@@ -480,11 +482,11 @@ with MainJournalingActor[ControllerState, Event]
       completedPromise.completeWith(
       if (timestampedEvents.isEmpty)
         // timestampedEvents may be empty if it contains only discarded (Agent-only) events.
-        // Agent's last observed EventId is not persisted then and we do not write an AgentEventIdEvent.
-        // For tests, this makes the journal predictable after OrderFinished (because no AgentEventIdEvent may follow).
+        // Agent's last observed EventId is not persisted then and we do not write an AgentEventsObserved.
+        // For tests, this makes the journal predictable after OrderFinished (because no AgentEventsObserved may follow).
         Future.successful(Completed)
       else {
-        timestampedEvents :+= Timestamped(agentRefPath <-: AgentEventIdEvent(lastAgentEventId.get))
+        timestampedEvents :+= Timestamped(agentRefPath <-: AgentEventsObserved(lastAgentEventId.get))
         persistTransactionTimestamped(timestampedEvents, async = true, alreadyDelayed = agentDriverConfiguration.eventBufferDelay) {
           (stampedEvents, updatedState) =>
             handleOrderEvents(
@@ -518,6 +520,7 @@ with MainJournalingActor[ControllerState, Event]
       shutdown.onSnapshotTaken()
 
     case Internal.ShutDown(shutDown) =>
+      shutdown.delayUntil = now + config.getDuration("js7.web.server.delay-shutdown").toFiniteDuration
       shutdown.start(shutDown)
 
     case Internal.StillShuttingDown =>
@@ -526,6 +529,11 @@ with MainJournalingActor[ControllerState, Event]
     case Terminated(a) if agentRegister contains a =>
       agentRegister(a).actorTerminated = true
       if (switchover.isDefined && journalTerminated && agentRegister.runningActorCount == 0) {
+        val delay = shutdown.delayUntil.timeLeft
+        if (delay > 0.s) {
+          logger.debug(s"Sleep ${delay.pretty} after ShutDown command")
+          sleep(delay)
+        }
         context.stop(self)
       } else {
         shutdown.continue()
