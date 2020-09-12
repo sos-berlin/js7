@@ -183,7 +183,7 @@ final case class Order[+S <: Order.State](
             inapplicable
         }
 
-      case OrderDetached | OrderDetachedFromAgent =>
+      case OrderDetached =>
         check(isDetaching && (isState[Fresh] || isState[Ready] || isState[Forked] || isState[ProcessingCancelled] ||
                               isState[FailedWhileFresh] || isState[Failed] || isState[FailedInFork] || isState[Broken]),
           copy(attachedState = None))

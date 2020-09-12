@@ -269,8 +269,8 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
   private def update(events: Seq[OrderEvent], updatedState: AgentState) = {
     events foreach updateOrder
     context.parent ! Output.OrderChanged(order, events)
-    if (events.last == OrderDetachedFromAgent) {
-      logger.trace("Stopping after OrderDetachedFromAgent")
+    if (events.last == OrderDetached) {
+      logger.trace("Stopping after OrderDetached")
       order = null
       context.stop(self)
     }

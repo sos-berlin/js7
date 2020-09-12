@@ -64,10 +64,6 @@ object OrderEvent {
   final case class OrderAttached(agentRefPath: AgentRefPath)
   extends OrderCoreEvent
 
-  type OrderDetached = OrderDetached.type
-  case object OrderDetached
-  extends OrderCoreEvent
-
   type OrderStarted = OrderStarted.type
   case object OrderStarted extends OrderActorEvent
 
@@ -163,12 +159,12 @@ object OrderEvent {
     */
   case object OrderDetachable extends OrderActorEvent
 
-  type OrderDetachedFromAgent = OrderDetachedFromAgent.type
+  type OrderDetached = OrderDetached.type
   /**
     * Order has been removed from the Agent and is held by the Controller.
     * Agent-only event.
     */
-  case object OrderDetachedFromAgent extends OrderCoreEvent
+  case object OrderDetached extends OrderCoreEvent
 
   type OrderFinished = OrderFinished.type
   case object OrderFinished extends OrderActorEvent with OrderTerminated
@@ -223,7 +219,6 @@ object OrderEvent {
     Subtype(deriveCodec[OrderAttachable]),
     Subtype(deriveCodec[OrderAttachedToAgent]),
     Subtype(OrderDetachable),
-    Subtype(OrderDetachedFromAgent),
     Subtype(OrderDetached),
     Subtype(deriveCodec[OrderBroken]))
 }

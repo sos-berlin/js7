@@ -33,7 +33,7 @@ import js7.data.agent.AgentRefPath
 import js7.data.event.{EventRequest, KeyedEvent, Stamped}
 import js7.data.item.VersionId
 import js7.data.job.{ExecutablePath, JobKey}
-import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetachable, OrderDetachedFromAgent, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
+import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetachable, OrderDetached, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
 import js7.data.system.{Stderr, Stdout, StdoutOrStderr}
 import js7.data.workflow.WorkflowPath
@@ -122,7 +122,7 @@ private object OrderActorTest {
     OrderProcessed(Outcome.Succeeded(Map("result" -> "TEST-RESULT-FROM-JOB"))),
     OrderMoved(TestPosition),
     OrderDetachable,
-    OrderDetachedFromAgent)
+    OrderDetached)
   private val Nl = System.lineSeparator
 
   private val TestScript =
@@ -251,10 +251,10 @@ private object OrderActorTest {
 
           case OrderDetachable =>
             events += event
-            (orderActor ? OrderActor.Command.HandleEvent(OrderDetachedFromAgent)).mapTo[Completed] map { _ => self ! "DETACHED" }
+            (orderActor ? OrderActor.Command.HandleEvent(OrderDetached)).mapTo[Completed] map { _ => self ! "DETACHED" }
             become(detaching)
 
-          case OrderDetachedFromAgent =>
+          case OrderDetached =>
             events += event
             checkTermination()
 
@@ -264,7 +264,7 @@ private object OrderActorTest {
       }
 
     private def checkTermination(): Unit =
-      if (orderDetached && orderActorTerminated && events.lastOption.contains(OrderDetachedFromAgent) && orderChangeds.lastOption.map(_.events.last).contains(OrderDetachedFromAgent)) {
+      if (orderDetached && orderActorTerminated && events.lastOption.contains(OrderDetached) && orderChangeds.lastOption.map(_.events.last).contains(OrderDetached)) {
         assert(events == orderChangeds.map(_.events.last))
         terminatedPromise.success(Result(events.toVector, stdoutStderr.view.mapValues(_.toString).toMap, runningSince.elapsed))
         context.stop(self)

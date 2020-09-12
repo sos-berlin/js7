@@ -6,7 +6,6 @@ import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.time.WaitForCondition.waitForCondition
-import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import js7.controller.data.ControllerCommand.TakeSnapshot
 import js7.data.cluster.ClusterEvent
 import js7.data.order.OrderEvent.OrderFinished

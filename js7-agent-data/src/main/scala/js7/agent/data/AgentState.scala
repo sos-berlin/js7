@@ -63,7 +63,7 @@ extends JournaledState[AgentState]
           Right(copy(
             idToOrder = idToOrder + (orderId -> Order.fromOrderAttached(orderId, event))))
 
-      case OrderEvent.OrderDetachedFromAgent =>
+      case OrderEvent.OrderDetached =>
         Right(copy(
           idToOrder = idToOrder - orderId))
 

@@ -7,6 +7,7 @@ import js7.base.time.ScalaTime._
 import js7.common.configutils.Configs._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.controller.data.events.ControllerAgentEvent.AgentCouplingFailed
+import js7.core.event.journal.files.JournalFiles.listJournalFiles
 import js7.data.agent.AgentRefPath
 import js7.data.event.JournalHeader.JournalIdMismatchProblem
 import js7.data.event.{Event, EventId, JournalHeader, JournalId, KeyedEvent, Stamped}
@@ -33,7 +34,6 @@ final class JournalIdTest extends AnyFreeSpec with DirectoryProviderForScalaTest
   override protected val agentConfig = config"js7.journal.remove-obsolete-files = false"
 
   private lazy val agentStateDir = directoryProvider.agents.head.dataDir / "state"
-  private lazy val firstJournalFile = agentStateDir / "controller-Controller--0.journal"
   private val orderGenerator = Iterator.from(1).map(i => FreshOrder(OrderId(i.toString), TestWorkflow.path))
   private var lastEventId = EventId.BeforeFirst
 
@@ -51,19 +51,18 @@ final class JournalIdTest extends AnyFreeSpec with DirectoryProviderForScalaTest
       }
     }
 
-    val firstJournalFileContent = firstJournalFile.contentString
+    val lastJournalFile = listJournalFiles(agentStateDir / "controller-Controller").last.file
+    val lastJournalFileContent = lastJournalFile.contentString
     locally {
-      val (headerLine, body) = firstJournalFileContent.splitAt(firstJournalFileContent indexOf '\n')
+      val (headerLine, body) = lastJournalFileContent.splitAt(lastJournalFileContent indexOf '\n')
       val header = headerLine.parseJsonCheckedAs[JournalHeader].orThrow
-      firstJournalFile := header.copy(journalId = JournalId.random()).asJson.compactPrint + body
+      lastJournalFile := header.copy(journalId = JournalId.random()).asJson.compactPrint + body
     }
 
     directoryProvider.runAgents() { _ =>
       directoryProvider.runController() { controller =>
         controller.eventWatch.await[AgentCouplingFailed](after = lastEventId, predicate = ke =>
-          ke.key == agentRefPath &&
-            //ke.event.problem.maybeCode.contains(JournalIdMismatchProblem.code))   -- It's thrown as ProblemException
-            ke.event.problem.is(JournalIdMismatchProblem))
+          ke.key == agentRefPath && ke.event.problem.is(JournalIdMismatchProblem))
       }
     }
 

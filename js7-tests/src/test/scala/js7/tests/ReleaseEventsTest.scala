@@ -83,30 +83,30 @@ final class ReleaseEventsTest extends AnyFreeSpec with DirectoryProviderForScala
 
       locally {
         val x = newApi(controller, xUserAndPassword)
-        val result = x.httpClient.liftProblem(x.executeCommand(ReleaseEvents(finished.head.eventId))).await(99.s)
+        val result = x.httpClient.liftProblem(x.executeCommand(ReleaseEvents(controller.eventWatch.lastAddedEventId))).await(99.s)
         assert(result.left.toOption.exists(_ is UserIsNotEnabledToReleaseEventsProblem))
       }
 
-      a.executeCommand(ReleaseEvents(finished.head.eventId)).await(99.s)
+      a.executeCommand(ReleaseEvents(controller.eventWatch.lastAddedEventId)).await(99.s)
       assertControllerJournalFileCount(3)
 
-      b.executeCommand(ReleaseEvents(finished.head.eventId)).await(99.s)
-      assertControllerJournalFileCount(2)
+      b.executeCommand(ReleaseEvents(controller.eventWatch.lastAddedEventId)).await(99.s)
+      assertControllerJournalFileCount(1)
 
       // Controller sends ReleaseEvents after some events from Agent have arrived. So we start an order.
       controller.executeCommandAsSystemUser(TakeSnapshot).await(99.s).orThrow
       val bAdded = controller.runOrder(bOrder).head.eventId
-      assertControllerJournalFileCount(3)
+      assertControllerJournalFileCount(2)
 
       controller.executeCommandAsSystemUser(TakeSnapshot).await(99.s).orThrow
-      assertControllerJournalFileCount(4)
+      assertControllerJournalFileCount(3)
 
       controller.runOrder(cOrder)
       controller.executeCommandAsSystemUser(TakeSnapshot).await(99.s).orThrow
-      assertControllerJournalFileCount(5)
+      assertControllerJournalFileCount(4)
 
       b.executeCommand(ReleaseEvents(bAdded)).await(99.s)
-      assertControllerJournalFileCount(5)
+      assertControllerJournalFileCount(4)
 
       a.executeCommand(ReleaseEvents(lastFileTornEventId)).await(99.s)
       assertControllerJournalFileCount(3)

@@ -12,7 +12,7 @@ import js7.data.agent.AgentRefPath
 import js7.data.command.CancelMode
 import js7.data.job.ReturnCode
 import js7.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Cancelled, DelayedAfterError, Detaching, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, IsFreshOrReady, Offering, Processed, Processing, ProcessingCancelled, Ready, State}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttachedToAgent, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetachedFromAgent, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingCancelled, OrderProcessingStarted, OrderResumeMarked, OrderResumed, OrderRetrying, OrderStarted, OrderSuspendMarked, OrderSuspended, OrderAttached, OrderDetached}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingCancelled, OrderProcessingStarted, OrderResumeMarked, OrderResumed, OrderRetrying, OrderStarted, OrderSuspendMarked, OrderSuspended}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.Fork
 import js7.data.workflow.position.BranchId.Then
@@ -270,7 +270,7 @@ final class OrderTest extends AnyFreeSpec
       OrderBroken(Problem("Problem")),
 
       OrderDetachable,
-      OrderDetachedFromAgent,
+      OrderDetached,
       OrderDetached
     )
 
@@ -470,7 +470,7 @@ final class OrderTest extends AnyFreeSpec
         assert(order.update(OrderAttachable(agentRefPath)) == Right(order.copy(attachedState = Some(Attaching(agentRefPath)))))
         assert(order.update(OrderAttached(agentRefPath)).isLeft)
         assert(order.update(OrderDetachable).isLeft)
-        assert(order.update(OrderDetachedFromAgent).isLeft)
+        assert(order.update(OrderDetached).isLeft)
         assert(order.update(OrderDetached).isLeft)
       }
 
@@ -480,7 +480,7 @@ final class OrderTest extends AnyFreeSpec
         assert(order.update(OrderAttached(agentRefPath)) == Right(order.copy(attachedState = Some(Attached(agentRefPath)))))
         assert(order.update(OrderAttached(AgentRefPath("/OTHER"))).isLeft)
         assert(order.update(OrderDetachable).isLeft)
-        assert(order.update(OrderDetachedFromAgent).isLeft)
+        assert(order.update(OrderDetached).isLeft)
         assert(order.update(OrderDetached).isLeft)
       }
 
@@ -490,7 +490,7 @@ final class OrderTest extends AnyFreeSpec
         assert(order.update(OrderAttached(agentRefPath)).isLeft)
         assert(order.update(OrderAttached(AgentRefPath("/OTHER"))).isLeft)
         assert(order.update(OrderDetachable) == Right(order.copy(attachedState = Some(Detaching(agentRefPath)))))
-        assert(order.update(OrderDetachedFromAgent).isLeft)
+        assert(order.update(OrderDetached).isLeft)
         assert(order.update(OrderDetached).isLeft)
       }
 
@@ -500,7 +500,7 @@ final class OrderTest extends AnyFreeSpec
         assert(order.update(OrderAttached(agentRefPath)).isLeft)
         assert(order.update(OrderAttached(AgentRefPath("/OTHER"))).isLeft)
         assert(order.update(OrderDetachable).isLeft)
-        assert(order.update(OrderDetachedFromAgent) == Right(order.copy(attachedState = None)))
+        assert(order.update(OrderDetached) == Right(order.copy(attachedState = None)))
         assert(order.update(OrderDetached) == Right(order.copy(attachedState = None)))
       }
     }
@@ -526,9 +526,8 @@ final class OrderTest extends AnyFreeSpec
     }
 
     def detachingAllowed[S <: Order.State: ClassTag]: ToPredicate = {
-      case (OrderDetachable       , _, IsAttached ) => implicitClass[S] isAssignableFrom _.getClass
-      case (OrderDetachedFromAgent, _, IsDetaching) => implicitClass[S] isAssignableFrom _.getClass
-      case (OrderDetached         , _, IsDetaching) => implicitClass[S] isAssignableFrom _.getClass
+      case (OrderDetachable, _, IsAttached ) => implicitClass[S] isAssignableFrom _.getClass
+      case (OrderDetached  , _, IsDetaching) => implicitClass[S] isAssignableFrom _.getClass
     }
 
     /** Checks each event in `allEvents`. */

@@ -165,7 +165,7 @@ final class FatEventRouteTest extends AnyFreeSpec with RouteTester with FatEvent
       assert(getFatEventSeq("/fatEvent?after=201") == EventSeq.Empty(200))
     }
 
-    "/fatEvent?after=193, intermediate event added (OrderDetachedFromAgent), with timeout" in {
+    "/fatEvent?after=193, intermediate event added (OrderDetached), with timeout" in {
       val runningSince = now
       assert(getFatEventSeq("/fatEvent?after=193&timeout=0.1") == EventSeq.Empty(200))
       assert(runningSince.elapsed >= 100.millis)

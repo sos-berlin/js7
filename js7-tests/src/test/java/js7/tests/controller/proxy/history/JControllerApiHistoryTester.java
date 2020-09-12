@@ -45,10 +45,11 @@ final class JControllerApiHistoryTester
     void test() throws Exception {
         try (JStandardEventBus<ProxyEvent> proxyEventBus = new JStandardEventBus<>(ProxyEvent.class)) {
             InMemoryHistory history = new InMemoryHistory();
-            JFreshOrder freshOrder = JFreshOrder.of(TestOrderId, workflowPath, Optional.empty(), ImmutableMap.of("KEY", "VALUE"));
+            JFreshOrder freshOrder = JFreshOrder.of(TestOrderId, workflowPath, Optional.empty(),
+                ImmutableMap.of("KEY", "VALUE"));
             CompletableFuture<JEventAndControllerState<Event>> whenOrderFinished = new CompletableFuture<>();
-
-            Disposable firstSubscription = api.eventFlux(proxyEventBus, OptionalLong.of(EventId.BeforeFirst()))
+            CompletableFuture<Boolean/*not used*/> whenFirstFluxTerminated = api
+                .eventFlux(proxyEventBus, OptionalLong.of(EventId.BeforeFirst()))
                 .doOnNext(eventAndState -> {
                     // OrderFinished terminates this test
                     if(eventAndState.stampedEvent().value().event() instanceof OrderFinished$ &&
@@ -56,7 +57,7 @@ final class JControllerApiHistoryTester
                         whenOrderFinished.complete(eventAndState);
                     }
                 })
-                .subscribe(eventAndState -> {
+                .doOnNext(eventAndState -> {
                     history.handleEventAndState(eventAndState);
                     try {
                         // Do this only occassionally, may be one in a quarter hour, to avoid too much events and load:
@@ -65,13 +66,17 @@ final class JControllerApiHistoryTester
                     } catch (InterruptedException | ExecutionException | TimeoutException e) {
                         throw new RuntimeException(e);
                     }
-                });
+                })
+                .map(o -> true)
+                .last(true)
+                .toFuture();
             try {
                 getOrThrow(api.addOrder(freshOrder).get(99, SECONDS));
                 whenOrderFinished.get(99, SECONDS);
             } finally {
-                firstSubscription.dispose();
+                whenFirstFluxTerminated.cancel(false);
             }
+            // Throws CancellationException due to cancel(): whenFirstFluxTerminated.get(99, SECONDS);
             assertThat(history.idToOrderEntry(), equalTo(InMemoryHistory.expectedIdToOrderEntry(agentUris)));
 
             // A second call with same EventId returns equal JEventAndControllerState

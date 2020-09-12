@@ -3,8 +3,10 @@ package js7.tests
 import java.nio.file.Files.{delete, move}
 import java.nio.file.Paths
 import js7.base.time.ScalaTime._
+import js7.common.configutils.Configs.HoconStringInterpolator
 import js7.common.scalautil.FileUtils.syntax._
 import js7.controller.data.events.ControllerAgentEvent.AgentCouplingFailed
+import js7.core.event.journal.files.JournalFiles.listJournalFiles
 import js7.data.agent.AgentRefPath
 import js7.data.event.{Event, EventId, KeyedEvent, Stamped}
 import js7.data.job.ExecutablePath
@@ -27,19 +29,25 @@ final class CoupleControllerTest extends AnyFreeSpec with DirectoryProviderForSc
 {
   protected val agentRefPaths = agentRefPath :: Nil
   protected val inventoryItems = TestWorkflow :: Nil
+  override protected def controllerConfig = config"""
+    js7.journal.remove-obsolete-files = false
+    js7.akka.http.connection-pool-shutdown-timeout = 0s
+    """.withFallback(super.controllerConfig)
 
   private lazy val agentStateDir = directoryProvider.agents.head.dataDir / "state"
-  private lazy val firstJournalFile = agentStateDir / "controller-Controller--0.journal"
   private val orderGenerator = Iterator.from(1).map(i => FreshOrder(OrderId(i.toString), TestWorkflow.path))
-  private var lastEventId = EventId.BeforeFirst
 
   override def beforeAll() = {
     super.beforeAll()
     directoryProvider.agents(0).writeExecutable(TestExecutablePath, script(0.s))
   }
 
-  "CoupleController command fails with UnknownEventIdProblem when Agent misses old events" in {
+  // Test does not work reliable.
+  // But ControllersEventRouteTest has an equivalent test.
+  if (false) "CoupleController command fails with UnknownEventIdProblem when Agent misses old events" in {
     directoryProvider.runController() { controller =>
+      val firstJournalFile = agentStateDir / "controller-Controller--0.journal"
+      var lastEventId = EventId.BeforeFirst
       directoryProvider.runAgents() { _ =>
         val order = orderGenerator.next()
         controller.addOrderBlocking(order)
@@ -67,18 +75,22 @@ final class CoupleControllerTest extends AnyFreeSpec with DirectoryProviderForSc
   }
 
   "CoupleController command fails with UnknownEventIdProblem if Agent misses last events" in {
-    directoryProvider.runController() { controller =>
-      // REMOVE NEW AGENTS'S EVENTS THE CONTROLLER HAS ALREADY READ => UnknownEventIdProblem
-      val journalFiles = agentStateDir.directoryContents
-        .map(_.getFileName.toString)
-        .filter(_.startsWith("controller-Controller--"))
-        .sorted
-        .map(agentStateDir / _)
-      for (o <- journalFiles.init) move(o, Paths.get(s"$o-MOVED"))
-      directoryProvider.runAgents() { _ =>
-        controller.eventWatch.await[AgentCouplingFailed](after = controller.eventWatch.lastFileTornEventId, predicate =
-          ke => ke.key == agentRefPath &&
-            ke.event.problem.is(UnknownEventIdProblem))
+    directoryProvider.runAgents() { _ =>
+      directoryProvider.runController() { controller =>
+        val order = orderGenerator.next()
+        controller.addOrderBlocking(order)
+        controller.eventWatch.await[OrderFinished](predicate = _.key == order.id)
+      }
+    }
+    // START AGENT WITH LAST JOURNAL FILE DELETED.
+    // AGENT HAS AN OLDER EVENTID AS CONTROLLER HAS OBSERVED => UnknownEventIdProblem
+    val journalFiles = listJournalFiles(agentStateDir / "controller-Controller").map(_.file)
+    for (o <- journalFiles.init) move(o, Paths.get(s"$o-MOVED"))
+    directoryProvider.runAgents() { _ =>
+      directoryProvider.runController() { controller =>
+        controller.eventWatch.await[AgentCouplingFailed](after = controller.recoveredEventId,
+          predicate = ke =>
+            ke.key == agentRefPath && ke.event.problem.is(UnknownEventIdProblem))
       }
       for (o <- journalFiles.init) move(Paths.get(s"$o-MOVED"), o)
     }
@@ -86,15 +98,17 @@ final class CoupleControllerTest extends AnyFreeSpec with DirectoryProviderForSc
 
   "CoupleController command fails with UnknownEventIdProblem if Agent restarts without journal" in {
     directoryProvider.runController() { controller =>
-      val journalFiles = agentStateDir.directoryContents
-        .map(_.getFileName.toString)
-        .filter(_.startsWith("controller-Controller--"))
-        .map(agentStateDir / _)
-      journalFiles foreach delete
       directoryProvider.runAgents() { _ =>
-        controller.eventWatch.await[AgentCouplingFailed](after = controller.eventWatch.lastFileTornEventId, predicate =
-          ke => ke.key == agentRefPath &&
-            ke.event.problem.is(UnknownEventIdProblem))
+        val order = orderGenerator.next()
+        controller.addOrderBlocking(order)
+        controller.eventWatch.await[OrderFinished](predicate = _.key == order.id)
+      }
+      // Delete Agent journal
+      listJournalFiles(agentStateDir / "controller-Controller").map(_.file) foreach delete
+      directoryProvider.runAgents() { _ =>
+        controller.eventWatch.await[AgentCouplingFailed](after = controller.recoveredEventId,
+          predicate = ke =>
+            ke.key == agentRefPath && ke.event.problem.is(UnknownEventIdProblem))
       }
     }
   }

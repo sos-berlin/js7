@@ -158,6 +158,7 @@ object ControllerClusterForScalaTest
     for (primaryFile <- journalFiles.map(_.file)) {
       withClue(s"$primaryFile: ") {
         val backupJournalFile = backup.stateDir.resolve(primaryFile.getFileName)
+        waitForCondition(9.s, 100.ms)(backupJournalFile.contentString == primaryFile.contentString)
         assert(backupJournalFile.contentString == primaryFile.contentString)
         assert(backupJournalFile.byteVector == primaryFile.byteVector)
       }

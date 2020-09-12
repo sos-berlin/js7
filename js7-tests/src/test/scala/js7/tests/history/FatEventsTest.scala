@@ -8,6 +8,7 @@ import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.web.Uri
+import js7.common.configutils.Configs.HoconStringInterpolator
 import js7.common.process.Processes.{ShellFileExtension => sh}
 import js7.common.scalautil.FileUtils.syntax.RichPath
 import js7.common.scalautil.MonixUtils.syntax._
@@ -45,12 +46,12 @@ import scala.language.implicitConversions
 final class FatEventsTest extends AnyFreeSpec
 {
   "test" in {
-    autoClosing(new DirectoryProvider(AAgentRefPath :: BAgentRefPath :: Nil, TestWorkflow :: Nil, testName = Some("FatEventsTest"))) { provider =>
-      (provider.controller.configDir / "private/private.conf").append("""
-        |js7.auth.users.TEST-USER = "plain:TEST-PASSWORD"
-        |js7.journal.users-allowed-to-release-events = [ "TEST-USER" ]
-        |js7.journal.release-events-delay = 0s
-        |""".stripMargin )
+    autoClosing(new DirectoryProvider(AAgentRefPath :: BAgentRefPath :: Nil, TestWorkflow :: Nil, testName = Some("FatEventsTest"),
+      controllerConfig = config"""
+        js7.auth.users.TEST-USER = "plain:TEST-PASSWORD"
+        js7.journal.users-allowed-to-release-events = [ "TEST-USER" ]
+        js7.journal.release-events-delay = 0s""")
+    ) { provider =>
       for (a <- provider.agents) a.writeExecutable(TestExecutablePath, DirectoryProvider.script(0.s))
 
       def listJournalFiles = JournalFiles.listJournalFiles(provider.controller.dataDir / "state" / "controller").map(_.file.getFileName.toString)
@@ -105,19 +106,21 @@ final class FatEventsTest extends AnyFreeSpec
             expectedOrderEntries(runningAgents.map(_.localUri)))
 
           assertJournalFileCount(3)
-          assert(listJournalFiles.contains("controller--0.journal"))
+          val journalFiles = listJournalFiles
+          assert(journalFiles.contains("controller--0.journal"))
 
-          controller.httpApi.executeCommand(ControllerCommand.ReleaseEvents(finishedEventId - 1)) await 99.s
-          assertJournalFileCount(3)
-          assert(listJournalFiles.contains("controller--0.journal"))  // Nothing deleted
-
-          controller.httpApi.executeCommand(ControllerCommand.ReleaseEvents(finishedEventId)) await 99.s
+          controller.httpApi.executeCommand(ControllerCommand.ReleaseEvents(controller.recoveredEventId - 1)) await 99.s
           assertJournalFileCount(2)
-          assert(!listJournalFiles.contains("controller--0.journal"))  // First file deleted
-          releaseEventsEventId = finishedEventId
+          assert(listJournalFiles == journalFiles.drop(1))  // First file deleted
+
+          controller.httpApi.executeCommand(ControllerCommand.ReleaseEvents(controller.recoveredEventId)) await 99.s
+          assertJournalFileCount(1)
+          assert(listJournalFiles == journalFiles.drop(2))  // First file deleted
+          releaseEventsEventId = controller.recoveredEventId
+
           lastAddedEventId = controller.eventWatch.lastAddedEventId
         }
-        assertJournalFileCount(3)  // Controller shutdown added a journal file
+        assertJournalFileCount(2)  // Controller shutdown added a journal file
         val aAgentUri = runningAgents(0).localUri
         val bAgentUri = runningAgents(1).localUri
         assert(fatEvents.toSet == Set(
@@ -155,7 +158,7 @@ final class FatEventsTest extends AnyFreeSpec
           // Wait until ControllerOrderKeeper has become ready
           controller.executeCommandAsSystemUser(NoOperation).await(99.s).orThrow
           // Test recovering FatState from snapshot stored in journal file
-          assertJournalFileCount(4)
+          assertJournalFileCount(3)
           assert( !listJournalFiles.contains("controller--0.journal"))  // First file deleted
           controller.httpApi.login_(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))) await 99.s
 
@@ -171,7 +174,7 @@ final class FatEventsTest extends AnyFreeSpec
             Vector.fill(2)(ControllerReadyFat(ControllerId("Controller"), ZoneId.systemDefault.getId)))  // Only ControllerReady, nothing else happened
 
           locally { // Test a bug: Start a new journal file, then KeepEvent, then fetch fat events, while lean events invisible for fat events are emitted
-            assertJournalFileCount(4)
+            assertJournalFileCount(3)
             val EventSeq.Empty(eventId1) = controller.httpApi.fatEvents(EventRequest.singleClass[FatEvent](after = stamped.last.eventId, timeout = Some(0.s))) await 99.s
 
             // Emit an event ignored by FatState

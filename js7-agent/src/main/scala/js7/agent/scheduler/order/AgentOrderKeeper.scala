@@ -43,7 +43,7 @@ import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.Workflows.ExecutableWorkflow
 import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
 import js7.data.job.JobKey
-import js7.data.order.OrderEvent.{OrderBroken, OrderDetachedFromAgent}
+import js7.data.order.OrderEvent.{OrderBroken, OrderDetached}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.workflow.Workflow
 import js7.data.workflow.WorkflowEvent.WorkflowAttached
@@ -315,14 +315,14 @@ with Stash {
     case DetachOrder(orderId) if !shuttingDown =>
       orderRegister.get(orderId) match {
         case Some(orderEntry) =>
-          // TODO Antwort erst nach OrderDetachedFromAgent _und_ Terminated senden, wenn Actor aus orderRegister entfernt worden ist
+          // TODO Antwort erst nach OrderDetached _und_ Terminated senden, wenn Actor aus orderRegister entfernt worden ist
           // Bei langsamem Agenten, schnellem Controller-Wiederanlauf kann DetachOrder doppelt kommen, während OrderActor sich noch beendet.
           orderEntry.order.detaching match {
             case Left(problem) => Future.failed(problem.throwable)
             case Right(_) =>
               val promise = Promise[Unit]()
               orderEntry.detachResponses ::= promise
-              (orderEntry.actor ? OrderActor.Command.HandleEvent(OrderDetachedFromAgent))
+              (orderEntry.actor ? OrderActor.Command.HandleEvent(OrderDetached))
                 .mapTo[Completed]
                 .onComplete {
                   case Failure(t) => promise.tryFailure(t)

@@ -447,17 +447,17 @@ with MainJournalingActor[ControllerState, Event]
       else
         addOrders(orders).pipeTo(sender())
 
-    case AgentDriver.Output.EventsFromAgent(stampeds, completedPromise) =>
+    case AgentDriver.Output.EventsFromAgent(stampedAgentEvents, completedPromise) =>
       val agentEntry = agentRegister(sender())
       import agentEntry.agentRefPath
       var lastAgentEventId: Option[EventId] = None
-      var controllerStamped: Seq[Timestamped[Event]] =
-        stampeds.view.flatMap {
+      var timestampedEvents: Seq[Timestamped[Event]] =
+        stampedAgentEvents.view.flatMap {
           case Stamped(agentEventId, timestamp, keyedEvent) =>
             // TODO Event vor dem Speichern mit Order.applyEvent ausprobieren! Bei Fehler ignorieren?
             lastAgentEventId = Some(agentEventId)
             keyedEvent match {
-              case KeyedEvent(_, _: OrderCancelMarked | _: OrderSuspendMarked | _: OrderResumeMarked) =>
+              case KeyedEvent(_, _: OrderCancelMarked | OrderSuspendMarked | OrderResumeMarked | OrderDetached) =>
                 // We (the Controller) have emitted the same event
                 None
 
@@ -476,13 +476,17 @@ with MainJournalingActor[ControllerState, Event]
                 None
             }
         }.toVector
-      controllerStamped ++= lastAgentEventId.map(agentEventId => Timestamped(agentRefPath <-: AgentEventIdEvent(agentEventId)))
 
       completedPromise.completeWith(
-        persistTransactionTimestamped(controllerStamped, async = true, alreadyDelayed = agentDriverConfiguration.eventBufferDelay) {
+      if (timestampedEvents.isEmpty)
+        // timestampedEvents may be empty if it contains only discarded (Agent-only) events.
+        // Agent's last observed EventId is not persisted then and we do not write an AgentEventIdEvent.
+        // For tests, this makes the journal predictable after OrderFinished (because no AgentEventIdEvent may follow).
+        Future.successful(Completed)
+      else {
+        timestampedEvents :+= Timestamped(agentRefPath <-: AgentEventIdEvent(lastAgentEventId.get))
+        persistTransactionTimestamped(timestampedEvents, async = true, alreadyDelayed = agentDriverConfiguration.eventBufferDelay) {
           (stampedEvents, updatedState) =>
-            // Inhibit OrderAdded, OrderFinished, OrderJoined(?), OrderAttachable and others ???
-            //  Agent does not send these events, but just in case.
             handleOrderEvents(
               stampedEvents.collect {
                 case stamped @ Stamped(_, _, KeyedEvent(_: OrderId, _: OrderEvent)) =>
@@ -490,7 +494,8 @@ with MainJournalingActor[ControllerState, Event]
               },
               updatedState)
             Completed
-        })
+        }
+      })
 
     case AgentDriver.Output.OrdersDetached(orderIds) =>
       val unknown = orderIds -- _controllerState.idToOrder.keySet

@@ -36,6 +36,7 @@ import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.system.OperatingSystem.operatingSystem
 import js7.common.time.WaitForCondition
+import js7.controller.data.agent.AgentEventIdEvent
 import js7.controller.data.events.ControllerAgentEvent
 import js7.controller.data.events.ControllerAgentEvent.AgentRegisteredController
 import js7.controller.data.events.ControllerEvent.ControllerReady
@@ -496,25 +497,23 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
     }
   }
 
-  var orderFinishedEventId: EventId = -1
-
   "(await OrderFinished)" in {
-    val stampedEvents = controller.eventWatch.await[OrderFinished]()  // Needed for test /controller/api/events
-    orderFinishedEventId = stampedEvents.head.eventId
+    controller.eventWatch.await[OrderFinished]()  // Needed for test /controller/api/events
   }
 
   "/controller/api/snapshot/ (only JSON)" in {
     val observable = httpClient.getRawLinesObservable(Uri(s"$uri/controller/api/snapshot/")) await 99.s
     val shortenedArray =
       observable.map(_.parseJson.orThrow)
+        // Delete AgentSnapshot in `array` (for easy comparison)
         .filterNot(_.asObject.get("TYPE").contains("AgentSnapshot".asJson))
-        .toListL await 99.s  // Delete AgentSnapshot in `array` (for easy comparison)
+        .toListL await 99.s
     val controllerMetaState = shortenedArray.iterator.map(_.as(ControllerState.snapshotObjectJsonCodec).orThrow)
       .collectFirst { case o: ControllerMetaState => o }.get
     assert(shortenedArray.toSet/*ignore ordering*/ == json"""[
       {
         "TYPE": "SnapshotEventId",
-        "eventId": $orderFinishedEventId
+        "eventId": ${controller.eventWatch.lastAddedEventId}
       }, {
         "TYPE": "ControllerMetaState",
         "controllerId": "Controller",
@@ -776,13 +775,13 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
     }
 
     "Orders" - {
-      val order2Id = OrderId("ORDER-MISSING-JOB")
+      val missingJobOrderId = OrderId("ORDER-MISSING-JOB")
 
       "(add order)" in {
         controller.addOrderBlocking(FreshOrder(OrderId("ORDER-FRESH"), WorkflowPath("/WORKFLOW"), Some(Timestamp.parse("3000-01-01T12:00:00Z"))))
-        controller.addOrderBlocking(FreshOrder(order2Id, WorkflowPath("/FOLDER/WORKFLOW-2")))
-        controller.eventWatch.await[OrderProcessed](_.key == order2Id)
-        controller.eventWatch.await[OrderMoved](_.key == order2Id)
+        controller.addOrderBlocking(FreshOrder(missingJobOrderId, WorkflowPath("/FOLDER/WORKFLOW-2")))
+        controller.eventWatch.await[OrderProcessed](_.key == missingJobOrderId)
+        controller.eventWatch.await[OrderMoved](_.key == missingJobOrderId)
       }
 
       "Single order" in {
@@ -801,7 +800,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
               }
             }""".asJson,
           "variables" -> Json.obj(
-            "orderId" -> order2Id.asJson))
+            "orderId" -> missingJobOrderId.asJson))
         assert(postGraphql(body) ==
           json"""{
             "data": {

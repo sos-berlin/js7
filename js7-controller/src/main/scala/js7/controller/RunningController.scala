@@ -53,7 +53,7 @@ import js7.data.Problems.PassiveClusterNodeShutdownNotAllowedProblem
 import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerItems
 import js7.data.crypt.InventoryItemVerifier
-import js7.data.event.{EventRequest, Stamped}
+import js7.data.event.{EventId, EventRequest, Stamped}
 import js7.data.item.InventoryItem
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderEvent}
@@ -77,6 +77,7 @@ import shapeless.tag.@@
 final class RunningController private(
   val eventWatch: StrictEventWatch,
   webServer: ControllerWebServer,
+  val recoveredEventId: EventId,
   val itemApi: DirectItemApi,
   val orderApi: OrderApi.WithCommands,
   val controllerState: Task[ControllerState],
@@ -343,7 +344,9 @@ object RunningController
       for (_ <- webServer.start().runToFuture) yield {
         createSessionTokenFile(injector.instance[SessionRegister[SimpleSession]])
         controllerConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", o => s"$o/controller")
-        new RunningController(recovered.eventWatch.strict, webServer, itemApi, orderApi,
+        new RunningController(recovered.eventWatch.strict, webServer,
+          recoveredEventId = recovered.eventId,
+          itemApi, orderApi,
           controllerState.map(_.orThrow),
           commandExecutor,
           whenReady.future, orderKeeperTerminated, testEventBus, closer, injector)

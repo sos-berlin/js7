@@ -310,10 +310,10 @@ final class OrderEventTest extends AnyFreeSpec {
       }""")
   }
 
-  "OrderDetachedFromAgent" in {
-    check(OrderDetachedFromAgent, json"""
+  "OrderDetached" in {
+    check(OrderDetached, json"""
       {
-        "TYPE": "OrderDetachedFromAgent"
+        "TYPE": "OrderDetached"
       }""")
   }
 
