@@ -5,7 +5,7 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.Uri
 import akka.util.ByteString
 import cats.effect.Resource
-import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.config.{Config, ConfigException, ConfigFactory}
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.configuration.JobSchedulerConfiguration
@@ -50,8 +50,7 @@ object Akkas
     logger.debug(s"ActorSystem('${actorSystem.name}') terminate ...")
     try {
       val since = now
-      Akkas.terminate(actorSystem)
-        .await(timeout)
+      terminate(actorSystem).await(timeout)
       logger.debug(s"ActorSystem('${actorSystem.name}') terminated (${since.elapsed.pretty})")
     } catch {
       case NonFatal(t) => logger.warn(s"ActorSystem('${actorSystem.name}').terminate(): $t")
@@ -63,7 +62,9 @@ object Akkas
     */
   def terminate(actorSystem: ActorSystem): Future[Terminated] = {
     import actorSystem.dispatcher  // The ExecutionContext will be shut down here !!!
-    val poolShutdownTimeout = 5.s/*TODO*/
+    val poolShutdownTimeout =
+      try actorSystem.settings.config.getDuration("js7.akka.http.connection-pool-shutdown-timeout").toFiniteDuration
+      catch { case _: ConfigException.Missing => 3.s }
     val timeoutPromise = Promise[Unit]()
     val timer = actorSystem.scheduler.scheduleOnce(poolShutdownTimeout) {
       timeoutPromise.success(())
@@ -78,7 +79,7 @@ object Akkas
       timer.cancel()
       actorSystem.terminate()
     }
-}
+  }
 
   def shutDownHttpConnectionPools(actorSystem: ActorSystem): Future[Unit] =
     if (actorSystem.hasExtension(Http)) {
@@ -87,7 +88,7 @@ object Akkas
     } else
       Future.successful(())
 
-  def byteStringToTruncatedString(byteString: ByteString, size: Int = 100, name: String = "ByteString") =
+  def byteStringToTruncatedString(byteString: ByteString, size: Int = 100) =
     s"${byteString.size} bytes " + (byteString take size map { c => f"$c%02x" } mkString " ") + ((byteString.sizeIs > size) ?? " ...")
 
   def encodeAsActorName(o: String): String = {
