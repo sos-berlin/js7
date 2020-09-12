@@ -70,7 +70,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                   .mapParallelUnorderedBatch()(_
                     .parseJsonAs[UpdateRepoOperation].orThrow match {
                       case UpdateRepoOperation.AddOrReplace(signedJson) =>
-                        problemOccurred.get match {
+                        problemOccurred.get() match {
                           case null =>
                             val checked = verify(signedJson)
                             for (problem <- checked.left) {
@@ -132,11 +132,14 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
       }
     }
 
-  private def verify(signedString: SignedString): Checked[Verified[InventoryItem]] =
-    for (verified <- repoUpdater.itemVerifier.verify(signedString)) yield {
-      logger.info(Logger.SignatureVerified, verified.toString)
-      verified
+  private def verify(signedString: SignedString): Checked[Verified[InventoryItem]] = {
+    val verified = repoUpdater.itemVerifier.verify(signedString)
+    verified match {
+      case Left(problem) => logger.warn(problem.toString)
+      case Right(verified) => logger.info(Logger.SignatureVerified, verified.toString)
     }
+    verified
+  }
 }
 
 object RepoRoute
