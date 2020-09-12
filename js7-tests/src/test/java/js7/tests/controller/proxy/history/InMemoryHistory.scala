@@ -3,7 +3,7 @@ package js7.tests.controller.proxy.history
 import java.time.Instant
 import java.util.Optional
 import js7.base.web.Uri
-import js7.data.event.{Event, KeyedEvent}
+import js7.data.event.{Event, EventId, KeyedEvent}
 import js7.data.job.ReturnCode
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -22,16 +22,21 @@ import scala.jdk.CollectionConverters._
 private[history] final class InMemoryHistory
 {
   private val _idToOrderEntry = mutable.LinkedHashMap[OrderId, OrderEntry]()
+  private var _eventId = EventId.BeforeFirst
 
   def idToOrderEntry: java.util.Map[OrderId, OrderEntry] =
     _idToOrderEntry.toMap.asJava
 
-  def handleEventAndState(eventAndState: JEventAndControllerState[Event]): Unit =
+  def eventId = _eventId
+
+  def update(eventAndState: JEventAndControllerState[Event]): Unit = {
     eventAndState.stampedEvent.value match {
       case KeyedEvent(_: OrderId, _: OrderEvent) =>
         handleOrderEvent(eventAndState.asInstanceOf[JEventAndControllerState[OrderEvent]])
       case _ =>
     }
+    _eventId = eventAndState.stampedEvent.eventId
+  }
 
   private def handleOrderEvent(eventAndState: JEventAndControllerState[OrderEvent]): Unit = {
     val timestamp = eventAndState.stampedEvent.timestamp.toInstant

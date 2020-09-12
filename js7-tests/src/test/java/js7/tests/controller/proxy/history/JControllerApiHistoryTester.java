@@ -8,10 +8,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import js7.base.web.Uri;
-import js7.data.event.Event;
 import js7.data.event.EventId;
 import js7.data.item.VersionId;
-import js7.data.order.OrderEvent.OrderFinished$;
 import js7.data.order.OrderId;
 import js7.data.workflow.WorkflowPath;
 import js7.proxy.data.ProxyEvent;
@@ -21,7 +19,8 @@ import js7.proxy.javaapi.data.controller.JEventAndControllerState;
 import js7.proxy.javaapi.data.order.JFreshOrder;
 import js7.proxy.javaapi.data.workflow.JWorkflowId;
 import js7.proxy.javaapi.eventbus.JStandardEventBus;
-import reactor.core.Disposable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static js7.proxy.javaapi.data.common.VavrUtils.getOrThrow;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -29,6 +28,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 final class JControllerApiHistoryTester
 {
+    private static final Logger logger = LoggerFactory.getLogger(JControllerApiHistoryTester.class);
     static JWorkflowId TestWorkflowId = JWorkflowId.of(WorkflowPath.of("/WORKFLOW"), VersionId.of("INITIAL"));
     static final OrderId TestOrderId = OrderId.of("ORDER");
 
@@ -45,34 +45,33 @@ final class JControllerApiHistoryTester
     void test() throws Exception {
         try (JStandardEventBus<ProxyEvent> proxyEventBus = new JStandardEventBus<>(ProxyEvent.class)) {
             InMemoryHistory history = new InMemoryHistory();
-            JFreshOrder freshOrder = JFreshOrder.of(TestOrderId, workflowPath, Optional.empty(),
-                ImmutableMap.of("KEY", "VALUE"));
-            CompletableFuture<JEventAndControllerState<Event>> whenOrderFinished = new CompletableFuture<>();
-            CompletableFuture<Boolean/*not used*/> whenFirstFluxTerminated = api
+            CompletableFuture<Optional<JControllerState>> whenFirstFluxTerminated = api
                 .eventFlux(proxyEventBus, OptionalLong.of(EventId.BeforeFirst()))
                 .doOnNext(eventAndState -> {
-                    // OrderFinished terminates this test
-                    if(eventAndState.stampedEvent().value().event() instanceof OrderFinished$ &&
-                        eventAndState.stampedEvent().value().key().equals(freshOrder.id())) {
-                        whenOrderFinished.complete(eventAndState);
-                    }
+                    logger.debug("doOnNext: " + eventAndState.stampedEvent());
+                    history.update(eventAndState);
                 })
-                .doOnNext(eventAndState -> {
-                    history.handleEventAndState(eventAndState);
-                    try {
-                        // Do this only occassionally, may be one in a quarter hour, to avoid too much events and load:
-                        getOrThrow(
-                            api.releaseEvents(eventAndState.stampedEvent().eventId()).get(99, SECONDS));
-                    } catch (InterruptedException | ExecutionException | TimeoutException e) {
-                        throw new RuntimeException(e);
-                    }
-                })
-                .map(o -> true)
-                .last(true)
+                .doOnNext(es -> {
+                    if (false/*periodically after 15 minutes, for example*/) {
+                        try {
+                            getOrThrow(
+                                api.releaseEvents(history.eventId()).get(99, SECONDS));
+                        } catch (InterruptedException | ExecutionException | TimeoutException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }})
+                .takeUntil(x -> Optional.ofNullable(history.idToOrderEntry().get(TestOrderId))
+                    .map(o -> o.terminatedAt().isPresent())
+                    .equals(Optional.of(true)))
+                .map(es -> Optional.of(es.state()))
+                .last(Optional.empty())
                 .toFuture();
+            JControllerState state;
             try {
+                JFreshOrder freshOrder = JFreshOrder.of(TestOrderId, workflowPath, Optional.empty(),
+                    ImmutableMap.of("KEY", "VALUE"));
                 getOrThrow(api.addOrder(freshOrder).get(99, SECONDS));
-                whenOrderFinished.get(99, SECONDS);
+                state = whenFirstFluxTerminated.get(99, SECONDS).get();
             } finally {
                 whenFirstFluxTerminated.cancel(false);
             }
@@ -80,16 +79,15 @@ final class JControllerApiHistoryTester
             assertThat(history.idToOrderEntry(), equalTo(InMemoryHistory.expectedIdToOrderEntry(agentUris)));
 
             // A second call with same EventId returns equal JEventAndControllerState
-            JEventAndControllerState<Event> expectedES = whenOrderFinished.get(0, SECONDS);
-            JControllerState state = api
-                .eventFlux(proxyEventBus, OptionalLong.of(expectedES.stampedEvent().eventId()))
+            JControllerState second = api
+                .eventFlux(proxyEventBus, OptionalLong.of(state.eventId()))
                 .map(JEventAndControllerState::state)
                 .take(1)
                 .collectList()
                 .toFuture()
                 .get(99, SECONDS)
                 .get(0);
-            assertThat(state, equalTo(expectedES.state()));
+            assertThat(second, equalTo(state));
         }
     }
 }
