@@ -90,7 +90,7 @@ extends JournaledStateBuilder[ControllerState]
     case Stamped(_, _, KeyedEvent(orderId: OrderId, event: OrderEvent)) =>
       event match {
         case event: OrderAdded =>
-          idToOrder.insert(orderId -> Order.fromOrderAdded(orderId, event))
+          idToOrder += orderId -> Order.fromOrderAdded(orderId, event)
 
         case OrderFinished | OrderCancelled =>
           idToOrder -= orderId
@@ -118,7 +118,7 @@ extends JournaledStateBuilder[ControllerState]
     event match {
       case event: OrderForked =>
         for (childOrder <- idToOrder(orderId).newForkedOrders(event)) {
-          idToOrder.insert(childOrder.id -> childOrder)
+          idToOrder += childOrder.id -> childOrder
         }
 
       case event: OrderJoined =>
@@ -136,7 +136,7 @@ extends JournaledStateBuilder[ControllerState]
 
       case event: OrderOffered =>
         val offered = idToOrder(orderId).newOfferedOrder(event)
-        idToOrder.insert(offered.id -> offered)
+        idToOrder += offered.id -> offered
         idToOrder(orderId) = idToOrder(orderId).update(event).orThrow
 
       case _ =>
