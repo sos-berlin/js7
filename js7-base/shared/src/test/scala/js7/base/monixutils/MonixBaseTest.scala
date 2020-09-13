@@ -23,23 +23,23 @@ import scala.language.reflectiveCalls
   */
 final class MonixBaseTest extends AsyncFreeSpec
 {
-  private val sleepyTask = Task(3).delayExecution(200.ms)
-
   "maybeTimeout Duration.Inf" in {
-    sleepyTask.maybeTimeout(Duration.Inf)
+    Task(3).delayExecution(200.ms)
+      .maybeTimeout(Duration.Inf)
       .map(o => assert(o == 3))
       .runToFuture
   }
 
   "maybeTimeout FiniteDuration" in {
-    sleepyTask.map(_ => assert(false))
+    Task(3).delayExecution(99.s)
       .maybeTimeout(0.s)
+      .map(_ => assert(false))
       .onErrorHandle(t => assert(t.isInstanceOf[TimeoutException]))
       .runToFuture
   }
 
   "orTimeout" in {
-    sleepyTask
+    Task(3).delayExecution(99.s)
       .orTimeout(10.ms, Task(7))
       .map(o => assert(o == 7))
       .runToFuture

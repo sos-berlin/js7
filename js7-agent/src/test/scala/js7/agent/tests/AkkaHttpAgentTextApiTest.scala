@@ -100,7 +100,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider
     assert(output.size == 3)
     assert(output(0) == "TYPE: Accepted")
     assert(output(1) == "---")
-    assert(output(2) contains "startedAt: 15")
+    assert(output(2) contains "startedAt: ")
     assert(output(2) contains "isTerminating: false")
   }
 
