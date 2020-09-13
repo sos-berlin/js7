@@ -239,15 +239,14 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
       "org.typelevel" %%% "cats-core" % catsVersion ++
       "org.typelevel" %%% "cats-laws" % catsVersion % "test" ++
       "org.typelevel" %%% "discipline-core" % disciplineVersion % "test" ++
-      "org.typelevel" %%% "discipline-scalatest" % disciplineVersion % "test" ++
+      "org.typelevel" %%% "discipline-scalatest" % disciplineScalaTestVersion % "test" ++
       "io.circe" %%% "circe-core" % circeVersion ++
       "io.circe" %%% "circe-parser" % circeVersion ++
       "io.circe" %%% "circe-generic" % circeVersion ++
       "io.circe" %%% "circe-generic-extras" % circeVersion ++
       "io.monix" %%% "monix-eval" % monixVersion ++
       "io.monix" %%% "monix-reactive" % monixVersion ++
-      "org.scodec" %%% "scodec-bits" % "1.1.14" ++
-      "org.scodec" %%% "scodec-cats" % "1.0.0" ++
+      "org.scodec" %%% "scodec-bits" % "1.1.20" ++
       "com.github.mpilquist" %% "simulacrum" % simulacrumVersion ++
       "com.lihaoyi" %%% "sourcecode" % "0.2.1" ++
       "com.outr" %%% "scribe" % scribeVersion ++
@@ -298,7 +297,7 @@ lazy val `js7-data` = crossProject(JSPlatform, JVMPlatform)
     //"org.scalatest" %%% "scalatest-freespec" % scalaTestVersion % "test" ++
       "org.typelevel" %%% "cats-laws" % catsVersion % "test" ++
       "org.typelevel" %%% "discipline-core" % disciplineVersion % "test" ++
-      "org.typelevel" %%% "discipline-scalatest" % disciplineVersion % "test"
+      "org.typelevel" %%% "discipline-scalatest" % disciplineScalaTestVersion % "test"
   }
 
 lazy val `js7-common` = project.dependsOn(`js7-base`.jvm, `js7-data`.jvm, `js7-tester`.jvm % "test")

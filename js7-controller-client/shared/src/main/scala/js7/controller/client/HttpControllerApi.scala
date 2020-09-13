@@ -143,7 +143,7 @@ extends EventApi with HttpSessionApi with HasIsIgnorableStackTrace
 
   override def toString = s"HttpControllerApi($baseUri)"
 
-  final def snapshot(eventId: Option[EventId]): Task[Checked[ControllerState]] =
+  final def snapshot(eventId: Option[EventId] = None): Task[Checked[ControllerState]] =
     snapshotAs[ControllerState](uris.snapshot.list(eventId))
 }
 
