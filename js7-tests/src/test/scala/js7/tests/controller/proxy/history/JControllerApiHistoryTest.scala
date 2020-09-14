@@ -87,14 +87,14 @@ final class JControllerApiHistoryTest extends AnyFreeSpec with ProvideActorSyste
           rounds += 1
           var proxyStartedReceived = false
           JournaledProxy.observable[ControllerState](apiResources, fromEventId = Some(lastState.eventId), _ => (), ProxyConf.default)
-            .doOnNext {
-              case EventAndState(Stamped(_, _, KeyedEvent(TestOrder.id, _: OrderFinished)), _, _) => Task {
+            .takeWhileInclusive {
+              case EventAndState(Stamped(_, _, KeyedEvent(TestOrder.id, _: OrderFinished)), _, _) =>
                 finished = true
-              }
-              case _ => Task.unit
+                false
+              case _=>
+                true
             }
             .take(3)  // Process two events (and initial ProxyStarted) each test round
-            .takeWhileInclusive(_ => !finished)
             .doOnNext(es => Task {
               es.stampedEvent.value.event match {
                 case ProxyStarted =>
