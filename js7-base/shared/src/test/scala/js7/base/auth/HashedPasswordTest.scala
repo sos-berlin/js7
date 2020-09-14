@@ -40,7 +40,7 @@ final class HashedPasswordTest extends AnyFreeSpec {
 
   "MatchesNothing" in {
     assert(!HashedPassword.MatchesNothing.equalsClearText(SecretString("")))
-    assert(!HashedPassword.MatchesNothing.equalsClearText(SecretString("MatchesNothing")))
+    assert(!HashedPassword.MatchesNothing.equalsClearText(SecretString(HashedPassword.MatchesNothingString)))
     assert(HashedPassword.MatchesNothing.toString == "HashedPassword(MatchesNothing)")
   }
 }

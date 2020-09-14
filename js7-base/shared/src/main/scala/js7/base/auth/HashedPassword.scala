@@ -29,7 +29,8 @@ object HashedPassword
   private val RehashSaltLength = 20
 
   /** No clear-text password matches this unknown password. */
-  object MatchesNothing extends HashedPassword(SecretString("MatchesNothing"), _ => "") {
+  private[auth] val MatchesNothingString = "MatchesNothing"
+  object MatchesNothing extends HashedPassword(SecretString(MatchesNothingString), _ => "") {
     override def toString = "HashedPassword(MatchesNothing)"
   }
 
