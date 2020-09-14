@@ -48,6 +48,7 @@ final class IdToUserTest extends AnyFreeSpec
         js7.auth.users {
           A = "plain:PLAIN-PASSWORD"
           B = "sha512:130c7809c9e5a8d81347b55f5c82c3a7407f4b41b461eb641887d276b11af4b575c5a32d1cf104e531c700e4b1ddd75b27b9e849576f6dfb8ca42789fbc7ece2"
+          B1 = "sha512:130C7809C9E5A8D81347B55F5C82C3A7407F4B41B461EB641887D276B11AF4B575C5A32D1CF104E531C700E4B1DDD75B27B9E849576F6DFB8CA42789FBC7ECE2"
           C {
             password = "plain:PLAIN-PASSWORD"
           }
@@ -67,18 +68,21 @@ final class IdToUserTest extends AnyFreeSpec
     "fromConfig" in {
       val Some(a) = idToUser(UserId("A"))
       val Some(b) = idToUser(UserId("B"))
+      val Some(b1) = idToUser(UserId("B1"))
       val Some(c) = idToUser(UserId("C"))
       val Some(d) = idToUser(UserId("D"))
       val Some(e1) = idToUser(UserId("E1"))
       val Some(e2) = idToUser(UserId("E2"))
       assert(a.id == UserId("A"))
       assert(b.id == UserId("B"))
+      assert(b1.id == UserId("B1"))
       assert(c.id == UserId("C"))
       assert(d.id == UserId("D"))
       assert(e1.id == UserId("E1"))
       assert(e2.id == UserId("E2"))
       assert(a.hashedPassword equalsClearText PlainPassword)
       assert(b.hashedPassword equalsClearText Sha512Password)
+      assert(b1.hashedPassword equalsClearText Sha512Password)
       assert(c.hashedPassword equalsClearText PlainPassword)
       assert(d.hashedPassword equalsClearText PlainPassword)
       assert(d.distinguishedNames == List(DistinguishedName("CN=IdToUserTest"), DistinguishedName("CN=D")))

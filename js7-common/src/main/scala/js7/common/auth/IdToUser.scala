@@ -3,6 +3,7 @@ package js7.common.auth
 import com.google.common.hash.Hashing.sha512
 import com.typesafe.config.{Config, ConfigObject}
 import java.nio.charset.StandardCharsets.UTF_8
+import java.util.Locale
 import js7.base.auth.{DistinguishedName, HashedPassword, Permission, User, UserId}
 import js7.base.generic.SecretString
 import js7.base.problem.{Checked, Problem}
@@ -154,7 +155,7 @@ object IdToUser
         Some(HashedPassword(SecretString(pw), identityHasher))
 
       case PasswordRegex("sha512", pw) =>
-        Some(HashedPassword(SecretString(pw), sha512Hasher))
+        Some(HashedPassword(SecretString(pw.toLowerCase(Locale.ROOT)), sha512Hasher))
 
       case PasswordRegex(_, _) =>
         logger.error(s"Unknown password encoding scheme for User '$userId'")
