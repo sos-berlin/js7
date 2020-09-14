@@ -1,5 +1,6 @@
 package js7.data.execution.workflow
 
+import cats.syntax.option._
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.utils.Collections.implicits._
@@ -12,8 +13,9 @@ import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.OrderEventSourceTest._
 import js7.data.expression.Expression.{Equal, LastReturnCode, NumericConstant}
 import js7.data.job.{ExecutablePath, ReturnCode}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderResumeMarked, OrderResumed, OrderStarted, OrderSuspendMarked, OrderSuspended, OrderAttached, OrderDetached}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderResumeMarked, OrderResumed, OrderStarted, OrderSuspendMarked, OrderSuspended}
 import js7.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, OrderMark, Outcome}
+import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, ExplicitEnd, Gap, Goto, If, IfFailedGoto, TryInstruction}
 import js7.data.workflow.parser.WorkflowParser
@@ -203,442 +205,477 @@ final class OrderEventSourceTest extends AnyFreeSpec
   }
 
   "cancel, suspend, resume" - {
+    val detached = none[Order.AttachedState]
+    val attaching = Some(Order.Attaching(TestAgentRefPath))
+    val attached = Some(Order.Attached(TestAgentRefPath))
+    val detaching = Some(Order.Detaching(TestAgentRefPath))
+
     "Order.mark.isEmpty" - {
-      val freshOrder = Order(OrderId("ORDER"), TestWorkflowId, Order.Fresh(None))
+      val unmarkedOrder = Order(OrderId("ORDER"), TestWorkflowId, Order.Fresh(None))
+
       "Fresh" - {
+        val freshOrder = unmarkedOrder
+
         "Detached" in {
-          val order = freshOrder
-          val eventSource = new OrderEventSource(
-            Map(TestWorkflowId -> ForkWorkflow).checked,
-            Map(order.id -> order).checked,
-            isAgent = false)
-          assert(eventSource.nextEvent(order.id) == Some(order.id <-: OrderStarted))
-          assert(eventSource.cancel(order.id, CancelMode.NotStarted      ) == Right(Some(OrderCancelled)))
-          assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelled)))
-          assert(eventSource.suspend(order.id) == Right(Some(OrderSuspended)))
-          assert(eventSource.resume(order.id) == Left(Problem("Order cannot resume because it is not suspended")))
+          testEventSource(freshOrder, detached) { (order, controller, _) =>
+            assert(controller.nextEvent(order.id) == Some(order.id <-: OrderStarted))
+            assert(controller.cancel(order.id, CancelMode.NotStarted      ) == Right(Some(OrderCancelled)))
+            assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelled)))
+            assert(controller.suspend(order.id) == Right(Some(OrderSuspended)))
+            assert(controller.resume(order.id, None) == Left(CannotResumeOrderProblem))
+          }
         }
 
         "Attaching" in {
-          val order = freshOrder.copy(attachedState = Some(Order.Attaching(TestAgentRefPath)))
-          def eventSource(isAgent: Boolean) = new OrderEventSource(
-            Map(TestWorkflowId -> ForkWorkflow).checked,
-            Map(order.id -> order).checked,
-            isAgent = isAgent)
-          assert(eventSource(isAgent = false).nextEvent(order.id) == None)
-          assert(eventSource(isAgent = true ).nextEvent(order.id) == None)
-          assert(eventSource(isAgent = false).cancel(order.id, CancelMode.NotStarted      ) == Right(Some(OrderCancelMarked(CancelMode.NotStarted))))
-          assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.NotStarted      ) == Right(Some(OrderCancelMarked(CancelMode.NotStarted))))
-          assert(eventSource(isAgent = false).cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
-          assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
-          assert(eventSource(isAgent = false).suspend(order.id) == Right(Some(OrderSuspendMarked)))
-          assert(eventSource(isAgent = true ).suspend(order.id) == Right(Some(OrderSuspendMarked)))
-          assert(eventSource(isAgent = false).resume(order.id) == Left(Problem("Order cannot resume because it is not suspended")))
-          assert(eventSource(isAgent = true ).resume(order.id) == Left(Problem("Order cannot resume because it is not suspended")))
+          testEventSource(freshOrder, attaching) { (order, controller, agent) =>
+            assert(controller.nextEvent(order.id) == None)
+            assert(agent     .nextEvent(order.id) == None)
+            assert(controller.cancel(order.id, CancelMode.NotStarted      ) == Right(Some(OrderCancelMarked(CancelMode.NotStarted))))
+            assert(agent     .cancel(order.id, CancelMode.NotStarted      ) == Right(Some(OrderCancelMarked(CancelMode.NotStarted))))
+            assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
+            assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
+            assert(controller.suspend(order.id) == Right(Some(OrderSuspendMarked)))
+            assert(agent     .suspend(order.id) == Right(Some(OrderSuspendMarked)))
+            assert(controller.resume(order.id, None) == Left(CannotResumeOrderProblem))
+            assert(agent     .resume(order.id, None) == Left(CannotResumeOrderProblem))
+          }
         }
 
         "Attached" in {
-          val order = freshOrder.copy(attachedState = Some(Order.Attached(TestAgentRefPath)))
-          def eventSource(isAgent: Boolean) = new OrderEventSource(
-            Map(TestWorkflowId -> ForkWorkflow).checked,
-            Map(order.id -> order).checked,
-            isAgent = isAgent)
-          assert(eventSource(isAgent = false).nextEvent(order.id) == None)
-          assert(eventSource(isAgent = true ).nextEvent(order.id) == Some(order.id <-: OrderStarted))
-          assert(eventSource(isAgent = false).cancel(order.id, CancelMode.NotStarted      ) == Right(Some(OrderCancelMarked(CancelMode.NotStarted))))
-          assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.NotStarted      ) == Right(Some(OrderDetachable)))
-          assert(eventSource(isAgent = false).cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
-          assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderDetachable)))
-          assert(eventSource(isAgent = true ).suspend(order.id) == Right(Some(OrderDetachable)))
-          assert(eventSource(isAgent = false).suspend(order.id) == Right(Some(OrderSuspendMarked)))
-          assert(eventSource(isAgent = true ).resume(order.id) == Left(Problem("Order cannot resume because it is not suspended")))
-          assert(eventSource(isAgent = false).resume(order.id) == Left(Problem("Order cannot resume because it is not suspended")))
+          testEventSource(freshOrder, attached) { (order, controller, agent) =>
+            assert(controller.nextEvent(order.id) == None)
+            assert(agent     .nextEvent(order.id) == Some(order.id <-: OrderStarted))
+            assert(controller.cancel(order.id, CancelMode.NotStarted      ) == Right(Some(OrderCancelMarked(CancelMode.NotStarted))))
+            assert(agent     .cancel(order.id, CancelMode.NotStarted      ) == Right(Some(OrderDetachable)))
+            assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
+            assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderDetachable)))
+            assert(controller.suspend(order.id) == Right(Some(OrderSuspendMarked)))
+            assert(agent     .suspend(order.id) == Right(Some(OrderDetachable)))
+            assert(controller.resume(order.id, None) == Left(CannotResumeOrderProblem))
+            assert(agent     .resume(order.id, None) == Left(CannotResumeOrderProblem))
+          }
         }
 
         "Detaching" in {
-          val order = freshOrder.copy(attachedState = Some(Order.Detaching(TestAgentRefPath)))
-          def eventSource(isAgent: Boolean) = new OrderEventSource(
-            Map(TestWorkflowId -> ForkWorkflow).checked,
-            Map(order.id -> order).checked,
-            isAgent = isAgent)
-          assert(eventSource(isAgent = false).nextEvent(order.id) == None)
-          assert(eventSource(isAgent = true ).nextEvent(order.id) == None)
-          assert(eventSource(isAgent = false).cancel(order.id, CancelMode.NotStarted      ) == Right(Some(OrderCancelMarked(CancelMode.NotStarted))))
-          assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.NotStarted      ) == Right(Some(OrderCancelMarked(CancelMode.NotStarted))))
-          assert(eventSource(isAgent = false).cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
-          assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
+          testEventSource(freshOrder, detaching) { (order, controller, agent) =>
+            assert(controller.nextEvent(order.id) == None)
+            assert(agent     .nextEvent(order.id) == None)
+            assert(controller.cancel(order.id, CancelMode.NotStarted      ) == Right(Some(OrderCancelMarked(CancelMode.NotStarted))))
+            assert(agent     .cancel(order.id, CancelMode.NotStarted      ) == Right(Some(OrderCancelMarked(CancelMode.NotStarted))))
+            assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
+            assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
+            assert(controller.suspend(order.id) == Right(Some(OrderSuspendMarked)))
+            assert(agent     .suspend(order.id) == Right(Some(OrderSuspendMarked)))
+            assert(controller.resume(order.id, None) == Left(CannotResumeOrderProblem))
+            assert(agent     .resume(order.id, None) == Left(CannotResumeOrderProblem))
+          }
         }
       }
 
       "Ready" - {
-        val readyOrder = freshOrder.copy(state = Order.Ready)
+        val readyOrder = unmarkedOrder.copy(state = Order.Ready)
+
         "Detached" in {
-          val order = readyOrder
-          val eventSource = new OrderEventSource(
-            Map(TestWorkflowId -> ForkWorkflow).checked,
-            Map(order.id -> order).checked,
-            isAgent = false)
-          assert(eventSource.nextEvent(order.id) == Some(order.id <-: orderForked))
-          assert(eventSource.cancel(order.id, CancelMode.NotStarted    ) == Left(CancelStartedOrderProblem(order.id)))
-          assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelled)))
+          testEventSource(readyOrder, attachedState = detached) { (order, controller, _) =>
+            assert(controller.nextEvent(order.id) == Some(order.id <-: orderForked))
+            assert(controller.cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
+            assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelled)))
+          }
         }
 
         "Attaching" in {
-          val order = readyOrder.copy(attachedState = Some(Order.Attaching(TestAgentRefPath)))
-          def eventSource(isAgent: Boolean) = new OrderEventSource(
-            Map(TestWorkflowId -> ForkWorkflow).checked,
-            Map(order.id -> order).checked,
-            isAgent = isAgent)
-          assert(eventSource(isAgent = false).nextEvent(order.id) == None)
-          assert(eventSource(isAgent = true ).nextEvent(order.id) == None)
-          assert(eventSource(isAgent = false).cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
-          assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
-          assert(eventSource(isAgent = false).cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
-          assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
+          testEventSource(readyOrder, attaching) { (order, controller, agent) =>
+            assert(controller.nextEvent(order.id) == None)
+            assert(agent     .nextEvent(order.id) == None)
+            assert(controller.cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
+            assert(agent     .cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
+            assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
+            assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
+            assert(controller.suspend(order.id) == Right(Some(OrderSuspendMarked)))
+            assert(agent     .suspend(order.id) == Right(Some(OrderSuspendMarked)))
+            assert(controller.resume(order.id, None) == Left(CannotResumeOrderProblem))
+            assert(agent     .resume(order.id, None) == Left(CannotResumeOrderProblem))
+          }
         }
 
         "Attached" in {
-          val order = readyOrder.copy(attachedState = Some(Order.Attached(TestAgentRefPath)))
-          def eventSource(isAgent: Boolean) = new OrderEventSource(
-            Map(TestWorkflowId -> ForkWorkflow).checked,
-            Map(order.id -> order).checked,
-            isAgent = isAgent)
-          assert(eventSource(isAgent = false).nextEvent(order.id) == None)
-          assert(eventSource(isAgent = true ).nextEvent(order.id) == Some(order.id <-: orderForked))
-          assert(eventSource(isAgent = false).cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
-          assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
-          assert(eventSource(isAgent = false).cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
-          assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderDetachable)))
+          testEventSource(readyOrder, attached) { (order, controller, agent) =>
+            assert(controller.nextEvent(order.id) == None)
+            assert(agent     .nextEvent(order.id) == Some(order.id <-: orderForked))
+            assert(controller.cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
+            assert(agent     .cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
+            assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
+            assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderDetachable)))
+            assert(controller.suspend(order.id) == Right(Some(OrderSuspendMarked)))
+            assert(agent     .suspend(order.id) == Right(Some(OrderDetachable)))
+            assert(controller.resume(order.id, None) == Left(CannotResumeOrderProblem))
+            assert(agent     .resume(order.id, None) == Left(CannotResumeOrderProblem))
+          }
         }
 
         "Detaching" in {
-          val order = readyOrder.copy(attachedState = Some(Order.Detaching(TestAgentRefPath)))
-          def eventSource(isAgent: Boolean) = new OrderEventSource(
-            Map(TestWorkflowId -> ForkWorkflow).checked,
-            Map(order.id -> order).checked,
-            isAgent = isAgent)
-          assert(eventSource(isAgent = false).nextEvent(order.id) == None)
-          assert(eventSource(isAgent = true ).nextEvent(order.id) == None)
-          assert(eventSource(isAgent = false).cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
-          assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
-          assert(eventSource(isAgent = false).cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
-          assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
+          testEventSource(readyOrder, detaching) { (order, controller, agent) =>
+            assert(controller.nextEvent(order.id) == None)
+            assert(agent     .nextEvent(order.id) == None)
+            assert(controller.cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
+            assert(agent     .cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
+            assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
+            assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
+            assert(controller.suspend(order.id) == Right(Some(OrderSuspendMarked)))
+            assert(agent     .suspend(order.id) == Right(Some(OrderSuspendMarked)))
+            assert(controller.resume(order.id, None) == Left(CannotResumeOrderProblem))
+            assert(agent     .resume(order.id, None) == Left(CannotResumeOrderProblem))
+          }
         }
       }
 
       "Processing Attached" in {
-        val order = freshOrder.copy(state = Order.Processing, attachedState = Some(Order.Attached(TestAgentRefPath)))
-        def eventSource(isAgent: Boolean) = new OrderEventSource(
-          Map(TestWorkflowId -> ForkWorkflow).checked,
-          Map(order.id -> order).checked,
-          isAgent = isAgent)
-        assert(eventSource(isAgent = false).nextEvent(order.id) == None)
-        assert(eventSource(isAgent = true ).nextEvent(order.id) == None)
-        assert(eventSource(isAgent = false).cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
-        assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
-        assert(eventSource(isAgent = false).cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
-        assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
+        val processingOrder = unmarkedOrder.copy(state = Order.Processing)
+        testEventSource(processingOrder, attached) { (order, controller, agent) =>
+          assert(controller.nextEvent(order.id) == None)
+          assert(agent     .nextEvent(order.id) == None)
+          assert(controller.cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
+          assert(agent     .cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
+          assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
+          assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
+          assert(controller.suspend(order.id) == Right(Some(OrderSuspendMarked)))
+          assert(agent     .suspend(order.id) == Right(Some(OrderSuspendMarked)))
+          assert(controller.resume(order.id, None) == Left(CannotResumeOrderProblem))
+          assert(agent     .resume(order.id, None) == Left(CannotResumeOrderProblem))
+        }
+      }
+    }
+
+    "OrderMark.Cancelling(NotStarted)" - {
+      val cancellingOrder = Order(OrderId("ORDER"), TestWorkflowId, Order.Fresh(None), mark = Some(OrderMark.Cancelling(CancelMode.NotStarted)))
+
+      "Fresh" - {
+        val freshOrder = cancellingOrder
+
+        "Detached" in {
+          testEventSource(freshOrder, detached) { (order, controller, _) =>
+            assert(controller.nextEvent(order.id) == Some(order.id <-: OrderCancelled))
+          }
+        }
+
+        "Attached" in {
+          testEventSource(freshOrder, attached) { (order, controller, agent) =>
+            assert(controller.nextEvent(order.id) == None)
+            assert(agent     .nextEvent(order.id) == Some(order.id <-: OrderDetachable))
+            assert(controller.cancel(order.id, CancelMode.NotStarted      ) == Right(None))
+            assert(agent     .cancel(order.id, CancelMode.NotStarted      ) == Right(Some(OrderDetachable)))
+            assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(None))
+            assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderDetachable)))
+            assert(controller.suspend(order.id) == Left(CannotSuspendOrderProblem))
+            assert(agent     .suspend(order.id) == Left(CannotSuspendOrderProblem))
+            assert(controller.resume(order.id, None) == Left(CannotResumeOrderProblem))
+            assert(agent     .resume(order.id, None) == Left(CannotResumeOrderProblem))
+            assert(controller.resume(order.id, Some(Position(1))) == Left(CannotResumeOrderProblem))
+            assert(agent     .resume(order.id, Some(Position(1))) == Left(CannotResumeOrderProblem))
+          }
+        }
+      }
+    }
+
+    "OrderMark.Cancelling(FreshOrStarted)" - {
+      val cancellingOrder = Order(OrderId("ORDER"), TestWorkflowId, Order.Fresh(None), mark = Some(OrderMark.Cancelling(CancelMode.NotStarted)))
+
+      "Ready" - {
+        val readyOrder = cancellingOrder.copy(state = Order.Ready)
+
+        "Detached" in {
+          testEventSource(readyOrder, detached) { (order, controller, _) =>
+            assert(controller.nextEvent(order.id) == Some(order.id <-: orderForked))
+          }
+        }
+
+        "Attached" in {
+          testEventSource(readyOrder, attached) { (order, controller, agent) =>
+            assert(controller.nextEvent(order.id) == None)
+            assert(agent     .nextEvent(order.id) == Some(order.id <-: orderForked))
+            assert(controller.cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
+            assert(agent     .cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
+            assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(None))
+            assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderDetachable)))
+            assert(controller.suspend(order.id) == Left(CannotSuspendOrderProblem))
+            assert(agent     .suspend(order.id) == Left(CannotSuspendOrderProblem))
+            assert(controller.resume(order.id, None) == Left(CannotResumeOrderProblem))
+            assert(agent     .resume(order.id, None) == Left(CannotResumeOrderProblem))
+            assert(controller.resume(order.id, Some(Position(1))) == Left(CannotResumeOrderProblem))
+            assert(agent     .resume(order.id, Some(Position(1))) == Left(CannotResumeOrderProblem))
+          }
+        }
+      }
+
+      "Processing Attached" in {
+        val processingOrder = cancellingOrder.copy(state = Order.Processing)
+        testEventSource(processingOrder, attached) { (order, controller, agent) =>
+          assert(controller.nextEvent(order.id) == None)
+          assert(agent     .nextEvent(order.id) == None)
+          assert(controller.cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
+          assert(agent     .cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
+          assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(None))
+          assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(None))
+          assert(controller.suspend(order.id) == Left(CannotSuspendOrderProblem))
+          assert(agent     .suspend(order.id) == Left(CannotSuspendOrderProblem))
+          assert(controller.resume(order.id, None) == Left(CannotResumeOrderProblem))
+          assert(agent     .resume(order.id, None) == Left(CannotResumeOrderProblem))
+          assert(controller.resume(order.id, Some(Position(1))) == Left(CannotResumeOrderProblem))
+          assert(agent     .resume(order.id, Some(Position(1))) == Left(CannotResumeOrderProblem))
+        }
+      }
+    }
+
+    "OrderMark.Suspending" - {
+      val suspendingOrder = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready, mark = Some(OrderMark.Suspending))
+
+      "Ready" - {
+        val readyOrder = suspendingOrder
+
+        "Detached" in {
+          testEventSource(readyOrder, detached) { (order, controller, _) =>
+            assert(controller.nextEvent(order.id) == Some(order.id <-: OrderSuspended))
+            assert(controller.cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
+            assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelled)))
+            assert(controller.suspend(order.id) == Right(None))
+            assert(controller.resume(order.id, None) == Right(Some(OrderResumeMarked())))
+            assert(controller.resume(order.id, Some(Position(1))) == Left(CannotResumeOrderProblem))
+          }
+        }
+
+        "Attached" in {
+          testEventSource(readyOrder, attached) { (order, controller, agent) =>
+            assert(controller.nextEvent(order.id) == None)
+            assert(agent     .nextEvent(order.id) == Some(order.id <-: OrderDetachable))
+            assert(controller.cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
+            assert(agent     .cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
+            assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
+            assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderDetachable)))
+            assert(controller.suspend(order.id) == Right(None))
+            assert(agent     .suspend(order.id) == Right(None))
+            assert(controller.resume(order.id, None) == Right(Some(OrderResumeMarked())))
+            assert(agent     .resume(order.id, None) == Right(Some(OrderResumeMarked())))
+            assert(controller.resume(order.id, Some(Position(1))) == Left(CannotResumeOrderProblem))
+            assert(agent     .resume(order.id, Some(Position(1))) == Left(CannotResumeOrderProblem))
+          }
+        }
+      }
+
+      "Processing Attached" in {
+        val processingOrder = suspendingOrder.copy(state = Order.Processing)
+        testEventSource(processingOrder, attached) { (order, controller, agent) =>
+          assert(controller.nextEvent(order.id) == None)
+          assert(agent     .nextEvent(order.id) == None)
+          assert(controller.cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
+          assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
+          assert(controller.suspend(order.id) == Right(None))
+          assert(agent     .suspend(order.id) == Right(None))
+          assert(controller.resume(order.id, None) == Right(Some(OrderResumeMarked())))
+          assert(agent     .resume(order.id, None) == Right(Some(OrderResumeMarked())))
+          assert(controller.resume(order.id, Some(Position(1))) == Left(CannotResumeOrderProblem))
+          assert(agent     .resume(order.id, Some(Position(1))) == Left(CannotResumeOrderProblem))
+        }
+      }
+    }
+
+    "OrderMark.Resuming isSuspended" - {
+      val resumingOrder = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready, mark = Some(OrderMark.Resuming()), isSuspended = true)
+
+      "Ready" - {
+        val readyOrder = resumingOrder
+
+        "Detached" in {
+          testEventSource(readyOrder, detached) { (order, controller, _) =>
+            assert(controller.nextEvent(order.id) == Some(order.id <-: OrderResumed()))
+            assert(controller.cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
+            assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelled)))
+            assert(controller.suspend(order.id) == Right(Some(OrderSuspended)))
+            assert(controller.resume(order.id, None) == Right(Some(OrderResumed()/*should already be happened*/)))
+            assert(controller.resume(order.id, Some(Position(1))) == Left(CannotResumeOrderProblem))
+          }
+        }
+
+        "Attached" in {
+          testEventSource(readyOrder, attached) { (order, controller, agent) =>
+            assert(controller.nextEvent(order.id) == None)
+            assert(agent     .nextEvent(order.id) == Some(order.id <-: OrderResumed()))
+            assert(controller.cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
+            assert(agent     .cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
+            assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
+            assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderDetachable)))
+            assert(controller.suspend(order.id) == Right(None))
+            assert(agent     .suspend(order.id) == Right(Some(OrderDetachable)))
+            assert(controller.resume(order.id, None) == Right(None))
+            assert(agent     .resume(order.id, None) == Right(None))
+            assert(controller.resume(order.id, Some(Position(1))) == Left(CannotResumeOrderProblem))
+            assert(agent     .resume(order.id, Some(Position(1))) == Left(CannotResumeOrderProblem))
+          }
+        }
       }
     }
 
     "Order.isSuspended" - {
       val suspendedOrder = Order(OrderId("ORDER"), TestWorkflowId, Order.Fresh(None), isSuspended = true)
+
       "Fresh" - {
+        val freshOrder = suspendedOrder
+
         "Detached" in {
-          val order = suspendedOrder
-          val eventSource = new OrderEventSource(
-            Map(TestWorkflowId -> ForkWorkflow).checked,
-            Map(order.id -> order).checked,
-            isAgent = false)
-          assert(eventSource.nextEvent(order.id) == Some(order.id <-: OrderStarted))
-          assert(eventSource.cancel(order.id, CancelMode.NotStarted      ) == Right(Some(OrderCancelled)))
-          assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelled)))
-          assert(eventSource.suspend(order.id) == Right(None))
-          assert(eventSource.resume(order.id) == Right(Some(OrderResumed)))
+          testEventSource(freshOrder, detached) { (order, controller, _) =>
+            assert(controller.nextEvent(order.id) == None)
+            assert(controller.cancel(order.id, CancelMode.NotStarted      ) == Right(Some(OrderCancelled)))
+            assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelled)))
+            assert(controller.suspend(order.id) == Right(None))
+            assert(controller.resume(order.id, None) == Right(Some(OrderResumed())))
+            assert(controller.resume(order.id, Some(Position(1))) == Right(Some(OrderResumed(Some(Position(1))))))
+            assert(controller.resume(order.id, Some(Position(99))) == Left(Problem("ResumeOrder: position is not reachable")))
+          }
         }
 
         "Attaching" in {
-          val order = suspendedOrder.copy(attachedState = Some(Order.Attaching(TestAgentRefPath)))
-          def eventSource(isAgent: Boolean) = new OrderEventSource(
-            Map(TestWorkflowId -> ForkWorkflow).checked,
-            Map(order.id -> order).checked,
-            isAgent = isAgent)
-          assert(eventSource(isAgent = false).nextEvent(order.id) == None)
-          assert(eventSource(isAgent = true ).nextEvent(order.id) == None)
-          assert(eventSource(isAgent = false).cancel(order.id, CancelMode.NotStarted      ) == Right(Some(OrderCancelMarked(CancelMode.NotStarted))))
-          assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.NotStarted      ) == Right(Some(OrderCancelMarked(CancelMode.NotStarted))))
-          assert(eventSource(isAgent = false).cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
-          assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
-          assert(eventSource(isAgent = false).suspend(order.id) == Right(None))
-          assert(eventSource(isAgent = true ).suspend(order.id) == Right(None))
-          assert(eventSource(isAgent = false).resume(order.id) == Right(Some(OrderResumeMarked)))
-          assert(eventSource(isAgent = true ).resume(order.id) == Right(Some(OrderResumeMarked)))
+          testEventSource(freshOrder, attaching) { (order, controller, agent) =>
+            assert(controller.nextEvent(order.id) == None)
+            assert(agent     .nextEvent(order.id) == None)
+            assert(controller.cancel(order.id, CancelMode.NotStarted      ) == Right(Some(OrderCancelMarked(CancelMode.NotStarted))))
+            assert(agent     .cancel(order.id, CancelMode.NotStarted      ) == Right(Some(OrderCancelMarked(CancelMode.NotStarted))))
+            assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
+            assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
+            assert(controller.suspend(order.id) == Right(None))
+            assert(agent     .suspend(order.id) == Right(None))
+            assert(controller.resume(order.id, None) == Right(Some(OrderResumeMarked())))
+            assert(agent     .resume(order.id, None) == Right(Some(OrderResumeMarked())))
+            assert(controller.resume(order.id, Some(Position(1))) == Right(Some(OrderResumeMarked(Some(Position(1))))))
+            assert(agent     .resume(order.id, Some(Position(1))) == Right(Some(OrderResumeMarked(Some(Position(1))))))
+          }
         }
 
         "Attached" in {
-          val order = suspendedOrder.copy(attachedState = Some(Order.Attached(TestAgentRefPath)))
-          def eventSource(isAgent: Boolean) = new OrderEventSource(
-            Map(TestWorkflowId -> ForkWorkflow).checked,
-            Map(order.id -> order).checked,
-            isAgent = isAgent)
-          assert(eventSource(isAgent = false).nextEvent(order.id) == None)
-          assert(eventSource(isAgent = true ).nextEvent(order.id) == Some(order.id <-: OrderStarted))
-          assert(eventSource(isAgent = false).cancel(order.id, CancelMode.NotStarted      ) == Right(Some(OrderCancelMarked(CancelMode.NotStarted))))
-          assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.NotStarted      ) == Right(Some(OrderDetachable)))
-          assert(eventSource(isAgent = false).cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
-          assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderDetachable)))
-          assert(eventSource(isAgent = false).suspend(order.id) == Right(None))
-          assert(eventSource(isAgent = true ).suspend(order.id) == Right(None))
-          assert(eventSource(isAgent = false).resume(order.id) == Right(Some(OrderResumeMarked)))
-          assert(eventSource(isAgent = true ).resume(order.id) == Right(Some(OrderResumed)))
+          testEventSource(freshOrder, attached) { (order, controller, agent) =>
+            assert(controller.nextEvent(order.id) == None)
+            assert(agent     .nextEvent(order.id) == None)
+            assert(controller.cancel(order.id, CancelMode.NotStarted      ) == Right(Some(OrderCancelMarked(CancelMode.NotStarted))))
+            assert(agent     .cancel(order.id, CancelMode.NotStarted      ) == Right(Some(OrderDetachable)))
+            assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
+            assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderDetachable)))
+            assert(controller.suspend(order.id) == Right(None))
+            assert(agent     .suspend(order.id) == Right(Some(OrderDetachable)))
+            assert(controller.resume(order.id, None) == Right(Some(OrderResumeMarked())))
+            assert(agent     .resume(order.id, None) == Right(Some(OrderResumed())))
+            assert(controller.resume(order.id, Some(Position(1))) == Right(Some(OrderResumeMarked(Some(Position(1))))))
+            assert(agent     .resume(order.id, Some(Position(1))) == Right(Some(OrderResumed(Some(Position(1))))))
+          }
         }
 
         "Detaching" in {
-          val order = suspendedOrder.copy(attachedState = Some(Order.Detaching(TestAgentRefPath)))
-          def eventSource(isAgent: Boolean) = new OrderEventSource(
-            Map(TestWorkflowId -> ForkWorkflow).checked,
-            Map(order.id -> order).checked,
-            isAgent = isAgent)
-          assert(eventSource(isAgent = false).nextEvent(order.id) == None)
-          assert(eventSource(isAgent = true ).nextEvent(order.id) == None)
-          assert(eventSource(isAgent = false).cancel(order.id, CancelMode.NotStarted      ) == Right(Some(OrderCancelMarked(CancelMode.NotStarted))))
-          assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.NotStarted      ) == Right(Some(OrderCancelMarked(CancelMode.NotStarted))))
-          assert(eventSource(isAgent = false).cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
-          assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
+          testEventSource(freshOrder, detaching) { (order, controller, agent) =>
+            assert(controller.nextEvent(order.id) == None)
+            assert(agent     .nextEvent(order.id) == None)
+            assert(controller.cancel(order.id, CancelMode.NotStarted      ) == Right(Some(OrderCancelMarked(CancelMode.NotStarted))))
+            assert(agent     .cancel(order.id, CancelMode.NotStarted      ) == Right(Some(OrderCancelMarked(CancelMode.NotStarted))))
+            assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
+            assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
+            assert(controller.suspend(order.id) == Right(None))
+            assert(agent     .suspend(order.id) == Right(None))
+            assert(controller.resume(order.id, None) == Right(Some(OrderResumeMarked())))
+            assert(agent     .resume(order.id, None) == Right(Some(OrderResumeMarked())))
+            assert(controller.resume(order.id, Some(Position(1))) == Right(Some(OrderResumeMarked(Some(Position(1))))))
+            assert(agent     .resume(order.id, Some(Position(1))) == Right(Some(OrderResumeMarked(Some(Position(1))))))
+          }
         }
       }
 
       "Ready" - {
         val readyOrder = suspendedOrder.copy(state = Order.Ready)
+
         "Detached" in {
-          val order = readyOrder
-          val eventSource = new OrderEventSource(
-            Map(TestWorkflowId -> ForkWorkflow).checked,
-            Map(order.id -> order).checked,
-            isAgent = false)
-          assert(eventSource.nextEvent(order.id) == Some(order.id <-: orderForked))
-          assert(eventSource.cancel(order.id, CancelMode.NotStarted    ) == Left(CancelStartedOrderProblem(order.id)))
-          assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelled)))
+          testEventSource(readyOrder, detached) { (order, controller, _) =>
+            assert(controller.nextEvent(order.id) == None)
+            assert(controller.cancel(order.id, CancelMode.NotStarted    ) == Left(CancelStartedOrderProblem(order.id)))
+            assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelled)))
+            assert(controller.suspend(order.id) == Right(None))
+            assert(controller.resume(order.id, None) == Right(Some(OrderResumed())))
+            assert(controller.resume(order.id, Some(Position(1))) == Right(Some(OrderResumed(Some(Position(1))))))
+          }
         }
 
         "Attaching" in {
-          val order = readyOrder.copy(attachedState = Some(Order.Attaching(TestAgentRefPath)))
-          def eventSource(isAgent: Boolean) = new OrderEventSource(
-            Map(TestWorkflowId -> ForkWorkflow).checked,
-            Map(order.id -> order).checked,
-            isAgent = isAgent)
-          assert(eventSource(isAgent = false).nextEvent(order.id) == None)
-          assert(eventSource(isAgent = true ).nextEvent(order.id) == None)
-          assert(eventSource(isAgent = false).cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
-          assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
-          assert(eventSource(isAgent = false).cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
-          assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
+          testEventSource(readyOrder, attaching) { (order, controller, agent) =>
+            assert(controller.nextEvent(order.id) == None)
+            assert(agent     .nextEvent(order.id) == None)
+            assert(controller.cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
+            assert(agent     .cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
+            assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
+            assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
+            assert(controller.suspend(order.id) == Right(None))
+            assert(agent     .suspend(order.id) == Right(None))
+            assert(controller.resume(order.id, None) == Right(Some(OrderResumeMarked())))
+            assert(agent     .resume(order.id, None) == Right(Some(OrderResumeMarked())))
+            assert(controller.resume(order.id, Some(Position(1))) == Right(Some(OrderResumeMarked(Some(Position(1))))))
+            assert(agent     .resume(order.id, Some(Position(1))) == Right(Some(OrderResumeMarked(Some(Position(1))))))
+          }
         }
 
         "Attached" in {
-          val order = readyOrder.copy(attachedState = Some(Order.Attached(TestAgentRefPath)))
-          def eventSource(isAgent: Boolean) = new OrderEventSource(
-            Map(TestWorkflowId -> ForkWorkflow).checked,
-            Map(order.id -> order).checked,
-            isAgent = isAgent)
-          assert(eventSource(isAgent = false).nextEvent(order.id) == None)
-          assert(eventSource(isAgent = true ).nextEvent(order.id) == Some(order.id <-: orderForked))
-          assert(eventSource(isAgent = false).cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
-          assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
-          assert(eventSource(isAgent = false).cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
-          assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderDetachable)))
+          testEventSource(readyOrder, attached) { (order, controller, agent) =>
+            assert(controller.nextEvent(order.id) == None)
+            assert(agent     .nextEvent(order.id) == None)
+            assert(controller.cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
+            assert(agent     .cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
+            assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
+            assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderDetachable)))
+            assert(controller.resume(order.id, None) == Right(Some(OrderResumeMarked())))
+            assert(agent     .resume(order.id, None) == Right(Some(OrderResumed())))
+            assert(controller.resume(order.id, Some(Position(1))) == Right(Some(OrderResumeMarked(Some(Position(1))))))
+            assert(agent     .resume(order.id, Some(Position(1))) == Right(Some(OrderResumed(Some(Position(1))))))
+          }
         }
 
         "Detaching" in {
-          val order = readyOrder.copy(attachedState = Some(Order.Detaching(TestAgentRefPath)))
-          def eventSource(isAgent: Boolean) = new OrderEventSource(
-            Map(TestWorkflowId -> ForkWorkflow).checked,
-            Map(order.id -> order).checked,
-            isAgent = isAgent)
-          assert(eventSource(isAgent = false).nextEvent(order.id) == None)
-          assert(eventSource(isAgent = true ).nextEvent(order.id) == None)
-          assert(eventSource(isAgent = false).cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
-          assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
-          assert(eventSource(isAgent = false).cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
-          assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
+          testEventSource(readyOrder, detaching) { (order, controller, agent) =>
+            assert(controller.nextEvent(order.id) == None)
+            assert(agent     .nextEvent(order.id) == None)
+            assert(controller.cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
+            assert(agent     .cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
+            assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
+            assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
+            assert(controller.suspend(order.id) == Right(None))
+            assert(agent     .suspend(order.id) == Right(None))
+            assert(controller.resume(order.id, None) == Right(Some(OrderResumeMarked())))
+            assert(agent     .resume(order.id, None) == Right(Some(OrderResumeMarked())))
+            assert(controller.resume(order.id, Some(Position(1))) == Right(Some(OrderResumeMarked(Some(Position(1))))))
+            assert(agent     .resume(order.id, Some(Position(1))) == Right(Some(OrderResumeMarked(Some(Position(1))))))
+          }
         }
       }
 
       "Processing Attached" in {
-        val order = suspendedOrder.copy(state = Order.Processing, attachedState = Some(Order.Attached(TestAgentRefPath)))
-        def eventSource(isAgent: Boolean) = new OrderEventSource(
-          Map(TestWorkflowId -> ForkWorkflow).checked,
-          Map(order.id -> order).checked,
-          isAgent = isAgent)
-        assert(eventSource(isAgent = false).nextEvent(order.id) == None)
-        assert(eventSource(isAgent = true ).nextEvent(order.id) == None)
-        assert(eventSource(isAgent = false).cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
-        assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
-        assert(eventSource(isAgent = false).cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
-        assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
-      }
-    }
-  }
-
-  "OrderMark" - {
-    "OrderMark.Cancelling(NotStarted)" - {
-      "Ready" - {
-        "Detached" in {
-          val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready,
-            mark = Some(OrderMark.Cancelling(CancelMode.NotStarted)))
-          def eventSource(isAgent: Boolean) = new OrderEventSource(
-            Map(TestWorkflowId -> ForkWorkflow).checked,
-            Map(order.id -> order).checked,
-            isAgent = isAgent)
-          assert(eventSource(isAgent = false).nextEvent(order.id) == Some(order.id <-: orderForked))
+        val processingOrder = suspendedOrder.copy(state = Order.Processing)
+        testEventSource(processingOrder, attached) { (order, controller, agent) =>
+          assert(controller.nextEvent(order.id) == None)
+          assert(agent     .nextEvent(order.id) == None)
+          assert(controller.cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
+          assert(agent     .cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
+          assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
+          assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
+          assert(controller.suspend(order.id) == Right(None))
+          assert(agent     .suspend(order.id) == Right(None))
+          assert(controller.resume(order.id, None) == Right(Some(OrderResumeMarked())))
+          assert(agent     .resume(order.id, None) == Right(Some(OrderResumeMarked())))
+          assert(controller.resume(order.id, Some(Position(1))) == Right(Some(OrderResumeMarked(Some(Position(1))))))
+          assert(agent     .resume(order.id, Some(Position(1))) == Right(Some(OrderResumeMarked(Some(Position(1))))))
         }
-
-        "Attached" in {
-          val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready, attachedState = Some(Order.Attached(TestAgentRefPath)),
-            mark = Some(OrderMark.Cancelling(CancelMode.FreshOrStarted())))
-          def eventSource(isAgent: Boolean) = new OrderEventSource(
-            Map(TestWorkflowId -> ForkWorkflow).checked,
-            Map(order.id -> order).checked,
-            isAgent = isAgent)
-          assert(eventSource(isAgent = false).nextEvent(order.id) == None)
-          assert(eventSource(isAgent = true ).nextEvent(order.id) == Some(order.id <-: OrderDetachable))
-          assert(eventSource(isAgent = false).cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
-          assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
-          assert(eventSource(isAgent = false).cancel(order.id, CancelMode.FreshOrStarted()) == Right(None))
-          assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderDetachable)))
-        }
-      }
-
-      "Processing Attached" in {
-        val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Processing, attachedState = Some(Order.Attached(TestAgentRefPath)),
-          mark = Some(OrderMark.Cancelling(CancelMode.FreshOrStarted())))
-        def eventSource(isAgent: Boolean) = new OrderEventSource(
-          Map(TestWorkflowId -> ForkWorkflow).checked,
-          Map(order.id -> order).checked,
-          isAgent = isAgent)
-        assert(eventSource(isAgent = false).nextEvent(order.id) == None)
-        assert(eventSource(isAgent = true ).nextEvent(order.id) == None)
-        assert(eventSource(isAgent = false).cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
-        assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
-        assert(eventSource(isAgent = false).cancel(order.id, CancelMode.FreshOrStarted()) == Right(None))
-        assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.FreshOrStarted()) == Right(None))
       }
     }
 
-    "OrderMark.Cancelling(FreshOrStarted)" - {
-      "Ready" - {
-        "Detached" in {
-          val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready,
-            mark = Some(OrderMark.Cancelling(CancelMode.FreshOrStarted())))
-          def eventSource(isAgent: Boolean) = new OrderEventSource(
-            Map(TestWorkflowId -> ForkWorkflow).checked,
-            Map(order.id -> order).checked,
-            isAgent = isAgent)
-          assert(eventSource(isAgent = false).nextEvent(order.id) == Some(order.id <-: OrderCancelled))
-        }
-
-        "Attached" in {
-          val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready, attachedState = Some(Order.Attached(TestAgentRefPath)),
-            mark = Some(OrderMark.Cancelling(CancelMode.FreshOrStarted())))
-          def eventSource(isAgent: Boolean) = new OrderEventSource(
-            Map(TestWorkflowId -> ForkWorkflow).checked,
-            Map(order.id -> order).checked,
-            isAgent = isAgent)
-          assert(eventSource(isAgent = false).nextEvent(order.id) == None)
-          assert(eventSource(isAgent = true ).nextEvent(order.id) == Some(order.id <-: OrderDetachable))
-          assert(eventSource(isAgent = false).cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
-          assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
-          assert(eventSource(isAgent = false).cancel(order.id, CancelMode.FreshOrStarted()) == Right(None))
-          assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderDetachable)))
-        }
-      }
-
-      "Processing Attached" in {
-        val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Processing, attachedState = Some(Order.Attached(TestAgentRefPath)),
-          mark = Some(OrderMark.Cancelling(CancelMode.FreshOrStarted())))
-        def eventSource(isAgent: Boolean) = new OrderEventSource(
-          Map(TestWorkflowId -> ForkWorkflow).checked,
-          Map(order.id -> order).checked,
-          isAgent = isAgent)
-        assert(eventSource(isAgent = false).nextEvent(order.id) == None)
-        assert(eventSource(isAgent = true ).nextEvent(order.id) == None)
-        assert(eventSource(isAgent = false).cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
-        assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.NotStarted      ) == Left(CancelStartedOrderProblem(order.id)))
-        assert(eventSource(isAgent = false).cancel(order.id, CancelMode.FreshOrStarted()) == Right(None))
-        assert(eventSource(isAgent = true ).cancel(order.id, CancelMode.FreshOrStarted()) == Right(None))
-      }
-    }
-
-    "OrderMark.Suspending" - {
-      "Ready" - {
-        "Detached" in {
-          val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready,
-            mark = Some(OrderMark.Suspending))
-          def eventSource(isAgent: Boolean) = new OrderEventSource(
-            Map(TestWorkflowId -> ForkWorkflow).checked,
-            Map(order.id -> order).checked,
-            isAgent = isAgent)
-          assert(eventSource(isAgent = false).nextEvent(order.id) == Some(order.id <-: OrderSuspended))
-        }
-
-        "Attached" in {
-          val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready, attachedState = Some(Order.Attached(TestAgentRefPath)),
-            mark = Some(OrderMark.Suspending))
-          def eventSource(isAgent: Boolean) = new OrderEventSource(
-            Map(TestWorkflowId -> ForkWorkflow).checked,
-            Map(order.id -> order).checked,
-            isAgent = isAgent)
-          assert(eventSource(isAgent = false).nextEvent(order.id) == None)
-          assert(eventSource(isAgent = true ).nextEvent(order.id) == Some(order.id <-: OrderDetachable))
-        }
-      }
-
-      "Processing Attached" in {
-        val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Processing, attachedState = Some(Order.Attached(TestAgentRefPath)),
-          mark = Some(OrderMark.Suspending))
-        def eventSource(isAgent: Boolean) = new OrderEventSource(
-          Map(TestWorkflowId -> ForkWorkflow).checked,
-          Map(order.id -> order).checked,
-          isAgent = isAgent)
-        assert(eventSource(isAgent = false).nextEvent(order.id) == None)
-        assert(eventSource(isAgent = true ).nextEvent(order.id) == None)
-      }
-    }
-
-    "OrderMark.Resuming" - {
-      "Ready" - {
-        "Detached" in {
-          val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready,
-            isSuspended = true, mark = Some(OrderMark.Resuming))
-          def eventSource(isAgent: Boolean) = new OrderEventSource(
-            Map(TestWorkflowId -> ForkWorkflow).checked,
-            Map(order.id -> order).checked,
-            isAgent = isAgent)
-          assert(eventSource(isAgent = false).nextEvent(order.id) == Some(order.id <-: OrderResumed))
-        }
-
-        "Attached" in {
-          val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready, attachedState = Some(Order.Attached(TestAgentRefPath)),
-            isSuspended = true, mark = Some(OrderMark.Resuming))
-          def eventSource(isAgent: Boolean) = new OrderEventSource(
-            Map(TestWorkflowId -> ForkWorkflow).checked,
-            Map(order.id -> order).checked,
-            isAgent = isAgent)
-          assert(eventSource(isAgent = false).nextEvent(order.id) == None)
-          assert(eventSource(isAgent = true ).nextEvent(order.id) == Some(order.id <-: OrderResumed))
-        }
-      }
-
-      "Processing Attached" in {
-        val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Processing, attachedState = Some(Order.Attached(TestAgentRefPath)),
-          mark = Some(OrderMark.Resuming))
-        def eventSource(isAgent: Boolean) = new OrderEventSource(
-          Map(TestWorkflowId -> ForkWorkflow).checked,
-          Map(order.id -> order).checked,
-          isAgent = isAgent)
-        assert(eventSource(isAgent = false).nextEvent(order.id) == None)
-        assert(eventSource(isAgent = true ).nextEvent(order.id) == None)
-      }
+    def testEventSource(templateOrder: Order[Order.State], attachedState: Option[Order.AttachedState])
+      (body: (Order[Order.State], OrderEventSource, OrderEventSource) => Unit)
+    = {
+      val order = templateOrder.copy(attachedState = attachedState)
+      def eventSource(isAgent: Boolean) = new OrderEventSource(
+        Map(TestWorkflowId -> ForkWorkflow).checked,
+        Map(order.id -> order).checked,
+        isAgent = isAgent)
+      body(order, eventSource(isAgent = false), eventSource(isAgent = true))
     }
   }
 

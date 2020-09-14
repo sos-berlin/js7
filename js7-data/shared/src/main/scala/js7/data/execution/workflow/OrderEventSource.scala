@@ -11,8 +11,9 @@ import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.context.OrderContext
 import js7.data.execution.workflow.instructions.{ForkExecutor, InstructionExecutor}
 import js7.data.order.Order.{IsFinal, ProcessingCancelled}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelled, OrderCatched, OrderDetachable, OrderFailed, OrderFailedCatchable, OrderFailedInFork, OrderMoved, OrderResumeMarked, OrderResumed, OrderSuspendMarked, OrderSuspended}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFailed, OrderFailedCatchable, OrderFailedInFork, OrderMoved, OrderResumeMarked, OrderResumed, OrderSuspendMarked, OrderSuspended}
 import js7.data.order.{Order, OrderId, OrderMark, Outcome}
+import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem}
 import js7.data.workflow.instructions.{End, Fork, Goto, IfFailedGoto, Retry, TryInstruction}
 import js7.data.workflow.position.{Position, WorkflowPosition}
 import js7.data.workflow.{Instruction, Workflow, WorkflowId}
@@ -27,7 +28,6 @@ final class OrderEventSource(
   isAgent: Boolean)
 {
   private val context = new OrderContext {
-    // This and idToOrder are mutable, do not use in Future !!!
     def idToOrder                                   = OrderEventSource.this.idToOrder
     def instruction(position: WorkflowPosition)     = OrderEventSource.this.instruction(position)
     def idToWorkflow(id: WorkflowId)                = OrderEventSource.this.idToWorkflow(id)
@@ -54,28 +54,33 @@ final class OrderEventSource(
 
   private def checkedNextEvent(order: Order[Order.State]): Checked[Option[KeyedEvent[OrderActorEvent]]] = {
     def f(o: Option[OrderActorEvent]) = Checked(o.map(order.id <-: _))
-    f(orderMarkEvent(order)).orElseT(
-      if (!weHave(order))
-        Right(None)
-      else
-        f(awokeEvent(order)).orElseT(
-          joinedEvent(order).orElseT(
-            InstructionExecutor.toEvent(instruction(order.workflowPosition), order, context) match {
-              case Right(Some(orderId <-: (moved: OrderMoved))) =>
-                applyMoveInstructions(orderId, moved) map Some.apply
+    f(orderMarkEvent(order))
+      .orElseT(
+        if (!weHave(order) || order.isSuspended)
+          Right(None)
+        else
+          f(awokeEvent(order)).orElseT(
+            joinedEvent(order).orElseT(
+              InstructionExecutor.toEvent(instruction(order.workflowPosition), order, context) match {
+                case Right(Some(orderId <-: (moved: OrderMoved))) =>
+                  applyMoveInstructions(orderId, moved) map Some.apply
 
-              case Right(Some(orderId <-: OrderFailedCatchable(outcome))) =>  // OrderFailedCatchable is used internally only
-                assertThat(orderId == order.id)
-                findCatchPosition(order) match {
-                  case Some(firstCatchPos) if !isMaxRetriesReached(order, firstCatchPos) =>
-                    applyMoveInstructions(order.withPosition(firstCatchPos))
-                      .flatMap(movedPos => Right(Some(orderId <-: OrderCatched(outcome, movedPos))))
-                  case _ =>
-                    Right(Some(orderId <-: (if (order.position.isInFork) OrderFailedInFork(outcome) else OrderFailed(outcome))))
-                }
+                case Right(Some(orderId <-: OrderFailedCatchable(outcome))) =>  // OrderFailedCatchable is used internally only
+                  assertThat(orderId == order.id)
+                  findCatchPosition(order) match {
+                    case Some(firstCatchPos) if !isMaxRetriesReached(order, firstCatchPos) =>
+                      applyMoveInstructions(order.withPosition(firstCatchPos))
+                        .flatMap(movedPos => Right(Some(orderId <-: OrderCatched(outcome, movedPos))))
+                    case _ =>
+                      Right(Some(orderId <-: (if (order.position.isInFork) OrderFailedInFork(outcome) else OrderFailed(outcome))))
+                  }
 
-              case o => o
-            })))
+                case o => o
+              }))
+        )
+      .flatMapT(keyedEvent =>   // Check event
+        idToOrder(keyedEvent.key)
+          .flatMap(_.update(keyedEvent.event).map(_ => Some(keyedEvent))))
   }
 
   // Special handling for try with maxRetries and catch block with retry instruction only:
@@ -94,7 +99,7 @@ final class OrderEventSource(
   private def invalidToEvent[A](order: Order[Order.State], checkedEvent: Checked[Option[KeyedEvent[OrderActorEvent]]])
   : Option[KeyedEvent[OrderActorEvent]] =
     checkedEvent match {
-      case Left(problem)  =>
+      case Left(problem) =>
         if (order.isOrderFailedApplicable)
           Some(order.id <-: OrderFailed(Outcome.Disrupted(problem)))
         else
@@ -133,7 +138,7 @@ final class OrderEventSource(
       mark match {
         case OrderMark.Cancelling(mode) => tryCancel(order, mode)
         case OrderMark.Suspending => trySuspend(order)
-        case OrderMark.Resuming => tryResume(order)
+        case OrderMark.Resuming(position) => tryResume(order, position)
         case _ => None
       })
 
@@ -146,14 +151,14 @@ final class OrderEventSource(
       case OrderMark.Suspending =>
         suspend(orderId)
 
-      case OrderMark.Resuming =>
-        resume(orderId)
+      case OrderMark.Resuming(position) =>
+        resume(orderId, position)
     }
   }
 
   /** Returns `Right(Some(OrderCancelled | OrderCancelMarked))` iff order is not already marked as cancelling. */
   def cancel(orderId: OrderId, mode: CancelMode): Checked[Option[OrderActorEvent]] =
-    idToOrder(orderId).flatMap(order =>
+    withOrder(orderId)(order =>
       if (order.parent.isDefined)
         Left(CancelChildOrderProblem(orderId))
       else if (mode == CancelMode.NotStarted && order.isStarted) {
@@ -161,8 +166,11 @@ final class OrderEventSource(
         Left(CancelStartedOrderProblem(orderId))
       } else Right(
         tryCancel(order, mode).orElse(
-          (!order.isCancelling && !order.isState[IsFinal] && !order.isState[ProcessingCancelled]) ?
-            OrderCancelMarked(mode))))
+          (!order.isCancelling &&
+            !order.isState[IsFinal] &&
+            !order.isState[ProcessingCancelled] &&
+            !order.mark.contains(OrderMark.Cancelling(mode))
+          ) ? OrderCancelMarked(mode))))
 
   private def tryCancel(order: Order[Order.State], mode: CancelMode): Option[OrderActorEvent] =
     if (isOrderCancelable(order, mode))
@@ -179,47 +187,75 @@ final class OrderEventSource(
 
   /** Returns a `Right(Some(OrderSuspended | OrderSuspendMarked))` iff order is not already marked as suspending. */
   def suspend(orderId: OrderId): Checked[Option[OrderActorEvent]] =
-    idToOrder(orderId).flatMap(order =>
+    withOrder(orderId)(order =>
       if (order.isSuspended)
-        Right(None)
+        Right(trySuspend(order))
       else
         order.mark match {
           case Some(_: OrderMark.Cancelling) =>
-            Left(Problem.pure("Order cannot be suspended because it is cancelled"))
+            Left(CannotSuspendOrderProblem)
           case Some(OrderMark.Suspending)  =>  // Already marked
             Right(None)
-          case None | Some(OrderMark.Resuming) =>
-            Right(!order.isSuspended ? trySuspend(order).getOrElse(OrderSuspendMarked))
+          case None | Some(_: OrderMark.Resuming) =>
+            Right((!order.isSuspended || order.isResuming) ? trySuspend(order).getOrElse(OrderSuspendMarked))
         })
 
   private def trySuspend(order: Order[Order.State]): Option[OrderActorEvent] =
     if (weHave(order) && isOrderSuspendible(order))
-      if (order.isAttached && isAgent) Some(OrderDetachable)
-      else if (order.isDetached) Some(OrderSuspended)
-      else None
-    else None
+      if (order.isAttached && isAgent)
+        Some(OrderDetachable)
+      else if (order.isDetached && (!order.isSuspended || order.isResuming))
+        Some(OrderSuspended)
+      else
+        None
+    else
+      None
 
   private def isOrderSuspendible(order: Order[Order.State]): Boolean =
-    weHave(order) && order.isSuspendible &&
-      !instruction(order.workflowPosition).isInstanceOf[End]  // End reached? Then normal OrderFinished (not OrderSuspended)
+    weHave(order) && order.isSuspendible
 
   /** Returns a `Right(Some(OrderResumed | OrderResumeMarked))` iff order is not already marked as resuming. */
-  def resume(orderId: OrderId): Checked[Option[OrderActorEvent]] =
-    idToOrder(orderId).flatMap(order =>
-      order.mark match {
+  def resume(orderId: OrderId, position: Option[Position]): Checked[Option[OrderActorEvent]] =
+    withOrder(orderId)(order =>
+      (order.mark match {
         case Some(_: OrderMark.Cancelling) =>
-          Left(Problem("Order cannot resume because it is being cancelled"))
+          Left(CannotResumeOrderProblem)
 
-        case None | Some(OrderMark.Resuming | OrderMark.Suspending) =>
+        case Some(OrderMark.Resuming(`position`)) =>
+          Right(order.isDetached ? OrderResumed(position)/*should already be happened*/)
+
+        case Some(OrderMark.Resuming(_)) =>
+           Left(CannotResumeOrderProblem)
+
+        case Some(OrderMark.Suspending) if position.isDefined =>
+           Left(CannotResumeOrderProblem)
+
+        case None | Some(OrderMark.Suspending) =>
           if (!order.isSuspended && !order.mark.contains(OrderMark.Suspending))
-            Left(Problem("Order cannot resume because it is not suspended"))
+            Left(CannotResumeOrderProblem)
           else
-            Right(Some(tryResume(order) getOrElse OrderResumeMarked))
-      })
+            (position match {
+              case None => Right(None)
+              case Some(position) =>
+                idToWorkflow(order.workflowId).flatMap(workflow =>
+                  if (!workflow.isMoveable(order.position, position))
+                    Left(Problem("ResumeOrder: position is not reachable"))
+                  else
+                    Right(Some(position)))
+            }).map(position =>
+              Some((tryResume(order, position) getOrElse OrderResumeMarked(position))))
+      }))
 
-  private def tryResume(order: Order[Order.State]): Option[OrderActorEvent] =
+  /** Retrieve the Order, check if calculated event is applicable. */
+  private def withOrder[E <: OrderCoreEvent](orderId: OrderId)(body: Order[Order.State] => Checked[Option[E]]): Checked[Option[E]] =
+    idToOrder(orderId).flatMap(order =>
+      body(order).flatMapT(event =>
+        order.update(event)
+          .map(_ => Some(event))))
+
+  private def tryResume(order: Order[Order.State], position: Option[Position]): Option[OrderActorEvent] =
     (weHave(order) && order.isResumable) ?
-      OrderResumed
+      OrderResumed(position)
 
   private def weHave(order: Order[Order.State]) =
     order.isDetached && !isAgent ||

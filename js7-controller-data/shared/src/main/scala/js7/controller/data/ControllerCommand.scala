@@ -20,6 +20,7 @@ import js7.data.event.EventId
 import js7.data.item.{TypedPath, VersionId}
 import js7.data.node.NodeId
 import js7.data.order.{FreshOrder, OrderId}
+import js7.data.workflow.position.Position
 
 /**
   * @author Joacim Zschimmer
@@ -54,7 +55,8 @@ object ControllerCommand extends CommonCommand.Companion
     extends ControllerCommand.Response
   }
 
-  final case class CancelOrder(orderId: OrderId, mode: CancelMode) extends ControllerCommand {
+  final case class CancelOrder(orderId: OrderId, mode: CancelMode = CancelMode.FreshOrStarted())
+  extends ControllerCommand {
     type Response = Response.Accepted
   }
   object CancelOrder {
@@ -88,7 +90,7 @@ object ControllerCommand extends CommonCommand.Companion
   object EmergencyStop {
     implicit val jsonEncoder: Encoder.AsObject[EmergencyStop] = o =>
       JsonObject.fromIterable(
-        (o.restart).thenList("restart" -> Json.True))
+        o.restart.thenList("restart" -> Json.True))
 
     implicit val jsonDecoder: Decoder[EmergencyStop] = c =>
       for {
@@ -137,7 +139,8 @@ object ControllerCommand extends CommonCommand.Companion
       } yield ShutDown(restart, cluster, suppressSnapshot)
   }
 
-  final case class ResumeOrder(orderId: OrderId) extends ControllerCommand {
+  final case class ResumeOrder(orderId: OrderId, position: Option[Position] = None)
+  extends ControllerCommand {
     type Response = Response.Accepted
   }
 

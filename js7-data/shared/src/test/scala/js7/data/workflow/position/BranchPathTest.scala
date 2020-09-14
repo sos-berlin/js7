@@ -23,6 +23,28 @@ final class BranchPathTest extends AnyFreeSpec
     assert("""[ 1, 2, 3 ]""".parseJsonCheckedAs[BranchPath]== Left(Problem("JSON DecodingFailure at : Not a valid BranchPath")))
   }
 
+  "commonBranchPath" in {
+    val a = Segment(1, "A")
+    val b = Segment(1, "B")
+    val c = Segment(1, "C")
+    val x = Segment(1, "X")
+
+    assert(BranchPath.commonBranchPath(Nil, Nil) == Nil)
+
+    assert(BranchPath.commonBranchPath(Nil, List(a)) == Nil)
+    assert(BranchPath.commonBranchPath(List(a), Nil) == Nil)
+
+    assert(BranchPath.commonBranchPath(List(a), List(Segment(2, "A"))) == Nil)
+    assert(BranchPath.commonBranchPath(List(a), List(Segment(1, "X"))) == Nil)
+    assert(BranchPath.commonBranchPath(List(a), List(a)) == List(a))
+
+    assert(BranchPath.commonBranchPath(List(a, b), List(a, x)) == List(a))
+    assert(BranchPath.commonBranchPath(List(a, b), List(a, b)) == List(a, b))
+    assert(BranchPath.commonBranchPath(List(a, b, c), List(a, b, c)) == List(a, b, c))
+    assert(BranchPath.commonBranchPath(List(a, b, c), List(a, x, c)) == List(a))
+    assert(BranchPath.commonBranchPath(List(a, b, c), List(x, b, c)) == Nil)
+  }
+
   "BranchPath and Position" in {
     assert(Nil % 1 == Position(1))
     assert((Segment(1, "BRANCH") :: Nil) % 3 == Position(1) / "BRANCH" % 3)

@@ -23,14 +23,14 @@ object EndExecutor extends EventInstructionExecutor with PositionInstructionExec
             else
               order.id <-: OrderFinished
 
-      case Some(returnPosition) =>
-        context.instruction(order.workflowId /: returnPosition) match {
-          case fork: Fork =>
-            ForkExecutor.tryJoinChildOrder(context, order, fork)
-          case _ =>
-            Some(order.id <-: OrderMoved(returnPosition.increment))
-        }
-    })
+        case Some(returnPosition) =>
+          context.instruction(order.workflowId /: returnPosition) match {
+            case fork: Fork =>
+              ForkExecutor.tryJoinChildOrder(context, order, fork)
+            case _ =>
+              Some(order.id <-: OrderMoved(returnPosition.increment))
+          }
+      })
 
   def nextPosition(context: OrderContext, order: Order[Order.State], instruction: End) =
     Right(

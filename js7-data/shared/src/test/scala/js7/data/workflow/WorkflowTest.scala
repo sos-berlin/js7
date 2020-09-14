@@ -12,7 +12,7 @@ import js7.data.job.{ExecutablePath, ExecutableScript, JobKey}
 import js7.data.workflow.WorkflowTest._
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, ExplicitEnd, Fail, Fork, Goto, If, IfFailedGoto, ImplicitEnd, Retry, TryInstruction}
-import js7.data.workflow.position.BranchId.{Else, Then, Try_, catch_, try_}
+import js7.data.workflow.position.BranchId.{Catch_, Else, Then, Try_, catch_, fork, try_}
 import js7.data.workflow.position._
 import js7.data.workflow.test.TestSetting._
 import js7.tester.CirceJsonTester.testJson
@@ -21,8 +21,8 @@ import org.scalatest.freespec.AnyFreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class WorkflowTest extends AnyFreeSpec {
-
+final class WorkflowTest extends AnyFreeSpec
+{
   "JSON" - {
     "Workflow without WorkflowID, when placed in configuration directory" in {
       testJson[Workflow](
@@ -601,6 +601,52 @@ final class WorkflowTest extends AnyFreeSpec {
     val executePosition = forkPosition / "fork+🍋" % 0
     assert(tryWorkflow.instruction(executePosition).isInstanceOf[Execute])
     assert(tryWorkflow.findCatchPosition(executePosition) == None)  // Do not escape Fork!
+  }
+
+  "isMoveable" - {
+    "Same BranchPath is okay" in {
+      for (i <- TestWorkflow.instructions.indices; j <- TestWorkflow.instructions.indices) {
+        assert(TestWorkflow.isMoveable(Position(i), Position(j)))
+      }
+    }
+
+    "Undefined Position is not okay" in {
+      assert(!TestWorkflow.isMoveable(Position(0), Position(TestWorkflow.instructions.length)))
+      assert(!TestWorkflow.isMoveable(Position(TestWorkflow.instructions.length), Position(0)))
+    }
+
+    "if-then-else is okay" in {
+      assert(TestWorkflow.isMoveable(Position(0), Position(1) / Then % 0))
+      assert(TestWorkflow.isMoveable(Position(1), Position(1) / Then % 0))
+      assert(TestWorkflow.isMoveable(Position(1), Position(1) / Then % 1))
+      assert(TestWorkflow.isMoveable(Position(1), Position(1) / Then % 0))
+      assert(TestWorkflow.isMoveable(Position(1), Position(1) / Else % 1))
+    }
+
+    "Different fork branches are not okay" in {
+      assert(!TestWorkflow.isMoveable(Position(2), Position(2) / fork("🥕") % 0))
+      assert(!TestWorkflow.isMoveable(Position(2) / fork("🥕") % 0, Position(2) / fork("🍋") % 0))
+    }
+
+    "Same fork branch is okay" in {
+      assert(TestWorkflow.isMoveable(Position(2) / fork("🥕") % 0, Position(2) / fork("🥕") % 0))
+      assert(TestWorkflow.isMoveable(Position(2) / fork("🥕") % 0, Position(2) / fork("🥕") % 2))
+    }
+
+    "try catch is okay" in {
+      val workflow = {
+        val execute = Execute.Anonymous(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/SCRIPT")))
+        Workflow.of(
+          execute,
+          TryInstruction(
+            tryWorkflow = Workflow.of(execute),
+            catchWorkflow = Workflow.of(execute)),
+          execute)
+      }
+      assert(workflow.isMoveable(Position(1), Position(1) / Try_ % 0))
+      assert(workflow.isMoveable(Position(1), Position(1) / Catch_ % 0))
+      assert(workflow.isMoveable(Position(1) / Catch_ % 0, Position(1)))
+    }
   }
 }
 

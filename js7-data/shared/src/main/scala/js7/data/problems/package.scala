@@ -19,4 +19,8 @@ package object problems
   case object InvalidLoginProblem extends Problem.ArgumentlessCoded {
     override def httpStatusCode = 401/*Unauthorized*/
   }
+
+  case object CannotResumeOrderProblem extends Problem.ArgumentlessCoded
+
+  case object CannotSuspendOrderProblem extends Problem.ArgumentlessCoded
 }

@@ -264,8 +264,8 @@ final class OrderTest extends AnyFreeSpec
       OrderCancelled,
       OrderSuspendMarked,
       OrderSuspended,
-      OrderResumeMarked,
-      OrderResumed,
+      OrderResumeMarked(),
+      OrderResumed(),
 
       OrderBroken(Problem("Problem")),
 
@@ -286,7 +286,7 @@ final class OrderTest extends AnyFreeSpec
     val NoMark     = none[OrderMark]
     val Cancelling = OrderMark.Cancelling(CancelMode.FreshOrStarted()).some
     val Suspending = OrderMark.Suspending.some
-    val Resuming   = OrderMark.Resuming.some
+    val Resuming   = OrderMark.Resuming().some
 
     case object IsSuspended {
       def unapply(order: Order[Order.State]) = Some(order.isSuspended)
@@ -299,14 +299,15 @@ final class OrderTest extends AnyFreeSpec
         detachingAllowed[Fresh] orElse
         cancelMarkedAllowed[Fresh] orElse
         suspendMarkedAllowed[Fresh] orElse {
-          case (_: OrderMoved    , _                 , IsDetached | IsAttached) => _.isInstanceOf[Fresh]
-          case (_: OrderFailed   , IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[FailedWhileFresh]  // Expression error
-          case (_: OrderStarted  , IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[Ready]
-          case (OrderCancelled   , _                 , IsDetached             ) => _.isInstanceOf[Cancelled]
-          case (OrderSuspended   , _                 , IsDetached             ) => _.isInstanceOf[Fresh]
-          case (OrderResumeMarked, _                 , _                      ) => _.isInstanceOf[Fresh]
-          case (OrderResumed     , IsSuspended(true) , IsDetached | IsAttached) => _.isInstanceOf[Fresh]
-          case (_: OrderBroken   , _                 , _                      ) => _.isInstanceOf[Broken]
+          case (_: OrderMoved       , _                 , IsDetached | IsAttached) => _.isInstanceOf[Fresh]
+          case (_: OrderFailed      , IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[FailedWhileFresh]  // Expression error
+          case (_: OrderStarted     , IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[Ready]
+          case (OrderCancelled      , _                 , IsDetached             ) => _.isInstanceOf[Cancelled]
+          case (OrderSuspended      , _                 , IsDetached             ) => _.isInstanceOf[Fresh]
+          case (OrderSuspended      , IsSuspended(true) , IsAttached             ) => _.isInstanceOf[Fresh]
+          case (_: OrderResumeMarked, _                 , _                      ) => _.isInstanceOf[Fresh]
+          case (_: OrderResumed     , IsSuspended(true) , IsDetached | IsAttached) => _.isInstanceOf[Fresh]
+          case (_: OrderBroken      , _                 , _                      ) => _.isInstanceOf[Broken]
         })
     }
 
@@ -329,8 +330,9 @@ final class OrderTest extends AnyFreeSpec
           case (_: OrderFinished         , IsSuspended(false), IsDetached             ) => _.isInstanceOf[Finished]
           case (OrderCancelled           , _                 , IsDetached             ) => _.isInstanceOf[Cancelled]
           case (OrderSuspended           , _                 , IsDetached             ) => _.isInstanceOf[Ready]
-          case (OrderResumeMarked        , _                 , _                      ) => _.isInstanceOf[Ready]
-          case (OrderResumed             , IsSuspended(true) , IsDetached | IsAttached) => _.isInstanceOf[Ready]
+          case (OrderSuspended           , IsSuspended(true) , IsAttached             ) => _.isInstanceOf[Ready]
+          case (_: OrderResumeMarked     , _                 , _                      ) => _.isInstanceOf[Ready]
+          case (_: OrderResumed          , IsSuspended(true) , IsDetached | IsAttached) => _.isInstanceOf[Ready]
           case (_: OrderBroken           , _                 , _                      ) => _.isInstanceOf[Broken]
         })
     }
@@ -416,10 +418,10 @@ final class OrderTest extends AnyFreeSpec
         markable[Broken] orElse
         detachingAllowed[Broken] orElse
         cancelMarkedAllowed[Broken] orElse {
-          case (OrderCancelled   , _, IsDetached                           ) => _.isInstanceOf[Cancelled]
-          case (OrderResumeMarked, _, IsDetached | IsAttached | IsDetaching) => _.isInstanceOf[Broken]
-          case (OrderResumed     , _, IsDetached | IsAttached              ) => _.isInstanceOf[Ready]
-          case (_: OrderBroken   , _, _                                    ) => _.isInstanceOf[Broken]
+          case (OrderCancelled      , _, IsDetached                           ) => _.isInstanceOf[Cancelled]
+          case (_: OrderResumeMarked, _, IsDetached | IsAttached | IsDetaching) => _.isInstanceOf[Broken]
+          case (_: OrderResumed     , _, IsDetached | IsAttached              ) => _.isInstanceOf[Ready]
+          case (_: OrderBroken      , _, _                                    ) => _.isInstanceOf[Broken]
         })
     }
 
@@ -508,7 +510,7 @@ final class OrderTest extends AnyFreeSpec
     type ToPredicate = PartialFunction[(OrderEvent, Order[Order.State], Option[AttachedState]), State => Boolean]
 
     def markable[S <: Order.State: ClassTag]: ToPredicate = {
-      case (_: OrderCancelMarked | OrderSuspendMarked | OrderResumeMarked, _, _) => implicitClass[S] isAssignableFrom _.getClass
+      case (_: OrderCancelMarked | OrderSuspendMarked | _: OrderResumeMarked, _, _) => implicitClass[S] isAssignableFrom _.getClass
     }
 
     def cancelMarkedAllowed[S <: Order.State: ClassTag]: ToPredicate = {
@@ -516,8 +518,8 @@ final class OrderTest extends AnyFreeSpec
     }
 
     def suspendMarkedAllowed[S <: Order.State: ClassTag]: ToPredicate = {
-      case (OrderSuspendMarked, IsSuspended(false)  , _) => implicitClass[S] isAssignableFrom _.getClass
-      case (OrderResumeMarked , _, _) => implicitClass[S] isAssignableFrom _.getClass
+      case (OrderSuspendMarked  , IsSuspended(false), _) => implicitClass[S] isAssignableFrom _.getClass
+      case (_: OrderResumeMarked, _                 , _) => implicitClass[S] isAssignableFrom _.getClass
     }
 
     def attachingAllowed[S <: Order.State: ClassTag]: ToPredicate = {

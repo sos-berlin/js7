@@ -2,8 +2,8 @@ package js7.proxy.javaapi
 
 import cats.effect.Resource
 import io.vavr.control.{Either => VEither}
-import java.util.OptionalLong
 import java.util.concurrent.CompletableFuture
+import java.util.{Optional, OptionalLong}
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
@@ -22,6 +22,7 @@ import js7.proxy.javaapi.data.common.VavrConverters._
 import js7.proxy.javaapi.data.controller.{JControllerCommand, JEventAndControllerState}
 import js7.proxy.javaapi.data.item.JUpdateRepoOperation
 import js7.proxy.javaapi.data.order.JFreshOrder
+import js7.proxy.javaapi.data.workflow.position.JPosition
 import js7.proxy.javaapi.eventbus.{JControllerEventBus, JStandardEventBus}
 import js7.proxy.{ControllerApi, ControllerProxy}
 import monix.eval.Task
@@ -141,7 +142,10 @@ final class JControllerApi private[javaapi](
     execute(SuspendOrder(orderId))
 
   def resumeOrder(orderId: OrderId): CompletableFuture[VEither[Problem, Void]] =
-    execute(ResumeOrder(orderId))
+    resumeOrder(orderId, Optional.empty)
+
+  def resumeOrder(orderId: OrderId, position: Optional[JPosition]): CompletableFuture[VEither[Problem, Void]] =
+    execute(ResumeOrder(orderId, position.toScala.map(_.asScala)))
 
   def releaseEvents(until: EventId): CompletableFuture[VEither[Problem, Void]] =
     execute(ReleaseEvents(until))

@@ -103,7 +103,7 @@ final class CommandQueueTest extends AnyFreeSpec
     assert(ok)
     ok = queue.enqueue(Input.MarkOrder(OrderId("ORDER"), OrderMark.Suspending))
     assert(!ok)
-    ok = queue.enqueue(Input.MarkOrder(OrderId("ORDER"), OrderMark.Resuming))
+    ok = queue.enqueue(Input.MarkOrder(OrderId("ORDER"), OrderMark.Resuming()))
     assert(ok)
   }
 

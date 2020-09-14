@@ -184,11 +184,11 @@ object OrderEvent {
   type OrderSuspended = OrderSuspended.type
   case object OrderSuspended extends OrderActorEvent
 
-  type OrderResumeMarked = OrderResumeMarked.type
-  case object OrderResumeMarked extends OrderActorEvent
+  final case class OrderResumeMarked(position: Option[Position] = None)
+  extends OrderActorEvent
 
-  type OrderResumed = OrderResumed.type
-  case object OrderResumed extends OrderActorEvent
+  final case class OrderResumed(position: Option[Position] = None)
+  extends OrderActorEvent
 
   implicit val jsonCodec = TypedJsonCodec[OrderEvent](
     Subtype[OrderAdded],
@@ -208,8 +208,8 @@ object OrderEvent {
     Subtype(deriveCodec[OrderAwaiting]),
     Subtype(OrderSuspendMarked),
     Subtype(OrderSuspended),
-    Subtype(OrderResumeMarked),
-    Subtype(OrderResumed),
+    Subtype(deriveCodec[OrderResumeMarked]),
+    Subtype(deriveCodec[OrderResumed]),
     Subtype(OrderFinished),
     Subtype(deriveCodec[OrderFailed]),
     Subtype(deriveCodec[OrderFailedInFork]),

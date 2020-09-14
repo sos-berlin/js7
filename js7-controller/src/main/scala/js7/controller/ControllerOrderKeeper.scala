@@ -459,7 +459,7 @@ with MainJournalingActor[ControllerState, Event]
             // TODO Event vor dem Speichern mit Order.applyEvent ausprobieren! Bei Fehler ignorieren?
             lastAgentEventId = Some(agentEventId)
             keyedEvent match {
-              case KeyedEvent(_, _: OrderCancelMarked | OrderSuspendMarked | OrderResumeMarked | OrderDetached) =>
+              case KeyedEvent(_, _: OrderCancelMarked | OrderSuspendMarked | _: OrderResumeMarked | OrderDetached) =>
                 // We (the Controller) have emitted the same event
                 None
 
@@ -583,8 +583,8 @@ with MainJournalingActor[ControllerState, Event]
       case ControllerCommand.SuspendOrder(orderId) =>
         executeOrderMarkCommand(orderId)(orderEventSource(_controllerState).suspend(_))
 
-      case ControllerCommand.ResumeOrder(orderId) =>
-        executeOrderMarkCommand(orderId)(orderEventSource(_controllerState).resume(_))
+      case ControllerCommand.ResumeOrder(orderId, position) =>
+        executeOrderMarkCommand(orderId)(orderEventSource(_controllerState).resume(_, position))
 
       case ControllerCommand.ReleaseEvents(untilEventId) =>
         val userId = commandMeta.user.id

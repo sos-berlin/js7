@@ -13,7 +13,7 @@ import js7.data.item.VersionId
 import js7.data.node.NodeId
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.WorkflowPath
-import js7.data.workflow.position.Position
+import js7.data.workflow.position.{BranchId, Position}
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -285,10 +285,11 @@ final class ControllerCommandTest extends AnyFreeSpec
   }
 
   "ResumeOrder" in {
-    testJson[ControllerCommand](ResumeOrder(OrderId("ORDER")), json"""
+    testJson[ControllerCommand](ResumeOrder(OrderId("ORDER"), Some(Position(1) / BranchId.Try_ % 2)), json"""
       {
         "TYPE": "ResumeOrder",
-        "orderId": "ORDER"
+        "orderId": "ORDER",
+        "position": [ 1, "try", 2]
       }""")
   }
 

@@ -10,6 +10,7 @@ import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentRefPath
+import js7.data.command.CancelMode
 import js7.data.order.Order._
 import js7.data.order.OrderEvent._
 import js7.data.workflow.WorkflowId
@@ -77,7 +78,9 @@ final case class Order[+S <: Order.State](
 
       case OrderProcessingStarted =>
         check(isState[Ready] && !isSuspended && isAttached,
-          copy(state = Processing))
+          copy(
+            state = Processing,
+            mark = cleanMark))
 
       case OrderProcessed(outcome_) =>
         check(isState[Processing] && !isSuspended && isAttached,
@@ -122,7 +125,9 @@ final case class Order[+S <: Order.State](
 
       case OrderForked(children) =>
         check(isState[Ready] && !isSuspended && (isDetached || isAttached),
-          copy(state = Forked(children)))
+          copy(
+            state = Forked(children),
+            mark = cleanMark))
 
       case OrderJoined(outcome_) =>
         check((isState[Forked] || isState[Awaiting]) && !isSuspended && isDetached,
@@ -138,7 +143,9 @@ final case class Order[+S <: Order.State](
 
       case OrderAwaiting(orderId) =>
         check(isState[Ready] && !isSuspended && isDetached,
-          copy(state = Awaiting(orderId)))
+          copy(
+            state = Awaiting(orderId),
+            mark = cleanMark))
 
       case OrderMoved(to) =>
         check((isState[IsFreshOrReady]/*before TryInstruction*/ || isState[Processed]) &&
@@ -203,24 +210,35 @@ final case class Order[+S <: Order.State](
           copy(mark = Some(OrderMark.Suspending)))
 
       case OrderSuspended =>
-        check(isSuspendible && isDetached,
+        check(isSuspendible && (isDetached || isSuspended/*already Suspended, to clean Resuming mark*/),
           copy(
             isSuspended = true,
             mark = None))
 
-      case OrderResumeMarked =>
-        check(isMarkable,
-          if (!isSuspended && isSuspending)
-            copy(mark = None/*revert OrderSuspendMarked*/)
-          else
-            copy(mark = Some(OrderMark.Resuming)))
+      case OrderResumeMarked(position) =>
+        if (isMarkable)
+          if (isSuspended)
+            Right(copy(mark = Some(OrderMark.Resuming(position))))
+          else position match {
+            case Some(_) =>
+              // Inhibited because we cannot be sure weather order will pass a fork barrier
+              inapplicable
+            case None =>
+              if (!isSuspended && isSuspending)
+                Right(copy(mark = None/*revert OrderSuspendMarked*/))
+              else
+                Right(copy(mark = Some(OrderMark.Resuming(None))))
+          }
+        else
+          inapplicable
 
-      case OrderResumed =>
+      case OrderResumed(maybePosition) =>
         check(isResumable,
           copy(
             isSuspended = false,
             mark = None,
-            state = if (isState[Broken]) Ready else state))
+            state = if (isState[Broken]) Ready else state
+          ).withPosition(maybePosition getOrElse position))
     }
   }
 
@@ -316,6 +334,12 @@ final case class Order[+S <: Order.State](
   def isCancelling =
     mark.exists(_.isInstanceOf[OrderMark.Cancelling])
 
+  private def cleanMark: Option[OrderMark] =
+    mark match {
+      case Some(OrderMark.Cancelling(CancelMode.NotStarted)) if isStarted => None
+      case o => o
+    }
+
   def isSuspendingOrSuspended = isSuspending || isSuspended
 
   def isSuspendible =
@@ -325,13 +349,13 @@ final case class Order[+S <: Order.State](
   def isSuspending =
     mark contains OrderMark.Suspending
 
+  def isResuming =
+    mark.exists(_.isInstanceOf[OrderMark.Resuming])
+
   def isResumable =
     ((isState[Order.IsFreshOrReady] && isSuspended /*|| isState[Order.Failed]*/) ||
       isState[Broken]) &&
       (isDetached || isAttached)
-
-  def isResuming =
-    mark contains OrderMark.Resuming
 
   def isProcessable =
     isState[IsFreshOrReady] && !isSuspendingOrSuspended

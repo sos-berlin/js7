@@ -11,6 +11,14 @@ import scala.collection.mutable
   */
 object BranchPath
 {
+  def commonBranchPath(a: BranchPath, b: BranchPath): BranchPath =
+    (a, b) match {
+      case (aHead :: aTail, bHead :: bTail) if aHead == bHead =>
+        aHead :: commonBranchPath(aTail, bTail)
+      case _ =>
+        Nil
+    }
+
   final case class Segment(nr: InstructionNr, branchId: BranchId)
   {
     def %(position: Position): Position =

@@ -338,6 +338,15 @@ extends InventoryItem
       }
     }
 
+  def isMoveable(from: Position, to: Position): Boolean =
+    isDefinedAt(from) && isDefinedAt(to) && isMoveable(from.branchPath, to.branchPath)
+
+  private def isMoveable(from: BranchPath, to: BranchPath): Boolean = {
+    val prefix = BranchPath.commonBranchPath(from, to)
+    !from.drop(prefix.length).exists(_.branchId.isFork) &&
+      !to.drop(prefix.length).exists(_.branchId.isFork)
+  }
+
   def instruction(position: Position): Instruction =
     position match {
       case Position(Nil, nr) =>

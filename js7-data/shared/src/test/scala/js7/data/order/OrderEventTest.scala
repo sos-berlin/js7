@@ -21,8 +21,8 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class OrderEventTest extends AnyFreeSpec {
-
+final class OrderEventTest extends AnyFreeSpec
+{
   "OrderAdded" in {
     check(OrderAdded(WorkflowPath("/WORKFLOW") ~ "VERSION", None, Map("VAR" -> "VALUE")), json"""
       {
@@ -356,16 +356,18 @@ final class OrderEventTest extends AnyFreeSpec {
   }
 
   "OrderResumeMarked" in {
-    check(OrderResumeMarked, json"""
+    check(OrderResumeMarked(Some(Position(1))), json"""
       {
-        "TYPE": "OrderResumeMarked"
+        "TYPE": "OrderResumeMarked",
+        "position": [ 1 ]
       }""")
   }
 
   "OrderResumed" in {
-    check(OrderResumed, json"""
+    check(OrderResumed(Some(Position(1))), json"""
       {
-        "TYPE": "OrderResumed"
+        "TYPE": "OrderResumed",
+        "position": [ 1 ]
       }""")
   }
 

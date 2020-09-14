@@ -43,11 +43,19 @@ object ScalaUtils
     }
 
     /** orElse inside a F[Option]. */
-    implicit final class RichOptionT[F[_], A](private val underlying: F[Option[A]]) extends AnyVal {
+    implicit final class RichOptionF[F[_], A](private val underlying: F[Option[A]]) extends AnyVal
+    {
       def orElseT(alternative: => F[Option[A]])(implicit F: Monad[F]): F[Option[A]] =
         F.flatMap(underlying) {
           case None => alternative
           case Some(a) => F.pure(a.some)
+        }
+
+      /** Simple alernative to `EitherT` `flatMap` if for-comprehension is not needed. */
+      def flatMapT(f: A => F[Option[A]])(implicit F: Monad[F]): F[Option[A]] =
+        F.flatMap(underlying) {
+          case None => F.pure(None)
+          case Some(a) => f(a)
         }
     }
 
