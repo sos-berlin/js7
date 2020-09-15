@@ -69,14 +69,9 @@ final class CheckedTest extends AnyFreeSpec
     assert(Checked.fromTry(Failure(throwable)) == Left(Problem("EXCEPTION")))
   }
 
-  "cond" in {
-    assert(Checked.cond(true, 1, Problem("PROBLEM")) == Right(1))
-    assert(Checked.cond(false, 1, Problem("PROBLEM")) == Left(Problem("PROBLEM")))
-  }
-
-  "invalidIf" in {
-    assert(Checked.invalidIf(true, Problem("PROBLEM")) == Left(Problem("PROBLEM")))
-    assert(Checked.invalidIf(false, Problem("PROBLEM")) == Checked.unit)
+  "check" in {
+    assert(Checked.check(false, 7, Problem("PROBLEM")) == Left(Problem("PROBLEM")))
+    assert(Checked.check(true, 7, Problem("PROBLEM")) == Right(7))
   }
 
   "catchNonFatal" in {

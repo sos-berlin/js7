@@ -38,14 +38,8 @@ object Checked
       case Success(o) => Right(o)
     }
 
-  final def invalidIf(predicate: Boolean, problem: => Problem): Checked[Unit] =
-    if (predicate) Left(problem) else unit
-
-  final def cond[A](predicate: Boolean, a: => A, problem: => Problem): Checked[A] =
-    Either.cond(predicate, a, problem)
-
-  def ifOr(predicate: Boolean, problem: Problem): Checked[Unit] =
-    if (predicate) unit else Left(problem)
+  def check[A](predicate: Boolean, a: => A, problem: => Problem): Checked[A] =
+    if (predicate) Right(a) else Left(problem)
 
   def catchNonFatal[A](f: => A): Checked[A] =
     try Right(f)
