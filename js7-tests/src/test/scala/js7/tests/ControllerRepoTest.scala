@@ -82,7 +82,7 @@ final class ControllerRepoTest extends AnyFreeSpec
           // Delete workflow
           provider.updateRepo(controller, V6, delete = CWorkflowPath :: Nil)
           assert(Try { runOrder(controller, CWorkflowPath ~ V6, OrderId("B-6")) }
-            .failed.get.asInstanceOf[HttpException].problem contains ItemDeletedProblem(CWorkflowPath ~ V6))
+            .failed.get.asInstanceOf[HttpException].problem contains ItemDeletedProblem(CWorkflowPath))
 
           // Command is rejected due to duplicate VersionId
           assert(controller.executeCommandAsSystemUser(UpdateRepo(V2)).await(99.s) ==

@@ -87,7 +87,7 @@ final class UpdateRepoTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     executeCommand(UpdateRepo(V3, delete = TestWorkflowPath :: Nil)).orThrow
     assert(controller.addOrder(FreshOrder(orderIds(1), TestWorkflowPath)).await(99.s) ==
-      Left(ItemDeletedProblem(TestWorkflowPath ~ V3)))
+      Left(ItemDeletedProblem(TestWorkflowPath)))
 
     withClue("Tampered with configuration: ") {
       val updateRepo = UpdateRepo(VersionId("vTampered"), sign(workflow2).copy(string = "TAMPERED") :: Nil)

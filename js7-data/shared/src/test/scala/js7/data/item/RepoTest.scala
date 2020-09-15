@@ -64,7 +64,7 @@ final class RepoTest extends AnyFreeSpec
     assert(testRepo.idTo[AItem](APath("/X") ~ V1) == Left(UnknownKeyProblem("TypedPath", APath("/X"))))
     assert(testRepo.idTo[AItem](APath("/X") ~ V1) == Left(UnknownKeyProblem("TypedPath", APath("/X"))))
     assert(testRepo.idTo[BItem](BPath("/Bx") ~ V1) == Left(UnknownKeyProblem("ItemId", BPath("/Bx") ~ V1)))
-    assert(testRepo.idTo[BItem](BPath("/Bx") ~ V3) == Left(ItemDeletedProblem(BPath("/Bx") ~ V3)))
+    assert(testRepo.idTo[BItem](BPath("/Bx") ~ V3) == Left(ItemDeletedProblem(BPath("/Bx"))))
     assert(testRepo.idTo[AItem](APath("/A") ~ V1) == Right(a1))
     assert(testRepo.idTo[AItem](APath("/A") ~ V2) == Right(a2))
     assert(testRepo.idTo[AItem](APath("/A") ~ V3) == Right(a3))
@@ -209,12 +209,11 @@ final class RepoTest extends AnyFreeSpec
       repo = repo.applyEvent(VersionAdded(V2)).orThrow
       repo = repo.applyEvent(ItemDeleted(APath("/A"))).orThrow
       repo = repo.applyEvent(VersionAdded(V3)).orThrow
-      assert(repo.applyEvent(ItemChanged(toSigned(AItem(APath("/A") ~ V3, "A")))) ==
-        Left(ItemDeletedProblem(APath("/A") ~ V2)))
+      assert(repo.applyEvent(ItemChanged(toSigned(AItem(APath("/A") ~ V3, "A")))) == Left(ItemDeletedProblem(APath("/A"))))
     }
 
     "ItemDeleted for deleted path" in {
-      assert(repo.applyEvent(ItemDeleted(APath("/A"))) == Left(ItemDeletedProblem(APath("/A") ~ V2)))
+      assert(repo.applyEvent(ItemDeleted(APath("/A"))) == Left(ItemDeletedProblem(APath("/A"))))
     }
   }
 

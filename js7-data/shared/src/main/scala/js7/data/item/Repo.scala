@@ -214,13 +214,10 @@ final case class Repo private(
   def pathTo[A <: InventoryItem](path: A#Path)(implicit A: InventoryItem.Companion[A]): Checked[A] =
     pathToVersionToSignedItems
       .checked(path)
-      .flatMap { entries =>
-        val entry = entries.head
-        entry
-          .maybeSignedItems
-          .toChecked(ItemDeletedProblem(path ~ entry.versionId))
-          .map(_.value.asInstanceOf[A])
-      }
+      .flatMap(_.head
+        .maybeSignedItems
+        .toChecked(ItemDeletedProblem(path))
+        .map(_.value.asInstanceOf[A]))
 
   def pathToItem(path: TypedPath): Checked[InventoryItem] =
     pathToSigned(path)
@@ -229,12 +226,9 @@ final case class Repo private(
   private def pathToSigned(path: TypedPath): Checked[Signed[InventoryItem]] =
     pathToVersionToSignedItems
       .checked(path)
-      .flatMap { entries =>
-        val entry = entries.head
-        entry
-          .maybeSignedItems
-          .toChecked(ItemDeletedProblem(path ~ entry.versionId))
-      }
+      .flatMap(_.head
+        .maybeSignedItems
+        .toChecked(ItemDeletedProblem(path)))
 
   /** Returns the InventoryItem to a ItemId. */
   def idTo[A <: InventoryItem](id: ItemId[A#Path])(implicit A: InventoryItem.Companion[A]): Checked[A] =
@@ -253,7 +247,7 @@ final case class Repo private(
             fb <- findInHistory(versionToSignedItem, history.contains) toChecked UnknownKeyProblem("ItemId", id)
           } yield fb
         ): Checked[Option[Signed[InventoryItem]]]
-      signedItem <- itemOption.toChecked(ItemDeletedProblem(id))
+      signedItem <- itemOption.toChecked(ItemDeletedProblem(id.path))
     } yield signedItem.copy(signedItem.value.cast[A])
 
   lazy val estimatedEventCount: Int = {

@@ -22,8 +22,8 @@ object Problems
     def arguments = Map("orderId" -> orderId.string)
   }
 
-  final case class ItemDeletedProblem(id: ItemId_) extends Problem.Coded {
-    def arguments = Map("id" -> id.pretty)
+  final case class ItemDeletedProblem(path: TypedPath) extends Problem.Coded {
+    def arguments = Map("path" -> path.pretty)
   }
 
   final case class ItemVersionDoesNotMatchProblem(versionId: VersionId, itemId: ItemId[_ <: TypedPath]) extends Problem.Coded {
