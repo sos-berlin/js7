@@ -15,7 +15,7 @@ import js7.base.auth.{SimpleUser, UserAndPassword}
 import js7.base.eventbus.{EventPublisher, StandardEventBus}
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.syntax._
-import js7.base.problem.Checked
+import js7.base.problem.{Checked, Problem}
 import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
@@ -131,8 +131,15 @@ extends AutoCloseable
   def executeCommand(command: ControllerCommand, meta: CommandMeta): Task[Checked[command.Response]] =
     commandExecutor.executeCommand(command, meta)
 
-  def addOrder(order: FreshOrder): Task[Checked[Boolean]] =
-    orderApi.addOrder(order)
+  @TestOnly
+  def addOrderBlocking(order: FreshOrder): Unit =
+    addOrder(order).runToFuture.await(99.s).orThrow
+
+  def addOrder(order: FreshOrder): Task[Checked[Unit]] =
+    orderApi.addOrder(order).mapT {
+      case false => Left(Problem(s"Duplicate OrderId '${order.id}'"))
+      case true => Right(())
+    }
 
   @TestOnly
   def runOrder(order: FreshOrder): Seq[Stamped[OrderEvent]] = {
@@ -147,10 +154,6 @@ extends AutoCloseable
       .toL(Vector)
       .await(timeout)
   }
-
-  @TestOnly
-  def addOrderBlocking(order: FreshOrder): Boolean =
-    orderApi.addOrder(order).runToFuture.await(99.s).orThrow
 
   @TestOnly
   def waitUntilReady(): Unit =

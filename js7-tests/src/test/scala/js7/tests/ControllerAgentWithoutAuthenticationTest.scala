@@ -37,7 +37,7 @@ final class ControllerAgentWithoutAuthenticationTest extends AnyFreeSpec
 {
   "js7.web.server.auth.public = true" in {
     runMyTest(isPublic = true) { (controller, _) =>
-      controller.addOrder(FreshOrder(orderId, workflow.path)).runSyncUnsafe(99.seconds).orThrow
+      controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
       controller.eventWatch.await[OrderFinished](_.key == orderId)
     }
   }

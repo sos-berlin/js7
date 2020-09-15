@@ -54,7 +54,7 @@ final class JournaledProxyClusterTest extends AnyFreeSpec with ClusterProxyTest
       try {
         val whenProcessed = proxy.eventBus.when[OrderProcessed].runToFuture
         val whenFinished = proxy.eventBus.when[OrderFinished.type].runToFuture
-        primaryController.addOrder(FreshOrder(OrderId("🔺"), workflow.id.path)).runAsyncAndForget
+        primaryController.addOrderBlocking(FreshOrder(OrderId("🔺"), workflow.id.path))
 
         val processed = whenProcessed.await(99.s)
         assert(processed.stampedEvent.value.event == OrderProcessed(Outcome.succeeded))

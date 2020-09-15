@@ -76,7 +76,7 @@ final class UpdateRepoAgentRefTest extends AnyFreeSpec with DirectoryProviderFor
     ) await 99.s
     val beforeUpdate = controller.eventWatch.lastFileTornEventId
     directoryProvider.updateRepo(controller, v3, List(agentRef))
-    controller.addOrder(FreshOrder(OrderId("❌"), workflow.path)) await 99.s
+    controller.addOrderBlocking(FreshOrder(OrderId("❌"), workflow.path))
     controller.eventWatch.await[AgentCouplingFailed](
       _.event.problem == UnknownController(ControllerId("Controller")),
       after = beforeUpdate)
