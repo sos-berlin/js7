@@ -110,7 +110,7 @@ object ScalaUtils
           (delegate.getStackTrace.nonEmpty ?? ("\n" + delegate.stackTraceAsString))
 
       def toStringWithCauses: String = {
-        val strings = mutable.Buffer[String]()
+        val strings = mutable.Buffer.empty[String]
         var t: Throwable = delegate
         while (t != null) {
           strings += t.toSimplifiedString.trim.stripSuffix(":")
