@@ -7,7 +7,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
-import js7.data.order.OrderEvent.{OrderFinished, OrderForked}
+import js7.data.order.OrderEvent.{OrderForked, OrderRemoved}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.workflow.{Workflow, WorkflowId}
 import scala.collection.{Iterable, mutable}
@@ -17,7 +17,7 @@ import scala.collection.{Iterable, mutable}
   */
 object WorkflowAndOrderRecovering
 {
-  // TODO Some events (OrderForked, OrderFinished, OrderOffered) handels by OrderActor let AgentOrderKeeper add or remove orders. This should be done in a single transaction.
+  // TODO Some events (OrderForked, OrderFinished, OrderOffered) handled by OrderActor let AgentOrderKeeper add or remove orders. This should be done in a single transaction.
   /** A snapshot of a freshly forked Order may contain the child orders. This is handled here. **/
   final def followUpRecoveredWorkflowsAndOrders(idToWorkflow: WorkflowId => Checked[Workflow], idToOrder: Map[OrderId, Order[Order.State]])
   : (Iterable[Order[Order.State]], Iterable[OrderId]) = {
@@ -35,7 +35,7 @@ object WorkflowAndOrderRecovering
             added.insert(childOrder.id -> childOrder)
           }
 
-        case FollowUp.Remove(removeOrderId) =>  // OrderFinished
+        case FollowUp.Remove(removeOrderId) =>  // OrderRemoved, OrderJoined
           removed += removeOrderId
 
         case _ =>
@@ -54,6 +54,6 @@ object WorkflowAndOrderRecovering
     //  order.ifState[Order.Awaiting].map(order =>   TODO Missing?
     //  )
     .orElse(
-      order.ifState[Order.Finished].map(_ =>
-        order.id <-: OrderFinished))
+      order.ifState[Order.Removed].map(_ =>
+        order.id <-: OrderRemoved))
 }

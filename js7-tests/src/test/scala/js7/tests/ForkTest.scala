@@ -8,7 +8,7 @@ import js7.base.time.ScalaTime._
 import js7.common.configutils.Configs._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.controller.data.ControllerCommand.CancelOrder
+import js7.controller.data.ControllerCommand.{CancelOrder, RemoveOrdersWhenTerminated}
 import js7.data.command.CancelMode
 import js7.data.event.EventSeq
 import js7.data.job.ExecutablePath
@@ -41,6 +41,7 @@ final class ForkTest extends AnyFreeSpec with ControllerAgentForScalaTest
   "Events" in {
     controller.addOrderBlocking(TestOrder)
     controller.eventWatch.await[OrderFinished](_.key == TestOrder.id)
+    controller.executeCommandAsSystemUser(RemoveOrdersWhenTerminated(Seq(TestOrder.id))).await(99.s).orThrow
     controller.eventWatch.all[OrderEvent] match {
       case EventSeq.NonEmpty(stampeds) =>
         val keyedEvents = stampeds.map(_.value).toVector
@@ -53,14 +54,14 @@ final class ForkTest extends AnyFreeSpec with ControllerAgentForScalaTest
     }
   }
 
-  "Existing child OrderId yield broken (and cancelable) order" in {
+  "Existing child OrderId yields broken (and cancelable) order" in {
     val order = TestOrder.copy(id = OrderId("DUPLICATE"))
     controller.addOrderBlocking(FreshOrder.unchecked(OrderId("DUPLICATE/🥕"), DuplicateWorkflow.id.path))  // Invalid syntax is allowed for this OrderId, check is suppressed
     controller.eventWatch.await[OrderProcessingStarted](_.key == OrderId("DUPLICATE/🥕"))
 
     controller.addOrderBlocking(order)
     val expectedBroken = OrderBroken(Problem(
-      "Forked OrderIds duplicate existing Order(Order:DUPLICATE/🥕,/DUPLICATE~INITIAL:0,Processing,Map(),List(),Some(Attached(/AGENT-A)),None,None,false)"))
+      "Forked OrderIds duplicate existing Order(Order:DUPLICATE/🥕,/DUPLICATE~INITIAL:0,Processing,Map(),List(),Some(Attached(/AGENT-A)),None,None,false,false)"))
     assert(controller.eventWatch.await[OrderBroken](_.key == order.id).head.value.event == expectedBroken)
 
     controller.executeCommandAsSystemUser(CancelOrder(order.id, CancelMode.FreshOrStarted())).await(99.s).orThrow
@@ -171,5 +172,6 @@ object ForkTest {
       XOrderId <-: OrderDetached,                             YOrderId <-: OrderDetached,
     TestOrder.id <-: OrderJoined(Outcome.succeeded),
     TestOrder.id <-: OrderMoved(Position(5)),
-    TestOrder.id <-: OrderFinished)
+    TestOrder.id <-: OrderFinished,
+    TestOrder.id <-: OrderRemoved)
 }

@@ -37,6 +37,7 @@ final class JControllerProxyTester
 
         try (JControllerProxyOrderTester orderTester = new JControllerProxyOrderTester(proxy)) {
             orderTester.testRunOrders();
+            orderTester.testCancelOrder();
             orderTester.testCancelOrderViaHttpPost();
         }
     }

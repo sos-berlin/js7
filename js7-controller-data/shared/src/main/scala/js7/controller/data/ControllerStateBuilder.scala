@@ -12,7 +12,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalEvent, JournalState, JournaledState, JournaledStateBuilder, KeyedEvent, Stamped}
 import js7.data.execution.workflow.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
 import js7.data.item.{Repo, RepoEvent}
-import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderOffered, OrderStdWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderOffered, OrderRemoved, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.workflow.Workflow
 import scala.collection.mutable
@@ -92,7 +92,7 @@ extends JournaledStateBuilder[ControllerState]
         case event: OrderAdded =>
           idToOrder += orderId -> Order.fromOrderAdded(orderId, event)
 
-        case OrderFinished | OrderCancelled =>
+        case OrderRemoved =>
           idToOrder -= orderId
 
         case event: OrderCoreEvent =>

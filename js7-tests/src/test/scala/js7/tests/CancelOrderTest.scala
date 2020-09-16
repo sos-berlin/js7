@@ -18,7 +18,6 @@ import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fork}
 import js7.data.workflow.position.{Position, WorkflowPosition}
-import js7.data.workflow.test.ForkTestSetting.TestExecutablePath
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.CancelOrderTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
@@ -36,7 +35,7 @@ final class CancelOrderTest extends AnyFreeSpec with ControllerAgentForScalaTest
   protected val inventoryItems = singleJobWorkflow :: twoJobsWorkflow :: forkWorkflow :: Nil
 
   override def beforeAll() = {
-    for (a <- directoryProvider.agents) a.writeExecutable(TestExecutablePath, script(2.s))
+    for (a <- directoryProvider.agents) a.writeExecutable(executablePath, script(2.s))
     super.beforeAll()
   }
 

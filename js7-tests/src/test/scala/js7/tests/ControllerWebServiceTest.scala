@@ -564,6 +564,28 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
             "signatureString": "MY-SILLY-SIGNATURE"
           }
         }
+      }, {
+        "TYPE": "Order",
+        "id": "ORDER-ID",
+        "workflowPosition": {
+          "workflowId": {
+            "path": "/WORKFLOW",
+            "versionId": "VERSION-1"
+          },
+          "position": [ 1 ]
+        },
+        "state": {
+          "TYPE": "Finished"
+        },
+        "historicOutcomes": [
+          {
+            "position": [ 0 ],
+            "outcome": {
+              "TYPE": "Succeeded",
+              "returnCode": 0
+            }
+          }
+        ]
       }
     ]""".asArray.get.toSet)   // Any orders would be added to `array`.
   }
@@ -840,6 +862,14 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
                   "workflowPosition": {
                     "workflowId": { "path": "/WORKFLOW" },
                     "position": [ 0 ]
+                  }
+                }, {
+                  "id" : "ORDER-ID",
+                  "workflowPosition" : {
+                    "workflowId" : {
+                      "path" : "/WORKFLOW"
+                    },
+                    "position" : [ 1 ]
                   }
                 }, {
                   "id": "ORDER-MISSING-JOB",

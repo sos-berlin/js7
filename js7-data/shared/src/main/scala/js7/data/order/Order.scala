@@ -29,7 +29,8 @@ final case class Order[+S <: Order.State](
   attachedState: Option[AttachedState] = None,
   parent: Option[OrderId] = None,
   mark: Option[OrderMark] = None,
-  isSuspended: Boolean = false)
+  isSuspended: Boolean = false,
+  removeWhenTerminated: Boolean = false)
 {
   def newForkedOrders(event: OrderForked): Seq[Order[Order.Ready]] =
     for (child <- event.children) yield
@@ -68,178 +69,189 @@ final case class Order[+S <: Order.State](
     def check[A](okay: Boolean, updated: A) =
       if (okay) Right(updated) else inapplicable
 
-    event match {
-      case _: OrderAdded | _: OrderAttachedToAgent =>
-        Left(Problem("OrderAdded and OrderAttachedToAgent events are not handled by the Order itself"))
+    if (isState[Removed])
+      inapplicable
+    else
+      event match {
+        case _: OrderAdded | _: OrderAttachedToAgent =>
+          Left(Problem("OrderAdded and OrderAttachedToAgent events are not handled by the Order itself"))
 
-      case OrderStarted =>
-        check(isState[Fresh] && !isSuspended && (isDetached || isAttached),
-          copy(state = Ready))
+        case OrderStarted =>
+          check(isState[Fresh] && !isSuspended && (isDetached || isAttached),
+            copy(state = Ready))
 
-      case OrderProcessingStarted =>
-        check(isState[Ready] && !isSuspended && isAttached,
-          copy(
-            state = Processing,
-            mark = cleanMark))
+        case OrderProcessingStarted =>
+          check(isState[Ready] && !isSuspended && isAttached,
+            copy(
+              state = Processing,
+              mark = cleanMark))
 
-      case OrderProcessed(outcome_) =>
-        check(isState[Processing] && !isSuspended && isAttached,
-          copy(
-            state = Processed,
-            historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
+        case OrderProcessed(outcome_) =>
+          check(isState[Processing] && !isSuspended && isAttached,
+            copy(
+              state = Processed,
+              historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
 
-      case OrderProcessingCancelled =>
-        check(isState[Processed] && !isSuspended && isAttached,
-          copy(state = ProcessingCancelled))
+        case OrderProcessingCancelled =>
+          check(isState[Processed] && !isSuspended && isAttached,
+            copy(state = ProcessingCancelled))
 
-      case OrderFailed(outcome_) =>
-        check(isOrderFailedApplicable,
-          copy(
-            state = if (isState[Fresh]) FailedWhileFresh else Failed(outcome_),
-            historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
+        case OrderFailed(outcome_) =>
+          check(isOrderFailedApplicable,
+            copy(
+              state = if (isState[Fresh]) FailedWhileFresh else Failed(outcome_),
+              historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
 
-      case OrderFailedInFork(outcome_) =>
-        check((isState[Ready] || isState[Processed]) && !isSuspended && (isDetached || isAttached),
-          copy(
-            state = FailedInFork(outcome_),
-            historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
+        case OrderFailedInFork(outcome_) =>
+          check((isState[Ready] || isState[Processed]) && !isSuspended && (isDetached || isAttached),
+            copy(
+              state = FailedInFork(outcome_),
+              historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
 
-      case OrderFailedCatchable(_) =>
-        inapplicable
-
-      case OrderCatched(outcome_, movedTo) =>
-        check((isState[Ready] || isState[Processed]) && !isSuspended && (isAttached | isDetached),
-          copy(
-            state = Ready,
-            workflowPosition = workflowPosition.copy(position = movedTo),
-            historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
-
-      case OrderRetrying(to, maybeDelayUntil) =>
-        check(isState[Ready] && !isSuspended && (isDetached || isAttached),
-          maybeDelayUntil.fold[Order[State]](this/*Ready*/)(o => copy(state = DelayedAfterError(o)))
-            .withPosition(to))
-
-      case OrderAwoke =>
-        check(isState[DelayedAfterError] && !isSuspended && isAttached,
-          copy(state = Ready))
-
-      case OrderForked(children) =>
-        check(isState[Ready] && !isSuspended && (isDetached || isAttached),
-          copy(
-            state = Forked(children),
-            mark = cleanMark))
-
-      case OrderJoined(outcome_) =>
-        check((isState[Forked] || isState[Awaiting]) && !isSuspended && isDetached,
-          copy(
-            state = Processed,
-            historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
-
-      case _: OrderOffered =>
-        check(isState[Ready] && !isSuspended && isDetached,
-          copy(
-            state = Processed,
-            historicOutcomes = historicOutcomes :+ HistoricOutcome(position, Outcome.succeeded)))
-
-      case OrderAwaiting(orderId) =>
-        check(isState[Ready] && !isSuspended && isDetached,
-          copy(
-            state = Awaiting(orderId),
-            mark = cleanMark))
-
-      case OrderMoved(to) =>
-        check((isState[IsFreshOrReady]/*before TryInstruction*/ || isState[Processed]) &&
-          (isDetached || isAttached),
-          withPosition(to).copy(
-            state = if (isState[Fresh]) state else Ready))
-
-      case OrderFinished =>
-        check(isState[Ready] && !isSuspended && isDetached,
-          position.dropChild match {
-            case Some(position) =>
-              copy(workflowPosition = workflowPosition.copy(position = position))
-            case None =>
-              copy(
-                state = Finished,
-                mark = None)
-          })
-
-      case OrderBroken(message) =>
-        check(!isState[IsFinal],
-          copy(state = Broken(message)))
-
-      case OrderAttachable(agentRefPath) =>
-        check((isState[Fresh] || isState[Ready] || isState[Forked]) && isDetached,
-          copy(attachedState = Some(Attaching(agentRefPath))))
-
-      case OrderAttached(agentRefPath) =>
-        attachedState match {
-          case Some(Attaching(`agentRefPath`)) =>
-            check((isState[Fresh] || isState[Ready] || isState[Forked]) && isAttaching,
-              copy(attachedState = Some(Attached(agentRefPath))))
-          case _ => inapplicable
-        }
-
-      case OrderDetachable =>
-        attachedState match {
-          case Some(Attached(agentRefPath))
-            if isState[Fresh] || isState[Ready] || isState[Forked] || isState[ProcessingCancelled] ||
-               isState[FailedWhileFresh] || isState[Failed] || isState[FailedInFork] || isState[Broken] =>
-              Right(copy(attachedState = Some(Detaching(agentRefPath))))
-          case _ =>
-            inapplicable
-        }
-
-      case OrderDetached =>
-        check(isDetaching && (isState[Fresh] || isState[Ready] || isState[Forked] || isState[ProcessingCancelled] ||
-                              isState[FailedWhileFresh] || isState[Failed] || isState[FailedInFork] || isState[Broken]),
-          copy(attachedState = None))
-
-      case OrderCancelMarked(mode) =>
-        check(parent.isEmpty && isMarkable,
-          copy(mark = Some(OrderMark.Cancelling(mode))))
-
-      case OrderCancelled =>
-        check(isCancelable && isDetached,
-          copy(
-            state = Cancelled,
-            mark = None))
-
-      case OrderSuspendMarked =>
-        check(isMarkable,
-          copy(mark = Some(OrderMark.Suspending)))
-
-      case OrderSuspended =>
-        check(isSuspendible && (isDetached || isSuspended/*already Suspended, to clean Resuming mark*/),
-          copy(
-            isSuspended = true,
-            mark = None))
-
-      case OrderResumeMarked(position) =>
-        if (isMarkable)
-          if (isSuspended)
-            Right(copy(mark = Some(OrderMark.Resuming(position))))
-          else position match {
-            case Some(_) =>
-              // Inhibited because we cannot be sure weather order will pass a fork barrier
-              inapplicable
-            case None =>
-              if (!isSuspended && isSuspending)
-                Right(copy(mark = None/*revert OrderSuspendMarked*/))
-              else
-                Right(copy(mark = Some(OrderMark.Resuming(None))))
-          }
-        else
+        case OrderFailedCatchable(_) =>
           inapplicable
 
-      case OrderResumed(maybePosition) =>
-        check(isResumable,
-          copy(
-            isSuspended = false,
-            mark = None,
-            state = if (isState[Broken]) Ready else state
-          ).withPosition(maybePosition getOrElse position))
-    }
+        case OrderCatched(outcome_, movedTo) =>
+          check((isState[Ready] || isState[Processed]) && !isSuspended && (isAttached | isDetached),
+            copy(
+              state = Ready,
+              workflowPosition = workflowPosition.copy(position = movedTo),
+              historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
+
+        case OrderRetrying(to, maybeDelayUntil) =>
+          check(isState[Ready] && !isSuspended && (isDetached || isAttached),
+            maybeDelayUntil.fold[Order[State]](this/*Ready*/)(o => copy(state = DelayedAfterError(o)))
+              .withPosition(to))
+
+        case OrderAwoke =>
+          check(isState[DelayedAfterError] && !isSuspended && isAttached,
+            copy(state = Ready))
+
+        case OrderForked(children) =>
+          check(isState[Ready] && !isSuspended && (isDetached || isAttached),
+            copy(
+              state = Forked(children),
+              mark = cleanMark))
+
+        case OrderJoined(outcome_) =>
+          check((isState[Forked] || isState[Awaiting]) && !isSuspended && isDetached,
+            copy(
+              state = Processed,
+              historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
+
+        case _: OrderOffered =>
+          check(isState[Ready] && !isSuspended && isDetached,
+            copy(
+              state = Processed,
+              historicOutcomes = historicOutcomes :+ HistoricOutcome(position, Outcome.succeeded)))
+
+        case OrderAwaiting(orderId) =>
+          check(isState[Ready] && !isSuspended && isDetached,
+            copy(
+              state = Awaiting(orderId),
+              mark = cleanMark))
+
+        case OrderMoved(to) =>
+          check((isState[IsFreshOrReady]/*before TryInstruction*/ || isState[Processed]) &&
+            (isDetached || isAttached),
+            withPosition(to).copy(
+              state = if (isState[Fresh]) state else Ready))
+
+        case OrderFinished =>
+          check(isState[Ready] && !isSuspended && isDetached,
+            position.dropChild match {
+              case Some(position) =>
+                copy(workflowPosition = workflowPosition.copy(position = position))
+              case None =>
+                copy(
+                  state = Finished,
+                  mark = None)
+            })
+
+        case OrderRemoveMarked =>
+          check(!isState[IsTerminated] && parent.isEmpty,
+            copy(removeWhenTerminated = true))
+
+        case OrderRemoved =>
+          check(isState[IsTerminated] && isDetached && parent.isEmpty,
+            copy(state = Removed))
+
+        case OrderBroken(message) =>
+          check(!isState[IsTerminated],
+            copy(state = Broken(message)))
+
+        case OrderAttachable(agentRefPath) =>
+          check((isState[Fresh] || isState[Ready] || isState[Forked]) && isDetached,
+            copy(attachedState = Some(Attaching(agentRefPath))))
+
+        case OrderAttached(agentRefPath) =>
+          attachedState match {
+            case Some(Attaching(`agentRefPath`)) =>
+              check((isState[Fresh] || isState[Ready] || isState[Forked]) && isAttaching,
+                copy(attachedState = Some(Attached(agentRefPath))))
+            case _ => inapplicable
+          }
+
+        case OrderDetachable =>
+          attachedState match {
+            case Some(Attached(agentRefPath))
+              if isState[Fresh] || isState[Ready] || isState[Forked] || isState[ProcessingCancelled] ||
+                 isState[FailedWhileFresh] || isState[Failed] || isState[FailedInFork] || isState[Broken] =>
+                Right(copy(attachedState = Some(Detaching(agentRefPath))))
+            case _ =>
+              inapplicable
+          }
+
+        case OrderDetached =>
+          check(isDetaching && (isState[Fresh] || isState[Ready] || isState[Forked] || isState[ProcessingCancelled] ||
+                                isState[FailedWhileFresh] || isState[Failed] || isState[FailedInFork] || isState[Broken]),
+            copy(attachedState = None))
+
+        case OrderCancelMarked(mode) =>
+          check(parent.isEmpty && isMarkable,
+            copy(mark = Some(OrderMark.Cancelling(mode))))
+
+        case OrderCancelled =>
+          check(isCancelable && isDetached,
+            copy(
+              state = Cancelled,
+              mark = None))
+
+        case OrderSuspendMarked =>
+          check(isMarkable,
+            copy(mark = Some(OrderMark.Suspending)))
+
+        case OrderSuspended =>
+          check(isSuspendible && (isDetached || isSuspended/*already Suspended, to clean Resuming mark*/),
+            copy(
+              isSuspended = true,
+              mark = None))
+
+        case OrderResumeMarked(position) =>
+          if (isMarkable)
+            if (isSuspended)
+              Right(copy(mark = Some(OrderMark.Resuming(position))))
+            else position match {
+              case Some(_) =>
+                // Inhibited because we cannot be sure weather order will pass a fork barrier
+                inapplicable
+              case None =>
+                if (!isSuspended && isSuspending)
+                  Right(copy(mark = None/*revert OrderSuspendMarked*/))
+                else
+                  Right(copy(mark = Some(OrderMark.Resuming(None))))
+            }
+          else
+            inapplicable
+
+        case OrderResumed(maybePosition) =>
+          check(isResumable,
+            copy(
+              isSuspended = false,
+              mark = None,
+              state = if (isState[Broken]) Ready else state
+            ).withPosition(maybePosition getOrElse position))
+      }
   }
 
   def isOrderFailedApplicable =
@@ -318,7 +330,7 @@ final case class Order[+S <: Order.State](
     }
 
   def isMarkable =
-    !isState[IsFinal] ||
+    !isState[IsTerminated] ||
       isState[FailedInFork]/*when asynchronously marked on Agent*/
 
   def isCancelable =
@@ -369,7 +381,7 @@ object Order
 
   def fromOrderAttached(id: OrderId, event: OrderAttachedToAgent): Order[IsFreshOrReady] =
     Order(id, event.workflowPosition, event.state, event.arguments, event.historicOutcomes, Some(Attached(event.agentRefPath)),
-      event.parent, event.mark, isSuspended = event.isSuspended)
+      event.parent, event.mark, isSuspended = event.isSuspended, removeWhenTerminated = event.removeWhenTerminated)
 
   sealed trait AttachedState
   object AttachedState {
@@ -403,8 +415,8 @@ object Order
 
   sealed trait IsFreshOrReady extends State
 
-  /** Final state — the order will be deleted immediately. */
-  sealed trait IsFinal extends State
+  /** Terminal state — the order can only be removed. */
+  sealed trait IsTerminated extends State
 
   sealed trait DelayedUntil {
     def delayedUntil: Timestamp
@@ -454,13 +466,16 @@ object Order
   // TODO Redundant outcome ?
   final case class Failed(outcome: Outcome.NotSucceeded) extends IsStarted
 
-  final case class FailedInFork(outcome: Outcome.NotSucceeded) extends IsStarted with IsFinal
+  final case class FailedInFork(outcome: Outcome.NotSucceeded) extends IsStarted with IsTerminated
 
   type Finished = Finished.type
-  case object Finished extends IsStarted with IsFinal
+  case object Finished extends IsStarted with IsTerminated
 
   type Cancelled = Cancelled.type
-  case object Cancelled extends IsFinal
+  case object Cancelled extends IsTerminated
+
+  type Removed = Removed.type
+  case object Removed extends State
 
   implicit val FreshOrReadyJsonCodec: TypedJsonCodec[IsFreshOrReady] = TypedJsonCodec[IsFreshOrReady](
     Subtype(deriveCodec[Fresh]),
@@ -480,6 +495,7 @@ object Order
     Subtype(deriveCodec[FailedInFork]),
     Subtype(Finished),
     Subtype(Cancelled),
+    Subtype(Removed),
     Subtype(deriveCodec[Broken]))
 
   implicit val jsonEncoder: Encoder.AsObject[Order[State]] = order =>
@@ -492,7 +508,8 @@ object Order
       "parent" -> order.parent.asJson,
       "historicOutcomes" -> order.historicOutcomes.asJson,
       "mark" -> order.mark.asJson,
-      "isSuspended" -> (order.isSuspended ? true).asJson)
+      "isSuspended" -> (order.isSuspended ? true).asJson,
+      "removeWhenTerminated" -> (order.removeWhenTerminated ? true).asJson)
 
   implicit val jsonDecoder: Decoder[Order[State]] = cursor =>
     for {
@@ -505,8 +522,10 @@ object Order
       historicOutcomes <- cursor.get[Seq[HistoricOutcome]]("historicOutcomes")
       mark <- cursor.get[Option[OrderMark]]("mark")
       isSuspended <- cursor.get[Option[Boolean]]("isSuspended").map(_ getOrElse false)
+      removeWhenTerminated <- cursor.get[Option[Boolean]]("removeWhenTerminated").map(_ getOrElse false)
     } yield
-      Order(id, workflowPosition, state, arguments, historicOutcomes, attachedState, parent, mark, isSuspended)
+      Order(id, workflowPosition, state, arguments, historicOutcomes, attachedState, parent, mark,
+        isSuspended, removeWhenTerminated)
 
   implicit val FreshOrReadyOrderJsonEncoder: Encoder.AsObject[Order[IsFreshOrReady]] = o => jsonEncoder.encodeObject(o)
   implicit val FreshOrReadyOrderJsonDecoder: Decoder[Order[IsFreshOrReady]] = cursor =>

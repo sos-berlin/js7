@@ -13,7 +13,7 @@ import js7.common.scalautil.Futures.implicits.RichFutures
 import js7.common.scalautil.MonixUtils.syntax.RichTask
 import js7.common.system.OperatingSystem.operatingSystem.sleepingShellScript
 import js7.controller.data.ControllerCommand
-import js7.controller.data.ControllerCommand.{ReplaceRepo, UpdateRepo}
+import js7.controller.data.ControllerCommand.{RemoveOrdersWhenTerminated, ReplaceRepo, UpdateRepo}
 import js7.data.Problems.{ItemDeletedProblem, ItemVersionDoesNotMatchProblem}
 import js7.data.agent.AgentRefPath
 import js7.data.event.{EventRequest, EventSeq}
@@ -84,6 +84,7 @@ final class UpdateRepoTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val finishedAt = promises.map(_.future) await 99.s
     // The two order running on separate workflow versions run in parallel
     assert(finishedAt(0) > finishedAt(1) + Tick)  // The second added order running on workflow version 2 finished before the first added order
+    controller.executeCommandAsSystemUser(RemoveOrdersWhenTerminated(orderIds)).await(99.s).orThrow
 
     executeCommand(UpdateRepo(V3, delete = TestWorkflowPath :: Nil)).orThrow
     assert(controller.addOrder(FreshOrder(orderIds(1), TestWorkflowPath)).await(99.s) ==

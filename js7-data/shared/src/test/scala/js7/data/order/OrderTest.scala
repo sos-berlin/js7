@@ -12,7 +12,7 @@ import js7.data.agent.AgentRefPath
 import js7.data.command.CancelMode
 import js7.data.job.ReturnCode
 import js7.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Cancelled, DelayedAfterError, Detaching, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, IsFreshOrReady, Offering, Processed, Processing, ProcessingCancelled, Ready, State}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingCancelled, OrderProcessingStarted, OrderResumeMarked, OrderResumed, OrderRetrying, OrderStarted, OrderSuspendMarked, OrderSuspended}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingCancelled, OrderProcessingStarted, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderResumed, OrderRetrying, OrderStarted, OrderSuspendMarked, OrderSuspended}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.Fork
 import js7.data.workflow.position.BranchId.Then
@@ -236,9 +236,11 @@ final class OrderTest extends AnyFreeSpec
     val agentRefPath = AgentRefPath("/AGENT")
     val allEvents = ListSet[OrderCoreEvent](
       OrderAdded(workflowId),
+      OrderRemoveMarked,
+      OrderRemoved,
 
       OrderAttachable(agentRefPath),
-      OrderAttachedToAgent(workflowId /: Position(0), Fresh(), Map.empty, Nil, agentRefPath, None, None, false),
+      OrderAttachedToAgent(workflowId /: Position(0), Fresh(), Map.empty, Nil, agentRefPath, None, None, false, false),
       OrderAttached(agentRefPath),
 
       OrderStarted,
@@ -294,6 +296,7 @@ final class OrderTest extends AnyFreeSpec
 
     "Fresh" - {
       checkAllEvents(Order(orderId, workflowId, Fresh()),
+        removeMarkable[Fresh] orElse
         markable[Fresh] orElse
         attachingAllowed[Fresh] orElse
         detachingAllowed[Fresh] orElse
@@ -313,6 +316,7 @@ final class OrderTest extends AnyFreeSpec
 
     "Ready" - {
       checkAllEvents(Order(orderId, workflowId, Ready),
+        removeMarkable[Ready] orElse
         markable[Ready] orElse
         attachingAllowed[Ready] orElse
         detachingAllowed[Ready] orElse
@@ -339,6 +343,7 @@ final class OrderTest extends AnyFreeSpec
 
     "Processing" - {
       checkAllEvents(Order(orderId, workflowId, Processing),
+        removeMarkable[Processing] orElse
         markable[Processing] orElse
         cancelMarkedAllowed[Processing] orElse
         suspendMarkedAllowed[Processing] orElse {
@@ -350,6 +355,7 @@ final class OrderTest extends AnyFreeSpec
     "Processed" - {
       checkAllEvents(Order(orderId, workflowId, Processed,
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(ReturnCode(0))) :: Nil),
+        removeMarkable[Processed] orElse
         markable[Processed] orElse
         cancelMarkedAllowed[Processed] orElse
         suspendMarkedAllowed[Processed] orElse {
@@ -365,6 +371,7 @@ final class OrderTest extends AnyFreeSpec
     "ProcessingCancelled" - {
       checkAllEvents(Order(orderId, workflowId, ProcessingCancelled,
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(ReturnCode(0))) :: Nil),
+        removeMarkable[ProcessingCancelled] orElse
         markable[ProcessingCancelled] orElse
         detachingAllowed[ProcessingCancelled] orElse {
           case (OrderCancelled, _, IsDetached) => _.isInstanceOf[Cancelled]
@@ -375,6 +382,7 @@ final class OrderTest extends AnyFreeSpec
     "FailedWhileFresh" - {
       checkAllEvents(Order(orderId, workflowId, FailedWhileFresh,
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Failed(ReturnCode(1))) :: Nil),
+        removeMarkable[FailedWhileFresh] orElse
         markable[FailedWhileFresh] orElse
         detachingAllowed[FailedWhileFresh] orElse
         cancelMarkedAllowed[FailedWhileFresh] orElse
@@ -387,6 +395,7 @@ final class OrderTest extends AnyFreeSpec
     "Failed" - {
       checkAllEvents(Order(orderId, workflowId, Failed(Outcome.Failed(ReturnCode(1))),
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Failed(ReturnCode(1))) :: Nil),
+        removeMarkable[Failed] orElse
         markable[Failed] orElse
         detachingAllowed[Failed] orElse
         cancelMarkedAllowed[Failed] orElse {
@@ -399,11 +408,14 @@ final class OrderTest extends AnyFreeSpec
       checkAllEvents(Order(orderId, workflowId, FailedInFork(Outcome.Failed(ReturnCode(1))),
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Failed(ReturnCode(1))) :: Nil),
         markable[FailedInFork] orElse
-        detachingAllowed[FailedInFork])
+        detachingAllowed[FailedInFork] orElse {
+          case (OrderRemoved, _, IsDetached) => _.isInstanceOf[Order.Removed]
+        })
     }
 
     "DelayedAfterError" - {
       checkAllEvents(Order(orderId, workflowId, DelayedAfterError(Timestamp("2019-03-07T12:00:00Z"))),
+        removeMarkable[DelayedAfterError] orElse
         markable[DelayedAfterError] orElse
         cancelMarkedAllowed[DelayedAfterError] orElse
         suspendMarkedAllowed[DelayedAfterError] orElse {
@@ -415,6 +427,7 @@ final class OrderTest extends AnyFreeSpec
 
     "Broken" - {
       checkAllEvents(Order(orderId, workflowId, Broken(Problem("PROBLEM"))),
+        removeMarkable[Broken] orElse
         markable[Broken] orElse
         detachingAllowed[Broken] orElse
         cancelMarkedAllowed[Broken] orElse {
@@ -427,6 +440,7 @@ final class OrderTest extends AnyFreeSpec
 
     "Forked" - {
       checkAllEvents(Order(orderId, workflowId, Forked(Forked.Child("BRANCH", orderId / "CHILD") :: Nil)),
+        removeMarkable[Forked] orElse
         markable[Forked] orElse
         attachingAllowed[Forked] orElse
         detachingAllowed[Forked] orElse
@@ -439,6 +453,7 @@ final class OrderTest extends AnyFreeSpec
 
     "Offering" - {
       checkAllEvents(Order(orderId, workflowId, Offering(Timestamp("2018-11-19T12:00:00Z"))),
+        removeMarkable[Offering] orElse
         markable[Offering] orElse
         cancelMarkedAllowed[Offering] orElse
         suspendMarkedAllowed[Offering] orElse {
@@ -448,6 +463,7 @@ final class OrderTest extends AnyFreeSpec
 
     "Awaiting" - {
       checkAllEvents(Order(orderId, workflowId, Awaiting(OrderId("OFFERED"))),
+        removeMarkable[Awaiting] orElse
         markable[Awaiting] orElse
         cancelMarkedAllowed[Awaiting] orElse
         suspendMarkedAllowed[Awaiting] orElse {
@@ -457,13 +473,15 @@ final class OrderTest extends AnyFreeSpec
     }
 
     "Cancelled" - {
-      checkAllEvents(Order(orderId, workflowId, Cancelled),
-        PartialFunction.empty)
+      checkAllEvents(Order(orderId, workflowId, Cancelled), {
+        case (OrderRemoved, _, IsDetached) => _.isInstanceOf[Order.Removed]
+      })
     }
 
     "Finished" - {
-      checkAllEvents(Order(orderId, workflowId, Finished),
-        PartialFunction.empty)
+      checkAllEvents(Order(orderId, workflowId, Finished), {
+        case (OrderRemoved, _, IsDetached) => _.isInstanceOf[Order.Removed]
+      })
     }
 
     "attachedState" - {
@@ -509,8 +527,14 @@ final class OrderTest extends AnyFreeSpec
 
     type ToPredicate = PartialFunction[(OrderEvent, Order[Order.State], Option[AttachedState]), State => Boolean]
 
+    def removeMarkable[S <: Order.State: ClassTag]: ToPredicate = {
+      case (_: OrderRemoveMarked, _, _) =>
+        implicitClass[S] isAssignableFrom _.getClass
+    }
+
     def markable[S <: Order.State: ClassTag]: ToPredicate = {
-      case (_: OrderCancelMarked | OrderSuspendMarked | _: OrderResumeMarked, _, _) => implicitClass[S] isAssignableFrom _.getClass
+      case (_: OrderCancelMarked | OrderSuspendMarked | _: OrderResumeMarked, _, _) =>
+        implicitClass[S] isAssignableFrom _.getClass
     }
 
     def cancelMarkedAllowed[S <: Order.State: ClassTag]: ToPredicate = {

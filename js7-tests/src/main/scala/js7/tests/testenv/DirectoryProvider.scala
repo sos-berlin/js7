@@ -23,6 +23,7 @@ import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.Logger
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.system.OperatingSystem.isWindows
 import js7.common.utils.Exceptions.repeatUntilNoException
@@ -130,6 +131,7 @@ extends HasCloser
       a
     }
     catch { case NonFatal(t) =>
+      logger.error(t.toStringWithCauses) /* Akka may crash before the caller gets the error so we log the error here */
       try runningController.terminate() await 99.s
       catch { case NonFatal(tt) if tt ne t => t.addSuppressed(tt) }
       throw t
@@ -211,6 +213,7 @@ extends HasCloser
 object DirectoryProvider
 {
   val Vinitial = VersionId("INITIAL")
+  private val logger = Logger(getClass)
 
   sealed trait Tree {
     val directory: Path

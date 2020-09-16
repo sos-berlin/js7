@@ -12,6 +12,7 @@ import js7.common.configutils.Configs._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.Logger
+import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.UntilNoneIterator
 import js7.controller.RunningController
 import js7.controller.data.events.ControllerEvent
@@ -23,7 +24,8 @@ import js7.data.event.{<-:, Event, EventId, KeyedEvent, Stamped}
 import js7.data.item.RepoEvent.{ItemAdded, VersionAdded}
 import js7.data.item.{RepoEvent, VersionId}
 import js7.data.job.ExecutablePath
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderAttached, OrderDetached}
+import js7.data.order.Order
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -106,6 +108,7 @@ final class RecoveryTest extends AnyFreeSpec
                   logger.error("Test failed due to unexpected events:\n" + orderStampeds.mkString("\n"))
                   throw t
                 }
+                assert(controller.controllerState.await(99.s).idToOrder.keySet == (orders :+ QuickOrder).map(_.id).toSet)
               }
             }
           }

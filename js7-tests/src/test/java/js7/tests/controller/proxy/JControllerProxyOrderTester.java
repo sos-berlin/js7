@@ -11,18 +11,23 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import js7.data.event.Event;
 import js7.data.event.KeyedEvent;
 import js7.data.event.Stamped;
 import js7.data.order.OrderEvent;
+import js7.data.order.OrderEvent.OrderCancelled$;
 import js7.data.order.OrderId;
 import js7.data.workflow.WorkflowPath;
+import js7.proxy.javaapi.JControllerApi;
 import js7.proxy.javaapi.JControllerProxy;
 import js7.proxy.javaapi.data.controller.JControllerState;
+import js7.proxy.javaapi.data.controller.JEventAndControllerState;
 import js7.proxy.javaapi.data.order.JFreshOrder;
 import js7.proxy.javaapi.eventbus.EventSubscription;
 import reactor.core.publisher.Flux;
 import static com.google.common.collect.Maps.newHashMap;
 import static java.util.Arrays.asList;
+import static java.util.Collections.singleton;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static js7.proxy.javaapi.data.common.VavrUtils.getOrThrow;
 import static js7.proxy.javaapi.data.event.JKeyedEvent.keyedEventToJson;
@@ -40,13 +45,16 @@ final class JControllerProxyOrderTester implements AutoCloseable
         .mapToObj(i -> OrderId.of("TEST-ORDER-" + i))
         .collect(Collectors.toList());
 
+    private final JControllerApi api;
     private final JControllerProxy proxy;
 
     JControllerProxyOrderTester(JControllerProxy proxy) {
+        this.api = proxy.api();
         this.proxy = proxy;
         eventSubscriptions.add(
             this.proxy.controllerEventBus().subscribe(
-                asList(OrderEvent.OrderStarted$.class, OrderEvent.OrderMoved.class, OrderEvent.OrderFinished$.class),
+                asList(OrderEvent.OrderStarted$.class, OrderEvent.OrderMoved.class, OrderEvent.OrderFinished$.class,
+                    OrderEvent.OrderRemoved$.class),
                 this::onOrderEvent));
     }
 
@@ -54,10 +62,10 @@ final class JControllerProxyOrderTester implements AutoCloseable
         for (EventSubscription o: eventSubscriptions) o.close();
     }
 
-    private final Set<OrderId> finishedOrders = new HashSet<>();
+    private final Set<OrderId> removedOrders = new HashSet<>();
     private final List<EventSubscription> eventSubscriptions = new ArrayList<>();
     private final List<KeyedEvent<OrderEvent>> events = new ArrayList<>();
-    private final CompletableFuture<Void> allOrdersFinished = new CompletableFuture<>();
+    private final CompletableFuture<Void> allOrdersRemoved = new CompletableFuture<>();
 
     private void onOrderEvent(Stamped<KeyedEvent<OrderEvent>> stampedEvent, JControllerState controllerState) {
         OrderId orderId = (OrderId)stampedEvent.value().key();
@@ -65,10 +73,10 @@ final class JControllerProxyOrderTester implements AutoCloseable
             if (orderId.equals(orderIds.get(0))) {
                 events.add(stampedEvent.value());
             }
-            if (stampedEvent.value().event() instanceof OrderEvent.OrderFinished$) {
-                finishedOrders.add(orderId);
-                if (finishedOrders.size() == orderIds.size()) {
-                    allOrdersFinished.complete(null);
+            if (stampedEvent.value().event() instanceof OrderEvent.OrderRemoved$) {
+                removedOrders.add(orderId);
+                if (removedOrders.size() == orderIds.size()) {
+                    allOrdersRemoved.complete(null);
                 }
             }
         }
@@ -76,21 +84,10 @@ final class JControllerProxyOrderTester implements AutoCloseable
 
     void testRunOrders() throws InterruptedException, ExecutionException, TimeoutException {
         // TWO WAYS TO ADD AN ORDER (first way is recommended)
+        addOrdersAsStream();
+        addSingleOrder();
 
-        // #1 addOrders(Flux)
-        // Idempotent: already existent order (with same OrderId) are silently ignored
-        getOrThrow(proxy.api()
-            .addOrders(Flux.fromIterable(asList(newOrder(0), newOrder(1))))
-            .get(99, SECONDS));
-
-
-        // #2 addOrder
-        Boolean addOrderResponse = getOrThrow(proxy.api()
-            .addOrder(newOrder(2))
-            .get(99, SECONDS));
-        assertThat(addOrderResponse, equalTo(true/*added, no duplicate*/));
-
-        allOrdersFinished.get(99, SECONDS);
+        allOrdersRemoved.get(99, SECONDS);
 
         // Check events of the first added order
         assertThat(events.get(0).key(), equalTo(orderIds.get(0)));
@@ -104,14 +101,41 @@ final class JControllerProxyOrderTester implements AutoCloseable
         assertThat(events.get(2).key(), equalTo(orderIds.get(0)));
         assertThat(events.get(2).event(), instanceOf(OrderEvent.OrderFinished$.class));
         assertThat(keyedEventToJson(events.get(2)), equalTo("{\"key\":\"TEST-ORDER-0\",\"TYPE\":\"OrderFinished\"}"));
+
+        assertThat(events.get(3).key(), equalTo(orderIds.get(0)));
+        assertThat(events.get(3).event(), instanceOf(OrderEvent.OrderRemoved$.class));
+        assertThat(keyedEventToJson(events.get(3)), equalTo("{\"key\":\"TEST-ORDER-0\",\"TYPE\":\"OrderRemoved\"}"));
+    }
+
+    private void addOrdersAsStream() throws InterruptedException, ExecutionException, TimeoutException {
+        // Idempotent: already existent order (with same OrderId) are silently ignored
+        List<JFreshOrder> freshOrders = asList(newOrder(0), newOrder(1));
+        getOrThrow(api
+            .addOrders(Flux.fromIterable(freshOrders))
+            .get(99, SECONDS));
+        getOrThrow(api
+            .removeOrdersWhenTerminated(freshOrders.stream().map(JFreshOrder::id).collect(Collectors.toList()))
+            .get(99, SECONDS));
+    }
+
+    private void addSingleOrder() throws InterruptedException, ExecutionException, TimeoutException {
+        // #2 addOrder
+        JFreshOrder freshOrder = newOrder(2);
+        Boolean addOrderResponse = getOrThrow(api
+            .addOrder(freshOrder)
+            .get(99, SECONDS));
+        assertThat(addOrderResponse, equalTo(true/*added, no duplicate*/));
+        getOrThrow(api
+            .removeOrdersWhenTerminated(singleton(freshOrder.id()))
+            .get(99, SECONDS));
     }
 
     private static JFreshOrder newOrder(int index) {
         return JFreshOrder.of(orderIds.get(index), workflowPath);
     }
 
-    void testCancelOrderViaHttpPost() throws Exception {
-        boolean added = getOrThrow(proxy.api()
+    void testCancelOrder() throws Exception {
+        boolean added = getOrThrow(api
             .addOrder(JFreshOrder.of(
                 OrderId.of("TEST-CANCEL"),
                 workflowPath,
@@ -120,12 +144,28 @@ final class JControllerProxyOrderTester implements AutoCloseable
             .get(99, SECONDS));
         assertThat(added, equalTo(true));
 
-        String response = getOrThrow(proxy.api()
-            .httpPostJson("/controller/api/command", "{'TYPE': 'CancelOrder', 'orderId': 'TEST-CANCEL'}"
+        CompletableFuture<JEventAndControllerState<Event>> cancelled =
+            proxy.when(es -> es.stampedEvent().value().event() instanceof OrderCancelled$);
+        getOrThrow(api
+            .cancelOrder(OrderId.of("TEST-CANCEL"))
+            .get(99, SECONDS));
+        cancelled.get(99, SECONDS);
+    }
+
+    void testCancelOrderViaHttpPost() throws Exception {
+        boolean added = getOrThrow(api
+            .addOrder(JFreshOrder.of(
+                OrderId.of("TEST-CANCEL-HTTP"),
+                workflowPath,
+                Optional.of(Instant.parse("2100-01-01T00:00:00Z")),
+                newHashMap()))
+            .get(99, SECONDS));
+        assertThat(added, equalTo(true));
+
+        String response = getOrThrow(api
+            .httpPostJson("/controller/api/command", "{'TYPE': 'CancelOrder', 'orderId': 'TEST-CANCEL-HTTP'}"
                 .replace('\'', '"'))
             .get(99, SECONDS));
         assertThat(response, equalTo("{\"TYPE\":\"Accepted\"}"));
     }
-
-
 }

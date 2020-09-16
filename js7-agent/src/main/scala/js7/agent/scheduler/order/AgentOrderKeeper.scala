@@ -530,13 +530,11 @@ with Stash {
     orderEntry.actor ! OrderActor.Input.StartProcessing(jobKey, job, jobEntry.actor, defaultArguments)
   }
 
-  private def removeOrder(orderId: OrderId): Unit = {
+  private def removeOrder(orderId: OrderId): Unit =
     for (orderEntry <- orderRegister.get(orderId)) {
       orderEntry.actor ! OrderActor.Input.Terminate()
-      //context.unwatch(orderEntry.actor)
       orderRegister.remove(orderId)
     }
-  }
 
   override def unhandled(message: Any) =
     message match {

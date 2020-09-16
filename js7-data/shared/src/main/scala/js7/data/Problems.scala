@@ -38,4 +38,6 @@ object Problems
     def arguments = Map("eventId" -> EventId.toString(eventId))
   }
   object SnapshotForUnknownEventIdProblem extends Problem.Coded.Companion
+
+  case object CannotRemoveOrderProblem extends Problem.ArgumentlessCoded
 }

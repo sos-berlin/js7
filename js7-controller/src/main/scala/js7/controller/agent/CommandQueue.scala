@@ -154,7 +154,7 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
       attachedOrderIds --= inputs collect { case Input.DetachOrder(orderId) => orderId }
       attachedOrderIds ++= inputs collect { case Input.AttachOrder(order, _, _) => order.id }
       logger.trace(s"attachedOrderIds=${attachedOrderIds.toSeq.sorted.mkString(" ")}")
-      queue.dequeueAll(inputs)  // Including rejected commands. The corresponding orders are ignored henceforth.
+      queue.dequeueAll(inputs)  // Including rejected commands. These command will not be repeated.
       onQueuedInputsResponded(inputs)
       responses.flatMap {
         case QueuedInputResponse(input, Right(AgentCommand.Response.Accepted)) =>

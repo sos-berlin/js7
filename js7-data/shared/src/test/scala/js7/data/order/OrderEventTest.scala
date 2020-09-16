@@ -56,7 +56,8 @@ final class OrderEventTest extends AnyFreeSpec
         AgentRefPath("/AGENT"),
         Some(OrderId("PARENT")),
         Some(OrderMark.Suspending),
-        isSuspended = true),
+        isSuspended = true,
+        removeWhenTerminated = true),
       json"""{
         "TYPE": "OrderAttachedToAgent",
         "workflowPosition": {
@@ -84,7 +85,8 @@ final class OrderEventTest extends AnyFreeSpec
         "agentRefPath":"/AGENT",
         "parent": "PARENT",
         "mark": { "TYPE": "Suspending" },
-        "isSuspended":  true
+        "isSuspended":  true,
+        "removeWhenTerminated":  true
       }""")
   }
 
@@ -338,6 +340,20 @@ final class OrderEventTest extends AnyFreeSpec
     check(OrderCancelled, json"""
       {
         "TYPE": "OrderCancelled"
+      }""")
+  }
+
+  "OrderRemoveMarked" in {
+    check(OrderRemoveMarked, json"""
+      {
+        "TYPE": "OrderRemoveMarked"
+      }""")
+  }
+
+  "OrderRemoved" in {
+    check(OrderRemoved, json"""
+      {
+        "TYPE": "OrderRemoved"
       }""")
   }
 

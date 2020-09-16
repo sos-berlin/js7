@@ -34,6 +34,8 @@ trait OrderProvider extends HasCloser
     retryUntilNoError {
       controllerApi.login(onlyIfNotLoggedIn = true) >>
         controllerApi.addOrders(orders)
+          .flatMap((_: Completed) =>
+            controllerApi.removeOrdersWhenTerminated(orders.map(_.id)))
           .map(Right.apply)
     }
 

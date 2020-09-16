@@ -117,7 +117,8 @@ private object OrderActorTest {
   private val TestAgentRefPath = AgentRefPath("/TEST-AGENT")
   private val TestPosition = Position(777)
   private val ExpectedOrderEvents = List(
-    OrderAttachedToAgent(TestOrder.workflowPosition, Order.Ready, TestOrder.arguments, TestOrder.historicOutcomes, AgentRefPath("/TEST-AGENT"), None, None, false),
+    OrderAttachedToAgent(TestOrder.workflowPosition, Order.Ready, TestOrder.arguments, TestOrder.historicOutcomes,
+      AgentRefPath("/TEST-AGENT"), None, None, false, false),
     OrderProcessingStarted,
     OrderProcessed(Outcome.Succeeded(Map("result" -> "TEST-RESULT-FROM-JOB"))),
     OrderMoved(TestPosition),

@@ -21,6 +21,7 @@ import js7.data.item.{TypedPath, VersionId}
 import js7.data.node.NodeId
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.position.Position
+import scala.collection.immutable
 
 /**
   * @author Joacim Zschimmer
@@ -70,6 +71,11 @@ object ControllerCommand extends CommonCommand.Companion
         orderId <- c.get[OrderId]("orderId")
         mode <- c.get[Option[CancelMode]]("mode") map (_ getOrElse CancelMode.Default)
       } yield CancelOrder(orderId, mode)
+  }
+
+  final case class RemoveOrdersWhenTerminated(orderIds: immutable.Iterable[OrderId])
+  extends ControllerCommand {
+    type Response = Response.Accepted
   }
 
   type NoOperation = NoOperation.type
@@ -209,6 +215,7 @@ object ControllerCommand extends CommonCommand.Companion
     Subtype(deriveCodec[Batch]),
     Subtype(deriveCodec[AddOrder]),
     Subtype[CancelOrder],
+    Subtype(deriveCodec[RemoveOrdersWhenTerminated]),
     Subtype(deriveCodec[ReplaceRepo]),
     Subtype(deriveCodec[UpdateRepo]),
     Subtype(NoOperation),

@@ -56,7 +56,8 @@ object OrderEvent {
     agentRefPath: AgentRefPath,
     parent: Option[OrderId],
     mark: Option[OrderMark],
-    isSuspended: Boolean)
+    isSuspended: Boolean,
+    removeWhenTerminated: Boolean)
   extends OrderCoreEvent {
     workflowPosition.workflowId.requireNonAnonymous()
   }
@@ -169,6 +170,12 @@ object OrderEvent {
   type OrderFinished = OrderFinished.type
   case object OrderFinished extends OrderActorEvent with OrderTerminated
 
+  type OrderRemoveMarked = OrderRemoveMarked.type
+  case object OrderRemoveMarked extends OrderActorEvent with OrderTerminated
+
+  type OrderRemoved = OrderRemoved.type
+  case object OrderRemoved extends OrderActorEvent with OrderTerminated
+
   /** A OrderCancelMarked on Agent is different from same Event on Controller.
     * Controller will ignore the Agent's OrderCancelMarked.
     * Controller should have emitted the event independendly.
@@ -192,6 +199,8 @@ object OrderEvent {
 
   implicit val jsonCodec = TypedJsonCodec[OrderEvent](
     Subtype[OrderAdded],
+    Subtype(OrderRemoveMarked),
+    Subtype(OrderRemoved),
     Subtype(OrderStarted),
     Subtype(OrderProcessingStarted),
     Subtype(deriveCodec[OrderStdoutWritten]),

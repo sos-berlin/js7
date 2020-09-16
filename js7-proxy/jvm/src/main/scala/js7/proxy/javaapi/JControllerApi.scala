@@ -9,7 +9,7 @@ import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.controller.client.HttpControllerApi
 import js7.controller.data.ControllerCommand
-import js7.controller.data.ControllerCommand.{CancelOrder, ReleaseEvents, ResumeOrder, SuspendOrder}
+import js7.controller.data.ControllerCommand.{CancelOrder, ReleaseEvents, RemoveOrdersWhenTerminated, ResumeOrder, SuspendOrder}
 import js7.data.command.CancelMode
 import js7.data.event.{Event, EventId}
 import js7.data.item.VersionId
@@ -30,6 +30,7 @@ import monix.execution.FutureUtils.Java8Extensions
 import monix.execution.Scheduler
 import reactor.core.publisher.Flux
 import scala.jdk.OptionConverters._
+import scala.jdk.CollectionConverters._
 
 @javaApi
 final class JControllerApi private[javaapi](
@@ -146,6 +147,9 @@ final class JControllerApi private[javaapi](
 
   def resumeOrder(orderId: OrderId, position: Optional[JPosition]): CompletableFuture[VEither[Problem, Void]] =
     execute(ResumeOrder(orderId, position.toScala.map(_.asScala)))
+
+  def removeOrdersWhenTerminated(orderIds: java.lang.Iterable[OrderId]): CompletableFuture[VEither[Problem, Void]] =
+    execute(RemoveOrdersWhenTerminated(orderIds.asScala.toVector))
 
   def releaseEvents(until: EventId): CompletableFuture[VEither[Problem, Void]] =
     execute(ReleaseEvents(until))

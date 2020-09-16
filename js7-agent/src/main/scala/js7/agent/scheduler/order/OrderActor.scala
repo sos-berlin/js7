@@ -81,9 +81,11 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
     case command: Command =>
       command match {
         case Command.Attach(attached @ Order(`orderId`, wfPos, state: Order.IsFreshOrReady,
-        arguments, historicOutcomes, Some(Order.Attached(agentRefPath)), parent, mark, isSuspended)) =>
+          arguments, historicOutcomes, Some(Order.Attached(agentRefPath)), parent, mark, isSuspended, removeWhenTerminated)
+        ) =>
           becomeAsStateOf(attached, force = true)
-          persist(OrderAttachedToAgent(wfPos, state, arguments, historicOutcomes, agentRefPath, parent, mark, isSuspended = isSuspended)) {
+          persist(OrderAttachedToAgent(wfPos, state, arguments, historicOutcomes, agentRefPath, parent, mark,
+            isSuspended = isSuspended, removeWhenTerminated = removeWhenTerminated)) {
             (event, updatedState) =>
               update(event :: Nil, updatedState)
               Completed
@@ -232,7 +234,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
         case _: Order.FailedWhileFresh => become("stoppedWhileFresh")(failedOrBroken)
         case _: Order.FailedInFork => become("failedInFork")(failedOrBroken)
         case _: Order.Broken     => become("broken")(failedOrBroken)
-        case _: Order.Awaiting | _: Order.Finished | Order.Cancelled =>
+        case _: Order.Awaiting | _: Order.Finished | Order.Cancelled | Order.Removed =>
           sys.error(s"Order is expected to be on Controller, not on Agent: ${order.state}")   // A Finished order must be at Controller
       }
     }

@@ -44,6 +44,16 @@ final class JControllerProxy private[proxy](
   def currentState: JControllerState =
     JControllerState(asScala.currentState)
 
+  /** For testing: wait for a condition in the running event stream. **/
+  def when(predicate: JEventAndControllerState[Event] => Boolean): CompletableFuture[JEventAndControllerState[Event]] =
+    asScala.observable
+      .map(JEventAndControllerState.apply)
+      .dropWhile(predicate)
+      .headOptionL
+      .map(_.getOrElse(throw new RuntimeException("JControllerProxy.when: stream has terminated")))
+      .runToFuture
+      .asJava
+
   private def runOrderForTest(order: JFreshOrder): CompletableFuture[Stamped[KeyedEvent[OrderTerminated]]] = {
     val whenOrderTerminated = asScala.observable
       .collect {

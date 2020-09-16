@@ -10,8 +10,8 @@ import js7.data.command.CancelMode
 import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.context.OrderContext
 import js7.data.execution.workflow.instructions.{ForkExecutor, InstructionExecutor}
-import js7.data.order.Order.{IsFinal, ProcessingCancelled}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFailed, OrderFailedCatchable, OrderFailedInFork, OrderMoved, OrderResumeMarked, OrderResumed, OrderSuspendMarked, OrderSuspended}
+import js7.data.order.Order.{IsTerminated, ProcessingCancelled}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFailed, OrderFailedCatchable, OrderFailedInFork, OrderMoved, OrderRemoved, OrderResumeMarked, OrderResumed, OrderSuspendMarked, OrderSuspended}
 import js7.data.order.{Order, OrderId, OrderMark, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem}
 import js7.data.workflow.instructions.{End, Fork, Goto, IfFailedGoto, Retry, TryInstruction}
@@ -130,17 +130,17 @@ final class OrderEventSource(
     ((order.isDetached || order.isAttached) && order.isState[Order.DelayedAfterError]) ?
       OrderAwoke  // AgentOrderKeeper has already checked time
 
-  /** Convert OrderMark to an event.
-    * Returns `Some(OrderCancelled | OrderSuspended | OrderResumed)` or `Some(OrderDetachable)` or None.
-    */
   private def orderMarkEvent(order: Order[Order.State]): Option[OrderActorEvent] =
-    order.mark.flatMap(mark =>
-      mark match {
-        case OrderMark.Cancelling(mode) => tryCancel(order, mode)
-        case OrderMark.Suspending => trySuspend(order)
-        case OrderMark.Resuming(position) => tryResume(order, position)
-        case _ => None
-      })
+    if (order.removeWhenTerminated && order.isState[IsTerminated] && order.parent.isEmpty)
+      Some(OrderRemoved)
+    else
+      order.mark.flatMap(mark =>
+        mark match {
+          case OrderMark.Cancelling(mode) => tryCancel(order, mode)
+          case OrderMark.Suspending => trySuspend(order)
+          case OrderMark.Resuming(position) => tryResume(order, position)
+          case _ => None
+        })
 
   def markOrder(orderId: OrderId, mark: OrderMark): Checked[Option[OrderActorEvent]] = {
     assertThat(isAgent)
@@ -167,7 +167,7 @@ final class OrderEventSource(
       } else Right(
         tryCancel(order, mode).orElse(
           (!order.isCancelling &&
-            !order.isState[IsFinal] &&
+            !order.isState[IsTerminated] &&
             !order.isState[ProcessingCancelled] &&
             !order.mark.contains(OrderMark.Cancelling(mode))
           ) ? OrderCancelMarked(mode))))

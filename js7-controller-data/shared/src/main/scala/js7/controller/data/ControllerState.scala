@@ -16,7 +16,7 @@ import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{Event, EventId, JournalEvent, JournalHeader, JournalState, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotMeta}
 import js7.data.item.{Repo, RepoEvent}
-import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderOffered, OrderStdWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderOffered, OrderRemoved, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import monix.reactive.Observable
 
@@ -96,7 +96,7 @@ extends JournaledState[ControllerState]
           idToOrder.checkNoDuplicate(orderId).map(_ =>
             copy(idToOrder = idToOrder + (orderId -> Order.fromOrderAdded(orderId, event))))
 
-        case OrderFinished | OrderCancelled =>
+        case OrderRemoved =>
           Right(copy(idToOrder = idToOrder - orderId))
 
         case event: OrderCoreEvent =>

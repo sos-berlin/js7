@@ -15,6 +15,9 @@ import js7.base.crypt.Signed
 import js7.base.eventbus.EventPublisher
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.syntax._
+import js7.base.monixutils.MonixDeadline
+import js7.base.monixutils.MonixDeadline.now
+import js7.base.monixutils.MonixDeadline.syntax._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
@@ -48,18 +51,18 @@ import js7.core.common.ActorRegister
 import js7.core.event.journal.recover.Recovered
 import js7.core.event.journal.{JournalActor, MainJournalingActor}
 import js7.core.problems.ReverseReleaseEventsProblem
-import js7.data.Problems.UnknownOrderProblem
+import js7.data.Problems.{CannotRemoveOrderProblem, UnknownOrderProblem}
 import js7.data.agent.{AgentRef, AgentRefPath, AgentRunId}
 import js7.data.cluster.ClusterState
 import js7.data.crypt.InventoryItemVerifier
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{Event, EventId, JournalHeader, KeyedEvent, Stamped}
+import js7.data.event.{<-:, Event, EventId, JournalHeader, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
 import js7.data.item.RepoEvent.{ItemAdded, ItemChanged, ItemDeleted, ItemEvent, VersionAdded}
 import js7.data.item.{IntenvoryItems, InventoryItem, RepoChange, RepoEvent, TypedPath}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancelMarked, OrderDetached, OrderResumeMarked, OrderSuspendMarked}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancelMarked, OrderCoreEvent, OrderDetachable, OrderDetached, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderSuspendMarked}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
 import js7.data.workflow.instructions.Execute
@@ -70,7 +73,6 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.cancelables.SerialCancelable
 import scala.collection.mutable
-import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success, Try}
@@ -105,12 +107,13 @@ with MainJournalingActor[ControllerState, Event]
   private val orderRegister = mutable.HashMap[OrderId, OrderEntry]()
   private val recoveredJournalHeader = SetOnce[JournalHeader]
   private val suppressOrderIdCheckFor = config.optionAs[String]("js7.TEST-ONLY.suppress-order-id-check-for")
+  private val removeOrderDelay = config.getDuration("js7.order.remove-delay").toFiniteDuration
   private val testAddOrderDelay = config.optionAs[FiniteDuration]("js7.TEST-ONLY.add-order-delay").fold(Task.unit)(Task.sleep)
   private var journalTerminated = false
 
   private object shutdown {
     var delayUntil = now
-    val since = SetOnce[Deadline]
+    val since = SetOnce[MonixDeadline]
     private val shutDown = SetOnce[ControllerCommand.ShutDown]
     private val stillShuttingDownCancelable = SerialCancelable()
     private var terminatingAgentDrivers = false
@@ -344,7 +347,10 @@ with MainJournalingActor[ControllerState, Event]
 
       // Proceed order before starting AgentDrivers, so AgentDrivers may match recovered OrderIds with Agent's OrderIds
       // Any ordering when continuing orders???
-      _controllerState.idToOrder.keys foreach proceedWithOrder // May persist events later!
+      for (orderId <- _controllerState.idToOrder.keys) {
+        orderRegister += orderId -> new OrderEntry(scheduler.now)
+        proceedWithOrder(orderId)  // May persist events later!
+      }
       afterProceedEvents.persistThenHandleEvents()  // Persist and handle before Internal.Ready
       if (persistedEventId > EventId.BeforeFirst) {  // Recovered?
         logger.info(s"${_controllerState.idToOrder.size} Orders, ${_controllerState.repo.typedCount[Workflow]} Workflows and ${_controllerState.repo.typedCount[AgentRef]} AgentRefs recovered")
@@ -512,12 +518,14 @@ with MainJournalingActor[ControllerState, Event]
         logger.error(s"Response to AgentCommand.MarkOrder from Agent for unknown orders: "+ unknown.mkString(", "))
       }
       for ((orderId, mark) <- orderToMark) {
-        if (!orderRegister.contains(orderId)) orderRegister.put(orderId, new OrderEntry)
         orderRegister(orderId).agentOrderMark = Some(mark)
       }
 
     case JournalActor.Output.SnapshotTaken =>
       shutdown.onSnapshotTaken()
+
+    case Internal.OrderIsDue(orderId) =>
+      proceedWithOrder(orderId)
 
     case Internal.ShutDown(shutDown) =>
       shutdown.delayUntil = now + config.getDuration("js7.web.server.delay-shutdown").toFiniteDuration
@@ -585,6 +593,25 @@ with MainJournalingActor[ControllerState, Event]
 
       case ControllerCommand.ResumeOrder(orderId, position) =>
         executeOrderMarkCommand(orderId)(orderEventSource(_controllerState).resume(_, position))
+
+      case ControllerCommand.RemoveOrdersWhenTerminated(orderIds) =>
+        orderIds.toVector
+          .traverse(_controllerState.idToOrder.checked)
+          .traverse(orders =>
+            orders.traverse(order =>
+              check(order.parent.isEmpty, order, CannotRemoveOrderProblem)))
+          .flatten
+          .map(_
+            .filterNot(_.removeWhenTerminated)
+            .map(order =>
+              order.id <-: (
+                if (order.isState[Order.IsTerminated])
+                  OrderRemoved
+                else
+                  OrderRemoveMarked)))
+          .traverse(keyedEvents =>
+            persistMultiple(keyedEvents)(handleOrderEvents)
+              .map(_ => ControllerCommand.Response.Accepted))
 
       case ControllerCommand.ReleaseEvents(untilEventId) =>
         val userId = commandMeta.user.id
@@ -801,10 +828,8 @@ with MainJournalingActor[ControllerState, Event]
         .traverse { ordersAndWorkflows =>
           val events = for ((order, workflow) <- ordersAndWorkflows) yield
             order.id <-: OrderAdded(workflow.id/*reuse*/, order.scheduledFor, order.arguments)
-          persistMultiple(events) { (stampedEvents, updatedState) =>
-            for (o <- stampedEvents) handleOrderEvent(o, updatedState)
-            Completed
-          }
+          persistMultiple(events)(handleOrderEvents)
+            .map(_ => Completed)
         }
     }
 
@@ -829,6 +854,9 @@ with MainJournalingActor[ControllerState, Event]
 
   private def handleOrderEventOnly(stamped: Stamped[KeyedEvent[OrderEvent]]): Seq[OrderId] = {
     val KeyedEvent(orderId, event) = stamped.value
+
+    updateOrderEntry(orderId, event)
+
     event match {
       case _: OrderAdded =>
         orderId :: Nil
@@ -841,8 +869,8 @@ with MainJournalingActor[ControllerState, Event]
 
           case Some(order) =>
             val checkedFollowUps = orderEventHandler(_controllerState).handleEvent(orderId <-: event)
-            val dependentOrderIds = mutable.Buffer[OrderId]()
-            for (followUps <- checkedFollowUps onProblem (p => logger.error(p))) {  // TODO OrderBroken on error?
+            val dependentOrderIds = mutable.Buffer.empty[OrderId]
+            for (followUps <- checkedFollowUps.onProblem(p => logger.error(p))) {  // TODO OrderBroken on error?
               followUps foreach {
                 case _: FollowUp.Processed if order.isAttached =>
 
@@ -862,6 +890,17 @@ with MainJournalingActor[ControllerState, Event]
             dependentOrderIds.toSeq ++
               (_controllerState.idToOrder.contains(orderId) ? order.id)
         }
+    }
+  }
+
+  private def updateOrderEntry(orderId: OrderId, event: OrderEvent): Unit = {
+    val orderEntry = orderRegister.getOrElseUpdate(orderId, new OrderEntry(now))
+    orderEntry.lastUpdatedAt = now
+    event match {
+      case _: OrderAttachable | _: OrderDetachable =>
+        orderEntry.triedToAttached = false
+
+      case _ =>
     }
   }
 
@@ -906,25 +945,49 @@ with MainJournalingActor[ControllerState, Event]
       case _ =>
     }
 
-    // When recovering, proceedWithOrderOnController may emit the same event multiple times,
-    // for example OrderJoined for each parent and child order.
-    // These events are collected and with actor message Internal.AfterProceedEventsAdded reduced to one.
     for (keyedEvent <- orderEventSource(_controllerState).nextEvent(order.id)) {
       keyedEvent match {
         case KeyedEvent(orderId, OrderBroken(problem)) =>
           logger.error(s"Order '${orderId.string}' is broken: $problem")
         case _ =>
       }
-      afterProceedEvents.persistAndHandleLater(keyedEvent)
+      orderEventDelay(keyedEvent) match {
+        case Some(delay) =>
+          orderRegister(order.id).timer := scheduler.scheduleOnce(delay) {
+            self ! Internal.OrderIsDue(order.id)
+          }
+        case _ =>
+          // When recovering, proceedWithOrderOnController may emit the same event multiple times,
+          // for example OrderJoined for each parent and child order.
+          // These events are collected and with actor message Internal.AfterProceedEventsAdded reduced to one.
+          afterProceedEvents.persistAndHandleLater(keyedEvent)
+      }
     }
   }
+
+  private def orderEventDelay(keyedEvent: KeyedEvent[OrderCoreEvent]): Option[FiniteDuration] =
+    keyedEvent match {
+      case orderId <-: OrderRemoved =>
+        if (removeOrderDelay <= 0.s)
+          None
+        else
+          for {
+            orderEntry <- orderRegister.get(orderId)
+            delay <- Some(orderEntry.lastUpdatedAt + removeOrderDelay - now).filter(_ > 0.s)
+          } yield delay
+      case _ => None
+    }
 
   private def tryAttachOrderToAgent(order: Order[Order.IsFreshOrReady]): Unit =
     for ((signedWorkflow, job, agentEntry) <- checkedWorkflowJobAndAgentEntry(order).onProblem(p => logger.error(p))) {  // TODO OrderBroken on error?
       if (order.isDetached && order.mark.isEmpty)
         persist(order.id <-: OrderAttachable(agentEntry.agentRefPath))(handleOrderEvent)
       else if (order.isAttaching) {
-        agentEntry.actor ! AgentDriver.Input.AttachOrder(order, agentEntry.agentRefPath, signedWorkflow)  // OutOfMemoryError when Agent is unreachable !!!
+        val orderEntry = orderRegister(order.id)
+        if (!orderEntry.triedToAttached) {
+          orderEntry.triedToAttached = true
+          agentEntry.actor ! AgentDriver.Input.AttachOrder(order, agentEntry.agentRefPath, signedWorkflow)  // OutOfMemoryError when Agent is unreachable !!!
+        }
       }
     }
 
@@ -1016,6 +1079,7 @@ private[controller] object ControllerOrderKeeper
   }
 
   private object Internal {
+    final case class OrderIsDue(orderId: OrderId)
     final case class OtherClusterNodeActivationInhibited(recovered: Try[Recovered[ControllerState]])
     final case class ClusterModuleTerminatedUnexpectedly(tried: Try[Checked[Completed]]) extends DeadLetterSuppression
     final case class Ready(outcome: Checked[Completed])
@@ -1051,9 +1115,12 @@ private[controller] object ControllerOrderKeeper
       actor ! AgentDriver.Input.ChangeUri(uri = agentRef.uri)
   }
 
-  private class OrderEntry
+  private class OrderEntry(now: MonixDeadline)
   {
+    var triedToAttached = false
+    var lastUpdatedAt: MonixDeadline = now
     var agentOrderMark = none[OrderMark]
+    val timer = SerialCancelable()
   }
 
   object ControllerReadyTestIncident

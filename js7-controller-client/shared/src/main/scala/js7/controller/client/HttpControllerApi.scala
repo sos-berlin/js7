@@ -12,12 +12,13 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.HttpClient.liftProblem
 import js7.base.web.{HttpClient, Uri}
 import js7.controller.client.HttpControllerApi._
+import js7.controller.data.ControllerCommand.RemoveOrdersWhenTerminated
 import js7.controller.data.{ControllerCommand, ControllerOverview, ControllerState}
 import js7.data.agent.AgentRef
 import js7.data.cluster.{ClusterNodeState, ClusterState}
 import js7.data.event.{Event, EventApi, EventId, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
 import js7.data.fatevent.FatEvent
-import js7.data.order.{FreshOrder, Order, OrdersOverview}
+import js7.data.order.{FreshOrder, Order, OrderId, OrdersOverview}
 import js7.data.session.HttpSessionApi
 import js7.data.workflow.Workflow
 import monix.eval.Task
@@ -83,6 +84,10 @@ extends EventApi with HttpSessionApi with HasIsIgnorableStackTrace
   final def addOrders(orders: Seq[FreshOrder]): Task[Completed] =
     httpClient.postDiscardResponse(uris.order.add, orders)
       .map((_: Int) => Completed)
+
+  final def removeOrdersWhenTerminated(orderIds: Seq[OrderId]): Task[Completed] =
+    executeCommand(RemoveOrdersWhenTerminated(orderIds))
+      .map((_: ControllerCommand.Response.Accepted) => Completed)
 
   final def ordersOverview: Task[OrdersOverview] =
     httpClient.get[OrdersOverview](uris.order.overview)
