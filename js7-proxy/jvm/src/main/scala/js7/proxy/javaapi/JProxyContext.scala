@@ -65,17 +65,6 @@ extends HasCloser
     new JControllerApi(apiResources, proxyConf)
   }
 
-  /** Convenience method, starts a `JControllerProxy`.
-    * After use, stop it with `JControllerProxy.stop()`. */
-  def startProxy(
-    admissions: java.lang.Iterable[JAdmission],
-    httpsConfig: JHttpsConfig,
-    proxyEventBus: JStandardEventBus[ProxyEvent],
-    controllerEventBus: JControllerEventBus)
-  : CompletableFuture[JControllerProxy] =
-    newControllerApi(admissions, httpsConfig)
-      .startProxy(proxyEventBus, controllerEventBus)
-
   private def admissionsToApiResources(
     admissions: java.lang.Iterable[JAdmission],
     httpsConfig: JHttpsConfig)

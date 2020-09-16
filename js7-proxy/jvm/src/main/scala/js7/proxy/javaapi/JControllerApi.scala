@@ -61,7 +61,7 @@ final class JControllerApi private[javaapi](
   def startProxy(
     proxyEventBus: JStandardEventBus[ProxyEvent],
     controllerEventBus: JControllerEventBus)
-  : CompletableFuture[JControllerProxy] = {
+  : CompletableFuture[JControllerProxy] =
     ControllerProxy.start(
       apiResources,
       proxyEventBus.asScala,
@@ -70,7 +70,6 @@ final class JControllerApi private[javaapi](
     ) .map(new JControllerProxy(_, this, controllerEventBus))
       .runToFuture
       .asJava
-  }
 
   /** Update the Repo, i.e. add, change or delete inventory items.
     *
