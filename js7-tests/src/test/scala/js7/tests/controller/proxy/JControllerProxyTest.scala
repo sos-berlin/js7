@@ -2,8 +2,11 @@ package js7.tests.controller.proxy
 
 import io.circe.syntax._
 import java.nio.file.Files.createDirectory
+import java.util.concurrent.TimeUnit.SECONDS
+import java.util.concurrent.TimeoutException
 import js7.base.circeutils.CirceUtils._
 import js7.base.time.ScalaTime._
+import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Lazy
 import js7.base.web.Uri
 import js7.common.configutils.Configs._
@@ -15,14 +18,17 @@ import js7.data.controller.ControllerItems.jsonCodec
 import js7.data.item.{InventoryItem, VersionId}
 import js7.data.job.ExecutablePath
 import js7.data.workflow.WorkflowPath
-import js7.proxy.javaapi.data.auth.{JAdmission, JHttpsConfig}
+import js7.proxy.javaapi.JProxyContext
+import js7.proxy.javaapi.data.auth.{JAdmission, JCredentials, JHttpsConfig}
 import js7.tests.controller.proxy.ClusterProxyTest.workflow
 import js7.tests.controller.proxy.JControllerProxyTest._
 import js7.tests.testenv.DirectoryProvider.script
 import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.CancellationException
 import scala.jdk.CollectionConverters._
+import scala.util.{Failure, Try}
 
 final class JControllerProxyTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
@@ -76,6 +82,22 @@ final class JControllerProxyTest extends AnyFreeSpec with DirectoryProviderForSc
           controller.terminate() await 99.s
           controller.close()
         }
+    }
+  }
+
+  "cancel startProxy" in {
+    val admissions = List(JAdmission.of(s"http://127.0.0.1:0", JCredentials.noCredentials)).asJava
+    autoClosing(new JProxyContext) { context =>
+      val api = context.newControllerApi(admissions, JHttpsConfig.empty)
+      val future = api.startProxy()
+      Try(future.get(2, SECONDS)) match {
+        case Failure(_: TimeoutException) =>
+        case o => fail(s"startProxy must not complete: $o")
+      }
+      assert(!future.isDone)
+      future.cancel(false)
+      val tried = Try(future.get(9, SECONDS))
+      assert(tried.failed.toOption.exists(_.isInstanceOf[CancellationException]))
     }
   }
 }

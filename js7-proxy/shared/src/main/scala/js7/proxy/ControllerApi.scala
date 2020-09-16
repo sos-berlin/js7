@@ -48,8 +48,8 @@ extends ControllerProxyWithHttp
         HttpClient.liftProblem(
           api.postObservable[UpdateRepoOperation, JsonObject](
             "controller/api/repo",
-            UpdateRepoOperation.AddVersion(versionId) +: operations)
-            .map(_ => Completed))))
+            UpdateRepoOperation.AddVersion(versionId) +: operations
+          ).map(_ => Completed))))
 
   def addOrders(orders: Observable[FreshOrder]): Task[Checked[Completed]] =
     apiResource.use(api =>

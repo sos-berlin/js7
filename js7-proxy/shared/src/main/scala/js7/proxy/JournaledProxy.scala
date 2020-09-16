@@ -26,7 +26,8 @@ import js7.proxy.data.ProxyEvent
 import js7.proxy.data.ProxyEvent.{ProxyCoupled, ProxyCouplingError, ProxyDecoupled}
 import js7.proxy.data.event.{EventAndState, ProxyStarted}
 import monix.eval.Task
-import monix.execution.{Cancelable, Scheduler}
+import monix.execution.cancelables.SerialCancelable
+import monix.execution.{Cancelable, CancelableFuture, Scheduler}
 import monix.reactive.Observable
 import monix.reactive.observables.ConnectableObservable
 import scala.collection.immutable.Seq
@@ -58,17 +59,21 @@ trait JournaledProxy[S <: JournaledState[S]]
         eventAndState
       }
       .takeUntil(Observable.fromFuture(stopRequested.future))
+      .doOnSubscriptionCancel(Task(
+        scribe.debug("connectableObservable: cancelling")))
       .publish(scheduler)
   }
 
   final def observable: Observable[EventAndState[Event, S]] =
     connectableObservable
 
-  protected final def startObserving: Task[Unit] =
+  protected final def startObserving: Task[Unit] = {
+    val cancelable = SerialCancelable()
     Task.deferFutureAction { implicit scheduler =>
       assertThat(observing.isEmpty)
       val obs = connectableObservable.connect()
       observing := obs
+      cancelable := obs
       val whenCompleted = connectableObservable.completedL.runToFuture
       observingStopped.completeWith(whenCompleted)
       whenCompleted.onComplete {
@@ -81,8 +86,15 @@ trait JournaledProxy[S <: JournaledState[S]]
           scribe.error(t.toStringWithCauses, t.nullIfNoStackTrace)
           // ???
       }
-      currentStateFilled.future
+      CancelableFuture(
+        currentStateFilled.future,
+        () => {
+          scribe.debug("startObserving: cancelling")
+          whenCompleted.cancel()
+          cancelable.cancel()
+        })
     }
+  }
 
   final def stop: Task[Unit] =
     Task.deferFuture {
@@ -309,7 +321,7 @@ object JournaledProxy
             .guaranteeCase(exitCase => Task {
               if (exitCase != ExitCase.Completed) {
                 scribe.debug(exitCase.toString)
-                for (o <- apisAndFutures) o._2.cancel()  // Needed?
+                for (o <- apisAndFutures) o._2.cancel()
               }
             })
       }

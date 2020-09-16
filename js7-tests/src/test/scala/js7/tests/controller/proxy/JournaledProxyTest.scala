@@ -16,7 +16,7 @@ import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.item.RepoEvent.ItemAdded
 import js7.data.item.{UpdateRepoOperation, VersionId}
 import js7.data.job.{ExecutablePath, ReturnCode}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTerminated, OrderAttached, OrderDetached}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.Outcome.Succeeded
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
 import js7.data.workflow.position.Position
