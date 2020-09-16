@@ -418,16 +418,15 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff](
         ).map(_.map(_ => ClusterCommand.Response.Accepted))
 
       case ClusterCommand.ClusterInhibitActivation(duration) =>
-        import ClusterCommand.ClusterInhibitActivation.Response
         activationInhibitor.inhibitActivation(duration)
           .flatMapT {
-            case /*inhibited=*/true => Task.pure(Right(Response(None)))
+            case /*inhibited=*/true => Task.pure(Right(ClusterInhibitActivation.Response(None)))
             case /*inhibited=*/false =>
               // Could not inhibit, so this node is already active
-              persistence.currentState.map(_.clusterState).map {
+              persistence.currentState/*TODO Possible Deadlock?*/.map(_.clusterState).map {
                 case failedOver: FailedOver =>
                   logger.debug(s"inhibitActivation(${duration.pretty}) => $failedOver")
-                  Right(Response(Some(failedOver)))
+                  Right(ClusterInhibitActivation.Response(Some(failedOver)))
                 case clusterState =>
                   Left(Problem.pure(
                     s"ClusterInhibitActivation command failed because node is already active but not failed-over: $clusterState"))
@@ -484,7 +483,7 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff](
             otherNode.executeCommand(
               InternalClusterCommand(
                 ClusterInhibitActivation(2 * clusterConf.failAfter/*TODO*/))
-            ) .map(_.response.asInstanceOf[ClusterInhibitActivation.Response].failedOver))
+            ).map(_.response.asInstanceOf[ClusterInhibitActivation.Response].failedOver))
         .onErrorRestartLoop(()) { (throwable, _, retry) =>
           // TODO Code mit loginUntilReachable usw. zusammenfassen. Stacktrace unterdrücken wenn isNotIgnorableStackTrace
           val msg = "While trying to reach the other cluster node due to restart: " + throwable.toStringWithCauses
