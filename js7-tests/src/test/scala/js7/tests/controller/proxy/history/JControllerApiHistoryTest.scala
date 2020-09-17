@@ -50,7 +50,7 @@ final class JControllerApiHistoryTest extends AnyFreeSpec with ProvideActorSyste
   override protected val inventoryItems = TestWorkflow :: Nil
   override protected val agentRefPaths = AAgentRefPath :: BAgentRefPath :: Nil
   private val controllerConfig = config"""
-    js7.proxy.event-stream.torn-older = 0s  # Should be irrelevant
+    js7.proxy.mirror.torn-older = 0s  # Should be irrelevant
     js7.journal.users-allowed-to-release-events = [ "Proxy" ]
     js7.journal.release-events-delay = 0s
     """

@@ -15,7 +15,7 @@ object ProxyConfs
   def fromConfig(config: Config): ProxyConf = {
     val c = config withFallback defaultConfig
     ProxyConf(
-      tornOlder = Some(c.getDuration("js7.proxy.event-stream.torn-older").toFiniteDuration),
+      tornOlder = Some(c.getDuration("js7.proxy.mirror.torn-older").toFiniteDuration),
       mirrorSyncPolling = c.getDuration("js7.proxy.mirror.sync-polling").toFiniteDuration)
   }
 }
