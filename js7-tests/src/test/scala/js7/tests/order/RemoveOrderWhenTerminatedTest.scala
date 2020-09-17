@@ -37,16 +37,16 @@ final class RemoveOrderWhenTerminatedTest extends AnyFreeSpec with ControllerAge
   "Remove a fresh order" in {
     val order = FreshOrder(OrderId("🔵"), quickWorkflow.id.path, scheduledFor = Some(Timestamp.now + 1.seconds))
     controller.addOrderBlocking(order)
-    controller.eventWatch.await[OrderAttached](_.key == order.id)
+    controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
     controller.executeCommandAsSystemUser(RemoveOrdersWhenTerminated(Seq(order.id))).await(99.seconds).orThrow
     controller.eventWatch.await[OrderRemoved](_.key == order.id)
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id) == Vector(
       OrderAdded(quickWorkflow.id, order.scheduledFor),
       OrderAttachable(agentRefPath),
       OrderAttached(agentRefPath),
-      OrderRemoveMarked,
       OrderStarted,
       OrderProcessingStarted,
+      OrderRemoveMarked,
       OrderStdoutWritten("TEST ☘\n"),
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(1)),
