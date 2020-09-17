@@ -16,7 +16,7 @@ import static org.hamcrest.Matchers.equalTo;
  */
 public class JWorkflowTester
 {
-    private static final JWorkflowId expectedJWorkflowId = JWorkflowId.of("/A-WORKFLOW", "VERSION-ID");
+    private static final JWorkflowId expectedJWorkflowId = JWorkflowId.of("/A-WORKFLOW", "1.0");
     private static final String expectedWorkflowNotation =
         "define workflow {\n" +
         "  execute agent=\"/AGENT\", executable=\"/A-EXECUTABLE\";\n" +
@@ -39,7 +39,7 @@ public class JWorkflowTester
         assertThat(workflow.id(), equalTo(expectedJWorkflowId));
 
         VersionId versionId = workflow.id().versionId();
-        assertThat(versionId, equalTo(VersionId.of("VERSION-ID")));
+        assertThat(versionId, equalTo(VersionId.of("1.0")));
 
         WorkflowPath workflowPath = workflow.id().path();
         assertThat(workflowPath, equalTo(WorkflowPath.of("/A-WORKFLOW")));

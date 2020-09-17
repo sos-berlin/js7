@@ -80,6 +80,9 @@ extends JJournaledState[JControllerState, ControllerState]
       .map(JOrder.apply)
       .asJavaSeqStream
 
+  def orderIsInCurrentVersionWorkflow: Order[Order.State] => Boolean =
+    _.workflowId.versionId == asScala.repo.versionId
+
   def orderStateToCount(): java.util.Map[Class[_ <: Order.State], java.lang.Integer] =
     orderStateToCount(any)
 

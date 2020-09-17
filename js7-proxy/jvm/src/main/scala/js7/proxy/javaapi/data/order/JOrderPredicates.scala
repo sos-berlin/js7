@@ -1,7 +1,7 @@
 package js7.proxy.javaapi.data.order
 
 import js7.base.annotation.javaApi
-import js7.data.order.Order
+import js7.data.order.{Order, OrderId}
 import js7.data.workflow.WorkflowPath
 import js7.proxy.javaapi.data.workflow.JWorkflowId
 
@@ -30,6 +30,12 @@ object JOrderPredicates
 
   def byOrderState(stateClass: Class[_ <: Order.State]): Predicate =
     order => stateClass isAssignableFrom order.state.getClass
+
+  def markedAsRemoveWhenTerminated(value: Boolean): Predicate =
+    _.removeWhenTerminated == value
+
+  def byOrderIdPredicate(predicate: java.util.function.Predicate[OrderId]): Predicate =
+    order => predicate.test(order.id)
 
   def and(a: Predicate, b: Predicate): Predicate =
     order => a(order) && b(order)

@@ -27,7 +27,7 @@ public class JOrderTester
        "  \"workflowPosition\": {\n" +
        "     \"workflowId\": {\n" +
        "      \"path\": \"/A-WORKFLOW\",\n" +
-       "      \"versionId\": \"VERSION-ID\"\n" +
+       "      \"versionId\": \"1.0\"\n" +
        "    },\n" +
        "    \"position\": [ 0 ]\n" +
        "  },\n" +
@@ -44,7 +44,7 @@ public class JOrderTester
        "  \"workflowPosition\": {\n" +
        "     \"workflowId\": {\n" +
        "      \"path\": \"/B-WORKFLOW\",\n" +
-       "      \"versionId\": \"VERSION-ID\"\n" +
+       "      \"versionId\": \"2.0\"\n" +
        "    },\n" +
        "    \"position\": [ 0 ]\n" +
        "  },\n" +
@@ -55,7 +55,8 @@ public class JOrderTester
        "    \"key1\": \"value1\",\n" +
        "    \"key2\": \"value2\"\n" +
        "  },\n" +
-       "  \"historicOutcomes\": []\n" +
+       "  \"historicOutcomes\": [],\n" +
+       "  \"removeWhenTerminated\": true\n" +
        "}";
     public static final JOrder bOrder = getOrThrow(JOrder.fromJson(bOrderJson));
 
@@ -78,7 +79,7 @@ public class JOrderTester
 
     private void testWorkflowId() {
         JWorkflowId workflowId = order.workflowId();
-        assertThat(workflowId, equalTo(JWorkflowId.of("/A-WORKFLOW", "VERSION-ID")));
+        assertThat(workflowId, equalTo(JWorkflowId.of("/A-WORKFLOW", "1.0")));
     }
 
     private void testJson() {

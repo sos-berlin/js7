@@ -20,8 +20,10 @@ import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toList;
 import static js7.proxy.javaapi.data.order.JOrderPredicates.and;
 import static js7.proxy.javaapi.data.order.JOrderPredicates.by;
+import static js7.proxy.javaapi.data.order.JOrderPredicates.byOrderIdPredicate;
 import static js7.proxy.javaapi.data.order.JOrderPredicates.byOrderState;
 import static js7.proxy.javaapi.data.order.JOrderPredicates.byWorkflowPath;
+import static js7.proxy.javaapi.data.order.JOrderPredicates.markedAsRemoveWhenTerminated;
 import static js7.proxy.javaapi.data.order.JOrderPredicates.not;
 import static js7.proxy.javaapi.data.order.JOrderPredicates.or;
 import static js7.proxy.javaapi.data.order.JOrderTester.aOrder;
@@ -59,7 +61,7 @@ final class JControllerStateTester
 
     void testWorkflows() {
         new JWorkflowTester(
-            controllerState.idToWorkflow(JWorkflowId.of("/A-WORKFLOW", "VERSION-ID")).get()
+            controllerState.idToWorkflow(JWorkflowId.of("/A-WORKFLOW", "1.0")).get()
         ).test();
     }
 
@@ -96,18 +98,30 @@ final class JControllerStateTester
                 by(aOrder.workflowId().path()),
                 by(bOrder.workflowId().path())),
             asList(aOrder, bOrder));
+
         testOrdersBy(
             and(
                 by(aOrder.workflowId().path()),
                 by(bOrder.workflowId().path())),
             emptyList());
+
         testOrdersBy(not(by(aOrder.workflowId().path())),
             asList(bOrder));
+
         testOrdersBy(byOrderState(Order.Fresh.class),
             asList(aOrder));
-        testOrdersBy(byOrderState(Order.Ready$.class),  // Ready$, weil dieser Order.State keine Parameter hat
+
+        testOrdersBy(byOrderIdPredicate(orderId -> orderId.string().startsWith("B-")),
             asList(bOrder));
+
+        testOrdersBy(markedAsRemoveWhenTerminated(false), asList(aOrder));
+        testOrdersBy(markedAsRemoveWhenTerminated(true), asList(bOrder));
+
+        testOrdersBy(controllerState.orderIsInCurrentVersionWorkflow(), asList(aOrder));
+        testOrdersBy(not(controllerState.orderIsInCurrentVersionWorkflow()), asList(bOrder));
     }
+
+
 
     void testOrderStateToCount() {
         Map<Class<? extends Order.State>,Integer> allCounters = controllerState.orderStateToCount();

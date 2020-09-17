@@ -7,8 +7,8 @@ import js7.base.problem.Checked.Ops
 import js7.base.time.Timestamp
 import js7.base.utils.Collections.implicits._
 import js7.base.web.Uri
-import js7.controller.data.{ControllerMetaState, ControllerState}
 import js7.controller.data.agent.AgentSnapshot
+import js7.controller.data.{ControllerMetaState, ControllerState}
 import js7.data.agent.{AgentRef, AgentRefPath}
 import js7.data.cluster.ClusterState
 import js7.data.controller.{ControllerId, ControllerItems}
@@ -63,18 +63,19 @@ final class JControllerStateTest extends AnyFreeSpec
 
 private object JControllerStateTest
 {
-  private val versionId = VersionId("VERSION-ID")
-  private val aWorkflow = WorkflowParser.parse(WorkflowPath("/A-WORKFLOW") ~ versionId,
+  private val v1 = VersionId("1.0")
+  private val v2 = VersionId("2.0")
+  private val aWorkflow = WorkflowParser.parse(WorkflowPath("/A-WORKFLOW") ~ v1,
     """|define workflow {
        |  execute agent="/AGENT", executable="/A-EXECUTABLE";
        |}
        |""".stripMargin).orThrow
-  private val bWorkflow = WorkflowParser.parse(WorkflowPath("/B-WORKFLOW") ~ versionId,
+  private val bWorkflow = WorkflowParser.parse(WorkflowPath("/B-WORKFLOW") ~ v1,
     """|define workflow {
        |  execute agent="/AGENT", executable="/B-EXECUTABLE";
        |}
        |""".stripMargin).orThrow
-  private val agentRef = AgentRef(AgentRefPath("/AGENT") ~ versionId, Uri("http://agent.example.com"))
+  private val agentRef = AgentRef(AgentRefPath("/AGENT") ~ v1, Uri("http://agent.example.com"))
 
   private val itemSigner = new InventoryItemSigner(SillySigner.Default, ControllerItems.jsonCodec)
 
@@ -90,7 +91,7 @@ private object JControllerStateTest
     ControllerMetaState(ControllerId("CONTROLLER-ID"), Timestamp("2019-05-24T12:00:00Z"), timezone = "Europe/Berlin"),
     Repo.empty
       .applyEvents(List(
-        VersionAdded(versionId),
+        VersionAdded(v1),
         itemSigner.toAddedEvent(agentRef),
         itemSigner.toAddedEvent(aWorkflow),
         itemSigner.toAddedEvent(bWorkflow)),
@@ -99,14 +100,15 @@ private object JControllerStateTest
     Vector(
       Order(
         OrderId("A-ORDER"),
-        (WorkflowPath("/A-WORKFLOW") ~ "VERSION-ID") /: Position(0),
+        (WorkflowPath("/A-WORKFLOW") ~ v1) /: Position(0),
         Order.Fresh(None)),
       Order(
         OrderId("B-ORDER"),
-        (WorkflowPath("/B-WORKFLOW") ~ "VERSION-ID") /: Position(0),
+        (WorkflowPath("/B-WORKFLOW") ~ v2) /: Position(0),
         Order.Ready,
         Map(
           "key1" -> "value1",
-          "key2" -> "value2"))
+          "key2" -> "value2"),
+        removeWhenTerminated = true)
     ).toKeyedMap(_.id))
 }
