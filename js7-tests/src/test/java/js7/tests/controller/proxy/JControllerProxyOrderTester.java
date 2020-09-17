@@ -147,7 +147,7 @@ final class JControllerProxyOrderTester implements AutoCloseable
         CompletableFuture<JEventAndControllerState<Event>> cancelled =
             proxy.when(es -> es.stampedEvent().value().event() instanceof OrderCancelled$);
         getOrThrow(api
-            .cancelOrder(OrderId.of("TEST-CANCEL"))
+            .cancelOrders(singleton(OrderId.of("TEST-CANCEL")))
             .get(99, SECONDS));
         cancelled.get(99, SECONDS);
     }
@@ -163,7 +163,7 @@ final class JControllerProxyOrderTester implements AutoCloseable
         assertThat(added, equalTo(true));
 
         String response = getOrThrow(api
-            .httpPostJson("/controller/api/command", "{'TYPE': 'CancelOrder', 'orderId': 'TEST-CANCEL-HTTP'}"
+            .httpPostJson("/controller/api/command", "{'TYPE': 'CancelOrders', 'orderIds': [ 'TEST-CANCEL-HTTP' ]}"
                 .replace('\'', '"'))
             .get(99, SECONDS));
         assertThat(response, equalTo("{\"TYPE\":\"Accepted\"}"));

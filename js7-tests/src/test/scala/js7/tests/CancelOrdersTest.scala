@@ -7,7 +7,7 @@ import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.system.OperatingSystem.isWindows
-import js7.controller.data.ControllerCommand.{Batch, CancelOrder, Response}
+import js7.controller.data.ControllerCommand.{CancelOrders, Response}
 import js7.data.Problems.{CancelStartedOrderProblem, UnknownOrderProblem}
 import js7.data.agent.AgentRefPath
 import js7.data.command.CancelMode
@@ -19,7 +19,7 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fork}
 import js7.data.workflow.position.{Position, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.CancelOrderTest._
+import js7.tests.CancelOrdersTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.script
 import monix.execution.Scheduler.Implicits.global
@@ -29,7 +29,7 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class CancelOrderTest extends AnyFreeSpec with ControllerAgentForScalaTest
+final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentRefPaths = agentRefPath :: Nil
   protected val inventoryItems = singleJobWorkflow :: twoJobsWorkflow :: forkWorkflow :: Nil
@@ -43,7 +43,7 @@ final class CancelOrderTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val order = FreshOrder(OrderId("🔹"), singleJobWorkflow.id.path, scheduledFor = Some(Timestamp.now + 99.seconds))
     controller.addOrderBlocking(order)
     controller.eventWatch.await[OrderAttached](_.key == order.id)
-    controller.executeCommandAsSystemUser(CancelOrder(order.id, CancelMode.NotStarted)).await(99.seconds).orThrow
+    controller.executeCommandAsSystemUser(CancelOrders(Set(order.id), CancelMode.NotStarted)).await(99.seconds).orThrow
     controller.eventWatch.await[OrderCancelled](_.key == order.id)
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id) == Vector(
       OrderAdded(singleJobWorkflow.id, order.scheduledFor),
@@ -59,7 +59,7 @@ final class CancelOrderTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val order = FreshOrder(OrderId("🔺"), singleJobWorkflow.id.path)
     controller.addOrderBlocking(order)
     controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
-    controller.executeCommandAsSystemUser(CancelOrder(order.id, CancelMode.FreshOrStarted())).await(99.seconds).orThrow
+    controller.executeCommandAsSystemUser(CancelOrders(Set(order.id), CancelMode.FreshOrStarted())).await(99.seconds).orThrow
     controller.eventWatch.await[OrderFinished](_.key == order.id)
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
       OrderAdded(singleJobWorkflow.id, order.scheduledFor),
@@ -81,7 +81,7 @@ final class CancelOrderTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
     sleep(100.ms)  // ControllerOrderKeeper may take some time to update its state
     // Controller knows, the order has started
-    assert(controller.executeCommandAsSystemUser(CancelOrder(order.id, CancelMode.NotStarted)).await(99.seconds) ==
+    assert(controller.executeCommandAsSystemUser(CancelOrders(Set(order.id), CancelMode.NotStarted)).await(99.seconds) ==
       Left(CancelStartedOrderProblem(OrderId("❌"))))
   }
 
@@ -89,7 +89,7 @@ final class CancelOrderTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val order = FreshOrder(OrderId("🔴"), twoJobsWorkflow.id.path)
     controller.addOrderBlocking(order)
     controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
-    controller.executeCommandAsSystemUser(CancelOrder(order.id, CancelMode.FreshOrStarted())).await(99.seconds).orThrow
+    controller.executeCommandAsSystemUser(CancelOrders(Set(order.id), CancelMode.FreshOrStarted())).await(99.seconds).orThrow
     controller.eventWatch.await[OrderCancelled](_.key == order.id)
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
       OrderAdded(twoJobsWorkflow.id, order.scheduledFor),
@@ -153,7 +153,7 @@ final class CancelOrderTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controller.addOrderBlocking(order)
     controller.eventWatch.await[OrderProcessingStarted](_.key == order.id / "🥕")
     val mode = CancelMode.FreshOrStarted(Some(CancelMode.Kill(SIGTERM)))
-    controller.executeCommandAsSystemUser(CancelOrder(order.id, mode))
+    controller.executeCommandAsSystemUser(CancelOrders(Set(order.id), mode))
       .await(99.seconds).orThrow
     controller.eventWatch.await[OrderCancelled](_.key == order.id)
     assert(controller.eventWatch
@@ -187,7 +187,7 @@ final class CancelOrderTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controller.addOrderBlocking(order)
     controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
     val mode = CancelMode.FreshOrStarted(Some(CancelMode.Kill(signal, workflowPosition)))
-    controller.executeCommandAsSystemUser(CancelOrder(order.id, mode))
+    controller.executeCommandAsSystemUser(CancelOrders(Set(order.id), mode))
       .await(99.seconds).orThrow
     controller.eventWatch.await[OrderCancelled](_.key == order.id)
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) ==
@@ -195,7 +195,7 @@ final class CancelOrderTest extends AnyFreeSpec with ControllerAgentForScalaTest
   }
 
   "Cancel unknown order" in {
-    assert(controller.executeCommandAsSystemUser(CancelOrder(OrderId("UNKNOWN"), CancelMode.NotStarted)).await(99.seconds) ==
+    assert(controller.executeCommandAsSystemUser(CancelOrders(Set(OrderId("UNKNOWN")), CancelMode.NotStarted)).await(99.seconds) ==
       Left(UnknownOrderProblem(OrderId("UNKNOWN"))))
   }
 
@@ -203,13 +203,13 @@ final class CancelOrderTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val orders = for (i <- 1 to 3) yield FreshOrder(OrderId(i.toString), singleJobWorkflow.id.path, scheduledFor = Some(Timestamp.now + 99.seconds))
     for (o <- orders) controller.addOrderBlocking(o)
     for (o <- orders) controller.eventWatch.await[OrderAttached](_.key == o.id)
-    val response = controller.executeCommandAsSystemUser(Batch(for (o <- orders) yield CancelOrder(o.id, CancelMode.NotStarted))).await(99.seconds).orThrow
-    assert(response == Batch.Response(Vector.fill(orders.length)(Right(Response.Accepted))))
+    val response = controller.executeCommandAsSystemUser(CancelOrders(orders.map(_.id), CancelMode.NotStarted)).await(99.seconds).orThrow
+    assert(response == Response.Accepted)
     for (o <- orders) controller.eventWatch.await[OrderCancelled](_.key == o.id)
   }
 }
 
-object CancelOrderTest
+object CancelOrdersTest
 {
   private val executablePath = ExecutablePath("/executable.cmd")
   private val agentRefPath = AgentRefPath("/AGENT")

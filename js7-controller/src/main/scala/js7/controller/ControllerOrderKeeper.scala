@@ -585,14 +585,14 @@ with MainJournalingActor[ControllerState, Event]
           addOrder(order)
             .map(_.map(added => ControllerCommand.AddOrder.Response(ignoredBecauseDuplicate = !added)))
 
-      case ControllerCommand.CancelOrder(orderId, mode) =>
-        executeOrderMarkCommand(orderId)(orderEventSource(_controllerState).cancel(_, mode))
+      case ControllerCommand.CancelOrders(orderIds, mode) =>
+        executeOrderMarkCommands(orderIds.toVector)(orderEventSource(_controllerState).cancel(_, mode))
 
-      case ControllerCommand.SuspendOrder(orderId) =>
-        executeOrderMarkCommand(orderId)(orderEventSource(_controllerState).suspend(_))
+      case ControllerCommand.SuspendOrders(orderIds) =>
+        executeOrderMarkCommands(orderIds.toVector)(orderEventSource(_controllerState).suspend(_))
 
-      case ControllerCommand.ResumeOrder(orderId, position) =>
-        executeOrderMarkCommand(orderId)(orderEventSource(_controllerState).resume(_, position))
+      case ControllerCommand.ResumeOrders(orderIds, position) =>
+        executeOrderMarkCommands(orderIds.toVector)(orderEventSource(_controllerState).resume(_, position))
 
       case ControllerCommand.RemoveOrdersWhenTerminated(orderIds) =>
         orderIds.toVector
@@ -707,24 +707,24 @@ with MainJournalingActor[ControllerState, Event]
         Future.failed(new NotImplementedError)
     }
 
-  private def executeOrderMarkCommand(orderId: OrderId)(toEvent: OrderId => Checked[Option[OrderActorEvent]]) =
-    _controllerState.idToOrder.checked(orderId) match {
-      case Left(problem) =>
-        Future.successful(Left(problem))
+  private def executeOrderMarkCommands(orderIds: Vector[OrderId])(toEvent: OrderId => Checked[Option[OrderActorEvent]])
+  : Future[Checked[ControllerCommand.Response]] =
+    if (orderIds.distinct.sizeIs < orderIds.size)
+      Future.successful(Left(Problem.pure("OrderIds must be unique")))
+    else
+      orderIds.traverse(_controllerState.idToOrder.checked) match {
+        case Left(problem) =>
+          Future.successful(Left(problem))
 
-      case Right(order) =>
-        toEvent(order.id) match {
-          case Left(problem) =>
-            Future.successful(Left(problem))
-          case Right(None) =>
-            Future.successful(Right(ControllerCommand.Response.Accepted))
-          case Right(Some(event)) =>
-            persist(orderId <-: event) { (stamped, updatedState) =>  // Event may be inserted between events coming from Agent
-              handleOrderEvent(stamped, updatedState)
-              Right(ControllerCommand.Response.Accepted)
-            }
-        }
-    }
+        case Right(orders) =>
+          orders
+            .traverse(order => toEvent(order.id).map(_.map(order.id <-: _)))
+            .map(_.flatten)
+            .traverse(keyedEvents =>
+                // Event may be inserted between events coming from Agent
+                persistTransaction(keyedEvents)(handleOrderEvents))
+            .map(_.map(_ => ControllerCommand.Response.Accepted))
+      }
 
   private def applyRepoEvents(events: Seq[RepoEvent]): Checked[SyncIO[Future[Completed]]] = {
     def updateItems(diff: IntenvoryItems.Diff[TypedPath, InventoryItem]): Seq[Checked[SyncIO[Unit]]] =

@@ -56,21 +56,21 @@ object ControllerCommand extends CommonCommand.Companion
     extends ControllerCommand.Response
   }
 
-  final case class CancelOrder(orderId: OrderId, mode: CancelMode = CancelMode.FreshOrStarted())
+  final case class CancelOrders(orderIds: immutable.Iterable[OrderId], mode: CancelMode = CancelMode.FreshOrStarted())
   extends ControllerCommand {
     type Response = Response.Accepted
   }
-  object CancelOrder {
-    implicit val jsonEncoder: Encoder.AsObject[CancelOrder] = o =>
+  object CancelOrders {
+    implicit val jsonEncoder: Encoder.AsObject[CancelOrders] = o =>
       JsonObject.fromIterable(
-        ("orderId" -> o.orderId.asJson) ::
+        ("orderIds" -> o.orderIds.asJson) ::
           (o.mode != CancelMode.Default).thenList("mode" -> o.mode.asJson))
 
-    implicit val jsonDecoder: Decoder[CancelOrder] = c =>
+    implicit val jsonDecoder: Decoder[CancelOrders] = c =>
       for {
-        orderId <- c.get[OrderId]("orderId")
+        orderIds <- c.get[Vector[OrderId]]("orderIds")
         mode <- c.get[Option[CancelMode]]("mode") map (_ getOrElse CancelMode.Default)
-      } yield CancelOrder(orderId, mode)
+      } yield CancelOrders(orderIds, mode)
   }
 
   final case class RemoveOrdersWhenTerminated(orderIds: immutable.Iterable[OrderId])
@@ -145,12 +145,12 @@ object ControllerCommand extends CommonCommand.Companion
       } yield ShutDown(restart, cluster, suppressSnapshot)
   }
 
-  final case class ResumeOrder(orderId: OrderId, position: Option[Position] = None)
+  final case class ResumeOrders(orderIds: immutable.Iterable[OrderId], position: Option[Position] = None)
   extends ControllerCommand {
     type Response = Response.Accepted
   }
 
-  final case class SuspendOrder(orderId: OrderId) extends ControllerCommand {
+  final case class SuspendOrders(orderIds: immutable.Iterable[OrderId]) extends ControllerCommand {
     type Response = Response.Accepted
   }
 
@@ -214,7 +214,7 @@ object ControllerCommand extends CommonCommand.Companion
   implicit val jsonCodec: TypedJsonCodec[ControllerCommand] = TypedJsonCodec[ControllerCommand](
     Subtype(deriveCodec[Batch]),
     Subtype(deriveCodec[AddOrder]),
-    Subtype[CancelOrder],
+    Subtype[CancelOrders],
     Subtype(deriveCodec[RemoveOrdersWhenTerminated]),
     Subtype(deriveCodec[ReplaceRepo]),
     Subtype(deriveCodec[UpdateRepo]),
@@ -223,8 +223,8 @@ object ControllerCommand extends CommonCommand.Companion
     Subtype[EmergencyStop],
     Subtype(deriveCodec[ReleaseEvents]),
     Subtype[ShutDown],
-    Subtype(deriveCodec[ResumeOrder]),
-    Subtype(deriveCodec[SuspendOrder]),
+    Subtype(deriveCodec[ResumeOrders]),
+    Subtype(deriveCodec[SuspendOrders]),
     Subtype(deriveCodec[ClusterAppointNodes]),
     Subtype(ClusterSwitchOver),
     Subtype(deriveCodec[InternalClusterCommand]),

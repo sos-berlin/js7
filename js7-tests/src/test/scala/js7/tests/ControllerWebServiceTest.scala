@@ -949,17 +949,17 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
   }
 
   "Commands" - {
-    "CancelOrder" in {
+    "CancelOrders" in {
       val cmd = json"""
         {
           "TYPE": "Batch",
           "commands": [
             {
-              "TYPE": "CancelOrder",
-              "orderId": "UNKNOWN"
+              "TYPE": "CancelOrders",
+              "orderIds": [ "UNKNOWN" ]
             }, {
-              "TYPE": "CancelOrder",
-              "orderId": "ORDER-FRESH"
+              "TYPE": "CancelOrders",
+              "orderIds": [ "ORDER-FRESH" ]
             }
           ]
         }"""

@@ -9,7 +9,7 @@ import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.controller.client.HttpControllerApi
 import js7.controller.data.ControllerCommand
-import js7.controller.data.ControllerCommand.{CancelOrder, ReleaseEvents, RemoveOrdersWhenTerminated, ResumeOrder, SuspendOrder}
+import js7.controller.data.ControllerCommand.{CancelOrders, ReleaseEvents, RemoveOrdersWhenTerminated, ResumeOrders, SuspendOrders}
 import js7.data.command.CancelMode
 import js7.data.event.{Event, EventId}
 import js7.data.item.VersionId
@@ -29,8 +29,8 @@ import monix.eval.Task
 import monix.execution.FutureUtils.Java8Extensions
 import monix.execution.Scheduler
 import reactor.core.publisher.Flux
-import scala.jdk.OptionConverters._
 import scala.jdk.CollectionConverters._
+import scala.jdk.OptionConverters._
 
 @javaApi
 final class JControllerApi private[javaapi](
@@ -135,17 +135,17 @@ final class JControllerApi private[javaapi](
       .runToFuture
       .asJava
 
-  def cancelOrder(orderId: OrderId): CompletableFuture[VEither[Problem, Void]] =
-    execute(CancelOrder(orderId, CancelMode.FreshOrStarted()))
+  def cancelOrders(orderIds: java.lang.Iterable[OrderId]): CompletableFuture[VEither[Problem, Void]] =
+    execute(CancelOrders(orderIds.asScala.toVector, CancelMode.FreshOrStarted()))
 
-  def suspendOrder(orderId: OrderId): CompletableFuture[VEither[Problem, Void]] =
-    execute(SuspendOrder(orderId))
+  def suspendOrders(orderIds: java.lang.Iterable[OrderId]): CompletableFuture[VEither[Problem, Void]] =
+    execute(SuspendOrders(orderIds.asScala.toVector))
 
-  def resumeOrder(orderId: OrderId): CompletableFuture[VEither[Problem, Void]] =
-    resumeOrder(orderId, Optional.empty)
+  def resumeOrders(orderId: java.lang.Iterable[OrderId]): CompletableFuture[VEither[Problem, Void]] =
+    resumeOrders(orderId, Optional.empty)
 
-  def resumeOrder(orderId: OrderId, position: Optional[JPosition]): CompletableFuture[VEither[Problem, Void]] =
-    execute(ResumeOrder(orderId, position.toScala.map(_.asScala)))
+  def resumeOrders(orderIds: java.lang.Iterable[OrderId], position: Optional[JPosition]): CompletableFuture[VEither[Problem, Void]] =
+    execute(ResumeOrders(orderIds.asScala.toVector, position.toScala.map(_.asScala)))
 
   def removeOrdersWhenTerminated(orderIds: java.lang.Iterable[OrderId]): CompletableFuture[VEither[Problem, Void]] =
     execute(RemoveOrdersWhenTerminated(orderIds.asScala.toVector))

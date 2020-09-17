@@ -79,25 +79,25 @@ final class ControllerCommandTest extends AnyFreeSpec
     }
   }
 
-  "CancelOrder" - {
-    "CancelOrder NotStarted" in {
-      testJson[ControllerCommand](CancelOrder(OrderId("ORDER"), CancelMode.NotStarted),
+  "CancelOrders" - {
+    "CancelOrders NotStarted" in {
+      testJson[ControllerCommand](CancelOrders(Seq(OrderId("A"), OrderId("B")), CancelMode.NotStarted),
         json"""{
-          "TYPE": "CancelOrder",
-          "orderId": "ORDER"
+          "TYPE": "CancelOrders",
+          "orderIds": [ "A", "B" ]
         }""")
     }
 
-    "CancelOrder FreshOrStarted" in {
-      testJson[ControllerCommand](CancelOrder(
-        OrderId("ORDER"),
+    "CancelOrders FreshOrStarted" in {
+      testJson[ControllerCommand](CancelOrders(
+        Seq(OrderId("ORDER")),
         CancelMode.FreshOrStarted(
           Some(CancelMode.Kill(
             SIGTERM,
             Some(WorkflowPath("/WORKFLOW") ~ VersionId("VERSION") /: Position(1)))))),
         json"""{
-          "TYPE": "CancelOrder",
-          "orderId": "ORDER",
+          "TYPE": "CancelOrders",
+          "orderIds": [ "ORDER" ],
           "mode": {
             "TYPE": "FreshOrStarted",
             "kill": {
@@ -113,13 +113,13 @@ final class ControllerCommandTest extends AnyFreeSpec
           }
         }""")
 
-      testJsonDecoder[ControllerCommand](CancelOrder(
-        OrderId("ORDER"),
+      testJsonDecoder[ControllerCommand](CancelOrders(
+        Seq(OrderId("A"), OrderId("B")),
         CancelMode.FreshOrStarted(
           Some(CancelMode.Kill()))),
         json"""{
-          "TYPE": "CancelOrder",
-          "orderId": "ORDER",
+          "TYPE": "CancelOrders",
+          "orderIds": [ "A", "B" ],
           "mode": {
             "TYPE": "FreshOrStarted",
             "kill": {}
@@ -292,20 +292,20 @@ final class ControllerCommandTest extends AnyFreeSpec
     }
   }
 
-  "ResumeOrder" in {
-    testJson[ControllerCommand](ResumeOrder(OrderId("ORDER"), Some(Position(1) / BranchId.Try_ % 2)), json"""
+  "ResumeOrders" in {
+    testJson[ControllerCommand](ResumeOrders(Seq(OrderId("A"), OrderId("B")), Some(Position(1) / BranchId.Try_ % 2)), json"""
       {
-        "TYPE": "ResumeOrder",
-        "orderId": "ORDER",
+        "TYPE": "ResumeOrders",
+        "orderIds": [ "A", "B" ],
         "position": [ 1, "try", 2]
       }""")
   }
 
-  "SuspendOrder" in {
-    testJson[ControllerCommand](SuspendOrder(OrderId("ORDER")), json"""
+  "SuspendOrders" in {
+    testJson[ControllerCommand](SuspendOrders(Seq(OrderId("A"), OrderId("B"))), json"""
       {
-        "TYPE": "SuspendOrder",
-        "orderId": "ORDER"
+        "TYPE": "SuspendOrders",
+        "orderIds": [ "A", "B" ]
       }""")
   }
 
