@@ -15,8 +15,8 @@ import js7.base.auth.{SimpleUser, UserAndPassword}
 import js7.base.eventbus.{EventPublisher, StandardEventBus}
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.syntax._
-import js7.base.problem.{Checked, Problem}
 import js7.base.problem.Checked._
+import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
@@ -37,6 +37,7 @@ import js7.controller.cluster.{Cluster, ClusterFollowUp}
 import js7.controller.command.ControllerCommandExecutor
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.configuration.inject.ControllerModule
+import js7.controller.data.ControllerCommand.AddOrder
 import js7.controller.data.{ControllerCommand, ControllerState}
 import js7.controller.problems.ControllerIsNotYetReadyProblem
 import js7.controller.repo.{RepoUpdater, VerifiedUpdateRepo}
@@ -79,7 +80,7 @@ final class RunningController private(
   webServer: ControllerWebServer,
   val recoveredEventId: EventId,
   val itemApi: DirectItemApi,
-  val orderApi: OrderApi.WithCommands,
+  val orderApi: OrderApi,
   val controllerState: Task[ControllerState],
   commandExecutor: ControllerCommandExecutor,
   whenReady: Future[Unit],
@@ -136,10 +137,8 @@ extends AutoCloseable
     addOrder(order).runToFuture.await(99.s).orThrow
 
   def addOrder(order: FreshOrder): Task[Checked[Unit]] =
-    orderApi.addOrder(order).mapT {
-      case false => Left(Problem(s"Duplicate OrderId '${order.id}'"))
-      case true => Right(())
-    }
+    executeCommandAsSystemUser(AddOrder(order)).mapT(response =>
+      check(!response.ignoredBecauseDuplicate, (), Problem(s"Duplicate OrderId '${order.id}'")))
 
   @TestOnly
   def runOrder(order: FreshOrder): Seq[Stamped[OrderEvent]] = {

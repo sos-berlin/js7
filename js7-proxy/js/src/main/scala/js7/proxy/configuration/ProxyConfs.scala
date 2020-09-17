@@ -5,5 +5,6 @@ import js7.base.time.ScalaTime._
 object ProxyConfs
 {
   lazy val default = ProxyConf(
-    tornOlder = Some(10.s))
+    tornOlder = Some(10.s),
+    mirrorSyncPolling = 100.ms)
 }

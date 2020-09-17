@@ -1,8 +1,7 @@
 package js7.controller
 
-import js7.base.generic.Completed
 import js7.base.problem.Checked
-import js7.data.order.{FreshOrder, Order, OrderId, OrdersOverview}
+import js7.data.order.{Order, OrderId, OrdersOverview}
 import monix.eval.Task
 
 /**
@@ -21,13 +20,4 @@ trait OrderApi
     orderCount.map(_.map(OrdersOverview.apply))
 
   def orderCount: Task[Checked[Int]]
-}
-
-object OrderApi
-{
-  trait WithCommands extends OrderApi {
-    def addOrder(order: FreshOrder): Task[Checked[Boolean]]
-
-    def addOrders(orders: Seq[FreshOrder]): Task[Checked[Completed]]
-  }
 }

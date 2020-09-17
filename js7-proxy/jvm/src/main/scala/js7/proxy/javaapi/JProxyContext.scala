@@ -2,7 +2,7 @@ package js7.proxy.javaapi
 
 import cats.effect.Resource
 import com.typesafe.config.{Config, ConfigFactory}
-import java.util.concurrent.{CompletableFuture, ForkJoinPool}
+import java.util.concurrent.ForkJoinPool
 import js7.base.BuildInfo
 import js7.base.annotation.javaApi
 import js7.base.utils.{HasCloser, Lazy}
@@ -15,10 +15,8 @@ import js7.common.system.ThreadPools
 import js7.common.system.startup.StartUp
 import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
 import js7.proxy.configuration.ProxyConfs
-import js7.proxy.data.ProxyEvent
 import js7.proxy.javaapi.JProxyContext._
 import js7.proxy.javaapi.data.auth.{JAdmission, JHttpsConfig}
-import js7.proxy.javaapi.eventbus.{JControllerEventBus, JStandardEventBus}
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.jdk.CollectionConverters._

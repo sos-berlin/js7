@@ -19,7 +19,7 @@ import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.data.ControllerState
 import js7.data.event.{Event, EventId}
 import js7.proxy.data.ProxyEvent
-import js7.proxy.{ControllerProxy, JournaledStateEventBus}
+import js7.proxy.{ControllerApi, JournaledStateEventBus}
 import js7.tests.controller.proxy.TestControllerProxy._
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -35,7 +35,8 @@ private final class TestControllerProxy(controllerUri: Uri, httpPort: Int)(impli
         val eventBus = new JournaledStateEventBus[ControllerState]
         var currentState: ControllerState = null
         eventBus.subscribe[Event] { e => currentState = e.state }
-        ControllerProxy.start(apiResource :: Nil, proxyEventBus, eventBus)
+        val api = new ControllerApi(apiResource :: Nil)
+        api.startProxy(proxyEventBus, eventBus)
           .flatMap { proxy =>
             AkkaWebServer.resourceForHttp(httpPort, webServiceRoute(Task(currentState)))
               .use(_ =>

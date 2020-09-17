@@ -3,6 +3,7 @@ package js7.controller.web.controller.api
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
+import js7.base.problem.Checked
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.http.CirceJsonSupport._
 import js7.controller.data.ControllerCommand
@@ -25,11 +26,11 @@ final class CommandRouteTest extends AnyFreeSpec with RouteTester with CommandRo
 
   private var commandReceived = false
 
-  protected def executeCommand(command: ControllerCommand, meta: CommandMeta) =
+  protected def executeCommand(command: ControllerCommand, meta: CommandMeta): Task[Checked[command.Response]] =
     command match {
       case shutDown: ControllerCommand.ShutDown if !shutDown.restart =>
         commandReceived = true
-        Task.pure(Right(ControllerCommand.Response.Accepted))
+        Task.pure(Right(ControllerCommand.Response.Accepted.asInstanceOf[command.Response]))
 
       case _ =>
         fail()

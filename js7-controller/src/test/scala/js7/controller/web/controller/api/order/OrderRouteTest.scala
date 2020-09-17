@@ -6,7 +6,6 @@ import akka.http.scaladsl.model.headers.{Accept, Location}
 import akka.http.scaladsl.server.Route
 import io.circe.Json
 import io.circe.syntax._
-import js7.base.generic.Completed
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
@@ -16,8 +15,11 @@ import js7.common.http.AkkaHttpUtils._
 import js7.common.http.CirceJsonSupport._
 import js7.common.scalautil.Futures.implicits._
 import js7.controller.OrderApi
+import js7.controller.data.ControllerCommand
+import js7.controller.data.ControllerCommand.{AddOrder, AddOrders}
 import js7.controller.web.controller.api.order.OrderRouteTest._
 import js7.controller.web.controller.api.test.RouteTester
+import js7.core.command.CommandMeta
 import js7.data.order.{FreshOrder, Order, OrderId, OrdersOverview}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
@@ -34,13 +36,17 @@ final class OrderRouteTest extends AnyFreeSpec with RouteTester with OrderRoute
   protected def whenShuttingDown = Future.never
   protected implicit def scheduler: Scheduler = Scheduler.global
   protected def actorSystem = system
-  protected val orderApi = new OrderApi.WithCommands {
-    def addOrder(order: FreshOrder) = Task(Right(order.id != DuplicateOrderId))
-    def addOrders(orders: Seq[FreshOrder]) = Task(Right(Completed))
+  protected val orderApi = new OrderApi {
     def order(orderId: OrderId) = Task(Right(TestOrders.get(orderId)))
     def orders = Task(Right(TestOrders.values.toVector))
     def orderCount = Task(Right(TestOrders.values.size))
   }
+
+  protected def executeCommand(command: ControllerCommand, meta: CommandMeta): Task[Checked[command.Response]] =
+    (command match {
+      case AddOrder(order) => Task(Right(AddOrder.Response(ignoredBecauseDuplicate = order.id == DuplicateOrderId)))
+      case AddOrders(_) => Task(Right(AddOrders.Response(1234L)))
+    }).map(_.map(_.asInstanceOf[command.Response]))
 
   private def route: Route =
     pathSegments("controller/api/order") {
@@ -116,7 +122,7 @@ final class OrderRouteTest extends AnyFreeSpec with RouteTester with OrderRoute
     Post("/controller/api/order", orders) ~> Accept(`application/json`) ~> route ~> check {
       assert(status == OK)
       assert(response.header[Location].isEmpty)
-      assert(responseAs[Json] == Json.obj())
+      assert(responseAs[ControllerCommand.Response] == AddOrders.Response(1234L))
     }
   }
 }

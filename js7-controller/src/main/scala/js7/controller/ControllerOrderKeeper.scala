@@ -438,23 +438,6 @@ with MainJournalingActor[ControllerState, Event]
         case Success(response) => sender ! (response: Checked[Completed])
       }
 
-    case Command.AddOrder(order) =>
-      if (shuttingDown)
-        sender() ! Status.Failure(ControllerIsShuttingDownProblem.throwable)
-      else if (switchover.isDefined)
-        sender() ! Status.Failure(ControllerIsSwitchingOverProblem.throwable)
-      else
-        addOrder(order) map Response.ForAddOrder.apply pipeTo sender()
-
-    case Command.AddOrders(orders) =>
-      logger.debug(s"Adding ${orders.size} orders")
-      if (shuttingDown)
-        sender() ! Status.Failure(ControllerIsShuttingDownProblem.throwable)
-      else if (switchover.isDefined)
-        sender() ! Status.Failure(ControllerIsSwitchingOverProblem.throwable)
-      else
-        addOrders(orders).pipeTo(sender())
-
     case AgentDriver.Output.EventsFromAgent(stampedAgentEvents, completedPromise) =>
       val agentEntry = agentRegister(sender())
       import agentEntry.agentRefPath
@@ -585,6 +568,15 @@ with MainJournalingActor[ControllerState, Event]
           addOrder(order)
             .map(_.map(added => ControllerCommand.AddOrder.Response(ignoredBecauseDuplicate = !added)))
 
+      case ControllerCommand.AddOrders(orders) =>
+        if (shuttingDown)
+          Future.successful(Left(ControllerIsShuttingDownProblem))
+        else if (switchover.isDefined)
+          Future.successful(Left(ControllerIsSwitchingOverProblem))
+        else
+          addOrders(orders).map(_.map(eventId =>
+            ControllerCommand.AddOrders.Response(eventId)))
+
       case ControllerCommand.CancelOrders(orderIds, mode) =>
         executeOrderMarkCommands(orderIds.toVector)(orderEventSource(_controllerState).cancel(_, mode))
 
@@ -610,7 +602,7 @@ with MainJournalingActor[ControllerState, Event]
                 else
                   OrderRemoveMarked)))
           .traverse(keyedEvents =>
-            persistMultiple(keyedEvents)(handleOrderEvents)
+            persistTransaction(keyedEvents)(handleOrderEvents)
               .map(_ => ControllerCommand.Response.Accepted))
 
       case ControllerCommand.ReleaseEvents(untilEventId) =>
@@ -819,18 +811,21 @@ with MainJournalingActor[ControllerState, Event]
         }
     }
 
-  private def addOrders(freshOrders: Seq[FreshOrder]): Future[Checked[Completed]] =
+  private def addOrders(freshOrders: Seq[FreshOrder]): Future[Checked[EventId]] =
     freshOrders.checkUniqueness(_.id) match {
       case Left(problem) => Future.successful(Left(problem))
-      case _ => freshOrders.toVector
-        .filterNot(o => _controllerState.idToOrder contains o.id)  // Ignore known orders
-        .traverse(o => _controllerState.repo.pathTo[Workflow](o.workflowPath).map(o.->))
-        .traverse { ordersAndWorkflows =>
-          val events = for ((order, workflow) <- ordersAndWorkflows) yield
-            order.id <-: OrderAdded(workflow.id/*reuse*/, order.scheduledFor, order.arguments)
-          persistMultiple(events)(handleOrderEvents)
-            .map(_ => Completed)
-        }
+      case _ =>
+        freshOrders.toVector
+          .filterNot(o => _controllerState.idToOrder contains o.id)  // Ignore known orders
+          .traverse(o => _controllerState.repo.pathTo[Workflow](o.workflowPath).map(o.->))
+          .traverse { ordersAndWorkflows =>
+            val events = for ((order, workflow) <- ordersAndWorkflows) yield
+              order.id <-: OrderAdded(workflow.id/*reuse*/, order.scheduledFor, order.arguments)
+            persistTransaction(events) { (stamped, updatedState) =>
+              handleOrderEvents(stamped, updatedState)
+              updatedState.eventId
+            }
+          }
     }
 
   private def handleOrderEvent(stamped: Stamped[KeyedEvent[OrderEvent]], updatedState: ControllerState): Unit = {
@@ -1069,8 +1064,6 @@ private[controller] object ControllerOrderKeeper
   object Command {
     final case class Execute(command: ControllerCommand, meta: CommandMeta) extends Command
     final case class VerifiedUpdateRepoCmd(verifiedUpdateRepo: VerifiedUpdateRepo) extends Command
-    final case class AddOrder(order: FreshOrder) extends Command
-    final case class AddOrders(order: Seq[FreshOrder]) extends Command
   }
 
   sealed trait Reponse

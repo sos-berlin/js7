@@ -3,7 +3,8 @@ package js7.proxy.configuration
 import scala.concurrent.duration.FiniteDuration
 
 final case class ProxyConf(
-  tornOlder: Option[FiniteDuration])
+  tornOlder: Option[FiniteDuration],
+  mirrorSyncPolling: FiniteDuration)
 
 object ProxyConf
 {

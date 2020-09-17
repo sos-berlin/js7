@@ -36,7 +36,7 @@ final class ControllerWebServer private(
   controllerConfiguration: ControllerConfiguration,
   gateKeeperConfiguration: GateKeeper.Configuration[SimpleUser],
   itemApi: InventoryItemApi,
-  orderApi: OrderApi.WithCommands,
+  orderApi: OrderApi,
   commandExecutor: ControllerCommandExecutor,
   repoUpdater: RepoUpdater,
   checkedClusterState: Task[Checked[ClusterState]],
@@ -97,7 +97,7 @@ object ControllerWebServer
     scheduler: Scheduler,
     closer: Closer)
   {
-    def apply(itemApi: InventoryItemApi, orderApi: OrderApi.WithCommands,
+    def apply(itemApi: InventoryItemApi, orderApi: OrderApi,
       commandExecutor: ControllerCommandExecutor,
       repoUpdater: RepoUpdater,
       clusterState: Task[Checked[ClusterState]],

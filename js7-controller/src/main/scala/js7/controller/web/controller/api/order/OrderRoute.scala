@@ -2,7 +2,7 @@ package js7.controller.web.controller.api.order
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
-import akka.http.scaladsl.model.StatusCodes.{Conflict, Created, NotFound, OK}
+import akka.http.scaladsl.model.StatusCodes.{Conflict, Created, NotFound}
 import akka.http.scaladsl.model.headers.Location
 import akka.http.scaladsl.model.{HttpEntity, Uri}
 import akka.http.scaladsl.server.Directives._
@@ -12,10 +12,9 @@ import io.circe.Json
 import js7.base.auth.ValidUserPermission
 import js7.base.circeutils.CirceUtils._
 import js7.base.data.ByteSequence.ops._
-import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked._
-import js7.base.problem.Problem
+import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
 import js7.base.utils.ByteVectorToLinesObservable
@@ -29,8 +28,11 @@ import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.StreamingSupport._
 import js7.common.scalautil.Logger
 import js7.controller.OrderApi
+import js7.controller.data.ControllerCommand
+import js7.controller.data.ControllerCommand.{AddOrder, AddOrders}
 import js7.controller.web.common.{ControllerRouteProvider, EntitySizeLimitProvider}
 import js7.controller.web.controller.api.order.OrderRoute._
+import js7.core.command.CommandMeta
 import js7.data.order.{FreshOrder, OrderId}
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -42,14 +44,15 @@ import scala.concurrent.duration.Deadline.now
 trait OrderRoute
 extends ControllerRouteProvider with EntitySizeLimitProvider
 {
-  protected def orderApi: OrderApi.WithCommands
+  protected def executeCommand(command: ControllerCommand, meta: CommandMeta): Task[Checked[command.Response]]
+  protected def orderApi: OrderApi
   protected def actorSystem: ActorSystem
 
   private implicit def implicitScheduler: Scheduler = scheduler
   private implicit def implicitActorsystem = actorSystem
 
   final lazy val orderRoute: Route =
-    authorizedUser(ValidUserPermission) { _ =>
+    authorizedUser(ValidUserPermission) { user =>
       post {
         pathEnd {
           withSizeLimit(entitySizeLimit)/*call before entity*/(
@@ -73,9 +76,8 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                         itemsPerSecondString(d, orders.size, "orders") + " · " +
                         bytesPerSecondString(d, byteCount))
                     })
-                    .flatMap(orderApi.addOrders)
-                    .map[ToResponseMarshallable](_.map((_: Completed) =>
-                      OK -> emptyJsonObject))
+                    .flatMap(orders => executeCommand(AddOrders(orders), CommandMeta(user)))
+                    .map(_.map(o => o: ControllerCommand.Response))
                 }
               else
                 entity(as[Json]) { json =>
@@ -84,23 +86,25 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                       case Left(failure) => complete(failure.toProblem)
                       case Right(orders) =>
                         completeTask(
-                          orderApi.addOrders(orders)
-                            .map[ToResponseMarshallable](_.map((_: Completed) => OK -> emptyJsonObject)))
+                          executeCommand(AddOrders(orders), CommandMeta(user))
+                            .map(_.map(o => o: ControllerCommand.Response)))
                     }
                   else
                     json.as[FreshOrder] match {
                       case Left(failure) => complete(failure.toProblem)
                       case Right(order) =>
                         extractUri { uri =>
-                          onSuccess(orderApi.addOrder(order).runToFuture) {
-                            case Left(problem) => complete(problem)
-                            case Right(isNoDuplicate) =>
-                              respondWithHeader(Location(uri.withPath(uri.path / order.id.string))) {
-                                complete(
-                                  if (isNoDuplicate) Created -> emptyJsonObject
-                                  else Conflict -> Problem.pure(s"Order '${order.id.string}' has already been added"))
-                              }
-                          }
+                          onSuccess(executeCommand(AddOrder(order), CommandMeta(user)).runToFuture) {
+                              case Left(problem) => complete(problem)
+                              case Right(response) =>
+                                respondWithHeader(Location(uri.withPath(uri.path / order.id.string))) {
+                                  complete(
+                                    if (response.ignoredBecauseDuplicate)
+                                      Conflict -> Problem.pure(s"Order '${order.id.string}' has already been added")
+                                    else
+                                      Created -> emptyJsonObject)
+                                }
+                            }
                         }
                     }
                 }))

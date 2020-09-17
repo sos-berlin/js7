@@ -2,9 +2,13 @@ package js7.proxy
 
 import cats.effect.Resource
 import js7.base.eventbus.StandardEventBus
+import js7.base.problem.Checked
+import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.controller.client.HttpControllerApi
+import js7.controller.data.ControllerCommand.AddOrders
 import js7.controller.data.ControllerState
 import js7.data.event.Event
+import js7.data.order.FreshOrder
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.ProxyEvent
 import js7.proxy.data.event.EventAndState
@@ -14,19 +18,28 @@ import monix.reactive.Observable
 import scala.collection.immutable.Seq
 
 final class ControllerProxy private(
+  api: ControllerApi,
   protected val baseObservable: Observable[EventAndState[Event, ControllerState]],
   val proxyEventBus: StandardEventBus[ProxyEvent],
-  val eventBus: JournaledStateEventBus[ControllerState])
+  val eventBus: JournaledStateEventBus[ControllerState],
+  protected val proxyConf: ProxyConf)
   (protected implicit val scheduler: Scheduler)
 extends JournaledProxy[ControllerState]
 {
   protected def S = ControllerState
   protected val onEvent = eventBus.publish
+
+  def addOrders(orders: Observable[FreshOrder]): Task[Checked[AddOrders.Response]] =
+    api.addOrders(orders)
+      .flatMapT(response =>
+        sync(response.eventId)
+          .map(_ => Right(response)))
 }
 
 object ControllerProxy
 {
-  def start(
+  private[proxy] def start(
+    api: ControllerApi,
     apiResources: Seq[Resource[Task, HttpControllerApi]],
     proxyEventBus: StandardEventBus[ProxyEvent],
     eventBus: JournaledStateEventBus[ControllerState],
@@ -34,9 +47,11 @@ object ControllerProxy
   : Task[ControllerProxy] =
     Task.deferAction { implicit s =>
       val proxy = new ControllerProxy(
+        api,
         JournaledProxy.observable(apiResources, fromEventId = None, proxyEventBus.publish, proxyConf),
         proxyEventBus,
-        eventBus)
+        eventBus,
+        proxyConf)
       proxy.startObserving.map(_ => proxy)
     }
 }

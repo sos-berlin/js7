@@ -1,16 +1,20 @@
 package js7.proxy.javaapi
 
+import io.vavr.control.{Either => VEither}
 import java.util.concurrent.CompletableFuture
 import js7.base.annotation.javaApi
 import js7.base.problem.Checked._
+import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.data.event.{Event, KeyedEvent, Stamped}
+import js7.controller.data.ControllerCommand.AddOrders
+import js7.data.event.{Event, EventId, KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.OrderTerminated
 import js7.proxy.ControllerProxy
 import js7.proxy.data.event.EventAndState
 import js7.proxy.javaapi.data.common.JavaUtils.Void
 import js7.proxy.javaapi.data.common.ReactorConverters._
+import js7.proxy.javaapi.data.common.VavrConverters._
 import js7.proxy.javaapi.data.controller.{JControllerState, JEventAndControllerState}
 import js7.proxy.javaapi.data.order.JFreshOrder
 import js7.proxy.javaapi.eventbus.JControllerEventBus
@@ -44,13 +48,26 @@ final class JControllerProxy private[proxy](
   def currentState: JControllerState =
     JControllerState(asScala.currentState)
 
-  /** For testing: wait for a condition in the running event stream. **/
+  /** Like JControllerApi addOrders, but waits until the Proxy mirrors the added orders. */
+  def addOrders(orders: Flux[JFreshOrder]): CompletableFuture[VEither[Problem, AddOrders.Response]] =
+    asScala.addOrders(orders.asObservable.map(_.asScala))
+      .map(_.toVavr)
+      .runToFuture
+      .asJava
+
+  /**
+    * Synchronize this mirror with an EventId.
+    * The Future completes when this mirror has reached the requested EventId.
+    */
+  def sync(eventId: EventId): CompletableFuture[Void] =
+    asScala.sync(eventId)
+      .map(_ => Void)
+      .runToFuture
+      .asJava
+
   def when(predicate: JEventAndControllerState[Event] => Boolean): CompletableFuture[JEventAndControllerState[Event]] =
-    asScala.observable
+    asScala.when(es => predicate(JEventAndControllerState(es)))
       .map(JEventAndControllerState.apply)
-      .dropWhile(predicate)
-      .headOptionL
-      .map(_.getOrElse(throw new RuntimeException("JControllerProxy.when: stream has terminated")))
       .runToFuture
       .asJava
 

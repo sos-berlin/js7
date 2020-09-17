@@ -3,14 +3,15 @@ package js7.proxy
 import cats.effect.Resource
 import cats.instances.vector._
 import cats.syntax.traverse._
-import io.circe.JsonObject
+import io.circe.{Json, JsonObject}
+import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.Completed
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.base.web.HttpClient
 import js7.controller.client.HttpControllerApi
-import js7.controller.data.ControllerCommand.ReleaseEvents
+import js7.controller.data.ControllerCommand.{AddOrders, ReleaseEvents}
 import js7.controller.data.{ControllerCommand, ControllerState}
 import js7.data.event.{Event, EventId}
 import js7.data.item.{UpdateRepoOperation, VersionId}
@@ -40,7 +41,7 @@ extends ControllerProxyWithHttp
     proxyEventBus: StandardEventBus[ProxyEvent] = new StandardEventBus[ProxyEvent],
     eventBus: JournaledStateEventBus[ControllerState] = new JournaledStateEventBus[ControllerState])
   : Task[ControllerProxy] =
-    ControllerProxy.start(apiResources, proxyEventBus, eventBus, proxyConf)
+    ControllerProxy.start(this, apiResources, proxyEventBus, eventBus, proxyConf)
 
   def updateRepo(versionId: VersionId, operations: Observable[UpdateRepoOperation.ItemOperation]): Task[Checked[Completed]] =
     apiResource.use(api =>
@@ -51,12 +52,12 @@ extends ControllerProxyWithHttp
             UpdateRepoOperation.AddVersion(versionId) +: operations
           ).map(_ => Completed))))
 
-  def addOrders(orders: Observable[FreshOrder]): Task[Checked[Completed]] =
+  def addOrders(orders: Observable[FreshOrder]): Task[Checked[AddOrders.Response]] =
     apiResource.use(api =>
       api.retryUntilReachable()(
         HttpClient.liftProblem(
-          api.postObservable[FreshOrder, JsonObject]("controller/api/order", orders)
-            .map(_ => Completed))))
+          api.postObservable[FreshOrder, Json]("controller/api/order", orders)
+        ).map(_.flatMap(_.checkedAs[AddOrders.Response]))))
 
   /** @return true if added, otherwise false because of duplicate OrderId. */
   def addOrder(order: FreshOrder): Task[Checked[Boolean]] =

@@ -110,19 +110,19 @@ final class JControllerProxyAddOrderIdempotentlyTester implements AutoCloseable
 
     private void addOrdersIdempotently() throws InterruptedException, ExecutionException, TimeoutException {
         List<JFreshOrder> freshOrders = orderSource.nextOrders();
-        getOrThrow(api
+        getOrThrow(proxy
             .addOrders(Flux.fromIterable(freshOrders))
             .get(99, SECONDS));
 
         Set<OrderId> activeOrderIds = proxy.currentState()
-            .ordersBy(
-                and(
-                    markedAsRemoveWhenTerminated(false),
-                    byOrderIdPredicate(orderId -> orderId.string().startsWith("MY-"))))
+            .ordersBy(and(
+                markedAsRemoveWhenTerminated(false),
+                byOrderIdPredicate(orderId -> orderId.string().startsWith("MY-"))))
             .map(JOrder::id)
             .collect(toSet());
 
         assertThat(activeOrderIds, equalTo(orderSource.nextOrders().stream().map(o -> o.id()).collect(toSet())));
+
         orderSource.markOrdersAsAdded(activeOrderIds);
 
         getOrThrow(api

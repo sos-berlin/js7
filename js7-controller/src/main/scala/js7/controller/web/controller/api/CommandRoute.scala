@@ -18,7 +18,7 @@ import monix.execution.Scheduler
   */
 trait CommandRoute extends ControllerRouteProvider {
 
-  protected def executeCommand(command: ControllerCommand, meta: CommandMeta): Task[Checked[ControllerCommand.Response]]
+  protected def executeCommand(command: ControllerCommand, meta: CommandMeta): Task[Checked[command.Response]]
 
   private implicit def implicitScheduler: Scheduler = scheduler
 
@@ -29,6 +29,7 @@ trait CommandRoute extends ControllerRouteProvider {
           entity(as[ControllerCommand]) { command =>
             completeTask {
               executeCommand(command, CommandMeta(user))
+                .map(_.map(o => o: ControllerCommand.Response))
             }
           }
         }

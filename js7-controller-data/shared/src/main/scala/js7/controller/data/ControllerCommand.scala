@@ -56,6 +56,15 @@ object ControllerCommand extends CommonCommand.Companion
     extends ControllerCommand.Response
   }
 
+  final case class AddOrders(orders: Seq[FreshOrder]) extends ControllerCommand {
+    type Response = AddOrders.Response
+  }
+  object AddOrders {
+    /** Response of POST api/order web service. */
+    final case class Response(eventId: EventId) extends ControllerCommand.Response
+    implicit val jsonCodec = deriveCodec[Response]
+  }
+
   final case class CancelOrders(orderIds: immutable.Iterable[OrderId], mode: CancelMode = CancelMode.FreshOrStarted())
   extends ControllerCommand {
     type Response = Response.Accepted
@@ -207,6 +216,7 @@ object ControllerCommand extends CommonCommand.Companion
     implicit val ResponseJsonCodec: TypedJsonCodec[Response] = TypedJsonCodec[Response](
       Subtype(Accepted),
       Subtype.named(deriveCodec[AddOrder.Response], "AddOrder.Response"),
+      Subtype.named[AddOrders.Response]("AddOrders.Response"),
       Subtype.named(deriveCodec[Batch.Response], "BatchResponse"),
       Subtype.named(deriveCodec[js7.controller.data.ControllerCommand.InternalClusterCommand.Response], "InternalClusterCommand.Response"))
   }
@@ -214,6 +224,7 @@ object ControllerCommand extends CommonCommand.Companion
   implicit val jsonCodec: TypedJsonCodec[ControllerCommand] = TypedJsonCodec[ControllerCommand](
     Subtype(deriveCodec[Batch]),
     Subtype(deriveCodec[AddOrder]),
+    Subtype(deriveCodec[AddOrders]),
     Subtype[CancelOrders],
     Subtype(deriveCodec[RemoveOrdersWhenTerminated]),
     Subtype(deriveCodec[ReplaceRepo]),

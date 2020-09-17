@@ -42,6 +42,7 @@ trait JournaledProxy[S <: JournaledState[S]]
   protected def scheduler: Scheduler
   protected val onEvent: EventAndState[Event, S] => Unit
   protected def S: JournaledState.Companion[S]
+  protected def proxyConf: ProxyConf
 
   private val observing = SetOnce[Cancelable]("connectableObservingCompleted")
   private val stopRequested = Promise[Unit]()
@@ -95,6 +96,29 @@ trait JournaledProxy[S <: JournaledState[S]]
         })
     }
   }
+
+  def sync(eventId: EventId): Task[Unit] =
+    Task.defer {
+      if (currentState.eventId >= eventId)
+        Task.unit
+      else {
+        val d = proxyConf.mirrorSyncPolling
+        Observable(
+          observable.dropWhile(_.stampedEvent.eventId < eventId),
+          Observable.timerRepeated(d, d, ())
+        ) .merge
+          .dropWhile(_ => currentState.eventId < eventId)
+          .headL
+          .void
+      }
+    }
+
+  /** For testing: wait for a condition in the running event stream. **/
+  def when(predicate: EventAndState[Event, S] => Boolean): Task[EventAndState[Event, S]] =
+    observable
+      .filter(predicate)
+      .headOptionL
+      .map(_.getOrElse(throw new RuntimeException("JournaledProxy.when: stream has terminated")))
 
   final def stop: Task[Unit] =
     Task.deferFuture {

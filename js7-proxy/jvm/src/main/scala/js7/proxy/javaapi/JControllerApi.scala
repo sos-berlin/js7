@@ -9,10 +9,11 @@ import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.controller.client.HttpControllerApi
 import js7.controller.data.ControllerCommand
-import js7.controller.data.ControllerCommand.{CancelOrders, ReleaseEvents, RemoveOrdersWhenTerminated, ResumeOrders, SuspendOrders}
+import js7.controller.data.ControllerCommand.{AddOrders, CancelOrders, ReleaseEvents, RemoveOrdersWhenTerminated, ResumeOrders, SuspendOrders}
 import js7.data.event.{Event, EventId}
 import js7.data.item.VersionId
 import js7.data.order.OrderId
+import js7.proxy.ControllerApi
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.ProxyEvent
 import js7.proxy.javaapi.data.command.JCancelMode
@@ -24,7 +25,6 @@ import js7.proxy.javaapi.data.item.JUpdateRepoOperation
 import js7.proxy.javaapi.data.order.JFreshOrder
 import js7.proxy.javaapi.data.workflow.position.JPosition
 import js7.proxy.javaapi.eventbus.{JControllerEventBus, JStandardEventBus}
-import js7.proxy.{ControllerApi, ControllerProxy}
 import monix.eval.Task
 import monix.execution.FutureUtils.Java8Extensions
 import monix.execution.Scheduler
@@ -62,12 +62,8 @@ final class JControllerApi private[javaapi](
     proxyEventBus: JStandardEventBus[ProxyEvent],
     controllerEventBus: JControllerEventBus)
   : CompletableFuture[JControllerProxy] =
-    ControllerProxy.start(
-      apiResources,
-      proxyEventBus.asScala,
-      controllerEventBus.asScala,
-      proxyConf
-    ) .map(new JControllerProxy(_, this, controllerEventBus))
+    asScala.startProxy(proxyEventBus.asScala, controllerEventBus.asScala)
+      .map(new JControllerProxy(_, this, controllerEventBus))
       .runToFuture
       .asJava
 
@@ -129,9 +125,9 @@ final class JControllerApi private[javaapi](
     *
     * {{{api.addOrders(Flux.fromIterable(orders))}}}
     * */
-  def addOrders(orders: Flux[JFreshOrder]): CompletableFuture[VEither[Problem, Void]] =
+  def addOrders(orders: Flux[JFreshOrder]): CompletableFuture[VEither[Problem, AddOrders.Response]] =
     asScala.addOrders(orders.asObservable.map(_.asScala))
-      .map(_.toVoidVavr)
+      .map(_.toVavr)
       .runToFuture
       .asJava
 
