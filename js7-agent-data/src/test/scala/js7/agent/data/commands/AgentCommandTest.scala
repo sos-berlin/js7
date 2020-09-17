@@ -52,14 +52,14 @@ final class AgentCommandTest extends AnyFreeSpec
   }
 
   "MarkOrder" in {
-    check(AgentCommand.MarkOrder(OrderId("ORDER"), OrderMark.Cancelling(CancelMode.NotStarted)),
+    check(AgentCommand.MarkOrder(OrderId("ORDER"), OrderMark.Cancelling(CancelMode.FreshOnly)),
       json"""{
         "TYPE": "MarkOrder",
         "orderId": "ORDER",
         "mark": {
           "TYPE": "Cancelling",
           "mode": {
-            "TYPE": "NotStarted"
+            "TYPE": "FreshOnly"
           }
         }
       }""")

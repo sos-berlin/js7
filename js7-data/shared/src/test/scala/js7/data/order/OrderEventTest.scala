@@ -327,11 +327,11 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderCancelMarked" in {
-    check(OrderCancelMarked(CancelMode.NotStarted), json"""
+    check(OrderCancelMarked(CancelMode.FreshOnly), json"""
       {
         "TYPE": "OrderCancelMarked",
         "mode": {
-          "TYPE": "NotStarted"
+          "TYPE": "FreshOnly"
         }
       }""")
   }

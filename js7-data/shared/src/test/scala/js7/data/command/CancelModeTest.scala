@@ -1,7 +1,6 @@
 package js7.data.command
 
 import js7.base.circeutils.CirceUtils._
-import js7.base.process.ProcessSignal.SIGTERM
 import js7.data.item.VersionId
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
@@ -14,10 +13,10 @@ import org.scalatest.freespec.AnyFreeSpec
 final class CancelModeTest extends AnyFreeSpec
 {
   "JSON" - {
-    "NotStarted" in {
-      testJson[CancelMode](CancelMode.NotStarted,
+    "FreshOnly" in {
+      testJson[CancelMode](CancelMode.FreshOnly,
         json"""{
-          "TYPE": "NotStarted"
+          "TYPE": "FreshOnly"
          }""")
     }
 
@@ -30,14 +29,30 @@ final class CancelModeTest extends AnyFreeSpec
 
     "FreshOrStarted(Kill)" in {
       testJson[CancelMode](
-        CancelMode.FreshOrStarted(Some(
-          CancelMode.Kill(
-            SIGTERM,
-            Some(WorkflowPath("/WORKFLOW") ~ VersionId("VERSION") /: Position(7))))),
+        CancelMode.FreshOrStarted(Some(CancelMode.Kill())),
         json"""{
           "TYPE": "FreshOrStarted",
+          "kill": {
+            "immediately": false
+          }
+        }""")
+
+      assert(json"""{
+        "TYPE": "FreshOrStarted",
+        "kill": {}
+      }""".as[CancelMode] == Right(CancelMode.FreshOrStarted(Some(CancelMode.Kill()))))
+    }
+
+    "FreshOrStarted(Kill(...))" in {
+      testJson[CancelMode](
+        CancelMode.FreshOrStarted(Some(
+          CancelMode.Kill(
+            immediately = true,
+            Some(WorkflowPath("/WORKFLOW") ~ VersionId("VERSION") /: Position(7))))),
+        json"""{
+            "TYPE": "FreshOrStarted",
             "kill": {
-              "signal": "SIGTERM",
+              "immediately": true,
               "workflowPosition": {
                 "workflowId": {
                   "path": "/WORKFLOW",

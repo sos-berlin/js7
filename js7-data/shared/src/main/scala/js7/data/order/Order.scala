@@ -348,7 +348,7 @@ final case class Order[+S <: Order.State](
 
   private def cleanMark: Option[OrderMark] =
     mark match {
-      case Some(OrderMark.Cancelling(CancelMode.NotStarted)) if isStarted => None
+      case Some(OrderMark.Cancelling(CancelMode.FreshOnly)) if isStarted => None
       case o => o
     }
 

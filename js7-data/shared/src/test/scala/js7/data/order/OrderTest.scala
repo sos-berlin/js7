@@ -80,7 +80,7 @@ final class OrderTest extends AnyFreeSpec
       "mark" in {
         check(
           Order(OrderId("ID"), WorkflowPath("/WORKFLOW") ~ "VERSION", Fresh(),
-            mark = Some(OrderMark.Cancelling(CancelMode.NotStarted)),
+            mark = Some(OrderMark.Cancelling(CancelMode.FreshOnly)),
             isSuspended = true),
           json"""{
             "id": "ID",
@@ -98,7 +98,7 @@ final class OrderTest extends AnyFreeSpec
             "mark": {
               "TYPE": "Cancelling",
               "mode": {
-                "TYPE": "NotStarted"
+                "TYPE": "FreshOnly"
               }
             },
             "isSuspended": true
@@ -262,7 +262,7 @@ final class OrderTest extends AnyFreeSpec
       OrderFailedInFork(Outcome.Failed(ReturnCode(1))),
       OrderFinished,
 
-      OrderCancelMarked(CancelMode.NotStarted),
+      OrderCancelMarked(CancelMode.FreshOnly),
       OrderCancelled,
       OrderSuspendMarked,
       OrderSuspended,

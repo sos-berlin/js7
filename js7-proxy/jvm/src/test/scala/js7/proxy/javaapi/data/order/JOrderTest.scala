@@ -1,6 +1,5 @@
 package js7.proxy.javaapi.data.order
 
-import js7.base.process.ProcessSignal.SIGTERM
 import js7.data.agent.AgentRefPath
 import js7.data.command.CancelMode
 import js7.data.order.{Order, OrderId, OrderMark}
@@ -19,7 +18,7 @@ final class JOrderTest extends AnyFreeSpec
     arguments = Map("KEY" -> "VALUE"),
     attachedState = Some(Order.Attached(AgentRefPath("/AGENT"))),
     parent = Some(OrderId("ORDER-ID")),
-    mark = Some(OrderMark.Cancelling(CancelMode.FreshOrStarted(Some(CancelMode.Kill(SIGTERM))))))
+    mark = Some(OrderMark.Cancelling(CancelMode.FreshOrStarted(Some(CancelMode.Kill())))))
 
   "Java" in {
     JOrderTester.testForkedOrder(JOrder(forkedOrder))

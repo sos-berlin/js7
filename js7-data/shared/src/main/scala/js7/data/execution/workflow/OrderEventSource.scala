@@ -161,7 +161,7 @@ final class OrderEventSource(
     withOrder(orderId)(order =>
       if (order.parent.isDefined)
         Left(CancelChildOrderProblem(orderId))
-      else if (mode == CancelMode.NotStarted && order.isStarted) {
+      else if (mode == CancelMode.FreshOnly && order.isStarted) {
         // On Agent, the Order may already have been started without notice of the Controller
         Left(CancelStartedOrderProblem(orderId))
       } else Right(
@@ -180,7 +180,7 @@ final class OrderEventSource(
     else None
 
   private def isOrderCancelable(order: Order[Order.State], mode: CancelMode): Boolean =
-    (mode != CancelMode.NotStarted || order.isState[Order.Fresh]) &&
+    (mode != CancelMode.FreshOnly || order.isState[Order.Fresh]) &&
       order.isCancelable &&
       // If workflow End is reached, the order is finished normally
       !instruction(order.workflowPosition).isInstanceOf[End]

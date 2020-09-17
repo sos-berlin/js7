@@ -3,7 +3,6 @@ package js7.controller.data
 import js7.base.circeutils.CirceUtils._
 import js7.base.crypt.{GenericSignature, SignedString}
 import js7.base.problem.Problem
-import js7.base.process.ProcessSignal.SIGTERM
 import js7.base.web.Uri
 import js7.controller.data.ControllerCommand._
 import js7.data.agent.AgentRefPath
@@ -80,8 +79,8 @@ final class ControllerCommandTest extends AnyFreeSpec
   }
 
   "CancelOrders" - {
-    "CancelOrders NotStarted" in {
-      testJson[ControllerCommand](CancelOrders(Seq(OrderId("A"), OrderId("B")), CancelMode.NotStarted),
+    "CancelOrders FreshOnly" in {
+      testJson[ControllerCommand](CancelOrders(Seq(OrderId("A"), OrderId("B")), CancelMode.FreshOrStarted()),
         json"""{
           "TYPE": "CancelOrders",
           "orderIds": [ "A", "B" ]
@@ -93,7 +92,7 @@ final class ControllerCommandTest extends AnyFreeSpec
         Seq(OrderId("ORDER")),
         CancelMode.FreshOrStarted(
           Some(CancelMode.Kill(
-            SIGTERM,
+            immediately = true,
             Some(WorkflowPath("/WORKFLOW") ~ VersionId("VERSION") /: Position(1)))))),
         json"""{
           "TYPE": "CancelOrders",
@@ -101,7 +100,7 @@ final class ControllerCommandTest extends AnyFreeSpec
           "mode": {
             "TYPE": "FreshOrStarted",
             "kill": {
-              "signal": "SIGTERM",
+              "immediately": true,
               "workflowPosition": {
                 "workflowId": {
                   "path": "/WORKFLOW",

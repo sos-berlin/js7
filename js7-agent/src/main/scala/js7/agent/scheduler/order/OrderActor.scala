@@ -13,6 +13,7 @@ import js7.base.generic.{Accepted, Completed}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.process.ProcessSignal
+import js7.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.Logger
@@ -207,9 +208,9 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
               context.stop(self)
             } else
               event match {
-                case OrderCancelMarked(CancelMode.FreshOrStarted(Some(CancelMode.Kill(signal, maybeWp))))
-                  if maybeWp.forall(_ == order.workflowPosition) && jobActor != noSender =>
-                  jobActor ! JobActor.Input.KillProcess(order.id, Some(signal))
+                case OrderCancelMarked(CancelMode.FreshOrStarted(Some(CancelMode.Kill(immediately, maybeWorkflowPos))))
+                  if maybeWorkflowPos.forall(_ == order.workflowPosition) && jobActor != noSender =>
+                  jobActor ! JobActor.Input.KillProcess(order.id, Some(if (immediately) SIGKILL else SIGTERM))
                 case _ =>
               }
             Completed

@@ -9,11 +9,11 @@ import org.scalatest.freespec.AnyFreeSpec
 final class OrderMarkTest extends AnyFreeSpec
 {
   "Cancelling" in {
-    testJson[OrderMark](OrderMark.Cancelling(CancelMode.NotStarted), json"""
+    testJson[OrderMark](OrderMark.Cancelling(CancelMode.FreshOnly), json"""
       {
         "TYPE": "Cancelling",
         "mode": {
-          "TYPE": "NotStarted"
+          "TYPE": "FreshOnly"
         }
       }""")
   }

@@ -19,7 +19,7 @@ import scala.language.reflectiveCalls
   */
 final class ControllerCommandExecutorTest extends AnyFreeSpec
 {
-  private val cancelOrder = CancelOrders(Set(OrderId("ORDER-ID")), CancelMode.NotStarted)
+  private val cancelOrder = CancelOrders(Set(OrderId("ORDER-ID")), CancelMode.FreshOnly)
   private val meta = CommandMeta(SimpleUser(UserId("USER")))
 
   private val otherCommandExecutor = new CommandExecutor[ControllerCommand] {

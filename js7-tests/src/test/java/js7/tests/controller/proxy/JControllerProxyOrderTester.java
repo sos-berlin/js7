@@ -20,6 +20,7 @@ import js7.data.order.OrderId;
 import js7.data.workflow.WorkflowPath;
 import js7.proxy.javaapi.JControllerApi;
 import js7.proxy.javaapi.JControllerProxy;
+import js7.proxy.javaapi.data.command.JCancelMode;
 import js7.proxy.javaapi.data.controller.JControllerState;
 import js7.proxy.javaapi.data.controller.JEventAndControllerState;
 import js7.proxy.javaapi.data.order.JFreshOrder;
@@ -147,7 +148,7 @@ final class JControllerProxyOrderTester implements AutoCloseable
         CompletableFuture<JEventAndControllerState<Event>> cancelled =
             proxy.when(es -> es.stampedEvent().value().event() instanceof OrderCancelled$);
         getOrThrow(api
-            .cancelOrders(singleton(OrderId.of("TEST-CANCEL")))
+            .cancelOrders(singleton(OrderId.of("TEST-CANCEL")), JCancelMode.freshOrStarted())
             .get(99, SECONDS));
         cancelled.get(99, SECONDS);
     }
