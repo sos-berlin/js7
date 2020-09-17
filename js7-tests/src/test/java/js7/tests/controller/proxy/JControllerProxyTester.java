@@ -40,6 +40,9 @@ final class JControllerProxyTester
             orderTester.testCancelOrder();
             orderTester.testCancelOrderViaHttpPost();
         }
+        try (JControllerProxyAddOrderIdempotentlyTester orderTester = new JControllerProxyAddOrderIdempotentlyTester(proxy)) {
+            orderTester.testRunOrders();
+        }
     }
 
     private void testHttpGet() throws InterruptedException, ExecutionException, TimeoutException {
