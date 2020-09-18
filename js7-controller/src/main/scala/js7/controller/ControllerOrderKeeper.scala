@@ -903,7 +903,7 @@ with MainJournalingActor[ControllerState, Event]
     if (!shuttingDown && switchover.isEmpty) {
       for (order <- _controllerState.idToOrder.get(orderId)) {
         for (mark <- order.mark collect { case o: OrderMark => o }) {
-          if ((order.isAttaching || order.isAttached) && !orderMarkTransferredToAgent(order.id).contains(mark)) {
+          if (order.isAttached && !orderMarkTransferredToAgent(order.id).contains(mark)) {
             // On Recovery, MarkOrder is sent again, because orderEntry.agentOrderMark is lost
             for ((_, _, agentEntry) <- checkedWorkflowJobAndAgentEntry(order).onProblem(p => logger.error(p))) {  // TODO OrderBroken on error?
               // CommandQueue filters multiple equal MarkOrder because we may send multiple due to asynchronous excecution
