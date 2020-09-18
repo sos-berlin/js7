@@ -21,6 +21,7 @@ import js7.common.http.RecouplingStreamReader
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventApi, EventId, EventRequest, EventSeqTornProblem, JournaledState, Stamped}
+import js7.proxy.JournaledProxy._
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.ProxyEvent
 import js7.proxy.data.ProxyEvent.{ProxyCoupled, ProxyCouplingError, ProxyDecoupled}
@@ -118,7 +119,7 @@ trait JournaledProxy[S <: JournaledState[S]]
     observable
       .filter(predicate)
       .headOptionL
-      .map(_.getOrElse(throw new RuntimeException("JournaledProxy.when: stream has terminated")))
+      .map(_.getOrElse(throw new EndOfEventStreamException))
 
   final def stop: Task[Unit] =
     Task.deferFuture {
@@ -357,4 +358,6 @@ object JournaledProxy
   private class InternalProblemException(val problem: Problem) extends NoStackTrace {
     override def toString = problem.toString
   }
+
+  final class EndOfEventStreamException extends RuntimeException("Event stream terminated unexpectedly")
 }

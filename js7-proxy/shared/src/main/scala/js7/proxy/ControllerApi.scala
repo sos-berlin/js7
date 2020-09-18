@@ -16,6 +16,7 @@ import js7.controller.data.{ControllerCommand, ControllerState}
 import js7.data.event.{Event, EventId}
 import js7.data.item.{UpdateRepoOperation, VersionId}
 import js7.data.order.FreshOrder
+import js7.proxy.JournaledProxy.EndOfEventStreamException
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.ProxyEvent
 import js7.proxy.data.event.EventAndState
@@ -25,15 +26,22 @@ import monix.reactive.Observable
 final class ControllerApi(
   apiResources: Seq[Resource[Task, HttpControllerApi]],
   proxyConf: ProxyConf = ProxyConf.default)
-extends ControllerProxyWithHttp
+extends ControllerApiWithHttp
 {
   protected val apiResource: Resource[Task, HttpControllerApi] =
     apiResources.toVector.sequence.flatMap(apis =>
       Resource.liftF(
         JournaledProxy.selectActiveNodeApi(apis, onCouplingError = _.logError)))
 
+  /** For testing (it's slow): wait for a condition in the running event stream. **/
+  def when(predicate: EventAndState[Event, ControllerState] => Boolean): Task[EventAndState[Event, ControllerState]] =
+    JournaledProxy.observable(apiResources, None, _ => (), proxyConf)
+      .filter(predicate)
+      .headOptionL
+      .map(_.getOrElse(throw new EndOfEventStreamException))
+
   /** Read events and state from Controller. */
-  def eventObservable(proxyEventBus: StandardEventBus[ProxyEvent], eventId: Option[EventId])
+  def eventAndStateObservable(proxyEventBus: StandardEventBus[ProxyEvent], eventId: Option[EventId])
   : Observable[EventAndState[Event, ControllerState]] =
     JournaledProxy.observable(apiResources, eventId, proxyEventBus.publish, proxyConf)
 

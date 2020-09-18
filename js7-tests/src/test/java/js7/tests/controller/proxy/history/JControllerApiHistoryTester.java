@@ -5,8 +5,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
 import js7.base.web.Uri;
 import js7.data.event.EventId;
 import js7.data.item.VersionId;
@@ -22,7 +20,7 @@ import js7.proxy.javaapi.eventbus.JStandardEventBus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static js7.proxy.javaapi.data.common.VavrUtils.getOrThrow;
+import static js7.proxy.javaapi.data.common.VavrUtils.await;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -53,12 +51,7 @@ final class JControllerApiHistoryTester
                 })
                 .doOnNext(es -> {
                     if (false/*periodically after 15 minutes, for example*/) {
-                        try {
-                            getOrThrow(
-                                api.releaseEvents(history.eventId()).get(99, SECONDS));
-                        } catch (InterruptedException | ExecutionException | TimeoutException e) {
-                            throw new RuntimeException(e);
-                        }
+                        await(api.releaseEvents(history.eventId()));
                     }})
                 .takeUntil(x -> Optional.ofNullable(history.idToOrderEntry().get(TestOrderId))
                     .map(o -> o.terminatedAt().isPresent())
@@ -70,7 +63,7 @@ final class JControllerApiHistoryTester
             try {
                 JFreshOrder freshOrder = JFreshOrder.of(TestOrderId, workflowPath, Optional.empty(),
                     ImmutableMap.of("KEY", "VALUE"));
-                getOrThrow(api.addOrder(freshOrder).get(99, SECONDS));
+                await(api.addOrder(freshOrder));
                 state = whenFirstFluxTerminated.get(99, SECONDS).get();
             } finally {
                 whenFirstFluxTerminated.cancel(false);

@@ -113,7 +113,7 @@ final class JournaledProxyClusterTest extends AnyFreeSpec with ClusterProxyTest
         logger.info(s"TakeSnapshot: ${itemsPerSecondString(t.elapsed, n, "items")}")
 
         t = now
-        val es = api.eventObservable(new StandardEventBus[ProxyEvent], eventId = Some(primaryController.eventWatch.lastAddedEventId))
+        val es = api.eventAndStateObservable(new StandardEventBus[ProxyEvent], eventId = Some(primaryController.eventWatch.lastAddedEventId))
           .headL
           .await(99.s)
         logger.info(s"Fetch snapshot: ${itemsPerSecondString(t.elapsed, n, "items")}")

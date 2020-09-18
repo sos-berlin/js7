@@ -2,29 +2,30 @@ package js7.tests.controller.proxy;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
 import js7.base.problem.Problem;
 import js7.proxy.data.ProxyEvent;
+import js7.proxy.javaapi.JControllerApi;
 import js7.proxy.javaapi.JControllerProxy;
 import js7.proxy.javaapi.JProxyContext;
 import js7.proxy.javaapi.data.auth.JAdmission;
 import js7.proxy.javaapi.data.auth.JHttpsConfig;
 import js7.proxy.javaapi.eventbus.JStandardEventBus;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static js7.proxy.javaapi.data.common.VavrUtils.getOrThrow;
+import static js7.proxy.javaapi.data.common.VavrUtils.await;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 /**
  * @author Joacim Zschimmer
  */
-final class JControllerProxyTester
+class JControllerProxyTester
 {
     private final JControllerProxy proxy;
+    private final JControllerApi api;
 
     private JControllerProxyTester(JControllerProxy proxy) {
         this.proxy = proxy;
+        this.api = proxy.api();
     }
 
     private void test(List<String> itemJsons, List<String> manyItemJsons) throws Exception {
@@ -35,20 +36,20 @@ final class JControllerProxyTester
         repoTester.addItems(itemJsons);
         repoTester.deleteItem();
 
-        try (JControllerProxyOrderTester orderTester = new JControllerProxyOrderTester(proxy)) {
+        JControllerApiOrderTester apiOrderTester = new JControllerApiOrderTester(api);
+        apiOrderTester.testCancelOrder();
+        apiOrderTester.testCancelOrderViaHttpPost();
+
+        try (JControllerProxyEventBusOrderTester orderTester = new JControllerProxyEventBusOrderTester(proxy)) {
             orderTester.testRunOrders();
-            orderTester.testCancelOrder();
-            orderTester.testCancelOrderViaHttpPost();
         }
         try (JControllerProxyAddOrderIdempotentlyTester orderTester = new JControllerProxyAddOrderIdempotentlyTester(proxy)) {
             orderTester.testRunOrders();
         }
     }
 
-    private void testHttpGet() throws InterruptedException, ExecutionException, TimeoutException {
-        String overview = getOrThrow(
-            proxy.api().httpGetJson("/controller/api")
-                .get(99, SECONDS));
+    private void testHttpGet() {
+        String overview = await(api.httpGetJson("/controller/api"));
         assertThat(overview.contains("\"id\":\"Controller\""), equalTo(true));
     }
 

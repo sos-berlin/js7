@@ -1,6 +1,8 @@
 package js7.tests.controller.proxy;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 import js7.data.event.Event;
 import js7.data.order.OrderEvent.OrderFinished$;
 import js7.data.order.OrderId;
@@ -15,7 +17,7 @@ import js7.proxy.javaapi.data.order.JFreshOrder;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static js7.proxy.javaapi.data.common.VavrUtils.getOrThrow;
+import static js7.proxy.javaapi.data.common.VavrUtils.await;
 
 /** Java test using Reactor streaming.
  * @author Joacim Zschimmer
@@ -25,12 +27,12 @@ implements AutoCloseable
 {
     private final JProxyContext context = new JProxyContext();
     private final JControllerApi api;
-    private final CompletableFuture<JControllerProxy> whenProxy;
+    private final JControllerProxy proxy;
     private int orderCounter = 0;
 
-    public JControllerFluxTester(Iterable<JAdmission> admissions, JHttpsConfig httpsConfig) {
+    public JControllerFluxTester(Iterable<JAdmission> admissions, JHttpsConfig httpsConfig) throws InterruptedException, ExecutionException, TimeoutException {
         api = context.newControllerApi(admissions, httpsConfig);
-        whenProxy = api.startProxy();
+        proxy = api.startProxy().get(99, SECONDS);
     }
 
     public void close() {
@@ -43,7 +45,6 @@ implements AutoCloseable
     }
 
     private void test1() throws Exception {
-        JControllerProxy proxy = whenProxy.get(99, SECONDS);
         orderCounter++;
         OrderId orderId = OrderId.of("ORDER-" + orderCounter);
 
@@ -57,9 +58,7 @@ implements AutoCloseable
             });
         Disposable subscription = flux.subscribe();
         try {
-            getOrThrow(api
-                .addOrder(JFreshOrder.of(orderId, WorkflowPath.of("/WORKFLOW")))
-                .get(99, SECONDS));
+            await(api.addOrder(JFreshOrder.of(orderId, WorkflowPath.of("/WORKFLOW"))));
             orderFinished.get(99, SECONDS);
         } finally {
             subscription.dispose();

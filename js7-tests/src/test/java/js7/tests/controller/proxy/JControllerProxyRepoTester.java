@@ -19,6 +19,7 @@ import js7.data.item.RepoEvent;
 import js7.data.item.TypedPath;
 import js7.data.item.VersionId;
 import js7.data.workflow.WorkflowPath;
+import js7.proxy.javaapi.JControllerApi;
 import js7.proxy.javaapi.JControllerProxy;
 import js7.proxy.javaapi.data.controller.JEventAndControllerState;
 import js7.proxy.javaapi.data.item.JUpdateRepoOperation;
@@ -26,7 +27,7 @@ import js7.proxy.javaapi.data.workflow.JWorkflowId;
 import reactor.core.publisher.Flux;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static js7.proxy.javaapi.data.common.VavrUtils.getOrThrow;
+import static js7.proxy.javaapi.data.common.VavrUtils.await;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
@@ -38,10 +39,12 @@ final class JControllerProxyRepoTester
 {
     private static final WorkflowPath bWorkflowPath = WorkflowPath.of("/B-WORKFLOW");  // As defined by ControllerProxyTest
     private final JControllerProxy proxy;
+    private final JControllerApi api;
     private static final VersionId versionId = VersionId.of("MY-VERSION");  // Must match the versionId in added or replaced objects
 
     JControllerProxyRepoTester(JControllerProxy proxy) {
         this.proxy = proxy;
+        this.api = proxy.api();
     }
 
     void addTamperedItems(List<String> manyItemJsons)
@@ -52,8 +55,7 @@ final class JControllerProxyRepoTester
         assertThat(bigSpace.length(), equalTo(100_000));
         assertThat(manyItemJsons.stream().mapToInt(o -> o.length() + bigSpace.length()).sum(), greaterThan(100_000_000/*bytes*/));
         assertThat(
-            proxy.api()
-                .updateRepo(
+            api.updateRepo(
                     versionId,
                     Flux.fromStream(
                         manyItemJsons.stream()
@@ -81,13 +83,11 @@ final class JControllerProxyRepoTester
             awaitEvent(keyedEvent -> isItemAdded(keyedEvent, bWorkflowPath));
 
         // Add items
-        getOrThrow(proxy.api()
-            .updateRepo(
-                versionId,
-                Flux.fromStream(
-                    itemJsons.stream()
-                        .map(json -> JUpdateRepoOperation.addOrReplace(sign(json)))))
-            .get(99, SECONDS));
+        await(api.updateRepo(
+            versionId,
+            Flux.fromStream(
+                itemJsons.stream()
+                    .map(json -> JUpdateRepoOperation.addOrReplace(sign(json))))));
 
         whenWorkflowAdded.get(99, SECONDS);
         assertThat(proxy.currentState().idToWorkflow(workflowId).map(o -> o.id().path()),
@@ -103,12 +103,10 @@ final class JControllerProxyRepoTester
         CompletableFuture<JEventAndControllerState<Event>> whenWorkflowDeleted =
             awaitEvent(keyedEvent -> isItemDeleted(keyedEvent, bWorkflowPath));
 
-        getOrThrow(proxy.api()
-            .updateRepo(
-                versionId,
-                Flux.fromIterable(asList(
-                    JUpdateRepoOperation.delete(bWorkflowPath))))
-            .get(99, SECONDS));
+        await(api.updateRepo(
+            versionId,
+            Flux.fromIterable(asList(
+                JUpdateRepoOperation.delete(bWorkflowPath)))));
 
         whenWorkflowDeleted.get(99, SECONDS);
 

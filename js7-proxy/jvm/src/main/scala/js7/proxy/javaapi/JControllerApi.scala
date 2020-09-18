@@ -46,7 +46,7 @@ final class JControllerApi private[javaapi](
 
   /** Fetch event stream from Controller. */
   def eventFlux(proxyEventBus: JStandardEventBus[ProxyEvent], after: OptionalLong/*EventId*/): Flux[JEventAndControllerState[Event]] =
-    asScala.eventObservable(proxyEventBus.asScala, after.toScala)
+    asScala.eventAndStateObservable(proxyEventBus.asScala, after.toScala)
       .map(JEventAndControllerState.apply)
       .asFlux
 
@@ -156,7 +156,8 @@ final class JControllerApi private[javaapi](
     asScala.executeCommand(command)
       .mapt(_ => Void)
       .map(_.toVoidVavr)
-      .runToFuture.asJava
+      .runToFuture
+      .asJava
 
   def executeCommand(command: JControllerCommand): CompletableFuture[VEither[Problem, ControllerCommand.Response]] =
     asScala.executeCommand(command.asScala)
@@ -180,6 +181,13 @@ final class JControllerApi private[javaapi](
   def httpGetJson(uriTail: String): CompletableFuture[VEither[Problem, String]] =
     asScala.httpGetJson(uriTail)
       .map(_.toVavr)
+      .runToFuture
+      .asJava
+
+  /** For testing (it's slow): wait for a condition in the running event stream. **/
+  def when(predicate: JEventAndControllerState[Event] => Boolean): CompletableFuture[JEventAndControllerState[Event]] =
+    asScala.when(es => predicate(JEventAndControllerState(es)))
+      .map(JEventAndControllerState.apply)
       .runToFuture
       .asJava
 }

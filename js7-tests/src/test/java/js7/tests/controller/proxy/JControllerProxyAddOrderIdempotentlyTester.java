@@ -24,9 +24,10 @@ import js7.proxy.javaapi.eventbus.EventSubscription;
 import reactor.core.publisher.Flux;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
-import static js7.proxy.javaapi.data.common.VavrUtils.getOrThrow;
+import static js7.proxy.javaapi.data.common.VavrUtils.await;
 import static js7.proxy.javaapi.data.event.JKeyedEvent.keyedEventToJson;
 import static js7.proxy.javaapi.data.order.JOrderPredicates.and;
 import static js7.proxy.javaapi.data.order.JOrderPredicates.byOrderIdPredicate;
@@ -40,7 +41,7 @@ final class JControllerProxyAddOrderIdempotentlyTester implements AutoCloseable
     private static final WorkflowPath workflowPath = WorkflowPath.of("/WORKFLOW");  // As defined by ControllerProxyTest
     private static final List<OrderId> orderIds = IntStream.rangeClosed(0, 2)
         .mapToObj(i -> OrderId.of("MY-ORDER-" + i))
-        .collect(Collectors.toList());
+        .collect(toList());
 
     private final JControllerApi api;
     private final JControllerProxy proxy;
@@ -108,26 +109,25 @@ final class JControllerProxyAddOrderIdempotentlyTester implements AutoCloseable
         assertThat(keyedEventToJson(events.get(3)), equalTo("{\"key\":\"MY-ORDER-0\",\"TYPE\":\"OrderRemoved\"}"));
     }
 
-    private void addOrdersIdempotently() throws InterruptedException, ExecutionException, TimeoutException {
+    private void addOrdersIdempotently() {
         List<JFreshOrder> freshOrders = orderSource.nextOrders();
-        getOrThrow(proxy
-            .addOrders(Flux.fromIterable(freshOrders))
-            .get(99, SECONDS));
 
-        Set<OrderId> activeOrderIds = proxy.currentState()
+        // Using proxy.addOrders (instead of api.addOrders) synchronizes the proxy so that it mirrors the added events.
+        await(proxy.addOrders(Flux.fromIterable(freshOrders)));
+
+        List<OrderId> activeOrderIds = proxy.currentState()
             .ordersBy(and(
                 markedAsRemoveWhenTerminated(false),
                 byOrderIdPredicate(orderId -> orderId.string().startsWith("MY-"))))
             .map(JOrder::id)
-            .collect(toSet());
+            .collect(toList());
 
-        assertThat(activeOrderIds, equalTo(orderSource.nextOrders().stream().map(o -> o.id()).collect(toSet())));
+        assertThat(new HashSet<>(activeOrderIds), equalTo(
+            orderSource.nextOrders().stream().map(o -> o.id()).collect(toSet())));
 
         orderSource.markOrdersAsAdded(activeOrderIds);
 
-        getOrThrow(api
-            .removeOrdersWhenTerminated(activeOrderIds)
-            .get(99, SECONDS));
+        await(api.removeOrdersWhenTerminated(activeOrderIds));
     }
 
     private static class TestOrderSource {
@@ -147,7 +147,7 @@ final class JControllerProxyAddOrderIdempotentlyTester implements AutoCloseable
             return orders.size();
         }
 
-        void markOrdersAsAdded(Set<OrderId> orderIds) {
+        void markOrdersAsAdded(Iterable<OrderId> orderIds) {
             for (OrderId orderId: orderIds) orders.remove(orderId);
         }
     }

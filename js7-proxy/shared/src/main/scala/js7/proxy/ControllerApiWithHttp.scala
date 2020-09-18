@@ -9,7 +9,7 @@ import js7.base.web.HttpClient
 import js7.controller.client.HttpControllerApi
 import monix.eval.Task
 
-trait ControllerProxyWithHttp
+trait ControllerApiWithHttp
 {
   protected def apiResource: Resource[Task, HttpControllerApi]
 

@@ -32,7 +32,7 @@ import js7.proxy.javaapi.JProxyContext
 import js7.proxy.javaapi.data.auth.{JAdmission, JHttpsConfig}
 import js7.proxy.{ControllerApi, JournaledProxy}
 import js7.tests.controller.proxy.ClusterProxyTest
-import js7.tests.controller.proxy.history.JControllerApiHistoryTest._
+import js7.tests.controller.proxy.history.ProxyHistoryTest._
 import js7.tests.controller.proxy.history.JControllerApiHistoryTester.TestWorkflowId
 import js7.tests.testenv.ControllerClusterForScalaTest.TestExecutablePath
 import js7.tests.testenv.DirectoryProvider.StdoutOutput
@@ -45,7 +45,7 @@ import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
 
-final class JControllerApiHistoryTest extends AnyFreeSpec with ProvideActorSystem with ClusterProxyTest
+final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with ClusterProxyTest
 {
   override protected val inventoryItems = TestWorkflow :: Nil
   override protected val agentRefPaths = AAgentRefPath :: BAgentRefPath :: Nil
@@ -81,12 +81,13 @@ final class JControllerApiHistoryTest extends AnyFreeSpec with ProvideActorSyste
         var lastAddedEventId = EventId.BeforeFirst
         primaryController.httpApi.login_(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))) await 99.s
         var lastState = ControllerState.empty
-        var finished = false
+        @volatile var finished = false
         var rounds = 0
         while (!finished && rounds <= 100) {
           rounds += 1
           var proxyStartedReceived = false
           JournaledProxy.observable[ControllerState](apiResources, fromEventId = Some(lastState.eventId), _ => (), ProxyConf.default)
+            .doOnNext(es => Task(scribe.debug(s"observe ${es.stampedEvent}")))
             .takeWhileInclusive {
               case EventAndState(Stamped(_, _, KeyedEvent(TestOrder.id, _: OrderFinished)), _, _) =>
                 finished = true
@@ -205,7 +206,7 @@ final class JControllerApiHistoryTest extends AnyFreeSpec with ProvideActorSyste
   }
 }
 
-object JControllerApiHistoryTest
+object ProxyHistoryTest
 {
   private val AAgentRefPath = AgentRefPath("/AGENT-A")
   private val BAgentRefPath = AgentRefPath("/AGENT-B")
