@@ -75,7 +75,7 @@ object GenericTimestamp {
         else
           cursor.as[String] map parse
 
-    final def apply(string: String): A =
+    def apply(string: String): A =
       parse(string)
 
     def ofEpochMilli(o: Long): A

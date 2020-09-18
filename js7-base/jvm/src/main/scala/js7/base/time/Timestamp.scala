@@ -29,6 +29,10 @@ object Timestamp extends GenericTimestamp.Companion[Timestamp]
 {
   val MaxValue = ofEpochMilli(Long.MaxValue)
 
+  // To avoid IntelliJ red squirrels
+  override def apply(string: String): Timestamp =
+    super.apply(string)
+
   def ofEpochMilli(o: Long) = new Timestamp(o)
 
   def apply(instant: Instant) = ofInstant(instant)
