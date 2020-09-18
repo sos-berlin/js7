@@ -10,7 +10,10 @@ import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer.syntax._
 import js7.common.guice.GuiceImplicits._
+import js7.common.scalautil.FileUtils.syntax.RichPath
 import js7.common.scalautil.MonixUtils.syntax._
+import js7.common.time.WaitForCondition.waitForCondition
+import js7.core.event.journal.files.JournalFiles.listJournalFiles
 import js7.data.agent.{AgentRefPath, AgentRunId}
 import js7.data.controller.ControllerId
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, JournalEvent, JournalId, TearableEventSeq}
@@ -79,7 +82,7 @@ final class ControllersEventRouteTest extends AnyFreeSpec with AgentTester
     assert(events.head.eventId > EventId.BeforeFirst)
   }
 
-  "Recoupling with Agent's last events deleted fails" in {
+  "Recoupling fails if Agent's last events has been deleted" in {
     // Take snapshot, then delete old journal files
     snapshotEventId = eventId
     agentClient.commandExecute(TakeSnapshot).await(99.s).orThrow
@@ -88,11 +91,17 @@ final class ControllersEventRouteTest extends AnyFreeSpec with AgentTester
     assert(stampedEvents.head.value.event == JournalEvent.SnapshotTaken)
     eventId = stampedEvents.head.eventId
 
+    def journalFiles = listJournalFiles(agentConfiguration.stateDirectory / s"controller-${TestUserAndPassword.userId.string}")
+    assert(journalFiles.head.afterEventId == EventId.BeforeFirst)
+
     // Remove obsolete journal files
     agentClient.commandExecute(ReleaseEvents(eventId)).await(99.s).orThrow
     // Await JournalEventsReleased
     eventId = agentClient.controllersEvents(EventRequest.singleClass[Event](after = eventId)).await(99.s).orThrow
       .asInstanceOf[EventSeq.NonEmpty[Seq, AnyKeyedEvent]].stamped.last.eventId
+
+    // Wait until ReleaseEvents takes effect (otherwise CoupleController may succeed or fail with watch.ClosedException)
+    waitForCondition(9.s, 10.ms) { journalFiles.head.afterEventId > EventId.BeforeFirst }
 
     assert(agentClient.commandExecute(CoupleController(agentRefPath, agentRunId, EventId.BeforeFirst)).await(99.s) ==
       Left(UnknownEventIdProblem(EventId.BeforeFirst)))
