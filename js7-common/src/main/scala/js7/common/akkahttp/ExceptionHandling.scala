@@ -35,7 +35,7 @@ trait ExceptionHandling
             complete(ServiceUnavailable -> Problem.pure("Shutting down"))
           }
         } else
-          completeWithError(ServiceUnavailable, e)
+          completeWithError(InternalServerError, e)
 
       case e: ProblemException =>
         // TODO Better use Checked instead of ProblemException

@@ -83,9 +83,9 @@ trait GenericEventRoute extends RouteProvider
           complete(ServiceUnavailable -> JobSchedulerIsShuttingDownProblem)
         else
           complete(ServiceUnavailable -> Problem.pure(t.getMessage))
-      case t: akka.pattern.AskTimeoutException =>  // When getting EventWatch (Actor maybe terminated)
-        logger.debug(t.toStringWithCauses, t)
-        complete(ServiceUnavailable -> Problem.pure(t.toString))
+      //case t: akka.pattern.AskTimeoutException =>  // When getting EventWatch (Actor maybe terminated)
+      //  logger.debug(t.toStringWithCauses, t)
+      //  complete(ServiceUnavailable -> Problem.pure(t.toString))
     }
 
     final lazy val route: Route =

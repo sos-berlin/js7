@@ -1,6 +1,6 @@
 package js7.tests.controller.commands
 
-import akka.http.scaladsl.model.StatusCodes.ServiceUnavailable
+import akka.http.scaladsl.model.StatusCodes.{InternalServerError, ServiceUnavailable}
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
 import js7.common.configutils.Configs._
@@ -28,7 +28,9 @@ final class AddOrderTimeoutTest extends AnyFreeSpec with ControllerAgentForScala
     val status = intercept[HttpException] {
       controller.httpApi.addOrder(FreshOrder(OrderId("ORDER"), workflow.path)).await(99.s)
     }.status
-    assert(status == ServiceUnavailable)
+    // Despite error, addOrder may be successfully completed, so ServiceUnavailable is inappropriate:
+    // assert(status == ServiceUnavailable)
+    assert(status == InternalServerError)
   }
 }
 
