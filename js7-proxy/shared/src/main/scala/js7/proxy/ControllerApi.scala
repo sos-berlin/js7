@@ -31,7 +31,7 @@ extends ControllerApiWithHttp
   protected val apiResource: Resource[Task, HttpControllerApi] =
     apiResources.toVector.sequence.flatMap(apis =>
       Resource.liftF(
-        JournaledProxy.selectActiveNodeApi(apis, onCouplingError = _.logError)))
+        JournaledProxy.selectActiveNodeApi(apis, onCouplingError = api => t => api.logError(t).void)))
 
   /** For testing (it's slow): wait for a condition in the running event stream. **/
   def when(predicate: EventAndState[Event, ControllerState] => Boolean): Task[EventAndState[Event, ControllerState]] =

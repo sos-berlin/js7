@@ -1,16 +1,14 @@
 package js7.proxy
 
 import cats.effect.{ExitCase, Resource}
-import cats.instances.list._
 import cats.instances.vector._
-import cats.syntax.foldable._
 import cats.syntax.option._
 import cats.syntax.traverse._
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.durationOfTask
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
-import js7.base.problem.{Problem, ProblemException}
+import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.checkedCast
@@ -19,6 +17,7 @@ import js7.base.utils.SetOnce
 import js7.base.web.HttpClient
 import js7.common.http.RecouplingStreamReader
 import js7.common.http.configuration.RecouplingStreamReaderConf
+import js7.data.cluster.ClusterNodeState
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventApi, EventId, EventRequest, EventSeqTornProblem, JournaledState, Stamped}
 import js7.proxy.JournaledProxy._
@@ -102,16 +101,14 @@ trait JournaledProxy[S <: JournaledState[S]]
     Task.defer {
       if (currentState.eventId >= eventId)
         Task.unit
-      else {
-        val d = proxyConf.mirrorSyncPolling
+      else
         Observable(
           observable.dropWhile(_.stampedEvent.eventId < eventId),
-          Observable.timerRepeated(d, d, ())
+          Observable.timerRepeated(proxyConf.mirrorSyncPolling, proxyConf.mirrorSyncPolling, ())
         ) .merge
           .dropWhile(_ => currentState.eventId < eventId)
           .headL
           .void
-      }
     }
 
   /** For testing: wait for a condition in the running event stream. **/
@@ -171,15 +168,16 @@ object JournaledProxy
                   .pipeIf(fromEventId.isDefined, { obs =>
                     // The returned snapshot probably is for an older EventId
                     // (because it may be the original journal file snapshot).
-                    // So drop all events before the requested one and
+                    // So drop all events until the requested one and
                     // replace the first event ProxyStarted (which we may have dropped)
                     val from = fromEventId.get
                     obs.dropWhile(_.stampedEvent.eventId < from)
                       .map {
-                        case es if es.stampedEvent.eventId == from && es.stampedEvent.value.event != ProxyStarted =>
-                            es.copy(
-                              stampedEvent = es.stampedEvent.copy(value = NoKey <-: ProxyStarted),
-                              previousState = es.state)
+                        case es if es.stampedEvent.eventId == from &&
+                                   es.stampedEvent.value.event != ProxyStarted =>
+                          es.copy(
+                            stampedEvent = es.stampedEvent.copy(value = NoKey <-: ProxyStarted),
+                            previousState = es.state)
                         case o => o
                       }})
                   .map(Right.apply)
@@ -192,8 +190,9 @@ object JournaledProxy
                           None
                         } else {
                           scribe.warn(t.toStringWithCauses)
-                          if (t.getStackTrace.nonEmpty) scribe.debug(t.toStringWithCauses, t.nullIfNoStackTrace)
-                          scribe.debug(s"Restarting observation and try to continue seamlessly after=${EventId.toString(state.eventId)}")
+                          if (t.getStackTrace.nonEmpty) scribe.debug(t.toStringWithCauses, t)
+                          scribe.debug("Restarting observation and try to continue seamlessly after=" +
+                            EventId.toString(state.eventId))
                           Some(lastState)
                         }
                       // TODO Observable.tailRecM: Left leaks memory, https://github.com/monix/monix/issues/791
@@ -221,7 +220,6 @@ object JournaledProxy
 
     def onCouplingError(throwable: Throwable) = Task {
       onProxyEvent(ProxyCouplingError(Problem.fromThrowable(throwable)))
-      true
     }
 
     Observable.fromResource(apiResources.toVector.sequence)
@@ -281,7 +279,7 @@ object JournaledProxy
     */
   def selectActiveNodeApi[Api <: EventApi](
     apis: Seq[Api],
-    onCouplingError: EventApi => Throwable => Task[Boolean/*ignored*/])
+    onCouplingError: EventApi => Throwable => Task[Unit])
   : Task[Api] = {
     def onCouplingErrorThenContinue(api: EventApi)(t: Throwable): Task[Boolean] =
       onCouplingError(api)(t).map(_ => true)
@@ -291,71 +289,65 @@ object JournaledProxy
           .map((_: Completed) => api)
 
       case _ =>
-        Task.deferAction { implicit s =>
-          // Query nodes in parallel
-          val apisAndFutures = apis.map { api =>
-            api ->
-              api.retryUntilReachable(onError = onCouplingErrorThenContinue(api))(
-                api.clusterNodeState
-              ) .materializeIntoChecked
-                .onCancelRaiseError(CancelledException)
-                .runToFuture
-          }
-          Observable
-            .fromIterable(apisAndFutures map { case (api, future) =>
-              Observable.fromFuture(future).map(api -> _)
-            })
-            .merge
-            .takeWhileInclusive(o => !o._2.forall(_.isActive))
-            .toL(Vector)
-            .flatMap { seq =>
-              for ((api, problem) <- seq.collect { case (api, Left(problem)) => api -> problem})
-                scribe.warn(s"Cluster node '${api.baseUri}' is node accessible: $problem")
-              val maybeActive = seq.lastOption match {
-                case Some((api, Right(clusterNodeState))) if clusterNodeState.isActive =>
-                  Some(api -> clusterNodeState)
-                case _ =>
-                  seq collectFirst { case (api, Right(clusterNodeState)) => api -> clusterNodeState }
-              }
-
-              val logoutOthers = apisAndFutures
-                .filter { case (api, _) => maybeActive.forall(_._1 ne api) }
-                .toList
-                .traverse { case (api, future) =>
-                  future.cancel()
-                  Task.fromFuture(future).void.onErrorRecover { case CancelledException => } >>
-                    Task(scribe.debug(s"Logout discarded $api")) >>
-                    api.logout()
+        Task.tailRecM(())(_ =>
+          Task.deferAction { implicit s =>
+            // Query nodes in parallel
+            val apisWithClusterNodeStateFutures = apis.map { api =>
+              api ->
+                api.retryUntilReachable(onCouplingErrorThenContinue(api))(
+                  api.clusterNodeState
+                ) .materializeIntoChecked
+                  .onCancelRaiseError(CancelledException)
+                  .runToFuture
+            }
+            Observable
+              .fromIterable(apisWithClusterNodeStateFutures map { case (api, future) =>
+                Observable.fromFuture(future).map(api -> _)
+              })
+              .merge[(Api, Checked[ClusterNodeState])]
+              .takeWhileInclusive(o => !o._2.forall(_.isActive))
+              .toListL
+              .map { list =>
+                val maybeActive = list.lastOption collect {
+                  case (api, Right(clusterNodeState)) if clusterNodeState.isActive =>
+                    api -> clusterNodeState
                 }
-                .map(_.combineAll)
-
-              logoutOthers.map((_: Completed) => maybeActive)
-            }
-            .map(_.toChecked(Problem.pure("No cluster node seems to be active")))
-            .map(_.onProblemHandle(problem => throw new InternalProblemException(problem)))
-            .onErrorRestartLoop(()) { (throwable, _, tryAgain) =>
-              scribe.warn(throwable.toStringWithCauses)
-              if (throwable.getStackTrace.nonEmpty) scribe.debug(throwable.toString, throwable)
-              tryAgain(()).delayExecution(5.s/*TODO*/)
-            }
-            .map { case (api, clusterNodeState) =>
-              val x = if (clusterNodeState.isActive) "active" else "maybe passive"
-              scribe.info(s"Coupling with $x node ${api.baseUri} '${clusterNodeState.nodeId}'")
-              api
-            }
+                list.collect { case (api, Left(problem)) => api -> problem } match {
+                  case Nil =>
+                    if (maybeActive.isEmpty) scribe.warn("No cluster node seems to be active")
+                  case apiProblems =>
+                    for ((api, problem) <- apiProblems)
+                      scribe.warn(s"Cluster node '${api.baseUri}' is not accessible: $problem")
+                }
+                for ((api, future) <- apisWithClusterNodeStateFutures if list.forall(_._1  ne api)) {
+                  scribe.debug(s"Cancel discarded request to '$api'")
+                  future.cancel()
+                }
+                maybeActive.toRight(()/*Left: repeat tailRecM loop*/)
+              }
             .guaranteeCase(exitCase => Task {
               if (exitCase != ExitCase.Completed) {
                 scribe.debug(exitCase.toString)
-                for (o <- apisAndFutures) o._2.cancel()
+                for (o <- apisWithClusterNodeStateFutures) o._2.cancel()
               }
             })
+          })
+        .onErrorRestartLoop(()) { (throwable, _, tryAgain) =>
+          scribe.warn(throwable.toStringWithCauses)
+          if (throwable.getStackTrace.nonEmpty) scribe.debug(throwable.toString, throwable)
+          tryAgain(()).delayExecution(5.s/*TODO*/)
+      }
+      .map { case (api, clusterNodeState) =>
+        val x = if (clusterNodeState.isActive) "active" else "maybe passive"
+        scribe.info(s"Coupling with $x node ${api.baseUri} '${clusterNodeState.nodeId}'")
+        api
       }
     }
   }
 
   private case object CancelledException extends NoStackTrace
 
-  private class InternalProblemException(val problem: Problem) extends NoStackTrace {
+  private case class InternalProblemException(val problem: Problem) extends NoStackTrace {
     override def toString = problem.toString
   }
 

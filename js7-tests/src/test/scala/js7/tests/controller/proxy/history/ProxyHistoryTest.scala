@@ -32,8 +32,8 @@ import js7.proxy.javaapi.JProxyContext
 import js7.proxy.javaapi.data.auth.{JAdmission, JHttpsConfig}
 import js7.proxy.{ControllerApi, JournaledProxy}
 import js7.tests.controller.proxy.ClusterProxyTest
-import js7.tests.controller.proxy.history.ProxyHistoryTest._
 import js7.tests.controller.proxy.history.JControllerApiHistoryTester.TestWorkflowId
+import js7.tests.controller.proxy.history.ProxyHistoryTest._
 import js7.tests.testenv.ControllerClusterForScalaTest.TestExecutablePath
 import js7.tests.testenv.DirectoryProvider.StdoutOutput
 import monix.eval.Task
@@ -86,7 +86,7 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
         while (!finished && rounds <= 100) {
           rounds += 1
           var proxyStartedReceived = false
-          JournaledProxy.observable[ControllerState](apiResources, fromEventId = Some(lastState.eventId), _ => (), ProxyConf.default)
+          JournaledProxy.observable[ControllerState](apiResources, Some(lastState.eventId), _ => (), ProxyConf.default)
             .doOnNext(es => Task(scribe.debug(s"observe ${es.stampedEvent}")))
             .takeWhileInclusive {
               case EventAndState(Stamped(_, _, KeyedEvent(TestOrder.id, _: OrderFinished)), _, _) =>
