@@ -588,7 +588,7 @@ extends Actor with Stash
           snapshotWriter.writeSnapshot(byteString)
           logger.trace(s"Snapshot ${snapshotObject.toString.truncateWithEllipsis(200)}")
         }(scheduler),
-      999.s)  // TODO Do not block the thread - Muss es ein Observable sein? Vielleicht LazyList oder Iterator?
+      999.s)  // TODO Do not block the thread
 
     if (journalingActors.isEmpty) {
       andThen()
@@ -598,7 +598,6 @@ extends Actor with Stash
         self ! Internal.LogSnapshotProgress
       }
       val remaining = mutable.Set.empty ++ journalingActors
-      //val pipeline = new ParallelExecutingPipeline[ByteString](snapshotWriter.writeSnapshot)(scheduler)
 
       for (a <- journalingActors) {
         a ! JournalingActor.Input.GetSnapshot  // DeadLetter when actor just now terminates (a terminating JournalingActor must not have a snapshot)
@@ -609,7 +608,6 @@ extends Actor with Stash
             for (snapshot <- snapshots) {
               // TODO Crash with SerializationException like EventSnapshotWriter
               snapshotWriter.writeSnapshot(ByteString(S.snapshotObjectJsonCodec(snapshot).compactPrint))
-              //pipeline.blockingAdd { ByteString(journalMeta.snapshotJsonCodec(snapshot).compactPrint) }
               logger.trace(s"Snapshot $snapshot")
             }
             onDone(sender())
