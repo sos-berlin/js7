@@ -126,8 +126,7 @@ object SessionApi
             })
       }
 
-    final def login(onlyIfNotLoggedIn: Boolean = false)
-    : Task[Completed] =
+    final def login(onlyIfNotLoggedIn: Boolean = false): Task[Completed] =
       login_(userAndPassword, onlyIfNotLoggedIn = onlyIfNotLoggedIn)
 
     final def loginUntilReachable(

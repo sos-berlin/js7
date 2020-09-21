@@ -69,7 +69,6 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
   private lazy val baseAkkaUri = AkkaUri(baseUri.string)
   private lazy val useCompression = http.system.settings.config.getBoolean("js7.web.client.compression")
   @volatile private var closed = false
-  private val counter = AtomicLong(0)
 
   protected def keyStoreRef: Option[KeyStoreRef]
   protected def trustStoreRefs: Seq[TrustStoreRef]
@@ -217,7 +216,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
     sessionTokenTask.flatMap(sessionToken =>
       Task.defer {
         withCheckedAgentUri(request) { request =>
-          val number = counter.incrementAndGet()
+          val number = requestCounter.incrementAndGet()
           val headers = sessionToken.map(token => RawHeader(SessionToken.HeaderName, token.secret.string))
           val req = request.withHeaders(headers ++: request.headers ++: standardHeaders)
             .pipeIf(useCompression, encodeGzip)
@@ -244,21 +243,20 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
                     StatusCodes.GatewayTimeout,
                     entity = HttpEntity.Strict(`text/plain(UTF-8)`, ByteString("Cancelled in AkkaHttpClient")))
               }
-            } .guaranteeCase(exitCase => Task {
+            } .guaranteeCase(exitCase => Task.defer {
                 logger.trace(s"$responseLogPrefix => $exitCase")
-                if (exitCase != ExitCase.Canceled) {
-                  responseFuture = null  // Release memory
-                }
-              })
-              .doOnCancel(Task.defer {
-                // TODO Cancelling does not cancel the ongoing Akka operation. Akka does not free the connection.
-                logger.trace(s"$responseLogPrefix => cancel")
-                cancelled = true
-                responseFuture match {
-                  case null => Task.unit
-                  case r =>
-                    responseFuture = null
-                    discardResponse(responseLogPrefix, r)
+                val r = responseFuture
+                responseFuture = null  // Release memory
+                exitCase match {
+                  case ExitCase.Canceled =>
+                    // TODO Cancelling does not cancel the ongoing Akka operation. Akka does not free the connection.
+                    cancelled = true
+                    r match {
+                      case null => Task.unit
+                      case r => discardResponse(responseLogPrefix, r)
+                    }
+                  case _ =>
+                    Task.unit
                 }
               })
               .materialize.map { tried =>
@@ -374,6 +372,7 @@ object AkkaHttpClient
   private val FailureTimeout = 10.seconds
   private val logger = Logger(getClass)
   private val LF = ByteString("\n")
+  private val requestCounter = AtomicLong(0)
 
   final class Standard(
     protected val baseUri: Uri,
@@ -408,8 +407,9 @@ object AkkaHttpClient
       s"$prefixString => ${problem getOrElse shortDataString}"
 
     private def prefixString = {
-      val number = httpResponse.header[InternalHeader].fold("")(o => s" #${o.value}")
-      s"HTTP ${httpResponse.status}:$number ${method.value} $uri"
+      //val number = httpResponse.header[InternalHeader].fold("")(o => s" #${o.value}")
+      //s"HTTP ${httpResponse.status}:$number ${method.value} $uri"
+      s"HTTP ${httpResponse.status}: ${method.value} $uri"
     }
 
     private def shortDataString = dataAsString.truncateWithEllipsis(ErrorMessageLengthMaximum)

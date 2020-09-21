@@ -1,6 +1,5 @@
 package js7.data.session
 
-import io.circe.Decoder
 import js7.base.auth.{SessionToken, UserAndPassword}
 import js7.base.data.ByteSequence.ops._
 import js7.base.generic.Completed
@@ -16,7 +15,6 @@ import js7.base.web.{HttpClient, Uri}
 import js7.data.event.JournaledState
 import monix.eval.Task
 import monix.execution.atomic.AtomicAny
-import monix.reactive.Observable
 import scala.concurrent.duration.Deadline.now
 // Test in SessionRouteTest
 

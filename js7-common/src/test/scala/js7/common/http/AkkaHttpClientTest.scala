@@ -134,19 +134,19 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with H
     "Bad Request post" in {
       val t = intercept[HttpException](
         httpClient.post(Uri(s"$uri/BAD-REQUEST"), A(1)).await(99.s))
-      assert(t.toString == s"""HTTP 400 Bad Request: #3 POST $uri/BAD-REQUEST => "BAD REQUEST"""")
+      assert(t.toString == s"""HTTP 400 Bad Request: POST $uri/BAD-REQUEST => "BAD REQUEST"""")
     }
 
     "Bad Request postDiscardResponse" in {
       val t = intercept[HttpException](
         httpClient.postDiscardResponse(Uri(s"$uri/BAD-REQUEST"), A(1)).await(99.s))
-      assert(t.toString == s"""HTTP 400 Bad Request: #4 POST $uri/BAD-REQUEST => "BAD REQUEST"""")
+      assert(t.toString == s"""HTTP 400 Bad Request: POST $uri/BAD-REQUEST => "BAD REQUEST"""")
     }
 
     "Problem" in {
       val t = intercept[HttpException](
         httpClient.post(Uri(s"$uri/PROBLEM"), A(1)).await(99.s))
-      assert(t.toString == s"""HTTP 400 Bad Request: #5 POST $uri/PROBLEM => PROBLEM""")
+      assert(t.toString == s"""HTTP 400 Bad Request: POST $uri/PROBLEM => PROBLEM""")
 
       assert(liftProblem(httpClient.post(Uri(s"$uri/PROBLEM"), A(1))).await(99.s) ==
         Left(Problem("PROBLEM")))
@@ -155,7 +155,7 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with H
     "Internal Server Error" in {
       val t = intercept[HttpException](
         httpClient.post(Uri(s"$uri/SERVER-ERROR"), A(1)).await(99.s))
-      assert(t.toString == s"""HTTP 500 Internal Server Error: #7 POST $uri/SERVER-ERROR => "SERVER ERROR"""")
+      assert(t.toString == s"""HTTP 500 Internal Server Error: POST $uri/SERVER-ERROR => "SERVER ERROR"""")
     }
 
     "close" in {
