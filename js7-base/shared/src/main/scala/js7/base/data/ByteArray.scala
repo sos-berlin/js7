@@ -3,6 +3,7 @@ package js7.base.data
 import io.circe.{Decoder, Json}
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.circeutils.CirceUtils._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.problem.Checked
 
 final class ByteArray private(array: Array[Byte])
@@ -50,16 +51,24 @@ final class ByteArray private(array: Array[Byte])
 
   override def hashCode = array.hashCode
 
-  override def toString = {
-    val prefix = array.take(32).grouped(4).toVector
+  override def toString =
     if (array.isEmpty)
       "ByteArray.empty"
     else
-      "ByteArray(" +
-        prefix.map(_.map(o => f"$o%02x").mkString).mkString(" ") + "  " +
-        prefix.map(_.map(_.toChar).map(c => if (c >= ' ' && c < 0x7f) c else '¿').mkString).mkString(" ") +
-        ")"
-  }
+      s"ByteArray(length=$length ${slice(0, 32).toStringHexRaw(32)})"
+
+  def toStringWithHex =
+    if (array.isEmpty)
+      "ByteArray.empty"
+    else
+      s"ByteArray(length=$length ${toStringHexRaw(length)})"
+
+  private def toStringHexRaw(n: Int) =
+    array.nonEmpty ??
+      ("»" +
+        array.iterator.take(n).grouped(8).map(_.map(_.toChar).map(c => if (c >= ' ' && c < 0x7f) c else '¿').mkString).mkString(" ") +
+        "« " +
+        array.iterator.take(n).grouped(4).map(_.map(o => f"$o%02x").mkString).mkString(" "))
 }
 
 object ByteArray extends ByteSequence[ByteArray]

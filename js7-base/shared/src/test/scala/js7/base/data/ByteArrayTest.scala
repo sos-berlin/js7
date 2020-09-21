@@ -24,9 +24,15 @@ final class ByteArrayTest extends ByteSequenceTester[ByteArray]
 
   "toString" in {
     assert(ByteArray.empty.toString == "ByteArray.empty")
-    assert(ByteArray("ABC").toString == "ByteArray(414243  ABC)")
+    assert(ByteArray("ABC").toString == "ByteArray(length=3 »ABC« 414243)")
     assert(ByteArray("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ").toString ==
-      "ByteArray(61626364 65666768 696a6b6c 6d6e6f70 71727374 75767778 797a4142 43444546  abcd efgh ijkl mnop qrst uvwx yzAB CDEF)")
-    assert(ByteArray("å").toString == "ByteArray(c3a5  ¿¿)")
+      "ByteArray(length=52 »abcdefgh ijklmnop qrstuvwx yzABCDEF« 61626364 65666768 696a6b6c 6d6e6f70 71727374 75767778 797a4142 43444546)")
+    assert(ByteArray("å").toString == "ByteArray(length=2 »¿¿« c3a5)")
+  }
+
+  "toStringWithHex" in {
+    assert(ByteArray("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ").toStringWithHex ==
+      "ByteArray(length=52 »abcdefgh ijklmnop qrstuvwx yzABCDEF GHIJKLMN OPQRSTUV WXYZ« " +
+        "61626364 65666768 696a6b6c 6d6e6f70 71727374 75767778 797a4142 43444546 4748494a 4b4c4d4e 4f505152 53545556 5758595a)")
   }
 }
