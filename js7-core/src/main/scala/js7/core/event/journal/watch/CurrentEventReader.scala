@@ -1,12 +1,12 @@
 package js7.core.event.journal.watch
 
 import com.typesafe.config.Config
+import js7.base.monixutils.MonixDeadline
 import js7.base.utils.CloseableIterator
 import js7.common.event.{EventSync, PositionAnd}
 import js7.core.event.journal.data.JournalMeta
 import js7.core.event.journal.files.JournalFiles.JournalMetaOps
 import js7.data.event.{EventId, JournalId}
-import scala.concurrent.duration.Deadline
 
 /**
   * @author Joacim Zschimmer
@@ -37,7 +37,7 @@ extends EventReader
 
   protected def isEOF(position: Long) = journalingEnded && position >= _committedLength
 
-  protected def whenDataAvailableAfterPosition(position: Long, until: Deadline) =
+  protected def whenDataAvailableAfterPosition(position: Long, until: MonixDeadline) =
     flushedLengthSync.whenAvailable(position, until = Some(until))
 
   protected def isFlushedAfterPosition(position: Long) =

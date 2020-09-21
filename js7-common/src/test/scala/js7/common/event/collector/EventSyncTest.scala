@@ -1,22 +1,26 @@
 package js7.common.event.collector
 
+import js7.base.monixutils.MonixDeadline.now
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
 import js7.common.event.{EventIdGenerator, EventSync}
 import js7.common.scalautil.Futures.implicits._
 import js7.data.event.EventId
-import monix.execution.Scheduler.Implicits.global
+import monix.eval.Task
+import monix.execution.Scheduler
+import monix.execution.schedulers.TestScheduler
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
-import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
   */
-final class EventSyncExclusiveTest extends AnyFreeSpec
+final class EventSyncTest extends AnyFreeSpec
 {
   "test" in {
+    implicit val scheduler = TestScheduler()
+
     val sync = new EventSync(initial = EventId.BeforeFirst, EventId.toString)
     var waitingCount = 0
     for ((aEventId, bEventId, cEventId) <- List((1L, 2L, 3L), (4L, 5L, 6L), (7L, 8L, 9L))) {
@@ -25,18 +29,18 @@ final class EventSyncExclusiveTest extends AnyFreeSpec
       val c = sync.whenAvailable(cEventId, until = None).runToFuture
 
       sync.onAdded(aEventId)
-      sleep(10.ms)
+      scheduler.tick()
       assert(!a.isCompleted)
       assert(!b.isCompleted)
 
       sync.onAdded(bEventId)
-      a await 9.s
+      scheduler.tick()
       assert(a.isCompleted)
       assert(a.successValue)
       assert(!b.isCompleted)
 
       sync.onAdded(cEventId)
-      b await 9.s
+      scheduler.tick()
       assert(!c.isCompleted)
 
       assert(sync.whenAvailable(aEventId, until = None).runToFuture.isCompleted)
@@ -49,28 +53,32 @@ final class EventSyncExclusiveTest extends AnyFreeSpec
   }
 
   "timeout" in {
-    val tick = 100.milliseconds
+    implicit val scheduler = TestScheduler()
+    val tick = 1.s
     val sync = new EventSync(initial = EventId.BeforeFirst, EventId.toString)
     for (eventId <- 1L to 3L) {
       withClue(s"#$eventId") {
         val a = sync.whenAvailable(eventId - 1, until = Some(now + 2*tick), delay = 2*tick).runToFuture
-        val b = sync.whenAvailable(eventId - 1, until = Some(now + 1.hour), delay = 2*tick).runToFuture
+        val b = sync.whenAvailable(eventId - 1, until = Some(now + 100*tick), delay = 2*tick).runToFuture
         assert(a ne b)
 
-        sleep(tick)
+        scheduler.tick(tick)
         assert(!a.isCompleted)
 
-        a await 2*tick            // `until` elapsed
+        scheduler.tick(tick)      // `until` elapsed
+        assert(a.isCompleted)
         assert(!a.successValue)   // false: Timed out
         assert(!b.isCompleted)
 
         sync.onAdded(eventId)
+        scheduler.tick()
         assert(!b.isCompleted)    // Still delayed
 
-        sleep(tick)
+        scheduler.tick(tick)
         assert(!b.isCompleted)    // Still delayed
 
-        b await 9.seconds
+        scheduler.tick(tick)
+        assert(b.isCompleted)
         assert(b.isCompleted)
         assert(b.successValue)    // true: Event arrived
 
@@ -79,20 +87,23 @@ final class EventSyncExclusiveTest extends AnyFreeSpec
     }
   }
 
-  if (sys.props contains "test.speed") "speed" in {
+  if (sys.props.contains("test.speed")) "speed" in {
+    import Scheduler.Implicits.global
+
     val sync = new EventSync(initial = EventId.BeforeFirst, EventId.toString)
     val n = 10000
     val eventIdGenerator = new EventIdGenerator
     for (_ <- 1 to 10) {
       val stopwatch = new Stopwatch
       val eventIds = for (_ <- 1 to n) yield eventIdGenerator.next()
-      val futures: Seq[Future[Boolean]] =
-        (for (eventId <- eventIds) yield Future { sync.whenAvailable(after = eventId - 1, Some(now + 99.seconds)).runToFuture })
-          .map({ _.flatten })
+      val futures: Seq[Future[Boolean]] = for (eventId <- eventIds) yield
+        Task.defer(sync.whenAvailable(after = eventId - 1, until = Some(now + 99.seconds)))
+          .runToFuture
       eventIds foreach sync.onAdded
       val result = futures await 99.s
       assert(result forall identity)
-      info(stopwatch.itemsPerSecondString(n, "events"))
+      scribe.info(stopwatch.itemsPerSecondString(n, "events"))
+      assert(sync.waitingCount == 0)
     }
   }
 }

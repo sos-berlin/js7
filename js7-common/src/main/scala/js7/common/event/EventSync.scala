@@ -1,6 +1,7 @@
 package js7.common.event
 
 import js7.base.monixutils.MonixBase.syntax._
+import js7.base.monixutils.MonixDeadline
 import js7.base.time.ScalaTime._
 import monix.eval.Task
 import scala.collection.mutable
@@ -33,20 +34,22 @@ final class EventSync(initial: Long, valueToString: Long => String)
   /**
     * @param delay When waiting for events, don't succeed after the first event but wait for further events
     */
-  def whenAvailable(after: Long, until: Option[Deadline], delay: FiniteDuration = Duration.Zero): Task[Boolean] =
+  def whenAvailable(after: Long, until: Option[MonixDeadline], delay: FiniteDuration = Duration.Zero): Task[Boolean] =
     if (after < _last)
       Task.True  // Event already waiting
     else if (until.exists(_.hasElapsed))
       Task.False  // Timeout
     else {
-      val task = whenAvailable2(after, until)
+      val task = whenAvailable2(after)
         .delayResult(delay min until.fold(FiniteDuration.MaxValue)(_.timeLeftOrZero))
       until.fold(task)(u => task.timeoutTo(u.timeLeftOrZero, Task.False))
     }
 
-  private def whenAvailable2(after: Long, until: Option[Deadline]): Task[Boolean] =
+  private def whenAvailable2(after: Long): Task[Boolean] =
     Task.tailRecM(()) { _ =>
-      synchronized {
+      if (after < _last)
+        Task.pure(Right(true))
+      else synchronized {
         if (after < _last)
           Task.pure(Right(true))
         else {

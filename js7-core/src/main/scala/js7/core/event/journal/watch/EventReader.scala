@@ -5,6 +5,8 @@ import java.nio.file.Path
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops._
 import js7.base.monixutils.MonixBase.memoryLeakLimitedObservableTailRecM
+import js7.base.monixutils.MonixDeadline
+import js7.base.monixutils.MonixDeadline.now
 import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.closeOnError
@@ -22,10 +24,10 @@ import js7.core.event.journal.watch.EventReader._
 import js7.core.problems.JsonSeqFileClosedProblem
 import js7.data.event.{Event, EventId, JournalId, JournalSeparators, KeyedEvent, Stamped}
 import monix.eval.Task
+import monix.execution.Scheduler
 import monix.execution.atomic.AtomicAny
 import monix.reactive.Observable
-import scala.concurrent.duration.Deadline.now
-import scala.concurrent.duration.{Deadline, FiniteDuration}
+import scala.concurrent.duration.FiniteDuration
 
 /**
   * @author Joacim Zschimmer
@@ -43,7 +45,7 @@ extends AutoCloseable
   protected def isFlushedAfterPosition(position: Long): Boolean
   protected def committedLength: Long
   protected def isEOF(position: Long): Boolean
-  protected def whenDataAvailableAfterPosition(position: Long, until: Deadline): Task[Boolean]
+  protected def whenDataAvailableAfterPosition(position: Long, until: MonixDeadline): Task[Boolean]
   /** Must be constant if `isHistoric`. */
   protected def config: Config
 
@@ -150,6 +152,14 @@ extends AutoCloseable
 
   /** Observes a journal file lines and length. */
   final def observeFile(position: Long, timeout: FiniteDuration, markEOF: Boolean = false, onlyLastOfChunk: Boolean)
+  : Observable[PositionAnd[ByteArray]] = {
+    Observable.fromTask(Task.deferAction(implicit scheduler => Task(
+      observeFile2(position, timeout, markEOF, onlyLastOfChunk)
+    ))).flatten
+  }
+
+  private def observeFile2(position: Long, timeout: FiniteDuration, markEOF: Boolean = false, onlyLastOfChunk: Boolean)
+    (implicit scheduler: Scheduler)
   : Observable[PositionAnd[ByteArray]] =
     Observable.fromResource(InputStreamJsonSeqReader.resource(journalFile))
       .flatMap { jsonSeqReader =>

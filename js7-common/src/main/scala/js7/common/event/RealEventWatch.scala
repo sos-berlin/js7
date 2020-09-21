@@ -3,6 +3,8 @@ package js7.common.event
 import cats.syntax.option._
 import java.util.concurrent.TimeoutException
 import js7.base.monixutils.MonixBase.closeableIteratorToObservable
+import js7.base.monixutils.MonixDeadline
+import js7.base.monixutils.MonixDeadline.now
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.CloseableIterator
@@ -16,7 +18,6 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
@@ -39,38 +40,40 @@ trait RealEventWatch extends EventWatch
   : Observable[Stamped[KeyedEvent[E]]] =
   {
     val originalTimeout = request.timeout
-    var deadline = none[Deadline]
+    var deadline = none[MonixDeadline]
 
-    def next(lazyRequest: () => EventRequest[E]): Task[(Option[Observable[Stamped[KeyedEvent[E]]]], () => EventRequest[E])] = {
-      val request = lazyRequest()  // Access now in previous iteration computed values lastEventId and limit (see below)
-      deadline = request.timeout.map(t => now + (t min EventRequest.LongTimeout))  // Timeout is renewed after every fetched event
-      if (request.limit <= 0)
-        NoMoreObservable
-      else
-        when[E](request, predicate) map {
-          case TearableEventSeq.Torn(tornAfter) =>
-            throw new TornException(after = request.after, tornEventId = tornAfter)
+    def next(lazyRequest: () => EventRequest[E]): Task[(Option[Observable[Stamped[KeyedEvent[E]]]], () => EventRequest[E])] =
+      Task.deferAction { implicit s =>
+        val request = lazyRequest()  // Access now in previous iteration computed values lastEventId and limit (see below)
+        deadline = request.timeout.map(t => now + (t min EventRequest.LongTimeout))  // Timeout is renewed after every fetched event
+        if (request.limit <= 0)
+          NoMoreObservable
+        else
+          when[E](request, predicate) map {
+            case TearableEventSeq.Torn(tornAfter) =>
+              throw new TornException(after = request.after, tornEventId = tornAfter)
 
-          case EventSeq.Empty(lastEventId) =>
-            val remaining = deadline.map(_.timeLeft)
-            (remaining.forall(_ > Duration.Zero) ?
-              Observable.empty, () => request.copy[E](after = lastEventId, timeout = deadline.map(_.timeLeftOrZero)))
+            case EventSeq.Empty(lastEventId) =>
+              val remaining = deadline.map(_.timeLeft)
+              (remaining.forall(_ > Duration.Zero) ?
+                Observable.empty, () => request.copy[E](after = lastEventId, timeout = deadline.map(_.timeLeftOrZero)))
 
-          case EventSeq.NonEmpty(events) =>
-            if (events.isEmpty) throw new IllegalStateException("EventSeq.NonEmpty(EMPTY)")  // Do not loop
-            val iterator = if (onlyLastOfChunk) lastOfIterator(events) else events
-            var lastEventId = request.after
-            var limit = request.limit
-            val observable = closeableIteratorToObservable(iterator)
-              .map { o =>
-                lastEventId = o.eventId
-                limit -= 1
-                o
-              }
-            // Closed-over lastEventId and limit are updated as observable is consumed, therefore defer access to final values (see above)
-            (Some(observable), () => request.copy[E](after = lastEventId, limit = limit, timeout = originalTimeout))
-        }
+            case EventSeq.NonEmpty(events) =>
+              if (events.isEmpty) throw new IllegalStateException("EventSeq.NonEmpty(EMPTY)")  // Do not loop
+              val iterator = if (onlyLastOfChunk) lastOfIterator(events) else events
+              var lastEventId = request.after
+              var limit = request.limit
+              val observable = closeableIteratorToObservable(iterator)
+                .map { o =>
+                  lastEventId = o.eventId
+                  limit -= 1
+                  o
+                }
+              // Closed-over lastEventId and limit are updated as observable is consumed, therefore defer access to final values (see above)
+              (Some(observable), () => request.copy[E](after = lastEventId, limit = limit, timeout = originalTimeout))
+          }
     }
+
     Observable.fromAsyncStateAction(next)(() => request)
       .takeWhile(_.nonEmpty)  // Take until limit reached (NoMoreObservable) or timeout elapsed
       .map(_.get).flatten
@@ -122,12 +125,12 @@ trait RealEventWatch extends EventWatch
       })
 
   private def whenAnyKeyedEvents[E <: Event, A](request: EventRequest[E], collect: PartialFunction[AnyKeyedEvent, A])
-  : Task[TearableEventSeq[CloseableIterator, A]] = {
+  : Task[TearableEventSeq[CloseableIterator, A]] = Task.deferAction { implicit s =>
     val deadline = request.timeout.map(t => now + t.min(EventRequest.LongTimeout))  // Protected agains Timestamp overflow
     whenAnyKeyedEvents2(request.after, deadline, request.delay, collect, request.limit, maybeTornOlder = request.tornOlder)
   }
 
-  private def whenAnyKeyedEvents2[A](after: EventId, deadline: Option[Deadline], delay: FiniteDuration,
+  private def whenAnyKeyedEvents2[A](after: EventId, deadline: Option[MonixDeadline], delay: FiniteDuration,
     collect: PartialFunction[AnyKeyedEvent, A], limit: Int, maybeTornOlder: Option[FiniteDuration])
   : Task[TearableEventSeq[CloseableIterator, A]] =
     Task.fromFuture(whenStarted)
@@ -140,29 +143,33 @@ trait RealEventWatch extends EventWatch
               case Some(tornOlder) =>
                 // If the first event is not fresh, we have a read congestion.
                 // We serve a (simulated) Torn, and the client can fetch the current state and read fresh events, skipping the congestion..
-                val head = iterator.next()
-                if (EventId.toTimestamp(head.eventId) + tornOlder < Timestamp.now) {  // Don't compare head.timestamp, timestamp may be much older)
-                  iterator.close()
-                  Task.pure(TearableEventSeq.Torn(committedEventIdSync.last))  // Simulate a torn EventSeq
-                } else
-                  Task.pure(EventSeq.NonEmpty(head +: iterator))
+                Task.deferAction { implicit s =>
+                  val head = iterator.next()
+                  if (EventId.toTimestamp(head.eventId) + tornOlder < Timestamp.now) {  // Don't compare head.timestamp, timestamp may be much older)
+                    iterator.close()
+                    Task.pure(TearableEventSeq.Torn(committedEventIdSync.last))  // Simulate a torn EventSeq
+                  } else
+                    Task.pure(EventSeq.NonEmpty(head +: iterator))
+                }
             }
 
           case empty @ EventSeq.Empty(lastEventId) =>
-            if (deadline.forall(_.hasTimeLeft())) {
-              val preventOverheating =
-                if (lastEventId < committedEventIdSync.last) {
-                  // May happen due to race condition?
-                  logger.debug(s"committedEventIdSync.whenAvailable(after=$after," +
-                    s" timeout=${deadline.fold("")(_.timeLeft.pretty)}) last=${committedEventIdSync.last} => $eventArrived," +
-                    s" unexpected $empty, delaying ${AvoidOverheatingDelay.pretty}")
-                  AvoidOverheatingDelay
-                } else
-                  Duration.Zero
-              whenAnyKeyedEvents2(lastEventId, deadline, delay, collect, limit, maybeTornOlder)
-                .delayExecution(preventOverheating)
-            } else
-              Task.pure(EventSeq.Empty(lastEventId))
+            Task.deferAction { implicit s =>
+              if (deadline.forall(_.hasTimeLeft)) {
+                val preventOverheating =
+                  if (lastEventId < committedEventIdSync.last) {
+                    // May happen due to race condition?
+                    logger.debug(s"committedEventIdSync.whenAvailable(after=$after," +
+                      s" timeout=${deadline.fold("")(_.timeLeft.pretty)}) last=${committedEventIdSync.last} => $eventArrived," +
+                      s" unexpected $empty, delaying ${AvoidOverheatingDelay.pretty}")
+                    AvoidOverheatingDelay
+                  } else
+                    Duration.Zero
+                whenAnyKeyedEvents2(lastEventId, deadline, delay, collect, limit, maybeTornOlder)
+                  .delayExecution(preventOverheating)
+              } else
+                Task.pure(EventSeq.Empty(lastEventId))
+            }
 
         case o: TearableEventSeq.Torn =>
           Task.pure(o)
