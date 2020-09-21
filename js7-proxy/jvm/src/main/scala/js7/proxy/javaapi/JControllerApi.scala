@@ -9,7 +9,7 @@ import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.controller.client.HttpControllerApi
 import js7.controller.data.ControllerCommand
-import js7.controller.data.ControllerCommand.{AddOrders, CancelOrders, ReleaseEvents, RemoveOrdersWhenTerminated, ResumeOrders, SuspendOrders}
+import js7.controller.data.ControllerCommand.{AddOrdersResponse, CancelOrders, ReleaseEvents, RemoveOrdersWhenTerminated, ResumeOrders, SuspendOrders}
 import js7.data.event.{Event, EventId}
 import js7.data.item.VersionId
 import js7.data.order.OrderId
@@ -125,7 +125,7 @@ final class JControllerApi private[javaapi](
     *
     * {{{api.addOrders(Flux.fromIterable(orders))}}}
     * */
-  def addOrders(orders: Flux[JFreshOrder]): CompletableFuture[VEither[Problem, AddOrders.Response]] =
+  def addOrders(orders: Flux[JFreshOrder]): CompletableFuture[VEither[Problem, AddOrdersResponse]] =
     asScala.addOrders(orders.asObservable.map(_.asScala))
       .map(_.toVavr)
       .runToFuture

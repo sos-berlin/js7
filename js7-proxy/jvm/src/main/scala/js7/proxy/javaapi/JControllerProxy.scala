@@ -7,7 +7,7 @@ import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.controller.data.ControllerCommand.AddOrders
+import js7.controller.data.ControllerCommand.AddOrdersResponse
 import js7.data.event.{Event, EventId, KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.OrderTerminated
 import js7.proxy.ControllerProxy
@@ -49,7 +49,7 @@ final class JControllerProxy private[proxy](
     JControllerState(asScala.currentState)
 
   /** Like JControllerApi addOrders, but waits until the Proxy mirrors the added orders. */
-  def addOrders(orders: Flux[JFreshOrder]): CompletableFuture[VEither[Problem, AddOrders.Response]] =
+  def addOrders(orders: Flux[JFreshOrder]): CompletableFuture[VEither[Problem, AddOrdersResponse]] =
     asScala.addOrders(orders.asObservable.map(_.asScala))
       .map(_.toVavr)
       .runToFuture

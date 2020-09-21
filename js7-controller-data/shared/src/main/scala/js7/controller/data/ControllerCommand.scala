@@ -60,9 +60,13 @@ object ControllerCommand extends CommonCommand.Companion
     type Response = AddOrders.Response
   }
   object AddOrders {
-    /** Response of POST api/order web service. */
-    final case class Response(eventId: EventId) extends ControllerCommand.Response
-    implicit val jsonCodec = deriveCodec[Response]
+    // AddOrderResponse is unnested to be accessible for Java code
+    type Response = AddOrdersResponse
+    val Response = AddOrdersResponse
+  }
+  final case class AddOrdersResponse(eventId: EventId) extends ControllerCommand.Response
+  object AddOrdersResponse {
+    implicit val jsonCodec = deriveCodec[AddOrdersResponse]
   }
 
   final case class CancelOrders(orderIds: immutable.Iterable[OrderId], mode: CancelMode = CancelMode.FreshOrStarted())

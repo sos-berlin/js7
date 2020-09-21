@@ -1,5 +1,6 @@
 package js7.tests.controller.proxy;
 
+import io.vavr.control.Either;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -8,8 +9,9 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import js7.base.problem.Problem;
+import js7.controller.data.ControllerCommand;
 import js7.data.event.KeyedEvent;
 import js7.data.event.Stamped;
 import js7.data.order.OrderEvent;
@@ -21,6 +23,7 @@ import js7.proxy.javaapi.data.controller.JControllerState;
 import js7.proxy.javaapi.data.order.JFreshOrder;
 import js7.proxy.javaapi.data.order.JOrder;
 import js7.proxy.javaapi.eventbus.EventSubscription;
+import org.hamcrest.Matchers;
 import reactor.core.publisher.Flux;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -28,6 +31,7 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
 import static js7.proxy.javaapi.data.common.VavrUtils.await;
+import static js7.proxy.javaapi.data.common.VavrUtils.getOrThrow;
 import static js7.proxy.javaapi.data.event.JKeyedEvent.keyedEventToJson;
 import static js7.proxy.javaapi.data.order.JOrderPredicates.and;
 import static js7.proxy.javaapi.data.order.JOrderPredicates.byOrderIdPredicate;
@@ -128,6 +132,15 @@ final class JControllerProxyAddOrderIdempotentlyTester implements AutoCloseable
         orderSource.markOrdersAsAdded(activeOrderIds);
 
         await(api.removeOrdersWhenTerminated(activeOrderIds));
+    }
+
+    private void checkTypesOnly() throws InterruptedException, ExecutionException, TimeoutException {
+        CompletableFuture<Either<Problem,ControllerCommand.AddOrders.AddOrdersResponse>> eitherCompletableFuture =
+            proxy.addOrders(Flux.empty());
+        Either<Problem,ControllerCommand.AddOrders.AddOrdersResponse> checkedResponse =
+            eitherCompletableFuture.get(99, SECONDS);
+        ControllerCommand.AddOrders.AddOrdersResponse response = getOrThrow(checkedResponse);
+        assertThat(response.eventId(), Matchers.greaterThan(0L));
     }
 
     private static class TestOrderSource {
