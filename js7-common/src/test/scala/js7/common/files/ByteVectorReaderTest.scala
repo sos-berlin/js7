@@ -1,6 +1,7 @@
 package js7.common.files
 
 import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.ScodecUtils.syntax._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.FileUtils.withTemporaryFile
 import org.scalatest.freespec.AnyFreeSpec

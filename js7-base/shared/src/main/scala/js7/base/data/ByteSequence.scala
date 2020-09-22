@@ -1,18 +1,20 @@
 package js7.base.data
 
+import cats.effect.{Resource, SyncIO}
 import cats.{Eq, Monoid}
 import io.circe.{Decoder, Json}
-import java.io.InputStream
+import java.io.{InputStream, OutputStream}
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Checked
+import js7.base.utils.IOUtils
 import js7.base.utils.ScalaUtils.syntax._
 import scala.language.implicitConversions
 import scala.util.Random
 import simulacrum._
 
-@typeclass(excludeParents = "Monoid" :: "Eq" :: Nil)
-trait ByteSequence[ByteSeq] extends Monoid[ByteSeq] with Eq[ByteSeq]
+@typeclass(excludeParents = "Writable" :: "Monoid" :: "Eq" :: Nil)
+trait ByteSequence[ByteSeq] extends Writable[ByteSeq] with Monoid[ByteSeq] with Eq[ByteSeq]
 {
   def apply[I](bytes: I*)(implicit I: Integral[I]): ByteSeq =
     unsafeWrap(bytes.view.map(i => I.toInt(i).toByte).toArray)
@@ -93,6 +95,12 @@ trait ByteSequence[ByteSeq] extends Monoid[ByteSeq] with Eq[ByteSeq]
 
   def toInputStream(byteSequence: ByteSeq): InputStream =
     new ByteSequenceInputStream(byteSequence)(this)
+
+  def toInputStreamResource(byteSequence: ByteSeq): Resource[SyncIO, InputStream] =
+    Resource.fromAutoCloseable(SyncIO { toInputStream(byteSequence) })
+
+  override def writeToStream(byteSeq: ByteSeq, out: OutputStream): Unit =
+    IOUtils.copyStream(toInputStream(byteSeq), out)
 
   def parseJsonAs[B: Decoder](byteSequence: ByteSeq): Checked[B] =
     parseJson(byteSequence).flatMap(_.checkedAs[B])

@@ -1,10 +1,11 @@
 package js7.base.data
 
 import io.circe.{Decoder, Json}
+import java.io.OutputStream
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.circeutils.CirceUtils._
-import js7.base.utils.ScalaUtils.syntax._
 import js7.base.problem.Checked
+import js7.base.utils.ScalaUtils.syntax._
 
 final class ByteArray private(array: Array[Byte])
 {
@@ -42,6 +43,9 @@ final class ByteArray private(array: Array[Byte])
   def parseJsonAs[A: Decoder]: Checked[A] =
     parseJsonByteArray(array).flatMap(_.as[A]).toChecked
     //utf8String.parseJsonCheckedAs[A]
+
+  def writeToStream(out: OutputStream): Unit =
+    out.write(array)
 
   override def equals(other: Any) =
     other match {
@@ -92,20 +96,20 @@ object ByteArray extends ByteSequence[ByteArray]
   def unsafeWrap(bytes: Array[Byte]) =
     new ByteArray(bytes)
 
-  def length(wrappedByteArray: ByteArray) =
-    wrappedByteArray.length
+  def length(byteArray: ByteArray) =
+    byteArray.length
 
-  def at(wrappedByteArray: ByteArray, i: Int) =
-    wrappedByteArray(i)
+  def at(byteArray: ByteArray, i: Int) =
+    byteArray(i)
 
-  override def indexOf(wrappedByteArray: ByteArray, byte: Byte, from: Int) =
-    wrappedByteArray.unsafeArray.indexOf(byte, from)
+  override def indexOf(byteArray: ByteArray, byte: Byte, from: Int) =
+    byteArray.unsafeArray.indexOf(byte, from)
 
-  def toArray(wrappedByteArray: ByteArray) =
-    java.util.Arrays.copyOf(wrappedByteArray.unsafeArray, wrappedByteArray.unsafeArray.length)
+  def toArray(byteArray: ByteArray) =
+    java.util.Arrays.copyOf(byteArray.unsafeArray, byteArray.unsafeArray.length)
 
-  override def unsafeArray(wrappedByteArray: ByteArray) =
-    wrappedByteArray.unsafeArray
+  override def unsafeArray(byteArray: ByteArray) =
+    byteArray.unsafeArray
 
   def combine(a: ByteArray, b: ByteArray): ByteArray = {
     val array = new Array[Byte](length(a) + length(b))
@@ -128,4 +132,7 @@ object ByteArray extends ByteSequence[ByteArray]
         }
         ByteArray(array)
     }
+
+  override def writeToStream(byteArray: ByteArray, out: OutputStream) =
+    byteArray.writeToStream(out)
 }

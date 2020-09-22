@@ -7,8 +7,10 @@ import io.circe.generic.extras.decoding.ConfiguredDecoder
 import io.circe.generic.extras.encoding.ConfiguredAsObjectEncoder
 import io.circe.syntax.EncoderOps
 import io.circe.{CursorOp, Decoder, DecodingFailure, Encoder, HCursor, Json, JsonNumber, JsonObject, ParsingFailure, Printer}
+import java.io.{OutputStream, OutputStreamWriter}
 import java.nio.ByteBuffer
 import js7.base.circeutils.AnyJsonCodecs.anyToJson
+import js7.base.data.Writable
 import js7.base.generic.GenericString
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
@@ -241,6 +243,18 @@ object CirceUtils
     def jsonString(args: Any*): String = {
       require(args.isEmpty, "jsonString string interpolator does not accept variables")
       sc.parts mkString ""
+    }
+  }
+
+  implicit def jsonWritable[A: Encoder]: Writable[A] =
+    new JsonWritable[A]
+
+  private final class JsonWritable[A: Encoder] extends Writable[A]
+  {
+    def writeToStream(a: A, out: OutputStream) = {
+      val w = new OutputStreamWriter(out)
+      w.write(a.asJson.compactPrint)
+      w.flush()
     }
   }
 

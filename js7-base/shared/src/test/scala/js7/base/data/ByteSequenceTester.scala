@@ -1,10 +1,12 @@
 package js7.base.data
 
 import cats.syntax.monoid._
+import java.io.ByteArrayOutputStream
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.data.ByteSequence.ops._
 import js7.base.problem.Problem
 import org.scalatest.freespec.AnyFreeSpec
+import scala.util.Random
 
 abstract class ByteSequenceTester[ByteSeq](implicit ByteSeq: ByteSequence[ByteSeq])
 extends AnyFreeSpec
@@ -23,6 +25,17 @@ extends AnyFreeSpec
     assert(ByteSeq.fromArray(a).unsafeArray ne a)
     assert(ByteSeq.fromArray(a).unsafeArray sameElements a)
     assert(ByteSeq.fromArray(a) == ByteSeq(a))
+  }
+
+  "equality" in {
+    assert(ByteArray.empty == ByteArray(""))
+    assert(ByteArray.empty === ByteArray(""))
+    assert(ByteArray(0x31, 0x32, 0x33) ==  ByteArray("123"))
+    assert(ByteArray(0x31, 0x32, 0x33) === ByteArray("123"))
+    assert(ByteArray(0x31, 0x32, 0x33) !=  ByteArray("12X"))
+    assert(ByteArray(0x31, 0x32, 0x33) !== ByteArray("12X"))
+    assert(ByteArray(0x31, 0x32, 0xFF) !=  ByteArray("123"))
+    assert(ByteArray(0x31, 0x32, 0xFF) !== ByteArray("123"))
   }
 
   "toArray" in {
@@ -120,12 +133,12 @@ extends AnyFreeSpec
     assert(ByteSeq("ab").combine(ByteSeq("123")) == ByteSeq("ab123"))
   }
 
-  //"toInputStream" in {
-  //  for (size <- Iterator(0, 1, 10000, 100000)) {
-  //    val byteVector = ByteSeq.random(size)
-  //    assert(inputStreamToByteSeq(byteVector.toInputStream) == byteVector)
-  //  }
-  //}
+  "writeToStream" in {
+    val byteArray = ByteArray(Random.nextString(10001))
+    val out = new ByteArrayOutputStream
+    byteArray.writeToStream(out)
+    assert(ByteArray(out.toByteArray) == byteArray)
+  }
 
   "ByteSeqInputStream mark and reset (.toInputStream)" in {
     val byteSeq = ByteSequence[ByteSeq].random(100000)

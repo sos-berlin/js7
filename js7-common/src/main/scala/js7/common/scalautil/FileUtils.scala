@@ -3,7 +3,6 @@ package js7.common.scalautil
 import akka.util.ByteString
 import com.google.common.io.FileWriteMode.APPEND
 import com.google.common.io.{Files => GuavaFiles}
-import io.circe.Encoder
 import java.io.{File, FileOutputStream}
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets.UTF_8
@@ -11,7 +10,8 @@ import java.nio.file.Files.{delete, deleteIfExists, isDirectory, isSymbolicLink,
 import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
 import java.nio.file.{FileAlreadyExistsException, FileVisitOption, Files, Path, Paths}
 import java.util.concurrent.ThreadLocalRandom
-import js7.base.circeutils.CirceUtils.CompactPrinter
+import js7.base.data.Writable.ops._
+import js7.base.data.{ByteArray, ByteSequence, Writable}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.AutoClosing.autoClosing
@@ -66,24 +66,31 @@ object FileUtils
       def :=(bytes: collection.Seq[Byte]): Unit =
         contentBytes = bytes
 
-      def :=(byteVector: ByteVector): Unit =
-        autoClosing(new FileOutputStream(delegate.toFile))(byteVector.copyToStream)
+      def :=(byteSeq: ByteArray): Unit =
+        autoClosing(new FileOutputStream(delegate.toFile))(byteSeq.writeToStream)
 
-      def :=[A](a: A)(implicit jsonEncoder: Encoder[A]): Unit =
-        contentString = jsonEncoder(a).printWith(CompactPrinter)
+      // collides with := json
+      def :=[W: Writable](w: W): Unit =
+        autoClosing(new FileOutputStream(delegate.toFile))(w.writeToStream)
 
       /** Appends `string` encoded with UTF-8 to file. */
       def ++=(string: CharSequence): Unit =
         append(string)
 
-      def ++=(byteVector: ByteVector): Unit=
-        autoClosing(new FileOutputStream(delegate.toFile, true))(byteVector.copyToStream)
+      def ++=[B: ByteSequence](byteSeq: B): Unit=
+        autoClosing(new FileOutputStream(delegate.toFile, true))(byteSeq.writeToStream(_))
+
+      //def ++=[B <: ByteSequence[B]](byteSeq: B)(implicit B: ByteSequence[B]): Unit=
+      //  autoClosing(new FileOutputStream(delegate.toFile, true))(B.writeToStream(byteSeq, _))
 
       def byteVector: ByteVector =
         ByteVector(delegate.contentBytes)
 
       def byteString: ByteString =
         ByteString(delegate.contentBytes)
+
+      def byteArray: ByteArray =
+        ByteArray.unsafeWrap(delegate.contentBytes)
 
       def contentBytes: Array[Byte] =
         readAllBytes(delegate)
