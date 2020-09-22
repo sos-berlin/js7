@@ -46,6 +46,7 @@ final class OrderRouteTest extends AnyFreeSpec with RouteTester with OrderRoute
     (command match {
       case AddOrder(order) => Task(Right(AddOrder.Response(ignoredBecauseDuplicate = order.id == DuplicateOrderId)))
       case AddOrders(_) => Task(Right(AddOrders.Response(1234L)))
+      case _ => Task(fail())
     }).map(_.map(_.asInstanceOf[command.Response]))
 
   private def route: Route =
