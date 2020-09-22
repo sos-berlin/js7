@@ -1,8 +1,11 @@
 package js7.proxy.javaapi.data.command
 
+import java.util.Optional
 import js7.data.command.CancelMode
 import js7.data.command.CancelMode.Kill
 import js7.proxy.javaapi.data.common.JavaWrapper
+import js7.proxy.javaapi.data.workflow.position.JWorkflowPosition
+import scala.jdk.OptionConverters._
 
 final case class JCancelMode(asScala: CancelMode)
 extends JavaWrapper
@@ -23,5 +26,12 @@ object JCancelMode
     * @param immediately true: try SIGKILL else SIGTERM
     **/
   def kill(immediately: Boolean): JCancelMode =
-    JCancelMode(CancelMode.FreshOrStarted(Some(Kill(immediately = immediately))))
+    kill(immediately, Optional.empty)
+
+  /** Kill a running job.
+    * @param immediately true: try SIGKILL else SIGTERM
+    **/
+  def kill(immediately: Boolean, position: Optional[JWorkflowPosition]): JCancelMode =
+    JCancelMode(CancelMode.FreshOrStarted(Some(
+      Kill(immediately = immediately, position.toScala.map(_.asScala)))))
 }
