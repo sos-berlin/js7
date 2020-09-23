@@ -2,12 +2,12 @@ package js7.common.utils
 
 import cats.effect.SyncIO
 import com.google.common.base.Charsets._
-import com.google.common.io.ByteStreams.toByteArray
-import com.google.common.io.Resources
+import com.google.common.io.{ByteStreams, Resources}
 import java.io.{File, InputStream}
 import java.net.{URI, URL}
 import java.nio.file.{CopyOption, DirectoryNotEmptyException, FileAlreadyExistsException, Files, Path}
 import java.util.Objects.requireNonNull
+import js7.base.data.{ByteArray, ByteSequence}
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.AutoClosing.autoClosing
@@ -72,7 +72,11 @@ final case class JavaResource(classLoader: ClassLoader, path: String)
     file
   }
 
-  def contentBytes: Array[Byte] = autoClosing(openStream())(toByteArray)
+  def readAs[ByteSeq](implicit ByteSeq: ByteSequence[ByteSeq]): ByteSeq =
+    ByteSeq.unsafeWrap(contentBytes)
+
+  def contentBytes: Array[Byte] =
+    autoClosing(openStream())(ByteStreams.toByteArray)
 
   def asUTF8String = Resources.toString(url, UTF_8)
 

@@ -6,7 +6,7 @@ import com.google.common.io.{Files => GuavaFiles}
 import java.io.{File, FileOutputStream}
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets.UTF_8
-import java.nio.file.Files.{delete, deleteIfExists, isDirectory, isSymbolicLink, readAllBytes, setPosixFilePermissions}
+import java.nio.file.Files.{delete, deleteIfExists, isDirectory, isSymbolicLink, setPosixFilePermissions}
 import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
 import java.nio.file.{FileAlreadyExistsException, FileVisitOption, Files, Path, Paths}
 import java.util.concurrent.ThreadLocalRandom
@@ -61,10 +61,10 @@ object FileUtils
         contentString = string
 
       def :=(bytes: Array[Byte]): Unit =
-        contentBytes = bytes
+        write(bytes)
 
       def :=(bytes: collection.Seq[Byte]): Unit =
-        contentBytes = bytes
+        write(bytes.toArray)
 
       def :=(byteSeq: ByteArray): Unit =
         autoClosing(new FileOutputStream(delegate.toFile))(byteSeq.writeToStream)
@@ -84,22 +84,19 @@ object FileUtils
       //  autoClosing(new FileOutputStream(delegate.toFile, true))(B.writeToStream(byteSeq, _))
 
       def byteVector: ByteVector =
-        ByteVector(delegate.contentBytes)
+        ByteVector(contentBytes)
 
       def byteString: ByteString =
-        ByteString(delegate.contentBytes)
+        ByteString(contentBytes)
 
-      def byteArray: ByteArray =
-        ByteArray.unsafeWrap(delegate.contentBytes)
+      def readAs[ByteSeq](implicit ByteSeq: ByteSequence[ByteSeq]): ByteSeq =
+        ByteSeq.unsafeWrap(contentBytes)
 
       def contentBytes: Array[Byte] =
-        readAllBytes(delegate)
+        Files.readAllBytes(delegate)
 
-      def contentBytes_=(bytes: Array[Byte]): Unit =
+      def write(bytes: Array[Byte]) =
         Files.write(delegate, bytes)
-
-      def contentBytes_=(bytes: collection.Seq[Byte]): Unit =
-        Files.write(delegate, bytes.toArray)
 
       def contentString: String = contentString(UTF_8)
 

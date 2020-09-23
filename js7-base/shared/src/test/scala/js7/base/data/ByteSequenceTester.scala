@@ -5,7 +5,10 @@ import java.io.ByteArrayOutputStream
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.data.ByteSequence.ops._
 import js7.base.problem.Problem
+import js7.base.utils.IOUtils
+import js7.base.utils.SyncResource.syntax.RichResource
 import org.scalatest.freespec.AnyFreeSpec
+import scala.collection.immutable.ArraySeq
 import scala.util.Random
 
 abstract class ByteSequenceTester[ByteSeq](implicit ByteSeq: ByteSequence[ByteSeq])
@@ -25,6 +28,11 @@ extends AnyFreeSpec
     assert(ByteSeq.fromArray(a).unsafeArray ne a)
     assert(ByteSeq.fromArray(a).unsafeArray sameElements a)
     assert(ByteSeq.fromArray(a) == ByteSeq(a))
+  }
+
+  "fromSeq" in {
+    val a = Seq[Byte](1, 2)
+    assert(ByteSeq.fromSeq(a).unsafeArray sameElements a)
   }
 
   "equality" in {
@@ -68,7 +76,7 @@ extends AnyFreeSpec
     assert(ByteSeq("å").length == 2)
   }
 
-  "at" in {
+  "apply" in {
     val byteSeq = ByteSeq("ab")
     assert(byteSeq(0) == 'a'.toByte)
     assert(byteSeq(1) == 'b'.toByte)
@@ -138,6 +146,16 @@ extends AnyFreeSpec
     val out = new ByteArrayOutputStream
     byteArray.writeToStream(out)
     assert(ByteArray(out.toByteArray) == byteArray)
+  }
+
+  "toInputStreamResource" in {
+    val byteSeq = ByteSequence[ByteSeq].random(100000)
+    val x = byteSeq.toInputStreamResource.useSync { in =>
+      val out = new ByteArrayOutputStream
+      IOUtils.copyStream(in, out)
+      ByteSeq.unsafeWrap(out.toByteArray)
+    }
+    assert(x == byteSeq)
   }
 
   "ByteSeqInputStream mark and reset (.toInputStream)" in {

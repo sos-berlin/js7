@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets.{UTF_16BE, UTF_8}
 import java.nio.file.Files.{createTempDirectory, createTempFile, delete, exists}
 import java.nio.file.{Files, NotDirectoryException, Path, Paths}
 import js7.base.circeutils.CirceUtils._
+import js7.base.data.ByteArray
 import js7.base.problem.ProblemException
 import js7.base.utils.ScodecUtils.syntax._
 import js7.common.scalautil.FileUtils.implicits._
@@ -61,8 +62,14 @@ final class FileUtilsTest extends AnyFreeSpec with BeforeAndAfterAll
 
     "contentBytes" in {
       path.contentBytes shouldEqual TestBytes
-      path.contentBytes = Array[Byte](1, 2)
+      path := Array[Byte](1, 2)
       path.contentBytes shouldEqual Vector[Byte](1, 2)
+    }
+
+    "readAs" in {
+      path.readAs[ByteArray] shouldEqual ByteArray(1, 2)
+      path := Array[Byte](7, 8)
+      path.readAs[ByteArray] shouldEqual ByteArray(7, 8)
     }
 
     ":= String" in {

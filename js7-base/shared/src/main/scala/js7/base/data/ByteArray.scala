@@ -3,76 +3,75 @@ package js7.base.data
 import io.circe.{Decoder, Json}
 import java.io.OutputStream
 import java.nio.charset.StandardCharsets.UTF_8
+import java.util.Objects.requireNonNull
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax._
 
-final class ByteArray private(array: Array[Byte])
+final class ByteArray private(val unsafeArray: Array[Byte])
 {
-  def length = array.length
+  def length = unsafeArray.length
 
-  def apply(i: Int) = array(i)
+  def apply(i: Int) = unsafeArray(i)
 
   def slice(from: Int, to: Int) = {
-    if (from <= 0 && to >= array.length)
+    if (from <= 0 && to >= unsafeArray.length)
       this
     else
-      new ByteArray(java.util.Arrays.copyOfRange(array, from max 0, to max length))
+      new ByteArray(java.util.Arrays.copyOfRange(unsafeArray, from max 0, to max length))
   }
 
   def ++(o: ByteArray) = {
     if (o.unsafeArray.isEmpty)
       this
-    else if (array.isEmpty)
+    else if (unsafeArray.isEmpty)
       o
     else {
       val a = new Array[Byte](length + o.length)
-      System.arraycopy(array, 0, a, 0, array.length)
-      System.arraycopy(o.unsafeArray, 0, a, array.length, o.length)
+      System.arraycopy(unsafeArray, 0, a, 0, unsafeArray.length)
+      System.arraycopy(o.unsafeArray, 0, a, unsafeArray.length, o.length)
       ByteArray.unsafeWrap(a)
     }
   }
 
-  def unsafeArray = array
-
-  def utf8String = new String(array, UTF_8)
+  def utf8String = new String(unsafeArray, UTF_8)
 
   def parseJson: Checked[Json] =
-    parseJsonByteArray(array).toChecked
+    parseJsonByteArray(unsafeArray).toChecked
 
   def parseJsonAs[A: Decoder]: Checked[A] =
-    parseJsonByteArray(array).flatMap(_.as[A]).toChecked
+    parseJsonByteArray(unsafeArray).flatMap(_.as[A]).toChecked
     //utf8String.parseJsonCheckedAs[A]
 
   def writeToStream(out: OutputStream): Unit =
-    out.write(array)
+    out.write(unsafeArray)
 
   override def equals(other: Any) =
     other match {
-      case other: ByteArray => java.util.Arrays.equals(array, other.unsafeArray)
+      case other: ByteArray => java.util.Arrays.equals(unsafeArray, other.unsafeArray)
       case _ => false
     }
 
-  override def hashCode = array.hashCode
+  override def hashCode = unsafeArray.hashCode
 
   override def toString =
-    if (array.isEmpty)
+    if (unsafeArray.isEmpty)
       "ByteArray.empty"
     else
       s"ByteArray(length=$length ${slice(0, 32).toStringHexRaw(32)})"
 
   def toStringWithHex =
-    if (array.isEmpty)
+    if (unsafeArray.isEmpty)
       "ByteArray.empty"
     else
       s"ByteArray(length=$length ${toStringHexRaw(length)})"
 
   private def toStringHexRaw(n: Int) =
-    array.nonEmpty ??
+    unsafeArray.nonEmpty ??
       ("»" +
-        array.iterator.take(n).grouped(8).map(_.map(_.toChar).map(c => if (c >= ' ' && c < 0x7f) c else '¿').mkString).mkString(" ") +
+        unsafeArray.iterator.take(n).grouped(8).map(_.map(_.toChar).map(c => if (c >= ' ' && c < 0x7f) c else '�').mkString).mkString(" ") +
         "« " +
-        array.iterator.take(n).grouped(4).map(_.map(o => f"$o%02x").mkString).mkString(" "))
+        unsafeArray.iterator.take(n).grouped(4).map(_.map(o => f"$o%02x").mkString).mkString(" "))
 }
 
 object ByteArray extends ByteSequence[ByteArray]
@@ -94,7 +93,7 @@ object ByteArray extends ByteSequence[ByteArray]
     a
 
   def unsafeWrap(bytes: Array[Byte]) =
-    new ByteArray(bytes)
+    new ByteArray(requireNonNull(bytes))
 
   def length(byteArray: ByteArray) =
     byteArray.length

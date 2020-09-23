@@ -5,6 +5,7 @@ import com.typesafe.config.ConfigUtil
 import java.nio.file.{Files, Path, Paths}
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.convert.As._
+import js7.base.data.ByteArray
 import js7.base.generic.{Completed, SecretString}
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
