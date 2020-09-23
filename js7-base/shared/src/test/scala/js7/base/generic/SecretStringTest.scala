@@ -29,6 +29,16 @@ final class SecretStringTest extends AnyFreeSpec
     assert(a sameElements Array.fill(6)('\u0000'))
   }
 
+  "isEmpty" in {
+    assert(SecretString("").isEmpty)
+    assert(!SecretString("X").isEmpty)
+  }
+
+  "nonEmpty" in {
+    assert(SecretString("X").nonEmpty)
+    assert(!SecretString("").nonEmpty)
+  }
+
   "equals" in {
     assert(SecretString("") == SecretString(""))
     assert(SecretString("abc") != SecretString(""))

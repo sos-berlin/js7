@@ -10,7 +10,8 @@ import scala.annotation.tailrec
 /**
   * @author Joacim Zschimmer
   */
-final case class SecretString(string: String) {
+final case class SecretString(string: String)
+{
   requireNonNull(string)
 
   def provideCharArray[A](body: Array[Char] => A): A = {
@@ -18,6 +19,10 @@ final case class SecretString(string: String) {
     try body(chars)
     finally for (i <- chars.indices) chars(i) = '\u0000'
   }
+
+  def isEmpty = string.isEmpty
+
+  def nonEmpty = string.nonEmpty
 
   override def toString = "SecretString"
 
