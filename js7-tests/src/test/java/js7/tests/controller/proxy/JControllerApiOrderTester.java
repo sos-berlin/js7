@@ -9,6 +9,7 @@ import js7.data.order.OrderId;
 import js7.data.workflow.WorkflowPath;
 import js7.proxy.javaapi.JControllerApi;
 import js7.proxy.javaapi.data.command.JCancelMode;
+import js7.proxy.javaapi.data.controller.JControllerState;
 import js7.proxy.javaapi.data.controller.JEventAndControllerState;
 import js7.proxy.javaapi.data.order.JFreshOrder;
 import static com.google.common.collect.Maps.newHashMap;
@@ -34,6 +35,10 @@ class JControllerApiOrderTester
             Optional.of(Instant.parse("2100-01-01T00:00:00Z")),
             newHashMap())));
         assertThat(added, equalTo(true));
+
+        // Fetch the whole big ControllerState:
+        JControllerState controllerState = await(api.controllerState());
+        assertThat(controllerState.idToOrder(OrderId.of("TEST-CANCEL")).isPresent(), equalTo(true));
 
         CompletableFuture<JEventAndControllerState<Event>> cancelled =
             api.when(es -> es.stampedEvent().value().event() instanceof OrderEvent.OrderCancelled$);

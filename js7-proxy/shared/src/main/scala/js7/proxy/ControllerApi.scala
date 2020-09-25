@@ -86,4 +86,9 @@ extends ControllerApiWithHttp
     apiResource.use(api =>
       api.retryUntilReachable()(
         api.journalInfo))
+
+  def controllerState: Task[Checked[ControllerState]] =
+    apiResource.use(api =>
+      api.retryUntilReachable()(
+        api.snapshot()))
 }

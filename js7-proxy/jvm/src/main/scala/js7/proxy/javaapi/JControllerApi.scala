@@ -197,6 +197,14 @@ final class JControllerApi private[javaapi](
       .runToFuture
       .asJava
 
+  /** Fetch the maybe very big JournalState. */
+  def controllerState: CompletableFuture[VEither[Problem, JControllerState]] =
+    asScala.controllerState
+      .map(_ map JControllerState.apply)
+      .map(_.toVavr)
+      .runToFuture
+      .asJava
+
   /** For testing (it's slow): wait for a condition in the running event stream. **/
   def when(predicate: JEventAndControllerState[Event] => Boolean): CompletableFuture[JEventAndControllerState[Event]] =
     asScala.when(es => predicate(JEventAndControllerState(es)))
