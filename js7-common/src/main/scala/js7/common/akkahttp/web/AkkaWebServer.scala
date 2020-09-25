@@ -105,7 +105,7 @@ trait AkkaWebServer extends AutoCloseable
 
   def close() =
     for (scheduler <- scheduler) {
-      try terminate().runToFuture(scheduler) await shutdownTimeout + 99.s
+      try terminate().runToFuture(scheduler) await shutdownTimeout + 1.s
       catch {
         case NonFatal(t: TimeoutException) =>
           logger.warn(s"$toString while shuttig down the web server: " + t.toStringWithCauses)
