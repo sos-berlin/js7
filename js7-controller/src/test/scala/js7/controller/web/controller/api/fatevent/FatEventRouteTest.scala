@@ -251,6 +251,8 @@ final class FatEventRouteTest extends AnyFreeSpec with RouteTester with FatEvent
   protected final class TestEventWatch extends EventCollector(EventCollector.Configuration.ForTest) {
     var lastEventsAfter = EventId(-1)
 
+    def journalInfo = throw new NotImplementedError
+
     // Return a minimum snapshot
     def snapshotAfter(after: EventId) = Some(
       Observable(

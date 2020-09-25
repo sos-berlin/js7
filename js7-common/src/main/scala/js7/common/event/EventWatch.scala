@@ -5,7 +5,7 @@ import js7.base.problem.Checked
 import js7.base.utils.CloseableIterator
 import js7.base.utils.ScalaUtils.function1WithToString
 import js7.common.event.EventWatch.Every
-import js7.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
+import js7.data.event.{Event, EventId, EventRequest, JournalInfo, KeyedEvent, Stamped, TearableEventSeq}
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
@@ -68,6 +68,8 @@ trait EventWatch
   def snapshotAfter(after: EventId): Option[Observable[Any]]
 
   def rawSnapshotAfter(after: EventId): Option[Observable[ByteArray]]
+
+  def journalInfo: JournalInfo
 
   /** TEST ONLY - Blocking. */
   @TestOnly

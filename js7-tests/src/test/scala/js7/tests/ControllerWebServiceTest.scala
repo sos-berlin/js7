@@ -395,7 +395,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
 
       "Invalid OrderId is rejected (order array)" in {
         val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
-        val orders = Json.fromValues(json"""{ "id": "ORDER/ID", "workflowPath": "/MISSING" }""" :: Nil)
+        val orders = Json.fromValues(json"""{ "id": "ORDER/ID", "workflowPath": "/MISSING" }""":: Nil)
         val exception = intercept[HttpException] {
           httpClient.postWithHeaders[Json, Json](Uri(s"$uri/controller/api/order"), orders, headers) await 99.s
         }
@@ -602,13 +602,13 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
       "TYPE": "NonEmpty",
       "stamped": [
         {
-          "eventId" : 1001,
-          "TYPE" : "SnapshotTaken"
+          "eventId": 1001,
+          "TYPE": "SnapshotTaken"
         }, {
-          "eventId" : 1002,
-          "TYPE" : "ControllerInitialized",
-          "controllerId" : "Controller",
-          "startedAt" : 111222333
+          "eventId": 1002,
+          "TYPE": "ControllerInitialized",
+          "controllerId": "Controller",
+          "startedAt": 111222333
         }, {
           "eventId": 1003,
           "TYPE": "ControllerReady",
@@ -864,12 +864,12 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
                     "position": [ 0 ]
                   }
                 }, {
-                  "id" : "ORDER-ID",
-                  "workflowPosition" : {
-                    "workflowId" : {
-                      "path" : "/WORKFLOW"
+                  "id": "ORDER-ID",
+                  "workflowPosition": {
+                    "workflowId": {
+                      "path": "/WORKFLOW"
                     },
-                    "position" : [ 1 ]
+                    "position": [ 1 ]
                   }
                 }, {
                   "id": "ORDER-MISSING-JOB",

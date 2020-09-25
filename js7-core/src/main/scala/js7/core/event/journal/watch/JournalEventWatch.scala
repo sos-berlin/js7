@@ -21,7 +21,7 @@ import js7.common.time.JavaTimeConverters.AsScalaDuration
 import js7.core.event.journal.data.JournalMeta
 import js7.core.event.journal.files.JournalFiles.listJournalFiles
 import js7.core.event.journal.watch.JournalEventWatch._
-import js7.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
+import js7.data.event.{Event, EventId, JournalId, JournalInfo, KeyedEvent, Stamped}
 import js7.data.problems.UnknownEventIdProblem
 import monix.execution.Scheduler
 import monix.execution.atomic.AtomicAny
@@ -30,6 +30,7 @@ import scala.annotation.tailrec
 import scala.collection.immutable.SortedMap
 import scala.concurrent.Promise
 import scala.concurrent.duration.FiniteDuration
+import scala.util.Try
 
 /**
   * Watches a complete journal consisting of n `JournalFile`.
@@ -276,6 +277,24 @@ with JournalingObserver
       case Some(o) => o.lastEventId
       case None if afterEventIdToHistoric.nonEmpty => afterEventIdToHistoric.keys.max
       case None => EventId.BeforeFirst
+    }
+
+  def journalInfo: JournalInfo =
+    synchronized {
+      JournalInfo(
+        lastEventId = lastEventId,
+        tornEventId = tornEventId,
+        (afterEventIdToHistoric.values.view
+          .map(h =>
+            JournalInfo.JournalFileInfo(
+              eventId = h.afterEventId,
+              size = Try(Files.size(h.file)) getOrElse -1)
+          ) ++
+            currentEventReaderOption
+              .map(o => JournalInfo.JournalFileInfo(
+                eventId = o.tornEventId,
+                size = o.committedLength))
+        ).toVector)
     }
 
   private final class HistoricJournalFile(

@@ -13,7 +13,7 @@ import js7.base.web.HttpClient
 import js7.controller.client.HttpControllerApi
 import js7.controller.data.ControllerCommand.{AddOrders, ReleaseEvents}
 import js7.controller.data.{ControllerCommand, ControllerState}
-import js7.data.event.{Event, EventId}
+import js7.data.event.{Event, EventId, JournalInfo}
 import js7.data.item.{UpdateRepoOperation, VersionId}
 import js7.data.order.FreshOrder
 import js7.proxy.JournaledProxy.EndOfEventStreamException
@@ -81,4 +81,9 @@ extends ControllerApiWithHttp
       api.retryUntilReachable()(
         HttpClient.liftProblem(
           api.executeCommand(command))))
+
+  def journalInfo: Task[Checked[JournalInfo]] =
+    apiResource.use(api =>
+      api.retryUntilReachable()(
+        api.journalInfo))
 }

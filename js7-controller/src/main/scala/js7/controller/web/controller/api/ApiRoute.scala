@@ -22,6 +22,7 @@ extends ControllerRouteProvider
 with ApiRootRoute
 with EventRoute
 with JournalRoute
+with JournalInfoRoute
 with FatEventRoute
 with CommandRoute
 with GraphqlRoute
@@ -39,6 +40,7 @@ with LogRoute
     respondWithHeaders(StandardResponseHeaders) {
       pathPrefix(Segment) {
         case "journal"     => journalRoute
+        case "journalInfo" => journalInfoRoute
         case "event"       => eventRoute
         case "command"     => commandRoute
         case "cluster"     => clusterRoute

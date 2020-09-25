@@ -49,5 +49,7 @@ object EventCollector
     def snapshotAfter(after: EventId) = None
 
     def rawSnapshotAfter(after: EventId) = None
+
+    def journalInfo = throw new NotImplementedError
   }
 }

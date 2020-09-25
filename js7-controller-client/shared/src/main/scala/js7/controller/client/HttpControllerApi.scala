@@ -16,7 +16,7 @@ import js7.controller.data.ControllerCommand.RemoveOrdersWhenTerminated
 import js7.controller.data.{ControllerCommand, ControllerOverview, ControllerState}
 import js7.data.agent.AgentRef
 import js7.data.cluster.{ClusterNodeState, ClusterState}
-import js7.data.event.{Event, EventApi, EventId, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
+import js7.data.event.{Event, EventApi, EventId, EventRequest, JournalInfo, KeyedEvent, Stamped, TearableEventSeq}
 import js7.data.fatevent.FatEvent
 import js7.data.order.{FreshOrder, Order, OrderId, OrdersOverview}
 import js7.data.session.HttpSessionApi
@@ -131,6 +131,10 @@ extends EventApi with HttpSessionApi with HasIsIgnorableStackTrace
   final def journalLengthObservable(fileEventId: EventId, position: Long, timeout: FiniteDuration, markEOF: Boolean = false): Task[Observable[Long]] =
     journalObservable(fileEventId, position, timeout = Some(timeout), markEOF = markEOF, returnLength = true)
       .map(_.map(_.decodeString(UTF_8).orThrow.stripSuffix("\n").toLong))
+
+  final def journalInfo: Task[Checked[JournalInfo]] =
+    liftProblem(
+      httpClient.get[JournalInfo](uris.api("/journalInfo")))
 
   final def fatEvents[E <: FatEvent: ClassTag](request: EventRequest[E])(implicit kd: Decoder[KeyedEvent[E]], ke: Encoder.AsObject[KeyedEvent[E]])
   : Task[TearableEventSeq[Seq, KeyedEvent[E]]] =

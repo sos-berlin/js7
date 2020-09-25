@@ -20,7 +20,7 @@ import js7.proxy.javaapi.data.command.JCancelMode
 import js7.proxy.javaapi.data.common.JavaUtils.Void
 import js7.proxy.javaapi.data.common.ReactorConverters._
 import js7.proxy.javaapi.data.common.VavrConverters._
-import js7.proxy.javaapi.data.controller.{JControllerCommand, JEventAndControllerState}
+import js7.proxy.javaapi.data.controller.{JControllerCommand, JControllerState, JEventAndControllerState}
 import js7.proxy.javaapi.data.item.JUpdateRepoOperation
 import js7.proxy.javaapi.data.order.JFreshOrder
 import js7.proxy.javaapi.data.workflow.position.JPosition
@@ -180,6 +180,12 @@ final class JControllerApi private[javaapi](
     */
   def httpGetJson(uriTail: String): CompletableFuture[VEither[Problem, String]] =
     asScala.httpGetJson(uriTail)
+      .map(_.toVavr)
+      .runToFuture
+      .asJava
+
+  def journalInfo: CompletableFuture[VEither[Problem, JournalInfo]] =
+    asScala.journalInfo
       .map(_.toVavr)
       .runToFuture
       .asJava

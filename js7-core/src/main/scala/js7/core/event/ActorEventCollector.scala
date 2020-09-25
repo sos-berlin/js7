@@ -50,6 +50,8 @@ with AutoCloseable
     name = "EventCollector")
 
   def close() = actorSystem.stop(actorRef)
+
+  def journalInfo = throw new NotImplementedError
 }
 
 object ActorEventCollector {
