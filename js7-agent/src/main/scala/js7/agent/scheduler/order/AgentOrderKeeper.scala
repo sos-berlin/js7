@@ -193,7 +193,7 @@ with Stash {
         actor ! OrderActor.Input.Recover(order)
       }
     persistence.start(state)
-    recovered.startJournalAndFinishRecovery(journalActor, orderRegister.recoveredJournalingActors)
+    recovered.startJournalAndFinishRecovery(journalActor)
     become("Recovering")(recovering)
   }
 

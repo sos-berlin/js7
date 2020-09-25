@@ -54,20 +54,16 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
     super.postStop()
   }
 
-  override protected def finishRecovery() = {
-    assertThat(order != null, "No Order")
-    order.state match {
-      case Order.Processing => handleEvent(OrderProcessed(Outcome.RecoveryGeneratedOutcome))
-      case _ => becomeAsStateOf(order, force = true)
-    }
-    logger.debug(s"Recovered $order")
-    sender() ! Output.RecoveryFinished(order)  // Sent via JournalRecoverer to AgentOrderKeeper
-  }
-
   def receive = {
     case Input.Recover(o) =>
       assertThat(order == null)
       order = o
+      order.state match {
+        case Order.Processing => handleEvent(OrderProcessed(Outcome.RecoveryGeneratedOutcome))
+        case _ => becomeAsStateOf(order, force = true)
+      }
+      logger.debug(s"Recovered $order")
+      sender() ! Output.RecoveryFinished(order)
 
     case Input.AddChild(o) =>
       assertThat(order == null)

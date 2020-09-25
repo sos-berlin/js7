@@ -866,9 +866,6 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff](
     //  case o: HasNodes =>
     //    o.activeId == clusterConf.ownId
     //}
-
-  // Used to RegisterMe actor in JournalActor
-  def journalingActor = persistence.actor
 }
 
 object Cluster

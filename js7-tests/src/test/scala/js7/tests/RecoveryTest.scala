@@ -24,7 +24,6 @@ import js7.data.event.{<-:, Event, EventId, KeyedEvent, Stamped}
 import js7.data.item.RepoEvent.{ItemAdded, VersionAdded}
 import js7.data.item.{RepoEvent, VersionId}
 import js7.data.job.ExecutablePath
-import js7.data.order.Order
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.instructions.Execute
@@ -221,6 +220,9 @@ private object RecoveryTest {
     result.toVector
   }
 
-  private def lastEventIdOf[E <: Event](stamped: IterableOnce[Stamped[KeyedEvent[E]]]): EventId =
-    stamped.iterator.to(Vector).last.eventId
+  private def lastEventIdOf[E <: Event](stamped: IterableOnce[Stamped[KeyedEvent[E]]]): EventId = {
+    val last = stamped.iterator.to(Vector).last
+    logger.debug(s"lastEventIdOf => $last")
+    last.eventId
+  }
 }

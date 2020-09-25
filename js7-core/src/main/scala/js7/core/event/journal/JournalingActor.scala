@@ -1,6 +1,6 @@
 package js7.core.event.journal
 
-import akka.actor.{Actor, ActorLogging, ActorRef, DeadLetterSuppression, Stash}
+import akka.actor.{Actor, ActorLogging, ActorRef, Stash}
 import js7.base.circeutils.typed.TypedJsonCodec.typeName
 import js7.base.generic.Accepted
 import js7.base.monixutils.MonixBase.syntax.RichScheduler
@@ -35,6 +35,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
 {
   protected def journalActor: ActorRef @@ JournalActor.type
   protected def journalConf: JournalConf
+  @deprecated
   protected def snapshots: Future[Iterable[Any]]
   protected def scheduler: Scheduler
 
@@ -42,8 +43,6 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
   private val persistStatistics = new PersistStatistics
   private var _persistedEventId = EventId.BeforeFirst
   private var journalingTimer = SerialCancelable()
-
-  import context.dispatcher
 
   become("receive")(receive)
 
@@ -53,12 +52,6 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
 
   override protected def become(stateName: String)(receive: Receive) =
     super.become(stateName)(journaling orElse receive)
-
-  override def preStart() = {
-    // FIXME Race condition: A snapshot before JournalActor has received RegisterMe, will not include this Actor
-    journalActor ! JournalActor.Input.RegisterMe
-    super.preStart()
-  }
 
   override def postStop(): Unit = {
     journalingTimer.cancel()
@@ -206,17 +199,6 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
       logger.warn(s"“$toString” Event could not be stored: $problem")
       throw problem.throwable.appendCurrentStackTrace
 
-    case Input.GetSnapshot =>
-      val sender = this.sender()
-      snapshots onComplete {
-        case Success(o) =>
-          sender ! Output.GotSnapshot(o)
-        case Failure(t) =>
-          val tt = t.appendCurrentStackTrace
-          logger.error(s"“$toString” $t", tt)
-          throw tt  // ???
-      }
-
     case msg if stashingCount > 0 =>
       if (TraceLog) logger.trace(s"“$toString” Still waiting for event commit: stash $msg")
       super.stash()
@@ -315,14 +297,6 @@ object JournalingActor
   private val logger = Logger(getClass)
   private val TraceLog = true
   private val BigStoreThreshold = 1.s
-
-  object Input {
-    private[journal] final case object GetSnapshot extends DeadLetterSuppression  // Actor may terminate
-  }
-
-  object Output {
-    private[journal] final case class GotSnapshot(snapshots: Iterable[Any])
-  }
 
   final case class Timestamped[+E <: Event](keyedEvent: KeyedEvent[E], timestamp: Option[Timestamp] = None)
   extends JournalActor.Timestamped

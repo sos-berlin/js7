@@ -281,9 +281,6 @@ with MainJournalingActor[ControllerState, Event]
         val agentSnapshot = controllerState.pathToAgentSnapshot.getOrElse(agentRef.path,
           AgentSnapshot(agentRef.path, None, EventId.BeforeFirst))
         val e = registerAgent(agentRef, agentSnapshot.agentRunId, eventId = agentSnapshot.eventId)
-        // Send an extra RegisterMe here, to be sure JournalActor has registered the AgentDriver when a snapshot is taken
-        // TODO Fix fundamentally the race condition with JournalActor.Input.RegisterMe
-        journalActor.tell(JournalActor.Input.RegisterMe, e.actor)
       }
 
       persistedEventId = controllerState.eventId
@@ -297,9 +294,6 @@ with MainJournalingActor[ControllerState, Event]
       throw t.appendCurrentStackTrace
 
     case Internal.OtherClusterNodeActivationInhibited(Success(recovered)) =>
-      // Send an extra RegisterMe here, to be sure JournalActor has registered the ClusterState actor when a snapshot is taken
-      // TODO Fix fundamentally the race condition with JournalActor.Input.RegisterMe
-      journalActor.tell(JournalActor.Input.RegisterMe, cluster.journalingActor)
       recovered.startJournalAndFinishRecovery(journalActor)
       become("journalIsStarting")(journalIsStarting)
       unstashAll()

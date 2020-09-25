@@ -7,8 +7,6 @@ import scala.concurrent.duration._
 
 /**
   * Instances of this trait are thought to be a controlling actor, the only for a journal.
-  * As a JournalingActor, the actor registers itself at JournalActor.
-  * The event `RegisterMe` must arrive before JournalActor takes a snapshot, if `snaphots` is nonEmpty.
   * @author Joacim Zschimmer
   */
 trait MainJournalingActor[S <: JournaledState[S], E <: Event]

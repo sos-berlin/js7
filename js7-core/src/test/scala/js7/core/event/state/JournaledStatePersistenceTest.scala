@@ -141,8 +141,7 @@ final class JournaledStatePersistenceTest extends AnyFreeSpec with BeforeAndAfte
       actorSystem.actorOf(
         JournalActor.props[TestState](journalMeta, JournalConf.fromConfig(config), new StampedKeyedEventBus, Scheduler.global,
           new EventIdGenerator(new EventIdClock.Fixed(currentTimeMillis = 1000/*EventIds start at 1000000*/)),
-          journalStopped,
-          useJournaledStateAsSnapshot = true)))
+          journalStopped)))
 
     def start() = {
       val recovered = JournaledStateRecoverer.recover[TestState](journalMeta, JournalEventWatch.TestConfig)

@@ -256,8 +256,7 @@ object RunningController
       // Start-up some stuff while recovering
       val journalActor = tag[JournalActor.type](actorSystem.actorOf(
         JournalActor.props[ControllerState](journalMeta, controllerConfiguration.journalConf,
-          injector.instance[StampedKeyedEventBus], scheduler, injector.instance[EventIdGenerator],
-          useJournaledStateAsSnapshot = true),
+          injector.instance[StampedKeyedEventBus], scheduler, injector.instance[EventIdGenerator]),
         "Journal"))
       itemVerifier
       val persistence = new JournaledStatePersistence[ControllerState](journalActor, controllerConfiguration.journalConf)

@@ -1,7 +1,7 @@
 package js7.core.event.journal
 
-import js7.common.configutils.Configs._
 import js7.base.time.ScalaTime._
+import js7.common.configutils.Configs._
 import js7.core.event.journal.JournalConfTest._
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -42,13 +42,12 @@ final class JournalConfTest extends AnyFreeSpec
 
 object JournalConfTest
 {
-  private[journal] val config = config"""
+  private val config = config"""
      js7.journal {
        sync = on
        delay = 1ms
        sync-delay = 2ms
        coalesce-event-limit = 6
-       use-journaled-state-as-snapshot = false
        slow-check-state = true  // Set by build.sbt, anyway
        snapshot.log-period = 4s
        snapshot.log-actor-limit = 5

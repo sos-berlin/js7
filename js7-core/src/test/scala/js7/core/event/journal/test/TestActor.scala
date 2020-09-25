@@ -117,7 +117,7 @@ extends Actor with Stash
     case Input.Terminate =>
       terminator = sender()
       if (keyToAggregate.isEmpty) {
-        journalActor ! JournalActor.Input.AwaitAndTerminate
+        journalActor ! JournalActor.Input.Terminate
       } else {
         keyToAggregate.values foreach context.stop
       }
@@ -130,7 +130,7 @@ extends Actor with Stash
       val key = keyToAggregate collectFirst { case (k, `actorRef`) => k }
       keyToAggregate --= key
       if (terminator != null && keyToAggregate.isEmpty) {
-        journalActor ! JournalActor.Input.AwaitAndTerminate
+        journalActor ! JournalActor.Input.Terminate
       }
   }
 

@@ -1,6 +1,6 @@
 package js7.core.event.journal
 
-import akka.actor.{Actor, ActorRef, DeadLetterSuppression, Props, Stash, Terminated}
+import akka.actor.{Actor, ActorRef, DeadLetterSuppression, Props, Stash}
 import akka.util.ByteString
 import io.circe.syntax.EncoderOps
 import java.nio.file.Files.{delete, exists, move}
@@ -17,31 +17,29 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.base.utils.StackTraces.StackTraceThrowable
-import js7.common.akkautils.Akkas.RichActorPath
 import js7.common.akkautils.SupervisorStrategies
 import js7.common.event.{EventIdGenerator, PositionAnd}
 import js7.common.scalautil.Logger
 import js7.common.utils.ByteUnits.toKBGB
 import js7.core.event.StampedKeyedEventBus
 import js7.core.event.journal.JournalActor._
-import js7.core.event.journal.data.{JournalMeta, RecoveredJournalingActors}
+import js7.core.event.journal.data.JournalMeta
 import js7.core.event.journal.files.JournalFiles.{JournalMetaOps, listJournalFiles}
 import js7.core.event.journal.watch.JournalingObserver
 import js7.core.event.journal.write.{EventJournalWriter, SnapshotJournalWriter}
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver}
-import js7.data.cluster.ClusterState.ClusterStateSnapshot
 import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.SnapshotMeta.SnapshotEventId
-import js7.data.event.{AnyKeyedEvent, EventId, JournalEvent, JournalHeader, JournalId, JournalState, JournaledState, KeyedEvent, Stamped}
+import js7.data.event.{AnyKeyedEvent, EventId, JournalEvent, JournalHeader, JournalId, JournaledState, KeyedEvent, Stamped}
 import monix.execution.cancelables.SerialCancelable
 import monix.execution.{Cancelable, Scheduler}
 import org.scalactic.Requirements._
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, Duration, FiniteDuration}
-import scala.concurrent.{Await, Promise, blocking}
+import scala.concurrent.{Await, Promise}
 import scala.util.control.NonFatal
 
 /**
@@ -53,12 +51,11 @@ final class JournalActor[S <: JournaledState[S]] private(
   keyedEventBus: StampedKeyedEventBus,
   scheduler: Scheduler,
   eventIdGenerator: EventIdGenerator,
-  stopped: Promise[Stopped],
-  useJournaledStateAsSnapshot: Boolean)
+  stopped: Promise[Stopped])
   (implicit S: JournaledState.Companion[S])
 extends Actor with Stash
 {
-  import context.{become, stop, watch}
+  import context.{become, stop}
 
   private val logger = Logger.withPrefix[this.type](journalMeta.fileBase.getFileName.toString)
   override val supervisorStrategy = SupervisorStrategies.escalate
@@ -75,7 +72,6 @@ extends Actor with Stash
   private var eventWriter: EventJournalWriter = null
   private var snapshotWriter: SnapshotJournalWriter = null
   private var lastSnapshotTakenEventId = EventId.BeforeFirst
-  private val journalingActors = mutable.Set[ActorRef]()
   private val persistBuffer = new PersistBuffer
   private var lastWrittenEventId = EventId.BeforeFirst
   private var lastAcknowledgedEventId = EventId.BeforeFirst
@@ -94,10 +90,7 @@ extends Actor with Stash
   override def postStop() = {
     if (snapshotSchedule != null) snapshotSchedule.cancel()
     delayedCommit := Cancelable.empty // Discard commit for fast exit
-    stopped.trySuccess(Stopped(keyedEventJournalingActorCount = journalingActors.size))
-    if (!switchedOver) {
-      for (a <- journalingActors) logger.debug(s"Journal stopped while a JournalingActor is still running: ${a.path.pretty}")
-    }
+    stopped.trySuccess(Stopped)
     if (snapshotWriter != null) {
       logger.debug(s"Deleting temporary journal files due to termination: ${snapshotWriter.file}")
       snapshotWriter.close()
@@ -112,7 +105,7 @@ extends Actor with Stash
   }
 
   def receive = {
-    case Input.Start(journaledState_, RecoveredJournalingActors(keyToActor), observer_, header, totalRunningSince_) =>
+    case Input.Start(journaledState_, observer_, header, totalRunningSince_) =>
       uncommittedJournaledState = journaledState_.asInstanceOf[S]
       journaledState = uncommittedJournaledState
       requireClusterAcknowledgement = journaledState.clusterState.isInstanceOf[ClusterState.Coupled]
@@ -123,10 +116,6 @@ extends Actor with Stash
       lastAcknowledgedEventId = header.eventId  // FIXME Möglicherweise ist die EventId noch nicht bestätigt ?  optional header.acknowledgedEventId ?
       totalEventCount = header.totalEventCount
       eventIdGenerator.updateLastEventId(lastWrittenEventId)
-      if (!useJournaledStateAsSnapshot) {
-        journalingActors ++= keyToActor.values
-        journalingActors foreach watch
-      }
       val sender = this.sender()
       locally {
         val file = toSnapshotTemporary(journalMeta.file(after = lastWrittenEventId))
@@ -154,9 +143,6 @@ extends Actor with Stash
       becomeReady()
       sender() ! Output.Ready(journalHeader)
 
-    case Input.RegisterMe =>
-      handleRegisterMe()
-
     case _ =>
       stash()
   }
@@ -166,10 +152,7 @@ extends Actor with Stash
     logger.info(s"Ready, writing ${if (conf.syncOnCommit) "(with sync)" else "(without sync)"} journal file '${eventWriter.file.getFileName}'")
   }
 
-  private def ready: Receive = receiveTerminatedOrGet orElse {
-    case Input.RegisterMe =>
-      handleRegisterMe()
-
+  private def ready: Receive = receiveGet orElse {
     case Input.Store(timestamped, replyTo, acceptEarly, transaction, delay, alreadyDelayed, since, callersItem) =>
       if (switchedOver) {
         logger.warn(s"Event ignored while active cluster node is switching over: ${timestamped.headOption.map(_.keyedEvent)}")
@@ -276,19 +259,6 @@ extends Actor with Stash
         closeEventWriter()
       }
       stop(self)
-
-    case Input.AwaitAndTerminate =>  // For testing
-      if (journalingActors.isEmpty) {
-        closeEventWriter()
-        stop(self)
-      } else {
-        become(receiveTerminatedOrGet orElse { _ =>
-          if (journalingActors.isEmpty) {
-            closeEventWriter()
-            stop(self)
-          }
-        })
-      }
 
     case Internal.StillWaitingForAcknowledge =>
       if (requireClusterAcknowledgement && lastAcknowledgedEventId < lastWrittenEventId) {
@@ -461,16 +431,6 @@ extends Actor with Stash
   private def reply(sender: ActorRef, replyTo: ActorRef, msg: Any): Unit =
     replyTo.!(msg)(sender)
 
-  private def receiveTerminatedOrGet: Receive = receiveGet orElse {
-    case Terminated(a) if journalingActors contains a =>
-      onJournalingActorTerminated(a)
-
-    case Terminated(a) =>
-      // ??? Under JournalTest, Actor TEST-B, after removed, may send Terminated() twice since SnapshotTaker actor has been merged into JournalActor
-      logger.error(s"Unknown actor has terminated: ${a.path.pretty}")
-      //unhandled(msg)
-  }
-
   private def receiveGet: Receive = {
     case Input.GetJournalActorState =>
       sender() ! Output.JournalActorState(
@@ -567,18 +527,15 @@ extends Actor with Stash
     snapshotWriter.beginSnapshotSection()
     takeSnapshotNow(
       snapshotWriter,
-      journalingActors.toSet,
       () => onSnapshotFinished(snapshotTaken, since, () => andThen(journalHeader)))
   }
 
-  private def takeSnapshotNow(snapshotWriter: SnapshotJournalWriter, journalingActors: Set[ActorRef], andThen: () => Unit): Unit = {
+  private def takeSnapshotNow(snapshotWriter: SnapshotJournalWriter, andThen: () => Unit): Unit = {
     Await.result(
       journaledState.toSnapshotObservable
         .filter {
           case SnapshotEventId(_) => false  // JournalHeader contains already the EventId
-          case _ if useJournaledStateAsSnapshot => true
-          case _: ClusterStateSnapshot | _: JournalState => true
-          case _ => false
+          case _  => true
         }
         .mapParallelOrderedBatch() { snapshotObject =>
           // TODO Crash with SerializationException like EventSnapshotWriter ?
@@ -590,60 +547,7 @@ extends Actor with Stash
         }(scheduler),
       999.s)  // TODO Do not block the thread
 
-    if (journalingActors.isEmpty) {
-      andThen()
-    } else {
-      val snapshotRunningSince = now
-      val logProgressCancelable = scheduler.scheduleWithFixedDelay(conf.snapshotLogProgressPeriod, conf.snapshotLogProgressPeriod) {
-        self ! Internal.LogSnapshotProgress
-      }
-      val remaining = mutable.Set.empty ++ journalingActors
-
-      for (a <- journalingActors) {
-        a ! JournalingActor.Input.GetSnapshot  // DeadLetter when actor just now terminates (a terminating JournalingActor must not have a snapshot)
-      }
-      become(receiveGet orElse {
-        case JournalingActor.Output.GotSnapshot(snapshots) =>
-          try blocking {  // blockingAdd blocks
-            for (snapshot <- snapshots) {
-              // TODO Crash with SerializationException like EventSnapshotWriter
-              snapshotWriter.writeSnapshot(ByteString(S.snapshotObjectJsonCodec(snapshot).compactPrint))
-              logger.trace(s"Snapshot $snapshot")
-            }
-            onDone(sender())
-          } catch { case NonFatal(t) =>
-            logger.error(t.toStringWithCauses)
-            throw t.appendCurrentStackTrace  // Crash JournalActor !!!
-          }
-
-        case Terminated(a) if journalingActors contains a =>
-          onJournalingActorTerminated(a)
-          if (remaining contains a) {
-            logger.debug(s"${a.path.pretty} terminated while taking snapshot")
-            onDone(a)
-          }
-
-        case Internal.LogSnapshotProgress =>
-          val limit = remaining.size min conf.snapshotLogProgressActorLimit
-          logger.info(s"Writing journal snapshot for ${snapshotRunningSince.elapsed.pretty}, ${remaining.size} snapshot objects remaining" +
-            (if (limit == remaining.size) "" else s" (showing $limit actors)") +
-            ":")
-          for (o <- remaining take limit) {
-            logger.info(s"... awaiting snapshot object from actor ${o.path.pretty}")
-          }
-
-        case _ => stash()
-      })
-
-      def onDone(actor: ActorRef): Unit = {
-        remaining -= actor
-        if (remaining.isEmpty) {
-          logProgressCancelable.cancel()
-          unstashAll()
-          andThen()
-        }
-      }
-    }
+    andThen()
   }
 
   private def onSnapshotFinished(
@@ -684,11 +588,6 @@ extends Actor with Stash
     onReadyForAcknowledgement()
     // Only when acknowledged: releaseObsoleteEvents()
     andThen()
-  }
-
-  private def onJournalingActorTerminated(a: ActorRef): Unit = {
-    logger.trace(s"Terminated: ${a.path.pretty}")
-    journalingActors -= a
   }
 
   private def newEventJsonWriter(after: EventId, withoutSnapshots: Boolean = false) = {
@@ -742,13 +641,6 @@ extends Actor with Stash
         }
     }
   }
-
-  private def handleRegisterMe() = {
-    if (!useJournaledStateAsSnapshot) {
-      journalingActors += sender()
-      watch(sender())
-    }
-  }
 }
 
 object JournalActor
@@ -764,12 +656,10 @@ object JournalActor
     keyedEventBus: StampedKeyedEventBus,
     scheduler: Scheduler,
     eventIdGenerator: EventIdGenerator,
-    stopped: Promise[Stopped] = Promise(),
-    useJournaledStateAsSnapshot: Boolean = false)
+    stopped: Promise[Stopped] = Promise())
   =
     Props {
-      new JournalActor[S](journalMeta, conf, keyedEventBus, scheduler, eventIdGenerator, stopped,
-        useJournaledStateAsSnapshot || conf.useJournaledStateAsSnapshot)
+      new JournalActor[S](journalMeta, conf, keyedEventBus, scheduler, eventIdGenerator, stopped)
     }.withDispatcher(DispatcherName)
 
   private def toSnapshotTemporary(file: Path) = file.resolveSibling(s"${file.getFileName}$TmpSuffix")
@@ -779,12 +669,10 @@ object JournalActor
   object Input {
     private[journal] final case class Start[S <: JournaledState[S]](
       journaledState: JournaledState[S],
-      recoveredJournalingActors: RecoveredJournalingActors,
       journalingObserver: Option[JournalingObserver],
       recoveredJournalHeader: JournalHeader,
       totalRunningSince: Deadline)
     final case class StartWithoutRecovery[S <: JournaledState[S]](emptyState: S, journalingObserver: Option[JournalingObserver] = None)
-    /*private[journal] due to race condition when starting AgentDriver*/ case object RegisterMe
     private[journal] final case class Store(
       timestamped: Seq[Timestamped],
       journalingActor: ActorRef,
@@ -798,7 +686,6 @@ object JournalActor
     final case class PassiveNodeAcknowledged(eventId: EventId)
     final case class PassiveLost(passiveLost: ClusterPassiveLost)
     final case object Terminate
-    final case object AwaitAndTerminate
     case object GetJournalActorState
     case object GetJournaledState
   }
@@ -825,11 +712,11 @@ object JournalActor
     final case class JournalActorState(isFlushed: Boolean, isSynced: Boolean, isRequiringClusterAcknowledgement: Boolean)
   }
 
-  final case class Stopped(keyedEventJournalingActorCount: Int)
+  type Stopped = Stopped.type
+  final case object Stopped
 
   private object Internal {
     final case object Commit
-    case object LogSnapshotProgress extends DeadLetterSuppression
     case object StillWaitingForAcknowledge extends DeadLetterSuppression
   }
 

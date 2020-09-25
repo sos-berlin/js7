@@ -3,9 +3,7 @@ package js7.core.common
 import akka.actor.ActorRef
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.Collections._
 import js7.base.utils.DuplicateKeyException
-import js7.core.event.journal.data.RecoveredJournalingActors
 import scala.collection.mutable
 
 /**
@@ -82,9 +80,6 @@ class ActorRegister[K, V](valueToActorRef: V => ActorRef)  {
     _actorToKey isDefinedAt actorRef
 
   override def toString = s"ActorRegister(${keyToValue.size} items)"
-
-  final def recoveredJournalingActors: RecoveredJournalingActors =
-    RecoveredJournalingActors((keyToValue mapValuesStrict valueToActorRef).toMap)
 
   final def keys: Vector[K] = keyToValue.keys.toVector
 

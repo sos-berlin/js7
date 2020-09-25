@@ -61,7 +61,7 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
       body(actorSystem, actor)
       sleep(100.ms)  // Wait to let Terminated message of aggregate actors arrive at JournalActor (???)
       (actor ? TestActor.Input.Terminate) await 99.s
-      assert(whenJournalStopped.future.await(99.s) == JournalActor.Stopped(keyedEventJournalingActorCount = 0))  // No memory leak
+      assert(whenJournalStopped.future.await(99.s) == JournalActor.Stopped)  // No memory leak
     }
     finally Akkas.terminateAndWait(actorSystem, 99.s)
   }

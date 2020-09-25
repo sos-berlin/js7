@@ -3,7 +3,6 @@ package js7.core.event.journal
 import js7.base.generic.Accepted
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax._
-import js7.core.event.journal.KeyedJournalingActor._
 import js7.data.event.{Event, JournaledState, KeyedEvent, Stamped}
 import monix.eval.Task
 import scala.concurrent.Future
@@ -17,7 +16,6 @@ extends JournalingActor[S, E]
 {
   protected def key: E#Key
   protected def snapshot: Option[Any]
-  protected def finishRecovery() = {}
 
   protected final def snapshots: Future[Iterable[Any]] =
     Future.successful(snapshot.toList)
@@ -41,27 +39,5 @@ extends JournalingActor[S, E]
       (stampedEvents, journaledState) => callback(stampedEvents.map(_.value.event.asInstanceOf[EE]), journaledState)
     }
 
-  override def journaling = super.journaling orElse {
-    case Input.FinishRecovery =>
-      callFinishRecovery()
-      sender() ! KeyedJournalingActor.Output.RecoveryFinished
-  }
-
-  private def callFinishRecovery(): Unit = {
-    finishRecovery()
-    val snapshot = this.snapshot
-    if (snapshot == null) sys.error(s"Actor (${getClass.getSimpleName}) for '$key': snapshot must not be null")
-  }
-
   override def toString = s"${getClass.simpleScalaName}($key)"
-}
-
-object KeyedJournalingActor {
-  object Input {
-    final case object FinishRecovery
-  }
-
-  object Output {
-    private[journal] case object RecoveryFinished
-  }
 }
