@@ -9,7 +9,6 @@ import js7.data.agent.AgentRefPath
 import js7.data.order.{Order, OrderId}
 import js7.proxy.javaapi.data.common.VavrConverters._
 import js7.proxy.javaapi.data.common.{JJsonable, JavaWrapper}
-import js7.proxy.javaapi.data.order.JOrder.{Forked, State, StateType}
 import js7.proxy.javaapi.data.workflow.JWorkflowId
 import js7.proxy.javaapi.data.workflow.position.JWorkflowPosition
 import scala.jdk.CollectionConverters._
@@ -20,6 +19,8 @@ import scala.reflect.ClassTag
 final case class JOrder(asScala: Order[Order.State])
 extends JJsonable[JOrder]
 {
+  import JOrder._
+
   protected type AsScala = Order[Order.State]
 
   protected def companion = JOrder
@@ -47,6 +48,8 @@ extends JJsonable[JOrder]
       .flatMap((o: Order[Order.State]) =>
         o.state match {
           case forked: Order.Forked => Right(Forked(forked).asInstanceOf[S])
+          case Order.Finished => Right(Finished.asInstanceOf[S])
+          case Order.Removed => Right(Removed.asInstanceOf[S])
           case o => Left(Problem(s"Scala Order.${o.getClass.simpleScalaName} is not available for Java"))
         })
       .toVavr
@@ -61,6 +64,10 @@ object JOrder extends JJsonable.Companion[JOrder]
   val jsonEncoder = Order.jsonEncoder
   val jsonDecoder = Order.jsonDecoder
 
+  val forked = new StateType(classOf[Forked], classOf[Order.Forked])
+  val finished = new StateType(Finished.getClass, Order.Finished.getClass)
+  val removed = new StateType(Removed.getClass, Order.Removed.getClass)
+
   sealed trait State extends JavaWrapper
 
   sealed class StateType[S <: State](clas: Class[S], private[JOrder] val scalaClass: Class[_ <: Order.State])
@@ -71,5 +78,14 @@ object JOrder extends JJsonable.Companion[JOrder]
     def childOrderIds: java.util.List[OrderId] =
       asScala.children.map(_.orderId).asJava
   }
-  val forked = new StateType(classOf[Forked], classOf[Order.Forked])
+
+  case object Finished extends State {
+    protected type AsScala = Order.Finished
+    val asScala = Order.Finished
+  }
+
+  case object Removed extends State {
+    protected type AsScala = Order.Removed
+    val asScala = Order.Removed
+  }
 }

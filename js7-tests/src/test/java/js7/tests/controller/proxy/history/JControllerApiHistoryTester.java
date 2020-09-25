@@ -20,6 +20,8 @@ import js7.proxy.javaapi.JControllerApi;
 import js7.proxy.javaapi.data.controller.JControllerState;
 import js7.proxy.javaapi.data.controller.JEventAndControllerState;
 import js7.proxy.javaapi.data.order.JFreshOrder;
+import js7.proxy.javaapi.data.order.JOrder;
+import js7.proxy.javaapi.data.order.JOrderEvent;
 import js7.proxy.javaapi.data.problem.JProblem;
 import js7.proxy.javaapi.data.workflow.JWorkflowId;
 import js7.proxy.javaapi.eventbus.JStandardEventBus;
@@ -29,6 +31,7 @@ import reactor.core.publisher.Mono;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static js7.proxy.javaapi.data.common.VavrUtils.await;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 final class JControllerApiHistoryTester
@@ -72,6 +75,9 @@ final class JControllerApiHistoryTester
                     ImmutableMap.of("KEY", "VALUE"));
                 await(api.addOrder(freshOrder));
                 state = whenFirstFluxTerminated.get(99, SECONDS).get();
+                assertThat(
+                    state.idToOrder(freshOrder.id()).get().checkedState(JOrder.finished()).isRight(),
+                    equalTo(true));
             } finally {
                 whenFirstFluxTerminated.cancel(false);
             }
@@ -120,15 +126,17 @@ final class JControllerApiHistoryTester
                 api.eventFlux(proxyEventBus, OptionalLong.of(tornEventId))
                     .doOnNext(eventAndState -> logger.debug("doOnNext: " + eventAndState.stampedEvent()))
                     .takeUntil(es ->
-                        !(es.stampedEvent().value().event() instanceof OrderEvent.OrderFinished$ &&
-                            es.stampedEvent().value().key().equals(orderId)))
+                        es.stampedEvent().value().key().equals(orderId) &&
+                        es.stampedEvent().value().event() instanceof OrderEvent.OrderFinished$)
                     .last()
                     .toFuture();
 
             JFreshOrder freshOrder = JFreshOrder.of(orderId, workflowPath, Optional.empty(),
                 ImmutableMap.of("KEY", "VALUE"));
             await(api.addOrder(freshOrder));
-            whenFirstFluxTerminated.get(99, SECONDS);
+            Event lastEvent = whenFirstFluxTerminated.get(99, SECONDS).stampedEvent().value().event();
+            assertThat(
+                JOrderEvent.of((OrderEvent)lastEvent),  instanceOf(JOrderEvent.JOrderFinished.class));
         }
     }
 }
