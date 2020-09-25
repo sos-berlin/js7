@@ -199,8 +199,9 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
     runControllerAndBackup() { (primary, _, _, _) =>
       autoClosing(new JProxyContext) { context =>
         val api = context.newControllerApi(admissions.map(JAdmission.apply).asJava, JHttpsConfig.empty)
-        new JControllerApiHistoryTester(api, TestWorkflow.path, primary.agents.map(_.localUri).asJava)
-          .test()
+        val javaTester = new JControllerApiHistoryTester(api, TestWorkflow.path, primary.agents.map(_.localUri).asJava)
+        javaTester.test()
+        javaTester.testTorn()
       }
     }
   }

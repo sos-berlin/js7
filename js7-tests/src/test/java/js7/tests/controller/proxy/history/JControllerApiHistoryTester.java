@@ -5,9 +5,14 @@ import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import js7.base.problem.ProblemCode;
+import js7.base.problem.ProblemException;
 import js7.base.web.Uri;
+import js7.data.event.Event;
 import js7.data.event.EventId;
 import js7.data.item.VersionId;
+import js7.data.order.OrderEvent;
 import js7.data.order.OrderId;
 import js7.data.workflow.WorkflowPath;
 import js7.proxy.data.ProxyEvent;
@@ -15,10 +20,12 @@ import js7.proxy.javaapi.JControllerApi;
 import js7.proxy.javaapi.data.controller.JControllerState;
 import js7.proxy.javaapi.data.controller.JEventAndControllerState;
 import js7.proxy.javaapi.data.order.JFreshOrder;
+import js7.proxy.javaapi.data.problem.JProblem;
 import js7.proxy.javaapi.data.workflow.JWorkflowId;
 import js7.proxy.javaapi.eventbus.JStandardEventBus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Mono;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static js7.proxy.javaapi.data.common.VavrUtils.await;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -68,7 +75,13 @@ final class JControllerApiHistoryTester
             } finally {
                 whenFirstFluxTerminated.cancel(false);
             }
-            // Throws CancellationException due to cancel(): whenFirstFluxTerminated.get(99, SECONDS);
+            // May throw CancellationException or some other exception due to cancel():
+            whenFirstFluxTerminated
+                .exceptionally(t -> {
+                    logger.debug("Event stream terminated with error after cancel: " + t);
+                    return Optional.empty();
+                })
+                .get(99, SECONDS);
             assertThat(history.idToOrderEntry(), equalTo(InMemoryHistory.expectedIdToOrderEntry(agentUris)));
 
             // A second call with same EventId returns equal JEventAndControllerState
@@ -81,6 +94,41 @@ final class JControllerApiHistoryTester
                 .get(99, SECONDS)
                 .get(0);
             assertThat(second, equalTo(state));
+        }
+    }
+
+    void testTorn() throws Exception {
+        await(api.takeSnapshot());
+        await(api.releaseEvents(await(api.journalInfo()).lastEventId()));
+        // ReleaseEvents löscht Journaldateien sofort wegen wegen js7.journal.release-events-delay = 0s in diesem Test
+        final OrderId orderId = OrderId.of("ORDER-TORN");
+
+        try (JStandardEventBus<ProxyEvent> proxyEventBus = new JStandardEventBus<>(ProxyEvent.class)) {
+            try {
+                api.eventFlux(proxyEventBus, OptionalLong.of(EventId.BeforeFirst()))
+                    .then(Mono.<JProblem>error(new RuntimeException("Unexpected end of event steam")))
+                    .toFuture()
+                    .get(99, SECONDS);
+            } catch(ExecutionException e) {
+                if (!(e.getCause() instanceof ProblemException) ||
+                    !ProblemCode.of("SnapshotForUnknownEventId").equals(((ProblemException)e.getCause()).problem().codeOrNull()))
+                    throw e;
+            }
+            long tornEventId = await(api.journalInfo()).tornEventId();
+
+            CompletableFuture<JEventAndControllerState<Event>> whenFirstFluxTerminated =
+                api.eventFlux(proxyEventBus, OptionalLong.of(tornEventId))
+                    .doOnNext(eventAndState -> logger.debug("doOnNext: " + eventAndState.stampedEvent()))
+                    .takeUntil(es ->
+                        !(es.stampedEvent().value().event() instanceof OrderEvent.OrderFinished$ &&
+                            es.stampedEvent().value().key().equals(orderId)))
+                    .last()
+                    .toFuture();
+
+            JFreshOrder freshOrder = JFreshOrder.of(orderId, workflowPath, Optional.empty(),
+                ImmutableMap.of("KEY", "VALUE"));
+            await(api.addOrder(freshOrder));
+            whenFirstFluxTerminated.get(99, SECONDS);
         }
     }
 }
