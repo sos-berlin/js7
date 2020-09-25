@@ -9,8 +9,8 @@ import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.controller.client.HttpControllerApi
 import js7.controller.data.ControllerCommand
-import js7.controller.data.ControllerCommand.{AddOrdersResponse, CancelOrders, ReleaseEvents, RemoveOrdersWhenTerminated, ResumeOrders, SuspendOrders}
-import js7.data.event.{Event, EventId}
+import js7.controller.data.ControllerCommand.{AddOrdersResponse, CancelOrders, ReleaseEvents, RemoveOrdersWhenTerminated, ResumeOrders, SuspendOrders, TakeSnapshot}
+import js7.data.event.{Event, EventId, JournalInfo}
 import js7.data.item.VersionId
 import js7.data.order.OrderId
 import js7.proxy.ControllerApi
@@ -154,6 +154,13 @@ final class JControllerApi private[javaapi](
 
   private def execute(command: ControllerCommand): CompletableFuture[VEither[Problem, Void]] =
     asScala.executeCommand(command)
+      .mapt(_ => Void)
+      .map(_.toVoidVavr)
+      .runToFuture
+      .asJava
+
+  def takeSnapshot(): CompletableFuture[VEither[Problem, Void]] =
+    asScala.executeCommand(TakeSnapshot)
       .mapt(_ => Void)
       .map(_.toVoidVavr)
       .runToFuture
