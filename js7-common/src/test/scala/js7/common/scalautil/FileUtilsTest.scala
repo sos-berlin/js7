@@ -66,7 +66,15 @@ final class FileUtilsTest extends AnyFreeSpec with BeforeAndAfterAll
       path.contentBytes shouldEqual Vector[Byte](1, 2)
     }
 
+    "byteArray" in {
+      path := Array[Byte](1, 2)
+      path.byteArray shouldEqual ByteArray(1, 2)
+      path := Array[Byte](7, 8)
+      path.byteArray shouldEqual ByteArray(7, 8)
+    }
+
     "readAs" in {
+      path := Array[Byte](1, 2)
       path.readAs[ByteArray] shouldEqual ByteArray(1, 2)
       path := Array[Byte](7, 8)
       path.readAs[ByteArray] shouldEqual ByteArray(7, 8)

@@ -89,6 +89,9 @@ object FileUtils
       def byteString: ByteString =
         ByteString(contentBytes)
 
+      def byteArray: ByteArray =
+        readAs[ByteArray]
+
       def readAs[ByteSeq](implicit ByteSeq: ByteSequence[ByteSeq]): ByteSeq =
         ByteSeq.unsafeWrap(contentBytes)
 
