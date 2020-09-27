@@ -5,6 +5,7 @@ import scala.annotation.tailrec
 
 object IOUtils
 {
+  // Java 9: replace by in.transferTo(out)
   def copyStream(in: InputStream, out: OutputStream): Unit = {
     val buffer = new Array[Byte](8192)
 
