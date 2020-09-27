@@ -3,6 +3,7 @@ package js7.base.data
 import io.circe.{Decoder, Json}
 import java.io.OutputStream
 import java.nio.charset.StandardCharsets.UTF_8
+import java.util.Base64
 import java.util.Objects.requireNonNull
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Checked
@@ -79,6 +80,10 @@ object ByteArray extends ByteSequence[ByteArray]
   implicit val byteSequence: ByteSequence[ByteArray] = ByteArray
 
   val empty = new ByteArray(Array.empty)
+
+  // Hide IntelliJ red underlines here
+  override def apply(string: String): ByteArray =
+    super.apply(string)
 
   def eqv(a: ByteArray, b: ByteArray) =
     java.util.Arrays.equals(a.unsafeArray, b.unsafeArray)

@@ -71,7 +71,7 @@ trait TestAgentDirectoryProvider extends HasCloser
     directory / "trusted-silly-signature-key.txt" := signature.string
     configDirectory / "private" / "private.conf" ++=
       s"""|js7.configuration.trusted-signature-keys.Silly = $${js7.config-directory}"/private/trusted-silly-signature-keys"
-         |""".stripMargin
+          |""".stripMargin
   }
 }
 
