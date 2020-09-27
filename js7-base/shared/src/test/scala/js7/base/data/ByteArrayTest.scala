@@ -29,17 +29,12 @@ final class ByteArrayTest extends ByteSequenceTester[ByteArray]
     assert(a.toByteArray eq a)
   }
 
-  "toString" in {
-    assert(ByteArray.empty.toString == "ByteArray.empty")
-    assert(ByteArray("ABC").toString == "ByteArray(length=3 »ABC« 414243)")
-    assert(ByteArray("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ").toString ==
-      "ByteArray(length=52 »abcdefgh ijklmnop qrstuvwx yzABCDEF« 61626364 65666768 696a6b6c 6d6e6f70 71727374 75767778 797a4142 43444546)")
-    assert(ByteArray("å").toString == "ByteArray(length=2 »��« c3a5)")
+  "toMimeBase64" in {
+    assert(ByteArray(ByteSequenceTester.mimeByte64Bytes).toMimeBase64 == ByteSequenceTester.mimeBase64string)
   }
 
-  "toStringWithHex" in {
-    assert(ByteArray("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ").toStringWithHex ==
-      "ByteArray(length=52 »abcdefgh ijklmnop qrstuvwx yzABCDEF GHIJKLMN OPQRSTUV WXYZ« " +
-        "61626364 65666768 696a6b6c 6d6e6f70 71727374 75767778 797a4142 43444546 4748494a 4b4c4d4e 4f505152 53545556 5758595a)")
+  "toString" in {
+    assert(ByteArray.empty.toString == "ByteArray.empty")
+    // For more tests, see ByteSequenceTester "show"
   }
 }

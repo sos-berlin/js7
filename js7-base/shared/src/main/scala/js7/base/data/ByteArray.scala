@@ -7,7 +7,6 @@ import java.util.Base64
 import java.util.Objects.requireNonNull
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Checked
-import js7.base.utils.ScalaUtils.syntax._
 
 final class ByteArray private(val unsafeArray: Array[Byte])
 {
@@ -37,6 +36,9 @@ final class ByteArray private(val unsafeArray: Array[Byte])
 
   def utf8String = new String(unsafeArray, UTF_8)
 
+  def toMimeBase64: String =
+    Base64.getMimeEncoder.encodeToString(unsafeArray)
+
   def parseJson: Checked[Json] =
     parseJsonByteArray(unsafeArray).toChecked
 
@@ -55,30 +57,11 @@ final class ByteArray private(val unsafeArray: Array[Byte])
 
   override def hashCode = unsafeArray.hashCode
 
-  override def toString =
-    if (unsafeArray.isEmpty)
-      "ByteArray.empty"
-    else
-      s"ByteArray(length=$length ${slice(0, 32).toStringHexRaw(32)})"
-
-  def toStringWithHex =
-    if (unsafeArray.isEmpty)
-      "ByteArray.empty"
-    else
-      s"ByteArray(length=$length ${toStringHexRaw(length)})"
-
-  private def toStringHexRaw(n: Int) =
-    unsafeArray.nonEmpty ??
-      ("»" +
-        unsafeArray.iterator.take(n).grouped(8).map(_.map(_.toChar).map(c => if (c >= ' ' && c < 0x7f) c else '�').mkString).mkString(" ") +
-        "« " +
-        unsafeArray.iterator.take(n).grouped(4).map(_.map(o => f"$o%02x").mkString).mkString(" "))
+  override def toString = ByteArray.show(this)
 }
 
 object ByteArray extends ByteSequence[ByteArray]
 {
-  implicit val byteSequence: ByteSequence[ByteArray] = ByteArray
-
   val empty = new ByteArray(Array.empty)
 
   // Hide IntelliJ red underlines here
@@ -94,6 +77,9 @@ object ByteArray extends ByteSequence[ByteArray]
     else
       new ByteArray(bytes.clone())
 
+  def fromByteArray(byteArray: ByteArray) =
+    byteArray
+
   override def toByteArray(a: ByteArray) =
     a
 
@@ -108,6 +94,9 @@ object ByteArray extends ByteSequence[ByteArray]
 
   override def indexOf(byteArray: ByteArray, byte: Byte, from: Int) =
     byteArray.unsafeArray.indexOf(byte, from)
+
+  def iterator(byteArray: ByteArray) =
+    byteArray.unsafeArray.iterator
 
   def toArray(byteArray: ByteArray) =
     java.util.Arrays.copyOf(byteArray.unsafeArray, byteArray.unsafeArray.length)

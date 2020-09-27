@@ -4,11 +4,11 @@ import cats.syntax.monoid._
 import java.io.ByteArrayOutputStream
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.data.ByteSequence.ops._
+import js7.base.data.ByteSequenceTester._
 import js7.base.problem.Problem
 import js7.base.utils.IOUtils
 import js7.base.utils.SyncResource.syntax.RichResource
 import org.scalatest.freespec.AnyFreeSpec
-import scala.collection.immutable.ArraySeq
 import scala.util.Random
 
 abstract class ByteSequenceTester[ByteSeq](implicit ByteSeq: ByteSequence[ByteSeq])
@@ -16,6 +16,14 @@ extends AnyFreeSpec
 {
   "empty" in {
     assert(ByteSeq.empty.length == 0)
+  }
+
+  "apply" in {
+    val byteSeq = ByteSeq("ab")
+    assert(byteSeq(0) == 'a'.toByte)
+    assert(byteSeq(1) == 'b'.toByte)
+    intercept[RuntimeException](byteSeq(-1))
+    intercept[RuntimeException](byteSeq(2))
   }
 
   "fromString" in {
@@ -33,6 +41,10 @@ extends AnyFreeSpec
   "fromSeq" in {
     val a = Seq[Byte](1, 2)
     assert(ByteSeq.fromSeq(a).unsafeArray sameElements a)
+  }
+
+  "fromMimeBase64" in {
+    assert(ByteArray.fromMimeBase64(mimeBase64string) == Right(ByteArray(mimeByte64Bytes)))
   }
 
   "equality" in {
@@ -76,12 +88,18 @@ extends AnyFreeSpec
     assert(ByteSeq("å").length == 2)
   }
 
-  "apply" in {
-    val byteSeq = ByteSeq("ab")
-    assert(byteSeq(0) == 'a'.toByte)
-    assert(byteSeq(1) == 'b'.toByte)
-    intercept[RuntimeException](byteSeq(-1))
-    intercept[RuntimeException](byteSeq(2))
+  "show" in {
+    assert(ByteSeq.empty.show == s"${ByteSeq.typeName}.empty")
+    assert(ByteSeq("abcdefghijklmnopqrstuvwxyzÄÖ\nABCDEFGHIJKLMNOPQRSTUVWXYZ").show ==
+      ByteSeq.typeName +
+        "(length=57 »abcdefgh ijklmnop qrstuvwx yz����␊A…« " +
+        "61626364 65666768 696a6b6c 6d6e6f70 71727374 75767778 797ac384 c3960a41...)")
+  }
+
+  "toStringAndHexRaw" in {
+    assert(ByteSeq("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ").toStringAndHexRaw() ==
+      s"»abcdefgh ijklmnop qrstuvwx yzABCDEF GHIJKLMN OPQRSTUV WXYZ« " +
+        "61626364 65666768 696a6b6c 6d6e6f70 71727374 75767778 797a4142 43444546 4748494a 4b4c4d4e 4f505152 53545556 5758595a")
   }
 
   "headOption" in {
@@ -185,4 +203,15 @@ extends AnyFreeSpec
     val noJsonByteSeq = ByteSeq("""XXX""")
     assert(noJsonByteSeq.parseJsonAs[A] == Left(Problem("JSON ParsingFailure: expected json value got 'XXX' (line 1, column 1)")))
   }
+}
+
+object ByteSequenceTester
+{
+  val mimeByte64Bytes: Array[Byte] = (0 to 0xff).map(_.toByte).toArray
+  val mimeBase64string =
+   "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4\r\n" +
+   "OTo7PD0+P0BBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWltcXV5fYGFiY2RlZmdoaWprbG1ub3Bx\r\n" +
+   "cnN0dXZ3eHl6e3x9fn+AgYKDhIWGh4iJiouMjY6PkJGSk5SVlpeYmZqbnJ2en6ChoqOkpaanqKmq\r\n" +
+   "q6ytrq+wsbKztLW2t7i5uru8vb6/wMHCw8TFxsfIycrLzM3Oz9DR0tPU1dbX2Nna29zd3t/g4eLj\r\n" +
+   "5OXm5+jp6uvs7e7v8PHy8/T19vf4+fr7/P3+/w=="
 }
