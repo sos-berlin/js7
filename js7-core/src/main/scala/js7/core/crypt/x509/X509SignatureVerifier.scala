@@ -1,39 +1,38 @@
 package js7.core.crypt.x509
 
 import cats.instances.vector._
+import cats.syntax.flatMap._
 import cats.syntax.traverse._
+import java.security.cert.{CertificateFactory, X509Certificate}
 import java.security.spec.X509EncodedKeySpec
 import java.security.{KeyFactory, PublicKey, Signature}
-import js7.base.Problems.TamperedWithSignedMessageProblem
+import js7.base.Problems.{MessageSignedByUnknownProblem, TamperedWithSignedMessageProblem}
+import js7.base.auth.DistinguishedName
 import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId, X509Signature}
 import js7.base.data.ByteArray
-import js7.base.problem.Checked
-import js7.core.crypt.x509.X509SignatureVerifier.PublicKeyPem
+import js7.base.data.ByteSequence.ops._
+import js7.base.problem.{Checked, Problem}
+import js7.core.crypt.x509.X509SignatureVerifier.{PublicKeyPem, PublicKeyProvider}
 
-final class X509SignatureVerifier(x509PublicKeys: Seq[PublicKey], val publicKeyOrigin: String)
+final class X509SignatureVerifier(publicKeyProviders: Seq[PublicKeyProvider], val publicKeyOrigin: String)
 extends SignatureVerifier
 {
   protected type MySignature = X509Signature
 
   def companion = X509SignatureVerifier
 
-  def publicKeys = for (o <- x509PublicKeys) yield
+  def publicKeys = for (o <- publicKeyProviders.map(_.publicKey)) yield
     ByteArray(PublicKeyPem.toPem(ByteArray.unsafeWrap(o.getEncoded)))
 
   def publicKeysToString =
-    s"X.509 origin=$publicKeyOrigin" + x509PublicKeys.mkString(", ")
+    s"X.509 origin=$publicKeyOrigin" + publicKeyProviders.map(_.signerId.string).mkString(", ")
 
   def verify(document: ByteArray, signature: X509Signature): Checked[Seq[SignerId]] =
     Checked.catchNonFatal {
-      x509PublicKeys
-        .find { x509PublicKey =>
-          tryVerify(document, signature, x509PublicKey)
-        } match {
-          case None =>
-            Left(TamperedWithSignedMessageProblem)
-          case Some(x509PublicKey) =>
-            Right(SignerId(x509PublicKey.toString.takeWhile(_ != '\n')) :: Nil)  // How to extract a SignerId from x509PublicKeys ???
-        }
+      publicKeyProviders
+        .find(o => tryVerify(document, signature, o.publicKey))
+        .toRight(MessageSignedByUnknownProblem)
+        .map(_.signerId :: Nil)
     }.flatten
 
   private def tryVerify(document: ByteArray, signature: X509Signature, publicKey: PublicKey): Boolean = {
@@ -54,16 +53,56 @@ object X509SignatureVerifier extends SignatureVerifier.Companion
   val recommendedKeyDirectoryName = "trusted-x509-keys"
 
   private val PublicKeyPem = Pem("PUBLIC KEY")
+  private val CertificatePem = Pem("CERTIFICATE")
 
   def checked(publicKeys: Seq[ByteArray], origin: String): Checked[X509SignatureVerifier] =
     publicKeys.toVector.traverse(publicKey =>
       Checked.catchNonFatal {
-        for (publicKeyBytes <- PublicKeyPem.fromPem(publicKey.utf8String)) yield
-          KeyFactory.getInstance("RSA")
-            .generatePublic(new X509EncodedKeySpec(publicKeyBytes.unsafeArray))
+        val pemString = publicKey.utf8String
+        for {
+          pemType <- Pem.pemTypeOf(pemString)
+          keyAndCert <- pemType match {
+            case PublicKeyPem.typeName =>
+              PublicKeyPem.fromPem(pemString)
+                .map(publicKeyBytes =>
+                  KeyFactory.getInstance("RSA")
+                    .generatePublic(new X509EncodedKeySpec(publicKeyBytes.unsafeArray)))
+                .map(PublicKeyOnly)
+
+            case CertificatePem.typeName =>
+              CertificatePem.fromPem(pemString).map(certBytes =>
+                CertificateFactory.getInstance("X.509")
+                  .generateCertificate(certBytes.toInputStream)
+                  .asInstanceOf[X509Certificate])
+                .map(Certificate)
+
+            case o => Left(
+              Problem.pure(s"For X.509 signature verification, a public key or a certificate is required (not: $o)"))
+          }
+        } yield keyAndCert
       }.flatten
-    ).map(new X509SignatureVerifier(_, origin))
+    ).map(keyAndCerts => new X509SignatureVerifier(keyAndCerts, origin))
 
   def genericSignatureToSignature(signature: GenericSignature): Checked[X509Signature] =
     X509Signature.fromGenericSignature(signature)
+
+  private[x509] sealed trait PublicKeyProvider {
+    def publicKey: PublicKey
+    def signerId: SignerId
+    def toByteArray: ByteArray
+  }
+
+  private[x509] final case class PublicKeyOnly(publicKey: PublicKey) extends PublicKeyProvider {
+    lazy val signerId = SignerId("X.509 " + publicKey.toString.takeWhile(_ != '\n'))
+
+    def toByteArray = ByteArray(PublicKeyPem.toPem(ByteArray.unsafeWrap(publicKey.getEncoded)))
+  }
+
+  private[x509] final case class Certificate(x509Certificate: X509Certificate)
+  extends PublicKeyProvider {
+    val publicKey = x509Certificate.getPublicKey
+    lazy val signerId = SignerId(new DistinguishedName(x509Certificate.getSubjectX500Principal).string)
+
+    def toByteArray = ByteArray(CertificatePem.toPem(ByteArray.unsafeWrap(x509Certificate.getEncoded)))
+  }
 }

@@ -1,6 +1,7 @@
 package js7.tests.controller.commands
 
 import java.nio.file.Files.{copy, createTempDirectory}
+import js7.base.Problems.MessageSignedByUnknownProblem
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.circeutils.CirceUtils._
 import js7.base.crypt.{GenericSignature, SignedString}
@@ -36,12 +37,12 @@ final class UpdateRepoX509Test extends AnyFreeSpec with ControllerAgentForScalaT
   override protected def verifier = verifier_
   private lazy val workDir = createTempDirectory("UpdateRepoX509Test")
   private lazy val privateKeyFile = workDir / "test.key"
-  private lazy val publicKeyFile = workDir / "test.pem"
+  private lazy val certificateFile = workDir / "test.pem"
 
   override def beforeAll() = {
-    runProcess(s"openssl genrsa -out '$privateKeyFile' 1024")
-    runProcess(s"openssl rsa -in '$privateKeyFile' -pubout -outform pem -out '$publicKeyFile'")
-    copy(publicKeyFile, directoryProvider.controller.configDir / "private" / "trusted-x509-keys" / "test.pem")
+    runProcess(s"openssl req -x509 -sha512 -newkey rsa:1024 -days 2 -subj '/CN=TEST' -nodes" +
+      s" -keyout '$privateKeyFile' -out '$certificateFile'")
+    copy(certificateFile, directoryProvider.controller.configDir / "private" / "trusted-x509-keys" / "test.pem")
 
     (directoryProvider.controller.configDir / "private" / "private.conf") ++=
      """js7.auth.users {
@@ -71,18 +72,32 @@ final class UpdateRepoX509Test extends AnyFreeSpec with ControllerAgentForScalaT
       val itemFile = dir / "workflow.json"
       val signatureFile = dir / "workflow.json.signature"
       val signatureBase64File = dir / "workflow.json.signature.base64"
+      val publicKeyFile = dir / "test.pem"
       val v2 = VersionId("2")
 
       itemFile := (workflow.withVersion(v2): InventoryItem)
 
       runProcess(s"openssl dgst -sign '$privateKeyFile' -sha512 -out '$signatureFile' '$itemFile'")
       runProcess(s"openssl base64 -in '$signatureFile' -out '$signatureBase64File'")
+
+      // Verifiy with openssl
+      runProcess(s"sh -c 'openssl x509 -pubkey -noout -in \'$certificateFile\' >\'$publicKeyFile\''")
       runProcess(s"openssl dgst -verify '$publicKeyFile' -sha512 -signature '$signatureFile' '$itemFile'")
 
       val signedString = SignedString(
         itemFile.contentString,
         GenericSignature("X509", signatureBase64File.contentString))
       executeCommand(UpdateRepo(v2, signedString :: Nil)).orThrow
+
+      val v3 = VersionId("3")
+      itemFile := (workflow.withVersion(v3): InventoryItem)
+      runProcess(s"openssl dgst -sign '$privateKeyFile' -sha512 -out '$signatureFile' '$itemFile'")
+      runProcess(s"openssl base64 -in '$signatureFile' -out '$signatureBase64File'")
+      val signedStringV3 = SignedString(
+        itemFile.contentString + "-TAMPERED",
+        GenericSignature("X509", signatureBase64File.contentString))
+      // Not TamperedWithSignedMessageProblem, because signature does not contains some SignerId
+      assert(executeCommand(UpdateRepo(v3, signedStringV3 :: Nil)) == Left(MessageSignedByUnknownProblem))
     }
   }
 

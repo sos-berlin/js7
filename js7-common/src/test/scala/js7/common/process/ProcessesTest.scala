@@ -76,6 +76,10 @@ final class ProcessesTest extends AnyFreeSpec {
     }
     assert(r == expected)
   }
+
+  //"runProcess" in {
+  //  assert(runProcess("echo HELLO").trim == "HELLO")
+  //}
 }
 
 private object ProcessesTest {

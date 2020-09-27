@@ -49,7 +49,9 @@ object X509Signer extends DocumentSigner.Companion
   def forTest(): (X509Signer, X509SignatureVerifier) = {
     val keyPair = X509KeyGenerator.generateKeyPair(keySize = 1024/*fast for test*/)
     new X509Signer(keyPair.getPrivate) ->
-      new X509SignatureVerifier(keyPair.getPublic :: Nil, publicKeyOrigin = "forTest")
+      new X509SignatureVerifier(
+        X509SignatureVerifier.PublicKeyOnly(keyPair.getPublic) :: Nil,
+        publicKeyOrigin = "forTest")
   }
 }
 

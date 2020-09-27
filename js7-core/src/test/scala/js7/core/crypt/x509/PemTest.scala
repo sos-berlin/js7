@@ -1,9 +1,10 @@
 package js7.core.crypt.x509
 
 import js7.base.data.ByteArray
+import js7.base.problem.Problem
 import org.scalatest.freespec.AnyFreeSpec
 
-class PemTest extends AnyFreeSpec
+final class PemTest extends AnyFreeSpec
 {
   private val pem = Pem("TEST")
   private val byteArray = ByteArray("ЙС7 · and more and more text to get two BASE64 lines ...")
@@ -20,5 +21,11 @@ class PemTest extends AnyFreeSpec
 
   "toPem" in {
     assert(pem.toPem(byteArray) == pemString)
+  }
+
+  "pemTypeOf" in {
+    assert(Pem.pemTypeOf("") == Left(Problem.pure("PEM format expected")))
+    assert(Pem.pemTypeOf("-----BEGIN MY TYPE") == Left(Problem.pure("PEM format expected")))
+    assert(Pem.pemTypeOf("-----BEGIN MY TYPE-----\nbla") == Right("MY TYPE"))
   }
 }

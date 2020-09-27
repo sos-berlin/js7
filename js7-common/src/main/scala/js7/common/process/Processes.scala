@@ -1,15 +1,20 @@
 package js7.common.process
 
-import java.io.IOException
+import java.io.{ByteArrayOutputStream, IOException}
 import java.nio.file.Path
 import java.nio.file.attribute.FileAttribute
+import js7.base.data.ByteArray
 import js7.base.generic.GenericLong
 import js7.base.time.ScalaTime._
+import js7.base.utils.IOUtils.copyStream
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.process.OperatingSystemSpecific.OS
 import js7.common.process.Processes.RobustlyStartProcess.TextFileBusyIOException
-import js7.common.scalautil.Logger
+import js7.common.scalautil.IOExecutor.ioFuture
+import js7.common.scalautil.{IOExecutor, Logger}
+import js7.data.job.ReturnCode
 import js7.data.system.StdoutOrStderr
+import scala.concurrent.Await
 import scala.concurrent.duration._
 
 object Processes
@@ -54,21 +59,47 @@ object Processes
     import scala.sys.process._
     val stdout = new StringBuilder
     val stderr = new StringBuilder
-    try commandLine.!!(new ProcessLogger {
-      def out(s: => String) = stdout.append(s)
-      def err(s: => String) = stderr.append(s)
-      def buffer[T](f: => T) = f
-    })
-    catch {
-      case e: Exception =>
-        throw new RuntimeException(
-          s"""Command failed: $e
-             |$commandLine
-             |$stderr
-             |$stdout""".stripMargin,
-          e)
-    }
+
+    val exitCode = commandLine.!(ProcessLogger(stdout.append(_), stderr.append(_)))
+    if (exitCode != 0)
+      throw new ProcessException(commandLine, ReturnCode(exitCode), ByteArray(stdout.toString), ByteArray(stderr.toString))
+    // Newlines are missing? stdout.toString
   }
+
+  private def runProcess(commandLine: String)(implicit iox: IOExecutor): ByteArray = {
+    // —— Does not interpret commandLine as expected ——
+    val out = new ByteArrayOutputStream
+    val err = new ByteArrayOutputStream
+
+    lazy val stdout = ByteArray.unsafeWrap(out.toByteArray)
+    lazy val stderr = ByteArray.unsafeWrap(err.toByteArray)
+
+    val processBuilder = new ProcessBuilder(commandLine)
+    val process = processBuilder.start()
+    process.getInputStream.close()
+    val stdoutClosed = ioFuture {
+      copyStream(process.getInputStream, out)
+    }
+    val stderrClosed = ioFuture {
+      copyStream(process.getErrorStream, err)
+    }
+    Await.result(stdoutClosed, Duration.Inf)
+    Await.result(stderrClosed, Duration.Inf)
+    val returnCode = process.waitFor()
+    if (returnCode != 0)
+      throw new ProcessException(commandLine, ReturnCode(returnCode), stdout, stderr)
+    stdout
+  }
+
+  final class ProcessException(commandLine: String, returnCode: ReturnCode, stdout: ByteArray, stderr: ByteArray) extends RuntimeException
+  {
+    override def getMessage =
+      s"""Command failed with exit code ${returnCode.number}
+         |$commandLine
+         |""".stripMargin +
+        Seq(stderr.utf8String, stdout.utf8String).mkString("\n")
+  }
+
 
   implicit final class RobustlyStartProcess(private val delegate: ProcessBuilder) extends AnyVal {
     /**
