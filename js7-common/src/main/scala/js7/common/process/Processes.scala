@@ -12,7 +12,8 @@ import js7.common.scalautil.Logger
 import js7.data.system.StdoutOrStderr
 import scala.concurrent.duration._
 
-object Processes {
+object Processes
+{
   private val logger = Logger(getClass)
 
   def processToString(process: Process): String = processToString(process, processToPidOption(process))
@@ -48,6 +49,26 @@ object Processes {
   def newLogFile(directory: Path, name: String, outerr: StdoutOrStderr): Path = OS.newLogFile(directory, name, outerr)
 
   def directShellCommandArguments(argument: String): Seq[String] = OS.directShellCommandArguments(argument)
+
+  def runProcess(commandLine: String): Unit = {
+    import scala.sys.process._
+    val stdout = new StringBuilder
+    val stderr = new StringBuilder
+    try commandLine.!!(new ProcessLogger {
+      def out(s: => String) = stdout.append(s)
+      def err(s: => String) = stderr.append(s)
+      def buffer[T](f: => T) = f
+    })
+    catch {
+      case e: Exception =>
+        throw new RuntimeException(
+          s"""Command failed: $e
+             |$commandLine
+             |$stderr
+             |$stdout""".stripMargin,
+          e)
+    }
+  }
 
   implicit final class RobustlyStartProcess(private val delegate: ProcessBuilder) extends AnyVal {
     /**
