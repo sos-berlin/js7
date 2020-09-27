@@ -1,18 +1,15 @@
 package js7.core.crypt.pgp
 
-import cats.effect.{Resource, SyncIO}
 import cats.instances.vector._
-import cats.syntax.foldable.catsSyntaxFoldOps
+import cats.syntax.foldable._
 import cats.syntax.show._
-import java.io.InputStream
 import java.util.Base64
-import js7.base.crypt.{MessageSigner, PgpSignature, SignerId}
+import js7.base.crypt.{DocumentSigner, PgpSignature, SignerId}
+import js7.base.data.ByteArray
+import js7.base.data.ByteSequence.ops._
 import js7.base.generic.SecretString
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
-import js7.base.utils.CatsUtils.bytesToInputStreamResource
-import js7.base.utils.SyncResource.syntax.RichResource
-import js7.common.scalautil.GuavaUtils.stringToInputStreamResource
 import js7.core.crypt.pgp.PgpCommons._
 import org.bouncycastle.bcpg.HashAlgorithmTags
 import org.bouncycastle.openpgp.operator.jcajce.{JcaPGPContentSignerBuilder, JcePBESecretKeyDecryptorBuilder}
@@ -24,7 +21,7 @@ import scala.util.Random
   * @author Joacim Zschimmer
   */
 final class PgpSigner private(pgpSecretKey: PGPSecretKey, password: SecretString)
-extends MessageSigner
+extends DocumentSigner
 {
   protected type MySignature = PgpSignature
 
@@ -41,24 +38,16 @@ extends MessageSigner
       .build(password.string.toArray))
   private val maybeUserId: Option[String] = pgpSecretKey.getPublicKey.getUserIDs.asScala.buffered.headOption  // Only the first UserID ?
 
-  def sign(message: String): PgpSignature = {
-    val signatureBytes = sign(stringToInputStreamResource(message))
+  def sign(message: ByteArray): PgpSignature = {
+    val signatureGenerator = newSignatureGenerator()
+    signatureGenerator.update(message.unsafeArray)
+    val signatureBytes = signatureGenerator.generate.getEncoded(/*forTransfer=*/true)
     PgpSignature(Base64.getMimeEncoder.encodeToString(signatureBytes))
   }
 
   /** The private key in armored ASCII. */
-  def privateKey: Seq[Byte] =
+  def privateKey: ByteArray =
     pgpSecretKey.toArmoredAsciiBytes
-
-  /** The public key in armored ASCII. */
-  def publicKey: Seq[Byte] =
-    pgpSecretKey.getPublicKey.toArmoredAsciiBytes
-
-  private def sign(message: Resource[SyncIO, InputStream]): Array[Byte] = {
-    val signatureGenerator = newSignatureGenerator()
-    readMessage(message, signatureGenerator.update(_, 0, _))
-    finish(signatureGenerator)
-  }
 
   private def newSignatureGenerator(): PGPSignatureGenerator = {
     val signatureGenerator = new PGPSignatureGenerator(
@@ -73,28 +62,19 @@ extends MessageSigner
     signatureGenerator
   }
 
-  private def finish(signatureGenerator: PGPSignatureGenerator): Array[Byte] =
-    signatureGenerator.generate.getEncoded(/*forTransfer=*/true)
-
-  def toVerifier =
-    PgpSignatureVerifier.checked(bytesToInputStreamResource(publicKey) :: Nil, origin = "PgpSigner")
-      .orThrow
-
-  def verifierCompanion = PgpSignatureVerifier
-
   override def toString = show"PgpSigner($pgpSecretKey)"
 }
 
-object PgpSigner extends MessageSigner.Companion
+object PgpSigner extends DocumentSigner.Companion
 {
   protected type MySignature = PgpSignature
   protected type MyMessageSigner = PgpSigner
 
   def typeName = PgpSignature.TypeName
 
-  def checked(privateKey: collection.Seq[Byte], password: SecretString) =
+  def checked(privateKey: ByteArray, password: SecretString) =
     Checked.catchNonFatal(
-      new PgpSigner(readSecretKey(bytesToInputStreamResource(privateKey)), password))
+      new PgpSigner(selectSecretKey(readSecretKeyRingCollection(privateKey)), password))
 
   private val OurHashAlgorithm = HashAlgorithmTags.SHA512
 
@@ -102,18 +82,17 @@ object PgpSigner extends MessageSigner.Companion
     Checked.catchNonFatal(
       new PgpSigner(pgpSecretKey, password))
 
-  def forTest = {
+  def forTest() = {
     val pgpPassword = SecretString(Vector.fill(10)('a' + Random.nextInt('z' - 'a' + 1)).mkString)
     val pgpSecretKey = PgpKeyGenerator.generateSecretKey(SignerId("TEST"), pgpPassword, keySize = 1024/*fast for test*/)
-    PgpSigner(pgpSecretKey, pgpPassword).orThrow
+    PgpSigner(pgpSecretKey, pgpPassword).orThrow ->
+      PgpSignatureVerifier.checked(pgpSecretKey.getPublicKey.toArmoredAsciiBytes :: Nil, origin = "PgpSigner").orThrow
   }
 
-  def readSecretKey(resource: Resource[SyncIO, InputStream]): PGPSecretKey =
-    selectSecretKey(readSecretKeyRingCollection(resource))
-
-  private def readSecretKeyRingCollection(resource: Resource[SyncIO, InputStream]): PGPSecretKeyRingCollection =
-    resource.useSync(in =>
-      new PGPSecretKeyRingCollection(PGPUtil.getDecoderStream(in), newFingerPrintCalculator))
+  private def readSecretKeyRingCollection(byteArray: ByteArray): PGPSecretKeyRingCollection =
+    new PGPSecretKeyRingCollection(
+      PGPUtil.getDecoderStream(byteArray.toInputStream),
+      newFingerPrintCalculator)
 
   private def selectSecretKey(keyRings: PGPSecretKeyRingCollection): PGPSecretKey = {
     val keys = keyRings
@@ -121,7 +100,8 @@ object PgpSigner extends MessageSigner.Companion
       .map(o => o.getSecretKey(o.getPublicKey/*the controller key*/.getFingerprint))
       .toVector
     if (keys.isEmpty) throw new NoSuchElementException("No controller key in secret key ring")
-    if (keys.sizeIs > 1) throw new IllegalArgumentException(s"More than one controller key in secret key ring: " + keys.mkString_("", ", ", ""))
+    if (keys.sizeIs > 1) throw new IllegalArgumentException(s"More than one controller key in secret key ring: " +
+      keys.mkString_("", ", ", ""))
     keys.head
   }
 }

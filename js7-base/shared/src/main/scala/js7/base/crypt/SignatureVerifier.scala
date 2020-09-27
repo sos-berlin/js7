@@ -1,46 +1,52 @@
 package js7.base.crypt
 
-import cats.effect.{Resource, SyncIO}
-import java.io.InputStream
+import js7.base.data.ByteArray
 import js7.base.problem.Checked
 
 /**
   * @author Joacim Zschimmer
   */
-trait SignatureVerifier
-{
+trait SignatureVerifier {
+  self =>
+
   protected type MySignature <: Signature
 
-  def companion: SignatureVerifier.Companion { type MySignature = SignatureVerifier.this.MySignature }
+  def companion: SignatureVerifier.Companion {
+    type MySignature = self.MySignature
+  }
 
-  def keys: Seq[Seq[Byte]]
+  def publicKeys: Seq[ByteArray]
 
-  def keyOrigin: String
+  def publicKeyOrigin: String
 
-  def trustedKeysToString: String
+  def publicKeysToString: String
 
-  protected def verify(message: String, signature: MySignature): Checked[Seq[SignerId]]
+  def verify(document: ByteArray, signature: MySignature): Checked[Seq[SignerId]]
 
   final def verify(signed: SignedString): Checked[Seq[SignerId]] =
-    verify(signed.string, signed.signature)
+    companion.genericSignatureToSignature(signed.signature)
+      .flatMap(signature => verify(ByteArray(signed.string), signature))
 
-  def verify(message: String, signature: GenericSignature): Checked[Seq[SignerId]] =
-    verify(message, companion.genericSignatureToSignature(signature))
+  final def verifyString(document: String, signature: MySignature): Checked[Seq[SignerId]] =
+    verify(ByteArray(document), signature)
 }
 
 object SignatureVerifier
 {
-  trait Companion
-  {
+  trait Companion {
+    self =>
+
     protected type MySignature <: Signature   //= MySignatureVerifier#MySignature
-    protected type MySignatureVerifier <: SignatureVerifier { type MySignature = Companion.this.MySignature }
+    protected type MySignatureVerifier <: SignatureVerifier { type MySignature = self.MySignature }
 
     def typeName: String
 
+    def filenameExtension: String
+
     def recommendedKeyDirectoryName: String
 
-    def checked(publicKeys: Seq[Resource[SyncIO, InputStream]], keyOrigin: String = "(unknown source)"): Checked[MySignatureVerifier]
+    def checked(publicKeys: Seq[ByteArray], origin: String = "(unknown source)"): Checked[MySignatureVerifier]
 
-    def genericSignatureToSignature(signature: GenericSignature): MySignature
+    def genericSignatureToSignature(signature: GenericSignature): Checked[MySignature]
   }
 }

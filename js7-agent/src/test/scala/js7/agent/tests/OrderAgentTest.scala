@@ -44,7 +44,7 @@ final class OrderAgentTest extends AnyFreeSpec
 {
   "AgentCommand AttachOrder" in {
     provideAgentDirectory { directory =>
-      directory / "config" / "private" / "trusted-pgp-keys" / "test.asc" := signer.publicKey
+      directory / "config" / "private" / "trusted-pgp-keys" / "test.asc" := verifier.publicKeys.head
       directory / "config" / "private" / "private.conf" ++=
         s"""|js7.configuration.trusted-signature-keys.PGP = $${js7.config-directory}"/private/trusted-pgp-keys"
            |""".stripMargin
@@ -150,7 +150,7 @@ private object OrderAgentTest
       |echo "result=TEST-RESULT-$SCHEDULER_PARAM_JOB_B" >>"$SCHEDULER_RETURN_VALUES"
       |""".stripMargin
 
-  private val signer = PgpSigner.forTest
+  private val (signer, verifier) = PgpSigner.forTest()
   private val itemSigner = new InventoryItemSigner(signer, Workflow.jsonEncoder)
   private val SignedSimpleWorkflow = itemSigner.sign(SimpleTestWorkflow)
 

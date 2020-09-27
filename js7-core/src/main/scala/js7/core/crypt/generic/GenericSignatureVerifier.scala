@@ -1,22 +1,21 @@
 package js7.core.crypt.generic
 
 import cats.Applicative
-import cats.effect.{Resource, SyncIO}
 import cats.instances.either._
 import cats.instances.vector._
 import cats.syntax.traverse._
 import com.typesafe.config.Config
-import java.io.InputStream
 import java.nio.file.Files.exists
 import java.nio.file.{Files, Paths}
 import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
+import js7.base.data.ByteArray
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Collections._
 import js7.base.utils.JavaCollections.syntax._
 import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax._
-import js7.common.scalautil.JavaSyncResources.fileAsResource
+import js7.common.scalautil.FileUtils.syntax.RichPath
 import js7.common.scalautil.Logger
 import scala.jdk.CollectionConverters._
 
@@ -30,17 +29,20 @@ extends SignatureVerifier
 
   def companion = GenericSignatureVerifier
 
-  def keys = throw new NotImplementedError("GenericSignatureVerifier#key")
+  def publicKeys = throw new NotImplementedError("GenericSignatureVerifier#key")
 
-  def keyOrigin = "(GenericSignatureVerifier)"
+  def publicKeyOrigin = "(GenericSignatureVerifier)"
 
-  override def verify(message: String, signature: GenericSignature): Checked[Seq[SignerId]] =
-    typeToVerifier(signature.typeName)
-      .flatMap(verifier => verifier.verify(message, signature))
+  override def verify(document: ByteArray, signature: GenericSignature): Checked[Seq[SignerId]] =
+    for {
+      verifier <- typeToVerifier(signature.typeName)
+      typedSignature <- verifier.companion.genericSignatureToSignature(signature)
+      signerIds <- verifier.verify(document, typedSignature)
+    } yield signerIds
 
   def isEmpty = typeToVerifier.isEmpty
 
-  override def trustedKeysToString = "GenericSignatureVerifier#trustedKeysToString"
+  override def publicKeysToString = "GenericSignatureVerifier#publicKeysToString"
 }
 
 object GenericSignatureVerifier extends SignatureVerifier.Companion
@@ -53,6 +55,8 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion
 
   def typeName = "(generic)"
 
+  def filenameExtension = throw new NotImplementedError
+
   def recommendedKeyDirectoryName = throw new NotImplementedError("GenericSignatureVerifier recommendedKeyDirectoryName")
 
   implicitly[Applicative[Checked]]
@@ -63,7 +67,7 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion
         typeName -> checkedCast[String](v.unwrapped, Problem.pure(s"String expected as value of configuration key $configPath.$typeName"))
           .map(Paths.get(_))
           .flatMap(directory =>
-            SignatureVerifiers.typeToSignatureVerifierCompanion(typeName).flatMap { companion =>
+            SignatureVerifiers.typeToSignatureVerifierCompanion(typeName).flatMap(companion =>
               if (!exists(directory))
                 Left(Problem.pure(s"Signature key directory '$directory' for '$typeName' does not exists"))
               else {
@@ -72,22 +76,21 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion
                 if (files.isEmpty) {
                   logger.warn(s"No files for ${companion.getClass.simpleScalaName} in directory '$directory'")
                 }
-                companion.checked(files map fileAsResource, keyOrigin = directory.toString)
-              }
-            })
+                companion.checked(files.map(_.byteArray), origin = directory.toString)
+              }))
       }
-      .toVector.map {
+      .toVector
+      .traverse {
         case (k, Right(v)) => Right(k -> v)
         case (_, Left(p)) => Left(p): Checked[(String, SignatureVerifier)]
       }
-      .sequence
       .map(_.toMap)
       .flatMap { typeToVerifier =>
         if (typeToVerifier.isEmpty)
           Left(Problem.pure(s"No trusted signature keys - Configure one with $configPath!"))
         else {
           for (verifier <- typeToVerifier.values.toVector.sortBy(_.companion.typeName)) {
-            logger.info(s"Trusting signature keys: ${verifier.trustedKeysToString}")
+            logger.info(s"Trusting public signature keys: ${verifier.publicKeysToString}")
           }
           Right(
             new GenericSignatureVerifier(
@@ -96,9 +99,9 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion
       }
 
   @deprecated("Not implemented", "")
-  def checked(publicKeyRings: Seq[Resource[SyncIO, InputStream]], keyOrigin: String) =
+  def checked(publicKeys: Seq[ByteArray], origin: String) =
     throw new NotImplementedError("GenericSignatureVerifier.checked?")
 
   def genericSignatureToSignature(signature: GenericSignature) =
-    signature
+    Right(signature)
 }

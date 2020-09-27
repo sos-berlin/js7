@@ -6,10 +6,9 @@ import com.typesafe.config.ConfigUtil.quoteString
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Files.{createDirectory, createTempDirectory}
 import java.nio.file.Path
-import java.util.Locale
 import js7.agent.RunningAgent
 import js7.agent.configuration.AgentConfiguration
-import js7.base.crypt.{MessageSigner, SignatureVerifier, Signed, SignedString}
+import js7.base.crypt.{DocumentSigner, SignatureVerifier, Signed, SignedString}
 import js7.base.generic.SecretString
 import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
@@ -62,7 +61,8 @@ final class DirectoryProvider(
   provideAgentClientCertificate: Boolean = false,
   controllerKeyStore: Option[JavaResource] = Some(ControllerKeyStoreResource),
   controllerTrustStores: Iterable[JavaResource] = Nil,
-  signer: MessageSigner = defaultSigner,
+  signer: DocumentSigner = defaultSigner,
+  verifier: SignatureVerifier = defaultVerifier,
   testName: Option[String] = None,
   useDirectory: Option[Path] = None,
   suppressRepo: Boolean = false)
@@ -101,7 +101,7 @@ extends HasCloser
 
   closeOnError(this) {
     controller.createDirectoriesAndFiles()
-    writeTrustedSignatureKeys(signer.toVerifier, controller.configDir, "controller.conf")
+    writeTrustedSignatureKeys(verifier, controller.configDir, "controller.conf")
     agents foreach prepareAgentFiles
   }
 
@@ -206,7 +206,7 @@ extends HasCloser
   def prepareAgentFiles(agentTree: AgentTree): Unit = {
     agentTree.createDirectoriesAndFiles()
     controller.writeAgentAuthentication(agentTree)
-    agentTree.writeTrustedSignatureKeys(signer.toVerifier)
+    agentTree.writeTrustedSignatureKeys(verifier)
   }
 }
 
@@ -346,8 +346,8 @@ object DirectoryProvider
   private def writeTrustedSignatureKeys(verifier: SignatureVerifier, configDir: Path, confFilename: String): Unit = {
     val dir = "private/" + verifier.companion.recommendedKeyDirectoryName
     createDirectory(configDir / dir)
-    for ((key, i) <- verifier.keys.zipWithIndex) {
-      configDir / dir / (s"key-${i+1}." + verifier.companion.typeName.toLowerCase(Locale.ROOT)) := key
+    for ((key, i) <- verifier.publicKeys.zipWithIndex) {
+      configDir / dir / (s"key-${i+1}${verifier.companion.filenameExtension}") := key
     }
     configDir / confFilename ++=
       s"""js7.configuration.trusted-signature-keys {
@@ -377,7 +377,5 @@ object DirectoryProvider
   private val AgentKeyStoreResource   = JavaResource("js7/tests/agent/config/private/https-keystore.p12")
   private val AgentTrustStoreResource = JavaResource("js7/tests/agent/config/export/https-truststore.p12")
 
-  final def defaultSigner = pgpSigner
-
-  final lazy val pgpSigner: PgpSigner = PgpSigner.forTest
+  final lazy val (defaultSigner, defaultVerifier) = PgpSigner.forTest()
 }

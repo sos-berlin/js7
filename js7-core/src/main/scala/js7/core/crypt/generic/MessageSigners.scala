@@ -1,21 +1,25 @@
 package js7.core.crypt.generic
 
-import js7.base.crypt.MessageSigner
+import js7.base.crypt.DocumentSigner
 import js7.base.crypt.silly.SillySigner
-import js7.base.problem.{Checked, Problem}
+import js7.base.problem.Checked
 import js7.base.utils.Collections._
 import js7.base.utils.Collections.implicits._
 import js7.core.crypt.pgp.PgpSigner
+import js7.core.crypt.x509.X509Signer
+import js7.data.Problems.UnknownSignatureTypeProblem
 
 /**
   * @author Joacim Zschimmer
   */
 object MessageSigners
 {
-  private val signatureVerifiers: Seq[MessageSigner.Companion] = Vector(
+  private val signers: Seq[DocumentSigner.Companion] = Vector(
     PgpSigner,
+    X509Signer,
     SillySigner)
 
-  val typeToMessageSignersCompanion: Map[String, Checked[MessageSigner.Companion]] =
-    signatureVerifiers toKeyedMap (_.typeName) toChecked (typeName => Problem(s"Unknown signature provider: $typeName"))
+  val typeToMessageSignersCompanion: Map[String, Checked[DocumentSigner.Companion]] =
+    signers.toKeyedMap(_.typeName)
+      .toChecked(UnknownSignatureTypeProblem.apply)
 }

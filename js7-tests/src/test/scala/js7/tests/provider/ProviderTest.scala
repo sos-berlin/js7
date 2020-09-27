@@ -1,12 +1,12 @@
 package js7.tests.provider
 
 import cats.syntax.option._
-import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.{createDirectories, delete}
 import java.nio.file.{Files, Paths}
 import java.util.concurrent._
 import js7.base.circeutils.CirceUtils._
 import js7.base.crypt.silly.SillySigner
+import js7.base.data.ByteArray
 import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problems.DuplicateKey
@@ -51,7 +51,8 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
   protected val inventoryItems = Nil
   private lazy val agentRef = directoryProvider.agentRefs.head
   private lazy val privateKeyPassword = SecretString("")
-  override protected val signer = SillySigner.checked("SILLY".getBytes(UTF_8), privateKeyPassword).orThrow
+  override protected val signer = SillySigner.checked(ByteArray("SILLY"), privateKeyPassword).orThrow
+  override protected val verifier = signer.toVerifier
 
   private lazy val providerDirectory = directoryProvider.directory / "provider"
   private lazy val live = providerDirectory / "config/live"

@@ -18,13 +18,13 @@ object CatsUtils
   def combineArgs[A: Monoid](as: A*): A =
     as.toVector.combineAll
 
-  def bytesToInputStreamResource(bytes: collection.Seq[Byte]): Resource[SyncIO, InputStream] =
+  private def bytesToInputStreamResource(bytes: collection.Seq[Byte]): Resource[SyncIO, InputStream] =
     bytesToInputStreamResource(bytes.toArray)
 
-  def bytesToInputStreamResource(bytes: Array[Byte]): Resource[SyncIO, InputStream] =
+  private def bytesToInputStreamResource(bytes: Array[Byte]): Resource[SyncIO, InputStream] =
     Resource.fromAutoCloseable(SyncIO { new ByteArrayInputStream(bytes): InputStream })
 
-  def base64ToStreamResource(base64: String): Resource[SyncIO, InputStream] =
+  private def base64ToStreamResource(base64: String): Resource[SyncIO, InputStream] =
     Resource.fromAutoCloseable(SyncIO[InputStream] {
       try new ByteArrayInputStream(Base64.getMimeDecoder.decode(base64))
       catch { case e: IllegalArgumentException =>

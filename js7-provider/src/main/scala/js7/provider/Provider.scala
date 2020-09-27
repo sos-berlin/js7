@@ -2,10 +2,9 @@ package js7.provider
 
 import cats.implicits._
 import com.typesafe.config.ConfigUtil
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Path, Paths}
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.convert.As._
-import js7.base.data.ByteArray
 import js7.base.generic.{Completed, SecretString}
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
@@ -14,6 +13,7 @@ import js7.base.web.HttpClient
 import js7.common.akkautils.ProvideActorSystem
 import js7.common.configutils.Configs.ConvertibleConfig
 import js7.common.files.{DirectoryReader, PathSeqDiff, PathSeqDiffer}
+import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.{IOExecutor, Logger}
 import js7.common.time.JavaTimeConverters._
 import js7.controller.agent.AgentRefReader
@@ -214,7 +214,7 @@ object Provider
       val keyFile = Paths.get(conf.config.getString(s"$configPath.key"))
       val password = SecretString(conf.config.getString(s"$configPath.password"))
       MessageSigners.typeToMessageSignersCompanion(typeName)
-        .flatMap(companion => companion.checked(Files.readAllBytes(keyFile), password))
+        .flatMap(companion => companion.checked(keyFile.byteArray, password))
         .map(messageSigner => new InventoryItemSigner(messageSigner, ControllerItems.jsonCodec))
     }.orThrow
     Right(new Provider(itemSigner, conf))

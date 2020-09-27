@@ -42,4 +42,8 @@ object Problems
   object SnapshotForUnknownEventIdProblem extends Problem.Coded.Companion
 
   case object CannotRemoveOrderProblem extends Problem.ArgumentlessCoded
+
+  final case class UnknownSignatureTypeProblem(typeName: String) extends Problem.Coded {
+    def arguments = Map("typeName" -> typeName)
+  }
 }

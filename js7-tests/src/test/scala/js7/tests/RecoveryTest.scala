@@ -3,7 +3,7 @@ package js7.tests
 import java.nio.file.Path
 import js7.agent.RunningAgent
 import js7.agent.scheduler.{AgentServerEvent, AgentServerState}
-import js7.base.crypt.silly.{SillySignature, SillySigner}
+import js7.base.crypt.silly.{SillySignature, SillySignatureVerifier, SillySigner}
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.{autoClosing, multipleAutoClosing}
 import js7.base.utils.ScalaUtils.syntax._
@@ -55,6 +55,7 @@ final class RecoveryTest extends AnyFreeSpec
         AgentRefPaths,
         TestWorkflow :: QuickWorkflow :: Nil,
         signer = new SillySigner(SillySignature("MY-SILLY-SIGNATURE")),
+        verifier = new SillySignatureVerifier(SillySignature("MY-SILLY-SIGNATURE") :: Nil, "RecoveryTest"),
         testName = Some("RecoveryTest"),
         controllerConfig = TestConfig)
       autoClosing(directoryProvider) { _ =>

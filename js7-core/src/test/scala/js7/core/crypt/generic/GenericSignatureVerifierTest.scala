@@ -1,11 +1,12 @@
 package js7.core.crypt.generic
 
-import js7.common.configutils.Configs._
 import js7.base.Problems.TamperedWithSignedMessageProblem
+import js7.base.crypt.SignedString
+import js7.base.data.ByteArray
 import js7.base.problem.Checked.Ops
+import js7.common.configutils.Configs._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.FileUtils.withTemporaryDirectory
-import js7.core.crypt.pgp.PgpSigner.readSecretKey
 import js7.core.crypt.pgp.{PgpSigner, PgpTest}
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -18,10 +19,10 @@ final class GenericSignatureVerifierTest extends AnyFreeSpec
     withTemporaryDirectory("GenericSignatureVerifierTest-") { directory =>
       val messages = List("MESSAGE-1", "Message-2")
       val signers = List(
-        PgpSigner(readSecretKey(PgpTest.secretKeyResource), PgpTest.secretKeyPassword).orThrow,
-        PgpSigner(readSecretKey(PgpTest.secretKeyResource2), PgpTest.secretKeyPassword2).orThrow)
+        PgpSigner.checked(PgpTest.secretKeyResource.readAs[ByteArray], PgpTest.secretKeyPassword).orThrow,
+        PgpSigner.checked(PgpTest.secretKeyResource2.readAs[ByteArray], PgpTest.secretKeyPassword2).orThrow)
       val signatures = for ((message, signer) <- messages zip signers)
-        yield signer.sign(message).toGenericSignature
+        yield signer.signString(message).toGenericSignature
       for (signature <- signatures) assert(signature.typeName == "PGP")
 
       directory / "test.asc" := PgpTest.publicKeyResource.contentBytes
@@ -31,9 +32,9 @@ final class GenericSignatureVerifierTest extends AnyFreeSpec
       val verifier = GenericSignatureVerifier(config"""
         js7.configuration.trusted-signature-keys.PGP = "$directory" """
       ).orThrow
-      assert(verifier.verify(messages(0), signatures(0)) == Right(PgpTest.signerIds))
-      assert(verifier.verify("TAMPERED", signatures(0)) == Left(TamperedWithSignedMessageProblem))
-      assert(verifier.verify(messages(1), signatures(1)) == Right(PgpTest.signerIds2))
+      assert(verifier.verify(SignedString(messages(0), signatures(0))) == Right(PgpTest.signerIds))
+      assert(verifier.verify(SignedString("TAMPERED", signatures(0))) == Left(TamperedWithSignedMessageProblem))
+      assert(verifier.verify(SignedString(messages(1), signatures(1))) == Right(PgpTest.signerIds2))
     }
   }
 }

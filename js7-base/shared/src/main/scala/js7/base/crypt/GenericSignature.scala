@@ -16,10 +16,13 @@ extends Signature
 {
   def toGenericSignature = this
 
-  override def toString = s"Signature(" +
-    (if (signatureString.length <= 33) signatureString
-     else signatureString.take(15) + "..." + signatureString.substring(signatureString.length - 15)) +
-    ")"
+  override def toString = s"Signature($toRawString)"
+
+  def toRawString =
+    if (signatureString.length <= 33)
+      signatureString
+    else
+      signatureString.take(15) + "..." + signatureString.substring(signatureString.length - 15)
 }
 
 object GenericSignature

@@ -4,7 +4,7 @@ import cats.syntax.option._
 import com.google.inject.Module
 import com.google.inject.util.Modules.EMPTY_MODULE
 import com.typesafe.config.{Config, ConfigFactory}
-import js7.base.crypt.MessageSigner
+import js7.base.crypt.{DocumentSigner, SignatureVerifier}
 import js7.base.utils.HasCloser
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.message.ProblemCodeMessages
@@ -41,6 +41,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
     provideAgentClientCertificate = provideAgentClientCertificate,
     controllerTrustStores = controllerTrustStores,
     signer = signer,
+    verifier = verifier,
     testName = Some(getClass.getSimpleName),
     suppressRepo = suppressRepoInitialization)
 
@@ -55,7 +56,8 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
   protected def controllerTrustStores: Iterable[JavaResource] = Nil
   protected def controllerConfig: Config = ConfigFactory.empty
   protected def inventoryItems: Seq[InventoryItem]
-  protected def signer: MessageSigner = DirectoryProvider.defaultSigner
+  protected def signer: DocumentSigner = DirectoryProvider.defaultSigner
+  protected def verifier: SignatureVerifier = DirectoryProvider.defaultVerifier
 
   protected final def toSigned(item: InventoryItem) = directoryProvider.toSigned(item)
   protected final def sign(item: InventoryItem) = directoryProvider.sign(item)

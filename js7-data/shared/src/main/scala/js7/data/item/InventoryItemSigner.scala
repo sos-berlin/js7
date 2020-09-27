@@ -2,13 +2,13 @@ package js7.data.item
 
 import io.circe.Encoder
 import js7.base.circeutils.CirceUtils.RichJson
-import js7.base.crypt.{MessageSigner, Signed, SignedString}
+import js7.base.crypt.{DocumentSigner, Signed, SignedString}
 import js7.data.item.RepoEvent.{ItemAdded, ItemChanged}
 
 /**
   * @author Joacim Zschimmer
   */
-final class InventoryItemSigner[A <: InventoryItem](val signer: MessageSigner, jsonEncoder: Encoder[A])
+final class InventoryItemSigner[A <: InventoryItem](val signer: DocumentSigner, jsonEncoder: Encoder[A])
 {
   def toSigned(item: A): Signed[A] =
     toSigned_(item)
@@ -18,7 +18,7 @@ final class InventoryItemSigner[A <: InventoryItem](val signer: MessageSigner, j
 
   def sign(item: A): SignedString = {
     val string = jsonEncoder(item).compactPrint
-    SignedString(string, signer.sign(string).toGenericSignature)
+    SignedString(string, signer.signString(string).toGenericSignature)
   }
 
   def toAddedEvent(item: A): ItemAdded =

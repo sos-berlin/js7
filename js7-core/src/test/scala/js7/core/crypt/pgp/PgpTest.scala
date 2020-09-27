@@ -5,34 +5,31 @@ import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.Problems.{MessageSignedByUnknownProblem, TamperedWithSignedMessageProblem}
 import js7.base.crypt.{PgpSignature, SignerId}
+import js7.base.data.ByteArray
 import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
-import js7.base.utils.SyncResource.syntax._
-import js7.common.scalautil.GuavaUtils.stringToInputStreamResource
+import js7.base.problem.Problem
 import js7.common.utils.JavaResource
 import js7.core.crypt.pgp.PgpCommons.{readPublicKeyRingCollection, toPublicKeyRingCollection, writePublicKeyAsAscii, _}
-import js7.core.crypt.pgp.PgpSigner.readSecretKey
 import js7.core.crypt.pgp.PgpTest._
-import org.bouncycastle.openpgp.{PGPException, PGPSignature}
+import org.bouncycastle.openpgp.PGPSignature
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.should.Matchers._
 
 final class PgpTest extends AnyFreeSpec
 {
-  private lazy val verifier = new PgpSignatureVerifier(readPublicKeyRingCollection(publicKeyResource.asResource :: Nil), keyOrigin = "PgpTest")
+  private lazy val verifier = new PgpSignatureVerifier(readPublicKeyRingCollection(publicKeyResource.readAs[ByteArray] :: Nil),
+    publicKeyOrigin = "PgpTest")
 
   "Invalid password for secret key" in {
     for (invalidPassword <- Array("", "INVALID")) {
-      val secretKey = readSecretKey(secretKeyResource)
-      intercept[PGPException] {
-        PgpSigner(secretKey, SecretString(invalidPassword)).orThrow
-      }.getMessage shouldEqual "checksum mismatch at 0 of 20"  // TODO Weird Problem message for an invalid password
+      assert(PgpSigner.checked(secretKeyResource.readAs[ByteArray], SecretString(invalidPassword)) ==
+        Left(Problem("org.bouncycastle.openpgp.PGPException: checksum mismatch at 0 of 20")))  // TODO Weird Problem message for an invalid password))
     }
   }
 
   "Use predefine private key" - {
     "PGPSecretKey.show" in {
-      val signature: PGPSignature = PgpSignatureVerifier.readMutableSignature(stringToInputStreamResource(TestSignature.string)).orThrow
+      val signature: PGPSignature = PgpSignatureVerifier.toMutablePGPSignature(TestSignature).orThrow
       assert(signature.show == "PGPSignature(binary document, created=2019-01-09T16:32:52Z hash=SHA-256 publicKeyID=F5726E50E5345B98)")
     }
 
@@ -40,7 +37,7 @@ final class PgpTest extends AnyFreeSpec
       "toString" in {
         assert(verifier.toString ==
           "PgpSignatureVerifier(" +
-            "origin=PgpTest, " +
+            "publicKeyOrigin=PgpTest, " +
             "PGPPublicKeyRing(" +
               "PGPPublicKey(" +
                 "F5726E50E5345B98 " +
@@ -65,23 +62,23 @@ final class PgpTest extends AnyFreeSpec
       }
 
       "Signature by alien key is rejected" in {
-        assert(verifier.verify(TestMessage + "X", AlienSignature)
-          == Left(MessageSignedByUnknownProblem))
+        assert(verifier.verifyString(TestMessage + "X", AlienSignature)
+           == Left(MessageSignedByUnknownProblem))
       }
 
       "Changed message is rejected" in {
-        val verified = verifier.verify(TestMessage + "X", TestSignature)
+        val verified = verifier.verifyString(TestMessage + "X", TestSignature)
         assert(verified == Left(TamperedWithSignedMessageProblem))
       }
 
       "Proper message is accepted" in {
-        val verified = verifier.verify(TestMessage, TestSignature)
+        val verified = verifier.verifyString(TestMessage, TestSignature)
         assert(verified == Right(signerIds))
       }
     }
 
     "PgpSigner" - {
-      lazy val signer = PgpSigner(readSecretKey(secretKeyResource), secretKeyPassword).orThrow
+      lazy val signer = PgpSigner.checked(secretKeyResource.readAs[ByteArray], secretKeyPassword).orThrow
 
       "toString" in {
         assert(signer.toString ==
@@ -102,9 +99,9 @@ final class PgpTest extends AnyFreeSpec
       }
 
       "Sign and verify" in {
-        val signature = signer.sign(TestMessage)
-        assert(verifier.verify(TestMessage + "X", signature).isLeft)
-        assert(verifier.verify(TestMessage, signature).isRight)
+        val signature = signer.signString(TestMessage)
+        assert(verifier.verifyString(TestMessage + "X", signature).isLeft)
+        assert(verifier.verifyString(TestMessage, signature).isRight)
       }
     }
   }
@@ -113,7 +110,7 @@ final class PgpTest extends AnyFreeSpec
     val password = SecretString("TESTERS PASSWORD")
     lazy val secretKey = PgpKeyGenerator.generateSecretKey(SignerId("TESTER"), password, keySize = 1024/*fast*/)
     lazy val signer = PgpSigner(secretKey, password).orThrow
-    lazy val signature = signer.sign(TestMessage)
+    lazy val signature = signer.signString(TestMessage)
 
     "generate" in {
       secretKey
@@ -125,8 +122,8 @@ final class PgpTest extends AnyFreeSpec
 
     "verify" in {
       val verifier = new PgpSignatureVerifier(toPublicKeyRingCollection(secretKey.getPublicKey), "PgpTest")
-      assert(verifier.verify(TestMessage + "X", signature).isLeft)
-      assert(verifier.verify(TestMessage, signature).isRight)
+      assert(verifier.verifyString(TestMessage + "X", signature).isLeft)
+      assert(verifier.verifyString(TestMessage, signature).isRight)
     }
 
     "writePublicKeyAsAscii" in {
@@ -140,9 +137,9 @@ final class PgpTest extends AnyFreeSpec
       assert(string startsWith "-----BEGIN PGP PUBLIC KEY BLOCK-----" + System.lineSeparator)
       assert(string endsWith "-----END PGP PUBLIC KEY BLOCK-----" + System.lineSeparator)
 
-      val verifier = new PgpSignatureVerifier(readPublicKeyRingCollection(publicKeyAscii.asResource :: Nil), "PgpTest")
-      assert(verifier.verify(TestMessage + "X", signature).isLeft)
-      assert(verifier.verify(TestMessage, signature).isRight)
+      val verifier = new PgpSignatureVerifier(readPublicKeyRingCollection(ByteArray(publicKeyAscii) :: Nil), "PgpTest")
+      assert(verifier.verifyString(TestMessage + "X", signature).isLeft)
+      assert(verifier.verifyString(TestMessage, signature).isRight)
     }
   }
 }

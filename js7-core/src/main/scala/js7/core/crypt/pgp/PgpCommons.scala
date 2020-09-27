@@ -7,6 +7,8 @@ import cats.syntax.foldable._
 import cats.syntax.show._
 import java.io.{ByteArrayOutputStream, InputStream, OutputStream}
 import java.security.Security
+import js7.base.data.ByteArray
+import js7.base.data.ByteSequence.ops._
 import js7.base.utils.SyncResource.syntax._
 import js7.common.time.JavaTime._
 import org.bouncycastle.bcpg.{ArmoredOutputStream, HashAlgorithmTags, PublicKeyAlgorithmTags}
@@ -138,7 +140,7 @@ object PgpCommons
 
   private[crypt] def registerBouncyCastle() = ()  // Dummy to initialize this object
 
-  private[crypt] def readMessage(message: Resource[SyncIO, InputStream], update: (Array[Byte], Int) => Unit): Unit =
+  private def readMessage(message: Resource[SyncIO, InputStream], update: (Array[Byte], Int) => Unit): Unit =
     message.useSync { in =>
       val buffer = new Array[Byte](BufferSize)
       var length = 1
@@ -168,11 +170,10 @@ object PgpCommons
     armored.close()
   }
 
-  def readPublicKeyRingCollection(resources: Seq[Resource[SyncIO, InputStream]]): PGPPublicKeyRingCollection =
+  def readPublicKeyRingCollection(keys: Seq[ByteArray]): PGPPublicKeyRingCollection =
     new PGPPublicKeyRingCollection(
-      resources.map(_
-        .useSync(in =>
-          new PGPPublicKeyRing(PGPUtil.getDecoderStream(in), newFingerPrintCalculator))
+      keys.map(key =>
+        new PGPPublicKeyRing(PGPUtil.getDecoderStream(key.toInputStream), newFingerPrintCalculator)
       ).asJava)
 
   def newFingerPrintCalculator: KeyFingerPrintCalculator =
@@ -184,26 +185,26 @@ object PgpCommons
   }
 
   implicit final class RichPGPSecretKey(private val underlying: PGPSecretKey) extends AnyVal {
-    def toArmoredAsciiBytes: Seq[Byte] = {
+    def toArmoredAsciiBytes: ByteArray = {
       val out = new ByteArrayOutputStream()
       writeSecretKeyAsAscii(underlying, out)
-      out.toByteArray.toVector
+      ByteArray.unsafeWrap(out.toByteArray)
     }
   }
 
   implicit final class RichPGPPublicKey(private val underlying: PGPPublicKey) extends AnyVal {
-    def toArmoredAsciiBytes: Seq[Byte] = {
+    def toArmoredAsciiBytes: ByteArray = {
       val out = new ByteArrayOutputStream()
       writePublicKeyAsAscii(underlying, out)
-      out.toByteArray.toVector
+      ByteArray.unsafeWrap(out.toByteArray)
     }
   }
 
   implicit final class RichPGPPublicKeyRingCollection(private val underlying: PGPPublicKeyRingCollection) extends AnyVal {
-    def toArmoredAsciiBytes: Seq[Byte] = {
+    def toArmoredAsciiBytes: ByteArray = {
       val out = new ByteArrayOutputStream()
       writePublicKeyRingCollectionAsAscii(underlying, out)
-      out.toByteArray.toVector
+      ByteArray.unsafeWrap(out.toByteArray)
     }
   }
 }
