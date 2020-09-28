@@ -14,7 +14,7 @@ FROM openjdk:15
 ARG UID
 
 CMD "/bin/bash"
-ENV LANG=en_US.UTF-8
+ENV LANG=C.UTF-8
 
 # A tiny improvement of the Java runtime:
 #RUN $JAVA_HOME/bin/jlink --no-header-files --no-man-pages \
