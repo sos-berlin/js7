@@ -1,8 +1,10 @@
 package js7.provider
 
+import java.util.Locale
 import java.util.concurrent.CancellationException
 import js7.base.BuildInfo
 import js7.base.problem.Checked.Ops
+import js7.common.configutils.Configs.logConfig
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.scalautil.Futures.implicits.SuccessFuture
 import js7.common.scalautil.IOExecutor.Implicits.globalIOX
@@ -24,10 +26,12 @@ object ProviderMain
   private val logger = Logger(getClass)
 
   def main(args: Array[String]): Unit = {
-    logger.info(s"Provider ${BuildInfo.prettyVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
+    // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
+    logger.info(s"Provider ${BuildInfo.prettyVersion}")
     runMain {
       val conf = ProviderConfiguration.fromCommandLine(args.toVector)
       logStartUp(configDir = Some(conf.configDirectory))
+      logConfig(conf.config)
       val cancelable = Provider.observe(conf).orThrow.onCancelTriggerError foreach { _ => }
       withShutdownHooks(conf.config, "ProviderMain", () => onJavaShutdown(cancelable)) {
         awaitTermination(cancelable)

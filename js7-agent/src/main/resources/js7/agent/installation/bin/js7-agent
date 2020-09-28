@@ -101,10 +101,11 @@ echo "crashKillScript=$crashKillScript"
 [ -z "$crashKillScript" ] || rm -f "$crashKillScript"
 
 execute=(
-  "$java" \
-  "${javaOptions[@]}" \
-  -classpath "$classpathString" \
-  js7.agent.main.AgentMain "${agentOptions[@]}")
+  "$java"
+  "${javaOptions[@]}"
+  -classpath "$classpathString"
+  js7.agent.main.AgentMain
+  "${agentOptions[@]}")
 
 while true; do
   (t=$(date +"%Y-%m-%d %H:%M:%S.%N"); echo -e "\n-------\n${t:0:23}" "${execute[@]}")
