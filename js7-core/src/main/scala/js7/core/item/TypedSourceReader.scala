@@ -13,7 +13,7 @@ import js7.data.item.{InventoryItem, TypedPath}
   */
 final class TypedSourceReader(directory: Path, readers: Iterable[InventoryItemReader])
 {
-  private val companionToReader: Map[TypedPath.AnyCompanion, InventoryItemReader] = readers toKeyedMap (_.typedPathCompanion)
+  private val companionToReader: Map[TypedPath.AnyCompanion, InventoryItemReader] = readers.toKeyedMap(_.typedPathCompanion)
   private val typedPathCompanions = readers map (_.companion.typedPathCompanion)
 
   // For tests
@@ -34,8 +34,8 @@ final class TypedSourceReader(directory: Path, readers: Iterable[InventoryItemRe
     TypedFile.checked(directory, file, typedPathCompanions)
 
   private def readTypedSource(typedFile: TypedFile): TypedSource =
-    TypedSource(typedFile.file.byteString, typedFile.path, typedFile.sourceType)
+    TypedSource(typedFile.file.byteArray, typedFile.path, typedFile.sourceType)
 
   private def toCheckedItem(o: TypedSource): Checked[InventoryItem] =
-    companionToReader(o.path.companion).readUntyped(o.path, o.byteString, o.sourceType)
+    companionToReader(o.path.companion).readUntyped(o.path, o.byteArray, o.sourceType)
 }

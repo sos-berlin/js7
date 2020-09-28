@@ -10,6 +10,7 @@ import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import java.nio.file.StandardOpenOption.{APPEND, CREATE, TRUNCATE_EXISTING, WRITE}
 import java.nio.file.{Path, Paths}
 import js7.base.circeutils.CirceUtils._
+import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops._
 import js7.base.monixutils.MonixDeadline.now
 import js7.base.problem.Checked._
@@ -18,7 +19,6 @@ import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.ScodecUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.base.web.{HttpClient, Uri}
 import js7.common.event.{EventIdGenerator, PositionAnd}
@@ -43,7 +43,6 @@ import js7.data.node.NodeId
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
-import scodec.bits.ByteVector
 
 /*private[cluster]*/ final class PassiveClusterNode[S <: JournaledState[S]: diffx.Diff](
   ownId: NodeId,
@@ -227,7 +226,7 @@ import scodec.bits.ByteVector
         case _ =>
       }
 
-      val recouplingStreamReader = new RecouplingStreamReader[Long/*file position*/, PositionAnd[ByteVector], HttpControllerApi](
+      val recouplingStreamReader = new RecouplingStreamReader[Long/*file position*/, PositionAnd[ByteArray], HttpControllerApi](
         toIndex = _.position,
         clusterConf.recouplingStreamReader)
       {
@@ -238,7 +237,7 @@ import scodec.bits.ByteVector
               position = after,
               heartbeat = Some(clusterConf.heartbeat),
               markEOF = true
-            ).map(_.scan(PositionAnd(after, ByteVector.empty/*unused*/))((s, line) =>
+            ).map(_.scan(PositionAnd(after, ByteArray.empty/*unused*/))((s, line) =>
               PositionAnd(s.position + (if (line == JournalSeparators.HeartbeatMarker) 0 else line.length), line))))
 
         protected def stopRequested = stopped
@@ -262,7 +261,7 @@ import scodec.bits.ByteVector
         .bufferIntrospective(1024/*TODO Need not to be more than default backpressure size (active and passive node)*/)
         // Parallelization effect on replication throughput is not as big as expected.
         .flatMap { list =>
-          def f(positionAndLine: PositionAnd[ByteVector]) =
+          def f(positionAndLine: PositionAnd[ByteArray]) =
             (positionAndLine.position,
               positionAndLine.value,
               journalMeta.decodeJsonOrThrow(positionAndLine.value.parseJson.orThrow))
@@ -515,7 +514,7 @@ import scodec.bits.ByteVector
             recouplingStreamReader.terminate.map(_ => ()))
     }
 
-  private def testHeartbeatSuppressor(tuple: (Long, ByteVector, Any)): Boolean =
+  private def testHeartbeatSuppressor(tuple: (Long, ByteArray, Any)): Boolean =
     tuple match {
       case (_, JournalSeparators.HeartbeatMarker, _)
         if clusterConf.testHeartbeatLossPropertyKey.fold(false)(k => sys.props(k).toBoolean) =>

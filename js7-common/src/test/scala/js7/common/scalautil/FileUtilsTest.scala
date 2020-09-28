@@ -10,7 +10,6 @@ import java.nio.file.{Files, NotDirectoryException, Path, Paths}
 import js7.base.circeutils.CirceUtils._
 import js7.base.data.ByteArray
 import js7.base.problem.ProblemException
-import js7.base.utils.ScodecUtils.syntax._
 import js7.common.scalautil.FileUtils.implicits._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.FileUtils.{autoDeleting, checkRelativePath, withTemporaryFile}
@@ -18,7 +17,6 @@ import js7.common.scalautil.FileUtilsTest._
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
-import scodec.bits.ByteVector
 
 /**
  * @author Joacim Zschimmer
@@ -102,18 +100,18 @@ final class FileUtilsTest extends AnyFreeSpec with BeforeAndAfterAll
       path.contentBytes shouldEqual Vector[Byte](1, 2)
     }
 
-    ":= ByteVector" in {
+    ":= ByteArray" in {
       val bytes = "A-Å".getBytes(UTF_8)
-      path := ByteVector(bytes)
-      assert(path.byteVector == ByteVector(bytes))
+      path := ByteArray(bytes)
+      assert(path.byteArray == ByteArray(bytes))
       assert(path.contentBytes.toSeq == bytes.toSeq)
     }
 
-    "+= ByteVector" in {
+    "+= ByteArray" in {
       val complete = "A-Å-APPENDED".getBytes(UTF_8)
       val bytes = "-APPENDED".getBytes(UTF_8)
-      path ++= ByteVector(bytes)
-      assert(path.byteVector == ByteVector(complete))
+      path ++= ByteArray(bytes)
+      assert(path.byteArray == ByteArray(complete))
       assert(path.contentBytes.toSeq == complete.toSeq)
     }
 

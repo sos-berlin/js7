@@ -2,16 +2,13 @@ package js7.tests.special
 
 import io.circe._
 import io.circe.syntax._
-import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.circeutils.CirceObjectCodec
 import js7.base.circeutils.CirceUtils._
 import js7.base.data.ByteArray
-import js7.base.data.ByteSequence.ops._
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.measureTimeOfSingleRun
-import js7.base.utils.ScodecUtils.syntax._
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.tests.special.CirceParallelizationSpeedTest._
@@ -20,13 +17,9 @@ import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.immutable.Seq
 import scala.util.Random
-import scodec.bits.ByteVector
 
 final class CirceParallelizationSpeedTest extends AnyFreeSpec
 {
-  private type MyByteSeq = ByteArray
-  private val MyByteSeq = ByteArray
-
   if (sys.props.contains("test.speed")) {
     coupleScribeWithSlf4j()
 
@@ -60,20 +53,20 @@ final class CirceParallelizationSpeedTest extends AnyFreeSpec
 
   if (false) { // slow
     "encode sequential" in {
-      testEncode(big, "Big")(seq => encodeSerial(MyByteSeq, seq))
-      testEncode(small, "Small")(seq => encodeSerial(MyByteSeq, seq))
+      testEncode(big, "Big")(seq => encodeSerial(seq))
+      testEncode(small, "Small")(seq => encodeSerial(seq))
       succeed
     }
 
     "decode sequential" in {
-      testDecode[Big](bigJson, "Big")(decodeSerial[Big](MyByteSeq, _))
-      testDecode[Small](smallJson, "Small")(decodeSerial[Small](MyByteSeq, _))
+      testDecode[Big](bigJson, "Big")(decodeSerial[Big](_))
+      testDecode[Small](smallJson, "Small")(decodeSerial[Small](_))
       succeed
     }
   }
   }
 
-  private def testEncode[A: Encoder](seq: Seq[A], plural: String)(body: Seq[A] => Seq[MyByteSeq]): Unit = {
+  private def testEncode[A: Encoder](seq: Seq[A], plural: String)(body: Seq[A] => Seq[ByteArray]): Unit = {
     val m = 20
     for (i <- 1 to m) {
       //System.gc()
@@ -84,7 +77,7 @@ final class CirceParallelizationSpeedTest extends AnyFreeSpec
     }
   }
 
-  private def testDecode[A: Decoder](seq: Seq[MyByteSeq], plural: String)(body: Seq[MyByteSeq] => Seq[A]): Unit = {
+  private def testDecode[A: Decoder](seq: Seq[ByteArray], plural: String)(body: Seq[ByteArray] => Seq[A]): Unit = {
     val m = 20
     for (i <- 1 to m) {
       //System.gc()
@@ -95,51 +88,39 @@ final class CirceParallelizationSpeedTest extends AnyFreeSpec
     }
   }
 
-  private def encodeParallelBatch[A: Encoder](seq: Seq[A]): Seq[MyByteSeq] =
+  private def encodeParallelBatch[A: Encoder](seq: Seq[A]): Seq[ByteArray] =
     Observable.fromIterable(seq)
-      .mapParallelOrderedBatch()(encode[A](MyByteSeq, _))
+      .mapParallelOrderedBatch()(encode[A](_))
       .toListL
       .await(99.s)
 
-  private def decodeParallelBatch[A: Decoder](seq: Seq[MyByteSeq]): Seq[A] =
+  private def decodeParallelBatch[A: Decoder](seq: Seq[ByteArray]): Seq[A] =
     Observable.fromIterable(seq)
       .mapParallelOrderedBatch()(decode[A])
       .toListL
       .await(99.s)
 
-  private def encodeParallel[A: Encoder](seq: Seq[A]): Seq[MyByteSeq] =
+  private def encodeParallel[A: Encoder](seq: Seq[A]): Seq[ByteArray] =
     Observable.fromIterable(seq)
-      .mapParallelOrderedBatch()(encode[A](MyByteSeq, _))
+      .mapParallelOrderedBatch()(encode[A](_))
       .toListL
       .await(99.s)
 
-  private def decodeParallel[A: Decoder](seq: Seq[MyByteSeq]): Seq[A] =
+  private def decodeParallel[A: Decoder](seq: Seq[ByteArray]): Seq[A] =
     Observable.fromIterable(seq)
       .mapParallelOrderedBatch()(bytes => decode(bytes))
       .toListL
       .await(99.s)
 
-  private def encodeSerial[A: Encoder](x: ByteArray.type, seq: Seq[A]): Seq[ByteArray] =
-    seq.map(encode[A](ByteArray, _))
+  private def encodeSerial[A: Encoder](seq: Seq[A]): Seq[ByteArray] =
+    seq.map(encode[A](_))
 
-  private def encodeSerial[A: Encoder](x: ByteVector.type, seq: Seq[A]): Seq[ByteVector] =
-    seq.map(encode[A](ByteVector, _))
-
-  private def decodeSerial[A: Decoder](x: ByteVector.type, seq: Seq[ByteVector]): Seq[A] =
+  private def decodeSerial[A: Decoder](seq: Seq[ByteArray]): Seq[A] =
     seq.map(_.parseJsonAs[A].orThrow)
 
-  private def decodeSerial[A: Decoder](x: ByteArray.type, seq: Seq[ByteArray]): Seq[A] =
-    seq.map(_.parseJsonAs[A].orThrow)
-
-  private def encode[A: Encoder](x: ByteArray.type, a: A): ByteArray =
+  private def encode[A: Encoder](a: A): ByteArray =
     ByteArray.fromString(a.asJson.compactPrint)
-    //MyByteSeq(a.asJson.compactPrint.getBytes(UTF_8))
-
-  private def encode[A: Encoder](x: ByteVector.type, a: A): ByteVector =
-    ByteVector(a.asJson.compactPrint.getBytes(UTF_8))
-
-  private def decode[A: Decoder](byteVector: ByteVector): A =
-    byteVector.parseJsonAs[A].orThrow
+    //ByteArray(a.asJson.compactPrint.getBytes(UTF_8))
 
   private def decode[A: Decoder](bytes: ByteArray): A =
     bytes.parseJsonAs[A].orThrow

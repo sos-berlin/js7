@@ -1,12 +1,13 @@
 package js7.core.event.journal.recover
 
 import akka.pattern.ask
-import akka.util.ByteString
 import io.circe.Encoder
 import io.circe.syntax.EncoderOps
 import java.nio.file.Files.delete
 import java.util.UUID
 import js7.base.circeutils.CirceUtils.RichJson
+import js7.base.data.ByteArray
+import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
@@ -21,7 +22,6 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalEvent, JournalHeader, JournalId, JournalSeparators, KeyedEvent, Stamped}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
-import js7.base.monixutils.MonixBase.syntax._
 
 /**
   * @author Joacim Zschimmer
@@ -148,7 +148,7 @@ final class JournalReaderTest extends AnyFreeSpec with TestJournalMixin
       val file = currentFile
       delete(file)  // File of last test
       autoClosing(new FileJsonWriter(file)) { writer =>
-        def write[A](a: A)(implicit encoder: Encoder[A]) = writer.write(ByteString(encoder(a).compactPrint))
+        def write[A](a: A)(implicit encoder: Encoder[A]) = writer.write(ByteArray(encoder(a).compactPrint))
         def writeEvent(a: Stamped[KeyedEvent[TestEvent]]) = write(a)
 
         write(JournalHeader.forTest(journalId, eventId = EventId.BeforeFirst).asJson)

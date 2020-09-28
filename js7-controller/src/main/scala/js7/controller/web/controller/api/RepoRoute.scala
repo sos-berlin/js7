@@ -10,7 +10,6 @@ import cats.syntax.flatMap._
 import io.circe.Json
 import js7.base.auth.{Permission, UpdateRepoPermission, ValidUserPermission}
 import js7.base.crypt.SignedString
-import js7.base.data.ByteSequence.ops._
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
@@ -18,10 +17,9 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.{RichDeadline, _}
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
 import js7.base.utils.ScalaUtils.syntax.RichAny
-import js7.base.utils.ScodecUtils.syntax._
-import js7.base.utils.{ByteVectorToLinesObservable, FutureCompletion, IntelliJUtils, SetOnce}
+import js7.base.utils.{ByteArrayToLinesObservable, FutureCompletion, IntelliJUtils, SetOnce}
 import js7.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
-import js7.common.http.AkkaHttpUtils.ScodecByteString
+import js7.common.http.AkkaHttpUtils.ByteSequenceByteString
 import js7.common.http.StreamingSupport._
 import js7.common.scalautil.Logger
 import js7.controller.repo.{RepoUpdater, VerifiedUpdateRepo}
@@ -64,9 +62,9 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                 httpEntity
                   .dataBytes
                   .toObservable
-                  .map(_.toByteVector)
-                  .pipeIf(logger.underlying.isDebugEnabled, _.map { o => byteCount += o.size; o })
-                  .flatMap(new ByteVectorToLinesObservable)
+                  .map(_.toByteArray)
+                  .pipeIf(logger.underlying.isDebugEnabled, _.map { o => byteCount += o.length; o })
+                  .flatMap(new ByteArrayToLinesObservable)
                   .mapParallelUnorderedBatch()(_
                     .parseJsonAs[UpdateRepoOperation].orThrow match {
                       case UpdateRepoOperation.AddOrReplace(signedJson) =>

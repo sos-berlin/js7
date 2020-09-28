@@ -2,8 +2,8 @@ package js7.controller.client
 
 import cats.effect.Resource
 import io.circe.{Decoder, Encoder, Json}
-import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.auth.UserAndPassword
+import js7.base.data.ByteArray
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.Completed
 import js7.base.problem.Checked
@@ -27,7 +27,6 @@ import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
-import scodec.bits.ByteVector
 
 trait HttpControllerApi
 extends EventApi with HttpSessionApi with HasIsIgnorableStackTrace
@@ -119,7 +118,7 @@ extends EventApi with HttpSessionApi with HasIsIgnorableStackTrace
   final def journalObservable(fileEventId: EventId, position: Long,
     heartbeat: Option[FiniteDuration] = None, timeout: Option[FiniteDuration] = None,
     markEOF: Boolean = false, returnLength: Boolean = false)
-  : Task[Observable[ByteVector]] =
+  : Task[Observable[ByteArray]] =
     httpClient.getRawLinesObservable(
       uris.journal(fileEventId = fileEventId, position = position,
         heartbeat = heartbeat, timeout = timeout, markEOF = markEOF, returnLength = returnLength))
@@ -130,7 +129,7 @@ extends EventApi with HttpSessionApi with HasIsIgnorableStackTrace
     */
   final def journalLengthObservable(fileEventId: EventId, position: Long, timeout: FiniteDuration, markEOF: Boolean = false): Task[Observable[Long]] =
     journalObservable(fileEventId, position, timeout = Some(timeout), markEOF = markEOF, returnLength = true)
-      .map(_.map(_.decodeString(UTF_8).orThrow.stripSuffix("\n").toLong))
+      .map(_.map(_.utf8String.stripSuffix("\n").toLong))
 
   final def journalInfo: Task[Checked[JournalInfo]] =
     liftProblem(

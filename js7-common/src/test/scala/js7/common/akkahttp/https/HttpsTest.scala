@@ -8,8 +8,7 @@ import java.security.cert.X509Certificate
 import js7.base.data.ByteSequence.ops._
 import js7.base.generic.SecretString
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.InputStreams.inputStreamToByteVector
-import js7.base.utils.ScodecUtils.syntax._
+import js7.base.utils.InputStreams.inputStreamToByteArray
 import js7.common.scalautil.FileUtils.{withTemporaryDirectory, withTemporaryFile}
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -35,8 +34,8 @@ final class HttpsTest extends AnyFreeSpec
   "Read multiple PEM encoded certificate" in {
     withTemporaryFile { keyFile =>
       val content =
-        executeCommand(makeCertCommand("/CN=A", keyFile))(inputStreamToByteVector) ++
-        executeCommand(makeCertCommand("/CN=B", keyFile))(inputStreamToByteVector)
+        executeCommand(makeCertCommand("/CN=A", keyFile))(inputStreamToByteArray) ++
+        executeCommand(makeCertCommand("/CN=B", keyFile))(inputStreamToByteArray)
       val keyStore = Https.loadKeyStoreFromInputStream(content.toInputStream, SecretString(""), "TEST", "TEST-KIND")
       assert(keyStore.getCertificate("TEST#1").asInstanceOf[X509Certificate].getIssuerX500Principal.toString == "CN=A")
       assert(keyStore.getCertificate("TEST#2").asInstanceOf[X509Certificate].getIssuerX500Principal.toString == "CN=B")
@@ -71,9 +70,9 @@ final class HttpsTest extends AnyFreeSpec
   private def executeCommand[A](command: Seq[String])(body: InputStream => A): A = {
     val p = new JavaProcessBuilder(command: _*)
     val process = p.start()
-    Future { autoClosing(process.getErrorStream()) { stderr => while (stderr.read() != -1) {} } }
+    Future { autoClosing(process.getErrorStream) { stderr => while (stderr.read() != -1) {} } }
     try
-      autoClosing(process.getInputStream()) { in =>
+      autoClosing(process.getInputStream) { in =>
         body(in)
       }
     finally process.waitFor()

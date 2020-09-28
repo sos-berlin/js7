@@ -11,19 +11,17 @@ import cats.syntax.flatMap._
 import io.circe.Json
 import js7.base.auth.ValidUserPermission
 import js7.base.circeutils.CirceUtils._
-import js7.base.data.ByteSequence.ops._
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
-import js7.base.utils.ByteVectorToLinesObservable
+import js7.base.utils.ByteArrayToLinesObservable
 import js7.base.utils.ScalaUtils.syntax.RichAny
-import js7.base.utils.ScodecUtils.syntax._
 import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
 import js7.common.akkahttp.CirceJsonOrYamlSupport.{jsonOrYamlMarshaller, jsonUnmarshaller}
 import js7.common.akkahttp.StandardMarshallers._
-import js7.common.http.AkkaHttpUtils.ScodecByteString
+import js7.common.http.AkkaHttpUtils.ByteSequenceByteString
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.StreamingSupport._
 import js7.common.scalautil.Logger
@@ -64,9 +62,9 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                   httpEntity
                     .dataBytes
                     .toObservable  // TODO eat observable even in case if error
-                    .map(_.toByteVector)
-                    .pipeIf(logger.underlying.isDebugEnabled, _.map { o => byteCount += o.size; o })
-                    .flatMap(new ByteVectorToLinesObservable)
+                    .map(_.toByteArray)
+                    .pipeIf(logger.underlying.isDebugEnabled, _.map { o => byteCount += o.length; o })
+                    .flatMap(new ByteArrayToLinesObservable)
                     .mapParallelOrderedBatch()(_
                       .parseJsonAs[FreshOrder].orThrow)
                     .toL(Vector)

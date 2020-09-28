@@ -2,11 +2,13 @@ package js7.base.data
 
 import cats.syntax.monoid._
 import java.io.ByteArrayOutputStream
+import java.nio.ReadOnlyBufferException
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.data.ByteSequence.ops._
 import js7.base.data.ByteSequenceTester._
 import js7.base.problem.Problem
 import js7.base.utils.IOUtils
+import js7.base.utils.InputStreams.inputStreamToByteArray
 import js7.base.utils.SyncResource.syntax.RichResource
 import org.scalatest.freespec.AnyFreeSpec
 import scala.util.Random
@@ -32,10 +34,21 @@ extends AnyFreeSpec
   }
 
   "fromArray" in {
-    val a = Array(1.toByte)
+    val a = Array('a'.toByte, 'b'.toByte, 'c'.toByte)
+    assert(ByteSeq.fromArray(Array.empty).isEmpty)
     assert(ByteSeq.fromArray(a).unsafeArray ne a)
     assert(ByteSeq.fromArray(a).unsafeArray sameElements a)
     assert(ByteSeq.fromArray(a) == ByteSeq(a))
+    assert(ByteSeq.fromArray(a) == ByteSeq(a))
+    assert(ByteSeq.fromArray(a, -99, 99) == ByteSeq(a))
+    assert(ByteSeq.fromArray(a, 99, -99) == ByteSeq.empty)
+    assert(ByteSeq.fromArray(a, 0, 3) == ByteSeq(a))
+    assert(ByteSeq.fromArray(a, 0, 3) == ByteSeq("abc"))
+    assert(ByteSeq.fromArray(a, 0, 2) == ByteSeq("ab"))
+    assert(ByteSeq.fromArray(a, 0, 1) == ByteSeq("a"))
+    assert(ByteSeq.fromArray(a, 0, 0) == ByteSeq.empty)
+    assert(ByteSeq.fromArray(a, 2, 2) == ByteSeq.empty)
+    assert(ByteSeq.fromArray(a, 3, 2) == ByteSeq.empty)
   }
 
   "fromSeq" in {
@@ -121,7 +134,46 @@ extends AnyFreeSpec
     assert(byteSeq.indexOf('a', 1) == 2)
     assert(byteSeq.indexOf('a', 2) == 2)
     assert(byteSeq.indexOf('a', 3) == -1)
+    assert(byteSeq.indexOf('b', 0, 0) == -1)
+    assert(byteSeq.indexOf('b', 0, 1) == -1)
+    assert(byteSeq.indexOf('b', 0, 2) == 1)
     assert(byteSeq.indexOf('x') == -1)
+  }
+
+  "startsWith" in {
+    assert(ByteSeq.empty startsWith ByteSeq.empty)
+    assert(!ByteSeq.empty.startsWith(ByteSeq("xy")))
+    assert(ByteSeq("a") startsWith ByteSeq.empty)
+    assert(ByteSeq("ab") startsWith ByteSeq.empty)
+    assert(ByteSeq("abc") startsWith ByteSeq("a"))
+    assert(ByteSeq("abc") startsWith ByteSeq("ab"))
+    assert(ByteSeq("abc") startsWith ByteSeq("abc"))
+    assert(!ByteSeq("abc").startsWith(ByteSeq("abx")))
+    assert(!ByteSeq("abc").startsWith(ByteSeq("x")))
+    assert(!ByteSeq("abc").startsWith(ByteSeq("abcd")))
+    assert(!ByteSeq("abc").startsWith(ByteSeq("-abc")))
+  }
+
+  "endsWith" in {
+    assert(ByteSeq.empty endsWith ByteSeq.empty)
+    assert(!ByteSeq.empty.endsWith(ByteSeq("xy")))
+    assert(ByteSeq("a") endsWith ByteSeq.empty)
+    assert(ByteSeq("ab") endsWith ByteSeq.empty)
+    assert(ByteSeq("abc") endsWith ByteSeq("c"))
+    assert(ByteSeq("abc") endsWith ByteSeq("bc"))
+    assert(ByteSeq("abc") endsWith ByteSeq("abc"))
+    assert(!ByteSeq("abc").endsWith(ByteSeq("xbc")))
+    assert(!ByteSeq("abc").endsWith(ByteSeq("x")))
+    assert(!ByteSeq("abc").endsWith(ByteSeq("abcd")))
+    assert(!ByteSeq("abc").endsWith(ByteSeq("-abc")))
+  }
+
+  "take" in {
+    val byteSeq = ByteSeq("abc")
+    assert(byteSeq.take(0) == ByteSeq.empty)
+    assert(byteSeq.take(1) == ByteSeq("a"))
+    assert(byteSeq.take(3) == byteSeq)
+    assert(byteSeq.take(99) == byteSeq)
   }
 
   "drop" in {
@@ -164,6 +216,21 @@ extends AnyFreeSpec
     val out = new ByteArrayOutputStream
     byteArray.writeToStream(out)
     assert(ByteArray(out.toByteArray) == byteArray)
+  }
+
+  "toByteBuffer" in {
+    val byteBuffer = ByteSeq("abc").toByteBuffer
+    assert(byteBuffer.get() == 'a')
+    intercept[ReadOnlyBufferException] {
+      byteBuffer.put('x'.toByte)
+    }
+  }
+
+  "toInputStream" in {
+    for (size <- Iterator(0, 1, 10000, 100001)) {
+      val byteSeq = ByteSequence[ByteSeq].random(size)
+      assert(ByteSeq.fromByteArray(inputStreamToByteArray(byteSeq.toInputStream)) == byteSeq)
+    }
   }
 
   "toInputStreamResource" in {

@@ -4,6 +4,7 @@ import cats.effect.{Resource, SyncIO}
 import cats.{Eq, Monoid, Show}
 import io.circe.{Decoder, Json}
 import java.io.{InputStream, OutputStream}
+import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.Base64
 import js7.base.circeutils.CirceUtils._
@@ -34,6 +35,12 @@ trait ByteSequence[ByteSeq] extends Writable[ByteSeq] with Monoid[ByteSeq] with 
     fromString(string)
 
   def fromArray(bytes: Array[Byte]): ByteSeq
+
+  def fromArray(bytes: Array[Byte], from: Int, until: Int) =
+    if (bytes.isEmpty)
+      empty
+    else
+      unsafeWrap(bytes.slice(from, until))
 
   def fromByteArray(byteArray: ByteArray): ByteSeq
 
@@ -85,6 +92,7 @@ trait ByteSequence[ByteSeq] extends Writable[ByteSeq] with Monoid[ByteSeq] with 
   def nonEmpty(byteSeq: ByteSeq): Boolean =
     !isEmpty(byteSeq)
 
+
   def intLength(byteSeq: ByteSeq): Int =
     length(byteSeq)
 
@@ -101,15 +109,31 @@ trait ByteSequence[ByteSeq] extends Writable[ByteSeq] with Monoid[ByteSeq] with 
   def indexOf(byteSeq: ByteSeq, byte: Byte): Int =
     indexOf(byteSeq, byte, 0)
 
-  def indexOf(byteSeq: ByteSeq, byte: Byte, from: Int): Int = {
+  def indexOf(byteSeq: ByteSeq, byte: Byte, from: Int): Int =
+    indexOf(byteSeq, byte, from, Int.MaxValue)
+
+  def indexOf(byteSeq: ByteSeq, byte: Byte, from: Int, until: Int): Int = {
     var i = from
-    val length = this.length(byteSeq)
-    while (i < length) {
-      if (at(byteSeq, i) == byte) return i
-      i += 1
-    }
-    -1
+    val u = until min length(byteSeq)
+    while (i < u && at(byteSeq, i) != byte) i = i + 1
+    if (i == u) -1 else i
   }
+
+  def startsWith(byteSeq: ByteSeq, prefix: ByteSeq): Boolean = {
+    val n = length(prefix)
+    n <= length(byteSeq) &&
+      (0 until n).forall(i => at(byteSeq, i) == at(prefix, i))
+  }
+
+  def endsWith(byteSeq: ByteSeq, suffix: ByteSeq): Boolean = {
+    val n = length(suffix)
+    val m = length(byteSeq) - n
+    m >= 0 &&
+      (0 until n).forall(i => at(byteSeq, m + i) == at(suffix, i))
+  }
+
+  def take(byteSeq: ByteSeq, n: Int) =
+    slice(byteSeq, 0, n)
 
   def drop(byteSeq: ByteSeq, n: Int) =
     slice(byteSeq, n, length(byteSeq))
@@ -133,8 +157,23 @@ trait ByteSequence[ByteSeq] extends Writable[ByteSeq] with Monoid[ByteSeq] with 
   def unsafeArray(byteSeq: ByteSeq): Array[Byte] =
     toArray(byteSeq)
 
+  //def copyToArray(byteSeq: ByteSeq, array: Array[Byte]): Int =
+  //  copyToArray(byteSeq, array, 0, Int.MaxValue)
+  //
+  ///**
+  //  * Fills the given `array` starting at index `start` with at most `len` bytes of this ByteSeq.
+  //  *
+  //  * Copying will stop once either all the elements of this ByteSeq have been copied,
+  //  * or the end of the array is reached, or `len` elements have been copied.
+  //  */
+  //def copyToArray(byteSeq: ByteSeq, array: Array[Byte], start: Int, len: Int): Int =
+  //  iterator(byteSeq).copyToArray(array, start, len)
+
   def toByteArray(byteSeq: ByteSeq): ByteArray =
     ByteArray.unsafeWrap(unsafeArray(byteSeq))
+
+  def toByteBuffer(byteSeq: ByteSeq): ByteBuffer =
+    ByteBuffer.wrap(unsafeArray(byteSeq)).asReadOnlyBuffer
 
   def toInputStream(byteSeq: ByteSeq): InputStream =
     new ByteSequenceInputStream(byteSeq)

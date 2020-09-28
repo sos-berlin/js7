@@ -2,6 +2,7 @@ package js7.base.web
 
 import io.circe.{Decoder, Encoder, Json}
 import js7.base.auth.SessionToken
+import js7.base.data.ByteArray
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.StackTraces.StackTraceThrowable
 import monix.eval.Task
@@ -10,7 +11,6 @@ import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Duration
 import scala.reflect.runtime.universe._
 import scala.util.{Failure, Success}
-import scodec.bits.ByteVector
 
 /**
   * @author Joacim Zschimmer
@@ -21,7 +21,7 @@ trait HttpClient
 
   def getDecodedLinesObservableBatch[A: Decoder](uri: Uri)(implicit s: Task[Option[SessionToken]]): Task[Observable[A]]
 
-  def getRawLinesObservable(uri: Uri)(implicit s: Task[Option[SessionToken]]): Task[Observable[ByteVector]]
+  def getRawLinesObservable(uri: Uri)(implicit s: Task[Option[SessionToken]]): Task[Observable[ByteArray]]
 
   def get[A: Decoder](uri: Uri, timeout: Duration = Duration.Inf)(implicit s: Task[Option[SessionToken]]): Task[A]
 

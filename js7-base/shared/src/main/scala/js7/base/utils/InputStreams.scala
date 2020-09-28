@@ -1,49 +1,39 @@
 package js7.base.utils
 
 import java.io.InputStream
-import scodec.bits.ByteVector
+import js7.base.data.ByteArray
+import scala.collection.mutable
 
 object InputStreams
 {
   private[utils] val bufferSize = 32*1024
 
-  def inputStreamToByteArray(in: InputStream): Array[Byte] =
-    inputStreamToByteVector(in).toArray
-
-  def inputStreamToByteArrayLimited(in: InputStream, limit: Long): Either[Array[Byte], Array[Byte]] =
-    inputStreamToByteVectorLimited(in, limit) match {
-      case Left(byteVector) => Left(byteVector.toArray)
-      case Right(byteVector) => Right(byteVector.toArray)
-    }
-
-  def inputStreamToByteVector(in: InputStream): ByteVector =
-    inputStreamToByteVectorLimited(in, Long.MaxValue)
+  def inputStreamToByteArray(in: InputStream): ByteArray =
+    inputStreamToByteArrayLimited(in, Int.MaxValue)
       .getOrElse(throw new RuntimeException)
 
-  def inputStreamToByteVectorLimited(in: InputStream, limit: Long): Either[ByteVector, ByteVector] = {
-    var result = ByteVector.empty
+  def inputStreamToByteArrayLimited(in: InputStream, limit: Int): Either[ByteArray, ByteArray] = {
+    var buffer = mutable.Buffer[ByteArray]()
+    var totalLength = 0
     var eof = false
     var overflow = false
-    val limit1 = limit min Long.MaxValue - 1 // Avoids overflow when adding 1
-    while (!eof && !overflow && result.length <= limit) {
-      val size1 = intMin(bufferSize, limit1 - result.length + 1)
+    val limit1 = limit min Int.MaxValue - 1 // Avoids overflow when adding 1
+    while (!eof && !overflow && totalLength <= limit) {
+      val size1 = bufferSize min limit1 - totalLength + 1
       val bytes = new Array[Byte](size1)
       val readLength = in.read(bytes, 0, size1)
       eof = readLength <= 0
       if (!eof) {
-        overflow = result.length + readLength > limit
-        val length = intMin(readLength, limit - result.length)
+        overflow = totalLength + readLength > limit
+        val length = readLength min limit - totalLength
         if (length == bytes.length) {
-          result ++= ByteVector.view(bytes)
+          buffer += ByteArray.unsafeWrap(bytes)
         } else
-          result ++= ByteVector(bytes, 0, length)
+          buffer += ByteArray.fromArray(bytes, 0, length)
+        totalLength += length
       }
     }
+    val result = ByteArray.combineAll(buffer)
     if (overflow) Left(result) else Right(result)
   }
-
-  private def intMin(a: Int, b: Long): Int =
-    if (a <= b) a
-    else if (b <= Int.MaxValue) b.toInt
-    else Int.MaxValue
 }

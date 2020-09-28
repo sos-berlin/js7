@@ -1,9 +1,9 @@
 package js7.core.event.journal.write
 
-import akka.util.ByteString
 import java.io.{BufferedOutputStream, FileOutputStream}
 import java.nio.file.{Files, Path}
 import java.util.concurrent.atomic.AtomicBoolean
+import js7.base.data.ByteArray
 import js7.core.common.jsonseq.OutputStreamJsonSeqWriter
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
@@ -35,11 +35,11 @@ extends AutoCloseable {
       }
     }
 
-  def write(byteString: ByteString): Unit =
+  def write(byteArray: ByteArray): Unit =
     wrapException {
       flushed = false
       synced = false
-      writer.writeJson(byteString)
+      writer.writeJson(byteArray)
     }
 
   def sync(): Unit =

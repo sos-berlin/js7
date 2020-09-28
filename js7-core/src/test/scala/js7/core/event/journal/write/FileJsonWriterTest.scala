@@ -1,8 +1,8 @@
 package js7.core.event.journal.write
 
-import akka.util.ByteString
 import java.io.IOException
 import java.nio.file.Files.{createTempDirectory, createTempFile, delete}
+import js7.base.data.ByteArray
 import js7.common.scalautil.FileUtils.syntax.RichPath
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
@@ -22,7 +22,7 @@ final class FileJsonWriterTest extends AnyFreeSpec with BeforeAndAfterAll
   }
 
   "write" in {
-    writer.write(ByteString("FIRST."))
+    writer.write(ByteArray("FIRST."))
     assert(!writer.isFlushed && !writer.isSynced)
   }
 

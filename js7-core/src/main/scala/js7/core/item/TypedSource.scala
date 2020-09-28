@@ -1,9 +1,9 @@
 package js7.core.item
 
-import akka.util.ByteString
+import js7.base.data.ByteArray
 import js7.data.item.{SourceType, TypedPath}
 
 /**
   * @author Joacim Zschimmer
   */
-final case class TypedSource(byteString: ByteString, path: TypedPath, sourceType: SourceType)
+final case class TypedSource(byteArray: ByteArray, path: TypedPath, sourceType: SourceType)

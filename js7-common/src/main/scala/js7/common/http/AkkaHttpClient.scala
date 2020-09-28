@@ -19,23 +19,23 @@ import io.circe.{Decoder, Encoder, Json}
 import java.util.Locale
 import js7.base.auth.SessionToken
 import js7.base.circeutils.CirceUtils.implicits._
-import js7.base.data.ByteSequence.ops._
+import js7.base.data.ByteArray
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.bytesPerSecondString
-import js7.base.utils.ByteVectorToLinesObservable
+import js7.base.utils.ByteArrayToLinesObservable
 import js7.base.utils.MonixAntiBlocking.executeOn
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.ScodecUtils.syntax._
 import js7.base.web.{HttpClient, Uri}
 import js7.common.akkahttp.https.Https.loadSSLContext
 import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
+import js7.common.akkautils.ByteStrings.syntax._
 import js7.common.akkautils.JsonObservableForAkka.syntax._
 import js7.common.http.AkkaHttpClient._
-import js7.common.http.AkkaHttpUtils.{RichAkkaAsUri, RichAkkaUri, ScodecByteString, decodeResponse, encodeGzip}
+import js7.common.http.AkkaHttpUtils.{RichAkkaAsUri, RichAkkaUri, decodeResponse, encodeGzip}
 import js7.common.http.CirceJsonSupport._
 import js7.common.http.JsonStreamingSupport.{StreamingJsonHeaders, `application/x-ndjson`}
 import js7.common.http.StreamingSupport._
@@ -52,7 +52,6 @@ import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
 import scala.util.control.NoStackTrace
 import scala.util.{Failure, Success}
-import scodec.bits.ByteVector
 
 /**
   * @author Joacim Zschimmer
@@ -101,14 +100,14 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
         .mapParallelOrderedBatch()(_
           .parseJsonAs[A].orThrow))
 
-  final def getRawLinesObservable(uri: Uri)(implicit s: Task[Option[SessionToken]]): Task[Observable[ByteVector]] =
+  final def getRawLinesObservable(uri: Uri)(implicit s: Task[Option[SessionToken]]): Task[Observable[ByteArray]] =
     get_[HttpResponse](uri, StreamingJsonHeaders)
       .map(_.entity.withoutSizeLimit.dataBytes.toObservable)
       .pipeIf(logger.underlying.isDebugEnabled, _.logTiming(_.size, (d, s, _) =>
         if (d >= 1.s && s > 10_000_000) logger.debug(s"$toString: get $uri: ${bytesPerSecondString(d, s)}")))
       .map(_
-        .map(_.toByteVector)
-        .flatMap(new ByteVectorToLinesObservable))
+        .map(_.toByteArray)
+        .flatMap(new ByteArrayToLinesObservable))
 
   /** HTTP Get with Accept: application/json. */
   final def get[A: Decoder](uri: Uri)(implicit s: Task[Option[SessionToken]]): Task[A] =

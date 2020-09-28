@@ -4,17 +4,16 @@ import java.io.InputStream
 import java.security.KeyStore
 import java.security.cert.{Certificate, CertificateFactory, X509Certificate}
 import javax.net.ssl.{KeyManager, KeyManagerFactory, SSLContext, TrustManagerFactory, X509TrustManager}
+import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops._
 import js7.base.generic.SecretString
 import js7.base.utils.AutoClosing._
-import js7.base.utils.InputStreams.inputStreamToByteVectorLimited
+import js7.base.utils.InputStreams.inputStreamToByteArrayLimited
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.ScodecUtils.syntax._
 import js7.common.scalautil.Logger
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
-import scodec.bits.ByteVector
 
 /**
   * Provides HTTPS keystore and truststore..
@@ -33,7 +32,7 @@ import scodec.bits.ByteVector
 object Https
 {
   private val logger = Logger(getClass)
-  private val PemHeader = ByteVector.encodeUtf8("-----BEGIN CERTIFICATE-----").orThrow
+  private val PemHeader = ByteArray("-----BEGIN CERTIFICATE-----")
 
   def loadSSLContext(keyStoreRef: Option[KeyStoreRef] = None, trustStoreRefs: Seq[TrustStoreRef] = Nil): SSLContext = {
     val keyManagers = keyStoreRef match {
@@ -71,7 +70,7 @@ object Https
     val sizeLimit = 10_000_000
     val keyStore =
       try {
-        val content = inputStreamToByteVectorLimited(in, sizeLimit)
+        val content = inputStreamToByteArrayLimited(in, sizeLimit)
             .getOrElse(throw new RuntimeException(s"Certificate store must have more than $sizeLimit bytes: $sourcePath"))
         if (content startsWith PemHeader)
           pemToKeyStore(content.toInputStream,

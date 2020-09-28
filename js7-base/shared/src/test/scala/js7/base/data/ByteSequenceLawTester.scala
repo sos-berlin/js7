@@ -2,9 +2,9 @@ package js7.base.data
 
 import cats.kernel.laws.discipline.MonoidTests
 import org.scalacheck.{Arbitrary, Gen}
-import org.scalatest.funsuite.{AnyFunSuite, AnyFunSuiteLike}
+import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.prop.Configuration
-import org.typelevel.discipline.scalatest.{Discipline, FunSuiteDiscipline}
+import org.typelevel.discipline.scalatest.FunSuiteDiscipline
 
 class ByteSequenceLawTester[ByteSeq](implicit ByteSeq: ByteSequence[ByteSeq])
 extends AnyFunSuite with FunSuiteDiscipline with Configuration

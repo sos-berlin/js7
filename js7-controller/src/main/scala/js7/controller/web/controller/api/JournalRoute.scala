@@ -4,18 +4,17 @@ import akka.http.scaladsl.model.HttpEntity
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import js7.base.auth.ValidUserPermission
+import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops._
-import js7.base.data.{ByteArray, ByteSequence}
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.FutureCompletion
 import js7.base.utils.FutureCompletion.syntax._
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.ScodecUtils.syntax._
 import js7.common.akkahttp.AkkaHttpServerUtils.accept
 import js7.common.akkahttp.StandardMarshallers._
 import js7.common.event.{EventWatch, PositionAnd}
-import js7.common.http.AkkaHttpUtils.AkkaByteVector
+import js7.common.http.AkkaHttpUtils.AkkaByteSequence
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.StreamingSupport._
 import js7.common.scalautil.Logger

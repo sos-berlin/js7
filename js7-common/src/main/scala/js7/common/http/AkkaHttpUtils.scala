@@ -7,12 +7,11 @@ import akka.http.scaladsl.model.headers.{HttpEncoding, HttpEncodings, `Accept-En
 import akka.http.scaladsl.model.{HttpEntity, HttpRequest, HttpResponse, Uri => AkkaUri}
 import akka.stream.Materializer
 import akka.util.ByteString
-import js7.base.data.ByteSequence
 import js7.base.data.ByteSequence.ops._
+import js7.base.data.{ByteArray, ByteSequence}
 import js7.base.web.Uri
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
-import scodec.bits.ByteVector
 /**
   * @author Joacim Zschimmer
   */
@@ -67,18 +66,15 @@ object AkkaHttpUtils
       underlying.entity.byteStringFuture(timeout)
   }
 
-  implicit final class ScodecByteString(private val underlying: ByteString) extends AnyVal {
-    def toByteVector: ByteVector =
-      if (underlying.isCompact)
-        ByteVector.view(underlying.asByteBuffer)
-      else {
-        val a = new Array[Byte](underlying.length)
-        underlying.copyToArray(a)
-        ByteVector.view(a)
-      }
+  implicit final class ByteSequenceByteString(private val underlying: ByteString) extends AnyVal {
+    def toByteArray: ByteArray =
+      toByteSeq(ByteArray)
+
+    def toByteSeq[ByteSeq](implicit ByteSeq: ByteSequence[ByteSeq]): ByteSeq =
+       ByteSeq.unsafeWrap(underlying.toArray)
   }
 
-  implicit final class AkkaByteVector[A](private val underlying: A) extends AnyVal {
+  implicit final class AkkaByteSequence[A](private val underlying: A) extends AnyVal {
     def toByteString(implicit A: ByteSequence[A]) =
       ByteString.fromArrayUnsafe(underlying.unsafeArray)
   }

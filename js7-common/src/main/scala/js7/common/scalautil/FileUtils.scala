@@ -1,6 +1,5 @@
 package js7.common.scalautil
 
-import akka.util.ByteString
 import com.google.common.io.FileWriteMode.APPEND
 import com.google.common.io.{Files => GuavaFiles}
 import java.io.{File, FileOutputStream}
@@ -23,7 +22,6 @@ import js7.common.system.OperatingSystem.isUnix
 import scala.annotation.tailrec
 import scala.collection.AbstractIterator
 import scala.language.implicitConversions
-import scodec.bits.ByteVector
 
 object FileUtils
 {
@@ -82,12 +80,6 @@ object FileUtils
 
       //def ++=[B <: ByteSequence[B]](byteSeq: B)(implicit B: ByteSequence[B]): Unit=
       //  autoClosing(new FileOutputStream(delegate.toFile, true))(B.writeToStream(byteSeq, _))
-
-      def byteVector: ByteVector =
-        ByteVector(contentBytes)
-
-      def byteString: ByteString =
-        ByteString(contentBytes)
 
       def byteArray: ByteArray =
         readAs[ByteArray]

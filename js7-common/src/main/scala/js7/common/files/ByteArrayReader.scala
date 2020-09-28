@@ -4,11 +4,11 @@ import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption.READ
-import js7.common.files.ByteVectorReader._
+import js7.base.data.ByteArray
+import js7.common.files.ByteArrayReader._
 import js7.common.scalautil.Logger
-import scodec.bits.ByteVector
 
-final class ByteVectorReader(file: Path, fromEnd: Boolean = false)
+final class ByteArrayReader(file: Path, fromEnd: Boolean = false)
 extends AutoCloseable
 {
   val channel = FileChannel.open(file, READ)
@@ -23,18 +23,18 @@ extends AutoCloseable
     channel.close()
   }
 
-  def read(): ByteVector =
+  def read(): ByteArray =
     channel.read(buffer) match {
-      case -1 => ByteVector.empty
+      case -1 => ByteArray.empty
       case _ =>
         buffer.flip()
-        val result = ByteVector(buffer.array, buffer.position(), buffer.remaining())
+        val result = ByteArray.fromArray(buffer.array, buffer.position(), buffer.remaining())
         buffer.clear()
         result
     }
 }
 
-object ByteVectorReader
+object ByteArrayReader
 {
   private[files] val ChunkSize = 8192
   private val logger = Logger(getClass)

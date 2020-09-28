@@ -1,9 +1,10 @@
 package js7.common.scalautil.xmls
 
-import akka.util.ByteString
-import java.io.{ByteArrayInputStream, InputStream, StringReader}
+import java.io.{InputStream, StringReader}
 import javax.xml.transform.Source
 import javax.xml.transform.stream.StreamSource
+import js7.base.data.ByteArray
+import js7.base.data.ByteSequence.ops._
 import scala.language.implicitConversions
 
 /**
@@ -21,6 +22,6 @@ object XmlSources {
   implicit def inputStreamSource(o: InputStream): StreamSource =
     new StreamSource(o)
 
-  def simpleByteStringSource(o: ByteString): StreamSource =
-    new ByteArrayInputStream(o.toArray[Byte])
+  def simpleByteArraySource(o: ByteArray): StreamSource =
+    o.toInputStream
 }

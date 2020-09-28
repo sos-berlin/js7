@@ -1,8 +1,8 @@
 package js7.provider.scheduledorder
 
-import akka.util.ByteString
 import io.circe.Json
 import java.time.ZoneId
+import js7.base.data.ByteArray
 import js7.base.problem.Problem
 import js7.common.scalautil.xmls.XmlSources.stringToSource
 import js7.core.item.InventoryItemReader
@@ -15,7 +15,7 @@ final class ScheduledOrderGeneratorReader(timeZone: ZoneId) extends InventoryIte
 {
   val companion = ScheduledOrderGenerator
 
-  def read(id: ItemId[ScheduledOrderGeneratorPath], source: ByteString) = {
+  def read(id: ItemId[ScheduledOrderGeneratorPath], source: ByteArray) = {
     case SourceType.Xml => ScheduledOrderGeneratorXmlParser.parseXml(id, source.utf8String, timeZone)
   }
 

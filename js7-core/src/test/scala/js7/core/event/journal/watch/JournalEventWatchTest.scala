@@ -14,7 +14,6 @@ import js7.base.problem.{Problem, ProblemException}
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.ScodecUtils.syntax._
 import js7.common.event.{PositionAnd, TornException}
 import js7.common.scalautil.FileUtils.syntax.RichPath
 import js7.common.scalautil.FileUtils.withTemporaryDirectory

@@ -1,12 +1,15 @@
 package js7.base.data
 
+import cats.Eq
 import io.circe.{Decoder, Json}
 import java.io.OutputStream
+import java.lang.System.arraycopy
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.Base64
 import java.util.Objects.requireNonNull
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Checked
+import scala.collection.mutable
 
 final class ByteArray private(val unsafeArray: Array[Byte])
 {
@@ -14,25 +17,34 @@ final class ByteArray private(val unsafeArray: Array[Byte])
 
   def apply(i: Int) = unsafeArray(i)
 
-  def slice(from: Int, to: Int) = {
-    if (from <= 0 && to >= unsafeArray.length)
-      this
-    else
-      new ByteArray(java.util.Arrays.copyOfRange(unsafeArray, from max 0, to max length))
+  def isEmpty = unsafeArray.isEmpty
+
+  def copyToArray(array: Array[Byte]): Int =
+    copyToArray(array, 0, Int.MaxValue)
+
+  def copyToArray(array: Array[Byte], start: Int, len: Int): Int = {
+    val n = len min unsafeArray.length min array.length - start
+    arraycopy(unsafeArray, 0, array, start, n)
+    n
   }
 
-  def ++(o: ByteArray) = {
-    if (o.unsafeArray.isEmpty)
+  def slice(from: Int, until: Int) =
+    if (from >= until)
+      ByteArray.empty
+    else if (from <= 0 && until >= unsafeArray.length)
       this
-    else if (unsafeArray.isEmpty)
-      o
+    else
+      new ByteArray(java.util.Arrays.copyOfRange(unsafeArray, from max 0, until min length))
+
+  def ++(o: ByteArray) =
+    if (o.isEmpty) this
+    else if (isEmpty) o
     else {
       val a = new Array[Byte](length + o.length)
-      System.arraycopy(unsafeArray, 0, a, 0, unsafeArray.length)
-      System.arraycopy(o.unsafeArray, 0, a, unsafeArray.length, o.length)
+      arraycopy(unsafeArray, 0, a, 0, unsafeArray.length)
+      arraycopy(o.unsafeArray, 0, a, unsafeArray.length, o.length)
       ByteArray.unsafeWrap(a)
     }
-  }
 
   def utf8String = new String(unsafeArray, UTF_8)
 
@@ -68,6 +80,9 @@ object ByteArray extends ByteSequence[ByteArray]
   override def apply(string: String): ByteArray =
     super.apply(string)
 
+  override def isEmpty(byteArray: ByteArray)(implicit ev: Eq[ByteArray]) =
+    byteArray.isEmpty
+
   def eqv(a: ByteArray, b: ByteArray) =
     java.util.Arrays.equals(a.unsafeArray, b.unsafeArray)
 
@@ -92,9 +107,6 @@ object ByteArray extends ByteSequence[ByteArray]
   def at(byteArray: ByteArray, i: Int) =
     byteArray(i)
 
-  override def indexOf(byteArray: ByteArray, byte: Byte, from: Int) =
-    byteArray.unsafeArray.indexOf(byte, from)
-
   def iterator(byteArray: ByteArray) =
     byteArray.unsafeArray.iterator
 
@@ -104,26 +116,35 @@ object ByteArray extends ByteSequence[ByteArray]
   override def unsafeArray(byteArray: ByteArray) =
     byteArray.unsafeArray
 
+  //def copyToArray(byteArray: ByteArray, array: Array[Byte]) =
+  //  byteArray.copyToArray(array)
+  //
+  //def copyToArray(byteArray: ByteArray, array: Array[Byte], start: Int, len: Int) =
+  //  byteArray.copyToArray(array, start, len)
+
+  override def slice(byteArray: ByteArray, from: Int, until: Int) =
+    byteArray.slice(from, until)
+
   def combine(a: ByteArray, b: ByteArray): ByteArray = {
     val array = new Array[Byte](length(a) + length(b))
-    System.arraycopy(unsafeArray(a), 0, array, 0, length(a))
-    System.arraycopy(unsafeArray(b), 0, array, length(a), length(b))
+    arraycopy(unsafeArray(a), 0, array, 0, length(a))
+    arraycopy(unsafeArray(b), 0, array, length(a), length(b))
     unsafeWrap(array)
   }
 
-  override def combineAll(byteArrays: IterableOnce[ByteArray]): ByteArray =
-    byteArrays.knownSize match {
+  override def combineAll(byteArraysOnce: IterableOnce[ByteArray]): ByteArray =
+    byteArraysOnce.knownSize match {
       case 0 => ByteArray.empty
-      case 1 => byteArrays.iterator.next()
+      case 1 => byteArraysOnce.iterator.next()
       case _ =>
-        val byteArrays_ = byteArrays.iterator.to(Iterable)
-        val array = new Array[Byte](byteArrays_.map(_.length).sum)
+        val byteArrays = mutable.ArrayBuffer.from(byteArraysOnce)
+        val result = new Array[Byte](byteArrays.view.map(_.length).sum)
         var pos = 0
-        for (byteArray <- byteArrays_) {
-          System.arraycopy(byteArray.unsafeArray, 0, array, pos, byteArray.length)
+        for (byteArray <- byteArrays) {
+          arraycopy(byteArray.unsafeArray, 0, result, pos, byteArray.length)
           pos += byteArray.length
         }
-        ByteArray(array)
+        ByteArray.unsafeWrap(result)
     }
 
   override def writeToStream(byteArray: ByteArray, out: OutputStream) =

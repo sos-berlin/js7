@@ -1,10 +1,10 @@
 package js7.core.event.journal.watch
 
-import akka.util.ByteString
 import java.nio.file.Path
 import java.util.UUID
 import js7.base.circeutils.CirceUtils.RichJsonObject
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.data.ByteArray
 import js7.base.utils.AutoClosing.autoClosing
 import js7.core.event.journal.data.JournalMeta
 import js7.core.event.journal.write.{EventJournalWriter, SnapshotJournalWriter}
@@ -41,7 +41,7 @@ private[watch] object TestData
       writer.writeHeader(JournalHeader.forTest(journalId, eventId = after))
       writer.beginSnapshotSection()
       for (o <- snapshotObjects) {
-        writer.writeSnapshot(ByteString(journalMeta.snapshotJsonCodec.encodeObject(o).compactPrint))
+        writer.writeSnapshot(ByteArray(journalMeta.snapshotJsonCodec.encodeObject(o).compactPrint))
       }
       writer.endSnapshotSection()
       writer.beginEventSection(sync = false)

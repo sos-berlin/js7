@@ -300,7 +300,7 @@ lazy val `js7-data` = crossProject(JSPlatform, JVMPlatform)
       "org.typelevel" %%% "discipline-scalatest" % disciplineScalaTestVersion % "test"
   }
 
-lazy val `js7-common` = project.dependsOn(`js7-base`.jvm, `js7-data`.jvm, `js7-tester`.jvm % "test")
+lazy val `js7-common` = project.dependsOn(`js7-base`.jvm, `js7-base`.jvm % "test->test", `js7-data`.jvm, `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings {

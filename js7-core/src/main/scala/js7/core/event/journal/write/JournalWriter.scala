@@ -1,10 +1,10 @@
 package js7.core.event.journal.write
 
-import akka.util.ByteString
 import io.circe.Encoder
 import io.circe.syntax.EncoderOps
 import java.nio.file.{Files, Path}
 import js7.base.circeutils.CirceUtils.RichJson
+import js7.base.data.ByteArray
 import js7.base.monixutils.MonixBase.syntax._
 import js7.common.utils.ByteUnits.toMB
 import js7.core.event.journal.data.JournalMeta
@@ -41,13 +41,13 @@ extends AutoCloseable
   def close() = jsonWriter.close()
 
   final def writeHeader(header: JournalHeader): Unit = {
-    jsonWriter.write(ByteString.fromString(header.asJson.compactPrint))
+    jsonWriter.write(ByteArray.fromString(header.asJson.compactPrint))
     flush(sync = false)
   }
 
   def beginEventSection(sync: Boolean): Unit = {
     if (_eventsStarted) throw new IllegalStateException("EventJournalWriter: duplicate beginEventSection()")
-    jsonWriter.write(ByteString(EventHeader.compactPrint))
+    jsonWriter.write(ByteArray(EventHeader.compactPrint))
     flush(sync = sync)
     _eventsStarted = true
   }
@@ -82,8 +82,8 @@ extends AutoCloseable
         .foreach(jsonWriter.write)(scheduler),
       Duration.Inf)
 
-  private def serialize[A: Encoder](a: A): ByteString =
-    try ByteString(a.asJson.compactPrint)
+  private def serialize[A: Encoder](a: A): ByteArray =
+    try ByteArray(a.asJson.compactPrint)
     catch { case t: Exception => throw new SerializationException(t) }
 
   protected final def eventsStarted = _eventsStarted

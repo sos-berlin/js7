@@ -1,12 +1,12 @@
 package js7.core.event.journal
 
 import akka.actor.{Actor, ActorRef, DeadLetterSuppression, Props, Stash}
-import akka.util.ByteString
 import io.circe.syntax.EncoderOps
 import java.nio.file.Files.{delete, exists, move}
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import js7.base.circeutils.CirceUtils._
+import js7.base.data.ByteArray
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
@@ -539,10 +539,10 @@ extends Actor with Stash
         }
         .mapParallelOrderedBatch() { snapshotObject =>
           // TODO Crash with SerializationException like EventSnapshotWriter ?
-          snapshotObject -> ByteString(snapshotObject.asJson(S.snapshotObjectJsonCodec).compactPrint)
+          snapshotObject -> ByteArray(snapshotObject.asJson(S.snapshotObjectJsonCodec).compactPrint)
         }
-        .foreach { case (snapshotObject, byteString) =>
-          snapshotWriter.writeSnapshot(byteString)
+        .foreach { case (snapshotObject, byteArray) =>
+          snapshotWriter.writeSnapshot(byteArray)
           logger.trace(s"Snapshot ${snapshotObject.toString.truncateWithEllipsis(200)}")
         }(scheduler),
       999.s)  // TODO Do not block the thread

@@ -172,7 +172,7 @@ final class JournaledProxyClusterTest extends AnyFreeSpec with ClusterProxyTest
             api.postObservableJsonString("controller/api/order", orders.map("¿" + _))
               .map(_ => Completed)
           ).await(99.s)
-          assert(response == Left(Problem("JSON ParsingFailure: expected json value got '¿{\"id\"...' (line 1, column 1)")))
+          assert(response == Left(Problem("JSON ParsingFailure: expected json value got '¿{\"id...' (line 1, column 1)")))
         }
       }
     }

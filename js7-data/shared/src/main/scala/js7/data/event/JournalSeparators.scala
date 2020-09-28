@@ -3,11 +3,7 @@ package js7.data.event
 import io.circe.Json
 import js7.base.circeutils.CirceUtils.RichCirceString
 import js7.base.data.ByteArray
-import js7.base.data.ByteSequence.ops._
 import js7.base.problem.Checked._
-import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.ScodecUtils.syntax._
-import scodec.bits.ByteVector
 
 /**
   * @author Joacim Zschimmer
@@ -26,7 +22,7 @@ object JournalSeparators
 
   /** Marker to distinguish from end of stream due to timeout.
     * The file itself must not contain this line! */
-  val EndOfJournalFileMarker: ByteVector = ByteVector.encodeUtf8("\"/// END OF JOURNAL FILE ///\"\n").orThrow
+  val EndOfJournalFileMarker = ByteArray("\"/// END OF JOURNAL FILE ///\"\n")
   val EndOfJournalFileMarkerJson: Json = EndOfJournalFileMarker.utf8String.parseJsonOrThrow
-  val HeartbeatMarker: ByteVector = ByteVector.encodeUtf8("\"/// HEARTBEAT ///\"\n").orThrow
+  val HeartbeatMarker: ByteArray = ByteArray("\"/// HEARTBEAT ///\"\n")
 }

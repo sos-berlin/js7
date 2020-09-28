@@ -1,8 +1,8 @@
 package js7.core.event.journal.write
 
-import akka.util.ByteString
 import java.nio.file.Path
 import js7.base.circeutils.CirceUtils._
+import js7.base.data.ByteArray
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
 import js7.common.scalautil.Logger
@@ -41,12 +41,12 @@ extends JournalWriter(after = after, append = false)
 
   def beginSnapshotSection(): Unit = {
     if (snapshotStarted) throw new IllegalStateException("SnapshotJournalWriter: duplicate beginSnapshotSection()")
-    jsonWriter.write(ByteString(SnapshotHeader.compactPrint))
+    jsonWriter.write(ByteArray(SnapshotHeader.compactPrint))
     flush(sync = false)
     snapshotStarted = true
   }
 
-  def writeSnapshot(json: ByteString): Unit = {
+  def writeSnapshot(json: ByteArray): Unit = {
     if (!snapshotStarted) throw new IllegalStateException("SnapshotJournalWriter: writeSnapshots(), but snapshots have not been started")
     statistics.countSnapshot()
     jsonWriter.write(json)
@@ -54,7 +54,7 @@ extends JournalWriter(after = after, append = false)
   }
 
   def endSnapshotSection(): Unit = {
-    jsonWriter.write(ByteString(SnapshotFooter.compactPrint))
+    jsonWriter.write(ByteArray(SnapshotFooter.compactPrint))
     statistics.setFileLength(jsonWriter.fileLength)
   }
 

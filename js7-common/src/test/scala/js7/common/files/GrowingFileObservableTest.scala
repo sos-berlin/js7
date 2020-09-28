@@ -1,9 +1,8 @@
 package js7.common.files
 
 import java.util.concurrent.ArrayBlockingQueue
-import js7.base.data.ByteSequence.ops._
+import js7.base.data.ByteArray
 import js7.base.time.ScalaTime._
-import js7.base.utils.ScodecUtils.syntax._
 import js7.common.scalautil.FileUtils._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.MonixUtils.syntax._
@@ -11,7 +10,6 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
 import scala.util.Random
-import scodec.bits.ByteVector
 
 /**
   * @author Joacim Zschimmer
@@ -20,7 +18,7 @@ final class GrowingFileObservableTest extends AnyFreeSpec
 {
   "GrowingFileObservable, not growing" in {
     withTemporaryFile("GrowingFileObservableTest", ".tmp") { file =>
-      val bytes = ByteVector(Random.alphanumeric.map(_.toByte).take(3 * ByteVectorReader.ChunkSize - 7).toVector)
+      val bytes = ByteArray.fromSeq(Random.alphanumeric.map(_.toByte).take(3 * ByteArrayReader.ChunkSize - 7))
       file := bytes
       val read = new GrowingFileObservable(file)
         .fold.headL await 9.s

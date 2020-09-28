@@ -1,15 +1,13 @@
 package js7.tests.controller.web
 
 import akka.http.scaladsl.model.StatusCodes.Unauthorized
-import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files
 import js7.base.auth.{UserAndPassword, UserId}
+import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops._
 import js7.base.generic.SecretString
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer.syntax._
-import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.ScodecUtils.syntax._
 import js7.base.web.Uri
 import js7.common.configutils.Configs._
 import js7.common.guice.GuiceImplicits.RichInjector
@@ -39,7 +37,6 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
 import scala.collection.mutable
-import scodec.bits.ByteVector
 
 final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest
 {
@@ -81,7 +78,7 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
 
   "/controller/api/journal" in {
     // TODO Duplicate with JournalRouteTest
-    var replicated = ByteVector.empty
+    var replicated = ByteArray.empty
     controller.eventWatch.await[AgentReady](_ => true)  // Await last event
 
     val whenReplicated = httpClient.getRawLinesObservable(Uri(s"$uri/controller/api/journal?markEOF=true&file=0&position=0"))
@@ -100,7 +97,7 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
 
     //replicated = replicated.dropRight(EndOfJournalFileMarker.length)
     assert(replicated.utf8String == controller0File.contentString)  // Compare strings for a legible error message
-    assert(replicated == controller0File.byteVector)
+    assert(replicated == controller0File.byteArray)
 
     waitForCondition(99.s, 10.ms)(observedLengths.lastOption.map(_.stripSuffix("\n").toLong) contains Files.size(controller0File))
     assert(observedLengths.last.stripSuffix("\n").toLong == Files.size(controller0File))
@@ -112,7 +109,7 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
     whenReplicated await 9.s
     waitForCondition(10.s, 10.ms)(replicated endsWith EndOfJournalFileMarker)
     assert(replicated.utf8String == controller0File.contentString ++ EndOfJournalFileMarker.utf8String)  // Compare strings for legible error message
-    assert(replicated == controller0File.byteVector ++ EndOfJournalFileMarker)
+    assert(replicated == controller0File.byteArray ++ EndOfJournalFileMarker)
 
     whenLengthsObserved await 9.s
     assert(observedLengths.last == EndOfJournalFileMarker.utf8String)
@@ -135,12 +132,12 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
     val u = Uri(s"$uri/controller/api/journal?markEOF=true&file=$fileAfter&position=0")
     httpClient.getRawLinesObservable(u).await(99.s)
       .foreach {
-        lines += _.decodeString(UTF_8).orThrow
+        lines += _.utf8String
       }
     httpClient.getRawLinesObservable(Uri(u.string + "&heartbeat=0.1")).await(99.s)
       .timeoutOnSlowUpstream(200.ms)  // Check heartbeat
       .foreach {
-        heartbeatLines += _.decodeString(UTF_8).orThrow
+        heartbeatLines += _.utf8String
       }
 
     val orderId = OrderId("🔵")
