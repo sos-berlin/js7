@@ -1,7 +1,6 @@
 package js7.data.session
 
 import js7.base.auth.{SessionToken, UserAndPassword}
-import js7.base.data.ByteSequence.ops._
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.syntax.{RichMonixObservable, RichMonixObservableTask}
 import js7.base.problem.Checked
@@ -9,7 +8,6 @@ import js7.base.problem.Checked._
 import js7.base.session.SessionCommand.{Login, Logout}
 import js7.base.session.{HasSessionToken, SessionApi, SessionCommand}
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
-import js7.base.utils.ScodecUtils.syntax._
 import js7.base.web.HttpClient.liftProblem
 import js7.base.web.{HttpClient, Uri}
 import js7.data.event.JournaledState
