@@ -234,7 +234,7 @@ extends AnyFreeSpec
   }
 
   "toInputStreamResource" in {
-    val byteSeq = ByteSequence[ByteSeq].random(100000)
+    val byteSeq = ByteSequence[ByteSeq].random(100001)
     val x = byteSeq.toInputStreamResource.useSync { in =>
       val out = new ByteArrayOutputStream
       IOUtils.copyStream(in, out)
@@ -243,7 +243,7 @@ extends AnyFreeSpec
     assert(x == byteSeq)
   }
 
-  "ByteSeqInputStream mark and reset (.toInputStream)" in {
+  "toInputStream mark and reset (ByteSequenceInputStream)" in {
     val byteSeq = ByteSequence[ByteSeq].random(100000)
     val in = byteSeq.toInputStream
     assert(in.markSupported)

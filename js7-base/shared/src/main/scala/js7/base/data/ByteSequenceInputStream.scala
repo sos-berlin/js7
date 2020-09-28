@@ -7,30 +7,26 @@ final class ByteSequenceInputStream[A](byteSeq: A)(implicit A: ByteSequence[A]) 
 {
   private[this] var i = 0
   private[this] var marked = 0
+  private val length = A.length(byteSeq)
 
-  def read() = {
-    if (i == A.length(byteSeq))
+  def read() =
+    if (i == length)
       -1
     else {
-      // SLOW: ByteSeq.apply iterates through all Chunks until the index is found !!!
-      val byte = A.at(byteSeq, i)
       i += 1
-      byte & 0xFF
+      A.at(byteSeq, i - 1) & 0xff
     }
-  }
 
-  //Test required:
-  //override def read(array: Array[Byte], offset: Int, length: Int) = {
-  //  if (i == byteSeq.length)
+  //override def read(array: Array[Byte], offset: Int, len: Int) =
+  //  if (i == length)
   //    -1
   //  else {
   //    // SLOW: ByteSeq.apply iterates through all Chunks until the index is found !
-  //    val readLength = length min (byteSeq.length - i min Int.MaxValue).toInt
+  //    val readLength = len min length - i min Int.MaxValue
   //    byteSeq.copyToArray(array, offset, i, readLength)
   //    i += readLength
   //    readLength
   //  }
-  //}
 
   override def markSupported = true
 

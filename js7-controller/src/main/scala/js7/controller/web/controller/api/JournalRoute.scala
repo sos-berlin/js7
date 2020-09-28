@@ -13,8 +13,8 @@ import js7.base.utils.FutureCompletion.syntax._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.AkkaHttpServerUtils.accept
 import js7.common.akkahttp.StandardMarshallers._
+import js7.common.akkautils.ByteStrings.syntax._
 import js7.common.event.{EventWatch, PositionAnd}
-import js7.common.http.AkkaHttpUtils.AkkaByteSequence
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.StreamingSupport._
 import js7.common.scalautil.Logger

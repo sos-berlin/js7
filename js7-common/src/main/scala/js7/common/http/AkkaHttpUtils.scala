@@ -7,11 +7,10 @@ import akka.http.scaladsl.model.headers.{HttpEncoding, HttpEncodings, `Accept-En
 import akka.http.scaladsl.model.{HttpEntity, HttpRequest, HttpResponse, Uri => AkkaUri}
 import akka.stream.Materializer
 import akka.util.ByteString
-import js7.base.data.ByteSequence.ops._
-import js7.base.data.{ByteArray, ByteSequence}
 import js7.base.web.Uri
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
+
 /**
   * @author Joacim Zschimmer
   */
@@ -64,19 +63,6 @@ object AkkaHttpUtils
       */
     def byteStringFuture(timeout: FiniteDuration)(implicit mat: Materializer, ec: ExecutionContext): Future[ByteString] =
       underlying.entity.byteStringFuture(timeout)
-  }
-
-  implicit final class ByteSequenceByteString(private val underlying: ByteString) extends AnyVal {
-    def toByteArray: ByteArray =
-      toByteSeq(ByteArray)
-
-    def toByteSeq[ByteSeq](implicit ByteSeq: ByteSequence[ByteSeq]): ByteSeq =
-       ByteSeq.unsafeWrap(underlying.toArray)
-  }
-
-  implicit final class AkkaByteSequence[A](private val underlying: A) extends AnyVal {
-    def toByteString(implicit A: ByteSequence[A]) =
-      ByteString.fromArrayUnsafe(underlying.unsafeArray)
   }
 
   implicit final class RichAkkaUri(private val underlying: Uri) extends AnyVal {

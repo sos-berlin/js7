@@ -2,7 +2,7 @@ package js7.base.data
 
 import cats.Eq
 import io.circe.{Decoder, Json}
-import java.io.OutputStream
+import java.io.{ByteArrayInputStream, InputStream, OutputStream}
 import java.lang.System.arraycopy
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.Base64
@@ -45,6 +45,15 @@ final class ByteArray private(val unsafeArray: Array[Byte])
       arraycopy(o.unsafeArray, 0, a, unsafeArray.length, o.length)
       ByteArray.unsafeWrap(a)
     }
+
+  def iterator: Iterator[Byte] =
+    unsafeArray.iterator
+
+  def toInputStream: InputStream =
+    new ByteArrayInputStream(unsafeArray)
+
+  def toArray: Array[Byte] =
+    java.util.Arrays.copyOf(unsafeArray, unsafeArray.length)
 
   def utf8String = new String(unsafeArray, UTF_8)
 
@@ -110,8 +119,11 @@ object ByteArray extends ByteSequence[ByteArray]
   def iterator(byteArray: ByteArray) =
     byteArray.unsafeArray.iterator
 
+  override def toInputStream(byteArray: ByteArray): InputStream =
+    byteArray.toInputStream
+
   def toArray(byteArray: ByteArray) =
-    java.util.Arrays.copyOf(byteArray.unsafeArray, byteArray.unsafeArray.length)
+    byteArray.toArray
 
   override def unsafeArray(byteArray: ByteArray) =
     byteArray.unsafeArray
@@ -125,12 +137,8 @@ object ByteArray extends ByteSequence[ByteArray]
   override def slice(byteArray: ByteArray, from: Int, until: Int) =
     byteArray.slice(from, until)
 
-  def combine(a: ByteArray, b: ByteArray): ByteArray = {
-    val array = new Array[Byte](length(a) + length(b))
-    arraycopy(unsafeArray(a), 0, array, 0, length(a))
-    arraycopy(unsafeArray(b), 0, array, length(a), length(b))
-    unsafeWrap(array)
-  }
+  def combine(a: ByteArray, b: ByteArray): ByteArray =
+    a ++ b
 
   override def combineAll(byteArraysOnce: IterableOnce[ByteArray]): ByteArray =
     byteArraysOnce.knownSize match {

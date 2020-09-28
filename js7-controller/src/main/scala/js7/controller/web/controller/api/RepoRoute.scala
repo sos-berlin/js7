@@ -19,7 +19,7 @@ import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
 import js7.base.utils.ScalaUtils.syntax.RichAny
 import js7.base.utils.{ByteArrayToLinesObservable, FutureCompletion, IntelliJUtils, SetOnce}
 import js7.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
-import js7.common.http.AkkaHttpUtils.ByteSequenceByteString
+import js7.common.akkautils.ByteStrings.syntax._
 import js7.common.http.StreamingSupport._
 import js7.common.scalautil.Logger
 import js7.controller.repo.{RepoUpdater, VerifiedUpdateRepo}

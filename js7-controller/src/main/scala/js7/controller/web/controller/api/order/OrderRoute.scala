@@ -21,7 +21,7 @@ import js7.base.utils.ScalaUtils.syntax.RichAny
 import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
 import js7.common.akkahttp.CirceJsonOrYamlSupport.{jsonOrYamlMarshaller, jsonUnmarshaller}
 import js7.common.akkahttp.StandardMarshallers._
-import js7.common.http.AkkaHttpUtils.ByteSequenceByteString
+import js7.common.akkautils.ByteStrings.syntax._
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.StreamingSupport._
 import js7.common.scalautil.Logger
