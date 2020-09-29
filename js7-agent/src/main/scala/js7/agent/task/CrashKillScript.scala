@@ -1,6 +1,5 @@
 package js7.agent.task
 
-import com.google.common.base.StandardSystemProperty.LINE_SEPARATOR
 import java.io.{BufferedWriter, FileOutputStream, OutputStreamWriter, Writer}
 import java.nio.charset.Charset.defaultCharset
 import java.nio.file.Files.{createFile, deleteIfExists, move}
@@ -100,7 +99,7 @@ extends AutoCloseable {
 
 object CrashKillScript {
   private val logger = Logger(getClass)
-  private val LineSeparator = sys.props(LINE_SEPARATOR.key)
+  private val LineSeparator = sys.props("line.separator")
   private val CleanArgument = "([A-Za-z0-9=,;:.+_/#-]*)".r      // No shell meta characters
 
   private case class Entry(taskId: TaskId, pidOption: Option[Pid]) {

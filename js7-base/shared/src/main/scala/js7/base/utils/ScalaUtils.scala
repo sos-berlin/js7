@@ -445,4 +445,15 @@ object ScalaUtils
     * risking `OutOfMemoryError` for long Strings. */
   def shortStringToInputStream(string: String): InputStream =
     new ByteArrayInputStream(string.getBytes(UTF_8))  // OutOfMemoryError
+
+  private val lowerCaseHex: Array[Char] = "0123456789abcdef".toArray
+
+  def bytesToHex(bytes: collection.Seq[Byte]): String = {
+    val sb = new StringBuilder(2 * bytes.length)
+    for (b <- bytes.iterator) {
+      sb.append(lowerCaseHex((b >> 4) & 0xf))
+      sb.append(lowerCaseHex(b & 0xf))
+    }
+    sb.toString
+  }
 }

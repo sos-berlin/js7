@@ -1,11 +1,11 @@
 package js7.core.common.jsonseq
 
-import com.google.common.base.Ascii
 import io.circe.Json
 import java.io.{BufferedOutputStream, OutputStream}
 import js7.base.circeutils.CirceUtils._
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops._
+import js7.base.utils.Ascii.RS
 import js7.base.utils.Assertions.assertThat
 import org.jetbrains.annotations.TestOnly
 
@@ -33,7 +33,7 @@ extends AutoCloseable
     writeJson(ByteArray.fromString(json.compactPrint))
 
   def writeJson(byteArray: ByteArray): Unit = {
-    if (withRS) buffered.write(Ascii.RS)
+    if (withRS) buffered.write(RS)
     assertThat(byteArray.indexOf('\n') == -1, "OutputStreamJsonSeqWriter: JSON contains a forbidden LF")
     buffered.write(byteArray.unsafeArray)
     buffered.write('\n')
