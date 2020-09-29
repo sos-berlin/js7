@@ -51,7 +51,8 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
   protected val inventoryItems = Nil
   private lazy val agentRef = directoryProvider.agentRefs.head
   private lazy val privateKeyPassword = SecretString("")
-  override protected val signer = SillySigner.checked(ByteArray("SILLY"), privateKeyPassword).orThrow
+  private val privateKey = ByteArray("SILLY")
+  override protected val signer = SillySigner.checked(privateKey, privateKeyPassword).orThrow
   override protected val verifier = signer.toVerifier
 
   private lazy val providerDirectory = directoryProvider.directory / "provider"
@@ -73,7 +74,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       """js7.provider.add-orders-every = 0.1s
         |js7.provider.add-orders-earlier = 0.1s
         |""".stripMargin
-    providerDirectory / "config" / "private" / "private-silly-keys.txt" := signer.privateKey
+    providerDirectory / "config" / "private" / "private-silly-keys.txt" := privateKey
     providerDirectory / "config" / "private" / "private.conf" :=
       s"""js7.provider.sign-with = Silly
          |js7.provider.private-signature-keys.Silly {

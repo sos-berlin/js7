@@ -1,18 +1,17 @@
 package js7.core.crypt.x509
 
 import cats.instances.vector._
-import cats.syntax.flatMap._
 import cats.syntax.traverse._
 import java.security.cert.{CertificateFactory, X509Certificate}
 import java.security.spec.X509EncodedKeySpec
 import java.security.{KeyFactory, PublicKey, Signature}
-import js7.base.Problems.{MessageSignedByUnknownProblem, TamperedWithSignedMessageProblem}
+import js7.base.Problems.MessageSignedByUnknownProblem
 import js7.base.auth.DistinguishedName
 import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId, X509Signature}
 import js7.base.data.ByteArray
-import js7.base.data.ByteSequence.ops._
 import js7.base.problem.{Checked, Problem}
 import js7.core.crypt.x509.X509SignatureVerifier.{PublicKeyPem, PublicKeyProvider}
+import org.jetbrains.annotations.TestOnly
 
 final class X509SignatureVerifier(publicKeyProviders: Seq[PublicKeyProvider], val publicKeyOrigin: String)
 extends SignatureVerifier
@@ -21,8 +20,9 @@ extends SignatureVerifier
 
   def companion = X509SignatureVerifier
 
-  def publicKeys = for (o <- publicKeyProviders.map(_.publicKey)) yield
-    ByteArray(PublicKeyPem.toPem(ByteArray.unsafeWrap(o.getEncoded)))
+  @TestOnly
+  def publicKeys = for (o <- publicKeyProviders) yield
+    PublicKeyPem.toPem(ByteArray.unsafeWrap(o.publicKey.getEncoded))
 
   def publicKeysToString =
     s"X.509 origin=$publicKeyOrigin" + publicKeyProviders.map(_.signerId.string).mkString(", ")

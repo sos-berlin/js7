@@ -14,8 +14,6 @@ trait DocumentSigner
 
   final def signString(document: String) =
     sign(ByteArray(document))
-
-  def privateKey: ByteArray
 }
 
 object DocumentSigner

@@ -15,6 +15,7 @@ import js7.core.crypt.pgp.PgpCommons._
 import org.bouncycastle.openpgp.jcajce.JcaPGPObjectFactory
 import org.bouncycastle.openpgp.operator.jcajce.JcaPGPContentVerifierBuilderProvider
 import org.bouncycastle.openpgp.{PGPPublicKey, PGPPublicKeyRingCollection, PGPSignature, PGPSignatureList, PGPUtil}
+import org.jetbrains.annotations.TestOnly
 import scala.jdk.CollectionConverters._
 
 /**
@@ -32,7 +33,8 @@ extends SignatureVerifier
 
   private val contentVerifierBuilderProvider = new JcaPGPContentVerifierBuilderProvider().setProvider("BC")
 
-  def publicKeys = publicKeyRingCollection.toArmoredAsciiBytes :: Nil
+  @TestOnly
+  def publicKeys = publicKeyRingCollection.toArmoredString :: Nil
 
   /** Returns `Right(message)` iff signature matches the message. */
   def verify(document: ByteArray, signature: PgpSignature): Checked[Seq[SignerId]] =

@@ -10,6 +10,7 @@ import js7.base.problem.Problem._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.StackTraces._
 import scala.language.implicitConversions
+
 /**
   * @author Joacim Zschimmer
   */

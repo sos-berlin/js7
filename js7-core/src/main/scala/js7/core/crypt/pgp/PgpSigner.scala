@@ -6,7 +6,6 @@ import cats.syntax.show._
 import java.util.Base64
 import js7.base.crypt.{DocumentSigner, PgpSignature, SignerId}
 import js7.base.data.ByteArray
-import js7.base.data.ByteSequence.ops._
 import js7.base.generic.SecretString
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
@@ -44,10 +43,6 @@ extends DocumentSigner
     val signatureBytes = signatureGenerator.generate.getEncoded(/*forTransfer=*/true)
     PgpSignature(Base64.getMimeEncoder.encodeToString(signatureBytes))
   }
-
-  /** The private key in armored ASCII. */
-  def privateKey: ByteArray =
-    pgpSecretKey.toArmoredAsciiBytes
 
   private def newSignatureGenerator(): PGPSignatureGenerator = {
     val signatureGenerator = new PGPSignatureGenerator(

@@ -4,6 +4,7 @@ import js7.base.Problems.TamperedWithSignedMessageProblem
 import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
 import js7.base.data.ByteArray
 import js7.base.utils.Assertions.assertThat
+import org.jetbrains.annotations.TestOnly
 
 /**
   * @author Joacim Zschimmer
@@ -19,7 +20,8 @@ extends SignatureVerifier
 
   def companion = SillySignatureVerifier
 
-  def publicKeys = signatures.map(o => ByteArray(o.string))
+  @TestOnly
+  def publicKeys = signatures.map(_.string)
 
   def verify(document: ByteArray, signature: SillySignature) =
     if (!signatures.contains(signature))

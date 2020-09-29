@@ -2,6 +2,7 @@ package js7.base.crypt
 
 import js7.base.data.ByteArray
 import js7.base.problem.Checked
+import org.jetbrains.annotations.TestOnly
 
 /**
   * @author Joacim Zschimmer
@@ -15,7 +16,8 @@ trait SignatureVerifier {
     type MySignature = self.MySignature
   }
 
-  def publicKeys: Seq[ByteArray]
+  @TestOnly
+  def publicKeys: Seq[String]
 
   def publicKeyOrigin: String
 

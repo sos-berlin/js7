@@ -4,7 +4,6 @@ import java.security.spec.X509EncodedKeySpec
 import java.security.{KeyFactory, PrivateKey, Signature}
 import js7.base.crypt.{DocumentSigner, X509Algorithm, X509Signature}
 import js7.base.data.ByteArray
-import js7.base.data.ByteSequence.ops._
 import js7.base.generic.SecretString
 import js7.base.problem.{Checked, Problem}
 
@@ -23,9 +22,6 @@ extends DocumentSigner
     signature.update(message.unsafeArray)
     X509Signature(ByteArray.unsafeWrap(signature.sign), algorithm)
   }
-
-  lazy val privateKey: ByteArray =
-    ByteArray.unsafeWrap(x509PrivateKey.getEncoded)
 
   override def toString = s"X509Signer($x509PrivateKey)"
 }

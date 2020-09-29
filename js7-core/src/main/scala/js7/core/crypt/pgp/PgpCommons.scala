@@ -6,9 +6,9 @@ import cats.instances.vector._
 import cats.syntax.foldable._
 import cats.syntax.show._
 import java.io.{ByteArrayOutputStream, InputStream, OutputStream}
+import java.nio.charset.StandardCharsets.US_ASCII
 import java.security.Security
 import js7.base.data.ByteArray
-import js7.base.data.ByteSequence.ops._
 import js7.base.utils.SyncResource.syntax._
 import js7.common.time.JavaTime._
 import org.bouncycastle.bcpg.{ArmoredOutputStream, HashAlgorithmTags, PublicKeyAlgorithmTags}
@@ -184,14 +184,6 @@ object PgpCommons
     new PGPPublicKeyRingCollection((ring :: Nil).asJava)
   }
 
-  implicit final class RichPGPSecretKey(private val underlying: PGPSecretKey) extends AnyVal {
-    def toArmoredAsciiBytes: ByteArray = {
-      val out = new ByteArrayOutputStream()
-      writeSecretKeyAsAscii(underlying, out)
-      ByteArray.unsafeWrap(out.toByteArray)
-    }
-  }
-
   implicit final class RichPGPPublicKey(private val underlying: PGPPublicKey) extends AnyVal {
     def toArmoredAsciiBytes: ByteArray = {
       val out = new ByteArrayOutputStream()
@@ -201,10 +193,10 @@ object PgpCommons
   }
 
   implicit final class RichPGPPublicKeyRingCollection(private val underlying: PGPPublicKeyRingCollection) extends AnyVal {
-    def toArmoredAsciiBytes: ByteArray = {
+    def toArmoredString: String = {
       val out = new ByteArrayOutputStream()
       writePublicKeyRingCollectionAsAscii(underlying, out)
-      ByteArray.unsafeWrap(out.toByteArray)
+      new String(out.toByteArray, US_ASCII)
     }
   }
 }

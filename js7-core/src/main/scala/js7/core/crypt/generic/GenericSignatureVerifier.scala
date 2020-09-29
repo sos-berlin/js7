@@ -14,7 +14,6 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Collections._
 import js7.base.utils.JavaCollections.syntax._
 import js7.base.utils.ScalaUtils.checkedCast
-import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.FileUtils.syntax.RichPath
 import js7.common.scalautil.Logger
 import scala.jdk.CollectionConverters._
@@ -64,20 +63,21 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion
   def apply(config: Config): Checked[GenericSignatureVerifier] =
     config.getObject(configPath).asScala.toMap  // All Config key-values
       .map { case (typeName, v) =>
-        typeName -> checkedCast[String](v.unwrapped, Problem.pure(s"String expected as value of configuration key $configPath.$typeName"))
-          .map(Paths.get(_))
-          .flatMap(directory =>
-            SignatureVerifiers.typeToSignatureVerifierCompanion(typeName).flatMap(companion =>
-              if (!exists(directory))
-                Left(Problem.pure(s"Signature key directory '$directory' for '$typeName' does not exists"))
-              else {
-                val files = autoClosing(Files.list(directory))(_
-                  .asScala.filterNot(_.getFileName.toString.startsWith(".")).toVector)
-                if (files.isEmpty) {
-                  logger.warn(s"No files for ${companion.getClass.simpleScalaName} in directory '$directory'")
-                }
-                companion.checked(files.map(_.byteArray), origin = directory.toString)
-              }))
+        typeName ->
+          checkedCast[String](v.unwrapped, ConfigStringExpectedProblem(s"$configPath.$typeName"))
+            .map(Paths.get(_))
+            .flatMap(directory =>
+              SignatureVerifiers.typeToSignatureVerifierCompanion(typeName).flatMap(companion =>
+                if (!exists(directory))
+                  Left(Problem.pure(s"Signature key directory '$directory' for '$typeName' does not exists"))
+                else {
+                  val files = autoClosing(Files.list(directory))(_
+                    .asScala.filterNot(_.getFileName.toString.startsWith(".")).toVector)
+                  if (files.isEmpty) {
+                    logger.warn(s"No public key files for signature verifier '${companion.typeName}' in directory '$directory'")
+                  }
+                  companion.checked(files.map(_.byteArray), origin = directory.toString)
+                }))
       }
       .toVector
       .traverse {
@@ -104,4 +104,7 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion
 
   def genericSignatureToSignature(signature: GenericSignature) =
     Right(signature)
+
+  private case class ConfigStringExpectedProblem(configKey: String) extends Problem.Lazy(
+    s"String expected as value of configuration key $configKey")
 }

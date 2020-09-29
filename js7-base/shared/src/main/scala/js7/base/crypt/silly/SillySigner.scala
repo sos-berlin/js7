@@ -3,7 +3,6 @@ package js7.base.crypt.silly
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.crypt.DocumentSigner
 import js7.base.data.ByteArray
-import js7.base.data.ByteSequence.ops._
 import js7.base.generic.SecretString
 import js7.base.problem.Problem
 
@@ -17,8 +16,6 @@ final class SillySigner(signature: SillySignature) extends DocumentSigner
   def companion = SillySigner
 
   def sign(document: ByteArray) = signature
-
-  def privateKey = ByteArray(signature.string)
 
   def toVerifier = new SillySignatureVerifier(signature :: Nil, publicKeyOrigin = "SillySigner")
 }
