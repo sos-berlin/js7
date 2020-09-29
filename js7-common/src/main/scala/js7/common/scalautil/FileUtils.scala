@@ -2,7 +2,7 @@ package js7.common.scalautil
 
 import com.google.common.io.FileWriteMode.APPEND
 import com.google.common.io.{Files => GuavaFiles}
-import java.io.{File, FileOutputStream}
+import java.io.{BufferedOutputStream, File, FileOutputStream}
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.{delete, deleteIfExists, isDirectory, isSymbolicLink, setPosixFilePermissions}
@@ -65,21 +65,20 @@ object FileUtils
         write(bytes.toArray)
 
       def :=(byteSeq: ByteArray): Unit =
-        autoClosing(new FileOutputStream(delegate.toFile))(byteSeq.writeToStream)
+        autoClosing(new BufferedOutputStream(new FileOutputStream(delegate.toFile)))(
+          byteSeq.writeToStream(_))
 
-      // collides with := json
       def :=[W: Writable](w: W): Unit =
-        autoClosing(new FileOutputStream(delegate.toFile))(w.writeToStream)
+        autoClosing(new BufferedOutputStream(new FileOutputStream(delegate.toFile)))(
+          w.writeToStream(_))
 
       /** Appends `string` encoded with UTF-8 to file. */
       def ++=(string: CharSequence): Unit =
         append(string)
 
       def ++=[B: ByteSequence](byteSeq: B): Unit=
-        autoClosing(new FileOutputStream(delegate.toFile, true))(byteSeq.writeToStream(_))
-
-      //def ++=[B <: ByteSequence[B]](byteSeq: B)(implicit B: ByteSequence[B]): Unit=
-      //  autoClosing(new FileOutputStream(delegate.toFile, true))(B.writeToStream(byteSeq, _))
+        autoClosing(new BufferedOutputStream(new FileOutputStream(delegate.toFile, true)))(
+          byteSeq.writeToStream(_))
 
       def byteArray: ByteArray =
         readAs[ByteArray]
@@ -99,6 +98,7 @@ object FileUtils
         write(string, UTF_8)
 
       def contentString(encoding: Charset) =
+        // Java 11: Files.readString(encoding)
         GuavaFiles.asCharSource(delegate.toFile, encoding).read()
 
       def writeExecutable(string: String): Unit = {
@@ -112,9 +112,11 @@ object FileUtils
         }
 
       def write(string: CharSequence, encoding: Charset = UTF_8): Unit =
+        // Java 11: Files.writeString(delegate, string, encoding, CREATE, TRUNCATE_EXISTING)
         GuavaFiles.asCharSink(delegate.toFile, encoding).write(string)
 
       def append(string: CharSequence, encoding: Charset = UTF_8): Unit =
+        // Java 11: Files.writeString(delegate, string, encoding, CREATE, APPEND)
         GuavaFiles.asCharSink(delegate.toFile, encoding, APPEND).write(string)
 
       /**
