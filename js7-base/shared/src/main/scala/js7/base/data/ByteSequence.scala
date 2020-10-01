@@ -71,14 +71,17 @@ trait ByteSequence[ByteSeq] extends Writable[ByteSeq] with Monoid[ByteSeq] with 
   def show(byteSeq: ByteSeq) =
     if (isEmpty(byteSeq))
       s"$typeName.empty"
-    else
+    else {
+      val len = length(byteSeq)
+      val prefix = take(byteSeq, maxShowLength)
       typeName +
-        "(length=" + length(byteSeq) + " " +
-        toStringAndHexRaw(
-          slice(byteSeq, 0, maxShowLength),
-          maxShowLength,
-          withEllipsis = length(byteSeq) > maxShowLength) +
+        "(length=" + len + " " +
+        (if (iterator(prefix).forall(o => o >= ' ' && o < '\u007f'))
+          "»" + utf8String(byteSeq) + "«"
+         else
+          toStringAndHexRaw(prefix, maxShowLength, withEllipsis = len > maxShowLength)) +
         ")"
+    }
 
   def toStringAndHexRaw(byteSeq: ByteSeq, n: Int = Int.MaxValue, withEllipsis: Boolean = false) =
     nonEmpty(byteSeq) ??
