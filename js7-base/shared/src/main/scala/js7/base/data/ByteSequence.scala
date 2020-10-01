@@ -57,7 +57,7 @@ trait ByteSequence[ByteSeq] extends Writable[ByteSeq] with Monoid[ByteSeq] with 
   def fromMimeBase64(string: String): Checked[ByteSeq] =
     try Right(fromArray(Base64.getMimeDecoder.decode(string)))
     catch { case e: IllegalArgumentException =>
-      Left(Problem(s"Invalid MIME encoding: " + e.getMessage))
+      Left(Problem(s"Invalid MIME base64 encoding: " + e.getMessage))
     }
 
   def random(size: Int): ByteSeq = {

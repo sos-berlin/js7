@@ -88,9 +88,13 @@ object PgpSignatureVerifier extends SignatureVerifier.Companion
 
   def genericSignatureToSignature(signature: GenericSignature): Checked[PgpSignature] = {
     assertThat(signature.typeName == typeName)
-    val pgpSignature = PgpSignature(signature.signatureString)
-    for (_ <- toMutablePGPSignature(pgpSignature)/*check early*/)
-      yield pgpSignature
+    if (signature.signerCertificate.isDefined)
+      Left(Problem("PGP signature does not accept a signature public key"))
+    else {
+      val pgpSignature = PgpSignature(signature.signatureString)
+      for (_ <- toMutablePGPSignature(pgpSignature)/*check early*/)
+        yield pgpSignature
+    }
   }
 
   private[pgp] def toMutablePGPSignature(signature: PgpSignature): Checked[PGPSignature] =

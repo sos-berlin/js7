@@ -14,6 +14,7 @@ import js7.common.scalautil.IOExecutor.ioFuture
 import js7.common.scalautil.{IOExecutor, Logger}
 import js7.data.job.ReturnCode
 import js7.data.system.StdoutOrStderr
+import org.jetbrains.annotations.TestOnly
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
@@ -55,15 +56,28 @@ object Processes
 
   def directShellCommandArguments(argument: String): Seq[String] = OS.directShellCommandArguments(argument)
 
-  def runProcess(commandLine: String): Unit = {
+  @TestOnly
+  def runProcess(commandLine: String): String = {
     import scala.sys.process._
     val stdout = new StringBuilder
     val stderr = new StringBuilder
 
-    val exitCode = commandLine.!(ProcessLogger(stdout.append(_), stderr.append(_)))
+    val exitCode = commandLine.!(new ProcessLogger {
+      def out(line: => String): Unit = {
+        stdout ++= line
+        stdout += '\n'
+      }
+
+      def err(line: => String): Unit = {
+        stdout ++= line
+        stdout += '\n'
+      }
+
+      def buffer[T](f: => T) = f
+    })
     if (exitCode != 0)
       throw new ProcessException(commandLine, ReturnCode(exitCode), ByteArray(stdout.toString), ByteArray(stderr.toString))
-    // Newlines are missing? stdout.toString
+    stdout.toString
   }
 
   private def runProcess(commandLine: String)(implicit iox: IOExecutor): ByteArray = {

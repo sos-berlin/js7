@@ -11,7 +11,9 @@ import js7.base.utils.IntelliJUtils.intelliJuseImport
 @ConfiguredJsonCodec
 final case class GenericSignature(
   @JsonKey("TYPE") typeName: String,
-  signatureString: String)
+  signatureString: String,
+  /** Public key, yet to be verified against a root certificate. */
+  signerCertificate: Option[String] = None)
 extends Signature
 {
   def toGenericSignature = this

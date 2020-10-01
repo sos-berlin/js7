@@ -1,7 +1,7 @@
 package js7.base.crypt
 
 import js7.base.circeutils.CirceUtils._
-import js7.tester.CirceJsonTester
+import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
@@ -9,9 +9,18 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class GenericSignatureTest extends AnyFreeSpec
 {
-  CirceJsonTester.testJson(GenericSignature("SIGNATURE-TYPE", "SIGNATURE"), json"""
-    {
-      "TYPE": "SIGNATURE-TYPE",
-      "signatureString": "SIGNATURE"
-    }""")
+  "JSON" in {
+    testJson(GenericSignature("SIGNATURE-TYPE", "SIGNATURE"), json"""
+      {
+        "TYPE": "SIGNATURE-TYPE",
+        "signatureString": "SIGNATURE"
+      }""")
+
+    testJson(GenericSignature("SIGNATURE-TYPE", "SIGNATURE", Some("SIGNER CERTIFICATE")), json"""
+      {
+        "TYPE": "SIGNATURE-TYPE",
+        "signatureString": "SIGNATURE",
+        "signerCertificate": "SIGNER CERTIFICATE"
+      }""")
+  }
 }

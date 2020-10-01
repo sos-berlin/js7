@@ -1,4 +1,4 @@
-package js7.core.crypt.x509
+package js7.base.auth
 
 import js7.base.data.ByteArray
 import js7.base.problem.{Checked, Problem}

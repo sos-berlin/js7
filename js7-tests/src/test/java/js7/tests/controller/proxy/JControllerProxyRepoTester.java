@@ -118,8 +118,8 @@ final class JControllerProxyRepoTester
     private static SignedString sign(String json) {
         return SignedString.of(
             json,                       // The string to be be signed
-            "Silly",                    // Thy signature type, "PGP" (or "Silly" for silly testing)
-            "MY-SILLY-SIGNATURE");      // The signature of string
+            "Silly",                    // Thy signature type, "X509" or "PGP" (or "Silly" for silly testing)
+            "MY-SILLY-SIGNATURE");      // The signature of string (in case of X.509: MIME base64 encoded)
     }
 
     private CompletableFuture<JEventAndControllerState<Event>> awaitEvent(Predicate<KeyedEvent<Event>> predicate) {

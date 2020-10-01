@@ -529,7 +529,9 @@ lazy val `js7-taskserver` = project
       lmaxDisruptor % "test"
   }
 
-lazy val `js7-tests` = project.dependsOn(`js7-controller`, `js7-agent`, `js7-proxy`.jvm, `js7-agent-client`, `js7-provider`, `js7-tester`.jvm % "test", `js7-docker` % "test")
+lazy val `js7-tests` = project
+  .dependsOn(`js7-controller`, `js7-agent`, `js7-proxy`.jvm, `js7-agent-client`,
+    `js7-core` % "test->test", `js7-provider`, `js7-tester`.jvm % "test", `js7-docker` % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(
     commonSettings,

@@ -1,8 +1,8 @@
 package js7.tests.controller.commands
 
 import java.nio.file.Files.{copy, createTempDirectory}
-import js7.base.Problems.MessageSignedByUnknownProblem
-import js7.base.auth.{UserAndPassword, UserId}
+import js7.base.Problems.TamperedWithSignedMessageProblem
+import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils._
 import js7.base.crypt.{GenericSignature, SignedString}
 import js7.base.generic.SecretString
@@ -60,14 +60,14 @@ final class UpdateRepoX509Test extends AnyFreeSpec with ControllerAgentForScalaT
     super.afterAll()
   }
 
-  "UpdateRepo with internally generated signature key" in {
-    controller.httpApiDefaultLogin(Some(UserAndPassword(UserId("UpdateRepoX509Test"), SecretString("TEST-PASSWORD"))))
+  "UpdateRepo with internally generated signature" in {
+    controller.httpApiDefaultLogin(Some(UserId("UpdateRepoX509Test") -> SecretString("TEST-PASSWORD")))
     controller.httpApi.login() await 99.s
     val v1 = VersionId("1")
     executeCommand(UpdateRepo(v1, sign(workflow withVersion v1) :: Nil)).orThrow
   }
 
-  "UpdateRepo with openssl-generated signature key" in {
+  "UpdateRepo with openssl-generated signature" in {
     withTemporaryDirectory("UpdateRepoX509Test-") { dir =>
       val itemFile = dir / "workflow.json"
       val signatureFile = dir / "workflow.json.signature"
@@ -96,8 +96,7 @@ final class UpdateRepoX509Test extends AnyFreeSpec with ControllerAgentForScalaT
       val signedStringV3 = SignedString(
         itemFile.contentString + "-TAMPERED",
         GenericSignature("X509", signatureBase64File.contentString))
-      // Not TamperedWithSignedMessageProblem, because signature does not contains some SignerId
-      assert(executeCommand(UpdateRepo(v3, signedStringV3 :: Nil)) == Left(MessageSignedByUnknownProblem))
+      assert(executeCommand(UpdateRepo(v3, signedStringV3 :: Nil)) == Left(TamperedWithSignedMessageProblem))
     }
   }
 

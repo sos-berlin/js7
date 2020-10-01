@@ -3,6 +3,7 @@ package js7.base.crypt.silly
 import js7.base.Problems.TamperedWithSignedMessageProblem
 import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
 import js7.base.data.ByteArray
+import js7.base.problem.Problem
 import js7.base.utils.Assertions.assertThat
 import org.jetbrains.annotations.TestOnly
 
@@ -54,6 +55,9 @@ object SillySignatureVerifier extends SignatureVerifier.Companion
 
   def genericSignatureToSignature(signature: GenericSignature) = {
     assertThat(signature.typeName == typeName)
-    Right(SillySignature(signature.signatureString))
+    if (signature.signerCertificate.isDefined)
+      Left(Problem("Silly signature does not accept a signature public key"))
+    else
+      Right(SillySignature(signature.signatureString))
   }
 }

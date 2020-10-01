@@ -40,6 +40,4 @@ object DistinguishedName
 
   implicit val GenericStringAsString: As[String, DistinguishedName] =
     As(unchecked)
-
-  new X500Principal("")
 }
