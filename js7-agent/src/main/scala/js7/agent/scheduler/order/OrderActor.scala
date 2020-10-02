@@ -47,7 +47,6 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
   private var terminating = false
 
   protected def key = orderId
-  protected def snapshot = Option(order)
 
   override def postStop() = {
     if (stdouterr != null) stdouterr.close()

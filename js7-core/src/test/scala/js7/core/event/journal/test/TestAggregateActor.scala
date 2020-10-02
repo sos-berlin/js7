@@ -22,8 +22,6 @@ extends KeyedJournalingActor[TestState, TestEvent] {
   private var aggregate: TestAggregate = null
   private var disturbance = 0
 
-  protected def snapshot = Option(aggregate)
-
   def receive = {
     case Input.RecoverFromSnapshot(aggregate) =>
       this.aggregate = aggregate

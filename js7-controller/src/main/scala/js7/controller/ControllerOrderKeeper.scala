@@ -241,8 +241,6 @@ with MainJournalingActor[ControllerState, Event]
       super.postStop()
     }
 
-  protected def snapshots = Future.successful(Nil)
-
   def receive = {
     case Input.Start(recovered) =>
       assertActiveClusterState(recovered)

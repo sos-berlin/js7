@@ -15,10 +15,6 @@ trait KeyedJournalingActor[S <: JournaledState[S], E <: Event]
 extends JournalingActor[S, E]
 {
   protected def key: E#Key
-  protected def snapshot: Option[Any]
-
-  protected final def snapshots: Future[Iterable[Any]] =
-    Future.successful(snapshot.toList)
 
   protected final def persistTask[A](event: E, async: Boolean = false)(callback: (Stamped[KeyedEvent[E]], S) => A): Task[Checked[A]] =
     persistKeyedEventTask(KeyedEvent[E](key, event), async = async)(callback)

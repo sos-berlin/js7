@@ -73,8 +73,6 @@ extends MainJournalingActor[AgentServerState, AgentServerEvent] {
   private def terminating = shutDownCommand.isDefined
   private val terminateCompleted = Promise[Completed]()
 
-  def snapshots = state.toSnapshotObservable.toL(Vector).runToFuture
-
   override def preStart() = {
     super.preStart()
     val recovered = JournaledStateRecoverer.recover[AgentServerState](

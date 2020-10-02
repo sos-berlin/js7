@@ -35,8 +35,6 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
 {
   protected def journalActor: ActorRef @@ JournalActor.type
   protected def journalConf: JournalConf
-  @deprecated
-  protected def snapshots: Future[Iterable[Any]]
   protected def scheduler: Scheduler
 
   private var stashingCount = 0

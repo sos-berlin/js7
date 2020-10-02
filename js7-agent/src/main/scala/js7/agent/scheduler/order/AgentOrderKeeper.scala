@@ -166,8 +166,6 @@ with Stash {
     logger.debug("Stopped" + shutdown.since.fold("")(o => s" (terminated in ${o.elapsed.pretty})"))
   }
 
-  def snapshots = Future.successful(workflowRegister.workflows)
-
   def receive = {
     case Internal.Recover(recovered) =>
       recover(recovered)

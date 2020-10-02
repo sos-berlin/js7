@@ -188,7 +188,6 @@ with ReceiveLoggingActor.WithStash
   }
 
   protected def key = agentRefPath  // Only one version is active at any time
-  protected def snapshot = None  // ControllerOrderKeeper provides the AgentSnapshot
 
   private def newAgentClient(uri: Uri): AgentClient =
     AgentClient(uri, agentUserAndPassword,

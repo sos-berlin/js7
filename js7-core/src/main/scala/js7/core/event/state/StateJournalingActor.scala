@@ -9,7 +9,7 @@ import js7.core.event.state.StateJournalingActor._
 import js7.data.event.{Event, JournaledState, KeyedEvent, Stamped}
 import monix.eval.Task
 import monix.execution.Scheduler
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.Promise
 import scala.reflect.runtime.universe._
 import scala.util.{Failure, Success, Try}
 import shapeless.tag.@@
@@ -25,8 +25,6 @@ extends MainJournalingActor[S, E]
   override def supervisorStrategy = SupervisorStrategies.escalate
 
   private var state: S = initialState
-
-  protected def snapshots = Future.successful(Nil)
 
   override def preStart() = {
     super.preStart()
