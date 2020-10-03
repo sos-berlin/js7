@@ -3,7 +3,6 @@ package js7.controller.client
 import js7.base.web.Uri
 import js7.data.agent.{AgentRef, AgentRefPath}
 import js7.data.event.{Event, EventRequest}
-import js7.data.fatevent.OrderFatEvent
 import js7.data.item.RepoEvent.ItemEvent
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -47,13 +46,6 @@ final class ControllerUrisTest extends AnyFreeSpec
       Uri("http://example.com/controller/api/journal?timeout=50&file=100&position=111"))
     assert(controllerUris.journal(fileEventId = 100, position = 111, heartbeat = Some(22.seconds), markEOF = true, returnLength = true) ==
       Uri("http://example.com/controller/api/journal?return=length&heartbeat=22&markEOF=true&file=100&position=111"))
-  }
-
-  "fatEvent" in {
-    assert(controllerUris.fatEvents(EventRequest.singleClass[OrderFatEvent](after = 7, timeout = Some(1230.millis))) ==
-      Uri("http://example.com/controller/api/fatEvent?return=OrderFatEvent&delay=0&timeout=1.23&after=7"))
-    assert(controllerUris.fatEvents(EventRequest.singleClass[OrderFatEvent](after = 7, timeout = Some(1230.millis), limit = 333)) ==
-      Uri("http://example.com/controller/api/fatEvent?return=OrderFatEvent&delay=0&timeout=1.23&limit=333&after=7"))
   }
 
   "order" - {

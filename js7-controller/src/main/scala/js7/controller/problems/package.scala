@@ -7,8 +7,6 @@ import js7.base.problem.Problem
   */
 package object problems
 {
-  final case object FatEventServiceBusyProblem extends Problem.ArgumentlessCoded
-
   final case object HistoricSnapshotServiceBusyProblem extends Problem.ArgumentlessCoded {
     override def httpStatusCode = 503  // Service Unavailable
   }

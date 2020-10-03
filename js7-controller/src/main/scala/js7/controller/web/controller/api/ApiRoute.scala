@@ -8,7 +8,6 @@ import akka.http.scaladsl.server.Route
 import js7.common.akkahttp.web.session.SessionRoute
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.ApiRoute._
-import js7.controller.web.controller.api.fatevent.FatEventRoute
 import js7.controller.web.controller.api.graphql.GraphqlRoute
 import js7.controller.web.controller.api.log.LogRoute
 import js7.controller.web.controller.api.order.OrderRoute
@@ -23,7 +22,6 @@ with ApiRootRoute
 with EventRoute
 with JournalRoute
 with JournalInfoRoute
-with FatEventRoute
 with CommandRoute
 with GraphqlRoute
 with OrderRoute
@@ -44,7 +42,6 @@ with LogRoute
         case "event"       => eventRoute
         case "command"     => commandRoute
         case "cluster"     => clusterRoute
-        case "fatEvent"    => fatEventRoute
         case "order"       => orderRoute
         case "workflow"    => workflowRoute
         case "agent"       => agentRefRoute

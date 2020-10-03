@@ -139,7 +139,7 @@ final class EventRouteTest extends AnyFreeSpec with RouteTester with EventRoute
       }
   }
 
-  "Fetch events with repeated GET requests" - {  // Similar to FatEventRouteTest
+  "Fetch events with repeated GET requests" - {
     "/event?limit=3&after=30 continue" in {
       val stampedSeq = getEvents("/event?limit=3&after=30")
       assert(stampedSeq.head.eventId == 40)

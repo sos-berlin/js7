@@ -8,7 +8,6 @@ import js7.common.http.Uris.{encodePath, encodeQuery}
 import js7.controller.client.ControllerUris._
 import js7.data.agent.AgentRefPath
 import js7.data.event.{Event, EventId, EventRequest}
-import js7.data.fatevent.FatEvent
 import js7.data.order.OrderId
 import js7.data.workflow.WorkflowPath
 import scala.concurrent.duration.FiniteDuration
@@ -31,9 +30,6 @@ final class ControllerUris private(controllerUri: Uri)
     heartbeat: Option[FiniteDuration] = None, onlyLastOfChunk: Boolean = false)
   : Uri =
     events_[E]("/event", request, eventIdOnly = eventIdOnly, heartbeat = heartbeat, onlyLastOfChunk = onlyLastOfChunk)
-
-  def fatEvents[E <: FatEvent: ClassTag](request: EventRequest[E]): Uri =
-    events_[E]("/fatEvent", request)
 
   private def events_[E <: Event: ClassTag](path: String, request: EventRequest[E],
     eventIdOnly: Boolean = false, heartbeat: Option[FiniteDuration] = None, onlyLastOfChunk: Boolean = false)

@@ -17,7 +17,6 @@ import js7.controller.data.{ControllerCommand, ControllerOverview, ControllerSta
 import js7.data.agent.AgentRef
 import js7.data.cluster.{ClusterNodeState, ClusterState}
 import js7.data.event.{Event, EventApi, EventId, EventRequest, JournalInfo, KeyedEvent, Stamped, TearableEventSeq}
-import js7.data.fatevent.FatEvent
 import js7.data.order.{FreshOrder, Order, OrderId, OrdersOverview}
 import js7.data.session.HttpSessionApi
 import js7.data.workflow.Workflow
@@ -134,12 +133,6 @@ extends EventApi with HttpSessionApi with HasIsIgnorableStackTrace
   final def journalInfo: Task[Checked[JournalInfo]] =
     liftProblem(
       httpClient.get[JournalInfo](uris.api("/journalInfo")))
-
-  final def fatEvents[E <: FatEvent: ClassTag](request: EventRequest[E])(implicit kd: Decoder[KeyedEvent[E]], ke: Encoder.AsObject[KeyedEvent[E]])
-  : Task[TearableEventSeq[Seq, KeyedEvent[E]]] =
-    httpClient.get[TearableEventSeq[Seq, KeyedEvent[E]]](
-      uris.fatEvents[E](request),
-      timeout = request.timeout.map(_ + ToleratedEventDelay) getOrElse Duration.Inf)
 
   final def workflows: Task[Checked[Seq[Workflow]]] =
     liftProblem(
