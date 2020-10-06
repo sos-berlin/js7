@@ -59,17 +59,17 @@ final class OpensslContext(dir: Path) {
 
       /** Return a signature file (binary). */
       def sign(documentFile: Path): Path = {
-        val signatureFile = Paths.get(documentFile + ".signature")
+        val signatureFile = Paths.get(s"$documentFile.signature")
         runProcess(s"openssl dgst -sha512 -sign '$privateKeyFile' -out '$signatureFile' '$documentFile'")
 
         if (false) { /*verifiy generated signature*/
-          val publicKeyFile = Paths.get(documentFile + ".public-key")
+          val publicKeyFile = Paths.get(s"$documentFile.public-key")
           runProcess(s"""sh -c 'openssl x509 -pubkey -noout -in "$certificateFile" >"$publicKeyFile"'""")
           runProcess(s"openssl dgst -sha512 -verify '$publicKeyFile' -signature '$signatureFile' '$documentFile'")
         }
 
         // Convert to MIME base64 (required for JS7 updateRepo)
-        val base64SignatureFile = Paths.get(signatureFile + ".base64")
+        val base64SignatureFile = Paths.get(s"$signatureFile.base64")
         runProcess(s"openssl base64 -in '$signatureFile' -out '$base64SignatureFile'")
         delete(signatureFile)
         base64SignatureFile
