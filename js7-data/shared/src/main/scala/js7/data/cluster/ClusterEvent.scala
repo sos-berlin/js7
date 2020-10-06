@@ -1,13 +1,8 @@
 package js7.data.cluster
 
-import cats.instances.either._
-import cats.syntax.flatMap._
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Checked
-import js7.base.problem.Checked._
-import js7.base.web.Uri
-import js7.data.cluster.ClusterSetting.checkUris
 import js7.data.event.{JournalPosition, NoKeyEvent}
 import js7.data.node.NodeId
 
@@ -17,20 +12,11 @@ object ClusterEvent
 {
   private type Id = NodeId
 
-  final case class ClusterNodesAppointed(idToUri: Map[Id, Uri], activeId: Id)
+  final case class ClusterNodesAppointed(setting: ClusterSetting)
   extends ClusterEvent
-  {
-    checkUris(idToUri, activeId).orThrow
-  }
   object ClusterNodesAppointed {
-    def checked(idToUri: Map[Id, Uri], activeId: Id): Checked[ClusterNodesAppointed] =
-      checkUris(idToUri, activeId) >>
-        Checked(
-          new ClusterNodesAppointed(
-            idToUri
-              // Primary node should be first (possible for optimized short Scala Map)
-              .toVector.sortBy(o => if (o._1 == activeId) 0 else 1).toMap,
-            activeId))
+    def checked(setting: ClusterSetting): Checked[ClusterNodesAppointed] =
+      Right(new ClusterNodesAppointed(setting.normalized))
   }
 
   final case class ClusterCouplingPrepared(activeId: Id)

@@ -1,7 +1,7 @@
 package js7.proxy.javaapi.data.cluster
 
 import js7.base.web.Uri
-import js7.data.cluster.ClusterState
+import js7.data.cluster.{ClusterSetting, ClusterState}
 import js7.data.event.JournalPosition
 import js7.data.node.NodeId
 import org.scalatest.freespec.AnyFreeSpec
@@ -11,56 +11,64 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class JClusterStateTest extends AnyFreeSpec
 {
-  private val idToMap = Map(
-    NodeId("Primary") -> Uri("http://primary"),
-    NodeId("Backup") -> Uri("http://backup"))
+  private val setting = ClusterSetting(
+    Map(
+      NodeId("PRIMARY") -> Uri("https://PRIMARY"),
+      NodeId("BACKUP") -> Uri("https://BACKUP")),
+    activeId = NodeId("PRIMARY"))
 
   "Empty" in {
     JClusterStateTester.testEmpty(JClusterState(ClusterState.Empty).asInstanceOf[JClusterState.Empty.type])
   }
 
   "NodesAppointed" in {
-    val clusterState = ClusterState.NodesAppointed(idToMap, NodeId("Primary"))
+    val clusterState = ClusterState.NodesAppointed(setting)
     JClusterStateTester.testNodesAppointed(JClusterState(clusterState).asInstanceOf[JClusterState.NodesAppointed])
   }
 
   "HasNodes" in {
-    val clusterState = ClusterState.Coupled(idToMap, NodeId("Primary"))
+    val clusterState = ClusterState.Coupled(setting)
     JClusterStateTester.testHasNodes(JClusterState(clusterState).asInstanceOf[JClusterState.HasNodes])
   }
 
   "Coupled" in {
-    val clusterState = ClusterState.Coupled(idToMap, NodeId("Primary"))
+    val clusterState = ClusterState.Coupled(setting)
     JClusterStateTester.testCoupled(JClusterState(clusterState).asInstanceOf[JClusterState.Coupled])
+    JClusterStateTester.testCoupledOrDecoupled(JClusterState(clusterState).asInstanceOf[JClusterState.CoupledOrDecoupled])
   }
 
   "PreparedToBeCoupled" in {
-    val clusterState = ClusterState.PreparedToBeCoupled(idToMap, NodeId("Primary"))
+    val clusterState = ClusterState.PreparedToBeCoupled(setting)
     JClusterStateTester.testPreparedToBeCoupled(JClusterState(clusterState).asInstanceOf[JClusterState.PreparedToBeCoupled])
   }
 
   "Decoupled" in {
-    val clusterState = ClusterState.PassiveLost(idToMap, NodeId("Primary"))
+    val clusterState = ClusterState.PassiveLost(setting)
     JClusterStateTester.testDecoupled(JClusterState(clusterState).asInstanceOf[JClusterState.Decoupled])
+    JClusterStateTester.testCoupledOrDecoupled(JClusterState(clusterState).asInstanceOf[JClusterState.CoupledOrDecoupled])
   }
 
   "CoupledActiveShutDown" in {
-    val clusterState = ClusterState.CoupledActiveShutDown(idToMap, NodeId("Primary"))
+    val clusterState = ClusterState.CoupledActiveShutDown(setting)
     JClusterStateTester.testCoupledActiveShutDown(JClusterState(clusterState).asInstanceOf[JClusterState.CoupledActiveShutDown])
+    JClusterStateTester.testCoupledOrDecoupled(JClusterState(clusterState).asInstanceOf[JClusterState.CoupledOrDecoupled])
   }
 
   "PassiveLost" in {
-    val clusterState = ClusterState.PassiveLost(idToMap, NodeId("Primary"))
+    val clusterState = ClusterState.PassiveLost(setting)
     JClusterStateTester.testPassiveLost(JClusterState(clusterState).asInstanceOf[JClusterState.PassiveLost])
+    JClusterStateTester.testCoupledOrDecoupled(JClusterState(clusterState).asInstanceOf[JClusterState.CoupledOrDecoupled])
   }
 
   "SwitchedOver" in {
-    val clusterState = ClusterState.SwitchedOver(idToMap, NodeId("Primary"))
+    val clusterState = ClusterState.SwitchedOver(setting)
     JClusterStateTester.testSwitchedOver(JClusterState(clusterState).asInstanceOf[JClusterState.SwitchedOver])
+    JClusterStateTester.testCoupledOrDecoupled(JClusterState(clusterState).asInstanceOf[JClusterState.CoupledOrDecoupled])
   }
 
   "FailedOver" in {
-    val clusterState = ClusterState.FailedOver(idToMap, NodeId("Primary"), JournalPosition(0L, 0L))
+    val clusterState = ClusterState.FailedOver(setting, JournalPosition(0L, 0L))
     JClusterStateTester.testFailedOver(JClusterState(clusterState).asInstanceOf[JClusterState.FailedOver])
+    JClusterStateTester.testCoupledOrDecoupled(JClusterState(clusterState).asInstanceOf[JClusterState.CoupledOrDecoupled])
   }
 }

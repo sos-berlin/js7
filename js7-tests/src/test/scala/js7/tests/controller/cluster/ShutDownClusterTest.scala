@@ -4,11 +4,9 @@ import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
 import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
-import js7.base.web.Uri
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.time.WaitForCondition.waitForCondition
-import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import js7.controller.data.ControllerCommand.ShutDown
 import js7.controller.data.ControllerCommand.ShutDown.ClusterAction
 import js7.data.Problems.PassiveClusterNodeShutdownNotAllowedProblem
@@ -24,18 +22,14 @@ final class ShutDownClusterTest extends ControllerClusterTester
 
   "ShutDown active node" - {
     "ShutDown primary node only (no switchover)" in {
-      withControllerAndBackup() { (primary, backup) =>
-        val idToUri = Map(
-          primaryId -> Uri(s"http://127.0.0.1:$primaryControllerPort"),
-          backupId -> Uri(s"http://127.0.0.1:$backupControllerPort"))
-
+      withControllerAndBackup() { (primary, backup, clusterSetting) =>
         backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
           backupController.httpApi.login_(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))).await(99.s)
 
           primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
             primaryController.eventWatch.await[ClusterCoupled]()
             primaryController.httpApi.login_(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))).await(99.s)
-            assert(primaryController.httpApi.clusterState.await(99.s) == Right(Coupled(idToUri, primaryId)))
+            assert(primaryController.httpApi.clusterState.await(99.s) == Right(Coupled(clusterSetting)))
 
             primaryController.executeCommandAsSystemUser(ShutDown())
               .await(99.s).orThrow
@@ -44,20 +38,20 @@ final class ShutDownClusterTest extends ControllerClusterTester
 
           val activeNodeShutDown = backupController.eventWatch.await[ClusterActiveNodeShutDown](after = EventId.BeforeFirst).head.eventId
 
-          assert(backupController.httpApi.clusterState.await(99.s) == Right(ClusterState.CoupledActiveShutDown(idToUri, primaryId)))
+          assert(backupController.httpApi.clusterState.await(99.s) == Right(ClusterState.CoupledActiveShutDown(clusterSetting)))
 
           primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
             val activeRestarted = primaryController.eventWatch.await[ClusterActiveNodeRestarted](
               after = activeNodeShutDown).head.eventId
             primaryController.eventWatch.await[ClusterCoupled](after = activeRestarted)
-            assert(primaryController.clusterState.await(99.s) == Coupled(idToUri, primaryId))
+            assert(primaryController.clusterState.await(99.s) == Coupled(clusterSetting))
           }
         }
       }
     }
 
     "ShutDown active node with switchover" in {
-      withControllerAndBackup() { (primary, backup) =>
+      withControllerAndBackup() { (primary, backup, _) =>
         backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
           primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
             primaryController.eventWatch.await[ClusterCoupled]()
@@ -72,10 +66,7 @@ final class ShutDownClusterTest extends ControllerClusterTester
     }
 
     "ShutDown active node with failover (for testing)" in {
-      withControllerAndBackup() { (primary, backup) =>
-        val idToUri = Map(
-          primaryId -> Uri(s"http://127.0.0.1:$primaryControllerPort"),
-          backupId -> Uri(s"http://127.0.0.1:$backupControllerPort"))
+      withControllerAndBackup() { (primary, backup, clusterSetting) =>
         backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
           primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
             primaryController.eventWatch.await[ClusterCoupled]()
@@ -92,7 +83,7 @@ final class ShutDownClusterTest extends ControllerClusterTester
             primaryController.eventWatch.await[ClusterCoupled](after = primaryController.eventWatch.lastFileTornEventId)
             waitForCondition(3.s, 10.ms)(primaryController.clusterState.await(99.s).isInstanceOf[Coupled])
             assert(primaryController.clusterState.await(99.s) == backupController.clusterState.await(99.s))
-            assert(primaryController.clusterState.await(99.s) == Coupled(idToUri, backupId))
+            assert(primaryController.clusterState.await(99.s) == Coupled(clusterSetting.copy(activeId = backupId)))
 
             backupController.executeCommandAsSystemUser(ShutDown()).await(99.s).orThrow
             backupController.terminated await 99.s
@@ -102,10 +93,7 @@ final class ShutDownClusterTest extends ControllerClusterTester
     }
 
     "ShutDown active node with failover requested (for testing), then immediate restart of the shut down node" in {
-      withControllerAndBackup() { (primary, backup) =>
-        val idToUri = Map(
-          primaryId -> Uri(s"http://127.0.0.1:$primaryControllerPort"),
-          backupId -> Uri(s"http://127.0.0.1:$backupControllerPort"))
+      withControllerAndBackup() { (primary, backup, clusterSetting) =>
         backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
           primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
             primaryController.eventWatch.await[ClusterCoupled]()
@@ -115,7 +103,7 @@ final class ShutDownClusterTest extends ControllerClusterTester
             primaryController.terminated.await(99.s)
           }
           primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
-            assert(primaryController.clusterState.await(99.s) == Coupled(idToUri, primaryId))
+            assert(primaryController.clusterState.await(99.s) == Coupled(clusterSetting))
             assert(primaryController.clusterState.await(99.s) == backupController.clusterState.await(99.s))
 
             // FIXME When Primary Controller is shutting down before started (no ControllerOrderKeeper)
@@ -148,7 +136,7 @@ final class ShutDownClusterTest extends ControllerClusterTester
     //    backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { _ =>
     //      primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
     //        val clusterCoupled = primaryController.eventWatch.await[ClusterCoupled]().head.value.event
-    //        assert(clusterCoupled.activeId == NodeId("Primary"))
+    //        assert(clusterCoupled.activeId == NodeId("PRIMARY))
     //      }
     //    }
     //  }
@@ -157,7 +145,7 @@ final class ShutDownClusterTest extends ControllerClusterTester
 
   "ShutDown passive node" - {
     "ShutDown passive node only (no switchover)" in {
-      withControllerAndBackup() { (primary, backup) =>
+      withControllerAndBackup() { (primary, backup, _) =>
         backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
           primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
             primaryController.eventWatch.await[ClusterCoupled]()
@@ -171,7 +159,7 @@ final class ShutDownClusterTest extends ControllerClusterTester
     }
 
     "ShutDown passive node with switchover or failover is rejected" in {
-      withControllerAndBackup() { (primary, backup) =>
+      withControllerAndBackup() { (primary, backup, _) =>
         backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
           primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
             primaryController.eventWatch.await[ClusterCoupled]()

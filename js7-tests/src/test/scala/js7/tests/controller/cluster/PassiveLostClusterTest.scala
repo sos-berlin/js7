@@ -3,11 +3,9 @@ package js7.tests.controller.cluster
 import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import js7.controller.data.ControllerCommand.ClusterAppointNodes
 import js7.data.cluster.ClusterEvent
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterPassiveLost}
-import js7.data.node.NodeId
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.tests.controller.cluster.ControllerClusterTester._
@@ -18,16 +16,12 @@ final class PassiveLostClusterTest extends ControllerClusterTester
   override protected def configureClusterNodes = false
 
   "Passive lost" in {
-    withControllerAndBackup() { (primary, backup) =>
+    withControllerAndBackup() { (primary, backup, clusterSetting) =>
       val primaryController = primary.startController(httpPort = Some(primaryControllerPort)) await 99.s
       var backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
 
       primaryController.executeCommandAsSystemUser(
-        ClusterAppointNodes(
-          Map(
-            NodeId("Primary") -> primaryController.localUri,
-            NodeId("Backup") -> backupController.localUri),
-          NodeId("Primary"))
+        ClusterAppointNodes(clusterSetting)
       ).await(99.s).orThrow
       primaryController.eventWatch.await[ClusterEvent.ClusterCoupled]()
 

@@ -1,5 +1,6 @@
 package js7.proxy.javaapi.data.cluster
 
+import js7.base.web.Uri
 import js7.data.cluster.ClusterState
 import js7.data.node.NodeId
 import js7.proxy.javaapi.data.common.JJsonable
@@ -15,8 +16,6 @@ extends JJsonable[JClusterState]
 
 object JClusterState extends JJsonable.Companion[JClusterState]
 {
-  private type Id = NodeId
-
   def apply(clusterState: ClusterState): JClusterState =
     clusterState match {
       case ClusterState.Empty => Empty
@@ -43,11 +42,20 @@ object JClusterState extends JJsonable.Companion[JClusterState]
 
     def asScala: ClusterState.HasNodes
 
-    def idToUri = asScala.idToUri.asJava
-    def activeId = asScala.activeId
-    final def isNonEmptyActive(id: Id) = asScala.isNonEmptyActive(id)
-    final def passiveId = asScala.passiveId
-    final def passiveUri = asScala.passiveUri
+    def idToUri: java.util.Map[NodeId, Uri] =
+      asScala.idToUri.asJava
+
+    def activeId: NodeId =
+      asScala.activeId
+
+    final def isNonEmptyActive(id: NodeId) =
+      asScala.isNonEmptyActive(id)
+
+    final def passiveId: NodeId =
+      asScala.passiveId
+
+    final def passiveUri: Uri =
+      asScala.passiveUri
   }
 
   sealed trait CoupledOrDecoupled extends HasNodes {

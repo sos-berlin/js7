@@ -3,11 +3,8 @@ package js7.data.cluster
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.ScalaJsonCodecs._
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import js7.base.problem.Checked.Ops
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.IntelliJUtils.intelliJuseImport
-import js7.base.web.Uri
-import js7.data.cluster.ClusterSetting.syntax._
 import js7.data.command.CommonCommand
 import js7.data.event.EventId
 import js7.data.node.NodeId
@@ -19,13 +16,9 @@ sealed trait ClusterCommand extends CommonCommand {
 
 object ClusterCommand
 {
-  final case class ClusterStartBackupNode(idToUri: Map[NodeId, Uri], activeId: NodeId, fileEventId: EventId)
+  final case class ClusterStartBackupNode(setting: ClusterSetting, fileEventId: EventId)
   extends ClusterCommand {
     type Response = Response.Accepted
-    ClusterSetting.checkUris(idToUri, activeId).orThrow
-
-    def passiveId: NodeId =
-      idToUri.peerOf(activeId)
   }
 
   final case class ClusterPrepareCoupling(activeId: NodeId, passiveId: NodeId)

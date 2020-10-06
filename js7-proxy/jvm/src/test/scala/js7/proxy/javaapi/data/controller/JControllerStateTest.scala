@@ -10,7 +10,7 @@ import js7.base.web.Uri
 import js7.controller.data.agent.AgentSnapshot
 import js7.controller.data.{ControllerMetaState, ControllerState}
 import js7.data.agent.{AgentRef, AgentRefPath}
-import js7.data.cluster.ClusterState
+import js7.data.cluster.{ClusterSetting, ClusterState}
 import js7.data.controller.{ControllerId, ControllerItems}
 import js7.data.event.{EventId, JournalState, JournaledState}
 import js7.data.item.RepoEvent.VersionAdded
@@ -84,10 +84,11 @@ private object JControllerStateTest
     JournaledState.Standards(
       JournalState(Map(UserId("A") -> EventId(1000))),
       ClusterState.Coupled(
-        Map(
-          NodeId("A") -> Uri("http://A"),
-          NodeId("B") -> Uri("http://B")),
-        NodeId("A"))),
+        ClusterSetting(
+          Map(
+            NodeId("A") -> Uri("http://A"),
+            NodeId("B") -> Uri("http://B")),
+          activeId = NodeId("A")))),
     ControllerMetaState(ControllerId("CONTROLLER-ID"), Timestamp("2019-05-24T12:00:00Z"), timezone = "Europe/Berlin"),
     Repo.empty
       .applyEvents(List(

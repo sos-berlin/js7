@@ -3,7 +3,7 @@ package js7.core.cluster
 import js7.base.circeutils.CirceUtils._
 import js7.base.web.Uri
 import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
-import js7.data.cluster.ClusterState
+import js7.data.cluster.{ClusterSetting, ClusterState}
 import js7.data.node.NodeId
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
@@ -20,15 +20,17 @@ final class ClusterWatchMessageTest extends AnyFreeSpec
           from = NodeId("A"),
           List(
             ClusterNodesAppointed(
+              ClusterSetting(
+                Map(
+                  NodeId("A") -> Uri("http://A"),
+                  NodeId("B") -> Uri("http://B")),
+                NodeId("A")))),
+          ClusterState.NodesAppointed(
+            ClusterSetting(
               Map(
                 NodeId("A") -> Uri("http://A"),
                 NodeId("B") -> Uri("http://B")),
               NodeId("A"))),
-          ClusterState.NodesAppointed(
-            Map(
-              NodeId("A") -> Uri("http://A"),
-              NodeId("B") -> Uri("http://B")),
-            NodeId("A")),
           force = true),
         json"""{
           "TYPE": "ClusterWatchEvents",
@@ -36,20 +38,24 @@ final class ClusterWatchMessageTest extends AnyFreeSpec
           "events": [
             {
               "TYPE": "ClusterNodesAppointed",
+              "setting": {
+                "idToUri": {
+                  "A": "http://A",
+                  "B": "http://B"
+                },
+                "activeId": "A"
+              }
+            }
+          ],
+          "clusterState": {
+            "TYPE": "NodesAppointed",
+              "setting": {
               "idToUri": {
                 "A": "http://A",
                 "B": "http://B"
               },
               "activeId": "A"
             }
-          ],
-          "clusterState": {
-            "TYPE": "NodesAppointed",
-            "idToUri": {
-              "A": "http://A",
-              "B": "http://B"
-            },
-            "activeId": "A"
           },
           "force": true
         }""")
@@ -60,20 +66,23 @@ final class ClusterWatchMessageTest extends AnyFreeSpec
         ClusterWatchHeartbeat(
           from = NodeId("A"),
           ClusterState.Coupled(
-            Map(
-              NodeId("A") -> Uri("http://A"),
-              NodeId("B") -> Uri("http://B")),
-            NodeId("A"))),
+            ClusterSetting(
+              Map(
+                NodeId("A") -> Uri("http://A"),
+                NodeId("B") -> Uri("http://B")),
+              NodeId("A")))),
         json"""{
           "TYPE": "ClusterWatchHeartbeat",
           "from": "A",
           "clusterState": {
             "TYPE": "Coupled",
-            "idToUri": {
-              "A": "http://A",
-              "B": "http://B"
-            },
-            "activeId": "A"
+            "setting": {
+              "idToUri": {
+                "A": "http://A",
+                "B": "http://B"
+              },
+              "activeId": "A"
+            }
           }
         }""")
     }

@@ -3,11 +3,8 @@ package js7.data.cluster
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Checked
-import js7.base.problem.Checked.Ops
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.web.Uri
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
-import js7.data.cluster.ClusterSetting.checkUris
 import js7.data.cluster.ClusterSetting.syntax._
 import js7.data.cluster.ClusterState._
 import js7.data.event.JournaledState.EventNotApplicableProblem
@@ -25,30 +22,30 @@ extends EventDrivenState[ClusterState, ClusterEvent]
     keyedEvent match {
       case KeyedEvent(_: NoKey, event) =>
         (this, event) match {
-          case (Empty, ClusterNodesAppointed(idToUris, activeId)) =>
-            Right(NodesAppointed(idToUris, activeId))
+          case (Empty, ClusterNodesAppointed(setting)) =>
+            Right(NodesAppointed(setting))
 
           case (state: Decoupled, ClusterCouplingPrepared(activeId)) if state.activeId == activeId =>
-            Right(PreparedToBeCoupled(state.idToUri, state.activeId))
+            Right(PreparedToBeCoupled(state.setting))
 
           case (state: PreparedToBeCoupled, ClusterCoupled(activeId)) if state.activeId == activeId =>
-            Right(Coupled(state.idToUri, state.activeId))
+            Right(Coupled(state.setting))
 
           case (state: Coupled, ClusterSwitchedOver(id)) if state.passiveId == id =>
-            Right(SwitchedOver(state.idToUri, state.passiveId))
+            Right(SwitchedOver(state.setting.copy(activeId = id)))
 
           case (state: Coupled, ClusterPassiveLost(id)) if state.passiveId == id =>
-            Right(PassiveLost(state.idToUri, state.activeId))
+            Right(PassiveLost(state.setting))
 
           case (state: Coupled, event: ClusterFailedOver)
             if state.activeId == event.failedActiveId && state.passiveId == event.activatedId =>
-            Right(FailedOver(state.idToUri, event.activatedId, event.failedAt))
+            Right(FailedOver(state.setting.copy(activeId = event.activatedId), failedAt = event.failedAt))
 
           case (state: Coupled, ClusterActiveNodeShutDown) =>
-            Right(CoupledActiveShutDown(state.idToUri, state.activeId))
+            Right(CoupledActiveShutDown(state.setting))
 
           case (state: CoupledActiveShutDown, ClusterActiveNodeRestarted) =>
-            Right(PassiveLost(state.idToUri, state.activeId))
+            Right(PassiveLost(state.setting))
             // Passive node may recouple now
 
           case (_, keyedEvent) =>
@@ -81,10 +78,11 @@ object ClusterState
     this: Product =>
 
     protected final def assertIsValid(): Unit =
-      checkUris(idToUri, activeId).orThrow
+      setting.assertIsValid()
 
-    def idToUri: Map[Id, Uri]
-    def activeId: Id
+    def setting: ClusterSetting
+    def idToUri = setting.idToUri
+    def activeId = setting.activeId
 
     final def isNonEmptyActive(id: Id) = id == activeId
     final def passiveId = idToUri.peerOf(activeId)
@@ -105,21 +103,21 @@ object ClusterState
     this: Product =>
   }
 
-  final case class NodesAppointed(idToUri: Map[Id, Uri], activeId: Id)
+  final case class NodesAppointed(setting: ClusterSetting)
   extends Decoupled
   {
     assertIsValid()
   }
 
   /** Intermediate state only, is immediately followed by transition ClusterEvent.Coupled -> Coupled. */
-  final case class PreparedToBeCoupled(idToUri: Map[Id, Uri], activeId: Id)
+  final case class PreparedToBeCoupled(setting: ClusterSetting)
   extends HasNodes
   {
     assertIsValid()
   }
 
   /** An active node is coupled with a passive node. */
-  final case class Coupled(idToUri: Map[Id, Uri], activeId: Id)
+  final case class Coupled(setting: ClusterSetting)
   extends CoupledOrDecoupled
   {
     assertIsValid()
@@ -129,19 +127,19 @@ object ClusterState
       The passive node must not fail-over.
       After restart, the active node will stil be active.
     */
-  final case class CoupledActiveShutDown(idToUri: Map[Id, Uri], activeId: Id)
+  final case class CoupledActiveShutDown(setting: ClusterSetting)
   extends Decoupled  // CoupledActiveShutDown is Decoupled ???
   {
     assertIsValid()
   }
 
-  final case class PassiveLost(idToUri: Map[Id, Uri], activeId: Id)
+  final case class PassiveLost(setting: ClusterSetting)
   extends Decoupled
   {
     assertIsValid()
   }
 
-  final case class SwitchedOver(idToUri: Map[Id, Uri], activeId: Id)
+  final case class SwitchedOver(setting: ClusterSetting)
   extends Decoupled
   {
     assertIsValid()
@@ -149,7 +147,7 @@ object ClusterState
 
   /** Decoupled after failover.
     * @param failedAt the failing nodes journal must be truncated at this point. */
-  final case class FailedOver(idToUri: Map[Id, Uri], activeId: Id, failedAt: JournalPosition)
+  final case class FailedOver(setting: ClusterSetting, failedAt: JournalPosition)
   extends Decoupled
   {
     assertIsValid()

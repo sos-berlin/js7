@@ -12,7 +12,7 @@ import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import js7.common.akkahttp.web.session.SimpleSession
 import js7.common.http.CirceJsonSupport._
 import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
-import js7.data.cluster.ClusterState
+import js7.data.cluster.{ClusterSetting, ClusterState}
 import js7.data.controller.ControllerId
 import js7.data.node.NodeId
 import monix.execution.Scheduler
@@ -42,17 +42,18 @@ final class ControllersClusterRouteTest extends AnyFreeSpec with ScalatestRouteT
     }
   }
 
-  private val idToUri = Map(
-    NodeId("A") -> Uri("http://A"),
-    NodeId("B") -> Uri("http://B"))
-  private val primaryId = NodeId("A")
+  private val setting = ClusterSetting(
+    Map(
+      NodeId("A") -> Uri("http://A"),
+      NodeId("B") -> Uri("http://B")),
+    NodeId("A"))
 
   "Post" in {
     Post[ClusterWatchMessage]("/cluster",
       ClusterWatchEvents(
         NodeId("A"),
-        ClusterNodesAppointed(idToUri, primaryId) :: Nil,
-        ClusterState.NodesAppointed(idToUri, primaryId))
+        Seq(ClusterNodesAppointed(setting)),
+        ClusterState.NodesAppointed(setting))
     ) ~>
       Accept(`application/json`) ~> route ~>
       check {
@@ -63,7 +64,7 @@ final class ControllersClusterRouteTest extends AnyFreeSpec with ScalatestRouteT
   "Get for known ControllerId" in {
     Get("/cluster") ~> Accept(`application/json`) ~> route ~> check {
       assert(status == OK &&
-        entityAs[ClusterState] == ClusterState.NodesAppointed(idToUri, primaryId))
+        entityAs[ClusterState] == ClusterState.NodesAppointed(setting))
     }
   }
 }

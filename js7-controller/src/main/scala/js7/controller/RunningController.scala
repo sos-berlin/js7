@@ -439,8 +439,8 @@ object RunningController
                       .mapTo[Checked[command.Response]]
                 }))
 
-        case ControllerCommand.ClusterAppointNodes(idToUri, activeId) =>
-          cluster.appointNodes(idToUri, activeId)
+        case ControllerCommand.ClusterAppointNodes(setting) =>
+          cluster.appointNodes(setting)
             .map(_.map((_: Completed) => ControllerCommand.Response.Accepted))
 
         case ControllerCommand.InternalClusterCommand(clusterCommand) =>

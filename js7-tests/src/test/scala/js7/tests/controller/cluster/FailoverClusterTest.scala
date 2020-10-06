@@ -7,7 +7,6 @@ import js7.common.guice.GuiceImplicits.RichInjector
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.time.WaitForCondition.waitForCondition
-import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import js7.controller.cluster.PassiveClusterNode
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.data.ControllerCommand.{ClusterSwitchOver, ShutDown}
@@ -26,12 +25,9 @@ import scala.concurrent.duration.Deadline.now
 final class FailoverClusterTest extends ControllerClusterTester
 {
   "Failover and recouple" in {
-    withControllerAndBackup() { (primary, backup) =>
+    withControllerAndBackup() { (primary, backup, clusterSetting) =>
       var primaryController = primary.startController(httpPort = Some(primaryControllerPort)) await 99.s
       var backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
-      val idToUri = Map(
-        primaryId -> primaryController.localUri,
-        backupId -> backupController.localUri)
       primaryController.eventWatch.await[ClusterCoupled]()
 
       val t = now
@@ -55,7 +51,8 @@ final class FailoverClusterTest extends ControllerClusterTester
       assert(failedOver.failedAt.position == size(expectedFailedFile))
 
       waitForCondition(10.s, 10.ms)(backupController.clusterState.await(99.s).isInstanceOf[FailedOver])  // Is a delay okay ???
-      assert(backupController.clusterState.await(99.s) == FailedOver(idToUri, backupId, failedOver.failedAt))
+      assert(backupController.clusterState.await(99.s) ==
+        FailedOver(clusterSetting.copy(activeId = backupId), failedOver.failedAt))
 
       backupController.eventWatch.await[OrderFinished](_.key == orderId, after = failedOverEventId)
 
@@ -73,7 +70,7 @@ final class FailoverClusterTest extends ControllerClusterTester
       primaryController.eventWatch.await[ClusterCoupled](after = recoupledEventId)
 
       // When heartbeat from passive to active node is broken, the ClusterWatch will nonetheless not agree to a failover
-      val stillCoupled = Coupled(idToUri, primaryId)
+      val stillCoupled = Coupled(clusterSetting)
       assert(primaryController.clusterState.await(99.s) == stillCoupled)
       assert(backupController.clusterState.await(99.s) == stillCoupled)
 

@@ -2,7 +2,7 @@ package js7.data.event
 import js7.base.auth.UserId
 import js7.base.problem.Checked.Ops
 import js7.base.web.Uri
-import js7.data.cluster.{ClusterEvent, ClusterState}
+import js7.data.cluster.{ClusterEvent, ClusterSetting, ClusterState}
 import js7.data.event.JournaledState.EventNotApplicableProblem
 import js7.data.event.JournaledStateTest._
 import js7.data.event.KeyedEvent.NoKey
@@ -17,7 +17,7 @@ final class JournaledStateTest extends AnyFreeSpec
   private var s = MyState.empty
 
   "applyStandardEvent and applyEvents" in {
-    s = s.applyEvent(NoKey <-: ClusterEvent.ClusterNodesAppointed(idToNode, primaryNodeId)).orThrow
+    s = s.applyEvent(NoKey <-: ClusterEvent.ClusterNodesAppointed(setting)).orThrow
 
     s = s.applyEvents(
       (NoKey <-: ClusterEvent.ClusterCouplingPrepared(primaryNodeId)) ::
@@ -28,7 +28,7 @@ final class JournaledStateTest extends AnyFreeSpec
 
     assert(s == MyState(0L, JournaledState.Standards(
       JournalState(Map(UserId("USER") -> EventId(333))),
-      ClusterState.Coupled(idToNode, primaryNodeId))))
+      ClusterState.Coupled(setting))))
   }
 
   "EventNotApplicableProblem" in {
@@ -39,10 +39,12 @@ final class JournaledStateTest extends AnyFreeSpec
 
 private object JournaledStateTest
 {
-  private val primaryNodeId = NodeId("Primary")
-  private val idToNode = Map(
-    primaryNodeId -> Uri("http://PRIMARY"),
-    NodeId("Backup") -> Uri("http://BACKUP"))
+  private val primaryNodeId = NodeId("PRIMARY")
+  private val setting = ClusterSetting(
+    Map(
+      primaryNodeId -> Uri("http://PRIMARY"),
+      NodeId("BACKUP") -> Uri("http://BACKUP")),
+    primaryNodeId)
 
   private case class MyState(eventId: EventId, standards: JournaledState.Standards)
   extends JournaledState[MyState]

@@ -8,8 +8,8 @@ import js7.base.utils.Collections.implicits._
 import js7.base.web.Uri
 import js7.controller.data.agent.AgentSnapshot
 import js7.data.agent.AgentRefPath
-import js7.data.cluster.ClusterState
 import js7.data.cluster.ClusterState.ClusterStateSnapshot
+import js7.data.cluster.{ClusterSetting, ClusterState}
 import js7.data.controller.ControllerId
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{EventId, JournalState, JournaledState}
@@ -34,10 +34,11 @@ final class ControllerStateTest extends AsyncFreeSpec
     JournaledState.Standards(
       JournalState(Map(UserId("A") -> EventId(1000))),
       ClusterState.Coupled(
-        Map(
-          NodeId("A") -> Uri("http://A"),
-          NodeId("B") -> Uri("http://B")),
-        NodeId("A"))),
+        ClusterSetting(
+          Map(
+            NodeId("A") -> Uri("http://A"),
+            NodeId("B") -> Uri("http://B")),
+          activeId = NodeId("A")))),
     ControllerMetaState(ControllerId("CONTROLLER-ID"), Timestamp("2019-05-24T12:00:00Z"), timezone = "Europe/Berlin"),
     Repo.empty.applyEvent(VersionAdded(VersionId("1.0"))).orThrow,
     (AgentSnapshot(AgentRefPath("/AGENT"), None, EventId(7)) :: Nil).toKeyedMap(_.agentRefPath),
@@ -61,10 +62,11 @@ final class ControllerStateTest extends AsyncFreeSpec
           JournalState(Map(UserId("A") -> EventId(1000))),
           ClusterStateSnapshot(
             ClusterState.Coupled(
-              Map(
-                NodeId("A") -> Uri("http://A"),
-                NodeId("B") -> Uri("http://B")),
-              NodeId("A"))),
+              ClusterSetting(
+                Map(
+                  NodeId("A") -> Uri("http://A"),
+                  NodeId("B") -> Uri("http://B")),
+                activeId = NodeId("A")))),
           controllerState.controllerMetaState,
           VersionAdded(VersionId("1.0"))
         ) ++
@@ -98,11 +100,13 @@ final class ControllerStateTest extends AsyncFreeSpec
             "TYPE": "ClusterStateSnapshot",
             "clusterState": {
               "TYPE": "Coupled",
-              "idToUri": {
-                "A": "http://A",
-                "B": "http://B"
-              },
-              "activeId": "A"
+              "setting": {
+                "idToUri": {
+                  "A": "http://A",
+                  "B": "http://B"
+                },
+                "activeId": "A"
+              }
             }
           }, {
             "TYPE": "ControllerMetaState",

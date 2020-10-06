@@ -15,13 +15,13 @@ final class ClusterSettingTest extends AnyFreeSpec
     NodeId("A") -> Uri("http://A"),
     NodeId("B") -> Uri("http://B"))
 
-  "checkUris" in {
+  "checked" in {
     assert(checkUris(Map.empty).isLeft)
     assert(checkUris(Map(NodeId("A") -> Uri("http://A"))).isLeft)
     assert(checkUris(Map(NodeId("A") -> Uri("http://SAME"), NodeId("B") -> Uri("http://SAME"))).isLeft)
-    assert(checkUris(idToUri, NodeId("X")).isLeft)
+    assert(ClusterSetting.checked(idToUri, NodeId("X")).isLeft)
 
-    assert(checkUris(idToUri, NodeId("A")).isRight)
+    assert(ClusterSetting.checked(idToUri, NodeId("A")).isRight)
     assert(checkUris(idToUri).isRight)
   }
 

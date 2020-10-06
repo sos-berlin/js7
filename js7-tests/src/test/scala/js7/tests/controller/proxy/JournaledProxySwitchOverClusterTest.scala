@@ -22,7 +22,7 @@ import scala.jdk.CollectionConverters._
 final class JournaledProxySwitchOverClusterTest extends AnyFreeSpec with ClusterProxyTest
 {
   "JournaledProxy accesses a switching Cluster" in {
-    runControllerAndBackup() { (_, primaryController, backup, backupController) =>
+    runControllerAndBackup() { (_, primaryController, backup, backupController, _) =>
       val admissions = List(
         Admission(primaryController.localUri, Some(primaryUserAndPassword)),
         Admission(backupController.localUri, Some(backupUserAndPassword)))

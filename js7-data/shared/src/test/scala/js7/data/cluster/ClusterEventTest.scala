@@ -17,50 +17,53 @@ final class ClusterEventTest extends AnyFreeSpec
 
   "ClusterNodesAppointed" in {
     testJson[ClusterEvent](ClusterNodesAppointed(
-      Map(
-        Id("A") -> Uri("http://PRIMARY"),
-        Id("B") -> Uri("http://BACKUP")),
-      Id("A")),
+      ClusterSetting(
+        Map(
+          NodeId("PRIMARY") -> Uri("https://PRIMARY"),
+          NodeId("BACKUP") -> Uri("https://BACKUP")),
+        NodeId("PRIMARY"))),
       json"""{
         "TYPE": "ClusterNodesAppointed",
-        "idToUri": {
-          "A":  "http://PRIMARY",
-          "B": "http://BACKUP"
-        },
-        "activeId": "A"
+        "setting": {
+          "idToUri": {
+            "PRIMARY": "https://PRIMARY",
+            "BACKUP": "https://BACKUP"
+          },
+          "activeId": "PRIMARY"
+        }
       }""")
   }
 
   "ClusterCouplingPrepared" in {
-    testJson[ClusterEvent](ClusterCouplingPrepared(Id("A")),
+    testJson[ClusterEvent](ClusterCouplingPrepared(Id("PRIMARY")),
       json"""{
         "TYPE": "ClusterCouplingPrepared",
-        "activeId": "A"
+        "activeId": "PRIMARY"
       }""")
   }
 
   "ClusterCoupled" in {
-    testJson[ClusterEvent](ClusterCoupled(NodeId("A")),
+    testJson[ClusterEvent](ClusterCoupled(NodeId("PRIMARY")),
       json"""{
         "TYPE": "ClusterCoupled",
-        "activeId": "A"
+        "activeId": "PRIMARY"
       }""")
   }
 
   "ClusterSwitchedOver" in {
-    testJson[ClusterEvent](ClusterSwitchedOver(Id("B")),
+    testJson[ClusterEvent](ClusterSwitchedOver(Id("BACKUP")),
       json"""{
         "TYPE": "ClusterSwitchedOver",
-        "activatedId": "B"
+        "activatedId": "BACKUP"
       }""")
   }
 
   "ClusterFailedOver" in {
-    testJson[ClusterEvent](ClusterFailedOver(Id("A"), Id("B"), JournalPosition(EventId(0), 1234)),
+    testJson[ClusterEvent](ClusterFailedOver(Id("PRIMARY"), Id("BACKUP"), JournalPosition(EventId(0), 1234)),
       json"""{
         "TYPE": "ClusterFailedOver",
-        "failedActiveId": "A",
-        "activatedId": "B",
+        "failedActiveId": "PRIMARY",
+        "activatedId": "BACKUP",
         "failedAt": {
           "fileEventId": 0,
           "position": 1234
@@ -69,10 +72,10 @@ final class ClusterEventTest extends AnyFreeSpec
   }
 
   "ClusterPassiveLost" in {
-    testJson[ClusterEvent](ClusterPassiveLost(Id("B")),
+    testJson[ClusterEvent](ClusterPassiveLost(Id("BACKUP")),
       json"""{
         "TYPE": "ClusterPassiveLost",
-        "id": "B"
+        "id": "BACKUP"
       }""")
   }
 

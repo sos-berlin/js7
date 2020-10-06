@@ -6,7 +6,7 @@ import js7.base.problem.Problem
 import js7.base.web.Uri
 import js7.controller.data.ControllerCommand._
 import js7.data.agent.AgentRefPath
-import js7.data.cluster.ClusterCommand
+import js7.data.cluster.{ClusterCommand, ClusterSetting}
 import js7.data.command.CancelMode
 import js7.data.item.VersionId
 import js7.data.node.NodeId
@@ -311,17 +311,20 @@ final class ControllerCommandTest extends AnyFreeSpec
   "ClusterAppointNodes" in {
     testJson[ControllerCommand](
       ClusterAppointNodes(
-        Map(
-          NodeId("A") -> Uri("http://A"),
-          NodeId("B") -> Uri("http://B")),
-        NodeId("A")),
+        ClusterSetting(
+          Map(
+            NodeId("A") -> Uri("http://A"),
+            NodeId("B") -> Uri("http://B")),
+          activeId = NodeId("A"))),
       json"""{
         "TYPE": "ClusterAppointNodes",
-        "idToUri": {
-          "A": "http://A",
-          "B": "http://B"
-        },
-        "activeId": "A"
+        "setting": {
+          "idToUri": {
+            "A": "http://A",
+            "B": "http://B"
+          },
+          "activeId": "A"
+        }
       }""")
   }
 

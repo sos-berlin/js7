@@ -8,6 +8,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.CatsUtils.combineArgs
 import js7.base.utils.Closer.syntax._
 import js7.base.utils.Closer.withCloser
+import js7.base.web.Uri
 import js7.common.auth.SecretStringGenerator
 import js7.common.configutils.Configs._
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
@@ -20,6 +21,7 @@ import js7.controller.data.ControllerCommand.ShutDown
 import js7.core.event.journal.files.JournalFiles.listJournalFiles
 import js7.data.agent.AgentRefPath
 import js7.data.cluster.ClusterEvent.ClusterCoupled
+import js7.data.cluster.ClusterSetting
 import js7.data.item.InventoryItem
 import js7.data.job.ExecutablePath
 import js7.data.node.NodeId
@@ -56,16 +58,16 @@ trait ControllerClusterForScalaTest
   protected final val testHeartbeatLossPropertyKey = "js7.TEST." + SecretStringGenerator.randomString()
   sys.props(testHeartbeatLossPropertyKey) = "false"
 
-  final def runControllerAndBackup()(body: (DirectoryProvider, RunningController, DirectoryProvider, RunningController) => Unit)
+  final def runControllerAndBackup()(body: (DirectoryProvider, RunningController, DirectoryProvider, RunningController, ClusterSetting) => Unit)
   : Unit =
-    withControllerAndBackup() { (primary, backup) =>
+    withControllerAndBackup() { (primary, backup, clusterSetting) =>
       runControllers(primary, backup) { (primaryController, backupController) =>
-        body(primary, primaryController, backup, backupController)
+        body(primary, primaryController, backup, backupController, clusterSetting)
       }
     }
 
   final def withControllerAndBackup()
-    (body: (DirectoryProvider, DirectoryProvider) => Unit)
+    (body: (DirectoryProvider, DirectoryProvider, ClusterSetting) => Unit)
   : Unit =
     withCloser { implicit closer =>
       val testName = ControllerClusterForScalaTest.this.getClass.getSimpleName
@@ -115,8 +117,14 @@ trait ControllerClusterForScalaTest
 
       for (a <- primary.agents) a.writeExecutable(TestExecutablePath, shellScript)
 
+      val setting = ClusterSetting.unchecked(
+        Map(
+          primaryId -> Uri(s"http://127.0.0.1:$primaryControllerPort"),
+          backupId -> Uri(s"http://127.0.0.1:$backupControllerPort")),
+        activeId = primaryId)
+
       primary.runAgents() { _ =>
-        body(primary, backup)
+        body(primary, backup, setting)
       }
     }
 

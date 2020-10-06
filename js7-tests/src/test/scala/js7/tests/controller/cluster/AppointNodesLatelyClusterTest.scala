@@ -6,13 +6,11 @@ import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import js7.controller.data.ControllerCommand.ClusterAppointNodes
 import js7.core.event.journal.files.JournalFiles.listJournalFiles
 import js7.core.problems.BackupClusterNodeNotAppointed
 import js7.data.cluster.ClusterEvent
 import js7.data.event.EventId
-import js7.data.node.NodeId
 import js7.data.order.OrderEvent.{OrderFinished, OrderStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.tests.controller.cluster.ControllerClusterTester._
@@ -24,7 +22,7 @@ final class AppointNodesLatelyClusterTest extends AnyFreeSpec with ControllerClu
   override protected def configureClusterNodes = false
 
   "ClusterAppointNodes command after first journal file has been deleted" in {
-    withControllerAndBackup() { (primary, backup) =>
+    withControllerAndBackup() { (primary, backup, clusterSetting) =>
       primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
         val orderId = OrderId("🔺")
         primaryController.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path))
@@ -41,11 +39,7 @@ final class AppointNodesLatelyClusterTest extends AnyFreeSpec with ControllerClu
         assert(backupController.httpApi.clusterState.await(99.s) == Left(BackupClusterNodeNotAppointed))
 
         primaryController.executeCommandAsSystemUser(
-          ClusterAppointNodes(
-            Map(
-              NodeId("Primary") -> primaryController.localUri,
-              NodeId("Backup") -> backupController.localUri),
-            NodeId("Primary"))
+          ClusterAppointNodes(clusterSetting)
         ).await(99.s).orThrow
         primaryController.eventWatch.await[ClusterEvent.ClusterCoupled]()
 

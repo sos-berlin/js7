@@ -46,7 +46,7 @@ import js7.core.problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotBackupP
 import js7.data.cluster.ClusterCommand.{ClusterInhibitActivation, ClusterStartBackupNode}
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{Coupled, CoupledActiveShutDown, Decoupled, Empty, FailedOver, HasNodes, NodesAppointed, PassiveLost, PreparedToBeCoupled}
-import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterState}
+import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterSetting, ClusterState}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{Event, EventId, EventRequest, EventSeqTornProblem, JournaledState, KeyedEvent, Stamped}
@@ -154,7 +154,7 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff](
           val startedPromise = Promise[ClusterStartBackupNode]()
           expectingStartBackupCommand := startedPromise
           val passiveClusterNode = Task.deferFuture(startedPromise.future)
-            .map(cmd => newPassiveClusterNode(cmd.idToUri, cmd.activeId, recovered,
+            .map(cmd => newPassiveClusterNode(cmd.setting, recovered,
               initialFileEventId = Some(cmd.fileEventId)))
             .memoize
           Task.defer(
@@ -235,8 +235,7 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff](
                   //TODO Missing test: recovered.close()
                 }
                 Some(recoveredClusterState ->
-                  newPassiveClusterNode(otherFailedOver.idToUri, otherFailedOver.activeId, trunkRecovered,
-                   otherFailedOver = true))
+                  newPassiveClusterNode(otherFailedOver.setting, trunkRecovered, otherFailedOver = true))
 
               case otherState =>
                 sys.error(s"The other node is in invalid failedOver=$otherState")  // ???
@@ -268,7 +267,7 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff](
             s"Remaining a passive cluster node following the active node '${state.activeId}'"
           else
             s"Remaining a passive cluster node trying to follow the active node '${state.activeId}'")
-        val passive = newPassiveClusterNode(state.idToUri, state.activeId, recovered)
+        val passive = newPassiveClusterNode(state.setting, recovered)
         passive.state.map(s => Some(Right(s))) ->
           passive.run(recoveredState)
 
@@ -278,15 +277,14 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff](
     }
 
   private def newPassiveClusterNode(
-    idToUri: Map[NodeId, Uri],
-    activeId: NodeId,
+    setting: ClusterSetting,
     recovered: Recovered[S],
     otherFailedOver: Boolean = false,
     initialFileEventId: Option[EventId] = None)
   : PassiveClusterNode[S]
   = {
     val common = new ClusterCommon(activationInhibitor, clusterWatch, ownId, clusterConf, httpsConfig, testEventPublisher)
-    new PassiveClusterNode(ownId, idToUri, activeId, journalMeta, initialFileEventId, recovered,
+    new PassiveClusterNode(ownId, setting, journalMeta, initialFileEventId, recovered,
       otherFailedOver, journalConf, clusterConf, eventIdGenerator, common)
   }
 
@@ -295,7 +293,7 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff](
       clusterConf.maybeIdToUri match {
         case Some(idToUri) =>
           Task(logger.trace("automaticallyAppointConfiguredBackupNode")) >>
-          appointNodes(idToUri, ownId)
+          appointNodes(ClusterSetting(idToUri, activeId = ownId))
             .onErrorHandle(t => Left(Problem.fromThrowable(t)))  // We want only to log the exception
             .map {
               case Left(ClusterNodesAlreadyAppointed) => Completed
@@ -312,14 +310,14 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff](
       }
     }
 
-  def appointNodes(idToUri: Map[NodeId, Uri], activeId: NodeId): Task[Checked[Completed]] =
+  def appointNodes(setting: ClusterSetting): Task[Checked[Completed]] =
     persist {
       case Empty =>
-        ClusterNodesAppointed.checked(idToUri, activeId).map(Some.apply)
-      case NodesAppointed(`idToUri`, `activeId`) =>
+        ClusterNodesAppointed.checked(setting).map(Some.apply)
+      case NodesAppointed(`setting`) =>
         Right(None)
       case clusterState: HasNodes =>
-        if (clusterState.idToUri == idToUri)
+        if (clusterState.setting == setting)
           Right(None)
         else
           Left(ClusterNodesAlreadyAppointed)
@@ -342,9 +340,9 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff](
               else
                 Left(Problem("Cluster node is not ready to accept a backup node configuration"))
             case Some(promise) =>
-              if (command.passiveId != ownId)
+              if (command.setting.passiveId != ownId)
                 Left(Problem.pure(s"$command sent to wrong node '$ownId'"))
-              else if (command.activeId == ownId)
+              else if (command.setting.activeId == ownId)
                 Left(Problem.pure(s"$command must not be sent to the active node"))
               else {
                 promise.trySuccess(command)
@@ -547,7 +545,7 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff](
         eventWatch.started.flatMap(_ =>
           common.tryEndlesslyToSendCommand(
             state.passiveUri,
-            ClusterStartBackupNode(state.idToUri, activeId = ownId, fileEventId = eventWatch.lastFileTornEventId)
+            ClusterStartBackupNode(state.setting.copy(activeId = ownId), fileEventId = eventWatch.lastFileTornEventId)
           ) .onErrorRecover { case t: Throwable =>
               logger.warn(s"Sending Cluster command to other node failed: $t", t)
             }
@@ -668,7 +666,7 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff](
                   // because after JournalActor has committed SwitchedOver (after ack), JournalActor stops.
                   (journalActor ? JournalActor.Input.PassiveNodeAcknowledged(eventId = eventId))
                     .mapTo[Completed]
-                    .map(completed => Right(eventId))
+                    .map(_ => Right(eventId))
                 }
             }
             //.map {

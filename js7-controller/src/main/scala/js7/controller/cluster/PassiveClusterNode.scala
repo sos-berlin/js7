@@ -20,7 +20,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
-import js7.base.web.{HttpClient, Uri}
+import js7.base.web.HttpClient
 import js7.common.event.{EventIdGenerator, PositionAnd}
 import js7.common.http.RecouplingStreamReader
 import js7.common.scalautil.Logger
@@ -35,7 +35,7 @@ import js7.core.event.journal.recover.{FileJournaledStateBuilder, JournalProgres
 import js7.data.cluster.ClusterCommand.{ClusterCouple, ClusterPrepareCoupling, ClusterRecouple}
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{Coupled, Decoupled, PreparedToBeCoupled}
-import js7.data.cluster.{ClusterEvent, ClusterState}
+import js7.data.cluster.{ClusterEvent, ClusterSetting, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalId, JournalPosition, JournalSeparators, JournaledState, JournaledStateBuilder, KeyedEvent, Stamped}
@@ -46,8 +46,7 @@ import monix.reactive.Observable
 
 /*private[cluster]*/ final class PassiveClusterNode[S <: JournaledState[S]: diffx.Diff](
   ownId: NodeId,
-  idToUri: Map[NodeId, Uri],
-  activeId: NodeId,
+  setting: ClusterSetting,
   journalMeta: JournalMeta,
   /** For backup initialization, only when ClusterState.Empty. */
   initialFileEventId: Option[EventId],
@@ -59,6 +58,8 @@ import monix.reactive.Observable
   common: ClusterCommon)
   (implicit S: JournaledState.Companion[S])
 {
+  import setting.{activeId, idToUri}
+
   assertThat(activeId != ownId)
   assertThat(initialFileEventId.isDefined == (recovered.clusterState == ClusterState.Empty))
 

@@ -9,7 +9,7 @@ import js7.common.message.ProblemCodeMessages
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.core.cluster.ClusterWatch._
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver}
-import js7.data.cluster.{ClusterEvent, ClusterState}
+import js7.data.cluster.{ClusterEvent, ClusterSetting, ClusterState}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalPosition}
@@ -29,12 +29,16 @@ final class ClusterWatchTest extends AnyFreeSpec
   private val bId = NodeId("B")
   private val aUri = Uri("http://A")
   private val bUri = Uri("http://B")
-  private val idToUri = Map(aId -> aUri, bId -> bUri)
+  private val setting = ClusterSetting(
+    Map(
+      NodeId("A") -> Uri("http://A"),
+      NodeId("B") -> Uri("http://B")),
+    activeId = NodeId("A"))
   private val failedAt = JournalPosition(EventId(0), 0)
 
   "ClusterWatch" - {
     lazy val scheduler = TestScheduler()
-    var clusterState: ClusterState = ClusterState.NodesAppointed(idToUri, aId)
+    var clusterState: ClusterState = ClusterState.NodesAppointed(setting)
     lazy val watch = new ClusterWatch(ControllerId("CONTROLLER"), scheduler)
 
     "Early heartbeat" in {
@@ -62,7 +66,7 @@ final class ClusterWatchTest extends AnyFreeSpec
     }
 
     "Heartbeat with different ClusterState from same active node is accepted" in {
-      val reportedClusterState = ClusterState.PassiveLost(idToUri, activeId = aId)
+      val reportedClusterState = ClusterState.PassiveLost(setting)
       assert(watch.heartbeat(aId, reportedClusterState).await(99.s) == Right(Completed))
       assert(watch.get.await(99.s) == Right(reportedClusterState))
 
@@ -76,7 +80,7 @@ final class ClusterWatchTest extends AnyFreeSpec
         Left(ClusterWatchHeartbeatFromInactiveNodeProblem(bId, clusterState)))
 
       locally {
-        assert(watch.heartbeat(bId, ClusterState.Coupled(idToUri, activeId = bId)).await(99.s) ==
+        assert(watch.heartbeat(bId, ClusterState.Coupled(setting.copy(activeId = bId))).await(99.s) ==
           Left(ClusterWatchHeartbeatFromInactiveNodeProblem(bId, clusterState)))
       }
 
@@ -85,7 +89,7 @@ final class ClusterWatchTest extends AnyFreeSpec
 
     "Heartbeat must not change active URI" in {
       // The inactive primary node should not send a heartbeat
-      val badCoupled = ClusterState.Coupled(idToUri, activeId = bId)
+      val badCoupled = ClusterState.Coupled(setting.copy(activeId = bId))
       assert(watch.heartbeat(aId, badCoupled).await(99.s) ==
         Left(InvalidClusterWatchHeartbeatProblem(aId, badCoupled)))
       assert(watch.get.await(99.s) == Right(clusterState))
@@ -137,15 +141,15 @@ final class ClusterWatchTest extends AnyFreeSpec
 
     "applyEvents after event loss" in {
       assert(watch.get.await(99.s) == Right(clusterState))
-      assert(watch.get.await(99.s) == Right(ClusterState.Coupled(idToUri, activeId = bId)))
+      assert(watch.get.await(99.s) == Right(ClusterState.Coupled(setting.copy(activeId = bId))))
 
       // We test the loss of a PassiveLost event, and then apply Coupled
       val lostEvent = ClusterPassiveLost(aId)
-      val decoupled = ClusterState.PassiveLost(idToUri, activeId = bId)
+      val decoupled = ClusterState.PassiveLost(setting.copy(activeId = bId))
       assert(clusterState.applyEvent(NoKey <-: lostEvent) == Right(decoupled))
 
       val nextEvents = ClusterCouplingPrepared(bId) :: ClusterCoupled(bId) :: Nil
-      val coupled = ClusterState.Coupled(idToUri, activeId = bId)
+      val coupled = ClusterState.Coupled(setting.copy(activeId = bId))
       assert(decoupled.applyEvents(nextEvents.map(NoKey <-: _)) == Right(coupled))
 
       assert(watch.applyEvents(bId, nextEvents, coupled).await(99.s) == Right(Completed))

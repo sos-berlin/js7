@@ -14,9 +14,12 @@ import org.scalatest.freespec.AnyFreeSpec
 final class ClusterStateTest extends AnyFreeSpec
 {
   "JSON" - {
-    val idToUri = Map(
-      NodeId("A") -> Uri("http://A"),
-      NodeId("B") -> Uri("http://B"))
+    val setting = ClusterSetting(
+      Map(
+        NodeId("A") -> Uri("http://A"),
+        NodeId("B") -> Uri("http://B")),
+      NodeId("A"))
+
     "Empty" in {
       testJson[ClusterState](
         Empty,
@@ -27,92 +30,106 @@ final class ClusterStateTest extends AnyFreeSpec
 
     "NodesAppointed" in {
       testJson[ClusterState](
-        NodesAppointed(idToUri, NodeId("A")),
+        NodesAppointed(setting),
         json"""{
           "TYPE": "NodesAppointed",
-          "idToUri": {
-            "A": "http://A",
-            "B": "http://B"
-          },
-          "activeId": "A"
+          "setting": {
+            "idToUri": {
+              "A": "http://A",
+              "B": "http://B"
+            },
+            "activeId": "A"
+          }
         }""")
     }
 
     "PreparedToBeCoupled" in {
       testJson[ClusterState](
-        PreparedToBeCoupled(idToUri, NodeId("A")),
+        PreparedToBeCoupled(setting),
         json"""{
           "TYPE": "PreparedToBeCoupled",
-          "idToUri": {
-            "A": "http://A",
-            "B": "http://B"
-          },
-          "activeId": "A"
+          "setting": {
+            "idToUri": {
+              "A": "http://A",
+              "B": "http://B"
+            },
+            "activeId": "A"
+          }
         }""")
     }
 
     "Coupled" in {
       testJson[ClusterState](
-        Coupled(idToUri, NodeId("A")),
+        Coupled(setting),
         json"""{
           "TYPE": "Coupled",
-          "idToUri": {
-            "A": "http://A",
-            "B": "http://B"
-          },
-          "activeId": "A"
+          "setting": {
+            "idToUri": {
+              "A": "http://A",
+              "B": "http://B"
+            },
+            "activeId": "A"
+          }
         }""")
     }
 
     "CoupledActiveShutDown" in {
       testJson[ClusterState](
-        CoupledActiveShutDown(idToUri, NodeId("A")),
+        CoupledActiveShutDown(setting),
         json"""{
           "TYPE": "CoupledActiveShutDown",
-          "idToUri": {
-            "A": "http://A",
-            "B": "http://B"
-          },
-          "activeId": "A"
+          "setting": {
+            "idToUri": {
+              "A": "http://A",
+              "B": "http://B"
+            },
+            "activeId": "A"
+          }
         }""")
     }
 
     "PassiveLost" in {
       testJson[ClusterState](
-        PassiveLost(idToUri, NodeId("A")),
+        PassiveLost(setting),
         json"""{
           "TYPE": "PassiveLost",
-          "idToUri": {
-            "A": "http://A",
-            "B": "http://B"
-          },
-          "activeId": "A"
+          "setting": {
+            "idToUri": {
+              "A": "http://A",
+              "B": "http://B"
+            },
+            "activeId": "A"
+          }
         }""")
     }
 
     "SwitchedOver" in {
       testJson[ClusterState](
-        SwitchedOver(idToUri, NodeId("A")),
+        SwitchedOver(setting),
         json"""{
           "TYPE": "SwitchedOver",
-          "idToUri": {
-            "A": "http://A",
-            "B": "http://B"
-          },
-          "activeId": "A"
+          "setting": {
+            "idToUri": {
+              "A": "http://A",
+              "B": "http://B"
+            },
+            "activeId": "A"
+          }
         }""")
     }
 
     "FailedOver" in {
       testJson[ClusterState](
-        FailedOver(idToUri, NodeId("A"), JournalPosition(EventId(0), 1234)),
+        FailedOver(setting, JournalPosition(EventId(0), 1234)),
         json"""{
           "TYPE": "FailedOver",
-          "idToUri": {
-            "A": "http://A",
-            "B": "http://B"
+          "setting": {
+            "idToUri": {
+              "A": "http://A",
+              "B": "http://B"
+            },
+            "activeId": "A"
           },
-          "activeId": "A",
           "failedAt": {
             "fileEventId": 0,
             "position": 1234

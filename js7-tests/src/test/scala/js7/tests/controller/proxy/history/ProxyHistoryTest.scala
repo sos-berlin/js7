@@ -58,7 +58,7 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
   override protected def backupControllerConfig = controllerConfig withFallback super.backupControllerConfig
 
   "test" in {
-    withControllerAndBackup() { (primary, backup) =>
+    withControllerAndBackup() { (primary, backup, _) =>
       def listJournalFiles = JournalFiles.listJournalFiles(primary.controller.dataDir / "state" / "controller")
         .map(_.file.getFileName.toString)
 
@@ -196,7 +196,7 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
   }
 
   "Java history" in {
-    runControllerAndBackup() { (primary, _, _, _) =>
+    runControllerAndBackup() { (primary, _, _, _, _) =>
       autoClosing(new JProxyContext) { context =>
         val api = context.newControllerApi(admissions.map(JAdmission.apply).asJava, JHttpsConfig.empty)
         val javaTester = new JControllerApiHistoryTester(api, TestWorkflow.path, primary.agents.map(_.localUri).asJava)

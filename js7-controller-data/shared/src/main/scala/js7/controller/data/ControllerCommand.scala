@@ -6,19 +6,16 @@ import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.ScalaJsonCodecs.{FiniteDurationJsonDecoder, FiniteDurationJsonEncoder}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.SignedString
-import js7.base.problem.Checked._
 import js7.base.problem.Checked.implicits.{checkedJsonDecoder, checkedJsonEncoder}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Big
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.web.Uri
 import js7.data.cluster.{ClusterCommand, ClusterSetting}
 import js7.data.command.{CancelMode, CommonCommand}
 import js7.data.controller.ControllerItems.typedPathJsonDecoder
 import js7.data.event.EventId
 import js7.data.item.{TypedPath, VersionId}
-import js7.data.node.NodeId
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.position.Position
 import scala.collection.immutable
@@ -190,10 +187,9 @@ object ControllerCommand extends CommonCommand.Companion
     override def toString = s"ReplaceRepo($versionId, ${objects.size} objects)"
   }
 
-  final case class ClusterAppointNodes(idToUri: Map[NodeId, Uri], activeId: NodeId)
+  final case class ClusterAppointNodes(setting: ClusterSetting)
   extends ControllerCommand {
     type Response = Response.Accepted
-    ClusterSetting.checkUris(idToUri, activeId).orThrow
   }
 
   case object ClusterSwitchOver

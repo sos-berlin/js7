@@ -15,18 +15,21 @@ final class ClusterCommandTest extends AnyFreeSpec
   "ClusterStartBackupNode" in {
     testJson[ClusterCommand](
       ClusterStartBackupNode(
-        Map(
-          NodeId("A") -> Uri("http://A"),
-          NodeId("B") -> Uri("http://B")),
-        NodeId("A"),
+        ClusterSetting(
+          Map(
+            NodeId("A") -> Uri("http://A"),
+            NodeId("B") -> Uri("http://B")),
+          NodeId("A")),
         1000L),
       json"""{
         "TYPE": "ClusterStartBackupNode",
-        "idToUri": {
-          "A": "http://A",
-          "B": "http://B"
+        "setting": {
+          "idToUri": {
+            "A": "http://A",
+            "B": "http://B"
+          },
+          "activeId": "A"
         },
-        "activeId": "A",
         "fileEventId": 1000
       }""")
   }
@@ -71,19 +74,22 @@ final class ClusterCommandTest extends AnyFreeSpec
 
   "ClusterInhibitActivation.Response" in {
     testJson[ClusterCommand.Response](ClusterInhibitActivation.Response(Some(FailedOver(
-      Map(
-        NodeId("A") -> Uri("http://A"),
-        NodeId("B") -> Uri("http://B")),
-      activeId = NodeId("A"),
+      ClusterSetting(
+        Map(
+          NodeId("A") -> Uri("http://A"),
+          NodeId("B") -> Uri("http://B")),
+        activeId = NodeId("A")),
       JournalPosition(0L, 1000)))),
       json"""{
         "TYPE": "ClusterInhibitActivation.Response",
         "failedOver": {
-          "idToUri": {
-            "A": "http://A",
-            "B": "http://B"
+          "setting": {
+            "idToUri": {
+              "A": "http://A",
+              "B": "http://B"
+            },
+            "activeId": "A"
           },
-          "activeId": "A",
           "failedAt": {
             "fileEventId": 0,
             "position": 1000

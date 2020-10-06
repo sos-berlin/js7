@@ -8,7 +8,6 @@ import js7.base.time.Timestamp
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.Logger
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import js7.controller.RunningController
 import js7.controller.data.ControllerCommand.ClusterSwitchOver
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterSwitchedOver}
@@ -29,7 +28,7 @@ final class SwitchOverClusterTest extends ControllerClusterTester
   "Switchover" in {
     val orderIds = for (i <- 1 to manyOrdersCount) yield
       OrderId(s"ORDER-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-$i")
-    withControllerAndBackup() { (primary, backup) =>
+    withControllerAndBackup() { (primary, backup, _) =>
       var lastEventId = EventId.BeforeFirst
       backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
         primary.runController(httpPort = Some(primaryControllerPort)) { implicit primaryController =>

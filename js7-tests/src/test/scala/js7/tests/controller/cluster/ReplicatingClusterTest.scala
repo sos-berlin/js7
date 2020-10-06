@@ -17,7 +17,7 @@ import monix.execution.Scheduler.Implicits.global
 final class ReplicatingClusterTest extends ControllerClusterTester
 {
   "Cluster replicates journal files properly" in {
-    withControllerAndBackup() { (primary, backup) =>
+    withControllerAndBackup() { (primary, backup, _) =>
       val primaryController = primary.startController(httpPort = Some(primaryControllerPort)) await 99.s
       primaryController.waitUntilReady()
       primaryController.runOrder(FreshOrder(OrderId("🔶"), TestWorkflow.path))
