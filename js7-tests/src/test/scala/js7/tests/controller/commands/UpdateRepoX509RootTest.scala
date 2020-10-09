@@ -72,11 +72,11 @@ final class UpdateRepoX509RootTest extends AnyFreeSpec with ControllerAgentForSc
 
     "Signature matches item" in {
       itemFile := (workflow.withVersion(v2): InventoryItem)
-      val signedString = SignedString(
+      val signedString = SignedString.x509WithCertificate(
         itemFile.contentString,
-        GenericSignature("X509", signatureFile.contentString,
-          algorithm = Some("SHA512withRSA"),
-          signerCertificate = Some(signer.certificateFile.contentString)))
+        signatureFile.contentString,
+        algorithm = "SHA512withRSA",
+        signerCertificate = signer.certificateFile.contentString)
       executeCommand(UpdateRepo(v2, signedString :: Nil)).orThrow
     }
 

@@ -13,4 +13,7 @@ object SignerId extends GenericString.NonEmpty[SignerId]
 {
   override protected def unchecked(signerId: String): SignerId =
     new SignerId(signerId)
+
+  def of(signedId: String): SignerId =
+    unchecked(signedId)
 }
