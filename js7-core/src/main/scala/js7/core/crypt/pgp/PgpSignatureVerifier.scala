@@ -88,8 +88,12 @@ object PgpSignatureVerifier extends SignatureVerifier.Companion
 
   def genericSignatureToSignature(signature: GenericSignature): Checked[PgpSignature] = {
     assertThat(signature.typeName == typeName)
-    if (signature.signerCertificate.isDefined)
-      Left(Problem("PGP signature does not accept a signature public key"))
+    if (signature.signerId.isDefined)
+      Left(Problem("PGP signature does not accept a signerId"))
+    else if (signature.algorithm.isDefined)
+      Left(Problem("PGP signature does not accept a signature algorithm"))
+    else if (signature.signerCertificate.isDefined)
+      Left(Problem("PGP signature does not accept a signed certificate"))
     else {
       val pgpSignature = PgpSignature(signature.signatureString)
       for (_ <- toMutablePGPSignature(pgpSignature)/*check early*/)

@@ -3,6 +3,7 @@ package js7.core.crypt.x509
 import java.nio.file.Files.{delete, exists}
 import java.nio.file.{Path, Paths}
 import js7.base.auth.Pem
+import js7.base.crypt.SignerId
 import js7.base.problem.Checked._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.process.Processes.runProcess
@@ -46,12 +47,13 @@ final class OpensslContext(dir: Path) {
 
     final class Signer(name: String)
     {
+      val signerId = SignerId(s"CN=$name")
       private val privateKeyFile = dir / s"$name.private-key"
 
       val certificateFile = {
         runProcess(s"openssl genrsa -out '$privateKeyFile' 1024")
         val certificateRequestFile = dir / s"$name.csr"
-        runProcess(s"openssl req -new -subj '/CN=$name' -key '$privateKeyFile' -out '$certificateRequestFile'")
+        runProcess(s"openssl req -new -subj '/${signerId.string}' -key '$privateKeyFile' -out '$certificateRequestFile'")
         val certFile = root.newCertificate(certificateRequestFile, name)
         delete(certificateRequestFile)
         certFile

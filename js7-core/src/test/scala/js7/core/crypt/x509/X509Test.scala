@@ -6,8 +6,8 @@ import js7.base.Problems.{MessageSignedByUnknownProblem, TamperedWithSignedMessa
 import js7.base.crypt.{GenericSignature, SignedString, SignerId}
 import js7.base.data.ByteArray
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
-import js7.base.problem.Checked
 import js7.base.problem.Checked._
+import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
@@ -16,6 +16,7 @@ import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.FileUtils.withTemporaryDirectory
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.core.crypt.x509.OpensslContext.assertPemFile
+import js7.core.crypt.x509.X509Algorithm.SHA512withRSA
 import js7.core.crypt.x509.X509Test._
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
@@ -32,8 +33,9 @@ final class X509Test extends AnyFreeSpec
     val (signer, verifier) = X509Signer.forTest()
     val document = "TEXT EXAMPLE"
     val signature = signer.signString(document)
-    val signedIds = verifier.verify(SignedString(document, signature.toGenericSignature)).orThrow
-    assert(signedIds == SignerId("CN=TEST") :: Nil)
+    val signerIds = verifier.verify(SignedString(document, signature.toGenericSignature)).orThrow
+    assert(signerIds == SignerId("CN=SIGNER") :: Nil)
+    assert(signer.signerId == SignerId("CN=SIGNER"))
 
     assert(verifier.verify(SignedString(document + "X", signature.toGenericSignature)) ==
       Left(TamperedWithSignedMessageProblem))
@@ -60,8 +62,11 @@ final class X509Test extends AnyFreeSpec
       runProcess(s"openssl dgst -sha512 -sign '$privateKeyFile' -out '$signatureFile' '$documentFile'")
       runProcess(s"openssl dgst -sha512 -verify '$publicKeyFile' -signature '$signatureFile' '$documentFile'")
 
-      val verifier = X509SignatureVerifier.checked(Seq(certificateFile.byteArray), origin = certificateFile.toString).orThrow
-      val signature = X509Signature(signatureFile.byteArray)
+      val certificateBytes = certificateFile.byteArray
+      val verifier = X509SignatureVerifier.checked(Seq(certificateBytes), origin = certificateFile.toString).orThrow
+      val signerId = X509Cert.fromPem(certificateBytes.utf8String).map(_.signerId).orThrow
+      assert(!signerId.string.startsWith("/"))
+      val signature = X509Signature(signatureFile.byteArray, SHA512withRSA, Left(signerId))
       assert(verifier.verifyString(documentFile.contentString, signature) == Right(SignerId("CN=SIGNER") :: Nil))
       assert(verifier.verifyString(documentFile.contentString + "X", signature) == Left(TamperedWithSignedMessageProblem))
     }
@@ -71,7 +76,7 @@ final class X509Test extends AnyFreeSpec
     withTemporaryDirectory("X509Test-") { dir =>
       val openssl = new OpensslContext(dir)
       val ca = new openssl.Root("Root")
-      assert(X509.bytesToCertificate(ca.certificateFile.byteArray).orThrow.isCA)
+      assert(X509Cert.fromByteArray(ca.certificateFile.byteArray).orThrow.isCA)
 
       val documentFile = dir / "document"
       documentFile := "TEST DOCUMENT"
@@ -79,16 +84,19 @@ final class X509Test extends AnyFreeSpec
       val signer = new ca.Signer("SIGNER")
       val signatureFile = signer.sign(documentFile)
 
-      assert(verify(ca.certificateFile, documentFile, signatureFile, Some(signer.certificateFile)) ==
+      assert(verify(ca.certificateFile, documentFile, toSignatureWithTrustedCertificate(signatureFile, signer.certificateFile)) ==
         Right(Seq(SignerId("CN=SIGNER"))))
 
       val alienSigner = new ca.Signer("ALIEN-SIGNER")
       val alienSignatureFile = alienSigner.sign(documentFile)
-      assert(verify(signer.certificateFile, documentFile, alienSignatureFile) == Left(TamperedWithSignedMessageProblem))
+      assert(verify(signer.certificateFile, documentFile, toSignatureWithSignerId(alienSignatureFile, signer.signerId)) ==
+        Left(TamperedWithSignedMessageProblem))
+      assert(verify(signer.certificateFile, documentFile, toSignatureWithSignerId(alienSignatureFile, alienSigner.signerId)) ==
+        Left(Problem("The signature's SignerId 'CN=ALIEN-SIGNER' is unknown")))
 
       val root2 = new openssl.Root("Root-2")
-      assert(verify(root2.certificateFile, documentFile, signatureFile, Some(signer.certificateFile)) ==
-        Left(MessageSignedByUnknownProblem))
+      assert(verify(root2.certificateFile, documentFile, toSignatureWithTrustedCertificate(signatureFile, signer.certificateFile)) ==
+        Left(TamperedWithSignedMessageProblem))
     }
   }
 
@@ -96,7 +104,7 @@ final class X509Test extends AnyFreeSpec
     withTemporaryDirectory("X509Test-") { dir =>
       val openssl = new OpensslContext(dir)
       val ca = new openssl.Root("Root", suppressCAContraint = true)
-      assert(!X509.bytesToCertificate(ca.certificateFile.byteArray).orThrow.isCA)
+      assert(!X509Cert.fromByteArray(ca.certificateFile.byteArray).orThrow.isCA)
 
       val documentFile = dir / "document"
       documentFile := "TEST DOCUMENT"
@@ -104,7 +112,7 @@ final class X509Test extends AnyFreeSpec
       val signer = new ca.Signer("SIGNER")
       val signatureFile = signer.sign(documentFile)
 
-      assert(verify(ca.certificateFile, documentFile, signatureFile, Some(signer.certificateFile)) ==
+      assert(verify(ca.certificateFile, documentFile, toSignatureWithTrustedCertificate(signatureFile, signer.certificateFile)) ==
         Left(MessageSignedByUnknownProblem))
     }
   }
@@ -153,16 +161,23 @@ final class X509Test extends AnyFreeSpec
 
 object X509Test
 {
-  def verify(certificateFile: Path, documentFile: Path, signatureFile: Path, signersCertificateFile: Option[Path] = None)
-  : Checked[Seq[SignerId]] = {
+  def verify(certificateFile: Path, documentFile: Path, signature: X509Signature): Checked[Seq[SignerId]] = {
     lazy val verifier = X509SignatureVerifier.checked(Seq(certificateFile.byteArray), origin = certificateFile.toString).orThrow
-    val signature = X509Signature(
-      ByteArray.fromMimeBase64(signatureFile.contentString).orThrow/*reverse OpensslContext's base64 encoding*/,
-      signersCertificateFile.map(file => X509.pemToCertificate(file.contentString).orThrow))
     val verified = verifier.verifyString(documentFile.contentString, signature)
     if (verified.isRight) {
       assert(verifier.verifyString(documentFile.contentString + "X", signature) == Left(TamperedWithSignedMessageProblem))
     }
     verified
   }
+
+  private def toSignatureWithSignerId(signatureFile: Path, signerId: SignerId): X509Signature =
+    X509Signature(toSignatureBytes(signatureFile), SHA512withRSA, Left(signerId))
+
+  private def toSignatureWithTrustedCertificate(signatureFile: Path, signersCertificateFile: Path): X509Signature =
+    X509Signature(toSignatureBytes(signatureFile), SHA512withRSA,
+      Right(X509Cert.fromPem(signersCertificateFile.contentString).orThrow))
+
+  /** Reverse OpensslContext's base64 encoding. */
+  private def toSignatureBytes(signatureFile: Path) =
+    ByteArray.fromMimeBase64(signatureFile.contentString).orThrow
 }

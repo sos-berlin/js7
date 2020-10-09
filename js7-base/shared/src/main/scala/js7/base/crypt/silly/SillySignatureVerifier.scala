@@ -55,7 +55,11 @@ object SillySignatureVerifier extends SignatureVerifier.Companion
 
   def genericSignatureToSignature(signature: GenericSignature) = {
     assertThat(signature.typeName == typeName)
-    if (signature.signerCertificate.isDefined)
+    if (signature.signerId.isDefined)
+      Left(Problem("Silly signature does not accept a signerId"))
+    else if (signature.algorithm.isDefined)
+      Left(Problem("Silly signature does not accept a signature algorithm"))
+    else if (signature.signerCertificate.isDefined)
       Left(Problem("Silly signature does not accept a signature public key"))
     else
       Right(SillySignature(signature.signatureString))

@@ -2,24 +2,29 @@ package js7.core.crypt.x509
 
 import cats.Show
 import cats.instances.vector._
-import cats.syntax.flatMap._
 import cats.syntax.traverse._
 import java.security.cert.X509Certificate
 import java.security.{PublicKey, Signature, SignatureException}
 import js7.base.Problems.{MessageSignedByUnknownProblem, TamperedWithSignedMessageProblem}
+import js7.base.auth.DistinguishedName
 import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
 import js7.base.data.ByteArray
-import js7.base.problem.Checked
+import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.Collections.duplicatesToProblem
 import js7.base.utils.Collections.implicits._
-import js7.base.utils.ScalaUtils.syntax.RichThrowable
+import js7.base.utils.ScalaUtils.syntax.{RichPartialFunction, RichThrowable}
 import js7.common.scalautil.Logger
-import js7.core.crypt.x509.X509.{CertificatePem, pemToCertificate}
+import js7.core.crypt.x509.X509Cert.CertificatePem
 import js7.core.crypt.x509.X509SignatureVerifier.logger
 import org.jetbrains.annotations.TestOnly
 import scala.util.control.NonFatal
 
-final class X509SignatureVerifier private[x509](trustedCertificates: Seq[X509Cert], val publicKeyOrigin: String)
+final class X509SignatureVerifier private[x509](
+  trustedCertificates: Seq[X509Cert],
+  trustedRootCertificates: Seq[X509Cert],
+  signerDNToTrustedCertificate: Map[DistinguishedName, X509Cert],
+  val publicKeyOrigin: String)
 extends SignatureVerifier
 {
   protected type MySignature = X509Signature
@@ -34,31 +39,35 @@ extends SignatureVerifier
     s"X.509 origin=$publicKeyOrigin " +
       trustedCertificates.map(_.x509Certificate.getSubjectX500Principal.toString).mkString(", ")
 
-  def verify(document: ByteArray, signature: X509Signature): Checked[Seq[SignerId]] =
-    Checked.catchNonFatal {
-      // We have to try each of the installed trusted certificates !!!
-      trustedCertificates.iterator
-        .map(tryVerify(document, signature, _))
-        .takeWhileInclusive(_.isLeft)
-        .toVector
-        .lastOption match {
-          case None => Left(MessageSignedByUnknownProblem)
-          case Some(checkedSignerId) => checkedSignerId.map(_ :: Nil)
-        }
-    }.flatten
+  def verify(document: ByteArray, signature: X509Signature): Checked[Seq[SignerId]] = {
+    signature.signerIdOrCertificate match {
+      case Left(signerId) =>
+        DistinguishedName.checked(signerId.string).flatMap(dn =>
+          signerDNToTrustedCertificate.rightOr(dn,
+            Problem(s"The signature's SignerId '${signerId.string}' is unknown"))
+        ).flatMap(trustedCertificate =>
+            verifySignature(document, signature, trustedCertificate)
+              .map(_ :: Nil))
 
-  private def tryVerify(document: ByteArray, signature: X509Signature, trustedCertificate: X509Cert): Checked[SignerId] =
-    signature.maybeSignerCertificate match {
-      case Some(signerCertificate) =>
-        if (!trustedCertificate.isCA)
-          Left(MessageSignedByUnknownProblem)
-        else
-          verifySignersCertificate(signerCertificate, trustedCertificate.x509Certificate.getPublicKey) >>
-            verifySignature(document, signature, signerCertificate)
-
-      case _ =>
-        verifySignature(document, signature, trustedCertificate)
+      case Right(signerCertificate) =>
+        Checked.catchNonFatal {
+          // We have to try each of the installed trusted certificates !!!
+          trustedRootCertificates
+            .iterator
+            .map(rootCert =>
+              for {
+                signerId <- verifySignature(document, signature, signerCertificate)
+                _ <- verifySignersCertificate(signerCertificate, rootCert.x509Certificate.getPublicKey)
+              } yield signerId)
+            .takeWhileInclusive(_.isLeft)
+            .toVector
+            .lastOption match {
+              case None => Left(MessageSignedByUnknownProblem)
+              case Some(checkedSignerId) => checkedSignerId.map(_ :: Nil)
+            }
+        }.flatten
     }
+  }
 
   private def verifySignature(document: ByteArray, signature: X509Signature, cert: X509Cert): Checked[SignerId] = {
     val sig = Signature.getInstance(signature.algorithm.string)
@@ -96,10 +105,26 @@ object X509SignatureVerifier extends SignatureVerifier.Companion
   implicit val x509CertificateShow: Show[X509Certificate] =
     _.getIssuerX500Principal.toString
 
-  def checked(publicKeys: Seq[ByteArray], origin: String): Checked[X509SignatureVerifier] =
-    publicKeys.toVector
-      .traverse(publicKey => pemToCertificate(publicKey.utf8String))
-      .map(keyAndCerts => new X509SignatureVerifier(keyAndCerts, origin))
+  def checked(trustedCertificates: Seq[ByteArray], origin: String): Checked[X509SignatureVerifier] =
+    trustedCertificates.toVector
+      .traverse(publicKey => X509Cert.fromPem(publicKey.utf8String))
+      .flatMap(trustedCertificates =>
+        trustedCertificates
+          .filterNot(_.isCA)
+          .toCheckedKeyedMap(_.signersDistinguishedName, duplicateDNsToProblem)
+          .map { signerDNToTrustedCertificate =>
+            val rootCertificates = trustedCertificates.filter(_.isCA)
+            for (o <- rootCertificates) logger.debug(s"Trusting signatures signed with a certificate which is signed with root $o")
+            for (o <- signerDNToTrustedCertificate.values) logger.debug(s"Trusting signatures signed with $o")
+            new X509SignatureVerifier(
+              trustedCertificates,
+              rootCertificates,
+              signerDNToTrustedCertificate,
+              origin)
+          })
+
+  private def duplicateDNsToProblem(duplicates: Map[DistinguishedName, Iterable[_]]) =
+    duplicatesToProblem("Duplicate X.509 certificates", duplicates)
 
   def genericSignatureToSignature(signature: GenericSignature): Checked[X509Signature] = {
     assertThat(signature.typeName == typeName)

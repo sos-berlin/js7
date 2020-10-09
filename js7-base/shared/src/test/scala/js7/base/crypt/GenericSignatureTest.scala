@@ -16,10 +16,14 @@ final class GenericSignatureTest extends AnyFreeSpec
         "signatureString": "SIGNATURE"
       }""")
 
-    testJson(GenericSignature("SIGNATURE-TYPE", "SIGNATURE", Some("SIGNER CERTIFICATE")), json"""
-      {
+    testJson(
+      GenericSignature("SIGNATURE-TYPE", "SIGNATURE",
+        Some("ALGORITHM"), Some(SignerId("SIGNER")), Some("SIGNER CERTIFICATE")),
+      json"""{
         "TYPE": "SIGNATURE-TYPE",
         "signatureString": "SIGNATURE",
+        "algorithm": "ALGORITHM",
+        "signerId": "SIGNER",
         "signerCertificate": "SIGNER CERTIFICATE"
       }""")
   }
