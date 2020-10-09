@@ -58,23 +58,39 @@ object FileUtils
       def :=[A <: CharSequence](string: A): Unit =
         contentString = string
 
-      def :=(bytes: Array[Byte]): Unit =
-        write(bytes)
+      def :=(bytes: collection.Seq[Byte]) = write(bytes)
 
-      def :=(bytes: collection.Seq[Byte]): Unit =
+      def write(bytes: collection.Seq[Byte]): Unit =
         write(bytes.toArray)
 
-      def :=(byteSeq: ByteArray): Unit =
+      def :=(bytes: Array[Byte]) = write(bytes)
+
+      def write(bytes: Array[Byte]): Unit =
+        Files.write(delegate, bytes)
+
+      def write(string: CharSequence, encoding: Charset = UTF_8): Unit =
+        // Java 11: Files.writeString(delegate, string, encoding, CREATE, TRUNCATE_EXISTING)
+        GuavaFiles.asCharSink(delegate.toFile, encoding).write(string)
+
+      def :=(byteSeq: ByteArray) = write(byteSeq)
+
+      def write(byteSeq: ByteArray): Unit =
         autoClosing(new BufferedOutputStream(new FileOutputStream(delegate.toFile)))(
           byteSeq.writeToStream(_))
 
-      def :=[W: Writable](w: W): Unit =
+      def :=[W: Writable](w: W) = write(w)
+
+      def write[W: Writable](w: W): Unit =
         autoClosing(new BufferedOutputStream(new FileOutputStream(delegate.toFile)))(
           w.writeToStream(_))
 
       /** Appends `string` encoded with UTF-8 to file. */
       def ++=(string: CharSequence): Unit =
         append(string)
+
+      def append(string: CharSequence, encoding: Charset = UTF_8): Unit =
+        // Java 11: Files.writeString(delegate, string, encoding, CREATE, APPEND)
+        GuavaFiles.asCharSink(delegate.toFile, encoding, APPEND).write(string)
 
       def ++=[B: ByteSequence](byteSeq: B): Unit=
         autoClosing(new BufferedOutputStream(new FileOutputStream(delegate.toFile, true)))(
@@ -88,9 +104,6 @@ object FileUtils
 
       def contentBytes: Array[Byte] =
         Files.readAllBytes(delegate)
-
-      def write(bytes: Array[Byte]) =
-        Files.write(delegate, bytes)
 
       def contentString: String = contentString(UTF_8)
 
@@ -110,14 +123,6 @@ object FileUtils
         if (isUnix) {
           setPosixFilePermissions(delegate, PosixFilePermissions.fromString("r-x------"))
         }
-
-      def write(string: CharSequence, encoding: Charset = UTF_8): Unit =
-        // Java 11: Files.writeString(delegate, string, encoding, CREATE, TRUNCATE_EXISTING)
-        GuavaFiles.asCharSink(delegate.toFile, encoding).write(string)
-
-      def append(string: CharSequence, encoding: Charset = UTF_8): Unit =
-        // Java 11: Files.writeString(delegate, string, encoding, CREATE, APPEND)
-        GuavaFiles.asCharSink(delegate.toFile, encoding, APPEND).write(string)
 
       /**
         * Returns the content of the directory denoted by `this`.
