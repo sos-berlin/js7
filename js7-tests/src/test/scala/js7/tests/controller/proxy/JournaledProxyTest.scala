@@ -87,7 +87,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with Controll
     "Adding duplicate orders is rejected" in {
       val order = FreshOrder(OrderId("DUPLICATE"), workflow.path)
       assert(api.addOrders(Observable(order, order)).await(99.s) ==
-        Left(Problem("Unexpected duplicates: Order:DUPLICATE")))
+        Left(Problem("Unexpected duplicates: 2×Order:DUPLICATE")))
     }
 
     "success" in {

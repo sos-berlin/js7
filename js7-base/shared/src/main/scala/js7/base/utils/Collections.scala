@@ -8,6 +8,12 @@ import scala.collection.{BufferedIterator, mutable}
 
 object Collections
 {
+  private def defaultDuplicatesToProblem[K](duplicates: Map[K, Iterable[_]]) =
+    duplicatesToProblem("Unexpected duplicates", duplicates)
+
+  def duplicatesToProblem[K](prefix: String, duplicates: Map[K, Iterable[_]]) =
+    Problem(s"$prefix: ${duplicates.map { case (k, v) => s"${v.size}×$k" }.mkString("; ")}")
+
   object implicits {
     implicit final class RichIndexedSeq[A](private val underlying: IndexedSeq[A]) extends AnyVal {
       def get(i: Int): Option[A] =
@@ -39,6 +45,12 @@ object Collections
 
     implicit final class RichTraversable[F[x] <: Iterable[x], A](private val delegate: F[A]) extends AnyVal
     {
+      def toCheckedKeyedMap[K](toKey: A => K): Checked[Map[K, A]] =
+        toCheckedKeyedMap(toKey, defaultDuplicatesToProblem)
+
+      def toCheckedKeyedMap[K](toKey: A => K, duplicatesToProblem: Map[K, Iterable[A]] => Problem): Checked[Map[K, A]] =
+        delegate.view.map(o => toKey(o) -> o).checkedUniqueToMap(duplicatesToProblem)
+
       def toKeyedMap[K](toKey: A => K): Map[K, A] =
         delegate.view.map(o => toKey(o) -> o).uniqueToMap
 
@@ -48,12 +60,12 @@ object Collections
       def uniqueToSet: Set[A] =
         delegate.requireUniqueness.toSet
 
-      def checkUniqueness: Checked[F[A]] =
-        checkUniqueness(identity[A])
-
-      def checkUniqueness[K](key: A => K): Checked[F[A]] =
+      def checkUniqueness[K](
+        key: A => K,
+        duplicatesToProblem: Map[K, Iterable[A]] => Problem = defaultDuplicatesToProblem[K](_))
+      : Checked[F[A]] =
         duplicateKeys(key) match {
-          case Some(duplicates) => Left(Problem(s"Unexpected duplicates: ${duplicates.keys mkString ", "}"))
+          case Some(duplicates) => Left(duplicatesToProblem(duplicates))
           case None => Right(delegate)
         }
 
@@ -115,20 +127,36 @@ object Collections
         delegate forall (k => !o.contains(k))
     }
 
-    implicit final class RichPairTraversable[A, B](private val delegate: Iterable[(A, B)]) extends AnyVal {
-      def uniqueToMap: Map[A, B] = {
+    implicit final class RichPairTraversable[K, V](private val delegate: Iterable[(K, V)]) extends AnyVal
+    {
+      def checkedUniqueToMap: Checked[Map[K, V]] =
+        checkedUniqueToMap(defaultDuplicatesToProblem)
+
+      def checkedUniqueToMap(duplicatesToProblem: Map[K, Iterable[V]] => Problem): Checked[Map[K, V]] = {
+        val result = delegate.toMap
+        if (delegate.sizeIs != result.size)
+          delegate
+            .checkUniqueness/*returns Left*/(_._1,
+              (duplicates: Map[K, Iterable[(K, V)]]) =>
+                duplicatesToProblem(duplicates.view.mapValues(_.map(_._2)).toMap))
+            .flatMap(_ => Left(Problem.pure("checkedUniqueToMap"))/*never happens*/)
+        else
+          Right(result)
+      }
+
+      def uniqueToMap: Map[K, V] = {
         val result = delegate.toMap
         if (delegate.sizeIs != result.size) delegate.requireUniqueness { _._1 }
         result
       }
 
-      def uniqueToMap(ifNot: Iterable[A] => Nothing): Map[A, B] = {
+      def uniqueToMap(ifNot: Iterable[K] => Nothing): Map[K, V] = {
         val result = delegate.toMap
         if (delegate.sizeIs != result.size) delegate.ifNotUnique(_._1, ifNot)
         result
       }
 
-      def toSeqMultiMap: Map[A, Seq[B]] =
+      def toSeqMultiMap: Map[K, Seq[V]] =
         delegate groupBy { _._1 } map { case (key, seq) => key -> (seq map { _._2 }).toSeq }
     }
 

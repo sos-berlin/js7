@@ -151,7 +151,7 @@ final class JournaledProxyClusterTest extends AnyFreeSpec with ClusterProxyTest
     val order = FreshOrder(OrderId("ORDER"), workflow.path).asJson.compactPrint
     val bigOrder = order + " "*(990_000 - order.length)
     val n = 100_000_000/*bytes*/ / bigOrder.length
-    val orders = Observable.range(1, n + 1).map(_ => bigOrder)
+    val orders = Observable.range(0, n).map(_ => bigOrder)
     runControllerAndBackup() { (_, primaryController, _, _, _) =>
       logger.info(s"Adding $n invalid orders à ${bigOrder.length} bytes ${toKBGB(n * bigOrder.length)}")
       val httpClient = new AkkaHttpClient.Standard(primaryController.localUri, HttpControllerApi.UriPrefixPath, actorSystem,
@@ -164,7 +164,7 @@ final class JournaledProxyClusterTest extends AnyFreeSpec with ClusterProxyTest
             api.postObservableJsonString("controller/api/order", orders)
               .map(_ => Completed)
           ).await(99.s)
-          assert(response == Left(Problem("Unexpected duplicates: Order:ORDER")))
+          assert(response == Left(Problem(s"Unexpected duplicates: $n×Order:ORDER")))
         }
 
         locally {

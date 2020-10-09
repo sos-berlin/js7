@@ -35,10 +35,18 @@ final class CollectionsTest extends AnyFreeSpec
     assert(List("1", "2", "3").fold("0")(op) == "0+1+2+3")
   }
 
-  "toKeyedMap" in {
-    case class A(name: String, i: Int)
-    List(A("eins", 1), A("zwei", 2)) toKeyedMap { _.i } shouldEqual Map(1 -> A("eins", 1), 2 -> A("zwei", 2))
-    intercept[DuplicateKeyException] { List(1 -> "eins", 1 -> "ett") toKeyedMap { _._1 } }
+  "toCheckedKeyMap, toKeyedMap" in {
+    case class X(key: String, value: String)
+    val goodList = List(X("A", "eins"), X("B", "zwei"))
+    goodList.toCheckedKeyedMap(_.key) shouldEqual Right(Map("A" -> X("A", "eins"), "B" -> X("B", "zwei")))
+    goodList.toKeyedMap(_.key) shouldEqual Map("A" -> X("A", "eins"), "B" -> X("B", "zwei"))
+
+    val badList = List(X("A", "eins"), X("A", "uno"))
+    assert(badList.toCheckedKeyedMap(_.key) == Left(Problem("Unexpected duplicates: 2×A")))
+    def duplicatesToProblem(duplicates: Map[String, Iterable[X]]) = Problem("Unexpected: " + duplicates.view.mapValues(_.toSeq).toMap.toString)
+    assert(badList.toCheckedKeyedMap(_.key, duplicatesToProblem) == Left(Problem("Unexpected: Map(A -> List(X(A,eins), X(A,uno)))")))
+    assert((badList ::: badList).toCheckedKeyedMap(_.key) == Left(Problem("Unexpected duplicates: 4×A")))
+    intercept[DuplicateKeyException] { badList.toKeyedMap(_.key) }
   }
 
   "mapValuesStrict" - {
@@ -132,11 +140,12 @@ final class CollectionsTest extends AnyFreeSpec
     def r(o: Seq[A]) = o checkUniqueness { _.i }
 
     assert(r(Seq[A]()) == Right(Nil))
-    assert(r(Seq(a1, a2)) == Left(Problem("Unexpected duplicates: 1")))
+    assert(r(Seq(a1, a2)) == Left(Problem("Unexpected duplicates: 2×1")))
+    assert(r(Seq(a1, a2, a1)) == Left(Problem("Unexpected duplicates: 3×1")))
 
-    assert(Nil.checkUniqueness == Right(Nil))
-    assert(List(1, 1).checkUniqueness == Left(Problem("Unexpected duplicates: 1")))
-    assert(List(1, 2).checkUniqueness == Right(List(1, 2)))
+    assert(List.empty[Int].checkUniqueness(identity) == Right(Nil))
+    assert(List(1, 1).checkUniqueness(identity) == Left(Problem("Unexpected duplicates: 2×1")))
+    assert(List(1, 2).checkUniqueness(identity) == Right(List(1, 2)))
   }
 
   "toSeqMultiMap" in {
@@ -169,10 +178,14 @@ final class CollectionsTest extends AnyFreeSpec
     emptyToNone(a) shouldEqual Some(a)
   }
 
-  "uniqueToMap" in {
+  "checkedUniqueToMap, uniqueToMap" in {
     val list = List(1 -> "eins", 2 -> "zwei", 3 -> "drei")
+    list.checkedUniqueToMap shouldEqual Right(list.toMap)
     list.uniqueToMap shouldEqual list.toMap
-    intercept[DuplicateKeyException] { List(1 -> "eins", 2 -> "zwei", 1 -> "duplicate").uniqueToMap }
+
+    val badList = List(1 -> "eins", 2 -> "zwei", 1 -> "duplicate")
+    assert(badList.checkedUniqueToMap(o => Problem(s"Duplicates: $o")) == Left(Problem("Duplicates: Map(1 -> List(eins, duplicate))")))
+    intercept[DuplicateKeyException] { badList.uniqueToMap }
   }
 
   "compareChain" in {

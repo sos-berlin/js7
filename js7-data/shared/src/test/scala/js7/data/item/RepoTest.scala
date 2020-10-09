@@ -150,7 +150,7 @@ final class RepoTest extends AnyFreeSpec
 
     "Duplicate" in {
       assert(emptyRepo.itemToEvents(V1, toSigned(a1) :: toSigned(a1) :: Nil)
-        == Left(Problem("Unexpected duplicates: A:/A")))
+        == Left(Problem("Unexpected duplicates: 2×A:/A")))
     }
 
     "Other" in {
