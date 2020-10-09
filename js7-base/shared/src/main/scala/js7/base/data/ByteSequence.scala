@@ -87,10 +87,13 @@ trait ByteSequence[ByteSeq] extends Writable[ByteSeq] with Monoid[ByteSeq] with 
     nonEmpty(byteSeq) ??
       ("»" +
         iterator(byteSeq).take(n).grouped(8).map(_.map(byteToPrintable).mkString).mkString(" ") +
-        (withEllipsis ?? "…") +
+        ((withEllipsis || n < length(byteSeq)) ?? "…") +
         "« " +
-        iterator(byteSeq).take(n).grouped(4).map(_.map(o => f"$o%02x").mkString).mkString(" ") +
-        (withEllipsis ?? "..."))
+        toHexRaw(byteSeq, n, withEllipsis))
+
+  def toHexRaw(byteSeq: ByteSeq, n: Int = Int.MaxValue, withEllipsis: Boolean = false): String =
+    iterator(byteSeq).take(n).grouped(4).map(_.map(o => f"$o%02x").mkString).mkString(" ") +
+      ((withEllipsis || n < length(byteSeq)) ?? "...")
 
   def nonEmpty(byteSeq: ByteSeq): Boolean =
     !isEmpty(byteSeq)
