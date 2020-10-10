@@ -10,7 +10,7 @@ import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.order.OrderEvent.{OrderForked, OrderRemoved}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.workflow.{Workflow, WorkflowId}
-import scala.collection.{Iterable, mutable}
+import scala.collection.mutable
 
 /**
   * @author Joacim Zschimmer

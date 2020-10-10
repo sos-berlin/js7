@@ -15,7 +15,6 @@ import js7.tests.special.CirceParallelizationSpeedTest._
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
-import scala.collection.immutable.Seq
 import scala.util.Random
 
 final class CirceParallelizationSpeedTest extends AnyFreeSpec

@@ -11,7 +11,6 @@ import js7.common.configutils.Configs
 import js7.common.configutils.Configs.parseConfigIfExists
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.utils.JavaResource
-import scala.collection.immutable.Seq
 import scala.jdk.CollectionConverters._
 
 /**

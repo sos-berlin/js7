@@ -55,11 +55,11 @@ final case class Order[+S <: Order.State](
     workflowPosition.position
 
   def forkPosition: Checked[Position] = {
-    val forkBranchPath = position.branchPath.reverse.dropWhile(o => !o.branchId.isFork).reverse
-    if (forkBranchPath.isEmpty)
+    val reversed = position.forkBranchReversed
+    if (reversed.isEmpty)
       Left(Problem.pure(s"Order '${id.string}' is in state FailedInFork but not below a Fork instruction"))
     else
-      Right(forkBranchPath.init % forkBranchPath.last.nr)
+      Right(reversed.tail.reverse % reversed.head.nr)
   }
 
   def update(event: OrderEvent.OrderCoreEvent): Checked[Order[State]] = {

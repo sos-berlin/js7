@@ -29,44 +29,40 @@ object Collections
         compareIteratorsElementWise(delegate.iterator, other.iterator)
     }
 
-    implicit final class RichSeq[A](private val delegate: collection.Iterable[A]) extends AnyVal
+    implicit final class RichTraversable[CC[x] <: Iterable[x], A](private val underlying: CC[A]) extends AnyVal
     {
       /**
         * Like `fold` but uses `neutral` only when `operation` cannot be applied, that is size &lt; 2.
         *
         * @param neutral is assumed to be a real neutral element
         */
-      def foldFast(neutral: A)(operation: (A, A) => A): A = delegate match {
-        case Nil => neutral
-        case collection.Seq(a) => a
-        case seq => seq reduce operation
-      }
-    }
+      def foldFast(neutral: A)(operation: (A, A) => A): A =
+        if (underlying.isEmpty) neutral
+        else if (underlying.sizeIs == 1) underlying.head
+        else underlying reduce operation
 
-    implicit final class RichTraversable[F[x] <: Iterable[x], A](private val delegate: F[A]) extends AnyVal
-    {
       def toCheckedKeyedMap[K](toKey: A => K): Checked[Map[K, A]] =
         toCheckedKeyedMap(toKey, defaultDuplicatesToProblem)
 
       def toCheckedKeyedMap[K](toKey: A => K, duplicatesToProblem: Map[K, Iterable[A]] => Problem): Checked[Map[K, A]] =
-        delegate.view.map(o => toKey(o) -> o).checkedUniqueToMap(duplicatesToProblem)
+        underlying.view.map(o => toKey(o) -> o).checkedUniqueToMap(duplicatesToProblem)
 
       def toKeyedMap[K](toKey: A => K): Map[K, A] =
-        delegate.view.map(o => toKey(o) -> o).uniqueToMap
+        underlying.view.map(o => toKey(o) -> o).uniqueToMap
 
       def toKeyedMap[K](toKey: A => K, ifNot: Iterable[K] => Nothing): Map[K, A] =
-        delegate.view.map(o => toKey(o) -> o).uniqueToMap(ifNot)
+        underlying.view.map(o => toKey(o) -> o).uniqueToMap(ifNot)
 
       def uniqueToSet: Set[A] =
-        delegate.requireUniqueness.toSet
+        underlying.requireUniqueness.toSet
 
       def checkUniqueness[K](
         key: A => K,
         duplicatesToProblem: Map[K, Iterable[A]] => Problem = defaultDuplicatesToProblem[K](_))
-      : Checked[F[A]] =
+      : Checked[CC[A]] =
         duplicateKeys(key) match {
           case Some(duplicates) => Left(duplicatesToProblem(duplicates))
-          case None => Right(delegate)
+          case None => Right(underlying)
         }
 
       def requireUniqueness: Iterable[A] =
@@ -78,18 +74,18 @@ object Collections
       def ifNotUnique[K, B >: A](key: A => K, then_ : Iterable[K] => Iterable[B]): Iterable[B] =
         duplicateKeys(key) match {
           case Some(o) => then_(o.keys)
-          case None => delegate
+          case None => underlying
         }
 
       def duplicates: Iterable[A] =
-        delegate groupBy identity collect { case (k, v) if v.sizeIs > 1 => k }
+        underlying groupBy identity collect { case (k, v) if v.sizeIs > 1 => k }
 
       /** Liefert die Duplikate, also Listenelemente, deren Schlüssel mehr als einmal vorkommt. */
       def duplicateKeys[K](key: A => K): Option[Map[K, Iterable[A]]] =
-        if (delegate.sizeIs == delegate.view.map(key).toSet.size)
+        if (underlying.sizeIs == underlying.view.map(key).toSet.size)
           None
         else
-          delegate.groupBy(key).filter(_._2.sizeIs > 1) match {
+          underlying.groupBy(key).filter(_._2.sizeIs > 1) match {
             case o if o.isEmpty => None
             case o => Some(o)
           }
@@ -99,7 +95,7 @@ object Collections
         */
       def retainOrderGroupBy[K](toKey: A => K): Vector[(K, Vector[A])] = {
         val m = mutable.LinkedHashMap[K, VectorBuilder[A]]()
-        for (elem <- delegate) {
+        for (elem <- underlying) {
           m.getOrElseUpdate(toKey(elem), new VectorBuilder[A]) += elem
         }
         val b = Vector.newBuilder[(K, Vector[A])]

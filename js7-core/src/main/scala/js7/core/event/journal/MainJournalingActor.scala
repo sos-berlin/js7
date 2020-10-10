@@ -15,7 +15,7 @@ extends JournalingActor[S, E]
   protected final def persistAsync[EE <: E, A](keyedEvent: KeyedEvent[EE])(callback: (Stamped[KeyedEvent[EE]], S) => A): Future[A] =
     super.persistKeyedEvent(keyedEvent, timestamp = None, async = true)(callback)
 
-  protected final def persistMultipleAsync[EE <: E, A](keyedEvents: collection.Iterable[KeyedEvent[EE]])
+  protected final def persistMultipleAsync[EE <: E, A](keyedEvents: Iterable[KeyedEvent[EE]])
     (callback: (Seq[Stamped[KeyedEvent[EE]]], S) => A)
   : Future[A] =
     super.persistKeyedEvents(toTimestamped(keyedEvents), async = true)(callback)
@@ -25,12 +25,12 @@ extends JournalingActor[S, E]
   : Future[A] =
     super.persistKeyedEvent(keyedEvent, timestamp, async = async)(callback)
 
-  protected final def persistMultiple[EE <: E, A](keyedEvents: collection.Iterable[KeyedEvent[EE]], async: Boolean = false)
+  protected final def persistMultiple[EE <: E, A](keyedEvents: Iterable[KeyedEvent[EE]], async: Boolean = false)
     (callback: (Seq[Stamped[KeyedEvent[EE]]], S) => A)
   : Future[A] =
     super.persistKeyedEvents(toTimestamped(keyedEvents), async = async)(callback)
 
-  protected final def persistTransaction[EE <: E, A](keyedEvents: collection.Iterable[KeyedEvent[EE]], async: Boolean = false)
+  protected final def persistTransaction[EE <: E, A](keyedEvents: Iterable[KeyedEvent[EE]], async: Boolean = false)
     (callback: (Seq[Stamped[KeyedEvent[EE]]], S) => A)
   : Future[A] =
     persistTransactionTimestamped(toTimestamped(keyedEvents), async = async)(callback)

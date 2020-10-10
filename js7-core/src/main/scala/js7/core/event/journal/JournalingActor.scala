@@ -236,7 +236,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
 
   private def stashingCountRemaining = (stashingCount > 0) ?? s", $stashingCount remaining"
 
-  protected def toTimestamped[EE <: E](keyEvents: collection.Iterable[KeyedEvent[EE]]): Seq[Timestamped[EE]] =
+  protected def toTimestamped[EE <: E](keyEvents: Iterable[KeyedEvent[EE]]): Seq[Timestamped[EE]] =
     keyEvents.view.map(e => Timestamped(e)).toVector
 
   protected type Timestamped[+EE <: E] = JournalingActor.Timestamped[EE]

@@ -47,7 +47,7 @@ trait ByteSequence[ByteSeq] extends Writable[ByteSeq] with Monoid[ByteSeq] with 
   def fromSeq(bytes: collection.Seq[Byte]): ByteSeq =
     bytes match {
       case arraySeq: immutable.ArraySeq.ofByte => unsafeWrap(arraySeq.unsafeArray)
-      case _: immutable.Seq[Byte] => unsafeWrap(bytes.toArray)
+      case _: Seq[Byte] => unsafeWrap(bytes.toArray)
       case _ => fromArray(bytes.toArray)  // This probably copies the array twice
     }
 

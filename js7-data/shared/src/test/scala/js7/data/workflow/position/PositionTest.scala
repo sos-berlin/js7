@@ -87,14 +87,6 @@ final class PositionTest extends AnyFreeSpec
         InstructionNr(3)))
   }
 
-  "forkPosition" in {
-    assert(Position(1).forkPosition.isEmpty)
-    assert((Position(1) / "fork+A" % 2).forkPosition == Some(Position(1)))
-    assert((Position(1) / "fork+A" % 2 / Then % 3).forkPosition == Some(Position(1)))
-    assert((Position(1) / "fork+A" % 2 / "fork+B" % 3).forkPosition == Some(Position(1) / "fork+A" % 2))
-    assert((Position(1) / "fork+A" % 2 / "fork+B" % 3 / Then % 4).forkPosition == Some(Position(1) / "fork+A" % 2))
-  }
-
   "isInFork" in {
     assert(!Position(1).isInFork)
     assert((Position(1) / "fork+A" % 2).isInFork)
@@ -103,12 +95,12 @@ final class PositionTest extends AnyFreeSpec
     assert((Position(1) / "fork+A" % 2 / "fork+B" % 3 / Then % 4).isInFork)
   }
 
-  "fork Branch" in {
-    assert(Position(1).forkBranch == Nil)
-    assert((Position(1) / "fork+A" % 2).forkBranch == Position(1) / "fork+A")
-    assert((Position(1) / "fork+A" % 2 / Then % 3).forkBranch == Position(1) / "fork+A")
-    assert((Position(1) / "fork+A" % 2 / "fork+B" % 3).forkBranch == Position(1) / "fork+A" % 2 / "fork+B")
-    assert((Position(1) / "fork+A" % 2 / "fork+B" % 3 / Then % 4).forkBranch == Position(1) / "fork+A" % 2 / "fork+B")
+  "forkBranchReversed" in {
+    assert(Position(1).forkBranchReversed.reverse == Nil)
+    assert((Position(1) / "fork+A" % 2).forkBranchReversed.reverse == Position(1) / "fork+A")
+    assert((Position(1) / "fork+A" % 2 / Then % 3).forkBranchReversed.reverse == Position(1) / "fork+A")
+    assert((Position(1) / "fork+A" % 2 / "fork+B" % 3).forkBranchReversed.reverse == Position(1) / "fork+A" % 2 / "fork+B")
+    assert((Position(1) / "fork+A" % 2 / "fork+B" % 3 / Then % 4).forkBranchReversed.reverse == Position(1) / "fork+A" % 2 / "fork+B")
   }
 
   "tryCount" in {

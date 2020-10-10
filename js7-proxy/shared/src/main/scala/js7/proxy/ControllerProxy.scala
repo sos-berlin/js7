@@ -15,7 +15,6 @@ import js7.proxy.data.event.EventAndState
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
-import scala.collection.immutable.Seq
 
 final class ControllerProxy private(
   api: ControllerApi,

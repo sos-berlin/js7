@@ -1,6 +1,7 @@
 package js7.data.event
 
 import js7.base.utils.ScalaUtils.implicitClass
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.EventRequest._
 import scala.annotation.tailrec
 import scala.concurrent.duration._
@@ -81,5 +82,5 @@ object EventRequest
     new EventRequest[E](Set(implicitClass[E]), after, timeout, delay, limit, tornOlder)
 
   private def durationToString(duration: FiniteDuration): String =
-    BigDecimal(duration.toNanos, scale = 9).bigDecimal.toPlainString.reverse.dropWhile(_ == '0').reverse.stripSuffix(".")  // TODO Use ScalaTime.formatNumber
+    BigDecimal(duration.toNanos, scale = 9).bigDecimal.toPlainString.reverseDropWhile(_ == '0').stripSuffix(".")  // TODO Use ScalaTime.formatNumber
 }

@@ -30,7 +30,6 @@ import monix.execution.cancelables.SerialCancelable
 import monix.execution.{Cancelable, CancelableFuture, Scheduler}
 import monix.reactive.Observable
 import monix.reactive.observables.ConnectableObservable
-import scala.collection.immutable.Seq
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NoStackTrace

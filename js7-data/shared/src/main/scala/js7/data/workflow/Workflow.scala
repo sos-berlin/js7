@@ -100,7 +100,7 @@ extends InventoryItem
         instr.workflows flatMap (_.checkRetry())
     }
 
-  private def checkLabels: collection.Iterable[Checked[Unit]] =
+  private def checkLabels: Iterable[Checked[Unit]] =
     flattenedInstructions.collect {
       case (position, Some(label) @: _) => (label, position)
     } .groupBy(_._1)

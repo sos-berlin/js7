@@ -72,25 +72,14 @@ final case class Position(branchPath: BranchPath, nr: InstructionNr)
       case _ => Left(NoTryBlockProblem) // For example, Fork is a barrier. Retry may not be emitted inside a Fork for a Try outside the Fork
     }
 
-  def isInFork = forkPosition.isDefined
-
-  /** Position of fork instruction. */
-  def forkPosition: Option[Position] =
-    branchPath.reverse.dropWhile(o => !o.branchId.isFork) match {
-      case Nil => None
-      case last :: reverseInit => Some(reverseInit.reverse % last.nr)
-    }
-
-  /** BranchPath of fork instruction. */
-  def forkBranch: BranchPath =
-    branchPath.reverse.dropWhile(o => !o.branchId.isFork).reverse
+  def isInFork = branchPath.exists(_.branchId.isFork)
 
   /** BranchPath of fork instruction in reverse order. */
   def forkBranchReversed: BranchPath =
     branchPath.reverse.dropWhile(o => !o.branchId.isFork)
 
   def toSeq: IndexedSeq[Any] =
-    branchPath.view.flatMap(p => Array(p.nr.number, p.branchId.toSimpleType)).toVector :+ nr.number
+    branchPath.view.flatMap(p => Seq(p.nr.number, p.branchId.toSimpleType)).toVector :+ nr.number
 
   private[workflow] def toJsonSeq: Vector[Json] =
     branchPath.toJsonSeq :+ nr.asJson

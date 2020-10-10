@@ -4,7 +4,6 @@ import com.typesafe.config.Config
 import java.nio.file.Path
 import js7.base.problem.Checked._
 import js7.common.scalautil.Logger
-import scala.collection.immutable.Seq
 
 final case class HttpsConfig(
   keyStoreRef: Option[KeyStoreRef],
