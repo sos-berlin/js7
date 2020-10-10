@@ -447,12 +447,12 @@ final class ScalaUtilsTest extends AnyFreeSpec
     assert(("a-b--c---").replaceChar('-', '+') == "a+b++c+++")
   }
 
-  "reverseDropWhile" in {
-    assert("".reverseDropWhile(_ == '/') == "")
-    assert("/".reverseDropWhile(_ == '/') == "")
-    assert("//".reverseDropWhile(_ == '/') == "")
-    assert("/abc".reverseDropWhile(_ == '/') == "/abc")
-    assert("/abc//".reverseDropWhile(_ == '/') == "/abc")
+  "dropLastWhile" in {
+    assert("".dropLastWhile(_ == '/') == "")
+    assert("/".dropLastWhile(_ == '/') == "")
+    assert("//".dropLastWhile(_ == '/') == "")
+    assert("/abc".dropLastWhile(_ == '/') == "/abc")
+    assert("/abc//".dropLastWhile(_ == '/') == "/abc")
   }
 
   "Boolean ?? String" in {

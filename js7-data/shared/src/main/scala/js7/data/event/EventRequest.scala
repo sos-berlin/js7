@@ -82,5 +82,5 @@ object EventRequest
     new EventRequest[E](Set(implicitClass[E]), after, timeout, delay, limit, tornOlder)
 
   private def durationToString(duration: FiniteDuration): String =
-    BigDecimal(duration.toNanos, scale = 9).bigDecimal.toPlainString.reverseDropWhile(_ == '0').stripSuffix(".")  // TODO Use ScalaTime.formatNumber
+    BigDecimal(duration.toNanos, scale = 9).bigDecimal.toPlainString.dropLastWhile(_ == '0').stripSuffix(".")  // TODO Use ScalaTime.formatNumber
 }

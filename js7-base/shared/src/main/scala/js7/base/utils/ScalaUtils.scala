@@ -348,7 +348,7 @@ object ScalaUtils
         } else
           underlying
 
-      def reverseDropWhile(predicate: Char => Boolean): String = {
+      def dropLastWhile(predicate: Char => Boolean): String = {
         var i = underlying.length
         while (i > 0 && predicate(underlying(i - 1))) i = i -1
         underlying.substring(0, i)

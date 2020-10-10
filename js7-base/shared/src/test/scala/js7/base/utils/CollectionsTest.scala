@@ -11,10 +11,18 @@ import scala.language.reflectiveCalls
 
 final class CollectionsTest extends AnyFreeSpec
 {
-  "IndexSeq#get" in {
+  "IndexSeq get" in {
     assert(Vector.empty.get(0) == None)
     assert(Vector(1, 2, 3).get(0) == Some(1))
     assert(Vector(1, 2, 3).get(-1) == None)
+  }
+
+  "IndexSeq dropLastWhile" in {
+    assert(Vector.empty.dropLastWhile((_: Int) => true) == Vector.empty)
+    assert(Vector.empty.dropLastWhile((_: Int) => false) == Vector.empty)
+    assert(Vector(1, 2, 3).dropLastWhile(_ > 2) == Vector(1, 2))
+    assert(Vector(1, 2, 3).dropLastWhile(_ >= 2) == Vector(1))
+    assert(Vector(1, 2, 3).dropLastWhile(_ < 2) == Vector(1, 2, 3))
   }
 
   "countEquals" in {

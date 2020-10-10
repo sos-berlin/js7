@@ -18,6 +18,12 @@ object Collections
     implicit final class RichIndexedSeq[A](private val underlying: IndexedSeq[A]) extends AnyVal {
       def get(i: Int): Option[A] =
         if (underlying.indices contains i) Some(underlying(i)) else None
+
+      def dropLastWhile(predicate: A => Boolean): IndexedSeq[A] = {
+        var i = underlying.length
+        while (i > 0 && predicate(underlying(i - 1))) i = i -1
+        underlying.slice(0, i)
+      }
     }
 
     implicit final class RichTraversableOnce[A](private val delegate: IterableOnce[A]) extends AnyVal

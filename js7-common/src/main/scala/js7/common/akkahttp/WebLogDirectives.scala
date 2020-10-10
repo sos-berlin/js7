@@ -91,7 +91,7 @@ trait WebLogDirectives extends ExceptionHandling
         response.entity match {  // Try to extract error message
           case entity @ HttpEntity.Strict(`text/plain(UTF-8)`, _) =>
             val string = entity.data.utf8String
-            val truncated = string.take(201).reverseDropWhile(_ == '\n').map(c => if (c.isControl) '·' else c)
+            val truncated = string.take(201).dropLastWhile(_ == '\n').map(c => if (c.isControl) '·' else c)
             appendQuotedString(sb, truncated + ((truncated.length < string.length) ?? "..."))
 
           case entity @ HttpEntity.Strict(`application/json`, _) =>
