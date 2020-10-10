@@ -11,7 +11,7 @@ import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.data.agent.AgentRefPath
 import js7.data.source.SourcePos
 import js7.data.workflow.instructions.Fork._
-import js7.data.workflow.position.BranchId
+import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Instruction, Workflow}
 import scala.language.implicitConversions
 
@@ -29,6 +29,11 @@ extends Instruction
   def withoutSourcePos = copy(
     sourcePos = None,
     branches = branches.map(b => b.copy(workflow = b.workflow.withoutSourcePos)))
+
+  override def withPositions(position: Position): Instruction =
+    copy(branches =
+      branches.map(branch => branch.copy(
+        workflow = branch.workflow withPositions position / branch.id.toBranchId)))
 
   override def adopt(outer: Workflow) = copy(
     branches = branches.map(o => o.copy(workflow = o.workflow.copy(outer = Some(outer)))))

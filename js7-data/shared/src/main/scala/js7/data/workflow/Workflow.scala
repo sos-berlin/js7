@@ -52,7 +52,7 @@ extends InventoryItem
   val labeledInstructions = rawLabeledInstructions.map(o => o.copy(instruction = o.instruction.adopt(this)))
   val instructions: IndexedSeq[Instruction] = labeledInstructions.map(_.instruction)
   private val labelToNumber: Map[Label, InstructionNr] =
-    numberedInstructions.flatMap { case (nr, Instruction.Labeled(maybeLabel, _)) => maybeLabel map (_ -> nr) }
+    numberedInstructions.flatMap { case (nr, Instruction.Labeled(maybeLabel, _, _)) => maybeLabel map (_ -> nr) }
       .uniqueToMap(labels => throw new IllegalArgumentException(s"Duplicate labels in Workflow: ${labels mkString ","}"))
 
   def withId(id: ItemId[WorkflowPath]) = reuseIfEqual(this, copy(id = id))
@@ -80,6 +80,15 @@ extends InventoryItem
     else
       Right(this)
   }
+
+  def withPositions(branchPath: BranchPath): Workflow =
+    copy(rawLabeledInstructions =
+      rawLabeledInstructions.zipWithIndex map { case (labeled, i) =>
+        val position = branchPath % InstructionNr(i)
+        labeled.copy(
+          maybePosition = Some(position),
+          instruction = labeled.instruction withPositions position)
+      })
 
   private def checkJobReferences: Seq[Checked[Unit]] =
     flattenedInstructions.collect {
@@ -165,7 +174,7 @@ extends InventoryItem
 
   def jobNameToPositions(name: WorkflowJob.Name): Checked[Seq[Position]] =
     findJob(name).map(_ => flattenedInstructions collect {
-      case (pos, Labeled(_, ex: Execute.Named)) if ex.name == name => pos
+      case (pos, Labeled(_, ex: Execute.Named, _)) if ex.name == name => pos
     })
 
   def lastWorkflowPosition: WorkflowPosition =
@@ -213,7 +222,7 @@ extends InventoryItem
   private[workflow] def reduce: Workflow =
     copy(rawLabeledInstructions =
       rawLabeledInstructions.sliding(2).flatMap { // Peep-hole optimize
-        case Seq(_ @: (jmp: JumpInstruction), Instruction.Labeled(maybeLabel, _)) if maybeLabel contains jmp.to => Nil
+        case Seq(_ @: (jmp: JumpInstruction), maybeLabel @: _) if maybeLabel contains jmp.to => Nil
         case Seq(_ @: IfFailedGoto(errorTo, _), _ @: Goto(to, _)) if errorTo == to => Nil
         case Seq(a, _) => a :: Nil
         case Seq(_) => Nil  // Unused code in contrast to sliding's documentation?
@@ -459,7 +468,9 @@ object Workflow extends InventoryItem.Companion[Workflow] {
     case Workflow(id, instructions, namedJobs, source, _) =>
       id.asJsonObject ++
         JsonObject(
-          "instructions" -> instructions.reverse.dropWhile(_.instruction == ImplicitEnd()).reverse.asJson,
+          "instructions" -> instructions
+            .dropLastWhile(labeled => labeled.instruction == ImplicitEnd() && labeled.maybePosition.isEmpty)
+            .asJson,
           "jobs" -> emptyToNone(namedJobs).asJson,
           "source" -> source.asJson)
   }

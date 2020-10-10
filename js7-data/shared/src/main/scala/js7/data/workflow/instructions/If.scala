@@ -7,7 +7,7 @@ import js7.base.problem.Problem
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.data.expression.Expression
 import js7.data.source.SourcePos
-import js7.data.workflow.position.BranchId
+import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Instruction, Workflow}
 
 /**
@@ -27,6 +27,11 @@ extends Instruction
     sourcePos = None,
     thenWorkflow = thenWorkflow.withoutSourcePos,
     elseWorkflow = elseWorkflow.map(_.withoutSourcePos))
+
+  override def withPositions(position: Position): Instruction =
+    copy(
+      thenWorkflow = thenWorkflow.withPositions(position / BranchId.Then),
+      elseWorkflow = elseWorkflow.map(_.withPositions(position / BranchId.Else)))
 
   override def adopt(outer: Workflow) = copy(
     thenWorkflow = thenWorkflow.copy(outer = Some(outer)),

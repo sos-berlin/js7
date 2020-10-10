@@ -8,7 +8,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.source.SourcePos
 import js7.data.workflow.instructions.TryInstruction._
-import js7.data.workflow.position.{BranchId, CatchBranchId, TryBranchId, TryCatchBranchId}
+import js7.data.workflow.position.{BranchId, CatchBranchId, Position, TryBranchId, TryCatchBranchId}
 import js7.data.workflow.{Instruction, Workflow}
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
@@ -36,6 +36,11 @@ extends Instruction
     tryWorkflow = tryWorkflow.withoutSourcePos,
     catchWorkflow = catchWorkflow.withoutSourcePos)
 
+  override def withPositions(position: Position): Instruction =
+    copy(
+      tryWorkflow = tryWorkflow withPositions position / BranchId.Try_,
+      catchWorkflow = catchWorkflow withPositions position / BranchId.Catch_)
+
   override def adopt(outer: Workflow) = copy(
     tryWorkflow = tryWorkflow.copy(outer = Some(outer)),
     catchWorkflow = catchWorkflow.copy(outer = Some(outer)))
@@ -47,7 +52,8 @@ extends Instruction
       case _ => super.workflow(branchId)
     }
 
-  override def branchWorkflows = (BranchId.Try_ -> tryWorkflow) :: (BranchId.Catch_ -> catchWorkflow) :: Nil
+  override def branchWorkflows =
+    (BranchId.Try_ -> tryWorkflow) :: (BranchId.Catch_ -> catchWorkflow) :: Nil
 
   override def toCatchBranchId(branchId: BranchId) =
     branchId match {

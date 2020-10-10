@@ -1,7 +1,8 @@
 package js7.data.workflow
 
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, Json}
+import io.circe.{Decoder, Encoder, Json, JsonObject}
+import js7.base.circeutils.CirceUtils._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.source.SourcePos
@@ -18,12 +19,19 @@ trait Instruction
 
   def withoutSourcePos: Instruction
 
+  def withPositions(position: Position): Instruction = {
+    assert(branchWorkflows.isEmpty, getClass.simpleScalaName + ".withPositions is not implemented")
+    this
+  }
+
   def adopt(workflow: Workflow): Instruction =
     this
 
-  def workflows: Seq[Workflow] = branchWorkflows map (_._2)
+  def workflows: Seq[Workflow] =
+    branchWorkflows.map(_._2)
 
-  def branchWorkflows: Seq[(BranchId, Workflow)] = Nil
+  def branchWorkflows: Seq[(BranchId, Workflow)] =
+    Nil
 
   final def flattenedWorkflows(parent: Position): Seq[(BranchPath, Workflow)] =
     branchWorkflows flatMap { case (branchId, workflow) => workflow.flattenedWorkflowsOf(parent / branchId) }
@@ -46,23 +54,40 @@ trait JumpInstruction extends Instruction {
   def to: Label
 }
 
-object Instruction {
-  val @: = Labeled
+object Instruction
+{
+  object @: {
+    def unapply(labeled: Labeled) = Some((labeled.maybeLabel, labeled.instruction))
+  }
 
   implicit def toLabeled(instruction: Instruction): Labeled =
     Labeled(None, instruction)
 
-  final case class Labeled(maybeLabel: Option[Label], instruction: Instruction) {
+  final case class Labeled private(
+    maybeLabel: Option[Label],
+    instruction: Instruction,
+    maybePosition: Option[Position] = None)
+  {
     override def toString = labelString + instruction
 
     def labelString = maybeLabel.map(o => s"$o: ").mkString
+
+    def withPositions(position: Position) =
+      copy(
+        maybePosition = Some(position),
+        instruction = instruction withPositions position)
   }
-  object Labeled {
+  object Labeled
+  {
     implicit def jsonEncoder(implicit instrEncoder: Encoder.AsObject[Instruction]): Encoder.AsObject[Labeled] = {
-      case Labeled(None, instruction) =>
+      case Labeled(None, instruction, None) =>
         instruction.asJsonObject
-      case Labeled(maybeLabel, instruction) =>
-        ("label" -> maybeLabel.asJson) +: instruction.asJsonObject
+
+      case Labeled(maybeLabel, instruction, maybePosition) =>
+        JsonObject.fromIterable(
+          maybeLabel.map(o => "label" -> o.asJson) ++
+            maybePosition.map(o => "position" -> o.asJson)
+        ) ++ instruction.asJsonObject
     }
 
     implicit def jsonDecoder(implicit instrDecoder: Decoder[Instruction]): Decoder[Labeled] =

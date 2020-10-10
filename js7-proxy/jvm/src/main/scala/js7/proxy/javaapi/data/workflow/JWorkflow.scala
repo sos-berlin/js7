@@ -28,6 +28,8 @@ extends JInventoryItem[JWorkflow, WorkflowPath]
         case _ => Left(Problem(s"Job at position $position does not have a name"))
       }
       .toVavr
+
+  def withPositions = JWorkflow(asScala.withPositions(Nil))
 }
 
 @javaApi

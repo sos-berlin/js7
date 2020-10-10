@@ -31,6 +31,7 @@ public class JWorkflowTester
     public void test() {
         testWorkflowId();
         testJson();
+        testJsonWithPositions();
         testWorkflowPrinter();
         testWorkflowParser();
     }
@@ -56,6 +57,16 @@ public class JWorkflowTester
 
         assertThat(getOrThrow(JWorkflow.fromJson(json)),
             equalTo(workflow));
+    }
+
+    private void testJsonWithPositions() {
+        String json = workflow.withPositions().toJson();
+        assertThat(json, startsWith("{"));
+        assertThat(json, endsWith("}"));
+        assertThat(json, containsString("\"position\":[0]"));
+        assertThat(json, containsString("\"position\":[1]"));
+        // If End instruction is missing, ImplicitEnd is added with its (thought) position
+        assertThat(json, containsString("\"TYPE\":\"ImplicitEnd\""));
     }
 
     private void testWorkflowPrinter() {

@@ -43,7 +43,7 @@ object Workflows
           case o @ _ @: (_: Fail | _: End | _: IfFailedGoto | _: Goto | _: Retry) =>
             o
 
-          case Labeled(labels, instruction) =>
+          case labels @: instruction =>
             Labeled(labels, Gap(instruction.sourcePos))
         }))
   }

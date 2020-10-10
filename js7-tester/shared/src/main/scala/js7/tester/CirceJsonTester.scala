@@ -21,7 +21,7 @@ object CirceJsonTester
   def testJson[A: Encoder: Decoder](a: A, json: => Json)(implicit pos: source.Position): Assertion = {
     // Do a.asJson first to get the JSON string, then evaluate lazy json (which may have syntax errors during development).
     val asJson: Json = removeJNull(a.asJson)  // Circe converts None to JNull which we remove here (like Printer dropNullValues = true)
-    if (asJson != json) fail(s"${prettyPrinter.print(normalize(asJson))} did not equal ${prettyPrinter.print(normalize(json))}")
+    if (asJson != json) fail(s"${prettyPrinter.print(normalizeJson(asJson))} did not equal ${prettyPrinter.print(normalizeJson(json))}")
     assert(a == rightOrThrow(json.as[A]))
     val reparsed = parseJson(printer.print(asJson))
     assert(reparsed == json)
@@ -42,19 +42,22 @@ object CirceJsonTester
       case Left(t) => throw new RuntimeException(t.toString, t)   // Add stacktrace
     }
 
-  private def normalize(json: Json): Json =
-    json.asObject match {
-      case Some(o) => Json.fromFields(o.toVector.sortBy(_._1).map { case (k, v) => k -> normalize(v) })
-      case None =>
-        json.asArray match {
-          case Some(o) => Json.fromValues(o map normalize)
-          case None => json
-        }
-    }
+  def normalizeJson(json: Json): Json =
+    removeJNull(
+      json.asObject match {
+        case Some(o) =>
+          Json.fromFields(o.toVector.sortBy(_._1).map { case (k, v) => k -> normalizeJson(v) })
 
-  private def removeJNull(json: Json): Json =
+        case None =>
+          json.asArray match {
+            case Some(o) => Json.fromValues(o map normalizeJson)
+            case None => json
+          }
+      })
+
+  def removeJNull(json: Json): Json =
     json.asObject match {
-      case Some(o) => Json.fromFields(o.toMap collect {
+      case Some(o) => Json.fromFields(o.toIterable collect {
         case (k, v) if !v.isNull => k -> removeJNull(v)
       })
       case None =>

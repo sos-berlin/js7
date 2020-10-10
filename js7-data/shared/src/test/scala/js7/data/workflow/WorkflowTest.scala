@@ -1,5 +1,6 @@
 package js7.data.workflow
 
+import io.circe.syntax._
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
@@ -9,13 +10,14 @@ import js7.data.expression.Expression.{BooleanConstant, Equal, LastReturnCode, N
 import js7.data.expression.PositionSearch
 import js7.data.item.VersionId
 import js7.data.job.{ExecutablePath, ExecutableScript, JobKey}
+import js7.data.workflow.Instruction.Labeled
 import js7.data.workflow.WorkflowTest._
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, ExplicitEnd, Fail, Fork, Goto, If, IfFailedGoto, ImplicitEnd, Retry, TryInstruction}
 import js7.data.workflow.position.BranchId.{Catch_, Else, Then, Try_, catch_, fork, try_}
 import js7.data.workflow.position._
 import js7.data.workflow.test.TestSetting._
-import js7.tester.CirceJsonTester.testJson
+import js7.tester.CirceJsonTester.{normalizeJson, removeJNull, testJson}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
@@ -27,11 +29,12 @@ final class WorkflowTest extends AnyFreeSpec
     "Workflow without WorkflowID, when placed in configuration directory" in {
       testJson[Workflow](
         Workflow(WorkflowPath.NoId,
-          Vector(Execute(WorkflowJob.Name("JOB"))),
+          Vector(Labeled(Some("TEST-LABEL"), Execute(WorkflowJob.Name("JOB")))),
           Map(WorkflowJob.Name("JOB") -> WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE")))),
         json"""{
           "instructions": [
             {
+              "label": "TEST-LABEL",
               "TYPE": "Execute.Named",
               "jobName": "JOB"
             }
@@ -67,6 +70,7 @@ final class WorkflowTest extends AnyFreeSpec
                 "defaultArguments": { "JOB_A": "A-VALUE" }
               }
             }, {
+              "label": "TEST-LABEL",
               "TYPE": "If",
               "predicate": "returnCode == 1",
               "then": {
@@ -177,10 +181,167 @@ final class WorkflowTest extends AnyFreeSpec
                 "path": "/B.cmd"
               },
               "taskLimit": 3,
-              "defaultArguments": { "JOB_B": "B-VALUE"
-            }}
+              "defaultArguments": { "JOB_B": "B-VALUE" }}
           }
         }""")
+    }
+
+    "Workflow with WorkflowId and positions (for JOC GUI)" in {
+      assert(normalizeJson(removeJNull(TestWorkflow.withPositions(Nil).asJson)) ==
+        normalizeJson(json"""{
+          "path": "/TEST",
+          "versionId": "VERSION",
+          "instructions": [
+            {
+              "position": [ 0 ],
+              "TYPE": "Execute.Anonymous",
+              "job": {
+                "agentRefPath": "/AGENT",
+                "executable": {
+                  "TYPE": "ExecutablePath",
+                  "path": "/A.cmd"
+                },
+                "taskLimit": 3,
+                "defaultArguments": { "JOB_A": "A-VALUE" }
+              }
+            }, {
+              "position": [ 1 ],
+              "label": "TEST-LABEL",
+              "TYPE": "If",
+              "predicate": "returnCode == 1",
+              "then": {
+                "instructions": [
+                  { "position": [ 1, "then", 0 ], "TYPE": "Execute.Named", "jobName": "A" },
+                  { "position": [ 1, "then", 1 ], "TYPE": "Execute.Named", "jobName": "B" },
+                  { "position": [ 1, "then", 2 ], "TYPE": "ImplicitEnd" }
+                ],
+                "jobs": {
+                  "B": {
+                    "agentRefPath": "/AGENT",
+                    "executable": {
+                      "TYPE": "ExecutablePath",
+                      "path": "/B.cmd"
+                    },
+                    "taskLimit": 3 ,
+                    "defaultArguments": { "JOB_B1": "B1-VALUE" }
+                  }
+                }
+              },
+              "else": {
+                "instructions": [
+                  {
+                    "position": [ 1, "else", 0 ],
+                    "TYPE": "Execute.Anonymous",
+                    "job": {
+                      "agentRefPath": "/AGENT",
+                      "executable": {
+                        "TYPE": "ExecutablePath",
+                        "path": "/B.cmd"
+                      },
+                      "taskLimit": 3,
+                      "defaultArguments": { "JOB_B": "B-VALUE" }
+                    }
+                  }, {
+                  "position": [ 1, "else", 1 ],
+                  "TYPE": "ImplicitEnd"
+                  }
+                ]
+              }
+            }, {
+              "position": [ 2 ],
+              "TYPE": "Fork",
+              "branches": [
+                {
+                  "id": "🥕",
+                  "workflow": {
+                    "instructions": [
+                      {
+                        "position": [ 2, "fork+🥕", 0 ],
+                        "TYPE": "Execute.Anonymous",
+                        "job": {
+                          "agentRefPath": "/AGENT",
+                          "executable": {
+                            "TYPE": "ExecutablePath",
+                            "path": "/A.cmd"
+                          },
+                          "taskLimit": 3,
+                          "defaultArguments": { "JOB_A": "A-VALUE" }
+                        }
+                      }, {
+                        "position": [ 2, "fork+🥕", 1 ],
+                        "TYPE": "Execute.Named",
+                        "jobName": "A"
+                      }, {
+                        "position": [ 2, "fork+🥕", 2 ],
+                        "TYPE": "ImplicitEnd"
+                      }
+                    ]
+                  }
+                }, {
+                  "id": "🍋",
+                  "workflow": {
+                    "instructions": [
+                      {
+                        "position": [ 2, "fork+🍋", 0 ],
+                        "TYPE": "Execute.Anonymous",
+                        "job": {
+                          "agentRefPath": "/AGENT",
+                          "executable": {
+                            "TYPE": "ExecutablePath",
+                            "path": "/B.cmd"
+                          },
+                          "taskLimit": 3,
+                          "defaultArguments": { "JOB_B": "B-VALUE" }
+                        }
+                      }, {
+                        "position": [ 2, "fork+🍋", 1 ],
+                        "TYPE": "Execute.Named",
+                        "jobName": "B"
+                      }, {
+                        "position": [ 2, "fork+🍋", 2 ],
+                        "TYPE": "ImplicitEnd"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }, {
+              "position": [ 3 ],
+              "TYPE": "Execute.Anonymous",
+              "job": {
+                "agentRefPath": "/AGENT",
+                "executable": {
+                  "TYPE": "ExecutablePath",
+                  "path": "/B.cmd"
+                },
+                "taskLimit": 3,
+                "defaultArguments": { "JOB_B": "B-VALUE" }
+              }
+            }, {
+              "position": [ 4 ],
+              "TYPE": "ImplicitEnd"
+            }
+          ],
+          "jobs": {
+            "A": {
+              "agentRefPath": "/AGENT",
+              "executable": {
+                "TYPE": "ExecutablePath",
+                "path": "/A.cmd"
+              },
+              "taskLimit": 3,
+              "defaultArguments": { "JOB_A": "A-VALUE" }
+            },
+            "B": {
+              "agentRefPath": "/AGENT",
+              "executable": {
+                "TYPE": "ExecutablePath",
+                "path": "/B.cmd"
+              },
+              "taskLimit": 3,
+              "defaultArguments": { "JOB_B": "B-VALUE" }}
+          }
+        }"""))
     }
 
     "Workflow with a script" in {
@@ -395,7 +556,7 @@ final class WorkflowTest extends AnyFreeSpec
   "numberedInstruction" in {
     assert(TestWorkflow.numberedInstructions == Vector[(InstructionNr, Instruction.Labeled)](
       (InstructionNr(0), AExecute),
-      (InstructionNr(1), TestWorkflow.instruction(1)),
+      (InstructionNr(1), "TEST-LABEL" @: TestWorkflow.instruction(1)),
       (InstructionNr(2), TestWorkflow.instruction(2)),
       (InstructionNr(3), BExecute),
       (InstructionNr(4), ImplicitEnd())))
@@ -414,7 +575,7 @@ final class WorkflowTest extends AnyFreeSpec
   "flattenedInstruction" in {
     assert(TestWorkflow.flattenedInstructions == Vector[(Position, Instruction.Labeled)](
       (Position(0), AExecute),
-      (Position(1), TestWorkflow.instruction(1)),
+      (Position(1), "TEST-LABEL" @: TestWorkflow.instruction(1)),
       (Position(1) / Then % 0, TestWorkflow.instruction(1).asInstanceOf[If].thenWorkflow.instructions(0)),
       (Position(1) / Then % 1, TestWorkflow.instruction(1).asInstanceOf[If].thenWorkflow.instructions(1)),
       (Position(1) / Then % 2, ImplicitEnd()),
@@ -656,7 +817,7 @@ private object WorkflowTest
     WorkflowPath("/TEST") ~ "VERSION",
     Vector(
       AExecute,
-      If(Equal(LastReturnCode, NumericConstant(1)),
+      "TEST-LABEL" @: If(Equal(LastReturnCode, NumericConstant(1)),
         thenWorkflow = Workflow.anonymous(
           Vector(
             Execute.Named(AJobName),

@@ -24,3 +24,10 @@ final case class ImplicitEnd(sourcePos: Option[SourcePos] = None) extends End
 
   override def toString = "end/*implicit*/"
 }
+object ImplicitEnd
+{
+  val empty = new ImplicitEnd()
+
+  def apply(sourcePos: Option[SourcePos] = None) =
+    sourcePos.fold(empty)(_ => new ImplicitEnd(sourcePos))
+}
