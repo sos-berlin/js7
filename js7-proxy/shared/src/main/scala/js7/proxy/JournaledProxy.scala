@@ -164,7 +164,7 @@ object JournaledProxy
                     lastState = o.state
                     o
                   }
-                  .pipeIf(fromEventId.isDefined, { obs =>
+                  .pipeIf(fromEventId.isDefined) { obs =>
                     // The returned snapshot probably is for an older EventId
                     // (because it may be the original journal file snapshot).
                     // So drop all events until the requested one and
@@ -178,7 +178,7 @@ object JournaledProxy
                             stampedEvent = es.stampedEvent.copy(value = NoKey <-: ProxyStarted),
                             previousState = es.state)
                         case o => o
-                      }})
+                      }}
                   .map(Right.apply)
                   .onErrorRecoverWith {
                     case t if fromEventId.isEmpty || !isTorn(t) =>

@@ -163,7 +163,7 @@ object ScalaUtils
         delegate.pipe(f)
 
       /** Apply the function conditionally. */
-      def pipeIf[B >: A](condition: => Boolean, f: A => B): B =
+      def pipeIf[B >: A](condition: => Boolean)(f: A => B): B =
         if (condition) f(delegate) else delegate
 
       def substitute(substitution: (A, A)): A =

@@ -221,8 +221,8 @@ final class ScalaUtilsTest extends AnyFreeSpec
   }
 
   "pipeIf" in {
-    assert(3.pipeIf(true, _ * 7) == 3 * 7)
-    assert(3.pipeIf(false, _ * 7) == 3)
+    assert(3.pipeIf(true)(_ * 7) == 3 * 7)
+    assert(3.pipeIf(false)(_ * 7) == 3)
   }
 
   "substitute" in {

@@ -103,7 +103,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
   final def getRawLinesObservable(uri: Uri)(implicit s: Task[Option[SessionToken]]): Task[Observable[ByteArray]] =
     get_[HttpResponse](uri, StreamingJsonHeaders)
       .map(_.entity.withoutSizeLimit.dataBytes.toObservable)
-      .pipeIf(logger.underlying.isDebugEnabled, _.logTiming(_.size, (d, s, _) =>
+      .pipeIf(logger.underlying.isDebugEnabled)(_.logTiming(_.size, (d, s, _) =>
         if (d >= 1.s && s > 10_000_000) logger.debug(s"$toString: get $uri: ${bytesPerSecondString(d, s)}")))
       .map(_
         .map(_.toByteArray)
@@ -218,7 +218,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
           val number = requestCounter.incrementAndGet()
           val headers = sessionToken.map(token => RawHeader(SessionToken.HeaderName, token.secret.string))
           val req = request.withHeaders(headers ++: request.headers ++: standardHeaders)
-            .pipeIf(useCompression, encodeGzip)
+            .pipeIf(useCompression)(encodeGzip)
           var since = now
           def responseLogPrefix = s"$toString: #$number ${requestToString(req, logData, isResponse = true)} ${since.elapsed.pretty}"
           loggingTimerResource(responseLogPrefix).use { _ =>
@@ -344,7 +344,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
 
   private def requestToString(request: HttpRequest, logData: => Option[String], isResponse: Boolean = false): String = {
     val b = new StringBuilder(300)
-    b.append(request.method.value.pipeIf(isResponse, _.toLowerCase(Locale.ROOT)))
+    b.append(request.method.value.pipeIf(isResponse)(_.toLowerCase(Locale.ROOT)))
     b.append(' ')
     b.append(request.uri)
     if (!request.entity.isKnownEmpty) {

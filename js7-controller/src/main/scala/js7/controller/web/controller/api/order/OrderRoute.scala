@@ -63,7 +63,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                     .dataBytes
                     .toObservable  // TODO eat observable even in case if error
                     .map(_.toByteArray)
-                    .pipeIf(logger.underlying.isDebugEnabled, _.map { o => byteCount += o.length; o })
+                    .pipeIf(logger.underlying.isDebugEnabled)(_.map { o => byteCount += o.length; o })
                     .flatMap(new ByteArrayToLinesObservable)
                     .mapParallelOrderedBatch()(_
                       .parseJsonAs[FreshOrder].orThrow)

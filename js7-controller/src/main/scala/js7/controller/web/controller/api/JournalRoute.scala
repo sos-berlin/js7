@@ -69,8 +69,8 @@ trait JournalRoute extends ControllerRouteProvider
                                 observable.takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
                                   Task { logger.debug("whenShuttingDown completed") }
                                 ) .map(f)
-                                  .pipeIf(heartbeat.isDefined,
-                                    _.insertHeartbeatsOnSlowUpstream(heartbeat.get, HeartbeatMarker))
+                                  .pipeIf(heartbeat.isDefined)(_
+                                    .insertHeartbeatsOnSlowUpstream(heartbeat.get, HeartbeatMarker))
                                   .map(_.toByteString)
                                   .toAkkaSourceForHttpResponse)
                             })
