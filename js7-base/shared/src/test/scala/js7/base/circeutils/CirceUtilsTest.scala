@@ -96,7 +96,12 @@ final class CirceUtilsTest extends AnyFreeSpec
   }
 
   "JsonObject ++ JsonObject" in {
-    assert(JsonObject("a" -> 1.asJson) ++ JsonObject("b" -> 2.asJson) == JsonObject("a" -> 1.asJson, "b" -> 2.asJson))
+    val a = JsonObject("a" -> 1.asJson)
+    assert(a ++ JsonObject("b" -> 2.asJson) == JsonObject("a" -> 1.asJson, "b" -> 2.asJson))
+
+    // empty is optimized:
+    assert((a ++ JsonObject.empty) eq a)
+    assert((JsonObject.empty ++ a) eq a)
   }
 
   "toProblem decoding error" in {
