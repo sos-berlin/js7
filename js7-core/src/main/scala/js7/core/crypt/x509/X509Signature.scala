@@ -24,7 +24,7 @@ extends Signature
 
   override def toString =
     "X509Signature( " +
-      toGenericSignature.toRawString + ", "
+      toGenericSignature.toRawString + ", " +
       signerIdOrCertificate.fold(_.string, o => ByteArray(o.x509Certificate.getEncoded)) +
       ")"
 }
