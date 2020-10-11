@@ -16,7 +16,7 @@ import js7.base.problem.ProblemCode;
 import js7.data.event.Event;
 import js7.data.event.KeyedEvent;
 import js7.data.item.RepoEvent;
-import js7.data.item.TypedPath;
+import js7.data.item.ItemPath;
 import js7.data.item.VersionId;
 import js7.data.workflow.WorkflowPath;
 import js7.proxy.javaapi.JControllerApi;
@@ -130,12 +130,12 @@ final class JControllerProxyRepoTester
             .toFuture();
     }
 
-    private static boolean isItemAdded(KeyedEvent<Event> keyedEvent, TypedPath path) {
+    private static boolean isItemAdded(KeyedEvent<Event> keyedEvent, ItemPath path) {
         Event event = keyedEvent.event();
         return event instanceof RepoEvent.ItemAdded && ((RepoEvent.ItemAdded)event).path().equals(path);
     }
 
-    private static boolean isItemDeleted(KeyedEvent<Event> keyedEvent, TypedPath path) {
+    private static boolean isItemDeleted(KeyedEvent<Event> keyedEvent, ItemPath path) {
         Event event = keyedEvent.event();
         return event instanceof RepoEvent.ItemDeleted && ((RepoEvent.ItemDeleted)event).path().equals(path);
     }

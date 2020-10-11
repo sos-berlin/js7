@@ -21,11 +21,11 @@ import js7.controller.data.ControllerCommand
 import js7.controller.data.ControllerCommand.{ReplaceRepo, UpdateAgentRefs, UpdateRepo}
 import js7.controller.workflow.WorkflowReader
 import js7.core.crypt.generic.MessageSigners
-import js7.core.item.{TypedPaths, TypedSourceReader}
+import js7.core.item.{ItemPaths, TypedSourceReader}
 import js7.data.agent.{AgentName, AgentRef}
 import js7.data.controller.ControllerItems
 import js7.data.item.IntentoryItems.diffInventoryItems
-import js7.data.item.{IntentoryItems, InventoryItem, InventoryItemSigner, TypedPath, VersionId}
+import js7.data.item.{IntentoryItems, InventoryItem, InventoryItemSigner, ItemPath, VersionId}
 import js7.data.workflow.WorkflowPath
 import js7.provider.Provider._
 import js7.provider.configuration.ProviderConfiguration
@@ -119,12 +119,12 @@ extends HasCloser with Observing with ProvideActorSystem
   }
 
   @TestOnly
-  def testControllerDiff: Task[Checked[IntentoryItems.Diff[TypedPath, InventoryItem]]] =
+  def testControllerDiff: Task[Checked[IntentoryItems.Diff[ItemPath, InventoryItem]]] =
     loginUntilReachable >> controllerDiff(readDirectory())
 
   /** Compares the directory with the Controller's repo and sends the difference.
     * Parses each file, so it may take some time for a big configuration directory. */
-  private def controllerDiff(localEntries: Seq[DirectoryReader.Entry]): Task[Checked[IntentoryItems.Diff[TypedPath, InventoryItem]]] =
+  private def controllerDiff(localEntries: Seq[DirectoryReader.Entry]): Task[Checked[IntentoryItems.Diff[ItemPath, InventoryItem]]] =
     for {
       pair <- Task.parZip2(readLocalItem(localEntries.map(_.file)), fetchControllerItemSeq)
       (checkedLocalItemSeq, controllerItemSeq) = pair
@@ -134,7 +134,7 @@ extends HasCloser with Observing with ProvideActorSystem
   private def readLocalItem(files: Seq[Path]) =
     Task { typedSourceReader.readInventoryItems(files) }
 
-  private def itemDiff(aSeq: Seq[InventoryItem], bSeq: Seq[InventoryItem]): IntentoryItems.Diff[TypedPath, InventoryItem] =
+  private def itemDiff(aSeq: Seq[InventoryItem], bSeq: Seq[InventoryItem]): IntentoryItems.Diff[ItemPath, InventoryItem] =
     IntentoryItems.Diff.fromRepoChanges(diffInventoryItems(aSeq, bSeq, ignoreVersion = true))
 
   def updateControllerConfiguration(versionId: Option[VersionId] = None): Task[Checked[Completed]] =
@@ -167,7 +167,7 @@ extends HasCloser with Observing with ProvideActorSystem
           }
     }
 
-  private def execute(versionId: Option[VersionId], diff: IntentoryItems.Diff[TypedPath, InventoryItem]): Task[Checked[Completed.type]] =
+  private def execute(versionId: Option[VersionId], diff: IntentoryItems.Diff[ItemPath, InventoryItem]): Task[Checked[Completed.type]] =
     if (diff.isEmpty && versionId.isEmpty)
       Task(Checked.completed)
     else {
@@ -177,14 +177,14 @@ extends HasCloser with Observing with ProvideActorSystem
         controllerApi.executeCommand(toUpdateRepo(v, diff)) map ((_: ControllerCommand.Response) => Completed))
     }
 
-  private def logUpdate(versionId: VersionId, diff: IntentoryItems.Diff[TypedPath, InventoryItem]): Unit = {
+  private def logUpdate(versionId: VersionId, diff: IntentoryItems.Diff[ItemPath, InventoryItem]): Unit = {
     logger.info(s"Version ${versionId.string}")
     for (o <- diff.deleted            .sorted) logger.info(s"Delete ${o.pretty}")
     for (o <- diff.added  .map(_.path).sorted) logger.info(s"Add ${o.pretty}")
     for (o <- diff.updated.map(_.path).sorted) logger.info(s"Update ${o.pretty}")
   }
 
-  private def toUpdateRepo(versionId: VersionId, diff: IntentoryItems.Diff[TypedPath, InventoryItem]) =
+  private def toUpdateRepo(versionId: VersionId, diff: IntentoryItems.Diff[ItemPath, InventoryItem]) =
     UpdateRepo(
       versionId,
       change = diff.added ++ diff.updated map (_ withVersion versionId) map itemSigner.sign,
@@ -196,12 +196,12 @@ extends HasCloser with Observing with ProvideActorSystem
   private def readDirectory(): Vector[DirectoryReader.Entry] =
     DirectoryReader.entries(conf.liveDirectory).toVector
 
-  private def toItemDiff(diff: PathSeqDiff): Checked[IntentoryItems.Diff[TypedPath, InventoryItem]] = {
+  private def toItemDiff(diff: PathSeqDiff): Checked[IntentoryItems.Diff[ItemPath, InventoryItem]] = {
     val checkedAdded = typedSourceReader.readInventoryItems(diff.added)
     val checkedChanged = typedSourceReader.readInventoryItems(diff.changed)
-    val checkedDeleted: Checked[Vector[TypedPath]] =
+    val checkedDeleted: Checked[Vector[ItemPath]] =
       diff.deleted.toVector
-        .traverse(path => TypedPaths.fileToTypedPath(typedPathCompanions, conf.liveDirectory, path))
+        .traverse(path => ItemPaths.fileToItemPath(itemPathCompanions, conf.liveDirectory, path))
     (checkedAdded, checkedChanged, checkedDeleted) mapN ((add, chg, del) => IntentoryItems.Diff(add, chg, del))
   }
 
@@ -215,7 +215,7 @@ extends HasCloser with Observing with ProvideActorSystem
 
 object Provider
 {
-  private val typedPathCompanions = Set(WorkflowPath)
+  private val itemPathCompanions = Set(WorkflowPath)
   private val logger = Logger(getClass)
   private val readers = WorkflowReader :: Nil
 

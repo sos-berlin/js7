@@ -11,7 +11,7 @@ import org.scalatest.freespec.AnyFreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class TypedPathTest extends AnyFreeSpec
+final class ItemPathTest extends AnyFreeSpec
 {
   "JSON" in {
     testJson(APath("/PATH"), json""" "/PATH" """)
@@ -22,10 +22,10 @@ final class TypedPathTest extends AnyFreeSpec
     assert(json""" "/?/okay" """.as[APath].isRight)
   }
 
-  "JSON with generic TypedPath.jsonCodec" in {
-    implicit val typedPathCodec = TypedPath.jsonCodec(List(APath, BPath))
-    testJson[TypedPath](APath("/a"), json""" "A:/a" """)
-    testJson[TypedPath](BPath("/b"), json""" "B:/b" """)
+  "JSON with generic ItemPath.jsonCodec" in {
+    implicit val itemPathCodec = ItemPath.jsonCodec(List(APath, BPath))
+    testJson[ItemPath](APath("/a"), json""" "A:/a" """)
+    testJson[ItemPath](BPath("/b"), json""" "B:/b" """)
   }
 
   "%" in {

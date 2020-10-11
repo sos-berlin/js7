@@ -1,13 +1,13 @@
 package js7.proxy.javaapi.data.item
 
 import js7.base.annotation.javaApi
-import js7.data.item.{ItemId, TypedPath, VersionId}
+import js7.data.item.{ItemId, ItemPath, VersionId}
 
 @javaApi
-trait JItemId[P <: TypedPath]
+trait JItemId[P <: ItemPath]
 {
   final type Path = P
-  protected type ScalaPath <: TypedPath
+  protected type ScalaPath <: ItemPath
   protected type AsScala <: ItemId[ScalaPath]
 
   def asScala: AsScala

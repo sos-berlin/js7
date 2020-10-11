@@ -16,13 +16,13 @@ object RepoEvent {
   final case class VersionAdded(versionId: VersionId) extends RepoEvent
 
   sealed trait ItemEvent extends RepoEvent {
-    def path: TypedPath
+    def path: ItemPath
   }
 
   sealed trait ItemAddedOrChanged extends ItemEvent with Product {
     def signedString = signed.signedString
     def signed: Signed[InventoryItem]
-    def path: TypedPath = signed.value.path
+    def path: ItemPath = signed.value.path
     def toShortString = s"$productPrefix($path)"
   }
   object ItemAddedOrChanged
@@ -32,9 +32,9 @@ object RepoEvent {
         "path" -> o.signed.value.path.toTypedString.asJson,
         "signed" -> o.signed.signedString.asJson)
 
-    private[RepoEvent] def jsonDecoder(implicit x: Decoder[InventoryItem], y: Decoder[TypedPath]): Decoder[(InventoryItem, SignedString)] =
+    private[RepoEvent] def jsonDecoder(implicit x: Decoder[InventoryItem], y: Decoder[ItemPath]): Decoder[(InventoryItem, SignedString)] =
       c => for {
-        path <- c.get[TypedPath]("path")
+        path <- c.get[ItemPath]("path")
         signed <- c.get[SignedString]("signed")
         parsed <- io.circe.parser.parse(signed.string).left.map(error => DecodingFailure(error.toString, c.history))
         item <- parsed.as[InventoryItem].flatMap(o =>
@@ -49,7 +49,7 @@ object RepoEvent {
     private[RepoEvent] implicit val jsonEncoder: Encoder.AsObject[ItemAdded] =
       o => ItemAddedOrChanged.jsonEncoder.encodeObject(o)
 
-    private[RepoEvent] implicit def jsonDecoder(implicit x: Decoder[InventoryItem], y: Decoder[TypedPath]): Decoder[ItemAdded] =
+    private[RepoEvent] implicit def jsonDecoder(implicit x: Decoder[InventoryItem], y: Decoder[ItemPath]): Decoder[ItemAdded] =
       hCursor =>
         ItemAddedOrChanged.jsonDecoder.decodeJson(hCursor.value).map { case (item, signedString) =>
           new ItemAdded(Signed(item, signedString))
@@ -62,17 +62,17 @@ object RepoEvent {
     private[RepoEvent] implicit val jsonEncoder: Encoder.AsObject[ItemChanged] =
       o => ItemAddedOrChanged.jsonEncoder.encodeObject(o)
 
-    private[RepoEvent] implicit def jsonDecoder(implicit x: Decoder[InventoryItem], y: Decoder[TypedPath]): Decoder[ItemChanged] =
+    private[RepoEvent] implicit def jsonDecoder(implicit x: Decoder[InventoryItem], y: Decoder[ItemPath]): Decoder[ItemChanged] =
       hCursor =>
         ItemAddedOrChanged.jsonDecoder.decodeJson(hCursor.value).map { case (item, signedString) =>
           new ItemChanged(Signed(item, signedString))
         }
   }
-  final case class ItemDeleted(path: TypedPath) extends ItemEvent {
+  final case class ItemDeleted(path: ItemPath) extends ItemEvent {
     require(!path.isAnonymous, "FileChangedChanged event requires a path")
   }
 
-  implicit def jsonCodec(implicit w: Encoder.AsObject[InventoryItem], x: Decoder[InventoryItem], y: Encoder[TypedPath], z: Decoder[TypedPath])
+  implicit def jsonCodec(implicit w: Encoder.AsObject[InventoryItem], x: Decoder[InventoryItem], y: Encoder[ItemPath], z: Decoder[ItemPath])
   : TypedJsonCodec[RepoEvent] = TypedJsonCodec(
       Subtype(deriveCodec[VersionAdded]),
       Subtype[ItemAdded],

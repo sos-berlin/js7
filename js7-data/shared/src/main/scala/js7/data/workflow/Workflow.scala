@@ -396,7 +396,7 @@ object Workflow extends InventoryItem.Companion[Workflow] {
   type Path = WorkflowPath
 
   implicit val itemsOverview = WorkflowsOverview
-  val typedPathCompanion = WorkflowPath
+  val itemPathCompanion = WorkflowPath
   val empty = Workflow(WorkflowPath.NoId, Vector.empty)
 
   def anonymous(

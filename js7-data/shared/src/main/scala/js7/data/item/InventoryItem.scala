@@ -20,12 +20,12 @@ trait InventoryItem {
 
   final def withoutVersion: Self = withVersion(VersionId.Anonymous)
 
-  final def withoutId: Self = withId(id = companion.typedPathCompanion.NoId)
+  final def withoutId: Self = withId(id = companion.itemPathCompanion.NoId)
 
   final def withVersion(v: VersionId): Self = withId(id = id.copy(versionId = v))
 
   def cast[A <: InventoryItem](implicit A: InventoryItem.Companion[A]): A = {
-    if (A != companion) throw new ClassCastException(s"Expected ${companion.typedPathCompanion.name}, but is: $path")
+    if (A != companion) throw new ClassCastException(s"Expected ${companion.itemPathCompanion.name}, but is: $path")
     this.asInstanceOf[A]
   }
 }
@@ -36,13 +36,13 @@ object InventoryItem {
   trait Companion[A <: InventoryItem]
   {
     type ThisItem <: A
-    type Path <: TypedPath
+    type Path <: ItemPath
 
     val name = getClass.simpleScalaName
 
     def typeName = name
 
-    def typedPathCompanion: TypedPath.Companion[Path]
+    def itemPathCompanion: ItemPath.Companion[Path]
 
     implicit def self: Companion[A] = this
 

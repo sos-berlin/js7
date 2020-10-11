@@ -34,7 +34,7 @@ import js7.controller.data.ControllerCommand.{ReplaceRepo, UpdateAgentRefs, Upda
 import js7.core.crypt.pgp.PgpSigner
 import js7.data.agent.{AgentName, AgentRef}
 import js7.data.controller.ControllerItems
-import js7.data.item.{InventoryItem, InventoryItemSigner, TypedPath, VersionId}
+import js7.data.item.{InventoryItem, InventoryItemSigner, ItemPath, VersionId}
 import js7.data.job.ExecutablePath
 import js7.tests.testenv.DirectoryProvider._
 import monix.eval.Task
@@ -196,7 +196,7 @@ extends HasCloser
     controller: RunningController,
     versionId: VersionId,
     change: Seq[InventoryItem] = Nil,
-    delete: Seq[TypedPath] = Nil)
+    delete: Seq[ItemPath] = Nil)
   : Unit =
     controller.executeCommandAsSystemUser(UpdateRepo(
       versionId,

@@ -2,7 +2,7 @@ package js7.core.item
 
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.item.{InventoryItem, InventoryItemOverview, TypedPath}
+import js7.data.item.{InventoryItem, InventoryItemOverview, ItemPath}
 import monix.eval.Task
 
 /**
@@ -25,7 +25,7 @@ trait InventoryItemApi
 
 object InventoryItemApi
 {
-  def forTest(pathToItem: Map[_ <: TypedPath, InventoryItem]) =
+  def forTest(pathToItem: Map[_ <: ItemPath, InventoryItem]) =
     new InventoryItemApi
     {
       def overview[A <: InventoryItem: InventoryItem.Companion](implicit O: InventoryItemOverview.Companion[A]): Task[Checked[O.Overview]] =

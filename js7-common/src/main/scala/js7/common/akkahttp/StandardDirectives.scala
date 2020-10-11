@@ -10,7 +10,7 @@ import akka.http.scaladsl.server.{Directive0, PathMatcher1, Route}
 import js7.base.BuildInfo
 import js7.base.problem.{Checked, CheckedString}
 import js7.base.utils.Collections.implicits._
-import js7.data.item.TypedPath
+import js7.data.item.ItemPath
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.{ExecutionContext, Future}
@@ -33,16 +33,16 @@ object StandardDirectives
     * treating encoded slashes (%2F) like unencoded ones.
     * "a/b" ~ "a%2Fb"
     */
-  def remainingTypedPath[P <: TypedPath: TypedPath.Companion: CheckedString]: PathMatcher1[P] =
+  def remainingItemPath[P <: ItemPath: ItemPath.Companion: CheckedString]: PathMatcher1[P] =
     new PathMatcher1[P] {
       def apply(path: Path) =
-        uriPathToTypedPath[P](path) match {
-          case Right(typedPath) => Matched(Path.Empty, Tuple1(typedPath))
+        uriPathToItemPath[P](path) match {
+          case Right(itemPath) => Matched(Path.Empty, Tuple1(itemPath))
           case _ => Unmatched
         }
     }
 
-  private def uriPathToTypedPath[P](uriPath: Path)(implicit P: CheckedString[P]): Checked[P] =
+  private def uriPathToItemPath[P](uriPath: Path)(implicit P: CheckedString[P]): Checked[P] =
     uriPath match {
       case Path.Segment(segment, Path.Empty) if segment startsWith "/" =>
         P.checked(segment)  // Slashes encoded as %2F in a single path segment

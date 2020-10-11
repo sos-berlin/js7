@@ -5,24 +5,24 @@ import java.nio.file.Path
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
-import js7.data.item.{SourceType, TypedPath}
+import js7.data.item.{SourceType, ItemPath}
 
 /**
   * @author Joacim Zschimmer
   */
-object TypedPaths
+object ItemPaths
 {
-  def fileToTypedPath(companions: Iterable[TypedPath.AnyCompanion], directory: Path, file: Path): Checked[TypedPath] =
-    fileToTypedPathAndSourceType(companions, directory, file) map (_._1)
+  def fileToItemPath(companions: Iterable[ItemPath.AnyCompanion], directory: Path, file: Path): Checked[ItemPath] =
+    fileToItemPathAndSourceType(companions, directory, file) map (_._1)
 
-  def fileToTypedPathAndSourceType(companions: Iterable[TypedPath.AnyCompanion], directory: Path, file: Path): Checked[(TypedPath, SourceType)] = {
+  def fileToItemPathAndSourceType(companions: Iterable[ItemPath.AnyCompanion], directory: Path, file: Path): Checked[(ItemPath, SourceType)] = {
     assertThat(file startsWith directory)
     val relativePath = file.subpath(directory.getNameCount, file.getNameCount)
-    val string = TypedPath.fileToString(relativePath)
+    val string = ItemPath.fileToString(relativePath)
     companions.iterator
       .map(_.fromFile(string))
       .collectFirst { case Some(o) =>
-        o flatMap { case (typedPath, sourceType) => typedPath.officialSyntaxChecked map (_ -> sourceType) }
+        o flatMap { case (itemPath, sourceType) => itemPath.officialSyntaxChecked map (_ -> sourceType) }
       }
       .toChecked(AlienFileProblem(relativePath))
       .flatten

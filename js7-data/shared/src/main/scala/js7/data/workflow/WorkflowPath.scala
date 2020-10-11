@@ -1,15 +1,15 @@
 package js7.data.workflow
 
 import js7.base.annotation.javaApi
-import js7.data.item.{SourceType, TypedPath}
+import js7.data.item.{SourceType, ItemPath}
 
 final case class WorkflowPath private(string: String)
-extends TypedPath
+extends ItemPath
 {
   def companion = WorkflowPath
 }
 
-object WorkflowPath extends TypedPath.Companion[WorkflowPath]
+object WorkflowPath extends ItemPath.Companion[WorkflowPath]
 {
   val sourceTypeToFilenameExtension = Map(
     SourceType.Json -> ".workflow.json",

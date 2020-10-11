@@ -3,9 +3,9 @@ package js7.data.folder
 import java.util.UUID.randomUUID
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
-import js7.data.item.{SourceType, TypedPath}
+import js7.data.item.{SourceType, ItemPath}
 
-final case class FolderPath private(string: String) extends TypedPath {
+final case class FolderPath private(string: String) extends ItemPath {
   import FolderPath._
 
   def companion = FolderPath
@@ -22,7 +22,7 @@ final case class FolderPath private(string: String) extends TypedPath {
     *   <li>A relative `path` (not starting with "/") is used relative to this `FolderPath`.
     * </ul>
    */
-  def resolve[P <: TypedPath: TypedPath.Companion](path: String): P =
+  def resolve[P <: ItemPath: ItemPath.Companion](path: String): P =
     checkedResolve[P](path).orThrow
 
   /**
@@ -32,13 +32,13 @@ final case class FolderPath private(string: String) extends TypedPath {
     *   <li>A relative `path` (not starting with "/") is used relative to this `FolderPath`.
     * </ul>
    */
-  def checkedResolve[P <: TypedPath: TypedPath.Companion](path: String): Checked[P] =
-    implicitly[TypedPath.Companion[P]].checked(absoluteString(this, path))
+  def checkedResolve[P <: ItemPath: ItemPath.Companion](path: String): Checked[P] =
+    implicitly[ItemPath.Companion[P]].checked(absoluteString(this, path))
 
-  def isParentOf(path: TypedPath): Boolean =
+  def isParentOf(path: ItemPath): Boolean =
     path != FolderPath.Root && this == parentOf(path)
 
-  def isAncestorOf(path: TypedPath): Boolean =
+  def isAncestorOf(path: ItemPath): Boolean =
     (path.string startsWith withTrailingSlash) ||
       PartialFunction.cond(path) {
         case path: FolderPath => this == path
@@ -47,10 +47,10 @@ final case class FolderPath private(string: String) extends TypedPath {
   override def toFile(t: SourceType) = throw new NotImplementedError("FolderPath.toFile")  // In Scala.js, don't use java.nio.file.Paths
 }
 
-object FolderPath extends TypedPath.Companion[FolderPath]
+object FolderPath extends ItemPath.Companion[FolderPath]
 {
   val Root = FolderPath("/")
-  val Internal = FolderPath(TypedPath.InternalPrefix stripSuffix "/")
+  val Internal = FolderPath(ItemPath.InternalPrefix stripSuffix "/")
   val sourceTypeToFilenameExtension = Map.empty
 
   override def isSingleSlashAllowed = true
@@ -62,7 +62,7 @@ object FolderPath extends TypedPath.Companion[FolderPath]
     FolderPath(if (string == "/") string else string stripSuffix "/")
   }
 
-  def parentOf(path: TypedPath): FolderPath =
+  def parentOf(path: ItemPath): FolderPath =
     path.string lastIndexOf '/' match {
       case 0 if path.string == "/" => throw new IllegalStateException("Root path has no parent folder")
       case 0 => FolderPath.Root
@@ -75,14 +75,14 @@ object FolderPath extends TypedPath.Companion[FolderPath]
    * A relative `path` not starting with "/" is used relative to `defaultFolder`.
    */
   private def absoluteString(defaultFolder: FolderPath, path: String): String =
-    if (TypedPath.isAbsolute(path))
+    if (ItemPath.isAbsolute(path))
       path
     else
       s"${defaultFolder.withTrailingSlash}${path stripPrefix "./"}"
 
-  def random[P <: TypedPath: TypedPath.Companion]: P =
+  def random[P <: ItemPath: ItemPath.Companion]: P =
     Internal resolve[P] randomUUID.toString
 
-  def anonymous[P <: TypedPath: TypedPath.Companion]: P =
+  def anonymous[P <: ItemPath: ItemPath.Companion]: P =
     Internal resolve[P] "anonymous"
 }

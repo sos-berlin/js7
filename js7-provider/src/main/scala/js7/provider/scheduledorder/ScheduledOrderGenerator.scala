@@ -27,5 +27,5 @@ object ScheduledOrderGenerator extends InventoryItem.Companion[ScheduledOrderGen
   type ThisItem = ScheduledOrderGenerator
   type Path = ScheduledOrderGeneratorPath
 
-  def typedPathCompanion = ScheduledOrderGeneratorPath
+  def itemPathCompanion = ScheduledOrderGeneratorPath
 }

@@ -8,7 +8,7 @@ import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Logger
 import js7.controller.tests.TestEnvironment._
 import js7.data.agent.AgentName
-import js7.data.item.{SourceType, TypedPath}
+import js7.data.item.{SourceType, ItemPath}
 
 /**
   * @author Joacim Zschimmer
@@ -38,7 +38,7 @@ extends AutoCloseable {
    def controllerDir: Path =
     temporaryDirectory / "controller"
 
-  def agentFile(agentName: AgentName, path: TypedPath, t: SourceType): Path =
+  def agentFile(agentName: AgentName, path: ItemPath, t: SourceType): Path =
     agentDir(agentName) / "config/live" resolve path.toFile(t)
 
   def agentDir(name: AgentName): Path =

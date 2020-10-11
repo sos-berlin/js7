@@ -10,6 +10,6 @@ final class IventoryItemTest extends AnyFreeSpec
   "Companion" in {
     assert(AItem.name == "AItem")
     assert(AItem.toString == "AItem")
-    assert(AItem.typedPathCompanion == APath)
+    assert(AItem.itemPathCompanion == APath)
   }
 }

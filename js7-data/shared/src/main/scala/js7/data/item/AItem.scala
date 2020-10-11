@@ -18,15 +18,15 @@ object AItem extends InventoryItem.Companion[AItem] {
   type ThisItem = AItem
   type Path = APath
 
-  def typedPathCompanion = APath
+  def itemPathCompanion = APath
 }
 
-case class APath(string: String) extends TypedPath
+case class APath(string: String) extends ItemPath
 {
   def companion = APath
 }
 
-object APath extends TypedPath.Companion[APath]
+object APath extends ItemPath.Companion[APath]
 {
   val sourceTypeToFilenameExtension = Map(
     SourceType.Json -> ".a.json",

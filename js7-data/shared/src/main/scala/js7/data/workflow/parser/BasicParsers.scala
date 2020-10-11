@@ -9,7 +9,7 @@ import js7.base.utils.ScalaUtils._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentName
 import js7.data.folder.FolderPath
-import js7.data.item.TypedPath
+import js7.data.item.ItemPath
 import scala.reflect.ClassTag
 
 /**
@@ -97,7 +97,7 @@ private[parser] object BasicParsers
 
   def keyword[_: P](name: String) = P[Unit](name ~ identifierEnd)
 
-  def path[A <: TypedPath: TypedPath.Companion](implicit ctx: P[_]) = P[A](
+  def path[A <: ItemPath: ItemPath.Companion](implicit ctx: P[_]) = P[A](
     pathString map (p => FolderPath.Root.resolve[A](p)))
 
   def agentName(implicit ctx: P[_]) = P[AgentName](

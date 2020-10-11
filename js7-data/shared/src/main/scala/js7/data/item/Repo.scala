@@ -27,7 +27,7 @@ import scala.collection.{View, mutable}
 final case class Repo private(
   versions: List[VersionId],
   versionSet: Set[VersionId],
-  pathToVersionToSignedItems: Map[TypedPath, List[Entry]],
+  pathToVersionToSignedItems: Map[ItemPath, List[Entry]],
   itemVerifier: Option[InventoryItemVerifier[InventoryItem]])
 {
   assertThat(versions.nonEmpty || pathToVersionToSignedItems.isEmpty)
@@ -45,10 +45,10 @@ final case class Repo private(
   def currentVersionSize =
     currentSignedItems.size
 
-  lazy val currentVersion: Map[TypedPath, Signed[InventoryItem]] =
+  lazy val currentVersion: Map[ItemPath, Signed[InventoryItem]] =
     currentSignedItems.view.map(o => o.value.path -> o).toMap
 
-  private lazy val typeToPathToCurrentItem: InventoryItem.Companion_ => Map[TypedPath, Signed[InventoryItem]] =
+  private lazy val typeToPathToCurrentItem: InventoryItem.Companion_ => Map[ItemPath, Signed[InventoryItem]] =
     Memoizer.nonStrict { companion: InventoryItem.Companion_ =>
       currentVersion collect {
         case (path, signedItem) if signedItem.value.companion == companion =>
@@ -57,7 +57,7 @@ final case class Repo private(
     }
 
   /** Returns the difference to the repo as events. */
-  def itemToEvents(versionId: VersionId, changed: Iterable[Signed[InventoryItem]], deleted: Iterable[TypedPath] = Nil)
+  def itemToEvents(versionId: VersionId, changed: Iterable[Signed[InventoryItem]], deleted: Iterable[ItemPath] = Nil)
   : Checked[Seq[RepoEvent]] =
     checkVersion(versionId, changed)
       .flatMap { changed =>
@@ -78,7 +78,7 @@ final case class Repo private(
     val added = currentItems.view
       .filter(o => !base.exists(o.path))
       .map(o => o.path -> o)
-      .toMap[TypedPath, InventoryItem]
+      .toMap[ItemPath, InventoryItem]
     val updated = currentItems.view
       .filter(o => base.pathToItem(o.path).exists(_.id.versionId != o.id.versionId))
     val deleted = base.currentItems.view
@@ -151,7 +151,7 @@ final case class Repo private(
           event match {
             case event: ItemAdded =>
               if (exists(event.path))
-                Left(DuplicateKey("TypedPath", event.path))
+                Left(DuplicateKey("ItemPath", event.path))
               else
                 addOrChange(event)
 
@@ -196,7 +196,7 @@ final case class Repo private(
         Right(signed.value)
     }
 
-  private def addEntry(path: TypedPath, itemOption: Option[Signed[InventoryItem]]): Repo = {
+  private def addEntry(path: ItemPath, itemOption: Option[Signed[InventoryItem]]): Repo = {
     val version = versions.head
     copy(pathToVersionToSignedItems =
       pathToVersionToSignedItems +
@@ -204,7 +204,7 @@ final case class Repo private(
           (Entry(version, itemOption) :: pathToVersionToSignedItems.getOrElse(path, Nil))))
   }
 
-  def exists(path: TypedPath): Boolean = pathToVersionToSignedItems
+  def exists(path: ItemPath): Boolean = pathToVersionToSignedItems
       .get(path) match {
       case None => false
       case Some(entries) => entries.head.maybeSignedItems.isDefined  // Deleted?
@@ -219,11 +219,11 @@ final case class Repo private(
         .toChecked(ItemDeletedProblem(path))
         .map(_.value.asInstanceOf[A]))
 
-  def pathToItem(path: TypedPath): Checked[InventoryItem] =
+  def pathToItem(path: ItemPath): Checked[InventoryItem] =
     pathToSigned(path)
       .map(_.value)
 
-  private def pathToSigned(path: TypedPath): Checked[Signed[InventoryItem]] =
+  private def pathToSigned(path: ItemPath): Checked[Signed[InventoryItem]] =
     pathToVersionToSignedItems
       .checked(path)
       .flatMap(_.head
@@ -257,7 +257,7 @@ final case class Repo private(
   }
 
   /** Converts the Repo to an event sequence, regarding only a given type. */
-  def eventsFor(is: TypedPath.AnyCompanion => Boolean): Seq[RepoEvent] =
+  def eventsFor(is: ItemPath.AnyCompanion => Boolean): Seq[RepoEvent] =
     toEvents collect {
       case e: VersionAdded => e
       case e: ItemEvent if is(e.path.companion) => e
@@ -265,7 +265,7 @@ final case class Repo private(
 
   /** Convert the Repo to an event sequence ordered by VersionId. */
   private[item] def toEvents: Seq[RepoEvent] = {
-    type DeletedOrUpdated = Either[TypedPath/*deleted*/, Signed[InventoryItem/*added/updated*/]]
+    type DeletedOrUpdated = Either[ItemPath/*deleted*/, Signed[InventoryItem/*added/updated*/]]
     val versionToChanges: Map[VersionId, Seq[DeletedOrUpdated]] =
       pathToVersionToSignedItems.toVector
         .flatMap { case (path, entries) =>

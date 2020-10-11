@@ -92,10 +92,10 @@ final class JControllerApi private[javaapi](
     * '''To delete an item:'''
     *
     * {{{
-    * JUpdateRepoOperations.addOrReplace(TypedPath)
+    * JUpdateRepoOperations.addOrReplace(ItemPath)
     * }}}
     *
-    * `TypedPath` may be a [[js7.data.workflow.WorkflowPath]] or a [[js7.data.agent.AgentName]]
+    * `ItemPath` may be a [[js7.data.workflow.WorkflowPath]] or a [[js7.data.agent.AgentName]]
     * (both have a Java-compatible static factory method `of`).
     *
     * @param versionId `VersionId` of this new version

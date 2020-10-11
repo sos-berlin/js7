@@ -17,12 +17,12 @@ import js7.base.utils.Collections.implicits.RichTraversable
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.item.ItemId.VersionSeparator
-import js7.data.item.TypedPath._
+import js7.data.item.ItemPath._
 import scala.reflect.ClassTag
 
-trait TypedPath extends GenericString
+trait ItemPath extends GenericString
 {
-  def companion: Companion[_ <: TypedPath]
+  def companion: Companion[_ <: ItemPath]
 
   final lazy val name: String = string.substring(string.lastIndexOf('/') + 1)
 
@@ -39,14 +39,14 @@ trait TypedPath extends GenericString
   def toFile(t: SourceType): Path =
     Paths.get(withoutStartingSlash + companion.sourceTypeToFilenameExtension(t))
 
-  final def asTyped[P <: TypedPath](implicit P: TypedPath.Companion[P]): P = {
+  final def asTyped[P <: ItemPath](implicit P: ItemPath.Companion[P]): P = {
     if (P == companion)
       this.asInstanceOf[P]
     else
       P.apply(string)
   }
 
-  final def cast[P <: TypedPath](implicit P: TypedPath.Companion[P]): P = {
+  final def cast[P <: ItemPath](implicit P: ItemPath.Companion[P]): P = {
     if (P != companion) throw new ClassCastException(s"Expected ${companion.name}, but is: $toString")
     this.asInstanceOf[P]
   }
@@ -73,26 +73,26 @@ trait TypedPath extends GenericString
   final def toTypedString: String = s"${companion.camelName}:$string"
 }
 
-object TypedPath
+object ItemPath
 {
   val InternalPrefix = "/?/"
   private val ForbiddenCharacters = Set[Char](VersionSeparator(0), ','/*reserved*/)
   private val officialSyntaxNameValidator = new NameValidator(Set('-', '.'))
 
-  implicit def ordering[P <: TypedPath]: Ordering[P] =
+  implicit def ordering[P <: ItemPath]: Ordering[P] =
     (a, b) => a.string compare b.string match {
       case 0 => a.companion.name compare b.companion.name
       case o => o
     }
 
-  type AnyCompanion = Companion[_ <: TypedPath]
+  type AnyCompanion = Companion[_ <: ItemPath]
 
-  implicit final class ImplicitTypedPath[P <: TypedPath](private val underlying: P) extends AnyVal {
+  implicit final class ImplicitItemPath[P <: ItemPath](private val underlying: P) extends AnyVal {
     def ~(version: String): ItemId[P] = this ~ VersionId(version)
     def ~(v: VersionId): ItemId[P] = ItemId(underlying, v)
   }
 
-  abstract class Companion[P <: TypedPath: ClassTag] extends GenericString.Checked_[P]
+  abstract class Companion[P <: ItemPath: ClassTag] extends GenericString.Checked_[P]
   {
     final val NameOrdering: Ordering[P] = Ordering by { _.name }
     final lazy val Anonymous: P = unchecked(InternalPrefix + "anonymous")
@@ -108,7 +108,7 @@ object TypedPath
       else
         check(string).flatMap(_ => super.checked(string))
 
-    final private[TypedPath] def check(string: String): Checked[Unit] =
+    final private[ItemPath] def check(string: String): Checked[Unit] =
       if (!isEmptyAllowed && string.isEmpty)
         EmptyStringProblem(name)
       else if (string.nonEmpty && !string.startsWith("/"))
@@ -125,9 +125,9 @@ object TypedPath
     final implicit val implicitCompanion: Companion[P] = this
     final val camelName: String = name stripSuffix "Path"
 
-    final def typedPathClass: Class[P] = implicitClass[P]
+    final def itemPathClass: Class[P] = implicitClass[P]
 
-    /** Converts a relative file path with normalized slahes (/) to a `TypedPath`. */
+    /** Converts a relative file path with normalized slahes (/) to a `ItemPath`. */
     final def fromFile(normalized: String): Option[Checked[(P, SourceType)]] =
       sourceTypeToFilenameExtension.collectFirst { case (t, ext) if normalized endsWith ext =>
         checked("/" + normalized.dropRight(ext.length)) map (_ -> t)
@@ -155,24 +155,24 @@ object TypedPath
   def fileToString(file: Path): String =
     file.toString.replaceChar(file.getFileSystem.getSeparator.charAt(0), '/')
 
-  def jsonCodec(companions: Iterable[AnyCompanion]): CirceCodec[TypedPath] =
-    new Encoder[TypedPath] with Decoder[TypedPath] {
+  def jsonCodec(companions: Iterable[AnyCompanion]): CirceCodec[ItemPath] =
+    new Encoder[ItemPath] with Decoder[ItemPath] {
       private val typeToCompanion = companions toKeyedMap (_.camelName)
 
-      def apply(a: TypedPath) = Json.fromString(a.toTypedString)
+      def apply(a: ItemPath) = Json.fromString(a.toTypedString)
 
       def apply(c: HCursor) =
         for {
           string <- c.as[String]
           prefixAndPath <- string indexOf ':' match {
             case i if i > 0 => Right((string take i, string.substring(i + 1)))
-            case _ => Left(DecodingFailure(s"Missing type prefix in TypedPath: $string", c.history))
+            case _ => Left(DecodingFailure(s"Missing type prefix in ItemPath: $string", c.history))
           }
           prefix = prefixAndPath._1
           path = prefixAndPath._2
-          typedPath <- typeToCompanion.get(prefix).map(_.apply(path))
-            .toRight(DecodingFailure(s"Unrecognized type prefix in TypedPath: $prefix", c.history))
-        } yield typedPath
+          itemPath <- typeToCompanion.get(prefix).map(_.apply(path))
+            .toRight(DecodingFailure(s"Unrecognized type prefix in ItemPath: $prefix", c.history))
+        } yield itemPath
     }
 
   /**
@@ -191,15 +191,15 @@ object TypedPath
   def isAbsolute(path: String): Boolean =
     path startsWith "/"
 
-  implicit val jsonEncoder: Encoder.AsObject[TypedPath] = o => JsonObject(
+  implicit val jsonEncoder: Encoder.AsObject[ItemPath] = o => JsonObject(
     "TYPE" -> Json.fromString(o.companion.name),
     "path" -> Json.fromString(o.string))
 
-  def jsonDecoder(toTypedPathCompanion: String => Checked[TypedPath.AnyCompanion]): Decoder[TypedPath] =
+  def jsonDecoder(toItemPathCompanion: String => Checked[ItemPath.AnyCompanion]): Decoder[ItemPath] =
     c => for {
       typ <- c.get[String]("TYPE")
       path <- c.get[String]("path")
-      t <- toTypedPathCompanion(typ).toDecoderResult(c.history)
-      typedPath <- t.checked(path).toDecoderResult(c.history)
-    } yield typedPath
+      t <- toItemPathCompanion(typ).toDecoderResult(c.history)
+      itemPath <- t.checked(path).toDecoderResult(c.history)
+    } yield itemPath
 }

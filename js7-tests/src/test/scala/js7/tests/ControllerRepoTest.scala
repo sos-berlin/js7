@@ -112,7 +112,7 @@ final class ControllerRepoTest extends AnyFreeSpec
       def addWorkflowAndRunOrder(controller: RunningController, versionId: VersionId, path: WorkflowPath, orderId: OrderId): Unit = {
         val order = FreshOrder(orderId, path)
         // Command will be rejected because workflow is not yet defined
-        assert(controller.addOrder(order).runToFuture.await(99.s) == Left(UnknownKeyProblem("TypedPath", path)))
+        assert(controller.addOrder(order).runToFuture.await(99.s) == Left(UnknownKeyProblem("ItemPath", path)))
         defineWorkflowAndRunOrder(controller, versionId, path, orderId)
       }
 

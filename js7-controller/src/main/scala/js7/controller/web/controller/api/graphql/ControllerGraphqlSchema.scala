@@ -6,7 +6,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentName
-import js7.data.item.{ItemId, TypedPath, VersionId}
+import js7.data.item.{ItemId, ItemPath, VersionId}
 import js7.data.job.{ExecutablePath, ExecutableScript, ReturnCode}
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -114,7 +114,7 @@ object ControllerGraphqlSchema
 
   private implicit val WorkflowIdType = itemIdType[WorkflowPath]("WorkflowId", "Workflow's path and VersionId")
 
-  private def itemIdType[P <: TypedPath: SomeType](name: String, description: String): ObjectType[QueryContext, ItemId[P]] = ObjectType(
+  private def itemIdType[P <: ItemPath: SomeType](name: String, description: String): ObjectType[QueryContext, ItemId[P]] = ObjectType(
     name,
     description,
     fields[QueryContext, ItemId[P]](

@@ -18,14 +18,14 @@ object BItem extends InventoryItem.Companion[BItem] {
   type ThisItem = BItem
   type Path = BPath
 
-  def typedPathCompanion = BPath
+  def itemPathCompanion = BPath
 }
 
-case class BPath(string: String) extends TypedPath {
+case class BPath(string: String) extends ItemPath {
   def companion = BPath
 }
 
-object BPath extends TypedPath.Companion[BPath] {
+object BPath extends ItemPath.Companion[BPath] {
   val sourceTypeToFilenameExtension: Map[SourceType, String] = Map(
     SourceType.Json -> ".b.json")
 

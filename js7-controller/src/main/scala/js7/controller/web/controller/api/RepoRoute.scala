@@ -26,7 +26,7 @@ import js7.controller.repo.{RepoUpdater, VerifiedUpdateRepo}
 import js7.controller.web.common.{ControllerRouteProvider, EntitySizeLimitProvider}
 import js7.controller.web.controller.api.RepoRoute.{ExitStreamException, _}
 import js7.data.crypt.InventoryItemVerifier.Verified
-import js7.data.item.{InventoryItem, TypedPath, UpdateRepoOperation, VersionId}
+import js7.data.item.{InventoryItem, ItemPath, UpdateRepoOperation, VersionId}
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.AtomicAny
@@ -57,7 +57,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                 var byteCount = 0L
                 val versionId = SetOnce[VersionId]
                 val addOrReplace = Vector.newBuilder[Verified[InventoryItem]]
-                val delete = mutable.Buffer[TypedPath]()
+                val delete = mutable.Buffer[ItemPath]()
                 val problemOccurred = AtomicAny[Problem](null)
                 httpEntity
                   .dataBytes

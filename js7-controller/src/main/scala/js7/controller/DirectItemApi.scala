@@ -4,7 +4,7 @@ import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax._
 import js7.controller.data.ControllerState
 import js7.core.item.InventoryItemApi
-import js7.data.item.{InventoryItem, InventoryItemOverview, ItemId, Repo, TypedPath}
+import js7.data.item.{InventoryItem, InventoryItemOverview, ItemId, Repo, ItemPath}
 import monix.eval.Task
 
 private[controller] final class DirectItemApi(controllerState: Task[Checked[ControllerState]])
@@ -22,7 +22,7 @@ extends InventoryItemApi
   def items[A <: InventoryItem: InventoryItem.Companion]: Task[Checked[Seq[A]]] =
     for (checked <- checkedRepo) yield
       for (repo <- checked) yield
-        repo.currentTyped[A].values.toSeq.sortBy/*for determinstic tests*/(_.id: ItemId[TypedPath])
+        repo.currentTyped[A].values.toSeq.sortBy/*for determinstic tests*/(_.id: ItemId[ItemPath])
 
   def pathToCurrentItem[A <: InventoryItem: InventoryItem.Companion](path: A#Path): Task[Checked[A]] =
     for (checked <- checkedRepo) yield

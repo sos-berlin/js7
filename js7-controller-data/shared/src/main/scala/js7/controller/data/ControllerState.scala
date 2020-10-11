@@ -12,7 +12,7 @@ import js7.controller.data.events.{AgentRefStateEvent, ControllerEvent}
 import js7.data.agent.AgentRefEvent.{AgentAdded, AgentUpdated}
 import js7.data.agent.{AgentName, AgentRef, AgentRefEvent}
 import js7.data.cluster.{ClusterEvent, ClusterState}
-import js7.data.controller.ControllerItems.ControllerTypedPathCompanions
+import js7.data.controller.ControllerItems.ControllerItemPathCompanions
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.SnapshotMeta.SnapshotEventId
@@ -45,7 +45,7 @@ extends JournaledState[ControllerState]
     Observable.pure(SnapshotEventId(eventId)) ++
     standards.toSnapshotObservable ++
     Observable.fromIterable(controllerMetaState.isDefined ? controllerMetaState) ++
-    Observable.fromIterable(repo.eventsFor(ControllerTypedPathCompanions)) ++
+    Observable.fromIterable(repo.eventsFor(ControllerItemPathCompanions)) ++
     Observable.fromIterable(nameToAgent.values) ++
     Observable.fromIterable(idToOrder.values)
 

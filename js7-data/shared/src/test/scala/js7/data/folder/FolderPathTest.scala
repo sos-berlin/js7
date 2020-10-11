@@ -1,7 +1,7 @@
 package js7.data.folder
 
 import js7.data.folder.FolderPathTest._
-import js7.data.item.{SourceType, TypedPath}
+import js7.data.item.{SourceType, ItemPath}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
@@ -95,11 +95,11 @@ final class FolderPathTest extends AnyFreeSpec {
 
 private object FolderPathTest
 {
-  private case class TestPath(string: String) extends TypedPath {
+  private case class TestPath(string: String) extends ItemPath {
     def companion = TestPath
   }
 
-  private object TestPath extends TypedPath.Companion[TestPath] {
+  private object TestPath extends ItemPath.Companion[TestPath] {
     val sourceTypeToFilenameExtension = Map(
       SourceType.Json -> ".test.json")
 

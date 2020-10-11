@@ -12,7 +12,7 @@ import js7.common.scalautil.FileUtils.syntax._
 import js7.controller.tests.IntentoryItemsTest._
 import js7.core.item.InventoryItemReader
 import js7.data.item.IntentoryItems.diffInventoryItems
-import js7.data.item.{IntentoryItems, InventoryItem, ItemId, RepoChange, SourceType, TypedPath, VersionId}
+import js7.data.item.{IntentoryItems, InventoryItem, ItemId, RepoChange, SourceType, ItemPath, VersionId}
 import js7.data.workflow.instructions.{ExplicitEnd, Fail}
 import js7.data.workflow.parser.WorkflowParser
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -105,7 +105,7 @@ final class IntentoryItemsTest extends AnyFreeSpec
         RepoChange.Added(CWorkflow withVersion V1),
         RepoChange.Updated(D1Workflow withVersion V1)))
 
-    assert(diff == IntentoryItems.Diff[TypedPath, InventoryItem](
+    assert(diff == IntentoryItems.Diff[ItemPath, InventoryItem](
       added = List(BTestItem withVersion V0, CWorkflow withVersion V1),
       updated = List(D1Workflow withVersion V1),
       deleted = List(BWorkflow.path)))
@@ -145,10 +145,10 @@ object IntentoryItemsTest {
     finally deleteDirectoryRecursively(dir)
   }
 
-  private[tests] case class TestPath(string: String) extends TypedPath {
+  private[tests] case class TestPath(string: String) extends ItemPath {
     def companion = TestPath
   }
-  private[tests] object TestPath extends TypedPath.Companion[TestPath] {
+  private[tests] object TestPath extends ItemPath.Companion[TestPath] {
     val sourceTypeToFilenameExtension = Map(
       SourceType.Json -> ".test.json")
 
@@ -167,7 +167,7 @@ object IntentoryItemsTest {
   private[tests] object TestItem extends InventoryItem.Companion[TestItem] {
     type ThisItem = TestItem
     type Path = TestPath
-    def typedPathCompanion = TestPath
+    def itemPathCompanion = TestPath
     implicit val jsonCodec = deriveCodec[TestItem]
   }
 

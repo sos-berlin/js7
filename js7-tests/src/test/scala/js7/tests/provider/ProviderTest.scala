@@ -21,7 +21,7 @@ import js7.common.scalautil.IOExecutor.Implicits.globalIOX
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.scalautil.xmls.ScalaXmls.implicits._
 import js7.common.system.OperatingSystem.isMac
-import js7.core.item.{InventoryItemReader, TypedPaths}
+import js7.core.item.{InventoryItemReader, ItemPaths}
 import js7.data.agent.AgentName
 import js7.data.event.EventId
 import js7.data.event.KeyedEvent.NoKey
@@ -158,7 +158,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       (live / "ERROR-2.workflow.json") := json"""{ "instructions": 0 }"""
       assert(provider.updateControllerConfiguration(V2.some).await(99.seconds) ==
         Left(Problem.Combined(Set(
-          TypedPaths.AlienFileProblem(Paths.get("UNKNOWN.tmp")),
+          ItemPaths.AlienFileProblem(Paths.get("UNKNOWN.tmp")),
           InventoryItemReader.SourceProblem(WorkflowPath("/NO-JSON"), SourceType.Json, Problem("JSON ParsingFailure: expected json value got 'INVALI...' (line 1, column 1)")),
           InventoryItemReader.SourceProblem(WorkflowPath("/ERROR-1"), SourceType.Json, Problem("JSON DecodingFailure at .instructions: Attempt to decode value on failed cursor")),
           InventoryItemReader.SourceProblem(WorkflowPath("/ERROR-2"), SourceType.Json, Problem("JSON DecodingFailure at .instructions: C[A]"))))))

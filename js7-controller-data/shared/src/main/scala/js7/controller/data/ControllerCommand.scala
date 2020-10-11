@@ -14,9 +14,9 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentRef
 import js7.data.cluster.{ClusterCommand, ClusterSetting}
 import js7.data.command.{CancelMode, CommonCommand}
-import js7.data.controller.ControllerItems.typedPathJsonDecoder
+import js7.data.controller.ControllerItems.itemPathJsonDecoder
 import js7.data.event.EventId
-import js7.data.item.{TypedPath, VersionId}
+import js7.data.item.{ItemPath, VersionId}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.position.Position
 import scala.collection.immutable
@@ -31,7 +31,7 @@ sealed trait ControllerCommand extends CommonCommand
 
 object ControllerCommand extends CommonCommand.Companion
 {
-  intelliJuseImport((FiniteDurationJsonEncoder, FiniteDurationJsonDecoder, checkedJsonEncoder[Int], checkedJsonDecoder[Int], Problem, typedPathJsonDecoder))
+  intelliJuseImport((FiniteDurationJsonEncoder, FiniteDurationJsonDecoder, checkedJsonEncoder[Int], checkedJsonDecoder[Int], Problem, itemPathJsonDecoder))
 
   protected type Command = ControllerCommand
 
@@ -177,7 +177,7 @@ object ControllerCommand extends CommonCommand.Companion
   final case class UpdateRepo(
     versionId: VersionId,
     change: Seq[SignedString] = Nil,
-    delete: Seq[TypedPath] = Nil)
+    delete: Seq[ItemPath] = Nil)
   extends ControllerCommand with Big {
     type Response = Response.Accepted
 
