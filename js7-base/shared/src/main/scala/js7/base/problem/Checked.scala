@@ -60,18 +60,6 @@ object Checked
       case Right(a) => Applicative[F].map(f(a))(Right.apply)
     }
 
-  /** `Checked[F[A] ] => F[Checked[A] ]`. */
-  def evert[F[_], A](checked: Checked[F[A]])(implicit A: Applicative[F]): F[Checked[A]] =
-    checked match {
-      case Left(problem) => A.pure(Left(problem))
-      case Right(r) => A.map(r)(Right.apply)
-    }
-
-  implicit final class EvertChecked[F[_], A](private val underlying: Checked[F[A]]) extends AnyVal {
-    /** `Checked[F[A]``] => F[Checked[A]``]`. */
-    def evert(implicit A: Applicative[F]): F[Checked[A]] = Checked.evert(underlying)
-  }
-
   implicit final class Ops[A](private val underlying: Checked[A]) extends AnyVal
   {
     def traverse[F[_]: Applicative, B](f: A => F[B]): F[Checked[B]] =

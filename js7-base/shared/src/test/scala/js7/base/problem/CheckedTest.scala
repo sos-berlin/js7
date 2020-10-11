@@ -190,13 +190,6 @@ final class CheckedTest extends AnyFreeSpec
     assert(List(Right(1), Left(Problem("X")), Left(Problem("Y"))).sequence[Checked, Int] == Left(Problem("X")))
   }
 
-  "evert" in {
-    assert(Right(7.some).evert == Some(Right(7)))
-    assert(Right(None).evert == None)
-    assert((Problem("X"): Checked[Option[Int]]).evert == Some(Left(Problem("X"))))
-    assert(Right(7.some).evert == Some(Right(7)))
-  }
-
   "valueOr" in {
     assert(Right(1).orElse(sys.error("???")) == Right(1))
     assert(Left(Problem("PROBLEM")).orElse(Right(1)) == Right(1))

@@ -90,7 +90,7 @@ extends AutoCloseable {
   def executeCommandAsSystemUser(command: AgentCommand): Task[Checked[AgentCommand.Response]] =
     for {
       checkedSession <- sessionRegister.systemSession
-      checkedChecked <- checkedSession.map(session => executeCommand(command, CommandMeta(session.currentUser))).evert
+      checkedChecked <- checkedSession.traverse(session => executeCommand(command, CommandMeta(session.currentUser)))
     } yield checkedChecked.flatten
 
   def executeCommand(command: AgentCommand, meta: CommandMeta): Task[Checked[AgentCommand.Response]] =

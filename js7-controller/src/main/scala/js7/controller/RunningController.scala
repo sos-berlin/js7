@@ -126,7 +126,7 @@ extends AutoCloseable
   def executeCommandAsSystemUser(command: ControllerCommand): Task[Checked[command.Response]] =
     for {
       checkedSession <- sessionRegister.systemSession
-      checkedChecked <- checkedSession.map(session => executeCommand(command, CommandMeta(session.currentUser))).evert
+      checkedChecked <- checkedSession.traverse(session => executeCommand(command, CommandMeta(session.currentUser)))
     } yield checkedChecked.flatten
 
   def executeCommand(command: ControllerCommand, meta: CommandMeta): Task[Checked[command.Response]] =
