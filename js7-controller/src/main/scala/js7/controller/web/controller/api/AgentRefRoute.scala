@@ -1,16 +1,20 @@
 package js7.controller.web.controller.api
 
+import akka.http.scaladsl.model.StatusCodes.NotFound
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import js7.base.auth.ValidUserPermission
+import js7.base.problem.Checked
 import js7.base.utils.IntelliJUtils.intelliJuseImport
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
 import js7.common.akkahttp.CirceJsonOrYamlSupport._
-import js7.common.akkahttp.StandardDirectives.remainingSegmentOrPath
-import js7.common.akkahttp.StandardMarshallers._
+import js7.common.akkahttp.StandardDirectives.remainingPath
+import js7.common.akkahttp.StandardMarshallers.checkedToResponseMarshaller
+import js7.controller.data.agent.AgentRefState
 import js7.controller.web.common.ControllerRouteProvider
-import js7.core.item.InventoryItemApi
-import js7.data.agent.{AgentRef, AgentRefPath}
+import js7.data.agent.{AgentName, AgentRef}
+import monix.eval.Task
 import monix.execution.Scheduler
 
 /**
@@ -18,34 +22,48 @@ import monix.execution.Scheduler
   */
 trait AgentRefRoute extends ControllerRouteProvider
 {
-  protected def itemApi: InventoryItemApi
+  protected def nameToAgentRefState: Task[Checked[Map[AgentName, AgentRefState]]]
 
   private implicit def implicitScheduler: Scheduler = scheduler
 
   final val agentRefRoute: Route =
     get {
       authorizedUser(ValidUserPermission) { _ =>
-        pathEnd {
-          completeTask(
-            itemApi.overview[AgentRef])
-        } ~
+        //pathEnd {
+        //  completeTask(
+        //    itemApi.overview[AgentRef])
+        //} ~
           pathSingleSlash {
             parameter("return".?) {
               case None =>
-                completeTask(
-                  itemApi.paths[AgentRef])
+                completeTask[Checked[Iterable[AgentName]]](
+                  nameToAgentRefState.map(_.map(_.keys)))
 
               case Some("AgentRef") =>
-                completeTask(
-                  itemApi.items[AgentRef])
+                completeTask[Checked[Iterable[AgentRef]]](
+                  nameToAgentRefState.map(_.map(_.values.map(_.agentRef))))
+
+              case Some("AgentRefState") =>
+                completeTask[Checked[Iterable[AgentRefState]]](
+                  nameToAgentRefState.map(_.map(_.values)))
 
               case _ =>
-                reject
+                complete(NotFound)
             }
           } ~
-          path(remainingSegmentOrPath[AgentRefPath]) { agentRefPath =>
-            completeTask(
-              itemApi.pathToCurrentItem[AgentRef](agentRefPath))
+          path(remainingPath[AgentName]) { name =>
+            parameter("return".?) {
+              case None | Some("AgentRefState") =>
+                completeTask[Checked[AgentRefState]](
+                  nameToAgentRefState.map(_.flatMap(_.checked(name))))
+
+              case Some("AgentRef") =>
+                completeTask[Checked[AgentRef]](
+                  nameToAgentRefState.map(_.flatMap(_.checked(name).map(_.agentRef))))
+
+              case _ =>
+                complete(NotFound)
+            }
           }
       }
     }

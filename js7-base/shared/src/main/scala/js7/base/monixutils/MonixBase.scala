@@ -175,6 +175,12 @@ object MonixBase
         }
     }
 
+    implicit class RichObserableIterable[A](private val underlying: Iterable[A]) extends AnyVal
+    {
+      def toObservable: Observable[A] =
+        Observable.fromIterable(underlying)
+    }
+
     private def simpleCount[A](a: A) = 1L
 
     implicit class RichCheckedTask[A](private val underlying: Task[Checked[A]]) extends AnyVal

@@ -20,7 +20,7 @@ import js7.common.configutils.Configs._
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.core.command.CommandMeta
-import js7.data.agent.{AgentRefPath, AgentRunId}
+import js7.data.agent.{AgentName, AgentRunId}
 import js7.data.event.{EventId, JournalId}
 import js7.data.order.OrderId
 import monix.eval.Task
@@ -38,7 +38,7 @@ final class CommandWebServerTest extends AsyncFreeSpec
 
   private val n = 1_000 //1_000_000
   private lazy val orderIds = (for (i <- 1 to n) yield OrderId(s"A-MEDIUM-LONG-ORDER-$i")).toSet
-  private lazy val coupleController = CoupleController(AgentRefPath("/AGENT"), AgentRunId(JournalId.random()), EventId.BeforeFirst)
+  private lazy val coupleController = CoupleController(AgentName("AGENT"), AgentRunId(JournalId.random()), EventId.BeforeFirst)
   private lazy val clientResource = for {
     as <- actorSystemResource("CommandWebServerTest", testConfig)
     webServer <- AkkaWebServer.resourceForHttp(findFreeTcpPort(), route(as), testConfig)(as)

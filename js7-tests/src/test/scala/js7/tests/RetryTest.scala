@@ -8,10 +8,10 @@ import js7.common.process.Processes.{ShellFileExtension => sh}
 import js7.common.scalautil.Logger
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.system.OperatingSystem.isWindows
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.event.{EventId, EventRequest, EventSeq}
 import js7.data.job.{ExecutablePath, ReturnCode}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCatched, OrderDetachable, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted, OrderAttached, OrderDetached}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.parser.WorkflowParser
@@ -29,7 +29,7 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   override protected val controllerConfig = config"js7.journal.simulate-sync = 10ms"  // Avoid excessive syncs in case of test failure
   override protected val agentConfig = config"js7.journal.simulate-sync = 10ms"  // Avoid excessive syncs in case of test failure
-  protected val agentRefPaths = TestAgentRefPath :: Nil
+  protected val agentNames = TestAgentName :: Nil
   protected val inventoryItems = Nil
 
   import controller.eventWatch
@@ -58,8 +58,8 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val expectedEvents = Vector(
       OrderAdded(workflow.path ~ versionId),
       OrderMoved(Position(0) / try_(0) % 0),
-      OrderAttachable(TestAgentRefPath),
-      OrderAttached(TestAgentRefPath),
+      OrderAttachable(TestAgentName),
+      OrderAttached(TestAgentName),
       OrderStarted,
 
       OrderProcessingStarted,
@@ -102,8 +102,8 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val expectedEvents = Vector(
       OrderAdded(workflow.path ~ versionId),
       OrderMoved(Position(0) / try_(0) % 0 / try_(0) % 0),
-      OrderAttachable(TestAgentRefPath),
-      OrderAttached(TestAgentRefPath),
+      OrderAttachable(TestAgentName),
+      OrderAttached(TestAgentName),
       OrderStarted,
 
       OrderProcessingStarted,
@@ -261,6 +261,6 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
 object RetryTest
 {
-  private val TestAgentRefPath = AgentRefPath("/AGENT")
+  private val TestAgentName = AgentName("AGENT")
   private val logger = Logger(getClass)
 }

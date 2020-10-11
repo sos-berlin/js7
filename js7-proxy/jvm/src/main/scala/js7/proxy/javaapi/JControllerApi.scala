@@ -80,7 +80,7 @@ final class JControllerApi private[javaapi](
     *     signatureString)
     * }}}
     * `SignedString.of` requires three arguments:
-    *   - `jsonString` is the JSON-encoded `InventoryItem`, i.e. a Workflow or an AgentRefPath.
+    *   - `jsonString` is the JSON-encoded `InventoryItem`, i.e. a Workflow or an AgentName.
     *     The item must include its id with `path` and `versionId`.
     *     The `versionId` must be the same as the first argument for `updateRepo`.
     *   - "PGP" or any supported signature type.
@@ -95,7 +95,7 @@ final class JControllerApi private[javaapi](
     * JUpdateRepoOperations.addOrReplace(TypedPath)
     * }}}
     *
-    * `TypedPath` may be a [[js7.data.workflow.WorkflowPath]] or a [[js7.data.agent.AgentRefPath]]
+    * `TypedPath` may be a [[js7.data.workflow.WorkflowPath]] or a [[js7.data.agent.AgentName]]
     * (both have a Java-compatible static factory method `of`).
     *
     * @param versionId `VersionId` of this new version

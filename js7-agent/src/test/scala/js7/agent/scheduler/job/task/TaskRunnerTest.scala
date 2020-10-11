@@ -19,7 +19,7 @@ import js7.common.scalautil.FileUtils.syntax.RichPath
 import js7.common.scalautil.Futures.implicits._
 import js7.common.system.FileUtils.temporaryDirectory
 import js7.common.system.OperatingSystem.{isUnix, isWindows}
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.job.{ExecutablePath, JobKey, ReturnCode}
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.workflow.WorkflowPath
@@ -52,7 +52,7 @@ final class TaskRunnerTest extends AnyFreeSpec with BeforeAndAfterAll with TestA
     shellFile := TestScript
     if (isUnix) setPosixFilePermissions(shellFile, PosixFilePermissions.fromString("rwx------"))
     val shellReturnValuesProvider = new ShellReturnValuesProvider(temporaryDirectory)
-    val taskConfiguration = TaskConfiguration(JobKey.forTest, WorkflowJob(AgentRefPath("/TEST"), executablePath, Map("var1" -> "VALUE1")), shellFile, shellReturnValuesProvider)
+    val taskConfiguration = TaskConfiguration(JobKey.forTest, WorkflowJob(AgentName("TEST"), executablePath, Map("var1" -> "VALUE1")), shellFile, shellReturnValuesProvider)
     info(measureTime(10, "TaskRunner") {
       val order = Order(
         OrderId("TEST"),

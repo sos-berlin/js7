@@ -5,6 +5,7 @@ import js7.base.problem.Checked
 import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.node.NodeId
 import monix.eval.Task
+
 trait ClusterWatchApi
 {
   def get: Task[Checked[ClusterState]]

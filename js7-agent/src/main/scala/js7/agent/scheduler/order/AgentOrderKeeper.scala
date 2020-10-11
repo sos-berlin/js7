@@ -34,7 +34,7 @@ import js7.core.event.journal.recover.Recovered
 import js7.core.event.journal.{JournalActor, MainJournalingActor}
 import js7.core.event.state.JournaledStatePersistence
 import js7.core.problems.ReverseReleaseEventsProblem
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.controller.ControllerId
 import js7.data.crypt.InventoryItemVerifier
 import js7.data.event.JournalEvent.JournalEventsReleased
@@ -63,7 +63,7 @@ import shapeless.tag
   */
 final class AgentOrderKeeper(
   controllerId: ControllerId,
-  ownAgentRefPath: AgentRefPath,
+  ownAgentName: AgentName,
   recovered_ : Recovered[AgentState],
   signatureVerifier: SignatureVerifier,
   newTaskRunner: TaskRunner.Factory,
@@ -280,14 +280,14 @@ with Stash {
     case AttachOrder(order, signedWorkflowString) if !shuttingDown =>
       order.attached match {
         case Left(problem) => Future.successful(Left(problem))
-        case Right(agentRefPath) =>
+        case Right(agentName) =>
           workflowVerifier.verify(signedWorkflowString) match {
             case Left(problem) => Future.successful(Left(problem))
             case Right(verified) =>
               if (orderRegister contains order.id)
                 Future.successful(Left(AgentDuplicateOrder(order.id)))
               else {
-                val workflow = verified.signedItem.value.reduceForAgent(agentRefPath)
+                val workflow = verified.signedItem.value.reduceForAgent(agentName)
                 (workflowRegister.get(order.workflowId) match {
                   case None =>
                     logger.info(Logger.SignatureVerified, verified.toString)
@@ -391,7 +391,7 @@ with Stash {
 
   private def startJobActors(workflow: Workflow): Unit =
     for ((jobKey, job) <- workflow.keyToJob) {
-      if (job.agentRefPath == ownAgentRefPath) {
+      if (job.agentName == ownAgentName) {
         val jobActor = watch(actorOf(
           JobActor.props(JobActor.Conf(jobKey, job, newTaskRunner, temporaryDirectory = conf.temporaryDirectory,
             executablesDirectory = conf.executableDirectory, sigkillProcessesAfter = job.sigkillAfter getOrElse conf.sigkillProcessesAfter,

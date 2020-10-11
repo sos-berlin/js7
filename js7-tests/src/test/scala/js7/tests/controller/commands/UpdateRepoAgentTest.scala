@@ -15,9 +15,8 @@ import js7.common.scalautil.MonixUtils.syntax.RichTask
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.RunningController
 import js7.controller.data.ControllerCommand
-import js7.controller.data.ControllerCommand.UpdateRepo
-import js7.data.agent.{AgentRef, AgentRefPath}
-import js7.data.item.VersionId
+import js7.controller.data.ControllerCommand.UpdateAgentRefs
+import js7.data.agent.{AgentName, AgentRef}
 import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
@@ -37,7 +36,7 @@ final class UpdateRepoAgentTest extends AnyFreeSpec
   coupleScribeWithSlf4j()
 
   "ControllerCommand.UpdateRepo" in {
-    autoClosing(new DirectoryProvider(agentRefPath :: Nil, workflow :: Nil, testName = Some("UpdateRepoAgentTest"))) { provider =>
+    autoClosing(new DirectoryProvider(agentName :: Nil, workflow :: Nil, testName = Some("UpdateRepoAgentTest"))) { provider =>
       (provider.controller.configDir / "private" / "private.conf") ++=
         """js7.auth.users {
           |  UpdateRepoAgentTest {
@@ -46,7 +45,7 @@ final class UpdateRepoAgentTest extends AnyFreeSpec
           |  }
           |}
           |""".stripMargin
-      provider.agentToTree(agentRefPath).writeExecutable(ExecutablePath("/SCRIPT.cmd"), ":")
+      provider.agentToTree(agentName).writeExecutable(ExecutablePath("/SCRIPT.cmd"), ":")
 
       // Start Agent before Controller to bind the reserved TCP port early, and the Controller needs not to wait
       val agent1 = provider.startAgents().await(99.seconds).head
@@ -65,10 +64,7 @@ final class UpdateRepoAgentTest extends AnyFreeSpec
             httpPort = Some(port))
           ).await(99.seconds)
 
-          val versionId = VersionId(s"$i")
-          val agentRef = AgentRef(agentRefPath ~ versionId, uri = agent2.localUri)
-          executeCommand(controller, UpdateRepo(versionId, provider.itemSigner.sign(agentRef) :: Nil))
-
+          executeCommand(controller, UpdateAgentRefs(Seq(AgentRef(agentName, uri = agent2.localUri))))
           runOrder(controller, OrderId(s"🔵-$i"))
         }
       }
@@ -90,10 +86,10 @@ final class UpdateRepoAgentTest extends AnyFreeSpec
 
 object UpdateRepoAgentTest
 {
-  private val agentRefPath = AgentRefPath("/AGENT")
+  private val agentName = AgentName("AGENT")
   private val workflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW"),
      """define workflow {
-          execute executable="/SCRIPT.cmd", agent="/AGENT";
+          execute executable="/SCRIPT.cmd", agent="AGENT";
         }"""
   ).orThrow
 

@@ -5,10 +5,10 @@ import js7.base.time.Timestamp
 import js7.base.utils.AutoClosing.autoClosing
 import js7.common.process.Processes.{ShellFileExtension => sh}
 import js7.controller.RunningController
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.event.{<-:, EventSeq, KeyedEvent, TearableEventSeq}
 import js7.data.job.ExecutablePath
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAwaiting, OrderDetachable, OrderFinished, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderAttached, OrderDetached}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwaiting, OrderDetachable, OrderDetached, OrderFinished, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.parser.WorkflowParser
@@ -38,7 +38,7 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
           offer orderId = "OFFERED-ORDER-ID", timeout = 60;
           execute executable="/executable$sh", agent="AGENT";
         }""").orThrow)
-    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflows, testName = Some("OfferAndAwaitOrderTest"))) { directoryProvider =>
+    autoClosing(new DirectoryProvider(TestAgentName :: Nil, workflows, testName = Some("OfferAndAwaitOrderTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/executable$sh"), ":")
 
       directoryProvider.run { (controller, _) =>
@@ -47,8 +47,8 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
         checkEventSeq(controller.eventWatch.all[OrderEvent],
           expectedOffering = Vector(
               OrderAdded(OfferingWorkflowId),
-              OrderAttachable(TestAgentRefPath),
-              OrderAttached(TestAgentRefPath),
+              OrderAttachable(TestAgentName),
+              OrderAttached(TestAgentName),
               OrderStarted,
               OrderProcessingStarted,
               OrderProcessed(Outcome.succeeded),
@@ -57,8 +57,8 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
               OrderDetached,
               OrderOffered(OrderId("OFFERED-ORDER-ID"), TestOfferedUntil),
               OrderMoved(Position(2)),
-              OrderAttachable(TestAgentRefPath),
-              OrderAttached(TestAgentRefPath),
+              OrderAttachable(TestAgentName),
+              OrderAttached(TestAgentName),
               OrderProcessingStarted,
               OrderProcessed(Outcome.succeeded),
               OrderMoved(Position(3)),
@@ -67,8 +67,8 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
               OrderFinished),
           expectedAwaiting = Vector(
             OrderAdded(JoiningWorkflowId),
-            OrderAttachable(TestAgentRefPath),
-            OrderAttached(TestAgentRefPath),
+            OrderAttachable(TestAgentName),
+            OrderAttached(TestAgentName),
             OrderStarted,
             OrderProcessingStarted,
             OrderProcessed(Outcome.succeeded),
@@ -78,8 +78,8 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
             OrderAwaiting(OrderId("OFFERED-ORDER-ID")),
             OrderJoined(Outcome.succeeded),
             OrderMoved(Position(2)),
-            OrderAttachable(TestAgentRefPath),
-            OrderAttached(TestAgentRefPath),
+            OrderAttachable(TestAgentName),
+            OrderAttached(TestAgentName),
             OrderProcessingStarted,
             OrderProcessed(Outcome.succeeded),
             OrderMoved(Position(3)),
@@ -101,7 +101,7 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
         define workflow {
           offer orderId = "OFFERED-ORDER-ID", timeout = 60;
         }""").orThrow)
-    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflows, testName = Some("OfferAndAwaitOrderTest"))) { directoryProvider =>
+    autoClosing(new DirectoryProvider(TestAgentName :: Nil, workflows, testName = Some("OfferAndAwaitOrderTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/executable$sh"), ":")
 
       directoryProvider.run { (controller, _) =>
@@ -157,7 +157,7 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
 
 object OfferAndAwaitOrderTest
 {
-  private val TestAgentRefPath = AgentRefPath("/AGENT")
+  private val TestAgentName = AgentName("AGENT")
   private val JoiningWorkflowId = WorkflowPath("/A") ~ "INITIAL"
   private val OfferingWorkflowId = WorkflowPath("/B") ~ "INITIAL"
 

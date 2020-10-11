@@ -15,7 +15,7 @@ import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.system.OperatingSystem.isWindows
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.event.{EventId, EventRequest}
 import js7.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.position.Position
@@ -39,19 +39,19 @@ final class AgentActorTest extends AnyFreeSpec
           file.writeExecutable(TestScript)
         }
         (provider.agentActor ? AgentActor.Input.Start).mapTo[AgentActor.Output.Ready.type] await 99.s
-        val agentRunId = executeCommand(RegisterAsController(agentRefPath))
+        val agentRunId = executeCommand(RegisterAsController(agentName))
           .await(99.s).orThrow.asInstanceOf[RegisterAsController.Response].agentRunId
         val stopwatch = new Stopwatch
         val orderIds = for (i <- 0 until n) yield OrderId(s"TEST-ORDER-$i")
         orderIds.map(orderId =>
           executeCommand(
-            AttachOrder(TestOrder.copy(id = orderId), TestAgentRefPath, provider.itemSigner.sign(SimpleTestWorkflow)))
+            AttachOrder(TestOrder.copy(id = orderId), TestAgentName, provider.itemSigner.sign(SimpleTestWorkflow)))
         ).await(99.s).foreach(o => assert(o.isRight))
         assert(
           executeCommand(
-            AttachOrder(TestOrder.copy(id = orderIds.head), TestAgentRefPath, provider.itemSigner.sign(SimpleTestWorkflow))
+            AttachOrder(TestOrder.copy(id = orderIds.head), TestAgentName, provider.itemSigner.sign(SimpleTestWorkflow))
           ).await(99.s) == Left(AgentDuplicateOrder(orderIds.head)))
-        assert(executeCommand(CoupleController(agentRefPath, agentRunId, EventId.BeforeFirst)).await(99.s) ==
+        assert(executeCommand(CoupleController(agentName, agentRunId, EventId.BeforeFirst)).await(99.s) ==
           Right(CoupleController.Response(orderIds.toSet)))
         for (orderId <- orderIds)
           eventCollector.whenKeyedEvent[OrderEvent.OrderDetachable](EventRequest.singleClass(timeout = Some(90.s)), orderId) await 99.s
@@ -67,7 +67,7 @@ final class AgentActorTest extends AnyFreeSpec
             historicOutcomes = TestOrder.historicOutcomes :+
               HistoricOutcome(Position(0), Outcome.Succeeded(Map("result" -> "TEST-RESULT-"))) :+
               HistoricOutcome(Position(1), Outcome.Succeeded(Map("result" -> "TEST-RESULT-B-VALUE"))),
-            Some(Order.Detaching(TestAgentRefPath))
+            Some(Order.Detaching(TestAgentName))
           )).toSet)
 
         (for (orderId <- orderIds) yield executeCommand(DetachOrder(orderId))) await 99.s
@@ -81,7 +81,7 @@ final class AgentActorTest extends AnyFreeSpec
 
 object AgentActorTest
 {
-  private val agentRefPath = AgentRefPath("/AGENT")
+  private val agentName = AgentName("AGENT")
   private val TestScript =
     if (isWindows) """
       |@echo off

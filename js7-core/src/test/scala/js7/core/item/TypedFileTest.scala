@@ -9,7 +9,6 @@ import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
 import js7.common.scalautil.FileUtils.syntax._
 import js7.core.item.TypedFile.checkUniqueness
 import js7.core.item.TypedFileTest._
-import js7.data.agent.AgentRefPath
 import js7.data.item.SourceType
 import js7.data.workflow.WorkflowPath
 import org.scalatest.freespec.AnyFreeSpec
@@ -21,12 +20,10 @@ final class TypedFileTest extends AnyFreeSpec
 {
   "typedFiles, checkUniqueness" in {
     provideDataDirectory { dir =>
-      val checkedTypedFiles = DirectoryReader.files(dir).map(TypedFile.checked(dir, _, Set(AgentRefPath, WorkflowPath)))
+      val checkedTypedFiles = DirectoryReader.files(dir).map(TypedFile.checked(dir, _, Set(WorkflowPath)))
       assert(checkedTypedFiles.toSet == Set(
-        Right(TypedFile(dir / "test.agentref.json", AAgentRefPath, SourceType.Json)),
         Right(TypedFile(dir / "test.workflow.json", AWorkflowPath, SourceType.Json)),
         Right(TypedFile(dir / "test.workflow.txt", AWorkflowPath, SourceType.Txt)),
-        Right(TypedFile(dir / "folder/test.agentref.json", BAgentRefPath, SourceType.Json)),
         Left(Problem(s"File '...${separator}folder${separator}test.alien.json' is not recognized as a configuration file"))))
       assert(checkUniqueness(checkedTypedFiles collect { case Right(o) => o }) == Left(Problem(
         s"Duplicate configuration files: ${dir / "test.workflow.json"}, ${dir / "test.workflow.txt"}")))
@@ -36,8 +33,6 @@ final class TypedFileTest extends AnyFreeSpec
 
 object TypedFileTest
 {
-  private val AAgentRefPath = AgentRefPath("/test")
-  private val BAgentRefPath = AgentRefPath("/folder/test")
   private val AWorkflowPath = WorkflowPath("/test")
 
   private def provideDataDirectory[A](body: Path => A): A = {
@@ -45,13 +40,10 @@ object TypedFileTest
     val subdir = dir / "folder"
     createDirectories(subdir)
     createDirectories(dir / "ignored.job.xml")
-    (dir / "test.agentref.json") := "{}"
     (dir / "test.workflow.json") := "{}"
     (dir / "test.workflow.txt") := ""
-    (subdir / "test.agentref.json") := "{}"
     (subdir / "test.alien.json") := "{}"
     try body(dir)
     finally deleteDirectoryRecursively(dir)
   }
-
 }

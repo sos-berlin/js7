@@ -4,10 +4,10 @@ import js7.base.problem.Checked.Ops
 import js7.base.utils.AutoClosing.autoClosing
 import js7.common.process.Processes.{ShellFileExtension => sh}
 import js7.common.system.OperatingSystem.isWindows
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import js7.data.job.{ExecutablePath, ReturnCode}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderAttached, OrderDetached}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.parser.WorkflowParser
@@ -21,7 +21,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class IfTest extends AnyFreeSpec {
 
   "test" in {
-    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, inventoryItems = TestWorkflow :: Nil, testName = Some("IfTest"))) { directoryProvider =>
+    autoClosing(new DirectoryProvider(TestAgentName :: Nil, inventoryItems = TestWorkflow :: Nil, testName = Some("IfTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/TEST$sh"), ":")
       for (a <- directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/TEST-RC$sh"), jobScript)
 
@@ -51,7 +51,7 @@ final class IfTest extends AnyFreeSpec {
 }
 
 object IfTest {
-  private val TestAgentRefPath = AgentRefPath("/AGENT")
+  private val TestAgentName = AgentName("AGENT")
 
   private val jobScript =
     if (isWindows)
@@ -90,8 +90,8 @@ object IfTest {
     ReturnCode(0) -> Vector(
       OrderAdded(TestWorkflow.id, None, Map("ARG" -> "ARG-VALUE", "RETURN_CODE" -> "0")),
       OrderMoved(Position(0) / Then % 0 / Then % 0),
-      OrderAttachable(TestAgentRefPath),
-      OrderAttached(TestAgentRefPath),
+      OrderAttachable(TestAgentName),
+      OrderAttached(TestAgentName),
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(Outcome.Succeeded(ReturnCode(0), Map("JOB-KEY" -> "JOB-RESULT"))),
@@ -108,8 +108,8 @@ object IfTest {
     ReturnCode(1) -> Vector(
       OrderAdded(TestWorkflow.id, None, Map("ARG" -> "ARG-VALUE", "RETURN_CODE" -> "1")),
       OrderMoved(Position(0) / Then % 0 / Then % 0),
-      OrderAttachable(TestAgentRefPath),
-      OrderAttached(TestAgentRefPath),
+      OrderAttachable(TestAgentName),
+      OrderAttached(TestAgentName),
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(Outcome.Succeeded(ReturnCode(1), Map("JOB-KEY" -> "JOB-RESULT"))),
@@ -126,8 +126,8 @@ object IfTest {
     ReturnCode(2) ->  Vector(
       OrderAdded(TestWorkflow.id, None, Map("ARG" -> "ARG-VALUE", "RETURN_CODE" -> "2")),
       OrderMoved(Position(0) / Then % 0 / Then % 0),
-      OrderAttachable(TestAgentRefPath),
-      OrderAttached(TestAgentRefPath),
+      OrderAttachable(TestAgentName),
+      OrderAttached(TestAgentName),
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(Outcome.Failed(ReturnCode(2), Map("JOB-KEY" -> "JOB-RESULT"))),

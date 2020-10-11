@@ -2,6 +2,7 @@ package js7.core.event.journal
 
 import js7.base.time.Timestamp
 import js7.data.event.{Event, JournaledState, KeyedEvent, Stamped}
+import scala.collection.immutable
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
@@ -30,7 +31,7 @@ extends JournalingActor[S, E]
   : Future[A] =
     super.persistKeyedEvents(toTimestamped(keyedEvents), async = async)(callback)
 
-  protected final def persistTransaction[EE <: E, A](keyedEvents: Iterable[KeyedEvent[EE]], async: Boolean = false)
+  protected final def persistTransaction[EE <: E, A](keyedEvents: immutable.Iterable[KeyedEvent[EE]], async: Boolean = false)
     (callback: (Seq[Stamped[KeyedEvent[EE]]], S) => A)
   : Future[A] =
     persistTransactionTimestamped(toTimestamped(keyedEvents), async = async)(callback)

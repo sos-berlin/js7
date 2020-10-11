@@ -3,7 +3,7 @@ package js7.data.execution.workflow.instructions
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Checked._
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.execution.workflow.context.OrderContext
 import js7.data.execution.workflow.instructions.TryExecutorTest._
 import js7.data.job.{ExecutablePath, ReturnCode}
@@ -57,7 +57,7 @@ object TryExecutorTest {
   private val TestWorkflowId = WorkflowPath("/WORKFLOW") ~ "VERSION"
   private val AOrder = Order(OrderId("ORDER-A"), TestWorkflowId /: Position(7), Order.Fresh(),
     historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(ReturnCode(1))) :: Nil)
-  private val TryJob = Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/THEN")))
-  private val CatchJob = Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/ELSE")))
+  private val TryJob = Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("/THEN")))
+  private val CatchJob = Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("/ELSE")))
   private val tryInstruction = TryInstruction(Workflow.of(TryJob), Workflow.of(CatchJob))
 }

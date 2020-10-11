@@ -7,14 +7,13 @@ import js7.common.scalautil.FileUtils.deleteDirectoryContentRecursively
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Logger
 import js7.controller.tests.TestEnvironment._
-import js7.data.agent.AgentRefPath
-import js7.data.folder.FolderPath
+import js7.data.agent.AgentName
 import js7.data.item.{SourceType, TypedPath}
 
 /**
   * @author Joacim Zschimmer
   */
-final class TestEnvironment(agentRefPaths: Seq[AgentRefPath], temporaryDirectory: Path)
+final class TestEnvironment(agentNames: Seq[AgentName], temporaryDirectory: Path)
 extends AutoCloseable {
 
   if (exists(temporaryDirectory)) {
@@ -24,10 +23,10 @@ extends AutoCloseable {
 
   createDirectories(controllerDir / "config/private")
   createDirectories(controllerDir / "data")
-  for (agentRefPath <- agentRefPaths) {
-    createDirectories(agentDir(agentRefPath) / "config/private")
-    createDirectories(agentDir(agentRefPath) / "config/executables")
-    createDirectory(agentDir(agentRefPath) / "data")
+  for (agentName <- agentNames) {
+    createDirectories(agentDir(agentName) / "config/private")
+    createDirectories(agentDir(agentName) / "config/executables")
+    createDirectory(agentDir(agentName) / "data")
   }
 
   def close(): Unit = {
@@ -39,13 +38,11 @@ extends AutoCloseable {
    def controllerDir: Path =
     temporaryDirectory / "controller"
 
-  def agentFile(agentRefPath: AgentRefPath, path: TypedPath, t: SourceType): Path =
-    agentDir(agentRefPath) / "config/live" resolve path.toFile(t)
+  def agentFile(agentName: AgentName, path: TypedPath, t: SourceType): Path =
+    agentDir(agentName) / "config/live" resolve path.toFile(t)
 
-  def agentDir(agentRefPath: AgentRefPath): Path = {
-    require(FolderPath.parentOf(agentRefPath) == FolderPath.Root, "Directory layout is not suitable for nested AgentRef paths")
-    agentsDir / agentRefPath.withoutStartingSlash
-  }
+  def agentDir(name: AgentName): Path =
+    agentsDir / name.string
 
   def agentsDir = temporaryDirectory / "agents"
 }

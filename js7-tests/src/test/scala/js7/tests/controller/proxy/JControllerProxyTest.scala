@@ -8,12 +8,11 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Lazy
-import js7.base.web.Uri
 import js7.common.configutils.Configs._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import js7.data.agent.{AgentRef, AgentRefPath}
+import js7.data.agent.AgentName
 import js7.data.controller.ControllerItems.jsonCodec
 import js7.data.item.{InventoryItem, VersionId}
 import js7.data.job.ExecutablePath
@@ -21,7 +20,6 @@ import js7.data.workflow.WorkflowPath
 import js7.proxy.javaapi.JProxyContext
 import js7.proxy.javaapi.data.auth.{JAdmission, JCredentials, JHttpsConfig}
 import js7.tests.controller.proxy.ClusterProxyTest.workflow
-import js7.tests.controller.proxy.JControllerProxyTest._
 import js7.tests.testenv.DirectoryProvider.script
 import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.global
@@ -41,7 +39,7 @@ final class JControllerProxyTest extends AnyFreeSpec with DirectoryProviderForSc
     }
     """
 
-  protected val agentRefPaths = AgentRefPath("/AGENT") :: Nil
+  protected val agentNames = AgentName("AGENT") :: Nil
   protected val inventoryItems = Nil
 
   override def beforeAll() = {
@@ -72,7 +70,6 @@ final class JControllerProxyTest extends AnyFreeSpec with DirectoryProviderForSc
           List[InventoryItem](
             workflow.withVersion(myVersionId),
             workflow.withId(WorkflowPath("/B-WORKFLOW") ~ myVersionId),
-            unusedAgentRef.withVersion(VersionId("MY-VERSION")),
           ).map(_.asJson.compactPrint).asJava,
           (1 to 1000).map(i => workflow.withId(WorkflowPath(s"/WORKFLOW-$i") ~ myVersionId))
             .map(_.asJson.compactPrint).asJava,
@@ -100,9 +97,4 @@ final class JControllerProxyTest extends AnyFreeSpec with DirectoryProviderForSc
       assert(tried.failed.toOption.exists(_.isInstanceOf[CancellationException]))
     }
   }
-}
-
-object JControllerProxyTest
-{
-  private val unusedAgentRef = AgentRef(AgentRefPath("/ADDED-AGENT") ~ "INITIAL", Uri("http://localhost:1"))
 }

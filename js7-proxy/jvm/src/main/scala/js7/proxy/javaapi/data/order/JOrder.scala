@@ -5,7 +5,7 @@ import java.util.Optional
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.order.{Order, OrderId}
 import js7.proxy.javaapi.data.common.VavrConverters._
 import js7.proxy.javaapi.data.common.{JJsonable, JavaWrapper}
@@ -40,7 +40,7 @@ extends JJsonable[JOrder]
   def parent: Optional[OrderId] =
     asScala.parent.toJava
 
-  def attached: VEither[Problem, AgentRefPath] =
+  def attached: VEither[Problem, AgentName] =
     asScala.attached.toVavr
 
   def checkedState[S <: State](s: StateType[S]): VEither[Problem, S] =

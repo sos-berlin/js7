@@ -7,9 +7,9 @@ import js7.base.problem.Checked.Ops
 import js7.base.time.Timestamp
 import js7.base.utils.Collections.implicits._
 import js7.base.web.Uri
-import js7.controller.data.agent.AgentSnapshot
+import js7.controller.data.agent.AgentRefState
 import js7.controller.data.{ControllerMetaState, ControllerState}
-import js7.data.agent.{AgentRef, AgentRefPath}
+import js7.data.agent.{AgentName, AgentRef}
 import js7.data.cluster.{ClusterSetting, ClusterState}
 import js7.data.controller.{ControllerId, ControllerItems}
 import js7.data.event.{EventId, JournalState, JournaledState}
@@ -67,15 +67,15 @@ private object JControllerStateTest
   private val v2 = VersionId("2.0")
   private val aWorkflow = WorkflowParser.parse(WorkflowPath("/A-WORKFLOW") ~ v1,
     """|define workflow {
-       |  execute agent="/AGENT", executable="/A-EXECUTABLE";
+       |  execute agent="AGENT", executable="/A-EXECUTABLE";
        |}
        |""".stripMargin).orThrow
   private val bWorkflow = WorkflowParser.parse(WorkflowPath("/B-WORKFLOW") ~ v1,
     """|define workflow {
-       |  execute agent="/AGENT", executable="/B-EXECUTABLE";
+       |  execute agent="AGENT", executable="/B-EXECUTABLE";
        |}
        |""".stripMargin).orThrow
-  private val agentRef = AgentRef(AgentRefPath("/AGENT") ~ v1, Uri("http://agent.example.com"))
+  private val agentRef = AgentRef(AgentName("AGENT"), Uri("http://agent.example.com"))
 
   private val itemSigner = new InventoryItemSigner(SillySigner.Default, ControllerItems.jsonCodec)
 
@@ -90,14 +90,13 @@ private object JControllerStateTest
             NodeId("B") -> Uri("http://B")),
           activeId = NodeId("A")))),
     ControllerMetaState(ControllerId("CONTROLLER-ID"), Timestamp("2019-05-24T12:00:00Z"), timezone = "Europe/Berlin"),
+    (AgentRefState(AgentRef(AgentName("AGENT"), Uri("https://AGENT")), None, EventId(7)) :: Nil).toKeyedMap(_.name),
     Repo.empty
       .applyEvents(List(
         VersionAdded(v1),
-        itemSigner.toAddedEvent(agentRef),
         itemSigner.toAddedEvent(aWorkflow),
         itemSigner.toAddedEvent(bWorkflow)),
       ).orThrow,
-    (AgentSnapshot(AgentRefPath("/AGENT"), None, EventId(7)) :: Nil).toKeyedMap(_.agentRefPath),
     Vector(
       Order(
         OrderId("A-ORDER"),

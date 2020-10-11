@@ -8,7 +8,7 @@ import js7.base.time.{Stopwatch, Timestamp}
 import js7.base.utils.Collections.implicits.RichTraversable
 import js7.common.scalautil.Futures.implicits._
 import js7.controller.web.controller.api.graphql.ControllerGraphqlSchemaTest._
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.item.{InventoryItem, ItemId, VersionId}
 import js7.data.job.{ExecutablePath, ReturnCode}
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
@@ -89,7 +89,7 @@ final class ControllerGraphqlSchemaTest extends AnyFreeSpec
             }
             ... on Execute_Anonymous {
               job {
-                agentRefPath
+                agentName
                 executablePath
                 taskLimit
               }
@@ -98,7 +98,7 @@ final class ControllerGraphqlSchemaTest extends AnyFreeSpec
         }
         attachedState {
           TYPE
-          agentRefPath
+          agentName
         }
         state {
           TYPE
@@ -170,7 +170,7 @@ final class ControllerGraphqlSchemaTest extends AnyFreeSpec
               },
               "attachedState": {
                 "TYPE": "Attaching",
-                "agentRefPath": "/AGENT"
+                "agentName": "AGENT"
               },
               "lastOutcome": {
                 "TYPE": "Succeeded",
@@ -196,7 +196,7 @@ final class ControllerGraphqlSchemaTest extends AnyFreeSpec
               },
               "attachedState": {
                 "TYPE": "Attached",
-                "agentRefPath": "/AGENT"
+                "agentName": "AGENT"
               },
               "lastOutcome": {
                 "TYPE": "Succeeded",
@@ -228,7 +228,7 @@ final class ControllerGraphqlSchemaTest extends AnyFreeSpec
               },
               "attachedState": {
                 "TYPE": "Attached",
-                "agentRefPath": "/AGENT"
+                "agentName": "AGENT"
               }
             }, {
               "id": "15",
@@ -242,7 +242,7 @@ final class ControllerGraphqlSchemaTest extends AnyFreeSpec
                 "instruction": {
                 "TYPE": "Execute.Anonymous",
                   "job": {
-                    "agentRefPath": "/AGENT",
+                    "agentName": "AGENT",
                     "executablePath": "/TEST.sh",
                     "taskLimit": 1
                   }
@@ -250,7 +250,7 @@ final class ControllerGraphqlSchemaTest extends AnyFreeSpec
               },
               "attachedState": {
                 "TYPE": "Attached",
-                "agentRefPath": "/AGENT"
+                "agentName": "AGENT"
               },
               "lastOutcome": {
                 "TYPE": "Succeeded",
@@ -500,17 +500,17 @@ object ControllerGraphqlSchemaTest
 
   private trait TestContext extends QueryContext {
     def scheduler = Scheduler.global
-    private val agentRefPath = AgentRefPath("/AGENT")
+    private val agentName = AgentName("AGENT")
     private val fresh = Order.Fresh(Some(Timestamp.parse("2018-04-16T11:22:33Z")))
-    private val attached = Some(Order.Attached(agentRefPath))
+    private val attached = Some(Order.Attached(agentName))
 
     protected val idToOrder = Vector[Order[Order.State]](
         Order(OrderId("11"), (WorkflowPath("/A-WORKFLOW") ~ "1") /: Position(0), fresh),
-        Order(OrderId("12"), (WorkflowPath("/A-WORKFLOW") ~ "1") /: Position(0), fresh, attachedState = Some(Order.Attaching(agentRefPath))),
+        Order(OrderId("12"), (WorkflowPath("/A-WORKFLOW") ~ "1") /: Position(0), fresh, attachedState = Some(Order.Attaching(agentName))),
         Order(OrderId("13"), (WorkflowPath("/A-WORKFLOW") ~ "1") /: Position(0), fresh, attachedState = attached),
         Order(OrderId("14"), (WorkflowPath("/B-WORKFLOW") ~ "1") /: Position(1), Order.Ready, attachedState = attached),
         Order(OrderId("15"), (WorkflowPath("/A-WORKFLOW") ~ "1") /: (Position(1) / "fork+BRANCH" % 0), Order.Processing,
-          attachedState = Some(Order.Attached(AgentRefPath("/AGENT"))),
+          attachedState = Some(Order.Attached(AgentName("AGENT"))),
           parent = Some(OrderId("PARENT")),
           arguments = Map("KEY" -> "VALUE", "X" -> "XX")),
         Order(OrderId("16"), (WorkflowPath("/B-WORKFLOW") ~ "1") /: Position(2), Order.Processed,
@@ -540,8 +540,8 @@ object ControllerGraphqlSchemaTest
             Vector(
               Execute(WorkflowJob.Name("JOB")),
               Fork.of(
-                "BRANCH" -> Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/TEST.sh")))))),
-            Map(WorkflowJob.Name("JOB") -> WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/TEST.sh")))).asInstanceOf[A])
+                "BRANCH" -> Workflow.of(Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("/TEST.sh")))))),
+            Map(WorkflowJob.Name("JOB") -> WorkflowJob(AgentName("AGENT"), ExecutablePath("/TEST.sh")))).asInstanceOf[A])
         case _ => Problem(s"No such ''$id'")
     })
   }

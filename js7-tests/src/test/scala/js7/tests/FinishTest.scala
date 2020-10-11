@@ -3,10 +3,10 @@ package js7.tests
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.event.{EventSeq, KeyedEvent}
 import js7.data.job.{ExecutablePath, ReturnCode}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderAttached, OrderDetached}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.Fork
@@ -25,14 +25,14 @@ final class FinishTest extends AnyFreeSpec
   "finish" in {
     checkEvents[OrderFinished]("""
       |define workflow {
-      |  execute agent="/AGENT", executable="/test.cmd", successReturnCodes=[3];
+      |  execute agent="AGENT", executable="/test.cmd", successReturnCodes=[3];
       |  finish;
       |  fail;
       |}""".stripMargin,
       Vector(
         OrderAdded(TestWorkflowId),
-        OrderAttachable(TestAgentRefPath),
-        OrderAttached(TestAgentRefPath),
+        OrderAttachable(TestAgentName),
+        OrderAttached(TestAgentName),
         OrderStarted,
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
@@ -47,14 +47,14 @@ final class FinishTest extends AnyFreeSpec
      |define workflow {
      |  fork {
      |    "🥕": {
-     |      execute agent="/AGENT", executable="/test.cmd", successReturnCodes=[3];
+     |      execute agent="AGENT", executable="/test.cmd", successReturnCodes=[3];
      |      if (true) {
      |        finish;
      |      }
-     |      execute agent="/AGENT", executable="/test.cmd", successReturnCodes=[3];
+     |      execute agent="AGENT", executable="/test.cmd", successReturnCodes=[3];
      |     },
      |    "🍋": {
-     |      execute agent="/AGENT", executable="/sleep.cmd";
+     |      execute agent="AGENT", executable="/sleep.cmd";
      |    }
      |  }
      |}""".stripMargin)
@@ -72,8 +72,8 @@ final class FinishTest extends AnyFreeSpec
 
     assert(events.filter(_.key == orderId / "🥕").map(_.event) ==
       Vector(
-        OrderAttachable(TestAgentRefPath),
-        OrderAttached(TestAgentRefPath),
+        OrderAttachable(TestAgentName),
+        OrderAttached(TestAgentName),
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
         OrderMoved(Position(0) / "fork+🥕" % 1 / Then % 0),  // Position of Finish
@@ -83,8 +83,8 @@ final class FinishTest extends AnyFreeSpec
 
     assert(events.filter(_.key == orderId / "🍋").map(_.event) ==
       Vector(
-        OrderAttachable(TestAgentRefPath),
-        OrderAttached(TestAgentRefPath),
+        OrderAttachable(TestAgentName),
+        OrderAttached(TestAgentName),
         OrderProcessingStarted,
         OrderProcessed(Outcome.succeeded),
         OrderMoved(Position(0) / "fork+🍋" % 1),
@@ -97,14 +97,14 @@ final class FinishTest extends AnyFreeSpec
      |define workflow {
      |  fork {
      |    "🥕": {
-     |      execute agent="/AGENT", executable="/sleep.cmd";
+     |      execute agent="AGENT", executable="/sleep.cmd";
      |      if (true) {
      |        finish;
      |      }
-     |      execute agent="/AGENT", executable="/test.cmd";
+     |      execute agent="AGENT", executable="/test.cmd";
      |    },
      |    "🍋": {
-     |      execute agent="/AGENT", executable="/test.cmd", successReturnCodes=[3];
+     |      execute agent="AGENT", executable="/test.cmd", successReturnCodes=[3];
      |    }
      |  }
      |}""".stripMargin)
@@ -122,8 +122,8 @@ final class FinishTest extends AnyFreeSpec
 
     assert(events.filter(_.key == orderId / "🥕").map(_.event) ==
       Vector(
-        OrderAttachable(TestAgentRefPath),
-        OrderAttached(TestAgentRefPath),
+        OrderAttachable(TestAgentName),
+        OrderAttached(TestAgentName),
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
         OrderMoved(Position(0) / "fork+🥕" % 1 / Then % 0),  // Position of Finish
@@ -133,8 +133,8 @@ final class FinishTest extends AnyFreeSpec
 
     assert(events.filter(_.key == orderId / "🍋").map(_.event) ==
       Vector(
-        OrderAttachable(TestAgentRefPath),
-        OrderAttached(TestAgentRefPath),
+        OrderAttachable(TestAgentName),
+        OrderAttached(TestAgentName),
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
         OrderMoved(Position(0) / "fork+🍋" % 1),
@@ -148,7 +148,7 @@ final class FinishTest extends AnyFreeSpec
 
   private def runUntil[E <: OrderEvent: ClassTag: TypeTag](workflowNotation: String): Vector[KeyedEvent[OrderEvent]] = {
     val workflow = WorkflowParser.parse(TestWorkflowId, workflowNotation).orThrow
-    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflow :: Nil, testName = Some("FinishTest"))) { directoryProvider =>
+    autoClosing(new DirectoryProvider(TestAgentName :: Nil, workflow :: Nil, testName = Some("FinishTest"))) { directoryProvider =>
       directoryProvider.agents.head.writeExecutable(ExecutablePath("/test.cmd"), "exit 3")
       directoryProvider.agents.head.writeExecutable(ExecutablePath("/sleep.cmd"), DirectoryProvider.script(100.ms))
       directoryProvider.run { (controller, _) =>
@@ -166,6 +166,6 @@ final class FinishTest extends AnyFreeSpec
 object FinishTest
 {
   private val orderId = OrderId("🔺")
-  private val TestAgentRefPath = AgentRefPath("/AGENT")
+  private val TestAgentName = AgentName("AGENT")
   private val TestWorkflowId = WorkflowPath("/WORKFLOW") ~ "INITIAL"
 }

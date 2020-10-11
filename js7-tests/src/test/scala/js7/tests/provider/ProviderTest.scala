@@ -22,12 +22,12 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.scalautil.xmls.ScalaXmls.implicits._
 import js7.common.system.OperatingSystem.isMac
 import js7.core.item.{InventoryItemReader, TypedPaths}
-import js7.data.agent.{AgentRef, AgentRefPath}
+import js7.data.agent.AgentName
 import js7.data.event.EventId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.item.Repo.Entry
 import js7.data.item.RepoEvent.{ItemAdded, ItemChanged, ItemDeleted, ItemEvent, VersionAdded}
-import js7.data.item.{IntenvoryItems, Repo, SourceType, VersionId}
+import js7.data.item.{IntentoryItems, Repo, SourceType, VersionId}
 import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.OrderAdded
 import js7.data.workflow.parser.WorkflowParser
@@ -46,8 +46,8 @@ import scala.concurrent.duration._
   */
 final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  override protected def suppressRepoInitialization = true
-  protected val agentRefPaths = agentRefPath :: Nil
+  override protected def suppressAgentAndRepoInitialization = true
+  protected val agentNames = agentName :: Nil
   protected val inventoryItems = Nil
   private lazy val agentRef = directoryProvider.agentRefs.head
   private lazy val privateKeyPassword = SecretString("")
@@ -71,8 +71,13 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
     createDirectories(orderGeneratorsDir)
 
     providerDirectory / "config" / "provider.conf" :=
-      """js7.provider.add-orders-every = 0.1s
+      s"""js7.provider.add-orders-every = 0.1s
         |js7.provider.add-orders-earlier = 0.1s
+        |js7.provider.agents {
+        |  ${agentRef.name} {
+        |    uri = "${agentRef.uri}"
+        |  }
+        |}
         |""".stripMargin
     providerDirectory / "config" / "private" / "private-silly-keys.txt" := privateKey
     providerDirectory / "config" / "private" / "private.conf" :=
@@ -116,20 +121,19 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       assert(checkedRepo.map(_.pathToVersionToSignedItems.isEmpty) == Right(true))
     }
 
-    "Start with one AgentRef and two workflows" in {
-      live.resolve(agentRef.path.toFile(SourceType.Json)) := agentRef
+    "Start with two workflows" in {
+      //live / (agentRef.name.string + ".agent.json") := agentRef
       writeWorkflowFile(AWorkflowPath)
       writeWorkflowFile(BWorkflowPath)
       v1Time
 
       // `initiallyUpdateControllerConfiguration` will send this diff to the Controller
-      assert(provider.testControllerDiff.await(99.seconds).orThrow == IntenvoryItems.Diff(
-        added = agentRef :: TestWorkflow.withId(AWorkflowPath) :: TestWorkflow.withId(BWorkflowPath) :: Nil))
+      assert(provider.testControllerDiff.await(99.seconds).orThrow == IntentoryItems.Diff(
+        added = TestWorkflow.withId(AWorkflowPath) :: TestWorkflow.withId(BWorkflowPath) :: Nil))
 
       provider.initiallyUpdateControllerConfiguration(V1.some).await(99.seconds).orThrow
+      //assert(controller.controllerState.map(_.nameToAgent.values).await(99.seconds) == Seq(agentRef))
       assert(controller.itemApi.checkedRepo.await(99.seconds).map(_.pathToVersionToSignedItems) == Right(Map(
-        agentRef.path -> List(
-          Entry(V1, Some(toSigned(agentRef withVersion V1)))),
         AWorkflowPath -> List(
           Entry(V1, Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1))))),
         AWorkflowPath -> List(
@@ -167,8 +171,6 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       delete(live / "ERROR-2.workflow.json")
       provider.updateControllerConfiguration(V2.some).await(99.seconds).orThrow
       assert(controller.itemApi.checkedRepo.await(99.seconds).map(_.pathToVersionToSignedItems) == Right(Map(
-        agentRef.path -> List(
-          Entry(V1, Some(toSigned(agentRef withVersion V1)))),
         AWorkflowPath -> List(
           Entry(V2, Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V2)))),
           Entry(V1, Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1))))),
@@ -183,8 +185,6 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       provider.updateControllerConfiguration(V3.some).await(99.seconds).orThrow
       assert(checkedRepo.map(_.versions) == Right(V3 :: V2 :: V1 :: Nil))
       assert(checkedRepo.map(_.pathToVersionToSignedItems) == Right(Map(
-        agentRef.path -> List(
-          Entry(V1, Some(toSigned(agentRef withVersion V1)))),
         AWorkflowPath -> List(
           Entry(V2, Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V2)))),
           Entry(V1, Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1))))),
@@ -205,7 +205,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       val workflow = WorkflowParser.parse(workflowPath, notation).orThrow
       live.resolve(workflowPath.toFile(SourceType.Txt)) := notation
 
-      assert(provider.testControllerDiff.await(99.seconds).orThrow == IntenvoryItems.Diff(added = workflow :: Nil))
+      assert(provider.testControllerDiff.await(99.seconds).orThrow == IntentoryItems.Diff(added = workflow :: Nil))
       provider.updateControllerConfiguration(V4.some).await(99.seconds).orThrow
       assert(provider.testControllerDiff.await(99.seconds).orThrow.isEmpty)
     }
@@ -225,7 +225,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
     "Initial observation with a workflow and an agentRef added" in {
       lastEventId = controller.eventWatch.lastAddedEventId
       writeWorkflowFile(BWorkflowPath)
-      live.resolve(agentRefPath.toFile(SourceType.Json)) := AgentRef(agentRefPath, uri = agent.localUri)
+      //live / (s"$agentName.json") := AgentRef(agentName, uri = agent.localUri)
 
       whenObserved
       val versionId = controller.eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
@@ -316,7 +316,7 @@ object ProviderTest
     js7.provider.directory-watch.poll-interval = ${if (isMac) "100ms" else "300s"}
     """
 
-  private val agentRefPath = AgentRefPath("/AGENT")
+  private val agentName = AgentName("AGENT")
   private val AWorkflowPath = WorkflowPath("/A")
   private val BWorkflowPath = WorkflowPath("/B")
   private val CWorkflowPath = WorkflowPath("/C")
@@ -332,7 +332,7 @@ object ProviderTest
         {
           "TYPE": "Execute.Anonymous",
           "job": {
-            "agentRefPath": "/AGENT",
+            "agentName": "AGENT",
             "executable": {
               "TYPE": "ExecutablePath",
               "path": "/EXECUTABLE"
@@ -349,7 +349,7 @@ object ProviderTest
         {
           "TYPE": "Execute.Anonymous",
           "job": {
-            "agentRefPath": "/AGENT",
+            "agentName": "AGENT",
             "executable": {
               "TYPE": "ExecutablePath",
               "path": "/OTHER-EXECUTABLE"

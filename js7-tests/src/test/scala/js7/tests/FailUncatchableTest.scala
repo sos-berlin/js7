@@ -2,7 +2,7 @@ package js7.tests
 
 import js7.base.problem.Checked.Ops
 import js7.base.utils.AutoClosing.autoClosing
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.event.{EventSeq, KeyedEvent}
 import js7.data.job.{ExecutablePath, ReturnCode}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten}
@@ -24,13 +24,13 @@ final class FailUncatchableTest extends AnyFreeSpec
   "fail" in {
     checkEvents[OrderFailed]("""
       |define workflow {
-      |  execute agent="/AGENT", executable="/test.cmd", successReturnCodes=[3];
+      |  execute agent="AGENT", executable="/test.cmd", successReturnCodes=[3];
       |  fail (uncatchable=true);
       |}""".stripMargin,
       Vector(
         OrderAdded(TestWorkflowId),
-        OrderAttachable(TestAgentRefPath),
-        OrderAttached(TestAgentRefPath),
+        OrderAttachable(TestAgentName),
+        OrderAttached(TestAgentName),
         OrderStarted,
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
@@ -43,13 +43,13 @@ final class FailUncatchableTest extends AnyFreeSpec
   "fail (uncatchable=true, returnCode=7)" in {
     checkEvents[OrderFailed]("""
       |define workflow {
-      |  execute agent="/AGENT", executable="/test.cmd", successReturnCodes=[3];
+      |  execute agent="AGENT", executable="/test.cmd", successReturnCodes=[3];
       |  fail (uncatchable=true, returnCode=7);
       |}""".stripMargin,
       Vector(
         OrderAdded(TestWorkflowId),
-        OrderAttachable(TestAgentRefPath),
-        OrderAttached(TestAgentRefPath),
+        OrderAttachable(TestAgentName),
+        OrderAttached(TestAgentName),
         OrderStarted,
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
@@ -62,13 +62,13 @@ final class FailUncatchableTest extends AnyFreeSpec
   "fail (uncatchable=true, returnCode=7, message='ERROR')" in {
     checkEvents[OrderFailed]("""
       |define workflow {
-      |  execute agent="/AGENT", executable="/test.cmd", successReturnCodes=[3];
+      |  execute agent="AGENT", executable="/test.cmd", successReturnCodes=[3];
       |  fail (uncatchable=true, returnCode=7, message='TEST-ERROR');
       |}""".stripMargin,
       Vector(
         OrderAdded(TestWorkflowId),
-        OrderAttachable(TestAgentRefPath),
-        OrderAttached(TestAgentRefPath),
+        OrderAttachable(TestAgentName),
+        OrderAttached(TestAgentName),
         OrderStarted,
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
@@ -83,11 +83,11 @@ final class FailUncatchableTest extends AnyFreeSpec
      |define workflow {
      |  fork {
      |    "🥕": {
-     |      execute agent="/AGENT", executable="/test.cmd", successReturnCodes=[3];
+     |      execute agent="AGENT", executable="/test.cmd", successReturnCodes=[3];
      |      fail (uncatchable=true, message="TEST-ERROR");
      |    },
      |    "🍋": {
-     |      execute agent="/AGENT", executable="/sleep.cmd";
+     |      execute agent="AGENT", executable="/sleep.cmd";
      |    }
      |  }
      |}""".stripMargin)
@@ -104,8 +104,8 @@ final class FailUncatchableTest extends AnyFreeSpec
 
     assert(events.filter(_.key == orderId / "🥕").map(_.event) ==
       Vector(
-        OrderAttachable(TestAgentRefPath),
-        OrderAttached(TestAgentRefPath),
+        OrderAttachable(TestAgentName),
+        OrderAttached(TestAgentName),
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
         OrderMoved(Position(0) / "fork+🥕" % 1),
@@ -115,8 +115,8 @@ final class FailUncatchableTest extends AnyFreeSpec
 
     assert(events.filter(_.key == orderId / "🍋").map(_.event) ==
       Vector(
-        OrderAttachable(TestAgentRefPath),
-        OrderAttached(TestAgentRefPath),
+        OrderAttachable(TestAgentName),
+        OrderAttached(TestAgentName),
         OrderProcessingStarted,
         OrderProcessed(Outcome.succeeded),
         OrderMoved(Position(0) / "fork+🍋" % 1),
@@ -129,11 +129,11 @@ final class FailUncatchableTest extends AnyFreeSpec
      |define workflow {
      |  fork {
      |    "🥕": {
-     |      execute agent="/AGENT", executable="/sleep.cmd";
+     |      execute agent="AGENT", executable="/sleep.cmd";
      |      fail (uncatchable=true, message="TEST-ERROR");
      |    },
      |    "🍋": {
-     |      execute agent="/AGENT", executable="/test.cmd", successReturnCodes=[3];
+     |      execute agent="AGENT", executable="/test.cmd", successReturnCodes=[3];
      |    }
      |  }
      |}""".stripMargin)
@@ -150,8 +150,8 @@ final class FailUncatchableTest extends AnyFreeSpec
 
     assert(events.filter(_.key == orderId / "🥕").map(_.event) ==
       Vector(
-        OrderAttachable(TestAgentRefPath),
-        OrderAttached(TestAgentRefPath),
+        OrderAttachable(TestAgentName),
+        OrderAttached(TestAgentName),
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
         OrderMoved(Position(0) / "fork+🥕" % 1),
@@ -161,8 +161,8 @@ final class FailUncatchableTest extends AnyFreeSpec
 
     assert(events.filter(_.key == orderId / "🍋").map(_.event) ==
       Vector(
-        OrderAttachable(TestAgentRefPath),
-        OrderAttached(TestAgentRefPath),
+        OrderAttachable(TestAgentName),
+        OrderAttached(TestAgentName),
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
         OrderMoved(Position(0) / "fork+🍋" % 1),
@@ -175,7 +175,7 @@ final class FailUncatchableTest extends AnyFreeSpec
 
   private def runUntil[E <: OrderEvent: ClassTag: TypeTag](workflowNotation: String): Vector[KeyedEvent[OrderEvent]] = {
     val workflow = WorkflowParser.parse(TestWorkflowId, workflowNotation).orThrow
-    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflow :: Nil, testName = Some("FailUncatchableTest"))) { directoryProvider =>
+    autoClosing(new DirectoryProvider(TestAgentName :: Nil, workflow :: Nil, testName = Some("FailUncatchableTest"))) { directoryProvider =>
       directoryProvider.agents.head.writeExecutable(ExecutablePath("/test.cmd"), "exit 3")
       directoryProvider.agents.head.writeExecutable(ExecutablePath("/sleep.cmd"), DirectoryProvider.script(100.milliseconds))
       directoryProvider.run { (controller, _) =>
@@ -193,6 +193,6 @@ final class FailUncatchableTest extends AnyFreeSpec
 object FailUncatchableTest
 {
   private val orderId = OrderId("🔺")
-  private val TestAgentRefPath = AgentRefPath("/AGENT")
+  private val TestAgentName = AgentName("AGENT")
   private val TestWorkflowId = WorkflowPath("/WORKFLOW") ~ "INITIAL"
 }

@@ -1,8 +1,7 @@
 package js7.proxy.javaapi.data.agent;
 
 import js7.base.web.Uri;
-import js7.data.agent.AgentRefPath;
-import js7.data.item.VersionId;
+import js7.data.agent.AgentName;
 import static js7.proxy.javaapi.data.common.VavrUtils.getOrThrow;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -12,12 +11,10 @@ import static org.hamcrest.Matchers.equalTo;
  */
 class JAgentRefTester
 {
-    private static final JAgentRefId expectedJAgentRefId = JAgentRefId.of("/AGENTREF", "1.0");
     private static final String agentRefJson =
        "{\n" +
        "  \"TYPE\": \"AgentRef\",\n" +
-       "  \"path\": \"/AGENTREF\",\n" +
-       "  \"versionId\": \"1.0\",\n" +
+       "  \"name\": \"AGENT\",\n" +
        "  \"uri\": \"https://agent.example.com\"\n" +
        "}";
 
@@ -28,20 +25,14 @@ class JAgentRefTester
     }
 
     void test() {
-        testAgentRefId();
+        testAgentName();
         testJson();
         assertThat(agentRef.uri(), equalTo(Uri.of("https://agent.example.com")));
         assertThat(agentRef.uri().string(), equalTo("https://agent.example.com"));
     }
 
-    private void testAgentRefId() {
-        assertThat(agentRef.id(), equalTo(expectedJAgentRefId));
-
-        VersionId versionId = agentRef.id().versionId();
-        assertThat(versionId, equalTo(VersionId.of("1.0")));
-
-        AgentRefPath workflowPath = agentRef.id().path();
-        assertThat(workflowPath, equalTo(AgentRefPath.of("/AGENTREF")));
+    private void testAgentName() {
+        assertThat(agentRef.name(), equalTo(AgentName.of("AGENT")));
     }
 
     private void testJson() {

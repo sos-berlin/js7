@@ -4,8 +4,8 @@ import js7.base.Problems.TamperedWithSignedMessageProblem
 import js7.base.auth.User.UserDoesNotHavePermissionProblem
 import js7.base.auth.{UpdateRepoPermission, UserAndPassword, UserId}
 import js7.base.generic.SecretString
+import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
-import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
 import js7.common.http.AkkaHttpClient.HttpException
 import js7.common.scalautil.FileUtils.syntax._
@@ -15,7 +15,7 @@ import js7.common.system.OperatingSystem.operatingSystem.sleepingShellScript
 import js7.controller.data.ControllerCommand
 import js7.controller.data.ControllerCommand.{RemoveOrdersWhenTerminated, ReplaceRepo, UpdateRepo}
 import js7.data.Problems.{ItemDeletedProblem, ItemVersionDoesNotMatchProblem}
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.event.{EventRequest, EventSeq}
 import js7.data.item.VersionId
 import js7.data.job.ExecutablePath
@@ -25,7 +25,6 @@ import js7.data.workflow.WorkflowPath
 import js7.data.workflow.parser.WorkflowParser
 import js7.tests.controller.commands.UpdateRepoTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
-import js7.tests.testenv.DirectoryProvider.Vinitial
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Promise
@@ -37,7 +36,7 @@ import scala.concurrent.duration._
   */
 final class UpdateRepoTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentRefPaths = TestAgentRefPath :: Nil
+  protected val agentNames = TestAgentName :: Nil
   protected val inventoryItems = Nil
 
   override def beforeAll() = {
@@ -52,9 +51,9 @@ final class UpdateRepoTest extends AnyFreeSpec with ControllerAgentForScalaTest
          |  }
          |}
          |""".stripMargin
-    directoryProvider.agentToTree(TestAgentRefPath).writeExecutable(ExecutablePath("/SCRIPT1.cmd"), sleepingShellScript(2 * Tick))
-    directoryProvider.agentToTree(TestAgentRefPath).writeExecutable(ExecutablePath("/SCRIPT2.cmd"), ":")
-    directoryProvider.agentToTree(TestAgentRefPath).writeExecutable(ExecutablePath("/SCRIPT4.cmd"), ":")
+    directoryProvider.agentToTree(TestAgentName).writeExecutable(ExecutablePath("/SCRIPT1.cmd"), sleepingShellScript(2 * Tick))
+    directoryProvider.agentToTree(TestAgentName).writeExecutable(ExecutablePath("/SCRIPT2.cmd"), ":")
+    directoryProvider.agentToTree(TestAgentName).writeExecutable(ExecutablePath("/SCRIPT4.cmd"), ":")
     super.beforeAll()
   }
 
@@ -97,32 +96,23 @@ final class UpdateRepoTest extends AnyFreeSpec with ControllerAgentForScalaTest
   }
 
   "ControllerCommand.ReplaceRepo replaces all configuration objects" in {
-    pending   // TODO Change of agents is not supported yet!
-    // First, add two workflows
-    executeCommand(UpdateRepo(V4, sign(workflow4) :: sign(otherWorkflow4) :: Nil)).orThrow
+    executeCommand(ReplaceRepo(V4, sign(workflow4) :: sign(otherWorkflow4) :: Nil)).orThrow
     locally {
       val checkedRepo = controller.itemApi.checkedRepo.await(99.s)
-      assert(checkedRepo.map(_.versions) == Right(V4 :: V3 :: V2 :: V1 :: Vinitial :: Nil))
+      assert(checkedRepo.map(_.versions) == Right(V4 :: V3 :: V2 :: V1 :: Nil))
       assert(checkedRepo.map(_.currentItems.toSet) ==
-        Right(Set(workflow4 withVersion V4, otherWorkflow4 withVersion V4) ++ directoryProvider.agentRefs.map(_ withVersion Vinitial)))
+        Right(Set(workflow4 withVersion V4, otherWorkflow4 withVersion V4)))
     }
 
     // Now replace: delete one workflow and change the other
     executeCommand(ReplaceRepo(V5, otherWorkflow5 +: Nil/*directoryProvider.agentRefs.map(_ withVersion V5)*/ map sign)).orThrow
     val checkedRepo = controller.itemApi.checkedRepo.await(99.s)
-    assert(checkedRepo.map(_.versions) == Right(V5 :: V4 :: V3 :: V2 :: V1 :: Vinitial :: Nil))
-    assert(checkedRepo.map(_.currentItems.toSet) ==
-      Right(Set(otherWorkflow5 withVersion V5) ++ directoryProvider.agentRefs.map(_ withVersion V5)))
+    assert(checkedRepo.map(_.versions) == Right(V5 :: V4 :: V3 :: V2 :: V1 :: Nil))
+    assert(checkedRepo.map(_.currentItems.toSet) == Right(Set(otherWorkflow5 withVersion V5)))
 
     val orderId = OrderId("⭕️")
     controller.addOrderBlocking(FreshOrder(orderId, otherWorkflow5.path))
-
-    val promise = Promise[Deadline]()
-    controller.eventWatch.when[OrderFinished](EventRequest.singleClass[OrderFinished](timeout = Some(99.s)), _.key == orderId) foreach {
-      case EventSeq.NonEmpty(_) => promise.success(now)
-      case o => fail(s"Unexpected: $o")
-    }
-    //...
+    controller.eventWatch.await[OrderFinished](_.key == orderId)
   }
 
   "ControllerCommand.UpdateRepo with divergent VersionId is rejected" in {
@@ -146,11 +136,11 @@ final class UpdateRepoTest extends AnyFreeSpec with ControllerAgentForScalaTest
 object UpdateRepoTest
 {
   private val Tick = 2.s
-  private val TestAgentRefPath = AgentRefPath("/AGENT")
+  private val TestAgentName = AgentName("AGENT")
   private val TestWorkflowPath = WorkflowPath("/WORKFLOW")
   private val script1 = """
     define workflow {
-      execute executable="/SCRIPT1.cmd", agent="/AGENT";
+      execute executable="/SCRIPT1.cmd", agent="AGENT";
     }"""
 
   private val V1 = VersionId("1")
@@ -159,7 +149,7 @@ object UpdateRepoTest
   private val V2 = VersionId("2")
   private val script2 = """
     define workflow {
-      execute executable="/SCRIPT2.cmd", agent="/AGENT";
+      execute executable="/SCRIPT2.cmd", agent="AGENT";
     }"""
   private val workflow2 = WorkflowParser.parse(TestWorkflowPath ~ V2, script2).orThrow
 
@@ -172,7 +162,7 @@ object UpdateRepoTest
   private val V5 = VersionId("5")
   private val script5 = """
     define workflow {
-      execute executable="/SCRIPT4.cmd", agent="/AGENT";
+      execute executable="/SCRIPT4.cmd", agent="AGENT";
     }"""
   private val otherWorkflow5 = WorkflowParser.parse(WorkflowPath("/OTHER-WORKFLOW") ~ V5, script5).orThrow
 }

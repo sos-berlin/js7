@@ -10,12 +10,10 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Json, JsonObject}
 import java.time.ZoneId
 import javax.inject.Singleton
-import js7.agent.data.views.AgentOverview
 import js7.base.BuildInfo
 import js7.base.auth.SessionToken
 import js7.base.circeutils.CirceUtils._
 import js7.base.crypt.silly.{SillySignature, SillySigner}
-import js7.base.data.ByteSequence.ops._
 import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
@@ -35,17 +33,17 @@ import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.system.OperatingSystem.operatingSystem
 import js7.common.time.WaitForCondition
-import js7.controller.data.events.ControllerAgentEvent
-import js7.controller.data.events.ControllerAgentEvent.AgentRegisteredController
+import js7.controller.data.events.AgentRefStateEvent
+import js7.controller.data.events.AgentRefStateEvent.AgentRegisteredController
 import js7.controller.data.events.ControllerEvent.ControllerReady
 import js7.controller.data.{ControllerMetaState, ControllerState}
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.event.{<-:, Event, KeyedEvent}
 import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.{OrderFinished, OrderMoved, OrderProcessed}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.WorkflowPath
-import js7.data.workflow.test.TestSetting.TestAgentRefPath
+import js7.data.workflow.test.TestSetting.TestAgentName
 import js7.tester.CirceJsonTester.testJson
 import js7.tests.ControllerWebServiceTest._
 import js7.tests.testenv.{ControllerAgentForScalaTest, DirectoryProvider}
@@ -68,7 +66,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
 
   private lazy val uri = controller.localUri
 
-  protected val agentRefPaths = TestAgentRefPath :: AgentRefPath("/FOLDER/AGENT-A") :: Nil
+  protected val agentNames = TestAgentName :: AgentName("AGENT-A") :: Nil
   protected val inventoryItems = Nil
   private lazy val agent1Uri = directoryProvider.agents(0).localUri
   private lazy val agent2Uri = directoryProvider.agents(1).localUri
@@ -114,8 +112,8 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
 
   "Await AgentReady" in {
     // Proceed first after all AgentReady have been received, to get an event sequence as expected
-    for (agentRefPath <- agentRefPaths) {
-      controller.eventWatch.await[ControllerAgentEvent.AgentReady](predicate = _.key == agentRefPath)
+    for (agentName <- agentNames) {
+      controller.eventWatch.await[AgentRefStateEvent.AgentReady](predicate = _.key == agentName)
     }
   }
 
@@ -157,7 +155,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           {
             "TYPE": "Execute.Anonymous",
             "job": {
-              "agentRefPath": "/AGENT",
+              "agentName": "AGENT",
               "executable": {
                 "TYPE": "ExecutablePath",
                 "path": "/A$sh"
@@ -177,7 +175,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           {
             "TYPE": "Execute.Anonymous",
             "job": {
-              "agentRefPath": "/AGENT",
+              "agentName": "AGENT",
               "executable": {
                 "TYPE": "ExecutablePath",
                 "path": "/B$sh"
@@ -187,7 +185,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           }, {
             "TYPE": "Execute.Anonymous",
             "job": {
-              "agentRefPath": "/AGENT",
+              "agentName": "AGENT",
               "executable": {
                 "TYPE": "ExecutablePath",
                 "path": "/MISSING$sh"
@@ -253,7 +251,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           {
             "TYPE": "Execute.Anonymous",
             "job": {
-              "agentRefPath": "/AGENT",
+              "agentName": "AGENT",
               "executable": {
                "TYPE": "ExecutablePath",
                "path": "/B$sh"
@@ -263,7 +261,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           }, {
             "TYPE": "Execute.Anonymous",
             "job": {
-              "agentRefPath": "/AGENT",
+              "agentName": "AGENT",
               "executable": {
                "TYPE": "ExecutablePath",
                "path": "/MISSING$sh"
@@ -276,57 +274,46 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
   }
 
   "/controller/api/agent" - {
-    testGet("controller/api/agent",
-      RawHeader("X-JS7-Session", sessionToken) :: Nil,
-      json"""{
-        "count": 2
-      }""")
+    //testGet("controller/api/agent",
+    //  RawHeader("X-JS7-Session", sessionToken) :: Nil,
+    //  json"""{
+    //    "count": 2
+    //  }""")
 
     testGet("controller/api/agent/",
       RawHeader("X-JS7-Session", sessionToken) :: Nil,
       json"""[
-        "/AGENT",
-        "/FOLDER/AGENT-A"
+        "AGENT",
+        "AGENT-A"
       ]""")
 
     testGet("controller/api/agent/?return=AgentRef",
       RawHeader("X-JS7-Session", sessionToken) :: Nil,
       json"""[
           {
-            "path": "/AGENT",
-            "versionId": "INITIAL",
+            "name": "AGENT",
             "uri": "$agent1Uri"
           }, {
-            "path": "/FOLDER/AGENT-A",
-            "versionId": "INITIAL",
+            "name": "AGENT-A",
             "uri": "$agent2Uri"
           }
         ]""")
 
-    testGet("controller/api/agent/FOLDER/AGENT-A?return=AgentRef",
+    testGet("controller/api/agent/AGENT-A?return=AgentRef",
       RawHeader("X-JS7-Session", sessionToken) :: Nil,
       json"""{
-        "path": "/FOLDER/AGENT-A",
-        "versionId": "INITIAL",
-        "uri": "$agent2Uri"
-      }""")
-
-    testGet("controller/api/agent/%2FFOLDER%2FAGENT-A?return=AgentRef",
-      RawHeader("X-JS7-Session", sessionToken) :: Nil,
-      json"""{
-        "path": "/FOLDER/AGENT-A",
-        "versionId": "INITIAL",
+        "name": "AGENT-A",
         "uri": "$agent2Uri"
       }""")
   }
 
   "/controller/api/agent-proxy" - {
-    "/controller/api/agent-proxy/%2FFOLDER%2FAGENT-A" in {
-      // Pass-through AgentRef. Slashes but the first in AgentRefPath must be coded as %2F.
-      val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
-      val overview = httpClient.get[AgentOverview](Uri(s"$uri/controller/api/agent-proxy/FOLDER%2FAGENT-A"), Duration.Inf, headers) await 99.s
-      assert(overview.version == BuildInfo.prettyVersion)
-    }
+    //"/controller/api/agent-proxy/%2FFOLDER%2FAGENT-A" in {
+    //  // Pass-through AgentRef. Slashes but the first in AgentName must be coded as %2F.
+    //  val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
+    //  val overview = httpClient.get[AgentOverview](Uri(s"$uri/controller/api/agent-proxy/FOLDER%2FAGENT-A"), Duration.Inf, headers) await 99.s
+    //  assert(overview.version == BuildInfo.prettyVersion)
+    //}
 
     "/controller/api/agent-proxy/UNKNOWN returns 400" in {
       val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
@@ -334,24 +321,24 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         httpClient.get[Json](Uri(s"$uri/controller/api/agent-proxy/UNKNOWN"), headers) await 99.s
       }
       assert(e.status.intValue == 400/*BadRequest*/)
-      assert(e.problem == Some(UnknownKeyProblem("TypedPath", AgentRefPath("/UNKNOWN"))))
+      assert(e.problem == Some(UnknownKeyProblem("AgentName", AgentName("UNKNOWN"))))
     }
 
-    "/controller/api/agent-proxy/FOLDER%2F/AGENT-A/NOT-FOUND returns 404" in {
-      val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
-      assert(
-        intercept[HttpException] {
-          httpClient.get[Json](Uri(s"$uri/controller/api/agent-proxy/FOLDER%2FAGENT-A/task"), headers) await 99.s
-        }.status.intValue == 404/*NotFound*/)
-    }
-
-    "/controller/api/agent-proxy/FOLDER%2F/AGENT-A/timer" in {
-      val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
-      assert(
-        intercept[HttpException] {
-          httpClient.get[Json](Uri(s"$uri/controller/api/agent-proxy/FOLDER%2FAGENT-A/timer"), headers) await 99.s
-        }.status.intValue == 404/*NotFound*/)
-    }
+    //"/controller/api/agent-proxy/FOLDER%2FAGENT-A/NOT-FOUND returns 404" in {
+    //  val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
+    //  assert(
+    //    intercept[HttpException] {
+    //      httpClient.get[Json](Uri(s"$uri/controller/api/agent-proxy/FOLDER%2FAGENT-A/task"), headers) await 99.s
+    //    }.status.intValue == 404/*NotFound*/)
+    //}
+    //
+    //"/controller/api/agent-proxy/FOLDER%2FAGENT-A/timer" in {
+    //  val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
+    //  assert(
+    //    intercept[HttpException] {
+    //      httpClient.get[Json](Uri(s"$uri/controller/api/agent-proxy/FOLDER%2FAGENT-A/timer"), headers) await 99.s
+    //    }.status.intValue == 404/*NotFound*/)
+    //}
   }
 
   "/controller/api/order" - {
@@ -504,8 +491,8 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
     val observable = httpClient.getRawLinesObservable(Uri(s"$uri/controller/api/snapshot/")) await 99.s
     val shortenedArray =
       observable.map(_.parseJson.orThrow)
-        // Delete AgentSnapshot in `array` (for easy comparison)
-        .filterNot(_.asObject.get("TYPE").contains("AgentSnapshot".asJson))
+        // Delete AgentRefState in `array` (for easy comparison)
+        .filterNot(_.asObject.get("TYPE").contains("AgentRefState".asJson))
         .toListL await 99.s
     val controllerMetaState = shortenedArray.iterator.map(_.as(ControllerState.snapshotObjectJsonCodec).orThrow)
       .collectFirst { case o: ControllerMetaState => o }.get
@@ -520,35 +507,12 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         "timezone": "${controllerMetaState.timezone}"
       }, {
         "TYPE": "VersionAdded",
-        "versionId": "INITIAL"
-      }, {
-        "TYPE": "ItemAdded",
-        "path": "AgentRef:/AGENT",
-        "signed": {
-          "string": "{\"TYPE\":\"AgentRef\",\"path\":\"/AGENT\",\"versionId\":\"INITIAL\",\"uri\":\"$agent1Uri\"}",
-          "signature": {
-            "TYPE": "Silly",
-            "signatureString": "MY-SILLY-SIGNATURE"
-          }
-        }
-      }, {
-        "TYPE": "ItemAdded",
-        "path": "AgentRef:/FOLDER/AGENT-A",
-        "signed": {
-          "string": "{\"TYPE\":\"AgentRef\",\"path\":\"/FOLDER/AGENT-A\",\"versionId\":\"INITIAL\",\"uri\":\"$agent2Uri\"}",
-          "signature": {
-            "TYPE": "Silly",
-            "signatureString": "MY-SILLY-SIGNATURE"
-          }
-        }
-      }, {
-        "TYPE": "VersionAdded",
         "versionId": "VERSION-1"
       }, {
         "TYPE": "ItemAdded",
         "path": "Workflow:/FOLDER/WORKFLOW-2",
         "signed": {
-          "string": "{\"TYPE\":\"Workflow\",\"path\":\"/FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/B$sh\"},\"taskLimit\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/MISSING$sh\"},\"taskLimit\":1}}]}",
+          "string": "{\"TYPE\":\"Workflow\",\"path\":\"/FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentName\":\"AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/B$sh\"},\"taskLimit\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentName\":\"AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/MISSING$sh\"},\"taskLimit\":1}}]}",
           "signature": {
             "TYPE": "Silly",
             "signatureString": "MY-SILLY-SIGNATURE"
@@ -558,7 +522,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         "TYPE": "ItemAdded",
         "path": "Workflow:/WORKFLOW",
         "signed": {
-          "string": "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/A$sh\"},\"taskLimit\":1}}]}",
+          "string": "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentName\":\"AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/A$sh\"},\"taskLimit\":1}}]}",
           "signature": {
             "TYPE": "Silly",
             "signatureString": "MY-SILLY-SIGNATURE"
@@ -595,7 +559,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
     val eventsJson = httpClient.get[Json](Uri(s"$uri/controller/api/event?after=0"), headers) await 99.s
     val keyedEvents: Seq[KeyedEvent[Event]] =
       eventsJson.asObject.get("stamped").get.asArray.get.map(_.as(ControllerState.keyedEventJsonCodec).orThrow)
-    val agentRunId = keyedEvents.collectFirst { case AgentRefPath("/AGENT") <-: (e: AgentRegisteredController) => e.agentRunId }.get
+    val agentRunId = keyedEvents.collectFirst { case AgentName("AGENT") <-: (e: AgentRegisteredController) => e.agentRunId }.get
     val totalRunningTime = keyedEvents.collectFirst { case _ <-: (e: ControllerReady) => e.totalRunningTime }.get
     // Fields named "eventId" are renumbered for this test, "timestamp" are removed due to time-dependant values
     assert(manipulateEventsForTest(eventsJson) == json"""{
@@ -616,50 +580,45 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           "totalRunningTime": ${totalRunningTime.toBigDecimalSeconds}
         }, {
           "eventId": 1004,
-          "TYPE": "VersionAdded",
-          "versionId": "INITIAL"
+          "TYPE": "AgentAdded",
+          "key": "AGENT",
+          "uri": "$agent1Uri"
         }, {
           "eventId": 1005,
-          "TYPE": "ItemAdded",
-          "path": "AgentRef:/AGENT",
-          "signed": {
-            "string": "{\"TYPE\":\"AgentRef\",\"path\":\"/AGENT\",\"versionId\":\"INITIAL\",\"uri\":\"$agent1Uri\"}",
-            "signature": {
-              "TYPE": "Silly",
-              "signatureString": "MY-SILLY-SIGNATURE"
-            }
-          }
+          "TYPE": "AgentAdded",
+          "key": "AGENT-A",
+          "uri": "$agent2Uri"
         }, {
           "eventId": 1006,
-          "TYPE": "ItemAdded",
-          "path": "AgentRef:/FOLDER/AGENT-A",
-          "signed": {
-            "string": "{\"TYPE\":\"AgentRef\",\"path\":\"/FOLDER/AGENT-A\",\"versionId\":\"INITIAL\",\"uri\":\"$agent2Uri\"}",
-            "signature": {
-              "TYPE": "Silly",
-              "signatureString": "MY-SILLY-SIGNATURE"
-            }
-          }
-        }, {
-          "eventId": 1007,
-          "key": "/AGENT",
+          "key": "AGENT",
           "TYPE": "AgentRegisteredController",
           "agentRunId": "${agentRunId.string}"
         }, {
-          "eventId": 1008,
+          "eventId": 1007,
           "TYPE": "AgentReady",
-          "key": "/AGENT",
+          "key": "AGENT",
           "timezone": "${ZoneId.systemDefault.getId}"
         }, {
-          "eventId": 1009,
+          "eventId": 1008,
           "TYPE": "VersionAdded",
           "versionId": "VERSION-1"
         }, {
-          "eventId": 1010,
+          "eventId": 1009,
           "TYPE": "ItemAdded",
           "path": "Workflow:/WORKFLOW",
           "signed": {
-            "string": "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/A$sh\"},\"taskLimit\":1}}]}",
+            "string": "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentName\":\"AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/A$sh\"},\"taskLimit\":1}}]}",
+            "signature": {
+              "TYPE": "Silly",
+              "signatureString": "MY-SILLY-SIGNATURE"
+            }
+          }
+        }, {
+          "eventId": 1010,
+          "TYPE": "ItemAdded",
+          "path": "Workflow:/FOLDER/WORKFLOW-2",
+          "signed": {
+            "string": "{\"TYPE\":\"Workflow\",\"path\":\"/FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentName\":\"AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/B$sh\"},\"taskLimit\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentName\":\"AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/MISSING$sh\"},\"taskLimit\":1}}]}",
             "signature": {
               "TYPE": "Silly",
               "signatureString": "MY-SILLY-SIGNATURE"
@@ -667,17 +626,6 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           }
         }, {
           "eventId": 1011,
-          "TYPE": "ItemAdded",
-          "path": "Workflow:/FOLDER/WORKFLOW-2",
-          "signed": {
-            "string": "{\"TYPE\":\"Workflow\",\"path\":\"/FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/B$sh\"},\"taskLimit\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/MISSING$sh\"},\"taskLimit\":1}}]}",
-            "signature": {
-              "TYPE": "Silly",
-              "signatureString": "MY-SILLY-SIGNATURE"
-            }
-          }
-        }, {
-          "eventId": 1012,
           "TYPE": "OrderAdded",
           "key": "ORDER-ID",
           "workflowId": {
@@ -685,25 +633,25 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
             "versionId": "VERSION-1"
           }
         }, {
-          "eventId": 1013,
+          "eventId": 1012,
           "TYPE": "OrderAttachable",
           "key": "ORDER-ID",
-          "agentRefPath":"/AGENT"
+          "agentName":"AGENT"
         }, {
-          "eventId": 1014,
+          "eventId": 1013,
           "TYPE": "OrderAttached",
           "key": "ORDER-ID",
-          "agentRefPath": "/AGENT"
+          "agentName": "AGENT"
         }, {
-          "eventId": 1015,
+          "eventId": 1014,
           "TYPE": "OrderStarted",
           "key": "ORDER-ID"
         }, {
-          "eventId": 1016,
+          "eventId": 1015,
           "TYPE": "OrderProcessingStarted",
           "key": "ORDER-ID"
         }, {
-          "eventId": 1017,
+          "eventId": 1016,
           "TYPE": "OrderProcessed",
           "key": "ORDER-ID",
           "outcome": {
@@ -711,20 +659,20 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
             "returnCode": 0
           }
         }, {
-          "eventId": 1018,
+          "eventId": 1017,
           "TYPE": "OrderMoved",
           "key": "ORDER-ID",
           "to": [ 1 ]
         }, {
-          "eventId": 1019,
+          "eventId": 1018,
           "TYPE": "OrderDetachable",
           "key": "ORDER-ID"
         }, {
-          "eventId": 1020,
+          "eventId": 1019,
           "TYPE": "OrderDetached",
           "key": "ORDER-ID"
         }, {
-          "eventId": 1021,
+          "eventId": 1020,
           "TYPE": "OrderFinished",
           "key": "ORDER-ID"
         }
@@ -735,7 +683,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
       def ignoreIt(json: Json): Boolean = {
         val obj = json.asObject.get.toMap
         (obj("TYPE") == Json.fromString("AgentReady") || obj("TYPE") == Json.fromString("AgentRegisteredController")) &&
-            json.as[KeyedEvent[ControllerAgentEvent]].orThrow.key != TestAgentRefPath || // Let through only Events for one AgentRef, because ordering is undefined
+            json.as[KeyedEvent[AgentRefStateEvent]].orThrow.key != TestAgentName || // Let through only Events for one AgentRef, because ordering is undefined
           obj("TYPE") == Json.fromString("AgentCouplingFailed") ||
           obj("TYPE") == Json.fromString("AgentEventsObserved")
       }
@@ -816,7 +764,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
                   position
                 },
                 attachedState {
-                  agentRefPath
+                  agentName
                 }
               }
             }""".asJson,
@@ -835,7 +783,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
                   "position": [ 1 ]
                 },
                 "attachedState": {
-                  "agentRefPath": "/AGENT"
+                  "agentName": "AGENT"
                 }
               }
             }

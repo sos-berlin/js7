@@ -1,7 +1,7 @@
 package js7.data.workflow.instructions
 
 import js7.base.circeutils.CirceUtils._
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.expression.Expression.BooleanConstant
 import js7.data.job.ExecutablePath
 import js7.data.source.SourcePos
@@ -20,8 +20,8 @@ import scala.concurrent.duration._
 final class TryInstructionTest extends AnyFreeSpec
 {
   private val try_ = TryInstruction(
-    tryWorkflow = Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/TRY")))),
-    catchWorkflow = Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/CATCH")))))
+    tryWorkflow = Workflow.of(Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("/TRY")))),
+    catchWorkflow = Workflow.of(Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("/CATCH")))))
 
   "JSON" - {
     "with defaults" in {
@@ -33,7 +33,7 @@ final class TryInstructionTest extends AnyFreeSpec
               {
                 "TYPE": "Execute.Anonymous",
                 "job": {
-                  "agentRefPath": "/AGENT",
+                  "agentName": "AGENT",
                   "executable": {
                     "TYPE": "ExecutablePath",
                     "path": "/TRY"
@@ -48,7 +48,7 @@ final class TryInstructionTest extends AnyFreeSpec
               {
                 "TYPE": "Execute.Anonymous",
                 "job": {
-                  "agentRefPath": "/AGENT",
+                  "agentName": "AGENT",
                   "executable": {
                     "TYPE": "ExecutablePath",
                     "path": "/CATCH"

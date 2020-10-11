@@ -11,7 +11,7 @@ import js7.base.generic.GenericString
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problems.InvalidNameProblem
-import js7.base.problem.{Checked, CheckedString, Problem}
+import js7.base.problem.{Checked, Problem}
 import js7.base.standards.NameValidator
 import js7.base.utils.Collections.implicits.RichTraversable
 import js7.base.utils.ScalaUtils.implicitClass
@@ -123,7 +123,6 @@ object TypedPath
     def sourceTypeToFilenameExtension: Map[SourceType, String]
 
     final implicit val implicitCompanion: Companion[P] = this
-    final implicit val checkedString: CheckedString[P] = string => Companion.this.checked(string)
     final val camelName: String = name stripSuffix "Path"
 
     final def typedPathClass: Class[P] = implicitClass[P]

@@ -12,7 +12,7 @@ final class ControllerScriptConverterTester
     private static final ControllerScriptConverter ControllerScriptConverter = new ControllerScriptConverter();
     private static final String WorkflowScript =
         "define workflow {\n" +
-        "  execute agent=\"/AGENT\", executable=\"/EXECUTABLE\";\n" +
+        "  execute agent=\"AGENT\", executable=\"/EXECUTABLE\";\n" +
         "}\n";
     private static final String WorkflowJson =
         "{" +
@@ -20,18 +20,18 @@ final class ControllerScriptConverterTester
                 "{" +
                     "\"TYPE\":\"Execute.Anonymous\"," +
                     "\"job\":{" +
-                        "\"agentRefPath\":\"/AGENT\"," +
+                        "\"agentName\":\"AGENT\"," +
                         "\"executable\":{" +
                             "\"TYPE\":\"ExecutablePath\"," +
                             "\"path\":\"/EXECUTABLE\"" +
                         "}," +
                         "\"taskLimit\":1" +
                     "}," +
-                    "\"sourcePos\":[20,68]" +
+                    "\"sourcePos\":[20,67]" +
                 "}," +
-                "{\"TYPE\":\"ImplicitEnd\",\"sourcePos\":[70,71]}" +
+                "{\"TYPE\":\"ImplicitEnd\",\"sourcePos\":[69,70]}" +
             "]," +
-            "\"source\":\"define workflow {\\n  execute agent=\\\"/AGENT\\\", executable=\\\"/EXECUTABLE\\\";\\n}\\n\"" +
+            "\"source\":\"define workflow {\\n  execute agent=\\\"AGENT\\\", executable=\\\"/EXECUTABLE\\\";\\n}\\n\"" +
         "}";
 
     private ControllerScriptConverterTester() {}

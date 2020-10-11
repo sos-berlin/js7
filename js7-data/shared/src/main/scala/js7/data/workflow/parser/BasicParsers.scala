@@ -7,6 +7,7 @@ import js7.base.utils.Collections.implicits._
 import js7.base.utils.Identifier.{isIdentifierPart, isIdentifierStart}
 import js7.base.utils.ScalaUtils._
 import js7.base.utils.ScalaUtils.syntax._
+import js7.data.agent.AgentName
 import js7.data.folder.FolderPath
 import js7.data.item.TypedPath
 import scala.reflect.ClassTag
@@ -98,6 +99,13 @@ private[parser] object BasicParsers
 
   def path[A <: TypedPath: TypedPath.Companion](implicit ctx: P[_]) = P[A](
     pathString map (p => FolderPath.Root.resolve[A](p)))
+
+  def agentName(implicit ctx: P[_]) = P[AgentName](
+    pathString.flatMap(string =>
+      AgentName.checked(string) match {
+        case Left(problem) => Fail.opaque(problem.toString)
+        case Right(agentName) => Pass(agentName)
+      }))
 
   def keyValues[A](keyValueParser: => P[(String, A)])(implicit ctx: P[_]) = P[KeyToValue[A]](
     commaSequence(keyValueParser).flatMap(keyValues =>

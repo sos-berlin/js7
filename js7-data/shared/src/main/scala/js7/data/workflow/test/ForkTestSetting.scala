@@ -1,6 +1,6 @@
 package js7.data.workflow.test
 
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.job.ExecutablePath
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fork}
@@ -11,14 +11,14 @@ import js7.data.workflow.{Workflow, WorkflowPath}
   */
 object ForkTestSetting {
 
-  val AAgentRefPath = AgentRefPath("/AGENT-A")
-  val BAgentRefPath = AgentRefPath("/AGENT-B")
-  val AgentRefPaths = List(AAgentRefPath, BAgentRefPath)
+  val AAgentName = AgentName("AGENT-A")
+  val BAgentName = AgentName("AGENT-B")
+  val AgentNames = List(AAgentName, BAgentName)
   val TestExecutablePath = ExecutablePath("/executable.cmd")
   val AJobName = WorkflowJob.Name("A")
   val BJobName = WorkflowJob.Name("B")
-  val AJob = WorkflowJob(AAgentRefPath, TestExecutablePath)
-  val BJob = WorkflowJob(BAgentRefPath, TestExecutablePath)
+  val AJob = WorkflowJob(AAgentName, TestExecutablePath)
+  val BJob = WorkflowJob(BAgentName, TestExecutablePath)
   val AExecute = Execute.Named(AJobName)
   val BExecute = Execute.Named(BJobName)
 
@@ -74,13 +74,13 @@ object ForkTestSetting {
     source = Some(TestWorkflowSource/*Must be the source source of this workflow*/))
   //  🥕   🍋
   //  Bx   By
-  //  Cx   Cy   ⟵ Cy runs on BAgentRefPath
+  //  Cx   Cy   ⟵ Cy runs on BAgentName
   //     D
   //  Ex   Ey
   //  Fx   Fy
   //     G
-  //  Hx   Hy   ⟵ Hy runs on BAgentRefPath
-  //  Ix   Iy   ⟵ Iy runs on BAgentRefPath
+  //  Hx   Hy   ⟵ Hy runs on BAgentName
+  //  Ix   Iy   ⟵ Iy runs on BAgentName
   //     J
   //    END
 }

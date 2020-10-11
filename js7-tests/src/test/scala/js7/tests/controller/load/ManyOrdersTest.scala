@@ -8,7 +8,7 @@ import js7.common.process.Processes.{ShellFileExtension => sh}
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.data.ControllerCommand.TakeSnapshot
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.event.{EventId, EventRequest}
 import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.OrderFinished
@@ -24,7 +24,7 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class ManyOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentRefPaths = agentRefPath :: Nil
+  protected val agentNames = agentName :: Nil
   protected val inventoryItems = workflow :: Nil
   override protected val controllerConfig = config"""
     js7.web.server.auth.public = on
@@ -78,15 +78,15 @@ final class ManyOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
 object ManyOrdersTest
 {
   private val longTimeout = 1.h
-  private val agentRefPath = AgentRefPath("/AGENT")
+  private val agentName = AgentName("AGENT")
   private val   workflow = WorkflowParser.parse(
     WorkflowPath("/WORKFLOW") ~ "1",s"""
       define workflow {
-        execute executable="/TEST$sh", agent="/AGENT", taskLimit=100;
-        execute executable="/TEST$sh", agent="/AGENT", taskLimit=100;
-        execute executable="/TEST$sh", agent="/AGENT", taskLimit=100;
-        execute executable="/TEST$sh", agent="/AGENT", taskLimit=100;
-        execute executable="/TEST$sh", agent="/AGENT", taskLimit=100;
+        execute executable="/TEST$sh", agent="AGENT", taskLimit=100;
+        execute executable="/TEST$sh", agent="AGENT", taskLimit=100;
+        execute executable="/TEST$sh", agent="AGENT", taskLimit=100;
+        execute executable="/TEST$sh", agent="AGENT", taskLimit=100;
+        execute executable="/TEST$sh", agent="AGENT", taskLimit=100;
       }"""
   ).orThrow
 }

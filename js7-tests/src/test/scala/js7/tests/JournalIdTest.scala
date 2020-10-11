@@ -6,9 +6,9 @@ import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
 import js7.common.configutils.Configs._
 import js7.common.scalautil.FileUtils.syntax._
-import js7.controller.data.events.ControllerAgentEvent.AgentCouplingFailed
+import js7.controller.data.events.AgentRefStateEvent.AgentCouplingFailed
 import js7.core.event.journal.files.JournalFiles.listJournalFiles
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.event.JournalHeader.JournalIdMismatchProblem
 import js7.data.event.{Event, EventId, JournalHeader, JournalId, KeyedEvent, Stamped}
 import js7.data.job.ExecutablePath
@@ -28,7 +28,7 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class JournalIdTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
-  protected val agentRefPaths = agentRefPath :: Nil
+  protected val agentNames = agentName :: Nil
   protected val inventoryItems = TestWorkflow :: Nil
   override protected val controllerConfig = config"js7.journal.remove-obsolete-files = false"
   override protected val agentConfig = config"js7.journal.remove-obsolete-files = false"
@@ -62,7 +62,7 @@ final class JournalIdTest extends AnyFreeSpec with DirectoryProviderForScalaTest
     directoryProvider.runAgents() { _ =>
       directoryProvider.runController() { controller =>
         controller.eventWatch.await[AgentCouplingFailed](after = lastEventId, predicate = ke =>
-          ke.key == agentRefPath && ke.event.problem.is(JournalIdMismatchProblem))
+          ke.key == agentName && ke.event.problem.is(JournalIdMismatchProblem))
       }
     }
 
@@ -95,7 +95,7 @@ final class JournalIdTest extends AnyFreeSpec with DirectoryProviderForScalaTest
         controller.addOrderBlocking(order)
         lastEventId = lastEventIdOf(controller.eventWatch.await[OrderFinished](after = lastEventId, predicate = _.key == order.id))
         //controller.eventWatch.await[AgentCouplingFailed](after = lastEventId, predicate = ke =>
-        //  ke.key == agentRefPath &&
+        //  ke.key == agentName &&
         //    ke.event.problem.maybeCode.contains(JournalIdMismatchProblem.code))
       }
     }
@@ -105,12 +105,12 @@ final class JournalIdTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 
 private object JournalIdTest
 {
-  private val agentRefPath = AgentRefPath("/AGENT-111")
+  private val agentName = AgentName("AGENT-111")
   private val TestExecutablePath = ExecutablePath("/TEST.cmd")
 
   private val TestWorkflow = Workflow(WorkflowPath("/test") ~ "INITIAL",
     Vector(
-      Execute(WorkflowJob(agentRefPath, TestExecutablePath))))
+      Execute(WorkflowJob(agentName, TestExecutablePath))))
 
   private def lastEventIdOf[E <: Event](stamped: IterableOnce[Stamped[KeyedEvent[E]]]): EventId =
     stamped.iterator.to(Iterable).last.eventId

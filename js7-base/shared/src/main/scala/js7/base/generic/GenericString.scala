@@ -5,7 +5,7 @@ import javax.annotation.Nullable
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
 import js7.base.convert.As
 import js7.base.problem.Checked.Ops
-import js7.base.problem.{Checked, Problem}
+import js7.base.problem.{Checked, CheckedString, Problem}
 import js7.base.standards.NameValidator
 import js7.base.utils.ScalaUtils.syntax._
 
@@ -41,6 +41,8 @@ object GenericString
 
   trait Checked_[A <: GenericString] extends Companion[A]
   {
+    final implicit val checkedString: CheckedString[A] = checked(_)
+
     protected def unchecked(string: String): A
 
     def checked(string: String): Checked[A] = Checked.catchNonFatal(unchecked(string))

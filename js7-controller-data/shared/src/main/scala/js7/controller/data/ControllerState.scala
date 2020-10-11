@@ -3,12 +3,14 @@ package js7.controller.data
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Problem
+import js7.base.problem.Problems.DuplicateKey
 import js7.base.utils.ScalaUtils.syntax._
-import js7.controller.data.agent.{AgentEventsObserved, AgentSnapshot}
-import js7.controller.data.events.ControllerAgentEvent.{AgentCouplingFailed, AgentReady, AgentRegisteredController}
+import js7.controller.data.agent.AgentRefState
+import js7.controller.data.events.AgentRefStateEvent.AgentRegisteredController
 import js7.controller.data.events.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
-import js7.controller.data.events.{ControllerAgentEvent, ControllerEvent}
-import js7.data.agent.AgentRefPath
+import js7.controller.data.events.{AgentRefStateEvent, ControllerEvent}
+import js7.data.agent.AgentRefEvent.{AgentAdded, AgentUpdated}
+import js7.data.agent.{AgentName, AgentRef, AgentRefEvent}
 import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.controller.ControllerItems.ControllerTypedPathCompanions
 import js7.data.event.KeyedEvent.NoKey
@@ -16,7 +18,7 @@ import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{Event, EventId, JournalEvent, JournalHeader, JournalState, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotMeta}
 import js7.data.item.{Repo, RepoEvent}
-import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderOffered, OrderRemoved, OrderStdWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderOffered, OrderRemoved, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import monix.reactive.Observable
 
@@ -27,8 +29,8 @@ final case class ControllerState(
   eventId: EventId,
   standards: JournaledState.Standards,
   controllerMetaState: ControllerMetaState,
+  nameToAgent: Map[AgentName, AgentRefState],
   repo: Repo,
-  pathToAgentSnapshot: Map[AgentRefPath, AgentSnapshot],
   idToOrder: Map[OrderId, Order[Order.State]])
 extends JournaledState[ControllerState]
 {
@@ -36,7 +38,7 @@ extends JournaledState[ControllerState]
     2 +
     standards.snapshotSize +
     repo.estimatedEventCount +
-    pathToAgentSnapshot.size +
+    nameToAgent.size +
     idToOrder.size
 
   def toSnapshotObservable: Observable[Any] =
@@ -44,7 +46,7 @@ extends JournaledState[ControllerState]
     standards.toSnapshotObservable ++
     Observable.fromIterable(controllerMetaState.isDefined ? controllerMetaState) ++
     Observable.fromIterable(repo.eventsFor(ControllerTypedPathCompanions)) ++
-    Observable.fromIterable(pathToAgentSnapshot.values) ++
+    Observable.fromIterable(nameToAgent.values) ++
     Observable.fromIterable(idToOrder.values)
 
   def withEventId(eventId: EventId) =
@@ -73,22 +75,29 @@ extends JournaledState[ControllerState]
       for (o <- repo.applyEvent(event)) yield
         copy(repo = o)
 
-    case KeyedEvent(agentRefPath: AgentRefPath, event: ControllerAgentEvent) =>
+    case KeyedEvent(name: AgentName, event: AgentRefEvent) =>
       event match {
-        case AgentRegisteredController(agentRunId) =>
-          pathToAgentSnapshot.checkNoDuplicate(agentRefPath).map(_ =>
-            copy(
-              pathToAgentSnapshot = pathToAgentSnapshot +
-                (agentRefPath -> AgentSnapshot(agentRefPath, Some(agentRunId), eventId = EventId.BeforeFirst))))
+        case AgentAdded(uri) =>
+          if (nameToAgent contains name)
+            Left(DuplicateKey("AgentRef", name))
+          else
+            Right(copy(
+              nameToAgent = nameToAgent + (name -> AgentRefState(AgentRef(name, uri)))))
 
-        case _: AgentReady | _: AgentCouplingFailed =>
-          Right(this)
+        case AgentUpdated(uri) =>
+          for (agentRefState <- nameToAgent.checked(name)) yield
+            copy(
+              nameToAgent = nameToAgent + (name -> agentRefState.copy(
+                agentRef = agentRefState.agentRef.copy(
+                  uri = uri))))
       }
 
-    case KeyedEvent(a: AgentRefPath, AgentEventsObserved(agentEventId)) =>
-      // Preceding AgentSnapshot is required (see recoverSnapshot)
-      for (o <- pathToAgentSnapshot.checked(a)) yield
-        copy(pathToAgentSnapshot = pathToAgentSnapshot + (a -> o.copy(eventId = agentEventId)))
+    case KeyedEvent(name: AgentName, event: AgentRefStateEvent) =>
+      nameToAgent.checked(name)
+        .flatMap(agentRefState =>
+          agentRefState.applyEvent(event)
+            .map(updated => copy(
+              nameToAgent = nameToAgent + (name -> updated))))
 
     case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
       event match {
@@ -156,8 +165,8 @@ object ControllerState extends JournaledState.Companion[ControllerState]
     EventId.BeforeFirst,
     JournaledState.Standards.empty,
     ControllerMetaState.Undefined,
-    Repo.empty,
     Map.empty,
+    Repo.empty,
     Map.empty)
 
   val empty = Undefined
@@ -172,8 +181,8 @@ object ControllerState extends JournaledState.Companion[ControllerState]
       Subtype[JournalState],
       Subtype(deriveCodec[ClusterState.ClusterStateSnapshot]),
       Subtype(deriveCodec[ControllerMetaState]),
+      Subtype[AgentRefState],
       Subtype[RepoEvent],  // These events describe complete objects
-      Subtype[AgentSnapshot],
       Subtype[AgentRegisteredController],  // These events describe complete objects
       Subtype[Order[Order.State]])
   }
@@ -182,11 +191,11 @@ object ControllerState extends JournaledState.Companion[ControllerState]
     import js7.data.controller.ControllerItems._
     KeyedEventTypedJsonCodec[Event](
       KeyedSubtype[JournalEvent],
+      KeyedSubtype[AgentRefEvent],
       KeyedSubtype[RepoEvent],
       KeyedSubtype[ControllerEvent],
       KeyedSubtype[ClusterEvent],
-      KeyedSubtype[ControllerAgentEvent],
-      KeyedSubtype[OrderEvent],
-      KeyedSubtype.singleEvent[AgentEventsObserved])
+      KeyedSubtype[AgentRefStateEvent],
+      KeyedSubtype[OrderEvent])
   }
 }

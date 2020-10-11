@@ -4,7 +4,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.system.OperatingSystem.isWindows
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import js7.data.job.{ExecutablePath, ReturnCode}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
@@ -24,13 +24,13 @@ final class FailTest extends AnyFreeSpec
   "fail" in {
     runUntil[OrderFailed]("""
       |define workflow {
-      |  execute agent="/AGENT", executable="/test.cmd", successReturnCodes=[3];
+      |  execute agent="AGENT", executable="/test.cmd", successReturnCodes=[3];
       |  fail;
       |}""".stripMargin,
       Vector(
         OrderAdded(TestWorkflowId),
-        OrderAttachable(TestAgentRefPath),
-        OrderAttached(TestAgentRefPath),
+        OrderAttachable(TestAgentName),
+        OrderAttached(TestAgentName),
         OrderStarted,
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
@@ -41,13 +41,13 @@ final class FailTest extends AnyFreeSpec
   "fail (returnCode=7)" in {
     runUntil[OrderFailed]("""
       |define workflow {
-      |  execute agent="/AGENT", executable="/test.cmd", successReturnCodes=[3];
+      |  execute agent="AGENT", executable="/test.cmd", successReturnCodes=[3];
       |  fail (returnCode=7);
       |}""".stripMargin,
       Vector(
         OrderAdded(TestWorkflowId),
-        OrderAttachable(TestAgentRefPath),
-        OrderAttached(TestAgentRefPath),
+        OrderAttachable(TestAgentName),
+        OrderAttached(TestAgentName),
         OrderStarted,
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
@@ -70,7 +70,7 @@ final class FailTest extends AnyFreeSpec
     runUntil[OrderFailed]("""
       |define workflow {
       |  fork {
-      |    "🥕": { execute agent="/AGENT", executable="/test.cmd", successReturnCodes=[3] },
+      |    "🥕": { execute agent="AGENT", executable="/test.cmd", successReturnCodes=[3] },
       |    "🍋": { fail }
       |  }
       |}""".stripMargin,
@@ -93,7 +93,7 @@ final class FailTest extends AnyFreeSpec
       moreExpectedEvents: _*)
 
   private def runUntil[E <: OrderEvent: ClassTag: TypeTag](workflow: Workflow, expectedEvents: Vector[OrderEvent], moreExpectedEvents: (OrderId, Vector[OrderEvent])*): Unit =
-    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflow :: Nil, testName = Some("FailTest"))) { directoryProvider =>
+    autoClosing(new DirectoryProvider(TestAgentName :: Nil, workflow :: Nil, testName = Some("FailTest"))) { directoryProvider =>
       directoryProvider.agents.head.writeExecutable(ExecutablePath("/test.cmd"), (isWindows ?? "@echo off\n") + "exit 3")
       directoryProvider.run { (controller, _) =>
         val orderId = OrderId("🔺")
@@ -116,7 +116,8 @@ final class FailTest extends AnyFreeSpec
     }
 }
 
-object FailTest {
-  private val TestAgentRefPath = AgentRefPath("/AGENT")
+object FailTest
+{
+  private val TestAgentName = AgentName("AGENT")
   private val TestWorkflowId = WorkflowPath("/WORKFLOW") ~ "INITIAL"
 }

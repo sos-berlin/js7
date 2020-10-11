@@ -9,7 +9,7 @@ import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.data.ControllerCommand.AddOrder
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.job.ExecutablePath
 import js7.data.order.{FreshOrder, Order, OrderId}
 import js7.data.workflow.instructions.Execute
@@ -26,7 +26,7 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class AkkaHttpControllerApiTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentRefPaths = Nil
+  protected val agentNames = Nil
   protected val inventoryItems = TestWorkflow :: Nil
 
   private lazy val api = new AkkaHttpControllerApi(controller.localUri, Some(userAndPassword), actorSystem = controller.actorSystem)
@@ -97,7 +97,7 @@ private object AkkaHttpControllerApiTest
 {
   private val userAndPassword = UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))
   private val TestWorkflow = Workflow.of(WorkflowPath("/WORKFLOW") ~ "INITIAL",
-    Execute(WorkflowJob(AgentRefPath("/MISSING"), ExecutablePath("/MISSING"))))
+    Execute(WorkflowJob(AgentName("MISSING"), ExecutablePath("/MISSING"))))
   private val TestOrder = Order(OrderId("ORDER-ID"), TestWorkflow.id, Order.Fresh.StartImmediately)
   private val SecondOrder = Order(OrderId("SECOND-ORDER"), TestWorkflow.id, Order.Fresh.StartImmediately)
 }

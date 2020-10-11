@@ -2,6 +2,7 @@ package js7.data.item
 
 import js7.base.circeutils.CirceCodec
 import js7.base.circeutils.CirceUtils.deriveCodec
+
 /**
   * @author Joacim Zschimmer
   */

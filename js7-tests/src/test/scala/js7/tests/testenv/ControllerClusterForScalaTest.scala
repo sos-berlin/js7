@@ -19,7 +19,7 @@ import js7.common.utils.FreeTcpPortFinder.{findFreeTcpPort, findFreeTcpPorts}
 import js7.controller.RunningController
 import js7.controller.data.ControllerCommand.ShutDown
 import js7.core.event.journal.files.JournalFiles.listJournalFiles
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.cluster.ClusterEvent.ClusterCoupled
 import js7.data.cluster.ClusterSetting
 import js7.data.item.InventoryItem
@@ -38,7 +38,7 @@ trait ControllerClusterForScalaTest
 {
   this: TestSuite =>
 
-  protected def agentRefPaths: Seq[AgentRefPath] = AgentRefPath("/AGENT") :: Nil
+  protected def agentNames: Seq[AgentName] = AgentName("AGENT") :: Nil
   protected def inventoryItems: Seq[InventoryItem]
   protected def shellScript = script(0.s)
 
@@ -71,8 +71,8 @@ trait ControllerClusterForScalaTest
   : Unit =
     withCloser { implicit closer =>
       val testName = ControllerClusterForScalaTest.this.getClass.getSimpleName
-      val agentPorts = findFreeTcpPorts(agentRefPaths.size)
-      val primary = new DirectoryProvider(agentRefPaths, inventoryItems, testName = Some(s"$testName-Primary"),
+      val agentPorts = findFreeTcpPorts(agentNames.size)
+      val primary = new DirectoryProvider(agentNames, inventoryItems, testName = Some(s"$testName-Primary"),
         controllerConfig = combineArgs(
           primaryControllerConfig,
           configIf(configureClusterNodes, config"""

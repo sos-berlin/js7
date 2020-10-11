@@ -10,6 +10,7 @@ import akka.http.scaladsl.server.{Directive0, PathMatcher1, Route}
 import js7.base.BuildInfo
 import js7.base.problem.{Checked, CheckedString}
 import js7.base.utils.Collections.implicits._
+import js7.data.item.TypedPath
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.{ExecutionContext, Future}
@@ -19,12 +20,20 @@ import scala.concurrent.{ExecutionContext, Future}
   */
 object StandardDirectives
 {
+  def remainingPath[A](implicit A: CheckedString[A]): PathMatcher1[A] =
+    new PathMatcher1[A] {
+      def apply(path: Path) = A.checked(path.toString) match {
+        case Right(a) => Matched(Path.Empty, Tuple1(a))
+        case _ => Unmatched
+      }
+    }
+
   /**
     * A PathMatcher that matches a single segment or the whole remaining path,
     * treating encoded slashes (%2F) like unencoded ones.
     * "a/b" ~ "a%2Fb"
     */
-  def remainingSegmentOrPath[P](implicit P: CheckedString[P]): PathMatcher1[P] =
+  def remainingTypedPath[P <: TypedPath: TypedPath.Companion: CheckedString]: PathMatcher1[P] =
     new PathMatcher1[P] {
       def apply(path: Path) =
         uriPathToTypedPath[P](path) match {

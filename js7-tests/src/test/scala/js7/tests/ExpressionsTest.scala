@@ -5,7 +5,7 @@ import js7.base.problem.Problem
 import js7.base.utils.AutoClosing.autoClosing
 import js7.common.process.Processes.{ShellFileExtension => sh}
 import js7.common.system.OperatingSystem.isWindows
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import js7.data.job.{ExecutablePath, ReturnCode}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
@@ -22,7 +22,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class ExpressionsTest extends AnyFreeSpec
 {
   "test" in {
-    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, inventoryItems = TestWorkflow :: Nil, testName = Some("ExpressionsTest"))) { directoryProvider =>
+    autoClosing(new DirectoryProvider(TestAgentName :: Nil, inventoryItems = TestWorkflow :: Nil, testName = Some("ExpressionsTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/TEST$sh"), ":")
       for (a <- directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/TEST-RC$sh"), jobScript)
 
@@ -49,7 +49,7 @@ final class ExpressionsTest extends AnyFreeSpec
 }
 
 object ExpressionsTest {
-  private val TestAgentRefPath = AgentRefPath("/AGENT")
+  private val TestAgentName = AgentName("AGENT")
 
   private val jobScript =
     if (isWindows)
@@ -94,8 +94,8 @@ object ExpressionsTest {
     OrderId("⭕️") -> Vector(
       OrderAdded(TestWorkflow.id, None, Map("ARG" -> "ARG-VALUE")),
       OrderMoved(Position(0) / Then % 0),
-      OrderAttachable(TestAgentRefPath),
-      OrderAttached(TestAgentRefPath),
+      OrderAttachable(TestAgentName),
+      OrderAttached(TestAgentName),
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(Outcome.Succeeded(ReturnCode(0), Map("JOB-KEY" -> "JOB-RESULT"))),
@@ -103,8 +103,8 @@ object ExpressionsTest {
     OrderId("🔺") -> Vector(
       OrderAdded(TestWorkflow.id, None, Map("ARG" -> "ARG-VALUE", "ARG2" -> "ARG2-VALUE", "RETURN_CODE" -> "1")),
       OrderMoved(Position(0) / Then % 0),
-      OrderAttachable(TestAgentRefPath),
-      OrderAttached(TestAgentRefPath),
+      OrderAttachable(TestAgentName),
+      OrderAttached(TestAgentName),
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(Outcome.Succeeded(ReturnCode(1), Map("JOB-KEY" -> "JOB-RESULT"))),

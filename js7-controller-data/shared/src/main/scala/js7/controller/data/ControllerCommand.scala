@@ -11,6 +11,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Big
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax._
+import js7.data.agent.AgentRef
 import js7.data.cluster.{ClusterCommand, ClusterSetting}
 import js7.data.command.{CancelMode, CommonCommand}
 import js7.data.controller.ControllerItems.typedPathJsonDecoder
@@ -84,6 +85,11 @@ object ControllerCommand extends CommonCommand.Companion
   }
 
   final case class RemoveOrdersWhenTerminated(orderIds: immutable.Iterable[OrderId])
+  extends ControllerCommand {
+    type Response = Response.Accepted
+  }
+
+  final case class UpdateAgentRefs(agentRefs: Seq[AgentRef])
   extends ControllerCommand {
     type Response = Response.Accepted
   }
@@ -223,6 +229,7 @@ object ControllerCommand extends CommonCommand.Companion
 
   implicit val jsonCodec: TypedJsonCodec[ControllerCommand] = TypedJsonCodec[ControllerCommand](
     Subtype(deriveCodec[Batch]),
+    Subtype(deriveCodec[UpdateAgentRefs]),
     Subtype(deriveCodec[AddOrder]),
     Subtype(deriveCodec[AddOrders]),
     Subtype[CancelOrders],

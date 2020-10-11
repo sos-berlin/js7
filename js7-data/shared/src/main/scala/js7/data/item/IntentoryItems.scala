@@ -3,7 +3,7 @@ package js7.data.item
 /**
   * @author Joacim Zschimmer
   */
-object IntenvoryItems
+object IntentoryItems
 {
   def diffInventoryItems(changed: Iterable[InventoryItem], base: Iterable[InventoryItem], ignoreVersion: Boolean = false): Seq[RepoChange] = {
     val pathToMaybeItem = base.view.map(o => o.path -> o).toMap[TypedPath, InventoryItem].lift

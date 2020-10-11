@@ -1,7 +1,7 @@
 package js7.controller.client
 
 import js7.base.web.Uri
-import js7.data.agent.{AgentRef, AgentRefPath}
+import js7.data.agent.{AgentName, AgentRef}
 import js7.data.event.{Event, EventRequest}
 import js7.data.item.RepoEvent.ItemEvent
 import js7.data.order.{Order, OrderEvent, OrderId}
@@ -75,7 +75,7 @@ final class ControllerUrisTest extends AnyFreeSpec
 
   "agent" - {
     "single" in {
-      assert(controllerUris.agent(AgentRefPath("/A/B")) == Uri("http://example.com/controller/api/agent/A%2FB"))
+      assert(controllerUris.agent(AgentName("A")) == Uri("http://example.com/controller/api/agent/A"))
     }
 
     "list" in {

@@ -8,9 +8,7 @@ import js7.base.problem.Problem
 import js7.common.files.DirectoryReader
 import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
 import js7.common.scalautil.FileUtils.syntax._
-import js7.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
-import js7.controller.agent.AgentRefReader
-import js7.controller.tests.IntenvoryItemsTest.{AAgent, AWorkflow, BAgent, BWorkflow, CWorkflow}
+import js7.controller.tests.IntentoryItemsTest.{ATestItem, AWorkflow, BTestItem, BWorkflow, CWorkflow, TestItemReader}
 import js7.controller.workflow.WorkflowReader
 import js7.core.item.TypedSourceReader
 import org.scalatest.BeforeAndAfterAll
@@ -32,8 +30,8 @@ final class InventoryItemReaderTest extends AnyFreeSpec with BeforeAndAfterAll
     (directory / "C.workflow.txt") := "define workflow { /*EMPTY*/ }"
     (directory / "D.workflow.txt") := "ERROR"
     (directory / "E.workflow.json") := "NO-JSON"
-    (directory / "A.agentref.json") := """{ "uri": "http://A" }"""
-    (directory / "folder" / "B.agent.xml").xml = <agent uri="http://B"/>
+    (directory / "A.test.json") := json"""{ "content": "A" }"""
+    (directory / "folder" / "B.test.json") := json"""{ "content": "B" }"""
     (directory / "folder" / "test.alien.json") := ""
   }
 
@@ -42,7 +40,7 @@ final class InventoryItemReaderTest extends AnyFreeSpec with BeforeAndAfterAll
     super.afterAll()
   }
 
-  private lazy val typedSourceReader = new TypedSourceReader(directory, Set(WorkflowReader, AgentRefReader))
+  private lazy val typedSourceReader = new TypedSourceReader(directory, Set(WorkflowReader, TestItemReader))
 
   "readInventoryItem with syntax errors and an alien file" in {
       assert(typedSourceReader.readInventoryItems(DirectoryReader.files(directory)) ==
@@ -66,6 +64,6 @@ final class InventoryItemReaderTest extends AnyFreeSpec with BeforeAndAfterAll
     delete(directory / "E.workflow.json")
     delete(directory / "folder/test.alien.json")
     assert(typedSourceReader.readInventoryItems(DirectoryReader.files(directory)).map(_.toSet)
-      == Right(Set(AWorkflow, BWorkflow, CWorkflow, AAgent, BAgent)))
+      == Right(Set(AWorkflow, BWorkflow, CWorkflow, ATestItem, BTestItem)))
   }
 }

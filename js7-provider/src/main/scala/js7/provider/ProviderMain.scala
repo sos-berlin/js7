@@ -1,6 +1,5 @@
 package js7.provider
 
-import java.util.Locale
 import java.util.concurrent.CancellationException
 import js7.base.BuildInfo
 import js7.base.problem.Checked.Ops
@@ -32,7 +31,11 @@ object ProviderMain
       val conf = ProviderConfiguration.fromCommandLine(args.toVector)
       logStartUp(configDir = Some(conf.configDirectory))
       logConfig(conf.config)
-      val cancelable = Provider.observe(conf).orThrow.onCancelTriggerError foreach { _ => }
+      val cancelable = Provider.observe(conf)
+        .orThrow
+        .onCancelTriggerError
+        .completedL
+        .runToFuture
       withShutdownHooks(conf.config, "ProviderMain", () => onJavaShutdown(cancelable)) {
         awaitTermination(cancelable)
       }

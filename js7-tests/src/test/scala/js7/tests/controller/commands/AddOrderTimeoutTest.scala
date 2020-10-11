@@ -1,6 +1,6 @@
 package js7.tests.controller.commands
 
-import akka.http.scaladsl.model.StatusCodes.{InternalServerError, ServiceUnavailable}
+import akka.http.scaladsl.model.StatusCodes.InternalServerError
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
 import js7.common.configutils.Configs._
@@ -16,7 +16,7 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class AddOrderTimeoutTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentRefPaths = Nil
+  protected val agentNames = Nil
   protected val inventoryItems = workflow :: Nil
   override protected val controllerConfig = config"""
     js7.web.server.auth.public = on
@@ -39,7 +39,7 @@ object AddOrderTimeoutTest
   private val workflow = WorkflowParser.parse(
     WorkflowPath("/WORKFLOW") ~ "1","""
       define workflow {
-        execute executable="/SCRIPT1.cmd", agent="/AGENT";
+        execute executable="/SCRIPT1.cmd", agent="AGENT";
       }"""
   ).orThrow
 }

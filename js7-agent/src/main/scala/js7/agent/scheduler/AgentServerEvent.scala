@@ -4,7 +4,7 @@ import js7.base.circeutils.CirceUtils
 import js7.base.circeutils.JavaJsonCodecs.zoneIdJsonEncoder
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.IntelliJUtils.intelliJuseImport
-import js7.data.agent.{AgentRefPath, AgentRunId}
+import js7.data.agent.{AgentName, AgentRunId}
 import js7.data.controller.ControllerId
 import js7.data.event.NoKeyEvent
 
@@ -19,7 +19,7 @@ object AgentServerEvent
 
   final case class ControllerRegistered(
     controllerId: ControllerId,
-    agentRefPath: AgentRefPath,
+    agentName: AgentName,
     agentRunId: AgentRunId)
   extends AgentServerEvent
 

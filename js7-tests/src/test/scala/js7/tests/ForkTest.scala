@@ -27,7 +27,7 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class ForkTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentRefPaths = AAgentRefPath :: BAgentRefPath :: Nil
+  protected val agentNames = AAgentName :: BAgentName :: Nil
   override protected val controllerConfig = config"""
     js7.TEST-ONLY.suppress-order-id-check-for = "DUPLICATE/🥕" """
   protected val inventoryItems = TestWorkflow :: DuplicateWorkflow :: Nil
@@ -61,7 +61,7 @@ final class ForkTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     controller.addOrderBlocking(order)
     val expectedBroken = OrderBroken(Problem(
-      "Forked OrderIds duplicate existing Order(Order:DUPLICATE/🥕,/DUPLICATE~INITIAL:0,Processing,Map(),List(),Some(Attached(/AGENT-A)),None,None,false,false)"))
+      "Forked OrderIds duplicate existing Order(Order:DUPLICATE/🥕,/DUPLICATE~INITIAL:0,Processing,Map(),List(),Some(Attached(AGENT-A)),None,None,false,false)"))
     assert(controller.eventWatch.await[OrderBroken](_.key == order.id).head.value.event == expectedBroken)
 
     controller.executeCommandAsSystemUser(CancelOrders(Set(order.id), CancelMode.FreshOrStarted())).await(99.s).orThrow
@@ -83,7 +83,7 @@ object ForkTest {
   private val DuplicateWorkflow = Workflow(
     WorkflowPath("/DUPLICATE") ~ "INITIAL",
     Vector(
-      Execute(WorkflowJob(AAgentRefPath, ExecutablePath("/SLOW.cmd")))))
+      Execute(WorkflowJob(AAgentName, ExecutablePath("/SLOW.cmd")))))
   private val TestOrder = FreshOrder(OrderId("🔺"), TestWorkflow.id.path, arguments = Map("KEY" -> "VALUE"))
   private val XOrderId = OrderId(s"🔺/🥕")
   private val YOrderId = OrderId(s"🔺/🍋")
@@ -94,8 +94,8 @@ object ForkTest {
     TestOrder.id <-: OrderStarted,
     TestOrder.id <-: OrderForked(Vector(
       OrderForked.Child("🥕", XOrderId),                      OrderForked.Child("🍋", YOrderId))),
-      XOrderId <-: OrderAttachable(AAgentRefPath),            YOrderId <-: OrderAttachable(AAgentRefPath),
-      XOrderId <-: OrderAttached(AAgentRefPath),              YOrderId <-: OrderAttached(AAgentRefPath),
+      XOrderId <-: OrderAttachable(AAgentName),               YOrderId <-: OrderAttachable(AAgentName),
+      XOrderId <-: OrderAttached(AAgentName),                 YOrderId <-: OrderAttached(AAgentName),
 
       XOrderId <-: OrderProcessingStarted,                    YOrderId <-: OrderProcessingStarted,
       XOrderId <-: OrderStdoutWritten(StdoutOutput),          YOrderId <-: OrderStdoutWritten(StdoutOutput),
@@ -109,8 +109,8 @@ object ForkTest {
 
     TestOrder.id <-: OrderForked(Vector(
       OrderForked.Child("🥕", XOrderId),                      OrderForked.Child("🍋", YOrderId))),
-      XOrderId <-: OrderAttachable(AAgentRefPath),            YOrderId <-: OrderAttachable(AAgentRefPath),
-      XOrderId <-: OrderAttached(AAgentRefPath),              YOrderId <-: OrderAttached(AAgentRefPath),
+      XOrderId <-: OrderAttachable(AAgentName),               YOrderId <-: OrderAttachable(AAgentName),
+      XOrderId <-: OrderAttached(AAgentName),                 YOrderId <-: OrderAttached(AAgentName),
 
       XOrderId <-: OrderProcessingStarted,                    YOrderId <-: OrderProcessingStarted,
       XOrderId <-: OrderStdoutWritten(StdoutOutput),          YOrderId <-: OrderStdoutWritten(StdoutOutput),
@@ -122,8 +122,8 @@ object ForkTest {
     TestOrder.id <-: OrderJoined(Outcome.succeeded),
     TestOrder.id <-: OrderMoved(Position(2)),
 
-    TestOrder.id <-: OrderAttachable(BAgentRefPath),
-    TestOrder.id <-: OrderAttached(BAgentRefPath),
+    TestOrder.id <-: OrderAttachable(BAgentName),
+    TestOrder.id <-: OrderAttached(BAgentName),
     TestOrder.id <-: OrderProcessingStarted,
     TestOrder.id <-: OrderStdoutWritten(StdoutOutput),
     TestOrder.id <-: OrderProcessed(Outcome.succeeded),
@@ -135,8 +135,8 @@ object ForkTest {
     TestOrder.id <-: OrderDetached,
                                                               YOrderId <-: OrderDetachable,
                                                               YOrderId <-: OrderDetached,
-                                                              YOrderId <-: OrderAttachable(AAgentRefPath),
-                                                              YOrderId <-: OrderAttached(AAgentRefPath),
+                                                              YOrderId <-: OrderAttachable(AAgentName),
+                                                              YOrderId <-: OrderAttached(AAgentName),
 
       XOrderId <-: OrderProcessingStarted,                    YOrderId <-: OrderProcessingStarted,
       XOrderId <-: OrderStdoutWritten(StdoutOutput),          YOrderId <-: OrderStdoutWritten(StdoutOutput),
@@ -145,8 +145,8 @@ object ForkTest {
 
                                                               YOrderId <-: OrderDetachable,
                                                               YOrderId <-: OrderDetached,
-                                                              YOrderId <-: OrderAttachable(BAgentRefPath),
-                                                              YOrderId <-: OrderAttached(BAgentRefPath),
+                                                              YOrderId <-: OrderAttachable(BAgentName),
+                                                              YOrderId <-: OrderAttached(BAgentName),
 
                                                               YOrderId <-: OrderProcessingStarted,
                                                               YOrderId <-: OrderStdoutWritten(StdoutOutput),
@@ -160,8 +160,8 @@ object ForkTest {
 
     TestOrder.id <-: OrderForked(Vector(
       OrderForked.Child("🥕", XOrderId),                      OrderForked.Child("🍋", YOrderId))),
-      XOrderId <-: OrderAttachable(AAgentRefPath),            YOrderId <-: OrderAttachable(BAgentRefPath),
-      XOrderId <-: OrderAttached(AAgentRefPath),              YOrderId <-: OrderAttached(BAgentRefPath),
+      XOrderId <-: OrderAttachable(AAgentName),               YOrderId <-: OrderAttachable(BAgentName),
+      XOrderId <-: OrderAttached(AAgentName),                 YOrderId <-: OrderAttached(BAgentName),
 
       XOrderId <-: OrderProcessingStarted,                    YOrderId <-: OrderProcessingStarted,
       XOrderId <-: OrderStdoutWritten(StdoutOutput),          YOrderId <-: OrderStdoutWritten(StdoutOutput),

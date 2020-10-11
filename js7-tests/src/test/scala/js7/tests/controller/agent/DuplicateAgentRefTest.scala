@@ -2,10 +2,13 @@ package js7.tests.controller.agent
 
 import com.typesafe.config.ConfigUtil.quoteString
 import js7.agent.data.Problems.DuplicateAgentRef
+import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
 import js7.common.scalautil.FileUtils.syntax._
-import js7.controller.data.events.ControllerAgentEvent.{AgentCouplingFailed, AgentReady}
-import js7.data.agent.{AgentRef, AgentRefPath}
+import js7.common.scalautil.MonixUtils.syntax._
+import js7.controller.data.ControllerCommand.UpdateAgentRefs
+import js7.controller.data.events.AgentRefStateEvent.{AgentCouplingFailed, AgentReady}
+import js7.data.agent.{AgentName, AgentRef}
 import js7.data.job.ExecutablePath
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
@@ -19,37 +22,38 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class DuplicateAgentRefTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentRefPaths = aAgentRefPath :: Nil
+  protected val agentNames = aAgentName :: Nil
   protected val inventoryItems = workflow :: Nil
 
   import controller.scheduler
 
   override def beforeAll() = {
     (directoryProvider.controller.configDir / "private" / "private.conf") ++=
-      "js7.auth.agents." + quoteString(bAgentRefPath.string) + " = " +
-        quoteString(directoryProvider.agentToTree(aAgentRefPath).password.string) + "\n"
+      "js7.auth.agents." + quoteString(bAgentName.string) + " = " +
+        quoteString(directoryProvider.agentToTree(aAgentName).password.string) + "\n"
     for (a <- directoryProvider.agents) a.writeExecutable(TestExecutablePath, script(0.s))
     super.beforeAll()
   }
 
   "test" in {
-    controller.eventWatch.await[AgentReady](_.key == aAgentRefPath)
-    updateRepo(AgentRef(bAgentRefPath, agent.localUri) :: Nil)
+    controller.eventWatch.await[AgentReady](_.key == aAgentName)
+    controller.executeCommandAsSystemUser(UpdateAgentRefs(Seq(AgentRef(bAgentName, agent.localUri))))
+      .await(99.s).orThrow
 
     val orderId = OrderId("ORDER")
     controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
     val a = controller.eventWatch.await[AgentCouplingFailed]().head.value.event
-    val b = AgentCouplingFailed(DuplicateAgentRef(first = aAgentRefPath, second = bAgentRefPath))
+    val b = AgentCouplingFailed(DuplicateAgentRef(first = aAgentName, second = bAgentName))
     assert(a == b)
   }
 }
 
 object DuplicateAgentRefTest
 {
-  private val aAgentRefPath = AgentRefPath("/A-AGENT")
-  private val bAgentRefPath = AgentRefPath("/B-AGENT")
+  private val aAgentName = AgentName("A-AGENT")
+  private val bAgentName = AgentName("B-AGENT")
   private val workflow = Workflow.of(
     WorkflowPath("/SINGLE") ~ "INITIAL",
-    Execute(WorkflowJob(aAgentRefPath, ExecutablePath("/executable.cmd"))),
-    Execute(WorkflowJob(bAgentRefPath, ExecutablePath("/executable.cmd"))))
+    Execute(WorkflowJob(aAgentName, ExecutablePath("/executable.cmd"))),
+    Execute(WorkflowJob(bAgentName, ExecutablePath("/executable.cmd"))))
 }

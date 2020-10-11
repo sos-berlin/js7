@@ -6,8 +6,8 @@ import js7.base.problem.Checked._
 import js7.base.time.Timestamp
 import js7.base.utils.Collections.implicits._
 import js7.base.web.Uri
-import js7.controller.data.agent.AgentSnapshot
-import js7.data.agent.AgentRefPath
+import js7.controller.data.agent.AgentRefState
+import js7.data.agent.{AgentName, AgentRef}
 import js7.data.cluster.ClusterState.ClusterStateSnapshot
 import js7.data.cluster.{ClusterSetting, ClusterState}
 import js7.data.controller.ControllerId
@@ -27,8 +27,7 @@ import org.scalatest.freespec.AsyncFreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class ControllerStateTest extends AsyncFreeSpec
-{
+final class ControllerStateTest extends AsyncFreeSpec {
   private val controllerState = ControllerState(
     EventId(1001),
     JournaledState.Standards(
@@ -40,8 +39,9 @@ final class ControllerStateTest extends AsyncFreeSpec
             NodeId("B") -> Uri("http://B")),
           activeId = NodeId("A")))),
     ControllerMetaState(ControllerId("CONTROLLER-ID"), Timestamp("2019-05-24T12:00:00Z"), timezone = "Europe/Berlin"),
+    (AgentRefState(AgentRef(AgentName("AGENT"), Uri("https://AGENT")), None, EventId(7)) :: Nil)
+      .toKeyedMap(_.name),
     Repo.empty.applyEvent(VersionAdded(VersionId("1.0"))).orThrow,
-    (AgentSnapshot(AgentRefPath("/AGENT"), None, EventId(7)) :: Nil).toKeyedMap(_.agentRefPath),
     (Order(OrderId("ORDER"), WorkflowPath("/WORKFLOW") /: Position(1), Order.Fresh(None)) :: Nil).toKeyedMap(_.id))
 
   //"toSnapshot is equivalent to toSnapshotObservable" in {
@@ -70,7 +70,7 @@ final class ControllerStateTest extends AsyncFreeSpec
           controllerState.controllerMetaState,
           VersionAdded(VersionId("1.0"))
         ) ++
-          controllerState.pathToAgentSnapshot.values ++
+          controllerState.nameToAgent.values ++
           controllerState.idToOrder.values)
   }
 
@@ -117,8 +117,11 @@ final class ControllerStateTest extends AsyncFreeSpec
             "TYPE": "VersionAdded",
             "versionId": "1.0"
           }, {
-            "TYPE": "AgentSnapshot",
-            "agentRefPath": "/AGENT",
+            "TYPE": "AgentRefState",
+            "agentRef": {
+              "name": "AGENT",
+              "uri": "https://AGENT"
+            },
             "eventId": 7
           }, {
             "TYPE": "Order",

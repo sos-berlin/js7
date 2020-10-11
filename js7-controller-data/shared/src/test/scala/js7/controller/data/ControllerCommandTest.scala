@@ -5,7 +5,7 @@ import js7.base.crypt.{GenericSignature, SignedString}
 import js7.base.problem.Problem
 import js7.base.web.Uri
 import js7.controller.data.ControllerCommand._
-import js7.data.agent.AgentRefPath
+import js7.data.agent.{AgentName, AgentRef}
 import js7.data.cluster.{ClusterCommand, ClusterSetting}
 import js7.data.command.CancelMode
 import js7.data.item.VersionId
@@ -55,6 +55,19 @@ final class ControllerCommandTest extends AnyFreeSpec
       assert(Batch.Response(threeResponses).toString == "BatchResponse(2 succeeded and 1 failed)")
       assert(Batch.Response(threeResponses ::: Right(Response.Accepted) :: Nil).toString == "BatchResponse(3 succeeded and 1 failed)")
     }
+  }
+
+  "UpdateAgentRefs" in {
+    testJson[ControllerCommand](UpdateAgentRefs(Seq(AgentRef(AgentName("AGENT"), Uri("https://agent")))),
+      json"""{
+         "TYPE": "UpdateAgentRefs",
+         "agentRefs": [
+            {
+              "name": "AGENT",
+              "uri": "https://agent"
+            }
+         ]
+      }""")
   }
 
   "AddOrder" - {
@@ -174,7 +187,7 @@ final class ControllerCommandTest extends AnyFreeSpec
             |...
             |-----END PGP SIGNATURE-----
             |""".stripMargin)) :: Nil,
-      delete = WorkflowPath("/WORKFLOW-A") :: AgentRefPath("/AGENT-A") :: Nil),
+      delete = WorkflowPath("/WORKFLOW-A") :: Nil),
       json"""{
         "TYPE": "UpdateRepo",
         "versionId": "1",
@@ -191,9 +204,6 @@ final class ControllerCommandTest extends AnyFreeSpec
           {
             "TYPE": "WorkflowPath",
             "path": "/WORKFLOW-A"
-          }, {
-            "TYPE": "AgentRefPath",
-            "path": "/AGENT-A"
           }
         ]
       }""")

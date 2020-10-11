@@ -2,17 +2,17 @@ package js7.controller.data
 
 import js7.base.problem.Checked._
 import js7.base.utils.Collections.implicits._
-import js7.controller.data.agent.{AgentEventsObserved, AgentSnapshot}
-import js7.controller.data.events.ControllerAgentEvent.{AgentCouplingFailed, AgentReady, AgentRegisteredController}
+import js7.controller.data.agent.AgentRefState
 import js7.controller.data.events.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
-import js7.controller.data.events.{ControllerAgentEvent, ControllerEvent}
-import js7.data.agent.AgentRefPath
+import js7.controller.data.events.{AgentRefStateEvent, ControllerEvent}
+import js7.data.agent.AgentRefEvent.{AgentAdded, AgentUpdated}
+import js7.data.agent.{AgentName, AgentRef, AgentRefEvent}
 import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{EventId, JournalEvent, JournalState, JournaledState, JournaledStateBuilder, KeyedEvent, Stamped}
+import js7.data.event.{JournalEvent, JournalState, JournaledState, JournaledStateBuilder, KeyedEvent, Stamped}
 import js7.data.execution.workflow.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
 import js7.data.item.{Repo, RepoEvent}
-import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderOffered, OrderRemoved, OrderStdWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderOffered, OrderRemoved, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.workflow.Workflow
 import scala.collection.mutable
@@ -24,7 +24,7 @@ extends JournaledStateBuilder[ControllerState]
   private var controllerMetaState = ControllerMetaState.Undefined
   private var repo = Repo.empty
   private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
-  private val pathToAgent = mutable.Map[AgentRefPath, AgentSnapshot]()
+  private val nameToAgentRefState = mutable.Map[AgentName, AgentRefState]()
 
   protected def onInitializeState(state: ControllerState): Unit = {
     controllerMetaState = state.controllerMetaState
@@ -32,8 +32,8 @@ extends JournaledStateBuilder[ControllerState]
     repo = state.repo
     idToOrder.clear()
     idToOrder ++= state.idToOrder
-    pathToAgent.clear()
-    pathToAgent ++= state.pathToAgentSnapshot
+    nameToAgentRefState.clear()
+    nameToAgentRefState ++= state.nameToAgent
   }
 
   protected def onAddSnapshotObject = {
@@ -43,8 +43,8 @@ extends JournaledStateBuilder[ControllerState]
     case event: RepoEvent =>
       repo = repo.applyEvent(event).orThrow
 
-    case snapshot: AgentSnapshot =>
-      pathToAgent.insert(snapshot.agentRefPath -> snapshot)
+    case agentRefState: AgentRefState =>
+      nameToAgentRefState.insert(agentRefState.name -> agentRefState)
 
     case o: ControllerMetaState =>
       controllerMetaState = o
@@ -75,17 +75,20 @@ extends JournaledStateBuilder[ControllerState]
     case Stamped(_, _, KeyedEvent(_: NoKey, event: RepoEvent)) =>
       repo = repo.applyEvent(event).orThrow
 
-    case Stamped(_, _, KeyedEvent(agentRefPath: AgentRefPath, event: ControllerAgentEvent)) =>
+    case Stamped(_, _, KeyedEvent(name: AgentName, event: AgentRefEvent)) =>
       event match {
-        case AgentRegisteredController(agentRunId) =>
-          pathToAgent.insert(agentRefPath -> AgentSnapshot(agentRefPath, Some(agentRunId), eventId = EventId.BeforeFirst))
+        case AgentAdded(uri) =>
+          nameToAgentRefState.insert(name -> AgentRefState(AgentRef(name, uri)))
 
-        case _: AgentReady | _: AgentCouplingFailed =>
+        case AgentUpdated(uri) =>
+          val agentRefState = nameToAgentRefState(name)
+          nameToAgentRefState += name -> agentRefState.copy(
+            agentRef = agentRefState.agentRef.copy(
+              uri = uri))
       }
 
-    case Stamped(_, _, KeyedEvent(a: AgentRefPath, AgentEventsObserved(agentEventId))) =>
-      // Preceding AgentSnapshot is required (see recoverSnapshot)
-      pathToAgent(a) = pathToAgent(a).copy(eventId = agentEventId)
+    case Stamped(_, _, KeyedEvent(name: AgentName, event: AgentRefStateEvent)) =>
+      nameToAgentRefState += name -> nameToAgentRefState(name).applyEvent(event).orThrow
 
     case Stamped(_, _, KeyedEvent(orderId: OrderId, event: OrderEvent)) =>
       event match {
@@ -147,8 +150,8 @@ extends JournaledStateBuilder[ControllerState]
       eventId = eventId,
       standards,
       controllerMetaState,
+      nameToAgentRefState.toMap,
       repo,
-      pathToAgent.toMap,
       idToOrder.toMap)
 
   def journalState = standards.journalState

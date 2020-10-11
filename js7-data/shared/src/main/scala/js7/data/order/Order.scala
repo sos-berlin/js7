@@ -9,7 +9,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils._
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.command.CancelMode
 import js7.data.order.Order._
 import js7.data.order.OrderEvent._
@@ -180,24 +180,24 @@ final case class Order[+S <: Order.State](
           check(!isState[IsTerminated],
             copy(state = Broken(message)))
 
-        case OrderAttachable(agentRefPath) =>
+        case OrderAttachable(agentName) =>
           check((isState[Fresh] || isState[Ready] || isState[Forked]) && isDetached,
-            copy(attachedState = Some(Attaching(agentRefPath))))
+            copy(attachedState = Some(Attaching(agentName))))
 
-        case OrderAttached(agentRefPath) =>
+        case OrderAttached(agentName) =>
           attachedState match {
-            case Some(Attaching(`agentRefPath`)) =>
+            case Some(Attaching(`agentName`)) =>
               check((isState[Fresh] || isState[Ready] || isState[Forked]) && isAttaching,
-                copy(attachedState = Some(Attached(agentRefPath))))
+                copy(attachedState = Some(Attached(agentName))))
             case _ => inapplicable
           }
 
         case OrderDetachable =>
           attachedState match {
-            case Some(Attached(agentRefPath))
+            case Some(Attached(agentName))
               if isState[Fresh] || isState[Ready] || isState[Forked] || isState[ProcessingCancelled] ||
                  isState[FailedWhileFresh] || isState[Failed] || isState[FailedInFork] || isState[Broken] =>
-                Right(copy(attachedState = Some(Detaching(agentRefPath))))
+                Right(copy(attachedState = Some(Detaching(agentName))))
             case _ =>
               inapplicable
           }
@@ -292,9 +292,9 @@ final case class Order[+S <: Order.State](
   def attachedStateString: String =
     attachedState match {
       case None => "on Controller"
-      case Some(Attaching(agentRefPath)) => s"attachable to $agentRefPath"
-      case Some(Attached(agentRefPath)) => s"attached to $agentRefPath"
-      case Some(Detaching(agentRefPath)) => s"detaching from $agentRefPath"
+      case Some(Attaching(agentName)) => s"attachable to $agentName"
+      case Some(Attached(agentName)) => s"attached to $agentName"
+      case Some(Detaching(agentName)) => s"detaching from $agentName"
     }
 
   /** `true` iff order is going to be attached to an Agent.. */
@@ -313,18 +313,18 @@ final case class Order[+S <: Order.State](
   def isDetached: Boolean =
     attachedState.isEmpty
 
-  def attached: Checked[AgentRefPath] =
+  def attached: Checked[AgentName] =
     attachedState match {
-      case Some(Attached(agentRefPath)) =>
-        Right(agentRefPath)
+      case Some(Attached(agentName)) =>
+        Right(agentName)
       case o =>
         Left(Problem(s"'$id' should be 'Attached', but is $o"))
     }
 
-  def detaching: Checked[AgentRefPath] =
+  def detaching: Checked[AgentName] =
     attachedState match {
-      case Some(Detaching(agentRefPath)) =>
-        Right(agentRefPath)
+      case Some(Detaching(agentName)) =>
+        Right(agentName)
       case o =>
         Left(Problem(s"'$id' should be Detaching, but is $o"))
     }
@@ -380,13 +380,13 @@ object Order
   }
 
   def fromOrderAttached(id: OrderId, event: OrderAttachedToAgent): Order[IsFreshOrReady] =
-    Order(id, event.workflowPosition, event.state, event.arguments, event.historicOutcomes, Some(Attached(event.agentRefPath)),
+    Order(id, event.workflowPosition, event.state, event.arguments, event.historicOutcomes, Some(Attached(event.agentName)),
       event.parent, event.mark, isSuspended = event.isSuspended, removeWhenTerminated = event.removeWhenTerminated)
 
   sealed trait AttachedState
   object AttachedState {
-    sealed trait HasAgentRefPath extends AttachedState {
-      def agentRefPath: AgentRefPath
+    sealed trait HasAgentName extends AttachedState {
+      def agentName: AgentName
     }
     implicit val jsonCodec = TypedJsonCodec[AttachedState](
       Subtype(deriveCodec[Attaching]),
@@ -394,16 +394,16 @@ object Order
       Subtype(deriveCodec[Detaching]))
   }
   /** Order is going to be attached to an Agent. */
-  final case class Attaching(agentRefPath: AgentRefPath) extends AttachedState.HasAgentRefPath {
-    override def toString = s"Attaching(${agentRefPath.string})"
+  final case class Attaching(agentName: AgentName) extends AttachedState.HasAgentName {
+    override def toString = s"Attaching(${agentName.string})"
   }
   /** Order is attached to an Agent. */
-  final case class Attached(agentRefPath: AgentRefPath) extends AttachedState.HasAgentRefPath {
-    override def toString = s"Attached(${agentRefPath.string})"
+  final case class Attached(agentName: AgentName) extends AttachedState.HasAgentName {
+    override def toString = s"Attached(${agentName.string})"
   }
   /** Order is going to be detached from Agent. */
-  final case class Detaching(agentRefPath: AgentRefPath) extends AttachedState.HasAgentRefPath {
-    override def toString = s"Detaching(${agentRefPath.string})"
+  final case class Detaching(agentName: AgentName) extends AttachedState.HasAgentName {
+    override def toString = s"Detaching(${agentName.string})"
   }
 
   sealed trait State {

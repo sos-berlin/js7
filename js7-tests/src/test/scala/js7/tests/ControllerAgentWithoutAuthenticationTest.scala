@@ -6,17 +6,19 @@ import js7.agent.configuration.AgentConfiguration
 import js7.base.crypt.silly.{SillySignature, SillySigner}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
+import js7.base.time.ScalaTime._
 import js7.base.web.Uri
 import js7.common.commandline.CommandLineArguments
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.FileUtils.withTemporaryDirectory
 import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.FreeTcpPortFinder
 import js7.controller.RunningController
 import js7.controller.configuration.ControllerConfiguration
-import js7.controller.data.ControllerCommand.ReplaceRepo
-import js7.controller.data.events.ControllerAgentEvent.AgentCouplingFailed
-import js7.data.agent.{AgentRef, AgentRefPath}
+import js7.controller.data.ControllerCommand.{ReplaceRepo, UpdateAgentRefs}
+import js7.controller.data.events.AgentRefStateEvent.AgentCouplingFailed
+import js7.data.agent.{AgentName, AgentRef}
 import js7.data.controller.ControllerItems
 import js7.data.item.{InventoryItemSigner, VersionId}
 import js7.data.job.ExecutablePath
@@ -86,18 +88,19 @@ final class ControllerAgentWithoutAuthenticationTest extends AnyFreeSpec
         "--data-directory=" + dir / "controller/data" ::
         "--http-port=" + controllerPort :: Nil))
 
-      val agentRef = AgentRef(agentRefPath ~ versionId, Uri(s"http://127.0.0.1:$agentPort"))
+      val agentRef = AgentRef(agentName, Uri(s"http://127.0.0.1:$agentPort"))
       val agent = RunningAgent(agentConfiguration) await 99.seconds
       val controller = RunningController(controllerConfiguration) await 99.seconds
       controller.waitUntilReady()
 
-      val replaceRepo = ReplaceRepo(versionId, (agentRef :: workflow :: Nil) map itemSigner.sign)
-      controller.executeCommandAsSystemUser(replaceRepo).runSyncUnsafe(99.seconds).orThrow
+      controller.executeCommandAsSystemUser(UpdateAgentRefs(Seq(agentRef))).await(99.s).orThrow
+      val replaceRepo = ReplaceRepo(versionId, Seq(workflow) map itemSigner.sign)
+      controller.executeCommandAsSystemUser(replaceRepo).await(99.s).orThrow
 
       body(controller, agentPort)
 
-      controller.terminate().runSyncUnsafe(99.seconds)
-      agent.terminate().runSyncUnsafe(99.seconds)
+      controller.terminate() await 99.s
+      agent.terminate() await 99.s
     }
   }
 }
@@ -105,9 +108,9 @@ final class ControllerAgentWithoutAuthenticationTest extends AnyFreeSpec
 object ControllerAgentWithoutAuthenticationTest
 {
   private val versionId = VersionId("INITIAL")
-  private val agentRefPath = AgentRefPath("/AGENT")
+  private val agentName = AgentName("AGENT")
   private val executablePath = ExecutablePath("/EXECUTABLE.cmd")
   private val workflow = Workflow.of(WorkflowPath("/WORKFLOW") ~ versionId,
-    Execute(WorkflowJob(agentRefPath, executablePath)))
+    Execute(WorkflowJob(agentName, executablePath)))
   private val orderId = OrderId("🔵")
 }

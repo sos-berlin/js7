@@ -5,11 +5,9 @@ import js7.base.auth.{SimpleUser, UpdateRepoPermission, UserId}
 import js7.base.crypt.silly.{SillySignature, SillySigner}
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
-import js7.base.web.Uri
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.data.ControllerCommand.{ReplaceRepo, UpdateRepo}
 import js7.core.command.CommandMeta
-import js7.data.agent.{AgentRef, AgentRefPath}
 import js7.data.controller.ControllerItems
 import js7.data.crypt.InventoryItemVerifier
 import js7.data.item.Repo.Entry
@@ -32,7 +30,7 @@ final class RepoCommandExecutorTest extends AnyFreeSpec
   private val v1 = VersionId("1")
   private val v2 = VersionId("2")
   private val v3 = VersionId("3")
-  private val agentRef1 = AgentRef(AgentRefPath("/AGENT") ~ v1, Uri("https://example.com"))
+  private val workflow1 = Workflow(WorkflowPath("/WORKFLOW-A") ~ v1, Vector(Fail(None)))
   private val workflow2 = Workflow(WorkflowPath("/WORKFLOW") ~ v2, Vector(Fail(None)))
   private val workflow3 = workflow2 withVersion v3
   private val commandMeta = CommandMeta(SimpleUser(UserId("PROVIDER")).copy(grantedPermissions = Set(UpdateRepoPermission)))
@@ -52,25 +50,25 @@ final class RepoCommandExecutorTest extends AnyFreeSpec
   }
 
   "replaceRepoCommandToEvents" in {
-    repo = executeReplace(ReplaceRepo(v1, itemSigner.sign(agentRef1) :: Nil))
+    repo = executeReplace(ReplaceRepo(v1, itemSigner.sign(workflow1) :: Nil))
     assert(repo.pathToVersionToSignedItems == Map(
-      agentRef1.id.path -> List(Entry(agentRef1.id.versionId, Some(itemSigner.toSigned(agentRef1))))))
+      workflow1.path -> List(Entry(workflow1.id.versionId, Some(itemSigner.toSigned(workflow1))))))
   }
 
   "updateRepoCommandToEvents" in {
     repo = executeUpdate(UpdateRepo(v2, itemSigner.sign(workflow2) :: Nil))
     assert(repo.pathToVersionToSignedItems == Map(
-      agentRef1.id.path -> List(Entry(agentRef1.id.versionId, Some(itemSigner.toSigned(agentRef1)))),
-      workflow2.id.path -> List(Entry(workflow2.id.versionId, Some(itemSigner.toSigned(workflow2))))))
+      workflow1.path -> List(Entry(workflow1.id.versionId, Some(itemSigner.toSigned(workflow1)))),
+      workflow2.path -> List(Entry(workflow2.id.versionId, Some(itemSigner.toSigned(workflow2))))))
   }
 
   "replaceRepoCommandToEvents #2" in {
     repo = executeReplace(ReplaceRepo(v3, itemSigner.sign(workflow3) :: Nil))
     assert(repo.pathToVersionToSignedItems == Map(
-      agentRef1.id.path -> List(
+      workflow1.path -> List(
         Entry(v3, None),
-        Entry(v1, Some(itemSigner.toSigned(agentRef1)))),
-      workflow2.id.path -> List(
+        Entry(v1, Some(itemSigner.toSigned(workflow1)))),
+      workflow2.path -> List(
         Entry(v3, Some(itemSigner.toSigned(workflow3))),
         Entry(v2, Some(itemSigner.toSigned(workflow2))))))
   }

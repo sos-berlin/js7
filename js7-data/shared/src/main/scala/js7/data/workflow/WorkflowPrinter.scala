@@ -57,7 +57,7 @@ object WorkflowPrinter
 
     def appendWorkflowExecutable(job: WorkflowJob): Unit = {
       sb ++= "agent="
-      appendQuoted(job.agentRefPath.string)
+      appendQuoted(job.agentName.string)
       if (job.taskLimit != WorkflowJob.DefaultTaskLimit) {
         sb ++= ", taskLimit="
         sb.append(job.taskLimit)

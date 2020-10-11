@@ -8,7 +8,7 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.system.OperatingSystem.isWindows
 import js7.controller.data.ControllerCommand.{CancelOrders, Response}
 import js7.data.Problems.{CancelStartedOrderProblem, UnknownOrderProblem}
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.command.CancelMode
 import js7.data.item.VersionId
 import js7.data.job.{ExecutablePath, ReturnCode}
@@ -30,7 +30,7 @@ import scala.concurrent.duration._
   */
 final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentRefPaths = agentRefPath :: Nil
+  protected val agentNames = agentName :: Nil
   protected val inventoryItems = singleJobWorkflow :: twoJobsWorkflow :: forkWorkflow :: Nil
 
   override def beforeAll() = {
@@ -46,8 +46,8 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
     controller.eventWatch.await[OrderCancelled](_.key == order.id)
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id) == Vector(
       OrderAdded(singleJobWorkflow.id, order.scheduledFor),
-      OrderAttachable(agentRefPath),
-      OrderAttached(agentRefPath),
+      OrderAttachable(agentName),
+      OrderAttached(agentName),
       OrderCancelMarked(CancelMode.FreshOnly),
       OrderDetachable,
       OrderDetached,
@@ -62,8 +62,8 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
     controller.eventWatch.await[OrderFinished](_.key == order.id)
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
       OrderAdded(singleJobWorkflow.id, order.scheduledFor),
-      OrderAttachable(agentRefPath),
-      OrderAttached(agentRefPath),
+      OrderAttachable(agentName),
+      OrderAttached(agentName),
       OrderStarted,
       OrderProcessingStarted,
       OrderCancelMarked(CancelMode.FreshOrStarted()),
@@ -92,8 +92,8 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
     controller.eventWatch.await[OrderCancelled](_.key == order.id)
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
       OrderAdded(twoJobsWorkflow.id, order.scheduledFor),
-      OrderAttachable(agentRefPath),
-      OrderAttached(agentRefPath),
+      OrderAttachable(agentName),
+      OrderAttached(agentName),
       OrderStarted,
       OrderProcessingStarted,
       OrderCancelMarked(CancelMode.FreshOrStarted()),
@@ -112,8 +112,8 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
     testCancel(FreshOrder(OrderId("🔶"), twoJobsWorkflow.id.path), Some(twoJobsWorkflow.id /: Position(1)), immediately = false,
       mode => Vector(
         OrderAdded(twoJobsWorkflow.id, None),
-        OrderAttachable(agentRefPath),
-        OrderAttached(agentRefPath),
+        OrderAttachable(agentName),
+        OrderAttached(agentName),
         OrderStarted,
         OrderProcessingStarted,
         OrderCancelMarked(mode),
@@ -137,8 +137,8 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
     testCancel(order, workflowPosition, immediately = immediately,
       mode => Vector(
         OrderAdded(order.workflowPath ~ versionId, None),
-        OrderAttachable(agentRefPath),
-        OrderAttached(agentRefPath),
+        OrderAttachable(agentName),
+        OrderAttached(agentName),
         OrderStarted,
         OrderProcessingStarted,
         OrderCancelMarked(mode),
@@ -165,8 +165,8 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
         OrderId("FORK") <-: OrderAdded(forkWorkflow.id, order.scheduledFor),
         OrderId("FORK") <-: OrderStarted,
         OrderId("FORK") <-: OrderForked(Seq(OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("FORK/🥕")))),
-        OrderId("FORK/🥕") <-: OrderAttachable(agentRefPath),
-        OrderId("FORK/🥕") <-: OrderAttached(agentRefPath),
+        OrderId("FORK/🥕") <-: OrderAttachable(agentName),
+        OrderId("FORK/🥕") <-: OrderAttached(agentName),
         OrderId("FORK/🥕") <-: OrderProcessingStarted,
         OrderId("FORK") <-: OrderCancelMarked(mode),
         OrderId("FORK/🥕") <-: OrderProcessed(Outcome.succeeded),
@@ -213,22 +213,22 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
 object CancelOrdersTest
 {
   private val executablePath = ExecutablePath("/executable.cmd")
-  private val agentRefPath = AgentRefPath("/AGENT")
+  private val agentName = AgentName("AGENT")
   private val versionId = VersionId("INITIAL")
 
   private val singleJobWorkflow = Workflow.of(
     WorkflowPath("/SINGLE") ~ versionId,
-    Execute(WorkflowJob(agentRefPath, executablePath)))
+    Execute(WorkflowJob(agentName, executablePath)))
 
   private val twoJobsWorkflow = Workflow.of(
     WorkflowPath("/TWO") ~ versionId,
-    Execute(WorkflowJob(agentRefPath, executablePath)),
-    Execute(WorkflowJob(agentRefPath, executablePath)))
+    Execute(WorkflowJob(agentName, executablePath)),
+    Execute(WorkflowJob(agentName, executablePath)))
 
   private val forkWorkflow = Workflow.of(
     WorkflowPath("/FORK") ~ versionId,
     Fork.of(
       "🥕" -> Workflow.of(
-        Execute(WorkflowJob(agentRefPath, executablePath)))),
-    Execute(WorkflowJob(agentRefPath, executablePath)))
+        Execute(WorkflowJob(agentName, executablePath)))),
+    Execute(WorkflowJob(agentName, executablePath)))
 }

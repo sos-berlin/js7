@@ -7,7 +7,6 @@ import js7.base.problem.Problems.InvalidNameProblem
 import js7.base.time.Stopwatch.measureTime
 import js7.common.scalautil.FileUtils.syntax._
 import js7.core.item.TypedPaths._
-import js7.data.agent.AgentRefPath
 import js7.data.item.SourceType
 import js7.data.workflow.WorkflowPath
 import org.scalatest.freespec.AnyFreeSpec
@@ -21,10 +20,10 @@ final class TypedPathsTest extends AnyFreeSpec {
     val dir = Paths.get("DIR")
     assert(fileToTypedPathAndSourceType(Set(WorkflowPath), dir, dir / "folder/test.workflow.json") ==
       Right(WorkflowPath("/folder/test") -> SourceType.Json))
-    assert(fileToTypedPathAndSourceType(Set(WorkflowPath, AgentRefPath), dir, dir / "folder/test.workflow.json") ==
-      Right(WorkflowPath("/folder/test") -> SourceType.Json))
-    assert(fileToTypedPathAndSourceType(Set(WorkflowPath, AgentRefPath), dir, dir / "folder/test.workflow.yaml") ==
-      Right(WorkflowPath("/folder/test") -> SourceType.Yaml))
+    //assert(fileToTypedPathAndSourceType(Set(WorkflowPath, AgentName), dir, dir / "folder/test.workflow.json") ==
+    //  Right(WorkflowPath("/folder/test") -> SourceType.Json))
+    //assert(fileToTypedPathAndSourceType(Set(WorkflowPath, AgentName), dir, dir / "folder/test.workflow.yaml") ==
+    //  Right(WorkflowPath("/folder/test") -> SourceType.Yaml))
     assert(fileToTypedPathAndSourceType(Set(WorkflowPath), dir, dir / "folder/test.workflow.txt") ==
       Right(WorkflowPath("/folder/test") -> SourceType.Txt))
     assert(fileToTypedPathAndSourceType(Set(WorkflowPath), dir, dir / "folder/test.job_chain.xml") ==

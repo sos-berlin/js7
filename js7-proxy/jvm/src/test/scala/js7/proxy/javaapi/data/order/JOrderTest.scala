@@ -1,6 +1,6 @@
 package js7.proxy.javaapi.data.order
 
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.command.CancelMode
 import js7.data.order.{Order, OrderId, OrderMark}
 import js7.data.workflow.WorkflowPath
@@ -16,7 +16,7 @@ final class JOrderTest extends AnyFreeSpec
     Order.Forked(Seq(
       Order.Forked.Child(Fork.Branch.Id("A1"), OrderId("ORDER-ID/A/A1")))),
     arguments = Map("KEY" -> "VALUE"),
-    attachedState = Some(Order.Attached(AgentRefPath("/AGENT"))),
+    attachedState = Some(Order.Attached(AgentName("AGENT"))),
     parent = Some(OrderId("ORDER-ID")),
     mark = Some(OrderMark.Cancelling(CancelMode.FreshOrStarted(Some(CancelMode.Kill())))))
 

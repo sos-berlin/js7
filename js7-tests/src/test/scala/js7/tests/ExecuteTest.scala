@@ -6,7 +6,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.system.OperatingSystem.isWindows
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import js7.data.job.{ExecutablePath, ReturnCode}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
@@ -29,7 +29,7 @@ final class ExecuteTest extends AnyFreeSpec
       }"""
     val workflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW"), workflowNotation).orThrow
 
-    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, inventoryItems = workflow :: Nil, testName = Some("ExecuteTest"))) { directoryProvider =>
+    autoClosing(new DirectoryProvider(TestAgentName :: Nil, inventoryItems = workflow :: Nil, testName = Some("ExecuteTest"))) { directoryProvider =>
       directoryProvider.run { (controller, _) =>
         val orderId = OrderId("❌")
         controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
@@ -40,7 +40,7 @@ final class ExecuteTest extends AnyFreeSpec
   }
 
   "Execute" in {
-    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, inventoryItems = TestWorkflow :: Nil, testName = Some("ExecuteTest"))) { directoryProvider =>
+    autoClosing(new DirectoryProvider(TestAgentName :: Nil, inventoryItems = TestWorkflow :: Nil, testName = Some("ExecuteTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) {
         a.configDir / "agent.conf" ++= "js7.job.execution.signed-script-injection-allowed = on\n"
         for (o <- Array("/SCRIPT-0a.cmd", "/SCRIPT-0b.cmd")) a.writeExecutable(ExecutablePath(o), ":")
@@ -70,7 +70,7 @@ final class ExecuteTest extends AnyFreeSpec
 
 object ExecuteTest
 {
-  private val TestAgentRefPath = AgentRefPath("/AGENT")
+  private val TestAgentName = AgentName("AGENT")
   private val ScriptProlog = isWindows ?? "@echo off\n"
   private val workflowNotation = s"""
     define workflow {
@@ -105,8 +105,8 @@ object ExecuteTest
 
   private val ExpectedEvents = Vector(
     OrderAdded(TestWorkflow.id, None),
-    OrderAttachable(TestAgentRefPath),
-    OrderAttached(TestAgentRefPath),
+    OrderAttachable(TestAgentName),
+    OrderAttached(TestAgentName),
     OrderStarted,
     OrderProcessingStarted,
     OrderProcessed(Outcome.Succeeded(ReturnCode(0))),

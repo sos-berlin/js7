@@ -5,7 +5,7 @@ import js7.base.time.ScalaTime._
 import js7.common.configutils.Configs._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.data.ControllerCommand.RemoveOrdersWhenTerminated
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.item.VersionId
 import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.{OrderFinished, OrderRemoved, OrderStarted}
@@ -22,7 +22,7 @@ import scala.concurrent.duration._
 
 final class RemoveOrderWhenTerminatedDelayedTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentRefPaths = agentRefPath :: Nil
+  protected val agentNames = agentName :: Nil
   protected val inventoryItems = workflow:: Nil
   override protected def controllerConfig = config"""js7.order.remove-delay = 1s"""
     .withFallback(super.controllerConfig)
@@ -46,10 +46,10 @@ final class RemoveOrderWhenTerminatedDelayedTest extends AnyFreeSpec with Contro
 object RemoveOrderWhenTerminatedDelayedTest
 {
   private val executablePath = ExecutablePath("/quick.cmd")
-  private val agentRefPath = AgentRefPath("/AGENT")
+  private val agentName = AgentName("AGENT")
   private val versionId = VersionId("INITIAL")
 
   private val workflow = Workflow.of(
     WorkflowPath("/SINGLE") ~ versionId,
-    Execute(WorkflowJob(agentRefPath, executablePath)))
+    Execute(WorkflowJob(agentName, executablePath)))
 }

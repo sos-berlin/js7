@@ -1,14 +1,14 @@
 package js7.proxy.javaapi.data.agent
 
 import js7.base.web.Uri
-import js7.data.agent.{AgentRef, AgentRefPath}
+import js7.data.agent.{AgentName, AgentRef}
 import org.scalatest.freespec.AnyFreeSpec
 
 final class JAgentRefTest extends AnyFreeSpec
 {
   "Java test" in {
     new JAgentRefTester(
-      JAgentRef(AgentRef(AgentRefPath("/AGENTREF") ~ "1.0", Uri("https://agent.example.com")))
+      JAgentRef(AgentRef(AgentName("AGENT"), Uri("https://agent.example.com")))
     ).test()
   }
 }

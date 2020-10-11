@@ -4,11 +4,12 @@ import io.vavr.control.{Either => VEither}
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem
 import js7.base.utils.Collections.implicits.RichTraversable
+import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.controller.data.ControllerState
-import js7.data.agent.{AgentRef, AgentRefPath}
+import js7.data.agent.AgentName
 import js7.data.order.{Order, OrderId}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.proxy.javaapi.data.agent.{JAgentRef, JAgentRefId}
+import js7.proxy.javaapi.data.agent.JAgentRef
 import js7.proxy.javaapi.data.cluster.JClusterState
 import js7.proxy.javaapi.data.common.JJournaledState
 import js7.proxy.javaapi.data.common.VavrConverters._
@@ -39,14 +40,10 @@ extends JJournaledState[JControllerState, ControllerState]
       .map(JWorkflow.apply)
       .toVavr
 
-  def idToAgentRef(workflowId: JAgentRefId): VEither[Problem, JAgentRef] =
-    asScala.repo.idTo[AgentRef](workflowId.asScala)
-      .map(JAgentRef.apply)
-      .toVavr
-
-  /** Looks up an AgentRefPath in the current version. */
-  def pathToAgentRef(agentRefPath: AgentRefPath): VEither[Problem, JAgentRef] =
-    asScala.repo.pathTo[AgentRef](agentRefPath)
+  /** Looks up an AgentName in the current version. */
+  def nameToAgentRef(name: AgentName): VEither[Problem, JAgentRef] =
+    asScala.nameToAgent.checked(name)
+      .map(_.agentRef)
       .map(JAgentRef.apply)
       .toVavr
 

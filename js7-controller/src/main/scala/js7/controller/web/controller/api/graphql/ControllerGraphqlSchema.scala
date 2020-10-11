@@ -5,7 +5,7 @@ import js7.base.generic.{GenericInt, GenericString}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.item.{ItemId, TypedPath, VersionId}
 import js7.data.job.{ExecutablePath, ExecutableScript, ReturnCode}
 import js7.data.order.{Order, OrderId, Outcome}
@@ -55,7 +55,7 @@ object ControllerGraphqlSchema
     "Pattern", "Regular expression pattern")
   private implicit val OrderIdType         = genericStringType[OrderId]("Identifies the Order in JS7")
   private implicit val WorkflowPathType    = genericStringType[WorkflowPath]("Path of Workflow (String)")
-  private implicit val AgentRefPathType    = genericStringType[AgentRefPath]("Path of Agent (String)")
+  private implicit val AgentNameType       = genericStringType[AgentName]("Path of Agent (String)")
   private implicit val ExecutablePathType  = genericStringType[ExecutablePath]("Path of an executable (String)")
   private implicit val WorkflowJobNameType = genericStringType[WorkflowJob.Name]("Job name (String)")
   private implicit val VersionIdType       = genericStringType[VersionId]("Version identifier (String)")
@@ -125,7 +125,7 @@ object ControllerGraphqlSchema
     "WorkflowJob",
     "Job",
     fields[QueryContext, WorkflowJob](
-      Field("agentRefPath", AgentRefPathType, resolve = _.value.agentRefPath),
+      Field("agentName", AgentNameType, resolve = _.value.agentName),
       Field("executablePath", OptionType(ExecutablePathType), resolve = _.value.executable match {
         case o: ExecutablePath => Some(o)
         case _ => None
@@ -247,8 +247,8 @@ object ControllerGraphqlSchema
         case _: Order.Attached => "Attached"
         case _: Order.Detaching => "Detaching"
       }),
-      Field("agentRefPath", OptionType(AgentRefPathType), resolve = _.value match {
-        case o: Order.AttachedState.HasAgentRefPath => Some(o.agentRefPath)
+      Field("agentName", OptionType(AgentNameType), resolve = _.value match {
+        case o: Order.AttachedState.HasAgentName => Some(o.agentName)
         case _ => None
       })))
 

@@ -8,16 +8,17 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import js7.agent.client.AgentClient
 import js7.base.auth.{SessionToken, ValidUserPermission}
-import js7.base.problem.Checked._
+import js7.base.problem.Checked
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
 import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
 import js7.common.akkahttp.StandardMarshallers._
 import js7.common.http.AkkaHttpUtils.RichAkkaUri
 import js7.controller.configuration.ControllerConfiguration
+import js7.controller.data.agent.AgentRefState
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.AgentProxyRoute._
-import js7.core.item.InventoryItemApi
-import js7.data.agent.{AgentRef, AgentRefPath}
+import js7.data.agent.{AgentName, AgentRef}
 import monix.eval.Task
 import monix.execution.Scheduler
 
@@ -27,7 +28,7 @@ import monix.execution.Scheduler
 trait AgentProxyRoute extends ControllerRouteProvider
 {
   protected implicit def actorSystem: ActorSystem
-  protected def itemApi: InventoryItemApi
+  protected def nameToAgentRefState: Task[Checked[Map[AgentName, AgentRefState]]]
   protected def controllerConfiguration: ControllerConfiguration
 
   private implicit def implicitScheduler: Scheduler = scheduler
@@ -38,10 +39,11 @@ trait AgentProxyRoute extends ControllerRouteProvider
         path(Segment) { pathString =>
           extractRequest { request =>
             completeTask(
-              for {
-                checkedAgent <- itemApi.pathToCurrentItem[AgentRef](AgentRefPath(s"/$pathString"))
-                checkedResponse <- checkedAgent.map(forward(_, request)).evert
-              } yield checkedResponse)
+              Task.pure(AgentName.checked(pathString))
+                .flatMapT(name => nameToAgentRefState.map(_.flatMap(_.checked(name))))
+                .flatMapT(agentRefState =>
+                  forward(agentRefState.agentRef, request)
+                    .map(Right.apply)))
           }
         }
       }

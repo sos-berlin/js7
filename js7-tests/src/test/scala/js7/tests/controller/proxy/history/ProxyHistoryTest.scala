@@ -18,7 +18,7 @@ import js7.controller.data.ControllerState
 import js7.controller.data.events.ControllerEvent.ControllerReady
 import js7.core.event.journal.files.JournalFiles
 import js7.data.Problems.SnapshotForUnknownEventIdProblem
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.event.{EventId, KeyedEvent, Stamped}
 import js7.data.job.ReturnCode
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
@@ -48,7 +48,7 @@ import scala.language.implicitConversions
 final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with ClusterProxyTest
 {
   override protected val inventoryItems = TestWorkflow :: Nil
-  override protected val agentRefPaths = AAgentRefPath :: BAgentRefPath :: Nil
+  override protected val agentNames = AAgentName :: BAgentName :: Nil
   private val controllerConfig = config"""
     js7.proxy.mirror.torn-older = 0s  # Should be irrelevant
     js7.journal.users-allowed-to-release-events = [ "Proxy" ]
@@ -133,8 +133,8 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
         assert(keyedEvents.groupMap(_.key)(_.event).view.mapValues(_.toList).to(mutable.SortedMap) == mutable.SortedMap(
           OrderId("🔺") -> List(
             OrderAdded(TestWorkflowId.asScala, None, Map("KEY" -> "VALUE")),
-            OrderAttachable(AAgentRefPath),
-            OrderAttached(AAgentRefPath),
+            OrderAttachable(AAgentName),
+            OrderAttached(AAgentName),
             OrderStarted,
             OrderProcessingStarted,
             OrderStdoutWritten(StdoutOutput),
@@ -147,8 +147,8 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
             OrderDetached,
             OrderJoined(Succeeded(ReturnCode(0))),
             OrderMoved(Position(2)),
-            OrderAttachable(AAgentRefPath),
-            OrderAttached(AAgentRefPath),
+            OrderAttachable(AAgentName),
+            OrderAttached(AAgentName),
             OrderProcessingStarted,
             OrderStdoutWritten(StdoutOutput),
             OrderProcessed(Succeeded(ReturnCode(0))),
@@ -174,8 +174,8 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
           OrderMoved(Position(1) / "fork+🍋" % 1),
           OrderDetachable,
           OrderDetached,
-          OrderAttachable(BAgentRefPath),
-          OrderAttached(BAgentRefPath),
+          OrderAttachable(BAgentName),
+          OrderAttached(BAgentName),
           OrderProcessingStarted,
           OrderStdoutWritten(StdoutOutput),
           OrderProcessed(Succeeded(ReturnCode(0))),
@@ -209,8 +209,8 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
 
 object ProxyHistoryTest
 {
-  private val AAgentRefPath = AgentRefPath("/AGENT-A")
-  private val BAgentRefPath = AgentRefPath("/AGENT-B")
+  private val AAgentName = AgentName("AGENT-A")
+  private val BAgentName = AgentName("AGENT-B")
   private val TestWorkflow = WorkflowParser.parse(TestWorkflowId.asScala, s"""
      |define workflow {
      |  execute executable="${TestExecutablePath.string}", agent="AGENT-A";

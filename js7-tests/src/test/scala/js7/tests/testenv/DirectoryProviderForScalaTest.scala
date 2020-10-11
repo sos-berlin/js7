@@ -10,7 +10,7 @@ import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.message.ProblemCodeMessages
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.common.utils.JavaResource
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.item.InventoryItem
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.immutable.Iterable
@@ -24,13 +24,13 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
   coupleScribeWithSlf4j()
   ProblemCodeMessages.initialize()
 
-  protected def agentRefPaths: Seq[AgentRefPath]
+  protected def agentNames: Seq[AgentName]
   protected def agentHttps = false
   protected def agentPorts: Iterable[Int] = Nil
-  protected def suppressRepoInitialization = false
+  protected def suppressAgentAndRepoInitialization = false
 
   protected final lazy val directoryProvider = new DirectoryProvider(
-    agentRefPaths,
+    agentNames,
     inventoryItems = inventoryItems,
     controllerConfig = controllerConfig,
     agentHttps = agentHttps,
@@ -43,7 +43,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
     signer = signer,
     verifier = verifier,
     testName = Some(getClass.getSimpleName),
-    suppressRepo = suppressRepoInitialization)
+    suppressAgentAndRepoInitialization = suppressAgentAndRepoInitialization)
 
   protected def agentConfig: Config = ConfigFactory.empty
 

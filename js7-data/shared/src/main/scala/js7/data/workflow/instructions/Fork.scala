@@ -8,7 +8,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits._
 import js7.base.utils.StackTraces.StackTraceThrowable
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.source.SourcePos
 import js7.data.workflow.instructions.Fork._
 import js7.data.workflow.position.{BranchId, Position}
@@ -38,18 +38,18 @@ extends Instruction
   override def adopt(outer: Workflow) = copy(
     branches = branches.map(o => o.copy(workflow = o.workflow.copy(outer = Some(outer)))))
 
-  def isPartiallyExecutableOnAgent(agentRefPath: AgentRefPath): Boolean =
-    branches exists (_.workflow isPartiallyExecutableOnAgent agentRefPath)
+  def isPartiallyExecutableOnAgent(agentName: AgentName): Boolean =
+    branches exists (_.workflow isPartiallyExecutableOnAgent agentName)
 
-  def isStartableOnAgent(agentRefPath: AgentRefPath): Boolean =
+  def isStartableOnAgent(agentName: AgentName): Boolean =
     // Any Agent or the controller can fork. The current Agent is okay.
-    branches exists (_.workflow isStartableOnAgent agentRefPath)
+    branches exists (_.workflow isStartableOnAgent agentName)
 
-  //def isJoinableOnAgent(agentRefPath: AgentRefPath): Boolean =
+  //def isJoinableOnAgent(agentName: AgentName): Boolean =
   //  // If branches end on multiple Agents, only the Controller can join the Orders
-  //  branches.values forall (_ isEndingOnAgent agentRefPath)
+  //  branches.values forall (_ isEndingOnAgent agentName)
 
-  //def startAgents: Set[AgentRefPath] =
+  //def startAgents: Set[AgentName] =
   //  branches.flatMap(_.workflow.determinedExecutingAgent).toSet
 
   override def workflow(branchId: BranchId) = {

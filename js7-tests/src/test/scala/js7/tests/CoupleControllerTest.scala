@@ -5,9 +5,9 @@ import java.nio.file.Paths
 import js7.base.time.ScalaTime._
 import js7.common.configutils.Configs.HoconStringInterpolator
 import js7.common.scalautil.FileUtils.syntax._
-import js7.controller.data.events.ControllerAgentEvent.AgentCouplingFailed
+import js7.controller.data.events.AgentRefStateEvent.AgentCouplingFailed
 import js7.core.event.journal.files.JournalFiles.listJournalFiles
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.event.{Event, EventId, KeyedEvent, Stamped}
 import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.OrderFinished
@@ -27,7 +27,7 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class CoupleControllerTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
-  protected val agentRefPaths = agentRefPath :: Nil
+  protected val agentNames = agentName :: Nil
   protected val inventoryItems = TestWorkflow :: Nil
   override protected def controllerConfig = config"""
     js7.journal.remove-obsolete-files = false
@@ -58,7 +58,7 @@ final class CoupleControllerTest extends AnyFreeSpec with DirectoryProviderForSc
       move(firstJournalFile, Paths.get(s"$firstJournalFile-MOVED"))
       directoryProvider.runAgents() { _ =>
         val event = controller.eventWatch.await[AgentCouplingFailed](after = lastEventId, predicate =
-          ke => ke.key == agentRefPath &&
+          ke => ke.key == agentName &&
             ke.event.problem.is(UnknownEventIdProblem))
         lastEventId = event.last.eventId
       }
@@ -90,7 +90,7 @@ final class CoupleControllerTest extends AnyFreeSpec with DirectoryProviderForSc
       directoryProvider.runController() { controller =>
         controller.eventWatch.await[AgentCouplingFailed](after = controller.recoveredEventId,
           predicate = ke =>
-            ke.key == agentRefPath && ke.event.problem.is(UnknownEventIdProblem))
+            ke.key == agentName && ke.event.problem.is(UnknownEventIdProblem))
       }
       for (o <- journalFiles.init) move(Paths.get(s"$o-MOVED"), o)
     }
@@ -108,7 +108,7 @@ final class CoupleControllerTest extends AnyFreeSpec with DirectoryProviderForSc
       directoryProvider.runAgents() { _ =>
         controller.eventWatch.await[AgentCouplingFailed](after = controller.recoveredEventId,
           predicate = ke =>
-            ke.key == agentRefPath && ke.event.problem.is(UnknownEventIdProblem))
+            ke.key == agentName && ke.event.problem.is(UnknownEventIdProblem))
       }
     }
   }
@@ -116,12 +116,12 @@ final class CoupleControllerTest extends AnyFreeSpec with DirectoryProviderForSc
 
 private object CoupleControllerTest
 {
-  private val agentRefPath = AgentRefPath("/AGENT-111")
+  private val agentName = AgentName("AGENT-111")
   private val TestExecutablePath = ExecutablePath("/TEST.cmd")
 
   private val TestWorkflow = Workflow(WorkflowPath("/test") ~ "INITIAL",
     Vector(
-      Execute(WorkflowJob(agentRefPath, TestExecutablePath))))
+      Execute(WorkflowJob(agentName, TestExecutablePath))))
 
   private def lastEventIdOf[E <: Event](stamped: IterableOnce[Stamped[KeyedEvent[E]]]): EventId =
     stamped.iterator.to(Iterable).last.eventId

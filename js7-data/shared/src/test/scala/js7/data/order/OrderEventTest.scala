@@ -7,7 +7,7 @@ import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.command.CancelMode
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.job.ReturnCode
@@ -39,10 +39,10 @@ final class OrderEventTest extends AnyFreeSpec
 
   "OrderAttachable" in {
     check(
-      OrderAttachable(AgentRefPath("/AGENT")),
+      OrderAttachable(AgentName("AGENT")),
       json"""{
         "TYPE": "OrderAttachable",
-        "agentRefPath": "/AGENT"
+        "agentName": "AGENT"
       }""")
   }
 
@@ -53,7 +53,7 @@ final class OrderEventTest extends AnyFreeSpec
         Order.Ready,
         Map("KEY" -> "VALUE"),
         HistoricOutcome(Position(123), Outcome.succeeded) :: Nil,
-        AgentRefPath("/AGENT"),
+        AgentName("AGENT"),
         Some(OrderId("PARENT")),
         Some(OrderMark.Suspending),
         isSuspended = true,
@@ -82,7 +82,7 @@ final class OrderEventTest extends AnyFreeSpec
             }
           }
         ],
-        "agentRefPath":"/AGENT",
+        "agentName":"AGENT",
         "parent": "PARENT",
         "mark": { "TYPE": "Suspending" },
         "isSuspended":  true,
@@ -91,10 +91,10 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderAttached" in {
-    check(OrderAttached(AgentRefPath("/AGENT")), json"""
+    check(OrderAttached(AgentName("AGENT")), json"""
       {
         "TYPE": "OrderAttached",
-        "agentRefPath":"/AGENT"
+        "agentName":"AGENT"
       }""")
   }
 

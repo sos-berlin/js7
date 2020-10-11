@@ -1,11 +1,13 @@
 package js7.tests
 
 import java.net.ServerSocket
+import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
 import js7.base.web.Uri
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.controller.data.events.ControllerAgentEvent.AgentCouplingFailed
-import js7.data.agent.{AgentRef, AgentRefPath}
+import js7.controller.data.ControllerCommand.UpdateAgentRefs
+import js7.controller.data.events.AgentRefStateEvent.AgentCouplingFailed
+import js7.data.agent.{AgentName, AgentRef}
 import js7.data.job.ExecutableScript
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
@@ -22,8 +24,8 @@ import org.scalatest.freespec.AnyFreeSpec
 final class TerminateWithUnknownAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   private lazy val socket = new ServerSocket(0, /*backlog=*/1)
-  protected val inventoryItems = workflow :: AgentRef(agentRefPath, Uri(s"http://127.0.0.1:${socket.getLocalPort}")) ::  Nil
-  protected val agentRefPaths = Nil
+  protected val inventoryItems = workflow ::  Nil
+  protected val agentNames = Nil
   override protected def provideAgentClientCertificate = false
 
   override def afterAll() = {
@@ -32,6 +34,8 @@ final class TerminateWithUnknownAgentTest extends AnyFreeSpec with ControllerAge
   }
 
   "Terminate Controller while AgentDriver is trying to send a command to a non-existent Agent" in {
+    controller.executeCommandAsSystemUser(UpdateAgentRefs(Seq(AgentRef(agentName, Uri(s"http://127.0.0.1:${socket.getLocalPort}")))))
+      .await(99.s).orThrow
     controller.addOrderBlocking(FreshOrder(OrderId("TEST"), workflow.path))
     socket.close()
     controller.eventWatch.await[AgentCouplingFailed]()
@@ -41,7 +45,7 @@ final class TerminateWithUnknownAgentTest extends AnyFreeSpec with ControllerAge
 
 private object TerminateWithUnknownAgentTest
 {
-  private val agentRefPath = AgentRefPath("/UNKNOWN")
+  private val agentName = AgentName("UNKNOWN")
   private val workflow = Workflow.of(WorkflowPath("/WORKFLOW"),
-    Execute.Anonymous(WorkflowJob(agentRefPath, ExecutableScript(":"))))
+    Execute.Anonymous(WorkflowJob(agentName, ExecutableScript(":"))))
 }

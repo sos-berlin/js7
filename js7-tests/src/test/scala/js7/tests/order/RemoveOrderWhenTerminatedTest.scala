@@ -5,7 +5,7 @@ import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.data.ControllerCommand.RemoveOrdersWhenTerminated
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.item.VersionId
 import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderRemoveMarked, OrderRemoved, OrderStarted, OrderStdoutWritten}
@@ -23,7 +23,7 @@ import scala.concurrent.duration._
 
 final class RemoveOrderWhenTerminatedTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentRefPaths = agentRefPath :: Nil
+  protected val agentNames = agentName :: Nil
   protected val inventoryItems = quickWorkflow:: Nil
 
   override def beforeAll() = {
@@ -42,8 +42,8 @@ final class RemoveOrderWhenTerminatedTest extends AnyFreeSpec with ControllerAge
     controller.eventWatch.await[OrderRemoved](_.key == order.id)
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id) == Vector(
       OrderAdded(quickWorkflow.id, order.scheduledFor),
-      OrderAttachable(agentRefPath),
-      OrderAttached(agentRefPath),
+      OrderAttachable(agentName),
+      OrderAttached(agentName),
       OrderStarted,
       OrderProcessingStarted,
       OrderRemoveMarked,
@@ -64,8 +64,8 @@ final class RemoveOrderWhenTerminatedTest extends AnyFreeSpec with ControllerAge
     controller.eventWatch.await[OrderRemoved](_.key == order.id)
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id) == Vector(
       OrderAdded(slowWorkflow.id, order.scheduledFor),
-      OrderAttachable(agentRefPath),
-      OrderAttached(agentRefPath),
+      OrderAttachable(agentName),
+      OrderAttached(agentName),
       OrderStarted,
       OrderProcessingStarted,
       OrderRemoveMarked,
@@ -83,14 +83,14 @@ object RemoveOrderWhenTerminatedTest
 {
   private val quickExecutablePath = ExecutablePath("/quick.cmd")
   private val slowExecutablePath = ExecutablePath("/slow.cmd")
-  private val agentRefPath = AgentRefPath("/AGENT")
+  private val agentName = AgentName("AGENT")
   private val versionId = VersionId("INITIAL")
 
   private val quickWorkflow = Workflow.of(
     WorkflowPath("/SINGLE") ~ versionId,
-    Execute(WorkflowJob(agentRefPath, quickExecutablePath)))
+    Execute(WorkflowJob(agentName, quickExecutablePath)))
 
   private val slowWorkflow = Workflow.of(
     WorkflowPath("/SINGLE") ~ versionId,
-    Execute(WorkflowJob(agentRefPath, slowExecutablePath)))
+    Execute(WorkflowJob(agentName, slowExecutablePath)))
 }

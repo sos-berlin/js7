@@ -10,7 +10,7 @@ import js7.base.problem.Problem
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.time.Stopwatch
 import js7.data.Problems.{EventVersionDoesNotMatchProblem, ItemDeletedProblem, ItemVersionDoesNotMatchProblem}
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.crypt.InventoryItemVerifier
 import js7.data.item.Repo.testOnly.{Changed, Deleted, OpRepo}
 import js7.data.item.RepoEvent.{ItemAdded, ItemChanged, ItemDeleted, VersionAdded}
@@ -82,7 +82,7 @@ final class RepoTest extends AnyFreeSpec
       VersionAdded(V1), ItemAdded(toSigned(a1)),
       VersionAdded(V2), ItemChanged(toSigned(a2)),
       VersionAdded(V3), ItemChanged(toSigned(a3))))
-    assert(testRepo.eventsFor(Set(AgentRefPath)) == List(VersionAdded(V1), VersionAdded(V2), VersionAdded(V3)))
+    assert(testRepo.eventsFor(Set(AgentName)) == List(VersionAdded(V1), VersionAdded(V2), VersionAdded(V3)))
   }
 
   //"pathToCurrentId" in {

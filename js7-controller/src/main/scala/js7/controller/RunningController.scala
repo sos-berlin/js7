@@ -332,7 +332,7 @@ object RunningController
           orderKeeperStarted.map(_.toOption)))
       val repoUpdater = new MyRepoUpdater(itemVerifier, orderKeeperStarted.map(_.toOption))
       val itemApi = new DirectItemApi(controllerState)
-      val orderApi = new MainOrderApi(controllerState, orderKeeperTask)
+      val orderApi = new MainOrderApi(controllerState)
 
       val webServer = injector.instance[ControllerWebServer.Factory]
         .apply(itemApi, orderApi, commandExecutor, repoUpdater,

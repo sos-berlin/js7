@@ -2,7 +2,7 @@ package js7.agent.scheduler
 
 import java.util.UUID
 import js7.base.circeutils.CirceUtils._
-import js7.data.agent.{AgentRefPath, AgentRunId}
+import js7.data.agent.{AgentName, AgentRunId}
 import js7.data.controller.ControllerId
 import js7.data.event.{JournalId, KeyedEvent}
 import js7.tester.CirceJsonTester.testJson
@@ -18,11 +18,11 @@ final class AgentServerEventTest extends AnyFreeSpec {
       testJson[KeyedEvent[AgentServerEvent]](
         AgentServerEvent.ControllerRegistered(
           ControllerId("CONTROLLER"),
-          AgentRefPath("/AGENT"),
+          AgentName("AGENT"),
           AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")))),
         json""" {
           "TYPE": "ControllerRegistered",
-          "agentRefPath": "/AGENT",
+          "agentName": "AGENT",
           "controllerId": "CONTROLLER",
           "agentRunId": "ABEiM0RVZneImaq7zN3u_w"
         }""")

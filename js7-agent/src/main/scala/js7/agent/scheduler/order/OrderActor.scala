@@ -77,10 +77,10 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
     case command: Command =>
       command match {
         case Command.Attach(attached @ Order(`orderId`, wfPos, state: Order.IsFreshOrReady,
-          arguments, historicOutcomes, Some(Order.Attached(agentRefPath)), parent, mark, isSuspended, removeWhenTerminated)
+          arguments, historicOutcomes, Some(Order.Attached(agentName)), parent, mark, isSuspended, removeWhenTerminated)
         ) =>
           becomeAsStateOf(attached, force = true)
-          persist(OrderAttachedToAgent(wfPos, state, arguments, historicOutcomes, agentRefPath, parent, mark,
+          persist(OrderAttachedToAgent(wfPos, state, arguments, historicOutcomes, agentName, parent, mark,
             isSuspended = isSuspended, removeWhenTerminated = removeWhenTerminated)) {
             (event, updatedState) =>
               update(event :: Nil, updatedState)

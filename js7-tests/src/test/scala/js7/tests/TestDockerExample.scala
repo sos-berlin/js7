@@ -25,7 +25,7 @@ import js7.controller.RunningController
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.configuration.inject.ControllerModule
 import js7.controller.tests.TestEnvironment
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import monix.execution.Scheduler.Implicits.global
 
 /**
@@ -33,7 +33,7 @@ import monix.execution.Scheduler.Implicits.global
   */
 object TestDockerExample
 {
-  private val TestAgentRefPaths = AgentRefPath("/agent-1") :: AgentRefPath("/agent-2") :: Nil
+  private val TestAgentNames = AgentName("agent-1") :: AgentName("agent-2") :: Nil
 
   def main(args: Array[String]) = {
     val directory =
@@ -51,7 +51,7 @@ object TestDockerExample
   }
 
   private def run(directory: Path): Unit = {
-    val env = new TestEnvironment(TestAgentRefPaths, directory)
+    val env = new TestEnvironment(TestAgentNames, directory)
     def provide(path: String) = {
       val dir = if (path.startsWith("controller")) directory else env.agentsDir
       JavaResource(s"js7/install/docker/volumes/$path").copyToFile(dir / path)
@@ -70,11 +70,11 @@ object TestDockerExample
       val injector = Guice.createInjector(new ControllerModule(controllerConfiguration.copy(
         config = controllerConfiguration.config)))
       injector.instance[Closer].closeWithCloser
-      val agents = for (agentRefPath <- TestAgentRefPaths) yield {
+      val agents = for (agentName <- TestAgentNames) yield {
         val agent = RunningAgent.startForTest(
-          AgentConfiguration.forTest(configAndData = env.agentDir(agentRefPath))
+          AgentConfiguration.forTest(configAndData = env.agentDir(agentName))
         ) map { _.closeWithCloser } await 99.s
-        //env.file(agentRefPath, SourceType.Json) := AgentRef(AgentRefPath.NoId, uri = agent.localUri.toString)
+        //env.file(agentName, SourceType.Json) := AgentRef(AgentName.NoId, uri = agent.localUri.toString)
         agent
       }
       JavaShutdownHook.add("TestDockerExample") {

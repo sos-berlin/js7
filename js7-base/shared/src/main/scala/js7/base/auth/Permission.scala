@@ -38,3 +38,5 @@ case object GetPermission extends Permission
 case object ValidUserPermission extends Permission
 
 case object UpdateRepoPermission extends Permission
+
+case object UpdateAgentsPermission extends Permission

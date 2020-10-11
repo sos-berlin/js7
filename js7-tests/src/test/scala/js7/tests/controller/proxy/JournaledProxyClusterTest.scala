@@ -78,7 +78,7 @@ final class JournaledProxyClusterTest extends AnyFreeSpec with ClusterProxyTest
     val versionId = VersionId("MY-VERSION")
     val workflow = WorkflowParser.parse(s"""
       define workflow {
-        execute executable="/path-to-my-script", agent="/AGENT",
+        execute executable="/path-to-my-script", agent="AGENT",
           arguments = { "A": "${"A" * 700}" };
       }""").orThrow.withoutSource
     val n = calculateNumberOf[InventoryItem](workflow.withId(WorkflowPath("/WORKFLOW-XXXXX") ~ versionId))
@@ -118,7 +118,7 @@ final class JournaledProxyClusterTest extends AnyFreeSpec with ClusterProxyTest
           .await(99.s)
         logger.info(s"Fetch snapshot: ${itemsPerSecondString(t.elapsed, n, "items")}")
         assert(es.stampedEvent.value.event == ProxyStarted)
-        assert(es.state.repo.currentVersionSize == n + 2)
+        assert(es.state.repo.currentVersionSize == n + 1)
       }
     }
   }

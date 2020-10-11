@@ -19,7 +19,7 @@ object ControllerClusterTester
   private[cluster] val TestWorkflow = WorkflowParser.parse(
     WorkflowPath("/WORKFLOW"),
     """define workflow {
-      |  execute executable="/TEST.cmd", agent="/AGENT";
+      |  execute executable="/TEST.cmd", agent="AGENT";
       |}""".stripMargin).orThrow
 
   private val shellScript = {

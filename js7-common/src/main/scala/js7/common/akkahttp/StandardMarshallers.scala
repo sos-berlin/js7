@@ -2,15 +2,19 @@ package js7.common.akkahttp
 
 import akka.NotUsed
 import akka.http.scaladsl.marshalling.{Marshaller, ToEntityMarshaller, ToResponseMarshallable, ToResponseMarshaller}
+import akka.http.scaladsl.model.ContentTypes.`application/json`
 import akka.http.scaladsl.model.MediaTypes.`text/plain`
 import akka.http.scaladsl.model.{ContentType, HttpEntity, HttpResponse, MediaType, StatusCode}
 import akka.http.scaladsl.unmarshalling.{FromStringUnmarshaller, Unmarshaller}
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
+import io.circe.Encoder
+import io.circe.syntax._
+import js7.base.circeutils.CirceUtils._
+import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.{Checked, Problem}
 import js7.common.http.CirceJsonSupport.jsonMarshaller
 import js7.common.http.StreamingSupport.AkkaObservable
-import js7.common.scalautil.Logger
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import scala.concurrent.duration._
@@ -23,7 +27,6 @@ import scala.reflect.runtime.universe._
 object StandardMarshallers
 {
   private val Nl = ByteString("\n")
-  private val logger = Logger(getClass)
 
   val StringMarshaller: ToEntityMarshaller[String] =
     Marshaller.withOpenCharset(`text/plain`) { (string, charset) =>
@@ -46,6 +49,14 @@ object StandardMarshallers
     (implicit s: Scheduler, q: Source[A, NotUsed] => ToResponseMarshallable)
   : ToResponseMarshallable =
     observable.toAkkaSourceForHttpResponse
+
+  def observableToJsonArrayHttpEntity[A: Encoder: TypeTag](observable: Observable[A])(implicit s: Scheduler): HttpEntity.Chunked =
+    HttpEntity(
+      `application/json`,
+      observable
+        .mapParallelOrderedBatch()(o => ByteString(o.asJson.compactPrint))
+        .intersperse(ByteString("["), ByteString(","), ByteString("]"))
+        .toAkkaSourceForHttpResponse)
 
   implicit val problemToEntityMarshaller: ToEntityMarshaller[Problem] =
     Marshaller.oneOf(

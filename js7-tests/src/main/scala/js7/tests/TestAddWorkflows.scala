@@ -15,7 +15,7 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.system.startup.JavaMain.runMain
 import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.data.ControllerCommand.UpdateRepo
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.item.{InventoryItem, InventoryItemSigner, VersionId}
 import js7.data.job.ExecutablePath
 import js7.data.workflow.instructions.Execute
@@ -33,7 +33,7 @@ final class TestAddWorkflows(settings: Settings)
 {
   def run(): Unit = {
     val directoryProvider = new DirectoryProvider(
-      agentRefPath :: Nil,
+      agentName :: Nil,
       controllerConfig = config"""
         js7.web.server.auth.public = true
         akka.stdout-loglevel = "OFF"""",
@@ -58,7 +58,7 @@ final class TestAddWorkflows(settings: Settings)
   }
 
   private def generateCommands(signer: InventoryItemSigner[InventoryItem]): Seq[UpdateRepo] = {
-    val workflow0 = Workflow.of(Execute(WorkflowJob(agentRefPath, ExecutablePath(s"/EXECUTABLE"))))
+    val workflow0 = Workflow.of(Execute(WorkflowJob(agentName, ExecutablePath(s"/EXECUTABLE"))))
     val versionCounter = AtomicInt(0)
     Observable.fromIterable(1 to settings.workflowCount)
       .bufferTumbling(settings.bundleSize)
@@ -84,7 +84,7 @@ final class TestAddWorkflows(settings: Settings)
 
 object TestAddWorkflows
 {
-  private val agentRefPath = AgentRefPath("/AGENT")
+  private val agentName = AgentName("AGENT")
   private val credentials = none[UserAndPassword]
 
   def main(args: Array[String]): Unit =

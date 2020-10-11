@@ -23,7 +23,7 @@ import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.system.OperatingSystem.isWindows
 import js7.core.crypt.pgp.PgpSigner
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.event.{Event, EventRequest, EventSeq, KeyedEvent, Stamped}
 import js7.data.item.InventoryItemSigner
 import js7.data.order.OrderEvent.OrderDetachable
@@ -59,16 +59,16 @@ final class OrderAgentTest extends AnyFreeSpec
           implicit val actorSystem = newAgentActorSystem(getClass.getSimpleName)
           val agentClient = AgentClient(agent.localUri, Some(TestUserAndPassword)).closeWithCloser
           intercept[AkkaHttpClient.HttpException] {  // Login is required
-            agentClient.commandExecute(RegisterAsController(agentRefPath)).await(99.s).orThrow
+            agentClient.commandExecute(RegisterAsController(agentName)).await(99.s).orThrow
           } .status shouldEqual Unauthorized
           agentClient.login() await 99.s
-          assert(agentClient.commandExecute(RegisterAsController(agentRefPath)).await(99.s).toOption.get  // Without Login, this registers all anonymous clients
+          assert(agentClient.commandExecute(RegisterAsController(agentName)).await(99.s).toOption.get  // Without Login, this registers all anonymous clients
             .isInstanceOf[RegisterAsController.Response])
 
           val order = Order(OrderId("TEST-ORDER"), SimpleTestWorkflow.id, Order.Ready, Map("x" -> "X"))
 
           def attachOrder(signedWorkflow: SignedString): Checked[AgentCommand.Response.Accepted] =
-            agentClient.commandExecute(AttachOrder(order, TestAgentRefPath, signedWorkflow)).await(99.s)
+            agentClient.commandExecute(AttachOrder(order, TestAgentName, signedWorkflow)).await(99.s)
 
           attachOrder(SignedSimpleWorkflow.copy(string = SignedSimpleWorkflow.string + " ")) shouldEqual Left(TamperedWithSignedMessageProblem)
 
@@ -107,12 +107,12 @@ final class OrderAgentTest extends AnyFreeSpec
           implicit val actorSystem = newAgentActorSystem(getClass.getSimpleName)
           val agentClient = AgentClient(agent.localUri, Some(TestUserAndPassword)).closeWithCloser
           agentClient.login() await 99.s
-          assert(agentClient.commandExecute(RegisterAsController(agentRefPath)).await(99.s) == Right(AgentCommand.Response.Accepted))
+          assert(agentClient.commandExecute(RegisterAsController(agentName)).await(99.s) == Right(AgentCommand.Response.Accepted))
 
           val orders = for (i <- 1 to n) yield
             Order(OrderId(s"TEST-ORDER-$i"), SimpleTestWorkflow.id, Order.Ready,
               Map("x" -> "X"),
-              attachedState = Some(Order.Attached(AgentRefPath("/AGENT"))))
+              attachedState = Some(Order.Attached(AgentName("AGENT"))))
 
           val stopwatch = new Stopwatch
           agentClient.commandExecute(Batch(orders map { AttachOrder(_, SignedSimpleWorkflow) })) await 99.s
@@ -140,7 +140,7 @@ final class OrderAgentTest extends AnyFreeSpec
 
 private object OrderAgentTest
 {
-  private val agentRefPath = AgentRefPath("/AGENT")
+  private val agentName = AgentName("AGENT")
   private val TestScript =
     if (isWindows) """
       |@echo off
@@ -157,7 +157,7 @@ private object OrderAgentTest
   private def toExpectedOrder(order: Order[Order.State]) =
     order.copy(
       workflowPosition = order.workflowPosition.copy(position = Position(2)),
-      attachedState = Some(Order.Detaching(TestAgentRefPath)),
+      attachedState = Some(Order.Detaching(TestAgentName)),
       arguments = Map("x" -> "X"),
       historicOutcomes =
         HistoricOutcome(Position(0), Outcome.Succeeded(Map("result" -> "TEST-RESULT-"))) ::

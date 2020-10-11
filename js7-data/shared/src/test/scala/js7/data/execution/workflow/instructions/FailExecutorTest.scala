@@ -1,7 +1,7 @@
 package js7.data.execution.workflow.instructions
 
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.agent.AgentRefPath
+import js7.data.agent.AgentName
 import js7.data.execution.workflow.context.OrderContext
 import js7.data.execution.workflow.instructions.FailExecutorTest._
 import js7.data.job.ReturnCode
@@ -48,7 +48,7 @@ final class FailExecutorTest extends AnyFreeSpec
       }
 
       "Attached order" in {
-        assert(FailExecutor.toEvent(context, TestOrder.copy(attachedState = Some(Order.Attached(AgentRefPath("/AGENT")))), Fail()) ==
+        assert(FailExecutor.toEvent(context, TestOrder.copy(attachedState = Some(Order.Attached(AgentName("AGENT")))), Fail()) ==
           Right(Some(TestOrder.id <-: OrderFailedCatchable(Outcome.Failed(ReturnCode(0))))))
       }
     }
@@ -57,7 +57,7 @@ final class FailExecutorTest extends AnyFreeSpec
       val fail = Fail(uncatchable = true)
 
       "Attached order will be detached if fail is uncatchable" in {
-        assert(FailExecutor.toEvent(context, TestOrder.copy(attachedState = Some(Order.Attached(AgentRefPath("/AGENT")))), fail) ==
+        assert(FailExecutor.toEvent(context, TestOrder.copy(attachedState = Some(Order.Attached(AgentName("AGENT")))), fail) ==
           Right(Some(TestOrder.id <-: OrderDetachable)))
       }
 

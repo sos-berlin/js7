@@ -5,7 +5,7 @@ import akka.http.scaladsl.server.Route
 import js7.base.auth.ValidUserPermission
 import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
 import js7.common.akkahttp.CirceJsonOrYamlSupport._
-import js7.common.akkahttp.StandardDirectives.remainingSegmentOrPath
+import js7.common.akkahttp.StandardDirectives.remainingTypedPath
 import js7.common.akkahttp.StandardMarshallers._
 import js7.controller.web.common.ControllerRouteProvider
 import js7.core.item.InventoryItemApi
@@ -42,7 +42,7 @@ trait WorkflowRoute extends ControllerRouteProvider {
               reject
           }
         } ~
-        path(remainingSegmentOrPath[WorkflowPath]) { workflowPath =>
+        path(remainingTypedPath[WorkflowPath]) { workflowPath =>
           completeTask(
             itemApi.pathToCurrentItem[Workflow](workflowPath))
         }
