@@ -312,17 +312,17 @@ object RunningController
       for (t <- orderKeeperStarted.failed) logger.debug("orderKeeperStarted => " + t.toStringWithCauses, t)
       orderKeeperStarted.failed foreach whenReady.tryFailure
       orderKeeperTerminated.failed foreach whenReady.tryFailure
-      val orderKeeperTask = Task.defer {
-        orderKeeperStarted.value match {
-          case None => Task.raiseError(ControllerIsNotYetReadyProblem.throwable)
-          case Some(orderKeeperTry) =>
-            orderKeeperTry match {
-              case Failure(t) => Task.raiseError(t)
-              case Success(Left(_)) => Task.raiseError(JobSchedulerIsShuttingDownProblem.throwable)
-              case Success(Right(actor)) => Task.pure(actor)
-            }
-        }
-      }
+      //val orderKeeperTask = Task.defer {
+      //  orderKeeperStarted.value match {
+      //    case None => Task.raiseError(ControllerIsNotYetReadyProblem.throwable)
+      //    case Some(orderKeeperTry) =>
+      //      orderKeeperTry match {
+      //        case Failure(t) => Task.raiseError(t)
+      //        case Success(Left(_)) => Task.raiseError(JobSchedulerIsShuttingDownProblem.throwable)
+      //        case Success(Right(actor)) => Task.pure(actor)
+      //      }
+      //  }
+      //}
       val commandExecutor = new ControllerCommandExecutor(
         new MyCommandExecutor(cluster,
           onShutDownPassive = termination => Task {
