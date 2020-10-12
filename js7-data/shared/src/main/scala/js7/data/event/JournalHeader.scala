@@ -38,7 +38,7 @@ final case class JournalHeader private[data](
       totalRunningTime = totalRunningTime,
       timestamp = timestamp,
       version = Version,
-      softwareVersion = BuildInfo.version,
+      softwareVersion = BuildInfo.prettyVersion,
       buildId = BuildInfo.buildId)
 
   override def toString = s"JournalHeader($journalId, $eventId, #$generation, total=$totalEventCount, " +
@@ -47,7 +47,7 @@ final case class JournalHeader private[data](
 
 object JournalHeader
 {
-  private[data] val Version = "0.31"  // TODO Vor der ersten Software-Freigabe zu "1" wechseln
+  private[data] val Version = "0.32"  // TODO Vor der ersten Software-Freigabe zu "1" wechseln
 
   def forTest(journalId: JournalId, eventId: EventId = EventId.BeforeFirst): JournalHeader =
     new JournalHeader(
@@ -58,7 +58,7 @@ object JournalHeader
       Duration.Zero,
       timestamp = Timestamp.now,
       startedAt = Timestamp.now,
-      softwareVersion = BuildInfo.version,
+      softwareVersion = BuildInfo.prettyVersion,
       version = Version,
       buildId = BuildInfo.buildId)
 
@@ -72,7 +72,7 @@ object JournalHeader
       timestamp = Timestamp.now,
       startedAt = Timestamp.now,
       version = Version,
-      softwareVersion = BuildInfo.version,
+      softwareVersion = BuildInfo.prettyVersion,
       buildId = BuildInfo.buildId)
 
   implicit lazy val jsonCodec = {
