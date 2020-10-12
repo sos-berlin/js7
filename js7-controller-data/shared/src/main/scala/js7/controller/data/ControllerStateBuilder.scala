@@ -7,7 +7,7 @@ import js7.controller.data.events.ControllerEvent.{ControllerShutDown, Controlle
 import js7.controller.data.events.{AgentRefStateEvent, ControllerEvent}
 import js7.data.agent.AgentRefEvent.{AgentAdded, AgentUpdated}
 import js7.data.agent.{AgentName, AgentRef, AgentRefEvent}
-import js7.data.cluster.{ClusterEvent, ClusterState}
+import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{JournalEvent, JournalState, JournaledState, JournaledStateBuilder, KeyedEvent, Stamped}
 import js7.data.execution.workflow.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
@@ -52,7 +52,7 @@ extends JournaledStateBuilder[ControllerState]
     case o: JournalState =>
       standards = standards.copy(journalState = o)
 
-    case ClusterState.ClusterStateSnapshot(o) =>
+    case ClusterStateSnapshot(o) =>
       standards = standards.copy(clusterState = o)
   }
 

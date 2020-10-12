@@ -11,7 +11,7 @@ import js7.controller.data.events.ControllerEvent.{ControllerShutDown, Controlle
 import js7.controller.data.events.{AgentRefStateEvent, ControllerEvent}
 import js7.data.agent.AgentRefEvent.{AgentAdded, AgentUpdated}
 import js7.data.agent.{AgentName, AgentRef, AgentRefEvent}
-import js7.data.cluster.{ClusterEvent, ClusterState}
+import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerItems.ControllerItemPathCompanions
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
@@ -179,7 +179,7 @@ object ControllerState extends JournaledState.Companion[ControllerState]
       Subtype[JournalHeader],
       Subtype[SnapshotMeta],
       Subtype[JournalState],
-      Subtype(deriveCodec[ClusterState.ClusterStateSnapshot]),
+      Subtype(deriveCodec[ClusterStateSnapshot]),
       Subtype(deriveCodec[ControllerMetaState]),
       Subtype[AgentRefState],
       Subtype[RepoEvent],  // These events describe complete objects

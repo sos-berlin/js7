@@ -8,8 +8,7 @@ import js7.base.utils.Collections.implicits._
 import js7.base.web.Uri
 import js7.controller.data.agent.AgentRefState
 import js7.data.agent.{AgentName, AgentRef}
-import js7.data.cluster.ClusterState.ClusterStateSnapshot
-import js7.data.cluster.{ClusterSetting, ClusterState}
+import js7.data.cluster.{ClusterSetting, ClusterState, ClusterStateSnapshot}
 import js7.data.controller.ControllerId
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{EventId, JournalState, JournaledState}

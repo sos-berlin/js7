@@ -64,7 +64,6 @@ object ClusterState
 {
   private type Id = NodeId
 
-  final case class ClusterStateSnapshot(clusterState: ClusterState)
 
   /** Cluster has not been initialized.
     * Like ClusterSole but own URI is unknown. Non-permanent state, not stored. */
