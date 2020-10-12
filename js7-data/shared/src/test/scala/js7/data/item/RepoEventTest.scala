@@ -31,7 +31,7 @@ final class RepoEventTest extends AnyFreeSpec {
 
     "ItemAdded" in {
       testJson[RepoEvent](
-        ItemAdded(Signed(workflow, SignedString((workflow: InventoryItem).asJson.compactPrint, GenericSignature("PGP", "SIGNATURE")))),
+        ItemAdded(Signed(workflow, SignedString.pgp((workflow: InventoryItem).asJson.compactPrint, "SIGNATURE"))),
         json"""{
           "TYPE": "ItemAdded",
           "path": "Workflow:/WORKFLOW",
@@ -47,7 +47,7 @@ final class RepoEventTest extends AnyFreeSpec {
 
     "ItemChanged" in {
       testJson[RepoEvent](
-        ItemChanged(Signed(workflow, SignedString((workflow: InventoryItem).asJson.compactPrint, GenericSignature("PGP", "SIGNATURE")))),
+        ItemChanged(Signed(workflow, SignedString.pgp((workflow: InventoryItem).asJson.compactPrint, "SIGNATURE"))),
         json"""{
           "TYPE": "ItemChanged",
           "path": "Workflow:/WORKFLOW",

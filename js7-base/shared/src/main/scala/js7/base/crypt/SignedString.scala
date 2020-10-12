@@ -19,16 +19,20 @@ object SignedString
     SignedString(string, GenericSignature(signatureTypeName, signatureString))
 
   @javaApi
-  def x509WithSignedId(string: String, signatureString: String, algorithm: String, signerId: SignerId): SignedString =
-    SignedString(
-      string,
-      GenericSignature("X509", signatureString, algorithm = Some(algorithm), signerId = Some(signerId)))
+  def pgp(string: String, signatureString: String): SignedString =
+    SignedString(string, GenericSignature("PGP", signatureString))
 
   @javaApi
-  def x509WithCertificate(string: String, signatureString: String, algorithm: String, signerCertificate: String): SignedString =
+  def x509WithSignedId(string: String, signatureBase64: String, algorithm: String, signerId: SignerId): SignedString =
     SignedString(
       string,
-      GenericSignature("X509", signatureString, algorithm = Some(algorithm), signerCertificate = Some(signerCertificate)))
+      GenericSignature("X509", signatureBase64, algorithm = Some(algorithm), signerId = Some(signerId)))
+
+  @javaApi
+  def x509WithCertificate(string: String, base64: String, algorithm: String, signerCertificate: String): SignedString =
+    SignedString(
+      string,
+      GenericSignature("X509", base64, algorithm = Some(algorithm), signerCertificate = Some(signerCertificate)))
 
   implicit val jsonCodec = deriveCodec[SignedString]
 }
