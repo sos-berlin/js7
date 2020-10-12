@@ -266,7 +266,7 @@ import monix.reactive.Observable
           def f(positionAndLine: PositionAnd[ByteArray]) =
             (positionAndLine.position,
               positionAndLine.value,
-              journalMeta.decodeJsonOrThrow(positionAndLine.value.parseJson.orThrow))
+              positionAndLine.value.parseJson.flatMap(journalMeta.decodeJson).orThrow)
           val n = 128/*TODO*/
           if (list.sizeIs <= n + n / 2)
             Observable.fromIterable(list) map f

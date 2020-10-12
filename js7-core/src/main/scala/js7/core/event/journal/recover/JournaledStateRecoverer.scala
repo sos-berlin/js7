@@ -16,6 +16,7 @@ import js7.core.event.journal.recover.JournaledStateRecoverer._
 import js7.core.event.journal.watch.JournalEventWatch
 import js7.data.event.{EventId, JournalId, JournaledState}
 import scala.concurrent.duration.Deadline
+import js7.base.problem.Checked._
 import scala.concurrent.duration.Deadline.now
 
 private final class JournaledStateRecoverer[S <: JournaledState[S]](
@@ -35,7 +36,7 @@ private final class JournaledStateRecoverer[S <: JournaledState[S]](
     // TODO Use HistoricEventReader (and build JournalIndex only once, and reuse it for event reading)
     autoClosing(InputStreamJsonSeqReader.open(file)) { jsonReader =>
       for (json <- UntilNoneIterator(jsonReader.read()).map(_.value)) {
-        fileJournaledStateBuilder.put(if (json.isObject) journalMeta.decodeJsonOrThrow(json) else json)
+        fileJournaledStateBuilder.put(if (json.isObject) journalMeta.decodeJson(json).orThrow else json)
         fileJournaledStateBuilder.journalProgress match {
           case AfterSnapshotSection =>
             _position = jsonReader.position
