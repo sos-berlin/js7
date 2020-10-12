@@ -4,13 +4,16 @@ import akka.actor.ActorRef
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.DuplicateKeyException
+import js7.base.utils.StackTraces._
 import scala.collection.mutable
 
 /**
   * @author Joacim Zschimmer
   */
-class ActorRegister[K, V](valueToActorRef: V => ActorRef)  {
-  private val keyToValue = mutable.Map[K, V]() withDefault (k => throw noSuchKeyProblem(k).throwable)
+class ActorRegister[K, V](valueToActorRef: V => ActorRef)
+{
+  private val keyToValue = mutable.Map[K, V]()
+    .withDefault(k => throw noSuchKeyProblem(k).throwable.appendCurrentStackTrace)
   private val _actorToKey = mutable.Map[ActorRef, K]()
 
   protected def noSuchKeyProblem(k: K): Problem = Problem(s"No such key: $k")

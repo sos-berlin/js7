@@ -20,6 +20,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
+import js7.base.utils.StackTraces._
 import js7.base.web.HttpClient
 import js7.common.event.{EventIdGenerator, PositionAnd}
 import js7.common.http.RecouplingStreamReader
@@ -345,7 +346,7 @@ import monix.reactive.Observable
                         })
                     }
                   ).flatMap {
-                    case Left(problem) => Observable.raiseError(problem.throwable)
+                    case Left(problem) => Observable.raiseError(problem.throwable.appendCurrentStackTrace)
                     case Right(false) => Observable.empty   // Ignore
                     case Right(true) => Observable.pure(Right(()))  // End observation
                   }
