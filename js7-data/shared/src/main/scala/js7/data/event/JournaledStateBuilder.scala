@@ -1,12 +1,14 @@
 package js7.data.event
 
 import js7.base.problem.Checked._
+import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.time.{Stopwatch, Timestamp}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
+import js7.base.utils.StackTraces._
 import js7.data.cluster.ClusterState
-import js7.data.event.JournaledState.SnapshotObjectNotApplicableProblem
+import JournaledStateBuilder._
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import monix.eval.Task
 import scala.concurrent.duration.Duration
@@ -66,7 +68,7 @@ trait JournaledStateBuilder[S <: JournaledState[S]]
     }
 
   protected def onSnapshotObjectNoApplicable(obj: Any): Unit =
-    throw SnapshotObjectNotApplicableProblem(obj, this).throwable
+    throw SnapshotObjectNotApplicableProblem(obj).throwable.appendCurrentStackTrace
 
   def onAllSnapshotsAdded(): Unit = {
     onOnAllSnapshotsAdded()
@@ -180,5 +182,9 @@ object JournaledStateBuilder
     def journalState = _state.journalState
 
     def clusterState = _state.clusterState
+  }
+
+  private case class SnapshotObjectNotApplicableProblem(obj: Any) extends Problem.Coded {
+    def arguments = Map("object" -> obj.getClass.scalaName)
   }
 }

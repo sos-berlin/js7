@@ -75,12 +75,6 @@ object JournaledState
     def empty = Standards(JournalState.empty, ClusterState.Empty)
   }
 
-  final case class SnapshotObjectNotApplicableProblem(obj: Any, state: Any) extends Problem.Coded {
-    def arguments = Map(
-      "object" -> obj.getClass.scalaName,
-      "state" -> state.toString.truncateWithEllipsis(100))
-  }
-
   final case class EventNotApplicableProblem(keyedEvent: KeyedEvent[Event], state: Any) extends Problem.Coded {
     def arguments = Map(
       "event" -> keyedEvent.toString.truncateWithEllipsis(100),
