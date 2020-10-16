@@ -69,14 +69,15 @@ extends SignatureVerifier
     }
   }
 
-  private def verifySignature(document: ByteArray, signature: X509Signature, cert: X509Cert): Checked[SignerId] = {
-    val sig = Signature.getInstance(signature.algorithm.string)
-    sig.initVerify(cert.x509Certificate.getPublicKey)
-    sig.update(document.unsafeArray)
-    val verified = sig.verify(signature.byteArray.unsafeArray)
-    if (!verified) Left(TamperedWithSignedMessageProblem)
-    else Right(SignerId(cert.x509Certificate.getSubjectX500Principal.toString))
-  }
+  private def verifySignature(document: ByteArray, signature: X509Signature, cert: X509Cert): Checked[SignerId] =
+    Checked.catchNonFatal {
+      val sig = Signature.getInstance(signature.algorithm.string)
+      sig.initVerify(cert.x509Certificate.getPublicKey)
+      sig.update(document.unsafeArray)
+      val verified = sig.verify(signature.byteArray.unsafeArray)
+      if (!verified) Left(TamperedWithSignedMessageProblem)
+      else Right(SignerId(cert.x509Certificate.getSubjectX500Principal.toString))
+    }.flatten
 
   private def verifySignersCertificate(signatureCertificate: X509Cert, publicKey: PublicKey): Checked[Unit] =
     try {
