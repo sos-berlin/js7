@@ -148,9 +148,32 @@ final class RepoTest extends AnyFreeSpec
         == Right(VersionAdded(V1) :: Nil))
     }
 
-    "Duplicate" in {
+    "Duplicate items" in {
       assert(emptyRepo.itemToEvents(V1, toSigned(a1) :: toSigned(a1) :: Nil)
         == Left(Problem("Unexpected duplicates: 2×A:/A")))
+    }
+
+
+    "Duplicate itemToEvents resulting to same Repo is ignored" - {
+      "if some items should be changed" in {
+        var repo = emptyRepo
+        val events = repo.itemToEvents(V1, toSigned(a1) :: Nil).orThrow
+        assert(events.nonEmpty)
+        repo = repo.applyEvents(events).orThrow
+
+        assert(repo.itemToEvents(V1, toSigned(a1) :: Nil) == Right(Nil))
+      }
+
+      "but not if no items should be changed" in {
+        var repo = emptyRepo
+        var events = repo.itemToEvents(V1, Nil).orThrow
+        assert(events.nonEmpty)
+        repo = repo.applyEvents(events).orThrow
+
+        events = repo.itemToEvents(V1, Nil).orThrow
+        assert(events == VersionAdded(V1) :: Nil)
+        assert(repo.applyEvents(events) == Left(DuplicateKey("VersionId", V1)))
+      }
     }
 
     "Other" in {

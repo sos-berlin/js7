@@ -59,17 +59,22 @@ final case class Repo private(
   /** Returns the difference to the repo as events. */
   def itemToEvents(versionId: VersionId, changed: Iterable[Signed[InventoryItem]], deleted: Iterable[ItemPath] = Nil)
   : Checked[Seq[RepoEvent]] =
-    checkVersion(versionId, changed)
+    checkItemVersions(versionId, changed)
       .flatMap { changed =>
         val addedOrChanged = changed flatMap toAddedOrChanged
         for (_ <- addedOrChanged.checkUniqueness(_.path)) yield {
-          lazy val addedSet = addedOrChanged.view.collect { case a: ItemAdded => a.path }.toSet
+          lazy val lazyAddedSet = addedOrChanged.view.collect { case a: ItemAdded => a.path }.toSet
           val deletedEvents = deleted.view
-            .filterNot(addedSet)  // delete and change?
+            .filterNot(path => lazyAddedSet contains path)  // delete and change?
             .filter(exists)  // delete unknown?
             .map(ItemDeleted.apply)
-          (new View.Single(VersionAdded(versionId)) ++ deletedEvents ++ addedOrChanged)
-            .toVector
+          (View(VersionAdded(versionId)) ++ deletedEvents ++ addedOrChanged).toVector match {
+            case Vector(VersionAdded(this.versionId)) if changed.nonEmpty || deleted.nonEmpty =>
+              // Ignore same version with empty difference if it is not a versionId-only UpdateRepo
+              Nil
+            case events =>
+              events
+          }
         }
       }
 
@@ -91,21 +96,19 @@ final case class Repo private(
       .sortBy(_.path)
   }
 
-  private def checkVersion(versionId: VersionId, signedItems: Iterable[Signed[InventoryItem]]): Checked[Vector[Signed[InventoryItem]]] =
+  private def checkItemVersions(versionId: VersionId, signedItems: Iterable[Signed[InventoryItem]]): Checked[Vector[Signed[InventoryItem]]] =
     signedItems.toVector.traverse(o =>
       o.value.id.versionId match {
         case `versionId` => Right(o)
         case _ => Left(ItemVersionDoesNotMatchProblem(versionId, o.value.id))
       })
 
-  private def toAddedOrChanged(signedItem: Signed[InventoryItem]): Option[RepoEvent.ItemEvent] = {
-    val path = signedItem.value.path
-    pathToSigned(path) match {
+  private def toAddedOrChanged(signedItem: Signed[InventoryItem]): Option[RepoEvent.ItemEvent] =
+    pathToSigned(signedItem.value.path) match {
       case Right(`signedItem`) => None
       case Right(_) => Some(ItemChanged(signedItem))
       case Left(_) => Some(ItemAdded(signedItem))
     }
-  }
 
   def typedCount[A <: InventoryItem](implicit A: InventoryItem.Companion[A]): Int =
     pathToVersionToSignedItems.values.view.flatten.count {
@@ -129,7 +132,7 @@ final case class Repo private(
     var result = Checked(this)
     val iterator = events.iterator
     while (result.isRight && iterator.hasNext) {
-      result = result flatMap (_.applyEvent(iterator.next()))
+      result = result.flatMap(_.applyEvent(iterator.next()))
     }
     result
   }
@@ -301,7 +304,8 @@ final case class Repo private(
   def newVersionId(): VersionId =
     VersionId.generate(isKnown = versions.contains)
 
-  override def toString = s"Repo($versions," +  //FIXME
+  // TODO Very big toString ?
+  override def toString = s"Repo($versions," +
     pathToVersionToSignedItems
       .keys.toSeq.sorted
       .map(path =>

@@ -71,6 +71,7 @@ final class UpdateRepoTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controller.addOrderBlocking(FreshOrder(orderIds(0), TestWorkflowPath))
 
     executeCommand(UpdateRepo(V2, sign(workflow2) :: Nil)).orThrow
+    executeCommand(UpdateRepo(V2, sign(workflow2) :: Nil)).orThrow  /*Duplicate effect is ignored*/
     controller.addOrderBlocking(FreshOrder(orderIds(1), TestWorkflowPath))
 
     val promises = Vector.fill(2)(Promise[Deadline]())
@@ -86,6 +87,7 @@ final class UpdateRepoTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controller.executeCommandAsSystemUser(RemoveOrdersWhenTerminated(orderIds)).await(99.s).orThrow
 
     executeCommand(UpdateRepo(V3, delete = TestWorkflowPath :: Nil)).orThrow
+    executeCommand(UpdateRepo(V3, delete = TestWorkflowPath :: Nil)).orThrow  /*Duplicate effect is ignored*/
     assert(controller.addOrder(FreshOrder(orderIds(1), TestWorkflowPath)).await(99.s) ==
       Left(ItemDeletedProblem(TestWorkflowPath)))
 

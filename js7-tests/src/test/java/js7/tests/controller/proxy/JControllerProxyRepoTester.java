@@ -83,15 +83,22 @@ final class JControllerProxyRepoTester
             awaitEvent(keyedEvent -> isItemAdded(keyedEvent, bWorkflowPath));
 
         // Add items
+        addItemsOnly(itemJsons);
+
+        // The repeated operation does nothing. This allows a client restart with unknown transaction state.
+        addItemsOnly(itemJsons);
+
+        whenWorkflowAdded.get(99, SECONDS);
+        assertThat(proxy.currentState().idToWorkflow(workflowId).map(o -> o.id().path()),
+            equalTo(Either.right(bWorkflowPath)));
+    }
+
+    private void addItemsOnly(List<String> itemJsons) {
         await(api.updateRepo(
             versionId,
             Flux.fromStream(
                 itemJsons.stream()
                     .map(json -> JUpdateRepoOperation.addOrReplace(sign(json))))));
-
-        whenWorkflowAdded.get(99, SECONDS);
-        assertThat(proxy.currentState().idToWorkflow(workflowId).map(o -> o.id().path()),
-            equalTo(Either.right(bWorkflowPath)));
     }
 
     void deleteItem() throws InterruptedException, ExecutionException, TimeoutException {

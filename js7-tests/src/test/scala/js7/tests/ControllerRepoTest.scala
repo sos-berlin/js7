@@ -2,7 +2,8 @@ package js7.tests
 
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
-import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
+import js7.base.problem.Checked._
+import js7.base.problem.Problems.DuplicateKey
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
 import js7.base.utils.AutoClosing.autoClosing
@@ -41,6 +42,8 @@ final class ControllerRepoTest extends AnyFreeSpec
 
   "test" in {
     autoClosing(new DirectoryProvider(List(TestAgentName), testName = Some("ControllerRepoTest"))) { provider =>
+      import provider.itemSigner
+
       for (v <- 1 to 4)  // For each version, we use a dedicated job which echos the VersionId
         provider.agents.head.writeExecutable(ExecutablePath(s"/EXECUTABLE-V$v$sh"), (isWindows ?? "@") + s"echo /VERSION-$v/")
       provider.controller.configDir / "controller.conf" ++=
@@ -53,19 +56,42 @@ final class ControllerRepoTest extends AnyFreeSpec
       provider.runAgents() { _ =>
         provider.runController() { controller =>
           controller.httpApi.login_(Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD"))).await(99.s)
-          // Add Workflow
-          addWorkflowAndRunOrder(controller, V1, AWorkflowPath, OrderId("A"))
 
-          // Command is rejected due to duplicate VersionId
-          assert(controller.executeCommandAsSystemUser(UpdateRepo(V1)).await(99.s) ==
-            Left(DuplicateKey("VersionId", V1)))
+          locally {
+            // Add Workflow
+            val v = V1
+            val workflow = testWorkflow(v) withId AWorkflowPath ~ v
+            val signedString = itemSigner.sign(workflow)
+            controller.executeCommandAsSystemUser(UpdateRepo(v, Seq(signedString))).await(99.s).orThrow
+            controller.runOrder(FreshOrder(OrderId("A"), workflow.path))
 
-          // Add Workflow
-          addWorkflowAndRunOrder(controller, V2, BWorkflowPath, OrderId("B"))
+            // Non-empty UpdateRepo with same resulting Repo is accepted
+            controller.executeCommandAsSystemUser(UpdateRepo(v, Seq(signedString))).await(99.s).orThrow
+            controller.executeCommandAsSystemUser(UpdateRepo(v, Seq(signedString))).await(99.s).orThrow
 
-          // Change Workflow
-          changeWorkflowAndRunOrder(controller, V3, AWorkflowPath, OrderId("A-3"))
+            // Empty UpdateRepo with same VersionId is rejected due to duplicate VersionId
+            assert(controller.executeCommandAsSystemUser(UpdateRepo(v)).await(99.s) ==
+              Left(DuplicateKey("VersionId", v)))
+          }
+
+          locally {
+            // Add another Workflow
+            val v = V2
+            val workflow = testWorkflow(v) withId BWorkflowPath ~ v
+            val signedString = itemSigner.sign(workflow)
+            controller.executeCommandAsSystemUser(UpdateRepo(v, Seq(signedString))).await(99.s).orThrow
+            controller.runOrder(FreshOrder(OrderId("B"), workflow.path))
+          }
+
+          // Change first Workflow
+          locally {
+            val v = V3
+            val workflow = testWorkflow(v) withId AWorkflowPath ~ v
+            controller.executeCommandAsSystemUser(UpdateRepo(v, Seq(itemSigner.sign(workflow)))).await(99.s).orThrow
+            runOrder(controller, workflow.id, OrderId("A-3"))
+          }
         }
+
         // Recovery
         provider.runController() { controller =>
           controller.httpApi.login_(Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD"))).await(99.s)
@@ -74,7 +100,13 @@ final class ControllerRepoTest extends AnyFreeSpec
           runOrder(controller, BWorkflowPath ~ V2, OrderId("B-AGAIN"))
 
           // V4 - Add and use a new workflow
-          addWorkflowAndRunOrder(controller, V4, CWorkflowPath, OrderId("C"))
+          locally {
+            val v = V4
+            val workflow = testWorkflow(v) withId CWorkflowPath ~ v
+            val signedString = itemSigner.sign(workflow)
+            controller.executeCommandAsSystemUser(UpdateRepo(v, Seq(signedString))).await(99.s).orThrow
+            controller.runOrder(FreshOrder(OrderId("C"), workflow.path))
+          }
 
           // Change workflow
           provider.updateRepo(controller, V5, testWorkflow(V5).withId(CWorkflowPath) :: Nil)
@@ -107,26 +139,6 @@ final class ControllerRepoTest extends AnyFreeSpec
             case _ => sys.error("Invalid number of arguments in property ControllerRepoTest")
           })
         }
-      }
-
-      def addWorkflowAndRunOrder(controller: RunningController, versionId: VersionId, path: WorkflowPath, orderId: OrderId): Unit = {
-        val order = FreshOrder(orderId, path)
-        // Command will be rejected because workflow is not yet defined
-        assert(controller.addOrder(order).runToFuture.await(99.s) == Left(UnknownKeyProblem("ItemPath", path)))
-        defineWorkflowAndRunOrder(controller, versionId, path, orderId)
-      }
-
-      def changeWorkflowAndRunOrder(controller: RunningController, versionId: VersionId, path: WorkflowPath, orderId: OrderId): Unit =
-        defineWorkflowAndRunOrder(controller, versionId, path, orderId)
-
-      def defineWorkflowAndRunOrder(controller: RunningController, versionId: VersionId, path: WorkflowPath, orderId: OrderId): Unit = {
-        val workflow = testWorkflow(versionId)
-        assert(workflow.isAnonymous)
-        val order = FreshOrder(orderId, path)
-        // Add Workflow
-        provider.updateRepo(controller, versionId, workflow.withId(path) :: Nil)
-        controller.httpApi.addOrders(order :: Nil).await(99.s)
-        awaitOrder(controller, order.id, path ~ versionId)
       }
 
       def runOrder(controller: RunningController, workflowId: WorkflowId, orderId: OrderId): Unit = {

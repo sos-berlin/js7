@@ -200,7 +200,7 @@ extends HasCloser
   : Unit =
     controller.executeCommandAsSystemUser(UpdateRepo(
       versionId,
-      change map (_ withVersion versionId) map itemSigner.sign,
+      change.map(_ withVersion versionId) map itemSigner.sign,
       delete)
     ).await(99.s).orThrow
 
