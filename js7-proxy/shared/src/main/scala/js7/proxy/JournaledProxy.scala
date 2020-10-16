@@ -148,9 +148,9 @@ object JournaledProxy
   {
     if (apiResources.isEmpty) throw new IllegalArgumentException("apiResources must not be empty")
 
-    def observable2(apis: Seq[Api[S]]): Observable[EventAndState[Event, S]] =
+    def observable2: Observable[EventAndState[Event, S]] =
       Observable.tailRecM(none[S])(maybeState =>
-        Observable.fromTask(selectActiveNodeApi(apis, _ => onCouplingError))
+        Observable.fromResource(selectActiveNodeApi(apiResources, _ => onCouplingError))
           .flatMap(api =>
             Observable
               .fromTask(
@@ -221,8 +221,7 @@ object JournaledProxy
       onProxyEvent(ProxyCouplingError(Problem.fromThrowable(throwable)))
     }
 
-    Observable.fromResource(apiResources.toVector.sequence)
-      .flatMap(observable2)
+    observable2
       .tapEach(o => scribe.trace(s"observable => ${o.stampedEvent.toString.truncateWithEllipsis(200)}"))
   }
 
@@ -276,7 +275,15 @@ object JournaledProxy
     * @return (EventApi, None) iff apis.size == 1
     *         (EventApi, Some(NodeId)) iff apis.size > 1
     */
-  def selectActiveNodeApi[Api <: EventApi](
+  final def selectActiveNodeApi[Api <: EventApi](
+    apiResources: Seq[Resource[Task, Api]],
+    onCouplingError: EventApi => Throwable => Task[Unit])
+  : Resource[Task, Api] =
+    apiResources.toVector.sequence.flatMap(apis =>
+      Resource.liftF(
+        selectActiveNodeApiOnly(apis, onCouplingError)))
+
+  private def selectActiveNodeApiOnly[Api <: EventApi](
     apis: Seq[Api],
     onCouplingError: EventApi => Throwable => Task[Unit])
   : Task[Api] = {
