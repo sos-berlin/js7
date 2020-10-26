@@ -25,12 +25,19 @@ class SetOnce[A](label: String)
       case Some(o) => o.toString  // Never happens
     }
 
-  final def getOrUpdate(value: => A): A =
+  final def getOrUpdate(lazyValue: => A): A =
     promise.future.value match {
       case Some(o) => o.get
       case None =>
-        promise.trySuccess(value)  // When concurrently called, the value is discarded
-        promise.future.value.get.get
+        synchronized {
+          promise.future.value match {
+            case Some(o) => o.get
+            case None =>
+              val value = lazyValue
+              promise.success(value)
+              value
+          }
+        }
     }
 
   final def toOption: Option[A] =

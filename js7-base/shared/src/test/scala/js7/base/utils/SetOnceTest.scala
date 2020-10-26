@@ -1,6 +1,8 @@
 package js7.base.utils
 
 import js7.base.problem.{Problem, ProblemException}
+import js7.base.utils.SetOnceTest._
+import monix.execution.atomic.AtomicInt
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
@@ -31,10 +33,12 @@ final class SetOnceTest extends AnyFreeSpec
   }
 
   "getOrUpdate" in {
-    val a = SetOnce[Int]
-    assert((a getOrUpdate 1) == 1)
-    assert((a getOrUpdate 2) == 1)
-    assert((a getOrUpdate sys.error("lazy")) == 1)
+    val counter = AtomicInt(0)
+    val a = SetOnce[A]
+    assert((a getOrUpdate A(counter.incrementAndGet())) == A(1))
+    assert((a getOrUpdate A(counter.incrementAndGet())) == A(1))
+    assert((a getOrUpdate sys.error("lazy")) == A(1))
+    assert(counter.get() == 1)
   }
 
   "checked" in {
@@ -50,4 +54,8 @@ final class SetOnceTest extends AnyFreeSpec
     a := 7
     assert(a.toString == "7")
   }
+}
+
+object SetOnceTest {
+  private case class A(number: Int)
 }
