@@ -3,7 +3,6 @@ package js7.base.problem
 import cats.instances.either._
 import cats.instances.int._
 import cats.instances.list._
-import cats.instances.option._
 import cats.syntax.apply._
 import cats.syntax.either._
 import cats.syntax.option._
@@ -200,6 +199,11 @@ final class CheckedTest extends AnyFreeSpec
     assert(Right(1).orElse(sys.error("???")) == Right(1))
     assert(Left(Problem("PROBLEM")).orElse(Right(1)) == Right(1))
     assert(Left(Problem("FIRST")).orElse(Left(Problem("SECOND"))) == Left(Problem("SECOND")))
+  }
+
+  "toUnit" in {
+    assert(Left(Problem("PROBLEM")).toUnit == Left(Problem("PROBLEM")))
+    assert(Right(1).toUnit == Right(()))
   }
 
   "toCompleted" in {

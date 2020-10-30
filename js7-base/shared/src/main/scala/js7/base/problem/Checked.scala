@@ -125,6 +125,12 @@ object Checked
         case Right(value) => value
       }
 
+    def toUnit: Either[Problem, Unit] =
+      underlying match {
+        case Right(_) => Right(())
+        case Left(problem) => Left(problem)
+      }
+
     def toCompleted: Either[Problem, Completed] =
       underlying match {
         case Right(_) => Right(Completed)
