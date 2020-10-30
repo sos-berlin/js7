@@ -18,6 +18,7 @@ object JavaMain
   def runMain(body: => Unit): Unit =
     try {
       coupleScribeWithSlf4j()
+      Log4j  // initialize
       ProblemCodeMessages.initialize()
       body
       Log4j.shutdown()

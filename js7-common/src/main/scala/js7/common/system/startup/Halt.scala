@@ -11,6 +11,8 @@ object Halt
 {
   private val logger = Logger(getClass)
 
+  Log4j
+
   def haltJava(msg: String, restart: Boolean): Nothing =
     haltJava(msg, exitCode = if (restart) 98 else 99)
 
