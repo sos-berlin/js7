@@ -158,9 +158,17 @@ final class ScalaUtilsTest extends AnyFreeSpec
     }
 
     "toStringWithCauses" in {
-      assert(new RuntimeException("TEST").toStringWithCauses == "TEST")
-      assert(new RuntimeException("TEST", new IllegalStateException("STATE")).toStringWithCauses ==
+      assert(new Exception("TEST").toStringWithCauses == "TEST")
+      assert(new Exception("TEST", new IllegalStateException("STATE")).toStringWithCauses ==
         "TEST, caused by: IllegalStateException: STATE")
+
+      val e = new Exception("TEST")
+      e.addSuppressed(new IllegalStateException("SUPPRESSED 1", new Exception("CAUSE", new Exception("NESTED CAUSE"))))
+      e.addSuppressed(new IllegalStateException("SUPPRESSED 2"))
+      assert(e.toStringWithCauses ==
+        "TEST " +
+          "[suppressed: IllegalStateException: SUPPRESSED 1, caused by: CAUSE, caused by: NESTED CAUSE] " +
+          "[suppressed: IllegalStateException: SUPPRESSED 2]")
     }
 
     "toSimplifiedString" in {

@@ -10,7 +10,6 @@ import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.utils.StackTraces.StackTraceThrowable
 import scala.annotation.tailrec
-import scala.collection.mutable
 import scala.concurrent.Future
 import scala.math.max
 import scala.reflect.ClassTag
@@ -110,13 +109,15 @@ object ScalaUtils
           (delegate.getStackTrace.nonEmpty ?? ("\n" + delegate.stackTraceAsString))
 
       def toStringWithCauses: String = {
-        val strings = mutable.Buffer.empty[String]
-        var t: Throwable = delegate
-        while (t != null) {
-          strings += t.toSimplifiedString.trim.stripSuffix(":")
-          t = t.getCause
+        var result = delegate.toSimplifiedString
+        delegate.getCause match {
+          case null =>
+          case cause => result = result.trim.stripSuffix(":") + ", caused by: " + cause.toStringWithCauses
         }
-        strings mkString ", caused by: "
+        if (delegate.getSuppressed.nonEmpty) {
+          result = result.trim + delegate.getSuppressed.map(t => " [suppressed: " + t.toStringWithCauses + "]").mkString
+        }
+        result
       }
 
       def toSimplifiedString: String = {
@@ -125,6 +126,7 @@ object ScalaUtils
             delegate.isInstanceOf[ProblemException] ||
             delegate.getClass == classOf[IllegalArgumentException] ||
             delegate.getClass == classOf[RuntimeException] ||
+            delegate.getClass == classOf[Exception] ||
             delegate.isInstanceOf[PublicException] ||
             delegate.getClass.getName == "scala.scalajs.js.JavaScriptException"))
           msg
