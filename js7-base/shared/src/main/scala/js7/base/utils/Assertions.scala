@@ -14,7 +14,7 @@ object Assertions
   : Unit =
     if (!predicate.value) {
       val c = clue
-      throw new IllegalStateException(s"assertThat(${predicate.source}) failed in " +
+      throw new AssertionError(s"assertThat(${predicate.source}) failed in " +
         s"${fullName.value}, ${filename.value}:${line.value}${c.nonEmpty ?? s", $c"}")
     }
 }
