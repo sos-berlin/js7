@@ -1,6 +1,7 @@
 package js7.core.event.state
 
 import cats.effect.Resource
+import js7.base.monixutils.MonixBase.deferFutureAndLog
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.Logger
 import js7.core.event.state.LockKeeper._
@@ -11,7 +12,7 @@ import scala.concurrent.Promise
 
 // TODO Timeout, web service for inspection ?
 
-private[state] final class LockKeeper[K]
+final class LockKeeper[K]
 {
   private val keyMap = mutable.Map[Any, mutable.Queue[Promise[Token]]]()
 
@@ -31,8 +32,8 @@ private[state] final class LockKeeper[K]
           case Some(queue) =>
             val promise = Promise[Token]()
             queue += promise
-            logger.trace(s"acquire '$key', queuing (#${queue.length})")
-            Task.fromFuture(promise.future)
+            logger.trace(s"Acquire '$key', queuing (#${queue.length})")
+            deferFutureAndLog(promise.future, s"acquiring lock for $key")
         }
       }
     }.flatten

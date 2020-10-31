@@ -13,13 +13,13 @@ import js7.common.http.AkkaHttpClient
 import js7.common.scalautil.Logger
 import js7.core.cluster.ClusterWatch.isClusterWatchProblem
 import js7.core.cluster.HttpClusterWatch._
-import js7.data.cluster.{ClusterEvent, ClusterState}
+import js7.data.cluster.ClusterState
 import js7.data.node.NodeId
 import js7.data.session.HttpSessionApi
 import monix.eval.Task
 
 final class HttpClusterWatch(
-  protected val baseUri: Uri,
+  val baseUri: Uri,
   protected val userAndPassword: Option[UserAndPassword],
   httpsConfig: HttpsConfig,
   protected val actorSystem: ActorSystem)
@@ -39,12 +39,12 @@ extends ClusterWatchApi with AkkaHttpClient with HttpSessionApi
 
   private val clusterUri = Uri(s"$baseUri/agent/api/controller/cluster")
 
-  def applyEvents(from: NodeId, events: Seq[ClusterEvent], reportedClusterState: ClusterState, force: Boolean = false)
+  def applyEvents(clusterWatchEvents: ClusterWatchEvents)
   : Task[Checked[Completed]] =
     liftProblem(
       retryUntilReachable()(
-        post[ClusterWatchMessage, JsonObject](clusterUri, ClusterWatchEvents(from, events, reportedClusterState, force))
-      ) .onErrorRestartLoop(()) { (throwable, _, retry) =>
+        post[ClusterWatchMessage, JsonObject](clusterUri, clusterWatchEvents)
+      ).onErrorRestartLoop(()) { (throwable, _, retry) =>
           logger.warn(throwable.toStringWithCauses)
           throwable match {
             case throwable: HttpException if throwable.problem exists isClusterWatchProblem =>

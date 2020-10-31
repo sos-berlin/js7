@@ -9,7 +9,7 @@ import js7.common.message.ProblemCodeMessages
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.core.cluster.ClusterWatch._
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver}
-import js7.data.cluster.{ClusterEvent, ClusterSetting, ClusterState}
+import js7.data.cluster.{ClusterEvent, ClusterSetting, ClusterState, ClusterTiming}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalPosition}
@@ -27,13 +27,13 @@ final class ClusterWatchTest extends AnyFreeSpec
 
   private val aId = NodeId("A")
   private val bId = NodeId("B")
-  private val aUri = Uri("http://A")
-  private val bUri = Uri("http://B")
   private val setting = ClusterSetting(
     Map(
       NodeId("A") -> Uri("http://A"),
       NodeId("B") -> Uri("http://B")),
-    activeId = NodeId("A"))
+    activeId = NodeId("A"),
+    Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
+    ClusterTiming(10.s, 20.s))
   private val failedAt = JournalPosition(EventId(0), 0)
 
   "ClusterWatch" - {
@@ -77,11 +77,11 @@ final class ClusterWatchTest extends AnyFreeSpec
 
     "Heartbeat from wrong node is rejected" in {
       assert(watch.heartbeat(bId, clusterState).await(99.s) ==
-        Left(ClusterWatchHeartbeatFromInactiveNodeProblem(bId, clusterState)))
+        Left(ClusterWatchInactiveNodeProblem(bId, clusterState, "heartbeat Coupled(active A: http://A, passive B: http://B)")))
 
       locally {
         assert(watch.heartbeat(bId, ClusterState.Coupled(setting.copy(activeId = bId))).await(99.s) ==
-          Left(ClusterWatchHeartbeatFromInactiveNodeProblem(bId, clusterState)))
+          Left(ClusterWatchInactiveNodeProblem(bId, clusterState, "heartbeat Coupled(passive A: http://A, active B: http://B)")))
       }
 
       assert(watch.get.await(99.s) == Right(clusterState))
@@ -98,7 +98,8 @@ final class ClusterWatchTest extends AnyFreeSpec
     "FailedOver before heartbeat loss is rejected" in {
       scheduler.tick(1.s)
       assert(applyEvents(bId, ClusterFailedOver(aId, bId, failedAt) :: Nil) ==
-        Left(ClusterWatchHeartbeatFromInactiveNodeProblem(bId, clusterState)))
+        Left(ClusterWatchInactiveNodeProblem(bId, clusterState,
+          "event ClusterFailedOver(A --> B, JournalPosition(0,0)) --> FailedOver(passive A: http://A, active B: http://B, JournalPosition(0,0))")))
       assert(watch.isActive(aId).await(99.s).orThrow)
     }
 
@@ -136,7 +137,8 @@ final class ClusterWatchTest extends AnyFreeSpec
       assert(applyEvents(bId, ClusterCouplingPrepared(bId) :: ClusterCoupled(bId) :: Nil) == Right(Completed))
       assert(watch.isActive(bId).await(99.s).orThrow)
       assert(applyEvents(aId, ClusterSwitchedOver(aId) :: Nil) ==
-        Left(ClusterWatchHeartbeatFromInactiveNodeProblem(aId, clusterState)))
+        Left(ClusterWatchInactiveNodeProblem(aId, clusterState,
+          "event ClusterSwitchedOver(A) --> SwitchedOver(active A: http://A, passive B: http://B)")))
     }
 
     "applyEvents after event loss" in {

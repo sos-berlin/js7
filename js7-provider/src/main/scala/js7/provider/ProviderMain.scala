@@ -31,13 +31,13 @@ object ProviderMain
       val conf = ProviderConfiguration.fromCommandLine(args.toVector)
       logStartUp(configDir = Some(conf.configDirectory))
       logConfig(conf.config)
-      val cancelable = Provider.observe(conf)
+      val terminated = Provider.observe(conf)
         .orThrow
         .onCancelTriggerError
         .completedL
         .runToFuture
-      withShutdownHooks(conf.config, "ProviderMain", () => onJavaShutdown(cancelable)) {
-        awaitTermination(cancelable)
+      withShutdownHooks(conf.config, "ProviderMain", () => onJavaShutdown(terminated)) {
+        awaitTermination(terminated)
       }
     }
   }

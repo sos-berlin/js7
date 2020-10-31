@@ -23,10 +23,10 @@ trait ControllersClusterRoute
     pathEnd {
       post {
         entity(as[ClusterWatchMessage]) {
-          case ClusterWatchEvents(from, events, clusterState, force) =>
+          case clusterWatchEvents: ClusterWatchEvents =>
             complete(
               clusterWatchRegister(controllerId)
-                .flatMap(_.applyEvents(from, events, clusterState, force))
+                .flatMap(_.applyEvents(clusterWatchEvents))
                 .map(_.map((_: Completed) => JsonObject.empty))
                 .runToFuture)
 

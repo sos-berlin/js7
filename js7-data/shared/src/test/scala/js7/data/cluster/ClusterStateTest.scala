@@ -1,8 +1,9 @@
 package js7.data.cluster
 
 import js7.base.circeutils.CirceUtils._
+import js7.base.time.ScalaTime._
 import js7.base.web.Uri
-import js7.data.cluster.ClusterState.{Coupled, CoupledActiveShutDown, Empty, FailedOver, NodesAppointed, PassiveLost, PreparedToBeCoupled, SwitchedOver}
+import js7.data.cluster.ClusterState.{ActiveShutDown, Coupled, Empty, FailedOver, NodesAppointed, PassiveLost, PreparedToBeCoupled, SwitchedOver}
 import js7.data.event.{EventId, JournalPosition}
 import js7.data.node.NodeId
 import js7.tester.CirceJsonTester.testJson
@@ -18,7 +19,9 @@ final class ClusterStateTest extends AnyFreeSpec
       Map(
         NodeId("A") -> Uri("http://A"),
         NodeId("B") -> Uri("http://B")),
-      NodeId("A"))
+      NodeId("A"),
+      Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
+      ClusterTiming(10.s, 20.s))
 
     "Empty" in {
       testJson[ClusterState](
@@ -38,7 +41,16 @@ final class ClusterStateTest extends AnyFreeSpec
               "A": "http://A",
               "B": "http://B"
             },
-            "activeId": "A"
+            "activeId": "A",
+            "clusterWatches": [
+              {
+                "uri": "https://CLUSTER-WATCH"
+              }
+            ],
+            "timing": {
+              "heartbeat": 10,
+              "heartbeatTimeout": 20
+            }
           }
         }""")
     }
@@ -53,7 +65,16 @@ final class ClusterStateTest extends AnyFreeSpec
               "A": "http://A",
               "B": "http://B"
             },
-            "activeId": "A"
+            "activeId": "A",
+            "clusterWatches": [
+              {
+                "uri": "https://CLUSTER-WATCH"
+              }
+            ],
+            "timing": {
+              "heartbeat": 10,
+              "heartbeatTimeout": 20
+            }
           }
         }""")
     }
@@ -68,22 +89,40 @@ final class ClusterStateTest extends AnyFreeSpec
               "A": "http://A",
               "B": "http://B"
             },
-            "activeId": "A"
+            "activeId": "A",
+            "clusterWatches": [
+              {
+                "uri": "https://CLUSTER-WATCH"
+              }
+            ],
+            "timing": {
+              "heartbeat": 10,
+              "heartbeatTimeout": 20
+            }
           }
         }""")
     }
 
-    "CoupledActiveShutDown" in {
+    "ActiveShutDown" in {
       testJson[ClusterState](
-        CoupledActiveShutDown(setting),
+        ActiveShutDown(setting),
         json"""{
-          "TYPE": "CoupledActiveShutDown",
+          "TYPE": "ActiveShutDown",
           "setting": {
             "idToUri": {
               "A": "http://A",
               "B": "http://B"
             },
-            "activeId": "A"
+            "activeId": "A",
+            "clusterWatches": [
+              {
+                "uri": "https://CLUSTER-WATCH"
+              }
+            ],
+            "timing": {
+              "heartbeat": 10,
+              "heartbeatTimeout": 20
+            }
           }
         }""")
     }
@@ -98,7 +137,16 @@ final class ClusterStateTest extends AnyFreeSpec
               "A": "http://A",
               "B": "http://B"
             },
-            "activeId": "A"
+            "activeId": "A",
+            "clusterWatches": [
+              {
+                "uri": "https://CLUSTER-WATCH"
+              }
+            ],
+            "timing": {
+              "heartbeat": 10,
+              "heartbeatTimeout": 20
+            }
           }
         }""")
     }
@@ -113,7 +161,16 @@ final class ClusterStateTest extends AnyFreeSpec
               "A": "http://A",
               "B": "http://B"
             },
-            "activeId": "A"
+            "activeId": "A",
+            "clusterWatches": [
+              {
+                "uri": "https://CLUSTER-WATCH"
+              }
+            ],
+            "timing": {
+              "heartbeat": 10,
+              "heartbeatTimeout": 20
+            }
           }
         }""")
     }
@@ -128,7 +185,16 @@ final class ClusterStateTest extends AnyFreeSpec
               "A": "http://A",
               "B": "http://B"
             },
-            "activeId": "A"
+            "activeId": "A",
+            "clusterWatches": [
+              {
+                "uri": "https://CLUSTER-WATCH"
+              }
+            ],
+            "timing": {
+              "heartbeat": 10,
+              "heartbeatTimeout": 20
+            }
           },
           "failedAt": {
             "fileEventId": 0,

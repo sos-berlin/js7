@@ -12,6 +12,7 @@ import js7.common.scalautil.FileUtils.syntax._
 import js7.controller.cluster.ClusterConf
 import js7.controller.configuration.ControllerConfiguration.DefaultConfig
 import js7.core.event.journal.JournalConf
+import js7.data.cluster.ClusterTiming
 import js7.data.controller.ControllerId
 import js7.data.node.NodeId
 import org.scalatest.BeforeAndAfterAll
@@ -50,9 +51,7 @@ final class ControllerConfigurationTest extends AnyFreeSpec with BeforeAndAfterA
         RecouplingStreamReaderConf(
           timeout = 6500.ms,  // Between 3s and 10s
           delay = 1.s),
-        heartbeat = 3.s,
-        failAfter = 10.s,
-        Nil),
+        ClusterTiming(3.s, 10.s)),
       name = ControllerConfiguration.DefaultName,
       config = DefaultConfig))
   }

@@ -1,7 +1,8 @@
 package js7.proxy.javaapi.data.cluster
 
+import js7.base.time.ScalaTime._
 import js7.base.web.Uri
-import js7.data.cluster.{ClusterSetting, ClusterState}
+import js7.data.cluster.{ClusterSetting, ClusterState, ClusterTiming}
 import js7.data.event.JournalPosition
 import js7.data.node.NodeId
 import org.scalatest.freespec.AnyFreeSpec
@@ -15,7 +16,9 @@ final class JClusterStateTest extends AnyFreeSpec
     Map(
       NodeId("PRIMARY") -> Uri("https://PRIMARY"),
       NodeId("BACKUP") -> Uri("https://BACKUP")),
-    activeId = NodeId("PRIMARY"))
+    activeId = NodeId("PRIMARY"),
+    Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
+    ClusterTiming(10.s, 20.s))
 
   "Empty" in {
     JClusterStateTester.testEmpty(JClusterState(ClusterState.Empty).asInstanceOf[JClusterState.Empty.type])
@@ -48,8 +51,8 @@ final class JClusterStateTest extends AnyFreeSpec
     JClusterStateTester.testCoupledOrDecoupled(JClusterState(clusterState).asInstanceOf[JClusterState.CoupledOrDecoupled])
   }
 
-  "CoupledActiveShutDown" in {
-    val clusterState = ClusterState.CoupledActiveShutDown(setting)
+  "ActiveShutDown" in {
+    val clusterState = ClusterState.ActiveShutDown(setting)
     JClusterStateTester.testCoupledActiveShutDown(JClusterState(clusterState).asInstanceOf[JClusterState.CoupledActiveShutDown])
     JClusterStateTester.testCoupledOrDecoupled(JClusterState(clusterState).asInstanceOf[JClusterState.CoupledOrDecoupled])
   }

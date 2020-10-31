@@ -1,9 +1,19 @@
 package js7.controller.cluster
 
+import akka.actor.ActorSystem
 import cats.effect.ExitCase
 import js7.base.problem.Checked
+import js7.base.time.ScalaTime._
+import js7.base.utils.ScalaUtils.syntax.RichThrowable
+import js7.base.web.Uri
+import js7.common.akkahttp.https.HttpsConfig
 import js7.common.scalautil.Logger
+import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.cluster.ActivationInhibitor._
+import js7.controller.data.ControllerCommand.InternalClusterCommand
+import js7.data.cluster.ClusterCommand.ClusterInhibitActivation
+import js7.data.cluster.ClusterState.FailedOver
+import js7.data.cluster.ClusterTiming
 import monix.catnap.MVar
 import monix.eval.Task
 import monix.execution.cancelables.SerialCancelable
@@ -86,6 +96,29 @@ private[cluster] final class ActivationInhibitor
 private[cluster] object ActivationInhibitor
 {
   private val logger = Logger(getClass)
+
+  def inhibitActivationOfPeer(uri: Uri, timing: ClusterTiming, httpsConfig: HttpsConfig, clusterConf: ClusterConf)
+    (implicit actorSystem: ActorSystem): Task[Option[FailedOver]] =
+    Task.defer {
+      val retryDelay = 5.s  // TODO
+      AkkaHttpControllerApi.resource(uri, clusterConf.userAndPassword, httpsConfig, name = "ClusterInhibitActivation")
+        .use(otherNode =>
+          otherNode.loginUntilReachable() >>
+            otherNode.executeCommand(
+              InternalClusterCommand(
+                ClusterInhibitActivation(2 * timing.heartbeat/*???*/))
+            ).map(_.response.asInstanceOf[ClusterInhibitActivation.Response].failedOver))
+        .onErrorRestartLoop(()) { (throwable, _, retry) =>
+          // TODO Code mit loginUntilReachable usw. zusammenfassen. Stacktrace unterdrücken wenn isNotIgnorableStackTrace
+          val msg = "While trying to reach the other cluster node due to restart: " + throwable.toStringWithCauses
+          logger.warn(msg)
+          for (t <- throwable.ifNoStackTrace) logger.debug(msg, t)
+          retry(()).delayExecution(retryDelay)
+        }
+    }.map { maybeFailedOver =>
+      logger.debug(s"$uri ClusterInhibitActivation returned failedOver=$maybeFailedOver")
+      maybeFailedOver
+    }
 
   private[cluster] sealed trait State
   private[cluster] case object Initial extends State

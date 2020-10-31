@@ -38,9 +38,9 @@ final class AppointNodesLatelyClusterTest extends AnyFreeSpec with ControllerClu
         backupController.httpApi.login() await 99.s
         assert(backupController.httpApi.clusterState.await(99.s) == Left(BackupClusterNodeNotAppointed))
 
-        primaryController.executeCommandAsSystemUser(
-          ClusterAppointNodes(clusterSetting)
-        ).await(99.s).orThrow
+        primaryController.executeCommandForTest(
+          ClusterAppointNodes(clusterSetting.idToUri, clusterSetting.activeId, clusterSetting.clusterWatches)
+        ).orThrow
         primaryController.eventWatch.await[ClusterEvent.ClusterCoupled]()
 
         val orderId = OrderId("🔸")

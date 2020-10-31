@@ -1,10 +1,7 @@
 package js7.core.event.journal.recover
 
-import akka.pattern.ask
-import akka.pattern.pipe
 import akka.actor.{Actor, ActorRef, ActorRefFactory, Props}
 import com.typesafe.config.Config
-import js7.base.time.ScalaTime.DurationRichInt
 import js7.common.scalautil.Logger
 import js7.core.event.journal.JournalActor
 import js7.core.event.journal.data.JournalMeta
@@ -34,11 +31,11 @@ extends AutoCloseable
 
   def journalId: Option[JournalId] = recoveredJournalFile.map(_.journalId)
 
-  def state: S =
-    recoveredJournalFile.fold(S.empty)(_.state)
-
   def clusterState: ClusterState =
     state.clusterState
+
+  def state: S =
+    recoveredJournalFile.fold(S.empty)(_.state)
 
   def recoveredState: Option[S] =
     recoveredJournalFile.map(_.state)

@@ -4,7 +4,7 @@ import cats.effect.{ExitCase, Resource}
 import js7.base.monixutils.MonixDeadline.syntax._
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
-import js7.base.time.ScalaTime.RichDeadline
+import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.CloseableIterator
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
@@ -224,26 +224,33 @@ object MonixBase
     }
   }
 
-  //def deferFutureAndLog[A](f: => Future[A])(implicit A: TypeTag[A]): Task[A] =
-  //  deferFutureAndLog(s"Future[${A.tpe.toString}]", f)
-
   def durationOfTask[A](task: Task[A]): Task[(A, FiniteDuration)] =
     Task.deferAction { implicit s =>
       val t = now
       task.map(_ -> t.elapsed)
     }
 
-  def deferFutureAndLog[A](f: => Future[A], name: => String): Task[A] =
-    Task.deferFutureAction { implicit s =>
-      val future = f
-      if (future.isCompleted)
-        future
-      else {
-        logger.debug(s"Waiting for Future '$name' ...")
-        future.transform { o =>
-          logger.debug(s"Future $name completed")
-          o
-        }
+  //def deferFutureAndLog[A](f: => Future[A])(implicit A: TypeTag[A]): Task[A] =
+  //  deferFutureAndLog(A.tpe.toString, f)
+
+  def deferFutureAndLog[A](lazyFuture: => Future[A], name: => String): Task[A] =
+    Task.defer {
+      val future = lazyFuture
+      future.value match {
+        case Some(tried) =>
+          Task.fromTry(tried)
+
+        case None =>
+          logger.debug(s"Waiting for Future '$name' ...")
+          val result = Task.fromFuture(future)
+            .guaranteeCase(exitCase => Task(logger.debug(s"Future '$name' $exitCase")))
+            .memoize
+          val since = now
+          val logWaiting = Observable.intervalAtFixedRate(10.s, 10.s/*TODO*/)
+            .doOnNext(_ => Task(logger.info(s"Still waiting for '$name' since ${since.elapsed.pretty} ...")))
+            .dropUntil(Observable.fromTask(result))
+            .headL
+          Task.parMap2(result, logWaiting)((o, _) => o)
       }
     }
 

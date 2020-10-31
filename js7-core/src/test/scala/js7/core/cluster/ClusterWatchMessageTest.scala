@@ -1,9 +1,10 @@
 package js7.core.cluster
 
 import js7.base.circeutils.CirceUtils._
+import js7.base.time.ScalaTime._
 import js7.base.web.Uri
 import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
-import js7.data.cluster.{ClusterSetting, ClusterState}
+import js7.data.cluster.{ClusterSetting, ClusterState, ClusterTiming}
 import js7.data.node.NodeId
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
@@ -24,13 +25,17 @@ final class ClusterWatchMessageTest extends AnyFreeSpec
                 Map(
                   NodeId("A") -> Uri("http://A"),
                   NodeId("B") -> Uri("http://B")),
-                NodeId("A")))),
+                NodeId("A"),
+                Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
+                ClusterTiming(10.s, 20.s)))),
           ClusterState.NodesAppointed(
             ClusterSetting(
               Map(
                 NodeId("A") -> Uri("http://A"),
                 NodeId("B") -> Uri("http://B")),
-              NodeId("A"))),
+              NodeId("A"),
+              Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
+              ClusterTiming(10.s, 20.s))),
           force = true),
         json"""{
           "TYPE": "ClusterWatchEvents",
@@ -43,7 +48,12 @@ final class ClusterWatchMessageTest extends AnyFreeSpec
                   "A": "http://A",
                   "B": "http://B"
                 },
-                "activeId": "A"
+                "activeId": "A",
+                "clusterWatches": [ { "uri": "https://CLUSTER-WATCH" } ],
+                "timing": {
+                  "heartbeat": 10,
+                  "heartbeatTimeout": 20
+                }
               }
             }
           ],
@@ -54,10 +64,16 @@ final class ClusterWatchMessageTest extends AnyFreeSpec
                 "A": "http://A",
                 "B": "http://B"
               },
-              "activeId": "A"
+              "activeId": "A",
+              "clusterWatches": [ { "uri": "https://CLUSTER-WATCH" } ],
+              "timing": {
+                "heartbeat": 10,
+                "heartbeatTimeout": 20
+              }
             }
           },
-          "force": true
+          "force": true,
+          "checkOnly": false
         }""")
     }
 
@@ -70,7 +86,9 @@ final class ClusterWatchMessageTest extends AnyFreeSpec
               Map(
                 NodeId("A") -> Uri("http://A"),
                 NodeId("B") -> Uri("http://B")),
-              NodeId("A")))),
+              NodeId("A"),
+              Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
+              ClusterTiming(10.s, 20.s)))),
         json"""{
           "TYPE": "ClusterWatchHeartbeat",
           "from": "A",
@@ -81,7 +99,12 @@ final class ClusterWatchMessageTest extends AnyFreeSpec
                 "A": "http://A",
                 "B": "http://B"
               },
-              "activeId": "A"
+              "activeId": "A",
+              "clusterWatches": [ { "uri": "https://CLUSTER-WATCH" } ],
+              "timing": {
+                "heartbeat": 10,
+                "heartbeatTimeout": 20
+              }
             }
           }
         }""")

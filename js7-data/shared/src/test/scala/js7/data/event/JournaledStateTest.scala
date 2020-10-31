@@ -1,8 +1,9 @@
 package js7.data.event
 import js7.base.auth.UserId
 import js7.base.problem.Checked.Ops
+import js7.base.time.ScalaTime._
 import js7.base.web.Uri
-import js7.data.cluster.{ClusterEvent, ClusterSetting, ClusterState}
+import js7.data.cluster.{ClusterEvent, ClusterSetting, ClusterState, ClusterTiming}
 import js7.data.event.JournaledState.EventNotApplicableProblem
 import js7.data.event.JournaledStateTest._
 import js7.data.event.KeyedEvent.NoKey
@@ -44,7 +45,9 @@ private object JournaledStateTest
     Map(
       primaryNodeId -> Uri("http://PRIMARY"),
       NodeId("BACKUP") -> Uri("http://BACKUP")),
-    primaryNodeId)
+    primaryNodeId,
+    Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
+    ClusterTiming(10.s, 20.s))
 
   private case class MyState(eventId: EventId, standards: JournaledState.Standards)
   extends JournaledState[MyState]

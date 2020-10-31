@@ -12,7 +12,7 @@ import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import js7.common.akkahttp.web.session.SimpleSession
 import js7.common.http.CirceJsonSupport._
 import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
-import js7.data.cluster.{ClusterSetting, ClusterState}
+import js7.data.cluster.{ClusterSetting, ClusterState, ClusterTiming}
 import js7.data.controller.ControllerId
 import js7.data.node.NodeId
 import monix.execution.Scheduler
@@ -46,7 +46,9 @@ final class ControllersClusterRouteTest extends AnyFreeSpec with ScalatestRouteT
     Map(
       NodeId("A") -> Uri("http://A"),
       NodeId("B") -> Uri("http://B")),
-    NodeId("A"))
+    NodeId("A"),
+    Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
+    ClusterTiming(10.s, 20.s))
 
   "Post" in {
     Post[ClusterWatchMessage]("/cluster",

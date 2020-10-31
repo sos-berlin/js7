@@ -7,7 +7,7 @@ import js7.common.guice.GuiceImplicits.RichInjector
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.time.WaitForCondition.waitForCondition
-import js7.controller.cluster.PassiveClusterNode
+import js7.controller.cluster.ClusterCommon.{ClusterWatchAgreedToActivation, ClusterWatchDisagreedToActivation}
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.data.ControllerCommand.{ClusterSwitchOver, ShutDown}
 import js7.core.event.journal.files.JournalFiles.JournalMetaOps
@@ -74,11 +74,11 @@ final class FailoverClusterTest extends ControllerClusterTester
       assert(primaryController.clusterState.await(99.s) == stillCoupled)
       assert(backupController.clusterState.await(99.s) == stillCoupled)
 
-      val whenAgentAgrees = backupController.testEventBus.when[PassiveClusterNode.ClusterWatchAgreesToActivation.type].runToFuture
-      val whenAgentDoesNotAgree = backupController.testEventBus.when[PassiveClusterNode.ClusterWatchDisagreeToActivation.type].runToFuture
+      val whenClusterWatchAgrees = backupController.testEventBus.when[ClusterWatchAgreedToActivation.type].runToFuture
+      val whenClusterWatchDoesNotAgree = backupController.testEventBus.when[ClusterWatchDisagreedToActivation.type].runToFuture
       sys.props(testHeartbeatLossPropertyKey) = "true"
-      whenAgentDoesNotAgree await 99.s
-      assert(!whenAgentAgrees.isCompleted)
+      whenClusterWatchDoesNotAgree await 99.s
+      assert(!whenClusterWatchAgrees.isCompleted)
       assert(primaryController.clusterState.await(99.s) == stillCoupled)
       assert(backupController.clusterState.await(99.s) == stillCoupled)
 

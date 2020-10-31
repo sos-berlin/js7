@@ -1,6 +1,7 @@
 package js7.controller.cluster
 
-import cats.implicits._
+import cats.instances.either._
+import cats.syntax.traverse._
 import com.typesafe.config.Config
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
@@ -9,21 +10,20 @@ import js7.base.web.Uri
 import js7.common.configutils.Configs._
 import js7.common.http.configuration.{RecouplingStreamReaderConf, RecouplingStreamReaderConfs}
 import js7.common.time.JavaTimeConverters.AsScalaDuration
-import js7.data.cluster.ClusterSetting
+import js7.data.cluster.{ClusterSetting, ClusterTiming}
 import js7.data.node.NodeId
-import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
 
 final case class ClusterConf(
   isBackup: Boolean,
-  /** None if id is Backup. */
-  maybeIdToUri: Option[Map[NodeId, Uri]],
+  maybeClusterSetting: Option[ClusterSetting],
   userAndPassword: Option[UserAndPassword],
   recouplingStreamReader: RecouplingStreamReaderConf,
-  heartbeat: FiniteDuration,
-  failAfter: FiniteDuration,
-  agentUris: Seq[Uri],
+  timing: ClusterTiming,
   testHeartbeatLossPropertyKey: Option[String] = None)
+{
+  def isPrimary = !isBackup
+}
 
 object ClusterConf
 {
@@ -47,26 +47,31 @@ object ClusterConf
             }
             .toVector
             .sequence
-            .flatMap(idToUri =>
-              ClusterSetting.checkUris(idToUri.toMap) map Some.apply)
+            .map(o => Some(o.toMap))
       }
+      ownId = config.optionAs[NodeId]("js7.journal.cluster.node.id")
+        .getOrElse(NodeId(
+          if (config.getBoolean("js7.journal.cluster.node.is-backup"))
+            "Backup"
+           else
+            "Primary"))
+      watchUris <- Right(config.getStringList("js7.journal.cluster.watches").asScala.toVector map Uri.apply)
       userAndPassword <- config.checkedOptionAs[SecretString]("js7.auth.cluster.password")
         .map(_.map(UserAndPassword(userId, _)))
       recouplingStreamReaderConf <- RecouplingStreamReaderConfs.fromConfig(config)
       heartbeat <- Right(config.getDuration("js7.journal.cluster.heartbeat").toFiniteDuration)
-      failAfter <- Right(config.getDuration("js7.journal.cluster.fail-after").toFiniteDuration)
-      watchUris <- Right(config.getStringList("js7.journal.cluster.watches").asScala.toVector map Uri.apply)
+      heartbeatTimeout <- Right(config.getDuration("js7.journal.cluster.heartbeat-timeout").toFiniteDuration)
+      timing <- ClusterTiming.checked(heartbeat, heartbeatTimeout)
       testHeartbeatLoss <- Right(config.optionAs[String]("js7.journal.cluster.TEST-HEARTBEAT-LOSS"))
+      setting <- maybeIdToUri.traverse(ClusterSetting.checked(_, ownId, watchUris.map(ClusterSetting.Watch(_)), timing))
     } yield
       new ClusterConf(
         isBackup = isBackup,
-        maybeIdToUri,
+        setting,
         userAndPassword,
         recouplingStreamReaderConf.copy(
-          timeout = heartbeat + (failAfter - heartbeat) / 2),
-        heartbeat = heartbeat,
-        failAfter = failAfter,
-        watchUris,
+          timeout = heartbeat + (heartbeatTimeout - heartbeat) / 2),
+        timing,
         testHeartbeatLoss)
   }
 }

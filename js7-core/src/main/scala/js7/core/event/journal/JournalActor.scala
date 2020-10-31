@@ -251,6 +251,7 @@ extends Actor with Stash
       // in case of a concurrent open persist operation.
       // Must be followed by a ClusterPassiveLost event.
       commitWithoutAcknowledgement(passiveLost)
+      sender() ! Completed
 
     case Input.Terminate =>
       logger.debug("Terminate")
@@ -266,8 +267,8 @@ extends Actor with Stash
           .takeWhile(_.since.elapsed >= conf.ackWarnDurations.headOption.getOrElse(FiniteDuration.MaxValue))
         val n = persistBuffer.view.map(_.eventCount).sum
         if (n > 0) {
-          logger.warn(s"Since ${waitingForAcknowledgeSince.elapsed.pretty}" +
-            s" waiting for acknowledgement from passive cluster node" +
+          logger.warn(s"Waiting since ${waitingForAcknowledgeSince.elapsed.pretty}" +
+            " for acknowledgement from passive cluster node" +
             s" for $n events (in ${persistBuffer.size} persists) starting with " +
             notAckSeq.flatMap(_.stampedSeq).headOption.fold("(unknown)")(_.toString.truncateWithEllipsis(200)) +
             s", lastAcknowledgedEventId=${EventId.toString(lastAcknowledgedEventId)}")
@@ -615,7 +616,7 @@ extends Actor with Stash
     if (conf.deleteObsoleteFiles &&
       (journaledState.clusterState == ClusterState.Empty ||
         (journaledState.clusterState.isInstanceOf[ClusterState.Coupled] ||
-         journaledState.clusterState.isInstanceOf[ClusterState.CoupledActiveShutDown]
+         journaledState.clusterState.isInstanceOf[ClusterState.ActiveShutDown]
         ) &&
           requireClusterAcknowledgement/*ClusterPassiveLost after SnapshotTaken in the same commit chunk
            has reset requireClusterAcknowledgement. We must not delete the file when cluster is being decoupled.*/))

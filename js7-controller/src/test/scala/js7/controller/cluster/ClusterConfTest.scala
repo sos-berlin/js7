@@ -7,6 +7,7 @@ import js7.base.web.Uri
 import js7.common.configutils.Configs._
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.common.message.ProblemCodeMessages
+import js7.data.cluster.{ClusterSetting, ClusterTiming}
 import js7.data.node.NodeId
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -22,7 +23,7 @@ final class ClusterConfTest extends AnyFreeSpec
       val config = config"""
         js7.journal.cluster.node.is-backup = no
         js7.journal.cluster.heartbeat = 7s
-        js7.journal.cluster.fail-after = 5s
+        js7.journal.cluster.heartbeat-timeout = 5s
         js7.journal.cluster.watches = [ "http://AGENT-1", "http://AGENT-2" ]
         js7.web.client.idle-get-timeout = 50s
         js7.web.client.delay-between-polling-gets = 1s"""
@@ -35,21 +36,19 @@ final class ClusterConfTest extends AnyFreeSpec
           RecouplingStreamReaderConf(
             timeout = 6.s,  // Between 5s and 7s
             delay = 1.s),
-          7.s,
-          5.s,
-          Uri("http://AGENT-1") :: Uri("http://AGENT-2") :: Nil)))
+          ClusterTiming(7.s, 5.s))))
     }
 
     "Full configuration" in {
       val config = config"""
         js7.journal.cluster.node.is-backup = no
         js7.journal.cluster.nodes = {
-          A: "http://A"
-          B: "http://B"
+          Primary: "https://PRIMARY"
+          Backup: "https://BACKUP"
         }
-        js7.journal.cluster.watches = [ "http://AGENT" ]
+        js7.journal.cluster.watches = [ "https://CLUSTER-WATCH" ]
         js7.journal.cluster.heartbeat = 7s
-        js7.journal.cluster.fail-after = 5s
+        js7.journal.cluster.heartbeat-timeout = 5s
         js7.auth.cluster.password = "PASSWORD"
         js7.web.client.idle-get-timeout = 50s
         js7.web.client.delay-between-polling-gets = 1s"""
@@ -57,16 +56,18 @@ final class ClusterConfTest extends AnyFreeSpec
       assert(checkedClusterConf == Right(
         ClusterConf(
           isBackup = false,
-          Some(Map(
-            NodeId("A") -> Uri("http://A"),
-            NodeId("B") -> Uri("http://B"))),
+          Some(ClusterSetting(
+            Map(
+              NodeId("Primary") -> Uri("https://PRIMARY"),
+              NodeId("Backup") -> Uri("https://BACKUP")),
+            NodeId("Primary"),
+            Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
+            ClusterTiming(7.s, 5.s))),
           Some(UserAndPassword(UserId("USER"), SecretString("PASSWORD"))),
           RecouplingStreamReaderConf(
             timeout = 6.s,  // Between 5s and 7s
             delay = 1.s),
-          7.s,
-          5.s,
-          Uri("http://AGENT") :: Nil)))
+          ClusterTiming(7.s, 5.s))))
     }
   }
 }

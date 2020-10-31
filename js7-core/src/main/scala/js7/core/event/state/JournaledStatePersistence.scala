@@ -11,6 +11,7 @@ import js7.common.scalautil.Logger
 import js7.core.event.journal.{JournalActor, JournalConf}
 import js7.core.event.state.JournaledStatePersistence._
 import js7.core.event.state.StateJournalingActor.{PersistFunction, StateToEvents}
+import js7.data.cluster.ClusterState
 import js7.data.event.{Event, JournaledState, KeyedEvent, Stamped}
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -19,7 +20,7 @@ import scala.reflect.runtime.universe._
 import shapeless.tag.@@
 
 // TODO Lock for NoKey is to wide. Restrict to a set of Event superclasses, like ClusterEvent, ControllerEvent?
-//  Der Aufrufer kann sich im die Sperren uns dessen Granularität kümmern.
+//  Der Aufrufer kann sich um die Sperren uns dessen Granularität kümmern.
 //  JournaledStatePersistence stellt dazu LockKeeper bereit
 //  Wir werden vielleicht mehrere Schlüssel auf einmal sperren wollen (für fork/join?)
 
@@ -52,7 +53,7 @@ extends AutoCloseable
 
   def persistEvent[E <: Event](key: E#Key): (S => Checked[E]) => Task[Checked[(Stamped[KeyedEvent[E]], S)]] = {
     requireStarted()
-    stateToEvent => lockKeeper.lock(key).use(_ =>
+    stateToEvent => lock(key)(
       persistEventUnlocked(
         stateToEvent.andThen(_.map(KeyedEvent(key, _)))))
   }
@@ -70,7 +71,7 @@ extends AutoCloseable
   def persistTransaction[E <: Event](key: E#Key): (S => Checked[Seq[E]]) => Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] = {
     requireStarted()
     stateToEvents =>
-      lockKeeper.lock(key).use(_ =>
+      lock(key)(
         persistTransactionUnlocked(state =>
           stateToEvents(state)
             .map(_.map(KeyedEvent[E](key, _)))))
@@ -84,10 +85,16 @@ extends AutoCloseable
           stampedKeyedEvents.asInstanceOf[Seq[Stamped[KeyedEvent[E]]]] -> state }))
   }
 
+  private def lock[A](key: Any)(body: Task[A]): Task[A] =
+    lockKeeper.lock(key).use(_ => body)
+
   def isStarted = actorOnce.nonEmpty
 
   private def requireStarted() =
     if (actorOnce.isEmpty) throw new IllegalStateException(s"$toString has not yet been started")
+
+  def clusterState: Task[ClusterState] =
+    currentState.map(_.clusterState)
 
   def currentState: Task[S] =
     waitUntilStarted >>
@@ -97,7 +104,7 @@ extends AutoCloseable
     }.map(_.asInstanceOf[S])
 
   def waitUntilStarted: Task[Unit] =
-    deferFutureAndLog(actorOnce.future, s"StateJournalingActor for $toString")
+    deferFutureAndLog(actorOnce.future, s"$toString.waitUntilStarted")
       .map(_ => ())
 
   override def toString = s"JournaledStatePersistence[${S.tpe}]"

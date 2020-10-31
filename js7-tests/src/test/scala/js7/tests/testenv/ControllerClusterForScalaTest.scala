@@ -21,7 +21,7 @@ import js7.controller.data.ControllerCommand.ShutDown
 import js7.core.event.journal.files.JournalFiles.listJournalFiles
 import js7.data.agent.AgentName
 import js7.data.cluster.ClusterEvent.ClusterCoupled
-import js7.data.cluster.ClusterSetting
+import js7.data.cluster.{ClusterSetting, ClusterTiming}
 import js7.data.item.InventoryItem
 import js7.data.job.ExecutablePath
 import js7.data.node.NodeId
@@ -72,6 +72,7 @@ trait ControllerClusterForScalaTest
     withCloser { implicit closer =>
       val testName = ControllerClusterForScalaTest.this.getClass.getSimpleName
       val agentPorts = findFreeTcpPorts(agentNames.size)
+      val timing = ClusterTiming(1.s, 5.s)
       val primary = new DirectoryProvider(agentNames, inventoryItems, testName = Some(s"$testName-Primary"),
         controllerConfig = combineArgs(
           primaryControllerConfig,
@@ -80,9 +81,10 @@ trait ControllerClusterForScalaTest
               Primary: "http://127.0.0.1:$primaryControllerPort"
               Backup: "http://127.0.0.1:$backupControllerPort"
             }"""),
+
           config"""
-            js7.journal.cluster.heartbeat = 0.5s
-            js7.journal.cluster.fail-after = 5s
+            js7.journal.cluster.heartbeat = ${timing.heartbeat.toSeconds}s
+            js7.journal.cluster.heartbeat-timeout = ${timing.heartbeatTimeout.toSeconds}s
             js7.journal.cluster.watches = [ "http://127.0.0.1:${agentPorts.head}" ]
             js7.journal.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"
             js7.journal.release-events-delay = 0s
@@ -98,9 +100,6 @@ trait ControllerClusterForScalaTest
           backupControllerConfig,
           config"""
             js7.journal.cluster.node.is-backup = yes
-            js7.journal.cluster.heartbeat = 3s
-            js7.journal.cluster.fail-after = 5s
-            js7.journal.cluster.watches = [ "http://127.0.0.1:${agentPorts.head}" ]
             js7.journal.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"
             js7.journal.release-events-delay = 0s
             js7.journal.remove-obsolete-files = $removeObsoleteJournalFiles
@@ -117,11 +116,13 @@ trait ControllerClusterForScalaTest
 
       for (a <- primary.agents) a.writeExecutable(TestExecutablePath, shellScript)
 
-      val setting = ClusterSetting.unchecked(
+      val setting = ClusterSetting(
         Map(
           primaryId -> Uri(s"http://127.0.0.1:$primaryControllerPort"),
           backupId -> Uri(s"http://127.0.0.1:$backupControllerPort")),
-        activeId = primaryId)
+        activeId = primaryId,
+        primary.agentRefs.take(1).map(o => ClusterSetting.Watch(o.uri)),
+        timing)
 
       primary.runAgents() { _ =>
         body(primary, backup, setting)

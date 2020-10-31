@@ -1,6 +1,7 @@
 package js7.data.cluster
 
 import js7.base.circeutils.CirceUtils._
+import js7.base.time.ScalaTime._
 import js7.base.web.Uri
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.event.{EventId, JournalPosition}
@@ -21,7 +22,9 @@ final class ClusterEventTest extends AnyFreeSpec
         Map(
           NodeId("PRIMARY") -> Uri("https://PRIMARY"),
           NodeId("BACKUP") -> Uri("https://BACKUP")),
-        NodeId("PRIMARY"))),
+        NodeId("PRIMARY"),
+        Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
+        ClusterTiming(10.s, 20.s))),
       json"""{
         "TYPE": "ClusterNodesAppointed",
         "setting": {
@@ -29,7 +32,12 @@ final class ClusterEventTest extends AnyFreeSpec
             "PRIMARY": "https://PRIMARY",
             "BACKUP": "https://BACKUP"
           },
-          "activeId": "PRIMARY"
+          "activeId": "PRIMARY",
+          "clusterWatches": [ { "uri": "https://CLUSTER-WATCH" } ],
+          "timing": {
+            "heartbeat": 10,
+            "heartbeatTimeout": 20
+          }
         }
       }""")
   }

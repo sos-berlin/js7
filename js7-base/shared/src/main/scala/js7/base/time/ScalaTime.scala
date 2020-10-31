@@ -6,7 +6,7 @@ import js7.base.utils.Ascii.isAsciiDigit
 import scala.annotation.tailrec
 import scala.concurrent.blocking
 import scala.concurrent.duration._
-import scala.math.abs
+import scala.math.{abs, floor}
 import scala.util.Random
 
 object ScalaTime
@@ -118,7 +118,7 @@ object ScalaTime
       if (nanos == 0) "0ms"
       else {
         val a = abs(nanos)
-        if (a >= 1000000000)
+        if (a >= 999_500_000)
           pretty
         else if (a >= 10000000)
           formatNumber(nanos / 1000000.0, 10, "ms")
@@ -151,13 +151,13 @@ object ScalaTime
         formatNumber(nanos / 1000_000_000.0, 1, "s")
       else if (a >= 10_000_000_000L)
         formatNumber(nanos / 1000_000_000.0, 10, "s")
-      else if (a >= 1000_000_000)
+      else if (a >= 1_000_000_000)
         formatNumber(nanos / 1000_000_000.0, 100, "s")
       else if (a >= 100_000_000)
         formatNumber(nanos / 1000_000_000.0, 1000, "s")
       else if (a >= 10_000_000)
         formatNumber(nanos / 1000_000.0, 10, "ms")
-      else if (a >= 1000_000)
+      else if (a >= 1_000_000)
         formatNumber(nanos / 1000_000.0, 100, "ms")
       else if (a >= 100_000)
         formatNumber(nanos / 1000_000.0, 1000, "ms")
@@ -169,6 +169,26 @@ object ScalaTime
         formatNumber(nanos / 1000.0, 1000, "µs")
       else
         s"${nanos}ns"
+    }
+
+    private def formatNumber(number: Double, divisor: Int, suffix: String) = {
+      val result = new StringBuilder(11 + suffix.length)
+      if (number < 0) result += '-'
+      val a = floor(abs(number) * divisor + 0.5) / divisor
+      val integral = a.toInt
+      result.append(integral)
+      val b = ((a - integral) * divisor + 0.5).toInt
+      if (b > 0) {
+        val p = result.length
+        result.append(divisor + b)
+        result(p) = '.'
+        var truncated = result.length
+        while (result(truncated - 1) == '0') truncated -= 1
+        if (result(truncated - 1) == '.') truncated -= 1
+        result.delete(truncated, result.length)
+      }
+      result ++= suffix
+      result.toString
     }
 
     private def bigPretty = {
@@ -309,26 +329,6 @@ object ScalaTime
   private def nanoSleep(nanos: Long) = {
     val m = 1000*1000
     Thread.sleep(nanos / m, (nanos % m).toInt)
-  }
-
-  private def formatNumber(number: Double, divisor: Int, suffix: String) = {
-    val result = new StringBuilder(11 + suffix.length)
-    if (number < 0) result += '-'
-    val a = abs(number)
-    val integral = a.toInt
-    result.append(integral)
-    val b = ((a - integral) * divisor + 0.5).toInt
-    if (b > 0) {
-      val p = result.length
-      result.append(divisor + b)
-      result(p) = '.'
-      var truncated = result.length
-      while (result(truncated - 1) == '0') truncated -= 1
-      if (result(truncated - 1) == '.') truncated -= 1
-      result.delete(truncated, result.length)
-    }
-    result ++= suffix
-    result.toString
   }
 
   implicit val ScalaDurationShow: Show[Duration] = _.pretty

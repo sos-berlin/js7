@@ -19,7 +19,9 @@ final class ClusterCommandTest extends AnyFreeSpec
           Map(
             NodeId("A") -> Uri("http://A"),
             NodeId("B") -> Uri("http://B")),
-          NodeId("A")),
+          NodeId("A"),
+          Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
+          ClusterTiming(10.s, 20.s)),
         1000L),
       json"""{
         "TYPE": "ClusterStartBackupNode",
@@ -28,7 +30,12 @@ final class ClusterCommandTest extends AnyFreeSpec
             "A": "http://A",
             "B": "http://B"
           },
-          "activeId": "A"
+          "activeId": "A",
+          "clusterWatches": [ { "uri": "https://CLUSTER-WATCH" } ],
+          "timing": {
+            "heartbeat": 10,
+            "heartbeatTimeout": 20
+          }
         },
         "fileEventId": 1000
       }""")
@@ -78,7 +85,9 @@ final class ClusterCommandTest extends AnyFreeSpec
         Map(
           NodeId("A") -> Uri("http://A"),
           NodeId("B") -> Uri("http://B")),
-        activeId = NodeId("A")),
+        activeId = NodeId("A"),
+        Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
+        ClusterTiming(10.s, 20.s)),
       JournalPosition(0L, 1000)))),
       json"""{
         "TYPE": "ClusterInhibitActivation.Response",
@@ -88,7 +97,12 @@ final class ClusterCommandTest extends AnyFreeSpec
               "A": "http://A",
               "B": "http://B"
             },
-            "activeId": "A"
+            "activeId": "A",
+            "clusterWatches": [ { "uri": "https://CLUSTER-WATCH" } ],
+            "timing": {
+              "heartbeat": 10,
+              "heartbeatTimeout": 20
+            }
           },
           "failedAt": {
             "fileEventId": 0,

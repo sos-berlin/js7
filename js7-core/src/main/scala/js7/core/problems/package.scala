@@ -2,6 +2,7 @@ package js7.core
 
 import akka.http.scaladsl.model.StatusCodes.ServiceUnavailable
 import js7.base.problem.Problem
+import js7.data.cluster.{ClusterCommand, ClusterState}
 import js7.data.event.EventId
 import js7.data.node.NodeId
 
@@ -40,9 +41,16 @@ package object problems
     override def arguments = Map("passiveId" -> passiveId.toString)
   }
 
+  final case class ClusterCommandInapplicableProblem(command: ClusterCommand, clusterState: ClusterState)
+  extends Problem.Coded {
+    override def arguments = Map(
+      "command" -> command.toString,
+      "clusterState" -> clusterState.toString)
+  }
+
   object ClusterNodeIsNotBackupProblem extends Problem.ArgumentlessCoded
 
-  object PrimaryMayNotBecomeBackupProblem extends Problem.ArgumentlessCoded
+  object PrimaryClusterNodeMayNotBecomeBackupProblem extends Problem.ArgumentlessCoded
 
   final case object ClusterNodesAlreadyAppointed extends Problem.ArgumentlessCoded
 }

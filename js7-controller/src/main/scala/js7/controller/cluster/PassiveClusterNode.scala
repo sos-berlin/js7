@@ -45,7 +45,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 
-/*private[cluster]*/ final class PassiveClusterNode[S <: JournaledState[S]: diffx.Diff](
+private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Diff](
   ownId: NodeId,
   setting: ClusterSetting,
   journalMeta: JournalMeta,
@@ -53,10 +53,11 @@ import monix.reactive.Observable
   initialFileEventId: Option[EventId],
   recovered: Recovered[S],
   otherFailed: Boolean,
+  clusterWatchSynchonizer: ClusterWatchSynchronizer,
   journalConf: JournalConf,
   clusterConf: ClusterConf,
   eventIdGenerator: EventIdGenerator,
-  common: ClusterCommon)
+  common: ClusterCommon[S])
   (implicit S: JournaledState.Companion[S])
 {
   import setting.{activeId, idToUri}
@@ -237,7 +238,7 @@ import monix.reactive.Observable
             api.journalObservable(
               fileEventId = continuation.fileEventId,
               position = after,
-              heartbeat = Some(clusterConf.heartbeat),
+              heartbeat = Some(setting.timing.heartbeat),
               markEOF = true
             ).map(_.scan(PositionAnd(after, ByteArray.empty/*unused*/))((s, line) =>
               PositionAnd(s.position + (if (line == JournalSeparators.HeartbeatMarker) 0 else line.length), line))))
@@ -277,7 +278,7 @@ import monix.reactive.Observable
               .flatMap(Observable.fromIterable)
         }
         .filter(testHeartbeatSuppressor) // for testing
-        .detectPauses(clusterConf.heartbeat + clusterConf.failAfter)
+        .detectPauses(setting.timing.heartbeat + setting.timing.heartbeatTimeout)
         .flatMap[Checked[Unit]] {
           case None/*heartbeat pause*/ =>
             (if (isReplicatingHeadOfFile) continuation.clusterState else builder.clusterState) match {
@@ -295,7 +296,7 @@ import monix.reactive.Observable
                       val failedOverStamped = toStampedFailedOver(clusterState,
                         JournalPosition(recoveredJournalFile.fileEventId, lastProperEventPosition))
                       val failedOver = failedOverStamped.value.event
-                      common.ifClusterWatchAllowsActivation(clusterState, failedOver,
+                      common.ifClusterWatchAllowsActivation(clusterState, failedOver, clusterWatchSynchonizer, checkOnly = false,
                         Task {
                           val fileSize = {
                             val file = recoveredJournalFile.file
@@ -328,7 +329,7 @@ import monix.reactive.Observable
                       val failedOverStamped = toStampedFailedOver(clusterState,
                         JournalPosition(continuation.fileEventId, lastProperEventPosition))
                       val failedOver = failedOverStamped.value.event
-                      common.ifClusterWatchAllowsActivation(clusterState, failedOver,
+                      common.ifClusterWatchAllowsActivation(clusterState, failedOver, clusterWatchSynchonizer, checkOnly = false,
                         Task {
                           builder.rollbackToEventSection()
                           builder.put(failedOverStamped)
@@ -456,8 +457,8 @@ import monix.reactive.Observable
                         case switchedOver: ClusterSwitchedOver =>
                           // Notify ClusterWatch before starting heartbeating
                           Observable.fromTask(
-                            common.clusterWatch.applyEvents(from = ownId, switchedOver :: Nil, builder.clusterState, force = true)
-                              .map(_.map(_ => ())))
+                            clusterWatchSynchonizer.applyEvents(switchedOver :: Nil, builder.clusterState, force = true)
+                              .map(_.toUnit))
                           // TODO sendClusterPassiveFollows ?
 
                         case ClusterCouplingPrepared(activeId) =>
@@ -519,8 +520,8 @@ import monix.reactive.Observable
   private def testHeartbeatSuppressor(tuple: (Long, ByteArray, Any)): Boolean =
     tuple match {
       case (_, JournalSeparators.HeartbeatMarker, _)
-        if clusterConf.testHeartbeatLossPropertyKey.fold(false)(k => sys.props(k).toBoolean) =>
-        logger.warn("TEST: Ignoring heartbeat")
+      if clusterConf.testHeartbeatLossPropertyKey.fold(false)(k => sys.props(k).toBoolean) =>
+        logger.warn("TEST: Suppressing received heartbeat")
         false
       case _ => true
     }
@@ -605,7 +606,4 @@ object PassiveClusterNode
   private val logger = Logger(getClass)
 
   private val EndOfJournalFileMarker = Problem.pure("End of journal file (internal use only)")
-
-  case object ClusterWatchAgreesToActivation
-  case object ClusterWatchDisagreeToActivation
 }

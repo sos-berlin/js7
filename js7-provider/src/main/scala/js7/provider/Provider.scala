@@ -70,15 +70,16 @@ extends HasCloser with Observing with ProvideActorSystem
       loginUntilReachable
 
   private def updateAgents: Task[Completed] = {
-    val agentRefs = config.getObject("js7.provider.agents")
-      .asScala
+    val agentRefs = config.getObject("js7.provider.agents").asScala
       .collect { case (name, obj: ConfigObject) =>
         AgentRef(AgentName(name), Uri(obj.toConfig.getString("uri")))
       }
       .toVector
     for {
       _ <- loginUntilReachable
-     completed <- controllerApi.executeCommand(UpdateAgentRefs(agentRefs))
+     completed <- controllerApi
+       .retryUntilReachable()(
+         controllerApi.executeCommand(UpdateAgentRefs(agentRefs)))
        .map((_: ControllerCommand.Response) => Completed)
     } yield completed
   }

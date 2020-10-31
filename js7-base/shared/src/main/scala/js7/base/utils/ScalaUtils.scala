@@ -112,10 +112,10 @@ object ScalaUtils
         var result = delegate.toSimplifiedString
         delegate.getCause match {
           case null =>
-          case cause => result = result.trim.stripSuffix(":") + ", caused by: " + cause.toStringWithCauses
+          case cause => result = result.stripSuffix(":") + ", caused by: " + cause.toStringWithCauses
         }
         if (delegate.getSuppressed.nonEmpty) {
-          result = result.trim + delegate.getSuppressed.map(t => " [suppressed: " + t.toStringWithCauses + "]").mkString
+          result += delegate.getSuppressed.map(t => " [suppressed: " + t.toStringWithCauses + "]").mkString
         }
         result
       }
@@ -141,7 +141,7 @@ object ScalaUtils
             case _ =>
               delegate.toString
           }
-      }
+      }.trim
 
       def stackTraceAsString: String = {
         val w = new StringWriter

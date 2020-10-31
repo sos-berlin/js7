@@ -11,12 +11,14 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Big
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax._
+import js7.base.web.Uri
 import js7.data.agent.AgentRef
 import js7.data.cluster.{ClusterCommand, ClusterSetting}
 import js7.data.command.{CancelMode, CommonCommand}
 import js7.data.controller.ControllerItems.itemPathJsonDecoder
 import js7.data.event.EventId
 import js7.data.item.{ItemPath, VersionId}
+import js7.data.node.NodeId
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.position.Position
 import scala.collection.immutable
@@ -193,7 +195,10 @@ object ControllerCommand extends CommonCommand.Companion
     override def toString = s"ReplaceRepo($versionId, ${objects.size} objects)"
   }
 
-  final case class ClusterAppointNodes(setting: ClusterSetting)
+  final case class ClusterAppointNodes(
+    idToUri: Map[NodeId, Uri],
+    activeId: NodeId,
+    clusterWatches: Seq[ClusterSetting.Watch])
   extends ControllerCommand {
     type Response = Response.Accepted
   }

@@ -40,10 +40,6 @@ final class SwitchOverClusterTest extends ControllerClusterTester
           primaryController.eventWatch.await[OrderProcessingStarted](_.key == orderId)
           backupController.eventWatch.await[OrderProcessingStarted](_.key == orderId)
 
-          //if (manyOrdersCount > 1) {
-          //  primaryController.executeCommandAsSystemUser(TakeSnapshot).await(timeout)
-          //}
-
           // SWITCH OVER TO BACKUP
           primaryController.executeCommandAsSystemUser(ClusterSwitchOver).await(timeout).orThrow
           //May already be terminated: primaryController.eventWatch.await[ClusterSwitchedOver]()

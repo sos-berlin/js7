@@ -36,7 +36,7 @@ import js7.common.scalautil.Logger.ops._
 import js7.common.time.JavaTimeConverters.AsScalaDuration
 import js7.controller.ControllerOrderKeeper._
 import js7.controller.agent.{AgentDriver, AgentDriverConfiguration}
-import js7.controller.cluster.Cluster
+import js7.controller.cluster.ActiveClusterNode
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.data.agent.AgentRefState
 import js7.controller.data.events.AgentRefStateEvent.{AgentEventsObserved, AgentReady}
@@ -84,7 +84,7 @@ import shapeless.tag.@@
 final class ControllerOrderKeeper(
   stopped: Promise[ControllerTermination],
   protected val journalActor: ActorRef @@ JournalActor.type,
-  cluster: Cluster[ControllerState],
+  activeClusterNode: ActiveClusterNode[ControllerState],
   controllerConfiguration: ControllerConfiguration,
   itemVerifier: InventoryItemVerifier[InventoryItem],
   testEventPublisher: EventPublisher[Any])
@@ -197,7 +197,7 @@ with MainJournalingActor[ControllerState, Event]
     }
 
     def start(): Task[Checked[Completed]] =
-      cluster.switchOver   // Will terminate `cluster`, letting ControllerOrderKeeper terminate
+      activeClusterNode.switchOver   // Will terminate `cluster`, letting ControllerOrderKeeper terminate
         .map(_.map { case Completed =>
           journalActor ! JournalActor.Input.Terminate
           Completed
@@ -230,7 +230,7 @@ with MainJournalingActor[ControllerState, Event]
 
   override def postStop() =
     try {
-      cluster.stop()
+      activeClusterNode.close()
       shutdown.close()
       switchover foreach { _.close() }
     } finally {
@@ -249,7 +249,7 @@ with MainJournalingActor[ControllerState, Event]
       become("inhibitingActivationOfOtherClusterNode")(inhibitingActivationOfOtherClusterNode)
       unstashAll()
       // TODO Inhibit activation of peer while recovering a long time
-      cluster.beforeJournalingStarted
+      activeClusterNode.beforeJournalingStarted
         .map(_.orThrow)
         .map((_: Completed) => recovered)
         .materialize
@@ -329,7 +329,7 @@ with MainJournalingActor[ControllerState, Event]
         ) ++ Some(NoKey <-: ControllerEvent.ControllerReady(ZoneId.systemDefault.getId, totalRunningTime = journalHeader.totalRunningTime))
       ) { (_, updatedControllerState) =>
         _controllerState = updatedControllerState
-        cluster.afterJounalingStarted
+        activeClusterNode.afterJounalingStarted
           .materializeIntoChecked
           .runToFuture
           .map(Internal.Ready.apply)
@@ -377,7 +377,7 @@ with MainJournalingActor[ControllerState, Event]
     case Internal.Ready(Right(Completed)) =>
       logger.info("Ready")
       testEventPublisher.publish(ControllerReadyTestIncident)
-      cluster.onTerminatedUnexpectedly.runToFuture onComplete { tried =>
+      activeClusterNode.onTerminatedUnexpectedly.runToFuture onComplete { tried =>
         self ! Internal.ClusterModuleTerminatedUnexpectedly(tried)
       }
       become("Ready")(ready orElse handleExceptionalMessage)
@@ -686,7 +686,7 @@ with MainJournalingActor[ControllerState, Event]
             Future.successful(Right(ControllerCommand.Response.Accepted))
 
           case None =>
-            cluster.shutDownThisNode
+            activeClusterNode.shutDownThisNode
               .flatTap {
                 case Right(Completed) => Task { self ! Internal.ShutDown(shutDown) }
                 case _ => Task.unit

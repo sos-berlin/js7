@@ -31,6 +31,7 @@ import scala.jdk.CollectionConverters._
   */
 final case class ControllerConfiguration(
   controllerId: ControllerId,
+  @deprecated
   nodeId: NodeId,
   dataDirectory: Path,
   configDirectory: Path,

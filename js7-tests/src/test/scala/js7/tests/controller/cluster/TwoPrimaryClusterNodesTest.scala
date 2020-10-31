@@ -6,7 +6,7 @@ import js7.base.time.ScalaTime._
 import js7.common.configutils.Configs._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.data.ControllerCommand.ClusterAppointNodes
-import js7.core.problems.PrimaryMayNotBecomeBackupProblem
+import js7.core.problems.PrimaryClusterNodeMayNotBecomeBackupProblem
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -21,7 +21,7 @@ final class TwoPrimaryClusterNodesTest extends AnyFreeSpec with ControllerCluste
           httpPort = Some(backupControllerPort),
           config = config"js7.journal.cluster.node.is-backup = false"
         ) { backupController =>
-          val cmd = ClusterAppointNodes(clusterSetting)
+          val cmd = ClusterAppointNodes(clusterSetting.idToUri, clusterSetting.activeId, clusterSetting.clusterWatches)
           primaryController.executeCommandAsSystemUser(cmd).await(99.s).orThrow
           sleep(5.s)
           //assert(primaryController.executeCommandAsSystemUser(cmd).await(99.s) == Left(ClusterNodeIsNotBackupProblem))
@@ -42,7 +42,7 @@ final class TwoPrimaryClusterNodesTest extends AnyFreeSpec with ControllerCluste
           // TODO Introduce ClusterFailed event to check the asynchronous failure?
         }
       }
-      assert(t.problem == PrimaryMayNotBecomeBackupProblem)
+      assert(t.problem == PrimaryClusterNodeMayNotBecomeBackupProblem)
     }
   }
 }

@@ -38,7 +38,7 @@ final class ShutDownClusterTest extends ControllerClusterTester
 
           val activeNodeShutDown = backupController.eventWatch.await[ClusterActiveNodeShutDown](after = EventId.BeforeFirst).head.eventId
 
-          assert(backupController.httpApi.clusterState.await(99.s) == Right(ClusterState.CoupledActiveShutDown(clusterSetting)))
+          assert(backupController.httpApi.clusterState.await(99.s) == Right(ClusterState.ActiveShutDown(clusterSetting)))
 
           primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
             val activeRestarted = primaryController.eventWatch.await[ClusterActiveNodeRestarted](
@@ -109,7 +109,7 @@ final class ShutDownClusterTest extends ControllerClusterTester
             // FIXME When Primary Controller is shutting down before started (no ControllerOrderKeeper)
             //  while the Backup Controller is shutting down and times out the acknowledgement request,
             //  Cluster asks the JournalActor about ClusterState for issuing a ClusterPassiveLost event.
-            //  But JournalActor does not answert if not started.
+            //  But JournalActor does not answer if not started.
             primaryController.waitUntilReady()
 
             backupController.executeCommandAsSystemUser(ShutDown()).await(99.s).orThrow

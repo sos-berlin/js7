@@ -5,14 +5,20 @@ import cats.syntax.flatMap._
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.Assertions.assertThat
 import js7.base.web.Uri
+import js7.data.cluster.ClusterSetting._
 import js7.data.cluster.ClusterSetting.syntax._
 import js7.data.node.NodeId
 
 final case class ClusterSetting private(
   idToUri: Map[NodeId, Uri],
-  activeId: NodeId)
+  activeId: NodeId,
+  clusterWatches: Seq[ClusterSetting.Watch],
+  timing: ClusterTiming)
 {
+  checkedUnit(idToUri, activeId, clusterWatches).orThrow
+
   def passiveId: NodeId =
     idToUri.peerOf(activeId)
 
@@ -24,27 +30,36 @@ final case class ClusterSetting private(
         .sortBy(o => if (o._1 == activeId) 0 else 1)
         .toMap)
 
-  @throws[AssertionError]
-  def assertIsValid(): Unit =
-    ClusterSetting.checked(idToUri, activeId)
-      .orThrow
+  def clusterWatchUri: Uri = {
+    assertThat(clusterWatches.sizeIs == 1)
+    clusterWatches.head.uri
+  }
+
+  def clusterWatchUris =
+    clusterWatches.map(_.uri)
 }
 
 object ClusterSetting
 {
-  private type Id = NodeId
+  def checked(
+    idToUri: Map[NodeId, Uri],
+    activeId: NodeId,
+    clusterWatches: Seq[Watch],
+    timing: ClusterTiming)
+  : Checked[ClusterSetting] =
+    for (_ <- checkedUnit(idToUri, activeId, clusterWatches)) yield
+      new ClusterSetting(idToUri, activeId, clusterWatches, timing)
 
-  def unchecked(idToUri: Map[Id, Uri], activeId: Id): ClusterSetting =
-    checked(idToUri, activeId).orThrow
-
-  def checked(idToUri: Map[Id, Uri], activeId: Id): Checked[ClusterSetting] =
+  private def checkedUnit(idToUri: Map[NodeId, Uri], activeId: NodeId, clusterWatches: Seq[Watch]) =
     checkUris(idToUri) >>
       (if (!idToUri.contains(activeId))
         Left(Problem(s"Unknown NodeId: '$activeId', expected one of ${idToUri.keys.mkString("'", "', '", "'")}"))
+      else if (clusterWatches.sizeIs != 1)
+        Left(Problem.pure("Exactly one cluster watch URI is required"))
       else
-        Right(new ClusterSetting(idToUri, activeId)))
+        Right(()))
 
-  def checkUris(idToUri: Map[Id, Uri]): Checked[idToUri.type] =
+  private[cluster] def checkUris(idToUri: Map[NodeId, Uri]): Checked[idToUri.type] =
     if (idToUri.size != 2)
       Left(Problem("Exactly two URIs are expected"))
     else if (idToUri.values.toVector.distinct.size != idToUri.size)
@@ -52,10 +67,17 @@ object ClusterSetting
     else
       Right(idToUri)
 
+  final case class Watch(uri: Uri)
+  object Watch {
+    implicit val jsonCodec = deriveCodec[Watch]
+  }
+
   object syntax {
     implicit final class RichIdToUri(private val idToUri: Map[NodeId, Uri]) extends AnyVal {
-      def peerOf(id: Id): Id =
+      def peerOf(id: NodeId): NodeId = {
+        assertThat(idToUri.keySet contains id)
         idToUri.keys.filter(_ != id).head
+      }
     }
   }
 

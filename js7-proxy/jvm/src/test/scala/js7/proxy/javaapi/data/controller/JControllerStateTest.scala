@@ -4,13 +4,14 @@ import js7.base.annotation.javaApi
 import js7.base.auth.UserId
 import js7.base.crypt.silly.SillySigner
 import js7.base.problem.Checked.Ops
+import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.Collections.implicits._
 import js7.base.web.Uri
 import js7.controller.data.agent.AgentRefState
 import js7.controller.data.{ControllerMetaState, ControllerState}
 import js7.data.agent.{AgentName, AgentRef}
-import js7.data.cluster.{ClusterSetting, ClusterState}
+import js7.data.cluster.{ClusterSetting, ClusterState, ClusterTiming}
 import js7.data.controller.{ControllerId, ControllerItems}
 import js7.data.event.{EventId, JournalState, JournaledState}
 import js7.data.item.RepoEvent.VersionAdded
@@ -88,7 +89,9 @@ private object JControllerStateTest
           Map(
             NodeId("A") -> Uri("http://A"),
             NodeId("B") -> Uri("http://B")),
-          activeId = NodeId("A")))),
+          activeId = NodeId("A"),
+          Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
+          ClusterTiming(10.s, 20.s)))),
     ControllerMetaState(ControllerId("CONTROLLER-ID"), Timestamp("2019-05-24T12:00:00Z"), timezone = "Europe/Berlin"),
     (AgentRefState(AgentRef(AgentName("AGENT"), Uri("https://AGENT")), None, EventId(7)) :: Nil).toKeyedMap(_.name),
     Repo.empty

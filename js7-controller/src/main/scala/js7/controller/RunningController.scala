@@ -33,13 +33,12 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.RunningController._
 import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
-import js7.controller.cluster.{Cluster, ClusterFollowUp}
+import js7.controller.cluster.{ActiveClusterNode, Cluster, ClusterFollowUp}
 import js7.controller.command.ControllerCommandExecutor
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.configuration.inject.ControllerModule
 import js7.controller.data.ControllerCommand.AddOrder
 import js7.controller.data.{ControllerCommand, ControllerState}
-import js7.controller.problems.ControllerIsNotYetReadyProblem
 import js7.controller.repo.{RepoUpdater, VerifiedUpdateRepo}
 import js7.controller.web.ControllerWebServer
 import js7.core.command.{CommandExecutor, CommandMeta}
@@ -295,7 +294,7 @@ object RunningController
         .runToFuture
       val (orderKeeperStarted, orderKeeperTerminated) = {
         val started = clusterFollowUpFuture.map(_.flatMap(
-          startControllerOrderKeeper(journalActor, cluster, _, testEventBus)))
+          startControllerOrderKeeper(journalActor, cluster.activeClusterNode.orThrow/*TODO*/, _, testEventBus)))
         (started.map(_.map(_.actor)),
           started.flatMap {
             case Left(termination) =>
@@ -325,10 +324,12 @@ object RunningController
       //}
       val commandExecutor = new ControllerCommandExecutor(
         new MyCommandExecutor(cluster,
-          onShutDownPassive = termination => Task {
-            clusterStartupTermination = termination
-            clusterFollowUpFuture.cancel()
-          },
+          onShutDownBeforeClusterActivated = termination =>
+            Task.defer {
+              clusterStartupTermination = termination
+              clusterFollowUpFuture.cancel()
+              cluster.stop
+            },
           orderKeeperStarted.map(_.toOption)))
       val repoUpdater = new MyRepoUpdater(itemVerifier, orderKeeperStarted.map(_.toOption))
       val itemApi = new DirectItemApi(controllerState)
@@ -370,9 +371,8 @@ object RunningController
     : (Task[Option[Checked[ControllerState]]], Task[Either[ControllerTermination.Terminate, ClusterFollowUp[ControllerState]]]) =
     {
       class StartingClusterCancelledException extends NoStackTrace
-      val recoveredState = recovered.recoveredState getOrElse ControllerState.Undefined
-      val (replicatedState, followUpTask) = cluster.start(recovered, recoveredState)
-      replicatedState ->
+      val (currentPassiveReplicatedState, followUpTask) = cluster.start(recovered)
+      currentPassiveReplicatedState ->
         followUpTask
           .doOnCancel(Task { logger.debug("Cancel Cluster") })
           .onCancelRaiseError(new StartingClusterCancelledException)
@@ -385,7 +385,7 @@ object RunningController
 
     private def startControllerOrderKeeper(
       journalActor: ActorRef @@ JournalActor.type,
-      cluster: Cluster[ControllerState],
+      activeClusterNode: ActiveClusterNode[ControllerState],
       followUp: ClusterFollowUp[ControllerState],
       testEventPublisher: EventPublisher[Any])
     : Either[ControllerTermination.Terminate, OrderKeeperStarted] = {
@@ -395,7 +395,7 @@ object RunningController
           val terminationPromise = Promise[ControllerTermination]()
           val actor = actorSystem.actorOf(
             Props {
-              new ControllerOrderKeeper(terminationPromise, journalActor, cluster, controllerConfiguration,
+              new ControllerOrderKeeper(terminationPromise, journalActor, activeClusterNode, controllerConfiguration,
                 itemVerifier, testEventPublisher)
             },
             "ControllerOrderKeeper")
@@ -410,7 +410,7 @@ object RunningController
 
   private class MyCommandExecutor(
     cluster: Cluster[ControllerState],
-    onShutDownPassive: ControllerTermination.Terminate => Task[Unit],
+    onShutDownBeforeClusterActivated: ControllerTermination.Terminate => Task[Completed],
     orderKeeperStarted: Future[Option[ActorRef @@ ControllerOrderKeeper]])
     (implicit timeout: Timeout)
   extends CommandExecutor[ControllerCommand]
@@ -421,7 +421,7 @@ object RunningController
           cluster.isActive.flatMap(isActive =>
             if (!isActive)
               if (command.clusterAction.isEmpty)
-                onShutDownPassive(ControllerTermination.Terminate(restart = command.restart))
+                onShutDownBeforeClusterActivated(ControllerTermination.Terminate(restart = command.restart))
                   .map(_ => Right(ControllerCommand.Response.Accepted))
               else
                 Task.pure(Left(PassiveClusterNodeShutdownNotAllowedProblem))
@@ -439,8 +439,9 @@ object RunningController
                       .mapTo[Checked[command.Response]]
                 }))
 
-        case ControllerCommand.ClusterAppointNodes(setting) =>
-          cluster.appointNodes(setting)
+        case ControllerCommand.ClusterAppointNodes(idToUri, activeId, clusterWatches) =>
+          Task.pure(cluster.activeClusterNode)
+            .flatMapT(_.appointNodes(idToUri, activeId, clusterWatches))
             .map(_.map((_: Completed) => ControllerCommand.Response.Accepted))
 
         case ControllerCommand.InternalClusterCommand(clusterCommand) =>
