@@ -430,15 +430,13 @@ with MainJournalingActor[ControllerState, Event]
           sender ! (response: Checked[Completed])
       }
 
-    case AgentDriver.Output.EventsFromAgent(stampedAgentEvents, completedPromise) =>
+    case AgentDriver.Output.EventsFromAgent(stampedAgentEvents, committedPromise) =>
       val agentEntry = agentRegister(sender())
       import agentEntry.agentName
-      var lastAgentEventId: Option[EventId] = None
       var timestampedEvents: Seq[Timestamped[Event]] =
         stampedAgentEvents.view.flatMap {
-          case Stamped(agentEventId, timestamp, keyedEvent) =>
+          case Stamped(_, timestamp, keyedEvent) =>
             // TODO Event vor dem Speichern mit Order.applyEvent ausprobieren! Bei Fehler ignorieren?
-            lastAgentEventId = Some(agentEventId)
             keyedEvent match {
               case KeyedEvent(_, _: OrderCancelMarked | OrderSuspendMarked | _: OrderResumeMarked | OrderDetached) =>
                 // We (the Controller) have emitted the same event
@@ -455,30 +453,31 @@ with MainJournalingActor[ControllerState, Event]
                 Some(Timestamped(agentEntry.agentName <-: AgentReady(timezone), Some(timestamp)))
 
               case _ =>
-                logger.warn(s"Unknown event received from ${agentEntry.agentName}: $keyedEvent")
+                logger.error(s"Unknown event received from ${agentEntry.agentName}: $keyedEvent")
                 None
             }
         }.toVector
 
-      completedPromise.completeWith(
-      if (timestampedEvents.isEmpty)
-        // timestampedEvents may be empty if it contains only discarded (Agent-only) events.
-        // Agent's last observed EventId is not persisted then and we do not write an AgentEventsObserved.
-        // For tests, this makes the journal predictable after OrderFinished (because no AgentEventsObserved may follow).
-        Future.successful(Completed)
-      else {
-        timestampedEvents :+= Timestamped(agentName <-: AgentEventsObserved(lastAgentEventId.get))
-        persistTransactionTimestamped(timestampedEvents, async = true, alreadyDelayed = agentDriverConfiguration.eventBufferDelay) {
-          (stampedEvents, updatedState) =>
-            handleOrderEvents(
-              stampedEvents.collect {
-                case stamped @ Stamped(_, _, KeyedEvent(_: OrderId, _: OrderEvent)) =>
-                  stamped.asInstanceOf[Stamped[KeyedEvent[OrderEvent]]]
-              },
-              updatedState)
-            Completed
-        }
-      })
+      committedPromise.completeWith(
+        if (timestampedEvents.isEmpty)
+          // timestampedEvents may be empty if it contains only discarded (Agent-only) events.
+          // Agent's last observed EventId is not persisted then, and we do not write an AgentEventsObserved.
+          // For tests, this makes the journal predictable after OrderFinished (because no AgentEventsObserved may follow).
+          Future.successful(None)
+        else {
+          val agentEventId = stampedAgentEvents.last.eventId
+          timestampedEvents :+= Timestamped(agentName <-: AgentEventsObserved(agentEventId))
+          persistTransactionTimestamped(timestampedEvents, async = true, alreadyDelayed = agentDriverConfiguration.eventBufferDelay) {
+            (stampedEvents, updatedState) =>
+              handleOrderEvents(
+                stampedEvents.collect {
+                  case stamped @ Stamped(_, _, KeyedEvent(_: OrderId, _: OrderEvent)) =>
+                    stamped.asInstanceOf[Stamped[KeyedEvent[OrderEvent]]]
+                },
+                updatedState)
+              Some(agentEventId)
+          }
+        })
 
     case AgentDriver.Output.OrdersDetached(orderIds) =>
       val unknown = orderIds -- _controllerState.idToOrder.keySet
@@ -649,7 +648,7 @@ with MainJournalingActor[ControllerState, Event]
         Try(
           repoCommandExecutor.updateRepoCommandToEvents(_controllerState.repo, cmd, commandMeta)
             .runToFuture
-            .await/*!!!*/(controllerConfiguration.akkaAskTimeout.duration))  // May throw TimeoutException
+            .await/*!!!*/(controllerConfiguration.akkaAskTimeout.duration + 1.s))  // May throw TimeoutException
         match {
           case Failure(t) => Future.failed(t)
           case Success(checkedRepoEvents) =>
@@ -746,7 +745,8 @@ with MainJournalingActor[ControllerState, Event]
       case ItemDeleted(path)     => logger.trace(s"$path deleted")
     }
 
-  private def handleAgentRefEvents(stamped: Seq[Stamped[KeyedEvent[AgentRefEvent]]], updatedState: ControllerState): Unit =
+  private def handleAgentRefEvents(stamped: Seq[Stamped[KeyedEvent[AgentRefEvent]]], updatedState: ControllerState): Unit = {
+    _controllerState = updatedState
     stamped.map(_.value) foreach {
       case KeyedEvent(agentName, AgentAdded(uri)) =>
         val agentRef = AgentRef(agentName, uri)
@@ -758,6 +758,7 @@ with MainJournalingActor[ControllerState, Event]
         agentRegister.update(agentRef)
         agentRegister(agentRef.name).reconnect()
     }
+  }
 
   private def registerAgent(agent: AgentRef, agentRunId: Option[AgentRunId], eventId: EventId): AgentEntry = {
     val actor = watch(actorOf(

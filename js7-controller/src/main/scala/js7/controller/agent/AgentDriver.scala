@@ -273,20 +273,25 @@ with ReceiveLoggingActor.WithStash
       val lastEventId = stampedEvents.last.eventId
       lastFetchedEventId = lastEventId
 
-      promiseFuture[Completed] { p =>
+      promiseFuture[Option[EventId]] { p =>
         context.parent ! Output.EventsFromAgent(reducedStampedEvents, p)
       } onComplete {
-        case Success(Completed) =>
-          self ! Internal.EventsAccepted(lastEventId, promise)
-        case o => promise.complete(o)
+        case Success(Some(eventId)) =>
+          self ! Internal.ReleaseEvents(eventId, promise)
+
+        case Success(None) =>
+          promise.success(Completed)
+
+        case Failure(t) =>
+          promise.complete(Failure(t))
       }
 
-    case Internal.EventsAccepted(lastEventId, promise) =>
+    case Internal.ReleaseEvents(lastEventId, promise) =>
       lastCommittedEventId = lastEventId
       if (releaseEventsCancelable.isEmpty) {
         val delay = if (delayNextReleaseEvents) conf.releaseEventsPeriod else Duration.Zero
         releaseEventsCancelable = Some(scheduler.scheduleOnce(delay) {
-          self ! Internal.ReleaseEvents
+          self ! Internal.ReleaseEventsNow
         })
         delayNextReleaseEvents = true
       }
@@ -311,7 +316,7 @@ with ReceiveLoggingActor.WithStash
           }
         }
 
-    case Internal.ReleaseEvents =>
+    case Internal.ReleaseEventsNow =>
       if (!isTerminating) {
         commandQueue.enqueue(ReleaseEventsQueueable(lastCommittedEventId))
       }
@@ -475,7 +480,7 @@ private[controller] object AgentDriver
   }
 
   object Output {
-    final case class EventsFromAgent(stamped: Seq[Stamped[AnyKeyedEvent]], promise: Promise[Completed])
+    final case class EventsFromAgent(stamped: Seq[Stamped[AnyKeyedEvent]], promise: Promise[Option[EventId]])
     final case class OrdersDetached(orderIds: Set[OrderId])
     final case class OrdersMarked(orderToMark: Map[OrderId, OrderMark])
   }
@@ -490,8 +495,8 @@ private[controller] object AgentDriver
     final case class FetchFinished(tried: Try[Completed]) extends DeadLetterSuppression
     final case class OnCoupled(promise: Promise[Completed], orderIds: Set[OrderId]) extends DeadLetterSuppression
     final case object OnDecoupled extends DeadLetterSuppression
-    final case class EventsAccepted(lastEventId: EventId, promise: Promise[Completed]) extends DeadLetterSuppression
-    final case object ReleaseEvents extends DeadLetterSuppression
+    final case class ReleaseEvents(lastEventId: EventId, promise: Promise[Completed]) extends DeadLetterSuppression
+    final case object ReleaseEventsNow extends DeadLetterSuppression
     final case object UriChanged extends DeadLetterSuppression
     final case object Stop
   }
