@@ -148,7 +148,7 @@ trait GenericEventRoute extends RouteProvider
         parameter("eventIdOnly" ? false) { eventIdOnly =>
           parameter("heartbeat".as[FiniteDuration].?) { maybeHeartbeat =>  // Echo last EventId as a heartbeat
             def predicate(ke: KeyedEvent[Event]) = eventIdOnly || isRelevantEvent(ke)
-            parameter("onlyLastOfChunk" ? false) { onlyLastOfChunk =>
+            parameter("onlyAcks" ? false) { onlyAcks =>
               if (maybeHeartbeat.isDefined && !eventIdOnly)
                 complete(BadRequest -> Problem.pure("heartbeat=... is allowed only in conjunction with eventIdOnly=true"))
               else {
@@ -175,7 +175,7 @@ trait GenericEventRoute extends RouteProvider
                           implicit val x = jsonSeqMarshaller[EventId]
                           observableToMarshallable(
                             (eventWatch.lastAddedEventId/*start heartbeating after this immediately returned value*/ +:
-                              observe(request, predicate, onlyLastOfChunk, eventWatch).map(_.eventId)
+                              observe(request, predicate, onlyAcks, eventWatch).map(_.eventId)
                             ).echoRepeated(heartbeat))
                       }
 
@@ -187,7 +187,7 @@ trait GenericEventRoute extends RouteProvider
                           limit = request.limit - 1,
                           delay = (request.delay - runningSince.elapsed) min Duration.Zero),
                         predicate,
-                        onlyLastOfChunk,
+                        onlyAcks,
                         eventWatch)
                       val observable = (head +: tail)
                       if (eventIdOnly) {
@@ -206,13 +206,13 @@ trait GenericEventRoute extends RouteProvider
         }
       }
 
-    private def observe(request: EventRequest[Event], predicate: AnyKeyedEvent => Boolean, onlyLastOfChunk: Boolean, eventWatch: EventWatch)
+    private def observe(request: EventRequest[Event], predicate: AnyKeyedEvent => Boolean, onlyAcks: Boolean, eventWatch: EventWatch)
     : Observable[Stamped[AnyKeyedEvent]] =
       eventWatch  // Continue with an Observable, skipping the already read event
         .observe(
           request,
           predicate,
-          onlyLastOfChunk = onlyLastOfChunk)
+          onlyAcks = onlyAcks)
         .onErrorRecoverWith { case NonFatal(e) =>
           logger.warn(e.toStringWithCauses)
           Observable.empty  // The streaming event web service doesn't have an error channel, so we simply end the tail

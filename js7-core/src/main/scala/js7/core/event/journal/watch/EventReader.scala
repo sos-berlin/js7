@@ -150,14 +150,13 @@ extends AutoCloseable
     JournalReader.rawSnapshot(journalMeta, expectedJournalId, journalFile)
 
   /** Observes a journal file lines and length. */
-  final def observeFile(position: Long, timeout: FiniteDuration, markEOF: Boolean = false, onlyLastOfChunk: Boolean)
-  : Observable[PositionAnd[ByteArray]] = {
+  final def observeFile(position: Long, timeout: FiniteDuration, markEOF: Boolean = false, onlyAcks: Boolean)
+  : Observable[PositionAnd[ByteArray]] =
     Observable.fromTask(Task.deferAction(implicit scheduler => Task(
-      observeFile2(position, timeout, markEOF, onlyLastOfChunk)
+      observeFile2(position, timeout, markEOF, onlyAcks)
     ))).flatten
-  }
 
-  private def observeFile2(position: Long, timeout: FiniteDuration, markEOF: Boolean = false, onlyLastOfChunk: Boolean)
+  private def observeFile2(position: Long, timeout: FiniteDuration, markEOF: Boolean = false, onlyAcks: Boolean)
     (implicit scheduler: Scheduler)
   : Observable[PositionAnd[ByteArray]] =
     Observable.fromResource(InputStreamJsonSeqReader.resource(journalFile))
@@ -179,8 +178,8 @@ extends AutoCloseable
                   lastPosition = jsonSeqReader.position
                   maybeLine.map(PositionAnd(lastPosition, _))
                 }.takeWhileInclusive(_ => isFlushedAfterPosition(lastPosition))
-                if (onlyLastOfChunk) {
-                  // TODO Optimierung: Bei onlyLastOfChunk interessiert nur die geschriebene Dateilänge.
+                if (onlyAcks) {
+                  // TODO Optimierung: Bei onlyAcks interessiert nur die geschriebene Dateilänge.
                   //  Dann brauchen wir die Datei nicht zu lesen, sondern nur die geschriebene Dateilänge zurückzugeben.
                   var last = null.asInstanceOf[PositionAnd[ByteArray]]
                   iterator foreach { last = _ }

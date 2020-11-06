@@ -52,7 +52,7 @@ with AutoCloseable
     assertThat(fileLengthBeforeEvents <= jsonWriter.fileLength)
     for (o <- observer) {
       val lengthAndEventId = PositionAnd(fileLengthBeforeEvents, lastWrittenEventId)
-      o.onJournalingStarted(file, journalId, lengthAndEventId, lengthAndEventId)
+      o.onJournalingStarted(file, journalId, lengthAndEventId, lengthAndEventId, isActiveNode = true)
       o.onFileWritten(jsonWriter.fileLength)
     }
   }

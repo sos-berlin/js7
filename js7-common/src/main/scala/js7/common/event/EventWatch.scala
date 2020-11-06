@@ -27,7 +27,7 @@ trait EventWatch
 
   def strict: StrictEventWatch = new StrictEventWatch(this)
 
-  def observe[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean = Every, onlyLastOfChunk: Boolean = false)
+  def observe[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean = Every, onlyAcks: Boolean = false)
   : Observable[Stamped[KeyedEvent[E]]]
 
   def read[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean = Every)
@@ -62,8 +62,8 @@ trait EventWatch
 
   /** Returns None as last element iff timeout has elapsed. */
   def observeFile(fileEventId: Option[EventId], position: Option[Long], timeout: FiniteDuration,
-    markEOF: Boolean = false, onlyLastOfChunk: Boolean = false)
-  : Checked[Observable[PositionAnd[ByteArray]]]
+    markEOF: Boolean = false, onlyAcks: Boolean = false)
+  : Task[Checked[Observable[PositionAnd[ByteArray]]]]
 
   def snapshotAfter(after: EventId): Option[Observable[Any]]
 

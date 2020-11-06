@@ -77,7 +77,8 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
   }
 
   "/controller/api/journal" in {
-    // TODO Duplicate with JournalRouteTest
+    pending // TODO Duplicate with JournalRouteTest, active node does not provide event acknowledgements
+
     var replicated = ByteArray.empty
     controller.eventWatch.await[AgentReady](_ => true)  // Await last event
 
@@ -86,7 +87,7 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
       .foreach { replicated ++= _ }
 
     val observedLengths = mutable.Buffer[String]()
-    val whenLengthsObserved = httpClient.getRawLinesObservable(Uri(s"$uri/controller/api/journal?markEOF=true&file=0&position=0&return=length"))
+    val whenLengthsObserved = httpClient.getRawLinesObservable(Uri(s"$uri/controller/api/journal?markEOF=true&file=0&position=0&return=ack"))
       .await(99.s)
       .foreach(o => observedLengths += o.utf8String)
 

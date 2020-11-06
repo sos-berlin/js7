@@ -27,17 +27,17 @@ final class ControllerUris private(controllerUri: Uri)
   val session = api("/session")
 
   def events[E <: Event: ClassTag](request: EventRequest[E], eventIdOnly: Boolean = false,
-    heartbeat: Option[FiniteDuration] = None, onlyLastOfChunk: Boolean = false)
+    heartbeat: Option[FiniteDuration] = None, onlyAcks: Boolean = false)
   : Uri =
-    events_[E]("/event", request, eventIdOnly = eventIdOnly, heartbeat = heartbeat, onlyLastOfChunk = onlyLastOfChunk)
+    events_[E]("/event", request, eventIdOnly = eventIdOnly, heartbeat = heartbeat, onlyAcks = onlyAcks)
 
   private def events_[E <: Event: ClassTag](path: String, request: EventRequest[E],
-    eventIdOnly: Boolean = false, heartbeat: Option[FiniteDuration] = None, onlyLastOfChunk: Boolean = false)
+    eventIdOnly: Boolean = false, heartbeat: Option[FiniteDuration] = None, onlyAcks: Boolean = false)
   = Uri(
       api(path).string + encodeQuery(
        (eventIdOnly thenVector ("eventIdOnly" -> "true")) ++
        (heartbeat.map("heartbeat" -> _.toDecimalString)) ++
-       (onlyLastOfChunk thenVector ("onlyLastOfChunk" -> "true")) ++
+       (onlyAcks thenVector ("onlyAcks" -> "true")) ++
          request.toQueryParameters))
 
   def clusterState = api("/cluster")
@@ -45,10 +45,10 @@ final class ControllerUris private(controllerUri: Uri)
   def clusterNodeState = api("/cluster?return=ClusterNodeState")
 
   def journal(fileEventId: EventId, position: Long, heartbeat: Option[FiniteDuration] = None,
-    timeout: Option[FiniteDuration] = None, markEOF: Boolean = false, returnLength: Boolean = false)
+    timeout: Option[FiniteDuration] = None, markEOF: Boolean = false, returnAck: Boolean = false)
   = Uri(
     api("/journal").string + encodeQuery(
-      (returnLength.thenList("return" -> "length")) :::
+      (returnAck.thenList("return" -> "ack")) :::
       (heartbeat.map("heartbeat" -> _.toDecimalString)).toList :::
       (timeout.map("timeout" -> _.toDecimalString)).toList :::
       (markEOF.thenList("markEOF" -> "true")) :::

@@ -44,8 +44,8 @@ final class ControllerUrisTest extends AnyFreeSpec
   "journal" in {
     assert(controllerUris.journal(fileEventId = 100, position = 111, timeout = Some(50.seconds)) ==
       Uri("http://example.com/controller/api/journal?timeout=50&file=100&position=111"))
-    assert(controllerUris.journal(fileEventId = 100, position = 111, heartbeat = Some(22.seconds), markEOF = true, returnLength = true) ==
-      Uri("http://example.com/controller/api/journal?return=length&heartbeat=22&markEOF=true&file=100&position=111"))
+    assert(controllerUris.journal(fileEventId = 100, position = 111, heartbeat = Some(22.seconds), markEOF = true, returnAck = true) ==
+      Uri("http://example.com/controller/api/journal?return=ack&heartbeat=22&markEOF=true&file=100&position=111"))
   }
 
   "order" - {

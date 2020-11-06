@@ -6,6 +6,7 @@ import js7.base.utils.CloseableIterator
 import js7.common.event.RealEventWatchTest._
 import js7.common.scalautil.Futures.implicits._
 import js7.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped}
+import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
@@ -23,7 +24,7 @@ final class RealEventWatchTest extends AnyFreeSpec
       protected def eventsAfter(after: EventId) = Some(CloseableIterator.fromIterator(events.iterator dropWhile (_.eventId <= after)))
       def snapshotAfter(after: EventId) = None
       def rawSnapshotAfter(after: EventId) = None
-      def observeFile(fileEventId: Option[EventId], position: Option[Long], timeout: FiniteDuration, markEOF: Boolean, onlyLastOfChunk: Boolean) =
+      def observeFile(fileEventId: Option[EventId], position: Option[Long], timeout: FiniteDuration, markEOF: Boolean, onlyAcks: Boolean) =
         throw new NotImplementedError
       onEventsCommitted(events.last.eventId)
       def journalInfo = throw new NotImplementedError
@@ -45,7 +46,7 @@ final class RealEventWatchTest extends AnyFreeSpec
     var expectedNext = Stamped(1L, 1 <-: TestEvent(1))
     val events = mutable.Buffer[Stamped[KeyedEvent[TestEvent]]]()
     val n = 100000
-    eventWatch.observe(EventRequest.singleClass[TestEvent](limit = n, timeout = Some(99.s)), onlyLastOfChunk = false)
+    eventWatch.observe(EventRequest.singleClass[TestEvent](limit = n, timeout = Some(99.s)), onlyAcks = false)
       .foreach { stamped =>
         assert(stamped == expectedNext)
         expectedNext = Stamped(stamped.eventId + 1, (stamped.value.key + 1) <-: TestEvent(stamped.value.event.number + 1))
@@ -84,7 +85,7 @@ object RealEventWatchTest {
           toStampedEvent(after + i)
         }))
 
-    def observeFile(fileEventId: Option[EventId], position: Option[Long], timeout: FiniteDuration, markEOF: Boolean, onlyLastOfChunk: Boolean) =
-      Left(Problem("EndlessEventWatch.observeFile is not implemented"))
+    def observeFile(fileEventId: Option[EventId], position: Option[Long], timeout: FiniteDuration, markEOF: Boolean, onlyAcks: Boolean) =
+      Task(Left(Problem("EndlessEventWatch.observeFile is not implemented")))
   }
 }

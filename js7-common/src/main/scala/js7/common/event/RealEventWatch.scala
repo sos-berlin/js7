@@ -36,7 +36,7 @@ trait RealEventWatch extends EventWatch
   protected final def onEventsCommitted(eventId: EventId): Unit =
     committedEventIdSync.onAdded(eventId)
 
-  final def observe[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean, onlyLastOfChunk: Boolean)
+  final def observe[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean, onlyAcks: Boolean)
   : Observable[Stamped[KeyedEvent[E]]] =
   {
     val originalTimeout = request.timeout
@@ -60,7 +60,7 @@ trait RealEventWatch extends EventWatch
 
             case EventSeq.NonEmpty(events) =>
               if (events.isEmpty) throw new IllegalStateException("EventSeq.NonEmpty(EMPTY)")  // Do not loop
-              val iterator = if (onlyLastOfChunk) lastOfIterator(events) else events
+              val iterator = if (onlyAcks) lastOfIterator(events) else events
               var lastEventId = request.after
               var limit = request.limit
               val observable = closeableIteratorToObservable(iterator)

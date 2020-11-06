@@ -58,22 +58,23 @@ trait JournalRoute extends ControllerRouteProvider
                       parameter("return" ? "") { returnType =>
                         accept(JournalContentType) {
                           complete(
-                            for {
-                              returnLength <- parseReturnParameter(returnType)
-                              observable <- eventWatch.observeFile(fileEventId = maybeFileEventId, position = maybePosition, timeout,
-                                markEOF = markEOF, onlyLastOfChunk = returnLength)
-                            } yield {
-                              val f = if (returnLength) toLength _ else toContent _
-                              HttpEntity(
-                                JournalContentType,
-                                observable.takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
-                                  Task { logger.debug("whenShuttingDown completed") }
-                                ) .map(f)
-                                  .pipeIf(heartbeat.isDefined)(_
-                                    .insertHeartbeatsOnSlowUpstream(heartbeat.get, HeartbeatMarker))
-                                  .map(_.toByteString)
-                                  .toAkkaSourceForHttpResponse)
-                            })
+                            Task.pure(parseReturnAckParameter(returnType)).flatMapT(returnAck =>
+                              eventWatch.observeFile(fileEventId = maybeFileEventId, position = maybePosition, timeout,
+                                                      markEOF = markEOF, onlyAcks = returnAck)
+                                .flatMapT { observable =>
+                                  val f = if (returnAck) toLength _ else toContent _
+                                  Task.pure(Right(
+                                    HttpEntity(
+                                      JournalContentType,
+                                      observable.takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
+                                        Task { logger.debug("whenShuttingDown completed") }
+                                      ) .map(f)
+                                        .pipeIf(heartbeat.isDefined)(_
+                                          .insertHeartbeatsOnSlowUpstream(heartbeat.get, HeartbeatMarker))
+                                        .map(_.toByteString)
+                                        .toAkkaSourceForHttpResponse)))
+                                  })
+                          .runToFuture)
                         }
                       }
                     }
@@ -103,10 +104,10 @@ object JournalRoute
   private val EndOfJournalFileMarker = JournalSeparators.EndOfJournalFileMarker.toByteArray
   private val HeartbeatMarker = JournalSeparators.HeartbeatMarker.toByteArray
 
-  private def parseReturnParameter(returnType: String): Checked[Boolean] =
+  private def parseReturnAckParameter(returnType: String): Checked[Boolean] =
     returnType match {
       case "" => Right(false)
-      case "length" => Right(true)
+      case "ack" => Right(true)
       case _ => Left(Problem(s"Invalid parameter: return=$returnType"))
     }
 }

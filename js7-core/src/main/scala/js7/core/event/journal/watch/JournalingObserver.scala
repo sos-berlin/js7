@@ -11,7 +11,8 @@ import monix.execution.Scheduler
 private[journal] trait JournalingObserver
 {
   protected[journal] def onJournalingStarted(file: Path, expectedJournalId: JournalId,
-    tornLengthAndEventId: PositionAnd[EventId], flushedLengthAndEventId: PositionAnd[EventId]): Unit
+    tornLengthAndEventId: PositionAnd[EventId], flushedLengthAndEventId: PositionAnd[EventId],
+    isActiveNode: Boolean): Unit
 
   protected[journal] def onJournalingEnded(fileLength: Long): Unit
 

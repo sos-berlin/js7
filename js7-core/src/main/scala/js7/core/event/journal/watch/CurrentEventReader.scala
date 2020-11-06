@@ -17,6 +17,7 @@ private[watch] final class CurrentEventReader(
   /** Length and after-EventId of initialized and empty journal. */
   tornLengthAndEventId: PositionAnd[EventId],
   flushedLengthAndEventId: PositionAnd[EventId],
+  val isActiveNode: Boolean,
   protected val config: Config)
 extends EventReader
 {

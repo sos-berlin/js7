@@ -224,7 +224,8 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
           eventWatch.onJournalingStarted(file,
             recoveredJournalFile.journalId,
             tornLengthAndEventId = PositionAnd(recoveredJournalFile.firstEventPosition, continuation.fileEventId),
-            flushedLengthAndEventId = PositionAnd(recoveredJournalFile.length, recoveredJournalFile.eventId))
+            flushedLengthAndEventId = PositionAnd(recoveredJournalFile.length, recoveredJournalFile.eventId),
+            isActiveNode = false)
 
         case _ =>
       }
@@ -396,7 +397,8 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
                 out = FileChannel.open(file, APPEND)
                 eventWatch.onJournalingStarted(file, journalId,
                   tornLengthAndEventId = PositionAnd(replicatedFileLength/*After EventHeader, before SnapshotTaken, */, continuation.fileEventId),
-                  flushedLengthAndEventId = PositionAnd(fileLength, builder.eventId))
+                  flushedLengthAndEventId = PositionAnd(fileLength, builder.eventId),
+                  isActiveNode = false)
                 if (journalConf.deleteObsoleteFiles) {
                   eventWatch.releaseEvents(
                     builder.journalState.toReleaseEventId(eventWatch.lastFileTornEventId, journalConf.releaseEventsUserIds))

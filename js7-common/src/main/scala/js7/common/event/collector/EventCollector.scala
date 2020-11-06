@@ -5,6 +5,7 @@ import js7.base.utils.CloseableIterator
 import js7.common.event.RealEventWatch
 import js7.common.event.collector.EventCollector._
 import js7.data.event.{AnyKeyedEvent, EventId, Stamped}
+import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.duration.FiniteDuration
 
@@ -29,8 +30,8 @@ extends RealEventWatch
   def eventsAfter(after: EventId) =
     keyedEventQueue.after(after) map CloseableIterator.fromIterator
 
-  final def observeFile(fileEventId: Option[EventId], position: Option[Long], timeout: FiniteDuration, markEOF: Boolean, onlyLastOfChunk: Boolean) =
-    Left(Problem("EventCollector.observeFile is not implemented"))
+  final def observeFile(fileEventId: Option[EventId], position: Option[Long], timeout: FiniteDuration, markEOF: Boolean, onlyAcks: Boolean) =
+    Task.pure(Left(Problem("EventCollector.observeFile is not implemented")))
 }
 
 object EventCollector

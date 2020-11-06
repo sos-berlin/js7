@@ -4,9 +4,10 @@ import akka.http.scaladsl.testkit.RouteTestTimeout
 import java.nio.file.Files.{createTempDirectory, size}
 import java.util.UUID
 import js7.base.auth.SessionToken
+import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.web.Uri
+import js7.base.web.{HttpClient, Uri}
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.event.PositionAnd
@@ -149,11 +150,39 @@ final class JournalRouteTest extends AnyFreeSpec with RouteTester with JournalRo
     writeSnapshot(3000L)
 
     eventWatch = new JournalEventWatch(journalMeta, config)
-    eventWatch.onJournalingStarted(file3, journalId, PositionAnd(size(file3), 3000L), PositionAnd(size(file3), 3000L))
+    eventWatch.onJournalingStarted(file3, journalId, PositionAnd(size(file3), 3000L), PositionAnd(size(file3), 3000L), isActiveNode = true)
 
     val lines = client.getRawLinesObservable(Uri(s"$uri/journal?timeout=0&markEOF=true&file=2000&position=$file2size"))
       .await(99.s).toListL.await(99.s)
     assert(lines == List(EndOfJournalFileMarker))
+
+    eventWatch.close()
+  }
+
+  "Acknowledgements" - {
+    lazy val file4 = journalMeta.file(4000L)
+
+    "Reading acknowledgements from active node is pointless and rejected" in {
+      writeSnapshot(4000L)
+      val file4size = size(file4)
+      eventWatch = new JournalEventWatch(journalMeta, config)
+      eventWatch.onJournalingStarted(file4, journalId, PositionAnd(file4size, 4000L), PositionAnd(file4size, 4000L), isActiveNode = true)
+      val bad = HttpClient.liftProblem(client.getRawLinesObservable(Uri(s"$uri/journal?timeout=0&markEOF=true&file=4000&position=$file4size&return=ack")))
+      assert(bad.await(99.s) == Left(Problem("Active node does not provide event acknowledgements (two active cluster nodes?)")))
+
+      eventWatch.close()
+    }
+
+    "Reading acknowledgements from passive node is good" in {
+      val file4size = size(file4)
+      eventWatch = new JournalEventWatch(journalMeta, config)
+      eventWatch.onJournalingStarted(file4, journalId, PositionAnd(file4size, 4000L), PositionAnd(file4size, 4000L), isActiveNode = false)
+      val lines = client.getRawLinesObservable(Uri(s"$uri/journal?timeout=0&markEOF=true&file=4000&position=$file4size&return=ack"))
+        .await(99.s).toListL.await(99.s)
+      assert(lines == Nil)
+
+      eventWatch.close()
+    }
   }
 
   private def writeSnapshot(eventId: EventId): Unit =

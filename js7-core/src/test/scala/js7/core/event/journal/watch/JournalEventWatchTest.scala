@@ -65,6 +65,7 @@ final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
           eventWatch.when(EventRequest.singleClass[MyEvent](after = after, timeout = Some(30.s))).await(99.s).strict
         def observeFile(fileEventId: EventId, position: Long): List[Json] =
           eventWatch.observeFile(Some(fileEventId), position = Some(position), timeout = 0.s)
+            .await(99.s)
             .orThrow
             .map(o => o.value.utf8String.parseJsonChecked.orThrow)
             .tail
@@ -307,7 +308,7 @@ final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
       val file = writeJournalSnapshot(journalMeta, after = after, snapshotObjects)
       autoClosing(new JournalEventWatch(journalMeta, JournalEventWatch.TestConfig)) { eventWatch =>
         val lengthAndEventId = PositionAnd(Files.size(file), after)
-        eventWatch.onJournalingStarted(journalMeta.file(after), journalId, lengthAndEventId, lengthAndEventId)
+        eventWatch.onJournalingStarted(journalMeta.file(after), journalId, lengthAndEventId, lengthAndEventId, isActiveNode = true)
         locally {
           val Some(observable) = eventWatch.snapshotAfter(EventId.BeforeFirst)
           // Contains only JournalHeader
@@ -343,11 +344,12 @@ final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
 
   "observeFile" in {
     withJournalEventWatch(lastEventId = EventId.BeforeFirst) { (writer, eventWatch) =>
-      assert(eventWatch.observeFile(fileEventId = Some(123L), position = Some(0), timeout = 99.s)
+      assert(eventWatch.observeFile(fileEventId = Some(123L), position = Some(0), timeout = 99.s).await(99.s)
         == Left(Problem("Unknown journal file=123")))
 
       val jsons = mutable.Buffer[Json]()
       eventWatch.observeFile(fileEventId = Some(EventId.BeforeFirst), position = Some(0), timeout = 99.s)
+        .await(99.s)
         .orThrow
         .onErrorRecoverWith {
           case _: EventReader.TimeoutException => Observable.empty
