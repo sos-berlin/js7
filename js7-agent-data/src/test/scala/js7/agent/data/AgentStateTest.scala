@@ -1,8 +1,14 @@
 package js7.agent.data
 
+import js7.base.problem.Checked._
+import js7.data.agent.AgentName
+import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournaledState}
-import js7.data.order.OrderEvent.OrderAdded
+import js7.data.order.Order.{Forked, Ready}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachedToAgent, OrderForked}
 import js7.data.order.{Order, OrderId}
+import js7.data.workflow.WorkflowEvent.WorkflowAttached
+import js7.data.workflow.position._
 import js7.data.workflow.{Workflow, WorkflowPath}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AsyncFreeSpec
@@ -30,5 +36,26 @@ final class AgentStateTest extends AsyncFreeSpec
       yield assert(list ==
         agentState.idToWorkflow.values ++
           agentState.idToOrder.values.toList)
+  }
+
+  "applyEvent" in {
+    val orderId = OrderId("ORDER")
+    val childOrderId = OrderId("ORDER") / "BRANCH"
+    val workflowId = WorkflowPath("/WORKFLOW") ~ "1.0"
+    val workflow = Workflow.of(workflowId)
+    val agentName = AgentName("AGENT")
+    var agentState = AgentState.empty
+
+    agentState = agentState.applyEvent(NoKey <-: WorkflowAttached(workflow)).orThrow
+    agentState = agentState.applyEvent(orderId <-: OrderAttachedToAgent(workflowId, Order.Ready, Map.empty, Nil, agentName, None, None, false, false)).orThrow
+    agentState = agentState.applyEvent(orderId <-: OrderForked(Seq(OrderForked.Child("BRANCH", childOrderId)))).orThrow
+    assert(agentState == AgentState(
+      EventId.BeforeFirst,
+      JournaledState.Standards.empty,
+      Map(
+        orderId -> Order(orderId, workflowId, Forked(Seq(Forked.Child("BRANCH", childOrderId))), attachedState = Some(Order.Attached(agentName))),
+        childOrderId -> Order(childOrderId, workflowId /: (Position(0) / "fork+BRANCH" % 0), Ready, attachedState = Some(Order.Attached(agentName)), parent = Some(orderId))),
+      Map(workflowId -> workflow)
+    ))
   }
 }

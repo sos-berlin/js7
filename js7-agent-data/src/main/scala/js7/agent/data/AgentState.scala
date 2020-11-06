@@ -67,36 +67,35 @@ extends JournaledState[AgentState]
         Right(copy(
           idToOrder = idToOrder - orderId))
 
-      case event: OrderEvent =>
+      case event: OrderCoreEvent =>
         // See also OrderActor#update
-        event match {
-          case event: OrderForked =>
-            // TODO Check duplicate child OrderIds
-            idToOrder.checked(orderId)
-              .flatMap(order =>
+        idToOrder.checked(orderId)
+          .flatMap(_.update(event))
+          .flatMap(order =>
+            event match {
+              case event: OrderForked =>
+                // TODO Check duplicate child OrderIds
                 Right(copy(
                   idToOrder = idToOrder +
                     (order.id -> order) ++
-                    idToOrder(orderId).newForkedOrders(event).map(o => o.id -> o))))
+                    idToOrder(orderId).newForkedOrders(event).map(o => o.id -> o)))
 
-          case _: OrderJoined =>
-            idToOrder.checked(orderId)
-              .flatMap(_.checkedState[Order.Forked])
-              .map(order => copy(
-                idToOrder = idToOrder +
-                  (order.id -> order) --
-                  order.state.childOrderIds))
+              case _: OrderJoined =>
+                //order.checkedState[Order.Forked]
+                //  .map(order => copy(
+                //    idToOrder = idToOrder +
+                //      (order.id -> order) --
+                //      order.state.childOrderIds))
+                Left(Problem.pure("OrderJoinded not applicable on AgentState"))
 
-          case event: OrderCoreEvent =>
-            idToOrder.checked(orderId)
-              .flatMap(_.update(event))
-              .map(order => copy(
-                idToOrder = idToOrder + (order.id-> order)))
+              case _: OrderCoreEvent =>
+                Right(copy(
+                  idToOrder = idToOrder + (order.id -> order)))
+            })
 
-          case _: OrderStdWritten =>
-            // OrderStdWritten is not applied (but forwarded to Controller)
-            Right(this)
-        }
+      case _: OrderStdWritten =>
+        // OrderStdWritten is not applied (but forwarded to Controller)
+        Right(this)
     }
 }
 
