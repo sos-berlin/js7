@@ -68,7 +68,7 @@ extends ClusterWatchApi
   }
 
   def heartbeat(from: NodeId, reportedClusterState: ClusterState): Task[Checked[Completed]] =
-    update(from, false, checkOnly = false/*???*/, s"heartbeat $reportedClusterState")(current =>
+    update(from, false, checkOnly = false, s"heartbeat $reportedClusterState")(current =>
       if (!reportedClusterState.isNonEmptyActive(from))
         Left(InvalidClusterWatchHeartbeatProblem(from, reportedClusterState))
       else {

@@ -16,7 +16,6 @@ import js7.base.utils.SetOnce
 import js7.common.akkahttp.https.HttpsConfig
 import js7.common.event.{EventIdGenerator, RealEventWatch}
 import js7.common.scalautil.Logger
-import js7.controller.cluster.ActivationInhibitor.inhibitActivationOfPeer
 import js7.controller.cluster.Cluster._
 import js7.controller.cluster.ClusterCommon.truncateFile
 import js7.core.event.journal.JournalConf
@@ -104,7 +103,8 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
             (activationInhibitor.startActive >>
               Task.pure(Right(recovered.clusterState -> ClusterFollowUp.BecomeActive(recovered))))
         } else if (recovered.eventId != EventId.BeforeFirst)
-          Task.pure(Some(Left(PrimaryClusterNodeMayNotBecomeBackupProblem))) -> Task.pure(Left(PrimaryClusterNodeMayNotBecomeBackupProblem))
+          Task.pure(Some(Left(PrimaryClusterNodeMayNotBecomeBackupProblem))) ->
+            Task.pure(Left(PrimaryClusterNodeMayNotBecomeBackupProblem))
         else
           startBackupNodeWithEmptyClusterState(recovered)
 
@@ -150,12 +150,12 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
   : (Task[Option[Checked[S]]], Task[Checked[(ClusterState, ClusterFollowUp[S])]]) = {
     recovered.clusterState match {
       case recoveredClusterState: Coupled =>
-        import recoveredClusterState.{passiveId, passiveUri, timing}
-        logger.info(s"This cluster node '$ownId' was coupled before restart - asking '$passiveId' about its state")
-        val failedOver = inhibitActivationOfPeer(passiveUri, timing, httpsConfig, clusterConf).map {
+        import recoveredClusterState.passiveId
+        logger.info(s"This cluster node '$ownId' was active and coupled before restart - asking '$passiveId' about its state")
+        val failedOver = common.inhibitActivationOfPeer(recoveredClusterState).map {
           case None =>
             // The other node has not failed-over
-            logger.info(s"The other cluster node '$passiveId' is still passive, so this node remains the active cluster node")
+            logger.info(s"The other cluster node '$passiveId' is up and still passive, so this node remains the active cluster node")
             //remainingActiveAfterRestart = true
             //proceedCoupled(recoveredClusterState, recovered.eventId)
             None

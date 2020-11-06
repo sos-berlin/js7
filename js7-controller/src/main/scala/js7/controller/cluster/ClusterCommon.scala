@@ -27,6 +27,7 @@ import js7.controller.data.ControllerCommand.InternalClusterCommand
 import js7.core.cluster.ClusterWatch.ClusterWatchInactiveNodeProblem
 import js7.core.cluster.{ClusterWatchEvents, HttpClusterWatch}
 import js7.core.event.state.JournaledStatePersistence
+import js7.data.cluster.ClusterState.{FailedOver, HasNodes}
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterSetting, ClusterState}
 import js7.data.controller.ControllerId
 import js7.data.event.JournaledState
@@ -95,6 +96,9 @@ private[cluster] final class ClusterCommon[S <: JournaledState[S]: TypeTag](
     AkkaHttpControllerApi.resource(uri, clusterConf.userAndPassword, httpsConfig, name = name)
       .map(identity[HttpControllerApi])
       .evalTap(_.loginUntilReachable())
+
+  def inhibitActivationOfPeer(clusterState: HasNodes): Task[Option[FailedOver]] =
+    ActivationInhibitor.inhibitActivationOfPeer(clusterState.passiveUri, clusterState.timing, httpsConfig, clusterConf)
 
   def ifClusterWatchAllowsActivation[A](clusterState: ClusterState, event: ClusterEvent,
     clusterWatchSynchronizer: ClusterWatchSynchronizer, checkOnly: Boolean,

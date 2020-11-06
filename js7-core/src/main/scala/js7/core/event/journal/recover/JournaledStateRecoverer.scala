@@ -21,7 +21,6 @@ import scala.concurrent.duration.Deadline.now
 
 private final class JournaledStateRecoverer[S <: JournaledState[S]](
   protected val file: Path,
-  expectedJournalId: Option[JournalId],
   journalMeta: JournalMeta,
   newfileJournaledStateBuilder: () => FileJournaledStateBuilder[S])
 {
@@ -82,7 +81,7 @@ object JournaledStateRecoverer
 
     file match {
       case Some(file) =>
-        val recoverer = new JournaledStateRecoverer(file, expectedJournalId, journalMeta,
+        val recoverer = new JournaledStateRecoverer(file, journalMeta,
           () => fileJournaledStateBuilder)
         recoverer.recoverAll()
         val calculatedJournalHeader = fileJournaledStateBuilder.calculatedJournalHeader

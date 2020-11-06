@@ -248,8 +248,7 @@ with MainJournalingActor[ControllerState, Event]
 
       become("inhibitingActivationOfOtherClusterNode")(inhibitingActivationOfOtherClusterNode)
       unstashAll()
-      // TODO Inhibit activation of peer while recovering a long time
-      activeClusterNode.beforeJournalingStarted
+      activeClusterNode.beforeJournalingStarts
         .map(_.orThrow)
         .map((_: Completed) => recovered)
         .materialize

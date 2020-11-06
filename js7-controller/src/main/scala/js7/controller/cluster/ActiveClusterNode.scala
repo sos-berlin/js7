@@ -19,7 +19,6 @@ import js7.common.http.RecouplingStreamReader
 import js7.common.scalautil.Logger
 import js7.common.system.startup.Halt.haltJava
 import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
-import js7.controller.cluster.ActivationInhibitor.inhibitActivationOfPeer
 import js7.controller.cluster.ActiveClusterNode._
 import js7.controller.cluster.ClusterCommon.clusterEventAndStateToString
 import js7.controller.cluster.ObservablePauseDetector._
@@ -92,12 +91,14 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
     fetchingAcksCancelable.cancel()
   }
 
-  def beforeJournalingStarted: Task[Checked[Completed]] =
+  def beforeJournalingStarts: Task[Checked[Completed]] =
     Task.defer {
-      logger.trace("beforeJournalingStarted")
+      logger.trace("beforeJournalingStarts")
       initialClusterState match {
         case clusterState: ClusterState.Coupled =>
-          inhibitActivationOfPeer(clusterState.passiveUri, clusterState.timing, httpsConfig, clusterConf) map {
+          // Inhibit activation of peer again. If recovery or asking ClusterWatch took a long time,
+          // peer may have activated itself.
+          common.inhibitActivationOfPeer(clusterState) map {
             case Some(otherFailedOver) =>
               Left(Problem.pure(s"While activating this node, the other node has failed-over: $otherFailedOver"))
             case None =>
@@ -506,10 +507,10 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
             .flatMap(_ => Task.raiseError(throwable))
         }
 
-  def startHeartbeating: Task[Completed] =
+  private def startHeartbeating: Task[Completed] =
     _clusterWatchSynchronizer.orThrow.startHeartbeating
 
-  def startHeartbeating(clusterState: ClusterState): Task[Completed] =
+  private def startHeartbeating(clusterState: HasNodes): Task[Completed] =
     _clusterWatchSynchronizer.orThrow.startHeartbeating(clusterState)
 
   private def stopHeartbeating: Task[Completed] =
