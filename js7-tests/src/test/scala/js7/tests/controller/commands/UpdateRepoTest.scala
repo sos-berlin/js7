@@ -70,8 +70,11 @@ final class UpdateRepoTest extends AnyFreeSpec with ControllerAgentForScalaTest
     executeCommand(UpdateRepo(V1, sign(workflow1) :: Nil)).orThrow
     controller.addOrderBlocking(FreshOrder(orderIds(0), TestWorkflowPath))
 
-    executeCommand(UpdateRepo(V2, sign(workflow2) :: Nil)).orThrow
-    executeCommand(UpdateRepo(V2, sign(workflow2) :: Nil)).orThrow  /*Duplicate effect is ignored*/
+    locally {
+      val signedWorkflow2 = sign(workflow2)
+      executeCommand(UpdateRepo(V2, signedWorkflow2 :: Nil)).orThrow
+      executeCommand(UpdateRepo(V2, signedWorkflow2 :: Nil)).orThrow  /*Duplicate effect is ignored*/
+    }
     controller.addOrderBlocking(FreshOrder(orderIds(1), TestWorkflowPath))
 
     val promises = Vector.fill(2)(Promise[Deadline]())
