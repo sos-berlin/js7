@@ -232,7 +232,7 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
           }
 
       case _ =>
-        logger.info("Remaining the active cluster node without following node")
+        logger.info("Remaining the active cluster node, not coupled with passive node")
         //proceed(recoveredClusterState, recovered.eventId)
         Task.pure(None) ->
           (activationInhibitor.startActive >>

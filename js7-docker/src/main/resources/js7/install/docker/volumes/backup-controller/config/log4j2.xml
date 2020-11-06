@@ -33,7 +33,7 @@
 
     <rollingRandomAccessFile name="file-debug"
                              fileName="${logDirectory}/controller-debug.log"
-                             filePattern="${logDirectory}/controller-%d{yyyy-MM-dd}-debug-%i.log.gz"
+                             filePattern="${logDirectory}/controller-debug-%d{yyyy-MM-dd}-%i.log.gz"
                              immediateFlush="${sys:js7.log4j.immediateFlush:-true}">
       <patternLayout pattern="%d{DEFAULT_MICROS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message%n"
                      charset="UTF-8"/>

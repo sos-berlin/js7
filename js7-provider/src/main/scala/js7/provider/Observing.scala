@@ -59,7 +59,7 @@ private[provider] trait Observing extends OrderProvider {
     body
       .map(_.asTry).dematerialize  // Unify Success(Left(problem)) and Failure
       .onErrorRestartLoop(()) { (throwable, _, retry) =>
-        logger.error(throwable.toStringWithCauses)
+        logger.warn(throwable.toStringWithCauses)
         throwable match {
           case _: AkkaHttpClient.HttpException =>
           case _ => logger.debug(throwable.toStringWithCauses, throwable)

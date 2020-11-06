@@ -32,7 +32,7 @@
 
     <rollingRandomAccessFile name="file-debug"
                              fileName="${logDirectory}/provider-debug.log"
-                             filePattern="${logDirectory}/provider-%d{yyyy-MM-dd}-debug-%i.log.gz"
+                             filePattern="${logDirectory}/provider-debug-%d{yyyy-MM-dd}-%i.log.gz"
                              immediateFlush="${sys:js7.log4j.immediateFlush:-true}">
       <patternLayout pattern="%d{DEFAULT_MICROS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message%n"
                      charset="UTF-8"/>
@@ -59,9 +59,6 @@
       <appenderRef level="info"  ref="file-info"/>
       <appenderRef level="trace" ref="file-debug"/>
     </root>
-    <logger level="debug" name="js7.web">
-      <appenderRef ref="js7.web.log"/>
-    </logger>
     <logger level="warn" name="akka.event.slf4j.Slf4jLogger"/>
     <logger level="debug" name="js7"/>
 

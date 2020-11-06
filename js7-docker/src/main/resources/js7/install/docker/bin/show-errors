@@ -4,5 +4,5 @@ set -e
 cd "$(cd "$(realpath "${0%/*}")"/../../build/bin/../.. && pwd)"
 
 egrep -w "ERROR|WARN|JS7 Controller terminates" \
-  stdouterr.log volumes/backup-controller/data/logs/stdouterr.log \
+  volumes/{controller,backup-controller,agent-1,agent-2,provider}/data/logs/stdouterr.log \
   | sort -k 3 | uniq -f 2 | sort
