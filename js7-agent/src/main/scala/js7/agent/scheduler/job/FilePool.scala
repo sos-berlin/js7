@@ -7,13 +7,14 @@ import js7.data.job.JobKey
 import js7.taskserver.task.process.RichProcess.tryDeleteFiles
 import scala.collection.mutable
 
+// Not used !!!
 /**
   * @author Joacim Zschimmer
   */
-private[job] final class FilePool(jobKey: JobKey, temporaryDirectory: Path) extends AutoCloseable {
-
-  private var free = List[FileSet]()
-  private val used = mutable.Set[FileSet]()
+private[job] final class FilePool(jobKey: JobKey, temporaryDirectory: Path) extends AutoCloseable
+{
+  private var free = List.empty[FileSet]
+  private val used = mutable.Set.empty[FileSet]
 
   def get(): FileSet = {
     val fileSet = free match {
@@ -46,13 +47,14 @@ private[job] final class FilePool(jobKey: JobKey, temporaryDirectory: Path) exte
   override def toString = s"FilePool(Job '${jobKey.keyName}' ${used.size} used and ${free.size} free file sets)"
 }
 
-private[job] object FilePool {
+private[job] object FilePool
+{
   private val logger = Logger(getClass)
 
-  final case class FileSet(shellReturnValuesProvider: ShellReturnValuesProvider) {
-    def clear() = {
+  final case class FileSet(shellReturnValuesProvider: ShellReturnValuesProvider)
+  {
+    def clear() =
       shellReturnValuesProvider.clear()
-    }
 
     def files: Seq[Path] =
       shellReturnValuesProvider.file :: Nil

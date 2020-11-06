@@ -6,7 +6,6 @@ import java.nio.file.Files.{createTempDirectory, setPosixFilePermissions}
 import java.nio.file.attribute.PosixFilePermissions
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.inject.AgentModule
-import js7.agent.scheduler.job.ShellReturnValuesProvider
 import js7.agent.scheduler.job.task.TaskRunnerTest._
 import js7.agent.tests.TestAgentDirectoryProvider
 import js7.base.time.ScalaTime._
@@ -16,8 +15,7 @@ import js7.common.guice.GuiceImplicits.RichInjector
 import js7.common.process.Processes.{ShellFileExtension => sh}
 import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
 import js7.common.scalautil.FileUtils.syntax.RichPath
-import js7.common.scalautil.Futures.implicits._
-import js7.common.system.FileUtils.temporaryDirectory
+import js7.common.scalautil.MonixUtils.syntax.RichTask
 import js7.common.system.OperatingSystem.{isUnix, isWindows}
 import js7.data.agent.AgentName
 import js7.data.job.{ExecutablePath, JobKey, ReturnCode}
@@ -51,8 +49,7 @@ final class TaskRunnerTest extends AnyFreeSpec with BeforeAndAfterAll with TestA
     val shellFile = executablePath.toFile(executableDirectory)
     shellFile := TestScript
     if (isUnix) setPosixFilePermissions(shellFile, PosixFilePermissions.fromString("rwx------"))
-    val shellReturnValuesProvider = new ShellReturnValuesProvider(temporaryDirectory)
-    val taskConfiguration = TaskConfiguration(JobKey.forTest, WorkflowJob(AgentName("TEST"), executablePath, Map("var1" -> "VALUE1")), shellFile, shellReturnValuesProvider)
+    val taskConfiguration = TaskConfiguration(JobKey.forTest, WorkflowJob(AgentName("TEST"), executablePath, Map("var1" -> "VALUE1")), shellFile)
     info(measureTime(10, "TaskRunner") {
       val order = Order(
         OrderId("TEST"),
@@ -63,13 +60,13 @@ final class TaskRunnerTest extends AnyFreeSpec with BeforeAndAfterAll with TestA
       val stdoutWriter = new TestStdoutStderrWriter
       val stderrWriter = new TestStdoutStderrWriter
       val stdChannels = new StdChannels(charBufferSize = 10, stdoutWriter = stdoutWriter, stderrWriter = stderrWriter)
-      val ended = taskRunner.processOrder(order, Map.empty, stdChannels) andThen { case _ => taskRunner.terminate() } await 30.s
+      val ended = taskRunner.processOrder(order, Map.empty, stdChannels).guarantee(taskRunner.terminate) await 30.s
       assert(ended == TaskStepSucceeded(Map("result" -> "TEST-RESULT-VALUE1"), ReturnCode(0)))
       val nl = System.lineSeparator
       assert(stdoutWriter.string == s"Hej!${nl}var1=VALUE1$nl")
       assert(stderrWriter.string == s"THIS IS STDERR$nl")
     }.toString)
-    RichProcess.tryDeleteFiles(shellFile :: shellReturnValuesProvider.file :: Nil)
+    RichProcess.tryDeleteFiles(shellFile :: Nil)
     deleteDirectoryRecursively(executableDirectory)
   }
 }

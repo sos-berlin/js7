@@ -1,6 +1,6 @@
 package js7.agent.scheduler.job.task
 
-import java.nio.file.Files.delete
+import java.nio.file.Files.{delete, deleteIfExists}
 import javax.inject.{Inject, Singleton}
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentTaskId
@@ -20,6 +20,7 @@ import js7.data.order.Order
 import js7.taskserver.modules.shell.RichProcessStartSynchronizer
 import js7.taskserver.task.process.ShellScriptProcess.startPipedShellScript
 import js7.taskserver.task.process.{ProcessConfiguration, RichProcess, StdChannels}
+import monix.eval.Task
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.Success
 import scala.util.control.NonFatal
@@ -32,8 +33,8 @@ final class SimpleShellTaskRunner(conf: TaskConfiguration,
   synchronizedStartProcess: RichProcessStartSynchronizer,
   agentConfiguration: AgentConfiguration)
   (implicit iox: IOExecutor, ec: ExecutionContext)
-extends TaskRunner {
-
+extends TaskRunner
+{
   val asBaseAgentTask = new BaseAgentTask {
     def id = agentTaskId
     def jobKey = conf.jobKey
@@ -54,30 +55,35 @@ extends TaskRunner {
   private val richProcessOnce = SetOnce[RichProcess]
   private var killedBeforeStart = false
 
-  def terminate(): Future[Completed] =
-    richProcessOnce.toOption match {
-      case Some(richProcess) =>
-        richProcess.terminated map (_ => Completed)
-      case None =>
-        Future.successful(Completed)
+  def terminate: Task[Unit] =
+    Task.defer {
+      deleteIfExists(returnValuesProvider.file)
+      richProcessOnce.toOption match {
+        case Some(richProcess) =>
+          Task.fromFuture(richProcess.terminated)
+            .map((_: ReturnCode) => ())
+        case None =>
+          Task.pure(Completed)
+      }
     }
 
-  def processOrder(order: Order[Order.Processing], defaultArguments: Map[String, String], stdChannels: StdChannels): Future[TaskStepEnded] =
+  def processOrder(order: Order[Order.Processing], defaultArguments: Map[String, String], stdChannels: StdChannels): Task[TaskStepEnded] =
     for (returnCode <- runProcess(order, defaultArguments, stdChannels)) yield
       TaskStepSucceeded(fetchReturnValuesThenDeleteFile(), returnCode)
 
-  private def runProcess(order: Order[Order.Processing], defaultArguments: Map[String, String], stdChannels: StdChannels): Future[ReturnCode] =
-    for {
-      richProcess <- startProcess(order, defaultArguments, stdChannels) andThen {
-        case Success(richProcess) => logger.info(s"Process '$richProcess' started for ${order.id}, ${conf.jobKey}, script ${conf.shellFile}")
-      }
-      returnCode <- richProcess.terminated andThen { case tried =>
-        logger.info(s"Process '$richProcess' terminated with ${tried getOrElse tried} after ${richProcess.duration.pretty}")
-      }
-    } yield {
-      richProcess.close()
-      returnCode
-    }
+  private def runProcess(order: Order[Order.Processing], defaultArguments: Map[String, String], stdChannels: StdChannels): Task[ReturnCode] =
+    Task.deferFuture(
+      for {
+        richProcess <- startProcess(order, defaultArguments, stdChannels) andThen {
+          case Success(richProcess) => logger.info(s"Process '$richProcess' started for ${order.id}, ${conf.jobKey}, script ${conf.shellFile}")
+        }
+        returnCode <- richProcess.terminated andThen { case tried =>
+          logger.info(s"Process '$richProcess' terminated with ${tried getOrElse tried} after ${richProcess.duration.pretty}")
+        }
+      } yield {
+        richProcess.close()
+        returnCode
+      })
 
   private def fetchReturnValuesThenDeleteFile(): Map[String, String] = {
     val result = returnValuesProvider.variables
@@ -90,7 +96,7 @@ extends TaskRunner {
     result
   }
 
-  private def startProcess(order: Order[Order.Processing], defaultArguments: Map[String, String], stdChannels: StdChannels): Future[RichProcess] = {
+  private def startProcess(order: Order[Order.Processing], defaultArguments: Map[String, String], stdChannels: StdChannels): Future[RichProcess] =
     if (killedBeforeStart)
       Future.failed(new RuntimeException(s"$agentTaskId killed before start"))
     else {
@@ -113,7 +119,6 @@ extends TaskRunner {
         richProcessOnce := richProcess
       }
     }
-  }
 
   def kill(signal: ProcessSignal): Unit =
     richProcessOnce.toOption match {
@@ -127,7 +132,8 @@ extends TaskRunner {
   override def toString = s"SimpleShellTaskRunner($agentTaskId ${conf.jobKey})"
 }
 
-object SimpleShellTaskRunner {
+object SimpleShellTaskRunner
+{
   private val DefaultShellVariablePrefix = "SCHEDULER_PARAM_"
   private val logger = Logger(getClass)
 

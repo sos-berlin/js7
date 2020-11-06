@@ -34,15 +34,15 @@ import scala.util.{Failure, Success, Try}
   * @author Joacim Zschimmer
   */
 final class JobActor private(conf: Conf)(implicit scheduler: Scheduler)
-extends Actor with Stash {
+extends Actor with Stash
+{
   import conf.{executablesDirectory, jobKey, newTaskRunner, temporaryDirectory, workflowJob}
 
   private val logger = Logger.withPrefix[this.type](jobKey.keyName)
-  private val orderToTask = mutable.Map[OrderId, Task]()
+  private val orderToTask = mutable.Map[OrderId, TaskRunner]()
   private var waitingForNextOrder = false
   private var killed = false
   private var terminating = false
-  private lazy val filePool = new FilePool(jobKey, temporaryDirectory)
 
   private val checkedExecutable: Checked[Executable] = workflowJob.executable match {
     case path: ExecutablePath =>
@@ -59,8 +59,7 @@ extends Actor with Stash {
         Left(SignedInjectionNotAllowed)
       else
         Checked.catchNonFatal {
-          val ext = isWindows ?? ".cmd"
-          val file = createTempFile(temporaryDirectory, "script-", ext, ShellFileAttributes: _*)
+          val file = createTempFile(temporaryDirectory, "script-", isWindows ?? ".cmd", ShellFileAttributes: _*)
           file.write(script.string, AgentConfiguration.FileEncoding)
           Executable(file, "tmp/" + file.getFileName, true)
         }
@@ -73,7 +72,6 @@ extends Actor with Stash {
 
   override def postStop() = {
     killAll(SIGKILL)
-    filePool.close()
     for (o <- checkedExecutable) if (o.isTemporary) tryDeleteFile(o.file)
     super.postStop()
   }
@@ -114,7 +112,6 @@ extends Actor with Stash {
         }
 
     case Internal.TaskFinished(order, triedStepEnded) =>
-      filePool.release(orderToTask(order.id).fileSet)
       orderToTask -= order.id
       sender() ! Response.OrderProcessed(order.id, recoverFromFailure(triedStepEnded), isKilled = killed)
       continueTermination()
@@ -152,13 +149,12 @@ extends Actor with Stash {
   }
 
   private def processOrder(cmd: Command.ProcessOrder, executableFile: Path): Future[TaskStepEnded] = {
-    val fileSet = filePool.get()
-    val taskRunner = newTaskRunner(TaskConfiguration(jobKey, workflowJob, executableFile, fileSet.shellReturnValuesProvider))
-    orderToTask.insert(cmd.order.id -> Task(fileSet, taskRunner))
-    val whenEnded = taskRunner.processOrder(cmd.order, cmd.defaultArguments, cmd.stdChannels)
-      .andThen { case _ => taskRunner.terminate()/*for now (shell only), returns immediately s a completed Future*/ }
     waitingForNextOrder = false
-    whenEnded
+    val taskRunner = newTaskRunner(TaskConfiguration(jobKey, workflowJob, executableFile))
+    orderToTask.insert(cmd.order.id -> taskRunner)
+    taskRunner.processOrder(cmd.order, cmd.defaultArguments, cmd.stdChannels)
+      .guarantee(taskRunner.terminate/*for now (shell only), returns immediately s a completed Future*/)
+      .runToFuture
   }
 
   private def handleIfReadyForOrder(): Unit =
@@ -184,10 +180,10 @@ extends Actor with Stash {
     }
 
   private def killOrder(orderId: OrderId, signal: ProcessSignal): Unit =
-    for (task <- orderToTask.get(orderId)) {
-      logger.warn(s"Kill $signal ${task.taskRunner.asBaseAgentTask.id} processing $orderId")
+    for (taskRunner <- orderToTask.get(orderId)) {
+      logger.warn(s"Kill $signal ${taskRunner.asBaseAgentTask.id} processing $orderId")
       killed = true
-      task.taskRunner.kill(signal)
+      taskRunner.kill(signal)
     }
 
   private def continueTermination(): Unit =
@@ -246,6 +242,4 @@ object JobActor
   private case class Executable(file: Path, name: String, isTemporary: Boolean) {
     override def toString = name
   }
-
-  private case class Task(fileSet: FilePool.FileSet, taskRunner: TaskRunner)
 }

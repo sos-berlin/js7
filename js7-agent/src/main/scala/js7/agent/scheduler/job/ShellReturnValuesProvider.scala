@@ -14,9 +14,8 @@ final class ShellReturnValuesProvider(temporaryDirectory: Path)
 {
   val file: Path = createTempFile(temporaryDirectory, "returnValues-", ".tmp")
 
-  def clear(): Unit = {
+  def clear(): Unit =
     file := ""
-  }
 
   def env: (String, String) =
     ReturnValuesFileEnvironmentVariableName -> file.toString
@@ -29,7 +28,8 @@ final class ShellReturnValuesProvider(temporaryDirectory: Path)
   override def toString = s"ShellReturnValuesProvider($file)"
 }
 
-object ShellReturnValuesProvider {
+object ShellReturnValuesProvider
+{
   private val ReturnValuesFileEnvironmentVariableName = "SCHEDULER_RETURN_VALUES"
   private val ReturnValuesRegex = "([^=]+)=(.*)".r
 
