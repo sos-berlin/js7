@@ -242,15 +242,16 @@ object MonixBase
 
         case None =>
           logger.debug(s"Waiting for Future '$name' ...")
-          val result = Task.fromFuture(future)
-            .guaranteeCase(exitCase => Task(logger.debug(s"Future '$name' $exitCase")))
-            .memoize
           val since = now
-          val logWaiting = Observable.intervalAtFixedRate(10.s, 10.s/*TODO*/)
-            .doOnNext(_ => Task(logger.info(s"Still waiting for '$name' since ${since.elapsed.pretty} ...")))
-            .dropUntil(Observable.fromTask(result))
+          Task.deferAction { implicit s =>
+            val logWaiting = Observable.intervalAtFixedRate(10.s, 10.s/*TODO*/)
+              .doOnNext(_ => Task(logger.info(s"Still waiting for '$name' since ${since.elapsed.pretty} ...")))
             .headL
-          Task.parMap2(result, logWaiting)((o, _) => o)
+            .runToFuture
+            Task.fromFuture(future)
+              .guaranteeCase(exitCase => Task(logger.debug(s"Future '$name' $exitCase")))
+              .guarantee(Task(logWaiting.cancel()))
+          }
       }
     }
 
@@ -260,8 +261,7 @@ object MonixBase
   def closeableIteratorToObservable[A](iterator: CloseableIterator[A]): Observable[A] =
     closingIteratorToObservable(iterator.closeAtEnd)
 
-  private def closingIteratorToObservable[A](iterator: CloseableIterator[A]): Observable[A] = {
-    //logger.trace(s"closeableIteratorToObservable($iterator)")
+  private def closingIteratorToObservable[A](iterator: CloseableIterator[A]): Observable[A] =
     Observable.fromIterator(Task(iterator))
       .guaranteeCase { exitCase =>
         Task {
@@ -269,7 +269,6 @@ object MonixBase
           iterator.close()
         }
       }
-  }
 
   /** Like Observable tailRecM, but limits the memory leak.
     * After a number of `Left` retured by `f`, the returned `Observable` is truncated.

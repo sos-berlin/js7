@@ -14,7 +14,8 @@ import monix.execution.atomic.AtomicInt
 import monix.execution.schedulers.TestScheduler
 import monix.reactive.Observable
 import org.scalatest.freespec.AsyncFreeSpec
-import scala.concurrent.TimeoutException
+import scala.concurrent.duration.Deadline.now
+import scala.concurrent.{Future, TimeoutException}
 import scala.concurrent.duration._
 import scala.language.reflectiveCalls
 
@@ -128,11 +129,26 @@ final class MonixBaseTest extends AsyncFreeSpec
     }
   }
 
-  "durationOfTask" in {
-    durationOfTask(Task.pure(7).delayResult(10.ms))
-      .map(o =>
-        assert(o._1 == 7 && o._2 >= 10.ms))
-      .runToFuture
+  "Task" - {
+    "durationOfTask" in {
+      durationOfTask(Task.pure(7).delayResult(10.ms))
+        .map(o =>
+          assert(o._1 == 7 && o._2 >= 10.ms))
+        .runToFuture
+    }
+
+    "deferFutureAndLog Future.successful" in {
+      deferFutureAndLog(Future.successful(()), "TEST")
+        .map(o => assert(o == ()))
+        .runToFuture
+    }
+
+    "deferFutureAndLog" in {
+      val t = now
+      deferFutureAndLog(Future(()), "TEST")
+        .map(o => assert(o == () && t.elapsed < 2.s))
+        .runToFuture
+    }
   }
 
   "Observable" - {
