@@ -170,13 +170,12 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
     }
 
   private def onRestartActiveNode: Task[Checked[Completed]] =
-    persistence.clusterState.flatMap {
+    persist() {
       case state: ActiveShutDown if state.activeId == ownId =>
-        persist()(_ => Right(Some(ClusterActiveNodeRestarted)))
-          .map(_.toCompleted)
+        Right(Some(ClusterActiveNodeRestarted))
       case _ =>
-        Task.pure(Right(Completed))
-    }
+        Right(None)
+    }.mapt(_ => Completed)
 
   def executeCommand(command: ClusterCommand): Task[Checked[ClusterCommand.Response]] =
     command match {

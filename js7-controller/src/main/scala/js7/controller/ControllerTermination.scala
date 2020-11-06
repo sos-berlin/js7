@@ -1,8 +1,8 @@
 package js7.controller
 
-private[controller] sealed trait ControllerTermination
+sealed trait ControllerTermination
 
-private[controller] object ControllerTermination
+object ControllerTermination
 {
   final case class Terminate(restart: Boolean = false) extends ControllerTermination
 

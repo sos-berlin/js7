@@ -72,8 +72,9 @@ private[provider] trait Observing extends OrderProvider {
             }
           else
             Task.unit
-        logout >> (loginUntilReachable >> retry(()))
-          .delayExecution(errorWaitDuration)
+        logout >>
+          loginUntilReachable.delayExecution(errorWaitDuration) >>
+          retry(())
       }
 }
 

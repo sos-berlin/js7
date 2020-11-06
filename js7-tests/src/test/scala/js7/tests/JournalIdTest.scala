@@ -51,9 +51,9 @@ final class JournalIdTest extends AnyFreeSpec with DirectoryProviderForScalaTest
       }
     }
 
-    val lastJournalFile = listJournalFiles(agentStateDir / "controller-Controller").last.file
-    val lastJournalFileContent = lastJournalFile.contentString
     locally {
+      val lastJournalFile = listJournalFiles(agentStateDir / "controller-Controller").last.file
+      val lastJournalFileContent = lastJournalFile.contentString
       val (headerLine, body) = lastJournalFileContent.splitAt(lastJournalFileContent indexOf '\n')
       val header = headerLine.parseJsonCheckedAs[JournalHeader].orThrow
       lastJournalFile := header.copy(journalId = JournalId.random()).asJson.compactPrint + body
