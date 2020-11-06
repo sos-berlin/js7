@@ -14,42 +14,46 @@ import scala.concurrent.Promise
 
 final class LockKeeper[K]
 {
+  // keyMap.contains(key): key is locked
+  // keyMap(key).length: Number of clients waiting to get the lock
   private val keyMap = mutable.Map[Any, mutable.Queue[Promise[Token]]]()
 
-  def lock(key: K): Resource[Task, Token] =
+  def lock[A](key: K)(body: Task[A]): Task[A] =
+    lockResource(key).use(_ => body)
+
+  def lockResource(key: K): Resource[Task, Token] =
     Resource.make(acquire(key))(release)
 
   private def acquire(key: K): Task[Token] =
-    Task {
+    Task.defer {
       synchronized {
         keyMap.get(key) match {
           case None =>
-            logger.trace(s"acquire '$key', is available")
-            val token = new Token(key)
+            logger.trace(s"Acquired lock '$key'")
             keyMap += key -> mutable.Queue.empty
-            Task.pure(token)
+            Task.pure(new Token(key))
 
           case Some(queue) =>
             val promise = Promise[Token]()
             queue += promise
-            logger.trace(s"Acquire '$key', queuing (#${queue.length})")
+            logger.trace(s"Acquire lock '$key', queuing (#${queue.length})")
             deferFutureAndLog(promise.future, s"acquiring lock for $key")
         }
       }
-    }.flatten
+    }
 
   private def release(token: Token): Task[Unit] =
     Task {
       if (!token.released.getAndSet(true)) {
         synchronized {
           import token.key
-          val queue = keyMap(key)
-          if (queue.nonEmpty) {
-            logger.trace(s"release '$key', handing over to queued request")
-            queue.dequeue().success(new Token(key))
-          } else {
-            logger.trace(s"release '$key'")
-            keyMap.remove(key)
+          keyMap(key).dequeueFirst(_ => true) match {
+            case None =>
+              logger.trace(s"Released lock '$key'")
+              keyMap.remove(key)
+            case Some(promise) =>
+              logger.trace(s"Released lock '$key', handing over to queued request")
+              promise.success(new Token(key))
           }
         }
       }
@@ -65,9 +69,7 @@ final class LockKeeper[K]
       }
     })"
 
-  private case class GlobalEntry(key: Any, promise: Promise[Token])
-
-  final class Token private[LockKeeper](private[LockKeeper] val key: Any)
+  final class Token private[LockKeeper](private[LockKeeper] val key: K)
   {
     private[LockKeeper] val released = AtomicBoolean(false)
 

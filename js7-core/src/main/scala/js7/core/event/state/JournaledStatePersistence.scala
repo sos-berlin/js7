@@ -31,6 +31,7 @@ final class JournaledStatePersistence[S <: JournaledState[S]](
 extends AutoCloseable
 {
   private val lockKeeper = new LockKeeper[Any]  // TODO Should the caller be responsible for sequential key updates? We could allow parallel, independent(!) updates
+  import lockKeeper.lock
   private val persistPromise = Promise[PersistFunction[S, Event]]()
   private val persistTask: Task[PersistFunction[S, Event]] = Task.fromFuture(persistPromise.future)
 
@@ -84,9 +85,6 @@ extends AutoCloseable
         .map(_.map { case (stampedKeyedEvents, state) =>
           stampedKeyedEvents.asInstanceOf[Seq[Stamped[KeyedEvent[E]]]] -> state }))
   }
-
-  private def lock[A](key: Any)(body: Task[A]): Task[A] =
-    lockKeeper.lock(key).use(_ => body)
 
   def isStarted = actorOnce.nonEmpty
 

@@ -17,12 +17,12 @@ import scala.jdk.CollectionConverters._
   */
 final class LockKeeperTest extends AnyFreeSpec
 {
-  "LockKeeper.lock" in {
+  "LockKeeper.lockResource" in {
     val keys = 0 until 8
     val lockKeeper = new LockKeeper[Int]
 
     for (_ <- 1 to 3) {
-      val locks = keys map lockKeeper.lock
+      val locks = keys map lockKeeper.lockResource
       val keyToMap = new ConcurrentHashMap[Int, Int]
       for (k <- keys) keyToMap.put(k, 0)
       val stopwatch = new Stopwatch
