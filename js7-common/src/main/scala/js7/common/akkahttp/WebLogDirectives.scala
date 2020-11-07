@@ -15,7 +15,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.WebLogDirectives._
 import js7.common.configutils.Configs._
 import js7.common.log.LogLevel
-import js7.common.log.LogLevel._
+import js7.common.log.LogLevel.syntax._
 import js7.common.scalautil.Logger
 import scala.concurrent.duration._
 

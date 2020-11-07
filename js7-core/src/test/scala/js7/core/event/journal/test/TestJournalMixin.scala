@@ -18,6 +18,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkautils.Akkas.newActorSystem
 import js7.common.akkautils.{Akkas, DeadLetterActor}
+import js7.common.log.LogLevel.syntax._
 import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
@@ -55,7 +56,7 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
     val config_ = config withFallback TestConfig
     val actorSystem = newActorSystem(getClass.simpleScalaName, config_)
     try {
-      DeadLetterActor.subscribe(actorSystem, o => logger.warn(o))
+      DeadLetterActor.subscribe(actorSystem, (logLevel,  msg) => logger.log(logLevel, msg()))
       val whenJournalStopped = Promise[JournalActor.Stopped]()
       val actor = actorSystem.actorOf(Props { new TestActor(config_, journalMeta, whenJournalStopped) }, "TestActor")
       body(actorSystem, actor)

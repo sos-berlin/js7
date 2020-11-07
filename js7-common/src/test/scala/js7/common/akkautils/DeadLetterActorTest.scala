@@ -17,7 +17,7 @@ final class DeadLetterActorTest extends AnyFreeSpec {
   "DeadLetterActor.subscribe" in {
     val actorSystem = newActorSystem(classOf[DeadLetterActorTest].getSimpleName, config"akka.log-dead-letters = 0")
     val buffer = mutable.Buffer[String]()
-    DeadLetterActor.subscribe(actorSystem, o => buffer += o)
+    DeadLetterActor.subscribe(actorSystem, (logLevel, msg) => buffer += msg())
     val actorRef = actorSystem.actorOf(Props[TestActor]())
     actorRef ! "stop"
     actorRef ! new SuppressedMessage

@@ -6,7 +6,8 @@ import java.lang.reflect.InvocationTargetException
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkautils.Akkas._
 import js7.common.akkautils.LoggingOneForOneStrategy._
-import js7.common.log.LogLevel._
+import js7.common.log.LogLevel.syntax._
+import js7.common.log.LogLevel.{Debug, Error, Warn}
 import js7.common.scalautil.Logger
 
 /**

@@ -14,7 +14,7 @@ import js7.base.time.Timestamp
 import js7.base.utils.HasCloser
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.log.LogLevel
-import js7.common.log.LogLevel.LevelScalaLogger
+import js7.common.log.LogLevel.syntax._
 import js7.common.process.Processes._
 import js7.common.scalautil.IOExecutor.ioFuture
 import js7.common.scalautil.{ClosedFuture, IOExecutor, Logger}

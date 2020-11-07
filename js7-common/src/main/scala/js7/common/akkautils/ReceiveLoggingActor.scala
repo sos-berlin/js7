@@ -5,7 +5,7 @@ import js7.common.akkautils.Akkas._
 import js7.common.akkautils.ReceiveLoggingActor._
 import js7.common.configutils.Configs.ConvertibleConfig
 import js7.common.log.LogLevel
-import js7.common.log.LogLevel._
+import js7.common.log.LogLevel.syntax._
 import js7.common.scalautil.Logger
 
 /**
@@ -34,7 +34,7 @@ trait ReceiveLoggingActor extends SimpleStateActor
   protected final def logBecome(state: String): Unit =
     logger.log(receiveLogLevel, Logger.Actor, s"${context.self.path.pretty} becomes '$state'")
 
-  private def debugReceive(recv: Receive): Receive = {
+  private def debugReceive(recv: Receive): Receive =
     new Receive {
       def isDefinedAt(msg: Any) = recv isDefinedAt msg
 
@@ -50,7 +50,6 @@ trait ReceiveLoggingActor extends SimpleStateActor
         } else
           recv.applyOrElse(x, default)
     }
-  }
 }
 
 object ReceiveLoggingActor {
