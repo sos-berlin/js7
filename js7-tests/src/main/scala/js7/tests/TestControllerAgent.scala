@@ -23,6 +23,7 @@ import js7.common.log.Log4j
 import js7.common.scalautil.FileUtils.deleteDirectoryContentRecursively
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.Logger
 import js7.common.system.FileUtils.temporaryDirectory
 import js7.common.system.OperatingSystem.isWindows
 import js7.common.utils.JavaShutdownHook
@@ -49,6 +50,7 @@ object TestControllerAgent
   private val TestWorkflowPath = WorkflowPath("/test")
   private val TestExecutablePath = ExecutablePath("/test")
   private val StdoutRowSize = 1000
+  private val logger = Logger(getClass)
 
   def main(args: Array[String]): Unit = {
     lazy val directory =
@@ -110,7 +112,11 @@ object TestControllerAgent
             Scheduler.global.scheduleWithFixedDelay(0.seconds, conf.period) {
               for (i <- 1 to conf.orderGeneratorCount) {
                 val at = Timestamp.now
-                controller.addOrder(FreshOrder(OrderId(s"test-$i@$at"), TestWorkflowPath, Some(at))).runAsyncAndForget  // No error checking
+                controller.addOrder(FreshOrder(OrderId(s"test-$i@$at"), TestWorkflowPath, Some(at)))
+                  .onErrorRecover { case t: Throwable =>
+                    logger.error(s"addOrder failed: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+                  }
+                  .runAsyncAndForget
               }
             }
             controller.actorSystem.actorOf(Props {

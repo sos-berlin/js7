@@ -33,9 +33,9 @@ private final class ClusterWatchSynchronizer(
   def stop(): Unit =
     heartbeat.get().cancel()
 
-  def applyEvents(events: Seq[ClusterEvent], clusterState: ClusterState, force: Boolean = false): Task[Checked[Completed]] =
+  def applyEvents(events: Seq[ClusterEvent], clusterState: ClusterState): Task[Checked[Completed]] =
     lock.use(_ =>
-      clusterWatch.applyEvents(from = ownId, events, clusterState, force = force)
+      clusterWatch.applyEvents(from = ownId, events, clusterState)
         .flatMapT { completed =>
           clusterState match {
             case clusterState: HasNodes if clusterState.activeId == ownId =>
@@ -79,7 +79,7 @@ private final class ClusterWatchSynchronizer(
           Task.now {
             for (problem <- checked.left) {
               //if (problem is ClusterWatchInactiveNodeProblem) {
-                haltJava(s"HALT due to: $problem", restart = true)
+                haltJava(s"HALT because ClusterWatch reported: $problem", restart = true)
               //}
               // Ignore other errors and continue
               //logger.warn(s"ClusterWatch heartbeat: $problem")

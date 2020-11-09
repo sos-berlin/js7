@@ -215,6 +215,7 @@ trait GenericEventRoute extends RouteProvider
           onlyAcks = onlyAcks)
         .onErrorRecoverWith { case NonFatal(e) =>
           logger.warn(e.toStringWithCauses)
+          if (e.getStackTrace.nonEmpty) logger.debug(e.toStringWithCauses, e)
           Observable.empty  // The streaming event web service doesn't have an error channel, so we simply end the tail
         }
 

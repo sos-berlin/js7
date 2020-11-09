@@ -8,6 +8,7 @@ import js7.base.BuildInfo
 import js7.base.process.ProcessSignal.SIGTERM
 import js7.base.time.Timestamp
 import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.common.commandline.CommandLineArguments
 import js7.common.configutils.Configs.logConfig
 import js7.common.scalautil.Futures.implicits.SuccessFuture
@@ -47,6 +48,9 @@ final class AgentMain
     logger.warn("Trying to shut down JS7 Agent Server due to Java shutdown")
     import agent.scheduler
     agent.executeCommandAsSystemUser(ShutDown(Some(SIGTERM)))
+      .onErrorRecover { case t: Throwable =>
+        logger.error(s"onJavaShutdown: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+      }
       .runAsyncAndForget
     agent.terminated.awaitInfinite
     agent.close()
