@@ -119,8 +119,9 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
           }
       sendCommand
         .onErrorRecover { case t: Throwable =>
-          logger.warn(s"Sending Cluster command to other node failed: $t", t)
-        }.runAsyncAndForget
+          logger.error(s"Sending Cluster command to other node failed: $t", t.nullIfNoStackTrace)
+        }
+        .runAsyncAndForget
       replicateJournalFiles(recoveredClusterState)
         .guarantee(Task {
           stopped = true

@@ -15,6 +15,7 @@ import monix.catnap.MVar
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
+import scala.concurrent.duration.FiniteDuration
 
 final class ClusterWatch(controllerId: ControllerId, scheduler: Scheduler)
 extends ClusterWatchApi
@@ -104,7 +105,7 @@ extends ClusterWatchApi
     state match {
       case Some(State(clusterState, lastHeartbeat))
       if !clusterState.isNonEmptyActive(from) && (lastHeartbeat + timeout).hasTimeLeft =>
-        val problem = ClusterWatchInactiveNodeProblem(from, clusterState, logLine)
+        val problem = ClusterWatchInactiveNodeProblem(from, clusterState, lastHeartbeat.elapsed, logLine)
         val msg = s"Node '$from': $problem"
         if (force) logger.debug(msg) else logger.error(msg)
         Left(problem)
@@ -158,10 +159,13 @@ object ClusterWatch
   }
   object ClusterWatchEventMismatchProblem extends Problem.Coded.Companion
 
-  final case class ClusterWatchInactiveNodeProblem(from: NodeId, clusterState: ClusterState, operation: String) extends Problem.Coded {
+  final case class ClusterWatchInactiveNodeProblem(from: NodeId, clusterState: ClusterState,
+    lastHeartbeatDuration: FiniteDuration, operation: String)
+  extends Problem.Coded {
     def arguments = Map(
       "from" -> from.string,
       "clusterState" -> clusterState.toString,
+      "lastHeartbeat" -> lastHeartbeatDuration.pretty,
       "operation" -> operation)
   }
   object ClusterWatchInactiveNodeProblem extends Problem.Coded.Companion

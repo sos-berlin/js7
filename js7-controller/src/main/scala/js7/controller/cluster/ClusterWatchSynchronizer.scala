@@ -98,7 +98,7 @@ private final class ClusterWatchSynchronizer(
             case Failure(t) =>
               logger.warn(s"Error when sending heartbeat to ClusterWatch: ${t.toStringWithCauses}")
               logger.debug(s"Error when sending heartbeat to ClusterWatch: $t", t)
-              haltJava(s"EMERGENCY STOP due unreachable ClusterWatch: ${t.toStringWithCauses}", restart = true)
+              haltJava(s"HALT due to unreachable ClusterWatch: ${t.toStringWithCauses}", restart = true)
           }
         val previousHeartbeat = heartbeat.getAndSet(heartbeatFuture)
         previousHeartbeat.cancel()

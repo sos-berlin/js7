@@ -183,7 +183,7 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
         throw new AssertionError("ClusterStartBackupNode")
 
       case ClusterCommand.ClusterPrepareCoupling(activeId, passiveId) =>
-        requireOwnNodeId(activeId)(
+        requireOwnNodeId(command, activeId)(
           persistence.waitUntilStarted.flatMap(_ =>
             persist() {
               case Empty =>
@@ -207,7 +207,7 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
             })))
 
       case ClusterCommand.ClusterCouple(activeId, passiveId) =>
-        requireOwnNodeId(activeId)(
+        requireOwnNodeId(command, activeId)(
           persistence.waitUntilStarted >>
             persist() {
               case s: PassiveLost if s.activeId == activeId && s.passiveId == passiveId =>
@@ -234,28 +234,25 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
               }))
 
       case ClusterCommand.ClusterRecouple(activeId, passiveId) =>
-        requireOwnNodeId(activeId)(
-          (if (activeId != ownId)
-            Task.pure(Right(Problem.pure("ClusterRecouple command may only be directed to the active node")))
-          else
-            persistence.waitUntilStarted >>
-              persist() {
-                case s: Coupled if s.activeId == activeId && s.passiveId == passiveId =>
-                  // ClusterPassiveLost leads to recoupling
-                  Right(Some(ClusterPassiveLost(passiveId)))
+        requireOwnNodeId(command, activeId)(
+          persistence.waitUntilStarted >>
+            persist() {
+              case s: Coupled if s.activeId == activeId && s.passiveId == passiveId =>
+                // ClusterPassiveLost leads to recoupling
+                // TODO The cluster is not coupled for a short while.
+                Right(Some(ClusterPassiveLost(passiveId)))
 
-                case _ =>
-                  Right(None)
-              }
-          ).map(_.map(_ => ClusterCommand.Response.Accepted)))
+              case _ =>
+                Right(None)
+            }.map(_.map(_ => ClusterCommand.Response.Accepted)))
 
       case _: ClusterCommand.ClusterInhibitActivation =>
         throw new NotImplementedError
     }
 
-  private def requireOwnNodeId[A](nodeId: NodeId)(body: Task[Checked[A]]): Task[Checked[A]] =
+  private def requireOwnNodeId[A](command: ClusterCommand, nodeId: NodeId)(body: Task[Checked[A]]): Task[Checked[A]] =
     if (nodeId != ownId)
-      Task.pure(Left(Problem.pure("ClusterRecouple command may only be directed to the active node")))
+      Task.pure(Left(Problem.pure(s"'${command.getClass.simpleScalaName}' command may only be directed to the active node")))
     else
       body
 

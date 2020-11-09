@@ -77,11 +77,11 @@ final class ClusterWatchTest extends AnyFreeSpec
 
     "Heartbeat from wrong node is rejected" in {
       assert(watch.heartbeat(bId, clusterState).await(99.s) ==
-        Left(ClusterWatchInactiveNodeProblem(bId, clusterState, "heartbeat Coupled(active A: http://A, passive B: http://B)")))
+        Left(ClusterWatchInactiveNodeProblem(bId, clusterState, 0.s, "heartbeat Coupled(active A: http://A, passive B: http://B)")))
 
       locally {
         assert(watch.heartbeat(bId, ClusterState.Coupled(setting.copy(activeId = bId))).await(99.s) ==
-          Left(ClusterWatchInactiveNodeProblem(bId, clusterState, "heartbeat Coupled(passive A: http://A, active B: http://B)")))
+          Left(ClusterWatchInactiveNodeProblem(bId, clusterState, 0.s, "heartbeat Coupled(passive A: http://A, active B: http://B)")))
       }
 
       assert(watch.get.await(99.s) == Right(clusterState))
@@ -98,7 +98,7 @@ final class ClusterWatchTest extends AnyFreeSpec
     "FailedOver before heartbeat loss is rejected" in {
       scheduler.tick(1.s)
       assert(applyEvents(bId, ClusterFailedOver(aId, bId, failedAt) :: Nil) ==
-        Left(ClusterWatchInactiveNodeProblem(bId, clusterState,
+        Left(ClusterWatchInactiveNodeProblem(bId, clusterState, 1.s,
           "event ClusterFailedOver(A --> B, JournalPosition(0,0)) --> FailedOver(passive A: http://A, active B: http://B, JournalPosition(0,0))")))
       assert(watch.isActive(aId).await(99.s).orThrow)
     }
@@ -137,7 +137,7 @@ final class ClusterWatchTest extends AnyFreeSpec
       assert(applyEvents(bId, ClusterCouplingPrepared(bId) :: ClusterCoupled(bId) :: Nil) == Right(Completed))
       assert(watch.isActive(bId).await(99.s).orThrow)
       assert(applyEvents(aId, ClusterSwitchedOver(aId) :: Nil) ==
-        Left(ClusterWatchInactiveNodeProblem(aId, clusterState,
+        Left(ClusterWatchInactiveNodeProblem(aId, clusterState, 0.s,
           "event ClusterSwitchedOver(A) --> SwitchedOver(active A: http://A, passive B: http://B)")))
     }
 

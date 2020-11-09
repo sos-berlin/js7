@@ -84,7 +84,10 @@ private[cluster] final class ActivationInhibitor
                 logger.error(s"ActivationInhibitor.inhibitActivation timeout: expected Inhibit state but got '$state'")
               }
             })
-          .runAsyncAndForget
+            .onErrorRecover { case t: Throwable =>
+              logger.error(s"setInhibitionTimer: $t", t)
+            }
+            .runAsyncAndForget
         }
       }
     }
