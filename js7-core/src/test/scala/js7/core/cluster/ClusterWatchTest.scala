@@ -65,14 +65,10 @@ final class ClusterWatchTest extends AnyFreeSpec
       assert(watch.isActive(aId).await(99.s).orThrow)
     }
 
-    "Heartbeat with different ClusterState from same active node is accepted" in {
+    "Heartbeat with different ClusterState from same active node is rejected" in {
       val reportedClusterState = ClusterState.PassiveLost(setting)
-      assert(watch.heartbeat(aId, reportedClusterState).await(99.s) == Right(Completed))
-      assert(watch.get.await(99.s) == Right(reportedClusterState))
-
-      // Restore ClusterState for following tests
-      assert(watch.heartbeat(aId, clusterState).await(99.s) == Right(Completed))
-      assert(watch.get.await(99.s) == Right(clusterState))
+      assert(watch.heartbeat(aId, reportedClusterState).await(99.s) ==
+        Left(ClusterWatchHeartbeatMismatchProblem(clusterState, reportedClusterState)))
     }
 
     "Heartbeat from wrong node is rejected" in {

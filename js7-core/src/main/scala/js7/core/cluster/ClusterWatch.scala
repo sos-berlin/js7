@@ -72,12 +72,15 @@ extends ClusterWatchApi
     update(from, false, checkOnly = false, s"heartbeat $reportedClusterState")(current =>
       if (!reportedClusterState.isNonEmptyActive(from))
         Left(InvalidClusterWatchHeartbeatProblem(from, reportedClusterState))
-      else {
-        for (State(clusterState, _) <- current if clusterState != reportedClusterState)
-          logger.error(s"Node '$from': " +
-            ClusterWatchHeartbeatMismatchProblem(clusterState, reportedClusterState = reportedClusterState))
-        Right(reportedClusterState)
-      }
+      else
+        current match {
+          case Some(State(clusterState, _)) if reportedClusterState != clusterState =>
+            val problem = ClusterWatchHeartbeatMismatchProblem(clusterState, reportedClusterState = reportedClusterState)
+            logger.error(s"Node '$from': $problem")
+            Left(problem)
+          case _ =>
+            Right(reportedClusterState)
+        }
     ).map(_.toCompleted)
 
   private def update(from: NodeId, force: Boolean, checkOnly: Boolean, operationString: => String)(body: Option[State] => Checked[ClusterState])
