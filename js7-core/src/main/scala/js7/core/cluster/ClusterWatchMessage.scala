@@ -13,7 +13,6 @@ final case class ClusterWatchEvents(
   from: NodeId,
   events: Seq[ClusterEvent],
   clusterState: ClusterState,
-  force: Boolean = false,
   checkOnly: Boolean = false)
 extends ClusterWatchMessage
 

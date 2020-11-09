@@ -119,7 +119,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
           }
       sendCommand
         .onErrorRecover { case t: Throwable =>
-          logger.error(s"Sending Cluster command to other node failed: $t", t.nullIfNoStackTrace)
+          logger.error(s"Sending Cluster command to other node failed: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
         }
         .runAsyncAndForget
       replicateJournalFiles(recoveredClusterState)
@@ -461,9 +461,8 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
                         case switchedOver: ClusterSwitchedOver =>
                           // Notify ClusterWatch before starting heartbeating
                           Observable.fromTask(
-                            clusterWatchSynchonizer.applyEvents(switchedOver :: Nil, builder.clusterState,
-                              force = true/*ignore last fresh heartbeat from previous active node*/
-                            ).map(_.toUnit))
+                            clusterWatchSynchonizer.applyEvents(switchedOver :: Nil, builder.clusterState
+                          ).map(_.toUnit))
 
                         case ClusterCouplingPrepared(activeId) =>
                           assertThat(activeId != ownId)

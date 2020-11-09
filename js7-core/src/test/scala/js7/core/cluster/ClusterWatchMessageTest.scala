@@ -35,8 +35,7 @@ final class ClusterWatchMessageTest extends AnyFreeSpec
                 NodeId("B") -> Uri("http://B")),
               NodeId("A"),
               Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
-              ClusterTiming(10.s, 20.s))),
-          force = true),
+              ClusterTiming(10.s, 20.s)))),
         json"""{
           "TYPE": "ClusterWatchEvents",
           "from": "A",
@@ -72,7 +71,6 @@ final class ClusterWatchMessageTest extends AnyFreeSpec
               }
             }
           },
-          "force": true,
           "checkOnly": false
         }""")
     }
