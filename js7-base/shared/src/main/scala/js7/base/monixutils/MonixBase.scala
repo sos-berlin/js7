@@ -52,6 +52,17 @@ object MonixBase
         }
     }
 
+    implicit class RichMonixObservableCompanion(private val underlying: Observable.type) extends AnyVal
+    {
+      /** Provides the Scheduler, similar to Task deferAction. */
+      def deferAction[A](toObservable: Scheduler => Observable[A]): Observable[A] =
+        Observable.fromTask(
+          Task.deferAction(implicit scheduler =>
+            Task(
+              toObservable(scheduler)))
+        ).flatten
+    }
+
     implicit class RichMonixObservable[A](private val underlying: Observable[A]) extends AnyVal
     {
       def toL[Col[x] <: IterableOps[x, Iterable, Iterable[x]]](implicit factory: IterableFactory[Col]): Task[Col[A @uncheckedVariance]] =

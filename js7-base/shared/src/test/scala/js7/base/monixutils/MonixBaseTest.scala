@@ -8,15 +8,15 @@ import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.CloseableIterator
 import monix.eval.Task
-import monix.execution.Cancelable
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.atomic.AtomicInt
 import monix.execution.schedulers.TestScheduler
+import monix.execution.{Cancelable, Scheduler}
 import monix.reactive.Observable
 import org.scalatest.freespec.AsyncFreeSpec
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.{Future, TimeoutException}
 import scala.concurrent.duration._
+import scala.concurrent.{Future, TimeoutException}
 import scala.language.reflectiveCalls
 
 /**
@@ -139,14 +139,14 @@ final class MonixBaseTest extends AsyncFreeSpec
 
     "deferFutureAndLog Future.successful" in {
       deferFutureAndLog(Future.successful(()), "TEST")
-        .map(o => assert(o == ()))
+        .map(o => assert(o.equals(())))
         .runToFuture
     }
 
     "deferFutureAndLog" in {
       val t = now
       deferFutureAndLog(Future(()), "TEST")
-        .map(o => assert(o == () && t.elapsed < 2.s))
+        .map(o => assert(o.equals(()) && t.elapsed < 2.s))
         .runToFuture
     }
   }
@@ -232,6 +232,17 @@ final class MonixBaseTest extends AsyncFreeSpec
         .completedL
         .map(_ => assert(duration > 0.s && count == 2 * n && exitCase == ExitCase.Completed))
         .runToFuture
+    }
+
+    "Observable" - {
+      "deferAction" in {
+        val iterator = Iterator.from(1)
+        val task = Observable.deferAction((_: Scheduler) => Observable.pure(iterator.next())).toListL
+        for {
+          a <- task.runToFuture
+          b <- task.runToFuture
+        } yield assert(a == List(1) && b == List(2))
+      }
     }
 
     //"takeUntil memory leak" in {
