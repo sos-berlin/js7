@@ -1,5 +1,6 @@
 package js7.controller.cluster
 
+import js7.base.monixutils.MonixDeadline
 import js7.base.time.ScalaTime._
 import js7.controller.cluster.ObservablePauseDetector._
 import monix.eval.Task
@@ -10,25 +11,45 @@ import scala.util.Success
 
 final class ObservablePauseDetectorTest extends AnyFreeSpec
 {
-  private implicit val scheduler = TestScheduler()
   private val pausingObservable = Observable.fromIterable(1 to 5)
     .doOnNext(i =>
       Task.sleep(if (i == 3) 2.s else if (i == 4) 3.s else 100.ms)) // Long pause before the third element
 
   "detectPauses" in {
-    val future = pausingObservable.detectPauses(1.s).takeWhileInclusive(_ != Some(5)).toListL.runToFuture
+    implicit val scheduler = TestScheduler()
+    val future = pausingObservable.detectPauses(1.s).takeWhileInclusive(_ != Right(5)).toListL.runToFuture
     scheduler.tick(100.s)
-    assert(future.value == Some(Success(Some(1) :: Some(2) :: None :: Some(3) :: None :: None :: Some(4) :: Some(5) :: Nil)))
+    assert(future.value == Some(Success(List(
+      Right(1),
+      Right(2),
+      Left(MonixDeadline.fromNanos(1_000_000_000L)),
+      Right(3),
+      Left(MonixDeadline.fromNanos(3_000_000_000L)),
+      Left(MonixDeadline.fromNanos(3_000_000_000L)),
+      Right(4),
+      Right(5)))))
   }
 
   "detectPauses detects initial pause" in {
+    implicit val scheduler = TestScheduler()
     val future = (Observable.fromTask(Task(0).delayExecution(2.s)) ++ pausingObservable)
-      .detectPauses(1001.ms).takeWhileInclusive(_ != Some(5)).toListL.runToFuture
+      .detectPauses(1001.ms).takeWhileInclusive(_ != Right(5)).toListL.runToFuture
     scheduler.tick(100.s)
-    assert(future.value == Some(Success(None :: Some(0) :: Some(1) :: Some(2) :: None :: Some(3) :: None :: None :: Some(4) :: Some(5) :: Nil)))
+    assert(future.value == Some(Success(List(
+      Left(MonixDeadline.fromNanos(0L)),
+      Right(0),
+      Right(1),
+      Right(2),
+      Left(MonixDeadline.fromNanos(3_003_000_000L)),
+      Right(3),
+      Left(MonixDeadline.fromNanos(5_005_000_000L)),
+      Left(MonixDeadline.fromNanos(5_005_000_000L)),
+      Right(4),
+      Right(5)))))
   }
 
   "echoRepeated"  in {
+    implicit val scheduler = TestScheduler()
     val future = pausingObservable.echoRepeated(800.ms).toListL.runToFuture
     scheduler.tick(100.s)
     assert(future.value == Some(Success(List(

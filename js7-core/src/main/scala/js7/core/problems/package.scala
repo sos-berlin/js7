@@ -2,9 +2,11 @@ package js7.core
 
 import akka.http.scaladsl.model.StatusCodes.ServiceUnavailable
 import js7.base.problem.Problem
+import js7.base.time.ScalaTime._
 import js7.data.cluster.{ClusterCommand, ClusterState}
 import js7.data.event.EventId
 import js7.data.node.NodeId
+import scala.concurrent.duration.FiniteDuration
 
 /**
   * @author Joacim Zschimmer
@@ -37,8 +39,11 @@ package object problems
     override val httpStatusCode = ServiceUnavailable.intValue/*503*/
   }
 
-  final case class MissingPassiveClusterNodeHeartbeatProblem(passiveId: NodeId) extends Problem.Coded {
-    override def arguments = Map("passiveId" -> passiveId.toString)
+  final case class MissingPassiveClusterNodeHeartbeatProblem(passiveId: NodeId, duration: FiniteDuration) extends Problem.Coded {
+    override def arguments = Map(
+      "passiveId" -> passiveId.toString,
+      "duration" -> duration.pretty,
+    )
   }
 
   final case class ClusterCommandInapplicableProblem(command: ClusterCommand, clusterState: ClusterState)

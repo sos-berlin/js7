@@ -15,6 +15,7 @@ import js7.base.data.ByteSequence.ops._
 import js7.base.monixutils.MonixDeadline.now
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
@@ -281,15 +282,15 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
         .filter(testHeartbeatSuppressor) // for testing
         .detectPauses(setting.timing.heartbeat + setting.timing.heartbeatTimeout)
         .flatMap[Checked[Unit]] {
-          case None/*heartbeat pause*/ =>
+          case Left(noHeartbeatSince) =>
             (if (isReplicatingHeadOfFile) continuation.clusterState else builder.clusterState) match {
               case clusterState: Coupled if clusterState.passiveId == ownId =>
                 if (awaitingCoupledEvent) {
                   logger.trace(
-                    s"Ignoring observed pause without heartbeat because cluster is coupled but nodes have not yet recoupled: clusterState=$clusterState")
+                    s"Ignoring observed pause of ${noHeartbeatSince.elapsed.pretty} without heartbeat because cluster is coupled but nodes have not yet recoupled: clusterState=$clusterState")
                   Observable.empty  // Ignore
                 } else {
-                  logger.warn(s"No heartbeat from the currently active cluster node '$activeId' - trying to fail-over")
+                  logger.warn(s"No heartbeat from the currently active cluster node '$activeId' since ${noHeartbeatSince.elapsed.pretty} - trying to fail-over")
                   Observable.fromTask(
                     if (isReplicatingHeadOfFile) {
                       val recoveredJournalFile = continuation.maybeRecoveredJournalFile.getOrElse(
@@ -359,17 +360,17 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
                 Observable.empty  // Ignore
             }
 
-          case Some((_, JournalSeparators.HeartbeatMarker, _)) =>
+          case Right((_, JournalSeparators.HeartbeatMarker, _)) =>
             logger.trace(JournalSeparators.HeartbeatMarker.utf8String.trim)
             Observable.empty
 
-          case Some((fileLength, JournalSeparators.EndOfJournalFileMarker, _)) =>
+          case Right((fileLength, JournalSeparators.EndOfJournalFileMarker, _)) =>
             // fileLength may be advanced to end of file when file's last record is truncated
             logger.debug(s"End of replicated journal file reached: ${file.getFileName} eventId=${builder.eventId} fileLength=$fileLength")
             _eof = true
             Observable.pure(Left(EndOfJournalFileMarker))
 
-          case Some((fileLength, line, journalRecord)) =>
+          case Right((fileLength, line, journalRecord)) =>
             out.write(line.toByteBuffer)
             logger.trace(s"Replicated ${continuation.fileEventId}:$fileLength ${line.utf8StringTruncateAt(200).trim}")
             val isSnapshotTaken = isReplicatingHeadOfFile && (journalRecord match {

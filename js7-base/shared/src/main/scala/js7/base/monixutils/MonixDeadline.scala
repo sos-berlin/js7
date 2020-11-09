@@ -1,6 +1,8 @@
 package js7.base.monixutils
 
 import js7.base.monixutils.MonixDeadline._
+import js7.base.time.ScalaTime._
+import js7.base.utils.ScalaUtils.syntax._
 import monix.execution.Scheduler
 import scala.concurrent.duration.{Duration, FiniteDuration, NANOSECONDS}
 
@@ -71,6 +73,12 @@ extends Ordered[MonixDeadline]
    */
   def compare(other: MonixDeadline) =
     nanos compare other.nanos
+
+  /** Not immutable, may return each nanosecond a different string. */
+  override def toString = {
+    val t = elapsed
+    ((t > 0.s) ?? "+") + t.toCoarsest.toString
+  }
 }
 
 object MonixDeadline
@@ -80,11 +88,14 @@ object MonixDeadline
    * advancing it to obtain a future deadline, or for sampling the current time exactly once and
    * then comparing it to multiple deadlines (using subtraction).
    */
-  def now(implicit scheduler: Scheduler): MonixDeadline =
+  def now(implicit s: Scheduler): MonixDeadline =
     MonixDeadline(nowNanos)
 
   private def nowNanos(implicit scheduler: Scheduler): Long =
     scheduler.clockMonotonic(NANOSECONDS)
+
+  def fromNanos(nanos: Long)(implicit s: Scheduler): MonixDeadline =
+    new MonixDeadline(nanos)
 
   /**
    * The natural ordering for deadline is determined by the natural order of the underlying (finite) duration.

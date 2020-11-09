@@ -325,8 +325,8 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
         fetchAndHandleAcknowledgedEventIds(initialState.passiveId, initialState.passiveUri, initialState.timing,
           after = eventId,
         ).flatMap {
-            case Left(missingHeartbeatProblem @ MissingPassiveClusterNodeHeartbeatProblem(id)) =>
-              logger.warn("No heartbeat from passive cluster node - continuing as single active cluster node")
+            case Left(missingHeartbeatProblem @ MissingPassiveClusterNodeHeartbeatProblem(id, duration)) =>
+              logger.warn(s"No heartbeat from passive cluster node since ${duration.pretty} - continuing as single active cluster node")
               assertThat(id != ownId)
               // FIXME (1) Exklusiver Zugriff (Lock) wegen parallelen ClusterCommand.ClusterRecouple,
               //  das ein ClusterPassiveLost auslöst, mit ClusterCouplingPrepared infolge.
@@ -405,12 +405,12 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
             .detectPauses(timing.heartbeat + timing.heartbeatTimeout)
             .takeWhile(_ => !switchoverAcknowledged)  // Race condition: may be set too late
             .mapEval {
-              case None/*pause*/ =>
-                val problem = MissingPassiveClusterNodeHeartbeatProblem(passiveId)
+              case Left(noHeartbeatSince) =>
+                val problem = MissingPassiveClusterNodeHeartbeatProblem(passiveId, noHeartbeatSince.elapsed)
                 logger.trace(problem.toString)
                 Task.pure(Left(problem))
 
-              case Some(eventId) =>
+              case Right(eventId) =>
                 Task.deferFuture {
                   // Possible dead letter when `switchoverAcknowledged` is detected too late,
                   // because after JournalActor has committed SwitchedOver (after ack), JournalActor stops.
