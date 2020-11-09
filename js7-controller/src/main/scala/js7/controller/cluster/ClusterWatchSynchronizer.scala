@@ -9,7 +9,6 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.Logger
 import js7.common.system.startup.Halt.haltJava
 import js7.controller.cluster.ClusterWatchSynchronizer._
-import js7.core.cluster.ClusterWatch.ClusterWatchInactiveNodeProblem
 import js7.core.cluster.HttpClusterWatch
 import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.{ClusterEvent, ClusterState, ClusterTiming}
@@ -79,11 +78,11 @@ private final class ClusterWatchSynchronizer(
         .flatMap(checked =>
           Task.now {
             for (problem <- checked.left) {
-              if (problem is ClusterWatchInactiveNodeProblem) {
-                haltJava(s"EMERGENCY STOP due to: $problem", restart = true)
-              }
+              //if (problem is ClusterWatchInactiveNodeProblem) {
+                haltJava(s"HALT due to: $problem", restart = true)
+              //}
               // Ignore other errors and continue
-              logger.warn(s"ClusterWatch heartbeat: $problem")
+              //logger.warn(s"ClusterWatch heartbeat: $problem")
             }
           })
 
