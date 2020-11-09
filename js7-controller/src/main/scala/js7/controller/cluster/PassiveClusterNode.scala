@@ -105,7 +105,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
             case ClusterState.Empty =>
               Task.unit
             case _: Decoupled =>
-              sendClusterPrepareCoupling
+              tryEndlesslyToSendClusterPrepareCoupling
             case _: PreparedToBeCoupled =>
               common.tryEndlesslyToSendCommand(activeUri, ClusterCouple(activeId = activeId, passiveId = ownId))
             case _: Coupled =>
@@ -139,9 +139,9 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
       }
     }
 
-  private def sendClusterPrepareCoupling: Task[Unit] =
+  private def tryEndlesslyToSendClusterPrepareCoupling: Task[Unit] =
     // TODO Delay until we have replicated nearly all events, to avoid a long PreparedCoupled state
-    //  Annhähernd gleichlaufende Uhren vorausgesetzt, können wir den Zeitstempel des letzten Events heranziehen.
+    //  Annähernd gleichlaufende Uhren vorausgesetzt, können wir den Zeitstempel des letzten Events heranziehen.
     //  Wenn kein Event kommt? Herzschlag mit Zeitstempel (nicht EventId) versehen (wäre sowieso nützlich)
     //  ["HEARTBEAT", { timestamp: 1234.567 }]
     //  {TYPE: "Heartbeat", eventId: 1234567000, timestamp: 1234.567 }    Herzschlag-Event?
@@ -441,7 +441,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
                       clusterEvent match {
                         case _: ClusterNodesAppointed | _: ClusterPassiveLost | _: ClusterActiveNodeRestarted =>
                           Observable.fromTask(
-                            sendClusterPrepareCoupling
+                            tryEndlesslyToSendClusterPrepareCoupling
                               .map(Right.apply))  // TODO Handle heartbeat timeout !
 
                         case _: ClusterFailedOver =>
@@ -454,15 +454,15 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
                             logger.error(s"Replicated unexpected FailedOver event")  // Should not happen
                           dontActivateBecauseOtherFailedOver = false
                           Observable.fromTask(
-                            sendClusterPrepareCoupling
+                            tryEndlesslyToSendClusterPrepareCoupling
                               .map(Right.apply))  // TODO Handle heartbeat timeout !
 
                         case switchedOver: ClusterSwitchedOver =>
                           // Notify ClusterWatch before starting heartbeating
                           Observable.fromTask(
-                            clusterWatchSynchonizer.applyEvents(switchedOver :: Nil, builder.clusterState, force = true)
-                              .map(_.toUnit))
-                          // TODO sendClusterPassiveFollows ?
+                            clusterWatchSynchonizer.applyEvents(switchedOver :: Nil, builder.clusterState,
+                              force = true/*ignore last fresh heartbeat from previous active node*/
+                            ).map(_.toUnit))
 
                         case ClusterCouplingPrepared(activeId) =>
                           assertThat(activeId != ownId)

@@ -246,13 +246,13 @@ with MainJournalingActor[ControllerState, Event]
       assertActiveClusterState(recovered)
       recover(recovered)
 
-      become("inhibitingActivationOfOtherClusterNode")(inhibitingActivationOfOtherClusterNode)
+      become("activating")(activating)
       unstashAll()
       activeClusterNode.beforeJournalingStarts
         .map(_.orThrow)
         .map((_: Completed) => recovered)
         .materialize
-        .map(Internal.OtherClusterNodeActivationInhibited.apply)
+        .map(Internal.Activated.apply)
         .runToFuture
         .pipeTo(self)
 
@@ -283,13 +283,13 @@ with MainJournalingActor[ControllerState, Event]
     }
   }
 
-  private def inhibitingActivationOfOtherClusterNode: Receive = {
-    case Internal.OtherClusterNodeActivationInhibited(Failure(t)) =>
-      logger.error(s"Activation of this cluster node failed because the other cluster node reports: ${t.toStringWithCauses}")
+  private def activating: Receive = {
+    case Internal.Activated(Failure(t)) =>
+      logger.error(s"Activation of this cluster node failed because: ${t.toStringWithCauses}")
       if (t.getStackTrace.nonEmpty) logger.debug(t.toStringWithCauses, t)
       throw t.appendCurrentStackTrace
 
-    case Internal.OtherClusterNodeActivationInhibited(Success(recovered)) =>
+    case Internal.Activated(Success(recovered)) =>
       recovered.startJournalAndFinishRecovery(journalActor)
       become("journalIsStarting")(journalIsStarting)
       unstashAll()
@@ -1063,7 +1063,7 @@ private[controller] object ControllerOrderKeeper
 
   private object Internal {
     final case class OrderIsDue(orderId: OrderId)
-    final case class OtherClusterNodeActivationInhibited(recovered: Try[Recovered[ControllerState]])
+    final case class Activated(recovered: Try[Recovered[ControllerState]])
     final case class ClusterModuleTerminatedUnexpectedly(tried: Try[Checked[Completed]]) extends DeadLetterSuppression
     final case class Ready(outcome: Checked[Completed])
     case object AfterProceedEventsAdded
