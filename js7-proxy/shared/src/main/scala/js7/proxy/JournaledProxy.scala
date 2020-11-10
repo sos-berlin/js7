@@ -318,25 +318,26 @@ object JournaledProxy
                   case (api, Right(clusterNodeState)) if clusterNodeState.isActive =>
                     api -> clusterNodeState
                 }
-                list.collect { case (api, Left(problem)) => api -> problem } match {
-                  case Nil =>
-                    if (maybeActive.isEmpty) scribe.warn("No cluster node seems to be active")
-                  case apiProblems =>
-                    for ((api, problem) <- apiProblems)
-                      scribe.warn(s"Cluster node '${api.baseUri}' is not accessible: $problem")
-                }
+                list.collect { case (api, Left(problem)) => api -> problem }
+                  match {
+                    case Nil =>
+                      if (maybeActive.isEmpty) scribe.warn("No cluster node seems to be active")
+                    case apiProblems =>
+                      for ((api, problem) <- apiProblems)
+                        scribe.warn(s"Cluster node '${api.baseUri}' is not accessible: $problem")
+                  }
                 for ((api, future) <- apisWithClusterNodeStateFutures if list.forall(_._1  ne api)) {
                   scribe.debug(s"Cancel discarded request to '$api'")
                   future.cancel()
                 }
                 maybeActive.toRight(()/*Left: repeat tailRecM loop*/)
               }
-            .guaranteeCase(exitCase => Task {
-              if (exitCase != ExitCase.Completed) {
-                scribe.debug(exitCase.toString)
-                for (o <- apisWithClusterNodeStateFutures) o._2.cancel()
-              }
-            })
+              .guaranteeCase(exitCase => Task {
+                if (exitCase != ExitCase.Completed) {
+                  scribe.debug(exitCase.toString)
+                  for (o <- apisWithClusterNodeStateFutures) o._2.cancel()
+                }
+              })
           })
         .onErrorRestartLoop(()) { (throwable, _, tryAgain) =>
           scribe.warn(throwable.toStringWithCauses)
