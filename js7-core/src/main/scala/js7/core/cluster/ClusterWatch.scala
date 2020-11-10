@@ -39,10 +39,6 @@ extends ClusterWatchApi
 
   def applyEvents(clusterWatchEvents: ClusterWatchEvents): Task[Checked[Completed]] = {
     import clusterWatchEvents.{checkOnly, events, from, clusterState => reportedClusterState}
-    // FIXME Geänderten ClusterState nur für die Frist setzen.
-    //  Während der Frist kann ein folgendes Event oder ein folgender Herzschlag auf vorherigen oder reservierten ClusterState aufsetzen ?
-    //  Dann kann ifClusterWatchAllowsActivation vorab prüfen, ob PassiveLost oder FailedOver möglich ist.
-    //  Bei PassiveLost (vom Aktiven) kann währenddessen ein anderes ClusterEvent kommen. WIE VERHINDERN WIR DAS?
     val fromMustBeActive = clusterWatchEvents.events match {
       case Seq(_: ClusterSwitchedOver) => false
       case _ => true
@@ -91,11 +87,9 @@ extends ClusterWatchApi
     stateMVar.flatMap(mvar =>
       mvar.take.flatMap { current =>
         logger.trace(s"Node '$from': $operationString, after ${current.fold("—")(_.lastHeartbeat.elapsed.pretty)}")
-        val stillActive =
-          if (fromMustBeActive) mustBeStillActive(from, current, operationString)
-          else Right(Completed)
-        stillActive
-          .flatMap(_ => body(current)) match {
+        (if (fromMustBeActive) mustBeStillActive(from, current, operationString)
+         else Right(Completed)
+        ) .flatMap(_ => body(current)) match {
             case Left(problem) =>
               mvar.put(current)
                 .map(_ => Left(problem))

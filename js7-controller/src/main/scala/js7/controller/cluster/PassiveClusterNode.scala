@@ -259,6 +259,11 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
 
       // TODO Eine Zeile davor lesen und sicherstellen, dass sie gleich unserer letzten Zeile ist
       recouplingStreamReader.observe(activeControllerApi, after = continuation.fileLength)
+        // TODO Aktiver kann JournalIsNotYetReady melden, sendet keinen Herzschlag, ist aber irgendwie am Leben.
+        //  observe könnte selbst Ausfall des Aktiven anzeigen, gdw er nicht erreichbar ist
+        //  (zB Login klappt nicht, isTemporaryUnreachable).
+        //  observe überwacht selbst die Herzschläge, und verbindet sich bei Ausfall erneut.
+        //  Dann entfällt hier die Herzschlagüberwachung.
         .doOnError(t => Task {
           logger.debug(s"observeJournalFile($activeControllerApi, fileEventId=${continuation.fileEventId}, " +
             s"position=${continuation.fileLength}) failed with ${t.toStringWithCauses}", t)
