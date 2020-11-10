@@ -61,6 +61,7 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
   private val fetchingAcksCancelable = SerialCancelable()
   private val fetchingAcksTerminatedUnexpectedlyPromise = Promise[Checked[Completed]]()
   private val startingBackupNode = AtomicBoolean(false)
+  private val sendingClusterStartBackupNode = SerialCancelable()
   @volatile
   private var switchoverAcknowledged = false
   @volatile
@@ -293,18 +294,20 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
 
   private def proceedNodesAppointed(state: ClusterState.NodesAppointed): Unit =
     if (state.activeId == ownId && !startingBackupNode.getAndSet(true)) {
-      eventWatch.started.flatMap(_ =>
-        common.tryEndlesslyToSendCommand(
-          state.passiveUri,
-          ClusterStartBackupNode(state.setting.copy(activeId = ownId), fileEventId = eventWatch.lastFileTornEventId)
-        ) .onErrorRecover { case t: Throwable =>
-            logger.warn(s"Sending Cluster command to other node failed: $t", t)
-          }
-      ).runToFuture
-        .onComplete {
+      val sending =
+        eventWatch.started.flatMap(_ =>
+          common.tryEndlesslyToSendCommand(
+            state.passiveUri,
+            ClusterStartBackupNode(state.setting.copy(activeId = ownId), fileEventId = eventWatch.lastFileTornEventId)
+          ) .onErrorRecover { case t: Throwable =>
+              logger.warn(s"Sending Cluster command to other node failed: $t", t)
+            }
+        ).runToFuture
+      sending.onComplete {
           case Success(_) =>
           case Failure(t) => logger.error(s"Appointment of cluster nodes failed: $t", t)
         }
+      sendingClusterStartBackupNode := sending
     }
 
   private def proceedCoupled(state: Coupled, eventId: EventId): Unit =
@@ -467,6 +470,10 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
       .flatMapT { case (stampedEvents, journaledState) =>
         val clusterState = journaledState.clusterState
         logPersisted(stampedEvents, clusterState)
+        clusterState match {
+          case Empty | _: NodesAppointed =>
+          case _: HasNodes => sendingClusterStartBackupNode.cancel()
+        }
         if (suppressClusterWatch || stampedEvents.isEmpty)
           Task.pure(Right(stampedEvents -> clusterState))
         else
