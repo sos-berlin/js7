@@ -15,6 +15,7 @@ import js7.data.node.NodeId
 import scala.jdk.CollectionConverters._
 
 final case class ClusterConf(
+  ownId: NodeId,
   isBackup: Boolean,
   maybeClusterSetting: Option[ClusterSetting],
   userAndPassword: Option[UserAndPassword],
@@ -49,7 +50,7 @@ object ClusterConf
             .sequence
             .map(o => Some(o.toMap))
       }
-      ownId = config.optionAs[NodeId]("js7.journal.cluster.node.id")
+      nodeId = config.optionAs[NodeId]("js7.journal.cluster.node.id")
         .getOrElse(NodeId(
           if (config.getBoolean("js7.journal.cluster.node.is-backup"))
             "Backup"
@@ -63,9 +64,10 @@ object ClusterConf
       heartbeatTimeout <- Right(config.getDuration("js7.journal.cluster.heartbeat-timeout").toFiniteDuration)
       timing <- ClusterTiming.checked(heartbeat, heartbeatTimeout)
       testHeartbeatLoss <- Right(config.optionAs[String]("js7.journal.cluster.TEST-HEARTBEAT-LOSS"))
-      setting <- maybeIdToUri.traverse(ClusterSetting.checked(_, ownId, watchUris.map(ClusterSetting.Watch(_)), timing))
+      setting <- maybeIdToUri.traverse(ClusterSetting.checked(_, nodeId, watchUris.map(ClusterSetting.Watch(_)), timing))
     } yield
       new ClusterConf(
+        nodeId,
         isBackup = isBackup,
         setting,
         userAndPassword,

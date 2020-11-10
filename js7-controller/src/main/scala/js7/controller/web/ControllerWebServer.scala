@@ -57,7 +57,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri
       protected def whenShuttingDown        = whenTerminating
       protected val controllerConfiguration = ControllerWebServer.this.controllerConfiguration
       protected val controllerId            = controllerConfiguration.controllerId
-      protected val nodeId                  = controllerConfiguration.nodeId
+      protected val nodeId                  = controllerConfiguration.clusterConf.ownId
       protected val injector                = ControllerWebServer.this.injector
       protected val actorSystem             = ControllerWebServer.this.actorSystem
       protected implicit def actorRefFactory = ControllerWebServer.this.actorSystem

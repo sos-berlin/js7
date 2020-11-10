@@ -30,6 +30,7 @@ final class ClusterConfTest extends AnyFreeSpec
       val clusterConf = ClusterConf.fromConfig(UserId("USER"), config)
       assert(clusterConf == Right(
         ClusterConf(
+          NodeId("Primary"),
           isBackup = false,
           None,
           None,
@@ -41,9 +42,10 @@ final class ClusterConfTest extends AnyFreeSpec
 
     "Full configuration" in {
       val config = config"""
+        js7.journal.cluster.node.id = PRIMARY
         js7.journal.cluster.node.is-backup = no
         js7.journal.cluster.nodes = {
-          Primary: "https://PRIMARY"
+          PRIMARY: "https://PRIMARY"
           Backup: "https://BACKUP"
         }
         js7.journal.cluster.watches = [ "https://CLUSTER-WATCH" ]
@@ -55,12 +57,13 @@ final class ClusterConfTest extends AnyFreeSpec
       val checkedClusterConf = ClusterConf.fromConfig(UserId("USER"), config)
       assert(checkedClusterConf == Right(
         ClusterConf(
+          NodeId("PRIMARY"),
           isBackup = false,
           Some(ClusterSetting(
             Map(
-              NodeId("Primary") -> Uri("https://PRIMARY"),
+              NodeId("PRIMARY") -> Uri("https://PRIMARY"),
               NodeId("Backup") -> Uri("https://BACKUP")),
-            NodeId("Primary"),
+            NodeId("PRIMARY"),
             Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
             ClusterTiming(7.s, 5.s))),
           Some(UserAndPassword(UserId("USER"), SecretString("PASSWORD"))),

@@ -23,7 +23,6 @@ import js7.core.configuration.CommonConfiguration
 import js7.core.event.journal.JournalConf
 import js7.core.event.journal.data.JournalMeta
 import js7.data.controller.ControllerId
-import js7.data.node.NodeId
 import scala.jdk.CollectionConverters._
 
 /**
@@ -31,8 +30,6 @@ import scala.jdk.CollectionConverters._
   */
 final case class ControllerConfiguration(
   controllerId: ControllerId,
-  @deprecated
-  nodeId: NodeId,
   dataDirectory: Path,
   configDirectory: Path,
   webServerPorts: Seq[WebServerPort],
@@ -112,12 +109,6 @@ object ControllerConfiguration
     val controllerId = ControllerId(config.getString("js7.controller.id"))
     new ControllerConfiguration(
       controllerId = controllerId,
-      nodeId = config.optionAs[NodeId]("js7.journal.cluster.node.id")
-        .getOrElse(NodeId(
-          if (config.getBoolean("js7.journal.cluster.node.is-backup"))
-            "Backup"
-           else
-            "Primary")),
       dataDirectory = dataDir,
       configDirectory = configDir,
       webServerPorts = Nil,

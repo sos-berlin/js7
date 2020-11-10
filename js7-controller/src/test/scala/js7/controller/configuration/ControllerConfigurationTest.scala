@@ -40,14 +40,13 @@ final class ControllerConfigurationTest extends AnyFreeSpec with BeforeAndAfterA
   "Empty argument list" in {
     assert(configuration.copy(config = DefaultConfig) == ControllerConfiguration(
       controllerId = ControllerId("Controller"),
-      nodeId = NodeId("Primary"),
       dataDirectory = (directory / "DATA").toAbsolutePath,
       configDirectory = (directory / "CONFIG").toAbsolutePath,
       webServerPorts = Nil,
       ZoneId.systemDefault,
       akkaAskTimeout = 1.h,
       journalConf = JournalConf.fromConfig(DefaultConfig),
-      clusterConf = ClusterConf(isBackup = false, None, None,
+      clusterConf = ClusterConf(NodeId("Primary"), isBackup = false, None, None,
         RecouplingStreamReaderConf(
           timeout = 6500.ms,  // Between 3s and 10s
           delay = 1.s),

@@ -30,7 +30,6 @@ import js7.data.cluster.ClusterState.{Coupled, Empty, FailedOver, HasNodes}
 import js7.data.cluster.{ClusterCommand, ClusterSetting, ClusterState}
 import js7.data.controller.ControllerId
 import js7.data.event.{EventId, JournaledState}
-import js7.data.node.NodeId
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.Promise
@@ -41,7 +40,6 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
   persistence: JournaledStatePersistence[S],
   eventWatch: RealEventWatch,
   controllerId: ControllerId,
-  ownId: NodeId,
   journalConf: JournalConf,
   val clusterConf: ClusterConf,
   httpsConfig: HttpsConfig,
@@ -54,6 +52,8 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
     scheduler: Scheduler,
     actorSystem: ActorSystem)
 {
+  import clusterConf.ownId
+
   private val common = new ClusterCommon(controllerId, ownId, persistence, clusterConf, httpsConfig, config, testEventPublisher)
   import common.activationInhibitor
   @volatile

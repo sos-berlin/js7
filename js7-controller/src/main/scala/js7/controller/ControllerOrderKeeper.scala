@@ -261,7 +261,7 @@ with MainJournalingActor[ControllerState, Event]
 
   private def assertActiveClusterState(recovered: Recovered[ControllerState]): Unit =
     for (clusterState <- recovered.recoveredState.map(_.clusterState)) {
-      val ownId = controllerConfiguration.nodeId
+      import controllerConfiguration.clusterConf.ownId
       if (clusterState != ClusterState.Empty && !clusterState.isNonEmptyActive(ownId))
         throw new IllegalStateException(
           s"Controller has recovered from Journal but is not the active node in ClusterState: id=$ownId, failedOver=$clusterState")
