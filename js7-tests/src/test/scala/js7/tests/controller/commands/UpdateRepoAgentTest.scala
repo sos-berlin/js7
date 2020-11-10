@@ -7,7 +7,7 @@ import js7.base.generic.SecretString
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.utils.AutoClosing.autoClosing
-import js7.common.http.AkkaHttpClient.HttpException
+import js7.base.web.HttpClient.HttpException
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
@@ -80,7 +80,7 @@ final class UpdateRepoAgentTest extends AnyFreeSpec
 
   private def executeCommand(controller: RunningController, cmd: ControllerCommand): Checked[cmd.Response] =
     controller.httpApi.executeCommand(cmd).map(Right.apply)
-      .onErrorRecover { case e: HttpException if e.problem.isDefined => Left(e.problem.get) }
+      .onErrorRecover { case HttpException.HasProblem(problem) => Left(problem) }
       .await(99.seconds)
 }
 

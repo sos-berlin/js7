@@ -46,11 +46,8 @@ object HttpClient
   /** Lifts a Failure(HttpException#problem) to Success(Left(problem)). */
   def liftProblem[A](task: Task[A]): Task[Checked[A]] =
     task.materialize.map {
-      case Failure(t: HttpException) =>
-        t.problem match {
-          case None => Failure(t.appendCurrentStackTrace)
-          case Some(problem) => Success(Left(problem))
-        }
+      case Failure(HttpException.HasProblem(problem)) =>
+        Success(Left(problem))
       case Failure(t) =>
         Failure(t.appendCurrentStackTrace)
       case Success(a) =>

@@ -7,7 +7,7 @@ import js7.base.generic.SecretString
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
-import js7.common.http.AkkaHttpClient.HttpException
+import js7.base.web.HttpClient.HttpException
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits.RichFutures
 import js7.common.scalautil.MonixUtils.syntax.RichTask
@@ -134,7 +134,7 @@ final class UpdateRepoTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   private def executeCommand(cmd: ControllerCommand): Checked[cmd.Response] =
     controller.httpApi.executeCommand(cmd).map(Right.apply)
-      .onErrorRecover { case e: HttpException if e.problem.isDefined => Left(e.problem.get) }
+      .onErrorRecover { case HttpException.HasProblem(problem) => Left(problem) }
       .await(99.s)
 }
 
