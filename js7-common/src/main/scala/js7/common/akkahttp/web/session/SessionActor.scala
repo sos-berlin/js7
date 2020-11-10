@@ -33,6 +33,11 @@ extends Actor {
   private var nextCleanup: Cancelable = null
 
   override def postStop(): Unit = {
+    val sessions = tokenToSession.values.map(_.currentUser.id.string).groupMapReduce(identity)(_ => 1)(_ + _).map {
+      case (userId, 1) => userId
+      case (userId, n) => s"$n×$userId"
+    }
+    logger.debug(s"postStop: ${tokenToSession.size} open sessions: ${sessions mkString ", "}")
     if (nextCleanup != null) nextCleanup.cancel()
     super.postStop()
   }
