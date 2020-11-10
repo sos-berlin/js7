@@ -11,7 +11,7 @@ import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.web.Uri
+import js7.base.web.{HttpClient, Uri}
 import js7.common.akkahttp.StandardDirectives.lazyRoute
 import js7.common.akkahttp.web.session.SessionRouteTest._
 import js7.common.http.AkkaHttpClient
@@ -333,7 +333,7 @@ extends AnyFreeSpec with SessionRouteTester
       // Using old SessionToken is Unauthorized
       api.setSessionToken(sessionToken)
       val exception = requireAccessIsForbidden(api)
-      assert(AkkaHttpClient.sessionMayBeLost(exception))
+      assert(HttpClient.sessionMayBeLost(exception))
     }
   }
 
@@ -352,7 +352,7 @@ extends AnyFreeSpec with SessionRouteTester
       api.setSessionToken(SessionToken(SecretString("DISCARDED")))
       import api.implicitSessionToken
       val exception = requireAccessIsForbidden(api)
-      assert(AkkaHttpClient.sessionMayBeLost(exception))
+      assert(HttpClient.sessionMayBeLost(exception))
       assert(api.hasSession)
 
       api.clearSession()
@@ -388,7 +388,7 @@ extends AnyFreeSpec with SessionRouteTester
             otherClient.get_[String](Uri(s"$localUri/authorizedUser")) await 99.s
           }
           requireAccessIsForbidden(otherClient)
-          assert(AkkaHttpClient.sessionMayBeLost(exception))
+          assert(HttpClient.sessionMayBeLost(exception))
         }
 
         api.logout() await 99.s shouldEqual Completed

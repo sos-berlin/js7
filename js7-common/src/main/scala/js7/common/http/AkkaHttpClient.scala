@@ -6,7 +6,6 @@ import akka.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
 import akka.http.scaladsl.model.HttpEntity.{ChunkStreamPart, LastChunk}
 import akka.http.scaladsl.model.HttpMethods.{GET, POST}
 import akka.http.scaladsl.model.MediaTypes.`application/json`
-import akka.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
 import akka.http.scaladsl.model.headers.CacheDirectives.{`no-cache`, `no-store`}
 import akka.http.scaladsl.model.headers.{Accept, CustomHeader, RawHeader, `Cache-Control`}
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpHeader, HttpMethod, HttpRequest, HttpResponse, RequestEntity, StatusCode, StatusCodes, Uri => AkkaUri}
@@ -383,12 +382,6 @@ object AkkaHttpClient
     protected val trustStoreRefs: Seq[TrustStoreRef] = Nil,
     protected val name: String = "")
   extends AkkaHttpClient
-
-  def sessionMayBeLost(t: Throwable): Boolean =
-    t match {
-      case t: HttpException if t.status == Unauthorized || t.status == Forbidden => true
-      case _ => false
-    }
 
   final class HttpException private[http](method: HttpMethod, val uri: Uri, httpResponse: HttpResponse, val dataAsString: String)
   extends HttpClient.HttpException

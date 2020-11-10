@@ -43,6 +43,12 @@ trait HttpClient
 
 object HttpClient
 {
+  def sessionMayBeLost(t: Throwable): Boolean =
+    t match {
+      case t: HttpException if t.statusInt == 401/*Unauthorized*/ || t.statusInt == 403/*Forbidden*/ => true
+      case _ => false
+    }
+
   /** Lifts a Failure(HttpException#problem) to Success(Left(problem)). */
   def liftProblem[A](task: Task[A]): Task[Checked[A]] =
     task.materialize.map {
