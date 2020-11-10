@@ -630,11 +630,10 @@ with MainJournalingActor[ControllerState, Event]
           ).map(_ => Right(ControllerCommand.Response.Accepted))
 
       case cmd: ControllerCommand.ReplaceRepo =>
-        //intelliJuseImport(catsStdInstancesForFuture)  // For traverse
         Try(
           repoCommandExecutor.replaceRepoCommandToEvents(_controllerState.repo, cmd, commandMeta)
             .runToFuture
-            .await/*!!!*/(controllerConfiguration.akkaAskTimeout.duration))  // May throw TimeoutException
+            .awaitInfinite/*blocking!!! - wait for parallel execution and continue in same actor thread*/)
         match {
           case Failure(t) => Future.failed(t)
           case Success(checkedRepoEvents) =>
@@ -647,7 +646,7 @@ with MainJournalingActor[ControllerState, Event]
         Try(
           repoCommandExecutor.updateRepoCommandToEvents(_controllerState.repo, cmd, commandMeta)
             .runToFuture
-            .await/*!!!*/(controllerConfiguration.akkaAskTimeout.duration + 1.s))  // May throw TimeoutException
+            .awaitInfinite/*blocking!!! - wait for parallel execution and continue in same actor thread*/)
         match {
           case Failure(t) => Future.failed(t)
           case Success(checkedRepoEvents) =>
