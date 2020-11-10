@@ -6,8 +6,8 @@ object Dependencies
 {
   val scalaVersion = "2.13.3"
 
-  val akkaVersion = "2.6.9"
-  val akkaHttpVersion = "10.2.0"
+  val akkaVersion = "2.6.10"
+  val akkaHttpVersion = "10.2.1"
   val slf4jVersion = "1.7.30"  // See also plugins.sbt
   val log4jVersion = "2.13.3"  // See also plugins.sbt
   val catsVersion = "2.2.0"
@@ -21,7 +21,7 @@ object Dependencies
   val simulacrumVersion = "0.19.0"
   val disciplineVersion = "1.0.3"
   val disciplineScalaTestVersion = "2.0.0"
-  val monixVersion = "3.2.2"
+  val monixVersion = "3.3.0"
   val monocleVersion = "1.5.0"
   val scribeVersion = "2.7.12"
   val scalaJsDomVersion = "1.1.0"
@@ -73,7 +73,7 @@ object Dependencies
   val snakeYaml           = "org.yaml" % "snakeyaml" % "1.27"
 
   val findbugs            = "com.google.code.findbugs" % "jsr305" % "3.0.2"
-  val guava               = "com.google.guava" % "guava" % "29.0-jre"
+  val guava               = "com.google.guava" % "guava" % "30.0-jre"
   val bouncyCastle        = "org.bouncycastle" % "bcpg-jdk15on" % "1.66"
   val hamcrest            = "org.hamcrest" % "hamcrest" % "2.2" ::
                             "org.hamcrest" % "hamcrest-library" % "2.2" :: Nil
