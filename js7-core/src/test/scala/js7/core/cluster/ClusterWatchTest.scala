@@ -100,7 +100,7 @@ final class ClusterWatchTest extends AnyFreeSpec
     }
 
     "FailedOver after heartbeat loss" in {
-      scheduler.tick(11.s)
+      scheduler.tick(20.s)
       assert(applyEvents(bId, ClusterFailedOver(aId, bId, failedAt) :: Nil) == Right(Completed))
       assert(watch.isActive(bId).await(99.s).orThrow)
     }

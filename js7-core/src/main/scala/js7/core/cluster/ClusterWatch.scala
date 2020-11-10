@@ -8,6 +8,7 @@ import js7.base.time.ScalaTime._
 import js7.common.scalautil.Logger
 import js7.core.cluster.ClusterWatch._
 import js7.data.cluster.ClusterEvent.ClusterSwitchedOver
+import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
@@ -21,7 +22,6 @@ import scala.concurrent.duration.FiniteDuration
 final class ClusterWatch(controllerId: ControllerId, scheduler: Scheduler)
 extends ClusterWatchApi
 {
-  private val timeout = 3.s // FIXME Take from ClusterWatchHearbeat/Events
   private val stateMVar = MVar[Task].of(None: Option[State]).memoize
 
   logger.trace(toString)
@@ -44,7 +44,7 @@ extends ClusterWatchApi
     //  Dann kann ifClusterWatchAllowsActivation vorab prüfen, ob PassiveLost oder FailedOver möglich ist.
     //  Bei PassiveLost (vom Aktiven) kann währenddessen ein anderes ClusterEvent kommen. WIE VERHINDERN WIR DAS?
     val fromMustBeActive = clusterWatchEvents.events match {
-      case Seq(ClusterSwitchedOver(activatedId)) => false
+      case Seq(_: ClusterSwitchedOver) => false
       case _ => true
     }
     update(from, fromMustBeActive = fromMustBeActive, checkOnly = checkOnly, s"event ${events.mkString(", ")} --> $reportedClusterState") {
@@ -110,8 +110,8 @@ extends ClusterWatchApi
 
   private def mustBeStillActive(from: NodeId, state: Option[State], logLine: => String): Checked[Completed.type] =
     state match {
-      case Some(State(clusterState, lastHeartbeat))
-      if !clusterState.isNonEmptyActive(from) && (lastHeartbeat + timeout).hasTimeLeft =>
+      case Some(State(clusterState: HasNodes, lastHeartbeat))
+      if !clusterState.isNonEmptyActive(from) && (lastHeartbeat + clusterState.timing.heartbeatValidDuration).hasTimeLeft =>
         val problem = ClusterWatchInactiveNodeProblem(from, clusterState, lastHeartbeat.elapsed, logLine)
         val msg = s"Node '$from': $problem"
         logger.error(msg)

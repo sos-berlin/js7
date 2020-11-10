@@ -12,7 +12,7 @@ import js7.base.web.Uri
 import js7.common.akkahttp.https.HttpsConfig
 import js7.common.http.AkkaHttpClient
 import js7.common.scalautil.Logger
-import js7.core.cluster.ClusterWatch.{ClusterWatchInactiveNodeProblem, isClusterWatchProblem}
+import js7.core.cluster.ClusterWatch.isClusterWatchProblem
 import js7.core.cluster.HttpClusterWatch._
 import js7.data.cluster.ClusterState
 import js7.data.node.NodeId
@@ -40,8 +40,7 @@ extends ClusterWatchApi with AkkaHttpClient with HttpSessionApi
 
   private val clusterUri = Uri(s"$baseUri/agent/api/clusterWatch")
 
-  def applyEvents(clusterWatchEvents: ClusterWatchEvents)
-  : Task[Checked[Completed]] =
+  def applyEvents(clusterWatchEvents: ClusterWatchEvents): Task[Checked[Completed]] =
     liftProblem(
       retryUntilReachable()(
         post[ClusterWatchMessage, JsonObject](clusterUri, clusterWatchEvents)
