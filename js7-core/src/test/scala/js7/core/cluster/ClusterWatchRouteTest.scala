@@ -21,7 +21,7 @@ import org.scalatest.freespec.AnyFreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class ControllersClusterRouteTest extends AnyFreeSpec with ScalatestRouteTest with ControllersClusterRoute
+final class ClusterWatchRouteTest extends AnyFreeSpec with ScalatestRouteTest with ClusterWatchRoute
 {
   protected type Session = SimpleSession
 
@@ -32,7 +32,7 @@ final class ControllersClusterRouteTest extends AnyFreeSpec with ScalatestRouteT
   private val controllerId = ControllerId("CONTROLLER")
 
   private val route = pathSegment("cluster") {
-    controllerClusterRoute(controllerId)
+    clusterWatchRoute(controllerId)
   }
 
   "Get for unknown ControllerId" in {

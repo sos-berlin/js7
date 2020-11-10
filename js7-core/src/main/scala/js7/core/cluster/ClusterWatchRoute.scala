@@ -12,14 +12,14 @@ import js7.data.controller.ControllerId
 import monix.eval.Task
 import monix.execution.Scheduler
 
-trait ControllersClusterRoute
+trait ClusterWatchRoute
 {
   protected def clusterWatchRegister: ClusterWatchRegister
   protected def scheduler: Scheduler
 
   private implicit def implicitScheduler = scheduler
 
-  protected final def controllerClusterRoute(controllerId: ControllerId): Route =
+  protected final def clusterWatchRoute(controllerId: ControllerId): Route =
     pathEnd {
       post {
         entity(as[ClusterWatchMessage]) {

@@ -38,7 +38,7 @@ extends ClusterWatchApi with AkkaHttpClient with HttpSessionApi
 
   protected def trustStoreRefs = httpsConfig.trustStoreRefs
 
-  private val clusterUri = Uri(s"$baseUri/agent/api/controller/cluster")
+  private val clusterUri = Uri(s"$baseUri/agent/api/clusterWatch")
 
   def applyEvents(clusterWatchEvents: ClusterWatchEvents)
   : Task[Checked[Completed]] =

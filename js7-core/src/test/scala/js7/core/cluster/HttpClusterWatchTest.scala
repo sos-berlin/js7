@@ -30,17 +30,17 @@ final class HttpClusterWatchTest extends AnyFreeSpec with BeforeAndAfterAll with
   override protected def config = ConfigFactory.empty
   private val controllerId = ControllerId("CONTROLLER")
 
-  private val controllersClusterRoute = new ControllersClusterRoute {
+  private val clusterWatchRoute = new ClusterWatchRoute {
     protected def scheduler = Scheduler.global
     protected val clusterWatchRegister = new ClusterWatchRegister(scheduler)
-    def route = controllerClusterRoute(controllerId)
+    def route = clusterWatchRoute(controllerId)
   }.route
 
   private lazy val server = AkkaWebServer.forTest(
     decodeRequest {
       testSessionRoute ~
-      pathSegments("agent/api/controller/cluster") {
-        controllersClusterRoute
+      pathSegments("agent/api/clusterWatch") {
+        clusterWatchRoute
       }
     }
   )(actorSystem).closeWithCloser
