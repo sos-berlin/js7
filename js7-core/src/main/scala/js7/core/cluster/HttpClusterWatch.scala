@@ -5,6 +5,7 @@ import io.circe._
 import js7.base.auth.UserAndPassword
 import js7.base.generic.Completed
 import js7.base.problem.Checked
+import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.HttpClient.HttpException
@@ -45,15 +46,16 @@ extends ClusterWatchApi with AkkaHttpClient with HttpSessionApi
       retryUntilReachable()(
         post[ClusterWatchMessage, JsonObject](clusterUri, clusterWatchEvents)
       ) .onErrorRestartLoop(()) { (throwable, _, retry) =>
-          logger.warn(throwable.toStringWithCauses)
           throwable match {
             case throwable: HttpException if throwable.problem exists isClusterWatchProblem =>
               Task.raiseError(throwable)
-            case _ =>
-              val delays = loginDelays()
-              Task.sleep(delays.next()) >>
-                loginUntilReachable(delays, onlyIfNotLoggedIn = true) >>
+            case HttpException.HasProblem(InvalidSessionTokenProblem) =>
+              loginUntilReachable(Iterator.continually(ErrorDelay))
+                .delayExecution(ErrorDelay) >>
                 retry(())
+            case _ =>
+              logger.warn(throwable.toStringWithCauses)
+              retry(()).delayExecution(ErrorDelay)
           }
         }
         .map((_: JsonObject) => Completed))
@@ -67,6 +69,10 @@ extends ClusterWatchApi with AkkaHttpClient with HttpSessionApi
           throwable match {
             case throwable: HttpException if throwable.problem exists isClusterWatchProblem =>
               Task.raiseError(throwable)
+            case HttpException.HasProblem(InvalidSessionTokenProblem) =>
+              loginUntilReachable(Iterator.continually(ErrorDelay))
+                .delayExecution(ErrorDelay) >>
+                retry(())
             case _ =>
               logger.warn(throwable.toStringWithCauses)
               retry(()).delayExecution(ErrorDelay)
