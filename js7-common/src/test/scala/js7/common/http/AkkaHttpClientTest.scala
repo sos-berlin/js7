@@ -75,13 +75,13 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with H
       }
     }
 
-    "Operations after close are rejected" in {
-      httpClient.close()
-      val uri = Uri("https://example.com:9999/PREFIX")
-      implicit val s = Task.pure(none[SessionToken])
-      assert(Await.result(httpClient.get_[HttpResponse](uri).runToFuture.failed, 99.seconds).getMessage ==
-        "AkkaHttpClient has been closed: GET https://example.com:9999/PREFIX")
-    }
+    //"Operations after close are rejected" in {
+    //  httpClient.close()
+    //  val uri = Uri("https://example.com:9999/PREFIX")
+    //  implicit val s = Task.pure(none[SessionToken])
+    //  assert(Await.result(httpClient.get_[HttpResponse](uri).runToFuture.failed, 99.seconds).getMessage ==
+    //    "AkkaHttpClient has been closed: GET https://example.com:9999/PREFIX")
+    //}
   }
 
   "With a server" - {

@@ -226,8 +226,9 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
             Task.deferFutureAction { implicit s =>
               logger.trace(s"$toString: #$number ${requestToString(req, logData)}")
               since = now
-              if (closed) throw new IllegalStateException(s"AkkaHttpClient has been closed: ${requestToString(request, logData)}")
-                with NoStackTrace
+              if (closed) {
+                logger.debug(s"(WARN) AkkaHttpClient has actually been closed: ${requestToString(request, logData)}")
+              }
               val httpsContext = if (request.uri.scheme == "https") httpsConnectionContext else http.defaultClientHttpsContext
               responseFuture = http.singleRequest(req, httpsContext)
               responseFuture.recover {
