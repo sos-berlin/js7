@@ -55,7 +55,7 @@ final class OrderEventTest extends AnyFreeSpec
         HistoricOutcome(Position(123), Outcome.succeeded) :: Nil,
         AgentName("AGENT"),
         Some(OrderId("PARENT")),
-        Some(OrderMark.Suspending),
+        Some(OrderMark.Suspending()),
         isSuspended = true,
         removeWhenTerminated = true),
       json"""{
@@ -84,7 +84,10 @@ final class OrderEventTest extends AnyFreeSpec
         ],
         "agentName":"AGENT",
         "parent": "PARENT",
-        "mark": { "TYPE": "Suspending" },
+        "mark": {
+          "TYPE": "Suspending",
+          "mode": {}
+        },
         "isSuspended":  true,
         "removeWhenTerminated":  true
       }""")
@@ -358,9 +361,10 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderSuspendMarked" in {
-    check(OrderSuspendMarked, json"""
+    check(OrderSuspendMarked(), json"""
       {
-        "TYPE": "OrderSuspendMarked"
+        "TYPE": "OrderSuspendMarked",
+        "mode": {}
       }""")
   }
 

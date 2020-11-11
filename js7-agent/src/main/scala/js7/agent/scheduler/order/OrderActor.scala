@@ -203,7 +203,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
               context.stop(self)
             } else
               event match {
-                case OrderCancelMarked(CancelMode.FreshOrStarted(Some(CancelMode.Kill(immediately, maybeWorkflowPos))))
+                case OrderKillMarked(Some(CancelMode.Kill(immediately, maybeWorkflowPos)))
                   if maybeWorkflowPos.forall(_ == order.workflowPosition) && jobActor != noSender =>
                   jobActor ! JobActor.Input.KillProcess(order.id, Some(if (immediately) SIGKILL else SIGTERM))
                 case _ =>

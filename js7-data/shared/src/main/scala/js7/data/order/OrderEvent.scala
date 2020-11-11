@@ -8,7 +8,7 @@ import js7.base.problem.Problem
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentName
-import js7.data.command.CancelMode
+import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.event.Event
 import js7.data.order.Order._
 import js7.data.system.{Stderr, Stdout, StdoutOrStderr}
@@ -176,17 +176,31 @@ object OrderEvent {
   type OrderRemoved = OrderRemoved.type
   case object OrderRemoved extends OrderActorEvent with OrderTerminated
 
+  sealed trait OrderKillMarked extends OrderActorEvent {
+    def kill: Option[CancelMode.Kill]
+  }
+  object OrderKillMarked {
+    def unapply(event: OrderKillMarked) = Some(event.kill)
+  }
+
   /** A OrderCancelMarked on Agent is different from same Event on Controller.
     * Controller will ignore the Agent's OrderCancelMarked.
     * Controller should have emitted the event independendly.
     **/
-  final case class OrderCancelMarked(mode: CancelMode) extends OrderActorEvent
+  final case class OrderCancelMarked(mode: CancelMode) extends OrderKillMarked {
+    def kill = mode match {
+      case CancelMode.FreshOrStarted(kill) => kill
+      case _ => None
+    }
+  }
 
   type OrderCancelled = OrderCancelled.type
   case object OrderCancelled extends OrderActorEvent with OrderTerminated
 
-  type OrderSuspendMarked = OrderSuspendMarked.type
-  final case object OrderSuspendMarked extends OrderActorEvent
+  final case class OrderSuspendMarked(mode: SuspendMode = SuspendMode.default)
+  extends OrderKillMarked {
+    def kill = mode.kill
+  }
 
   type OrderSuspended = OrderSuspended.type
   case object OrderSuspended extends OrderActorEvent
@@ -215,7 +229,7 @@ object OrderEvent {
     Subtype(deriveCodec[OrderJoined]),
     Subtype(deriveCodec[OrderOffered]),
     Subtype(deriveCodec[OrderAwaiting]),
-    Subtype(OrderSuspendMarked),
+    Subtype(deriveCodec[OrderSuspendMarked]),
     Subtype(OrderSuspended),
     Subtype(deriveCodec[OrderResumeMarked]),
     Subtype(deriveCodec[OrderResumed]),

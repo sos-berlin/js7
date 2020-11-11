@@ -6,7 +6,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.Problems.{CancelChildOrderProblem, CancelStartedOrderProblem}
-import js7.data.command.CancelMode
+import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.context.OrderContext
 import js7.data.execution.workflow.instructions.{ForkExecutor, InstructionExecutor}
@@ -137,7 +137,7 @@ final class OrderEventSource(
       order.mark.flatMap(mark =>
         mark match {
           case OrderMark.Cancelling(mode) => tryCancel(order, mode)
-          case OrderMark.Suspending => trySuspend(order)
+          case OrderMark.Suspending(_) => trySuspend(order)
           case OrderMark.Resuming(position) => tryResume(order, position)
           case _ => None
         })
@@ -148,8 +148,8 @@ final class OrderEventSource(
       case OrderMark.Cancelling(mode) =>
         cancel(orderId, mode)
 
-      case OrderMark.Suspending =>
-        suspend(orderId)
+      case OrderMark.Suspending(mode) =>
+        suspend(orderId, mode)
 
       case OrderMark.Resuming(position) =>
         resume(orderId, position)
@@ -186,7 +186,7 @@ final class OrderEventSource(
       !instruction(order.workflowPosition).isInstanceOf[End]
 
   /** Returns a `Right(Some(OrderSuspended | OrderSuspendMarked))` iff order is not already marked as suspending. */
-  def suspend(orderId: OrderId): Checked[Option[OrderActorEvent]] =
+  def suspend(orderId: OrderId, mode: SuspendMode): Checked[Option[OrderActorEvent]] =
     withOrder(orderId)(order =>
       if (order.isSuspended)
         Right(trySuspend(order))
@@ -194,10 +194,10 @@ final class OrderEventSource(
         order.mark match {
           case Some(_: OrderMark.Cancelling) =>
             Left(CannotSuspendOrderProblem)
-          case Some(OrderMark.Suspending)  =>  // Already marked
+          case Some(_: OrderMark.Suspending)  =>  // Already marked
             Right(None)
           case None | Some(_: OrderMark.Resuming) =>
-            Right((!order.isSuspended || order.isResuming) ? trySuspend(order).getOrElse(OrderSuspendMarked))
+            Right((!order.isSuspended || order.isResuming) ? trySuspend(order).getOrElse(OrderSuspendMarked(mode)))
         })
 
   private def trySuspend(order: Order[Order.State]): Option[OrderActorEvent] =
@@ -227,11 +227,11 @@ final class OrderEventSource(
         case Some(OrderMark.Resuming(_)) =>
            Left(CannotResumeOrderProblem)
 
-        case Some(OrderMark.Suspending) if position.isDefined =>
+        case Some(OrderMark.Suspending(_)) if position.isDefined =>
            Left(CannotResumeOrderProblem)
 
-        case None | Some(OrderMark.Suspending) =>
-          if (!order.isSuspended && !order.mark.contains(OrderMark.Suspending))
+        case None | Some(OrderMark.Suspending(_)) =>
+          if (!order.isSuspended && !order.mark.exists(_.isInstanceOf[OrderMark.Suspending]))
             Left(CannotResumeOrderProblem)
           else
             (position match {

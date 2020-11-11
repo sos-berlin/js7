@@ -99,9 +99,9 @@ final class CommandQueueTest extends AnyFreeSpec
       protected def asyncOnBatchSucceeded(queuedInputResponses: Seq[QueuedInputResponse]) = ()
       protected def asyncOnBatchFailed(inputs: Vector[Queueable], problem: Problem) = ()
     }
-    var ok = queue.enqueue(Input.MarkOrder(OrderId("ORDER"), OrderMark.Suspending))
+    var ok = queue.enqueue(Input.MarkOrder(OrderId("ORDER"), OrderMark.Suspending()))
     assert(ok)
-    ok = queue.enqueue(Input.MarkOrder(OrderId("ORDER"), OrderMark.Suspending))
+    ok = queue.enqueue(Input.MarkOrder(OrderId("ORDER"), OrderMark.Suspending()))
     assert(!ok)
     ok = queue.enqueue(Input.MarkOrder(OrderId("ORDER"), OrderMark.Resuming()))
     assert(ok)

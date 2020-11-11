@@ -1,18 +1,20 @@
 package js7.tests.order
 
 import js7.base.problem.Checked.Ops
+import js7.base.process.ProcessSignal.SIGTERM
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.common.configutils.Configs.HoconStringInterpolator
 import js7.common.scalautil.MonixUtils.syntax._
+import js7.common.system.OperatingSystem.isWindows
 import js7.controller.data.ControllerCommand.{Batch, CancelOrders, Response, ResumeOrders, SuspendOrders}
 import js7.controller.data.events.AgentRefStateEvent.AgentReady
 import js7.data.Problems.UnknownOrderProblem
 import js7.data.agent.AgentName
-import js7.data.command.CancelMode
+import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.item.VersionId
 import js7.data.job.{ExecutablePath, ReturnCode}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderResumeMarked, OrderResumed, OrderRetrying, OrderStarted, OrderStdWritten, OrderStdoutWritten, OrderSuspendMarked, OrderSuspended}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingCancelled, OrderProcessingStarted, OrderResumeMarked, OrderResumed, OrderRetrying, OrderStarted, OrderStdWritten, OrderStdoutWritten, OrderSuspendMarked, OrderSuspended}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem}
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -53,7 +55,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderAdded(singleJobWorkflow.id, order.scheduledFor),
       OrderAttachable(agentName),
       OrderAttached(agentName),
-      OrderSuspendMarked,
+      OrderSuspendMarked(),
       OrderDetachable,
       OrderDetached,
       OrderSuspended))
@@ -92,7 +94,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderAttached(agentName),
       OrderStarted,
       OrderProcessingStarted,
-      OrderSuspendMarked,
+      OrderSuspendMarked(),
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(1)),
       OrderDetachable,
@@ -105,6 +107,44 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
 
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id, after = lastEventId) == Seq(
       OrderResumed(None),
+      OrderFinished))
+  }
+
+  "Suspend with kill" in {
+    val order = FreshOrder(OrderId("🟥"), singleJobWorkflow.path)
+    controller.addOrderBlocking(order)
+    controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
+
+    val suspendOrders = SuspendOrders(Set(order.id), SuspendMode(Some(CancelMode.Kill())))
+    controller.executeCommandAsSystemUser(suspendOrders).await(99.s).orThrow
+    controller.eventWatch.await[OrderSuspended](_.key == order.id)
+    assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
+      OrderAdded(singleJobWorkflow.id, order.scheduledFor),
+      OrderAttachable(agentName),
+      OrderAttached(agentName),
+      OrderStarted,
+      OrderProcessingStarted,
+      OrderSuspendMarked(SuspendMode(Some(CancelMode.Kill()))),
+      OrderProcessed(Outcome.Cancelled(if (isWindows) Outcome.succeeded else Outcome.Failed(ReturnCode(SIGTERM)))),
+      OrderProcessingCancelled,
+      OrderDetachable,
+      OrderDetached,
+      OrderSuspended))
+
+    val lastEventId = controller.eventWatch.lastAddedEventId
+    controller.executeCommandAsSystemUser(ResumeOrders(Set(order.id))).await(99.s).orThrow
+    controller.eventWatch.await[OrderFinished](_.key == order.id)
+
+    assert(controller.eventWatch.keyedEvents[OrderEvent](order.id, after = lastEventId) == Seq(
+      OrderResumed(None),
+      OrderAttachable(agentName),
+      OrderAttached(agentName),
+      OrderProcessingStarted,
+      OrderStdoutWritten("TEST ☘\n"),
+      OrderProcessed(Outcome.succeeded),
+      OrderMoved(Position(1)),
+      OrderDetachable,
+      OrderDetached,
       OrderFinished))
   }
 
@@ -122,7 +162,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
         OrderAttached(agentName),
         OrderStarted,
         OrderProcessingStarted,
-        OrderSuspendMarked,
+        OrderSuspendMarked(),
         OrderProcessed(Outcome.succeeded),
         OrderMoved(Position(1)),
         OrderDetachable,
@@ -176,7 +216,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
         OrderId("FORK/🥕") <-: OrderAttachable(agentName),
         OrderId("FORK/🥕") <-: OrderAttached(agentName),
         OrderId("FORK/🥕") <-: OrderProcessingStarted,
-        OrderId("FORK") <-: OrderSuspendMarked,
+        OrderId("FORK") <-: OrderSuspendMarked(),
         OrderId("FORK/🥕") <-: OrderProcessed(Outcome.succeeded),
         OrderId("FORK/🥕") <-: OrderMoved(Position(0) / "fork+🥕" % 1),
         OrderId("FORK/🥕") <-: OrderProcessingStarted,
@@ -219,7 +259,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderAttached(agentName),
       OrderStarted,
       OrderProcessingStarted,
-      OrderSuspendMarked,
+      OrderSuspendMarked(),
       OrderResumeMarked(None),
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(1)),
@@ -255,7 +295,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderAttached(agentName),
       OrderStarted,
       OrderProcessingStarted,
-      OrderSuspendMarked,
+      OrderSuspendMarked(),
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(1)),
       OrderDetachable,
@@ -280,7 +320,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderAttached(agentName),
       OrderStarted,
       OrderProcessingStarted,
-      OrderSuspendMarked,
+      OrderSuspendMarked(),
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(1)),
       OrderDetachable,

@@ -16,7 +16,7 @@ import js7.data.order.OrderId
 import js7.proxy.ControllerApi
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.ProxyEvent
-import js7.proxy.javaapi.data.command.JCancelMode
+import js7.proxy.javaapi.data.command.{JCancelMode, JSuspendMode}
 import js7.proxy.javaapi.data.common.JavaUtils.Void
 import js7.proxy.javaapi.data.common.ReactorConverters._
 import js7.proxy.javaapi.data.common.VavrConverters._
@@ -134,11 +134,14 @@ final class JControllerApi private[javaapi](
   def cancelOrders(orderIds: java.lang.Iterable[OrderId]): CompletableFuture[VEither[Problem, Void]] =
     cancelOrders(orderIds, JCancelMode.freshOrStarted)
 
-  def cancelOrders(orderIds: java.lang.Iterable[OrderId], cancelMode: JCancelMode): CompletableFuture[VEither[Problem, Void]] =
-    execute(CancelOrders(orderIds.asScala.toVector, cancelMode.asScala))
+  def cancelOrders(orderIds: java.lang.Iterable[OrderId], mode: JCancelMode): CompletableFuture[VEither[Problem, Void]] =
+    execute(CancelOrders(orderIds.asScala.toVector, mode.asScala))
 
   def suspendOrders(orderIds: java.lang.Iterable[OrderId]): CompletableFuture[VEither[Problem, Void]] =
     execute(SuspendOrders(orderIds.asScala.toVector))
+
+  def suspendOrders(orderIds: java.lang.Iterable[OrderId], mode: JSuspendMode): CompletableFuture[VEither[Problem, Void]] =
+    execute(SuspendOrders(orderIds.asScala.toVector, mode.asScala))
 
   def resumeOrders(orderId: java.lang.Iterable[OrderId]): CompletableFuture[VEither[Problem, Void]] =
     resumeOrders(orderId, Optional.empty)

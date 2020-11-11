@@ -10,7 +10,7 @@ import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentName
-import js7.data.command.CancelMode
+import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.order.Order._
 import js7.data.order.OrderEvent._
 import js7.data.workflow.WorkflowId
@@ -217,15 +217,16 @@ final case class Order[+S <: Order.State](
               state = Cancelled,
               mark = None))
 
-        case OrderSuspendMarked =>
+        case OrderSuspendMarked(kill) =>
           check(isMarkable,
-            copy(mark = Some(OrderMark.Suspending)))
+            copy(mark = Some(OrderMark.Suspending(kill))))
 
         case OrderSuspended =>
           check(isSuspendible && (isDetached || isSuspended/*already Suspended, to clean Resuming mark*/),
             copy(
               isSuspended = true,
-              mark = None))
+              mark = None,
+              state = if (isSuspendingWithKill && isState[ProcessingCancelled]) Ready else state))
 
         case OrderResumeMarked(position) =>
           if (isMarkable)
@@ -355,11 +356,16 @@ final case class Order[+S <: Order.State](
   def isSuspendingOrSuspended = isSuspending || isSuspended
 
   def isSuspendible =
-    (isState[Order.IsFreshOrReady] /*|| isState[DelayedAfterError]*/) &&
+    (isState[Order.IsFreshOrReady] /*|| isState[DelayedAfterError]*/ || isState[ProcessingCancelled] && isSuspendingWithKill) &&
     (isDetached || isAttached)
 
   def isSuspending =
-    mark contains OrderMark.Suspending
+    mark.exists(_.isInstanceOf[OrderMark.Suspending])
+
+  private[order] def isSuspendingWithKill = mark match {
+    case Some(OrderMark.Suspending(SuspendMode(Some(_: CancelMode.Kill)))) => true
+    case _ => false
+  }
 
   def isResuming =
     mark.exists(_.isInstanceOf[OrderMark.Resuming])

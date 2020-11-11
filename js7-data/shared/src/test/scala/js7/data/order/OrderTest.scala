@@ -9,7 +9,7 @@ import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentName
-import js7.data.command.CancelMode
+import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.job.ReturnCode
 import js7.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Cancelled, DelayedAfterError, Detaching, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, IsFreshOrReady, Offering, Processed, Processing, ProcessingCancelled, Ready, State}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingCancelled, OrderProcessingStarted, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderResumed, OrderRetrying, OrderStarted, OrderSuspendMarked, OrderSuspended}
@@ -264,7 +264,7 @@ final class OrderTest extends AnyFreeSpec
 
       OrderCancelMarked(CancelMode.FreshOnly),
       OrderCancelled,
-      OrderSuspendMarked,
+      OrderSuspendMarked(),
       OrderSuspended,
       OrderResumeMarked(),
       OrderResumed(),
@@ -287,11 +287,16 @@ final class OrderTest extends AnyFreeSpec
 
     val NoMark     = none[OrderMark]
     val Cancelling = OrderMark.Cancelling(CancelMode.FreshOrStarted()).some
-    val Suspending = OrderMark.Suspending.some
+    val Suspending = OrderMark.Suspending().some
+    val SuspendingWithKill = OrderMark.Suspending(SuspendMode(Some(CancelMode.Kill()))).some
     val Resuming   = OrderMark.Resuming().some
 
     case object IsSuspended {
       def unapply(order: Order[Order.State]) = Some(order.isSuspended)
+    }
+
+    case object IsSuspendingWithKill {
+      def unapply(order: Order[Order.State]) = Some(order.isSuspendingWithKill)
     }
 
     "Fresh" - {
@@ -374,8 +379,10 @@ final class OrderTest extends AnyFreeSpec
         removeMarkable[ProcessingCancelled] orElse
         markable[ProcessingCancelled] orElse
         detachingAllowed[ProcessingCancelled] orElse {
-          case (OrderCancelled, _, IsDetached) => _.isInstanceOf[Cancelled]
-          case (_: OrderBroken, _, _         ) => _.isInstanceOf[Broken]
+          case (OrderCancelled, _                         , IsDetached) => _.isInstanceOf[Cancelled]
+          case (OrderSuspended, IsSuspendingWithKill(true), IsDetached) => _.isInstanceOf[Ready]
+          case (OrderSuspended, order, IsAttached) if order.isSuspendingWithKill && order.isSuspended => _.isInstanceOf[Ready]
+          case (_: OrderBroken, _                         , _         ) => _.isInstanceOf[Broken]
         })
     }
 
@@ -533,7 +540,7 @@ final class OrderTest extends AnyFreeSpec
     }
 
     def markable[S <: Order.State: ClassTag]: ToPredicate = {
-      case (_: OrderCancelMarked | OrderSuspendMarked | _: OrderResumeMarked, _, _) =>
+      case (_: OrderCancelMarked | _: OrderSuspendMarked | _: OrderResumeMarked, _, _) =>
         implicitClass[S] isAssignableFrom _.getClass
     }
 
@@ -542,12 +549,12 @@ final class OrderTest extends AnyFreeSpec
     }
 
     def suspendMarkedAllowed[S <: Order.State: ClassTag]: ToPredicate = {
-      case (OrderSuspendMarked  , IsSuspended(false), _) => implicitClass[S] isAssignableFrom _.getClass
-      case (_: OrderResumeMarked, _                 , _) => implicitClass[S] isAssignableFrom _.getClass
+      case (_: OrderSuspendMarked, IsSuspended(false), _) => implicitClass[S] isAssignableFrom _.getClass
+      case (_: OrderResumeMarked , _                 , _) => implicitClass[S] isAssignableFrom _.getClass
     }
 
     def attachingAllowed[S <: Order.State: ClassTag]: ToPredicate = {
-      case (_: OrderAttachable, _ , IsDetached) => implicitClass[S] isAssignableFrom _.getClass
+      case (_: OrderAttachable, _, IsDetached ) => implicitClass[S] isAssignableFrom _.getClass
       case (_: OrderAttached  , _, IsAttaching) => implicitClass[S] isAssignableFrom _.getClass
     }
 
@@ -559,28 +566,22 @@ final class OrderTest extends AnyFreeSpec
     /** Checks each event in `allEvents`. */
     def checkAllEvents(templateOrder: Order[State], toPredicate: ToPredicate)(implicit pos: source.Position): Unit =
       for (event <- allEvents) s"$event" - {
-        for (m <- Seq[Option[OrderMark]](NoMark, Cancelling, Suspending, Resuming)) s"$m" in {
+        for (m <- Seq[Option[OrderMark]](NoMark, Cancelling, Suspending, SuspendingWithKill, Resuming)) s"$m" in {
           for (isSuspended <- Seq(false, true)) {
             for (a <- Seq(IsDetached, IsAttaching, IsAttached, IsDetaching)) /*SLOW (too many tests): s"${a getOrElse "Controller"}" -*/ {
-              val aString = a match {
-                case None => "detached"
-                case Some(o) => o.getClass.simpleScalaName
-              }
-              val mString = a match {
-                case None => "no mark"
-                case Some(o) => o.getClass.simpleScalaName
-              }
+              val mString = m.fold("no mark")(_.getClass.simpleScalaName)
+              val aString = a.fold("detached")(_.getClass.simpleScalaName)
               val order = templateOrder.copy(attachedState = a, mark = m, isSuspended = isSuspended)
               val updated = order.update(event)
               val maybeState = updated.map(_.state)
               val maybePredicate = toPredicate.lift((event, order, a))
               (maybeState, maybePredicate) match {
                 case (Right(state), Some(predicate)) =>
-                  assert(predicate(state), s"- for  ${templateOrder.state} ($mString, isSuspended=$isSuspended, $aString) -> $event -> $state")
+                  assert(predicate(state), s"- for  ${templateOrder.state} ($mString, isSuspended=$isSuspended, $aString) -> $event -> $state\n  $order")
                 case (Right(state), None) =>
-                  fail(s"Missing test case for ${templateOrder.state} ($mString, isSuspended=$isSuspended, $aString) -> $event -> $state")
+                  fail(s"Missing test case for ${templateOrder.state} ($mString, isSuspended=$isSuspended, $aString) -> $event -> $state\n  $order")
                 case (Left(problem), Some(_)) =>
-                  fail(s"Non-matching test case for ${templateOrder.state} ($mString, isSuspended=$isSuspended, $aString) -> $event -> ?  $problem")
+                  fail(s"Non-matching test case for ${templateOrder.state} ($mString, isSuspended=$isSuspended, $aString) -> $event -> ?  $problem\n  $order")
                 case (Left(_), None) =>
               }
             }

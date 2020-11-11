@@ -437,7 +437,7 @@ with MainJournalingActor[ControllerState, Event]
           case Stamped(_, timestamp, keyedEvent) =>
             // TODO Event vor dem Speichern mit Order.applyEvent ausprobieren! Bei Fehler ignorieren?
             keyedEvent match {
-              case KeyedEvent(_, _: OrderCancelMarked | OrderSuspendMarked | _: OrderResumeMarked | OrderDetached) =>
+              case KeyedEvent(_, _: OrderCancelMarked | _: OrderSuspendMarked | _: OrderResumeMarked | OrderDetached) =>
                 // We (the Controller) have emitted the same event
                 None
 
@@ -570,8 +570,8 @@ with MainJournalingActor[ControllerState, Event]
       case ControllerCommand.CancelOrders(orderIds, mode) =>
         executeOrderMarkCommands(orderIds.toVector)(orderEventSource(_controllerState).cancel(_, mode))
 
-      case ControllerCommand.SuspendOrders(orderIds) =>
-        executeOrderMarkCommands(orderIds.toVector)(orderEventSource(_controllerState).suspend(_))
+      case ControllerCommand.SuspendOrders(orderIds, mode) =>
+        executeOrderMarkCommands(orderIds.toVector)(orderEventSource(_controllerState).suspend(_, mode))
 
       case ControllerCommand.ResumeOrders(orderIds, position) =>
         executeOrderMarkCommands(orderIds.toVector)(orderEventSource(_controllerState).resume(_, position))

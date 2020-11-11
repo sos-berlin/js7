@@ -7,7 +7,7 @@ import js7.base.web.Uri
 import js7.controller.data.ControllerCommand._
 import js7.data.agent.{AgentName, AgentRef}
 import js7.data.cluster.{ClusterCommand, ClusterSetting}
-import js7.data.command.CancelMode
+import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.item.VersionId
 import js7.data.node.NodeId
 import js7.data.order.{FreshOrder, OrderId}
@@ -314,7 +314,19 @@ final class ControllerCommandTest extends AnyFreeSpec
     testJson[ControllerCommand](SuspendOrders(Seq(OrderId("A"), OrderId("B"))), json"""
       {
         "TYPE": "SuspendOrders",
-        "orderIds": [ "A", "B" ]
+        "orderIds": [ "A", "B" ],
+        "mode": {}
+      }""")
+
+    testJson[ControllerCommand](SuspendOrders(Seq(OrderId("A")), SuspendMode(Some(CancelMode.Kill()))), json"""
+      {
+        "TYPE": "SuspendOrders",
+        "orderIds": [ "A" ],
+        "mode": {
+          "kill": {
+            "immediately": false
+          }
+        }
       }""")
   }
 

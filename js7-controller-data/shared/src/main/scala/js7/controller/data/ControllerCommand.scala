@@ -14,7 +14,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
 import js7.data.agent.AgentRef
 import js7.data.cluster.{ClusterCommand, ClusterSetting}
-import js7.data.command.{CancelMode, CommonCommand}
+import js7.data.command.{CancelMode, CommonCommand, SuspendMode}
 import js7.data.controller.ControllerItems.itemPathJsonDecoder
 import js7.data.event.EventId
 import js7.data.item.{ItemPath, VersionId}
@@ -168,7 +168,8 @@ object ControllerCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
-  final case class SuspendOrders(orderIds: immutable.Iterable[OrderId]) extends ControllerCommand {
+  final case class SuspendOrders(orderIds: immutable.Iterable[OrderId], mode: SuspendMode = SuspendMode.default)
+  extends ControllerCommand {
     type Response = Response.Accepted
   }
 
