@@ -32,7 +32,7 @@ final case class Order[+S <: Order.State](
   isSuspended: Boolean = false,
   removeWhenTerminated: Boolean = false)
 {
-  def newForkedOrders(event: OrderForked): Seq[Order[Order.Ready]] =
+  def newForkedOrders(event: OrderForked): Seq[Order[Ready]] =
     for (child <- event.children) yield
       Order(
         child.orderId,
@@ -336,12 +336,12 @@ final case class Order[+S <: Order.State](
 
   def isCancelable =
     parent.isEmpty &&
-      (isState[Order.IsFreshOrReady] ||
-       isState[Order.ProcessingKilled] ||
-       isState[Order.FailedWhileFresh] ||
-       isState[Order.DelayedAfterError] ||
-       isState[Order.Failed] ||
-       isState[Order.Broken]) &&
+      (isState[IsFreshOrReady] ||
+       isState[ProcessingKilled] ||
+       isState[FailedWhileFresh] ||
+       isState[DelayedAfterError] ||
+       isState[Failed] ||
+       isState[Broken]) &&
       (isDetached || isAttached)
 
   def isCancelling =
@@ -356,7 +356,7 @@ final case class Order[+S <: Order.State](
   def isSuspendingOrSuspended = isSuspending || isSuspended
 
   def isSuspendible =
-    (isState[Order.IsFreshOrReady] /*|| isState[DelayedAfterError]*/ || isState[ProcessingKilled] && isSuspendingWithKill) &&
+    (isState[IsFreshOrReady] /*|| isState[DelayedAfterError]*/ || isState[ProcessingKilled] && isSuspendingWithKill) &&
     (isDetached || isAttached)
 
   def isSuspending =
@@ -371,7 +371,7 @@ final case class Order[+S <: Order.State](
     mark.exists(_.isInstanceOf[OrderMark.Resuming])
 
   def isResumable =
-    ((isState[Order.IsFreshOrReady] && isSuspended /*|| isState[Order.Failed]*/) ||
+    ((isState[IsFreshOrReady] && isSuspended /*|| isState[Failed]*/) ||
       isState[Broken]) &&
       (isDetached || isAttached)
 
