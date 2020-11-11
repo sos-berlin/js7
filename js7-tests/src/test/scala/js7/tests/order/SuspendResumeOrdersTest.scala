@@ -14,7 +14,7 @@ import js7.data.agent.AgentName
 import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.item.VersionId
 import js7.data.job.{ExecutablePath, ReturnCode}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingCancelled, OrderProcessingStarted, OrderResumeMarked, OrderResumed, OrderRetrying, OrderStarted, OrderStdWritten, OrderStdoutWritten, OrderSuspendMarked, OrderSuspended}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderResumeMarked, OrderResumed, OrderRetrying, OrderStarted, OrderStdWritten, OrderStdoutWritten, OrderSuspendMarked, OrderSuspended}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem}
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -126,7 +126,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderProcessingStarted,
       OrderSuspendMarked(SuspendMode(Some(CancelMode.Kill()))),
       OrderProcessed(Outcome.Cancelled(if (isWindows) Outcome.succeeded else Outcome.Failed(ReturnCode(SIGTERM)))),
-      OrderProcessingCancelled,
+      OrderProcessingKilled,
       OrderDetachable,
       OrderDetached,
       OrderSuspended))

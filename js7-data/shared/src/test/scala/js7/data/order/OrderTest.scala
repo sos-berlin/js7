@@ -11,8 +11,8 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentName
 import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.job.ReturnCode
-import js7.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Cancelled, DelayedAfterError, Detaching, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, IsFreshOrReady, Offering, Processed, Processing, ProcessingCancelled, Ready, State}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingCancelled, OrderProcessingStarted, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderResumed, OrderRetrying, OrderStarted, OrderSuspendMarked, OrderSuspended}
+import js7.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Cancelled, DelayedAfterError, Detaching, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, IsFreshOrReady, Offering, Processed, Processing, ProcessingKilled, Ready, State}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderResumed, OrderRetrying, OrderStarted, OrderSuspendMarked, OrderSuspended}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.Fork
 import js7.data.workflow.position.BranchId.Then
@@ -248,7 +248,7 @@ final class OrderTest extends AnyFreeSpec
       //OrderStdoutWritten("stdout") is not an OrderCoreEvent
       //OrderStderrWritten("stderr") is not an OrderCoreEvent
       OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
-      OrderProcessingCancelled,
+      OrderProcessingKilled,
       OrderFailed(Outcome.Failed(ReturnCode(1))),
       OrderCatched(Outcome.Failed(ReturnCode(1)), Position(1)),
       OrderRetrying(Position(1)),
@@ -364,21 +364,21 @@ final class OrderTest extends AnyFreeSpec
         markable[Processed] orElse
         cancelMarkedAllowed[Processed] orElse
         suspendMarkedAllowed[Processed] orElse {
-          case (_: OrderMoved              , _                 , IsDetached | IsAttached) => _.isInstanceOf[Ready]
-          case (_: OrderProcessingCancelled, IsSuspended(false),              IsAttached) => _.isInstanceOf[ProcessingCancelled]
-          case (_: OrderFailed             , IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[Failed]
-          case (_: OrderFailedInFork       , IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[FailedInFork]
-          case (_: OrderCatched            , IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[Ready]
-          case (_: OrderBroken             , _                 , _                      ) => _.isInstanceOf[Broken]
+          case (_: OrderMoved           , _                 , IsDetached | IsAttached) => _.isInstanceOf[Ready]
+          case (_: OrderProcessingKilled, IsSuspended(false),              IsAttached) => _.isInstanceOf[ProcessingKilled]
+          case (_: OrderFailed          , IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[Failed]
+          case (_: OrderFailedInFork    , IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[FailedInFork]
+          case (_: OrderCatched         , IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[Ready]
+          case (_: OrderBroken          , _                 , _                      ) => _.isInstanceOf[Broken]
         })
     }
 
-    "ProcessingCancelled" - {
-      checkAllEvents(Order(orderId, workflowId, ProcessingCancelled,
+    "ProcessingKilled" - {
+      checkAllEvents(Order(orderId, workflowId, ProcessingKilled,
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(ReturnCode(0))) :: Nil),
-        removeMarkable[ProcessingCancelled] orElse
-        markable[ProcessingCancelled] orElse
-        detachingAllowed[ProcessingCancelled] orElse {
+        removeMarkable[ProcessingKilled] orElse
+        markable[ProcessingKilled] orElse
+        detachingAllowed[ProcessingKilled] orElse {
           case (OrderCancelled, _                         , IsDetached) => _.isInstanceOf[Cancelled]
           case (OrderSuspended, IsSuspendingWithKill(true), IsDetached) => _.isInstanceOf[Ready]
           case (OrderSuspended, order, IsAttached) if order.isSuspendingWithKill && order.isSuspended => _.isInstanceOf[Ready]

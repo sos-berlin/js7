@@ -97,7 +97,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
   private def ready: Receive =
     startable orElse receiveCommand
 
-  private def processingCancelled: Receive =
+  private def processingKilled: Receive =
     receiveEvent() orElse receiveCommand
 
   private def delayedAfterError: Receive =
@@ -222,7 +222,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
         case _: Order.Ready      => become("ready")(ready)
         case _: Order.Processing => sys.error("Unexpected Order.state 'Processing'")  // Not handled here
         case _: Order.Processed  => become("processed")(processed)
-        case _: Order.ProcessingCancelled  => become("processingCancelled")(processingCancelled)
+        case _: Order.ProcessingKilled  => become("processingKilled")(processingKilled)
         case _: Order.DelayedAfterError => become("delayedAfterError")(delayedAfterError)
         case _: Order.Offering   => become("offering")(offering)
         case _: Order.Forked     => become("forked")(forked)

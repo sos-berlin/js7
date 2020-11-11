@@ -12,7 +12,7 @@ import js7.data.agent.AgentName
 import js7.data.command.CancelMode
 import js7.data.item.VersionId
 import js7.data.job.{ExecutablePath, ReturnCode}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelMarked, OrderCancelled, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingCancelled, OrderProcessingStarted, OrderStarted, OrderStdWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelMarked, OrderCancelled, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderStarted, OrderStdWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fork}
@@ -144,7 +144,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
         OrderCancelMarked(mode),
         OrderProcessed(Outcome.Cancelled(Outcome.Failed(
           if (isWindows) ReturnCode(0) else ReturnCode(if (immediately) SIGKILL else SIGTERM)))),
-        OrderProcessingCancelled,
+        OrderProcessingKilled,
         OrderDetachable,
         OrderDetached,
         OrderCancelled))

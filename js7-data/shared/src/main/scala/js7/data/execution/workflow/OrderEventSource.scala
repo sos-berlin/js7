@@ -10,7 +10,7 @@ import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.context.OrderContext
 import js7.data.execution.workflow.instructions.{ForkExecutor, InstructionExecutor}
-import js7.data.order.Order.{IsTerminated, ProcessingCancelled}
+import js7.data.order.Order.{IsTerminated, ProcessingKilled}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFailed, OrderFailedCatchable, OrderFailedInFork, OrderMoved, OrderRemoved, OrderResumeMarked, OrderResumed, OrderSuspendMarked, OrderSuspended}
 import js7.data.order.{Order, OrderId, OrderMark, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem}
@@ -168,7 +168,7 @@ final class OrderEventSource(
         tryCancel(order, mode).orElse(
           (!order.isCancelling &&
             !order.isState[IsTerminated] &&
-            !order.isState[ProcessingCancelled] &&
+            !order.isState[ProcessingKilled] &&
             !order.mark.contains(OrderMark.Cancelling(mode))
           ) ? OrderCancelMarked(mode))))
 

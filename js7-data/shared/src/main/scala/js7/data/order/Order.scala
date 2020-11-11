@@ -92,9 +92,9 @@ final case class Order[+S <: Order.State](
               state = Processed,
               historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
 
-        case OrderProcessingCancelled =>
+        case OrderProcessingKilled =>
           check(isState[Processed] && !isSuspended && isAttached,
-            copy(state = ProcessingCancelled))
+            copy(state = ProcessingKilled))
 
         case OrderFailed(outcome_) =>
           check(isOrderFailedApplicable,
@@ -195,7 +195,7 @@ final case class Order[+S <: Order.State](
         case OrderDetachable =>
           attachedState match {
             case Some(Attached(agentName))
-              if isState[Fresh] || isState[Ready] || isState[Forked] || isState[ProcessingCancelled] ||
+              if isState[Fresh] || isState[Ready] || isState[Forked] || isState[ProcessingKilled] ||
                  isState[FailedWhileFresh] || isState[Failed] || isState[FailedInFork] || isState[Broken] =>
                 Right(copy(attachedState = Some(Detaching(agentName))))
             case _ =>
@@ -203,7 +203,7 @@ final case class Order[+S <: Order.State](
           }
 
         case OrderDetached =>
-          check(isDetaching && (isState[Fresh] || isState[Ready] || isState[Forked] || isState[ProcessingCancelled] ||
+          check(isDetaching && (isState[Fresh] || isState[Ready] || isState[Forked] || isState[ProcessingKilled] ||
                                 isState[FailedWhileFresh] || isState[Failed] || isState[FailedInFork] || isState[Broken]),
             copy(attachedState = None))
 
@@ -226,7 +226,7 @@ final case class Order[+S <: Order.State](
             copy(
               isSuspended = true,
               mark = None,
-              state = if (isSuspendingWithKill && isState[ProcessingCancelled]) Ready else state))
+              state = if (isSuspendingWithKill && isState[ProcessingKilled]) Ready else state))
 
         case OrderResumeMarked(position) =>
           if (isMarkable)
@@ -337,7 +337,7 @@ final case class Order[+S <: Order.State](
   def isCancelable =
     parent.isEmpty &&
       (isState[Order.IsFreshOrReady] ||
-       isState[Order.ProcessingCancelled] ||
+       isState[Order.ProcessingKilled] ||
        isState[Order.FailedWhileFresh] ||
        isState[Order.DelayedAfterError] ||
        isState[Order.Failed] ||
@@ -356,7 +356,7 @@ final case class Order[+S <: Order.State](
   def isSuspendingOrSuspended = isSuspending || isSuspended
 
   def isSuspendible =
-    (isState[Order.IsFreshOrReady] /*|| isState[DelayedAfterError]*/ || isState[ProcessingCancelled] && isSuspendingWithKill) &&
+    (isState[Order.IsFreshOrReady] /*|| isState[DelayedAfterError]*/ || isState[ProcessingKilled] && isSuspendingWithKill) &&
     (isDetached || isAttached)
 
   def isSuspending =
@@ -453,8 +453,8 @@ object Order
   type Processed = Processed.type
   case object Processed extends IsStarted
 
-  type ProcessingCancelled = ProcessingCancelled.type
-  case object ProcessingCancelled extends IsStarted
+  type ProcessingKilled = ProcessingKilled.type
+  case object ProcessingKilled extends IsStarted
 
   final case class Forked(children: Seq[Forked.Child]) extends IsStarted {
     def childOrderIds = children map (_.orderId)
@@ -491,7 +491,7 @@ object Order
     Subtype[IsFreshOrReady],
     Subtype(Processing),
     Subtype(Processed),
-    Subtype(ProcessingCancelled),
+    Subtype(ProcessingKilled),
     Subtype(deriveCodec[DelayedAfterError]),
     Subtype(FailedWhileFresh),
     Subtype(deriveCodec[Forked]),
