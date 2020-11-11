@@ -53,7 +53,7 @@ final class JClusterStateTest extends AnyFreeSpec
 
   "ActiveShutDown" in {
     val clusterState = ClusterState.ActiveShutDown(setting)
-    JClusterStateTester.testCoupledActiveShutDown(JClusterState(clusterState).asInstanceOf[JClusterState.CoupledActiveShutDown])
+    JClusterStateTester.testCoupledActiveShutDown(JClusterState(clusterState).asInstanceOf[JClusterState.ActiveShutDown])
     JClusterStateTester.testCoupledOrDecoupled(JClusterState(clusterState).asInstanceOf[JClusterState.CoupledOrDecoupled])
   }
 

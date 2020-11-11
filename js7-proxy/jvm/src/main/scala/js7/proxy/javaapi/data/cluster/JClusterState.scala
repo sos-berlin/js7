@@ -22,7 +22,7 @@ object JClusterState extends JJsonable.Companion[JClusterState]
       case o: ClusterState.NodesAppointed => NodesAppointed(o)
       case o: ClusterState.PreparedToBeCoupled => PreparedToBeCoupled(o)
       case o: ClusterState.Coupled => Coupled(o)
-      case o: ClusterState.ActiveShutDown => CoupledActiveShutDown(o)
+      case o: ClusterState.ActiveShutDown => ActiveShutDown(o)
       case o: ClusterState.PassiveLost => PassiveLost(o)
       case o: ClusterState.SwitchedOver => SwitchedOver(o)
       case o: ClusterState.FailedOver => FailedOver(o)
@@ -75,7 +75,7 @@ object JClusterState extends JJsonable.Companion[JClusterState]
   final case class Coupled(asScala: ClusterState.Coupled)
   extends CoupledOrDecoupled
 
-  final case class CoupledActiveShutDown(asScala: ClusterState.ActiveShutDown)
+  final case class ActiveShutDown(asScala: ClusterState.ActiveShutDown)
   extends Decoupled
 
   final case class PassiveLost(asScala: ClusterState.PassiveLost)

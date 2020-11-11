@@ -47,7 +47,7 @@ public class JClusterStateTester
         assertThat(clusterState.idToUri(), equalTo(idToUri));
     }
 
-    static void testCoupledActiveShutDown(JClusterState.CoupledActiveShutDown clusterState) {
+    static void testCoupledActiveShutDown(JClusterState.ActiveShutDown clusterState) {
         assertThat(clusterState.idToUri(), equalTo(idToUri));
     }
 
