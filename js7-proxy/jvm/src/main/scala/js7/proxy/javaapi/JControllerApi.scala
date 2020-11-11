@@ -7,15 +7,19 @@ import java.util.{Optional, OptionalLong}
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
+import js7.base.web.Uri
 import js7.controller.client.HttpControllerApi
 import js7.controller.data.ControllerCommand
 import js7.controller.data.ControllerCommand.{AddOrdersResponse, CancelOrders, ReleaseEvents, RemoveOrdersWhenTerminated, ResumeOrders, SuspendOrders, TakeSnapshot}
+import js7.data.cluster.ClusterSetting
 import js7.data.event.{Event, EventId, JournalInfo}
 import js7.data.item.VersionId
+import js7.data.node.NodeId
 import js7.data.order.OrderId
 import js7.proxy.ControllerApi
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.ProxyEvent
+import js7.proxy.javaapi.data.agent.JAgentRef
 import js7.proxy.javaapi.data.command.{JCancelMode, JSuspendMode}
 import js7.proxy.javaapi.data.common.JavaUtils.Void
 import js7.proxy.javaapi.data.common.ReactorConverters._
@@ -64,6 +68,19 @@ final class JControllerApi private[javaapi](
   : CompletableFuture[JControllerProxy] =
     asScala.startProxy(proxyEventBus.asScala, controllerEventBus.asScala)
       .map(new JControllerProxy(_, this, controllerEventBus))
+      .runToFuture
+      .asJava
+
+  def clusterAppointNodes(idToUri: java.util.Map[NodeId, Uri], activeId: NodeId, clusterWatches: java.util.List[ClusterSetting.Watch])
+  : CompletableFuture[VEither[Problem, Void]] =
+    asScala.clusterAppointNodes(idToUri.asScala.toMap, activeId, clusterWatches.asScala.toVector)
+      .map(_.toVoidVavr)
+      .runToFuture
+      .asJava
+
+  def updateAgentRefs(agentRefs: java.util.List[JAgentRef]): CompletableFuture[VEither[Problem, Void]] =
+    asScala.updateAgentRefs(agentRefs.asScala.map(_.asScala).toVector)
+      .map(_.toVoidVavr)
       .runToFuture
       .asJava
 

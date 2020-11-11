@@ -1,20 +1,22 @@
 package js7.proxy
 
 import cats.effect.Resource
-import cats.instances.vector._
-import cats.syntax.traverse._
 import io.circe.{Json, JsonObject}
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.Completed
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
-import js7.base.web.HttpClient
+import js7.base.web.{HttpClient, Uri}
 import js7.controller.client.HttpControllerApi
+import js7.controller.data.ControllerCommand.Response.Accepted
 import js7.controller.data.ControllerCommand.{AddOrders, ReleaseEvents}
 import js7.controller.data.{ControllerCommand, ControllerState}
+import js7.data.agent.AgentRef
+import js7.data.cluster.ClusterSetting
 import js7.data.event.{Event, EventId, JournalInfo}
 import js7.data.item.{UpdateRepoOperation, VersionId}
+import js7.data.node.NodeId
 import js7.data.order.FreshOrder
 import js7.proxy.JournaledProxy.EndOfEventStreamException
 import js7.proxy.configuration.ProxyConf
@@ -49,6 +51,13 @@ extends ControllerApiWithHttp
     eventBus: JournaledStateEventBus[ControllerState] = new JournaledStateEventBus[ControllerState])
   : Task[ControllerProxy] =
     ControllerProxy.start(this, apiResources, proxyEventBus, eventBus, proxyConf)
+
+  def clusterAppointNodes(idToUri: Map[NodeId, Uri], activeId: NodeId, clusterWatches: Seq[ClusterSetting.Watch])
+  : Task[Checked[Accepted]] =
+    executeCommand(ControllerCommand.ClusterAppointNodes(idToUri, activeId, clusterWatches))
+
+  def updateAgentRefs(agentRefs: Seq[AgentRef]): Task[Checked[Accepted]] =
+    executeCommand(ControllerCommand.UpdateAgentRefs(agentRefs))
 
   def updateRepo(versionId: VersionId, operations: Observable[UpdateRepoOperation.ItemOperation]): Task[Checked[Completed]] =
     apiResource.use(api =>

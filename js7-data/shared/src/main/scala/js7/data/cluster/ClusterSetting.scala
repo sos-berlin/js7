@@ -2,6 +2,7 @@ package js7.data.cluster
 
 import cats.instances.either._
 import cats.syntax.flatMap._
+import js7.base.annotation.javaApi
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
@@ -69,6 +70,9 @@ object ClusterSetting
 
   final case class Watch(uri: Uri)
   object Watch {
+    @javaApi
+    def of(uri: Uri) = Watch(uri)
+
     implicit val jsonCodec = deriveCodec[Watch]
   }
 
