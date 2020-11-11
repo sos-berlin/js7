@@ -74,7 +74,7 @@ extends Actor {
         val responses = Vector.fill(commands.size) { Promise[Checked[Response]]() }
         for ((c, r) <- commands zip responses)
           executeCommand(c, meta, r, batchId orElse Some(id))
-        val singleResponseFutures = responses map (_.future)
+        val singleResponseFutures = responses.map(_.future)
         response.completeWith(
           Future.sequence(singleResponseFutures)
             .map(checkedResponse => Right(AgentCommand.Batch.Response(checkedResponse))))

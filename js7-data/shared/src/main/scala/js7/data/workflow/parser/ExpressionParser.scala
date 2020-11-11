@@ -23,13 +23,13 @@ object ExpressionParser
       bracketCommaSequence(expression).map(o => ListExpression(o.toList)))
 
   private def trueConstant[_: P] = P[BooleanConstant](
-    keyword("true") map (_ => BooleanConstant(true)))
+    keyword("true").map(_ => BooleanConstant(true)))
 
   private def falseConstant[_: P] = P[BooleanConstant](
-    keyword("false") map (_ => BooleanConstant(false)))
+    keyword("false").map(_ => BooleanConstant(false)))
 
   private def catchCount[_: P] = P[OrderCatchCount.type](
-    keyword("catchCount") map (_ => OrderCatchCount))
+    keyword("catchCount").map(_ => OrderCatchCount))
 
   def booleanConstant[_: P] = P(trueConstant | falseConstant)
 

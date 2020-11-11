@@ -549,7 +549,7 @@ final class WorkflowTest extends AnyFreeSpec
       (B   @: job)              -> true,
       (()  @: Goto(C))          -> true)
     val id = WorkflowPath("/WORKFLOW") ~ "VERSION"
-    val a = Workflow(id, instructions map (_._1))
+    val a = Workflow(id, instructions.map(_._1))
     assert(a.reduce == Workflow(id, instructions collect { case (s, true) => s }))
   }
 

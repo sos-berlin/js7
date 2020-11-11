@@ -178,11 +178,11 @@ extends HasCloser
       val a =
         try body(agents)
         catch { case NonFatal(t) =>
-          try agents map (_.terminate()) await 99.s
+          try agents.map(_.terminate()) await 99.s
           catch { case NonFatal(t2) => t.addSuppressed(t2) }
           throw t
         }
-      agents map (_.terminate()) await 99.s
+      agents.map(_.terminate()) await 99.s
       a
     }
 

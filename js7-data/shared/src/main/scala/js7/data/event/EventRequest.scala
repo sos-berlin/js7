@@ -42,7 +42,7 @@ final case class EventRequest[E <: Event](
     */
   @tailrec
   def repeat[A](fetchEvents: EventRequest[E] => Future[TearableEventSeq[Seq, KeyedEvent[E]]])(collect: PartialFunction[Stamped[KeyedEvent[E]], A]): Seq[A] = {
-    val waitTimeout = timeout map (_ + 10.seconds)
+    val waitTimeout = timeout.map(_ + 10.seconds)
     Await.result(fetchEvents(this), waitTimeout getOrElse Duration.Inf) match {
       case EventSeq.NonEmpty(stampeds) =>
         stampeds.collect(collect) match {

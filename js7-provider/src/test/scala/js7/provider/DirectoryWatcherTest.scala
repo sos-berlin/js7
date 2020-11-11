@@ -23,7 +23,7 @@ final class DirectoryWatcherTest extends AnyFreeSpec with BeforeAndAfterAll
   private lazy val dir = createTempDirectory("DirectoryWatcherTest-")
   private lazy val directoryWatcher = new DirectoryWatcher(dir, timeout)
   private lazy val observable = directoryWatcher.singleUseObservable
-  private lazy val observableFuture = observable map (_ => counter += 1) foreach { _ => }
+  private lazy val observableFuture = observable.map(_ => counter += 1) foreach { _ => }
   private var counter = 0
 
   override def beforeAll() = {

@@ -52,7 +52,7 @@ extends InventoryItem
   val labeledInstructions = rawLabeledInstructions.map(o => o.copy(instruction = o.instruction.adopt(this)))
   val instructions: IndexedSeq[Instruction] = labeledInstructions.map(_.instruction)
   private val labelToNumber: Map[Label, InstructionNr] =
-    numberedInstructions.flatMap { case (nr, Instruction.Labeled(maybeLabel, _, _)) => maybeLabel map (_ -> nr) }
+    numberedInstructions.flatMap { case (nr, Instruction.Labeled(maybeLabel, _, _)) => maybeLabel.map(_ -> nr) }
       .uniqueToMap(labels => throw new IllegalArgumentException(s"Duplicate labels in Workflow: ${labels mkString ","}"))
 
   def withId(id: ItemId[WorkflowPath]) = reuseIfEqual(this, copy(id = id))
@@ -102,11 +102,11 @@ extends InventoryItem
       case _: Retry =>
         !inCatch thenList Left(Problem("Statement 'retry' is only allowed in a catch block"))
       case instr: If =>
-        instr.workflows flatMap (_.checkRetry(inCatch))
+        instr.workflows.flatMap(_.checkRetry(inCatch))
       case instr: TryInstruction =>
         Vector(instr.tryWorkflow.checkRetry(inCatch), instr.catchWorkflow.checkRetry(true)).flatten
       case instr =>
-        instr.workflows flatMap (_.checkRetry())
+        instr.workflows.flatMap(_.checkRetry())
     }
 
   private def checkLabels: Iterable[Checked[Unit]] =
@@ -150,7 +150,7 @@ extends InventoryItem
   //      (checkedLabelPositions, checkedJobPositions).mapN((a, b) => (a ++ b).toSet)
   //
   //    case PositionSearch.ByLabel(label) =>
-  //      labelToPosition(label) map (o => Set.apply(o))
+  //      labelToPosition(label).map(o => Set.apply(o))
   //
   //    case PositionSearch.LastExecutedJob(jobName) =>
   //      val positions = flattenedInstructions flatMap {
@@ -230,7 +230,7 @@ extends InventoryItem
         rawLabeledInstructions.lastOption)
 
   private[workflow] def isPartiallyExecutableOnAgent(agentName: AgentName): Boolean =
-    labeledInstructions map (_.instruction) collect {
+    labeledInstructions.map(_.instruction) collect {
       case o: Execute.Anonymous => o.job isExecutableOnAgent agentName
       case o: Execute.Named => findJob(o.name) exists (_ isExecutableOnAgent agentName)
       case o: Fork => o isPartiallyExecutableOnAgent agentName
@@ -301,7 +301,7 @@ extends InventoryItem
     jobKey(WorkflowBranchPath(id, branchPath), name)
 
   private def jobKey(workflowBranchPath: WorkflowBranchPath, name: WorkflowJob.Name): Checked[JobKey] =
-    nestedWorkflow(workflowBranchPath.branchPath) flatMap (w =>
+    nestedWorkflow(workflowBranchPath.branchPath).flatMap(w =>
       if (w.nameToJob contains name)
         Right(JobKey(workflowBranchPath, name))
       else
@@ -325,7 +325,7 @@ extends InventoryItem
   def checkedWorkflowJob(position: Position): Checked[WorkflowJob] =
     checkedExecute(position) flatMap {
       case o: Execute.Anonymous => Right(o.job)
-      case o: Execute.Named => nestedWorkflow(position.branchPath) flatMap (_.findJob(o.name))
+      case o: Execute.Named => nestedWorkflow(position.branchPath).flatMap(_.findJob(o.name))
     }
 
   def checkedExecute(position: Position): Checked[Execute] =
@@ -480,12 +480,12 @@ object Workflow extends InventoryItem.Companion[Workflow] {
     cursor => for {
       id <- cursor.value.as[WorkflowId]
       instructions <- cursor.get[IndexedSeq[Instruction.Labeled]]("instructions")
-      namedJobs <- cursor.get[Option[Map[WorkflowJob.Name, WorkflowJob]]]("jobs") map (_ getOrElse Map.empty)
+      namedJobs <- cursor.get[Option[Map[WorkflowJob.Name, WorkflowJob]]]("jobs").map(_ getOrElse Map.empty)
       source <- cursor.get[Option[String]]("source")
       workflow <- Workflow.checkedSub(id, instructions, namedJobs, source).toDecoderResult(cursor.history)
     } yield workflow
 
   // TODO Separate plain RawWorkflow, TopWorkflow and Subworkflow
   val topJsonDecoder: Decoder[Workflow] =
-    cursor => jsonDecoder.decodeJson(cursor.value) flatMap (_.completelyChecked.toDecoderResult(cursor.history))
+    cursor => jsonDecoder.decodeJson(cursor.value).flatMap(_.completelyChecked.toDecoderResult(cursor.history))
 }

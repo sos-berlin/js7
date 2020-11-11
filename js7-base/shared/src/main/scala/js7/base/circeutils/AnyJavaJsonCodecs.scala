@@ -45,7 +45,11 @@ object AnyJavaJsonCodecs {
               case None =>
                 json.asObject match {
                   case Some(o) =>
-                    (SeqMap.empty ++ (o.toVector/*ordered*/ filter (!_._2.isNull)/*remove None*/ map { case (k, v) => k -> jsonToJava(v) })).asJava
+                    (SeqMap.empty ++
+                      o.toVector/*ordered*/
+                        .filter(!_._2.isNull)/*remove None*/
+                        .map { case (k, v) => k -> jsonToJava(v) }
+                    ).asJava
                   case None =>
                     json.asArray match {
                       case Some(o) => (o map jsonToJava).asJava: java.util.List[Any]

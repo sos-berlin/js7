@@ -109,7 +109,7 @@ final class ScalaUtilsTest extends AnyFreeSpec
     }
 
     //scala-js does not know Java SourceVersion:
-    //if (SourceVersion.values map (_.toString) contains "RELEASE_9")
+    //if (SourceVersion.values.map(_.toString) contains "RELEASE_9")
     //  assert(A.B.getSimpleName == "B$")
     //else
     //  intercept[java.lang.InternalError] {  // Until Java 8: https://bugs.openjdk.java.net/browse/JDK-8057919
@@ -308,7 +308,7 @@ final class ScalaUtilsTest extends AnyFreeSpec
       assert(pf.applyOrElse(1, (i: Int) => A(s"else $i")) == A("one"))
       assert(pf.applyOrElse(2, (i: Int) => A(s"else $i")) == A("else 2"))
 
-      val mappedPf = pf map (_.string)
+      val mappedPf = pf.map(_.string)
       assert(mappedPf(1) == "one")
       assert(mappedPf.isDefinedAt(1))
       assert(!mappedPf.isDefinedAt(2))

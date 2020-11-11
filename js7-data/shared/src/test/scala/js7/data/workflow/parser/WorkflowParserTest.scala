@@ -482,7 +482,7 @@ final class WorkflowParserTest extends AnyFreeSpec
         ExplicitEnd(sourcePos(247, 250)))))
   }
 
-  //for (n <- sys.props.get("test.speed") map (_.toInt)) "Speed" - {
+  //for (n <- sys.props.get("test.speed").map(_.toInt)) "Speed" - {
   //  s"Parsing $n processes" in {
   //    info(measureTime(n, "processes") {
   //      parse(TestWorkflowSource)

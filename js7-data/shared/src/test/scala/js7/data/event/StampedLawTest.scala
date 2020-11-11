@@ -17,7 +17,7 @@ import org.typelevel.discipline.scalatest.FunSuiteDiscipline
 final class StampedLawTest extends AnyFunSuite with Configuration with FunSuiteDiscipline
 {
   private implicit def arbitraryStamped[A: Arbitrary]: Arbitrary[Stamped[A]] =
-    Arbitrary(arbitrary[A] map (o => Stamped(EventId(111), Timestamp.ofEpochMilli(222), o)))
+    Arbitrary(arbitrary[A].map(o => Stamped(EventId(111), Timestamp.ofEpochMilli(222), o)))
 
   //?private implicit val isomorphisms: Isomorphisms[Stamped] = Isomorphisms.invariant(Stamped.functor)
 

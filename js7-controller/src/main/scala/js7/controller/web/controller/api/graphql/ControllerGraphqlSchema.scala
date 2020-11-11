@@ -319,7 +319,7 @@ object ControllerGraphqlSchema
       Field("state", OrderStateType, resolve = _.value.state),
       Field("arguments", OptionType(StringStringMapType), resolve = ctx => ctx.value.arguments.nonEmpty ? ctx.value.arguments),
       Field("scheduledFor", OptionType(LongType), resolve = _.value.state match {
-        case o: Order.Fresh => o.scheduledFor map (_.toEpochMilli)
+        case o: Order.Fresh => o.scheduledFor.map(_.toEpochMilli)
         case _ => None
       }),
       Field("childOrderIds", OptionType(ListType(OrderIdType)), resolve = _.value.state match {

@@ -12,10 +12,10 @@ trait Scope
   val findValue: ValueSearch => Checked[Option[Evaluator.Value]]
 
   final def evalBoolean(expression: Expression): Checked[Boolean] =
-    new Evaluator(this).evalBoolean(expression) map (_.booleanValue)
+    new Evaluator(this).evalBoolean(expression).map(_.booleanValue)
 
   final def evalString(expression: Expression): Checked[String] =
-    new Evaluator(this).evalString(expression) map (_.string)
+    new Evaluator(this).evalString(expression).map(_.string)
 }
 
 object Scope

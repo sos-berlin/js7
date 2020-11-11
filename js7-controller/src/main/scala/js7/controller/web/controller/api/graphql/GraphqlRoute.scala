@@ -91,12 +91,12 @@ trait GraphqlRoute extends ControllerRouteProvider
       parameters("query".?, "operationName".?, "variables".?) { (queryParam, operationNameParam, variablesParam) =>
         entity(as[JsonObject]) { body =>
           // GraphiQL GUI may send both query parameter and JSON content. For GraphiQL, POST content has precedence
-          val queryString = body("query") flatMap (_.asString) orElse queryParam
-          val operationName = body("operationName") flatMap (_.asString) orElse operationNameParam
+          val queryString = body("query").flatMap(_.asString) orElse queryParam
+          val operationName = body("operationName").flatMap(_.asString) orElse operationNameParam
           val checkedVariables = body("variables")
             .map(json => if (json.isNull) EmptyObject else json)
             .map(Right.apply)
-            .orElse(variablesParam map (_.parseJsonChecked))
+            .orElse(variablesParam.map(_.parseJsonChecked))
             .getOrElse(Right(EmptyObject))
 
           queryString match {

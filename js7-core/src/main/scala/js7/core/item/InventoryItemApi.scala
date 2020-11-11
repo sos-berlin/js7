@@ -20,7 +20,7 @@ trait InventoryItemApi
 
   def paths[A <: InventoryItem: InventoryItem.Companion]: Task[Checked[Seq[A#Path]]] =
     for (o <- items) yield
-      o map (_ map (_.path))
+      o.map(_.map(_.path))
 }
 
 object InventoryItemApi

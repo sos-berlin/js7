@@ -56,7 +56,7 @@ object JobKey
       jobKey <- c.get[Position]("position").map(o => Anonymous(workflowId /: o))
         .orElse(
           for {
-            branchPath <- c.get[Option[BranchPath]]("branchPath") map (_ getOrElse Nil)
+            branchPath <- c.get[Option[BranchPath]]("branchPath").map(_ getOrElse Nil)
             name <- c.get[WorkflowJob.Name]("jobName")
           } yield Named(WorkflowBranchPath(workflowId, branchPath), name))
     } yield jobKey

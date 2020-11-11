@@ -301,7 +301,7 @@ final class OrderEventSource(
           InstructionExecutor.nextPosition(context, order, instr)
 
         //case _: End if order.position.isNested =>
-        //  order.position.dropChild flatMap (returnPosition =>
+        //  order.position.dropChild.flatMap(returnPosition =>
         //    workflow.instruction(returnPosition) match {
         //      case _: If =>
         //        nextPosition(order withPosition returnPosition)

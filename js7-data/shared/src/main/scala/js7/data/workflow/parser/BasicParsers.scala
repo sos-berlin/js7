@@ -31,7 +31,7 @@ private[parser] object BasicParsers
   def comma[_: P] = P(w ~ "," ~ w)
   //def newline[_: P] = P(h ~ "\r".? ~ "\n" ~ w)
   //def commaOrNewLine[_: P] = P(h ~ ("," | (newline ~ w ~ ",".?)) ~ w)
-  def int[_: P] = P[Int](("-".? ~ digits).! map (_.toInt))
+  def int[_: P] = P[Int](("-".? ~ digits).!.map(_.toInt))
   private def digits[_: P] = P(CharsWhile(c => c >= '0' && c <= '9'))
   def identifierEnd[_: P] = P(&(CharPred(c => !isIdentifierPart(c))) | End)
   def identifier[_: P] = P[String](  // TODO Compare and test code with Identifier.isIdentifier
@@ -98,7 +98,7 @@ private[parser] object BasicParsers
   def keyword[_: P](name: String) = P[Unit](name ~ identifierEnd)
 
   def path[A <: ItemPath: ItemPath.Companion](implicit ctx: P[_]) = P[A](
-    pathString map (p => FolderPath.Root.resolve[A](p)))
+    pathString.map(p => FolderPath.Root.resolve[A](p)))
 
   def agentName(implicit ctx: P[_]) = P[AgentName](
     pathString.flatMap(string =>
@@ -136,7 +136,7 @@ private[parser] object BasicParsers
       }
 
     def get[A1 <: A](key: String)(implicit ctx: P[_]): P[Option[A1]] =
-      Pass(keyToValue.get(key) map (_.asInstanceOf[A1]))
+      Pass(keyToValue.get(key).map(_.asInstanceOf[A1]))
 
     def noneOrOneOf[A1 <: A](keys: Set[String])(implicit ctx: P[_]): P[Option[(String, A1)]] = {
       val intersection = keyToValue.keySet & keys
@@ -188,7 +188,7 @@ private[parser] object BasicParsers
     "[" ~ w ~/ commaSequence(parser) ~ w ~ "]")
 
   def commaSequence[A](parser: => P[A])(implicit ctx: P[_]) = P[collection.Seq[A]](
-    nonEmptyCommaSequence(parser).? map (_ getOrElse Nil))
+    nonEmptyCommaSequence(parser).?.map(_ getOrElse Nil))
 
   def nonEmptyCommaSequence[A](parser: => P[A])(implicit ctx: P[_]) = P[collection.Seq[A]](
     parser ~ (comma ~/ parser).rep map {
@@ -206,7 +206,7 @@ private[parser] object BasicParsers
               case Nil =>
                 valid(left)
               case (op, right) :: tl =>
-                operation(left, op, right) flatMap (a => loop(a, tl))
+                operation(left, op, right).flatMap(a => loop(a, tl))
             }
           loop(head, tail.toList)
       }

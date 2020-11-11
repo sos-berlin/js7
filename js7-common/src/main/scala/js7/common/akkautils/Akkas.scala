@@ -89,7 +89,7 @@ object Akkas
       Future.successful(())
 
   def byteStringToTruncatedString(byteString: ByteString, size: Int = 100) =
-    s"${byteString.size} bytes " + (byteString take size map { c => f"$c%02x" } mkString " ") + ((byteString.sizeIs > size) ?? " ...")
+    s"${byteString.size} bytes " + (byteString.take(size).map(c => f"$c%02x") mkString " ") + ((byteString.sizeIs > size) ?? " ...")
 
   def encodeAsActorName(o: String): String = {
     val a = Uri.Path.Segment(o, Uri.Path.Empty).toString

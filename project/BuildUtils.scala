@@ -40,7 +40,7 @@ object BuildUtils
       else git.gitHeadCommitDate.value)
 
   private val commitHash: Def.Initialize[Option[String]] =
-    Def.setting(git.gitHeadCommit.value filter (_.nonEmpty) orElse sys.env.get("GIT_COMMIT"))
+    Def.setting(git.gitHeadCommit.value.filter(_.nonEmpty) orElse sys.env.get("GIT_COMMIT"))
 
   val longVersion: Def.Initialize[String] =
     Def.setting(

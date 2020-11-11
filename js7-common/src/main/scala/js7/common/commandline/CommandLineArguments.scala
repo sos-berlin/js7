@@ -50,7 +50,7 @@ with ConvertibleMultiPartialFunction[String, String] {
 
   def requireNoMoreArguments(): Unit = {
     if (unusedArguments.nonEmpty || unusedKeylessArguments.nonEmpty)
-      throw new IllegalArgumentException("Unknown command line arguments: " + (unusedKeylessArguments map { o => s"#${o+1}" }) .mkString(" ") +
+      throw new IllegalArgumentException("Unknown command line arguments: " + unusedKeylessArguments.map(o => s"#${o+1}") .mkString(" ") +
         unusedArguments.values.flatten.mkString(" "))
   }
 

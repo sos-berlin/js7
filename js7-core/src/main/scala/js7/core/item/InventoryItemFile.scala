@@ -18,7 +18,7 @@ object InventoryItemFile
 
   def checkUniqueness(typedFiles: Seq[InventoryItemFile]): Checked[typedFiles.type] = {
     val duplicateFiles: Iterable[Path] =
-      typedFiles groupBy (_.path) filter (_._2.lengthIs >= 2) flatMap (_._2 map (_.file))
+      typedFiles.groupBy(_.path).filter(_._2.lengthIs >= 2).flatMap(_._2.map(_.file))
     if (duplicateFiles.isEmpty)
       Right(typedFiles)
     else

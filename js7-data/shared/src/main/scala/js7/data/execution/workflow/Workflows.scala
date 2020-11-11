@@ -21,7 +21,7 @@ object Workflows
           case labels @: (instr: If) =>
             labels @: reuseIfEqual(instr, instr.copy(
               thenWorkflow = instr.thenWorkflow.reduceForAgent(agentName),
-              elseWorkflow = instr.elseWorkflow map (_.reduceForAgent(agentName))))
+              elseWorkflow = instr.elseWorkflow.map(_.reduceForAgent(agentName))))
 
           case labels @: (instr: TryInstruction) =>
             labels @: reuseIfEqual(instr, instr.copy(

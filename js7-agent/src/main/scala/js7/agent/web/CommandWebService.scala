@@ -48,7 +48,7 @@ trait CommandWebService extends AgentRouteProvider
           } ~
           pathSingleSlash {
             completeTask(
-              commandDetailed map (_.commandRuns))
+              commandDetailed.map(_.commandRuns))
           }
         }
       }

@@ -148,7 +148,7 @@ extends HasCloser with Observing with ProvideActorSystem
           execute(versionId, _))
         .map(_.flatten)
     } yield
-      checkedCompleted flatMap (completed =>
+      checkedCompleted.flatMap(completed =>
         if (!lastEntries.compareAndSet(last, currentEntries)) {
           val problem = Problem.pure("Provider has been concurrently used")
           logger.debug(problem.toString)
@@ -175,7 +175,8 @@ extends HasCloser with Observing with ProvideActorSystem
       val v = versionId getOrElse newVersionId()
       logUpdate(v, diff)
       HttpClient.liftProblem(
-        controllerApi.executeCommand(toUpdateRepo(v, diff)) map ((_: ControllerCommand.Response) => Completed))
+        controllerApi.executeCommand(toUpdateRepo(v, diff))
+          .map((_: ControllerCommand.Response) => Completed))
     }
 
   private def logUpdate(versionId: VersionId, diff: IntentoryItems.Diff[ItemPath, InventoryItem]): Unit = {
@@ -188,7 +189,7 @@ extends HasCloser with Observing with ProvideActorSystem
   private def toUpdateRepo(versionId: VersionId, diff: IntentoryItems.Diff[ItemPath, InventoryItem]) =
     UpdateRepo(
       versionId,
-      change = diff.added ++ diff.updated map (_ withVersion versionId) map itemSigner.sign,
+      change = (diff.added ++ diff.updated).map(_ withVersion versionId) map itemSigner.sign,
       delete = diff.deleted)
 
   private def fetchControllerItemSeq: Task[Seq[InventoryItem]] =

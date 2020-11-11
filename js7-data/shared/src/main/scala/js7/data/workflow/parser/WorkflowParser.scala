@@ -86,7 +86,7 @@ object WorkflowParser
     private def arguments[_: P]: P[Arguments] =
       P[Arguments](
         curly(nonEmptyCommaSequence(quotedString ~ w ~ ":" ~ w ~/ quotedString))
-          map (kvs => Arguments(kvs.toMap)))
+         .map(kvs => Arguments(kvs.toMap)))
 
     private def anonymousWorkflowExecutable[_: P] = P[WorkflowJob](
       for {
@@ -136,7 +136,7 @@ object WorkflowParser
           for {
             returnCode <- keyToValue.get[ReturnCode]("returnCode")
             errorMessage <- keyToValue.get[Expression]("message")
-            uncatchable <- keyToValue.get[BooleanConstant]("uncatchable") map (_.fold(false)(_.booleanValue))
+            uncatchable <- keyToValue.get[BooleanConstant]("uncatchable").map(_.fold(false)(_.booleanValue))
           } yield FailInstr(errorMessage, returnCode, uncatchable = uncatchable, sourcePos(start, end))
         })
 
@@ -145,7 +145,7 @@ object WorkflowParser
         .map { case (start, end) => Finish(sourcePos(start, end)) })
 
     private def forkInstruction[_: P] = P[Fork]{
-      def branchId = P(quotedString map (o => Fork.Branch.Id(o)))
+      def branchId = P(quotedString.map(o => Fork.Branch.Id(o)))
       def forkBranch = P[Fork.Branch](
         (branchId ~ w ~ ":" ~ w ~ curlyWorkflowOrInstruction)
           map Fork.Branch.fromPair)

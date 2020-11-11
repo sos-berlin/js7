@@ -130,7 +130,7 @@ object ItemPath
     /** Converts a relative file path with normalized slahes (/) to a `ItemPath`. */
     final def fromFile(normalized: String): Option[Checked[(P, SourceType)]] =
       sourceTypeToFilenameExtension.collectFirst { case (t, ext) if normalized endsWith ext =>
-        checked("/" + normalized.dropRight(ext.length)) map (_ -> t)
+        checked("/" + normalized.dropRight(ext.length)).map(_ -> t)
       }
 
     /**
@@ -149,7 +149,7 @@ object ItemPath
     }
 
     override final implicit val jsonDecoder: Decoder[P] =
-      c => c.as[String] flatMap (o => checked(o).toDecoderResult(c.history))
+      c => c.as[String].flatMap(o => checked(o).toDecoderResult(c.history))
   }
 
   def fileToString(file: Path): String =

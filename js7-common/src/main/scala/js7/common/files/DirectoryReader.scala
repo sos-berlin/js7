@@ -14,7 +14,7 @@ object DirectoryReader
   private val NestingLimit = 100
 
   def files(directory: Path, filter: Path => Boolean = _ => true): Seq[Path] =
-    entries(directory, filter) map (_.file)
+    entries(directory, filter).map(_.file)
 
   def entries(directory: Path, filter: Path => Boolean = _ => true): Seq[Entry] = {
     val array = unorderedEntryArray(directory, filter)

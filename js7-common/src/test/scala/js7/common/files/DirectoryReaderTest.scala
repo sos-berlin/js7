@@ -51,7 +51,7 @@ final class DirectoryReaderTest extends AnyFreeSpec
 
   if (sys.props contains "test.speed") "Sort speed" - {
     val n = 200000
-    val entries = 1 to n map (_ => Entry(Paths.get(Random.nextString(100)), null))
+    val entries = (1 to n).map(_ => Entry(Paths.get(Random.nextString(100)), null))
 
     "single thread" in {
       for (_ <- 1 to 10) {

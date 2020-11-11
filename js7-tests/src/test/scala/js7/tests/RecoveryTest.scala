@@ -124,7 +124,7 @@ final class RecoveryTest extends AnyFreeSpec
     }
 
   private def runAgents(directoryProvider: DirectoryProvider)(body: IndexedSeq[RunningAgent] => Unit): Unit =
-    multipleAutoClosing(directoryProvider.agents map (_.agentConfiguration) map RunningAgent.startForTest await 10.s) { agents =>
+    multipleAutoClosing(directoryProvider.agents.map(_.agentConfiguration) map RunningAgent.startForTest await 10.s) { agents =>
       body(agents)
       logger.info("🔥🔥🔥 TERMINATE AGENTS 🔥🔥🔥")
       // Kill Agents ActorSystems

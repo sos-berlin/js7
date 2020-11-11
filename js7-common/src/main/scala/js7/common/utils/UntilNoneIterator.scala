@@ -21,5 +21,5 @@ object UntilNoneIterator
       catch {
         case NonFatal(t) => Some(Failure(t))
       }
-    ) map (_.get/*throws*/)
+    ).map(_.get/*throws*/)
 }

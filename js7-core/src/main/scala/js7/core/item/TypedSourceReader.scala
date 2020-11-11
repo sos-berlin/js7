@@ -14,7 +14,7 @@ import js7.data.item.{InventoryItem, ItemPath}
 final class TypedSourceReader(directory: Path, readers: Iterable[InventoryItemReader])
 {
   private val companionToReader: Map[ItemPath.AnyCompanion, InventoryItemReader] = readers.toKeyedMap(_.itemPathCompanion)
-  private val itemPathCompanions = readers map (_.companion.itemPathCompanion)
+  private val itemPathCompanions = readers.map(_.companion.itemPathCompanion)
 
   // For tests
   def readCompleteDirectory(): Checked[Seq[InventoryItem]] =

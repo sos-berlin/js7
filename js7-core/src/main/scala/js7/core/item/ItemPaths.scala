@@ -13,7 +13,7 @@ import js7.data.item.{SourceType, ItemPath}
 object ItemPaths
 {
   def fileToItemPath(companions: Iterable[ItemPath.AnyCompanion], directory: Path, file: Path): Checked[ItemPath] =
-    fileToItemPathAndSourceType(companions, directory, file) map (_._1)
+    fileToItemPathAndSourceType(companions, directory, file).map(_._1)
 
   def fileToItemPathAndSourceType(companions: Iterable[ItemPath.AnyCompanion], directory: Path, file: Path): Checked[(ItemPath, SourceType)] = {
     assertThat(file startsWith directory)
@@ -22,7 +22,7 @@ object ItemPaths
     companions.iterator
       .map(_.fromFile(string))
       .collectFirst { case Some(o) =>
-        o flatMap { case (itemPath, sourceType) => itemPath.officialSyntaxChecked map (_ -> sourceType) }
+        o flatMap { case (itemPath, sourceType) => itemPath.officialSyntaxChecked.map(_ -> sourceType) }
       }
       .toChecked(AlienFileProblem(relativePath))
       .flatten

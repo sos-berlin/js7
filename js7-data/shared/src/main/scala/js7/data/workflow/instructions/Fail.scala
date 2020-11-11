@@ -34,7 +34,7 @@ object Fail
     c => for {
       errorMessage <- c.get[Option[Expression]]("message")
       returnCode <- c.get[Option[ReturnCode]]("returnCode")
-      uncatchable <- c.get[Option[Boolean]]("uncatchable") map (_ getOrElse false)
+      uncatchable <- c.get[Option[Boolean]]("uncatchable").map(_ getOrElse false)
       sourcePos <- c.get[Option[SourcePos]]("sourcePos")
     } yield Fail(errorMessage, returnCode, uncatchable = uncatchable, sourcePos)
 }

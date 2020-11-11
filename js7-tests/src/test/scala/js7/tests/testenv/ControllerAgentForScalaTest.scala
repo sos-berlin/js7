@@ -68,7 +68,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
     usedVersionIds += versionId
     controller.executeCommandAsSystemUser(UpdateRepo(
       versionId,
-      change map (_ withVersion versionId) map directoryProvider.itemSigner.sign,
+      change.map(_ withVersion versionId) map directoryProvider.itemSigner.sign,
       delete)
     ).await(99.s).orThrow
   }

@@ -124,7 +124,7 @@ final class FileJsonSeqTest extends AnyFreeSpec {
 
           for (_ <- 1 to 5)
           autoClosing(InputStreamJsonSeqReader.open(file)) { reader =>
-            val iterator: Iterator[Json] = reader.iterator map (_.value)
+            val iterator: Iterator[Json] = reader.iterator.map(_.value)
             for (_ <- 1 to m) {
               val stopwatch = new Stopwatch
               var dummy = 0

@@ -82,7 +82,7 @@ object ControllerCommand extends CommonCommand.Companion
     implicit val jsonDecoder: Decoder[CancelOrders] = c =>
       for {
         orderIds <- c.get[Vector[OrderId]]("orderIds")
-        mode <- c.get[Option[CancelMode]]("mode") map (_ getOrElse CancelMode.Default)
+        mode <- c.get[Option[CancelMode]]("mode").map(_ getOrElse CancelMode.Default)
       } yield CancelOrders(orderIds, mode)
   }
 
@@ -118,7 +118,7 @@ object ControllerCommand extends CommonCommand.Companion
 
     implicit val jsonDecoder: Decoder[EmergencyStop] = c =>
       for {
-        restart <- c.get[Option[Boolean]]("restart") map (_ getOrElse false)
+        restart <- c.get[Option[Boolean]]("restart").map(_ getOrElse false)
       } yield EmergencyStop(restart)
   }
 

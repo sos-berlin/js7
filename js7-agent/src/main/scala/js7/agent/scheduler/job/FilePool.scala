@@ -41,7 +41,7 @@ private[job] final class FilePool(jobKey: JobKey, temporaryDirectory: Path) exte
     if (used.nonEmpty) {
       logger.debug(s"Job '${jobKey.keyName}': Closing while files are in use: $used")
     }
-    tryDeleteFiles((free ++ used) flatMap { _.files })
+    tryDeleteFiles((free ++ used).flatMap(_.files))
   }
 
   override def toString = s"FilePool(Job '${jobKey.keyName}' ${used.size} used and ${free.size} free file sets)"

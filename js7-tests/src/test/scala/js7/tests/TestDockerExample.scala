@@ -94,7 +94,7 @@ object TestDockerExample
       controller.terminated await 365 * 24.h
       controller.close()
       for (agent <- agents) agent.executeCommandAsSystemUser(AgentCommand.ShutDown())
-      agents map (_.terminated) await 60.s
+      agents.map(_.terminated) await 60.s
       agents foreach (_.close())
     }
   }

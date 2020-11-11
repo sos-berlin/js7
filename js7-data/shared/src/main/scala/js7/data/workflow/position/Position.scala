@@ -22,7 +22,7 @@ final case class Position(branchPath: BranchPath, nr: InstructionNr)
   def /:(workflowId: WorkflowId) = new WorkflowPosition(workflowId, this)
 
   def dropChild: Option[Position] =
-    splitBranchAndNr map (_._1)
+    splitBranchAndNr.map(_._1)
 
   def splitBranchAndNr: Option[(Position, BranchId, InstructionNr)] =
     for (last <- branchPath.lastOption) yield
@@ -117,7 +117,7 @@ object Position
   implicit val jsonEncoder: Encoder.AsArray[Position] = _.toJsonSeq
 
   implicit val jsonDecoder: Decoder[Position] =
-    cursor => cursor.as[List[Json]] flatMap (parts =>
+    cursor => cursor.as[List[Json]].flatMap(parts =>
       if (parts.size % 2 != 1)
         Left(DecodingFailure("Not a valid Position", cursor.history))
       else

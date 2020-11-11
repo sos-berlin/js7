@@ -60,7 +60,7 @@ object StandardDirectives
     routeFuture(routeTask.runToFuture)
 
   def routeFuture(routeFuture: Future[Route])(implicit ec: ExecutionContext): Route =
-    ctx => routeFuture flatMap (_(ctx))
+    ctx => routeFuture.flatMap(_(ctx))
 
   private val removeEtag: Directive0 =
     mapResponse(r => r.withHeaders(r.headers filter {

@@ -95,7 +95,7 @@ trait WebLogDirectives extends ExceptionHandling
             appendQuotedString(sb, truncated + ((truncated.length < string.length) ?? "..."))
 
           case entity @ HttpEntity.Strict(`application/json`, _) =>
-            parseJson(entity.data.utf8String) flatMap (_.as[Problem]) match {
+            parseJson(entity.data.utf8String).flatMap(_.as[Problem]) match {
               case Left(_) => appendQuotedString(sb, response.status.reason)
               case Right(problem) => appendQuotedString(sb, problem.toString)
             }

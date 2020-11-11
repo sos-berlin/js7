@@ -40,7 +40,7 @@ package object position
   implicit val jsonEncoder: Encoder.AsArray[BranchPath] = _.toJsonSeq
 
   implicit val jsonDecoder: Decoder[BranchPath] =
-    cursor => cursor.as[List[Json]] flatMap (parts =>
+    cursor => cursor.as[List[Json]].flatMap(parts =>
       if (parts.size % 2 != 0)
         Left(DecodingFailure("Not a valid BranchPath", cursor.history))
       else

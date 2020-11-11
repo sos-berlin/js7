@@ -164,7 +164,7 @@ private object InputStreamJsonSeqReaderTest
       "\"x\""   -> PositionAnd(3+4  , Json.fromString("x")),
       "\"x🥕\"" -> PositionAnd(3+4+5, Json.fromString("x🥕")))
     .map(o => o.copy(_1 = o._1.getBytes(UTF_8)))
-  private val ChunkBytes: Seq[Byte] = Chunk flatMap (o => Array(RS) ++ o._1 :+ LF)
+  private val ChunkBytes: Seq[Byte] = Chunk.flatMap(o => Array(RS) ++ o._1 :+ LF)
 
   private val FourByteUtf8 = Vector('"', 'x', 0xF0.toByte, 0x9F.toByte, 0xA5.toByte, 0x95.toByte, '"')
   assert(Chunk.last._1 sameElements FourByteUtf8)

@@ -96,7 +96,7 @@ object IdToUser
     def existentUserIdToRaw(userId: UserId): Option[RawUserAccount] =
       Try(cfg.getConfig(userId.string)) match {
         case Failure(_: com.typesafe.config.ConfigException.WrongType) =>  // Entry is not a configuration object {...} but a string (the password)
-          cfg.optionAs[SecretString](userId.string) map (o =>
+          cfg.optionAs[SecretString](userId.string).map(o =>
             RawUserAccount(userId, encodedPassword = Some(o)))
 
         case Failure(t) =>

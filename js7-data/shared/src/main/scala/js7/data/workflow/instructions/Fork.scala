@@ -63,7 +63,7 @@ extends Instruction
     }
   }
 
-  override def branchWorkflows = branches map (b => b.id.toBranchId -> b.workflow)
+  override def branchWorkflows = branches.map(b => b.id.toBranchId -> b.workflow)
 
   override def toString = s"Fork(${branches.map(_.id).mkString(",")})"
 }
@@ -83,7 +83,7 @@ object Fork
     new Fork(idAndWorkflows.map { case (id, workflow) => Branch(Branch.Id(id), workflow) } .toVector)
 
   private def validateBranch(branch: Branch): Checked[Branch] =
-    if (branch.workflow.instructions exists (o => o.isInstanceOf[Goto] || o.isInstanceOf[IfFailedGoto]))
+    if (branch.workflow.instructions.exists(o => o.isInstanceOf[Goto] || o.isInstanceOf[IfFailedGoto]))
       Left(Problem(s"Fork/Join branch '${branch.id}' cannot contain a jump instruction like 'goto'"))
     else
       Right(branch)

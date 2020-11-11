@@ -88,7 +88,7 @@ final class StrictEventWatch(eventWatch: EventWatch)
   @TestOnly
   def keyedEvents[E <: Event: ClassTag: TypeTag](after: EventId)(implicit s: Scheduler): Seq[KeyedEvent[E]] =
     eventWatch.all[E](after = after).strict match {
-      case EventSeq.NonEmpty(stamped) => stamped map (_.value)
+      case EventSeq.NonEmpty(stamped) => stamped.map(_.value)
       case EventSeq.Empty(_) => Nil
       case TearableEventSeq.Torn(eventId) => throw new TornException(after = EventId(0), tornEventId = eventId)
     }
@@ -100,7 +100,7 @@ final class StrictEventWatch(eventWatch: EventWatch)
 
   @inline
   private def delegate[A](body: EventWatch => Task[TearableEventSeq[CloseableIterator, A]]): Task[TearableEventSeq[Seq, A]] =
-    body(eventWatch) map (_.strict)
+    body(eventWatch).map(_.strict)
 
   def tornEventId = eventWatch.tornEventId
 

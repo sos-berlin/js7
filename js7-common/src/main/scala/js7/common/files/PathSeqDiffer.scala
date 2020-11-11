@@ -17,6 +17,6 @@ object PathSeqDiffer
     PathSeqDiff(
       added = (newSet -- oldSet).toVector,
       deleted = (oldSet -- newSet).toVector,
-      changed = (newSet intersect oldSet).toVector filter (p => newMap(p) isTouched oldMap(p).attributes))
+      changed = (newSet intersect oldSet).toVector.filter(p => newMap(p) isTouched oldMap(p).attributes))
   }
 }

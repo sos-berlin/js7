@@ -48,7 +48,7 @@ object JavaJsonCodecs
       if (cursor.value.isNumber)
         cursor.as[Long] map Instant.ofEpochMilli
       else
-        cursor.as[String] map (o => Instant.from(dateTimeFormatter parse o))
+        cursor.as[String].map(o => Instant.from(dateTimeFormatter parse o))
   }
   object InstantDecoder extends InstantDecoder
 
@@ -63,7 +63,7 @@ object JavaJsonCodecs
     o => Json.fromString(o.getId)
 
   implicit val zoneIdJsonDecoder: Decoder[ZoneId] =
-    cursor => cursor.as[String] flatMap (string =>
+    cursor => cursor.as[String].flatMap(string =>
       try Right(ZoneId.of(string))
       catch {
         case NonFatal(e) => Left(DecodingFailure(e.toString, cursor.history))

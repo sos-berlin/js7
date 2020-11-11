@@ -50,7 +50,7 @@ object GenericString
     final def apply(o: String): A = checked(o).orThrow
 
     implicit val jsonEncoder: Encoder[A] = o => Json.fromString(o.string)
-    implicit val jsonDecoder: Decoder[A] = c => c.as[String] flatMap (o => checked(o).toDecoderResult(c.history))
+    implicit val jsonDecoder: Decoder[A] = c => c.as[String].flatMap(o => checked(o).toDecoderResult(c.history))
     implicit val keyEncoder: KeyEncoder[A] = _.string
     implicit val keyDecoder: KeyDecoder[A] = o => Some(apply(o))  // throws?
 

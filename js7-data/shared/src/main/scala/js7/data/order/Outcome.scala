@@ -74,7 +74,7 @@ object Outcome
     implicit val jsonDecoder: Decoder[Succeeded] =
       c => for {
         returnCode <- c.get[ReturnCode]("returnCode")
-        keyValues <- c.get[Option[Map[String, String]]]("keyValues") map (_ getOrElse Map.empty)
+        keyValues <- c.get[Option[Map[String, String]]]("keyValues").map(_ getOrElse Map.empty)
       } yield Succeeded(returnCode, keyValues)
   }
 
@@ -103,7 +103,7 @@ object Outcome
       c => for {
         errorMessage <- c.get[Option[String]]("message")
         returnCode <- c.get[ReturnCode]("returnCode")
-        keyValues <- c.get[Option[Map[String, String]]]("keyValues") map (_ getOrElse Map.empty)
+        keyValues <- c.get[Option[Map[String, String]]]("keyValues").map(_ getOrElse Map.empty)
       } yield Failed(errorMessage, returnCode, keyValues)
   }
 

@@ -360,10 +360,10 @@ with Stash {
       }
 
     case GetOrder(orderId) =>
-      executeCommandForOrderId(orderId) { orderEntry =>
+      executeCommandForOrderId(orderId, orderEntry =>
         Future.successful(GetOrder.Response(
           orderEntry.order))
-      } map ((r: Response) => Right(r))
+      ).map((r: Response) => Right(r))
 
     case GetOrderIds =>
       Future.successful(Right(GetOrderIds.Response(
@@ -401,7 +401,7 @@ with Stash {
       }
     }
 
-  private def executeCommandForOrderId(orderId: OrderId)(body: OrderEntry => Future[Response]): Future[Response] =
+  private def executeCommandForOrderId(orderId: OrderId, body: OrderEntry => Future[Response]): Future[Response] =
     orderRegister.checked(orderId) match {
       case Left(problem) =>
         Future.failed(problem.throwable)

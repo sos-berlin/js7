@@ -21,7 +21,7 @@ object WorkflowReader extends InventoryItemReader
       readAnonymousJsonLike(t, source).map(_ withId workflowId)
 
     case SourceType.Txt =>
-      WorkflowParser.parse(source.utf8String) map (_ withId workflowId)
+      WorkflowParser.parse(source.utf8String).map(_ withId workflowId)
   }
 
   override def convertFromJson(json: Json): Checked[Workflow] =

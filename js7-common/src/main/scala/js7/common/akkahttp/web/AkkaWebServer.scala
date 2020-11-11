@@ -198,7 +198,7 @@ object AkkaWebServer
   trait HasUri extends WebServerBinding.HasLocalUris {
     this: AkkaWebServer =>
 
-    protected final def webServerPorts = bindings map (_.toWebServerPort)
+    protected final def webServerPorts = bindings.map(_.toWebServerPort)
   }
 
   def actorName(prefix: String, binding: WebServerBinding) =

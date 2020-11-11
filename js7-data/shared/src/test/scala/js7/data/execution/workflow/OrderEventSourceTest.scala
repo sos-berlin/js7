@@ -861,7 +861,7 @@ object OrderEventSourceTest {
       process.jobStep(orderId, outcome)
 
     def step(): Option[OrderEvent] =
-      process.step(orderId) map (_.event)
+      process.step(orderId).map(_.event)
 
     def update(event: OrderEvent) = process.update(orderId <-: event)
   }

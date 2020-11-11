@@ -15,7 +15,7 @@ object ControllerId extends GenericString.Checked_[ControllerId]
 {
   def unchecked(string: String) = new ControllerId(string)
 
-  override def checked(o: String) = UserId.checked(o) flatMap (u => super.checked(u.string))
+  override def checked(o: String) = UserId.checked(o).flatMap(u => super.checked(u.string))
 
   def fromUserId(userId: UserId) = ControllerId(userId.string)
 }

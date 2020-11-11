@@ -45,8 +45,8 @@ object IntentoryItems
         deleted collect { case o if o.companion eq A1.itemPathCompanion => o.asInstanceOf[P1] })
 
     def withVersionId(versionId: VersionId): Diff[P, A] = copy(
-      added = added map (_.withVersion(versionId).asInstanceOf[A]),
-      updated = updated map (_.withVersion(versionId).asInstanceOf[A]))
+      added = added.map(_.withVersion(versionId).asInstanceOf[A]),
+      updated = updated.map(_.withVersion(versionId).asInstanceOf[A]))
   }
   object Diff {
     def fromRepoChanges(events: Seq[RepoChange]) =

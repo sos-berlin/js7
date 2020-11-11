@@ -20,7 +20,7 @@ object IfExecutor extends EventInstructionExecutor with PositionInstructionExecu
       Right(None)
     else
       nextPosition(context, order, instruction)
-        .map(_ map (o => order.id <-: OrderMoved(o)))
+        .map(_.map(o => order.id <-: OrderMoved(o)))
 
   def nextPosition(context: OrderContext, order: Order[Order.State], instruction: If) = {
     assertThat(Right(order) == context.idToOrder(order.id).map(_ withPosition order.position))

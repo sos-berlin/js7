@@ -29,9 +29,9 @@ final class Evaluator(scope: Scope)
       case GreaterOrEqual (a, b) => numNumToBool(a, b)(_.number >= _.number)
       case In(a, set: ListExpression) => eval(a).map2(evalListExpression(set))((a1, set1) => BooleanValue(set1.list contains a1))
       case Matches        (a, b) => evalString(a).map2(evalString(b))(_.string matches _.string).map(BooleanValue.apply)
-      case Not            (a)    => evalBoolean(a) map (o => !o.booleanValue) map BooleanValue.apply
-      case And            (a, b) => evalBoolean(a) flatMap (o => if (!o.booleanValue) Right(o) else evalBoolean(b))
-      case Or             (a, b) => evalBoolean(a) flatMap (o => if (o.booleanValue) Right(o) else evalBoolean(b))
+      case Not            (a)    => evalBoolean(a).map(o => !o.booleanValue) map BooleanValue.apply
+      case And            (a, b) => evalBoolean(a).flatMap(o => if (!o.booleanValue) Right(o) else evalBoolean(b))
+      case Or             (a, b) => evalBoolean(a).flatMap(o => if (o.booleanValue) Right(o) else evalBoolean(b))
       case ToBoolean(a) => evalString(a) flatMap toBoolean
       case NumericConstant(o) => Right(NumericValue(o))
       case OrderCatchCount => scope.symbolToValue("catchCount").flatMap(_.asNumeric)
@@ -50,7 +50,7 @@ final class Evaluator(scope: Scope)
         what match {
           case NamedValue.KeyValue(stringExpr) =>
             for {
-              key <- evalString(stringExpr) map (_.string)
+              key <- evalString(stringExpr).map(_.string)
               maybeValue <- scope.findValue(ValueSearch(w, ValueSearch.KeyValue(key)))
               value <- maybeValue.map(Right.apply)
                 .getOrElse(
@@ -70,7 +70,7 @@ final class Evaluator(scope: Scope)
             } yield value
         }
 
-      case StripMargin(a) => evalString(a) map (o => StringValue(o.string.stripMargin))
+      case StripMargin(a) => evalString(a).map(o => StringValue(o.string.stripMargin))
 
       case _ => Left(Problem(s"Expression is not evaluable: $expr"))  // Should not happen
     }

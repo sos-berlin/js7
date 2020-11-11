@@ -76,7 +76,7 @@ object ThreadPools
             Thread.getAllStackTraces.asScala
               .filter(_._1.getName startsWith name)
               .toSeq.sortBy(_._1.getId)
-              .map { case (thread, stacktrace) => s"\nThread #${ thread.getId } ${ thread.getName }:" + stacktrace.map(o => s"\n  $o").mkString }
+              .map { case (thread, stacktrace) => s"\nThread #${ thread.getId } ${thread.getName}:" + stacktrace.map(o => s"\n  $o").mkString }
               .mkString)
         } else {
           logger.debug(s"awaitTermination() finished")

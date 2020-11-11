@@ -44,8 +44,8 @@ object ItemId
   implicit def jsonDecoder[P <: ItemPath: ItemPath.Companion: Decoder]: Decoder[ItemId[P]] =
     cursor =>
       for {
-        path <- cursor.get[Option[P]]("path") map (_ getOrElse implicitly[ItemPath.Companion[P]].Anonymous)
-        version <- cursor.get[Option[VersionId]]("versionId") map (_ getOrElse VersionId.Anonymous)
+        path <- cursor.get[Option[P]]("path").map(_ getOrElse implicitly[ItemPath.Companion[P]].Anonymous)
+        version <- cursor.get[Option[VersionId]]("versionId").map(_ getOrElse VersionId.Anonymous)
       } yield ItemId(path, version)
 
   trait Companion[P <: ItemPath] {

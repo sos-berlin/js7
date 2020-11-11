@@ -35,7 +35,7 @@ final case class OrderEntry(
     updateLog(prefixLines(outErr, chunk))
 
   private def prefixLines(outErr: StdoutOrStderr, chunk: String) =
-    (chunk split '\n' map (o => s"$outErr: $o") mkString "\n") + "\n"
+    (chunk.split('\n').map(o => s"$outErr: $o") mkString "\n") + "\n"
 
   def updateLog(chunk: String): OrderEntry = {
     val lastStep = steps.asScala.last

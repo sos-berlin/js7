@@ -93,7 +93,7 @@ object WorkflowJob
       Nil)
   implicit val jsonDecoder: Decoder[WorkflowJob] = cursor =>
     for {
-      //jobName <- cursor.get[Option[Name]]("jobName") map (_ getOrElse Name.Anonymous)
+      //jobName <- cursor.get[Option[Name]]("jobName").map(_ getOrElse Name.Anonymous)
       executable <- cursor.get[Executable]("executable")
       agentName <- cursor.get[AgentName]("agentName")
       arguments <- cursor.getOrElse[Map[String, String]]("defaultArguments")(Map.empty)

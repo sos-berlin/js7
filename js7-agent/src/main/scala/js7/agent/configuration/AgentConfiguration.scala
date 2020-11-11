@@ -100,7 +100,7 @@ extends CommonConfiguration
   }
 
   def killScriptConf: Option[KillScriptConf] =
-    killScript map (o => KillScriptConf(o, temporaryDirectory / s"kill_tasks_after_crash$ShellFileExtension"))
+    killScript.map(o => KillScriptConf(o, temporaryDirectory / s"kill_tasks_after_crash$ShellFileExtension"))
 
   lazy val temporaryDirectory: Path =
     dataDirectory  / "tmp"

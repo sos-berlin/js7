@@ -250,7 +250,7 @@ trait GenericEventRoute extends RouteProvider
           defaultAfter = Some(defaultAfter),
           defaultDelay = defaultDelay,
           defaultTimeout = defaultTimeout,
-          defaultReturnType = defaultReturnType map (_.simpleScalaName))
+          defaultReturnType = defaultReturnType.map(_.simpleScalaName))
         .apply(eventRequest => inner(Tuple1(eventRequest))))
   }
 

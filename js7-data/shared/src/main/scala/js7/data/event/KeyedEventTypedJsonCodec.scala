@@ -64,7 +64,7 @@ with Decoder[KeyedEvent[E]]
 
   def canDeserialize(json: Json): Boolean =
     json.asObject match {
-      case Some(o) => o.toMap.get(TypeFieldName) flatMap (_.asString) exists nameToDecoder.contains
+      case Some(o) => o.toMap.get(TypeFieldName).flatMap(_.asString) exists nameToDecoder.contains
       case _ => false
     }
 
@@ -87,10 +87,14 @@ object KeyedEventTypedJsonCodec
     new KeyedEventTypedJsonCodec[E](
       cls.simpleScalaName,
       cls.simpleScalaName,
-      subtypes.flatMap(_.classToEncoder mapValuesStrict (_.asInstanceOf[Encoder.AsObject[KeyedEvent[E]]])).uniqueToMap withDefault (o => throw new UnknownClassForJsonException(o, cls)),
-      subtypes.flatMap(_.nameToDecoder.mapValuesStrict (decoder =>
-        Right(decoder.asInstanceOf[Decoder[KeyedEvent[E]]]))).uniqueToMap
-          .withDefault(typeName => Left(unknownJsonTypeFailure(typeName, cls.shortClassName, Nil))),
+      subtypes
+        .flatMap(_.classToEncoder mapValuesStrict (_.asInstanceOf[Encoder.AsObject[KeyedEvent[E]]]))
+        .uniqueToMap
+        .withDefault(o => throw new UnknownClassForJsonException(o, cls)),
+      subtypes
+        .flatMap(_.nameToDecoder.mapValuesStrict(decoder => Right(decoder.asInstanceOf[Decoder[KeyedEvent[E]]])))
+        .uniqueToMap
+        .withDefault(typeName => Left(unknownJsonTypeFailure(typeName, cls.shortClassName, Nil))),
       subtypes.flatMap(_.nameToClass).uniqueToMap)
   }
 
