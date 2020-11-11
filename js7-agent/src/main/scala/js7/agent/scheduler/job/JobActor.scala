@@ -39,9 +39,8 @@ extends Actor with Stash
   import conf.{executablesDirectory, jobKey, newTaskRunner, temporaryDirectory, workflowJob}
 
   private val logger = Logger.withPrefix[this.type](jobKey.keyName)
-  private val orderToTask = mutable.Map[OrderId, TaskRunner]()
+  private val orderToRun = mutable.Map[OrderId, Run]()
   private var waitingForNextOrder = false
-  private var killed = false
   private var terminating = false
 
   private val checkedExecutable: Checked[Executable] = workflowJob.executable match {
@@ -84,8 +83,9 @@ extends Actor with Stash
       if (cmd.jobKey != jobKey)
         sender() ! Response.OrderProcessed(
           cmd.order.id,
-          TaskStepFailed(Problem.pure(s"Internal error: requested jobKey=${cmd.jobKey} ≠ JobActor's $jobKey")), killed)
-      else
+          TaskStepFailed(Problem.pure(s"Internal error: requested jobKey=${cmd.jobKey} ≠ JobActor's $jobKey")), isKilled = false)
+      else {
+        val killed = orderToRun.get(cmd.order.id).fold(false)(_.isKilled)
         checkedExecutable match {
           case Left(problem) =>
             sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(problem), killed)  // Exception.toString is published !!!
@@ -110,10 +110,12 @@ extends Actor with Stash
                   handleIfReadyForOrder()
               }
         }
+      }
 
     case Internal.TaskFinished(order, triedStepEnded) =>
-      orderToTask -= order.id
-      sender() ! Response.OrderProcessed(order.id, recoverFromFailure(triedStepEnded), isKilled = killed)
+      val run = orderToRun(order.id)
+      orderToRun -= order.id
+      sender() ! Response.OrderProcessed(order.id, recoverFromFailure(triedStepEnded), isKilled = run.isKilled)
       continueTermination()
       handleIfReadyForOrder()
 
@@ -151,7 +153,7 @@ extends Actor with Stash
   private def processOrder(cmd: Command.ProcessOrder, executableFile: Path): Future[TaskStepEnded] = {
     waitingForNextOrder = false
     val taskRunner = newTaskRunner(TaskConfiguration(jobKey, workflowJob, executableFile))
-    orderToTask.insert(cmd.order.id -> taskRunner)
+    orderToRun.insert(cmd.order.id -> Run(taskRunner))
     taskRunner.processOrder(cmd.order, cmd.defaultArguments, cmd.stdChannels)
       .guarantee(taskRunner.terminate/*for now (shell only), returns immediately s a completed Future*/)
       .runToFuture
@@ -172,32 +174,33 @@ extends Actor with Stash
     }
 
   private def killAll(signal: ProcessSignal): Unit =
-    if (orderToTask.nonEmpty) {
+    if (orderToRun.nonEmpty) {
       logger.warn(s"Terminating, sending $signal to all $taskCount tasks")
-      for (orderId <- orderToTask.keys.toVector/*copy*/) {
+      for (orderId <- orderToRun.keys.toVector/*copy*/) {
         killOrder(orderId, signal)
       }
     }
 
   private def killOrder(orderId: OrderId, signal: ProcessSignal): Unit =
-    for (taskRunner <- orderToTask.get(orderId)) {
+    for (run <- orderToRun.get(orderId)) {
+      import run.taskRunner
       logger.warn(s"Kill $signal ${taskRunner.asBaseAgentTask.id} processing $orderId")
-      killed = true
+      run.isKilled = true
       taskRunner.kill(signal)
     }
 
   private def continueTermination(): Unit =
     if (terminating) {
-      if (orderToTask.isEmpty) {
+      if (orderToRun.isEmpty) {
         context.stop(self)
       } else {
-        logger.debug(s"Awaiting termination of ${orderToTask.size} tasks")
+        logger.debug(s"Awaiting termination of ${orderToRun.size} tasks")
       }
     }
 
   override def toString = s"JobActor(${jobKey.toString})"
 
-  private def taskCount = orderToTask.size
+  private def taskCount = orderToRun.size
 }
 
 object JobActor
@@ -242,4 +245,6 @@ object JobActor
   private case class Executable(file: Path, name: String, isTemporary: Boolean) {
     override def toString = name
   }
+
+  private final case class Run(taskRunner: TaskRunner, var isKilled: Boolean = false)
 }
