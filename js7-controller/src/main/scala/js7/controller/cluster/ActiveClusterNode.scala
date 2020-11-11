@@ -74,9 +74,10 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
         case clusterState: HasNodes =>
           setClusterWatchSynchronizer(clusterState.setting)
           logger.info("Asking ClusterWatch")
-          startHeartbeating(clusterState).flatTap((_: Completed) => Task {
-            logger.info("ClusterWatch agreed to restart as the active cluster node")
-          })
+          startHeartbeating(clusterState)
+            .flatTap((_: Completed) => Task {
+              logger.info("ClusterWatch agreed to restart as the active cluster node")
+            })
         case _ =>
           Task.pure(Completed)
       }).map { completed =>

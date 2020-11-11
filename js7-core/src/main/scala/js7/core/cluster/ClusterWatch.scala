@@ -58,7 +58,7 @@ extends ClusterWatchApi
                   ClusterWatchEventMismatchProblem(events, current.clusterState, reportedClusterState = reportedClusterState))
               }
             case Right(clusterState) =>
-              if (clusterState != reportedClusterState)
+              if (isStillWithinHeartbeat(current) && clusterState != reportedClusterState)
                 logger.error(s"Node '$from': " +
                   ClusterWatchEventMismatchProblem(events, clusterState, reportedClusterState = reportedClusterState))
           }
@@ -73,16 +73,18 @@ extends ClusterWatchApi
         Left(InvalidClusterWatchHeartbeatProblem(from, reportedClusterState))
       else
         current match {
-          case Some(State(clusterState, _)) if reportedClusterState != clusterState =>
-            val problem = ClusterWatchHeartbeatMismatchProblem(clusterState, reportedClusterState = reportedClusterState)
-            logger.error(s"Node '$from': $problem")
-            Left(problem)
+          case Some(state @ State(clusterState: HasNodes, _))
+            if isStillWithinHeartbeat(state) && reportedClusterState != clusterState =>
+              val problem = ClusterWatchHeartbeatMismatchProblem(clusterState, reportedClusterState = reportedClusterState)
+              logger.error(s"Node '$from': $problem")
+              Left(problem)
           case _ =>
             Right(reportedClusterState)
         }
     ).map(_.toCompleted)
 
-  private def update(from: NodeId, fromMustBeActive: Boolean, checkOnly: Boolean, operationString: => String)(body: Option[State] => Checked[ClusterState])
+  private def update(from: NodeId, fromMustBeActive: Boolean, checkOnly: Boolean, operationString: => String)
+    (body: Option[State] => Checked[ClusterState])
   : Task[Checked[ClusterState]] =
     stateMVar.flatMap(mvar =>
       mvar.take.flatMap { current =>
@@ -104,14 +106,21 @@ extends ClusterWatchApi
 
   private def mustBeStillActive(from: NodeId, state: Option[State], logLine: => String): Checked[Completed.type] =
     state match {
-      case Some(State(clusterState: HasNodes, lastHeartbeat))
-      if !clusterState.isNonEmptyActive(from) && (lastHeartbeat + clusterState.timing.heartbeatValidDuration).hasTimeLeft =>
+      case Some(state @ State(clusterState: HasNodes, lastHeartbeat))
+      if isStillWithinHeartbeat(state) && !clusterState.isNonEmptyActive(from) =>
         val problem = ClusterWatchInactiveNodeProblem(from, clusterState, lastHeartbeat.elapsed, logLine)
         val msg = s"Node '$from': $problem"
         logger.error(msg)
         Left(problem)
       case _ =>
         Right(Completed)
+    }
+
+  private def isStillWithinHeartbeat(state: State) =
+    state match {
+      case State(clusterState: HasNodes, lastHeartbeat) =>
+        (lastHeartbeat + clusterState.timing.heartbeatValidDuration).hasTimeLeft
+      case _ => false
     }
 
   private def now = MonixDeadline.now(scheduler)
