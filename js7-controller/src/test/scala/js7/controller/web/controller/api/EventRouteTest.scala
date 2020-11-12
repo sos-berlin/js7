@@ -94,39 +94,15 @@ final class EventRouteTest extends AnyFreeSpec with RouteTester with EventRoute
   "/event application/x-ndjson with after=unknown fails" in {
     Get(s"/event?after=5") ~> Accept(`application/x-ndjson`) ~> route ~> check {
       assert(status == BadRequest)
-      assert(response.utf8StringFuture.await(99.s) == s"EventSeqTorn: Requested EventId after=5/1970-01-01T00:00:00.000Z.005 is not available. Oldest available EventId is 0/BeforeFirst\n")
+      assert(response.utf8StringFuture.await(99.s) ==
+        s"EventSeqTorn: Requested EventId after=5/1970-01-01T00:00:00.000Z.005 is not available. Oldest available EventId is 0/BeforeFirst\n")
     }
   }
 
   "Fetch EventIds only" - {
-    "/event?eventIdOnly=true&limit=3&after=30" in {
-      val stampedSeq = getEventIds("/event?eventIdOnly=true&limit=3&after=30")
-      assert(stampedSeq.head == 40)
-      assert(stampedSeq.last == 60)
-    }
-
-    "/event?eventIdOnly=true&limit=3after=60" in {
-      val stampedSeq = getEventIds("/event?eventIdOnly=true&limit=3&after=60")
-      assert(stampedSeq.head == 70)
-      assert(stampedSeq.last == 90)
-    }
-
-    "/event?eventIdOnly=true&limit=3&after=200" in {
-      assert(getEventIds("/event?eventIdOnly=true&limit=3&after=200&timeout=0").isEmpty)
-    }
-
-    "Heartbeat when the first event is immediately returned" in {
-      val stampedSeq = getEventIds("/event?eventIdOnly=true&limit=3&heartbeat=0.1&timeout=1&after=170")
-      assert(stampedSeq.head == 180)  // Echoed last EventId
-      assert(stampedSeq.last == 180)
-      assert(stampedSeq.length >= 3)
-    }
-
-    "Heartbeat before the first event arrives" in {
-      val stampedSeq = getEventIds("/event?eventIdOnly=true&limit=3&heartbeat=0.1&timeout=1&after=200")
-      assert(stampedSeq.head == 180)  // Echoed last EventId
-      assert(stampedSeq.last == 180)
-      assert(stampedSeq.length >= 3)
+    "/event?onlyAcks=true&timeout=0" in {
+      val stampedSeq = getEventIds("/event?onlyAcks=true&timeout=0")
+      assert(stampedSeq == Seq(180L))
     }
 
     def getEventIds(uri: String): Seq[EventId] =
@@ -179,12 +155,12 @@ final class EventRouteTest extends AnyFreeSpec with RouteTester with EventRoute
     }
 
     "/event?after=180 no more events" in {
-      assert(getEventSeq("/event?after=180") == EventSeq.Empty(180))
+      assert(getEventSeq("/event?after=180") == EventSeq.Empty(180L))
     }
 
     "/event?after=180 no more events, with timeout" in {
       val runningSince = now
-      assert(getEventSeq("/event?after=180&timeout=0.2") == EventSeq.Empty(180))
+      assert(getEventSeq("/event?after=180&timeout=0.2") == EventSeq.Empty(180L))
       assert(runningSince.elapsed >= 200.millis)
     }
 

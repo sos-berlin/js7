@@ -108,7 +108,7 @@ extends EventApi with HttpSessionApi with HasIsIgnorableStackTrace
 
   final def eventIdObservable[E <: Event: ClassTag](request: EventRequest[E], heartbeat: Option[FiniteDuration] = None)
   : Task[Observable[EventId]] =
-    httpClient.getDecodedLinesObservable[EventId](uris.events(request, heartbeat = heartbeat, eventIdOnly = true, onlyAcks = true))
+    httpClient.getDecodedLinesObservable[EventId](uris.events(request, heartbeat = heartbeat, onlyAcks = true))
 
   /** Observable for a journal file.
     * @param fileEventId denotes the journal file

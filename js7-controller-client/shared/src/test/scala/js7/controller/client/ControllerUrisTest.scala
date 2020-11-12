@@ -31,10 +31,10 @@ final class ControllerUrisTest extends AnyFreeSpec
       Uri("http://example.com/controller/api/event?return=OrderEvent&delay=0&timeout=1.23&limit=333&after=7"))
 
     // return EventId only
-    assert(controllerUris.events(EventRequest.singleClass[Event](after = 7, timeout = Some(1.seconds)), eventIdOnly = true) ==
-      Uri("http://example.com/controller/api/event?eventIdOnly=true&return=Event&delay=0&timeout=1&after=7"))
-    assert(controllerUris.events(EventRequest[Event](Set(classOf[OrderEvent], classOf[ItemEvent]), after = 7, Some(1.second)), eventIdOnly = true) ==
-      Uri("http://example.com/controller/api/event?eventIdOnly=true&return=OrderEvent,ItemEvent&delay=0&timeout=1&after=7"))
+    assert(controllerUris.events(EventRequest.singleClass[Event](after = 7L, timeout = Some(1.seconds)), onlyAcks = true) ==
+      Uri("http://example.com/controller/api/event?onlyAcks=true&return=Event&delay=0&timeout=1&after=7"))
+    assert(controllerUris.events(EventRequest[Event](Set(classOf[OrderEvent], classOf[ItemEvent]), after = 7L, Some(1.second)), onlyAcks = true) ==
+      Uri("http://example.com/controller/api/event?onlyAcks=true&return=OrderEvent,ItemEvent&delay=0&timeout=1&after=7"))
   }
 
   "clusterState" in {

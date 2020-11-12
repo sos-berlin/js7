@@ -26,16 +26,15 @@ final class ControllerUris private(controllerUri: Uri)
 
   val session = api("/session")
 
-  def events[E <: Event: ClassTag](request: EventRequest[E], eventIdOnly: Boolean = false,
+  def events[E <: Event: ClassTag](request: EventRequest[E],
     heartbeat: Option[FiniteDuration] = None, onlyAcks: Boolean = false)
   : Uri =
-    events_[E]("/event", request, eventIdOnly = eventIdOnly, heartbeat = heartbeat, onlyAcks = onlyAcks)
+    events_[E]("/event", request, heartbeat = heartbeat, onlyAcks = onlyAcks)
 
   private def events_[E <: Event: ClassTag](path: String, request: EventRequest[E],
-    eventIdOnly: Boolean = false, heartbeat: Option[FiniteDuration] = None, onlyAcks: Boolean = false)
+    heartbeat: Option[FiniteDuration] = None, onlyAcks: Boolean = false)
   = Uri(
       api(path).string + encodeQuery(
-       (eventIdOnly thenVector ("eventIdOnly" -> "true")) ++
        (heartbeat.map("heartbeat" -> _.toDecimalString)) ++
        (onlyAcks thenVector ("onlyAcks" -> "true")) ++
          request.toQueryParameters))

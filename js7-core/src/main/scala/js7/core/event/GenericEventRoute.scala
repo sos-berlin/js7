@@ -145,42 +145,41 @@ trait GenericEventRoute extends RouteProvider
 
     private def jsonSeqEvents(eventWatch: EventWatch)(implicit streamingSupport: JsonEntityStreamingSupport): Route =
       eventDirective(eventWatch.lastAddedEventId, defaultTimeout = defaultJsonSeqChunkTimeout, defaultDelay = defaultStreamingDelay) { request =>
-        parameter("eventIdOnly" ? false) { eventIdOnly =>
+        parameter("onlyAcks" ? false) { onlyAcks =>
           parameter("heartbeat".as[FiniteDuration].?) { maybeHeartbeat =>  // Echo last EventId as a heartbeat
-            def predicate(ke: KeyedEvent[Event]) = eventIdOnly || isRelevantEvent(ke)
-            parameter("onlyAcks" ? false) { onlyAcks =>
-              if (maybeHeartbeat.isDefined && !eventIdOnly)
-                complete(BadRequest -> Problem.pure("heartbeat=... is allowed only in conjunction with eventIdOnly=true"))
-              else {
-                val runningSince = now
-                val initialRequest = request.copy[Event](
-                  limit = 1 min request.limit,
-                  timeout = maybeHeartbeat.fold(request.timeout)(heartbeat => Some(request.timeout.fold(heartbeat)(heartbeat.min))))
+            def predicate(ke: KeyedEvent[Event]) = onlyAcks || isRelevantEvent(ke)
+            if (maybeHeartbeat.isDefined && !onlyAcks)
+              complete(BadRequest -> Problem.pure("heartbeat=... is allowed only in conjunction with onlyAcks=true"))
+            else {
+              val runningSince = now
+              val initialRequest = request.copy[Event](
+                limit = 1 min request.limit,
+                timeout = maybeHeartbeat.fold(request.timeout)(heartbeat => Some(request.timeout.fold(heartbeat)(heartbeat.min))))
 
-                completeTask(
-                  // Await the first event to check for Torn and convert it to a proper error message, otherwise continue with observe
-                  eventWatch.when(initialRequest, predicate) map {
-                    case TearableEventSeq.Torn(eventId) =>
-                      ToResponseMarshallable(
-                        BadRequest -> EventSeqTornProblem(requestedAfter = request.after, tornEventId = eventId))
+              completeTask(
+                // Await the first event to check for Torn and convert it to a proper error message, otherwise continue with observe
+                eventWatch.when(initialRequest, predicate) map {
+                  case TearableEventSeq.Torn(eventId) =>
+                    ToResponseMarshallable(
+                      BadRequest -> EventSeqTornProblem(requestedAfter = request.after, tornEventId = eventId))
 
-                    case EventSeq.Empty(_) =>
-                      maybeHeartbeat match {
-                        case None =>
-                          implicit val x = jsonSeqMarshaller[Unit]
-                          observableToMarshallable(
-                            Observable.empty[Unit])
-                        case Some(heartbeat) =>  // No event arrived until first heartbeat
-                          assertThat(eventIdOnly)
-                          implicit val x = jsonSeqMarshaller[EventId]
-                          observableToMarshallable(
-                            (eventWatch.lastAddedEventId/*start heartbeating after this immediately returned value*/ +:
-                              observe(request, predicate, onlyAcks, eventWatch).map(_.eventId)
-                            ).echoRepeated(heartbeat))
-                      }
+                  case EventSeq.Empty(_) =>
+                    maybeHeartbeat match {
+                      case None =>
+                        implicit val x = jsonSeqMarshaller[Unit]
+                        observableToMarshallable(
+                          Observable.empty[Unit])
+                      case Some(heartbeat) =>  // No event arrived until first heartbeat
+                        assertThat(onlyAcks)
+                        implicit val x = jsonSeqMarshaller[EventId]
+                        observableToMarshallable(
+                          (eventWatch.lastAddedEventId/*start heartbeating after this immediately returned value*/ +:
+                            observe(request, predicate, onlyAcks, eventWatch).map(_.eventId)
+                          ).echoRepeated(heartbeat))
+                    }
 
-                    case EventSeq.NonEmpty(closeableIterator) =>
-                      val head = autoClosing(closeableIterator)(_.next())
+                  case EventSeq.NonEmpty(closeableIterator) =>
+                    val head = autoClosing(closeableIterator)(_.next())
                       val tail = observe(  // Continue with an Observable, skipping the already read event
                         request.copy[Event](
                           after = head.eventId,
@@ -190,7 +189,7 @@ trait GenericEventRoute extends RouteProvider
                         onlyAcks,
                         eventWatch)
                       val observable = (head +: tail)
-                      if (eventIdOnly) {
+                      if (onlyAcks) {
                         val eventIds = observable.map(_.eventId)
                         implicit val x = jsonSeqMarshaller[EventId]
                         observableToMarshallable(
@@ -199,8 +198,7 @@ trait GenericEventRoute extends RouteProvider
                         implicit val x = jsonSeqMarshaller[Stamped[KeyedEvent[Event]]]
                         observableToMarshallable(observable)
                       }
-                    })
-              }
+                })
             }
           }
         }

@@ -206,19 +206,19 @@ final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll wit
     }
 
     "Fetch EventIds" in {
-      assert(getDecodedLinesObservable[EventId](Uri("/event?eventIdOnly=true&limit=3&after=30")) == 40 :: 50 :: 60 :: Nil)
+      assert(getDecodedLinesObservable[EventId](Uri("/event?onlyAcks=true&timeout=0&after=30")) == Seq(40L, 180L))
     }
 
     "Fetch EventIds with heartbeat" in {
-      assert(getDecodedLinesObservable[EventId](Uri("/event?eventIdOnly=true&limit=5&after=150&heartbeat=0.1&timeout=0.5")).take(5) ==
-        160 :: 170 :: 180 :: 180/*heartbeat*/ :: 180/*heartbeat*/ :: Nil)
+      assert(getDecodedLinesObservable[EventId](Uri("/event?onlyAcks=true&after=150&heartbeat=0.1&timeout=0.5")).take(4) ==
+        160 :: 180 :: 180/*heartbeat*/ :: 180/*heartbeat*/ :: Nil)
     }
 
     "Fetching EventIds with after=unknown-EventId is rejected" in {
       val isKnownEventId = TestEvents.map(_.eventId).toSet
       for (unknown <- 1L to (TestEvents.last.eventId) if !isKnownEventId(unknown)) withClue(s"EventId $unknown: ") {
         val t = intercept[HttpException] {
-          getDecodedLinesObservable[EventId](Uri(s"/event?eventIdOnly=true&timeout=1&after=$unknown"))
+          getDecodedLinesObservable[EventId](Uri(s"/event?onlyAcks=true&timeout=1&after=$unknown"))
         }
         assert(t.problem contains EventSeqTornProblem(unknown, 0L))
       }
@@ -226,7 +226,7 @@ final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll wit
 
     "Fetching EventIds with after=future-event is accepted" in {
       val t = now
-      val result = getDecodedLinesObservable[EventId](Uri(s"/event?eventIdOnly=true&timeout=0.1&after=${TestEvents.last.eventId + 1}"))
+      val result = getDecodedLinesObservable[EventId](Uri(s"/event?onlyAcks=true&timeout=0.1&after=${TestEvents.last.eventId + 1}"))
       assert(result.isEmpty && t.elapsed > 0.1.second)
     }
 
