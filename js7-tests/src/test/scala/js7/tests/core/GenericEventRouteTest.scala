@@ -15,7 +15,6 @@ import js7.common.akkautils.{Akkas, ProvideActorSystem}
 import js7.common.configutils.Configs._
 import js7.common.event.collector.EventCollector
 import js7.common.http.AkkaHttpClient
-import js7.common.http.AkkaHttpClient.HttpException
 import js7.common.http.Uris.{encodePath, encodeQuery}
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
@@ -23,7 +22,7 @@ import js7.common.time.WaitForCondition.waitForCondition
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.data.ControllerState
 import js7.core.event.GenericEventRoute
-import js7.data.event.{Event, EventId, EventRequest, EventSeqTornProblem, KeyedEvent, Stamped}
+import js7.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.OrderAdded
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.workflow.WorkflowPath
@@ -206,28 +205,12 @@ final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll wit
     }
 
     "Fetch EventIds" in {
-      assert(getDecodedLinesObservable[EventId](Uri("/event?onlyAcks=true&timeout=0&after=30")) == Seq(40L, 180L))
+      assert(getDecodedLinesObservable[EventId](Uri("/event?onlyAcks=true&timeout=0")) == Seq(180L))
     }
 
     "Fetch EventIds with heartbeat" in {
-      assert(getDecodedLinesObservable[EventId](Uri("/event?onlyAcks=true&after=150&heartbeat=0.1&timeout=0.5")).take(4) ==
-        160 :: 180 :: 180/*heartbeat*/ :: 180/*heartbeat*/ :: Nil)
-    }
-
-    "Fetching EventIds with after=unknown-EventId is rejected" in {
-      val isKnownEventId = TestEvents.map(_.eventId).toSet
-      for (unknown <- 1L to (TestEvents.last.eventId) if !isKnownEventId(unknown)) withClue(s"EventId $unknown: ") {
-        val t = intercept[HttpException] {
-          getDecodedLinesObservable[EventId](Uri(s"/event?onlyAcks=true&timeout=1&after=$unknown"))
-        }
-        assert(t.problem contains EventSeqTornProblem(unknown, 0L))
-      }
-    }
-
-    "Fetching EventIds with after=future-event is accepted" in {
-      val t = now
-      val result = getDecodedLinesObservable[EventId](Uri(s"/event?onlyAcks=true&timeout=0.1&after=${TestEvents.last.eventId + 1}"))
-      assert(result.isEmpty && t.elapsed > 0.1.second)
+      assert(getDecodedLinesObservable[EventId](Uri("/event?onlyAcks=true&heartbeat=0.1&timeout=0.5")).take(3) ==
+        180 :: 180/*heartbeat*/ :: 180/*heartbeat*/ :: Nil)
     }
 
     "whenShuttingDown completes observable" in {

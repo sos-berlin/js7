@@ -55,8 +55,8 @@ trait RealEventWatch extends EventWatch
 
             case EventSeq.Empty(lastEventId) =>
               val remaining = deadline.map(_.timeLeft)
-              (remaining.forall(_ > Duration.Zero) ?
-                Observable.empty, () => request.copy[E](after = lastEventId, timeout = deadline.map(_.timeLeftOrZero)))
+              (remaining.forall(_ > Duration.Zero) ? Observable.empty,
+                () => request.copy[E](after = lastEventId, timeout = deadline.map(_.timeLeftOrZero)))
 
             case EventSeq.NonEmpty(events) =>
               if (events.isEmpty) throw new IllegalStateException("EventSeq.NonEmpty(EMPTY)")  // Do not loop
@@ -70,13 +70,44 @@ trait RealEventWatch extends EventWatch
                   o
                 }
               // Closed-over lastEventId and limit are updated as observable is consumed, therefore defer access to final values (see above)
-              (Some(observable), () => request.copy[E](after = lastEventId, limit = limit, timeout = originalTimeout))
+              (Some(observable),
+                () => request.copy[E](after = lastEventId, limit = limit, timeout = originalTimeout))
           }
     }
 
     Observable.fromAsyncStateAction(next)(() => request)
       .takeWhile(_.nonEmpty)  // Take until limit reached (NoMoreObservable) or timeout elapsed
       .map(_.get).flatten
+  }
+
+  final def observeEventIds[E <: Event](maybeTimeout: Option[FiniteDuration]): Observable[EventId] =
+  {
+    val originalTimeout = maybeTimeout
+    var deadline = none[MonixDeadline]
+
+    def next(lazyAfter: () => (EventId, Option[FiniteDuration])): Task[(Option[Observable[EventId]], () => (EventId, Option[FiniteDuration]))] =
+      Task.deferAction { implicit s =>
+        val (after, maybeTimeout) = lazyAfter()  // Access now in previous iteration computed values lastEventId and limit (see below)
+        deadline = maybeTimeout.map(t => now + (t min EventRequest.LongTimeout))  // Timeout is renewed after every fetched event
+        committedEventIdSync.whenAvailable(after, deadline)
+          .map {
+            case false =>
+              logger.debug("committedEventIdSync.whenAvailable returned false")
+              val remaining = deadline.map(_.timeLeft)
+              (remaining.forall(_ > Duration.Zero) ? Observable.empty,
+                () => after -> deadline.map(_.timeLeftOrZero))
+            case true =>
+              val lastEventId = lastAddedEventId
+              (Some(Observable.pure(lastEventId)),
+                () => lastEventId -> originalTimeout)
+          }
+      }
+
+    val lastEventId = lastAddedEventId
+    lastEventId +:
+      Observable.fromAsyncStateAction(next)(() => lastEventId -> maybeTimeout)
+        .takeWhile(_.nonEmpty)  // Take until timeout elapsed
+        .map(_.get).flatten
   }
 
   final def read[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean)

@@ -14,7 +14,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.base.web.{HttpClient, Uri}
 import js7.common.akkahttp.https.HttpsConfig
-import js7.common.event.{RealEventWatch, TornException}
+import js7.common.event.RealEventWatch
 import js7.common.http.RecouplingStreamReader
 import js7.common.scalautil.Logger
 import js7.common.system.startup.Halt.haltJava
@@ -31,7 +31,7 @@ import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveN
 import js7.data.cluster.ClusterState.{ActiveShutDown, Coupled, Decoupled, Empty, HasNodes, NodesAppointed, PassiveLost, PreparedToBeCoupled}
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterSetting, ClusterState, ClusterTiming}
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{Event, EventId, EventRequest, EventSeqTornProblem, JournaledState, KeyedEvent, Stamped}
+import js7.data.event.{EventId, JournaledState, KeyedEvent, Stamped}
 import js7.data.node.NodeId
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean
@@ -289,7 +289,7 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
         proceedNodesAppointed(state)
 
       case state: Coupled =>
-        proceedCoupled(state, eventId)
+        proceedCoupled(state)
 
       case _ =>
     }
@@ -312,21 +312,20 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
       sendingClusterStartBackupNode := sending
     }
 
-  private def proceedCoupled(state: Coupled, eventId: EventId): Unit =
+  private def proceedCoupled(state: Coupled): Unit =
     if (state.activeId == ownId) {
-      fetchAndHandleAcknowledgedEventIds(state, eventId)
+      fetchAndHandleAcknowledgedEventIds(state)
     } else
       sys.error(s"proceed: Unexpected ClusterState $state")
 
-  private def fetchAndHandleAcknowledgedEventIds(initialState: Coupled, eventId: EventId): Unit =
+  private def fetchAndHandleAcknowledgedEventIds(initialState: Coupled): Unit =
     if (fetchingAcks.getAndSet(true)) {
       logger.debug("fetchAndHandleAcknowledgedEventIds: already fetchingAcks")
     } else {
-      def msg = s"observeEventIds(${initialState.passiveUri}, after=$eventId, userAndPassword=${clusterConf.userAndPassword})"
+      def msg = s"observeEventIds(${initialState.passiveUri}, userAndPassword=${clusterConf.userAndPassword})"
       val future: CancelableFuture[Checked[Completed]] =
-        fetchAndHandleAcknowledgedEventIds(initialState.passiveId, initialState.passiveUri, initialState.timing,
-          after = eventId,
-        ).flatMap {
+        fetchAndHandleAcknowledgedEventIds(initialState.passiveId, initialState.passiveUri, initialState.timing)
+          .flatMap {
             case Left(missingHeartbeatProblem @ MissingPassiveClusterNodeHeartbeatProblem(id, duration)) =>
               logger.warn(s"No heartbeat from passive cluster node since ${duration.pretty} - continuing as single active cluster node")
               assertThat(id != ownId)
@@ -392,16 +391,16 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
       }
     }
 
-  private def fetchAndHandleAcknowledgedEventIds(passiveId: NodeId, passiveUri: Uri, timing: ClusterTiming, after: EventId)
+  private def fetchAndHandleAcknowledgedEventIds(passiveId: NodeId, passiveUri: Uri, timing: ClusterTiming)
   : Task[Checked[Completed]] =
     Task {
-      logger.info(s"Fetching acknowledgements from passive cluster node, after=${EventId.toString(after)}")
+      logger.info(s"Fetching acknowledgements from passive cluster node")
     } >>
       Observable
         .fromResource(
           AkkaHttpControllerApi.resource(passiveUri, clusterConf.userAndPassword, httpsConfig, name = "acknowledgements")(actorSystem))
         .flatMap(api =>
-          observeEventIds(api, timing, after = after)
+          observeEventIds(api, timing)
             //.map { eventId => logger.trace(s"$eventId acknowledged"); eventId }
             .whileBusyBuffer(OverflowStrategy.DropOld(bufferSize = 2))
             .detectPauses(timing.heartbeat + timing.heartbeatTimeout)
@@ -437,36 +436,23 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
         .guaranteeCase(exitCase => Task(
           logger.debug(s"fetchAndHandleAcknowledgedEventIds ended => $exitCase")))
 
-  private def observeEventIds(api: HttpControllerApi, timing: ClusterTiming, after: EventId): Observable[EventId] =
+  private def observeEventIds(api: HttpControllerApi, timing: ClusterTiming): Observable[EventId] =
     RecouplingStreamReader
       .observe[EventId, EventId, HttpControllerApi](
         toIndex = identity,
         api,
         clusterConf.recouplingStreamReader,
-        after = after,
-        getObservable = (after: EventId) => {
-          Task.tailRecM(after)(after2 =>
-            HttpClient.liftProblem(
-              api.eventIdObservable(
-                EventRequest.singleClass[Event](after = after2, timeout = None),
-                heartbeat = Some(timing.heartbeat))
-            ) .onErrorRecover {
-                case t: TornException => Left(t.problem)
-              }
-              .flatMap {
-                case Left(torn: EventSeqTornProblem) =>
-                  logger.debug(s"observeEventIds: $torn")
-                  Task.pure(Left(torn.tornEventId)).delayExecution(1.s/*!!!*/)  // Repeat with last available EventId
-                case o => Task.pure(Right(o))
-              })
-        },
+        after = -1L/*unused, web service returns always the newest EventIds*/,
+        getObservable = (_: EventId) =>
+          HttpClient.liftProblem(
+            api.eventIdObservable(heartbeat = Some(timing.heartbeat))),
         stopRequested = () => stopRequested)
 
   def onTerminatedUnexpectedly: Task[Checked[Completed]] =
     Task.fromFuture(fetchingAcksTerminatedUnexpectedlyPromise.future)
 
   private def persist(suppressClusterWatch: Boolean = false)(toEvents: ClusterState => Checked[Option[ClusterEvent]])
-  : Task[Checked[(Seq[Stamped[KeyedEvent[ClusterEvent]]], ClusterState)]] = {
+  : Task[Checked[(Seq[Stamped[KeyedEvent[ClusterEvent]]], ClusterState)]] =
     stopHeartbeating >>
     persistence.persistTransaction[ClusterEvent](NoKey)(state => toEvents(state.clusterState).map(_.toSeq))
       .flatMapT { case (stampedEvents, journaledState) =>
@@ -482,7 +468,6 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
           _clusterWatchSynchronizer.orThrow.applyEvents(stampedEvents.map(_.value.event), clusterState)
             .map(_.map((_: Completed) => stampedEvents -> clusterState))
       }
-  }
 
   private def logPersisted(stampedEvents: Seq[Stamped[KeyedEvent[ClusterEvent]]], clusterState: ClusterState) =
     for (stamped <- stampedEvents) {

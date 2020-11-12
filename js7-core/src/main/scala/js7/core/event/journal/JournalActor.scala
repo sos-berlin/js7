@@ -269,8 +269,8 @@ extends Actor with Stash
         if (n > 0) {
           logger.warn(s"Waiting since ${waitingForAcknowledgeSince.elapsed.pretty}" +
             " for acknowledgement from passive cluster node" +
-            s" for $n events (in ${persistBuffer.size} persists) starting with " +
-            notAckSeq.flatMap(_.stampedSeq).headOption.fold("(unknown)")(_.toString.truncateWithEllipsis(200)) +
+            s" for $n events (in ${persistBuffer.size} persists), last is " +
+            notAckSeq.flatMap(_.stampedSeq).lastOption.fold("(unknown)")(_.toString.truncateWithEllipsis(200)) +
             s", lastAcknowledgedEventId=${EventId.toString(lastAcknowledgedEventId)}")
         } else logger.debug(s"StillWaitingForAcknowledge n=0, persistBuffer.size=${persistBuffer.size}")
       } else {

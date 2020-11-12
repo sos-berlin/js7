@@ -27,17 +27,22 @@ final class ControllerUris private(controllerUri: Uri)
   val session = api("/session")
 
   def events[E <: Event: ClassTag](request: EventRequest[E],
-    heartbeat: Option[FiniteDuration] = None, onlyAcks: Boolean = false)
+    heartbeat: Option[FiniteDuration] = None)
   : Uri =
-    events_[E]("/event", request, heartbeat = heartbeat, onlyAcks = onlyAcks)
+    events_[E]("/event", request, heartbeat = heartbeat)
 
-  private def events_[E <: Event: ClassTag](path: String, request: EventRequest[E],
-    heartbeat: Option[FiniteDuration] = None, onlyAcks: Boolean = false)
-  = Uri(
+  private def events_[E <: Event: ClassTag](path: String, request: EventRequest[E], heartbeat: Option[FiniteDuration] = None) =
+    Uri(
       api(path).string + encodeQuery(
        (heartbeat.map("heartbeat" -> _.toDecimalString)) ++
-       (onlyAcks thenVector ("onlyAcks" -> "true")) ++
          request.toQueryParameters))
+
+  def eventIds(timeout: Option[FiniteDuration], heartbeat: Option[FiniteDuration] = None) =
+    Uri(
+      api("/event").string + encodeQuery(
+        Seq("onlyAcks" -> "true") ++
+        timeout.map(o => "timeout" -> EventRequest.durationToString(o)) ++
+        heartbeat.map("heartbeat" -> _.toDecimalString)))
 
   def clusterState = api("/cluster")
 

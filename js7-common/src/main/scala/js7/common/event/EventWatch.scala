@@ -30,6 +30,8 @@ trait EventWatch
   def observe[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean = Every, onlyAcks: Boolean = false)
   : Observable[Stamped[KeyedEvent[E]]]
 
+  def observeEventIds[E <: Event](maybeTimeout: Option[FiniteDuration]): Observable[EventId]
+
   def read[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean = Every)
   : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E]]]
 
