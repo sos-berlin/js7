@@ -12,7 +12,7 @@ trait EntitySizeLimitProvider
 
   protected lazy val orderEntitySizeLimit = config.as("js7.web.server.services.order.post-size-limit")(StringAsPercentage)
 
-  protected final def entitySizeLimit = {
+  protected final lazy val entitySizeLimit = {
     val limit = (orderEntitySizeLimit * sys.runtime.maxMemory).toLong
     logger.debug(s"withSizeLimit($limit)")
     limit
