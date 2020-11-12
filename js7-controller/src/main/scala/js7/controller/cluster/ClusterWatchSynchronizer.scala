@@ -54,8 +54,12 @@ private final class ClusterWatchSynchronizer(
       case _ => Task.pure(Completed)
     })
 
-  def startHeartbeating(clusterState: HasNodes): Task[Completed] =
-    lock.use(_ => startHeartbeatingWhileLocked(clusterState))
+  def startHeartbeating(clusterState: HasNodes): Task[Checked[Completed]] =
+    lock.use(_ =>
+      doACheckedHeartbeat(clusterState)
+        .flatMapT(_ =>
+          startHeartbeatingWhileLocked(clusterState)
+            .map(Right.apply)))
 
   private def startHeartbeatingWhileLocked(clusterState: HasNodes): Task[Completed] =
   {
@@ -73,18 +77,10 @@ private final class ClusterWatchSynchronizer(
         .flatMap(_ => Task.raiseError(new AssertionError("sendHeartbeats terminated unexpectedly")))
 
     def doAHeartbeat: Task[Unit] =
-      clusterWatch.heartbeat(from = ownId, clusterState)
-        .materializeIntoChecked
-        .flatMap(checked =>
-          Task.now {
-            for (problem <- checked.left) {
-              //if (problem is ClusterWatchInactiveNodeProblem) {
-                haltJava(s"HALT because ClusterWatch reported: $problem", restart = true)
-              //}
-              // Ignore other errors and continue
-              //logger.warn(s"ClusterWatch heartbeat: $problem")
-            }
-          })
+      doACheckedHeartbeat(clusterState).map {
+        case Left(problem) => haltJava(s"HALT because ClusterWatch reported: $problem", restart = true)
+        case Right(Completed) =>
+      }
 
     doAHeartbeat.flatMap(_ =>
       Task {
@@ -104,6 +100,10 @@ private final class ClusterWatchSynchronizer(
         Completed
       })
   }
+
+  private def doACheckedHeartbeat(clusterState: HasNodes): Task[Checked[Completed]] =
+    clusterWatch.heartbeat(from = ownId, clusterState)
+      .materializeIntoChecked
 
   def stopHeartbeating: Task[Completed] =
     Task.defer {

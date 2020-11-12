@@ -68,22 +68,23 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
   private var stopRequested = false
   private val _clusterWatchSynchronizer = SetOnce[ClusterWatchSynchronizer]
 
-  def start(recovered: Recovered[S]): Task[Completed] =
+  def start(recovered: Recovered[S]): Task[Checked[Completed]] =
     Task.defer {
       (recovered.clusterState match {
         case clusterState: HasNodes =>
           setClusterWatchSynchronizer(clusterState.setting)
           logger.info("Asking ClusterWatch")
           startHeartbeating(clusterState)
-            .flatTap((_: Completed) => Task {
+            .map(_.map { completed =>
               logger.info("ClusterWatch agreed to restart as the active cluster node")
+              completed
             })
         case _ =>
-          Task.pure(Completed)
-      }).map { completed =>
+          Task.pure(Right(Completed))
+      }).map(_.map { completed =>
         proceed(recovered.clusterState, recovered.eventId)
         completed
-      }
+      })
     }
 
   def close(): Unit = {
@@ -514,7 +515,7 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
   private def startHeartbeating: Task[Completed] =
     _clusterWatchSynchronizer.orThrow.startHeartbeating
 
-  private def startHeartbeating(clusterState: HasNodes): Task[Completed] =
+  private def startHeartbeating(clusterState: HasNodes): Task[Checked[Completed]] =
     _clusterWatchSynchronizer.orThrow.startHeartbeating(clusterState)
 
   private def stopHeartbeating: Task[Completed] =

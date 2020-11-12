@@ -86,10 +86,10 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
           val activeClusterNode = new ActiveClusterNode[S](ownId, clusterState, httpsConfig,
             persistence, eventWatch, common, clusterConf)
           activeClusterNode.start(followUp.recovered)
-            .map { (_: Completed) =>
+            .map(_.map { (_: Completed) =>
               _activeClusterNode = Right(activeClusterNode)
-              Right(followUp)
-            }
+              followUp
+            })
         }
   }
 
