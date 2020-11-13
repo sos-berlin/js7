@@ -1,7 +1,7 @@
 package js7.tests
 
 import com.google.inject.Guice
-import java.nio.file.Files.{createDirectory, setPosixFilePermissions}
+import java.nio.file.Files.{createDirectories, createDirectory, setPosixFilePermissions}
 import java.nio.file.attribute.PosixFilePermissions
 import java.nio.file.{Files, Path}
 import js7.agent.RunningAgent
@@ -54,6 +54,7 @@ object TestDockerExample
     val env = new TestEnvironment(TestAgentNames, directory)
     def provide(path: String) = {
       val dir = if (path.startsWith("controller")) directory else env.agentsDir
+      createDirectories((dir / path).getParent)
       JavaResource(s"js7/install/docker/volumes/$path").copyToFile(dir / path)
       if (path contains "/executables/") setPosixFilePermissions(dir / path, PosixFilePermissions.fromString("rwx------"))
     }
@@ -63,7 +64,7 @@ object TestDockerExample
     provide("agent-1/config/private/private.conf")
     provide("agent-1/config/executables/test")
     provide("agent-2/config/private/private.conf")
-    provide("agent-2/config/executables/test")
+    provide("agent-2/config/executables/exit-7")
     env.controllerDir / "config" / "controller.conf" := """js7.web.server.auth.loopback-is-public = on"""
     withCloser { implicit closer =>
       val controllerConfiguration = ControllerConfiguration.forTest(configAndData = env.controllerDir, httpPort = Some(4444))
