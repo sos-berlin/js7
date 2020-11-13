@@ -87,6 +87,11 @@ final class JavaResourceTest extends AnyFreeSpec
     }
   }
 
+  "Umlauts" in {
+    assert(JavaResource("js7/common/utils/test-2.txt").asUTF8String == "TEST 2\n")
+    assert(JavaResource("js7/common/utils/test-äöü.txt").asUTF8String == "ÄÖÜ\n")
+  }
+
   "asResource (Cats Effect)" in {
     val io = javaResource.asResource.use(in =>
       SyncIO {
