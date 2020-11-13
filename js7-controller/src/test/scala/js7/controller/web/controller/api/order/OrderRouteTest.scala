@@ -93,10 +93,10 @@ final class OrderRouteTest extends AnyFreeSpec with RouteTester with OrderRoute
   }
 
   "POST invalid order" in {
-    val order = FreshOrder.unchecked(OrderId("ORDER/🔵"), WorkflowPath("/WORKFLOW"))
+    val order = FreshOrder.unchecked(OrderId("ORDER|🔵"), WorkflowPath("/WORKFLOW"))
     Post(s"/controller/api/order", order) ~> route ~> check {
       assert(status == BadRequest)
-      assert(response.utf8StringFuture.await(99.s) == "JSON DecodingFailure at : OrderId must not contain reserved characters /\n")
+      assert(response.utf8StringFuture.await(99.s) == "JSON DecodingFailure at : OrderId must not contain reserved characters |\n")
     }
   }
 

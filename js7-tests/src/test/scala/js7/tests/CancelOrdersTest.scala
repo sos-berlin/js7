@@ -152,7 +152,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
   "Cancel a forked order and kill job" in {
     val order = FreshOrder(OrderId("FORK"), forkWorkflow.id.path)
     controller.addOrderBlocking(order)
-    controller.eventWatch.await[OrderProcessingStarted](_.key == order.id / "🥕")
+    controller.eventWatch.await[OrderProcessingStarted](_.key == (order.id | "🥕"))
     val mode = CancelMode.FreshOrStarted(Some(CancelMode.Kill()))
     controller.executeCommandAsSystemUser(CancelOrders(Set(order.id), mode))
       .await(99.seconds).orThrow
@@ -164,15 +164,15 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
       Vector(
         OrderId("FORK") <-: OrderAdded(forkWorkflow.id, order.scheduledFor),
         OrderId("FORK") <-: OrderStarted,
-        OrderId("FORK") <-: OrderForked(Seq(OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("FORK/🥕")))),
-        OrderId("FORK/🥕") <-: OrderAttachable(agentName),
-        OrderId("FORK/🥕") <-: OrderAttached(agentName),
-        OrderId("FORK/🥕") <-: OrderProcessingStarted,
+        OrderId("FORK") <-: OrderForked(Seq(OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("FORK|🥕")))),
+        OrderId("FORK|🥕") <-: OrderAttachable(agentName),
+        OrderId("FORK|🥕") <-: OrderAttached(agentName),
+        OrderId("FORK|🥕") <-: OrderProcessingStarted,
         OrderId("FORK") <-: OrderCancelMarked(mode),
-        OrderId("FORK/🥕") <-: OrderProcessed(Outcome.succeeded),
-        OrderId("FORK/🥕") <-: OrderMoved(Position(0) / "fork+🥕" % 1),
-        OrderId("FORK/🥕") <-: OrderDetachable,
-        OrderId("FORK/🥕") <-: OrderDetached,
+        OrderId("FORK|🥕") <-: OrderProcessed(Outcome.succeeded),
+        OrderId("FORK|🥕") <-: OrderMoved(Position(0) / "fork+🥕" % 1),
+        OrderId("FORK|🥕") <-: OrderDetachable,
+        OrderId("FORK|🥕") <-: OrderDetached,
         OrderId("FORK") <-: OrderJoined(Outcome.succeeded),
         OrderId("FORK") <-: OrderMoved(Position(1)),
         OrderId("FORK") <-: OrderCancelled))

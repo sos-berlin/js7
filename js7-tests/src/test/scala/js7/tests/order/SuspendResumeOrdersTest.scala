@@ -200,7 +200,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
   "Suspend a forked order - child orders are not suspended" in {
     val order = FreshOrder(OrderId("FORK"), forkWorkflow.path)
     controller.addOrderBlocking(order)
-    controller.eventWatch.await[OrderProcessingStarted](_.key == order.id / "🥕")
+    controller.eventWatch.await[OrderProcessingStarted](_.key == (order.id | "🥕"))
 
     controller.executeCommandAsSystemUser(SuspendOrders(Set(order.id))).await(99.s).orThrow
     controller.eventWatch.await[OrderSuspended](_.key == order.id)
@@ -212,18 +212,18 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       Seq(
         OrderId("FORK") <-: OrderAdded(forkWorkflow.id, order.scheduledFor),
         OrderId("FORK") <-: OrderStarted,
-        OrderId("FORK") <-: OrderForked(Seq(OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("FORK/🥕")))),
-        OrderId("FORK/🥕") <-: OrderAttachable(agentName),
-        OrderId("FORK/🥕") <-: OrderAttached(agentName),
-        OrderId("FORK/🥕") <-: OrderProcessingStarted,
+        OrderId("FORK") <-: OrderForked(Seq(OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("FORK|🥕")))),
+        OrderId("FORK|🥕") <-: OrderAttachable(agentName),
+        OrderId("FORK|🥕") <-: OrderAttached(agentName),
+        OrderId("FORK|🥕") <-: OrderProcessingStarted,
         OrderId("FORK") <-: OrderSuspendMarked(),
-        OrderId("FORK/🥕") <-: OrderProcessed(Outcome.succeeded),
-        OrderId("FORK/🥕") <-: OrderMoved(Position(0) / "fork+🥕" % 1),
-        OrderId("FORK/🥕") <-: OrderProcessingStarted,
-        OrderId("FORK/🥕") <-: OrderProcessed(Outcome.succeeded),
-        OrderId("FORK/🥕") <-: OrderMoved(Position(0) / "fork+🥕" % 2),
-        OrderId("FORK/🥕") <-: OrderDetachable,
-        OrderId("FORK/🥕") <-: OrderDetached,
+        OrderId("FORK|🥕") <-: OrderProcessed(Outcome.succeeded),
+        OrderId("FORK|🥕") <-: OrderMoved(Position(0) / "fork+🥕" % 1),
+        OrderId("FORK|🥕") <-: OrderProcessingStarted,
+        OrderId("FORK|🥕") <-: OrderProcessed(Outcome.succeeded),
+        OrderId("FORK|🥕") <-: OrderMoved(Position(0) / "fork+🥕" % 2),
+        OrderId("FORK|🥕") <-: OrderDetachable,
+        OrderId("FORK|🥕") <-: OrderDetached,
         OrderId("FORK") <-: OrderJoined(Outcome.succeeded),
         OrderId("FORK") <-: OrderMoved(Position(1)),
         OrderId("FORK") <-: OrderSuspended))

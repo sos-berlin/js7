@@ -179,7 +179,7 @@ private[history] object InMemoryHistory
             Optional.of(keyValues),
             Optional.of(s"stdout: $StdoutOutput"))
         ).asJava),
-      OrderEntry(OrderId("ORDER/🥕"),
+      OrderEntry(OrderId("ORDER|🥕"),
         Optional.of(OrderId("ORDER")),
         keyValues,
         OrderEntry.Cause.Forked,
@@ -189,7 +189,7 @@ private[history] object InMemoryHistory
         Optional.of(terminatedAt),
         Optional.empty,
         steps = Vector(
-          OrderStepEntry(OrderId("ORDER/🥕"),
+          OrderStepEntry(OrderId("ORDER|🥕"),
             JWorkflowPosition(workflowId /: (Position(1) / "fork+🥕" % 0)),
             agentUris(0),
             jobName = Optional.empty,
@@ -199,7 +199,7 @@ private[history] object InMemoryHistory
             Optional.of(ReturnCode(0)),
             Optional.of(keyValues),
             Optional.of(s"stdout: $StdoutOutput")),
-          OrderStepEntry(OrderId("ORDER/🥕"),
+          OrderStepEntry(OrderId("ORDER|🥕"),
             JWorkflowPosition(workflowId /: (Position(1) / "fork+🥕" % 1)),
             agentUris(0),
             jobName = Optional.empty,
@@ -210,7 +210,7 @@ private[history] object InMemoryHistory
             Optional.of(keyValues),
             Optional.of(s"stdout: $StdoutOutput"))
         ).asJava),
-      OrderEntry(OrderId("ORDER/🍋"),
+      OrderEntry(OrderId("ORDER|🍋"),
         Optional.of(OrderId("ORDER")),
         keyValues,
         OrderEntry.Cause.Forked,
@@ -220,7 +220,7 @@ private[history] object InMemoryHistory
         Optional.of(terminatedAt),
         Optional.empty,
         steps = Vector(
-          OrderStepEntry(OrderId("ORDER/🍋"),
+          OrderStepEntry(OrderId("ORDER|🍋"),
             JWorkflowPosition(workflowId /: (Position(1) / "fork+🍋" % 0)),
             agentUris(0),
             jobName = Optional.empty,
@@ -230,7 +230,7 @@ private[history] object InMemoryHistory
             Optional.of(ReturnCode(0)),
             Optional.of(keyValues),
             Optional.of(s"stdout: $StdoutOutput")),
-          OrderStepEntry(OrderId("ORDER/🍋"),
+          OrderStepEntry(OrderId("ORDER|🍋"),
             JWorkflowPosition(workflowId /: (Position(1) / "fork+🍋" % 1)),
             agentUris(1),
             jobName = Optional.empty,

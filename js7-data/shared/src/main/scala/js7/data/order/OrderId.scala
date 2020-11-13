@@ -14,10 +14,10 @@ final case class OrderId private(string: String) extends GenericString
 
   def pretty = s"Order $string"
 
-  def /(childId: String): OrderId =
-    this / ChildId(childId)
+  def |(childId: String): OrderId =
+    this | ChildId(childId)
 
-  def /(childId: ChildId): OrderId =
+  def |(childId: ChildId): OrderId =
     OrderId(string + ChildSeparator + childId.string)
 
   def checkedNameSyntax: Checked[this.type] =
@@ -35,8 +35,8 @@ final case class OrderId private(string: String) extends GenericString
 
 object OrderId extends GenericString.NonEmpty[OrderId]
 {
-  val ChildSeparator = "/"  // TODO Sicherstellen, dass Schrägstrich in einer OrderId nur hier verwendet wird, damit sie eindeutig ist.
-  private val ReservedCharacters = Set('/')
+  val ChildSeparator = "|"
+  private val ReservedCharacters = Set('|')
 
   protected def unchecked(string: String) = new OrderId(string)
 

@@ -98,52 +98,52 @@ final class OrderEventSourceTest extends AnyFreeSpec
     assert(process.run(orderId) == List(
       orderId <-: OrderStarted,
       orderId <-: OrderForked(List(
-        OrderForked.Child("🥕", orderId / "🥕"),
-        OrderForked.Child("🍋", orderId / "🍋"))),
+        OrderForked.Child("🥕", orderId | "🥕"),
+        OrderForked.Child("🍋", orderId | "🍋"))),
       orderId <-: OrderDetachable,
       orderId <-: OrderDetached))
 
-    assert(process.run(orderId / "🥕") == List(
-      orderId / "🥕" <-: OrderProcessingStarted,
-      orderId / "🥕" <-: OrderProcessed(Outcome.succeeded),
-      orderId / "🥕" <-: OrderMoved(Position(0) / "fork+🥕" % 1),
-      orderId / "🥕" <-: OrderDetachable,
-      orderId / "🥕" <-: OrderDetached))
+    assert(process.run(orderId | "🥕") == List(
+      (orderId | "🥕") <-: OrderProcessingStarted,
+      (orderId | "🥕") <-: OrderProcessed(Outcome.succeeded),
+      (orderId | "🥕") <-: OrderMoved(Position(0) / "fork+🥕" % 1),
+      (orderId | "🥕") <-: OrderDetachable,
+      (orderId | "🥕") <-: OrderDetached))
 
     assert(process.step(orderId).isEmpty)  // Nothing to join
 
-    assert(process.run(orderId / "🍋") == List(
-      orderId / "🍋" <-: OrderProcessingStarted,
-      orderId / "🍋" <-: OrderProcessed(Outcome.succeeded),
-      orderId / "🍋" <-: OrderMoved(Position(0) / "fork+🍋" % 1),
-      orderId / "🍋" <-: OrderDetachable,
-      orderId / "🍋" <-: OrderDetached,
+    assert(process.run(orderId | "🍋") == List(
+      (orderId | "🍋") <-: OrderProcessingStarted,
+      (orderId | "🍋") <-: OrderProcessed(Outcome.succeeded),
+      (orderId | "🍋") <-: OrderMoved(Position(0) / "fork+🍋" % 1),
+      (orderId | "🍋") <-: OrderDetachable,
+      (orderId | "🍋") <-: OrderDetached,
       orderId <-: OrderJoined(Outcome.succeeded)))
     assert(process.step(orderId) == Some(orderId <-: OrderMoved(Position(1))))
 
     assert(process.step(orderId) == Some(orderId <-: OrderForked(List(
-      OrderForked.Child("🥕", orderId / "🥕"),
-      OrderForked.Child("🍋", orderId / "🍋")))))
+      OrderForked.Child("🥕", orderId | "🥕"),
+      OrderForked.Child("🍋", orderId | "🍋")))))
 
-    assert(process.run(orderId / "🥕") == List(
-      orderId / "🥕" <-: OrderAttachable(TestAgentName),
-      orderId / "🥕" <-: OrderAttached(TestAgentName),
-      orderId / "🥕" <-: OrderProcessingStarted,
-      orderId / "🥕" <-: OrderProcessed(Outcome.succeeded),
-      orderId / "🥕" <-: OrderMoved(Position(1) / "fork+🥕" % 1),
-      orderId / "🥕" <-: OrderDetachable,
-      orderId / "🥕" <-: OrderDetached))
+    assert(process.run(orderId | "🥕") == List(
+      (orderId | "🥕") <-: OrderAttachable(TestAgentName),
+      (orderId | "🥕") <-: OrderAttached(TestAgentName),
+      (orderId | "🥕") <-: OrderProcessingStarted,
+      (orderId | "🥕") <-: OrderProcessed(Outcome.succeeded),
+      (orderId | "🥕") <-: OrderMoved(Position(1) / "fork+🥕" % 1),
+      (orderId | "🥕") <-: OrderDetachable,
+      (orderId | "🥕") <-: OrderDetached))
 
     assert(process.step(orderId).isEmpty)  // Nothing to join
 
-    assert(process.run(orderId / "🍋") == List(
-      orderId / "🍋" <-: OrderAttachable(TestAgentName),
-      orderId / "🍋" <-: OrderAttached(TestAgentName),
-      orderId / "🍋" <-: OrderProcessingStarted,
-      orderId / "🍋" <-: OrderProcessed(Outcome.succeeded),
-      orderId / "🍋" <-: OrderMoved(Position(1) / "fork+🍋" % 1),
-      orderId / "🍋" <-: OrderDetachable,
-      orderId / "🍋" <-: OrderDetached,
+    assert(process.run(orderId | "🍋") == List(
+      (orderId | "🍋") <-: OrderAttachable(TestAgentName),
+      (orderId | "🍋") <-: OrderAttached(TestAgentName),
+      (orderId | "🍋") <-: OrderProcessingStarted,
+      (orderId | "🍋") <-: OrderProcessed(Outcome.succeeded),
+      (orderId | "🍋") <-: OrderMoved(Position(1) / "fork+🍋" % 1),
+      (orderId | "🍋") <-: OrderDetachable,
+      (orderId | "🍋") <-: OrderDetached,
       orderId <-: OrderJoined(Outcome.succeeded)))
 
     assert(process.step(orderId) == Some(orderId <-: OrderMoved(Position(2))))
@@ -784,13 +784,13 @@ final class OrderEventSourceTest extends AnyFreeSpec
            |}""".stripMargin).orThrow
       var aChild: Order[Order.State] = {
         val pos = Position(0) / BranchId.try_(0) % 0 / BranchId.fork("🥕") % 0   // Execute
-        Order(OrderId("ORDER/🥕"), workflow.id /: pos, Order.Processed,
+        Order(OrderId("ORDER|🥕"), workflow.id /: pos, Order.Processed,
           historicOutcomes = HistoricOutcome(pos, failed) :: Nil,
           parent = Some(OrderId("ORDER")))
       }
       val bChild = {
         val pos = Position(0) / BranchId.try_(0) % 0 / BranchId.fork("🍋") % 1   // End
-        Order(OrderId("ORDER/🍋"), workflow.id /: pos, Order.Ready,
+        Order(OrderId("ORDER|🍋"), workflow.id /: pos, Order.Ready,
           historicOutcomes = HistoricOutcome(pos, failed) :: Nil,
           parent = Some(OrderId("ORDER")))
       }
@@ -830,8 +830,8 @@ object OrderEventSourceTest {
   private val disruptedOrder = Order(OrderId("DISRUPTED"), TestWorkflowId /: Position(2), Order.Processed,
     historicOutcomes = HistoricOutcome(Position(0), Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted)) :: Nil)
   private val orderForked = OrderForked(List(
-    OrderForked.Child("🥕", OrderId("ORDER/🥕")),
-    OrderForked.Child("🍋", OrderId("ORDER/🍋"))))
+    OrderForked.Child("🥕", OrderId("ORDER|🥕")),
+    OrderForked.Child("🍋", OrderId("ORDER|🍋"))))
 
   private val executeScript = Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("/executable")))
 

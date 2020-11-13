@@ -25,7 +25,7 @@ object ForkExecutor extends EventInstructionExecutor
           checkOrderForked(context,
             order.id <-: OrderForked(
               for (branch <- fork.branches) yield
-                OrderForked.Child(branch.id, order.id / branch.id.string)))))
+                OrderForked.Child(branch.id, order.id | branch.id.string)))))
       .orElse(toJoined(context, order))
       .orElse(order.ifState[Order.Processed].map(order =>
         order.id <-: (

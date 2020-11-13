@@ -62,7 +62,7 @@ final class AkkasTest extends AnyFreeSpec
     assert(ActorPath.fromString("akka://ActorSystem/folder%2Fsubfolder%2Fjobname").pretty == "akka://ActorSystem/folder/subfolder/jobname")
     assert(ActorPath.fromString("akka://ActorSystem/a%3Fb=!&c=%C3%B6%5B%5D%7B%7D").pretty == "akka://ActorSystem/a?b=!&c=ö[]{}")
     assert(ActorPath.fromString("akka://ActorSystem/%28%29").pretty == "akka://ActorSystem/()")
-    assert(ActorPath.fromString("akka://ActorSystem/%F0%9F%94%BA/%F0%9F%A5%95").pretty == "akka://ActorSystem/🔺/🥕")
+    assert(ActorPath.fromString("akka://ActorSystem/%F0%9F%94%BA%7C%F0%9F%A5%95").pretty == "akka://ActorSystem/🔺|🥕")
   }
 
   "SupervisorStrategy" in {

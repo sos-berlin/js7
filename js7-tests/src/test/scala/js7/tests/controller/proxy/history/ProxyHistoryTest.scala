@@ -141,8 +141,8 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
             OrderProcessed(Succeeded(ReturnCode(0))),
             OrderMoved(Position(1)),
             OrderForked(List(
-              OrderForked.Child("🥕",OrderId("🔺/🥕")),
-              OrderForked.Child("🍋",OrderId("🔺/🍋")))),
+              OrderForked.Child("🥕",OrderId("🔺|🥕")),
+              OrderForked.Child("🍋",OrderId("🔺|🍋")))),
             OrderDetachable,
             OrderDetached,
             OrderJoined(Succeeded(ReturnCode(0))),
@@ -156,7 +156,7 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
             OrderDetachable,
             OrderDetached,
             OrderFinished),
-          OrderId("🔺/🥕") -> List(
+          OrderId("🔺|🥕") -> List(
             OrderProcessingStarted,
             OrderStdoutWritten(StdoutOutput),
             OrderProcessed(Succeeded(ReturnCode(0))),
@@ -167,7 +167,7 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
             OrderMoved(Position(1) / "fork+🥕" % 2),
             OrderDetachable,
             OrderDetached),
-        OrderId("🔺/🍋") -> List(
+        OrderId("🔺|🍋") -> List(
           OrderProcessingStarted,
           OrderStdoutWritten(StdoutOutput),
           OrderProcessed(Succeeded(ReturnCode(0))),

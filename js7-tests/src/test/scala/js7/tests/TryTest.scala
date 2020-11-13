@@ -126,9 +126,9 @@ final class TryTest extends AnyFreeSpec
           OrderMoved(Position(0) / "try+0" % 0),
           OrderStarted,
           OrderForked(Vector(
-            OrderForked.Child("🥕", OrderId("🔴/🥕")),
-            OrderForked.Child("🍋", OrderId("🔴/🍋")),
-            OrderForked.Child("🌶", OrderId("🔴/🌶")))),
+            OrderForked.Child("🥕", OrderId("🔴|🥕")),
+            OrderForked.Child("🍋", OrderId("🔴|🍋")),
+            OrderForked.Child("🌶", OrderId("🔴|🌶")))),
           OrderJoined(Outcome.Failed(ReturnCode(0))),
           OrderCatched(Outcome.Failed(ReturnCode(0)), Position(0) / "catch+0" % 0),
           OrderAttachable(TestAgentName),
@@ -139,7 +139,7 @@ final class TryTest extends AnyFreeSpec
           OrderDetachable,
           OrderDetached,
           OrderFinished))
-        checkEventSeq(OrderId("🔴/🍋"), controller.eventWatch.all[OrderEvent], Vector(
+        checkEventSeq(OrderId("🔴|🍋"), controller.eventWatch.all[OrderEvent], Vector(
           OrderAttachable(TestAgentName),
           OrderAttached(TestAgentName),
           OrderProcessingStarted,

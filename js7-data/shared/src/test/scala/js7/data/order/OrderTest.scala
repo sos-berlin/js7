@@ -254,7 +254,7 @@ final class OrderTest extends AnyFreeSpec
       OrderRetrying(Position(1)),
       OrderAwoke,
       OrderMoved(Position(1)),
-      OrderForked(OrderForked.Child("BRANCH", orderId / "BRANCH") :: Nil),
+      OrderForked(OrderForked.Child("BRANCH", orderId | "BRANCH") :: Nil),
       OrderJoined(Outcome.Succeeded(ReturnCode(0))),
       OrderOffered(OrderId("OFFERED"), until = Timestamp.ofEpochSecond(1)),
       OrderAwaiting(OrderId("OFFERED")),
@@ -446,7 +446,7 @@ final class OrderTest extends AnyFreeSpec
     }
 
     "Forked" - {
-      checkAllEvents(Order(orderId, workflowId, Forked(Forked.Child("BRANCH", orderId / "CHILD") :: Nil)),
+      checkAllEvents(Order(orderId, workflowId, Forked(Forked.Child("BRANCH", orderId | "CHILD") :: Nil)),
         removeMarkable[Forked] orElse
         markable[Forked] orElse
         attachingAllowed[Forked] orElse

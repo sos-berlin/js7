@@ -78,11 +78,11 @@ final class FailTest extends AnyFreeSpec
         OrderAdded(TestWorkflowId),
         OrderStarted,
         OrderForked(Vector(
-          OrderForked.Child("🥕", OrderId("🔺/🥕")),
-          OrderForked.Child("🍋", OrderId("🔺/🍋")))),
+          OrderForked.Child("🥕", OrderId("🔺|🥕")),
+          OrderForked.Child("🍋", OrderId("🔺|🍋")))),
         OrderJoined(Outcome.Failed(ReturnCode(0))),
         OrderFailed(Outcome.Failed(ReturnCode(0)))),
-      OrderId("🔺/🍋") -> Vector(
+      OrderId("🔺|🍋") -> Vector(
         OrderFailedInFork(Outcome.Failed(None, ReturnCode(0)))))
   }
 

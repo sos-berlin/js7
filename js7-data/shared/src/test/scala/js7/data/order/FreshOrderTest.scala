@@ -33,7 +33,7 @@ final class FreshOrderTest extends AnyFreeSpec
   }
 
   "checked" in {
-    assert(FreshOrder.checked(OrderId("INVALID/ID"), WorkflowPath("/WORKFLOW")) ==
-      Left(Problem("OrderId must not contain reserved characters /")))
+    assert(FreshOrder.checked(OrderId("INVALID|ID"), WorkflowPath("/WORKFLOW")) ==
+      Left(Problem("OrderId must not contain reserved characters |")))
   }
 }

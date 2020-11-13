@@ -371,24 +371,24 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
 
       "Invalid OrderId is rejected (single order)" in {
         val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
-        val order = json"""{ "id": "ORDER/ID", "workflowPath": "/MISSING" }"""
+        val order = json"""{ "id": "ORDER|ID", "workflowPath": "/MISSING" }"""
         val exception = intercept[HttpException] {
           httpClient.postWithHeaders[Json, Json](Uri(s"$uri/controller/api/order"), order, headers) await 99.s
         }
         assert(exception.status.intValue == 400/*BadRequest*/)
-        assert(exception.dataAsString contains "OrderId must not contain reserved characters /")
-        assert(exception.problem == Some(Problem("JSON DecodingFailure at : OrderId must not contain reserved characters /")))
+        assert(exception.dataAsString contains "OrderId must not contain reserved characters |")
+        assert(exception.problem == Some(Problem("JSON DecodingFailure at : OrderId must not contain reserved characters |")))
       }
 
       "Invalid OrderId is rejected (order array)" in {
         val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
-        val orders = Json.fromValues(json"""{ "id": "ORDER/ID", "workflowPath": "/MISSING" }""":: Nil)
+        val orders = Json.fromValues(json"""{ "id": "ORDER|ID", "workflowPath": "/MISSING" }""":: Nil)
         val exception = intercept[HttpException] {
           httpClient.postWithHeaders[Json, Json](Uri(s"$uri/controller/api/order"), orders, headers) await 99.s
         }
         assert(exception.status.intValue == 400/*BadRequest*/)
-        assert(exception.dataAsString contains "OrderId must not contain reserved characters /")
-        assert(exception.problem == Some(Problem("JSON DecodingFailure at [0]: OrderId must not contain reserved characters /")))
+        assert(exception.dataAsString contains "OrderId must not contain reserved characters |")
+        assert(exception.problem == Some(Problem("JSON DecodingFailure at [0]: OrderId must not contain reserved characters |")))
       }
 
       val order = json"""{
@@ -414,7 +414,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
 
       "Bad OrderId" in {
         val order = json"""{
-          "id": "A/B",
+          "id": "A|B",
           "workflowPath": "/WORKFLOW"
         }"""
 
@@ -422,7 +422,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         val response = httpClient.post_[Json](Uri(s"$uri/controller/api/order"), order, headers) await 99.s
         assert(response.status.intValue == 400/*BadRequest*/)
         assert(response.utf8StringFuture.await(99.seconds).parseJsonCheckedAs[Problem]
-          == Right(Problem("JSON DecodingFailure at : OrderId must not contain reserved characters /")))
+          == Right(Problem("JSON DecodingFailure at : OrderId must not contain reserved characters |")))
         assert(response.header[Location].isEmpty)
       }
 
@@ -445,7 +445,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         val orders = json"""
           [
             {
-              "id": "A/B",
+              "id": "A|B",
               "workflowPath": "/WORKFLOW"
             }
           ]"""
@@ -454,7 +454,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         assert(response.status.intValue == 400/*BadRequest*/)
         assert(response.header[Location].isEmpty)
         assert(response.utf8StringFuture.await(99.seconds).parseJsonCheckedAs[Problem]
-          == Right(Problem("JSON DecodingFailure at [0]: OrderId must not contain reserved characters /")))
+          == Right(Problem("JSON DecodingFailure at [0]: OrderId must not contain reserved characters |")))
       }
     }
 

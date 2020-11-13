@@ -64,13 +64,13 @@ final class FinishTest extends AnyFreeSpec
         OrderAdded(TestWorkflowId),
         OrderStarted,
         OrderForked(Vector(
-          OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("🔺/🥕")),
-          OrderForked.Child(Fork.Branch.Id("🍋"), OrderId("🔺/🍋")))),
+          OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("🔺|🥕")),
+          OrderForked.Child(Fork.Branch.Id("🍋"), OrderId("🔺|🍋")))),
         OrderJoined(Outcome.succeeded),
         OrderMoved(Position(1)),
         OrderFinished))
 
-    assert(events.filter(_.key == orderId / "🥕").map(_.event) ==
+    assert(events.filter(_.key == (orderId | "🥕")).map(_.event) ==
       Vector(
         OrderAttachable(TestAgentName),
         OrderAttached(TestAgentName),
@@ -81,7 +81,7 @@ final class FinishTest extends AnyFreeSpec
         OrderDetached,
         OrderMoved(Position(0) / "fork+🥕" % 3)))    // Moved to end
 
-    assert(events.filter(_.key == orderId / "🍋").map(_.event) ==
+    assert(events.filter(_.key == (orderId | "🍋")).map(_.event) ==
       Vector(
         OrderAttachable(TestAgentName),
         OrderAttached(TestAgentName),
@@ -114,13 +114,13 @@ final class FinishTest extends AnyFreeSpec
         OrderAdded(TestWorkflowId),
         OrderStarted,
         OrderForked(Vector(
-          OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("🔺/🥕")),
-          OrderForked.Child(Fork.Branch.Id("🍋"), OrderId("🔺/🍋")))),
+          OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("🔺|🥕")),
+          OrderForked.Child(Fork.Branch.Id("🍋"), OrderId("🔺|🍋")))),
         OrderJoined(Outcome.succeeded),
         OrderMoved(Position(1)),
         OrderFinished))
 
-    assert(events.filter(_.key == orderId / "🥕").map(_.event) ==
+    assert(events.filter(_.key == (orderId | "🥕")).map(_.event) ==
       Vector(
         OrderAttachable(TestAgentName),
         OrderAttached(TestAgentName),
@@ -131,7 +131,7 @@ final class FinishTest extends AnyFreeSpec
         OrderDetached,
         OrderMoved(Position(0) / "fork+🥕" % 3)))  // Moved to end
 
-    assert(events.filter(_.key == orderId / "🍋").map(_.event) ==
+    assert(events.filter(_.key == (orderId | "🍋")).map(_.event) ==
       Vector(
         OrderAttachable(TestAgentName),
         OrderAttached(TestAgentName),

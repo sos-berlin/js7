@@ -29,7 +29,7 @@ final class ForkTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentNames = AAgentName :: BAgentName :: Nil
   override protected val controllerConfig = config"""
-    js7.TEST-ONLY.suppress-order-id-check-for = "DUPLICATE/🥕" """
+    js7.TEST-ONLY.suppress-order-id-check-for = "DUPLICATE|🥕" """
   protected val inventoryItems = TestWorkflow :: DuplicateWorkflow :: Nil
 
   override def beforeAll() = {
@@ -56,12 +56,12 @@ final class ForkTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   "Existing child OrderId yields broken (and cancelable) order" in {
     val order = TestOrder.copy(id = OrderId("DUPLICATE"))
-    controller.addOrderBlocking(FreshOrder.unchecked(OrderId("DUPLICATE/🥕"), DuplicateWorkflow.id.path))  // Invalid syntax is allowed for this OrderId, check is suppressed
-    controller.eventWatch.await[OrderProcessingStarted](_.key == OrderId("DUPLICATE/🥕"))
+    controller.addOrderBlocking(FreshOrder.unchecked(OrderId("DUPLICATE|🥕"), DuplicateWorkflow.id.path))  // Invalid syntax is allowed for this OrderId, check is suppressed
+    controller.eventWatch.await[OrderProcessingStarted](_.key == OrderId("DUPLICATE|🥕"))
 
     controller.addOrderBlocking(order)
     val expectedBroken = OrderBroken(Problem(
-      "Forked OrderIds duplicate existing Order(Order:DUPLICATE/🥕,/DUPLICATE~INITIAL:0,Processing,Map(),List(),Some(Attached(AGENT-A)),None,None,false,false)"))
+      "Forked OrderIds duplicate existing Order(Order:DUPLICATE|🥕,/DUPLICATE~INITIAL:0,Processing,Map(),List(),Some(Attached(AGENT-A)),None,None,false,false)"))
     assert(controller.eventWatch.await[OrderBroken](_.key == order.id).head.value.event == expectedBroken)
 
     controller.executeCommandAsSystemUser(CancelOrders(Set(order.id), CancelMode.FreshOrStarted())).await(99.s).orThrow
@@ -85,8 +85,8 @@ object ForkTest {
     Vector(
       Execute(WorkflowJob(AAgentName, ExecutablePath("/SLOW.cmd")))))
   private val TestOrder = FreshOrder(OrderId("🔺"), TestWorkflow.id.path, arguments = Map("KEY" -> "VALUE"))
-  private val XOrderId = OrderId(s"🔺/🥕")
-  private val YOrderId = OrderId(s"🔺/🍋")
+  private val XOrderId = OrderId(s"🔺|🥕")
+  private val YOrderId = OrderId(s"🔺|🍋")
 
   private val ExpectedEvents = Vector(
     TestOrder.id <-: OrderAdded(TestWorkflow.id, None, Map("KEY" -> "VALUE")),
