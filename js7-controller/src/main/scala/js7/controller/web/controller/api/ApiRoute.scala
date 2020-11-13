@@ -8,7 +8,6 @@ import akka.http.scaladsl.server.Route
 import js7.common.akkahttp.web.session.SessionRoute
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.ApiRoute._
-import js7.controller.web.controller.api.graphql.GraphqlRoute
 import js7.controller.web.controller.api.log.LogRoute
 import js7.controller.web.controller.api.order.OrderRoute
 import js7.controller.web.controller.api.workflow.WorkflowRoute
@@ -23,7 +22,6 @@ with EventRoute
 with JournalRoute
 with JournalInfoRoute
 with CommandRoute
-with GraphqlRoute
 with OrderRoute
 with RepoRoute
 with WorkflowRoute
@@ -49,7 +47,6 @@ with LogRoute
         case "snapshot"    => snapshotRoute
         case "session"     => sessionRoute
         case "repo"        => repoRoute
-        case "graphql"     => graphqlRoute
         case "log"         => logRoute
         case _ => complete(NotFound)
       } ~

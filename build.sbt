@@ -124,7 +124,6 @@ val commonSettings = Seq(
         ("org.typelevel" %% "cats-core" % catsVersion) ++
         ("org.typelevel" %% "cats-effect" % catsEffectVersion) ++
         circe ++
-        //("org.sangria-graphql" %% "sangria-marshalling-api" % sangriaVersion) ++  // sangria-circe uses an older version
         scalaXml ++ guava ++ slf4j
       }
   },
@@ -354,8 +353,6 @@ lazy val `js7-controller` = project.dependsOn(`js7-controller-data`.jvm, `js7-co
     import Dependencies._
     libraryDependencies ++=
       "org.typelevel" %% "cats-effect" % catsEffectVersion ++
-      "org.sangria-graphql" %% "sangria" % sangriaVersion ++
-      "org.sangria-graphql" %% "sangria-circe" % sangriaCirceVersion ++
       scalaTest % "test" ++
       akkaHttpTestkit % "test" ++
       log4j % "test" ++

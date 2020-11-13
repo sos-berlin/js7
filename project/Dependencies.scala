@@ -25,8 +25,6 @@ object Dependencies
   val monocleVersion = "1.5.0"
   val scribeVersion = "2.7.12"
   val scalaJsDomVersion = "1.1.0"
-  val sangriaVersion = "2.0.0-RC1"
-  val sangriaCirceVersion = "1.3.0"
   val shapelessVersion = "2.3.3"
 
   val slf4j               = "org.slf4j" % "slf4j-api"    % slf4jVersion
