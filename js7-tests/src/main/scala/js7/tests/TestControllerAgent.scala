@@ -30,10 +30,10 @@ import js7.common.utils.JavaShutdownHook
 import js7.core.event.StampedKeyedEventBus
 import js7.data.agent.AgentName
 import js7.data.event.{KeyedEvent, Stamped}
-import js7.data.expression.Expression.{Equal, LastReturnCode, NumericConstant, Or}
 import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
+import js7.data.value.expression.Expression.{Equal, LastReturnCode, NumericConstant, Or}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fork, If}
 import js7.data.workflow.{Workflow, WorkflowPath}

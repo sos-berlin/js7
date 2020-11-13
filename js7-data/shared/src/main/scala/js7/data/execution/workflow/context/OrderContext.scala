@@ -4,10 +4,10 @@ import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.data.execution.workflow.context.OrderContext._
-import js7.data.expression.Evaluator.{NumericValue, StringValue, Value}
-import js7.data.expression.{Scope, ValueSearch}
 import js7.data.job.ReturnCode
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
+import js7.data.value.expression.Evaluator.{NumericValue, StringValue, Value}
+import js7.data.value.expression.{Scope, ValueSearch}
 import js7.data.workflow.instructions.Instructions
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow, WorkflowId}

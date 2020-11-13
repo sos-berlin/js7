@@ -2,8 +2,8 @@ package js7.data.workflow.parser
 
 import fastparse.NoWhitespace._
 import fastparse._
-import js7.data.expression.Expression
-import js7.data.expression.Expression._
+import js7.data.value.expression.Expression
+import js7.data.value.expression.Expression._
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.parser.BasicParsers.{keyValue, _}
 

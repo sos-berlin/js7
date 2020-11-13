@@ -5,8 +5,8 @@ import io.circe.generic.extras.{ConfiguredJsonCodec, JsonKey}
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.utils.IntelliJUtils.intelliJuseImport
-import js7.data.expression.Expression
 import js7.data.source.SourcePos
+import js7.data.value.expression.Expression
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Instruction, Workflow}
 

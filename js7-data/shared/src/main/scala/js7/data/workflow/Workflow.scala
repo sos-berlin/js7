@@ -12,9 +12,9 @@ import js7.base.utils.Collections.implicits.{RichIndexedSeq, RichPairTraversable
 import js7.base.utils.ScalaUtils.reuseIfEqual
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentName
-import js7.data.expression.PositionSearch
 import js7.data.item.{InventoryItem, ItemId}
 import js7.data.job.JobKey
+import js7.data.value.expression.PositionSearch
 import js7.data.workflow.Instruction.{@:, Labeled}
 import js7.data.workflow.Workflow.isCorrectlyEnded
 import js7.data.workflow.instructions.Instructions.jsonCodec

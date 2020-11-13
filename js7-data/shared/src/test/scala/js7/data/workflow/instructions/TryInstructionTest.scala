@@ -2,9 +2,9 @@ package js7.data.workflow.instructions
 
 import js7.base.circeutils.CirceUtils._
 import js7.data.agent.AgentName
-import js7.data.expression.Expression.BooleanConstant
 import js7.data.job.ExecutablePath
 import js7.data.source.SourcePos
+import js7.data.value.expression.Expression.BooleanConstant
 import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.BranchId.{Catch_, Try_}

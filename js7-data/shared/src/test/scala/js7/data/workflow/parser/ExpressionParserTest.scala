@@ -3,8 +3,8 @@ package js7.data.workflow.parser
 import fastparse.NoWhitespace._
 import fastparse.{Parsed, _}
 import js7.base.problem.Problem
-import js7.data.expression.Expression
-import js7.data.expression.Expression._
+import js7.data.value.expression.Expression
+import js7.data.value.expression.Expression._
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.parser.ExpressionParser._
 import js7.data.workflow.parser.Parsers.checkedParse

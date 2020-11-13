@@ -1,4 +1,4 @@
-package js7.data.expression
+package js7.data.value.expression
 
 import js7.data.workflow.Label
 import js7.data.workflow.instructions.executable.WorkflowJob
