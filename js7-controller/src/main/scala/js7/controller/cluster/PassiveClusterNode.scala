@@ -269,18 +269,17 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
             s"position=${continuation.fileLength}) failed with ${t.toStringWithCauses}", t)
         })
         // detectPauses here ???
-        .bufferIntrospective(1024/*TODO Need not to be more than default backpressure size (active and passive node)*/)
-        // Parallelization effect on replication throughput is not as big as expected.
+        .bufferIntrospective(1024/*Need not to be more than default backpressure size (of active and passive node)*/)
         .flatMap { list =>
           def f(positionAndLine: PositionAnd[ByteArray]) =
             (positionAndLine.position,
               positionAndLine.value,
               positionAndLine.value.parseJson.flatMap(journalMeta.decodeJson).orThrow)
-          val n = 128/*TODO*/
+          val n = 128/*!!!*/
           if (list.sizeIs <= n + n / 2)
             Observable.fromIterable(list) map f
           else
-            Observable.fromIteratorUnsafe(list.grouped(n))
+            Observable.fromIteratorUnsafe(list grouped n)
               .mapParallelOrdered(sys.runtime.availableProcessors)(list => Task(
                 list map f))
               .flatMap(Observable.fromIterable)

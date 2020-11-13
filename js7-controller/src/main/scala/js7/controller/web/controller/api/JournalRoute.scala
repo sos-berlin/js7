@@ -66,9 +66,11 @@ trait JournalRoute extends ControllerRouteProvider
                                   Task.pure(Right(
                                     HttpEntity(
                                       JournalContentType,
-                                      observable.takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
-                                        Task { logger.debug("whenShuttingDown completed") }
-                                      ) .map(f)
+                                      observable
+                                        .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ => Task {
+                                          logger.debug("whenShuttingDown completed")
+                                        })
+                                        .map(f)
                                         .pipeIf(heartbeat.isDefined)(_
                                           .insertHeartbeatsOnSlowUpstream(heartbeat.get, HeartbeatMarker))
                                         .map(_.toByteString)

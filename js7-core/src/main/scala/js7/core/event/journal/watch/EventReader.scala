@@ -5,7 +5,8 @@ import java.nio.file.Path
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops._
 import js7.base.monixutils.MonixBase.memoryLeakLimitedObservableTailRecM
-import js7.base.monixutils.MonixDeadline
+import js7.base.monixutils.{MonixBase, MonixDeadline}
+import MonixBase.syntax._
 import js7.base.monixutils.MonixDeadline.now
 import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
@@ -152,49 +153,43 @@ extends AutoCloseable
   /** Observes a journal file lines and length. */
   final def observeFile(position: Long, timeout: FiniteDuration, markEOF: Boolean = false, onlyAcks: Boolean)
   : Observable[PositionAnd[ByteArray]] =
-    Observable.fromTask(Task.deferAction(implicit scheduler => Task(
-      observeFile2(position, timeout, markEOF, onlyAcks)
-    ))).flatten
+    Observable.deferAction(implicit scheduler =>
+      Observable.fromResource(InputStreamJsonSeqReader.resource(journalFile))
+        .flatMap { jsonSeqReader =>
+          val until = now + timeout
+          jsonSeqReader.seek(position)
 
-  private def observeFile2(position: Long, timeout: FiniteDuration, markEOF: Boolean = false, onlyAcks: Boolean)
-    (implicit scheduler: Scheduler)
-  : Observable[PositionAnd[ByteArray]] =
-    Observable.fromResource(InputStreamJsonSeqReader.resource(journalFile))
-      .flatMap { jsonSeqReader =>
-        val until = now + timeout
-        jsonSeqReader.seek(position)
-
-        memoryLeakLimitedObservableTailRecM(position, limit = limitTailRecM)(position =>
-          Observable.fromTask(whenDataAvailableAfterPosition(position, until))
-            .flatMap {
-              case false =>  // Timeout
-                Observable.empty
-              case true =>  // Data may be available
-                var lastPosition = position
-                var eof = false
-                var iterator = UntilNoneIterator {
-                  val maybeLine = jsonSeqReader.readRaw().map(_.value)
-                  eof = maybeLine.isEmpty
-                  lastPosition = jsonSeqReader.position
-                  maybeLine.map(PositionAnd(lastPosition, _))
-                }.takeWhileInclusive(_ => isFlushedAfterPosition(lastPosition))
-                if (onlyAcks) {
-                  // TODO Optimierung: Bei onlyAcks interessiert nur die geschriebene Dateilänge.
-                  //  Dann brauchen wir die Datei nicht zu lesen, sondern nur die geschriebene Dateilänge zurückzugeben.
-                  var last = null.asInstanceOf[PositionAnd[ByteArray]]
-                  iterator foreach { last = _ }
-                  iterator = Option(last).iterator
-                }
-                iterator = iterator
-                  .tapEach { o =>
-                    if (o.value == EndOfJournalFileMarker) sys.error(s"Journal file must not contain a line like $o")
-                  } ++
-                    (eof && markEOF).thenIterator(PositionAnd(lastPosition, EndOfJournalFileMarker))
-                Observable.fromIteratorUnsafe(iterator map Right.apply) ++
-                  Observable.fromIterable(
-                    !eof ? Left(lastPosition))
-              })
-      }
+          memoryLeakLimitedObservableTailRecM(position, limit = limitTailRecM)(position =>
+            Observable.fromTask(whenDataAvailableAfterPosition(position, until))
+              .flatMap {
+                case false =>  // Timeout
+                  Observable.empty
+                case true =>  // Data may be available
+                  var lastPosition = position
+                  var eof = false
+                  var iterator = UntilNoneIterator {
+                    val maybeLine = jsonSeqReader.readRaw().map(_.value)
+                    eof = maybeLine.isEmpty
+                    lastPosition = jsonSeqReader.position
+                    maybeLine.map(PositionAnd(lastPosition, _))
+                  }.takeWhileInclusive(_ => isFlushedAfterPosition(lastPosition))
+                  if (onlyAcks) {
+                    // TODO Optimierung: Bei onlyAcks interessiert nur die geschriebene Dateilänge.
+                    //  Dann brauchen wir die Datei nicht zu lesen, sondern nur die geschriebene Dateilänge zurückzugeben.
+                    var last = null.asInstanceOf[PositionAnd[ByteArray]]
+                    iterator foreach { last = _ }
+                    iterator = Option(last).iterator
+                  }
+                  iterator = iterator
+                    .tapEach { o =>
+                      if (o.value == EndOfJournalFileMarker) sys.error(s"Journal file must not contain a line like $o")
+                    } ++
+                      (eof && markEOF).thenIterator(PositionAnd(lastPosition, EndOfJournalFileMarker))
+                  Observable.fromIteratorUnsafe(iterator map Right.apply) ++
+                    Observable.fromIterable(
+                      !eof ? Left(lastPosition))
+                })
+        })
 
   final def lastUsedAt: Long =
     _lastUsed
