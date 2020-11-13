@@ -39,7 +39,7 @@ final class ProcessesForkedTest extends AnyFreeSpec {
         (file, process)
       }
     val (files, processes) = (filesAndProcesses await 300.s).unzip
-    waitForCondition(300.s, 100.ms) { !(processes exists { _.isAlive }) }
+    waitForCondition(300.s, 100.ms) { !processes.exists(_.isAlive) }
     info(stopwatch.itemsPerSecondString(n, "processes"))
     for (p <- processes) {
       val rc = p.waitFor()

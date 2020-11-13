@@ -61,7 +61,7 @@ object AgentClientMain
         case "-" => StdinCommand
         case command => StringCommand(command)
       }
-      if ((operations count { _ == StdinCommand }) > 1) throw new IllegalArgumentException("Stdin ('-') can only be read once")
+      if (operations.count(_ == StdinCommand) > 1) throw new IllegalArgumentException("Stdin ('-') can only be read once")
       (agentUri, configDirectory, dataDirectory, operations)
     }
 

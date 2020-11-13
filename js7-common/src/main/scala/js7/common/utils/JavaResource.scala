@@ -52,7 +52,7 @@ final case class JavaResource(classLoader: ClassLoader, path: String)
     for ((resourcePath, file) <- resourcePathAndDllFiles) {
       resourcePath.copyToFile(file, copyOptions: _*)   // After an exception here, already created files are left !!!
     }
-    resourcePathAndDllFiles.toVector map { _._2 }
+    resourcePathAndDllFiles.toVector.map(_._2)
   }
 
   /**

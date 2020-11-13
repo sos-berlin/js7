@@ -130,7 +130,7 @@ final class JournalTest extends AnyFreeSpec with BeforeAndAfterAll with TestJour
         (executed ++ disturbed) await 99.s
         info(s"$n actors, coalesce-event-limit=$coalesceEventLimit " + stopwatch.itemsPerSecondString(n, "commands"))
         assert(journalAggregates.isEmpty)
-        val prefixToKeyedEvents = journalKeyedTestEvents groupBy { _.key.split("-").head }
+        val prefixToKeyedEvents = journalKeyedTestEvents.groupBy(_.key.split("-").head)
         assert(prefixToKeyedEvents.keySet == prefixes.toSet)
         for (p <- prefixes) assert(prefixToKeyedEvents(p) == testEvents(p))
         ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet shouldEqual

@@ -39,7 +39,7 @@ with ConvertibleMultiPartialFunction[String, String] {
 
   def apply(key: String): Vector[String] = values(key)
 
-  private def values(key: String): Vector[String] = arguments(key) map { _.value }
+  private def values(key: String): Vector[String] = arguments(key).map(_.value)
 
   def arguments(key: String): Vector[Argument] = {
     unusedArguments -= key

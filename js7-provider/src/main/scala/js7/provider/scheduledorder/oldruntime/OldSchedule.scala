@@ -28,19 +28,19 @@ extends Schedule {
         @tailrec def find(): Instant = {
           if (remaining > 0 && from < instantInterval.until) {
             val local = LocalDateTime.ofInstant(from, timeZone)
-            periodSeq(local.toLocalDate) flatMap { _.nextLocalTime(local.toLocalTime) } map {
-              _.atDate(local.toLocalDate).toInstant(timeZone)
-            } match {
-              case Some(o) if o < instantInterval.until =>
-                remaining -= 1
-                from = o plusNanos 1
-                o
-              case Some(_) =>
-                endOfData
-              case None =>
-                from = local.toLocalDate.plusDays(1).atStartOfDay.toInstant(timeZone)
-                find()
-            }
+            periodSeq(local.toLocalDate).flatMap(_.nextLocalTime(local.toLocalTime))
+              .map(_.atDate(local.toLocalDate).toInstant(timeZone))
+              match {
+                case Some(o) if o < instantInterval.until =>
+                  remaining -= 1
+                  from = o plusNanos 1
+                  o
+                case Some(_) =>
+                  endOfData
+                case None =>
+                  from = local.toLocalDate.plusDays(1).atStartOfDay.toInstant(timeZone)
+                  find()
+              }
           } else
             endOfData
         }

@@ -64,7 +64,7 @@ final class ScalaTimeTest extends AnyFreeSpec
     }
 
     "randomDuration" in {
-      val durations = 1 to 1000 map { _ => randomDuration(2.s) }
+      val durations = (1 to 1000).map(_ => randomDuration(2.s))
       val min = durations.min
       val max = durations.max
       assert(min >= 0.s && min <= 100.ms)

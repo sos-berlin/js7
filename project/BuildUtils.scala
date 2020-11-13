@@ -99,6 +99,6 @@ object BuildUtils
   implicit def singleModuleIDToList(o: sbt.ModuleID): List[ModuleID] = o :: Nil
 
   implicit final class PercentModuleIDSeq(private val delegate: Seq[sbt.ModuleID]) extends AnyVal {
-    def %(configurations: String) = delegate map { _ % configurations }
+    def %(configurations: String) = delegate.map(_ % configurations)
   }
 }

@@ -115,14 +115,14 @@ final class OrderAgentTest extends AnyFreeSpec
               attachedState = Some(Order.Attached(AgentName("AGENT"))))
 
           val stopwatch = new Stopwatch
-          agentClient.commandExecute(Batch(orders map { AttachOrder(_, SignedSimpleWorkflow) })) await 99.s
+          agentClient.commandExecute(Batch(orders.map(AttachOrder(_, SignedSimpleWorkflow)))) await 99.s
 
-          val awaitedOrderIds = (orders map { _.id }).toSet
+          val awaitedOrderIds = orders.map(_.id).toSet
           val ready = mutable.Set[OrderId]()
           while (
             agentClient.controllersEvents(EventRequest.singleClass[Event](timeout = Some(timeout))).map(_.orThrow) await 99.s match {
               case EventSeq.NonEmpty(stampeds) =>
-                ready ++= stampeds map { _.value } collect { case KeyedEvent(orderId: OrderId, OrderDetachable) => orderId }
+                ready ++= stampeds.map(_.value) collect { case KeyedEvent(orderId: OrderId, OrderDetachable) => orderId }
                 ready != awaitedOrderIds
               case _ =>
                 true

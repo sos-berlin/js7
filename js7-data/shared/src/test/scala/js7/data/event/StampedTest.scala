@@ -13,7 +13,7 @@ final class StampedTest extends AnyFreeSpec {
 
   "map" in {
     val eventId = EventId(100)
-    assert((Stamped(eventId, Timestamp.ofEpochMilli(123), 3) map { _.toString }) ==
+    assert(Stamped(eventId, Timestamp.ofEpochMilli(123), 3).map(_.toString) ==
       Stamped(eventId, Timestamp.ofEpochMilli(123), "3"))
   }
 

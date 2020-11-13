@@ -33,6 +33,6 @@ final class AgentTaskIdTest extends AnyFreeSpec {
 
   "AgentTaskIdGenerator overflow" in {
     val ids = (AgentTaskId.newGenerator(start = Int.MaxValue - 2) take 5).toList
-    ids map { _.index } shouldEqual List(Int.MaxValue - 2, Int.MaxValue - 1, Int.MaxValue, 1, 2)
+    ids.map(_.index) shouldEqual List(Int.MaxValue - 2, Int.MaxValue - 1, Int.MaxValue, 1, 2)
   }
 }

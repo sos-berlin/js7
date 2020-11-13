@@ -63,7 +63,7 @@ final class MemoryKeyedEventQueue(sizeLimit: Int)
     }
 
   def reverseEvents(after: EventId): Iterator[Stamped[AnyKeyedEvent]] =
-    new EventIterator(EventId.MaxValue, queue.navigableKeySet.descendingIterator.asScala takeWhile { _ > after } map queue.get)
+    new EventIterator(EventId.MaxValue, queue.navigableKeySet.descendingIterator.asScala.takeWhile(_ > after) map queue.get)
       .asScala
 
   def lastEventId: EventId =

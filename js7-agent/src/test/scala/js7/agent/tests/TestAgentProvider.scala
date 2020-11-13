@@ -27,7 +27,7 @@ trait TestAgentProvider extends TestAgentDirectoryProvider {
   protected lazy final val agent: RunningAgent = {
     val confModule = new AgentModule(agentConfiguration)
     val combinedModule = Modules.`override`(confModule) `with` extraAgentModule
-    RunningAgent.startForTest(combinedModule) map { _.closeWithCloser } await 10.s
+    RunningAgent.startForTest(combinedModule).map(_.closeWithCloser) await 10.s
   }.withCloser { agent =>
     // Terminate Agent properly to avoid StackOverflowError due to a RejectedExecutionException when terminating Akka 2.6.6
     agent.terminate(Some(SIGKILL)) await 99.s

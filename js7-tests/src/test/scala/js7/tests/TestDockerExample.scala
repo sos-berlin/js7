@@ -73,7 +73,7 @@ object TestDockerExample
       val agents = for (agentName <- TestAgentNames) yield {
         val agent = RunningAgent.startForTest(
           AgentConfiguration.forTest(configAndData = env.agentDir(agentName))
-        ) map { _.closeWithCloser } await 99.s
+        ).map(_.closeWithCloser) await 99.s
         //env.file(agentName, SourceType.Json) := AgentRef(AgentName.NoId, uri = agent.localUri.toString)
         agent
       }

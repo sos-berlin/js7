@@ -30,9 +30,9 @@ final class MemoryKeyedEventQueueTest extends AnyFreeSpec {
 
   "after" in {
     //assert(queue.events(EventId(1)) == None)
-    assert((queue.after(EventId(2)) map { _.toVector }) == Some(stampeds drop 2))
-    assert((queue.after(EventId(3)) map { _.toVector }) == Some(stampeds drop 3))
-    assert((queue.after(EventId(4)) map { _.toVector }) == Some(stampeds drop 4))
+    assert(queue.after(EventId(2)).map(_.toVector) == Some(stampeds drop 2))
+    assert(queue.after(EventId(3)).map(_.toVector) == Some(stampeds drop 3))
+    assert(queue.after(EventId(4)).map(_.toVector) == Some(stampeds drop 4))
     assert(queue.after(EventId(5)).get.isEmpty)
   }
 
@@ -50,7 +50,7 @@ final class MemoryKeyedEventQueueTest extends AnyFreeSpec {
     assert(queue.tornEventId == 3)
     assert(queue.after(EventId.BeforeFirst) == None)
     assert(queue.after(2) == None)
-    assert((queue.after(EventId(3)) map { _.toVector }) == Some(stampeds drop 3))
+    assert(queue.after(EventId(3)).map(_.toVector) == Some(stampeds drop 3))
   }
 }
 

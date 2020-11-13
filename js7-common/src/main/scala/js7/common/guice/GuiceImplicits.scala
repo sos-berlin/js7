@@ -13,6 +13,6 @@ object GuiceImplicits {
       delegate.getInstance(Key.get(typeLiteral[A]))
 
     def option[A: ClassTag]: Option[A] =
-      Option(delegate.getExistingBinding(Key.get(implicitClass[A]))) map { _.getProvider.get }
+      Option(delegate.getExistingBinding(Key.get(implicitClass[A]))).map(_.getProvider.get)
   }
 }

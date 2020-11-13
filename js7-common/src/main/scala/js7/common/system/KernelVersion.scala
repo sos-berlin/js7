@@ -20,7 +20,7 @@ private object KernelVersion {
 
   private val Singleton = ignoreError { KernelVersion(sys.props("os.name"), parseVersion(sys.props("os.version"))) } sideEffect { o => logger.info(s"$o") }
 
-  private def parseVersion(string: String) = (string split "[.-]" take 3 map { _.toInt }).toList
+  private def parseVersion(string: String) = string.split("[.-]").take(3).map(_.toInt).toList
 
   private def ignoreError(body: => KernelVersion): KernelVersion =
     try body

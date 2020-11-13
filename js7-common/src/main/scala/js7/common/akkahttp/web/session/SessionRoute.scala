@@ -57,7 +57,7 @@ trait SessionRoute extends RouteProvider
 
       case Logout(sessionToken) =>
         sessionRegister.logout(sessionToken)
-          .map { _: Completed => Right(SessionCommand.Response.Accepted) }
+          .map((_: Completed) => Right(SessionCommand.Response.Accepted))
     }
 
   private def authenticateOrUseHttpUser(

@@ -29,7 +29,7 @@ trait ItemPath extends GenericString
   final def requireNonAnonymous(): Unit =
     companion.checked(string).orThrow
 
-  final def nesting = string stripSuffix "/" count { _ == '/' }
+  final def nesting = string.stripSuffix("/").count(_ == '/')
 
   final def withTrailingSlash: String = if (string endsWith "/") string else s"$string/"
 
@@ -94,7 +94,7 @@ object ItemPath
 
   abstract class Companion[P <: ItemPath: ClassTag] extends GenericString.Checked_[P]
   {
-    final val NameOrdering: Ordering[P] = Ordering by { _.name }
+    final val NameOrdering: Ordering[P] = Ordering.by(_.name)
     final lazy val Anonymous: P = unchecked(InternalPrefix + "anonymous")
     final lazy val NoId: ItemId[P] = Anonymous ~ VersionId.Anonymous
 

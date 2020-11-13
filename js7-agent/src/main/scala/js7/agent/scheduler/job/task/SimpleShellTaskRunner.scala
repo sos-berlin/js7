@@ -38,7 +38,7 @@ extends TaskRunner
   val asBaseAgentTask = new BaseAgentTask {
     def id = agentTaskId
     def jobKey = conf.jobKey
-    def pidOption = richProcessOnce flatMap { _.pidOption }
+    def pidOption = richProcessOnce.flatMap(_.pidOption)
     def terminated = terminatedPromise.future
     def overview = TaskOverview(jobKey, id, pidOption, startedAt)
 
@@ -115,7 +115,7 @@ extends TaskRunner
       synchronizedStartProcess {
         startPipedShellScript(conf.shellFile, processConfiguration, stdChannels)
       } andThen { case Success(richProcess) =>
-        terminatedPromise.completeWith(richProcess.terminated map { _ => Completed })
+        terminatedPromise.completeWith(richProcess.terminated.map(_ => Completed))
         richProcessOnce := richProcess
       }
     }

@@ -28,7 +28,7 @@ class ScalaConcurrentHashMap[K, V] extends mutable.Map[K, V]{
     this
   }
 
-  final def iterator = delegate.entrySet().iterator.asScala map { o => o.getKey -> o.getValue }
+  final def iterator = delegate.entrySet().iterator.asScala.map(o => o.getKey -> o.getValue)
 
   final def get(key: K) = Option(delegate.get(key))
 

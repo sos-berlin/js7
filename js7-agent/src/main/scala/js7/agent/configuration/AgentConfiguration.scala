@@ -55,7 +55,7 @@ extends CommonConfiguration
     copy(
       webServerPorts = common.webServerPorts,
       logDirectory = a.optionAs("--log-directory=")(asAbsolutePath) getOrElse logDirectory,
-      jobJavaOptions = a.optionAs[String]("--job-java-options=").fold(jobJavaOptions) { _ :: Nil },
+      jobJavaOptions = a.optionAs[String]("--job-java-options=").fold(jobJavaOptions)(_ :: Nil),
       jobWorkingDirectory = a.as("--job-working-directory=", jobWorkingDirectory)(asAbsolutePath))
     .withKillScript(a.optionAs[String]("--kill-script="))
   }

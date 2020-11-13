@@ -9,7 +9,7 @@ abstract sealed case class PeriodSeq(orderedSeq: Seq[Period]) {
   requireOrderedAndNotOverlapping(orderedSeq)
 
   def nextLocalTime(from: LocalTime): Option[LocalTime] =
-    (orderedSeq flatMap { _.nextLocalTime(from) }).headOption
+    orderedSeq.flatMap(_.nextLocalTime(from)).headOption
 
 //  def nextInterval(from: DateTime): Option[Interval] = {
 //    val date = from.toDateMidnight

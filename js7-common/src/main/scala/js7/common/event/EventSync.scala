@@ -46,7 +46,7 @@ final class EventSync(initial: Long, valueToString: Long => String)
     }
 
   private def whenAvailable2(after: Long): Task[Boolean] =
-    Task.tailRecM(()) { _ =>
+    Task.tailRecM(())(_ =>
       if (after < _last)
         Task.pure(Right(true))
       else synchronized {
@@ -63,8 +63,7 @@ final class EventSync(initial: Long, valueToString: Long => String)
           Task.fromFuture(promise.future) >>
             Task.pure(Left(()))  // Check again
         }
-      }
-    }
+      })
 
   def last = _last
 

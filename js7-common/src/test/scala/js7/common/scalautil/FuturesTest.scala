@@ -85,7 +85,7 @@ final class FuturesTest extends AnyFreeSpec
   }
 
   private def stackTraceContainsCreationsStackTrace(body: => Int): Boolean =
-    intercept[TestException] { body } .getStackTrace exists { _.toString contains classOf[AnyFreeSpec].getName }
+    intercept[TestException] { body } .getStackTrace.exists(_.toString contains classOf[AnyFreeSpec].getName)
 
   private class TestException extends Exception
 }

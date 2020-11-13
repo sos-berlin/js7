@@ -25,7 +25,7 @@ final class ScheduledOrderGeneratorKeeper(scheduledOrderGenerators: Iterable[Sch
         orderGenerator.workflowPath,
         Some(instant.toTimestamp),
         orderGenerator.arguments))
-    .toVector.sortBy { _.scheduledFor }
+    .toVector.sortBy(_.scheduledFor)
 }
 
 object ScheduledOrderGeneratorKeeper {

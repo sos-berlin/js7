@@ -93,13 +93,13 @@ final class CollectionsTest extends AnyFreeSpec
   "retainOrderGroupBy" in {
     case class A(name: String, i: Int)
     val list = List(A("eins", 1), A("zwei a", 2), A("drei", 3), A("vier", 4), A("fünf", 5), A("zwei b", 2))
-    (list retainOrderGroupBy { _.i }) shouldEqual Vector(
+    list.retainOrderGroupBy(_.i) shouldEqual Vector(
       1 -> Vector(A("eins", 1)),
       2 -> Vector(A("zwei a", 2), A("zwei b", 2)),
       3 -> Vector(A("drei", 3)),
       4 -> Vector(A("vier", 4)),
       5 -> Vector(A("fünf", 5)))
-    intercept[DuplicateKeyException] { List(1 -> "eins", 1 -> "ett") toKeyedMap { _._1 } }
+    intercept[DuplicateKeyException] { List(1 -> "eins", 1 -> "ett").toKeyedMap(_._1) }
   }
 
   "takeWhileInclusive" in {
@@ -122,7 +122,7 @@ final class CollectionsTest extends AnyFreeSpec
   }
 
   "duplicateKeys" in {
-    def dup(o: Seq[A]) = o duplicateKeys { _.i }
+    def dup(o: Seq[A]) = o.duplicateKeys(_.i)
 
     assert(dup(Seq[A]()) == None)
     assert(dup(Seq(a1)) == None)
@@ -135,7 +135,7 @@ final class CollectionsTest extends AnyFreeSpec
   }
 
   "requireUniqueness" in {
-    def r(o: Seq[A]) = o requireUniqueness { _.i }
+    def r(o: Seq[A]) = o.requireUniqueness(_.i)
 
     r(Seq[A]()) shouldBe Symbol("empty")
     intercept[DuplicateKeyException] { r(Seq(a1, a2)) }
@@ -145,7 +145,7 @@ final class CollectionsTest extends AnyFreeSpec
   }
 
   "checkUniqueness" in {
-    def r(o: Seq[A]) = o checkUniqueness { _.i }
+    def r(o: Seq[A]) = o.checkUniqueness(_.i)
 
     assert(r(Seq[A]()) == Right(Nil))
     assert(r(Seq(a1, a2)) == Left(Problem("Unexpected duplicates: 2×1")))

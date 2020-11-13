@@ -25,5 +25,5 @@ object InternalCommandId extends GenericString.Checked_[InternalCommandId]
     }
 
   def newGenerator(): Iterator[InternalCommandId] =
-    Iterator.iterate(1L) { _ + 1 } map InternalCommandId.apply
+    Iterator.iterate(1L)(_ + 1) map InternalCommandId.apply
 }

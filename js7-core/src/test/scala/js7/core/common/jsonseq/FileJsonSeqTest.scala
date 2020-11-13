@@ -52,7 +52,7 @@ final class FileJsonSeqTest extends AnyFreeSpec {
       //assert(file.contentString startsWith Ascii.RS.toChar.toString)
       assert(file.contentString endsWith "\n")
       autoClosing(InputStreamJsonSeqReader.open(file)) { reader =>
-        assert((reader.iterator map { _.value.as[A].orThrow }).toList == List(
+        assert(reader.iterator.map(_.value.as[A].orThrow).toList == List(
           A(1, "a"),
           A(2, "b"),
           A(3, "c")))

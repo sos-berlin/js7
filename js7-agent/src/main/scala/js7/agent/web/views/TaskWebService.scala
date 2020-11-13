@@ -33,7 +33,7 @@ trait TaskWebService extends AgentRouteProvider {
         pathSingleSlash {
           get {
             complete {
-              taskRegister.taskOverviews map { _ sortBy { _.taskId.index } }
+              taskRegister.taskOverviews.map(_.sortBy(_.taskId.index))
             }
           }
         } ~

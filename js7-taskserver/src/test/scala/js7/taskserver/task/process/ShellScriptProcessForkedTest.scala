@@ -28,7 +28,7 @@ final class ShellScriptProcessForkedTest extends AnyFreeSpec {
       startShellScript(ProcessConfiguration.forTest, name = s"#$i", scriptString = script)
     }
     val processes = processFutures await 300.s
-    waitForCondition(300.s, 100.ms) { !(processes exists { _.isAlive }) }
+    waitForCondition(300.s, 100.ms) { !processes.exists(_.isAlive) }
     for (p <- processes) {
       val rc = p.terminated await 99.s
       assert(rc == ReturnCode(0))

@@ -15,7 +15,7 @@ import js7.common.system.OperatingSystem._
  */
 object ProcessPidRetriever
 {
-  private[process] val hasJava9 = SourceVersion.values map { _.toString } contains "RELEASE_9"
+  private[process] val hasJava9 = SourceVersion.values.map(_.toString) contains "RELEASE_9"
   lazy val maybeOwnPid: Option[Pid] =
     if (!hasJava9)
       None

@@ -18,5 +18,5 @@ trait CommandHandler
   def detailed: Task[CommandHandlerDetailed[AgentCommand]]
 
   final def typedExecute(command: AgentCommand, meta: CommandMeta): Task[Checked[command.Response]] =
-    execute(command, meta) .map { _.asInstanceOf[Checked[command.Response]]}
+    execute(command, meta).map(_.asInstanceOf[Checked[command.Response]])
 }

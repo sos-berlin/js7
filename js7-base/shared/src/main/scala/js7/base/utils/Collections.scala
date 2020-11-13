@@ -148,7 +148,7 @@ object Collections
 
       def uniqueToMap: Map[K, V] = {
         val result = delegate.toMap
-        if (delegate.sizeIs != result.size) delegate.requireUniqueness { _._1 }
+        if (delegate.sizeIs != result.size) delegate.requireUniqueness(_._1)
         result
       }
 
@@ -159,7 +159,7 @@ object Collections
       }
 
       def toSeqMultiMap: Map[K, Seq[V]] =
-        delegate groupBy { _._1 } map { case (key, seq) => key -> (seq map { _._2 }).toSeq }
+        delegate.groupBy(_._1) map { case (key, seq) => key -> seq.map(_._2).toSeq }
     }
 
     implicit final class InsertableMutableMap[K, V](private val delegate: mutable.Map[K, V]) extends AnyVal {

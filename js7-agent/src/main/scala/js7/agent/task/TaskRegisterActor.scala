@@ -93,7 +93,7 @@ final class TaskRegisterActor private(killScriptConf: Option[KillScriptConf]) ex
           totalTaskCount = totalCount)
 
       case Command.GetTaskOverviews =>
-        sender() ! (idToTask.values map { _.overview }).toVector
+        sender() ! idToTask.values.map(_.overview).toVector
 
       case Command.GetTaskOverview(taskId) if idToTask contains taskId =>
         sender() ! idToTask(taskId).overview

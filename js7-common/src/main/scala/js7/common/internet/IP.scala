@@ -32,7 +32,7 @@ object IP {
         case IPv6Regex(host, port) => useDefaults(host, port)
         case IPv6Host(host) => useDefaults(host, defaultPortString)
         case "" => makeInetSocketAddress(defaultHost, defaultPortString)
-        case _ if string forall { _.isDigit } => makeInetSocketAddress(defaultHost, string)
+        case _ if string.forall(_.isDigit) => makeInetSocketAddress(defaultHost, string)
         case _ => makeInetSocketAddress(string, defaultPortString)
       } catch {
         case NonFatal(t) => throw new IllegalArgumentException(s"Invalid IP address and port combination in '$string': $t", t)
@@ -41,7 +41,7 @@ object IP {
     private def useDefaults(host: String, port: String) =
       makeInetSocketAddress(host.substitute("", defaultHost), port.substitute("", defaultPort.toString))
 
-    private def defaultPortString = defaultPort map { _.toString } getOrElse ""
+    private def defaultPortString = defaultPort.map(_.toString) getOrElse ""
   }
 
   implicit object StringToInetSocketAddress extends As[String, InetSocketAddress] {

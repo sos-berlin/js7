@@ -11,19 +11,19 @@ final class CommandLineArgumentsTest extends AnyFreeSpec {
 
   "Flag" - {
     "boolean" in {
-      assert(parse(List("--option")) { _.boolean("--option") })
-      assert(!parse(Nil) { _.boolean("--option") })
-      assert(!parse(Nil) { _.boolean("--option", false) })
-      assert(parse(Nil) { _.boolean("--option", true) })
+      assert(parse(List("--option"))(_.boolean("--option")))
+      assert(!parse(Nil)(_.boolean("--option")))
+      assert(!parse(Nil)(_.boolean("--option", false)))
+      assert(parse(Nil)(_.boolean("--option", true)))
     }
 
     "Second switch overrides first with same name" in {
-      assert(parse(List("--option", "--option")) { _.boolean("--option") })
-      assert(parse(List("--option-", "--option")) { _.boolean("--option") })
+      assert(parse(List("--option", "--option"))(_.boolean("--option")))
+      assert(parse(List("--option-", "--option"))(_.boolean("--option")))
     }
 
     "false" in {
-      assert(!parse(List("--option-")) { _.boolean("--option") })
+      assert(!parse(List("--option-"))(_.boolean("--option")))
     }
 
     "Missing boolean" in {
@@ -178,7 +178,7 @@ final class CommandLineArgumentsTest extends AnyFreeSpec {
   "Ignore CR at end of last argument" in {
     // In case an unexperienced user lets end the shell script line with "\r\n"
     intercept[IllegalArgumentException] {
-      parse(List("--option\r")) { _.boolean("--option") }
+      parse(List("--option\r"))(_.boolean("--option"))
     }
   }
 }

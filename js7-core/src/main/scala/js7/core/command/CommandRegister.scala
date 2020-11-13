@@ -35,6 +35,6 @@ final class CommandRegister[C <: CommonCommand]
 
   def detailed: CommandHandlerDetailed[C] =
     synchronized {
-      CommandHandlerDetailed((idToCommand.values map { _.overview }).toVector)
+      CommandHandlerDetailed(idToCommand.values.map(_.overview).toVector)
     }
 }

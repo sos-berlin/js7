@@ -11,14 +11,14 @@ import scala.jdk.CollectionConverters._
 final case class LicenseKeyBunch(keys: Seq[LicenseKey]) extends LicenseKeyChecker {
 
   def apply(parameter: Parameter): Parameter.Result = {
-    val results = keys map { _.apply(parameter) }
+    val results = keys.map(_.apply(parameter))
     if (results contains OK) OK
     else
     if (results contains Expired) Expired
     else Missing
   }
 
-  override def toString = keys map { _.toString } mkString " "
+  override def toString = keys.map(_.toString) mkString " "
 }
 
 object LicenseKeyBunch {

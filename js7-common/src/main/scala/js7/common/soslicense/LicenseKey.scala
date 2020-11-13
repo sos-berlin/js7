@@ -92,7 +92,7 @@ object LicenseKey {
             b.addByte(par.toInt & 0xFF)
             b.addString(value)
           }
-          if (settings exists { _._1 == ZZ }) {
+          if (settings.exists(_._1 == ZZ)) {
             b.addByte(35)
             b.addByte(35)
           }

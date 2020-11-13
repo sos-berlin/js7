@@ -143,6 +143,6 @@ object OperatingSystem {
 
   def concatFileAndPathChain(f: File, pathChain: String): String = {
     val abs = f.getAbsolutePath
-    abs +: (pathChain split File.pathSeparator filter { o => o.nonEmpty && o != abs }) mkString File.pathSeparatorChar.toString
+    abs +: (pathChain split File.pathSeparator).filter(o => o.nonEmpty && o != abs) mkString File.pathSeparatorChar.toString
   }
 }

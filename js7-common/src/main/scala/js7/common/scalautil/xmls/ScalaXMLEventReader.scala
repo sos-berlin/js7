@@ -86,7 +86,7 @@ extends AutoCloseable {
   }
 
   def parseEachRepeatingElement[A](name: String)(body: => A): IndexedSeq[A] =
-    parseElements[A] { case `name` => parseElement() { body } } map { _._2 }
+    parseElements[A] { case `name` => parseElement() { body } }.map(_._2)
 
   def forEachStartElement[A](body: PartialFunction[String, A]): ConvertedElementMap[A] =
     new ConvertedElementMap(parseElements[A](body))
@@ -299,7 +299,7 @@ object ScalaXMLEventReader {
       apply(elementName) map cast[B]
 
     def values: IndexedSeq[A] =
-      pairs map { _._2 }
+      pairs.map(_._2)
 
     def apply(elementName: String): Seq[A] =
       pairs collect { case (k, v) if k == elementName => v }

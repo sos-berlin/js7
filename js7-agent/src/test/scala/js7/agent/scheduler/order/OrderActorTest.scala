@@ -82,7 +82,7 @@ final class OrderActorTest extends AnyFreeSpec with HasCloser with BeforeAndAfte
 
   "Shell script with big stdout and stderr" in {
     val n = 1000
-    def line(x: String, i: Int) = (s" $x$i" * ((i+n/100-1)/(n/100))).trim ensuring { _.length < 8000 }  // Windows: Maximum command line length is 8191 characters
+    def line(x: String, i: Int) = (s" $x$i" * ((i+n/100-1)/(n/100))).trim.ensuring(_.length < 8000)  // Windows: Maximum command line length is 8191 characters
     val expectedStderr = (for (i <- 1 to n) yield line("e", i) + Nl).mkString
     val expectedStdout = (for (i <- 1 to n) yield line("o", i) + Nl).mkString
     val executablePath = ExecutablePath(s"/TEST-2$sh")
@@ -252,7 +252,7 @@ private object OrderActorTest {
 
           case OrderDetachable =>
             events += event
-            (orderActor ? OrderActor.Command.HandleEvent(OrderDetached)).mapTo[Completed] map { _ => self ! "DETACHED" }
+            (orderActor ? OrderActor.Command.HandleEvent(OrderDetached)).mapTo[Completed].map(_ => self ! "DETACHED")
             become(detaching)
 
           case OrderDetached =>

@@ -42,7 +42,7 @@ final class AutoClosingTest extends AnyFreeSpec
       multipleAutoClosing(closeables) { o =>
         assert(o eq closeables)
       }
-      assert(closeables forall { _.closed })
+      assert(closeables.forall(_.closed))
     }
 
     "with Exception" in {
@@ -52,7 +52,7 @@ final class AutoClosingTest extends AnyFreeSpec
           throw new Exception
         }
       } .getSuppressed shouldBe empty
-      assert(closeables forall { _.closed })
+      assert(closeables.forall(_.closed))
     }
 
     "with second Exception in close" in {

@@ -78,7 +78,7 @@ final class ExceptionsTest extends AnyFreeSpec {
     intercept[IllegalArgumentException] {
       try throw new IllegalArgumentException
       catch andRethrow { throw new IllegalStateException }
-    } .getSuppressed map { _.getClass } shouldBe Array(classOf[IllegalStateException])
+    } .getSuppressed.map(_.getClass) shouldBe Array(classOf[IllegalStateException])
   }
 }
 

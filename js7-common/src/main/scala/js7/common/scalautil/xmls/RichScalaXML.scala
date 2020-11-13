@@ -5,6 +5,6 @@ object RichScalaXML {
 
     /** @return String des Attributs oder "" */
     def attributeText(name: String): String =
-      delegate.attribute(name) map { _.text } getOrElse ""
+      delegate.attribute(name).map(_.text) getOrElse ""
   }
 }

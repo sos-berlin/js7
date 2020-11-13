@@ -20,6 +20,6 @@ object Parameters {
     JobScheduler -> "JobScheduler",
     ClassicAgent -> "Classic Agent",
     UniversalAgent -> "Universal Agent")
-  .withDefault { _.string }
+  .withDefault(_.string)
 }
 

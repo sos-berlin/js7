@@ -184,7 +184,7 @@ final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
 
         def eventsForKey[E <: MyEvent: ClassTag: TypeTag](key: E#Key) = {
           val EventSeq.NonEmpty(eventIterator) = eventWatch.whenKey[E](EventRequest.singleClass(timeout = Some(99.s)), key).await(10.s).strict
-          eventIterator.toVector map { _.value }
+          eventIterator.toVector.map(_.value)
         }
         assert(eventsForKey[AEvent]("1") == Vector(A1, A2))
         assert(eventsForKey[AEvent]("2") == Vector(A2))

@@ -28,7 +28,7 @@ object OldScheduleXmlParser{
     def parsePeriodSeq(): PeriodSeq =
       PeriodSeq(parseElements[Period] { case _ =>
         parsePeriod()
-      } map { _._2 })
+      }.map(_._2))
 
     def parsePeriod(): Period =
       parseElement("period") {

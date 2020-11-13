@@ -42,7 +42,7 @@ final class AkkasTest extends AnyFreeSpec
     assert(encodeAsActorName("a?b=!&c=ö[]{}") == "a%3Fb=!&c=%C3%B6%5B%5D%7B%7D")
     assert(encodeAsActorName("()") == "%28%29")
 
-    check((((32 to 127) ++ (160 to 1000)) map { _.toChar }).toString)
+    check(((32 to 127) ++ (160 to 1000)).map(_.toChar).toString)
     for (_ <- 1 to 10000) {
       check(Vector.fill(100) { 32 + Random.nextInt(95) } .toString)
     }

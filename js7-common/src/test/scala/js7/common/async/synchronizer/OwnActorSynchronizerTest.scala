@@ -39,7 +39,7 @@ final class OwnActorSynchronizerTest extends AnyFreeSpec {
             i
           }
         }
-      assert((futureFutures map { _ flatMap identity } await 60.s) == numbers)
+      assert((futureFutures.map(_.flatten) await 60.s) == numbers)
 
       synchronizer.close()
       intercept[IllegalStateException] { synchronizer { 7 } }

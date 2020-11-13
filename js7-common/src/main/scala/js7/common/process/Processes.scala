@@ -24,7 +24,7 @@ object Processes
 
   def processToString(process: Process): String = processToString(process, processToPidOption(process))
 
-  def processToString(process: Process, pid: Option[Pid]) = pid map { _.toString } getOrElse process.toString
+  def processToString(process: Process, pid: Option[Pid]) = pid.map(_.toString) getOrElse process.toString
 
   def processToPidOption(process: Process): Option[Pid] = ProcessPidRetriever.processToPid(process)
 
@@ -133,7 +133,7 @@ object Processes
   }
 
   private[process] object RobustlyStartProcess {
-    private val DefaultDurations = List(10.ms, 50.ms, 500.ms, 1440.ms) ensuring { o => (o map { _.toMillis }).sum.ms == 2.s }
+    private val DefaultDurations = List(10.ms, 50.ms, 500.ms, 1440.ms) ensuring { o => o.map(_.toMillis).sum.ms == 2.s }
 
     object TextFileBusyIOException {
       private def matchesError26(o: String) = """.*\berror=26\b.*""".r.pattern.matcher(o)

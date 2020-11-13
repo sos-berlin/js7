@@ -24,7 +24,7 @@ final case class EventRequest[E <: Event](
 
   def toQueryParameters: Vector[(String, String)] = {
     val builder = Vector.newBuilder[(String, String)]
-    builder += "return" -> (eventClasses map { _.getSimpleName stripSuffix "$" } mkString ",")
+    builder += "return" -> eventClasses.map(_.getSimpleName stripSuffix "$").mkString(",")
     builder += "delay" -> durationToString(delay)
     for (o <- timeout) builder += "timeout" -> durationToString(o)
     if (limit != DefaultLimit) builder += "limit" -> limit.toString
@@ -34,7 +34,7 @@ final case class EventRequest[E <: Event](
   }
 
   def matchesClass(clazz: Class[_ <: Event]): Boolean =
-    eventClasses exists { _ isAssignableFrom clazz }
+    eventClasses.exists(_ isAssignableFrom clazz)
 
   /**
     * Helper to repeatedly fetch events until a condition (PartialFunction) is met.
