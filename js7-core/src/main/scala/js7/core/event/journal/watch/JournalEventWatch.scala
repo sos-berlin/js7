@@ -58,6 +58,8 @@ with JournalingObserver
   private var currentEventReaderOption: Option[CurrentEventReader] = None
   @volatile
   private var nextEventReaderPromise: Option[(EventId, Promise[Option[CurrentEventReader]])] = None
+  @volatile
+  private var _isActiveNode = false
 
   def close() = {
     afterEventIdToHistoric.values foreach (_.close())
@@ -67,6 +69,8 @@ with JournalingObserver
   }
 
   override def whenStarted = startedPromise.future
+
+  def isActiveNode = _isActiveNode
 
   /*protected[journal]*/ def onJournalingStarted(
     file: Path,
@@ -84,6 +88,7 @@ with JournalingObserver
       case Some(o) => require(expectedJournalId == o, s"JournalId $journalId does not match expected $expectedJournalId")
     }
     synchronized {
+      this._isActiveNode = isActiveNode
       val after = flushedLengthAndEventId.value
       if (after < lastEventId) throw new IllegalArgumentException(s"Invalid onJournalingStarted(after=$after), must be ≥ $lastEventId")
       for (current <- currentEventReaderOption) {

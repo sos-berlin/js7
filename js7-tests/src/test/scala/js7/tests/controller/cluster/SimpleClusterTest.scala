@@ -3,6 +3,7 @@ package js7.tests.controller.cluster
 import cats.instances.vector._
 import cats.syntax.traverse._
 import js7.base.problem.Checked.Ops
+import js7.base.problem.{Problem, ProblemException}
 import js7.base.time.ScalaTime._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
@@ -24,6 +25,13 @@ final class SimpleClusterTest extends ControllerClusterTester
       val backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
       val primaryController = primary.startController(httpPort = Some(primaryControllerPort)) await 99.s
       primaryController.eventWatch.await[ClusterEvent.ClusterCoupled]()
+
+      assert(
+        intercept[ProblemException] {
+          primaryController.eventWatch.underlying.observeEventIds(timeout = Some(0.s)).completedL await 99.s
+        }.problem == Problem("Active node does not provide event acknowledgements (two active cluster nodes?)"))
+
+      backupController.eventWatch.underlying.observeEventIds(timeout = Some(0.s)).completedL await 99.s
 
       val n = sys.props.get("test.speed").fold(1)(_.toInt)
       val orderIds = (1 to n).map(i => OrderId(s"🔶 $i"))

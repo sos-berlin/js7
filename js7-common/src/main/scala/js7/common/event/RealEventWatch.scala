@@ -5,6 +5,7 @@ import java.util.concurrent.TimeoutException
 import js7.base.monixutils.MonixBase.closeableIteratorToObservable
 import js7.base.monixutils.MonixDeadline
 import js7.base.monixutils.MonixDeadline.now
+import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.CloseableIterator
@@ -29,6 +30,8 @@ trait RealEventWatch extends EventWatch
 {
   @TestOnly
   protected def eventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[Event]]]]
+
+  protected def isActiveNode: Boolean
 
   // Lazy, initialize only after whenStarted has been called!
   private lazy val committedEventIdSync = new EventSync(initial = tornEventId, o => "EventId " + EventId.toString(o))
@@ -80,7 +83,7 @@ trait RealEventWatch extends EventWatch
       .map(_.get).flatten
   }
 
-  final def observeEventIds[E <: Event](maybeTimeout: Option[FiniteDuration]): Observable[EventId] =
+  final def observeEventIds(maybeTimeout: Option[FiniteDuration]): Observable[EventId] =
   {
     val originalTimeout = maybeTimeout
     var deadline = none[MonixDeadline]
@@ -100,6 +103,14 @@ trait RealEventWatch extends EventWatch
               val lastEventId = lastAddedEventId
               (Some(Observable.pure(lastEventId)),
                 () => lastEventId -> originalTimeout)
+          }
+          .flatMap { x =>
+            if (isActiveNode)
+              Task.raiseError(
+                Problem.pure("Active node does not provide event acknowledgements (two active cluster nodes?)")
+                  .throwable)
+            else
+              Task.pure(x)
           }
       }
 

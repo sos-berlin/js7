@@ -87,6 +87,7 @@ private object EventCollectorExclusiveTest
   extends EventCollector(configuration)
   with EventIdGenerating
   {
+    def isActiveNode = true
     def putEvent_(keyedEvent: AnyKeyedEvent) = putEvent(keyedEvent)
     def snapshotAfter(after: EventId) = None
     def rawSnapshotAfter(after: EventId) = None

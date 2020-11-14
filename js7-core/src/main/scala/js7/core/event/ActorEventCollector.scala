@@ -20,6 +20,8 @@ final class ActorEventCollector private(
 extends EventCollector(configuration)(scheduler)
 with AutoCloseable
 {
+  def isActiveNode = true
+
   def snapshotAfter(after: EventId) = None
 
   def rawSnapshotAfter(after: EventId) = None

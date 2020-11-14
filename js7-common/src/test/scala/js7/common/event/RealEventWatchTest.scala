@@ -20,6 +20,7 @@ final class RealEventWatchTest extends AnyFreeSpec
   "tornOlder" in {
     val events = Stamped(1L, 1L <-: TestEvent(1)) :: Nil  // Event 1 = 1970-01-01, very old
     val eventWatch = new RealEventWatch {
+      def isActiveNode = true
       def fileEventIds = EventId.BeforeFirst :: Nil
       protected def eventsAfter(after: EventId) = Some(CloseableIterator.fromIterator(events.iterator dropWhile (_.eventId <= after)))
       def snapshotAfter(after: EventId) = None
@@ -68,6 +69,8 @@ object RealEventWatchTest {
   private def toStampedEvent(i: Long) = Stamped(i, i <-: TestEvent(i))
 
   private class EndlessEventWatch extends RealEventWatch {
+    def isActiveNode = true
+
     def fileEventIds = EventId.BeforeFirst :: Nil
 
     def snapshotAfter(after: EventId) = None

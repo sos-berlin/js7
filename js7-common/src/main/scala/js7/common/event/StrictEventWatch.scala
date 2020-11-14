@@ -17,14 +17,14 @@ import scala.reflect.runtime.universe._
   *
   * @author Joacim Zschimmer
   */
-final class StrictEventWatch(eventWatch: EventWatch)
+final class StrictEventWatch(val underlying: EventWatch)
 {
   def fileEventIds: Seq[EventId] =
-    eventWatch.fileEventIds
+    underlying.fileEventIds
 
   def observe[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean = (_: KeyedEvent[E]) => true, onlyAcks: Boolean = false)
   : Observable[Stamped[KeyedEvent[E]]]
-  = eventWatch.observe(request, predicate, onlyAcks)
+  = underlying.observe(request, predicate, onlyAcks)
 
   def read[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean = Every)
   : Task[TearableEventSeq[Seq, KeyedEvent[E]]]
@@ -53,7 +53,7 @@ final class StrictEventWatch(eventWatch: EventWatch)
     key: E#Key,
     predicate: E => Boolean = Every)
   : Task[E]
-  = eventWatch.whenKeyedEvent(request, key, predicate)
+  = underlying.whenKeyedEvent(request, key, predicate)
 
   def whenKey[E <: Event](
     request: EventRequest[E],
@@ -70,7 +70,7 @@ final class StrictEventWatch(eventWatch: EventWatch)
     timeout: FiniteDuration = 99.seconds)
     (implicit s: Scheduler, E: TypeTag[E])
   : Vector[Stamped[KeyedEvent[E]]]
-  = eventWatch.await(predicate, after, timeout)
+  = underlying.await(predicate, after, timeout)
 
   /** TEST ONLY - Blocking. */
   @TestOnly
@@ -87,7 +87,7 @@ final class StrictEventWatch(eventWatch: EventWatch)
   /** TEST ONLY - Blocking. */
   @TestOnly
   def keyedEvents[E <: Event: ClassTag: TypeTag](after: EventId)(implicit s: Scheduler): Seq[KeyedEvent[E]] =
-    eventWatch.all[E](after = after).strict match {
+    underlying.all[E](after = after).strict match {
       case EventSeq.NonEmpty(stamped) => stamped.map(_.value)
       case EventSeq.Empty(_) => Nil
       case TearableEventSeq.Torn(eventId) => throw new TornException(after = EventId(0), tornEventId = eventId)
@@ -96,15 +96,15 @@ final class StrictEventWatch(eventWatch: EventWatch)
   /** TEST ONLY - Blocking. */
   @TestOnly
   def all[E <: Event: ClassTag](implicit s: Scheduler, E: TypeTag[E]): TearableEventSeq[Seq, KeyedEvent[E]] =
-    eventWatch.all[E]().strict
+    underlying.all[E]().strict
 
   @inline
   private def delegate[A](body: EventWatch => Task[TearableEventSeq[CloseableIterator, A]]): Task[TearableEventSeq[Seq, A]] =
-    body(eventWatch).map(_.strict)
+    body(underlying).map(_.strict)
 
-  def tornEventId = eventWatch.tornEventId
+  def tornEventId = underlying.tornEventId
 
-  def lastFileTornEventId = eventWatch.lastFileTornEventId
+  def lastFileTornEventId = underlying.lastFileTornEventId
 
-  def lastAddedEventId = eventWatch.lastAddedEventId
+  def lastAddedEventId = underlying.lastAddedEventId
 }

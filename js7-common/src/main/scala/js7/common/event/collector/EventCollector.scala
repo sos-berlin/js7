@@ -49,6 +49,8 @@ object EventCollector
   {
     def snapshotAfter(after: EventId) = None
 
+    def isActiveNode = true
+
     def rawSnapshotAfter(after: EventId) = None
 
     def journalInfo = throw new NotImplementedError
