@@ -28,6 +28,7 @@ import js7.data.event.{Event, EventRequest, EventSeq, KeyedEvent, Stamped}
 import js7.data.item.InventoryItemSigner
 import js7.data.order.OrderEvent.OrderDetachable
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
+import js7.data.value.StringValue
 import js7.data.workflow.Workflow
 import js7.data.workflow.position.Position
 import js7.data.workflow.test.TestSetting._
@@ -65,7 +66,7 @@ final class OrderAgentTest extends AnyFreeSpec
           assert(agentClient.commandExecute(RegisterAsController(agentName)).await(99.s).toOption.get  // Without Login, this registers all anonymous clients
             .isInstanceOf[RegisterAsController.Response])
 
-          val order = Order(OrderId("TEST-ORDER"), SimpleTestWorkflow.id, Order.Ready, Map("x" -> "X"))
+          val order = Order(OrderId("TEST-ORDER"), SimpleTestWorkflow.id, Order.Ready, Map("x" -> StringValue("X")))
 
           def attachOrder(signedWorkflow: SignedString): Checked[AgentCommand.Response.Accepted] =
             agentClient.commandExecute(AttachOrder(order, TestAgentName, signedWorkflow)).await(99.s)
@@ -111,7 +112,7 @@ final class OrderAgentTest extends AnyFreeSpec
 
           val orders = for (i <- 1 to n) yield
             Order(OrderId(s"TEST-ORDER-$i"), SimpleTestWorkflow.id, Order.Ready,
-              Map("x" -> "X"),
+              Map("x" -> StringValue("X")),
               attachedState = Some(Order.Attached(AgentName("AGENT"))))
 
           val stopwatch = new Stopwatch
@@ -158,8 +159,8 @@ private object OrderAgentTest
     order.copy(
       workflowPosition = order.workflowPosition.copy(position = Position(2)),
       attachedState = Some(Order.Detaching(TestAgentName)),
-      arguments = Map("x" -> "X"),
+      arguments = Map("x" -> StringValue("X")),
       historicOutcomes =
-        HistoricOutcome(Position(0), Outcome.Succeeded(Map("result" -> "TEST-RESULT-"))) ::
-        HistoricOutcome(Position(1), Outcome.Succeeded(Map("result" -> "TEST-RESULT-B-VALUE"))) :: Nil)
+        HistoricOutcome(Position(0), Outcome.Succeeded(Map("result" -> StringValue("TEST-RESULT-")))) ::
+        HistoricOutcome(Position(1), Outcome.Succeeded(Map("result" -> StringValue("TEST-RESULT-B-VALUE")))) :: Nil)
 }

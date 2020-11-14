@@ -10,6 +10,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentName
 import js7.data.folder.FolderPath
 import js7.data.item.ItemPath
+import js7.data.value.{NumericValue, StringValue, Value}
 import scala.reflect.ClassTag
 
 /**
@@ -37,6 +38,10 @@ private[parser] object BasicParsers
   def identifier[_: P] = P[String](  // TODO Compare and test code with Identifier.isIdentifier
     (CharPred(isIdentifierStart).opaque("identifier start") ~ CharsWhile(isIdentifierPart, 0)).! ~
       identifierEnd)
+
+  def value[_: P] = P[Value](
+    ("-".? ~ digits).!.map(o => NumericValue(BigDecimal(o))) |
+      quotedString.map(StringValue.apply))
 
   def quotedString[_: P] = P[String](
     doubleQuoted | singleQuoted)
@@ -107,11 +112,11 @@ private[parser] object BasicParsers
         case Right(agentName) => Pass(agentName)
       }))
 
-  def keyValues[A](keyValueParser: => P[(String, A)])(implicit ctx: P[_]) = P[KeyToValue[A]](
-    commaSequence(keyValueParser).flatMap(keyValues =>
-      keyValues.duplicateKeys(_._1) match {
+  def keyValues[A](namedValueParser: => P[(String, A)])(implicit ctx: P[_]) = P[KeyToValue[A]](
+    commaSequence(namedValueParser).flatMap(namedValues =>
+      namedValues.duplicateKeys(_._1) match {
         case Some(dups) => Fail.opaque("unique keywords (duplicates: " + dups.keys.mkString(", ") + ")")
-        case None => Pass(KeyToValue(keyValues.toMap))
+        case None => Pass(KeyToValue(namedValues.toMap))
       }))
 
   def keyValue[A](name: String, parser: => P[A])(implicit ctx: P[_]): P[(String, A)] =
@@ -121,12 +126,12 @@ private[parser] object BasicParsers
     w ~ specificKeyValue(name, parser).flatMap(o => checkedToP(toValue(o)).map(name.->))
   }
 
-  final case class KeyToValue[A](keyToValue: Map[String, A]) {
+  final case class KeyToValue[A](nameToValue: Map[String, A]) {
     def apply[A1 <: A](key: String, default: => A1)(implicit ctx: P[_]): P[A1] =
-      Pass(keyToValue.get(key).fold(default)(_.asInstanceOf[A1]))
+      Pass(nameToValue.get(key).fold(default)(_.asInstanceOf[A1]))
 
     def apply[A1 <: A: ClassTag](key: String)(implicit ctx: P[_]): P[A1] =
-      keyToValue.get(key) match {
+      nameToValue.get(key) match {
         case None => Fail.opaque(s"keyword $key=")
         case Some(o) =>
           if (!implicitClass[A1].isAssignableFrom(o.getClass))
@@ -136,13 +141,13 @@ private[parser] object BasicParsers
       }
 
     def get[A1 <: A](key: String)(implicit ctx: P[_]): P[Option[A1]] =
-      Pass(keyToValue.get(key).map(_.asInstanceOf[A1]))
+      Pass(nameToValue.get(key).map(_.asInstanceOf[A1]))
 
     def noneOrOneOf[A1 <: A](keys: Set[String])(implicit ctx: P[_]): P[Option[(String, A1)]] = {
-      val intersection = keyToValue.keySet & keys
+      val intersection = nameToValue.keySet & keys
       intersection.size match {
         case 0 => Pass(None)
-        case 1 => Pass(Some(intersection.head -> keyToValue(intersection.head).asInstanceOf[A1]))
+        case 1 => Pass(Some(intersection.head -> nameToValue(intersection.head).asInstanceOf[A1]))
         case _ => Fail.opaque(s"non-contradicting keywords: ${intersection.mkString("; ")}")
       }
     }
@@ -151,20 +156,20 @@ private[parser] object BasicParsers
       oneOf[A1](keys.toSet)
 
     def oneOf[A1 <: A](keys: Set[String])(implicit ctx: P[_]): P[(String, A1)] = {
-      val intersection = keyToValue.keySet & keys
+      val intersection = nameToValue.keySet & keys
       intersection.size match {
         // TODO Better messages for empty key (no keyword, positional argument)
         case 0 => Fail.opaque("keywords " + keys.map(_ + "=").mkString(", "))
-        case 1 => Pass(intersection.head -> keyToValue(intersection.head).asInstanceOf[A1])
+        case 1 => Pass(intersection.head -> nameToValue(intersection.head).asInstanceOf[A1])
         case _ => Fail.opaque(s"non-contradicting keywords: ${intersection.mkString("; ")}")
       }
     }
 
     def oneOfOr[A1 <: A](keys: Set[String], default: A1)(implicit ctx: P[_]): P[A1] = {
-      val intersection = keyToValue.keySet & keys
+      val intersection = nameToValue.keySet & keys
       intersection.size match {
         case 0 => Pass(default)
-        case 1 => Pass(keyToValue(intersection.head).asInstanceOf[A1])
+        case 1 => Pass(nameToValue(intersection.head).asInstanceOf[A1])
         case _ => Fail.opaque(s"non-contradicting keywords: ${intersection.mkString("; ")}")
       }
     }

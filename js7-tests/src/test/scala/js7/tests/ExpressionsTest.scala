@@ -10,6 +10,7 @@ import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import js7.data.job.{ExecutablePath, ReturnCode}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.value.StringValue
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.parser.WorkflowParser
 import js7.data.workflow.position.BranchId.Then
@@ -84,30 +85,36 @@ object ExpressionsTest {
 
   private val orders = Vector(
     FreshOrder(OrderId("❌"), TestWorkflow.id.path),
-    FreshOrder(OrderId("⭕️"), TestWorkflow.id.path, arguments = Map("ARG" -> "ARG-VALUE")),
-    FreshOrder(OrderId("🔺"), TestWorkflow.id.path, arguments = Map("ARG" -> "ARG-VALUE", "ARG2" -> "ARG2-VALUE", "RETURN_CODE" -> "1")))
+    FreshOrder(OrderId("⭕️"), TestWorkflow.id.path, arguments = Map("ARG" -> StringValue("ARG-VALUE"))),
+    FreshOrder(OrderId("🔺"), TestWorkflow.id.path, arguments = Map(
+      "ARG" -> StringValue("ARG-VALUE"),
+      "ARG2" -> StringValue("ARG2-VALUE"),
+      "RETURN_CODE" -> StringValue("1"))))
 
   private val ExpectedEvents = Map(
     OrderId("❌") -> Vector(
       OrderAdded(TestWorkflow.id),
       OrderFailed(Outcome.Disrupted(Problem("No such named value: ARG")))),
     OrderId("⭕️") -> Vector(
-      OrderAdded(TestWorkflow.id, None, Map("ARG" -> "ARG-VALUE")),
+      OrderAdded(TestWorkflow.id, None, Map("ARG" -> StringValue("ARG-VALUE"))),
       OrderMoved(Position(0) / Then % 0),
       OrderAttachable(TestAgentName),
       OrderAttached(TestAgentName),
       OrderStarted,
       OrderProcessingStarted,
-      OrderProcessed(Outcome.Succeeded(ReturnCode(0), Map("JOB-KEY" -> "JOB-RESULT"))),
+      OrderProcessed(Outcome.Succeeded(ReturnCode(0), Map("JOB-KEY" -> StringValue("JOB-RESULT")))),
       OrderFailed(Outcome.Disrupted(Problem("No such named value: ARG2")))),
     OrderId("🔺") -> Vector(
-      OrderAdded(TestWorkflow.id, None, Map("ARG" -> "ARG-VALUE", "ARG2" -> "ARG2-VALUE", "RETURN_CODE" -> "1")),
+      OrderAdded(TestWorkflow.id, None, Map(
+        "ARG" -> StringValue("ARG-VALUE"),
+        "ARG2" -> StringValue("ARG2-VALUE"),
+        "RETURN_CODE" -> StringValue("1"))),
       OrderMoved(Position(0) / Then % 0),
       OrderAttachable(TestAgentName),
       OrderAttached(TestAgentName),
       OrderStarted,
       OrderProcessingStarted,
-      OrderProcessed(Outcome.Succeeded(ReturnCode(1), Map("JOB-KEY" -> "JOB-RESULT"))),
+      OrderProcessed(Outcome.Succeeded(ReturnCode(1), Map("JOB-KEY" -> StringValue("JOB-RESULT")))),
       OrderMoved(Position(1) / Then % 0 / Then % 0),
       OrderProcessingStarted,
       OrderProcessed(Outcome.succeeded),

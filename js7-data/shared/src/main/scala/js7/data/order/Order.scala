@@ -13,6 +13,7 @@ import js7.data.agent.AgentName
 import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.order.Order._
 import js7.data.order.OrderEvent._
+import js7.data.value.NamedValues
 import js7.data.workflow.WorkflowId
 import js7.data.workflow.position.{InstructionNr, Position, WorkflowPosition}
 import scala.reflect.ClassTag
@@ -24,7 +25,7 @@ final case class Order[+S <: Order.State](
   id: OrderId,
   workflowPosition: WorkflowPosition,
   state: S,
-  arguments: Map[String, String] = Map.empty,
+  arguments: NamedValues = Map.empty,
   historicOutcomes: Seq[HistoricOutcome] = Nil,
   attachedState: Option[AttachedState] = None,
   parent: Option[OrderId] = None,
@@ -269,8 +270,8 @@ final case class Order[+S <: Order.State](
   def lastOutcome: Outcome =
     historicOutcomes.lastOption.map(_.outcome) getOrElse Outcome.succeeded
 
-  def keyValues: Map[String, String] = historicOutcomes
-    .collect { case HistoricOutcome(_, o: Outcome.Completed) => o.keyValues }
+  def namedValues: NamedValues = historicOutcomes
+    .collect { case HistoricOutcome(_, o: Outcome.Completed) => o.namedValues }
     .fold(arguments)((a, b) => a ++ b)
 
   def isStarted = isState[IsStarted]
@@ -520,7 +521,7 @@ object Order
   implicit val jsonDecoder: Decoder[Order[State]] = cursor =>
     for {
       id <- cursor.get[OrderId]("id")
-      arguments <- cursor.get[Option[Map[String, String]]]("arguments").map(_ getOrElse Map.empty)
+      arguments <- cursor.get[Option[NamedValues]]("arguments").map(_ getOrElse Map.empty)
       workflowPosition <- cursor.get[WorkflowPosition]("workflowPosition")
       state <- cursor.get[State]("state")
       attachedState <- cursor.get[Option[AttachedState]]("attachedState")

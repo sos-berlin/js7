@@ -7,8 +7,8 @@ import cats.syntax.traverse._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.value.expression.Evaluator._
 import js7.data.value.expression.Expression._
+import js7.data.value.{BooleanValue, ListValue, NumericValue, StringValue, Value}
 import js7.data.workflow.Label
 import js7.data.workflow.instructions.executable.WorkflowJob
 
@@ -34,7 +34,7 @@ final class Evaluator(scope: Scope)
       case Or             (a, b) => evalBoolean(a).flatMap(o => if (o.booleanValue) Right(o) else evalBoolean(b))
       case ToBoolean(a) => evalString(a) flatMap toBoolean
       case NumericConstant(o) => Right(NumericValue(o))
-      case OrderCatchCount => scope.symbolToValue("catchCount").flatMap(_.asNumeric)
+      case OrderCatchCount => scope.symbolToValue("catchCount").flatMap(_.toNumeric)
       case ToNumber(e) => eval(e) flatMap toNumeric
       case MkString(e) => eval(e) flatMap mkString
       case StringConstant(o) => Right(StringValue(o))
@@ -51,7 +51,7 @@ final class Evaluator(scope: Scope)
           case NamedValue.KeyValue(stringExpr) =>
             for {
               key <- evalString(stringExpr).map(_.string)
-              maybeValue <- scope.findValue(ValueSearch(w, ValueSearch.KeyValue(key)))
+              maybeValue <- scope.findValue(ValueSearch(w, ValueSearch.NamedValue(key)))
               value <- maybeValue.map(Right.apply)
                 .getOrElse(
                   default.map(evalString).toChecked(Problem(where match {
@@ -90,10 +90,10 @@ final class Evaluator(scope: Scope)
       b1 <- evalNumeric(b)
     } yield BooleanValue(op(a1, b1))
 
-  private[expression] def evalBoolean(e: Expression): Checked[BooleanValue] = eval(e).flatMap(_.asBoolean)
-  private[expression] def evalNumeric(e: Expression): Checked[NumericValue] = eval(e).flatMap(_.asNumeric)
-  private[expression] def evalString(e: Expression): Checked[StringValue] = eval(e).flatMap(_.asString)
-  private[expression] def evalList(e: Expression): Checked[ListValue] = eval(e).flatMap(_.asList)
+  private[expression] def evalBoolean(e: Expression): Checked[BooleanValue] = eval(e).flatMap(_.toBoolean)
+  private[expression] def evalNumeric(e: Expression): Checked[NumericValue] = eval(e).flatMap(_.toNumeric)
+  private[expression] def evalString(e: Expression): Checked[StringValue] = eval(e).flatMap(_.toStringValue)
+  private[expression] def evalList(e: Expression): Checked[ListValue] = eval(e).flatMap(_.toList)
 
   private def toNumeric(v: Value): Checked[NumericValue] =
     v match {
@@ -119,7 +119,7 @@ final class Evaluator(scope: Scope)
     }
 
   private def mkString(v: Value): Checked[StringValue] =
-    v.asList.map(listValue => StringValue(listValue.list.map(_.convertToString).mkString))
+    v.toList.map(listValue => StringValue(listValue.list.map(_.convertToString).mkString))
 
   //private def castValue[A: ClassTag](v: Value): Checked[A] =
   //  if (implicitClass[A] isAssignableFrom v.getClass)
@@ -132,49 +132,4 @@ final class Evaluator(scope: Scope)
 object Evaluator
 {
   val Constant = new Evaluator(Scope.Constant)
-
-  sealed trait Value {
-    def asNumeric: Checked[NumericValue] = Left(InvalidExpressionTypeProblem("Numeric", this))
-    def asString: Checked[StringValue] = Left(InvalidExpressionTypeProblem("String", this))
-    def asBoolean: Checked[BooleanValue] = Left(InvalidExpressionTypeProblem("Boolean", this))
-    def asList: Checked[ListValue] = Left(InvalidExpressionTypeProblem("List", this))
-    def convertToString: String
-  }
-
-  final case class BooleanValue(booleanValue: Boolean) extends Value {
-    override def asBoolean = Right(BooleanValue(booleanValue))
-    def convertToString = booleanValue.toString
-  }
-  object BooleanValue {
-    val True = BooleanValue(true)
-    val False = BooleanValue(false)
-  }
-
-  final case class NumericValue(number: BigDecimal) extends Value {
-    override def asNumeric = Right(this)
-    def convertToString = number.toString
-  }
-  object NumericValue {
-    def fromString(number: String): Checked[NumericValue] =
-      try
-        Right(NumericValue(BigDecimal(number)))
-      catch { case e: NumberFormatException => Problem(Option(e.getMessage) getOrElse e.toString)}
-  }
-
-  final case class StringValue(string: String) extends Value {
-    override def asString = Right(this)
-    def convertToString = string
-  }
-
-  final case class ListValue(list: List[Value]) extends Value {
-    override def asList = Right(this)
-    def convertToString = toString
-    override def toString = list.mkString("[", ", ", "]")
-  }
-
-  private case class InvalidExpressionTypeProblem(typ: String, value: Value) extends Problem.Coded {
-    def arguments = Map(
-      "type" -> typ,
-      "value" -> value.toString.truncateWithEllipsis(30))
-  }
 }

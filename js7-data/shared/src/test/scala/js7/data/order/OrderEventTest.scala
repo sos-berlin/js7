@@ -12,6 +12,7 @@ import js7.data.command.CancelMode
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.job.ReturnCode
 import js7.data.order.OrderEvent._
+import js7.data.value.StringValue
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
 import js7.tester.CirceJsonTester.testJson
@@ -24,7 +25,7 @@ import scala.concurrent.duration._
 final class OrderEventTest extends AnyFreeSpec
 {
   "OrderAdded" in {
-    check(OrderAdded(WorkflowPath("/WORKFLOW") ~ "VERSION", None, Map("VAR" -> "VALUE")), json"""
+    check(OrderAdded(WorkflowPath("/WORKFLOW") ~ "VERSION", None, Map("VAR" -> StringValue("VALUE"))), json"""
       {
         "TYPE": "OrderAdded",
         "workflowId": {
@@ -51,7 +52,7 @@ final class OrderEventTest extends AnyFreeSpec
       OrderAttachedToAgent(
         (WorkflowPath("/WORKFLOW") ~ "VERSION") /: Position(2),
         Order.Ready,
-        Map("KEY" -> "VALUE"),
+        Map("KEY" -> StringValue("VALUE")),
         HistoricOutcome(Position(123), Outcome.succeeded) :: Nil,
         AgentName("AGENT"),
         Some(OrderId("PARENT")),
@@ -137,13 +138,13 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderProcessed" in {
-    check(OrderProcessed(Outcome.Succeeded(Map("KEY" -> "VALUE"))), json"""
+    check(OrderProcessed(Outcome.Succeeded(Map("KEY" -> StringValue("VALUE")))), json"""
       {
         "TYPE": "OrderProcessed",
         "outcome": {
           "TYPE": "Succeeded",
           "returnCode": 0,
-          "keyValues": {
+          "namedValues": {
             "KEY": "VALUE"
           }
         }
@@ -396,7 +397,8 @@ final class OrderEventTest extends AnyFreeSpec
   if (sys.props contains "test.speed") "Speed" in {
     val n = 10000
     val event = Stamped(12345678L, Timestamp.ofEpochMilli(1),
-      KeyedEvent[OrderEvent](OrderId("ORDER"), OrderAdded(WorkflowPath("/WORKFLOW") ~ "VERSION", arguments = Map("KEY" -> "VALUE"))))
+      KeyedEvent[OrderEvent](OrderId("ORDER"), OrderAdded(WorkflowPath("/WORKFLOW") ~ "VERSION",
+        arguments = Map("KEY" -> StringValue("VALUE")))))
     val jsonString = event.asJson.compactPrint
     println(f"${"Serialize"}%-20s Deserialize")
     for (_ <- 1 to 10) {

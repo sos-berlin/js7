@@ -12,11 +12,13 @@ import js7.base.generic.Completed
 import js7.base.process.ProcessSignal
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
+import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.common.scalautil.{IOExecutor, Logger}
 import js7.data.job.ReturnCode
 import js7.data.order.Order
+import js7.data.value.{NamedValues, StringValue}
 import js7.taskserver.modules.shell.RichProcessStartSynchronizer
 import js7.taskserver.task.process.ShellScriptProcess.startPipedShellScript
 import js7.taskserver.task.process.{ProcessConfiguration, RichProcess, StdChannels}
@@ -67,11 +69,11 @@ extends TaskRunner
       }
     }
 
-  def processOrder(order: Order[Order.Processing], defaultArguments: Map[String, String], stdChannels: StdChannels): Task[TaskStepEnded] =
+  def processOrder(order: Order[Order.Processing], defaultArguments: NamedValues, stdChannels: StdChannels): Task[TaskStepEnded] =
     for (returnCode <- runProcess(order, defaultArguments, stdChannels)) yield
       TaskStepSucceeded(fetchReturnValuesThenDeleteFile(), returnCode)
 
-  private def runProcess(order: Order[Order.Processing], defaultArguments: Map[String, String], stdChannels: StdChannels): Task[ReturnCode] =
+  private def runProcess(order: Order[Order.Processing], defaultArguments: NamedValues, stdChannels: StdChannels): Task[ReturnCode] =
     Task.deferFuture(
       for {
         richProcess <- startProcess(order, defaultArguments, stdChannels) andThen {
@@ -85,7 +87,7 @@ extends TaskRunner
         returnCode
       })
 
-  private def fetchReturnValuesThenDeleteFile(): Map[String, String] = {
+  private def fetchReturnValuesThenDeleteFile(): NamedValues = {
     val result = returnValuesProvider.variables
     // TODO When Windows locks the file, try delete it later, asynchronously, and block file in FilePool
     try delete(returnValuesProvider.file)
@@ -96,15 +98,19 @@ extends TaskRunner
     result
   }
 
-  private def startProcess(order: Order[Order.Processing], defaultArguments: Map[String, String], stdChannels: StdChannels): Future[RichProcess] =
+  private def startProcess(order: Order[Order.Processing], defaultArguments: NamedValues, stdChannels: StdChannels): Future[RichProcess] =
     if (killedBeforeStart)
       Future.failed(new RuntimeException(s"$agentTaskId killed before start"))
     else {
-      val env = {
-        val params = conf.workflowJob.defaultArguments ++ defaultArguments ++ order.keyValues
-        val paramEnv = params map { case (k, v) => (variablePrefix + k.toUpperCase) -> v }
-        paramEnv + returnValuesProvider.env
-      }
+      val env = (conf.workflowJob.defaultArguments ++ defaultArguments ++ order.namedValues)
+        .view
+        .mapValues(_.toStringValue)
+        .collect {
+          case (name, Right(v)) => name -> v  // ignore toStringValue errors (ListValue)
+        }
+        .map { case (k, StringValue(v)) => (variablePrefix + k.toUpperCase) -> v }
+        .toMap +
+          returnValuesProvider.env
       val processConfiguration = ProcessConfiguration(
         stdFileMap = Map.empty,
         encoding = AgentConfiguration.FileEncoding,

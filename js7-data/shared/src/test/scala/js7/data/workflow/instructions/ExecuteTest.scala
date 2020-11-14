@@ -4,6 +4,7 @@ import js7.base.circeutils.CirceUtils._
 import js7.data.agent.AgentName
 import js7.data.job.{ExecutablePath, ExecutableScript}
 import js7.data.source.SourcePos
+import js7.data.value.StringValue
 import js7.data.workflow.Instruction
 import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -27,7 +28,7 @@ final class ExecuteTest extends AnyFreeSpec
 
     "Named complete" in {
       CirceJsonTester.testJson[Instruction.Labeled](
-        Execute.Named(WorkflowJob.Name("JOB"), Map("ARG" -> "VALUE"), Some(SourcePos(1, 2))),
+        Execute.Named(WorkflowJob.Name("JOB"), Map("ARG" -> StringValue("VALUE")), Some(SourcePos(1, 2))),
         json"""{
           "TYPE": "Execute.Named",
           "jobName": "JOB",
@@ -63,7 +64,7 @@ final class ExecuteTest extends AnyFreeSpec
           WorkflowJob(
             AgentName("AGENT"),
             ExecutableScript("SCRIPT"),
-            Map("ARG" -> "VALUE")),
+            Map("ARG" -> StringValue("VALUE"))),
           Some(SourcePos(1, 2))),
         json"""{
           "TYPE": "Execute.Anonymous",

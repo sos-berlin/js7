@@ -24,6 +24,7 @@ import js7.data.job.{JobKey, ReturnCode}
 import js7.data.order.OrderEvent._
 import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
 import js7.data.system.{Stderr, Stdout, StdoutOrStderr}
+import js7.data.value.NamedValues
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.taskserver.task.process.StdChannels
 import monix.execution.Scheduler
@@ -140,8 +141,8 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
 
       case JobActor.Response.OrderProcessed(`orderId`, taskStepEnded, isKilled) =>
         val outcome = taskStepEnded match {
-          case TaskStepSucceeded(keyValues, returnCode) =>
-            val o = job.toOutcome(returnCode, keyValues)
+          case TaskStepSucceeded(namedValues, returnCode) =>
+            val o = job.toOutcome(returnCode, namedValues)
             if (isKilled) Outcome.Cancelled(o) else o
 
           case TaskStepFailed(problem) =>
@@ -320,7 +321,7 @@ private[order] object OrderActor
     final case class Recover(order: Order[Order.State]) extends Input
     final case class AddChild(order: Order[Order.Ready]) extends Input
     final case class AddOffering(order: Order[Order.Offering]) extends Input
-    final case class StartProcessing(jobKey: JobKey, workflowJob: WorkflowJob, jobActor: ActorRef, defaultArguments: Map[String, String])
+    final case class StartProcessing(jobKey: JobKey, workflowJob: WorkflowJob, jobActor: ActorRef, defaultArguments: NamedValues)
       extends Input
     final case class Terminate(processSignal: Option[ProcessSignal] = None)
     extends Input with DeadLetterSuppression

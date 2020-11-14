@@ -4,6 +4,7 @@ import java.time.ZoneId
 import js7.base.problem.Checked.Ops
 import js7.common.scalautil.xmls.XmlSources._
 import js7.common.time.JavaTime._
+import js7.data.value.StringValue
 import js7.data.workflow.WorkflowPath
 import js7.provider.scheduledorder.oldruntime.OldSchedule.EveryDay
 import js7.provider.scheduledorder.oldruntime.{OldSchedule, PeriodSeq, RepeatPeriod}
@@ -30,7 +31,7 @@ final class ScheduledOrderGeneratorXmlParserTest extends AnyFreeSpec {
     assert(orderGenerator == ScheduledOrderGenerator(
       id,
       WorkflowPath("/JOBCHAIN"),
-      Map("a" -> "AAA"),
+      Map("a" -> StringValue("AAA")),
       OldSchedule(timeZone, EveryDay(PeriodSeq(List(RepeatPeriod.wholeDay(10.s)))))))
   }
 }

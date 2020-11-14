@@ -5,7 +5,7 @@ import fastparse._
 import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression._
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.parser.BasicParsers.{keyValue, _}
+import js7.data.workflow.parser.BasicParsers._
 
 /**
   * @author Joacim Zschimmer
@@ -59,7 +59,7 @@ object ExpressionParser
     "$" ~~ (nameOnly(simpleName) | curlyName)
   }
 
-  //private def namedValue[_: P] = P[NamedValue](
+  //private def keyValue[_: P] = P[NamedValue](
   //  (where ~ P(keyword("returnCode")))
   //    .map(where => NamedValue(where, NamedValue.ReturnCode)) |
   //  (where ~ P(keyword("variable") ~ w ~/ inParentheses(stringExpression ~ (comma ~ stringExpression).?)))

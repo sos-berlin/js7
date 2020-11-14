@@ -4,7 +4,7 @@ import fastparse.NoWhitespace._
 import fastparse._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.value.expression.Evaluator.{BooleanValue, NumericValue, StringValue, Value}
+import js7.data.value.{BooleanValue, NumericValue, StringValue, Value}
 import js7.data.value.expression.Expression._
 import js7.data.value.expression.Scope.ConstantExpressionRequiredProblem
 import js7.data.workflow.Label
@@ -27,13 +27,13 @@ final class EvaluatorTest extends AnyFreeSpec
         val symbolToValue = name => symbols.checked(name)
 
         val findValue = {
-          case ValueSearch(ValueSearch.LastOccurred, ValueSearch.KeyValue(key)) =>
+          case ValueSearch(ValueSearch.LastOccurred, ValueSearch.NamedValue(key)) =>
             Right(Map("ASTRING" -> "AA", "ANUMBER" -> "7", "ABOOLEAN" -> "true").get(key) map StringValue.apply)
-          case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByPrefix("PREFIX")), ValueSearch.KeyValue(key)) =>
+          case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByPrefix("PREFIX")), ValueSearch.NamedValue(key)) =>
             Right(Map("KEY" -> "LABEL-VALUE").get(key) map StringValue.apply)
-          case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByLabel(Label("LABEL"))), ValueSearch.KeyValue(key)) =>
+          case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByLabel(Label("LABEL"))), ValueSearch.NamedValue(key)) =>
             Right(Map("KEY" -> "LABEL-VALUE").get(key) map StringValue.apply)
-          case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByWorkflowJob(WorkflowJob.Name("JOB"))), ValueSearch.KeyValue(key)) =>
+          case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByWorkflowJob(WorkflowJob.Name("JOB"))), ValueSearch.NamedValue(key)) =>
             Right(Map("KEY" -> "JOB-VALUE").get(key) map StringValue.apply)
           case ValueSearch(ValueSearch.LastOccurred, ValueSearch.ReturnCode) =>
             Right(Some(NumericValue(1)))
@@ -41,7 +41,7 @@ final class EvaluatorTest extends AnyFreeSpec
             Right(Some(NumericValue(2)))
           case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByWorkflowJob(WorkflowJob.Name("JOB"))), ValueSearch.ReturnCode) =>
             Right(Some(NumericValue(3)))
-          case ValueSearch(ValueSearch.Argument, ValueSearch.KeyValue(key)) =>
+          case ValueSearch(ValueSearch.Argument, ValueSearch.NamedValue(key)) =>
             Right(Map("ARG" -> "ARG-VALUE").get(key) map StringValue.apply)
           case o =>
             Left(Problem(s"UNEXPECTED CASE: $o"))

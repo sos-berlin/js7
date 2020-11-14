@@ -7,6 +7,7 @@ import js7.base.annotation.javaApi
 import js7.base.problem.Problem
 import js7.base.time.Timestamp
 import js7.data.order.{FreshOrder, OrderId}
+import js7.data.value.Value
 import js7.data.workflow.WorkflowPath
 import js7.proxy.javaapi.data.common.JJsonable
 import scala.jdk.CollectionConverters._
@@ -36,7 +37,7 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]
     id: OrderId,
     workflowPath: WorkflowPath,
     scheduledFor: java.util.Optional[Instant],
-    arguments: java.util.Map[String, String] = java.util.Collections.emptyMap())
+    arguments: java.util.Map[String, Value] = java.util.Collections.emptyMap())
   : JFreshOrder =
     JFreshOrder(FreshOrder(id, workflowPath,
       scheduledFor.toScala.map(o => Timestamp.ofEpochMilli(o.toEpochMilli)),

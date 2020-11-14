@@ -128,10 +128,10 @@ object Expression
       case (LastOccurred, KeyValue(StringConstant(key)), None) if isIdentifier(key) => s"$${$key}"
       case (LastOccurred, KeyValue(expression), None) => s"variable($expression)"
       case (LastOccurred, ReturnCode, None) => "returnCode"
-      //case (Argument, KeyValue(StringConstant(key)), None) if isIdentifier(key) => s"$${arg::$key}"
-      //case (LastOccurredByPrefix(prefix), KeyValue(StringConstant(key)), None) if isIdentifier(key) => s"$${$prefix.$key}"
-      //case (ByLabel(Label(label)), KeyValue(StringConstant(key)), None) if isIdentifier(key) => s"$${label::$label.$key}"
-      //case (LastExecutedJob(WorkflowJob.Name(jobName)), KeyValue(StringConstant(key)), None) if isIdentifier(key) => s"$${job::$jobName.$key}"
+      //case (Argument, NamedValue(StringConstant(key)), None) if isIdentifier(key) => s"$${arg::$key}"
+      //case (LastOccurredByPrefix(prefix), NamedValue(StringConstant(key)), None) if isIdentifier(key) => s"$${$prefix.$key}"
+      //case (ByLabel(Label(label)), NamedValue(StringConstant(key)), None) if isIdentifier(key) => s"$${label::$label.$key}"
+      //case (LastExecutedJob(WorkflowJob.Name(jobName)), NamedValue(StringConstant(key)), None) if isIdentifier(key) => s"$${job::$jobName.$key}"
       case _ =>
         val args = mutable.Buffer[String]()
         what match {

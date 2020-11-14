@@ -21,6 +21,7 @@ import js7.common.scalautil.Logger
 import js7.common.system.OperatingSystem.{isUnix, isWindows}
 import js7.data.job.{ExecutablePath, ExecutableScript, JobKey}
 import js7.data.order.{Order, OrderId}
+import js7.data.value.NamedValues
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.taskserver.task.process.RichProcess.tryDeleteFile
 import js7.taskserver.task.process.StdChannels
@@ -218,7 +219,7 @@ object JobActor
 
   sealed trait Command
   object Command {
-    final case class ProcessOrder(jobKey: JobKey, order: Order[Order.Processing], defaultArguments: Map[String, String], stdChannels: StdChannels)
+    final case class ProcessOrder(jobKey: JobKey, order: Order[Order.Processing], defaultArguments: NamedValues, stdChannels: StdChannels)
     extends Command
   }
 

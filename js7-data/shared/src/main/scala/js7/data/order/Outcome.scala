@@ -7,6 +7,7 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.ReturnCode
+import js7.data.value.NamedValues
 
 /**
   * @author Joacim Zschimmer
@@ -26,29 +27,29 @@ object Outcome
   /** The job has terminated. */
   sealed trait Completed extends Outcome {
     def returnCode: ReturnCode
-    def keyValues: Map[String, String]
+    def namedValues: NamedValues
   }
   object Completed {
     def apply(success: Boolean, returnCode: ReturnCode): Completed =
       apply(success, returnCode, Map.empty)
 
-    def apply(success: Boolean, returnCode: ReturnCode, keyValues: Map[String, String]): Completed =
+    def apply(success: Boolean, returnCode: ReturnCode, namedValues: NamedValues): Completed =
       if (success)
-        Succeeded(returnCode, keyValues)
+        Succeeded(returnCode, namedValues)
       else
-        Failed(returnCode, keyValues)
+        Failed(returnCode, namedValues)
 
     private[Outcome] sealed trait Companion[A <: Completed] {
-      protected def newInstance(returnCode: ReturnCode, keyValues: Map[String, String]): A
+      protected def newInstance(returnCode: ReturnCode, namedValues: NamedValues): A
 
       // re-use memory for usual values.
       private lazy val usualValues: Vector[A] = (0 to 255).map(i => newInstance(ReturnCode(i), Map.empty)).toVector
 
-      def apply(returnCode: ReturnCode, keyValues: Map[String, String] = Map.empty): A =
-        if (keyValues.isEmpty && usualValues.indices.contains(returnCode.number))
+      def apply(returnCode: ReturnCode, namedValues: NamedValues = Map.empty): A =
+        if (namedValues.isEmpty && usualValues.indices.contains(returnCode.number))
           usualValues(returnCode.number)
         else
-          newInstance(returnCode, keyValues)
+          newInstance(returnCode, namedValues)
     }
 
     implicit val jsonCodec = TypedJsonCodec[Completed](
@@ -56,29 +57,29 @@ object Outcome
       Subtype(deriveCodec[Succeeded]))
   }
 
-  final case class Succeeded(returnCode: ReturnCode, keyValues: Map[String, String] = Map.empty) extends Completed {
+  final case class Succeeded(returnCode: ReturnCode, namedValues: NamedValues = Map.empty) extends Completed {
     def isSucceeded = true
   }
   object Succeeded extends Completed.Companion[Succeeded]
   {
-    def apply(keyValues: Map[String, String]): Succeeded = apply(ReturnCode.Success, keyValues)
+    def apply(namedValues: NamedValues): Succeeded = apply(ReturnCode.Success, namedValues)
 
-    protected def newInstance(returnCode: ReturnCode, keyValues: Map[String, String]): Succeeded =
-      new Succeeded(returnCode, keyValues)
+    protected def newInstance(returnCode: ReturnCode, namedValues: NamedValues): Succeeded =
+      new Succeeded(returnCode, namedValues)
 
     implicit val jsonEncoder: Encoder.AsObject[Succeeded] =
       o => JsonObject.fromIterable(
         ("returnCode" -> o.returnCode.asJson) ::
-          o.keyValues.nonEmpty.thenList("keyValues" -> o.keyValues.asJson))
+          o.namedValues.nonEmpty.thenList("namedValues" -> o.namedValues.asJson))
 
     implicit val jsonDecoder: Decoder[Succeeded] =
       c => for {
         returnCode <- c.get[ReturnCode]("returnCode")
-        keyValues <- c.get[Option[Map[String, String]]]("keyValues").map(_ getOrElse Map.empty)
-      } yield Succeeded(returnCode, keyValues)
+        namedValues <- c.get[Option[NamedValues]]("namedValues").map(_ getOrElse Map.empty)
+      } yield Succeeded(returnCode, namedValues)
   }
 
-  final case class Failed(errorMessage: Option[String], returnCode: ReturnCode, keyValues: Map[String, String])
+  final case class Failed(errorMessage: Option[String], returnCode: ReturnCode, namedValues: NamedValues)
   extends Completed with NotSucceeded
   {
     def isSucceeded = false
@@ -90,21 +91,21 @@ object Outcome
     def apply(errorMessage: Option[String], returnCode: ReturnCode): Failed =
       Failed(errorMessage, returnCode, Map.empty)
 
-    protected def newInstance(returnCode: ReturnCode, keyValues: Map[String, String]): Failed =
-      Failed(errorMessage = None, returnCode, keyValues)
+    protected def newInstance(returnCode: ReturnCode, namedValues: NamedValues): Failed =
+      Failed(errorMessage = None, returnCode, namedValues)
 
     implicit val jsonEncoder: Encoder.AsObject[Failed] =
       o => JsonObject.fromIterable(
         ("message" -> o.errorMessage.asJson) ::
         ("returnCode" -> o.returnCode.asJson) ::
-        o.keyValues.nonEmpty.thenList("keyValues" -> o.keyValues.asJson))
+        o.namedValues.nonEmpty.thenList("namedValues" -> o.namedValues.asJson))
 
     implicit val jsonDecoder: Decoder[Failed] =
       c => for {
         errorMessage <- c.get[Option[String]]("message")
         returnCode <- c.get[ReturnCode]("returnCode")
-        keyValues <- c.get[Option[Map[String, String]]]("keyValues").map(_ getOrElse Map.empty)
-      } yield Failed(errorMessage, returnCode, keyValues)
+        namedValues <- c.get[Option[NamedValues]]("namedValues").map(_ getOrElse Map.empty)
+      } yield Failed(errorMessage, returnCode, namedValues)
   }
 
   final case class Cancelled(outcome: Outcome.Completed)

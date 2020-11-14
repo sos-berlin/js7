@@ -7,6 +7,7 @@ import js7.data.execution.workflow.instructions.FailExecutorTest._
 import js7.data.job.ReturnCode
 import js7.data.order.OrderEvent.{OrderDetachable, OrderFailed, OrderFailedCatchable, OrderJoined, OrderStarted}
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
+import js7.data.value.StringValue
 import js7.data.workflow.instructions.{Fail, Fork, ImplicitEnd}
 import js7.data.workflow.position.BranchId.Then
 import js7.data.workflow.position.{InstructionNr, Position, WorkflowPosition}
@@ -66,8 +67,9 @@ final class FailExecutorTest extends AnyFreeSpec
           Right(Some(TestOrder.id <-: OrderFailed(Outcome.Failed(ReturnCode(0))))))
       }
 
-      "OrderFailed keeps last Outcome but not the keyValues" in {
-        val order = TestOrder.copy(historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(ReturnCode(888), Map("A" -> "AA"))) :: Nil)
+      "OrderFailed keeps last Outcome but not the namedValues" in {
+        val order = TestOrder.copy(
+          historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(ReturnCode(888), Map("A" -> StringValue("AA")))) :: Nil)
         assert(FailExecutor.toEvent(context, order, fail) == Right(Some(TestOrder.id <-: OrderFailed(Outcome.Failed(ReturnCode(888))))))
       }
 

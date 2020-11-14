@@ -20,6 +20,7 @@ import js7.common.system.OperatingSystem.{isUnix, isWindows}
 import js7.data.agent.AgentName
 import js7.data.job.{ExecutablePath, JobKey, ReturnCode}
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
+import js7.data.value.StringValue
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
@@ -49,19 +50,19 @@ final class TaskRunnerTest extends AnyFreeSpec with BeforeAndAfterAll with TestA
     val shellFile = executablePath.toFile(executableDirectory)
     shellFile := TestScript
     if (isUnix) setPosixFilePermissions(shellFile, PosixFilePermissions.fromString("rwx------"))
-    val taskConfiguration = TaskConfiguration(JobKey.forTest, WorkflowJob(AgentName("TEST"), executablePath, Map("var1" -> "VALUE1")), shellFile)
+    val taskConfiguration = TaskConfiguration(JobKey.forTest, WorkflowJob(AgentName("TEST"), executablePath, Map("var1" -> StringValue("VALUE1"))), shellFile)
     info(measureTime(10, "TaskRunner") {
       val order = Order(
         OrderId("TEST"),
         WorkflowPath("/JOBCHAIN") ~ "VERSION",
         Order.Processing,
-        historicOutcomes = HistoricOutcome(Position(999), Outcome.Succeeded(Map("a" -> "A"))) :: Nil)
+        historicOutcomes = HistoricOutcome(Position(999), Outcome.Succeeded(Map("a" -> StringValue("A")))) :: Nil)
       val taskRunner = newTaskRunner(taskConfiguration)
       val stdoutWriter = new TestStdoutStderrWriter
       val stderrWriter = new TestStdoutStderrWriter
       val stdChannels = new StdChannels(charBufferSize = 10, stdoutWriter = stdoutWriter, stderrWriter = stderrWriter)
       val ended = taskRunner.processOrder(order, Map.empty, stdChannels).guarantee(taskRunner.terminate) await 30.s
-      assert(ended == TaskStepSucceeded(Map("result" -> "TEST-RESULT-VALUE1"), ReturnCode(0)))
+      assert(ended == TaskStepSucceeded(Map("result" -> StringValue("TEST-RESULT-VALUE1")), ReturnCode(0)))
       val nl = System.lineSeparator
       assert(stdoutWriter.string == s"Hej!${nl}var1=VALUE1$nl")
       assert(stderrWriter.string == s"THIS IS STDERR$nl")

@@ -11,6 +11,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.KeyedEvent
 import js7.data.item.VersionId
 import js7.data.order.OrderEvent.OrderAdded
+import js7.data.value.NamedValues
 import js7.data.workflow.WorkflowPath
 import org.jetbrains.annotations.TestOnly
 
@@ -21,7 +22,7 @@ final case class FreshOrder private(
   id: OrderId,
   workflowPath: WorkflowPath,
   scheduledFor: Option[Timestamp] = None,
-  arguments: Map[String, String] = Map.empty)
+  arguments: NamedValues = Map.empty)
 {
   workflowPath.requireNonAnonymous()
 
@@ -35,7 +36,7 @@ object FreshOrder
     id: OrderId,
     workflowPath: WorkflowPath,
     scheduledFor: Option[Timestamp] = None,
-    arguments: Map[String, String] = Map.empty)
+    arguments: NamedValues = Map.empty)
   : FreshOrder =
     checked(id, workflowPath, scheduledFor, arguments).orThrow
 
@@ -44,7 +45,7 @@ object FreshOrder
     id: OrderId,
     workflowPath: WorkflowPath,
     scheduledFor: Option[Timestamp] = None,
-    arguments: Map[String, String] = Map.empty)
+    arguments: NamedValues = Map.empty)
   : FreshOrder =
     new FreshOrder(id, workflowPath, scheduledFor, arguments)
 
@@ -52,7 +53,7 @@ object FreshOrder
     id: OrderId,
     workflowPath: WorkflowPath,
     scheduledFor: Option[Timestamp] = None,
-    arguments: Map[String, String] = Map.empty)
+    arguments: NamedValues = Map.empty)
   : Checked[FreshOrder] =
     for (checkedId <- id.checkedNameSyntax)
       yield new FreshOrder(checkedId, workflowPath, scheduledFor, arguments)
@@ -72,7 +73,7 @@ object FreshOrder
       id <- c.get[OrderId]("id")
       workflowPath <- c.get[WorkflowPath]("workflowPath")
       scheduledFor <- c.get[Option[Timestamp]]("scheduledFor")
-      arguments <- c.get[Option[Map[String, String]]]("arguments").map(_ getOrElse Map.empty)
+      arguments <- c.get[Option[NamedValues]]("arguments").map(_ getOrElse Map.empty)
       order <- checked(id, workflowPath, scheduledFor, arguments).toDecoderResult(c.history)
     } yield order
 }

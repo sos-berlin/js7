@@ -21,6 +21,7 @@ import js7.controller.web.controller.api.order.OrderRouteTest._
 import js7.controller.web.controller.api.test.RouteTester
 import js7.core.command.CommandMeta
 import js7.data.order.{FreshOrder, Order, OrderId, OrdersOverview}
+import js7.data.value.StringValue
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
 import monix.eval.Task
@@ -101,7 +102,8 @@ final class OrderRouteTest extends AnyFreeSpec with RouteTester with OrderRoute
   }
 
   "POST new order" in {
-    val order = FreshOrder(OrderId("ORDER-🔵"), WorkflowPath("/WORKFLOW"), Some(Timestamp.parse("2017-03-07T12:00:00Z")), Map("KEY" -> "VALUE"))
+    val order = FreshOrder(OrderId("ORDER-🔵"), WorkflowPath("/WORKFLOW"), Some(Timestamp.parse("2017-03-07T12:00:00Z")),
+      Map("KEY" -> StringValue("VALUE")))
     Post(s"/controller/api/order", order) ~> Accept(`application/json`) ~> route ~> check {
       assert(status == Created)  // New order
       assert(response.header[Location] contains Location("http://example.com/controller/api/order/ORDER-%F0%9F%94%B5"))

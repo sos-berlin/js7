@@ -6,7 +6,7 @@ import js7.base.utils.ScalaUtils.implicitClass
 import js7.data.execution.workflow.context.OrderContext._
 import js7.data.job.ReturnCode
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
-import js7.data.value.expression.Evaluator.{NumericValue, StringValue, Value}
+import js7.data.value.{NumericValue, StringValue, Value}
 import js7.data.value.expression.{Scope, ValueSearch}
 import js7.data.workflow.instructions.Instructions
 import js7.data.workflow.position.WorkflowPosition
@@ -44,20 +44,20 @@ trait OrderContext
       }
 
       val findValue = {
-        case ValueSearch(ValueSearch.Argument, ValueSearch.KeyValue(name)) =>
-          Right(order.arguments.get(name) map StringValue.apply)
+        case ValueSearch(ValueSearch.Argument, ValueSearch.NamedValue(name)) =>
+          Right(order.arguments.get(name))
 
         case ValueSearch(ValueSearch.Argument, ValueSearch.ReturnCode) =>
           Right(None)
 
-        case ValueSearch(ValueSearch.LastOccurred, ValueSearch.KeyValue(name)) =>
+        case ValueSearch(ValueSearch.LastOccurred, ValueSearch.NamedValue(name)) =>
           Right(
             order.historicOutcomes.reverseIterator
               .collectFirst {
-                case HistoricOutcome(_, outcome: Outcome.Completed) if outcome.keyValues.contains(name) =>
-                  outcome.keyValues(name)
+                case HistoricOutcome(_, outcome: Outcome.Completed) if outcome.namedValues.contains(name) =>
+                  outcome.namedValues(name)
               }
-              .orElse(order.arguments.get(name)) map StringValue.apply)
+              .orElse(order.arguments.get(name)))
 
         case ValueSearch(ValueSearch.LastOccurred, ValueSearch.ReturnCode) =>
           Right(Some(NumericValue(outcomeToReturnCode(order.lastOutcome).number)))
@@ -82,7 +82,7 @@ object OrderContext
 
   private def whatToValue(outcome: Outcome.Completed, what: ValueSearch.What): Option[Value] =
     what match {
-      case ValueSearch.KeyValue(key) => outcome.keyValues.get(key) map StringValue.apply
+      case ValueSearch.NamedValue(key) => outcome.namedValues.get(key)
       case ValueSearch.ReturnCode => Some(NumericValue(outcome.returnCode.number))
     }
 

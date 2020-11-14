@@ -45,6 +45,7 @@ import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
 import js7.data.job.JobKey
 import js7.data.order.OrderEvent.{OrderBroken, OrderDetached}
 import js7.data.order.{Order, OrderEvent, OrderId}
+import js7.data.value.NamedValues
 import js7.data.workflow.Workflow
 import js7.data.workflow.WorkflowEvent.WorkflowAttached
 import js7.data.workflow.instructions.Execute
@@ -521,7 +522,7 @@ with Stash {
   private def startProcessing(orderEntry: OrderEntry, jobKey: JobKey, job: WorkflowJob, jobEntry: JobEntry): Unit = {
     val defaultArguments = orderEntry.instruction match {
       case o: Execute.Named => o.defaultArguments
-      case _ => Map.empty[String, String]
+      case _ => NamedValues.empty
     }
     //assertThat(job.jobPath == jobEntry.jobPath)
     jobEntry.waitingForOrder = false

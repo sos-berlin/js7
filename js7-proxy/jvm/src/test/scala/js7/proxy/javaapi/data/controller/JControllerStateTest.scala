@@ -18,6 +18,7 @@ import js7.data.item.RepoEvent.VersionAdded
 import js7.data.item.{InventoryItemSigner, Repo, VersionId}
 import js7.data.node.NodeId
 import js7.data.order.{Order, OrderId}
+import js7.data.value.StringValue
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.parser.WorkflowParser
 import js7.data.workflow.position.Position
@@ -110,8 +111,8 @@ private object JControllerStateTest
         (WorkflowPath("/B-WORKFLOW") ~ v2) /: Position(0),
         Order.Ready,
         Map(
-          "key1" -> "value1",
-          "key2" -> "value2"),
+          "key1" -> StringValue("value1"),
+          "key2" -> StringValue("value2")),
         removeWhenTerminated = true)
     ).toKeyedMap(_.id))
 }

@@ -2,6 +2,7 @@ package js7.provider.scheduledorder
 
 import js7.base.utils.ScalaUtils.reuseIfEqual
 import js7.data.item.{InventoryItem, ItemId}
+import js7.data.value.NamedValues
 import js7.data.workflow.WorkflowPath
 import js7.provider.scheduledorder.oldruntime.OldSchedule
 
@@ -12,7 +13,7 @@ import js7.provider.scheduledorder.oldruntime.OldSchedule
 final case class ScheduledOrderGenerator(
   id: ItemId[ScheduledOrderGeneratorPath],
   workflowPath: WorkflowPath,
-  arguments: Map[String, String],
+  arguments: NamedValues,
   schedule: OldSchedule)
 extends InventoryItem
 {

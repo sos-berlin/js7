@@ -9,6 +9,7 @@ import js7.base.problem.Problem
 import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderProcessed, OrderProcessingStarted, OrderRemoved, OrderStdWritten}
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.system.StdoutOrStderr
+import js7.data.value.Value
 import js7.proxy.javaapi.data.common.JJsonable
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
@@ -53,7 +54,7 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
   extends JOrderEvent {
     protected type AsScala = OrderAdded
 
-    def arguments: java.util.Map[String, String] =
+    def arguments: java.util.Map[String, Value] =
       asScala.arguments.asJava
 
     def scheduledFor: Optional[Instant] =

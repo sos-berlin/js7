@@ -13,6 +13,6 @@ object ValueSearch
   final case class LastExecuted(search: PositionSearch) extends Where
 
   sealed trait What
-  final case class KeyValue(key: String) extends What
+  final case class NamedValue(name: String) extends What
   case object ReturnCode extends What
 }

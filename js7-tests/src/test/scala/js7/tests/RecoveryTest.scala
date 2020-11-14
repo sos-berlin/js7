@@ -26,6 +26,7 @@ import js7.data.item.{RepoEvent, VersionId}
 import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.value.StringValue
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
@@ -161,8 +162,8 @@ private object RecoveryTest {
       Execute(WorkflowJob.Name("TEST-1")),
       Execute(WorkflowJob.Name("TEST-1"))),
     Map(
-      WorkflowJob.Name("TEST-0") -> WorkflowJob(AgentNames(0), TestExecutablePath, Map("var1" -> s"VALUE-${AgentNames(0).string}")),
-      WorkflowJob.Name("TEST-1") -> WorkflowJob(AgentNames(1), TestExecutablePath, Map("var1" -> s"VALUE-${AgentNames(1).string}"))))
+      WorkflowJob.Name("TEST-0") -> WorkflowJob(AgentNames(0), TestExecutablePath, Map("var1" -> StringValue(s"VALUE-${AgentNames(0).string}"))),
+      WorkflowJob.Name("TEST-1") -> WorkflowJob(AgentNames(1), TestExecutablePath, Map("var1" -> StringValue(s"VALUE-${AgentNames(1).string}")))))
 
   private val QuickWorkflow = Workflow.of(WorkflowPath("/quick") ~ "INITIAL", Execute(WorkflowJob(AgentNames(0), TestExecutablePath)))
   private val QuickOrder = FreshOrder(OrderId("QUICK-ORDER"), QuickWorkflow.id.path)
@@ -174,15 +175,15 @@ private object RecoveryTest {
     OrderStarted,
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
-    OrderProcessed(Outcome.Succeeded(Map("result" -> "SCRIPT-VARIABLE-VALUE-agent-111"))),
+    OrderProcessed(Outcome.Succeeded(Map("result" -> StringValue("SCRIPT-VARIABLE-VALUE-agent-111")))),
     OrderMoved(Position(1)),
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
-    OrderProcessed(Outcome.Succeeded(Map("result" -> "SCRIPT-VARIABLE-VALUE-agent-111"))),
+    OrderProcessed(Outcome.Succeeded(Map("result" -> StringValue("SCRIPT-VARIABLE-VALUE-agent-111")))),
     OrderMoved(Position(2)),
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
-    OrderProcessed(Outcome.Succeeded(Map("result" -> "SCRIPT-VARIABLE-VALUE-agent-111"))),
+    OrderProcessed(Outcome.Succeeded(Map("result" -> StringValue("SCRIPT-VARIABLE-VALUE-agent-111")))),
     OrderMoved(Position(3)),
     OrderDetachable,
     OrderDetached,
@@ -190,11 +191,11 @@ private object RecoveryTest {
     OrderAttached(AgentNames(1)),
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
-    OrderProcessed(Outcome.Succeeded(Map("result" -> "SCRIPT-VARIABLE-VALUE-agent-222"))),
+    OrderProcessed(Outcome.Succeeded(Map("result" -> StringValue("SCRIPT-VARIABLE-VALUE-agent-222")))),
     OrderMoved(Position(4)),
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
-    OrderProcessed(Outcome.Succeeded(Map("result" -> "SCRIPT-VARIABLE-VALUE-agent-222"))),
+    OrderProcessed(Outcome.Succeeded(Map("result" -> StringValue("SCRIPT-VARIABLE-VALUE-agent-222")))),
     OrderMoved(Position(5)),
     OrderDetachable,
     OrderDetached,

@@ -5,6 +5,7 @@ import java.util.Optional
 import js7.data.order.Outcome.Completed
 import js7.data.order.{OrderId, Outcome}
 import js7.data.system.StdoutOrStderr
+import js7.data.value.Value
 import js7.proxy.javaapi.data.workflow.position.JWorkflowPosition
 import js7.tests.controller.proxy.history.OrderEntry._
 import scala.jdk.CollectionConverters._
@@ -13,7 +14,7 @@ import scala.jdk.OptionConverters._
 final case class OrderEntry(
   orderId: OrderId,
   parent: Optional[OrderId] = Optional.empty,
-  keyValues: java.util.Map[String, String],
+  namedValues: java.util.Map[String, Value],
   cause: Cause,
   startWorkflowPosition: Optional[JWorkflowPosition] = Optional.empty,
   scheduledFor: Optional[Instant] = Optional.empty,
@@ -22,13 +23,13 @@ final case class OrderEntry(
   endWorkflowPosition: Optional[JWorkflowPosition] = Optional.empty,
   steps: java.util.List[OrderStepEntry] = Vector.empty.asJava)
 {
-  def updateLastStep(endedAt: Instant, outcome: Outcome, keyValues: java.util.Map[String, String]): OrderEntry = {
+  def updateLastStep(endedAt: Instant, outcome: Outcome, namedValues: java.util.Map[String, Value]): OrderEntry = {
     val lastStep = steps.asScala.last
     copy(steps = (steps.asScala.take(steps.size - 1) :+
       lastStep.copy(
         endedAt = Optional.of(endedAt),
         returnCode = Some(outcome).collect { case o: Completed => o.returnCode }.toJava,
-        endVariables = Optional.of(keyValues))).asJava)
+        endVariables = Optional.of(namedValues))).asJava)
   }
 
   def addToLog(outErr: StdoutOrStderr, chunk: String): OrderEntry =

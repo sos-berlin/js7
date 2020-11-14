@@ -25,6 +25,7 @@ import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.item.{InventoryItem, UpdateRepoOperation, VersionId}
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
+import js7.data.value.StringValue
 import js7.data.workflow.parser.WorkflowParser
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.proxy.ControllerApi
@@ -125,7 +126,7 @@ final class JournaledProxyClusterTest extends AnyFreeSpec with ClusterProxyTest
 
   "addOrders" in {
     val bigOrder = FreshOrder(OrderId("ORDER"), workflow.path, Some(Timestamp("2100-01-01T00:00:00Z")),
-      arguments = Map("A" -> "*" * 800))
+      arguments = Map("A" -> StringValue("*" * 800)))
     val n = calculateNumberOf(Stamped(0L, bigOrder.toOrderAdded(workflow.id.versionId): KeyedEvent[OrderEvent]))
     runControllerAndBackup() { (_, primaryController, _, _, _) =>
       val api = new ControllerApi(List(

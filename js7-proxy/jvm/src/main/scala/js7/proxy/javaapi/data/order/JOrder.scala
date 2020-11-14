@@ -7,6 +7,7 @@ import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.data.agent.AgentName
 import js7.data.order.{Order, OrderId}
+import js7.data.value.Value
 import js7.proxy.javaapi.data.common.VavrConverters._
 import js7.proxy.javaapi.data.common.{JJsonable, JavaWrapper}
 import js7.proxy.javaapi.data.workflow.JWorkflowId
@@ -34,7 +35,7 @@ extends JJsonable[JOrder]
   def workflowId: JWorkflowId =
     JWorkflowId(asScala.workflowId)
 
-  def arguments: java.util.Map[String, String] =
+  def arguments: java.util.Map[String, Value] =
     asScala.arguments.asJava
 
   def parent: Optional[OrderId] =

@@ -1,15 +1,16 @@
 package js7.data.value.expression
 
 import js7.base.problem.{Checked, Problem}
+import js7.data.value.Value
 
 /**
   * @author Joacim Zschimmer
   */
 trait Scope
 {
-  val symbolToValue: String => Checked[Evaluator.Value]
+  val symbolToValue: String => Checked[Value]
 
-  val findValue: ValueSearch => Checked[Option[Evaluator.Value]]
+  val findValue: ValueSearch => Checked[Option[Value]]
 
   final def evalBoolean(expression: Expression): Checked[Boolean] =
     new Evaluator(this).evalBoolean(expression).map(_.booleanValue)

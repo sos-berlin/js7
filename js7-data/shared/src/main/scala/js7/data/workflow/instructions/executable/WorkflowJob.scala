@@ -11,6 +11,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentName
 import js7.data.job.{Executable, ExecutablePath, ExecutableScript, ReturnCode}
 import js7.data.order.Outcome
+import js7.data.value.NamedValues
 import js7.data.workflow.instructions.ReturnCodeMeaning
 import scala.concurrent.duration.FiniteDuration
 
@@ -20,13 +21,13 @@ import scala.concurrent.duration.FiniteDuration
 final case class WorkflowJob private(
   agentName: AgentName,
   executable: Executable,
-  defaultArguments: Map[String, String],
+  defaultArguments: NamedValues,
   returnCodeMeaning: ReturnCodeMeaning,
   taskLimit: Int,
   sigkillAfter: Option[FiniteDuration])
 {
-  def toOutcome(returnCode: ReturnCode, keyValues: Map[String, String]) =
-    Outcome.Completed(success = returnCodeMeaning.isSuccess(returnCode), returnCode, keyValues)
+  def toOutcome(returnCode: ReturnCode, namedValues: NamedValues) =
+    Outcome.Completed(success = returnCodeMeaning.isSuccess(returnCode), returnCode, namedValues)
 
   def isExecutableOnAgent(agentName: AgentName): Boolean =
     this.agentName == agentName
@@ -52,7 +53,7 @@ object WorkflowJob
   def apply(
     agentName: AgentName,
     executable: Executable,
-    defaultArguments: Map[String, String] = Map.empty,
+    defaultArguments: NamedValues = Map.empty,
     returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default,
     taskLimit: Int = DefaultTaskLimit,
     sigkillAfter: Option[FiniteDuration] = None)
@@ -62,7 +63,7 @@ object WorkflowJob
   def checked(
     agentName: AgentName,
     executable: Executable,
-    defaultArguments: Map[String, String] = Map.empty,
+    defaultArguments: NamedValues = Map.empty,
     returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default,
     taskLimit: Int = DefaultTaskLimit,
     sigkillAfter: Option[FiniteDuration] = None)
@@ -96,7 +97,7 @@ object WorkflowJob
       //jobName <- cursor.get[Option[Name]]("jobName").map(_ getOrElse Name.Anonymous)
       executable <- cursor.get[Executable]("executable")
       agentName <- cursor.get[AgentName]("agentName")
-      arguments <- cursor.getOrElse[Map[String, String]]("defaultArguments")(Map.empty)
+      arguments <- cursor.getOrElse[NamedValues]("defaultArguments")(Map.empty)
       rc <- cursor.getOrElse[ReturnCodeMeaning]("returnCodeMeaning")(ReturnCodeMeaning.Default)
       taskLimit <- cursor.get[Int]("taskLimit")
       sigkillProcessesAfter <- cursor.get[Option[FiniteDuration]]("sigkillAfter")

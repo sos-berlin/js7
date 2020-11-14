@@ -33,6 +33,7 @@ import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
+import js7.data.value.StringValue
 import js7.data.value.expression.Expression.{Equal, LastReturnCode, NumericConstant, Or}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fork, If}
@@ -169,7 +170,7 @@ object TestControllerAgent
   private val PathNames = LazyList("🥕", "🍋", "🍊", "🍐", "🍏", "🍓", "🍒") ++ Iterator.from(8).map("🌶".+)
   private def testJob(conf: Conf, agentName: AgentName) =
     WorkflowJob(agentName, TestExecutablePath,
-      Map("JOB-VARIABLE" -> s"VALUE-$agentName"),
+      Map("JOB-VARIABLE" -> StringValue(s"VALUE-$agentName")),
       taskLimit = conf.tasksPerJob)
 
   private def makeWorkflow(conf: Conf): Workflow =

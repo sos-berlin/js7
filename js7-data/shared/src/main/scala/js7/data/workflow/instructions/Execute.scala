@@ -6,6 +6,7 @@ import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.source.SourcePos
+import js7.data.value.NamedValues
 import js7.data.workflow.Instruction
 import js7.data.workflow.instructions.executable.WorkflowJob
 
@@ -20,7 +21,7 @@ object Execute
 
   def apply(workflowJob: WorkflowJob) = Anonymous(workflowJob)
 
-  final case class Named(name: WorkflowJob.Name, defaultArguments: Map[String, String] = Map.empty,
+  final case class Named(name: WorkflowJob.Name, defaultArguments: NamedValues = Map.empty,
     sourcePos: Option[SourcePos] = None)
   extends Execute
   {
@@ -37,7 +38,7 @@ object Execute
     implicit val jsonDecoder: Decoder[Named] = cursor =>
       for {
         name <- cursor.get[WorkflowJob.Name]("jobName")
-        arguments <- cursor.getOrElse[Map[String, String]]("defaultArguments")(Map.empty)
+        arguments <- cursor.getOrElse[NamedValues]("defaultArguments")(Map.empty)
         sourcePos <- cursor.get[Option[SourcePos]]("sourcePos")
       } yield Named(name, arguments, sourcePos)
   }

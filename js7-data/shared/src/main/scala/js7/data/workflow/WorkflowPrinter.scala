@@ -4,6 +4,7 @@ import cats.Show
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.{ExecutablePath, ExecutableScript}
+import js7.data.value.{BooleanValue, ListValue, NamedValues, NumericValue, StringValue, Value}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Finish, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction}
 import scala.annotation.tailrec
@@ -25,6 +26,8 @@ object WorkflowPrinter
 
   private def appendWorkflowContent(sb: StringBuilder, nesting: Int, workflow: Workflow): String =
   {
+    def appendValue(value: Value) = WorkflowPrinter.appendValue(sb, value)
+
     def appendQuoted(string: String) = WorkflowPrinter.appendQuoted(sb, string)
 
     def appendQuotedExpression(string: String) =
@@ -42,7 +45,7 @@ object WorkflowPrinter
 
     def indent(nesting: Int) = for (_ <- 0 until nesting) sb ++= "  "
 
-    def appendJsonObject(obj: Map[String, String]): Unit = {
+    def appendJsonObject(obj: NamedValues): Unit = {
       sb ++= "{"
       var needComma = false
       for ((k, v) <- obj) {
@@ -50,7 +53,7 @@ object WorkflowPrinter
         needComma = true
         appendQuoted(k)
         sb ++= ": "
-        appendQuoted(v)
+        appendValue(v)
       }
       sb ++= "}"
     }
@@ -220,7 +223,25 @@ object WorkflowPrinter
     sb.toString
   }
 
-  def appendQuoted(sb: StringBuilder, string: String) =
+  def appendValue(sb: StringBuilder, value: Value): Unit =
+    value match {
+      case BooleanValue(bool) => sb.append(bool)
+      case NumericValue(number) => sb.append(number)
+      case StringValue(string) => appendQuoted(sb, string)
+      case ListValue(values) =>
+        sb.append('[')
+        val it = values.iterator
+        if (it.hasNext) {
+          appendValue(sb, it.next())
+          while (it.hasNext) {
+            sb.append(", ")
+            appendValue(sb, it.next())
+          }
+        }
+        sb.append(']')
+    }
+
+  def appendQuoted(sb: StringBuilder, string: String): Unit =
     sb.append('"')
       .append(string
         .replace("\\", "\\\\")

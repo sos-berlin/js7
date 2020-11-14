@@ -11,6 +11,7 @@ import js7.data.agent.{AgentName, AgentRunId}
 import js7.data.command.CancelMode
 import js7.data.event.JournalId
 import js7.data.order.{Order, OrderId, OrderMark}
+import js7.data.value.StringValue
 import js7.data.workflow.position.Position
 import js7.data.workflow.test.TestSetting.SimpleTestWorkflow
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
@@ -168,7 +169,7 @@ final class AgentCommandTest extends AnyFreeSpec
             OrderId("ORDER-ID"),
             SimpleTestWorkflow.id /: Position(3),
             Order.Ready,
-            Map("KEY" -> "VALUE")),
+            Map("KEY" -> StringValue("VALUE"))),
           AgentName("AGENT"),
           SignedString("""{"TYPE":"Workflow",...}""", GenericSignature("Silly", "MY-SILLY-SIGNATURE"))),
         json"""{

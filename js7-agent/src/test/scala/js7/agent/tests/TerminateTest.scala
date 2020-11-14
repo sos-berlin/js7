@@ -23,6 +23,7 @@ import js7.data.agent.AgentName
 import js7.data.event.EventRequest
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, Outcome}
+import js7.data.value.StringValue
 import js7.data.workflow.test.TestSetting._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
@@ -60,7 +61,7 @@ final class TerminateTest extends AnyFreeSpec with AgentTester
           orderId,
           SimpleTestWorkflow.id,
           Order.Ready,
-          Map("a" -> "A")),
+          Map("a" -> StringValue("A"))),
         TestAgentName,
         itemSigner.sign(SimpleTestWorkflow)))
     ) await 99.s

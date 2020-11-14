@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.Optional;
 import js7.data.item.VersionId;
 import js7.data.order.OrderId;
+import js7.data.value.StringValue;
+import js7.data.value.Value;
 import js7.data.workflow.WorkflowPath;
 import js7.proxy.javaapi.data.workflow.JWorkflowId;
 import js7.proxy.javaapi.data.workflow.position.JPosition;
@@ -105,8 +107,8 @@ public class JOrderTester
             equalTo(JWorkflowPosition.of(
                 JWorkflowId.of(WorkflowPath.of("/WORKFLOW"), VersionId.of("1.0")),
                 getOrThrow(JPosition.fromList(asList(1, "fork+A", 2))))));
-        assertThat(order.arguments(), equalTo(new HashMap<String, String>() {{
-            put("KEY", "VALUE");
+        assertThat(order.arguments(), equalTo(new HashMap<String,Value>() {{
+            put("KEY", StringValue.of("VALUE"));
         }}));
         assertThat(order.parent(), equalTo(Optional.of(OrderId.of("ORDER-ID"))));
     }

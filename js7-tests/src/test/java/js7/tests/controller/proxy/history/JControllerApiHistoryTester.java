@@ -14,6 +14,8 @@ import js7.data.event.EventId;
 import js7.data.item.VersionId;
 import js7.data.order.OrderEvent;
 import js7.data.order.OrderId;
+import js7.data.value.StringValue;
+import js7.data.value.Value;
 import js7.data.workflow.WorkflowPath;
 import js7.proxy.data.ProxyEvent;
 import js7.proxy.javaapi.JControllerApi;
@@ -72,7 +74,7 @@ final class JControllerApiHistoryTester
             JControllerState state;
             try {
                 JFreshOrder freshOrder = JFreshOrder.of(TestOrderId, workflowPath, Optional.empty(),
-                    ImmutableMap.of("KEY", "VALUE"));
+                    ImmutableMap.of("KEY", StringValue.of("VALUE")));
                 await(api.addOrder(freshOrder));
                 state = whenFirstFluxTerminated.get(99, SECONDS).get();
                 assertThat(
@@ -132,7 +134,7 @@ final class JControllerApiHistoryTester
                     .toFuture();
 
             JFreshOrder freshOrder = JFreshOrder.of(orderId, workflowPath, Optional.empty(),
-                ImmutableMap.of("KEY", "VALUE"));
+                ImmutableMap.of("KEY", StringValue.of("VALUE")));
             await(api.addOrder(freshOrder));
             Event lastEvent = whenFirstFluxTerminated.get(99, SECONDS).stampedEvent().value().event();
             assertThat(

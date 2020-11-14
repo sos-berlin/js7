@@ -7,6 +7,7 @@ import js7.data.agent.AgentName
 import js7.data.job.{ExecutablePath, ExecutableScript, ReturnCode}
 import js7.data.order.OrderId
 import js7.data.source.SourcePos
+import js7.data.value.{NumericValue, StringValue}
 import js7.data.value.expression.Expression.{Equal, In, LastReturnCode, ListExpression, NamedValue, NumericConstant, Or, StringConstant}
 import js7.data.workflow.WorkflowPrinter.WorkflowShow
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -60,7 +61,7 @@ final class WorkflowParserTest extends AnyFreeSpec
        """define workflow {
          |  execute executable = "/my/executable",
          |          agent = "AGENT",
-         |          arguments = { "A": "aaa", "B": "bbb" },
+         |          arguments = { "A": "aaa", "B": "bbb", "I": -123 },
          |          taskLimit = 3,
          |          sigkillAfter = 30;
          |}""".stripMargin,
@@ -68,11 +69,14 @@ final class WorkflowParserTest extends AnyFreeSpec
         Execute.Anonymous(
           WorkflowJob(AgentName("AGENT"),
             ExecutablePath("/my/executable"),
-            Map("A" -> "aaa", "B" -> "bbb"),
+            Map(
+              "A" -> StringValue("aaa"),
+              "B" -> StringValue("bbb"),
+              "I" -> NumericValue(-123)),
             taskLimit = 3,
             sigkillAfter = Some(30.s)),
-          sourcePos(20, 188)),
-        ImplicitEnd(sourcePos(190, 191))))
+          sourcePos(20, 199)),
+        ImplicitEnd(sourcePos(201, 202))))
   }
 
   "Execute script with \\n" in {
@@ -121,7 +125,7 @@ final class WorkflowParserTest extends AnyFreeSpec
         WorkflowPath.NoId,
         Vector(
           Execute.Named(WorkflowJob.Name("A"), sourcePos = sourcePos(33, 38)),
-          Execute.Named(WorkflowJob.Name("B"), defaultArguments = Map("KEY" -> "VALUE"), sourcePos(48, 85)),
+          Execute.Named(WorkflowJob.Name("B"), defaultArguments = Map("KEY" -> StringValue("VALUE")), sourcePos(48, 85)),
           Execute.Named(WorkflowJob.Name("C"), sourcePos = sourcePos(95, 100)),
           ImplicitEnd(sourcePos(409, 410))),
         Map(

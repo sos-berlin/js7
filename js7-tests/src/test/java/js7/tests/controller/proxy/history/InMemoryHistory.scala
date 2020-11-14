@@ -6,6 +6,7 @@ import js7.base.web.Uri
 import js7.data.event.{Event, EventId, KeyedEvent}
 import js7.data.job.ReturnCode
 import js7.data.order.{OrderEvent, OrderId}
+import js7.data.value.{StringValue, Value}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.proxy.javaapi.data.common.VavrUtils.getOrThrow
@@ -145,12 +146,12 @@ private[history] object InMemoryHistory
     expectedOrderEntries(agentUris.asScala.toVector).map(o => o.orderId -> o).toMap.asJava
 
   private def expectedOrderEntries(agentUris: IndexedSeq[Uri]) = {
-    val keyValues = Map("KEY" -> "VALUE").asJava
+    val namedValues = Map[String, Value]("KEY" -> StringValue("VALUE")).asJava
     Vector(
       OrderEntry(
         TestOrderId,
         Optional.empty,
-        keyValues,
+        namedValues,
         OrderEntry.Cause.Added,
         Optional.of(JWorkflowPosition(workflowId /: Position(0))),
         Optional.empty,
@@ -162,26 +163,26 @@ private[history] object InMemoryHistory
             JWorkflowPosition(workflowId /: Position(0)),
             agentUri = agentUris(0),
             jobName = Optional.empty,
-            keyValues,
+            namedValues,
             startedAt,
             Optional.of(terminatedAt),
             Optional.of(ReturnCode(0)),
-            Optional.of(keyValues),
+            Optional.of(namedValues),
             Optional.of(s"stdout: $StdoutOutput")),
           OrderStepEntry(OrderId("ORDER"),
             JWorkflowPosition(workflowId /: Position(2)),
             agentUris(0),
             jobName = Optional.empty,
-            keyValues,
+            namedValues,
             startedAt,
             Optional.of(terminatedAt),
             Optional.of(ReturnCode(0)),
-            Optional.of(keyValues),
+            Optional.of(namedValues),
             Optional.of(s"stdout: $StdoutOutput"))
         ).asJava),
       OrderEntry(OrderId("ORDER|🥕"),
         Optional.of(OrderId("ORDER")),
-        keyValues,
+        namedValues,
         OrderEntry.Cause.Forked,
         Optional.of(JWorkflowPosition(workflowId /: (Position(1) / "fork+🥕" % 0))),
         Optional.empty,
@@ -193,26 +194,26 @@ private[history] object InMemoryHistory
             JWorkflowPosition(workflowId /: (Position(1) / "fork+🥕" % 0)),
             agentUris(0),
             jobName = Optional.empty,
-            keyValues,
+            namedValues,
             startedAt,
             Optional.of(terminatedAt),
             Optional.of(ReturnCode(0)),
-            Optional.of(keyValues),
+            Optional.of(namedValues),
             Optional.of(s"stdout: $StdoutOutput")),
           OrderStepEntry(OrderId("ORDER|🥕"),
             JWorkflowPosition(workflowId /: (Position(1) / "fork+🥕" % 1)),
             agentUris(0),
             jobName = Optional.empty,
-            keyValues,
+            namedValues,
             startedAt,
             Optional.of(terminatedAt),
             Optional.of(ReturnCode(0)),
-            Optional.of(keyValues),
+            Optional.of(namedValues),
             Optional.of(s"stdout: $StdoutOutput"))
         ).asJava),
       OrderEntry(OrderId("ORDER|🍋"),
         Optional.of(OrderId("ORDER")),
-        keyValues,
+        namedValues,
         OrderEntry.Cause.Forked,
         Optional.of(JWorkflowPosition(workflowId /: (Position(1) / "fork+🍋" % 0))),
         Optional.empty,
@@ -224,21 +225,21 @@ private[history] object InMemoryHistory
             JWorkflowPosition(workflowId /: (Position(1) / "fork+🍋" % 0)),
             agentUris(0),
             jobName = Optional.empty,
-            keyValues,
+            namedValues,
             startedAt,
             Optional.of(terminatedAt),
             Optional.of(ReturnCode(0)),
-            Optional.of(keyValues),
+            Optional.of(namedValues),
             Optional.of(s"stdout: $StdoutOutput")),
           OrderStepEntry(OrderId("ORDER|🍋"),
             JWorkflowPosition(workflowId /: (Position(1) / "fork+🍋" % 1)),
             agentUris(1),
             jobName = Optional.empty,
-            keyValues,
+            namedValues,
             startedAt,
             Optional.of(terminatedAt),
             Optional.of(ReturnCode(0)),
-            Optional.of(keyValues),
+            Optional.of(namedValues),
             Optional.of(s"stdout: $StdoutOutput"))
         ).asJava))
     }

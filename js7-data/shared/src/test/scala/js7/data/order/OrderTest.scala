@@ -13,6 +13,7 @@ import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.job.ReturnCode
 import js7.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Cancelled, DelayedAfterError, Detaching, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, IsFreshOrReady, Offering, Processed, Processing, ProcessingKilled, Ready, State}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderResumed, OrderRetrying, OrderStarted, OrderSuspendMarked, OrderSuspended}
+import js7.data.value.StringValue
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.Fork
 import js7.data.workflow.position.BranchId.Then
@@ -33,8 +34,8 @@ final class OrderTest extends AnyFreeSpec
     WorkflowPath("/WORKFLOW") ~ "VERSION",
     Ready,
     arguments = Map(
-      "key1" -> "value1",
-      "key2" -> "value2"),
+      "key1" -> StringValue("value1"),
+      "key2" -> StringValue("value2")),
     HistoricOutcome(Position(123), Outcome.Succeeded(ReturnCode(0))) :: Nil)
 
   "JSON" - {

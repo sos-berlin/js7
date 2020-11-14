@@ -3,6 +3,7 @@ package js7.proxy.javaapi.data.order
 import js7.data.agent.AgentName
 import js7.data.command.CancelMode
 import js7.data.order.{Order, OrderId, OrderMark}
+import js7.data.value.StringValue
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.Fork
 import js7.data.workflow.position.Position
@@ -15,7 +16,7 @@ final class JOrderTest extends AnyFreeSpec
     (WorkflowPath("/WORKFLOW") ~ "1.0") /: (Position(1) / "fork+A" % 2),
     Order.Forked(Seq(
       Order.Forked.Child(Fork.Branch.Id("A1"), OrderId("ORDER-ID/A/A1")))),
-    arguments = Map("KEY" -> "VALUE"),
+    arguments = Map("KEY" -> StringValue("VALUE")),
     attachedState = Some(Order.Attached(AgentName("AGENT"))),
     parent = Some(OrderId("ORDER-ID")),
     mark = Some(OrderMark.Cancelling(CancelMode.FreshOrStarted(Some(CancelMode.Kill())))))

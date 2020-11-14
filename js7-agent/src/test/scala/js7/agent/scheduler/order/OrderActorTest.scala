@@ -36,6 +36,7 @@ import js7.data.job.{ExecutablePath, JobKey}
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetachable, OrderDetached, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
 import js7.data.system.{Stderr, Stdout, StdoutOrStderr}
+import js7.data.value.StringValue
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
@@ -70,7 +71,7 @@ final class OrderActorTest extends AnyFreeSpec with HasCloser with BeforeAndAfte
   "Shell script" in {
     val executablePath = ExecutablePath(s"/TEST-1$sh")
     executablePath.toFile(directoryProvider.agentDirectory / "config" / "executables").writeExecutable(TestScript)
-    val (testActor, result) = runTestActor(DummyJobKey, WorkflowJob(TestAgentName, executablePath, Map("VAR1" -> "FROM-JOB")))
+    val (testActor, result) = runTestActor(DummyJobKey, WorkflowJob(TestAgentName, executablePath, Map("VAR1" -> StringValue("FROM-JOB"))))
     assert(result.events == ExpectedOrderEvents)
     assert(result.stdoutStderr(Stdout) == s"Hej!${Nl}var1=FROM-JOB$Nl")
     assert(result.stdoutStderr(Stderr) == s"THIS IS STDERR$Nl")
@@ -120,7 +121,7 @@ private object OrderActorTest {
     OrderAttachedToAgent(TestOrder.workflowPosition, Order.Ready, TestOrder.arguments, TestOrder.historicOutcomes,
       AgentName("TEST-AGENT"), None, None, false, false),
     OrderProcessingStarted,
-    OrderProcessed(Outcome.Succeeded(Map("result" -> "TEST-RESULT-FROM-JOB"))),
+    OrderProcessed(Outcome.Succeeded(Map("result" -> StringValue("TEST-RESULT-FROM-JOB")))),
     OrderMoved(TestPosition),
     OrderDetachable,
     OrderDetached)

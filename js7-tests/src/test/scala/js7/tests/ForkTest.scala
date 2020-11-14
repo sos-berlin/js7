@@ -14,6 +14,7 @@ import js7.data.event.EventSeq
 import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent._
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.value.StringValue
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
@@ -84,12 +85,12 @@ object ForkTest {
     WorkflowPath("/DUPLICATE") ~ "INITIAL",
     Vector(
       Execute(WorkflowJob(AAgentName, ExecutablePath("/SLOW.cmd")))))
-  private val TestOrder = FreshOrder(OrderId("🔺"), TestWorkflow.id.path, arguments = Map("KEY" -> "VALUE"))
+  private val TestOrder = FreshOrder(OrderId("🔺"), TestWorkflow.id.path, arguments = Map("KEY" -> StringValue("VALUE")))
   private val XOrderId = OrderId(s"🔺|🥕")
   private val YOrderId = OrderId(s"🔺|🍋")
 
   private val ExpectedEvents = Vector(
-    TestOrder.id <-: OrderAdded(TestWorkflow.id, None, Map("KEY" -> "VALUE")),
+    TestOrder.id <-: OrderAdded(TestWorkflow.id, None, Map("KEY" -> StringValue("VALUE"))),
 
     TestOrder.id <-: OrderStarted,
     TestOrder.id <-: OrderForked(Vector(

@@ -18,6 +18,7 @@ import js7.common.system.OperatingSystem.isWindows
 import js7.data.agent.AgentName
 import js7.data.event.{EventId, EventRequest}
 import js7.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
+import js7.data.value.StringValue
 import js7.data.workflow.position.Position
 import js7.data.workflow.test.TestSetting._
 import monix.execution.Scheduler.Implicits.global
@@ -63,10 +64,10 @@ final class AgentActorTest extends AnyFreeSpec
             orderId,
             SimpleTestWorkflow.lastWorkflowPosition,
             Order.Ready,
-            Map("KEY" -> "VALUE"),
+            Map("KEY" -> StringValue("VALUE")),
             historicOutcomes = TestOrder.historicOutcomes :+
-              HistoricOutcome(Position(0), Outcome.Succeeded(Map("result" -> "TEST-RESULT-"))) :+
-              HistoricOutcome(Position(1), Outcome.Succeeded(Map("result" -> "TEST-RESULT-B-VALUE"))),
+              HistoricOutcome(Position(0), Outcome.Succeeded(Map("result" -> StringValue("TEST-RESULT-")))) :+
+              HistoricOutcome(Position(1), Outcome.Succeeded(Map("result" -> StringValue("TEST-RESULT-B-VALUE")))),
             Some(Order.Detaching(TestAgentName))
           )).toSet)
 

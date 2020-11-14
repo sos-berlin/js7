@@ -24,6 +24,7 @@ import js7.data.job.ReturnCode
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
 import js7.data.order.Outcome.Succeeded
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
+import js7.data.value.StringValue
 import js7.data.workflow.parser.WorkflowParser
 import js7.data.workflow.position.Position
 import js7.proxy.configuration.ProxyConf
@@ -132,7 +133,7 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
 
         assert(keyedEvents.groupMap(_.key)(_.event).view.mapValues(_.toList).to(mutable.SortedMap) == mutable.SortedMap(
           OrderId("🔺") -> List(
-            OrderAdded(TestWorkflowId.asScala, None, Map("KEY" -> "VALUE")),
+            OrderAdded(TestWorkflowId.asScala, None, Map("KEY" -> StringValue("VALUE"))),
             OrderAttachable(AAgentName),
             OrderAttached(AAgentName),
             OrderStarted,
@@ -228,5 +229,5 @@ object ProxyHistoryTest
      |}
      """.stripMargin.trim).orThrow
 
-  private val TestOrder = FreshOrder(OrderId("🔺"), TestWorkflowId.path, arguments = Map("KEY" -> "VALUE"))
+  private val TestOrder = FreshOrder(OrderId("🔺"), TestWorkflowId.path, arguments = Map("KEY" -> StringValue("VALUE")))
 }

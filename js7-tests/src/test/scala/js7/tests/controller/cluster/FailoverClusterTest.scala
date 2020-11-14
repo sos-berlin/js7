@@ -17,6 +17,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event._
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
+import js7.data.value.StringValue
 import js7.tests.controller.cluster.ControllerClusterTester._
 import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
 import monix.execution.Scheduler.Implicits.global
@@ -34,7 +35,7 @@ final class FailoverClusterTest extends ControllerClusterTester
       val sleepWhileFailing = 10.s  // Failover takes some seconds anyway
       val orderId = OrderId("💥")
       primaryController.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path, arguments = Map(
-        "SLEEP" -> sleepWhileFailing.toSeconds.toString)))
+        "SLEEP" -> StringValue(sleepWhileFailing.toSeconds.toString))))
       primaryController.eventWatch.await[OrderProcessingStarted](_.key == orderId)
       backupController.eventWatch.await[OrderProcessingStarted](_.key == orderId)
       // KILL PRIMARY

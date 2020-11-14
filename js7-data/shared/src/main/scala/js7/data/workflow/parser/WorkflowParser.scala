@@ -9,6 +9,7 @@ import js7.data.agent.AgentName
 import js7.data.job.{Executable, ExecutablePath, ExecutableScript, ReturnCode}
 import js7.data.order.OrderId
 import js7.data.source.SourcePos
+import js7.data.value.NamedValues
 import js7.data.value.expression.Expression.BooleanConstant
 import js7.data.value.expression.{Evaluator, Expression}
 import js7.data.workflow.Instruction.Labeled
@@ -83,26 +84,26 @@ object WorkflowParser
       Index ~ keyword("end") ~ hardEnd
         map { case (start, end) => ExplicitEnd(sourcePos(start, end)) })
 
-    private def arguments[_: P]: P[Arguments] =
-      P[Arguments](
-        curly(nonEmptyCommaSequence(quotedString ~ w ~ ":" ~ w ~/ quotedString))
-         .map(kvs => Arguments(kvs.toMap)))
+    private def namedValues[_: P]: P[NamedValues] =
+      P[NamedValues](
+        curly(nonEmptyCommaSequence(quotedString ~ w ~ ":" ~ w ~/ value))
+         .map(_.toMap))
 
     private def anonymousWorkflowExecutable[_: P] = P[WorkflowJob](
       for {
         kv <- keyValues(
           keyValueConvert("executable", quotedString)(o => Right(ExecutablePath(o))) |
           keyValueConvert("script", constantExpression)(o =>
-            Evaluator.Constant.eval(o).flatMap(_.asString).map(v => ExecutableScript(v.string))) |
+            Evaluator.Constant.eval(o).flatMap(_.toStringValue).map(v => ExecutableScript(v.string))) |
           keyValue("agent", agentName) |
-          keyValue("arguments", arguments) |
+          keyValue("arguments", namedValues) |
           keyValue("successReturnCodes", successReturnCodes) |
           keyValue("failureReturnCodes", failureReturnCodes) |
           keyValue("taskLimit", int) |
           keyValue("sigkillAfter", int))
         agentName <- kv[AgentName]("agent")
         executable <- kv.oneOf[Executable]("executable", "script").map(_._2)
-        arguments <- kv[Arguments]("arguments", Arguments.empty)
+        arguments <- kv[NamedValues]("arguments", NamedValues.empty)
         returnCodeMeaning <- kv.oneOfOr(Set("successReturnCodes", "failureReturnCodes"), ReturnCodeMeaning.Default)
         taskLimit <- kv[Int]("taskLimit", WorkflowJob.DefaultTaskLimit)
         sigkillAfter <- kv.get[Int]("sigkillAfter").map(_.map(_.s))
@@ -115,13 +116,13 @@ object WorkflowParser
         .map { case (start, job, end) => Execute.Anonymous(job, sourcePos(start, end)) })
 
     private def jobInstruction[_: P] = P[Execute](
-      (Index ~ keyword("job") ~ w ~ identifier ~ (w ~ comma ~ keyValues(keyValue("arguments", arguments))).? ~ hardEnd)
+      (Index ~ keyword("job") ~ w ~ identifier ~ (w ~ comma ~ keyValues(keyValue("arguments", namedValues))).? ~ hardEnd)
         .flatMap {
           case (start, name, None, end) =>
             valid(Execute.Named(WorkflowJob.Name(name), sourcePos = sourcePos(start, end)))
           case (start, name, Some(keyToValue), end) =>
-            for (arguments <- keyToValue[Arguments]("arguments", Arguments.empty)) yield
-              Execute.Named(WorkflowJob.Name(name), defaultArguments = arguments.toMap, sourcePos(start, end))
+            for (arguments <- keyToValue[NamedValues]("arguments", NamedValues.empty)) yield
+              Execute.Named(WorkflowJob.Name(name), defaultArguments = arguments, sourcePos(start, end))
         })
 
     private def failInstruction[_: P] = P[FailInstr](
@@ -238,9 +239,4 @@ object WorkflowParser
   }
 
   private def sourcePos(start: Int, end: Int) = Some(SourcePos(start, end))
-
-  private case class Arguments(toMap: Map[String, String])
-  private object Arguments {
-    val empty = new Arguments(Map.empty)
-  }
 }

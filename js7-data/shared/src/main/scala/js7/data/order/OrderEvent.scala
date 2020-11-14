@@ -12,6 +12,7 @@ import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.event.Event
 import js7.data.order.Order._
 import js7.data.system.{Stderr, Stdout, StdoutOrStderr}
+import js7.data.value.NamedValues
 import js7.data.workflow.WorkflowId
 import js7.data.workflow.instructions.Fork
 import js7.data.workflow.position.{Position, WorkflowPosition}
@@ -28,7 +29,7 @@ object OrderEvent {
   sealed trait OrderActorEvent extends OrderCoreEvent
   sealed trait OrderTerminated extends OrderEvent
 
-  final case class OrderAdded(workflowId: WorkflowId, scheduledFor: Option[Timestamp] = None, arguments: Map[String, String] = Map.empty)
+  final case class OrderAdded(workflowId: WorkflowId, scheduledFor: Option[Timestamp] = None, arguments: NamedValues = Map.empty)
   extends OrderCoreEvent {
     workflowId.requireNonAnonymous()
   }
@@ -43,7 +44,7 @@ object OrderEvent {
       c => for {
         workflowId <- c.get[WorkflowId]("workflowId")
         scheduledFor <- c.get[Option[Timestamp]]("scheduledFor")
-        arguments <- c.get[Option[Map[String, String]]]("arguments").map(_ getOrElse Map.empty)
+        arguments <- c.get[Option[NamedValues]]("arguments").map(_ getOrElse Map.empty)
       } yield OrderAdded(workflowId, scheduledFor, arguments)
   }
 
@@ -51,7 +52,7 @@ object OrderEvent {
   final case class OrderAttachedToAgent(
     workflowPosition: WorkflowPosition,
     state: IsFreshOrReady,
-    arguments: Map[String, String],
+    arguments: NamedValues,
     historicOutcomes: Seq[HistoricOutcome],
     agentName: AgentName,
     parent: Option[OrderId],

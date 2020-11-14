@@ -4,10 +4,12 @@ import java.time.ZoneId
 import javax.xml.transform.Source
 import js7.base.convert.As
 import js7.base.problem.Checked
+import js7.base.utils.Collections._
 import js7.common.scalautil.xmls.ScalaXMLEventReader
 import js7.core.common.VariablesXmlParser
 import js7.data.folder.FolderPath
 import js7.data.item.ItemId
+import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.provider.scheduledorder.oldruntime.{OldSchedule, OldScheduleXmlParser}
 
@@ -24,13 +26,13 @@ object ScheduledOrderGeneratorXmlParser {
         parseElement("order") {
           val workflowPath = attributeMap.as("job_chain")(As(o => folderPath.resolve[WorkflowPath](o)))
           val elements = forEachStartElement {
-            case "params" => VariablesXmlParser.parse(eventReader)
+            case "params" => VariablesXmlParser.parse(eventReader).mapValuesStrict(StringValue.apply)
             case "run_time" => OldScheduleXmlParser.parse(eventReader, timeZone)
           }
           ScheduledOrderGenerator(
             id,
             workflowPath,
-            elements.option[Map[String, String]]("params") getOrElse Map(),
+            elements.option[NamedValues]("params") getOrElse Map.empty,
             elements.one[OldSchedule])
         }
       }
