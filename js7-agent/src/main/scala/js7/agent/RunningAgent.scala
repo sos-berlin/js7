@@ -26,13 +26,15 @@ import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.Futures.promiseFuture
 import js7.common.scalautil.Logger
+import js7.common.scalautil.MonixUtils.syntax.RichTask
 import js7.common.system.startup.StartUp
 import js7.core.command.CommandMeta
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration._
-import scala.concurrent.{ExecutionContext, Future, Promise, blocking}
+import scala.concurrent.{Await, ExecutionContext, Future, Promise, blocking}
+import scala.util.{Failure, Success, Try}
 
 /**
  * JS7 Agent Server.
@@ -100,11 +102,28 @@ extends AutoCloseable {
 object RunningAgent {
   private val logger = Logger(getClass)
 
-  def run[A](configuration: AgentConfiguration, timeout: Option[FiniteDuration] = None)(body: RunningAgent => A): A =
+  def run[A](configuration: AgentConfiguration, timeout: Option[FiniteDuration] = None)(body: RunningAgent => A)(implicit s: Scheduler): A =
     autoClosing(apply(configuration) await timeout) { agent =>
-      val a = body(agent)
-      agent.terminated await 99.s
-      a
+      val tried = Try { body(agent) }
+      for (t <- tried.failed) logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)
+      tried match {
+        case Success(result) =>
+          Try(agent.terminated await 3.s)
+          agent.terminate() await 99.s
+          result
+        case Failure(throwable) =>
+          // Avoid Akka 2.6 StackTraceError which occurs when agent.terminate() has not been executed:
+          for (_ <- Try(agent.terminated await 3.s).failed) {
+            agent.terminated.value match {
+              case Some(terminated) =>
+                for (t <- terminated.failed) logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)
+              case None =>
+                try agent.terminate() await 99.s
+                catch { case t: Throwable => throwable.addSuppressed(t) }
+            }
+          }
+          throw throwable
+      }
     }
 
   def startForTest(conf: AgentConfiguration)(implicit ec: ExecutionContext): Future[RunningAgent] =
