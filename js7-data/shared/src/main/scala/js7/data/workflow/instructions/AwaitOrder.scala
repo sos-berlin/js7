@@ -14,5 +14,5 @@ extends Instruction
 {
   def withoutSourcePos = copy(sourcePos = None)
 
-  override def toString = s"await orderId=$orderId"
+  override def toString = s"await orderId=$orderId$sourcePosToString"
 }

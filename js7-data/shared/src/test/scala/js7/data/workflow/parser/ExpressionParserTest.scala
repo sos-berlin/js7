@@ -59,13 +59,13 @@ final class ExpressionParserTest extends AnyFreeSpec
     }
   }
 
-  "returnCode" - {
-    testExpression("returnCode",
+  "$returnCode" - {
+    testExpression("$returnCode",
       LastReturnCode)
-    testExpression("returnCode(label=LABEL)",
-      NamedValue(NamedValue.ByLabel("LABEL"), NamedValue.ReturnCode))
-    testExpression("returnCode(job=JOB)",
-      NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), NamedValue.ReturnCode))
+    testExpression("""variable("returnCode", label=LABEL)""",
+      NamedValue(NamedValue.ByLabel("LABEL"), NamedValue.KeyValue("returnCode")))
+    testExpression("""variable("returnCode", job=JOB)""",
+      NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), NamedValue.KeyValue("returnCode")))
   }
 
   testExpression("catchCount", OrderCatchCount)
@@ -96,48 +96,48 @@ final class ExpressionParserTest extends AnyFreeSpec
   //  """Expected Expression is not of type String: '1' < 1:1:8, found """"")
 
   "Comparison" - {
-    testBooleanExpression("returnCode != 7",
+    testBooleanExpression("$returnCode != 7",
       NotEqual(LastReturnCode, NumericConstant(7)))
-    testBooleanExpression("returnCode > 7",
+    testBooleanExpression("$returnCode > 7",
       GreaterThan(LastReturnCode, NumericConstant(7)))
     testBooleanExpression("""variable("A") == "X"""",
       Equal(NamedValue.last("A"), StringConstant("X")))
     testBooleanExpression("""$A == "X"""",
       Equal(NamedValue.last("A"), StringConstant("X")))
 
-    testBooleanExpression("returnCode > 0 && returnCode < 9",
+    testBooleanExpression("$returnCode > 0 && $returnCode < 9",
       And(
         GreaterThan(LastReturnCode, NumericConstant(0)),
         LessThan(LastReturnCode, NumericConstant(9))))
 
-    testBooleanExpression("returnCode >= 0 && returnCode <= 9",
+    testBooleanExpression("$returnCode >= 0 && $returnCode <= 9",
       And(
         GreaterOrEqual(LastReturnCode, NumericConstant(0)),
         LessOrEqual(LastReturnCode, NumericConstant(9))))
 
-    testBooleanExpression("returnCode == 1 || returnCode == 2 || returnCode == 3",
+    testBooleanExpression("$returnCode == 1 || $returnCode == 2 || $returnCode == 3",
       Or(
         Or(
           Equal(LastReturnCode, NumericConstant(1)),
           Equal(LastReturnCode, NumericConstant(2))),
         Equal(LastReturnCode, NumericConstant(3))))
 
-    testBooleanExpression("""returnCode >= 0 && returnCode <= 9 && $result == "OK"""",
+    testBooleanExpression("""$returnCode >= 0 && $returnCode <= 9 && $result == "OK"""",
       And(
         And(
           GreaterOrEqual(LastReturnCode, NumericConstant(0)),
           LessOrEqual(LastReturnCode, NumericConstant(9))),
         Equal(NamedValue.last("result"), StringConstant("OK"))))
 
-    testBooleanExpression("""returnCode in [0, 3, 50]""",
+    testBooleanExpression("""$returnCode in [0, 3, 50]""",
       In(
         LastReturnCode,
         ListExpression(List(NumericConstant(0), NumericConstant(3), NumericConstant(50)))))
 
-    testError("""returnCode in [0, 3, 50] || $result == "1"""",
-      """Expected boolean operarands for operator ||: [0, 3, 50] || $result == '1':1:43, found """"")
+    testError("""$returnCode in [0, 3, 50] || $result == "1"""",
+      """Expected boolean operarands for operator ||: [0, 3, 50] || $result == '1':1:44, found """"")
 
-    testBooleanExpression("""(returnCode in [0, 3, 50]) || $result == "1"""",
+    testBooleanExpression("""($returnCode in [0, 3, 50]) || $result == "1"""",
       Or(
         In(
           LastReturnCode,
@@ -146,7 +146,7 @@ final class ExpressionParserTest extends AnyFreeSpec
           NamedValue.last("result"),
           StringConstant("1"))))
 
-    testBooleanExpression("""returnCode==$expected.toNumber||!($result=="1")||true&&returnCode>0""",
+    testBooleanExpression("""$returnCode==$expected.toNumber||!($result=="1")||true&&$returnCode>0""",
       Or(
         Or(
           Equal(

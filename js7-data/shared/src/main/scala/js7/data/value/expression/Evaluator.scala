@@ -62,12 +62,6 @@ final class Evaluator(scope: Scope)
                     case NamedValue.LastExecutedJob(WorkflowJob.Name(jobName)) => s"Last execution of job '$jobName' did not return a named value '$key'"
                   })).flatten)
             } yield value
-
-          case NamedValue.ReturnCode =>
-            for {
-              maybeValue <- scope.findValue(ValueSearch(w, ValueSearch.ReturnCode))
-              value <- maybeValue.toChecked(Problem("No returnCode"))
-            } yield value
         }
 
       case StripMargin(a) => evalString(a).map(o => StringValue(o.string.stripMargin))

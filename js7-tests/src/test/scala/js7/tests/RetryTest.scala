@@ -10,9 +10,10 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.system.OperatingSystem.isWindows
 import js7.data.agent.AgentName
 import js7.data.event.{EventId, EventRequest, EventSeq}
-import js7.data.job.{ExecutablePath, ReturnCode}
+import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.value.NamedValues
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.parser.WorkflowParser
 import js7.data.workflow.position.BranchId.{Else, Then, catch_, try_}
@@ -63,14 +64,14 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderStarted,
 
       OrderProcessingStarted,
-      OrderProcessed(Outcome.Failed(ReturnCode(1))),
-      OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / catch_(0) % 0 / Then % 0 / try_(0) % 0),
+      OrderProcessed(Outcome.Failed(NamedValues.rc(1))),
+      OrderCatched(Outcome.failed, Position(0) / catch_(0) % 0 / Then % 0 / try_(0) % 0),
 
       OrderRetrying(Position(0) / try_(1) % 0),
 
       OrderProcessingStarted,
-      OrderProcessed(Outcome.Failed(ReturnCode(1))),
-      OrderCatched(Outcome.Failed(ReturnCode(1)), Position(1)),   // Retry limit reached
+      OrderProcessed(Outcome.Failed(NamedValues.rc(1))),
+      OrderCatched(Outcome.failed, Position(1)),   // Retry limit reached
 
       OrderDetachable,
       OrderDetached,
@@ -107,53 +108,53 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderStarted,
 
       OrderProcessingStarted,
-      OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
+      OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
       OrderMoved(Position(0) / try_(0) % 0 / try_(0) % 1 / try_(0) % 0),
 
       OrderProcessingStarted,
-      OrderProcessed(Outcome.Failed(ReturnCode(1))),
-      OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / try_(0) % 0 / try_(0) % 1 / catch_(0) % 0 / Then % 0),
+      OrderProcessed(Outcome.Failed(NamedValues.rc(1))),
+      OrderCatched(Outcome.failed, Position(0) / try_(0) % 0 / try_(0) % 1 / catch_(0) % 0 / Then % 0),
 
       OrderRetrying(Position(0) / try_(0) % 0 / try_(0) % 1 / try_(1) % 0),
 
       OrderProcessingStarted,
-      OrderProcessed(Outcome.Failed(ReturnCode(1))),
-      OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / try_(0) % 0 / try_(0) % 1 / catch_(1) % 0 / Then % 0),
+      OrderProcessed(Outcome.Failed(NamedValues.rc(1))),
+      OrderCatched(Outcome.failed, Position(0) / try_(0) % 0 / try_(0) % 1 / catch_(1) % 0 / Then % 0),
 
       OrderRetrying(Position(0) / try_(0) % 0 / try_(0) % 1 / try_(2) % 0),
 
       OrderProcessingStarted,
-      OrderProcessed(Outcome.Failed(ReturnCode(1))),
-      OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / try_(0) % 0 / try_(0) % 1 / catch_(2) % 0 / Else % 0),   // Retry limit reached
+      OrderProcessed(Outcome.Failed(NamedValues.rc(1))),
+      OrderCatched(Outcome.failed, Position(0) / try_(0) % 0 / try_(0) % 1 / catch_(2) % 0 / Else % 0),   // Retry limit reached
 
-      OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / try_(0) % 0 / catch_(0) % 0 / Then % 0),
+      OrderCatched(Outcome.failed, Position(0) / try_(0) % 0 / catch_(0) % 0 / Then % 0),
 
       OrderRetrying(Position(0) / try_(0) % 0 / try_(1) % 0),
 
       OrderProcessingStarted,
-      OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
+      OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
       OrderMoved(Position(0) / try_(0) % 0 / try_(1) % 1 / try_(0) % 0),
 
       OrderProcessingStarted,
-      OrderProcessed(Outcome.Failed(ReturnCode(1))),
-      OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / try_(0) % 0 / try_(1) % 1 / catch_(0) % 0 / Then % 0),
+      OrderProcessed(Outcome.Failed(NamedValues.rc(1))),
+      OrderCatched(Outcome.failed, Position(0) / try_(0) % 0 / try_(1) % 1 / catch_(0) % 0 / Then % 0),
       OrderRetrying(Position(0) / try_(0) % 0 / try_(1) % 1 / try_(1) % 0),
 
       OrderProcessingStarted,
-      OrderProcessed(Outcome.Failed(ReturnCode(1))),
-      OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / try_(0) % 0 / try_(1) % 1 / catch_(1) % 0 / Then % 0),
+      OrderProcessed(Outcome.Failed(NamedValues.rc(1))),
+      OrderCatched(Outcome.failed, Position(0) / try_(0) % 0 / try_(1) % 1 / catch_(1) % 0 / Then % 0),
       OrderRetrying(Position(0) / try_(0) % 0 / try_(1) % 1 / try_(2) % 0),
 
       OrderProcessingStarted,
-      OrderProcessed(Outcome.Failed(ReturnCode(1))),
-      OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / try_(0) % 0 / try_(1) % 1 / catch_(2) % 0 / Else % 0),  // Retry limit reached
+      OrderProcessed(Outcome.Failed(NamedValues.rc(1))),
+      OrderCatched(Outcome.failed, Position(0) / try_(0) % 0 / try_(1) % 1 / catch_(2) % 0 / Else % 0),  // Retry limit reached
 
-      OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / try_(0) % 0 / catch_(1) % 0 / Else % 0),  // Retry limit reached
+      OrderCatched(Outcome.failed, Position(0) / try_(0) % 0 / catch_(1) % 0 / Else % 0),  // Retry limit reached
 
-      OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / catch_(0) % 0),
+      OrderCatched(Outcome.failed, Position(0) / catch_(0) % 0),
 
       OrderProcessingStarted,
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(1)),
 
       OrderDetachable,
@@ -201,14 +202,14 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderMoved(Position(0) / try_(0) % 0),
       OrderStarted,
 
-      OrderCatched(Outcome.Failed(ReturnCode(0)), Position(0) / catch_(0) % 0),
+      OrderCatched(Outcome.failed, Position(0) / catch_(0) % 0),
       OrderRetrying(Position(0) / try_(1) % 0),
 
-      OrderCatched(Outcome.Failed(ReturnCode(0)), Position(0) / catch_(1) % 0),
+      OrderCatched(Outcome.failed, Position(0) / catch_(1) % 0),
       OrderRetrying(Position(0) / try_(2) % 0),
 
       // No OrderCatched here! OrderFailed has Outcome of last failed instruction in try block
-      OrderFailed(Outcome.Failed(ReturnCode(0))))
+      OrderFailed())
 
     val orderId = OrderId("🔶")
     val afterEventId = eventWatch.lastAddedEventId
@@ -230,13 +231,13 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderMoved(Position(0) / try_(0) % 0),
       OrderStarted,
 
-      OrderCatched(Outcome.Failed(ReturnCode(0)), Position(0) / catch_(0) % 0 / Then % 0),
+      OrderCatched(Outcome.failed, Position(0) / catch_(0) % 0 / Then % 0),
       OrderRetrying(Position(0) / try_(1) % 0),
 
-      OrderCatched(Outcome.Failed(ReturnCode(0)), Position(0) / catch_(1) % 0 / Then % 0),
+      OrderCatched(Outcome.failed, Position(0) / catch_(1) % 0 / Then % 0),
       OrderRetrying(Position(0) / try_(2) % 0),
 
-      OrderCatched(Outcome.Failed(ReturnCode(0)), Position(0) / catch_(2) % 0 / Then % 0),
+      OrderCatched(Outcome.failed, Position(0) / catch_(2) % 0 / Then % 0),
       OrderFailed(Outcome.Disrupted(Problem("Retry stopped because maxRetries=3 has been reached"))))
 
     val orderId = OrderId("🔵")

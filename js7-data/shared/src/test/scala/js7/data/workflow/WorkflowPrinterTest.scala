@@ -138,7 +138,7 @@ final class WorkflowPrinterTest extends AnyFreeSpec
             Workflow.of(
               Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("/EXECUTABLE"))))))),
       """define workflow {
-        |  if ((returnCode in [1, 2]) || $KEY == 'VALUE') {
+        |  if (($returnCode in [1, 2]) || $KEY == 'VALUE') {
         |    execute agent="AGENT", executable="/EXECUTABLE";
         |  }
         |}
@@ -159,7 +159,7 @@ final class WorkflowPrinterTest extends AnyFreeSpec
                 Some(Workflow.of(
                   Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("/B-ELSE")))))))))),
       """define workflow {
-        |  if (returnCode == -1) {
+        |  if ($returnCode == -1) {
         |    execute agent="AGENT", executable="/A-THEN";
         |    if (true) {
         |      execute agent="AGENT", executable="/B-THEN";

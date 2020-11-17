@@ -2,7 +2,6 @@ package js7.tests.controller.proxy.history
 
 import java.time.Instant
 import java.util.Optional
-import js7.data.order.Outcome.Completed
 import js7.data.order.{OrderId, Outcome}
 import js7.data.system.StdoutOrStderr
 import js7.data.value.Value
@@ -28,7 +27,6 @@ final case class OrderEntry(
     copy(steps = (steps.asScala.take(steps.size - 1) :+
       lastStep.copy(
         endedAt = Optional.of(endedAt),
-        returnCode = Some(outcome).collect { case o: Completed => o.returnCode }.toJava,
         endVariables = Optional.of(namedValues))).asJava)
   }
 

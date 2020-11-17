@@ -28,7 +28,7 @@ final class IfTest extends AnyFreeSpec
     testJson[Instruction.Labeled](if_,
       json"""{
         "TYPE": "If",
-        "predicate": "returnCode >= 3",
+        "predicate": "$$returnCode >= 3",
         "then": {
           "instructions": [
             {

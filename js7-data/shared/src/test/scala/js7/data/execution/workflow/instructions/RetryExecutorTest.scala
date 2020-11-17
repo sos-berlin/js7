@@ -5,9 +5,9 @@ import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.execution.workflow.context.OrderContext
 import js7.data.execution.workflow.instructions.RetryExecutorTest._
-import js7.data.job.ReturnCode
 import js7.data.order.OrderEvent.OrderRetrying
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
+import js7.data.value.NamedValues
 import js7.data.workflow.instructions.{Gap, Retry, TryInstruction}
 import js7.data.workflow.position.{Position, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
@@ -50,7 +50,7 @@ object RetryExecutorTest
 
   private def toEvent(position: Position, delays: Seq[FiniteDuration] = Nil) = {
     val order = Order(orderId, workflowId /: position, Order.Ready,
-      historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(ReturnCode(1))) :: Nil)
+      historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(1))) :: Nil)
     val context = new OrderContext {
       def idToOrder = Map(order.id -> order).checked
       def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError

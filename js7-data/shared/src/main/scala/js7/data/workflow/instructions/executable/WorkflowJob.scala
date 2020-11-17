@@ -11,7 +11,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentName
 import js7.data.job.{Executable, ExecutablePath, ExecutableScript, ReturnCode}
 import js7.data.order.Outcome
-import js7.data.value.NamedValues
+import js7.data.value.{NamedValues, NumericValue}
 import js7.data.workflow.instructions.ReturnCodeMeaning
 import scala.concurrent.duration.FiniteDuration
 
@@ -26,8 +26,10 @@ final case class WorkflowJob private(
   taskLimit: Int,
   sigkillAfter: Option[FiniteDuration])
 {
-  def toOutcome(returnCode: ReturnCode, namedValues: NamedValues) =
-    Outcome.Completed(success = returnCodeMeaning.isSuccess(returnCode), returnCode, namedValues)
+  def toOutcome(namedValues: NamedValues, returnCode: ReturnCode) =
+    Outcome.Completed(
+      success = returnCodeMeaning.isSuccess(returnCode),
+      namedValues + ("returnCode" -> NumericValue(returnCode.number)))
 
   def isExecutableOnAgent(agentName: AgentName): Boolean =
     this.agentName == agentName

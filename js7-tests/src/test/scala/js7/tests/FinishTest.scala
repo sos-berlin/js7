@@ -5,9 +5,10 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.agent.AgentName
 import js7.data.event.{EventSeq, KeyedEvent}
-import js7.data.job.{ExecutablePath, ReturnCode}
+import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.value.NamedValues
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.Fork
 import js7.data.workflow.parser.WorkflowParser
@@ -35,7 +36,7 @@ final class FinishTest extends AnyFreeSpec
         OrderAttached(TestAgentName),
         OrderStarted,
         OrderProcessingStarted,
-        OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
+        OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
         OrderMoved(Position(1)),
         OrderDetachable,
         OrderDetached,
@@ -75,7 +76,7 @@ final class FinishTest extends AnyFreeSpec
         OrderAttachable(TestAgentName),
         OrderAttached(TestAgentName),
         OrderProcessingStarted,
-        OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
+        OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
         OrderMoved(Position(0) / "fork+🥕" % 1 / Then % 0),  // Position of Finish
         OrderDetachable,
         OrderDetached,
@@ -86,7 +87,7 @@ final class FinishTest extends AnyFreeSpec
         OrderAttachable(TestAgentName),
         OrderAttached(TestAgentName),
         OrderProcessingStarted,
-        OrderProcessed(Outcome.succeeded),
+        OrderProcessed(Outcome.succeededRC0),
         OrderMoved(Position(0) / "fork+🍋" % 1),
         OrderDetachable,
         OrderDetached))
@@ -125,7 +126,7 @@ final class FinishTest extends AnyFreeSpec
         OrderAttachable(TestAgentName),
         OrderAttached(TestAgentName),
         OrderProcessingStarted,
-        OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
+        OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
         OrderMoved(Position(0) / "fork+🥕" % 1 / Then % 0),  // Position of Finish
         OrderDetachable,
         OrderDetached,
@@ -136,7 +137,7 @@ final class FinishTest extends AnyFreeSpec
         OrderAttachable(TestAgentName),
         OrderAttached(TestAgentName),
         OrderProcessingStarted,
-        OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
+        OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
         OrderMoved(Position(0) / "fork+🍋" % 1),
         OrderDetachable,
         OrderDetached))

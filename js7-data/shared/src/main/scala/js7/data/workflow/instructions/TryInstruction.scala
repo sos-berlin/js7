@@ -81,7 +81,7 @@ extends Instruction
       case _ => false
     }
 
-  override def toString = s"try $tryWorkflow catch $catchWorkflow"
+  override def toString = s"try $tryWorkflow catch $catchWorkflow$sourcePosToString"
 }
 
 object TryInstruction

@@ -10,10 +10,9 @@ import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentName
 import js7.data.command.{CancelMode, SuspendMode}
-import js7.data.job.ReturnCode
 import js7.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Cancelled, DelayedAfterError, Detaching, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, IsFreshOrReady, Offering, Processed, Processing, ProcessingKilled, Ready, State}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderResumed, OrderRetrying, OrderStarted, OrderSuspendMarked, OrderSuspended}
-import js7.data.value.StringValue
+import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.Fork
 import js7.data.workflow.position.BranchId.Then
@@ -36,7 +35,7 @@ final class OrderTest extends AnyFreeSpec
     arguments = Map(
       "key1" -> StringValue("value1"),
       "key2" -> StringValue("value2")),
-    HistoricOutcome(Position(123), Outcome.Succeeded(ReturnCode(0))) :: Nil)
+    HistoricOutcome(Position(123), Outcome.Succeeded(NamedValues.rc(0))) :: Nil)
 
   "JSON" - {
     "Order" - {
@@ -66,7 +65,9 @@ final class OrderTest extends AnyFreeSpec
                 "position": [ 123 ],
                 "outcome": {
                   "TYPE": "Succeeded",
-                  "returnCode": 0
+                  "namedValues": {
+                    "returnCode": 0
+                  }
                 }
               }
             ],
@@ -248,19 +249,19 @@ final class OrderTest extends AnyFreeSpec
       OrderProcessingStarted,
       //OrderStdoutWritten("stdout") is not an OrderCoreEvent
       //OrderStderrWritten("stderr") is not an OrderCoreEvent
-      OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
+      OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
       OrderProcessingKilled,
-      OrderFailed(Outcome.Failed(ReturnCode(1))),
-      OrderCatched(Outcome.Failed(ReturnCode(1)), Position(1)),
+      OrderFailed(Outcome.Failed(NamedValues.rc(1))),
+      OrderCatched(Outcome.Failed(NamedValues.rc(1)), Position(1)),
       OrderRetrying(Position(1)),
       OrderAwoke,
       OrderMoved(Position(1)),
       OrderForked(OrderForked.Child("BRANCH", orderId | "BRANCH") :: Nil),
-      OrderJoined(Outcome.Succeeded(ReturnCode(0))),
+      OrderJoined(Outcome.Succeeded(NamedValues.rc(0))),
       OrderOffered(OrderId("OFFERED"), until = Timestamp.ofEpochSecond(1)),
       OrderAwaiting(OrderId("OFFERED")),
-      OrderFailed(Outcome.Failed(ReturnCode(1))),
-      OrderFailedInFork(Outcome.Failed(ReturnCode(1))),
+      OrderFailed(Outcome.Failed(NamedValues.rc(1))),
+      OrderFailedInFork(Outcome.Failed(NamedValues.rc(1))),
       OrderFinished,
 
       OrderCancelMarked(CancelMode.FreshOnly),
@@ -360,7 +361,7 @@ final class OrderTest extends AnyFreeSpec
 
     "Processed" - {
       checkAllEvents(Order(orderId, workflowId, Processed,
-          historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(ReturnCode(0))) :: Nil),
+          historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0))) :: Nil),
         removeMarkable[Processed] orElse
         markable[Processed] orElse
         cancelMarkedAllowed[Processed] orElse
@@ -376,7 +377,7 @@ final class OrderTest extends AnyFreeSpec
 
     "ProcessingKilled" - {
       checkAllEvents(Order(orderId, workflowId, ProcessingKilled,
-          historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(ReturnCode(0))) :: Nil),
+          historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0))) :: Nil),
         removeMarkable[ProcessingKilled] orElse
         markable[ProcessingKilled] orElse
         detachingAllowed[ProcessingKilled] orElse {
@@ -389,7 +390,7 @@ final class OrderTest extends AnyFreeSpec
 
     "FailedWhileFresh" - {
       checkAllEvents(Order(orderId, workflowId, FailedWhileFresh,
-          historicOutcomes = HistoricOutcome(Position(0), Outcome.Failed(ReturnCode(1))) :: Nil),
+          historicOutcomes = HistoricOutcome(Position(0), Outcome.Failed(NamedValues.rc(1))) :: Nil),
         removeMarkable[FailedWhileFresh] orElse
         markable[FailedWhileFresh] orElse
         detachingAllowed[FailedWhileFresh] orElse
@@ -401,8 +402,8 @@ final class OrderTest extends AnyFreeSpec
     }
 
     "Failed" - {
-      checkAllEvents(Order(orderId, workflowId, Failed(Outcome.Failed(ReturnCode(1))),
-          historicOutcomes = HistoricOutcome(Position(0), Outcome.Failed(ReturnCode(1))) :: Nil),
+      checkAllEvents(Order(orderId, workflowId, Failed(Outcome.Failed(NamedValues.rc(1))),
+          historicOutcomes = HistoricOutcome(Position(0), Outcome.Failed(NamedValues.rc(1))) :: Nil),
         removeMarkable[Failed] orElse
         markable[Failed] orElse
         detachingAllowed[Failed] orElse
@@ -413,8 +414,8 @@ final class OrderTest extends AnyFreeSpec
     }
 
     "FailedInFork" - {
-      checkAllEvents(Order(orderId, workflowId, FailedInFork(Outcome.Failed(ReturnCode(1))),
-          historicOutcomes = HistoricOutcome(Position(0), Outcome.Failed(ReturnCode(1))) :: Nil),
+      checkAllEvents(Order(orderId, workflowId, FailedInFork(Outcome.Failed(NamedValues.rc(1))),
+          historicOutcomes = HistoricOutcome(Position(0), Outcome.Failed(NamedValues.rc(1))) :: Nil),
         markable[FailedInFork] orElse
         detachingAllowed[FailedInFork] orElse {
           case (OrderRemoved, _, IsDetached) => _.isInstanceOf[Order.Removed]

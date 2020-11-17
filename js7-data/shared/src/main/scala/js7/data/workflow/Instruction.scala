@@ -6,7 +6,7 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.source.SourcePos
-import js7.data.workflow.Instruction.Labeled
+import js7.data.workflow.Instruction.{Labeled, showSourcePos}
 import js7.data.workflow.position._
 import scala.language.implicitConversions
 
@@ -48,6 +48,9 @@ trait Instruction
   final def @:(label: Label) = Labeled(Some(label), this)
   final def @:(label: String) = Labeled(Some(Label(label)), this)
   final def @:(unit: Unit) = Labeled(None, this)
+
+  protected final def sourcePosToString: String =
+    showSourcePos ?? s" /*$sourcePos*/"
 }
 
 trait JumpInstruction extends Instruction {
@@ -56,6 +59,8 @@ trait JumpInstruction extends Instruction {
 
 object Instruction
 {
+  private val showSourcePos = false
+
   object @: {
     def unapply(labeled: Labeled) = Some((labeled.maybeLabel, labeled.instruction))
   }

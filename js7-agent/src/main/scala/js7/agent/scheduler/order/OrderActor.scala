@@ -20,7 +20,7 @@ import js7.common.scalautil.Logger
 import js7.common.time.JavaTimeConverters._
 import js7.core.event.journal.{JournalActor, JournalConf, KeyedJournalingActor}
 import js7.data.command.CancelMode
-import js7.data.job.{JobKey, ReturnCode}
+import js7.data.job.JobKey
 import js7.data.order.OrderEvent._
 import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
 import js7.data.system.{Stderr, Stdout, StdoutOrStderr}
@@ -142,11 +142,11 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
       case JobActor.Response.OrderProcessed(`orderId`, taskStepEnded, isKilled) =>
         val outcome = taskStepEnded match {
           case TaskStepSucceeded(namedValues, returnCode) =>
-            val o = job.toOutcome(returnCode, namedValues)
+            val o = job.toOutcome(namedValues, returnCode)
             if (isKilled) Outcome.Cancelled(o) else o
 
           case TaskStepFailed(problem) =>
-            if (isKilled) Outcome.Cancelled(Outcome.Failed(Some(problem.toString/*???*/), ReturnCode(0)/*TODO*/, Map.empty))
+            if (isKilled) Outcome.Cancelled(Outcome.Failed(Some(problem.toString/*???*/), Map.empty))
             else Outcome.Disrupted(problem)
         }
         finishProcessing(OrderProcessed(outcome), stdoutStderrStatistics)

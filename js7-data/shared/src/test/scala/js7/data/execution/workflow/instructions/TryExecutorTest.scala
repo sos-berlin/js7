@@ -6,9 +6,10 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentName
 import js7.data.execution.workflow.context.OrderContext
 import js7.data.execution.workflow.instructions.TryExecutorTest._
-import js7.data.job.{ExecutablePath, ReturnCode}
+import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.OrderMoved
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
+import js7.data.value.NamedValues
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, TryInstruction}
 import js7.data.workflow.position.BranchId.try_
@@ -56,7 +57,7 @@ final class TryExecutorTest extends AnyFreeSpec
 object TryExecutorTest {
   private val TestWorkflowId = WorkflowPath("/WORKFLOW") ~ "VERSION"
   private val AOrder = Order(OrderId("ORDER-A"), TestWorkflowId /: Position(7), Order.Fresh(),
-    historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(ReturnCode(1))) :: Nil)
+    historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(1))) :: Nil)
   private val TryJob = Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("/THEN")))
   private val CatchJob = Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("/ELSE")))
   private val tryInstruction = TryInstruction(Workflow.of(TryJob), Workflow.of(CatchJob))

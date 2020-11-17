@@ -9,7 +9,7 @@ import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import js7.data.job.{ExecutablePath, ReturnCode}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
-import js7.data.value.StringValue
+import js7.data.value.{NumericValue, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.parser.WorkflowParser
 import js7.data.workflow.position.BranchId.{Else, Then}
@@ -73,7 +73,7 @@ object IfTest {
      |    }
      |  }
      |  if ($$ARG != "X" && variable(key="JOB-KEY", label=LABEL) == "JOB-RESULT" && variable("JOB-KEY", job=MYJOB) == "JOB-RESULT") {
-     |    if (returnCode(label=LABEL) == 0) {
+     |    if (variable("returnCode", label=LABEL) == 0) {
      |      execute executable="/TEST$sh", agent="AGENT";
      |    } else {
      |      execute executable="/TEST$sh", agent="AGENT";
@@ -95,13 +95,13 @@ object IfTest {
       OrderAttached(TestAgentName),
       OrderStarted,
       OrderProcessingStarted,
-      OrderProcessed(Outcome.Succeeded(ReturnCode(0), Map("JOB-KEY" -> StringValue("JOB-RESULT")))),
+      OrderProcessed(Outcome.Succeeded(Map("JOB-KEY" -> StringValue("JOB-RESULT"), "returnCode" -> NumericValue(0)))),
       OrderMoved(Position(1) / Then % 0 / Then % 0),
       OrderProcessingStarted,
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
       OrderMoved(Position(2)),
       OrderProcessingStarted,
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
       OrderMoved(Position(3)),
       OrderDetachable,
       OrderDetached,
@@ -113,13 +113,13 @@ object IfTest {
       OrderAttached(TestAgentName),
       OrderStarted,
       OrderProcessingStarted,
-      OrderProcessed(Outcome.Succeeded(ReturnCode(1), Map("JOB-KEY" -> StringValue("JOB-RESULT")))),
+      OrderProcessed(Outcome.Succeeded(Map("JOB-KEY" -> StringValue("JOB-RESULT"), "returnCode" -> NumericValue(1)))),
       OrderMoved(Position(1) / Then % 0 / Else % 0),
       OrderProcessingStarted,
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
       OrderMoved(Position(2)),
       OrderProcessingStarted,
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
       OrderMoved(Position(3)),
       OrderDetachable,
       OrderDetached,
@@ -131,8 +131,8 @@ object IfTest {
       OrderAttached(TestAgentName),
       OrderStarted,
       OrderProcessingStarted,
-      OrderProcessed(Outcome.Failed(ReturnCode(2), Map("JOB-KEY" -> StringValue("JOB-RESULT")))),
-      OrderFailed(Outcome.Failed(ReturnCode(2), Map("JOB-KEY" -> StringValue("JOB-RESULT"))))))    // TODO Key-values in OrderFailed ?
+      OrderProcessed(Outcome.Failed(Map("JOB-KEY" -> StringValue("JOB-RESULT"), "returnCode" -> NumericValue(2)))),
+      OrderFailed()))    // TODO Key-values in OrderFailed ?
 
   private def newOrder(orderId: OrderId, returnCode: ReturnCode) =
     FreshOrder(orderId, TestWorkflow.id.path, arguments = Map(

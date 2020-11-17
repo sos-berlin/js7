@@ -40,7 +40,7 @@ import js7.controller.data.{ControllerMetaState, ControllerState}
 import js7.data.agent.AgentName
 import js7.data.event.{<-:, Event, KeyedEvent}
 import js7.data.job.ExecutablePath
-import js7.data.order.OrderEvent.{OrderFinished, OrderMoved, OrderProcessed}
+import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.test.TestSetting.TestAgentName
@@ -546,7 +546,9 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
             "position": [ 0 ],
             "outcome": {
               "TYPE": "Succeeded",
-              "returnCode": 0
+              "namedValues": {
+                "returnCode": 0
+              }
             }
           }
         ]
@@ -656,7 +658,9 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           "key": "ORDER-ID",
           "outcome": {
             "TYPE": "Succeeded",
-            "returnCode": 0
+            "namedValues": {
+              "returnCode": 0
+            }
           }
         }, {
           "eventId": 1017,

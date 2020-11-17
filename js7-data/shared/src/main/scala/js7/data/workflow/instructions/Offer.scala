@@ -16,7 +16,7 @@ final case class Offer(orderId: OrderId, timeout: FiniteDuration, sourcePos: Opt
 {
   def withoutSourcePos = copy(sourcePos = None)
 
-  override def toString = s"offer orderId=$orderId, timeout=$timeout"
+  override def toString = s"offer orderId=$orderId, timeout=$timeout$sourcePosToString"
 }
 
 object Offer {

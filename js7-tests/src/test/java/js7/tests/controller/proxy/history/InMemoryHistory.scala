@@ -4,9 +4,8 @@ import java.time.Instant
 import java.util.Optional
 import js7.base.web.Uri
 import js7.data.event.{Event, EventId, KeyedEvent}
-import js7.data.job.ReturnCode
 import js7.data.order.{OrderEvent, OrderId}
-import js7.data.value.{StringValue, Value}
+import js7.data.value.{NamedValues, StringValue, Value}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.proxy.javaapi.data.common.VavrUtils.getOrThrow
@@ -147,6 +146,7 @@ private[history] object InMemoryHistory
 
   private def expectedOrderEntries(agentUris: IndexedSeq[Uri]) = {
     val namedValues = Map[String, Value]("KEY" -> StringValue("VALUE")).asJava
+    val namedValuesRC0 = (namedValues.asScala ++ NamedValues.rc(0)).asJava
     Vector(
       OrderEntry(
         TestOrderId,
@@ -166,7 +166,6 @@ private[history] object InMemoryHistory
             namedValues,
             startedAt,
             Optional.of(terminatedAt),
-            Optional.of(ReturnCode(0)),
             Optional.of(namedValues),
             Optional.of(s"stdout: $StdoutOutput")),
           OrderStepEntry(OrderId("ORDER"),
@@ -176,7 +175,6 @@ private[history] object InMemoryHistory
             namedValues,
             startedAt,
             Optional.of(terminatedAt),
-            Optional.of(ReturnCode(0)),
             Optional.of(namedValues),
             Optional.of(s"stdout: $StdoutOutput"))
         ).asJava),
@@ -197,7 +195,6 @@ private[history] object InMemoryHistory
             namedValues,
             startedAt,
             Optional.of(terminatedAt),
-            Optional.of(ReturnCode(0)),
             Optional.of(namedValues),
             Optional.of(s"stdout: $StdoutOutput")),
           OrderStepEntry(OrderId("ORDER|🥕"),
@@ -207,7 +204,6 @@ private[history] object InMemoryHistory
             namedValues,
             startedAt,
             Optional.of(terminatedAt),
-            Optional.of(ReturnCode(0)),
             Optional.of(namedValues),
             Optional.of(s"stdout: $StdoutOutput"))
         ).asJava),
@@ -228,7 +224,6 @@ private[history] object InMemoryHistory
             namedValues,
             startedAt,
             Optional.of(terminatedAt),
-            Optional.of(ReturnCode(0)),
             Optional.of(namedValues),
             Optional.of(s"stdout: $StdoutOutput")),
           OrderStepEntry(OrderId("ORDER|🍋"),
@@ -238,7 +233,6 @@ private[history] object InMemoryHistory
             namedValues,
             startedAt,
             Optional.of(terminatedAt),
-            Optional.of(ReturnCode(0)),
             Optional.of(namedValues),
             Optional.of(s"stdout: $StdoutOutput"))
         ).asJava))

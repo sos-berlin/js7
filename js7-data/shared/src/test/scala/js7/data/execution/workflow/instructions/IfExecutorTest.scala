@@ -7,10 +7,10 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentName
 import js7.data.execution.workflow.context.OrderContext
 import js7.data.execution.workflow.instructions.IfExecutorTest._
-import js7.data.job.{ExecutablePath, ReturnCode}
+import js7.data.job.ExecutablePath
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
-import js7.data.value.StringValue
 import js7.data.value.expression.Expression._
+import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, If}
 import js7.data.workflow.position.BranchId.{Else, Then}
@@ -73,9 +73,9 @@ final class IfExecutorTest extends AnyFreeSpec {
 object IfExecutorTest {
   private val TestWorkflowId = WorkflowPath("/WORKFLOW") ~ "VERSION"
   private val AOrder = Order(OrderId("ORDER-A"), TestWorkflowId /: Position(7), Order.Processed,
-    historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(ReturnCode(1), Map("A" -> StringValue("AA")))) :: Nil)
+    historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(1) ++ Map("A" -> StringValue("AA")))) :: Nil)
   private val BOrder = Order(OrderId("ORDER-B"), TestWorkflowId /: Position(7), Order.Processed,
-    historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(ReturnCode(1), Map("A" -> StringValue("XX")))) :: Nil)
+    historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(1) ++ Map("A" -> StringValue("XX")))) :: Nil)
   private val ThenJob = Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("/THEN")))
   private val ElseJob = Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("/ELSE")))
 

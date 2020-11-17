@@ -15,10 +15,11 @@ import js7.data.agent.AgentName
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.item.RepoEvent.ItemAdded
 import js7.data.item.{UpdateRepoOperation, VersionId}
-import js7.data.job.{ExecutablePath, ReturnCode}
+import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.Outcome.Succeeded
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
+import js7.data.value.NamedValues
 import js7.data.workflow.position.Position
 import js7.proxy.ControllerApi
 import js7.proxy.configuration.ProxyConfs
@@ -119,7 +120,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with Controll
             OrderStarted,
             OrderProcessingStarted,
             OrderStdoutWritten("TEST ☘\n"),
-            OrderProcessed(Succeeded(ReturnCode(0))),
+            OrderProcessed(Succeeded(NamedValues.rc(0))),
             OrderMoved(Position(1)),
             OrderDetachable,
             OrderDetached,

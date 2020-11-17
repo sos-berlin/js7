@@ -72,7 +72,7 @@ final class WorkflowTest extends AnyFreeSpec
             }, {
               "label": "TEST-LABEL",
               "TYPE": "If",
-              "predicate": "returnCode == 1",
+              "predicate": "$$returnCode == 1",
               "then": {
                 "instructions": [
                   { "TYPE": "Execute.Named", "jobName": "A" },
@@ -208,7 +208,7 @@ final class WorkflowTest extends AnyFreeSpec
               "position": [ 1 ],
               "label": "TEST-LABEL",
               "TYPE": "If",
-              "predicate": "returnCode == 1",
+              "predicate": "$$returnCode == 1",
               "then": {
                 "instructions": [
                   { "position": [ 1, "then", 0 ], "TYPE": "Execute.Named", "jobName": "A" },

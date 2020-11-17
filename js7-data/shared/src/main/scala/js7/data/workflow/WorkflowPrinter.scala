@@ -43,20 +43,9 @@ object WorkflowPrinter
         else q("''")
       } else appendQuoted(string)
 
-    def indent(nesting: Int) = for (_ <- 0 until nesting) sb ++= "  "
+    def appendNamedValues(namedValues: NamedValues): Unit = WorkflowPrinter.appendNamedValues(sb, namedValues)
 
-    def appendJsonObject(obj: NamedValues): Unit = {
-      sb ++= "{"
-      var needComma = false
-      for ((k, v) <- obj) {
-        if (needComma) sb ++= ", "
-        needComma = true
-        appendQuoted(k)
-        sb ++= ": "
-        appendValue(v)
-      }
-      sb ++= "}"
-    }
+    def indent(nesting: Int) = for (_ <- 0 until nesting) sb ++= "  "
 
     def appendWorkflowExecutable(job: WorkflowJob): Unit = {
       sb ++= "agent="
@@ -67,7 +56,7 @@ object WorkflowPrinter
       }
       if (job.defaultArguments.nonEmpty) {
         sb ++= ", arguments="
-        appendJsonObject(job.defaultArguments)
+        appendNamedValues(job.defaultArguments)
       }
       job.returnCodeMeaning match {
         case ReturnCodeMeaning.Default =>
@@ -119,17 +108,17 @@ object WorkflowPrinter
           sb ++= name.string
           if (arguments.nonEmpty) {
             sb ++= ", arguments="
-            appendJsonObject(arguments)
+            appendNamedValues(arguments)
           }
           sb ++= ";\n"
 
-        case Fail(maybeErrorMessage, maybeReturnCode, uncatchable, _) =>
+        case Fail(maybeErrorMessage, namedValues, uncatchable, _) =>
           sb ++= "fail"
-          if (maybeErrorMessage.isDefined || maybeReturnCode.isDefined) {
+          if (maybeErrorMessage.isDefined || namedValues.nonEmpty) {
             sb ++= (
               (uncatchable ? "uncatchable=true") ++
               maybeErrorMessage.map(o => "message=" + o.toString) ++
-              maybeReturnCode.map(o => "returnCode=" + o.number.toString)
+                (namedValues.nonEmpty ? ("namedValues=" + namedValuesToString(namedValues)))
               ).mkString(" (", ", ", ")")
           }
           sb ++= ";\n"
@@ -221,6 +210,25 @@ object WorkflowPrinter
       sb ++= "}\n"
     }
     sb.toString
+  }
+
+  def namedValuesToString(namedValues: NamedValues) = {
+    val sb = new StringBuilder(128)
+    appendNamedValues(sb, namedValues)
+    sb.toString()
+  }
+
+  def appendNamedValues(sb: StringBuilder, namedValues: NamedValues): Unit = {
+    sb ++= "{"
+    var needComma = false
+    for ((k, v) <- namedValues) {
+      if (needComma) sb ++= ", "
+      needComma = true
+      appendQuoted(sb, k)
+      sb ++= ": "
+      appendValue(sb, v)
+    }
+    sb ++= "}"
   }
 
   def appendValue(sb: StringBuilder, value: Value): Unit =

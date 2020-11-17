@@ -14,6 +14,7 @@ import js7.data.item.VersionId
 import js7.data.job.{ExecutablePath, ReturnCode}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelMarked, OrderCancelled, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderStarted, OrderStdWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.value.NamedValues
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fork}
 import js7.data.workflow.position.{Position, WorkflowPosition}
@@ -67,7 +68,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
       OrderStarted,
       OrderProcessingStarted,
       OrderCancelMarked(CancelMode.FreshOrStarted()),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(1)),
       OrderDetachable,
       OrderDetached,
@@ -97,7 +98,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
       OrderStarted,
       OrderProcessingStarted,
       OrderCancelMarked(CancelMode.FreshOrStarted()),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(1)),
       OrderDetachable,
       OrderDetached,
@@ -117,7 +118,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
         OrderStarted,
         OrderProcessingStarted,
         OrderCancelMarked(mode),
-        OrderProcessed(Outcome.succeeded),
+        OrderProcessed(Outcome.succeededRC0),
         OrderMoved(Position(1)),
         OrderDetachable,
         OrderDetached,
@@ -142,8 +143,8 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
         OrderStarted,
         OrderProcessingStarted,
         OrderCancelMarked(mode),
-        OrderProcessed(Outcome.Cancelled(Outcome.Failed(
-          if (isWindows) ReturnCode(0) else ReturnCode(if (immediately) SIGKILL else SIGTERM)))),
+        OrderProcessed(Outcome.Cancelled(Outcome.Failed(NamedValues.rc(
+          if (isWindows) ReturnCode(0) else ReturnCode(if (immediately) SIGKILL else SIGTERM))))),
         OrderProcessingKilled,
         OrderDetachable,
         OrderDetached,
@@ -169,7 +170,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
         OrderId("FORK|🥕") <-: OrderAttached(agentName),
         OrderId("FORK|🥕") <-: OrderProcessingStarted,
         OrderId("FORK") <-: OrderCancelMarked(mode),
-        OrderId("FORK|🥕") <-: OrderProcessed(Outcome.succeeded),
+        OrderId("FORK|🥕") <-: OrderProcessed(Outcome.succeededRC0),
         OrderId("FORK|🥕") <-: OrderMoved(Position(0) / "fork+🥕" % 1),
         OrderId("FORK|🥕") <-: OrderDetachable,
         OrderId("FORK|🥕") <-: OrderDetached,

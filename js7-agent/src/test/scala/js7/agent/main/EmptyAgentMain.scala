@@ -4,6 +4,7 @@ import js7.agent.RunningAgent
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.tests.TestAgentDirectoryProvider
 import js7.common.scalautil.Futures.implicits._
+import monix.execution.Scheduler.Implicits.global
 
 /** For testing only.
   * @author Joacim Zschimmer

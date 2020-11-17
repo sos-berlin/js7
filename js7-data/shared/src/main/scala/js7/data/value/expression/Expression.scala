@@ -5,7 +5,6 @@ import io.circe.{Decoder, Encoder, Json}
 import java.lang.Character.{isUnicodeIdentifierPart, isUnicodeIdentifierStart}
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
 import js7.base.utils.Identifier.isIdentifier
-import js7.data.value.expression.Expression.NamedValue.{LastOccurred, ReturnCode}
 import js7.data.workflow.Label
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.parser.ExpressionParser
@@ -127,7 +126,6 @@ object Expression
       case (LastOccurred, KeyValue(StringConstant(key)), None) if isSimpleName(key) => "$" + key
       case (LastOccurred, KeyValue(StringConstant(key)), None) if isIdentifier(key) => s"$${$key}"
       case (LastOccurred, KeyValue(expression), None) => s"variable($expression)"
-      case (LastOccurred, ReturnCode, None) => "returnCode"
       //case (Argument, NamedValue(StringConstant(key)), None) if isIdentifier(key) => s"$${arg::$key}"
       //case (LastOccurredByPrefix(prefix), NamedValue(StringConstant(key)), None) if isIdentifier(key) => s"$${$prefix.$key}"
       //case (ByLabel(Label(label)), NamedValue(StringConstant(key)), None) if isIdentifier(key) => s"$${label::$label.$key}"
@@ -155,9 +153,6 @@ object Expression
 
           case (_, NamedValue.KeyValue(_)) =>
             s"variable(${args mkString ", "})"
-
-          case (_, NamedValue.ReturnCode) =>
-            s"returnCode(${args mkString ", "})"
         }
     }
   }
@@ -182,10 +177,9 @@ object Expression
     object KeyValue {
       def apply(key: String) = new KeyValue(StringConstant(key))
     }
-    case object ReturnCode extends What
   }
 
-  val LastReturnCode: NamedValue = NamedValue(LastOccurred, ReturnCode)
+  val LastReturnCode: NamedValue = NamedValue.last("returnCode")
 
   final case object OrderCatchCount extends NumericExpression {
     def precedence = Precedence.Factor

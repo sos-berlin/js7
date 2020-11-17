@@ -128,17 +128,17 @@ object WorkflowParser
     private def failInstruction[_: P] = P[FailInstr](
       (Index ~ keyword("fail") ~
         inParentheses(keyValues(
-          keyValue("returnCode", returnCode) |
+          keyValue("namedValues", namedValues) |
           keyValue("message", expression) |
           keyValue("uncatchable", booleanConstant))).? ~
         hardEnd)
         .flatMap { case (start, maybeKeyToValue, end) =>
           val keyToValue = maybeKeyToValue getOrElse KeyToValue.empty
           for {
-            returnCode <- keyToValue.get[ReturnCode]("returnCode")
+            namedValues <- keyToValue.get[NamedValues]("namedValues")
             errorMessage <- keyToValue.get[Expression]("message")
             uncatchable <- keyToValue.get[BooleanConstant]("uncatchable").map(_.fold(false)(_.booleanValue))
-          } yield FailInstr(errorMessage, returnCode, uncatchable = uncatchable, sourcePos(start, end))
+          } yield FailInstr(errorMessage, namedValues getOrElse Map.empty, uncatchable = uncatchable, sourcePos(start, end))
         })
 
     private def finishInstruction[_: P] = P[Finish](

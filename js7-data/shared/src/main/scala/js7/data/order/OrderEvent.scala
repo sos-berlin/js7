@@ -129,17 +129,19 @@ object OrderEvent {
   extends OrderActorEvent
 
   // TODO OrderCatched should not contain key-values ?
-  final case class OrderFailed(outcome: Outcome.NotSucceeded)
+  final case class OrderFailed(outcome: Outcome.NotSucceeded = Outcome.failed)
   extends OrderActorEvent
 
-  final case class OrderFailedInFork(outcome: Outcome.NotSucceeded)
+  final case class OrderFailedInFork(outcome: Outcome.NotSucceeded = Outcome.failed)
   extends OrderActorEvent
 
   /** Only internal. Will be converted to `OrderFailed` or `OrderCatched`. */
-  final case class OrderFailedCatchable(outcome: Outcome.NotSucceeded)
+  // TODO Option[Outcome.NotSucceed]
+  final case class OrderFailedCatchable(outcome: Outcome.NotSucceeded = Outcome.failed)
   extends OrderActorEvent
 
   // TODO OrderCatched should not contain key-values
+  // TODO Option[Outcome.NotSucceed]
   final case class OrderCatched(outcome: Outcome.NotSucceeded, movedTo: Position) extends OrderActorEvent
 
   final case class OrderRetrying(movedTo: Position, delayedUntil: Option[Timestamp] = None)

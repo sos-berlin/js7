@@ -29,7 +29,7 @@ object ExecuteExecutor extends EventInstructionExecutor
                 OrderMoved(order.position.increment)
 
               case failed: Outcome.NotSucceeded =>
-                OrderFailedCatchable(failed)
+                OrderFailedCatchable()
 
               case _: Outcome.Cancelled =>
                 OrderProcessingKilled

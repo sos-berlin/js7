@@ -7,10 +7,10 @@ import js7.common.process.Processes.{ShellFileExtension => sh}
 import js7.common.system.OperatingSystem.isWindows
 import js7.data.agent.AgentName
 import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
-import js7.data.job.{ExecutablePath, ReturnCode}
+import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
-import js7.data.value.StringValue
+import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.parser.WorkflowParser
 import js7.data.workflow.position.BranchId.Then
@@ -69,11 +69,11 @@ object ExpressionsTest {
      |    LABEL: job MYJOB;
      |  }
      |  if ($$ARG2 == "ARG2-VALUE" && variable(key="JOB-KEY", label=LABEL) == "JOB-RESULT" && variable("JOB-KEY", job=MYJOB) == "JOB-RESULT") {
-     |    if (returnCode == 1) {
+     |    if ($$returnCode == 1) {
      |      execute executable="/TEST$sh", agent="AGENT";
      |    }
      |  }
-     |  if (returnCode == 0 && returnCode(label=LABEL) == 1) {
+     |  if ($$returnCode == 0 && variable("returnCode", label=LABEL) == 1) {
      |    execute executable="/TEST$sh", agent="AGENT";
      |  }
      |
@@ -102,7 +102,7 @@ object ExpressionsTest {
       OrderAttached(TestAgentName),
       OrderStarted,
       OrderProcessingStarted,
-      OrderProcessed(Outcome.Succeeded(ReturnCode(0), Map("JOB-KEY" -> StringValue("JOB-RESULT")))),
+      OrderProcessed(Outcome.Succeeded(Map("JOB-KEY" -> StringValue("JOB-RESULT")) ++ NamedValues.rc(0))),
       OrderFailed(Outcome.Disrupted(Problem("No such named value: ARG2")))),
     OrderId("🔺") -> Vector(
       OrderAdded(TestWorkflow.id, None, Map(
@@ -114,13 +114,13 @@ object ExpressionsTest {
       OrderAttached(TestAgentName),
       OrderStarted,
       OrderProcessingStarted,
-      OrderProcessed(Outcome.Succeeded(ReturnCode(1), Map("JOB-KEY" -> StringValue("JOB-RESULT")))),
+      OrderProcessed(Outcome.Succeeded(Map("JOB-KEY" -> StringValue("JOB-RESULT")) ++ NamedValues.rc(1))),
       OrderMoved(Position(1) / Then % 0 / Then % 0),
       OrderProcessingStarted,
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(2) / Then % 0),
       OrderProcessingStarted,
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(3)),
       OrderDetachable,
       OrderDetached,

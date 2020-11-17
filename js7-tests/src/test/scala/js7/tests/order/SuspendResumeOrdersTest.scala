@@ -13,10 +13,11 @@ import js7.data.Problems.UnknownOrderProblem
 import js7.data.agent.AgentName
 import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.item.VersionId
-import js7.data.job.{ExecutablePath, ReturnCode}
+import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderResumeMarked, OrderResumed, OrderRetrying, OrderStarted, OrderStdWritten, OrderStdoutWritten, OrderSuspendMarked, OrderSuspended}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem}
+import js7.data.value.NamedValues
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fail, Fork, Retry, TryInstruction}
 import js7.data.workflow.position.BranchId.{Try_, catch_, try_}
@@ -74,7 +75,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderStarted,
       OrderProcessingStarted,
       OrderStdoutWritten("TEST ☘\n"),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(1)),
       OrderDetachable,
       OrderDetached,
@@ -95,7 +96,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderStarted,
       OrderProcessingStarted,
       OrderSuspendMarked(),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(1)),
       OrderDetachable,
       OrderDetached,
@@ -125,7 +126,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderStarted,
       OrderProcessingStarted,
       OrderSuspendMarked(SuspendMode(Some(CancelMode.Kill()))),
-      OrderProcessed(Outcome.Cancelled(if (isWindows) Outcome.succeeded else Outcome.Failed(ReturnCode(SIGTERM)))),
+      OrderProcessed(Outcome.Cancelled(if (isWindows) Outcome.succeededRC0 else Outcome.Failed(NamedValues.rc(SIGTERM)))),
       OrderProcessingKilled,
       OrderDetachable,
       OrderDetached,
@@ -141,7 +142,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderAttached(agentName),
       OrderProcessingStarted,
       OrderStdoutWritten("TEST ☘\n"),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(1)),
       OrderDetachable,
       OrderDetached,
@@ -163,7 +164,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
         OrderStarted,
         OrderProcessingStarted,
         OrderSuspendMarked(),
-        OrderProcessed(Outcome.succeeded),
+        OrderProcessed(Outcome.succeededRC0),
         OrderMoved(Position(1)),
         OrderDetachable,
         OrderDetached,
@@ -180,7 +181,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
           OrderAttachable(agentName),
           OrderAttached(agentName),
           OrderProcessingStarted,
-          OrderProcessed(Outcome.succeeded),
+          OrderProcessed(Outcome.succeededRC0),
           OrderMoved(Position(2)),
           OrderDetachable,
           OrderDetached,
@@ -217,10 +218,10 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
         OrderId("FORK|🥕") <-: OrderAttached(agentName),
         OrderId("FORK|🥕") <-: OrderProcessingStarted,
         OrderId("FORK") <-: OrderSuspendMarked(),
-        OrderId("FORK|🥕") <-: OrderProcessed(Outcome.succeeded),
+        OrderId("FORK|🥕") <-: OrderProcessed(Outcome.succeededRC0),
         OrderId("FORK|🥕") <-: OrderMoved(Position(0) / "fork+🥕" % 1),
         OrderId("FORK|🥕") <-: OrderProcessingStarted,
-        OrderId("FORK|🥕") <-: OrderProcessed(Outcome.succeeded),
+        OrderId("FORK|🥕") <-: OrderProcessed(Outcome.succeededRC0),
         OrderId("FORK|🥕") <-: OrderMoved(Position(0) / "fork+🥕" % 2),
         OrderId("FORK|🥕") <-: OrderDetachable,
         OrderId("FORK|🥕") <-: OrderDetached,
@@ -261,7 +262,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderProcessingStarted,
       OrderSuspendMarked(),
       OrderResumeMarked(None),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(1)),
 
       // AgentOrderKeeper does not properly handle simulataneous ExecuteMarkOrder commands
@@ -272,7 +273,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderAttached(agentName),
 
       OrderProcessingStarted,
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(2)),
       OrderDetachable,
       OrderDetached,
@@ -296,7 +297,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderStarted,
       OrderProcessingStarted,
       OrderSuspendMarked(),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(1)),
       OrderDetachable,
       OrderDetached,
@@ -321,7 +322,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderStarted,
       OrderProcessingStarted,
       OrderSuspendMarked(),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(1)),
       OrderDetachable,
       OrderDetached,
@@ -334,9 +335,9 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id, after = lastEventId)
       .filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
         OrderResumed(Some(Position(2) / Try_ % 0)),
-        OrderCatched(Outcome.Failed(None, ReturnCode(0)), Position(2) / catch_(0) % 0),
+        OrderCatched(Outcome.failed, Position(2) / catch_(0) % 0),
         OrderRetrying(Position(2) / try_(1) % 0, None),
-        OrderFailed(Outcome.Failed(None, ReturnCode(0)))))
+        OrderFailed()))
   }
 }
 

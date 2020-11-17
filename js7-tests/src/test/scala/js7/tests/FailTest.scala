@@ -6,9 +6,10 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.common.system.OperatingSystem.isWindows
 import js7.data.agent.AgentName
 import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
-import js7.data.job.{ExecutablePath, ReturnCode}
+import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.value.NamedValues
 import js7.data.workflow.parser.WorkflowParser
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -33,16 +34,16 @@ final class FailTest extends AnyFreeSpec
         OrderAttached(TestAgentName),
         OrderStarted,
         OrderProcessingStarted,
-        OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
+        OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
         OrderMoved(Position(1)),
-        OrderFailed(Outcome.Failed(ReturnCode(3)))))
+        OrderFailed()))
   }
 
   "fail (returnCode=7)" in {
     runUntil[OrderFailed]("""
       |define workflow {
       |  execute agent="AGENT", executable="/test.cmd", successReturnCodes=[3];
-      |  fail (returnCode=7);
+      |  fail (namedValues = { "returnCode": 7 });
       |}""".stripMargin,
       Vector(
         OrderAdded(TestWorkflowId),
@@ -50,20 +51,20 @@ final class FailTest extends AnyFreeSpec
         OrderAttached(TestAgentName),
         OrderStarted,
         OrderProcessingStarted,
-        OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
+        OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
         OrderMoved(Position(1)),
-        OrderFailed(Outcome.Failed(ReturnCode(7)))))
+        OrderFailed(Outcome.Failed(NamedValues.rc(7)))))
   }
 
   "fail (returnCode=7, message='ERROR')" in {
     runUntil[OrderFailed]("""
       |define workflow {
-      |  fail (returnCode=7, message='ERROR');
+      |  fail (namedValues = { "returnCode": 7 }, message='ERROR');
       |}""".stripMargin,
       Vector(
         OrderAdded(TestWorkflowId),
         OrderStarted,
-        OrderFailed(Outcome.Failed(Some("ERROR"), ReturnCode(7)))))
+        OrderFailed(Outcome.Failed(Some("ERROR"), NamedValues.rc(7)))))
   }
 
   "fail in fork" in {
@@ -80,10 +81,10 @@ final class FailTest extends AnyFreeSpec
         OrderForked(Vector(
           OrderForked.Child("🥕", OrderId("🔺|🥕")),
           OrderForked.Child("🍋", OrderId("🔺|🍋")))),
-        OrderJoined(Outcome.Failed(ReturnCode(0))),
-        OrderFailed(Outcome.Failed(ReturnCode(0)))),
+        OrderJoined(Outcome.failed),
+        OrderFailed()),
       OrderId("🔺|🍋") -> Vector(
-        OrderFailedInFork(Outcome.Failed(None, ReturnCode(0)))))
+        OrderFailedInFork()))
   }
 
   private def runUntil[E <: OrderEvent: ClassTag: TypeTag](notation: String, expectedEvents: Vector[OrderEvent], moreExpectedEvents: (OrderId, Vector[OrderEvent])*): Unit =

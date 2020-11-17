@@ -20,11 +20,10 @@ import js7.core.event.journal.files.JournalFiles
 import js7.data.Problems.SnapshotForUnknownEventIdProblem
 import js7.data.agent.AgentName
 import js7.data.event.{EventId, KeyedEvent, Stamped}
-import js7.data.job.ReturnCode
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
-import js7.data.order.Outcome.Succeeded
+import js7.data.order.Outcome.{Succeeded, succeeded}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
-import js7.data.value.StringValue
+import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.parser.WorkflowParser
 import js7.data.workflow.position.Position
 import js7.proxy.configuration.ProxyConf
@@ -139,20 +138,20 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
             OrderStarted,
             OrderProcessingStarted,
             OrderStdoutWritten(StdoutOutput),
-            OrderProcessed(Succeeded(ReturnCode(0))),
+            OrderProcessed(Succeeded(NamedValues.rc(0))),
             OrderMoved(Position(1)),
             OrderForked(List(
               OrderForked.Child("🥕",OrderId("🔺|🥕")),
               OrderForked.Child("🍋",OrderId("🔺|🍋")))),
             OrderDetachable,
             OrderDetached,
-            OrderJoined(Succeeded(ReturnCode(0))),
+            OrderJoined(succeeded),
             OrderMoved(Position(2)),
             OrderAttachable(AAgentName),
             OrderAttached(AAgentName),
             OrderProcessingStarted,
             OrderStdoutWritten(StdoutOutput),
-            OrderProcessed(Succeeded(ReturnCode(0))),
+            OrderProcessed(Succeeded(NamedValues.rc(0))),
             OrderMoved(Position(3)),
             OrderDetachable,
             OrderDetached,
@@ -160,18 +159,18 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
           OrderId("🔺|🥕") -> List(
             OrderProcessingStarted,
             OrderStdoutWritten(StdoutOutput),
-            OrderProcessed(Succeeded(ReturnCode(0))),
+            OrderProcessed(Succeeded(NamedValues.rc(0))),
             OrderMoved(Position(1) / "fork+🥕" % 1),
             OrderProcessingStarted,
             OrderStdoutWritten(StdoutOutput),
-            OrderProcessed(Succeeded(ReturnCode(0))),
+            OrderProcessed(Succeeded(NamedValues.rc(0))),
             OrderMoved(Position(1) / "fork+🥕" % 2),
             OrderDetachable,
             OrderDetached),
         OrderId("🔺|🍋") -> List(
           OrderProcessingStarted,
           OrderStdoutWritten(StdoutOutput),
-          OrderProcessed(Succeeded(ReturnCode(0))),
+          OrderProcessed(Succeeded(NamedValues.rc(0))),
           OrderMoved(Position(1) / "fork+🍋" % 1),
           OrderDetachable,
           OrderDetached,
@@ -179,7 +178,7 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
           OrderAttached(BAgentName),
           OrderProcessingStarted,
           OrderStdoutWritten(StdoutOutput),
-          OrderProcessed(Succeeded(ReturnCode(0))),
+          OrderProcessed(Succeeded(NamedValues.rc(0))),
           OrderMoved(Position(1) / "fork+🍋" % 2),
           OrderDetachable,
           OrderDetached)))

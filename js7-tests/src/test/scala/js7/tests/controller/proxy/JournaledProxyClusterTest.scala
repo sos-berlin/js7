@@ -58,7 +58,7 @@ final class JournaledProxyClusterTest extends AnyFreeSpec with ClusterProxyTest
         primaryController.addOrderBlocking(FreshOrder(OrderId("🔺"), workflow.id.path))
 
         val processed = whenProcessed.await(99.s)
-        assert(processed.stampedEvent.value.event == OrderProcessed(Outcome.succeeded))
+        assert(processed.stampedEvent.value.event == OrderProcessed(Outcome.succeededRC0))
         assert(processed.state.idToOrder(OrderId("🔺")).state == Order.Processed)
 
         whenFinished await 99.s  // Await order termination before shutting down the JS7

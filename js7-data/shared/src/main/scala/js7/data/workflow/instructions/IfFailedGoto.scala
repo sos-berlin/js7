@@ -12,5 +12,5 @@ final case class IfFailedGoto(to: Label, sourcePos: Option[SourcePos] = None) ex
 {
   def withoutSourcePos = copy(sourcePos = None)
 
-  override def toString = s"ifFailedGoto $to"
+  override def toString = s"ifFailedGoto $to$sourcePosToString"
 }

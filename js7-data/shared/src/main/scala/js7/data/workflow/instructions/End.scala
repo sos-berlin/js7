@@ -22,7 +22,7 @@ final case class ImplicitEnd(sourcePos: Option[SourcePos] = None) extends End
 {
   def withoutSourcePos = copy(sourcePos = None)
 
-  override def toString = "end/*implicit*/"
+  override def toString = "end/*implicit*/" + sourcePosToString
 }
 object ImplicitEnd
 {

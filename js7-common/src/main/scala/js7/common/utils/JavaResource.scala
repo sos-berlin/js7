@@ -7,7 +7,7 @@ import java.io.{File, InputStream}
 import java.net.{URI, URL}
 import java.nio.file.{CopyOption, DirectoryNotEmptyException, FileAlreadyExistsException, Files, Path}
 import java.util.Objects.requireNonNull
-import js7.base.data.{ByteArray, ByteSequence}
+import js7.base.data.ByteSequence
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.AutoClosing.autoClosing

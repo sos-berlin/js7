@@ -10,9 +10,8 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentName
 import js7.data.command.CancelMode
 import js7.data.event.{KeyedEvent, Stamped}
-import js7.data.job.ReturnCode
 import js7.data.order.OrderEvent._
-import js7.data.value.StringValue
+import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
 import js7.tester.CirceJsonTester.testJson
@@ -78,8 +77,7 @@ final class OrderEventTest extends AnyFreeSpec
           {
             "position": [123],
             "outcome": {
-              "TYPE": "Succeeded",
-              "returnCode": 0
+              "TYPE": "Succeeded"
             }
           }
         ],
@@ -143,7 +141,6 @@ final class OrderEventTest extends AnyFreeSpec
         "TYPE": "OrderProcessed",
         "outcome": {
           "TYPE": "Succeeded",
-          "returnCode": 0,
           "namedValues": {
             "KEY": "VALUE"
           }
@@ -152,24 +149,28 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderCatched" in {
-    check(OrderCatched(Outcome.Failed(ReturnCode(1)), Position(1)), json"""
+    check(OrderCatched(Outcome.Failed(NamedValues.rc(1)), Position(1)), json"""
       {
         "TYPE": "OrderCatched",
         "outcome": {
           "TYPE": "Failed",
-          "returnCode": 1
+          "namedValues": {
+            "returnCode": 1
+          }
         },
         "movedTo": [ 1 ]
       }""")
   }
 
   "OrderCatched complete" in {
-    check(OrderCatched(Outcome.Failed(Some("FAILED"), ReturnCode(1)), Position(1)), json"""
+    check(OrderCatched(Outcome.Failed(Some("FAILED"), NamedValues.rc(1)), Position(1)), json"""
       {
         "TYPE": "OrderCatched",
         "outcome": {
           "TYPE": "Failed",
-          "returnCode": 1,
+          "namedValues": {
+            "returnCode": 1
+          },
           "message": "FAILED"
         },
         "movedTo": [ 1 ]
@@ -177,23 +178,27 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderFailed" in {
-    check(OrderFailed(Outcome.Failed(ReturnCode(1))), json"""
+    check(OrderFailed(Outcome.Failed(NamedValues.rc(1))), json"""
       {
         "TYPE": "OrderFailed",
         "outcome": {
           "TYPE": "Failed",
-          "returnCode": 1
+          "namedValues": {
+            "returnCode": 1
+          }
         }
       }""")
   }
 
   "OrderFailed(Failed) complete" in {
-    check(OrderFailed(Outcome.Failed(Some("ERROR"), ReturnCode(1))), json"""
+    check(OrderFailed(Outcome.Failed(Some("ERROR"), NamedValues.rc(1))), json"""
       {
         "TYPE": "OrderFailed",
         "outcome": {
           "TYPE": "Failed",
-          "returnCode": 1,
+          "namedValues": {
+            "returnCode": 1
+          },
           "message": "ERROR"
         }
       }""")
@@ -216,23 +221,27 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderFailedInFork" in {
-    check(OrderFailedInFork(Outcome.Failed(ReturnCode(1))), json"""
+    check(OrderFailedInFork(Outcome.Failed(NamedValues.rc(1))), json"""
       {
         "TYPE": "OrderFailedInFork",
         "outcome": {
           "TYPE": "Failed",
-          "returnCode": 1
+          "namedValues": {
+            "returnCode": 1
+          }
         }
       }""")
   }
 
   "OrderFailedInFork complete" in {
-    check(OrderFailedInFork(Outcome.Failed(Some("ERROR"), ReturnCode(1))), json"""
+    check(OrderFailedInFork(Outcome.Failed(Some("ERROR"), NamedValues.rc(1))), json"""
       {
         "TYPE": "OrderFailedInFork",
         "outcome": {
           "TYPE": "Failed",
-          "returnCode": 1,
+          "namedValues": {
+            "returnCode": 1
+          },
           "message": "ERROR"
         }
       }""")
@@ -278,8 +287,7 @@ final class OrderEventTest extends AnyFreeSpec
       {
         "TYPE": "OrderJoined",
         "outcome": {
-          "TYPE": "Succeeded",
-          "returnCode": 0
+          "TYPE": "Succeeded"
         }
       }""")
   }

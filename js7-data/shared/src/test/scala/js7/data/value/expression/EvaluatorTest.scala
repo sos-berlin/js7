@@ -4,9 +4,9 @@ import fastparse.NoWhitespace._
 import fastparse._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.value.{BooleanValue, NumericValue, StringValue, Value}
 import js7.data.value.expression.Expression._
 import js7.data.value.expression.Scope.ConstantExpressionRequiredProblem
+import js7.data.value.{BooleanValue, NumericValue, StringValue, Value}
 import js7.data.workflow.Label
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.parser.ExpressionParser
@@ -27,22 +27,16 @@ final class EvaluatorTest extends AnyFreeSpec
         val symbolToValue = name => symbols.checked(name)
 
         val findValue = {
-          case ValueSearch(ValueSearch.LastOccurred, ValueSearch.NamedValue(key)) =>
-            Right(Map("ASTRING" -> "AA", "ANUMBER" -> "7", "ABOOLEAN" -> "true").get(key) map StringValue.apply)
-          case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByPrefix("PREFIX")), ValueSearch.NamedValue(key)) =>
-            Right(Map("KEY" -> "LABEL-VALUE").get(key) map StringValue.apply)
-          case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByLabel(Label("LABEL"))), ValueSearch.NamedValue(key)) =>
-            Right(Map("KEY" -> "LABEL-VALUE").get(key) map StringValue.apply)
-          case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByWorkflowJob(WorkflowJob.Name("JOB"))), ValueSearch.NamedValue(key)) =>
-            Right(Map("KEY" -> "JOB-VALUE").get(key) map StringValue.apply)
-          case ValueSearch(ValueSearch.LastOccurred, ValueSearch.ReturnCode) =>
-            Right(Some(NumericValue(1)))
-          case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByLabel(Label("LABEL"))), ValueSearch.ReturnCode) =>
-            Right(Some(NumericValue(2)))
-          case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByWorkflowJob(WorkflowJob.Name("JOB"))), ValueSearch.ReturnCode) =>
-            Right(Some(NumericValue(3)))
-          case ValueSearch(ValueSearch.Argument, ValueSearch.NamedValue(key)) =>
-            Right(Map("ARG" -> "ARG-VALUE").get(key) map StringValue.apply)
+          case ValueSearch(ValueSearch.LastOccurred, ValueSearch.NamedValue(name)) =>
+            Right(Map("ASTRING" -> StringValue("AA"), "ANUMBER" -> NumericValue(7), "ABOOLEAN" -> BooleanValue(true), "returnCode" -> NumericValue(1)).get(name))
+          case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByPrefix("PREFIX")), ValueSearch.NamedValue(name)) =>
+            Right(Map("KEY" -> "LABEL-VALUE").get(name) map StringValue.apply)
+          case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByLabel(Label("LABEL"))), ValueSearch.NamedValue(name)) =>
+            Right(Map("KEY" -> StringValue("LABEL-VALUE"), "returnCode" -> NumericValue(2)).get(name))
+          case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByWorkflowJob(WorkflowJob.Name("JOB"))), ValueSearch.NamedValue(name)) =>
+            Right(Map("KEY" -> StringValue("JOB-VALUE"), "returnCode" -> NumericValue(3)).get(name))
+          case ValueSearch(ValueSearch.Argument, ValueSearch.NamedValue(name)) =>
+            Right(Map("ARG" -> "ARG-VALUE").get(name) map StringValue.apply)
           case o =>
             Left(Problem(s"UNEXPECTED CASE: $o"))
         }
@@ -141,25 +135,21 @@ final class EvaluatorTest extends AnyFreeSpec
       result = "DEFAULT",
       Right(NamedValue(NamedValue.Argument, NamedValue.KeyValue("UNKNOWN"), Some(StringConstant("DEFAULT")))))
 
-    testEval("""returnCode""",
-      result = 1,
-      Right(LastReturnCode))
-
-    testEval("""returnCode(label=LABEL)""",
+    testEval("""variable(key="returnCode", label=LABEL)""",
       result = 2,
-      Right(NamedValue(NamedValue.ByLabel("LABEL"), NamedValue.ReturnCode)))
+      Right(NamedValue(NamedValue.ByLabel("LABEL"), NamedValue.KeyValue("returnCode"))))
 
-    testEval("""returnCode(job=JOB)""",
+    testEval("""variable(key="returnCode", job=JOB)""",
       result = 3,
-      Right(NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), NamedValue.ReturnCode)))
+      Right(NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), NamedValue.KeyValue("returnCode"))))
 
     testEval("""$ASTRING.toNumber""",
       result = Left(Problem("Not a valid number: AA")),
       Right(ToNumber(NamedValue.last("ASTRING"))))
 
-    testEval("""$ANUMBER.toNumber""",
+    testEval("""$ANUMBER""",
       result = 7,
-      Right(ToNumber(NamedValue.last("ANUMBER"))))
+      Right(NamedValue.last("ANUMBER")))
 
     testEval(""""true".toBoolean""",
       result = true,
@@ -169,9 +159,9 @@ final class EvaluatorTest extends AnyFreeSpec
       result = false,
       Right(ToBoolean(StringConstant("false"))))
 
-    testEval(""" variable("ABOOLEAN").toBoolean """,
+    testEval(""" variable("ABOOLEAN")""",
       result = true,
-      Right(ToBoolean(NamedValue.last("ABOOLEAN"))))
+      Right(NamedValue.last("ABOOLEAN")))
 
     locally {
       val longString =
@@ -185,23 +175,23 @@ final class EvaluatorTest extends AnyFreeSpec
         Right(StripMargin(StringConstant(longString))))
     }
 
-    testEval("""returnCode == 0""",
+    testEval("""$returnCode == 0""",
       result = false,
       Right(Equal(LastReturnCode, NumericConstant(0))))
 
-    testEval("""returnCode >= 1""",
+    testEval("""$returnCode >= 1""",
       result = true,
       Right(GreaterOrEqual(LastReturnCode, NumericConstant(1))))
 
-    testEval("""returnCode <= 1""",
+    testEval("""$returnCode <= 1""",
       result = true,
       Right(LessOrEqual(LastReturnCode, NumericConstant(1))))
 
-    testEval("""returnCode > 1""",
+    testEval("""$returnCode > 1""",
       result = false,
       Right(GreaterThan(LastReturnCode, NumericConstant(1))))
 
-    testEval("""returnCode < 1""", false,
+    testEval("""$returnCode < 1""", false,
       Right(LessThan(LastReturnCode, NumericConstant(1))))
 
     testEval("""catchCount""",
@@ -248,7 +238,7 @@ final class EvaluatorTest extends AnyFreeSpec
       result = true,
       Right(Not(Not(BooleanConstant(true)))))
 
-    testEval("returnCode >= 1 && !(returnCode <= 9) && returnCode != 1",
+    testEval("$returnCode >= 1 && !($returnCode <= 9) && $returnCode != 1",
       result = false,
       Right(
         And(
@@ -257,7 +247,7 @@ final class EvaluatorTest extends AnyFreeSpec
             Not(LessOrEqual(LastReturnCode, NumericConstant(9)))),
           NotEqual(LastReturnCode, NumericConstant(1)))))
 
-    testEval("returnCode in [1, 2, 3]",
+    testEval("$returnCode in [1, 2, 3]",
       result = true,
       Right(
         In(LastReturnCode, ListExpression(List(NumericConstant(1), NumericConstant(2), NumericConstant(3))))))

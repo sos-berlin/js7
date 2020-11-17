@@ -4,11 +4,11 @@ import cats.syntax.show._
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.data.agent.AgentName
-import js7.data.job.{ExecutablePath, ExecutableScript, ReturnCode}
+import js7.data.job.{ExecutablePath, ExecutableScript}
 import js7.data.order.OrderId
 import js7.data.source.SourcePos
-import js7.data.value.{NumericValue, StringValue}
 import js7.data.value.expression.Expression.{Equal, In, LastReturnCode, ListExpression, NamedValue, NumericConstant, Or, StringConstant}
+import js7.data.value.{NumericValue, StringValue}
 import js7.data.workflow.WorkflowPrinter.WorkflowShow
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Finish, Fork, Goto, If, IfFailedGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction}
@@ -203,7 +203,7 @@ final class WorkflowParserTest extends AnyFreeSpec
   }
 
   "if (...) {...}" in {
-    checkWithSourcePos("""define workflow { if ((returnCode in [1, 2]) || $KEY == "VALUE") { execute executable="/THEN", agent="AGENT" } }""",
+    checkWithSourcePos("""define workflow { if (($returnCode in [1, 2]) || $KEY == "VALUE") { execute executable="/THEN", agent="AGENT" } }""",
       Workflow.anonymous(
         Vector(
           If(
@@ -213,80 +213,80 @@ final class WorkflowParserTest extends AnyFreeSpec
             Workflow.of(
               Execute.Anonymous(
                 WorkflowJob(AgentName("AGENT"), ExecutablePath("/THEN")),
-                sourcePos = sourcePos(67, 108)),
-              ImplicitEnd(sourcePos(109, 110))),
-            sourcePos = sourcePos(18, 64)),
-          ImplicitEnd(sourcePos(111, 112)))))
+                sourcePos = sourcePos(68, 109)),
+              ImplicitEnd(sourcePos(110, 111))),
+            sourcePos = sourcePos(18, 65)),
+          ImplicitEnd(sourcePos(112, 113)))))
   }
 
   "if (...) {...} else {...}" in {
-    checkWithSourcePos("""define workflow { if (returnCode == -1) { execute executable="/THEN", agent="AGENT" } else { execute executable="/ELSE", agent="AGENT" } }""",
+    checkWithSourcePos("""define workflow { if ($returnCode == -1) { execute executable="/THEN", agent="AGENT" } else { execute executable="/ELSE", agent="AGENT" } }""",
       Workflow.anonymous(
         Vector(
           If(Equal(LastReturnCode, NumericConstant(-1)),
             Workflow.of(
               Execute.Anonymous(
                 WorkflowJob(AgentName("AGENT"), ExecutablePath("/THEN")),
-                sourcePos(42, 83)),
-              ImplicitEnd(sourcePos(84, 85))),
+                sourcePos(43, 84)),
+              ImplicitEnd(sourcePos(85, 86))),
             Some(Workflow.of(
               Execute.Anonymous(
                 WorkflowJob(AgentName("AGENT"), ExecutablePath("/ELSE")),
-                sourcePos(93, 134)),
-              ImplicitEnd(sourcePos(135, 136)))),
-            sourcePos(18, 39)),
-          ImplicitEnd(sourcePos(137, 138)))))
+                sourcePos(94, 135)),
+              ImplicitEnd(sourcePos(136, 137)))),
+            sourcePos(18, 40)),
+          ImplicitEnd(sourcePos(138, 139)))))
   }
 
  "if (...) instruction" in {
-    checkWithSourcePos("""define workflow { if (returnCode == -1) fail }""",
+    checkWithSourcePos("""define workflow { if ($returnCode == -1) fail }""",
       Workflow.anonymous(
         Vector(
           If(Equal(LastReturnCode, NumericConstant(-1)),
-            Workflow.of(Fail(sourcePos = sourcePos(40, 44))),
-            sourcePos = sourcePos(18, 39)),
-          ImplicitEnd(sourcePos(45, 46)))))
+            Workflow.of(Fail(sourcePos = sourcePos(41, 45))),
+            sourcePos = sourcePos(18, 40)),
+          ImplicitEnd(sourcePos(46, 47)))))
   }
 
  "if (...) instruction else instruction" in {
-    checkWithSourcePos("""define workflow { if (returnCode == -1) fail else execute executable="/ELSE", agent="AGENT" }""",
+    checkWithSourcePos("""define workflow { if ($returnCode == -1) fail else execute executable="/ELSE", agent="AGENT" }""",
       Workflow.anonymous(
         Vector(
           If(Equal(LastReturnCode, NumericConstant(-1)),
-            Workflow.of(Fail(sourcePos = sourcePos(40, 44))),
+            Workflow.of(Fail(sourcePos = sourcePos(41, 45))),
             Some(Workflow.of(Execute.Anonymous(
               WorkflowJob(AgentName("AGENT"), ExecutablePath("/ELSE")),
-              sourcePos = sourcePos(50, 91)))),
-            sourcePos(18, 39)),
-          ImplicitEnd(sourcePos(92, 93)))))
+              sourcePos = sourcePos(51, 92)))),
+            sourcePos(18, 40)),
+          ImplicitEnd(sourcePos(93, 94)))))
   }
 
   "Two consecutive ifs with semicolon" in {
     checkWithSourcePos(
      """define workflow {
-          if (returnCode == 1) {}
-          if (returnCode == 2) {}
+          if ($returnCode == 1) {}
+          if ($returnCode == 2) {}
         }""",
       Workflow.anonymous(
         Vector(
           If(
             Equal(LastReturnCode, NumericConstant(1)),
             Workflow.of(
-              ImplicitEnd(sourcePos(50, 51))),
-            sourcePos = sourcePos(28, 48)),
+              ImplicitEnd(sourcePos(51, 52))),
+            sourcePos = sourcePos(28, 49)),
           If(Equal(LastReturnCode, NumericConstant(2)),
             Workflow.of(
-              ImplicitEnd(sourcePos(84, 85))),
-            sourcePos = sourcePos(62, 82)),
-          ImplicitEnd(sourcePos(94, 95)))))
+              ImplicitEnd(sourcePos(86, 87))),
+            sourcePos = sourcePos(63, 84)),
+          ImplicitEnd(sourcePos(96, 97)))))
   }
 
   "Two consecutive ifs without semicolon" in {
     checkWithSourcePos(
      """define workflow {
-          if (returnCode == 1) {
+          if ($returnCode == 1) {
           }
-          if (returnCode == 2) {
+          if ($returnCode == 2) {
           }
         }""",
       Workflow.anonymous(
@@ -294,13 +294,13 @@ final class WorkflowParserTest extends AnyFreeSpec
           If(
             Equal(LastReturnCode, NumericConstant(1)),
             Workflow.of(
-              ImplicitEnd(sourcePos(61, 62))),
-            sourcePos = sourcePos(28, 48)),
+              ImplicitEnd(sourcePos(62, 63))),
+            sourcePos = sourcePos(28, 49)),
           If(Equal(LastReturnCode, NumericConstant(2)),
             Workflow.of(
-              ImplicitEnd(sourcePos(106, 107))),
-            sourcePos = sourcePos(73, 93)),
-          ImplicitEnd(sourcePos(116, 117)))))
+              ImplicitEnd(sourcePos(108, 109))),
+            sourcePos = sourcePos(74, 95)),
+          ImplicitEnd(sourcePos(118, 119)))))
   }
 
   "fork" in {
@@ -433,18 +433,18 @@ final class WorkflowParserTest extends AnyFreeSpec
     checkWithSourcePos("""
       define workflow {
         fail;
-        fail (returnCode=7);
+        fail (namedValues = { "returnCode": 7 });
         fail (message="ERROR");
-        fail (message="ERROR", returnCode=7);
-        fail (uncatchable=true, message="ERROR", returnCode=7);
+        fail (message="ERROR", namedValues = { "returnCode": 7 });
+        fail (uncatchable=true, message="ERROR", namedValues = { "returnCode": 7 });
       }""",
       Workflow(WorkflowPath.NoId, Vector(
-        Fail(None, None, sourcePos = sourcePos(33, 37)),
-        Fail(None, Some(ReturnCode(7)), sourcePos = sourcePos(47, 66)),
-        Fail(Some(StringConstant("ERROR")), None, sourcePos = sourcePos(76, 98)),
-        Fail(Some(StringConstant("ERROR")), Some(ReturnCode(7)), sourcePos = sourcePos(108, 144)),
-        Fail(Some(StringConstant("ERROR")), Some(ReturnCode(7)), uncatchable = true, sourcePos(154, 208)),
-        ImplicitEnd(sourcePos = sourcePos(216, 217)))))
+        Fail(None, Map.empty, sourcePos = sourcePos(33, 37)),
+        Fail(None, Map("returnCode" -> NumericValue(7)), sourcePos = sourcePos(47, 87)),
+        Fail(Some(StringConstant("ERROR")), Map.empty, sourcePos = sourcePos(97, 119)),
+        Fail(Some(StringConstant("ERROR")), Map("returnCode" -> NumericValue(7)), sourcePos = sourcePos(129, 186)),
+        Fail(Some(StringConstant("ERROR")), Map("returnCode" -> NumericValue(7)), uncatchable = true, sourcePos(196, 271)),
+        ImplicitEnd(sourcePos = sourcePos(279, 280)))))
   }
 
   "finish" in {

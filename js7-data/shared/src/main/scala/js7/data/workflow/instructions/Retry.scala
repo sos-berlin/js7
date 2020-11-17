@@ -13,5 +13,5 @@ extends Instruction
 {
   def withoutSourcePos = copy(sourcePos = None)
 
-  override def toString = "retry"
+  override def toString = "retry" + sourcePosToString
 }

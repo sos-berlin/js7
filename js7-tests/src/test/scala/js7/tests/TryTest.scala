@@ -9,6 +9,7 @@ import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import js7.data.job.{ExecutablePath, ReturnCode}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.value.NamedValues
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.parser.WorkflowParser
 import js7.data.workflow.position.BranchId.{Then, try_}
@@ -80,14 +81,14 @@ final class TryTest extends AnyFreeSpec
           OrderAttached(TestAgentName),
           OrderStarted,
           OrderProcessingStarted,
-          OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
+          OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
           OrderMoved(Position(0) / try_(0) % 1 / Then % 0),
-          OrderCatched(Outcome.Failed(ReturnCode(0)), Position(0) / "catch+0" % 0),
+          OrderCatched(Outcome.Failed(), Position(0) / "catch+0" % 0),
           OrderProcessingStarted,
-          OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
+          OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
           OrderMoved(Position(1)),
           OrderProcessingStarted,
-          OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
+          OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
           OrderMoved(Position(2)),
           OrderDetachable,
           OrderDetached,
@@ -129,12 +130,12 @@ final class TryTest extends AnyFreeSpec
             OrderForked.Child("🥕", OrderId("🔴|🥕")),
             OrderForked.Child("🍋", OrderId("🔴|🍋")),
             OrderForked.Child("🌶", OrderId("🔴|🌶")))),
-          OrderJoined(Outcome.Failed(ReturnCode(0))),
-          OrderCatched(Outcome.Failed(ReturnCode(0)), Position(0) / "catch+0" % 0),
+          OrderJoined(Outcome.Failed()),
+          OrderCatched(Outcome.Failed(), Position(0) / "catch+0" % 0),
           OrderAttachable(TestAgentName),
           OrderAttached(TestAgentName),
           OrderProcessingStarted,
-          OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
+          OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
           OrderMoved(Position(1)),
           OrderDetachable,
           OrderDetached,
@@ -143,8 +144,8 @@ final class TryTest extends AnyFreeSpec
           OrderAttachable(TestAgentName),
           OrderAttached(TestAgentName),
           OrderProcessingStarted,
-          OrderProcessed(Outcome.Failed(None,ReturnCode(1))),
-          OrderFailedInFork(Outcome.Failed(None,ReturnCode(1), Map.empty)),
+          OrderProcessed(Outcome.Failed(None, NamedValues.rc(1))),
+          OrderFailedInFork(),
           OrderDetachable,
           OrderDetached))
       }
@@ -162,7 +163,8 @@ final class TryTest extends AnyFreeSpec
   }
 }
 
-object TryTest {
+object TryTest
+{
   private val TestAgentName = AgentName("AGENT")
   private val finishingScript = s"""
      |define workflow {
@@ -188,14 +190,14 @@ object TryTest {
     OrderStarted,
     OrderProcessingStarted,
     OrderProcessed(Outcome.Failed(ReturnCode(1))),
-    OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / "try+0" % 0 / "catch+0" % 0),
+    OrderCatched(Outcome.failed, Position(0) / "try+0" % 0 / "catch+0" % 0),
 
     OrderProcessingStarted,
     OrderProcessed(Outcome.Failed(ReturnCode(2))),
-    OrderCatched(Outcome.Failed(ReturnCode(2)), Position(1)),  // Empty catch-block, so Order is moved to outer block
+    OrderCatched(Outcome.failed, Position(1)),  // Empty catch-block, so Order is moved to outer block
 
     OrderProcessingStarted,
-    OrderProcessed(Outcome.succeeded),
+    OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
     OrderMoved(Position(2)),
 
     OrderDetachable,
@@ -221,9 +223,9 @@ object TryTest {
     OrderStarted,
     OrderProcessingStarted,
     OrderProcessed(Outcome.Failed(ReturnCode(1))),
-    OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / "catch+0" % 0),
+    OrderCatched(Outcome.failed, Position(0) / "catch+0" % 0),
 
     OrderProcessingStarted,
     OrderProcessed(Outcome.Failed(ReturnCode(2))),
-    OrderFailed(Outcome.Failed(ReturnCode(2))))
+    OrderFailed(Outcome.failed))
 }

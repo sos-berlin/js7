@@ -14,5 +14,4 @@ object ValueSearch
 
   sealed trait What
   final case class NamedValue(name: String) extends What
-  case object ReturnCode extends What
 }

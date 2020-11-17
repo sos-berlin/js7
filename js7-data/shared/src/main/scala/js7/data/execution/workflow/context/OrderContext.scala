@@ -4,10 +4,9 @@ import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.data.execution.workflow.context.OrderContext._
-import js7.data.job.ReturnCode
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
-import js7.data.value.{NumericValue, StringValue, Value}
 import js7.data.value.expression.{Scope, ValueSearch}
+import js7.data.value.{NumericValue, Value}
 import js7.data.workflow.instructions.Instructions
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow, WorkflowId}
@@ -47,9 +46,6 @@ trait OrderContext
         case ValueSearch(ValueSearch.Argument, ValueSearch.NamedValue(name)) =>
           Right(order.arguments.get(name))
 
-        case ValueSearch(ValueSearch.Argument, ValueSearch.ReturnCode) =>
-          Right(None)
-
         case ValueSearch(ValueSearch.LastOccurred, ValueSearch.NamedValue(name)) =>
           Right(
             order.historicOutcomes.reverseIterator
@@ -58,9 +54,6 @@ trait OrderContext
                   outcome.namedValues(name)
               }
               .orElse(order.arguments.get(name)))
-
-        case ValueSearch(ValueSearch.LastOccurred, ValueSearch.ReturnCode) =>
-          Right(Some(NumericValue(outcomeToReturnCode(order.lastOutcome).number)))
 
         case ValueSearch(ValueSearch.LastExecuted(positionSearch), what) =>
           for {
@@ -78,18 +71,8 @@ trait OrderContext
 
 object OrderContext
 {
-  private val DisruptedReturnCode = ReturnCode(-1)  // TODO Should we use this value ?
-
   private def whatToValue(outcome: Outcome.Completed, what: ValueSearch.What): Option[Value] =
     what match {
       case ValueSearch.NamedValue(key) => outcome.namedValues.get(key)
-      case ValueSearch.ReturnCode => Some(NumericValue(outcome.returnCode.number))
-    }
-
-  private def outcomeToReturnCode(outcome: Outcome): ReturnCode =
-    outcome match {
-      case o: Outcome.Completed => o.returnCode
-      case _: Outcome.Disrupted => DisruptedReturnCode
-      case Outcome.Cancelled(nested) => nested.returnCode
     }
 }

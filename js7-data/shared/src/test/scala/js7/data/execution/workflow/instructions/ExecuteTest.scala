@@ -8,7 +8,7 @@ import js7.data.execution.workflow.context.OrderContext
 import js7.data.job.{ExecutablePath, ReturnCode}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderFailedCatchable, OrderMoved}
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
-import js7.data.value.StringValue
+import js7.data.value.{NamedValues, NumericValue, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, ReturnCodeMeaning}
 import js7.data.workflow.position.{Position, WorkflowPosition}
@@ -32,17 +32,17 @@ final class ExecuteTest extends AnyFreeSpec {
   }
 
   "toOutcome" in {
-    val nameValues = Map("a" -> StringValue("A"))
-    assert(executeAnonymous.job.toOutcome(ReturnCode(0), nameValues) == Outcome.Succeeded(nameValues))
-    assert(executeAnonymous.job.toOutcome(ReturnCode(1), nameValues) == Outcome.Failed(ReturnCode(1), nameValues))
-    assert(executeAnonymous.job.toOutcome(ReturnCode(3), nameValues) == Outcome.Succeeded(ReturnCode(3), nameValues))
+    val namedValues = Map("a" -> StringValue("A"))
+    assert(executeAnonymous.job.toOutcome(namedValues, ReturnCode(0)) == Outcome.Succeeded(namedValues + ("returnCode" -> NumericValue(0))))
+    assert(executeAnonymous.job.toOutcome(namedValues, ReturnCode(1)) == Outcome.Failed   (namedValues + ("returnCode" -> NumericValue(1))))
+    assert(executeAnonymous.job.toOutcome(namedValues, ReturnCode(3)) == Outcome.Succeeded(namedValues + ("returnCode" -> NumericValue(3))))
   }
 
   "toEvent" in {
-    assert(toEvent(Outcome.Succeeded(ReturnCode(0))) == Some(orderId <-: OrderMoved(Position(1) / "A" % 21)))
-    assert(toEvent(Outcome.Succeeded(ReturnCode(1))) == Some(orderId <-: OrderMoved(Position(1) / "A" % 21)))
-    assert(toEvent(Outcome.Failed(ReturnCode(1))) == Some(orderId <-: OrderFailedCatchable(Outcome.Failed(ReturnCode(1)))))
-    assert(toEvent(Outcome.Disrupted(Problem("DISRUPTION"))) == Some(orderId <-: OrderFailedCatchable(Outcome.Disrupted(Problem("DISRUPTION")))))
+    assert(toEvent(Outcome.Succeeded(NamedValues.rc(0))) == Some(orderId <-: OrderMoved(Position(1) / "A" % 21)))
+    assert(toEvent(Outcome.Succeeded(NamedValues.rc(1))) == Some(orderId <-: OrderMoved(Position(1) / "A" % 21)))
+    assert(toEvent(Outcome.Failed(NamedValues.rc(1))) == Some(orderId <-: OrderFailedCatchable(Outcome.failed)))
+    assert(toEvent(Outcome.Disrupted(Problem("DISRUPTION"))) == Some(orderId <-: OrderFailedCatchable(Outcome.failed)))
   }
 
   private def toEvent(outcome: Outcome): Option[KeyedEvent[OrderActorEvent]] = {

@@ -4,7 +4,6 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.context.OrderContext
-import js7.data.job.ReturnCode
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderBroken, OrderDetachable, OrderFailedCatchable, OrderForked, OrderJoined, OrderMoved, OrderStarted}
 import js7.data.order.{Order, Outcome}
 import js7.data.workflow.instructions.Fork
@@ -33,8 +32,8 @@ object ForkExecutor extends EventInstructionExecutor
             case _: Outcome.Succeeded =>
               OrderMoved(order.position.increment)
 
-            case failed: Outcome.NotSucceeded =>
-              OrderFailedCatchable(failed)
+            case _: Outcome.NotSucceeded =>
+              OrderFailedCatchable()
           }))))
 
   private def checkOrderForked(context: OrderContext, orderForked: KeyedEvent[OrderForked]): KeyedEvent[OrderActorEvent] = {
@@ -59,7 +58,7 @@ object ForkExecutor extends EventInstructionExecutor
         childOrders.forall(context.childOrderEnded) ? (
           order.id <-: OrderJoined(
             if (childOrders.exists(_.lastOutcome.isFailed))
-              Outcome.Failed(ReturnCode(0))
+              Outcome.Failed()
             else
               Outcome.succeeded))
       })

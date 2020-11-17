@@ -8,9 +8,10 @@ import js7.common.scalautil.FileUtils.syntax._
 import js7.common.system.OperatingSystem.isWindows
 import js7.data.agent.AgentName
 import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
-import js7.data.job.{ExecutablePath, ReturnCode}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
+import js7.data.job.ExecutablePath
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.value.NamedValues
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.parser.WorkflowParser
 import js7.data.workflow.position.BranchId.Then
@@ -33,8 +34,8 @@ final class ExecuteTest extends AnyFreeSpec
       directoryProvider.run { (controller, _) =>
         val orderId = OrderId("❌")
         controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
-        val stampedSeq = controller.eventWatch.await[OrderFailed](_.key == orderId)
-        assert(stampedSeq.head.value.event.outcome.asInstanceOf[Outcome.Disrupted].reason.problem == SignedInjectionNotAllowed)
+        val orderProcessed = controller.eventWatch.await[OrderProcessed](_.key == orderId).head
+        assert(orderProcessed.value.event.outcome.asInstanceOf[Outcome.Disrupted].reason.problem == SignedInjectionNotAllowed)
       }
     }
   }
@@ -109,28 +110,28 @@ object ExecuteTest
     OrderAttached(TestAgentName),
     OrderStarted,
     OrderProcessingStarted,
-    OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
+    OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
     OrderMoved(Position(1)),
     OrderProcessingStarted,
-    OrderProcessed(Outcome.Succeeded(ReturnCode(1))),
+    OrderProcessed(Outcome.Succeeded(NamedValues.rc(1))),
     OrderMoved(Position(2)),
     OrderProcessingStarted,
-    OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
+    OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
     OrderMoved(Position(3)),
     OrderProcessingStarted,
-    OrderProcessed(Outcome.Succeeded(ReturnCode(2))),
+    OrderProcessed(Outcome.Succeeded(NamedValues.rc(2))),
     OrderMoved(Position(4) / Then % 0),
     OrderProcessingStarted,
-    OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
+    OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
     OrderMoved(Position(4) / Then % 1),
     OrderProcessingStarted,
-    OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
+    OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
     OrderMoved(Position(4) / Then % 2),
     OrderProcessingStarted,
-    OrderProcessed(Outcome.Succeeded(ReturnCode(4))),
+    OrderProcessed(Outcome.Succeeded(NamedValues.rc(4))),
     OrderMoved(Position(5)),
     OrderProcessingStarted,
-    OrderProcessed(Outcome.Succeeded(ReturnCode(5))),
+    OrderProcessed(Outcome.Succeeded(NamedValues.rc(5))),
     OrderMoved(Position(6)),
     OrderDetachable,
     OrderDetached,

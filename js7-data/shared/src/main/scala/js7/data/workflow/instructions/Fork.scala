@@ -65,7 +65,7 @@ extends Instruction
 
   override def branchWorkflows = branches.map(b => b.id.toBranchId -> b.workflow)
 
-  override def toString = s"Fork(${branches.map(_.id).mkString(",")})"
+  override def toString = s"Fork(${branches.map(_.id).mkString(",")})$sourcePosToString"
 }
 
 object Fork

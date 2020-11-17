@@ -59,16 +59,6 @@ object ExpressionParser
     "$" ~~ (nameOnly(simpleName) | curlyName)
   }
 
-  //private def keyValue[_: P] = P[NamedValue](
-  //  (where ~ P(keyword("returnCode")))
-  //    .map(where => NamedValue(where, NamedValue.ReturnCode)) |
-  //  (where ~ P(keyword("variable") ~ w ~/ inParentheses(stringExpression ~ (comma ~ stringExpression).?)))
-  //    .map { case (where, (name, default)) => NamedValue(where, NamedValue.KeyValue(name), default) })
-  //
-  //private def where[_: P] = P[NamedValue.Where](
-  //  (identifier ~ w ~ "." ~ w).?
-  //    .map(_.fold[NamedValue.Where](NamedValue.LastOccurred)(NamedValue.LastOccurredByPrefix.apply)))
-
   private def argumentFunctionCall[_: P] = P[NamedValue](
     keyword("argument") ~ w ~
       inParentheses(
@@ -87,18 +77,6 @@ object ExpressionParser
         default <- kv.get[Expression]("default")
       } yield NamedValue(where, NamedValue.KeyValue(key), default)))
 
-  private def returnCode[_: P] = P[NamedValue] {
-    def withArguments = P[NamedValue](
-      inParentheses(
-        for {
-          kv <- keyValues(namedValueKeyValue)
-          where <- kv.oneOfOr[NamedValue.Where](Set("label", "job"), NamedValue.LastOccurred)
-          default <- kv.get[Expression]("default")
-        } yield NamedValue(where, NamedValue.ReturnCode, default)))
-
-    keyword("returnCode") ~ w ~ withArguments.?.map(_ getOrElse LastReturnCode)
-  }
-
   private def namedValueKeyValue[_: P] = P[(String, Any)](
     keyValueConvert("label", identifier)(o => Right(NamedValue.ByLabel(o))) |
     keyValueConvert("job", identifier)(o => Right(NamedValue.LastExecutedJob(WorkflowJob.Name(o)))) |
@@ -106,7 +84,7 @@ object ExpressionParser
 
   private def factorOnly[_: P] = P(
     parenthesizedExpression | booleanConstant | numericConstant | stringConstant | catchCount |
-      argumentFunctionCall | variableFunctionCall | returnCode | dollarNamedValue)
+      argumentFunctionCall | variableFunctionCall | dollarNamedValue)
 
   private def factor[_: P] = P(
     factorOnly ~ (w ~ "." ~ w ~/ keyword).? flatMap {

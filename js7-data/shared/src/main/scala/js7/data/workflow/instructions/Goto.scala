@@ -12,5 +12,5 @@ final case class Goto(to: Label, sourcePos: Option[SourcePos] = None) extends Ju
 {
   def withoutSourcePos = copy(sourcePos = None)
 
-  override def toString = s"goto $to"
+  override def toString = s"goto $to$sourcePosToString"
 }
