@@ -143,10 +143,10 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
         val outcome = taskStepEnded match {
           case TaskStepSucceeded(namedValues, returnCode) =>
             val o = job.toOutcome(namedValues, returnCode)
-            if (isKilled) Outcome.Cancelled(o) else o
+            if (isKilled) Outcome.Killed(o) else o
 
           case TaskStepFailed(problem) =>
-            if (isKilled) Outcome.Cancelled(Outcome.Failed(Some(problem.toString/*???*/), Map.empty))
+            if (isKilled) Outcome.Killed(Outcome.Failed(Some(problem.toString/*???*/), Map.empty))
             else Outcome.Disrupted(problem)
         }
         finishProcessing(OrderProcessed(outcome), stdoutStderrStatistics)

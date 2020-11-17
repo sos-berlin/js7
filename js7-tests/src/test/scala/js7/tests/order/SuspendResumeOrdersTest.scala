@@ -126,7 +126,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderStarted,
       OrderProcessingStarted,
       OrderSuspendMarked(SuspendMode(Some(CancelMode.Kill()))),
-      OrderProcessed(Outcome.Cancelled(if (isWindows) Outcome.succeededRC0 else Outcome.Failed(NamedValues.rc(SIGTERM)))),
+      OrderProcessed(Outcome.Killed(if (isWindows) Outcome.succeededRC0 else Outcome.Failed(NamedValues.rc(SIGTERM)))),
       OrderProcessingKilled,
       OrderDetachable,
       OrderDetached,

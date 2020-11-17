@@ -108,7 +108,7 @@ object Outcome
       } yield Failed(errorMessage, namedValues)
   }
 
-  final case class Cancelled(outcome: Outcome.Completed)
+  final case class Killed(outcome: Outcome.Completed)
   extends Outcome {
     def isSucceeded = false
   }
@@ -148,6 +148,6 @@ object Outcome
   implicit val jsonCodec = TypedJsonCodec[Outcome](
     Subtype[Succeeded],
     Subtype[Failed],
-    Subtype(deriveCodec[Cancelled]),
+    Subtype(deriveCodec[Killed]),
     Subtype(deriveCodec[Disrupted]))
 }

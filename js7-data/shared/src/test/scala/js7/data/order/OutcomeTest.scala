@@ -74,10 +74,10 @@ final class OutcomeTest extends AnyFreeSpec
         }""")
     }
 
-    "Cancelled with Succeeded and namedValues" in {
-      testJson[Outcome](Outcome.Cancelled(Outcome.Succeeded(Map("returnCode" -> NumericValue(0), "KEY" -> StringValue("VALUE")))), json"""
+    "Killed with Succeeded and namedValues" in {
+      testJson[Outcome](Outcome.Killed(Outcome.Succeeded(Map("returnCode" -> NumericValue(0), "KEY" -> StringValue("VALUE")))), json"""
         {
-          "TYPE": "Cancelled",
+          "TYPE": "Killed",
           "outcome": {
             "TYPE": "Succeeded",
             "namedValues": {

@@ -31,7 +31,7 @@ object ExecuteExecutor extends EventInstructionExecutor
               case _: Outcome.NotSucceeded =>
                 OrderFailedCatchable_()
 
-              case _: Outcome.Cancelled =>
+              case _: Outcome.Killed =>
                 OrderProcessingKilled
             })))
 }

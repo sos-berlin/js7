@@ -143,7 +143,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
         OrderStarted,
         OrderProcessingStarted,
         OrderCancelMarked(mode),
-        OrderProcessed(Outcome.Cancelled(Outcome.Failed(NamedValues.rc(
+        OrderProcessed(Outcome.Killed(Outcome.Failed(NamedValues.rc(
           if (isWindows) ReturnCode(0) else ReturnCode(if (immediately) SIGKILL else SIGTERM))))),
         OrderProcessingKilled,
         OrderDetachable,

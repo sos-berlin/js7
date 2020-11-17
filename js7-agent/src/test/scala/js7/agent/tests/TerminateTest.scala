@@ -76,7 +76,7 @@ final class TerminateTest extends AnyFreeSpec with AgentTester
 
     client.commandExecute(ShutDown(Some(SIGKILL))).await(99.s).orThrow
     val stepEnded = whenStepEnded await 99.s
-    assert(stepEnded.forall(_.outcome.isInstanceOf[Outcome.Cancelled]))
+    assert(stepEnded.forall(_.outcome.isInstanceOf[Outcome.Killed]))
     agent.terminated await 99.s
     client.close()
   }
