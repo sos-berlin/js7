@@ -7,6 +7,7 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.crypt.{GenericSignature, SignedString}
 import js7.base.problem.TestCodeProblem
 import js7.base.process.ProcessSignal.SIGTERM
+import js7.common.message.ProblemCodeMessages
 import js7.data.agent.{AgentName, AgentRunId}
 import js7.data.command.CancelMode
 import js7.data.event.JournalId
@@ -22,6 +23,8 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class AgentCommandTest extends AnyFreeSpec
 {
+  ProblemCodeMessages.initialize()
+
   "Batch" in {
     check(AgentCommand.Batch(List(AgentCommand.NoOperation, AgentCommand.EmergencyStop())),
       json"""{
@@ -46,7 +49,7 @@ final class AgentCommandTest extends AnyFreeSpec
             "arguments": {
               "ARG": "VALUE"
             },
-            "message": "TestCode (ARG=VALUE)"
+            "message": "TestMessage argument=$$argument (ARG=VALUE)"
           }
         ]
       }""")
