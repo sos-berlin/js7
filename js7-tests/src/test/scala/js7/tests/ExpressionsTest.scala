@@ -94,7 +94,7 @@ object ExpressionsTest {
   private val ExpectedEvents = Map(
     OrderId("❌") -> Vector(
       OrderAdded(TestWorkflow.id),
-      OrderFailed(Outcome.Disrupted(Problem("No such named value: ARG")))),
+      OrderFailed(Some(Outcome.Disrupted(Problem("No such named value: ARG"))))),
     OrderId("⭕️") -> Vector(
       OrderAdded(TestWorkflow.id, None, Map("ARG" -> StringValue("ARG-VALUE"))),
       OrderMoved(Position(0) / Then % 0),
@@ -103,7 +103,7 @@ object ExpressionsTest {
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(Outcome.Succeeded(Map("JOB-KEY" -> StringValue("JOB-RESULT")) ++ NamedValues.rc(0))),
-      OrderFailed(Outcome.Disrupted(Problem("No such named value: ARG2")))),
+      OrderFailed(Some(Outcome.Disrupted(Problem("No such named value: ARG2"))))),
     OrderId("🔺") -> Vector(
       OrderAdded(TestWorkflow.id, None, Map(
         "ARG" -> StringValue("ARG-VALUE"),

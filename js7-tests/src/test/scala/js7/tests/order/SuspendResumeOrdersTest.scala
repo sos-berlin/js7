@@ -335,9 +335,9 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id, after = lastEventId)
       .filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
         OrderResumed(Some(Position(2) / Try_ % 0)),
-        OrderCatched(Outcome.failed, Position(2) / catch_(0) % 0),
+        OrderCatched(Some(Outcome.failed), Position(2) / catch_(0) % 0),
         OrderRetrying(Position(2) / try_(1) % 0, None),
-        OrderFailed()))
+        OrderFailed(Some(Outcome.failed))))
   }
 }
 

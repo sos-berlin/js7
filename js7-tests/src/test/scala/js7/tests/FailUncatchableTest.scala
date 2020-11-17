@@ -38,7 +38,7 @@ final class FailUncatchableTest extends AnyFreeSpec
         OrderMoved(Position(1)),
         OrderDetachable,
         OrderDetached,
-        OrderFailed()))
+        OrderFailed(Some(Outcome.failed))))
   }
 
   "fail (uncatchable=true, returnCode=7)" in {
@@ -57,7 +57,7 @@ final class FailUncatchableTest extends AnyFreeSpec
         OrderMoved(Position(1)),
         OrderDetachable,
         OrderDetached,
-        OrderFailed(Outcome.Failed(NamedValues.rc(7)))))
+        OrderFailed(Some(Outcome.Failed(NamedValues.rc(7))))))
   }
 
   "fail (uncatchable=true, returnCode=7, message='ERROR')" in {
@@ -76,7 +76,7 @@ final class FailUncatchableTest extends AnyFreeSpec
         OrderMoved(Position(1)),
         OrderDetachable,
         OrderDetached,
-        OrderFailed(Outcome.Failed(Some("TEST-ERROR"), NamedValues.rc(7)))))
+        OrderFailed(Some(Outcome.Failed(Some("TEST-ERROR"), NamedValues.rc(7))))))
   }
 
   "fail in fork, fail first" in {
@@ -110,7 +110,7 @@ final class FailUncatchableTest extends AnyFreeSpec
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
         OrderMoved(Position(0) / "fork+🥕" % 1),
-        OrderFailedInFork(Outcome.Failed(Some("TEST-ERROR"))),
+        OrderFailedInFork(Some(Outcome.Failed(Some("TEST-ERROR")))),
         OrderDetachable,
         OrderDetached))
 
@@ -156,7 +156,7 @@ final class FailUncatchableTest extends AnyFreeSpec
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
         OrderMoved(Position(0) / "fork+🥕" % 1),
-        OrderFailedInFork(Outcome.Failed(Some("TEST-ERROR"))),
+        OrderFailedInFork(Some(Outcome.Failed(Some("TEST-ERROR")))),
         OrderDetachable,
         OrderDetached))
 

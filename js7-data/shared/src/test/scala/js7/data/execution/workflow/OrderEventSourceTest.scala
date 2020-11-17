@@ -728,7 +728,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
       val order = Order(OrderId("ORDER"), workflow.id /: pos, Order.Processed,
         historicOutcomes = HistoricOutcome(pos, failed7) :: Nil)
       assert(eventSource(order).nextEvent(order.id) == Some(order.id <-:
-        OrderCatched(Outcome.failed, Position(0) / try_(0) % 0 / catch_(0) % 0)))
+        OrderCatched(Position(0) / try_(0) % 0 / catch_(0) % 0)))
     }
 
     "Processed failed in inner catch-block -> OrderCatched" in {
@@ -736,7 +736,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
       val order = Order(OrderId("ORDER"), workflow.id /: pos, Order.Processed,
         historicOutcomes = HistoricOutcome(pos, failed7) :: Nil)
       assert(eventSource(order).nextEvent(order.id) == Some(order.id <-:
-        OrderCatched(Outcome.failed, Position(0) / catch_(0) % 0)))
+        OrderCatched(Position(0) / catch_(0) % 0)))
     }
 
     "Processed failed in outer catch-block -> OrderFailed" in {
@@ -752,7 +752,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
       val order = Order(OrderId("ORDER"), workflow.id /: pos, Order.Processed,
         historicOutcomes = HistoricOutcome(pos, failed7) :: Nil)
       assert(eventSource(order).nextEvent(order.id) == Some(order.id <-:
-        OrderCatched(Outcome.failed, Position(0) / catch_(0) % 1 / catch_(0) % 0)))
+        OrderCatched(Position(0) / catch_(0) % 1 / catch_(0) % 0)))
     }
 
     "Processed failed in catch in catch -> OrderFailed" in {

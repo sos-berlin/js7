@@ -100,16 +100,16 @@ final case class Order[+S <: Order.State](
         case OrderFailed(outcome_) =>
           check(isOrderFailedApplicable,
             copy(
-              state = if (isState[Fresh]) FailedWhileFresh else Failed(outcome_),
-              historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
+              state = if (isState[Fresh]) FailedWhileFresh else Failed,
+              historicOutcomes = outcome_.fold(historicOutcomes)(o => historicOutcomes :+ HistoricOutcome(position, o))))
 
         case OrderFailedInFork(outcome_) =>
           check((isState[Ready] || isState[Processed]) && !isSuspended && (isDetached || isAttached),
             copy(
-              state = FailedInFork(outcome_),
-              historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
+              state = FailedInFork,
+              historicOutcomes = outcome_.fold(historicOutcomes)(o => historicOutcomes :+ HistoricOutcome(position, o))))
 
-        case OrderFailedCatchable(_) =>
+        case OrderFailedCatchable_(_) =>
           inapplicable
 
         case OrderCatched(outcome_, movedTo) =>
@@ -117,7 +117,7 @@ final case class Order[+S <: Order.State](
             copy(
               state = Ready,
               workflowPosition = workflowPosition.copy(position = movedTo),
-              historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
+              historicOutcomes = outcome_.fold(historicOutcomes)(o => historicOutcomes :+ HistoricOutcome(position, o))))
 
         case OrderRetrying(to, maybeDelayUntil) =>
           check(isState[Ready] && !isSuspended && (isDetached || isAttached),
@@ -470,10 +470,11 @@ object Order
 
   final case class Awaiting(offeredOrderId: OrderId) extends IsStarted
 
-  // TODO Redundant outcome ?
-  final case class Failed(outcome: Outcome.NotSucceeded) extends IsStarted
+  type Failed = Failed.type
+  final case object Failed extends IsStarted
 
-  final case class FailedInFork(outcome: Outcome.NotSucceeded) extends IsStarted with IsTerminated
+  type FailedInFork = FailedInFork.type
+  final case object FailedInFork extends IsStarted with IsTerminated
 
   type Finished = Finished.type
   case object Finished extends IsStarted with IsTerminated
@@ -498,8 +499,8 @@ object Order
     Subtype(deriveCodec[Forked]),
     Subtype(deriveCodec[Offering]),
     Subtype(deriveCodec[Awaiting]),
-    Subtype(deriveCodec[Failed]),
-    Subtype(deriveCodec[FailedInFork]),
+    Subtype(Failed),
+    Subtype(FailedInFork),
     Subtype(Finished),
     Subtype(Cancelled),
     Subtype(Removed),

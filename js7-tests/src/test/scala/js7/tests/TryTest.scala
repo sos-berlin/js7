@@ -83,7 +83,7 @@ final class TryTest extends AnyFreeSpec
           OrderProcessingStarted,
           OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
           OrderMoved(Position(0) / try_(0) % 1 / Then % 0),
-          OrderCatched(Outcome.Failed(), Position(0) / "catch+0" % 0),
+          OrderCatched(Some(Outcome.failed), Position(0) / "catch+0" % 0),
           OrderProcessingStarted,
           OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
           OrderMoved(Position(1)),
@@ -131,7 +131,7 @@ final class TryTest extends AnyFreeSpec
             OrderForked.Child("🍋", OrderId("🔴|🍋")),
             OrderForked.Child("🌶", OrderId("🔴|🌶")))),
           OrderJoined(Outcome.Failed()),
-          OrderCatched(Outcome.Failed(), Position(0) / "catch+0" % 0),
+          OrderCatched(Position(0) / "catch+0" % 0),
           OrderAttachable(TestAgentName),
           OrderAttached(TestAgentName),
           OrderProcessingStarted,
@@ -190,11 +190,11 @@ object TryTest
     OrderStarted,
     OrderProcessingStarted,
     OrderProcessed(Outcome.Failed(ReturnCode(1))),
-    OrderCatched(Outcome.failed, Position(0) / "try+0" % 0 / "catch+0" % 0),
+    OrderCatched(Position(0) / "try+0" % 0 / "catch+0" % 0),
 
     OrderProcessingStarted,
     OrderProcessed(Outcome.Failed(ReturnCode(2))),
-    OrderCatched(Outcome.failed, Position(1)),  // Empty catch-block, so Order is moved to outer block
+    OrderCatched(Position(1)),  // Empty catch-block, so Order is moved to outer block
 
     OrderProcessingStarted,
     OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
@@ -223,9 +223,9 @@ object TryTest
     OrderStarted,
     OrderProcessingStarted,
     OrderProcessed(Outcome.Failed(ReturnCode(1))),
-    OrderCatched(Outcome.failed, Position(0) / "catch+0" % 0),
+    OrderCatched(Position(0) / "catch+0" % 0),
 
     OrderProcessingStarted,
     OrderProcessed(Outcome.Failed(ReturnCode(2))),
-    OrderFailed(Outcome.failed))
+    OrderFailed())
 }

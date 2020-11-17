@@ -11,7 +11,7 @@ import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.context.OrderContext
 import js7.data.execution.workflow.instructions.{ForkExecutor, InstructionExecutor}
 import js7.data.order.Order.{IsTerminated, ProcessingKilled}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFailed, OrderFailedCatchable, OrderFailedInFork, OrderMoved, OrderRemoved, OrderResumeMarked, OrderResumed, OrderSuspendMarked, OrderSuspended}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFailed, OrderFailedCatchable_, OrderFailedInFork, OrderMoved, OrderRemoved, OrderResumeMarked, OrderResumed, OrderSuspendMarked, OrderSuspended}
 import js7.data.order.{Order, OrderId, OrderMark, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem}
 import js7.data.workflow.instructions.{End, Fork, Goto, IfFailedGoto, Retry, TryInstruction}
@@ -28,9 +28,9 @@ final class OrderEventSource(
   isAgent: Boolean)
 {
   private val context = new OrderContext {
-    def idToOrder                                   = OrderEventSource.this.idToOrder
-    def instruction(position: WorkflowPosition)     = OrderEventSource.this.instruction(position)
-    def idToWorkflow(id: WorkflowId)                = OrderEventSource.this.idToWorkflow(id)
+    def idToOrder                               = OrderEventSource.this.idToOrder
+    def instruction(position: WorkflowPosition) = OrderEventSource.this.instruction(position)
+    def idToWorkflow(id: WorkflowId)            = OrderEventSource.this.idToWorkflow(id)
 
     def childOrderEnded(order: Order[Order.State]): Boolean =
       order.parent.flatMap(o => idToOrder(o).toOption) match {
@@ -65,14 +65,18 @@ final class OrderEventSource(
                 case Right(Some(orderId <-: (moved: OrderMoved))) =>
                   applyMoveInstructions(orderId, moved) map Some.apply
 
-                case Right(Some(orderId <-: OrderFailedCatchable(outcome))) =>  // OrderFailedCatchable is used internally only
+                case Right(Some(orderId <-: OrderFailedCatchable_(outcome))) =>  // OrderFailedCatchable_ is used internally only
                   assertThat(orderId == order.id)
                   findCatchPosition(order) match {
                     case Some(firstCatchPos) if !isMaxRetriesReached(order, firstCatchPos) =>
                       applyMoveInstructions(order.withPosition(firstCatchPos))
                         .flatMap(movedPos => Right(Some(orderId <-: OrderCatched(outcome, movedPos))))
                     case _ =>
-                      Right(Some(orderId <-: (if (order.position.isInFork) OrderFailedInFork(outcome) else OrderFailed(outcome))))
+                      Right(Some(orderId <-: (
+                        if (order.position.isInFork)
+                          OrderFailedInFork(outcome)
+                        else
+                          OrderFailed(outcome))))
                   }
 
                 case o => o
@@ -101,7 +105,7 @@ final class OrderEventSource(
     checkedEvent match {
       case Left(problem) =>
         if (order.isOrderFailedApplicable)
-          Some(order.id <-: OrderFailed(Outcome.Disrupted(problem)))
+          Some(order.id <-: OrderFailed(Some(Outcome.Disrupted(problem))))
         else
           Some(order.id <-: OrderBroken(problem))
 

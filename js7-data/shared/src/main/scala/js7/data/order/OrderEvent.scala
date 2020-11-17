@@ -128,21 +128,22 @@ object OrderEvent {
   final case class OrderMoved(to: Position)
   extends OrderActorEvent
 
-  // TODO OrderCatched should not contain key-values ?
-  final case class OrderFailed(outcome: Outcome.NotSucceeded = Outcome.failed)
+  final case class OrderFailed(outcome: Option[Outcome.NotSucceeded] = None)
   extends OrderActorEvent
 
-  final case class OrderFailedInFork(outcome: Outcome.NotSucceeded = Outcome.failed)
+  final case class OrderFailedInFork(outcome: Option[Outcome.NotSucceeded] = None)
   extends OrderActorEvent
 
-  /** Only internal. Will be converted to `OrderFailed` or `OrderCatched`. */
-  // TODO Option[Outcome.NotSucceed]
-  final case class OrderFailedCatchable(outcome: Outcome.NotSucceeded = Outcome.failed)
+  /** Only intermediate, not persisted. Will be converted to `OrderFailed` or `OrderCatched`. */
+  final case class OrderFailedCatchable_(outcome: Option[Outcome.NotSucceeded] = None)
   extends OrderActorEvent
 
-  // TODO OrderCatched should not contain key-values
-  // TODO Option[Outcome.NotSucceed]
-  final case class OrderCatched(outcome: Outcome.NotSucceeded, movedTo: Position) extends OrderActorEvent
+  final case class OrderCatched(outcome: Option[Outcome.NotSucceeded], movedTo: Position)
+  extends OrderActorEvent
+  object OrderCatched {
+    def apply(movedTo: Position): OrderCatched =
+      apply(None, movedTo)
+  }
 
   final case class OrderRetrying(movedTo: Position, delayedUntil: Option[Timestamp] = None)
   extends OrderActorEvent

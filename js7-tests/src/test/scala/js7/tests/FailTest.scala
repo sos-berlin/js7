@@ -36,7 +36,7 @@ final class FailTest extends AnyFreeSpec
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
         OrderMoved(Position(1)),
-        OrderFailed()))
+        OrderFailed(Some(Outcome.failed))))
   }
 
   "fail (returnCode=7)" in {
@@ -53,7 +53,7 @@ final class FailTest extends AnyFreeSpec
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
         OrderMoved(Position(1)),
-        OrderFailed(Outcome.Failed(NamedValues.rc(7)))))
+        OrderFailed(Some(Outcome.Failed(NamedValues.rc(7))))))
   }
 
   "fail (returnCode=7, message='ERROR')" in {
@@ -64,7 +64,7 @@ final class FailTest extends AnyFreeSpec
       Vector(
         OrderAdded(TestWorkflowId),
         OrderStarted,
-        OrderFailed(Outcome.Failed(Some("ERROR"), NamedValues.rc(7)))))
+        OrderFailed(Some(Outcome.Failed(Some("ERROR"), NamedValues.rc(7))))))
   }
 
   "fail in fork" in {
@@ -84,7 +84,7 @@ final class FailTest extends AnyFreeSpec
         OrderJoined(Outcome.failed),
         OrderFailed()),
       OrderId("🔺|🍋") -> Vector(
-        OrderFailedInFork()))
+        OrderFailedInFork(Some(Outcome.failed))))
   }
 
   private def runUntil[E <: OrderEvent: ClassTag: TypeTag](notation: String, expectedEvents: Vector[OrderEvent], moreExpectedEvents: (OrderId, Vector[OrderEvent])*): Unit =

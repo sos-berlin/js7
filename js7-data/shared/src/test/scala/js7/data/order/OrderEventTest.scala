@@ -149,7 +149,7 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderCatched" in {
-    check(OrderCatched(Outcome.Failed(NamedValues.rc(1)), Position(1)), json"""
+    check(OrderCatched(Some(Outcome.Failed(NamedValues.rc(1))), Position(1)), json"""
       {
         "TYPE": "OrderCatched",
         "outcome": {
@@ -163,7 +163,7 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderCatched complete" in {
-    check(OrderCatched(Outcome.Failed(Some("FAILED"), NamedValues.rc(1)), Position(1)), json"""
+    check(OrderCatched(Some(Outcome.Failed(Some("FAILED"), NamedValues.rc(1))), Position(1)), json"""
       {
         "TYPE": "OrderCatched",
         "outcome": {
@@ -178,7 +178,7 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderFailed" in {
-    check(OrderFailed(Outcome.Failed(NamedValues.rc(1))), json"""
+    check(OrderFailed(Some(Outcome.Failed(NamedValues.rc(1)))), json"""
       {
         "TYPE": "OrderFailed",
         "outcome": {
@@ -191,7 +191,7 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderFailed(Failed) complete" in {
-    check(OrderFailed(Outcome.Failed(Some("ERROR"), NamedValues.rc(1))), json"""
+    check(OrderFailed(Some(Outcome.Failed(Some("ERROR"), NamedValues.rc(1)))), json"""
       {
         "TYPE": "OrderFailed",
         "outcome": {
@@ -205,7 +205,7 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderFailed(Disrupted(PROBLEM))" in {
-    check(OrderFailed(Outcome.Disrupted(Problem("PROBLEM"))), json"""
+    check(OrderFailed(Some(Outcome.Disrupted(Problem("PROBLEM")))), json"""
       {
         "TYPE": "OrderFailed",
         "outcome": {
@@ -221,7 +221,7 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderFailedInFork" in {
-    check(OrderFailedInFork(Outcome.Failed(NamedValues.rc(1))), json"""
+    check(OrderFailedInFork(Some(Outcome.Failed(NamedValues.rc(1)))), json"""
       {
         "TYPE": "OrderFailedInFork",
         "outcome": {
@@ -234,7 +234,7 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderFailedInFork complete" in {
-    check(OrderFailedInFork(Outcome.Failed(Some("ERROR"), NamedValues.rc(1))), json"""
+    check(OrderFailedInFork(Some(Outcome.Failed(Some("ERROR"), NamedValues.rc(1)))), json"""
       {
         "TYPE": "OrderFailedInFork",
         "outcome": {

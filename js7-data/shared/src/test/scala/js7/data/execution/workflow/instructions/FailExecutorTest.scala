@@ -4,7 +4,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentName
 import js7.data.execution.workflow.context.OrderContext
 import js7.data.execution.workflow.instructions.FailExecutorTest._
-import js7.data.order.OrderEvent.{OrderDetachable, OrderFailed, OrderFailedCatchable, OrderJoined, OrderStarted}
+import js7.data.order.OrderEvent.{OrderDetachable, OrderFailed, OrderFailedCatchable_, OrderJoined, OrderStarted}
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.instructions.{Fail, Fork, ImplicitEnd}
@@ -44,12 +44,12 @@ final class FailExecutorTest extends AnyFreeSpec
     "Catchable Fail" - {
       "Detached order" in {
         assert(FailExecutor.toEvent(context, TestOrder, Fail()) ==
-          Right(Some(TestOrder.id <-: OrderFailedCatchable(Outcome.failed))))
+          Right(Some(TestOrder.id <-: OrderFailedCatchable_(Some(Outcome.failed)))))
       }
 
       "Attached order" in {
         assert(FailExecutor.toEvent(context, TestOrder.copy(attachedState = Some(Order.Attached(AgentName("AGENT")))), Fail()) ==
-          Right(Some(TestOrder.id <-: OrderFailedCatchable(Outcome.failed))))
+          Right(Some(TestOrder.id <-: OrderFailedCatchable_(Some(Outcome.failed)))))
       }
     }
 
@@ -63,13 +63,13 @@ final class FailExecutorTest extends AnyFreeSpec
 
       "OrderFailed" in {
         assert(FailExecutor.toEvent(context, TestOrder, fail) ==
-          Right(Some(TestOrder.id <-: OrderFailed())))
+          Right(Some(TestOrder.id <-: OrderFailed(Some(Outcome.failed)))))
       }
 
       "OrderFailed keeps last Outcome but not the namedValues" in {
         val order = TestOrder.copy(
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(888) ++ Map( "A" -> StringValue("AA")))) :: Nil)
-        assert(FailExecutor.toEvent(context, order, fail) == Right(Some(TestOrder.id <-: OrderFailed())))
+        assert(FailExecutor.toEvent(context, order, fail) == Right(Some(TestOrder.id <-: OrderFailed(Some(Outcome.failed)))))
       }
 
       "One fork's child order fails while the other has reached the end" in {
@@ -97,7 +97,7 @@ object FailExecutorTest
       Order.Forked.Child(Fork.Branch.Id("🍋"), OrderId("FORKED") | "🍋"))))
 
   private val Carrot = Order(ForkedOrder.id | "🥕", TestWorkflowId /: (Position(1) / "fork+🥕" % 2 / Then % 3),
-    Order.FailedInFork(Outcome.Failed(NamedValues.rc(33))), parent = Some(ForkedOrder.id))
+    Order.FailedInFork, parent = Some(ForkedOrder.id))
 
   private val Lemon  = Order(ForkedOrder.id | "🍋", TestWorkflowId /: (Position(1) / "fork+🍋" % 4),
     Order.Ready, parent = Some(ForkedOrder.id))

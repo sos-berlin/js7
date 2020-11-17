@@ -251,8 +251,8 @@ final class OrderTest extends AnyFreeSpec
       //OrderStderrWritten("stderr") is not an OrderCoreEvent
       OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
       OrderProcessingKilled,
-      OrderFailed(Outcome.Failed(NamedValues.rc(1))),
-      OrderCatched(Outcome.Failed(NamedValues.rc(1)), Position(1)),
+      OrderFailed(Some(Outcome.Failed(NamedValues.rc(1)))),
+      OrderCatched(Position(1)),
       OrderRetrying(Position(1)),
       OrderAwoke,
       OrderMoved(Position(1)),
@@ -260,8 +260,8 @@ final class OrderTest extends AnyFreeSpec
       OrderJoined(Outcome.Succeeded(NamedValues.rc(0))),
       OrderOffered(OrderId("OFFERED"), until = Timestamp.ofEpochSecond(1)),
       OrderAwaiting(OrderId("OFFERED")),
-      OrderFailed(Outcome.Failed(NamedValues.rc(1))),
-      OrderFailedInFork(Outcome.Failed(NamedValues.rc(1))),
+      OrderFailed(Some(Outcome.Failed(NamedValues.rc(1)))),
+      OrderFailedInFork(None),
       OrderFinished,
 
       OrderCancelMarked(CancelMode.FreshOnly),
@@ -402,8 +402,8 @@ final class OrderTest extends AnyFreeSpec
     }
 
     "Failed" - {
-      checkAllEvents(Order(orderId, workflowId, Failed(Outcome.Failed(NamedValues.rc(1))),
-          historicOutcomes = HistoricOutcome(Position(0), Outcome.Failed(NamedValues.rc(1))) :: Nil),
+      checkAllEvents(Order(orderId, workflowId, Failed,
+          historicOutcomes = HistoricOutcome(Position(0), Outcome.failed) :: Nil),
         removeMarkable[Failed] orElse
         markable[Failed] orElse
         detachingAllowed[Failed] orElse
@@ -414,7 +414,7 @@ final class OrderTest extends AnyFreeSpec
     }
 
     "FailedInFork" - {
-      checkAllEvents(Order(orderId, workflowId, FailedInFork(Outcome.Failed(NamedValues.rc(1))),
+      checkAllEvents(Order(orderId, workflowId, FailedInFork,
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Failed(NamedValues.rc(1))) :: Nil),
         markable[FailedInFork] orElse
         detachingAllowed[FailedInFork] orElse {
