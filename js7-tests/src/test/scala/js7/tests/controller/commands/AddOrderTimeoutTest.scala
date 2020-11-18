@@ -20,7 +20,7 @@ final class AddOrderTimeoutTest extends AnyFreeSpec with ControllerAgentForScala
   protected val inventoryItems = workflow :: Nil
   override protected val controllerConfig = config"""
     js7.web.server.auth.public = on
-    js7.akka.ask-timeout = 1s
+    js7.akka.ask-timeout = 2s
     js7.TEST-ONLY.add-order-delay = 10s
     """
 
