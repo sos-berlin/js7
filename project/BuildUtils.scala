@@ -34,10 +34,6 @@ object BuildUtils
   }
 
   private val isUncommitted = Def.setting(git.gitUncommittedChanges.value || git.gitHeadCommit.value.isEmpty/*no Git?*/)
-  private val commitDate: Def.Initialize[Option[String]] =
-    Def.setting(
-      if (git.gitUncommittedChanges.value) Some(Instant.now.toString)
-      else git.gitHeadCommitDate.value)
 
   private val commitHash: Def.Initialize[Option[String]] =
     Def.setting(git.gitHeadCommit.value.filter(_.nonEmpty) orElse sys.env.get("GIT_COMMIT"))
@@ -49,11 +45,15 @@ object BuildUtils
         version.value + "-UNCOMMITTED"
       else if (version.value endsWith "-SNAPSHOT") {
         // "2.0.0-SNAPSHOT-2019-01-14T1200-9abcdef"
-        val ts = git.gitHeadCommitDate.value.fold(Instant.now)(parseInstant).toString
-        version.value + "-" + ts.take(13) + ts.substring(14, 16) + git.gitHeadCommit.value.fold("")(o => "-" + o.take(CommitHashLength))
+        version.value + "-" + committedAt.value.getOrElse("?") + git.gitHeadCommit.value.fold("")(o => "-" + o.take(CommitHashLength))
       } else
         // "2.0.0-M1"
         version.value)
+
+  private lazy val committedAt: Def.Initialize[Option[String]] =
+    Def.setting(git.gitHeadCommitDate.value
+      .map(o => parseInstant(o).toString)
+      .map(_.take(16) + "Z"))
 
   private val prettyVersion: Def.Initialize[String] =
     Def.setting {
@@ -66,11 +66,11 @@ object BuildUtils
           case o => o
         }
         sb ++= " "
-        sb ++= (branch +: commitHash.value.map(_ take CommitHashLength) ++: commitDate.value.toList)
+        sb ++= (branch +: commitHash.value.map(_ take CommitHashLength) ++: committedAt.value.toList)
           .filter(_.nonEmpty)
           .mkString("(", " ", ")")
       }
-      if (isUncommitted.value) sb ++= " UNCOMMITTED"
+      if (isUncommitted.value) sb ++= " UNCOMMITTED " + Instant.now.toString.take(16) + "Z"
       sb.toString.trim
     }
 
