@@ -5,8 +5,10 @@ import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.problem.Problems.InvalidNameProblem
 import js7.base.time.ScalaTime._
 import js7.data.agent.AgentName
-import js7.data.job.ExecutablePath
-import js7.tester.CirceJsonTester
+import js7.data.job.{ExecutablePath, ReturnCode}
+import js7.data.value.{NumericValue, StringValue}
+import js7.data.workflow.instructions.ReturnCodeMeaning
+import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
@@ -14,21 +16,48 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class WorkflowJobTest extends AnyFreeSpec
 {
-  "JSON" in {
-    CirceJsonTester.testJson(
-      WorkflowJob(
-        AgentName("AGENT"),
-        ExecutablePath("/EXECUTABLE"),
-        sigkillAfter = Some(10.s)),
-      json"""{
-        "agentName": "AGENT",
-        "executable": {
-          "TYPE": "ExecutablePath",
-          "path":  "/EXECUTABLE"
-        },
-        "taskLimit": 1,
-        "sigkillAfter": 10
-      }""")
+  "JSON" - {
+    "default" in {
+      testJson(
+        WorkflowJob(
+          AgentName("AGENT"),
+          ExecutablePath("/EXECUTABLE")),
+        json"""{
+          "agentName": "AGENT",
+          "executable": {
+            "TYPE": "ExecutablePath",
+            "path":  "/EXECUTABLE"
+          },
+          "taskLimit": 1
+        }""")
+    }
+
+    "complete" in {
+      testJson(
+        WorkflowJob(
+          AgentName("AGENT"),
+          ExecutablePath("/EXECUTABLE"),
+          Map("NAME" -> StringValue("VALUE"), "NUMBER" -> NumericValue(7)),
+          ReturnCodeMeaning.Success(Set(ReturnCode(0), ReturnCode(1))),
+          taskLimit = 3,
+          sigkillAfter = Some(10.s)),
+        json"""{
+          "agentName": "AGENT",
+          "executable": {
+            "TYPE": "ExecutablePath",
+            "path":  "/EXECUTABLE"
+          },
+          "defaultArguments": {
+            "NAME": "VALUE",
+            "NUMBER": 7
+          },
+          "returnCodeMeaning": {
+            "success": [ 0, 1 ]
+          },
+          "taskLimit": 3,
+          "sigkillAfter": 10
+        }""")
+    }
   }
 
   "Name" in {
