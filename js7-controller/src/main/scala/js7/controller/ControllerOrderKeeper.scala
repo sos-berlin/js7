@@ -1061,7 +1061,7 @@ private[controller] object ControllerOrderKeeper
   }
 
   private object Internal {
-    final case class OrderIsDue(orderId: OrderId)
+    final case class OrderIsDue(orderId: OrderId) extends DeadLetterSuppression
     final case class Activated(recovered: Try[Recovered[ControllerState]])
     final case class ClusterModuleTerminatedUnexpectedly(tried: Try[Checked[Completed]]) extends DeadLetterSuppression
     final case class Ready(outcome: Checked[Completed])
