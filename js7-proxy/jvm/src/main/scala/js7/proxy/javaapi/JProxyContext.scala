@@ -5,6 +5,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import java.util.concurrent.ForkJoinPool
 import js7.base.BuildInfo
 import js7.base.annotation.javaApi
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{HasCloser, Lazy}
 import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
@@ -41,11 +42,8 @@ extends HasCloser
   private val proxyConf = ProxyConfs.fromConfig(config)
 
   private val useJavaThreadPool = config_.getBoolean("js7.thread-pools.use-java-thread-pool")
-  private[proxy] implicit val scheduler =
-    if (useJavaThreadPool)
-      ThreadPools.newStandardScheduler("JControllerProxy", config_, closer)
-    else
-      Scheduler(ForkJoinPool.commonPool)
+  private val ownScheduler = !useJavaThreadPool ? ThreadPools.newStandardScheduler("JControllerProxy", config_, closer)
+  private[proxy] implicit val scheduler = ownScheduler getOrElse Scheduler(ForkJoinPool.commonPool)
   private val actorSystemLazy = Lazy(newActorSystem("JS7-Proxy", defaultExecutionContext = scheduler))
 
   onClose {
@@ -66,7 +64,7 @@ extends HasCloser
   private def admissionsToApiResources(
     admissions: java.lang.Iterable[JAdmission],
     httpsConfig: JHttpsConfig)
-  : Seq[Resource[Task, HttpControllerApi]] =   {
+  : Seq[Resource[Task, HttpControllerApi]] = {
     if (admissions.asScala.isEmpty) throw new IllegalArgumentException("admissions argument must not be empty")
     for ((a, i) <- admissions.asScala.map(_.asScala).zipWithIndex.toSeq)
       yield AkkaHttpControllerApi.resource(a.uri, a.userAndPassword, httpsConfig.asScala, name = s"JournaledProxy-Controller-$i")
