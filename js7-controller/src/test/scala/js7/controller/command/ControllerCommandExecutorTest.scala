@@ -30,7 +30,7 @@ final class ControllerCommandExecutorTest extends AnyFreeSpec
         case (`cancelOrder`, `meta`) =>
           cancelled += 1
           Task.pure(Right(Response.Accepted.asInstanceOf[command.Response]))
-        case (NoOperation, `meta`) =>
+        case (NoOperation(None), `meta`) =>
           Task.pure(Right(Response.Accepted.asInstanceOf[command.Response]))
         case _ =>
           Task.pure(Left(Problem("COMMAND NOT IMPLEMENTED")))
@@ -40,7 +40,7 @@ final class ControllerCommandExecutorTest extends AnyFreeSpec
   private val commandExecutor = new ControllerCommandExecutor(otherCommandExecutor)
 
   "NoOperation" in {
-    assert(commandExecutor.executeCommand(NoOperation, meta).await(99.seconds) == Right(Response.Accepted))
+    assert(commandExecutor.executeCommand(NoOperation(), meta).await(99.seconds) == Right(Response.Accepted))
   }
 
   "CancelOrders" in {
@@ -49,7 +49,7 @@ final class ControllerCommandExecutorTest extends AnyFreeSpec
   }
 
   "Batch" in {
-    assert(commandExecutor.executeCommand(Batch(NoOperation :: ReleaseEvents(999L) :: cancelOrder :: Nil), meta).await(99.seconds) ==
+    assert(commandExecutor.executeCommand(Batch(NoOperation() :: ReleaseEvents(999L) :: cancelOrder :: Nil), meta).await(99.seconds) ==
       Right(Batch.Response(Right(Response.Accepted) :: Left(Problem("COMMAND NOT IMPLEMENTED")) :: Right(Response.Accepted) :: Nil)))
     assert(otherCommandExecutor.cancelled == 2)
   }

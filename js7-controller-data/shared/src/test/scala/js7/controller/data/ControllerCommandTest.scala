@@ -3,6 +3,7 @@ package js7.controller.data
 import js7.base.circeutils.CirceUtils._
 import js7.base.crypt.{GenericSignature, SignedString}
 import js7.base.problem.Problem
+import js7.base.time.ScalaTime._
 import js7.base.web.Uri
 import js7.controller.data.ControllerCommand._
 import js7.data.agent.{AgentName, AgentRef}
@@ -20,7 +21,7 @@ final class ControllerCommandTest extends AnyFreeSpec
 {
   "Batch" - {
     "Batch" in {
-      testJson[ControllerCommand](Batch(List(NoOperation, EmergencyStop())),
+      testJson[ControllerCommand](Batch(List(NoOperation(), EmergencyStop())),
         json"""{
           "TYPE": "Batch",
           "commands": [
@@ -31,8 +32,8 @@ final class ControllerCommandTest extends AnyFreeSpec
     }
 
     "Batch.toString" in {
-      assert(Batch(List(NoOperation, EmergencyStop(), NoOperation)).toString == "Batch(NoOperation, EmergencyStop, NoOperation)")
-      assert(Batch(List(NoOperation, EmergencyStop(), NoOperation, NoOperation)).toString == "Batch(NoOperation, EmergencyStop, 2×NoOperation)")
+      assert(Batch(List(NoOperation(), EmergencyStop(), NoOperation())).toString == "Batch(NoOperation, EmergencyStop, NoOperation)")
+      assert(Batch(List(NoOperation(), EmergencyStop(), NoOperation(), NoOperation())).toString == "Batch(NoOperation, EmergencyStop, 2×NoOperation)")
     }
 
     "BatchResponse" in {
@@ -235,10 +236,11 @@ final class ControllerCommandTest extends AnyFreeSpec
       }""")
   }
 
-  "NoOperation" in {
-    testJson[ControllerCommand](NoOperation,
+  "NoOperation()" in {
+    testJson[ControllerCommand](NoOperation(Some(3.s)),
       json"""{
-        "TYPE": "NoOperation"
+        "TYPE": "NoOperation",
+        "duration": 3
       }""")
   }
 

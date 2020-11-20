@@ -21,7 +21,6 @@ import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.itemsPerSecondString
-import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.implicits._
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax._
@@ -655,9 +654,11 @@ with MainJournalingActor[ControllerState, Event]
               .map(_.flatten.map((_: Completed) => ControllerCommand.Response.Accepted))
         }
 
-      case ControllerCommand.NoOperation =>
+      case ControllerCommand.NoOperation(maybeDuration) =>
         // NoOperation completes only after ControllerOrderKeeper has become ready (can be used to await readiness)
-        Future.successful(Right(ControllerCommand.Response.Accepted))
+        Task.pure(Right(ControllerCommand.Response.Accepted))
+          .delayExecution(maybeDuration getOrElse 0.s)
+          .runToFuture
 
       case _: ControllerCommand.EmergencyStop | _: ControllerCommand.Batch =>       // For completeness. RunningController has handled the command already
         Future.successful(Left(Problem.pure("THIS SHOULD NOT HAPPEN")))  // Never called

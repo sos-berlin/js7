@@ -22,6 +22,7 @@ import js7.data.node.NodeId
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.position.Position
 import scala.collection.immutable
+import scala.concurrent.duration.FiniteDuration
 
 /**
   * @author Joacim Zschimmer
@@ -100,8 +101,8 @@ object ControllerCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
-  type NoOperation = NoOperation.type
-  case object NoOperation extends ControllerCommand {
+  final case class NoOperation(duration: Option[FiniteDuration] = None)
+  extends ControllerCommand {
     type Response = Response.Accepted
   }
 
@@ -246,7 +247,7 @@ object ControllerCommand extends CommonCommand.Companion
     Subtype(deriveCodec[RemoveOrdersWhenTerminated]),
     Subtype(deriveCodec[ReplaceRepo]),
     Subtype(deriveCodec[UpdateRepo]),
-    Subtype(NoOperation),
+    Subtype(deriveCodec[NoOperation]),
     Subtype(EmitTestEvent),
     Subtype[EmergencyStop],
     Subtype(deriveCodec[ReleaseEvents]),
