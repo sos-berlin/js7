@@ -11,8 +11,7 @@ import js7.data.agent.AgentName
 import js7.data.job.ExecutablePath
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.parser.WorkflowParser
-import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 

@@ -9,8 +9,7 @@ import js7.data.value.expression.Scope.ConstantExpressionRequiredProblem
 import js7.data.value.{BooleanValue, NumericValue, StringValue, Value}
 import js7.data.workflow.Label
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.parser.ExpressionParser
-import js7.data.workflow.parser.Parsers.checkedParse
+import js7.data.parser.Parsers.checkedParse
 import org.scalactic.source
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks._

@@ -1,4 +1,4 @@
-package js7.data.workflow.parser
+package js7.data.parser
 
 import fastparse._
 import js7.base.problem.{Checked, Problem}

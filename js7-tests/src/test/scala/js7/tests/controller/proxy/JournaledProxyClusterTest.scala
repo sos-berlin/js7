@@ -26,8 +26,7 @@ import js7.data.item.{InventoryItem, UpdateRepoOperation, VersionId}
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.value.StringValue
-import js7.data.workflow.parser.WorkflowParser
-import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
 import js7.proxy.ControllerApi
 import js7.proxy.data.ProxyEvent
 import js7.proxy.data.event.ProxyStarted

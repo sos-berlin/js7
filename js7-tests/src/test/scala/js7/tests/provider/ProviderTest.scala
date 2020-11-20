@@ -30,8 +30,7 @@ import js7.data.item.RepoEvent.{ItemAdded, ItemChanged, ItemDeleted, ItemEvent, 
 import js7.data.item.{IntentoryItems, Repo, SourceType, VersionId}
 import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.OrderAdded
-import js7.data.workflow.parser.WorkflowParser
-import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
 import js7.provider.Provider
 import js7.provider.configuration.ProviderConfiguration
 import js7.tests.provider.ProviderTest._

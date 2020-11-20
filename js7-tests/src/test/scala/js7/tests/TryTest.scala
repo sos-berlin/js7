@@ -10,8 +10,7 @@ import js7.data.job.{ExecutablePath, ReturnCode}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
-import js7.data.workflow.WorkflowPath
-import js7.data.workflow.parser.WorkflowParser
+import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.data.workflow.position.BranchId.{Then, try_}
 import js7.data.workflow.position.Position
 import js7.tests.TryTest._

@@ -21,8 +21,7 @@ import js7.common.utils.JavaResource
 import js7.controller.client.AkkaHttpControllerApi
 import js7.data.agent.AgentName
 import js7.data.job.ExecutablePath
-import js7.data.workflow.WorkflowPath
-import js7.data.workflow.parser.WorkflowParser
+import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.https.HttpsTestBase._
 import js7.tests.testenv.DirectoryProvider.{ExportedControllerTrustStoreRef, ExportedControllerTrustStoreResource}
 import js7.tests.testenv.{ControllerAgentForScalaTest, DirectoryProvider}

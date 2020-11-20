@@ -3,7 +3,8 @@ package js7.core.api
 import fastparse.NoWhitespace._
 import fastparse.{End, P}
 import js7.core.api.Api.quoteString
-import js7.data.workflow.parser.{ExpressionParser, Parsers}
+import js7.data.value.expression.ExpressionParser
+import js7.data.parser.Parsers
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks._
 

@@ -10,7 +10,6 @@ import js7.data.value.expression.Expression.{BooleanConstant, Equal, In, LastRet
 import js7.data.workflow.WorkflowPrinter.WorkflowShow
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fork, Goto, If, IfFailedGoto, Offer, ReturnCodeMeaning}
-import js7.data.workflow.parser.WorkflowParser
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
 

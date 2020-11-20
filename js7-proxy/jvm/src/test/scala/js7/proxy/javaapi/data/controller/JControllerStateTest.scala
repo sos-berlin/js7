@@ -19,8 +19,7 @@ import js7.data.item.{InventoryItemSigner, Repo, VersionId}
 import js7.data.node.NodeId
 import js7.data.order.{Order, OrderId}
 import js7.data.value.StringValue
-import js7.data.workflow.WorkflowPath
-import js7.data.workflow.parser.WorkflowParser
+import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.data.workflow.position.Position
 import js7.proxy.javaapi.data.controller.JControllerStateTest._
 import org.scalatest.freespec.AnyFreeSpec

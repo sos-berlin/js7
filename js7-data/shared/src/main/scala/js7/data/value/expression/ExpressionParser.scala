@@ -1,11 +1,11 @@
-package js7.data.workflow.parser
+package js7.data.value.expression
 
 import fastparse.NoWhitespace._
 import fastparse._
-import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression._
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.parser.BasicParsers._
+import js7.data.parser.BasicParsers
+import js7.data.parser.BasicParsers._
 
 /**
   * @author Joacim Zschimmer
@@ -41,7 +41,7 @@ object ExpressionParser
 
   def quotedString[_: P] = P[String](BasicParsers.quotedString)  // Public
 
-  private[parser] def dollarNamedValue[_: P] = P[NamedValue] {
+  def dollarNamedValue[_: P] = P[NamedValue] {
     def simpleName = P[String](
       (CharPred(NamedValue.isSimpleNameStart) ~ CharsWhile(NamedValue.isSimpleNamePart, 0)).!)
     def nameOnly(p: P[String]) = P[NamedValue](

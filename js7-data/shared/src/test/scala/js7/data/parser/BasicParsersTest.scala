@@ -1,10 +1,10 @@
-package js7.data.workflow.parser
+package js7.data.parser
 
 import fastparse.NoWhitespace._
 import fastparse._
 import js7.base.problem.Problem
-import js7.data.workflow.parser.BasicParsers._
-import js7.data.workflow.parser.Parsers.checkedParse
+import js7.data.parser.BasicParsers._
+import js7.data.parser.Parsers.checkedParse
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

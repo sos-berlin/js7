@@ -13,8 +13,7 @@ import js7.data.event.{EventId, EventRequest}
 import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
-import js7.data.workflow.WorkflowPath
-import js7.data.workflow.parser.WorkflowParser
+import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.controller.load.ManyOrdersTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.script

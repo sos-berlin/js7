@@ -6,8 +6,7 @@ import js7.base.data.ByteArray
 import js7.base.problem.Checked
 import js7.core.item.InventoryItemReader
 import js7.data.item.SourceType
-import js7.data.workflow.parser.WorkflowParser
-import js7.data.workflow.{Workflow, WorkflowId}
+import js7.data.workflow.{Workflow, WorkflowId, WorkflowParser}
 
 /**
   * @author Joacim Zschimmer

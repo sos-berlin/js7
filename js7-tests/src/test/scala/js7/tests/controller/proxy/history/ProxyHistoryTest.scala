@@ -24,7 +24,7 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, Or
 import js7.data.order.Outcome.{Succeeded, succeeded}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
 import js7.data.value.{NamedValues, StringValue}
-import js7.data.workflow.parser.WorkflowParser
+import js7.data.workflow.WorkflowParser
 import js7.data.workflow.position.Position
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.event.{EventAndState, ProxyStarted}

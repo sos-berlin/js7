@@ -20,8 +20,7 @@ import js7.data.agent.{AgentName, AgentRef}
 import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
-import js7.data.workflow.WorkflowPath
-import js7.data.workflow.parser.WorkflowParser
+import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.controller.commands.UpdateRepoAgentTest._
 import js7.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global

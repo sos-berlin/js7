@@ -12,8 +12,7 @@ import js7.core.crypt.pgp.{PgpKeyGenerator, PgpSignatureVerifier, PgpSigner}
 import js7.core.item.InventoryItemVerifierTest._
 import js7.data.crypt.InventoryItemVerifier
 import js7.data.item.{InventoryItem, InventoryItemSigner}
-import js7.data.workflow.parser.WorkflowParser
-import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

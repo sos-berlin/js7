@@ -7,8 +7,7 @@ import js7.common.configutils.Configs._
 import js7.common.http.AkkaHttpClient.HttpException
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.data.order.{FreshOrder, OrderId}
-import js7.data.workflow.WorkflowPath
-import js7.data.workflow.parser.WorkflowParser
+import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.controller.commands.AddOrderTimeoutTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global

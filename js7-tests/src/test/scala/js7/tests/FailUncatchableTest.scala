@@ -8,9 +8,8 @@ import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
-import js7.data.workflow.WorkflowPath
+import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.data.workflow.instructions.Fork
-import js7.data.workflow.parser.WorkflowParser
 import js7.data.workflow.position.Position
 import js7.tests.FailUncatchableTest._
 import js7.tests.testenv.DirectoryProvider

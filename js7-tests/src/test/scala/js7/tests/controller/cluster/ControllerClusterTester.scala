@@ -2,8 +2,7 @@ package js7.tests.controller.cluster
 
 import js7.base.problem.Checked._
 import js7.common.system.OperatingSystem.isWindows
-import js7.data.workflow.WorkflowPath
-import js7.data.workflow.parser.WorkflowParser
+import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.controller.cluster.ControllerClusterTester._
 import js7.tests.testenv.ControllerClusterForScalaTest
 import org.scalatest.freespec.AnyFreeSpec

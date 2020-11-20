@@ -9,8 +9,7 @@ import js7.base.web.Uri
 import js7.common.akkautils.ProvideActorSystem
 import js7.common.configutils.Configs.HoconStringInterpolator
 import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
-import js7.data.workflow.WorkflowPath
-import js7.data.workflow.parser.WorkflowParser
+import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.proxy.configuration.ProxyConfs
 import js7.proxy.javaapi.data.auth.JCredentials
 import js7.tests.controller.proxy.ClusterProxyTest._

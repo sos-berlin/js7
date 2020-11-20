@@ -12,10 +12,9 @@ import js7.common.scalautil.FileUtils.syntax._
 import js7.controller.tests.IntentoryItemsTest._
 import js7.core.item.InventoryItemReader
 import js7.data.item.IntentoryItems.diffInventoryItems
-import js7.data.item.{IntentoryItems, InventoryItem, ItemId, RepoChange, SourceType, ItemPath, VersionId}
+import js7.data.item.{IntentoryItems, InventoryItem, ItemId, ItemPath, RepoChange, SourceType, VersionId}
 import js7.data.workflow.instructions.{ExplicitEnd, Fail}
-import js7.data.workflow.parser.WorkflowParser
-import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

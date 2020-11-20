@@ -1,4 +1,4 @@
-package js7.data.workflow.parser
+package js7.data.workflow
 
 import fastparse.NoWhitespace._
 import fastparse._
@@ -11,14 +11,13 @@ import js7.data.order.OrderId
 import js7.data.source.SourcePos
 import js7.data.value.NamedValues
 import js7.data.value.expression.Expression.BooleanConstant
+import js7.data.value.expression.ExpressionParser.{booleanConstant, constantExpression, expression}
 import js7.data.value.expression.{Evaluator, Expression}
 import js7.data.workflow.Instruction.Labeled
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Finish, Fork, Goto, If, IfFailedGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction, End => EndInstr, Fail => FailInstr}
-import js7.data.workflow.parser.BasicParsers._
-import js7.data.workflow.parser.ExpressionParser.{booleanConstant, constantExpression, expression}
-import js7.data.workflow.parser.Parsers.checkedParse
-import js7.data.workflow.{Instruction, Label, Workflow, WorkflowId, WorkflowPath}
+import js7.data.parser.BasicParsers.{agentName, _}
+import js7.data.parser.Parsers.checkedParse
 import scala.concurrent.duration._
 
 /**

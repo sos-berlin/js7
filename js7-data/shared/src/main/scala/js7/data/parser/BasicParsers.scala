@@ -1,4 +1,4 @@
-package js7.data.workflow.parser
+package js7.data.parser
 
 import fastparse.NoWhitespace._
 import fastparse._
@@ -16,7 +16,7 @@ import scala.reflect.ClassTag
 /**
   * @author Joacim Zschimmer
   */
-private[parser] object BasicParsers
+object BasicParsers
 {
   private def inlineCommentUntilStar[_: P] = P(CharsWhile(_ != '*', 0) ~ P("*"))
 
