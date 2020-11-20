@@ -47,7 +47,7 @@ object CirceToYaml
         YamlProblem(e.toStringWithCauses, e.getProblemMark.getLine, e.getProblemMark.getColumn)
 
       case NonFatal(t) =>
-        Left(Problem.pure(t))
+        Left(Problem.fromThrowable(t))
     }
 
   private val dumperOptions =

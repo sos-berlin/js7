@@ -34,7 +34,7 @@ object Checked
 
   def fromTry[A](tried: Try[A]): Checked[A] =
     tried match {
-      case Failure(t) => Left(Problem.pure(t))
+      case Failure(t) => Left(Problem.fromThrowable(t))
       case Success(o) => Right(o)
     }
 
@@ -44,7 +44,7 @@ object Checked
   def catchNonFatal[A](f: => A): Checked[A] =
     try Right(f)
     catch {
-      case NonFatal(t) => Left(Problem.pure(t))
+      case NonFatal(t) => Left(Problem.fromThrowable(t))
     }
 
   def catchProblem[A](f: => A): Checked[A] =

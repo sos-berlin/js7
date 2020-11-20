@@ -151,7 +151,7 @@ abstract class RecouplingStreamReader[
                     Observable.raiseError(t)
                   case t =>
                     Observable.fromTask(
-                      onCouplingFailed(api, Problem.pure(t)) map {
+                      onCouplingFailed(api, Problem.fromThrowable(t)) map {
                         case false => Observable.raiseError(t)
                         case true => Observable.empty[V]
                       }).flatten

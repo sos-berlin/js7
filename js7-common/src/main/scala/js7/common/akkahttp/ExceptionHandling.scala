@@ -53,7 +53,7 @@ trait ExceptionHandling
       def msg = toLogMessage(request, e)
       if (whenShuttingDown.isCompleted) webLogger.debug(msg, e) else webLogger.warn(msg, e.nullIfNoStackTrace)
       if (respondWithException)
-        complete(status -> Problem.pure(e))
+        complete(status -> Problem.fromThrowable(e))
       else
         complete(status)
     }

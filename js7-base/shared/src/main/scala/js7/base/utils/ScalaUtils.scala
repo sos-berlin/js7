@@ -304,7 +304,7 @@ object ScalaUtils
       /** Converts an `Either[Throwable, A]` to a Checked[A] with complete Throwable. */
       def toThrowableChecked: Checked[R] =
         underlying match {
-          case Left(t) => Left(Problem.pure(t.appendCurrentStackTrace))
+          case Left(t) => Left(Problem.fromThrowable(t.appendCurrentStackTrace))
           case Right(o) => Right(o)
         }
 
@@ -423,7 +423,7 @@ object ScalaUtils
   def checkedCast[A: ClassTag](o: Any, problem: => Problem): Checked[A] = {
     val A = implicitClass[A]
     if (o == null)
-      Left(Problem.pure(new NullPointerException(s"Expected ${A.getName}, found: null")))
+      Left(Problem.fromThrowable(new NullPointerException(s"Expected ${A.getName}, found: null")))
     else if (A isAssignableFrom o.getClass)
       Right(o.asInstanceOf[A])
     else

@@ -75,9 +75,6 @@ object Problem
   def pure(message: String, cause: Option[Problem]): Problem =
     apply(message, cause)
 
-  def pure(throwable: Throwable): Problem =
-    fromThrowable(throwable)
-
   def fromThrowable(throwable: Throwable): Problem =
     new FromEagerThrowable(throwable)
 

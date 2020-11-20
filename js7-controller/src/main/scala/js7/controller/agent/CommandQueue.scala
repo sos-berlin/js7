@@ -137,7 +137,7 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
                 asyncOnBatchFailed(inputs, problem)
 
               case Failure(t) =>
-                asyncOnBatchFailed(inputs, Problem.pure(t))
+                asyncOnBatchFailed(inputs, Problem.fromThrowable(t))
             }
         }
       }

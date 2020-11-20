@@ -131,9 +131,9 @@ final class ProblemTest extends AnyFreeSpec
     def throwB() = throw new RuntimeException("B-EXCEPTION")
     def throwD() = throw new RuntimeException("D-EXCEPTION")
     val a = Problem("A-PROBLEM")
-    val b = Problem.pure(Try(throwB()).failed.get: Throwable)
+    val b = Problem.fromThrowable(Try(throwB()).failed.get: Throwable)
     val c = Problem("C-PROBLEM")
-    val d = Problem.pure(Try(throwD()).failed.get: Throwable)
+    val d = Problem.fromThrowable(Try(throwD()).failed.get: Throwable)
     val combinedThrowable = (a |+| b |+| c |+| d).throwable
     assert(combinedThrowable.toString == "ProblemException: A-PROBLEM\n & B-EXCEPTION\n & C-PROBLEM\n & D-EXCEPTION")
     assert(combinedThrowable.getStackTrace.exists(_.getMethodName contains "throwB"))
@@ -171,9 +171,9 @@ final class ProblemTest extends AnyFreeSpec
     assert(throwable.toString == "ProblemException: PREFIX: PROBLEM")
   }
 
-  "Problem.pure" in {
-    assert(Problem.pure(new RuntimeException("EXCEPTION")).toString == "EXCEPTION")
-    assert(Problem.pure(new RuntimeException("EXCEPTION")).withPrefix("PREFIX:").toString == "PREFIX: EXCEPTION")
+  "Problem.fromThrowable" in {
+    assert(Problem.fromThrowable(new RuntimeException("EXCEPTION")).toString == "EXCEPTION")
+    assert(Problem.fromThrowable(new RuntimeException("EXCEPTION")).withPrefix("PREFIX:").toString == "PREFIX: EXCEPTION")
   }
 
   "equals" in {
