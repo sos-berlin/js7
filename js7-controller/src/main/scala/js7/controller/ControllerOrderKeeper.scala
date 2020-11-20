@@ -828,10 +828,6 @@ with MainJournalingActor[ControllerState, Event]
       _controllerState = _controllerState.applyStampedEvents(stamped :: Nil).orThrow
       updatedOrderIds foreach proceedWithOrder
     }
-    if (controllerConfiguration.journalConf.slowCheckState) {
-      assertThat(_controllerState == updatedState)
-    }
-    // Reduce duplicate allocations
     _controllerState = updatedState
   }
 
