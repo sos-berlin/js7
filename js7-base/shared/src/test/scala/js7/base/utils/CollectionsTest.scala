@@ -64,6 +64,8 @@ final class CollectionsTest extends AnyFreeSpec
       List(1, 2))
     assert(List(11, 12, 21, 22, 23).mergeConsecutiveElements { case (a, b) if a / 10 == b / 10 => a } ==
       List(11, 21))
+    assert(List(1, 2, 3, 4, 5).mergeConsecutiveElements { case (a, b) => a + b } ==
+      List(15))
   }
 
   "mapValuesStrict" - {
