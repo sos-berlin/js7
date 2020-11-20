@@ -40,6 +40,7 @@ object ControllerCommand extends CommonCommand.Companion
   final case class Batch(commands: Seq[ControllerCommand])
   extends ControllerCommand with CommonBatch with Big {
     type Response = Batch.Response
+    override def toShortString = s"Batch(${commands.size} commands, ${commands.take(1).map(o => o.toShortString + ", ").mkString} ...)"
   }
   object Batch {
     final case class Response(responses: Seq[Checked[ControllerCommand.Response]])
@@ -58,6 +59,7 @@ object ControllerCommand extends CommonCommand.Companion
 
   final case class AddOrders(orders: Seq[FreshOrder]) extends ControllerCommand {
     type Response = AddOrders.Response
+    override def toShortString = s"AddOrders(${orders.size} orders, ${orders.take(1).map(o => o.toString + ", ").mkString} ...)"
   }
   object AddOrders {
     // AddOrderResponse is unnested to be accessible for Java code
@@ -72,6 +74,7 @@ object ControllerCommand extends CommonCommand.Companion
   final case class CancelOrders(orderIds: immutable.Iterable[OrderId], mode: CancelMode = CancelMode.FreshOrStarted())
   extends ControllerCommand {
     type Response = Response.Accepted
+    override def toShortString = s"CancelOrders(${orderIds.size} orders, ${orderIds.take(3).map(o => o.toString + ", ").mkString} ...)"
   }
   object CancelOrders {
     implicit val jsonEncoder: Encoder.AsObject[CancelOrders] = o =>
@@ -89,6 +92,7 @@ object ControllerCommand extends CommonCommand.Companion
   final case class RemoveOrdersWhenTerminated(orderIds: immutable.Iterable[OrderId])
   extends ControllerCommand {
     type Response = Response.Accepted
+    override def toShortString = s"RemoveOrdersWhenTerminated(${orderIds.size} orders, ${orderIds.take(3).map(o => o.toString + ", ").mkString} ...)"
   }
 
   final case class UpdateAgentRefs(agentRefs: Seq[AgentRef])
