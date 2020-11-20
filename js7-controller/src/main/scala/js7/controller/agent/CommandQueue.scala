@@ -32,27 +32,35 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
 
   private object queue {
     private val queue = mutable.Queue[Queueable]()
+    private val queueSet = mutable.Set[Queueable]()
     private val detachQueue = mutable.Queue[Queueable]()  // DetachOrder is sent to Agent before any AttachOrder, to relieve the Agent
 
     def enqueue(input: Queueable): Unit =
       input match {
         case o: Input.DetachOrder => detachQueue += o
-        case o => queue += o
+        case o =>
+          queue += o
+          queueSet += o
       }
 
     def dequeueAll(what: Set[Queueable]): Unit = {
       queue.dequeueAll(what)
+      queueSet --= what
       detachQueue.dequeueAll(what)
     }
 
-    def removeAlreadyAttachedOrders(): Unit =
-      queue.removeAll {
-        case o: Input.AttachOrder if attachedOrderIds.contains(o.order.id) =>
-          logger.trace(s"removeAlreadyAttachedOrders: ${o.order.id}")
-          true
-        case _ =>
-          false
-      }
+    def removeAlreadyAttachedOrders(): Unit = {
+      def isAlreadyAttached(log: Boolean = false)(queueable: Queueable): Boolean =
+        queueable match {
+          case o: Input.AttachOrder if attachedOrderIds.contains(o.order.id) =>
+            if (log) logger.trace(s"removeAlreadyAttachedOrders: ${o.order.id}")
+            true
+          case _ =>
+            false
+        }
+      queue.removeAll(isAlreadyAttached(log = true))
+      queueSet --= queueSet filter isAlreadyAttached()
+    }
 
     def size = queue.size + detachQueue.size
 
@@ -60,7 +68,7 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
       detachQueue.view ++ queue.view
 
     def contains(queueable: Queueable) =
-      queue.contains(queueable)
+      queueSet contains queueable
   }
 
   final def onCoupled(attachedOrderIds: Set[OrderId]) =
