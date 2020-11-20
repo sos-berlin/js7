@@ -117,7 +117,8 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
               catch { case NonFatal(t) =>
                 // TODO Ein Fehler sollte zum Abbruch führen? Aber dann?
                 logger.error(s"“$toString” ${t.toStringWithCauses}\n" + s"persistKeyedEvents(${timestamped.map(_.keyedEvent)})", t)
-                Failure(t)
+                throw t
+                //Failure(t)
               }))))
     }
 
