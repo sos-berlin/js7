@@ -61,7 +61,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                   var byteCount = 0L
                   httpEntity
                     .dataBytes
-                    .toObservable  // TODO eat observable even in case if error
+                    .toObservable
                     .map(_.toByteArray)
                     .pipeIf(logger.underlying.isDebugEnabled)(_.map { o => byteCount += o.length; o })
                     .flatMap(new ByteArrayToLinesObservable)
