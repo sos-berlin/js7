@@ -2,6 +2,7 @@ package js7.data.value.expression
 
 import cats.instances.either._
 import cats.instances.list._
+import cats.instances.vector._
 import cats.syntax.apply._
 import cats.syntax.traverse._
 import js7.base.problem.Checked._
@@ -112,8 +113,12 @@ final class Evaluator(scope: Scope)
       case o => Problem(s"Operator .toBoolean may not applied to a value of type ${o.getClass.simpleScalaName}")
     }
 
-  private def mkString(v: Value): Checked[StringValue] =
-    v.toList.map(listValue => StringValue(listValue.list.map(_.convertToString).mkString))
+  private def mkString(value: Value): Checked[StringValue] = {
+    value match {
+      case ListValue(list) => list.toVector.traverse(_.toStringValue).map(o => StringValue(o.map(_.string).mkString))
+      case _ => value.toStringValue
+    }
+  }
 
   //private def castValue[A: ClassTag](v: Value): Checked[A] =
   //  if (implicitClass[A] isAssignableFrom v.getClass)

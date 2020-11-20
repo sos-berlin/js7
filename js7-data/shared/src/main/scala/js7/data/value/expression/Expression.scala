@@ -21,11 +21,13 @@ object Expression
   implicit val jsonDecoder: Decoder[Expression] =
     c => c.as[String].flatMap(string => checkedParse(string, ExpressionParser.expression(_)).toDecoderResult(c.history))
 
-  sealed trait BooleanExpression extends Expression
+  sealed trait SimpleValueExpression extends Expression
 
-  sealed trait NumericExpression extends Expression
+  sealed trait BooleanExpression extends SimpleValueExpression
 
-  sealed trait StringExpression extends Expression
+  sealed trait NumericExpression extends SimpleValueExpression
+
+  sealed trait StringExpression extends SimpleValueExpression
 
   final case class Not(a: BooleanExpression) extends BooleanExpression {
     def precedence = Precedence.Factor
@@ -116,6 +118,9 @@ object Expression
       else
         s"'$string'"
   }
+  object StringConstant {
+    val empty = new StringConstant("")
+  }
 
   final case class NamedValue(where: NamedValue.Where, what: NamedValue.What, default: Option[Expression] = None)
   extends Expression {
@@ -156,9 +161,9 @@ object Expression
     }
   }
   object NamedValue {
-    def last(key: String) = NamedValue(NamedValue.LastOccurred, NamedValue.KeyValue(key))
-    def last(key: String, default: Expression) = NamedValue(NamedValue.LastOccurred, NamedValue.KeyValue(key), Some(default))
-    def argument(key: String) = NamedValue(NamedValue.Argument, NamedValue.KeyValue(key))
+    def last(name: String) = NamedValue(NamedValue.LastOccurred, NamedValue.KeyValue(name))
+    def last(name: String, default: Expression) = NamedValue(NamedValue.LastOccurred, NamedValue.KeyValue(name), Some(default))
+    def argument(name: String) = NamedValue(NamedValue.Argument, NamedValue.KeyValue(name))
 
     def isSimpleName(name: String) = isSimpleNameStart(name.head) && name.tail.forall(isSimpleNamePart)
     def isSimpleNameStart(c: Char) = isUnicodeIdentifierStart(c)

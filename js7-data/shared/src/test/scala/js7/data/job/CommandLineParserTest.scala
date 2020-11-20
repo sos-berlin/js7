@@ -1,0 +1,51 @@
+package js7.data.job
+
+import js7.base.problem.Problem
+import js7.data.value.expression.Expression.{ListExpression, MkString, NamedValue, StringConstant}
+import org.scalatest.freespec.AnyFreeSpec
+
+final class CommandLineParserTest extends AnyFreeSpec
+{
+  "Empty commandline is rejected" in {
+    assert(CommandLineParser.parse("") ==
+      Left(Problem("""Expected The command line must not be empty:1:1, found """"")))
+    assert(CommandLineParser.parse("  ") ==
+      Left(Problem("""Expected The command line must not be empty:1:3, found """"")))
+  }
+
+  "Constant" in {
+    assert(CommandLineParser.parse("ABC") ==
+      Right(CommandLineExpression(List(StringConstant("ABC")))))
+  }
+
+  "Reference" in {
+    assert(CommandLineParser.parse("XX $NAME YY $END") ==
+      Right(CommandLineExpression(List(
+        StringConstant("XX"),
+        MkString(NamedValue.last("NAME")),
+        StringConstant("YY"),
+        MkString(NamedValue.last("END"))))))
+  }
+
+  "Constant in quotes" in {
+    assert(CommandLineParser.parse(""""CONSTANT"""") ==
+      Right(CommandLineExpression(List(StringConstant("CONSTANT")))))
+  }
+
+  "Reference in quotes" in {
+    assert(CommandLineParser.parse(""">> "$NAME" <<""") ==
+      Right(CommandLineExpression(List(
+        StringConstant(">>"),
+        MkString(NamedValue.last("NAME")),
+        StringConstant("<<")))))
+  }
+
+  "Reference and escaped characters in quotes" in {
+    assert(CommandLineParser.parse("""XX "$NAME-\"QUOTED\"\\\$"""") ==
+      Right(CommandLineExpression(List(
+        StringConstant("XX"),
+          MkString(ListExpression(List(
+            NamedValue.last("NAME"),
+            StringConstant("""-"QUOTED"\$"""))))))))
+  }
+}
