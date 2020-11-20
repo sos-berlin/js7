@@ -247,7 +247,7 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
       "com.github.mpilquist" %% "simulacrum" % simulacrumVersion ++
       "com.lihaoyi" %%% "sourcecode" % "0.2.1" ++
       "com.outr" %%% "scribe" % scribeVersion ++
-      "org.scalactic" %%% "scalactic" % scalaTestVersion ++
+      "org.scalactic" %%% "scalactic" % scalaTestVersion % Test ++
       findbugs % "compile" ++
       intelliJAnnotations % "compile" ++
       "org.scalatest" %%% "scalatest" % scalaTestVersion % "test" ++
@@ -465,7 +465,6 @@ lazy val `js7-agent` = project.dependsOn(`js7-agent-data`, `js7-core`, `js7-comm
       akkaHttpTestkit % "test" ++
       akkaHttp ++
       intelliJAnnotations % "compile" ++
-      scalactic ++
       guice ++
       scalaTest % "test" ++
       log4j % "test" ++
@@ -518,7 +517,6 @@ lazy val `js7-taskserver` = project
       scalaXml ++
       akkaActor ++
       akkaSlf4j ++
-      scalactic ++
       guava ++
       scalaTest % "test" ++
       log4j % "test" ++

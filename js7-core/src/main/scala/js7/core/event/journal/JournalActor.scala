@@ -1,6 +1,7 @@
 package js7.core.event.journal
 
 import akka.actor.{Actor, ActorRef, DeadLetterSuppression, Props, Stash}
+import com.softwaremill.diffx
 import io.circe.syntax.EncoderOps
 import java.nio.file.Files.{delete, exists, move}
 import java.nio.file.Path
@@ -35,7 +36,6 @@ import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{AnyKeyedEvent, EventId, JournalEvent, JournalHeader, JournalId, JournaledState, KeyedEvent, Stamped}
 import monix.execution.cancelables.SerialCancelable
 import monix.execution.{Cancelable, Scheduler}
-import org.scalactic.Requirements._
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, Duration, FiniteDuration}
@@ -45,7 +45,7 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-final class JournalActor[S <: JournaledState[S]] private(
+final class JournalActor[S <: JournaledState[S]: diffx.Diff] private(
   journalMeta: JournalMeta,
   conf: JournalConf,
   keyedEventBus: StampedKeyedEventBus,
@@ -380,7 +380,12 @@ extends Actor with Stash
   private def onAllCommitsFinished(): Unit = {
     assertThat(lastAcknowledgedEventId == lastWrittenEventId)
     assertThat(persistBuffer.isEmpty)
-    if (conf.slowCheckState) requireState(journaledState == uncommittedJournaledState)
+    if (conf.slowCheckState && journaledState != uncommittedJournaledState) {
+      val msg = "JournaledState update mismatch: journaledState != uncommittedJournaledState"
+      logger.error(msg)
+      logger.error(diffx.compare(journaledState, uncommittedJournaledState).show)
+      sys.error(msg)
+    }
     uncommittedJournaledState = journaledState    // Reduce duplicate allocated objects
     waitingForAcknowledgeTimer := Cancelable.empty
     maybeDoASnapshot()
@@ -651,7 +656,7 @@ object JournalActor
 
   //private val ClusterNodeHasBeenSwitchedOverProblem = Problem.pure("After switchover, this cluster node is no longer active")
 
-  def props[S <: JournaledState[S]: JournaledState.Companion](
+  def props[S <: JournaledState[S]: JournaledState.Companion: diffx.Diff](
     journalMeta: JournalMeta,
     conf: JournalConf,
     keyedEventBus: StampedKeyedEventBus,
