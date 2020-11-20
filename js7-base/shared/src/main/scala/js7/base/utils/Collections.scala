@@ -170,6 +170,22 @@ object Collections
     }
   }
 
+  implicit class RichList[A](private val underlying: List[A]) extends AnyVal
+  {
+    def mergeConsecutiveElements(merge: PartialFunction[(A, A), A]): List[A] =
+      underlying
+        .scanLeft(List.empty[A])((reverseList, expr) =>
+          (reverseList, expr) match {
+            case (a :: tail, b) =>
+              merge.lift(a, b).fold(b :: a :: tail)(_ :: tail)
+            case _ =>
+              expr :: reverseList
+          })
+        .lastOption.toList
+        .flatten
+        .reverse
+  }
+
   implicit final class RichMap[K, V](private val underlying: Map[K, V]) extends AnyVal {
     def toChecked(unknownKey: K => Problem): Map[K, Checked[V]] =
       underlying.view.mapValues(Right.apply).toMap withDefault unknownKey.andThen(Left.apply)

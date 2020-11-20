@@ -57,6 +57,15 @@ final class CollectionsTest extends AnyFreeSpec
     intercept[DuplicateKeyException] { badList.toKeyedMap(_.key) }
   }
 
+  "mergeConsecutiveElements" in {
+    assert(List(1, 2, 2, 3, 3, 3, 4).mergeConsecutiveElements { case (a, b) if a == b => a } ==
+      List(1, 2, 3, 4))
+    assert(List(1, 1, 2, 2, 2).mergeConsecutiveElements { case (a, b) if a == b => a } ==
+      List(1, 2))
+    assert(List(11, 12, 21, 22, 23).mergeConsecutiveElements { case (a, b) if a / 10 == b / 10 => a } ==
+      List(11, 21))
+  }
+
   "mapValuesStrict" - {
     def newF = new (Int => Int) {
       var called = 0
