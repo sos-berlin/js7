@@ -368,7 +368,7 @@ object DirectoryProvider
    */
   val ControllerKeyStoreResource = JavaResource("js7/tests/controller/config/private/https-keystore.p12")
   val ExportedControllerTrustStoreResource = JavaResource("js7/tests/controller/config/export/https-truststore.p12")
-  val ExportedControllerTrustStoreRef = TrustStoreRef(ExportedControllerTrustStoreResource.url, SecretString("jobscheduler"))
+  lazy val ExportedControllerTrustStoreRef = TrustStoreRef(ExportedControllerTrustStoreResource.url, SecretString("jobscheduler"))
 
   /* Following resources have been generated with the command line:
      js7-common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh \

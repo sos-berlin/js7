@@ -37,7 +37,8 @@ final class TestAddWorkflows(settings: Settings)
       controllerConfig = config"""
         js7.web.server.auth.public = true
         akka.stdout-loglevel = "OFF"""",
-      useDirectory = settings.directory)
+      useDirectory = settings.directory,
+      controllerKeyStore = None)
     autoClosing(directoryProvider) { _ =>
       directoryProvider.run { (controller, _)  =>
         val commands = measureTime(settings.workflowCount, "workflows signed") {
