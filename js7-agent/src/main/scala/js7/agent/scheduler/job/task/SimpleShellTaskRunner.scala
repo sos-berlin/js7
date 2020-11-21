@@ -12,7 +12,6 @@ import js7.base.generic.Completed
 import js7.base.process.ProcessSignal
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
-import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.common.scalautil.{IOExecutor, Logger}

@@ -88,7 +88,7 @@ object WorkflowParser
         curly(nonEmptyCommaSequence(quotedString ~ w ~ ":" ~ w ~/ value))
          .map(_.toMap))
 
-    private def anonymousWorkflowExecutable[_: P] = P[WorkflowJob](
+    private def anonymousWorkflowJob[_: P] = P[WorkflowJob](
       for {
         kv <- keyValues(
           keyValueConvert("executable", quotedString)(o => Right(ExecutablePath(o))) |
@@ -107,11 +107,11 @@ object WorkflowParser
         taskLimit <- kv[Int]("taskLimit", WorkflowJob.DefaultTaskLimit)
         sigkillAfter <- kv.get[Int]("sigkillAfter").map(_.map(_.s))
       } yield
-        WorkflowJob(agentName, executable, arguments.toMap, returnCodeMeaning, taskLimit = taskLimit,
+        WorkflowJob(agentName, executable, arguments, returnCodeMeaning, taskLimit = taskLimit,
           sigkillAfter = sigkillAfter))
 
     private def executeInstruction[_: P] = P[Execute.Anonymous](
-      (Index ~ keyword("execute") ~ w ~ anonymousWorkflowExecutable ~ hardEnd)
+      (Index ~ keyword("execute") ~ w ~ anonymousWorkflowJob ~ hardEnd)
         .map { case (start, job, end) => Execute.Anonymous(job, sourcePos(start, end)) })
 
     private def jobInstruction[_: P] = P[Execute](
