@@ -79,6 +79,7 @@ extends Actor with Stash
   private var delayedCommit = SerialCancelable()
   private var totalEventCount = 0L
   private var requireClusterAcknowledgement = false
+  private var releaseEventIdsDueToClusterCoupled = false
   private val waitingForAcknowledgeTimer = SerialCancelable()
   private var waitingForAcknowledgeSince = now
   private var switchedOver = false
@@ -194,6 +195,7 @@ extends Actor with Stash
                 commit()
                 logger.info(s"Cluster is coupled: Start requiring acknowledgements from passive cluster node")
                 requireClusterAcknowledgement = true
+                releaseEventIdsDueToClusterCoupled = true
 
               case Some(Stamped(_, _, KeyedEvent(_, _: ClusterSwitchedOver))) =>
                 commit()
@@ -245,6 +247,10 @@ extends Actor with Stash
       // The passive node does not know Persist bundles (maybe transactions) and acknowledges events as they arrive.
       // We take only complete Persist bundles as acknowledged.
       onCommitAcknowledged(n = persistBuffer.iterator.takeWhile(_.lastStamped.forall(_.eventId <= ack)).length)
+      if (releaseEventIdsDueToClusterCoupled) {
+        releaseEventIdsDueToClusterCoupled = false
+        releaseObsoleteEvents()
+      }
 
     case Input.PassiveLost(passiveLost) =>
       // Side channel for Cluster to circumvent the ClusterEvent synchronization lock
