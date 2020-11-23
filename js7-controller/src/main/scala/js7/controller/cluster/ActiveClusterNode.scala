@@ -124,7 +124,6 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
       clusterConf.maybeClusterSetting match {
         case Some(setting) =>
           assertThat(setting.activeId == ownId)
-          Task(logger.trace("automaticallyAppointConfiguredBackupNode")) >>
           appointNodes(setting)
             .onErrorHandle(t => Left(Problem.fromThrowable(t)))  // We want only to log the exception
             .map {
