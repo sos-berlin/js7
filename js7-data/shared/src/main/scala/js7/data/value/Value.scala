@@ -50,29 +50,19 @@ object Value
 
   implicit val jsonDecoder: Decoder[Value] = c => {
     val j = c.value
-    j.asString match {
-      case Some(o) => Right(StringValue(o))
-      case None =>
-        j.asNumber match {
-          case Some(o) =>
-            o.toBigDecimal match {
-              case Some(o) => Right(NumericValue(o))
-              case None => Left(DecodingFailure(s"JSON number is not representable as a Java BigDecimal: $o", c.history))
-            }
-          case None =>
-            j.asBoolean match {
-              case Some(o) => Right(BooleanValue(o))
-              case None =>
-                j.asArray match {
-                  case Some(jsonValues) =>
-                    jsonValues.traverse(jsonDecoder.decodeJson)
-                      .map(o => ListValue(o))
-                  case None =>
-                    Left(DecodingFailure(s"Unknown value JSON type: ${j.getClass.simpleScalaName}", c.history))
-                }
-            }
-        }
-    }
+    if (j.isString)
+      Right(StringValue(j.asString.get))
+    else if (j.isNumber)
+      j.asNumber.get.toBigDecimal match {
+        case Some(o) => Right(NumericValue(o))
+        case None => Left(DecodingFailure(s"JSON number is not representable as a Java BigDecimal: $j", c.history))
+      }
+    else if (j.isBoolean)
+      Right(BooleanValue(j.asBoolean.get))
+    else if (j.isArray)
+      j.asArray.get.traverse(jsonDecoder.decodeJson).map(ListValue.apply)
+    else
+      Left(DecodingFailure(s"Unknown value JSON type: ${j.getClass.simpleScalaName}", c.history))
   }
 }
 
