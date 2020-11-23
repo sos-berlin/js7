@@ -86,7 +86,7 @@ object ControllerCommand extends CommonCommand.Companion
     implicit val jsonDecoder: Decoder[CancelOrders] = c =>
       for {
         orderIds <- c.get[Vector[OrderId]]("orderIds")
-        mode <- c.get[Option[CancelMode]]("mode").map(_ getOrElse CancelMode.Default)
+        mode <- c.getOrElse[CancelMode]("mode")(CancelMode.Default)
       } yield CancelOrders(orderIds, mode)
   }
 
@@ -123,7 +123,7 @@ object ControllerCommand extends CommonCommand.Companion
 
     implicit val jsonDecoder: Decoder[EmergencyStop] = c =>
       for {
-        restart <- c.get[Option[Boolean]]("restart").map(_ getOrElse false)
+        restart <- c.getOrElse[Boolean]("restart")(false)
       } yield EmergencyStop(restart)
   }
 
@@ -162,10 +162,10 @@ object ControllerCommand extends CommonCommand.Companion
 
     implicit val jsonDecoder: Decoder[ShutDown] = c =>
       for {
-        restart <- c.get[Option[Boolean]]("restart").map(_ getOrElse false)
-        cluster <- c.get[Option[ClusterAction]]("clusterAction")
-        suppressSnapshot <- c.get[Option[Boolean]]("suppressSnapshot").map(_ getOrElse false)
-      } yield ShutDown(restart, cluster, suppressSnapshot)
+        restart <- c.getOrElse[Boolean]("restart")(false)
+        clusterAction <- c.get[Option[ClusterAction]]("clusterAction")
+        suppressSnapshot <- c.getOrElse[Boolean]("suppressSnapshot")(false)
+      } yield ShutDown(restart, clusterAction, suppressSnapshot)
   }
 
   final case class ResumeOrders(orderIds: immutable.Iterable[OrderId], position: Option[Position] = None)

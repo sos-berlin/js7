@@ -286,7 +286,7 @@ object Problem
   implicit val jsonDecoder: Decoder[Problem] =
     c => for {
       maybeCode <- c.get[Option[ProblemCode]]("code")
-      arguments <- c.get[Option[Map[String, String]]]("arguments").map(_ getOrElse Map.empty)
+      arguments <- c.getOrElse[Map[String, String]]("arguments")(Map.empty)
       message <- c.get[String]("message")
     } yield
       maybeCode match {

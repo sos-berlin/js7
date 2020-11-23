@@ -44,7 +44,7 @@ object OrderEvent {
       c => for {
         workflowId <- c.get[WorkflowId]("workflowId")
         scheduledFor <- c.get[Option[Timestamp]]("scheduledFor")
-        arguments <- c.get[Option[NamedValues]]("arguments").map(_ getOrElse Map.empty)
+        arguments <- c.getOrElse[NamedValues]("arguments")(Map.empty)
       } yield OrderAdded(workflowId, scheduledFor, arguments)
   }
 

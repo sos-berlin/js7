@@ -73,7 +73,7 @@ object Outcome
         o.namedValues.nonEmpty.thenList("namedValues" -> o.namedValues.asJson))
 
     implicit val jsonDecoder: Decoder[Succeeded] = c =>
-      for (namedValues <- c.get[Option[NamedValues]]("namedValues").map(_ getOrElse Map.empty)) yield
+      for (namedValues <- c.getOrElse[NamedValues]("namedValues")(Map.empty)) yield
         Succeeded(namedValues)
   }
 
@@ -104,7 +104,7 @@ object Outcome
     implicit val jsonDecoder: Decoder[Failed] =
       c => for {
         errorMessage <- c.get[Option[String]]("message")
-        namedValues <- c.get[Option[NamedValues]]("namedValues").map(_ getOrElse Map.empty)
+        namedValues <- c.getOrElse[NamedValues]("namedValues")(Map.empty)
       } yield Failed(errorMessage, namedValues)
   }
 

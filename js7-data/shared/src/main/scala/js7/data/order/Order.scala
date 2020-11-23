@@ -524,15 +524,15 @@ object Order
   implicit val jsonDecoder: Decoder[Order[State]] = cursor =>
     for {
       id <- cursor.get[OrderId]("id")
-      arguments <- cursor.get[Option[NamedValues]]("arguments").map(_ getOrElse Map.empty)
+      arguments <- cursor.getOrElse[NamedValues]("arguments")(NamedValues.empty)
       workflowPosition <- cursor.get[WorkflowPosition]("workflowPosition")
       state <- cursor.get[State]("state")
       attachedState <- cursor.get[Option[AttachedState]]("attachedState")
       parent <- cursor.get[Option[OrderId]]("parent")
       historicOutcomes <- cursor.get[Seq[HistoricOutcome]]("historicOutcomes")
       mark <- cursor.get[Option[OrderMark]]("mark")
-      isSuspended <- cursor.get[Option[Boolean]]("isSuspended").map(_ getOrElse false)
-      removeWhenTerminated <- cursor.get[Option[Boolean]]("removeWhenTerminated").map(_ getOrElse false)
+      isSuspended <- cursor.getOrElse[Boolean]("isSuspended")(false)
+      removeWhenTerminated <- cursor.getOrElse[Boolean]("removeWhenTerminated")(false)
     } yield
       Order(id, workflowPosition, state, arguments, historicOutcomes, attachedState, parent, mark,
         isSuspended, removeWhenTerminated)

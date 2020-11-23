@@ -480,7 +480,7 @@ object Workflow extends InventoryItem.Companion[Workflow] {
     cursor => for {
       id <- cursor.value.as[WorkflowId]
       instructions <- cursor.get[IndexedSeq[Instruction.Labeled]]("instructions")
-      namedJobs <- cursor.get[Option[Map[WorkflowJob.Name, WorkflowJob]]]("jobs").map(_ getOrElse Map.empty)
+      namedJobs <- cursor.getOrElse[Map[WorkflowJob.Name, WorkflowJob]]("jobs")(Map.empty)
       source <- cursor.get[Option[String]]("source")
       workflow <- Workflow.checkedSub(id, instructions, namedJobs, source).toDecoderResult(cursor.history)
     } yield workflow

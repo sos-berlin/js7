@@ -71,7 +71,7 @@ object AgentCommand extends CommonCommand.Companion
 
     implicit val jsonDecoder: Decoder[EmergencyStop] = c =>
       for {
-        restart <- c.get[Option[Boolean]]("restart").map(_ getOrElse false)
+        restart <- c.getOrElse[Boolean]("restart")(false)
       } yield EmergencyStop(restart)
   }
 

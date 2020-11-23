@@ -73,7 +73,7 @@ object FreshOrder
       id <- c.get[OrderId]("id")
       workflowPath <- c.get[WorkflowPath]("workflowPath")
       scheduledFor <- c.get[Option[Timestamp]]("scheduledFor")
-      arguments <- c.get[Option[NamedValues]]("arguments").map(_ getOrElse Map.empty)
+      arguments <- c.getOrElse[NamedValues]("arguments")(NamedValues.empty)
       order <- checked(id, workflowPath, scheduledFor, arguments).toDecoderResult(c.history)
     } yield order
 }

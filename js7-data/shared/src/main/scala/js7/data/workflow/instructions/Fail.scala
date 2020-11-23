@@ -33,8 +33,8 @@ object Fail
   implicit val jsonDecoder: Decoder[Fail] =
     c => for {
       errorMessage <- c.get[Option[Expression]]("message")
-      namedValues <- c.get[Option[NamedValues]]("namedValues").map(_ getOrElse Map.empty)
-      uncatchable <- c.get[Option[Boolean]]("uncatchable").map(_ getOrElse false)
+      namedValues <- c.getOrElse[NamedValues]("namedValues")(Map.empty)
+      uncatchable <- c.getOrElse[Boolean]("uncatchable")(false)
       sourcePos <- c.get[Option[SourcePos]]("sourcePos")
     } yield Fail(errorMessage, namedValues, uncatchable = uncatchable, sourcePos)
 }
