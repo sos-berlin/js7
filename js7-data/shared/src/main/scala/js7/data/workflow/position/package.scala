@@ -2,8 +2,9 @@ package js7.data.workflow
 
 import cats.Show
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, DecodingFailure, Encoder, Json}
+import io.circe.{Decoder, Encoder, Json}
 import js7.base.utils.ScalaUtils.syntax._
+import scala.collection.View
 
 /**
   * @author Joacim Zschimmer
@@ -28,10 +29,10 @@ package object position
     }
 
     private[workflow] def toJsonSeq: Vector[Json] =
-      segments.view.flatMap(p => Array(p.nr.asJson, p.branchId.asJson)).toVector
+      segments.view.flatMap(p => View(p.nr.asJson, p.branchId.asJson)).toVector
 
     def toSeq: Vector[Any] =
-      segments.view.flatMap(p => Array(Int.box(p.nr.number), p.branchId.toSimpleType)).toVector
+      segments.view.flatMap(p => View(Int.box(p.nr.number), p.branchId.toSimpleType)).toVector
   }
 
   implicit val branchPathShow: Show[BranchPath] =
@@ -41,10 +42,7 @@ package object position
 
   implicit val jsonDecoder: Decoder[BranchPath] =
     cursor => cursor.as[List[Json]].flatMap(parts =>
-      if (parts.size % 2 != 0)
-        Left(DecodingFailure("Not a valid BranchPath", cursor.history))
-      else
-        BranchPath.decodeSegments(parts grouped 2))
+      BranchPath.decodeSegments(parts grouped 2, cursor))
 
   implicit final class RichWorkflowId(private val underlying: WorkflowId) extends AnyVal {
     def /(position: Position) = WorkflowPosition(underlying, position)

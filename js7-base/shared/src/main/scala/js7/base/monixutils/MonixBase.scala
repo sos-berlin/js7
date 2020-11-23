@@ -23,7 +23,7 @@ object MonixBase
 {
   private val FalseTask = Task.pure(false)
   private val TrueTask = Task.pure(true)
-  private val DefaultBatchSize = 200
+  val DefaultBatchSize = 200
   private val logger = scribe.Logger(getClass.scalaName)
 
   object syntax

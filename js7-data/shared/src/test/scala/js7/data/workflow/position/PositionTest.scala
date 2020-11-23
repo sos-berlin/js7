@@ -20,6 +20,7 @@ final class PositionTest extends AnyFreeSpec
     testJson(Position(1) / "BRANCH" % 2 , json"""[ 1, "BRANCH", 2 ]""")
     testJson(Position(1) / "A" % 2 / "B", json"""[ 1, "A", 2, "B" ]""")
 
+    assert("""[]""".parseJsonOrThrow.as[Position].isLeft/*failed*/)
     assert("""[ 1, 2 ]""".parseJsonOrThrow.as[Position].isLeft/*failed*/)
   }
 
@@ -29,9 +30,9 @@ final class PositionTest extends AnyFreeSpec
   }
 
   "fromSeq" in {
-    assert(Position.fromSeq(Nil) == Left(Problem("Position sequence muss be of uneven length")))
+    assert(Position.fromSeq(Nil) == Left(Problem("Not a valid BranchPath")))
     assert(Position.fromSeq(Vector("X")) == Left(Problem("Instruction number (integer) expected in Position array instead of: X")))
-    assert(Position.fromSeq(Vector(1, "BRANCH")) == Left(Problem("Position sequence muss be of uneven length")))
+    assert(Position.fromSeq(Vector(1, "BRANCH")) == Left(Problem("Not a valid BranchPath")))
     assert(Position.fromSeq(Vector(1, "BRANCH", "X")) == Left(Problem("Instruction number (integer) expected in Position array instead of: X")))
     assert(Position.fromSeq(Vector(1, 2, 3)) == Left(Problem("BranchId (string) expected in Position array instead of: 2")))
     assert(Position.fromSeq(Vector(1))              == Right(Position(1)))

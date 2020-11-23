@@ -10,6 +10,7 @@ import js7.data.workflow.position.BranchId.nextTryBranchId
 import js7.data.workflow.position.BranchPath.Segment
 import js7.data.workflow.position.Position._
 import scala.annotation.tailrec
+import scala.collection.mutable.ListBuffer
 
 /**
   * @author Joacim Zschimmer
@@ -102,8 +103,8 @@ object Position
     Position(Nil, nr)
 
   def fromSeq(seq: Seq[Any]): Checked[Position] =
-    if (seq.size % 2 != 1)
-      Left(Problem.pure("Position sequence muss be of uneven length"))
+    if (seq.isEmpty)
+      Left(Problem.pure("Not a valid BranchPath"))
     else
       for {
         branchPath <- BranchPath.anySegmentsToCheckedBranchPath(seq dropRight 1 grouped 2)
@@ -117,12 +118,37 @@ object Position
   implicit val jsonEncoder: Encoder.AsArray[Position] = _.toJsonSeq
 
   implicit val jsonDecoder: Decoder[Position] =
-    cursor => cursor.as[List[Json]].flatMap(parts =>
-      if (parts.size % 2 != 1)
-        Left(DecodingFailure("Not a valid Position", cursor.history))
-      else
-        for {
-          branchPath <- BranchPath.decodeSegments(parts dropRight 1 grouped 2)
-          nr <- parts.last.as[InstructionNr]
-        } yield Position(branchPath, nr))
+    cursor =>
+      cursor.value.asArray match {
+        case None => Left(DecodingFailure("Position must be a JSON array", cursor.history))
+        case Some(parts) =>
+          if (parts.size % 2 == 0)
+            Left(DecodingFailure("Not a valid Position, JSON array size must be 2*n + 1", cursor.history))
+          else {
+            var error: Option[String] = None
+            val branchPath = ListBuffer[Segment]()
+            var lastInstructionNr = -1
+            val iterator = parts.iterator
+            while (error.isEmpty && lastInstructionNr == -1) {
+              iterator.next().asNumber.flatMap(_.toInt) match {
+                case None => error = Some("InstructionNr (a small integer) expected")
+                case Some(nr) =>
+                  if (nr < 0) {
+                    error = Some("InstructionNr (a small integer) expected")
+                  } else if (!iterator.hasNext) {
+                    lastInstructionNr = nr
+                  } else
+                    iterator.next().asString match {
+                      case None => error = Some("BranchId (a string) expected in position array")
+                      case Some(string) =>
+                        branchPath += Segment(InstructionNr(nr), BranchId(string))
+                    }
+              }
+            }
+            error match {
+              case Some(error) => Left(DecodingFailure(error, cursor.history))
+              case None => Right(Position(branchPath.toList, InstructionNr(lastInstructionNr)))
+            }
+          }
+    }
 }

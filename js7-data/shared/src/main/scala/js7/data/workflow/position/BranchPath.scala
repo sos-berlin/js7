@@ -1,6 +1,6 @@
 package js7.data.workflow.position
 
-import io.circe.{Decoder, Json}
+import io.circe.{Decoder, DecodingFailure, HCursor, Json}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
 import scala.collection.mutable
@@ -39,14 +39,14 @@ object BranchPath
       case Segment(nr, branchId) :: tail => nr / branchId.normalized :: normalize(tail)
     }
 
-  private[position] def decodeSegments(pairs: Iterator[Seq[Json]]): Decoder.Result[BranchPath] =
-    genericSeqToCheckedBranchPath(decodeJsonSegment)(pairs)
+  private[position] def decodeSegments(pairs: Iterator[Seq[Json]], cursor: HCursor): Decoder.Result[BranchPath] =
+    genericSeqToBranchPath(decodeJsonSegment(_, cursor))(pairs)
 
   /** Converts an sequence of pairs (String, Int) into a Checked[BranchPath]. */
   private[position] def anySegmentsToCheckedBranchPath[L, R](pairs: Iterator[Seq[R]]): Checked[BranchPath] =
-    genericSeqToCheckedBranchPath(anySeqToSegment)(pairs)
+    genericSeqToBranchPath(anySeqToSegment)(pairs)
 
-  private def genericSeqToCheckedBranchPath[L, R](seqToSegment: Seq[R] => Either[L, Segment])(pairs: Iterator[Seq[R]])
+  private def genericSeqToBranchPath[L, R](seqToSegment: Seq[R] => Either[L, Segment])(pairs: Iterator[Seq[R]])
   : Either[L, BranchPath] = {
     var left: Option[Left[L, Nothing]] = None
     val buffer = mutable.ListBuffer[Segment]()
@@ -58,24 +58,31 @@ object BranchPath
     left getOrElse Right(buffer.toList)
   }
 
-  private def decodeJsonSegment(pair: Seq[Json]): Decoder.Result[Segment] =
+  private def decodeJsonSegment(pair: Seq[Json], cursor: HCursor): Decoder.Result[Segment] = {
+    if (pair.sizeIs != 2)
+      Left(DecodingFailure("Not a valid BranchPath", cursor.history))
+    else
     for {
       nr <- pair.head.as[InstructionNr]
       branchId <- pair(1).as[BranchId]
     } yield Segment(nr, branchId)
+  }
 
   private def anySeqToSegment(pair: Seq[Any]): Checked[Segment] =
-    for {
-      nr <- pair(0) match {
-        case i: Int => Right(InstructionNr(i))
-        case i: java.lang.Integer => Right(InstructionNr(i))
-        case o => Left(Problem(s"Instruction number (integer) expected in Position array instead of: $o"))
-      }
-      branchId <- pair(1) match {
-        case string: String => Right(BranchId(string))
-        case o => Left(Problem(s"BranchId (string) expected in Position array instead of: $o"))
-      }
-    } yield Segment(nr, branchId)
+    if (pair.sizeIs != 2)
+      Left(Problem.pure("Not a valid BranchPath"))
+    else
+      for {
+        nr <- pair(0) match {
+          case i: Int => Right(InstructionNr(i))
+          case i: java.lang.Integer => Right(InstructionNr(i))
+          case o => Left(Problem(s"Instruction number (integer) expected in Position array instead of: $o"))
+        }
+        branchId <- pair(1) match {
+          case string: String => Right(BranchId(string))
+          case o => Left(Problem(s"BranchId (string) expected in Position array instead of: $o"))
+        }
+      } yield Segment(nr, branchId)
 
   object PositionAndBranchId {
     def unapply(branchPath: BranchPath): Option[(Position, BranchId)] =

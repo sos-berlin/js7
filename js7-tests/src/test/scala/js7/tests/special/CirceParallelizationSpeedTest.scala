@@ -5,25 +5,43 @@ import io.circe.syntax._
 import js7.base.circeutils.CirceObjectCodec
 import js7.base.circeutils.CirceUtils._
 import js7.base.data.ByteArray
+import js7.base.monixutils.MonixBase
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.measureTimeOfSingleRun
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.scalautil.MonixUtils.syntax._
+import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
+import js7.data.value.{ListValue, StringValue}
+import js7.data.workflow.WorkflowPath
+import js7.data.workflow.position.BranchId.Then
+import js7.data.workflow.position.Position
 import js7.tests.special.CirceParallelizationSpeedTest._
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
-import scala.util.Random
 
 final class CirceParallelizationSpeedTest extends AnyFreeSpec
 {
   if (sys.props.contains("test.speed")) {
     coupleScribeWithSlf4j()
 
-    val n = 1000000
-    lazy val big = for (i <- 1 to n / 10) yield Big(i, Seq.fill(20)(Random.nextString(10)))
+    val n = 4 * sys.runtime.availableProcessors * MonixBase.DefaultBatchSize
+    lazy val big = {
+      val workflowPosition = WorkflowPath("/WORKFLOW") ~ "1" /: (Position(1) / Then % 2 / Then % 3)
+      val namedValues = Map("A" -> StringValue("a"), "B" -> ListValue((1 to 10).map(_.toString).map(StringValue(_))))
+      val historicOutcome = HistoricOutcome(workflowPosition.position, Outcome.Succeeded(namedValues))
+      val fakeOrder = Order[Order.State](
+        OrderId("?"),
+        workflowPosition,
+        Order.Forked(List(Order.Forked.Child("A", OrderId("A")), Order.Forked.Child("B", OrderId("B")))),
+        namedValues,
+        (1 to 50).map(_ => historicOutcome))
+      scribe.info(s"Big has ${fakeOrder.asJson.compactPrint.size} JSON bytes or ${fakeOrder.asJson.toPrettyString.count(_ == '\n')} JSON lines")
+      scribe.debug(fakeOrder.asJson.toPrettyString)
+      for (i <- 1 to n / 10) yield Big(fakeOrder.copy(id = OrderId(i.toString)))
+    }
     lazy val small = for (i <- 1 to n) yield Small(i)
     lazy val bigJson = encodeParallelBatch(big)
     lazy val smallJson = encodeParallelBatch(small)
@@ -50,7 +68,7 @@ final class CirceParallelizationSpeedTest extends AnyFreeSpec
     }
   }
 
-  if (false) { // slow
+  if (true) { // slow
     "encode sequential" in {
       testEncode(big, "Big")(seq => encodeSerial(seq))
       testEncode(small, "Small")(seq => encodeSerial(seq))
@@ -119,7 +137,6 @@ final class CirceParallelizationSpeedTest extends AnyFreeSpec
 
   private def encode[A: Encoder](a: A): ByteArray =
     ByteArray.fromString(a.asJson.compactPrint)
-    //ByteArray(a.asJson.compactPrint.getBytes(UTF_8))
 
   private def decode[A: Decoder](bytes: ByteArray): A =
     bytes.parseJsonAs[A].orThrow
@@ -132,7 +149,7 @@ private object CirceParallelizationSpeedTest
     implicit val jsonCodec: CirceObjectCodec[Small] = deriveCodec[Small]
   }
 
-  case class Big(int: Int, array: Seq[String])
+  case class Big(fakeOrder: Order[Order.State])
   object Big {
     implicit val jsonCodec: CirceObjectCodec[Big] = deriveCodec[Big]
   }
