@@ -231,29 +231,26 @@ final case class Order[+S <: Order.State](
               mark = None,
               state = if (isSuspendingWithKill && isState[ProcessingKilled]) Ready else state))
 
-        case OrderResumeMarked(position) =>
-          if (isMarkable)
-            if (isSuspended)
-              Right(copy(mark = Some(OrderMark.Resuming(position))))
-            else position match {
-              case Some(_) =>
-                // Inhibited because we cannot be sure weather order will pass a fork barrier
-                inapplicable
-              case None =>
-                if (!isSuspended && isSuspending)
-                  Right(copy(mark = None/*revert OrderSuspendMarked*/))
-                else
-                  Right(copy(mark = Some(OrderMark.Resuming(None))))
-            }
-          else
+        case OrderResumeMarked(position, historicOutcomes) =>
+          if (!isMarkable)
             inapplicable
+          else if (isSuspended)
+            Right(copy(mark = Some(OrderMark.Resuming(position, historicOutcomes))))
+          else if (position.isDefined || historicOutcomes.isDefined)
+              // Inhibited because we cannot be sure wether order will pass a fork barrier
+            inapplicable
+          else if (!isSuspended && isSuspending)
+            Right(copy(mark = None/*revert OrderSuspendMarked*/))
+          else
+            Right(copy(mark = Some(OrderMark.Resuming(None))))
 
-        case OrderResumed(maybePosition) =>
+        case OrderResumed(maybePosition, maybeHistoricOutcomes) =>
           check(isResumable,
             copy(
               isSuspended = false,
               mark = None,
-              state = if (isState[Broken]) Ready else state
+              state = if (isState[Broken]) Ready else state,
+              historicOutcomes = maybeHistoricOutcomes getOrElse historicOutcomes
             ).withPosition(maybePosition getOrElse position))
       }
   }

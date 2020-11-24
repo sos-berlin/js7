@@ -226,7 +226,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
             assert(controller.cancel(order.id, CancelMode.FreshOnly       ) == Right(Some(OrderCancelled)))
             assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelled)))
             assert(controller.suspend(order.id, SuspendMode()) == Right(Some(OrderSuspended)))
-            assert(controller.resume(order.id, None) == Left(CannotResumeOrderProblem))
+            assert(controller.resume(order.id, None, None) == Left(CannotResumeOrderProblem))
           }
         }
 
@@ -240,8 +240,8 @@ final class OrderEventSourceTest extends AnyFreeSpec
             assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
             assert(controller.suspend(order.id, SuspendMode()) == Right(Some(OrderSuspendMarked())))
             assert(agent     .suspend(order.id, SuspendMode()) == Right(Some(OrderSuspendMarked())))
-            assert(controller.resume(order.id, None) == Left(CannotResumeOrderProblem))
-            assert(agent     .resume(order.id, None) == Left(CannotResumeOrderProblem))
+            assert(controller.resume(order.id, None, None) == Left(CannotResumeOrderProblem))
+            assert(agent     .resume(order.id, None, None) == Left(CannotResumeOrderProblem))
           }
         }
 
@@ -255,8 +255,8 @@ final class OrderEventSourceTest extends AnyFreeSpec
             assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderDetachable)))
             assert(controller.suspend(order.id, SuspendMode()) == Right(Some(OrderSuspendMarked())))
             assert(agent     .suspend(order.id, SuspendMode()) == Right(Some(OrderDetachable)))
-            assert(controller.resume(order.id, None) == Left(CannotResumeOrderProblem))
-            assert(agent     .resume(order.id, None) == Left(CannotResumeOrderProblem))
+            assert(controller.resume(order.id, None, None) == Left(CannotResumeOrderProblem))
+            assert(agent     .resume(order.id, None, None) == Left(CannotResumeOrderProblem))
           }
         }
 
@@ -270,8 +270,8 @@ final class OrderEventSourceTest extends AnyFreeSpec
             assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
             assert(controller.suspend(order.id, SuspendMode()) == Right(Some(OrderSuspendMarked())))
             assert(agent     .suspend(order.id, SuspendMode()) == Right(Some(OrderSuspendMarked())))
-            assert(controller.resume(order.id, None) == Left(CannotResumeOrderProblem))
-            assert(agent     .resume(order.id, None) == Left(CannotResumeOrderProblem))
+            assert(controller.resume(order.id, None, None) == Left(CannotResumeOrderProblem))
+            assert(agent     .resume(order.id, None, None) == Left(CannotResumeOrderProblem))
           }
         }
       }
@@ -297,8 +297,8 @@ final class OrderEventSourceTest extends AnyFreeSpec
             assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
             assert(controller.suspend(order.id, SuspendMode()) == Right(Some(OrderSuspendMarked())))
             assert(agent     .suspend(order.id, SuspendMode()) == Right(Some(OrderSuspendMarked())))
-            assert(controller.resume(order.id, None) == Left(CannotResumeOrderProblem))
-            assert(agent     .resume(order.id, None) == Left(CannotResumeOrderProblem))
+            assert(controller.resume(order.id, None, None) == Left(CannotResumeOrderProblem))
+            assert(agent     .resume(order.id, None, None) == Left(CannotResumeOrderProblem))
           }
         }
 
@@ -312,8 +312,8 @@ final class OrderEventSourceTest extends AnyFreeSpec
             assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderDetachable)))
             assert(controller.suspend(order.id, SuspendMode()) == Right(Some(OrderSuspendMarked())))
             assert(agent     .suspend(order.id, SuspendMode()) == Right(Some(OrderDetachable)))
-            assert(controller.resume(order.id, None) == Left(CannotResumeOrderProblem))
-            assert(agent     .resume(order.id, None) == Left(CannotResumeOrderProblem))
+            assert(controller.resume(order.id, None, None) == Left(CannotResumeOrderProblem))
+            assert(agent     .resume(order.id, None, None) == Left(CannotResumeOrderProblem))
           }
         }
 
@@ -327,8 +327,8 @@ final class OrderEventSourceTest extends AnyFreeSpec
             assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
             assert(controller.suspend(order.id, SuspendMode()) == Right(Some(OrderSuspendMarked())))
             assert(agent     .suspend(order.id, SuspendMode()) == Right(Some(OrderSuspendMarked())))
-            assert(controller.resume(order.id, None) == Left(CannotResumeOrderProblem))
-            assert(agent     .resume(order.id, None) == Left(CannotResumeOrderProblem))
+            assert(controller.resume(order.id, None, None) == Left(CannotResumeOrderProblem))
+            assert(agent     .resume(order.id, None, None) == Left(CannotResumeOrderProblem))
           }
         }
       }
@@ -344,8 +344,8 @@ final class OrderEventSourceTest extends AnyFreeSpec
           assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
           assert(controller.suspend(order.id, SuspendMode()) == Right(Some(OrderSuspendMarked())))
           assert(agent     .suspend(order.id, SuspendMode()) == Right(Some(OrderSuspendMarked())))
-          assert(controller.resume(order.id, None) == Left(CannotResumeOrderProblem))
-          assert(agent     .resume(order.id, None) == Left(CannotResumeOrderProblem))
+          assert(controller.resume(order.id, None, None) == Left(CannotResumeOrderProblem))
+          assert(agent     .resume(order.id, None, None) == Left(CannotResumeOrderProblem))
         }
       }
     }
@@ -372,10 +372,10 @@ final class OrderEventSourceTest extends AnyFreeSpec
             assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderDetachable)))
             assert(controller.suspend(order.id, SuspendMode()) == Left(CannotSuspendOrderProblem))
             assert(agent     .suspend(order.id, SuspendMode()) == Left(CannotSuspendOrderProblem))
-            assert(controller.resume(order.id, None) == Left(CannotResumeOrderProblem))
-            assert(agent     .resume(order.id, None) == Left(CannotResumeOrderProblem))
-            assert(controller.resume(order.id, Some(Position(1))) == Left(CannotResumeOrderProblem))
-            assert(agent     .resume(order.id, Some(Position(1))) == Left(CannotResumeOrderProblem))
+            assert(controller.resume(order.id, None, None) == Left(CannotResumeOrderProblem))
+            assert(agent     .resume(order.id, None, None) == Left(CannotResumeOrderProblem))
+            assert(controller.resume(order.id, Some(Position(1)), None) == Left(CannotResumeOrderProblem))
+            assert(agent     .resume(order.id, Some(Position(1)), None) == Left(CannotResumeOrderProblem))
           }
         }
       }
@@ -403,10 +403,10 @@ final class OrderEventSourceTest extends AnyFreeSpec
             assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderDetachable)))
             assert(controller.suspend(order.id, SuspendMode()) == Left(CannotSuspendOrderProblem))
             assert(agent     .suspend(order.id, SuspendMode()) == Left(CannotSuspendOrderProblem))
-            assert(controller.resume(order.id, None) == Left(CannotResumeOrderProblem))
-            assert(agent     .resume(order.id, None) == Left(CannotResumeOrderProblem))
-            assert(controller.resume(order.id, Some(Position(1))) == Left(CannotResumeOrderProblem))
-            assert(agent     .resume(order.id, Some(Position(1))) == Left(CannotResumeOrderProblem))
+            assert(controller.resume(order.id, None, None) == Left(CannotResumeOrderProblem))
+            assert(agent     .resume(order.id, None, None) == Left(CannotResumeOrderProblem))
+            assert(controller.resume(order.id, Some(Position(1)), None) == Left(CannotResumeOrderProblem))
+            assert(agent     .resume(order.id, Some(Position(1)), None) == Left(CannotResumeOrderProblem))
           }
         }
       }
@@ -422,10 +422,10 @@ final class OrderEventSourceTest extends AnyFreeSpec
           assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(None))
           assert(controller.suspend(order.id, SuspendMode()) == Left(CannotSuspendOrderProblem))
           assert(agent     .suspend(order.id, SuspendMode()) == Left(CannotSuspendOrderProblem))
-          assert(controller.resume(order.id, None) == Left(CannotResumeOrderProblem))
-          assert(agent     .resume(order.id, None) == Left(CannotResumeOrderProblem))
-          assert(controller.resume(order.id, Some(Position(1))) == Left(CannotResumeOrderProblem))
-          assert(agent     .resume(order.id, Some(Position(1))) == Left(CannotResumeOrderProblem))
+          assert(controller.resume(order.id, None, None) == Left(CannotResumeOrderProblem))
+          assert(agent     .resume(order.id, None, None) == Left(CannotResumeOrderProblem))
+          assert(controller.resume(order.id, Some(Position(1)), None) == Left(CannotResumeOrderProblem))
+          assert(agent     .resume(order.id, Some(Position(1)), None) == Left(CannotResumeOrderProblem))
         }
       }
     }
@@ -442,8 +442,10 @@ final class OrderEventSourceTest extends AnyFreeSpec
             assert(controller.cancel(order.id, CancelMode.FreshOnly       ) == Left(CancelStartedOrderProblem(order.id)))
             assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelled)))
             assert(controller.suspend(order.id, SuspendMode()) == Right(None))
-            assert(controller.resume(order.id, None) == Right(Some(OrderResumeMarked())))
-            assert(controller.resume(order.id, Some(Position(1))) == Left(CannotResumeOrderProblem))
+            assert(controller.resume(order.id, None, None) == Right(Some(OrderResumeMarked())))
+            assert(controller.resume(order.id, Some(Position(1)), None) == Left(CannotResumeOrderProblem))
+            assert(controller.resume(order.id, Some(Position(1)), Some(Nil)) == Left(CannotResumeOrderProblem))
+            assert(controller.resume(order.id, None, Some(Nil)) == Left(CannotResumeOrderProblem))
           }
         }
 
@@ -457,10 +459,12 @@ final class OrderEventSourceTest extends AnyFreeSpec
             assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderDetachable)))
             assert(controller.suspend(order.id, SuspendMode()) == Right(None))
             assert(agent     .suspend(order.id, SuspendMode()) == Right(None))
-            assert(controller.resume(order.id, None) == Right(Some(OrderResumeMarked())))
-            assert(agent     .resume(order.id, None) == Right(Some(OrderResumeMarked())))
-            assert(controller.resume(order.id, Some(Position(1))) == Left(CannotResumeOrderProblem))
-            assert(agent     .resume(order.id, Some(Position(1))) == Left(CannotResumeOrderProblem))
+            assert(controller.resume(order.id, None, None) == Right(Some(OrderResumeMarked())))
+            assert(agent     .resume(order.id, None, None) == Right(Some(OrderResumeMarked())))
+            assert(controller.resume(order.id, Some(Position(1)), None) == Left(CannotResumeOrderProblem))
+            assert(agent     .resume(order.id, Some(Position(1)), None) == Left(CannotResumeOrderProblem))
+            assert(controller.resume(order.id, None, Some(Nil)) == Left(CannotResumeOrderProblem))
+            assert(agent     .resume(order.id, None, Some(Nil)) == Left(CannotResumeOrderProblem))
           }
         }
       }
@@ -474,10 +478,12 @@ final class OrderEventSourceTest extends AnyFreeSpec
           assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
           assert(controller.suspend(order.id, SuspendMode()) == Right(None))
           assert(agent     .suspend(order.id, SuspendMode()) == Right(None))
-          assert(controller.resume(order.id, None) == Right(Some(OrderResumeMarked())))
-          assert(agent     .resume(order.id, None) == Right(Some(OrderResumeMarked())))
-          assert(controller.resume(order.id, Some(Position(1))) == Left(CannotResumeOrderProblem))
-          assert(agent     .resume(order.id, Some(Position(1))) == Left(CannotResumeOrderProblem))
+          assert(controller.resume(order.id, None, None) == Right(Some(OrderResumeMarked())))
+          assert(agent     .resume(order.id, None, None) == Right(Some(OrderResumeMarked())))
+          assert(controller.resume(order.id, Some(Position(1)), None) == Left(CannotResumeOrderProblem))
+          assert(agent     .resume(order.id, Some(Position(1)), None) == Left(CannotResumeOrderProblem))
+          assert(controller.resume(order.id, None, Some(Nil)) == Left(CannotResumeOrderProblem))
+          assert(agent     .resume(order.id, None, Some(Nil)) == Left(CannotResumeOrderProblem))
         }
       }
     }
@@ -494,8 +500,8 @@ final class OrderEventSourceTest extends AnyFreeSpec
             assert(controller.cancel(order.id, CancelMode.FreshOnly       ) == Left(CancelStartedOrderProblem(order.id)))
             assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelled)))
             assert(controller.suspend(order.id, SuspendMode()) == Right(Some(OrderSuspended)))
-            assert(controller.resume(order.id, None) == Right(Some(OrderResumed()/*should already be happened*/)))
-            assert(controller.resume(order.id, Some(Position(1))) == Left(CannotResumeOrderProblem))
+            assert(controller.resume(order.id, None, None) == Right(Some(OrderResumed()/*should already be happened*/)))
+            assert(controller.resume(order.id, Some(Position(1)), None) == Left(CannotResumeOrderProblem))
           }
         }
 
@@ -509,10 +515,10 @@ final class OrderEventSourceTest extends AnyFreeSpec
             assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderDetachable)))
             assert(controller.suspend(order.id, SuspendMode()) == Right(None))
             assert(agent     .suspend(order.id, SuspendMode()) == Right(Some(OrderDetachable)))
-            assert(controller.resume(order.id, None) == Right(None))
-            assert(agent     .resume(order.id, None) == Right(None))
-            assert(controller.resume(order.id, Some(Position(1))) == Left(CannotResumeOrderProblem))
-            assert(agent     .resume(order.id, Some(Position(1))) == Left(CannotResumeOrderProblem))
+            assert(controller.resume(order.id, None, None) == Right(None))
+            assert(agent     .resume(order.id, None, None) == Right(None))
+            assert(controller.resume(order.id, Some(Position(1)), None) == Left(CannotResumeOrderProblem))
+            assert(agent     .resume(order.id, Some(Position(1)), None) == Left(CannotResumeOrderProblem))
           }
         }
       }
@@ -530,9 +536,9 @@ final class OrderEventSourceTest extends AnyFreeSpec
             assert(controller.cancel(order.id, CancelMode.FreshOnly       ) == Right(Some(OrderCancelled)))
             assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelled)))
             assert(controller.suspend(order.id, SuspendMode()) == Right(None))
-            assert(controller.resume(order.id, None) == Right(Some(OrderResumed())))
-            assert(controller.resume(order.id, Some(Position(1))) == Right(Some(OrderResumed(Some(Position(1))))))
-            assert(controller.resume(order.id, Some(Position(99))) == Left(Problem("ResumeOrder: position is not reachable")))
+            assert(controller.resume(order.id, None, None) == Right(Some(OrderResumed())))
+            assert(controller.resume(order.id, Some(Position(1)), None) == Right(Some(OrderResumed(Some(Position(1))))))
+            assert(controller.resume(order.id, Some(Position(99)), None) == Left(Problem("ResumeOrder: Unreachable order position")))
           }
         }
 
@@ -546,10 +552,12 @@ final class OrderEventSourceTest extends AnyFreeSpec
             assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
             assert(controller.suspend(order.id, SuspendMode()) == Right(None))
             assert(agent     .suspend(order.id, SuspendMode()) == Right(None))
-            assert(controller.resume(order.id, None) == Right(Some(OrderResumeMarked())))
-            assert(agent     .resume(order.id, None) == Right(Some(OrderResumeMarked())))
-            assert(controller.resume(order.id, Some(Position(1))) == Right(Some(OrderResumeMarked(Some(Position(1))))))
-            assert(agent     .resume(order.id, Some(Position(1))) == Right(Some(OrderResumeMarked(Some(Position(1))))))
+            assert(controller.resume(order.id, None, None) == Right(Some(OrderResumeMarked())))
+            assert(agent     .resume(order.id, None, None) == Right(Some(OrderResumeMarked())))
+            assert(controller.resume(order.id, Some(Position(1)), None) == Right(Some(OrderResumeMarked(Some(Position(1))))))
+            assert(agent     .resume(order.id, Some(Position(1)), None) == Right(Some(OrderResumeMarked(Some(Position(1))))))
+            assert(controller.resume(order.id, Some(Position(1)), Some(Nil)) == Right(Some(OrderResumeMarked(Some(Position(1)), Some(Nil)))))
+            assert(agent     .resume(order.id, Some(Position(1)), Some(Nil)) == Right(Some(OrderResumeMarked(Some(Position(1)), Some(Nil)))))
           }
         }
 
@@ -563,10 +571,10 @@ final class OrderEventSourceTest extends AnyFreeSpec
             assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderDetachable)))
             assert(controller.suspend(order.id, SuspendMode()) == Right(None))
             assert(agent     .suspend(order.id, SuspendMode()) == Right(Some(OrderDetachable)))
-            assert(controller.resume(order.id, None) == Right(Some(OrderResumeMarked())))
-            assert(agent     .resume(order.id, None) == Right(Some(OrderResumed())))
-            assert(controller.resume(order.id, Some(Position(1))) == Right(Some(OrderResumeMarked(Some(Position(1))))))
-            assert(agent     .resume(order.id, Some(Position(1))) == Right(Some(OrderResumed(Some(Position(1))))))
+            assert(controller.resume(order.id, None, None) == Right(Some(OrderResumeMarked())))
+            assert(agent     .resume(order.id, None, None) == Right(Some(OrderResumed())))
+            assert(controller.resume(order.id, Some(Position(1)), None) == Right(Some(OrderResumeMarked(Some(Position(1))))))
+            assert(agent     .resume(order.id, Some(Position(1)), None) == Right(Some(OrderResumed(Some(Position(1))))))
           }
         }
 
@@ -580,10 +588,10 @@ final class OrderEventSourceTest extends AnyFreeSpec
             assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
             assert(controller.suspend(order.id, SuspendMode()) == Right(None))
             assert(agent     .suspend(order.id, SuspendMode()) == Right(None))
-            assert(controller.resume(order.id, None) == Right(Some(OrderResumeMarked())))
-            assert(agent     .resume(order.id, None) == Right(Some(OrderResumeMarked())))
-            assert(controller.resume(order.id, Some(Position(1))) == Right(Some(OrderResumeMarked(Some(Position(1))))))
-            assert(agent     .resume(order.id, Some(Position(1))) == Right(Some(OrderResumeMarked(Some(Position(1))))))
+            assert(controller.resume(order.id, None, None) == Right(Some(OrderResumeMarked())))
+            assert(agent     .resume(order.id, None, None) == Right(Some(OrderResumeMarked())))
+            assert(controller.resume(order.id, Some(Position(1)), None) == Right(Some(OrderResumeMarked(Some(Position(1))))))
+            assert(agent     .resume(order.id, Some(Position(1)), None) == Right(Some(OrderResumeMarked(Some(Position(1))))))
           }
         }
       }
@@ -597,8 +605,8 @@ final class OrderEventSourceTest extends AnyFreeSpec
             assert(controller.cancel(order.id, CancelMode.FreshOnly     ) == Left(CancelStartedOrderProblem(order.id)))
             assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelled)))
             assert(controller.suspend(order.id, SuspendMode()) == Right(None))
-            assert(controller.resume(order.id, None) == Right(Some(OrderResumed())))
-            assert(controller.resume(order.id, Some(Position(1))) == Right(Some(OrderResumed(Some(Position(1))))))
+            assert(controller.resume(order.id, None, None) == Right(Some(OrderResumed())))
+            assert(controller.resume(order.id, Some(Position(1)), None) == Right(Some(OrderResumed(Some(Position(1))))))
           }
         }
 
@@ -612,10 +620,10 @@ final class OrderEventSourceTest extends AnyFreeSpec
             assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
             assert(controller.suspend(order.id, SuspendMode()) == Right(None))
             assert(agent     .suspend(order.id, SuspendMode()) == Right(None))
-            assert(controller.resume(order.id, None) == Right(Some(OrderResumeMarked())))
-            assert(agent     .resume(order.id, None) == Right(Some(OrderResumeMarked())))
-            assert(controller.resume(order.id, Some(Position(1))) == Right(Some(OrderResumeMarked(Some(Position(1))))))
-            assert(agent     .resume(order.id, Some(Position(1))) == Right(Some(OrderResumeMarked(Some(Position(1))))))
+            assert(controller.resume(order.id, None, None) == Right(Some(OrderResumeMarked())))
+            assert(agent     .resume(order.id, None, None) == Right(Some(OrderResumeMarked())))
+            assert(controller.resume(order.id, Some(Position(1)), None) == Right(Some(OrderResumeMarked(Some(Position(1))))))
+            assert(agent     .resume(order.id, Some(Position(1)), None) == Right(Some(OrderResumeMarked(Some(Position(1))))))
           }
         }
 
@@ -627,10 +635,10 @@ final class OrderEventSourceTest extends AnyFreeSpec
             assert(agent     .cancel(order.id, CancelMode.FreshOnly       ) == Left(CancelStartedOrderProblem(order.id)))
             assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
             assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderDetachable)))
-            assert(controller.resume(order.id, None) == Right(Some(OrderResumeMarked())))
-            assert(agent     .resume(order.id, None) == Right(Some(OrderResumed())))
-            assert(controller.resume(order.id, Some(Position(1))) == Right(Some(OrderResumeMarked(Some(Position(1))))))
-            assert(agent     .resume(order.id, Some(Position(1))) == Right(Some(OrderResumed(Some(Position(1))))))
+            assert(controller.resume(order.id, None, None) == Right(Some(OrderResumeMarked())))
+            assert(agent     .resume(order.id, None, None) == Right(Some(OrderResumed())))
+            assert(controller.resume(order.id, Some(Position(1)), None) == Right(Some(OrderResumeMarked(Some(Position(1))))))
+            assert(agent     .resume(order.id, Some(Position(1)), None) == Right(Some(OrderResumed(Some(Position(1))))))
           }
         }
 
@@ -644,10 +652,10 @@ final class OrderEventSourceTest extends AnyFreeSpec
             assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
             assert(controller.suspend(order.id, SuspendMode()) == Right(None))
             assert(agent     .suspend(order.id, SuspendMode()) == Right(None))
-            assert(controller.resume(order.id, None) == Right(Some(OrderResumeMarked())))
-            assert(agent     .resume(order.id, None) == Right(Some(OrderResumeMarked())))
-            assert(controller.resume(order.id, Some(Position(1))) == Right(Some(OrderResumeMarked(Some(Position(1))))))
-            assert(agent     .resume(order.id, Some(Position(1))) == Right(Some(OrderResumeMarked(Some(Position(1))))))
+            assert(controller.resume(order.id, None, None) == Right(Some(OrderResumeMarked())))
+            assert(agent     .resume(order.id, None, None) == Right(Some(OrderResumeMarked())))
+            assert(controller.resume(order.id, Some(Position(1)), None) == Right(Some(OrderResumeMarked(Some(Position(1))))))
+            assert(agent     .resume(order.id, Some(Position(1)), None) == Right(Some(OrderResumeMarked(Some(Position(1))))))
           }
         }
       }
@@ -663,10 +671,10 @@ final class OrderEventSourceTest extends AnyFreeSpec
           assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(CancelMode.FreshOrStarted()))))
           assert(controller.suspend(order.id, SuspendMode()) == Right(None))
           assert(agent     .suspend(order.id, SuspendMode()) == Right(None))
-          assert(controller.resume(order.id, None) == Right(Some(OrderResumeMarked())))
-          assert(agent     .resume(order.id, None) == Right(Some(OrderResumeMarked())))
-          assert(controller.resume(order.id, Some(Position(1))) == Right(Some(OrderResumeMarked(Some(Position(1))))))
-          assert(agent     .resume(order.id, Some(Position(1))) == Right(Some(OrderResumeMarked(Some(Position(1))))))
+          assert(controller.resume(order.id, None, None) == Right(Some(OrderResumeMarked())))
+          assert(agent     .resume(order.id, None, None) == Right(Some(OrderResumeMarked())))
+          assert(controller.resume(order.id, Some(Position(1)), None) == Right(Some(OrderResumeMarked(Some(Position(1))))))
+          assert(agent     .resume(order.id, Some(Position(1)), None) == Right(Some(OrderResumeMarked(Some(Position(1))))))
         }
       }
     }

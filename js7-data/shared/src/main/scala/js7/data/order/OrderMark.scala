@@ -15,7 +15,10 @@ object OrderMark
   final case class Suspending(mode: SuspendMode = SuspendMode.default)
   extends OrderMark
 
-  case class Resuming(position: Option[Position] = None) extends OrderMark
+  case class Resuming(
+    position: Option[Position] = None,
+    historicOutcomes: Option[Seq[HistoricOutcome]] = None)
+  extends OrderMark
 
   implicit val jsonCodec = TypedJsonCodec.apply[OrderMark](
     Subtype(deriveCodec[Cancelling]),

@@ -209,10 +209,14 @@ object OrderEvent {
   type OrderSuspended = OrderSuspended.type
   case object OrderSuspended extends OrderActorEvent
 
-  final case class OrderResumeMarked(position: Option[Position] = None)
+  final case class OrderResumeMarked(
+    position: Option[Position] = None,
+    historicOutcomes: Option[Seq[HistoricOutcome]] = None)
   extends OrderActorEvent
 
-  final case class OrderResumed(position: Option[Position] = None)
+  final case class OrderResumed(
+    position: Option[Position] = None,
+    historicOutcomes: Option[Seq[HistoricOutcome]] = None)
   extends OrderActorEvent
 
   implicit val jsonCodec = TypedJsonCodec[OrderEvent](

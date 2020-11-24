@@ -19,7 +19,7 @@ import js7.data.controller.ControllerItems.itemPathJsonDecoder
 import js7.data.event.EventId
 import js7.data.item.{ItemPath, VersionId}
 import js7.data.node.NodeId
-import js7.data.order.{FreshOrder, OrderId}
+import js7.data.order.{FreshOrder, HistoricOutcome, OrderId}
 import js7.data.workflow.position.Position
 import scala.collection.immutable
 import scala.concurrent.duration.FiniteDuration
@@ -168,7 +168,15 @@ object ControllerCommand extends CommonCommand.Companion
       } yield ShutDown(restart, clusterAction, suppressSnapshot)
   }
 
-  final case class ResumeOrders(orderIds: immutable.Iterable[OrderId], position: Option[Position] = None)
+  final case class ResumeOrder(
+    orderId: OrderId,
+    position: Option[Position] = None,
+    historicOutcomes: Option[Seq[HistoricOutcome]] = None)
+  extends ControllerCommand {
+    type Response = Response.Accepted
+  }
+
+  final case class ResumeOrders(orderIds: immutable.Iterable[OrderId])
   extends ControllerCommand {
     type Response = Response.Accepted
   }
@@ -252,6 +260,7 @@ object ControllerCommand extends CommonCommand.Companion
     Subtype[EmergencyStop],
     Subtype(deriveCodec[ReleaseEvents]),
     Subtype[ShutDown],
+    Subtype(deriveCodec[ResumeOrder]),
     Subtype(deriveCodec[ResumeOrders]),
     Subtype(deriveCodec[SuspendOrders]),
     Subtype(deriveCodec[ClusterAppointNodes]),

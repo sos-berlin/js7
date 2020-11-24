@@ -373,10 +373,16 @@ extends InventoryItem
     else
       Gap()
 
-  def labeledInstruction(position: Position): Instruction.Labeled =
-    nestedWorkflow(position.branchPath).orThrow
-      .labeledInstructions.get(position.nr.number)
-      .getOrElse(throw new IllegalArgumentException(s"Unknown Workflow position $position"))
+
+  def checkedPosition(position: Position): Checked[Position] =
+    labeledInstruction(position).map(_ => position)
+
+  def labeledInstruction(position: Position): Checked[Instruction.Labeled] =
+    for {
+      workflow <- nestedWorkflow(position.branchPath)
+      instr <- workflow.labeledInstructions.get(position.nr.number)
+        .toRight(Problem(s"Unknown position $position in workflow '${workflow.id}'"))
+    } yield instr
 
   def withoutSource: Workflow =
     copy(source = None).withoutSourcePos
@@ -384,8 +390,7 @@ extends InventoryItem
   def withoutSourcePos: Workflow = reuseIfEqual(this,
     copy(rawLabeledInstructions = rawLabeledInstructions
       .map(labeled => labeled.copy(
-        instruction = labeled.instruction.withoutSourcePos)))
-  )
+        instruction = labeled.instruction.withoutSourcePos))))
 
   override def toString = ((path != WorkflowPath.Anonymous) ?? s"$id ") +
     s"{ ${labeledInstructions.mkString("; ")} ${nameToJob.map { case (k, v) => s"define job $k { $v }" }.mkString(" ")} }"

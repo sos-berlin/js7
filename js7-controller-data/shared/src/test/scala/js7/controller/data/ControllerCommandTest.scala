@@ -11,9 +11,10 @@ import js7.data.cluster.{ClusterCommand, ClusterSetting}
 import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.item.VersionId
 import js7.data.node.NodeId
-import js7.data.order.{FreshOrder, OrderId}
+import js7.data.order.{FreshOrder, HistoricOutcome, OrderId, Outcome}
+import js7.data.value.NamedValues
 import js7.data.workflow.WorkflowPath
-import js7.data.workflow.position.{BranchId, Position}
+import js7.data.workflow.position.Position
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -303,12 +304,45 @@ final class ControllerCommandTest extends AnyFreeSpec
     }
   }
 
+  "ResumeOrder" in {
+    testJson[ControllerCommand](
+      ResumeOrder(
+        OrderId("ORDER"),
+        Some(Position(1)),
+        Some(Seq(
+          HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0))),
+          HistoricOutcome(Position(1), Outcome.Failed(NamedValues.rc(1)))))),
+      json""" {
+        "TYPE": "ResumeOrder",
+        "orderId": "ORDER",
+        "position": [ 1 ],
+        "historicOutcomes": [
+          {
+            "position": [ 0 ],
+            "outcome": {
+              "TYPE": "Succeeded",
+              "namedValues": {
+                "returnCode": 0
+              }
+            }
+          }, {
+            "position": [ 1 ],
+            "outcome": {
+              "TYPE": "Failed",
+              "namedValues": {
+                "returnCode": 1
+              }
+            }
+          }
+        ]
+      }""")
+  }
+
   "ResumeOrders" in {
-    testJson[ControllerCommand](ResumeOrders(Seq(OrderId("A"), OrderId("B")), Some(Position(1) / BranchId.Try_ % 2)), json"""
+    testJson[ControllerCommand](ResumeOrders(Seq(OrderId("A"), OrderId("B"))), json"""
       {
         "TYPE": "ResumeOrders",
-        "orderIds": [ "A", "B" ],
-        "position": [ 1, "try", 2]
+        "orderIds": [ "A", "B" ]
       }""")
   }
 

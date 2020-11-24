@@ -385,18 +385,34 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderResumeMarked" in {
-    check(OrderResumeMarked(Some(Position(1))), json"""
+    check(OrderResumeMarked(Some(Position(1)), Some(Seq(HistoricOutcome(Position(0), Outcome.succeeded)))), json"""
       {
         "TYPE": "OrderResumeMarked",
-        "position": [ 1 ]
+        "position": [ 1 ],
+        "historicOutcomes": [
+          {
+            "position": [ 0 ],
+            "outcome":{
+              "TYPE":  "Succeeded"
+            }
+          }
+        ]
       }""")
   }
 
   "OrderResumed" in {
-    check(OrderResumed(Some(Position(1))), json"""
+    check(OrderResumed(Some(Position(1)), Some(Seq(HistoricOutcome(Position(0), Outcome.succeeded)))), json"""
       {
         "TYPE": "OrderResumed",
-        "position": [ 1 ]
+        "position": [ 1 ],
+        "historicOutcomes": [
+          {
+            "position": [ 0 ],
+            "outcome":{
+              "TYPE":  "Succeeded"
+            }
+          }
+        ]
       }""")
   }
 

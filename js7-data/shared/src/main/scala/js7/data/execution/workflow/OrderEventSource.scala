@@ -1,6 +1,8 @@
 package js7.data.execution.workflow
 
 import cats.instances.either._
+import cats.instances.vector._
+import cats.syntax.traverse._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
@@ -12,7 +14,7 @@ import js7.data.execution.workflow.context.OrderContext
 import js7.data.execution.workflow.instructions.{ForkExecutor, InstructionExecutor}
 import js7.data.order.Order.{IsTerminated, ProcessingKilled}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFailed, OrderFailedCatchable_, OrderFailedInFork, OrderMoved, OrderRemoved, OrderResumeMarked, OrderResumed, OrderSuspendMarked, OrderSuspended}
-import js7.data.order.{Order, OrderId, OrderMark, Outcome}
+import js7.data.order.{HistoricOutcome, Order, OrderId, OrderMark, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem}
 import js7.data.workflow.instructions.{End, Fork, Goto, IfFailedGoto, Retry, TryInstruction}
 import js7.data.workflow.position.{Position, WorkflowPosition}
@@ -142,7 +144,7 @@ final class OrderEventSource(
         mark match {
           case OrderMark.Cancelling(mode) => tryCancel(order, mode)
           case OrderMark.Suspending(_) => trySuspend(order)
-          case OrderMark.Resuming(position) => tryResume(order, position)
+          case OrderMark.Resuming(position, historicOutcomes) => tryResume(order, position, historicOutcomes)
           case _ => None
         })
 
@@ -155,8 +157,8 @@ final class OrderEventSource(
       case OrderMark.Suspending(mode) =>
         suspend(orderId, mode)
 
-      case OrderMark.Resuming(position) =>
-        resume(orderId, position)
+      case OrderMark.Resuming(position, historicOutcomes) =>
+        resume(orderId, position, historicOutcomes)
     }
   }
 
@@ -219,35 +221,53 @@ final class OrderEventSource(
     weHave(order) && order.isSuspendible
 
   /** Returns a `Right(Some(OrderResumed | OrderResumeMarked))` iff order is not already marked as resuming. */
-  def resume(orderId: OrderId, position: Option[Position]): Checked[Option[OrderActorEvent]] =
+  def resume(
+    orderId: OrderId,
+    position: Option[Position],
+    historicOutcomes: Option[Seq[HistoricOutcome]])
+  : Checked[Option[OrderActorEvent]] =
     withOrder(orderId)(order =>
       (order.mark match {
         case Some(_: OrderMark.Cancelling) =>
           Left(CannotResumeOrderProblem)
 
-        case Some(OrderMark.Resuming(`position`)) =>
-          Right(order.isDetached ? OrderResumed(position)/*should already be happened*/)
+        case Some(OrderMark.Resuming(`position`, `historicOutcomes`)) =>
+          Right(order.isDetached ? OrderResumed(position, historicOutcomes)/*should already be happened*/)
 
-        case Some(OrderMark.Resuming(_)) =>
+        case Some(OrderMark.Resuming(_, _)) =>
            Left(CannotResumeOrderProblem)
 
-        case Some(OrderMark.Suspending(_)) if position.isDefined =>
+        case Some(OrderMark.Suspending(_)) if position.isDefined || historicOutcomes.isDefined =>
            Left(CannotResumeOrderProblem)
 
         case None | Some(OrderMark.Suspending(_)) =>
           if (!order.isSuspended && !order.mark.exists(_.isInstanceOf[OrderMark.Suspending]))
             Left(CannotResumeOrderProblem)
-          else
-            (position match {
+          else {
+            lazy val checkedWorkflow = idToWorkflow(order.workflowId)
+            val checkedPosition = position match {
               case None => Right(None)
               case Some(position) =>
-                idToWorkflow(order.workflowId).flatMap(workflow =>
+                checkedWorkflow.flatMap(workflow =>
                   if (!workflow.isMoveable(order.position, position))
-                    Left(Problem("ResumeOrder: position is not reachable"))
+                    Left(Problem.pure("ResumeOrder: Unreachable order position"))
                   else
                     Right(Some(position)))
-            }).map(position =>
-              Some((tryResume(order, position) getOrElse OrderResumeMarked(position))))
+            }
+            val checkedHistoricOutcomes = historicOutcomes match {
+              case None => Right(None)
+              case Some(historicOutcomes) =>
+                checkedWorkflow.flatMap(workflow =>
+                  historicOutcomes.toVector.traverse(o => workflow.checkedPosition(o.position).map(_ => o)))
+                .map(Some.apply)
+            }
+            for {
+              position <- checkedPosition
+              historicOutcomes <- checkedHistoricOutcomes
+            } yield Some(
+              tryResume(order, position, historicOutcomes)
+                .getOrElse(OrderResumeMarked(position, historicOutcomes)))
+          }
       }))
 
   /** Retrieve the Order, check if calculated event is applicable. */
@@ -257,9 +277,12 @@ final class OrderEventSource(
         order.update(event)
           .map(_ => Some(event))))
 
-  private def tryResume(order: Order[Order.State], position: Option[Position]): Option[OrderActorEvent] =
-    (weHave(order) && order.isResumable) ?
-      OrderResumed(position)
+  private def tryResume(
+    order: Order[Order.State],
+    position: Option[Position],
+    historicOutcomes: Option[Seq[HistoricOutcome]])
+  : Option[OrderActorEvent] =
+    (weHave(order) && order.isResumable) ? OrderResumed(position, historicOutcomes)
 
   private def weHave(order: Order[Order.State]) =
     order.isDetached && !isAgent ||
@@ -283,7 +306,8 @@ final class OrderEventSource(
         if (visited contains position)
           Left(Problem(s"${order.id} is in a workflow loop: " +
             visited.reverse.map(pos => pos.toString + " " +
-              idToWorkflow(order.workflowId).orThrow.labeledInstruction(pos).toString.truncateWithEllipsis(50)).mkString(" --> ")))
+              idToWorkflow(order.workflowId).flatMap(_.labeledInstruction(pos))
+                .fold(_.toString, _.toString).truncateWithEllipsis(50)).mkString(" --> ")))
         else
           applyMoveInstructions(order.withPosition(position), position :: visited)
       case Right(None) => Right(Some(order.position))

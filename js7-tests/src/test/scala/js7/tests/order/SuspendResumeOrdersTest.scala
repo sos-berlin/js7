@@ -1,13 +1,14 @@
 package js7.tests.order
 
 import js7.base.problem.Checked.Ops
+import js7.base.problem.Problem
 import js7.base.process.ProcessSignal.SIGTERM
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.common.configutils.Configs.HoconStringInterpolator
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.system.OperatingSystem.isWindows
-import js7.controller.data.ControllerCommand.{Batch, CancelOrders, Response, ResumeOrders, SuspendOrders}
+import js7.controller.data.ControllerCommand.{Batch, CancelOrders, Response, ResumeOrder, ResumeOrders, SuspendOrders}
 import js7.controller.data.events.AgentRefStateEvent.AgentReady
 import js7.data.Problems.UnknownOrderProblem
 import js7.data.agent.AgentName
@@ -15,9 +16,9 @@ import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.item.VersionId
 import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderResumeMarked, OrderResumed, OrderRetrying, OrderStarted, OrderStdWritten, OrderStdoutWritten, OrderSuspendMarked, OrderSuspended}
-import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem}
-import js7.data.value.NamedValues
+import js7.data.value.{BooleanValue, NamedValues}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fail, Fork, Retry, TryInstruction}
 import js7.data.workflow.position.BranchId.{Try_, catch_, try_}
@@ -286,7 +287,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
 
     controller.executeCommandAsSystemUser(SuspendOrders(Set(order.id))).await(99.s).orThrow
-    assert(controller.executeCommandAsSystemUser(ResumeOrders(Set(order.id), Some(Position(0)))).await(99.s) ==
+    assert(controller.executeCommandAsSystemUser(ResumeOrder(order.id, Some(Position(0)))).await(99.s) ==
       Left(CannotResumeOrderProblem))
 
     controller.eventWatch.await[OrderSuspended](_.key == order.id)
@@ -307,7 +308,22 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     controller.eventWatch.await[OrderCancelled](_.key == order.id)
   }
 
-  "Resume with changed position" in {
+  "Resume with invalid position is rejected" in {
+    val order = FreshOrder(OrderId("INVALID-POSITION"), tryWorkflow.path)
+    controller.addOrderBlocking(order)
+    controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
+    controller.executeCommandAsSystemUser(SuspendOrders(Set(order.id))).await(99.s).orThrow
+    controller.eventWatch.await[OrderSuspended](_.key == order.id)
+    assert(
+      controller.executeCommandAsSystemUser(ResumeOrder(order.id, Some(Position(99)))).await(99.s) ==
+        Left(Problem("ResumeOrder: Unreachable order position")))
+    assert(
+      controller.executeCommandAsSystemUser(ResumeOrder(order.id,
+        historicOutcomes = Some(Seq(HistoricOutcome(Position(99), Outcome.succeeded))))
+      ).await(99.s) == Left(Problem("Unknown position 99 in workflow 'Workflow:/TRY~INITIAL'")))
+  }
+
+  "Resume with changed position and changed historic outcomes" in {
     val order = FreshOrder(OrderId("🔶"), tryWorkflow.path)
     controller.addOrderBlocking(order)
     controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
@@ -329,15 +345,28 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderSuspended))
 
     val lastEventId = controller.eventWatch.lastAddedEventId
-    controller.executeCommandAsSystemUser(ResumeOrders(Set(order.id), Some(Position(2) / Try_ % 0))).await(99.s).orThrow
+    val newPosition = Position(2) / Try_ % 0
+    val newHistoricOutcomes = Seq(
+      HistoricOutcome(Position(0), Outcome.Succeeded(Map("NEW" -> BooleanValue(true)))),
+      HistoricOutcome(Position(1), Outcome.failed))
+
+    controller.executeCommandAsSystemUser(ResumeOrder(order.id, Some(newPosition), Some(newHistoricOutcomes)))
+      .await(99.s).orThrow
     controller.eventWatch.await[OrderFailed](_.key == order.id)
 
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id, after = lastEventId)
       .filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
-        OrderResumed(Some(Position(2) / Try_ % 0)),
+        OrderResumed(Some(newPosition), Some(newHistoricOutcomes)),
         OrderCatched(Some(Outcome.failed), Position(2) / catch_(0) % 0),
         OrderRetrying(Position(2) / try_(1) % 0, None),
         OrderFailed(Some(Outcome.failed))))
+
+    assert(controller.orderApi.order(order.id).await(99.s) == Right(Some(Order(
+      order.id, order.workflowPath ~ "INITIAL" /: (Position(2) / try_(1) % 0),
+      Order.Failed,
+      historicOutcomes = newHistoricOutcomes :+
+        HistoricOutcome(Position(2) / Try_ % 0,Outcome.failed) :+
+        HistoricOutcome(Position(2) / try_(1) % 0,Outcome.failed)))))
   }
 }
 

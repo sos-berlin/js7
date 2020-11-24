@@ -572,8 +572,11 @@ with MainJournalingActor[ControllerState, Event]
       case ControllerCommand.SuspendOrders(orderIds, mode) =>
         executeOrderMarkCommands(orderIds.toVector)(orderEventSource(_controllerState).suspend(_, mode))
 
-      case ControllerCommand.ResumeOrders(orderIds, position) =>
-        executeOrderMarkCommands(orderIds.toVector)(orderEventSource(_controllerState).resume(_, position))
+      case ControllerCommand.ResumeOrder(orderId, position, historyOutcomes) =>
+        executeOrderMarkCommands(Vector(orderId))(orderEventSource(_controllerState).resume(_, position, historyOutcomes))
+
+      case ControllerCommand.ResumeOrders(orderIds) =>
+        executeOrderMarkCommands(orderIds.toVector)(orderEventSource(_controllerState).resume(_, None, None))
 
       case ControllerCommand.RemoveOrdersWhenTerminated(orderIds) =>
         orderIds.toVector
