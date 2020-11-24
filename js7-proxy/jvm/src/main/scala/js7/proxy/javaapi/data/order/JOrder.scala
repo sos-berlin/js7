@@ -62,8 +62,8 @@ object JOrder extends JJsonable.Companion[JOrder]
   override def fromJson(jsonString: String): VEither[Problem, JOrder] =
     super.fromJson(jsonString)
 
-  val jsonEncoder = Order.jsonEncoder
-  val jsonDecoder = Order.jsonDecoder
+  protected def jsonEncoder = Order.jsonEncoder
+  protected def jsonDecoder = Order.jsonDecoder
 
   val forked = new StateType(classOf[Forked], classOf[Order.Forked])
   val finished = new StateType(Finished.getClass, Order.Finished.getClass)

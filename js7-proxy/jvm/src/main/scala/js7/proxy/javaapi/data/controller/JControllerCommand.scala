@@ -26,7 +26,6 @@ object JControllerCommand extends JJsonable.Companion[JControllerCommand]
   override def fromJson(jsonString: String): VEither[Problem, JControllerCommand] =
     super.fromJson(jsonString)
 
-  def jsonDecoder = implicitly[Decoder[ControllerCommand]]
-
-  def jsonEncoder = implicitly[Encoder[ControllerCommand]]
+  protected def jsonDecoder = ControllerCommand.jsonCodec
+  protected def jsonEncoder = ControllerCommand.jsonCodec
 }

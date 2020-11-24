@@ -24,6 +24,6 @@ object JAgentRef extends JJsonable.Companion[JAgentRef]
   override def fromJson(jsonString: String): VEither[Problem, JAgentRef] =
     super.fromJson(jsonString)
 
-  def jsonEncoder = AgentRef.jsonCodec
-  def jsonDecoder = AgentRef.jsonCodec
+  protected def jsonEncoder = AgentRef.jsonCodec
+  protected def jsonDecoder = AgentRef.jsonCodec
 }

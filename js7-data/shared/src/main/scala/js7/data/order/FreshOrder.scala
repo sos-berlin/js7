@@ -61,7 +61,7 @@ object FreshOrder
   def fromOrder(order: Order[Order.Fresh]): FreshOrder =
     new FreshOrder(order.id, order.workflowId.path, order.state.scheduledFor, order.arguments)
 
-  implicit val jsonCodec: Encoder.AsObject[FreshOrder] =
+  implicit val jsonEncoder: Encoder.AsObject[FreshOrder] =
     o => JsonObject(
       "id" -> o.id.asJson,
       "workflowPath" -> o.workflowPath.asJson,

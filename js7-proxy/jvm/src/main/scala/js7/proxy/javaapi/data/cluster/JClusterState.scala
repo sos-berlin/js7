@@ -87,6 +87,6 @@ object JClusterState extends JJsonable.Companion[JClusterState]
   final case class FailedOver(asScala: ClusterState.FailedOver)
   extends Decoupled
 
-  def jsonEncoder = ClusterState.jsonCodec
-  def jsonDecoder = ClusterState.jsonCodec
+  protected def jsonEncoder = ClusterState.jsonCodec
+  protected def jsonDecoder = ClusterState.jsonCodec
 }

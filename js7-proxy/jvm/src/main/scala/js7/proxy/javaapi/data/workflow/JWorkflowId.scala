@@ -33,6 +33,6 @@ object JWorkflowId extends JJsonable.Companion[JWorkflowId]
   override def fromJson(jsonString: String): VEither[Problem, JWorkflowId] =
     super.fromJson(jsonString)
 
-  val jsonEncoder = ItemId.jsonEncoder[WorkflowPath]
-  val jsonDecoder = ItemId.jsonDecoder[WorkflowPath]
+  protected val jsonEncoder = ItemId.jsonEncoder[WorkflowPath]
+  protected val jsonDecoder = ItemId.jsonDecoder[WorkflowPath]
 }

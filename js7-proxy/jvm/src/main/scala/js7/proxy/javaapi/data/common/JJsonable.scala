@@ -15,7 +15,7 @@ trait JJsonable[A <: JJsonable[A]] extends JavaWrapper
   final def toJson: String = {
     val companion = this.companion
     val u = asScala.asInstanceOf[companion.AsScala]
-    companion.jsonEncoder.apply(u).compactPrint
+    companion.myJsonEncoder.apply(u).compactPrint
   }
 }
 
@@ -28,12 +28,14 @@ object JJsonable
 
     def apply(underlying: A#AsScala): A
 
-    implicit def jsonEncoder: Encoder[A#AsScala]
-    implicit def jsonDecoder: Decoder[A#AsScala]
+    private[JJsonable] def myJsonEncoder = jsonEncoder
+
+    protected def jsonEncoder: Encoder[A#AsScala]
+    protected def jsonDecoder: Decoder[A#AsScala]
 
     def fromJson(jsonString: String): VEither[Problem, A] =
       io.circe.parser.parse(jsonString).toChecked
-        .flatMap(_.as[A#AsScala].toChecked map apply)
+        .flatMap(o => jsonDecoder.decodeJson(o).toChecked map apply)
         .toVavr
   }
 }

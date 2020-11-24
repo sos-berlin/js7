@@ -25,6 +25,6 @@ object JWorkflowPosition extends JJsonable.Companion[JWorkflowPosition]
   override def fromJson(jsonString: String): VEither[Problem, JWorkflowPosition] =
     super.fromJson(jsonString)
 
-  val jsonEncoder = WorkflowPosition.jsonEncoder
-  val jsonDecoder = WorkflowPosition.jsonDecoder
+  protected def jsonEncoder = WorkflowPosition.jsonEncoder
+  protected def jsonDecoder = WorkflowPosition.jsonDecoder
 }

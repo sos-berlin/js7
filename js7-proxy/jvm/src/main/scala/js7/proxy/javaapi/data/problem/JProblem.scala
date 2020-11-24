@@ -27,6 +27,6 @@ object JProblem extends JJsonable.Companion[JProblem]
   override def fromJson(jsonString: String): VEither[Problem, JProblem] =
     super.fromJson(jsonString)
 
-  def jsonEncoder = Problem.jsonEncoder
-  def jsonDecoder = Problem.jsonDecoder
+  protected def jsonEncoder = Problem.jsonEncoder
+  protected def jsonDecoder = Problem.jsonDecoder
 }

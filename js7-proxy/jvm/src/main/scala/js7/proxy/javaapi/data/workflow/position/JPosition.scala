@@ -32,6 +32,6 @@ object JPosition extends JJsonable.Companion[JPosition]
   override def fromJson(jsonString: String): VEither[Problem, JPosition] =
     super.fromJson(jsonString)
 
-  val jsonEncoder = Position.jsonEncoder
-  val jsonDecoder = Position.jsonDecoder
+  protected def jsonEncoder = Position.jsonEncoder
+  protected def jsonDecoder = Position.jsonDecoder
 }

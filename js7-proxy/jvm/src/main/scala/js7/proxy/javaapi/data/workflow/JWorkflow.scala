@@ -38,6 +38,6 @@ object JWorkflow extends JJsonable.Companion[JWorkflow]
   override def fromJson(jsonString: String): VEither[Problem, JWorkflow] =
     super.fromJson(jsonString)
 
-  def jsonEncoder = Workflow.jsonEncoder
-  def jsonDecoder = Workflow.jsonDecoder
+  protected def jsonEncoder = Workflow.jsonEncoder
+  protected def jsonDecoder = Workflow.jsonDecoder
 }

@@ -46,7 +46,6 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]
   override def fromJson(jsonString: String): VEither[Problem, JFreshOrder] =
     super.fromJson(jsonString)
 
-  def jsonEncoder = implicitly[Encoder[FreshOrder]]
-
-  def jsonDecoder = implicitly[Decoder[FreshOrder]]
+  protected def jsonEncoder = FreshOrder.jsonEncoder
+  protected def jsonDecoder = FreshOrder.jsonDecoder
 }

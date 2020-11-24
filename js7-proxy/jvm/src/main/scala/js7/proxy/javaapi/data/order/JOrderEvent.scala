@@ -26,8 +26,8 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
   override def fromJson(jsonString: String): VEither[Problem, JOrderEvent] =
     super.fromJson(jsonString)
 
-  val jsonEncoder: Encoder[AsScala] = OrderEvent.jsonCodec.asInstanceOf[Encoder[AsScala]]
-  val jsonDecoder: Decoder[AsScala] = OrderEvent.jsonCodec.asInstanceOf[Decoder[AsScala]]
+  protected val jsonEncoder: Encoder[AsScala] = OrderEvent.jsonCodec.asInstanceOf[Encoder[AsScala]]
+  protected val jsonDecoder: Decoder[AsScala] = OrderEvent.jsonCodec.asInstanceOf[Decoder[AsScala]]
 
   def of(orderEvent: OrderEvent): JOrderEvent =
     apply(orderEvent.asInstanceOf[AsScala])
