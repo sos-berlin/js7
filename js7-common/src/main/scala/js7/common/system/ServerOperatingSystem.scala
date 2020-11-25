@@ -6,6 +6,7 @@ import java.nio.file.Files.newDirectoryStream
 import java.nio.file.attribute.PosixFilePermissions.asFileAttribute
 import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
 import java.nio.file.{Path, Paths}
+import js7.base.system.OperatingSystem.{isMac, isSolaris, isWindows}
 import js7.base.utils.AutoClosing.autoClosing
 import scala.concurrent.duration._
 import scala.io.Source.fromInputStream
@@ -15,7 +16,7 @@ import scala.util.Try
 /**
  * @author Joacim Zschimmer
  */
-trait OperatingSystem {
+trait ServerOperatingSystem {
 
   def secretFileAttributes: Seq[FileAttribute[java.util.Set[_]]]
 
@@ -35,17 +36,11 @@ trait OperatingSystem {
   def sleepingShellScript(duration: FiniteDuration): String
 }
 
-object OperatingSystem {
-  val name: String = sys.props("os.name")
-  val cpuArchitecture = CpuArchitecture.cpuArchitecture
-  val isWindows = name startsWith "Windows"
-  val isMac = name startsWith "Mac OS"
-  val isUnix = !isWindows
-  val isSolaris = name startsWith "SunOS"
+object ServerOperatingSystem {
   lazy val unix = new Unix
   lazy val windows = new Windows
   val LineEnd = if (isWindows) "\r\n" else "\n"
-  val operatingSystem: OperatingSystem = if (isWindows) windows else unix
+  val operatingSystem: ServerOperatingSystem = if (isWindows) windows else unix
   val javaLibraryPathPropertyName = "java.library.path"
   lazy val KernelSupportsNestedShebang = KernelVersion() >= KernelVersion("Linux", List(2, 6, 28))  // Exactly 2.6.27.9 - but what means the fourth number? http://www.in-ulm.de/~mascheck/various/shebang/#interpreter-script
 
@@ -58,7 +53,7 @@ object OperatingSystem {
 
   def getDynamicLibraryEnvironmentVariableName: String = operatingSystem.getDynamicLibraryEnvironmentVariableName
 
-  final class Windows private[system] extends OperatingSystem {
+  final class Windows private[system] extends ServerOperatingSystem {
     val secretFileAttributes = Nil  // TODO File must not be accessible for other Windows users
 
     def makeExecutableFilename(name: String): String = name + ".exe"
@@ -75,7 +70,7 @@ object OperatingSystem {
       s"@ping -n ${(duration + 999.milliseconds).toSeconds + 1} 127.0.0.1 >nul"
   }
 
-  final class Unix private[system] extends OperatingSystem {
+  final class Unix private[system] extends ServerOperatingSystem {
     val secretFileAttributes = List(asFileAttribute(PosixFilePermissions fromString "rw-------"))
       .asInstanceOf[Seq[FileAttribute[java.util.Set[_]]]]
 

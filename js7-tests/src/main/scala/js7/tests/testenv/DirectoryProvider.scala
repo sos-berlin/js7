@@ -11,6 +11,7 @@ import js7.agent.configuration.AgentConfiguration
 import js7.base.crypt.{DocumentSigner, SignatureVerifier, Signed, SignedString}
 import js7.base.generic.SecretString
 import js7.base.problem.Checked._
+import js7.base.system.OperatingSystem.isWindows
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.{closeOnError, multipleAutoClosing}
 import js7.base.utils.Closer.syntax.RichClosersAny
@@ -24,7 +25,6 @@ import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.Logger
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.common.system.OperatingSystem.isWindows
 import js7.common.utils.Exceptions.repeatUntilNoException
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.common.utils.JavaResource

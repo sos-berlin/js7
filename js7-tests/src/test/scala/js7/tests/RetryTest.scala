@@ -1,22 +1,21 @@
 package js7.tests
 
 import js7.base.problem.Checked.Ops
-import js7.base.problem.Problem
+import js7.base.system.OperatingSystem.isWindows
 import js7.base.time.ScalaTime._
 import js7.common.configutils.Configs._
 import js7.common.process.Processes.{ShellFileExtension => sh}
 import js7.common.scalautil.Logger
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.common.system.OperatingSystem.isWindows
 import js7.data.agent.AgentName
 import js7.data.event.{EventId, EventRequest, EventSeq}
 import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
-import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.data.workflow.position.BranchId.{Else, Then, catch_, try_}
 import js7.data.workflow.position.Position
+import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.RetryTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global

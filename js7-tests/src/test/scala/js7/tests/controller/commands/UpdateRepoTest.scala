@@ -11,7 +11,7 @@ import js7.base.web.HttpClient.HttpException
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits.RichFutures
 import js7.common.scalautil.MonixUtils.syntax.RichTask
-import js7.common.system.OperatingSystem.operatingSystem.sleepingShellScript
+import js7.common.system.ServerOperatingSystem.operatingSystem.sleepingShellScript
 import js7.controller.data.ControllerCommand
 import js7.controller.data.ControllerCommand.{RemoveOrdersWhenTerminated, ReplaceRepo, UpdateRepo}
 import js7.data.Problems.{ItemDeletedProblem, ItemVersionDoesNotMatchProblem}

@@ -1,18 +1,18 @@
 package js7.tests
 
 import js7.base.problem.Checked.Ops
+import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.AutoClosing.autoClosing
 import js7.common.process.Processes.{ShellFileExtension => sh}
-import js7.common.system.OperatingSystem.isWindows
 import js7.data.agent.AgentName
 import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import js7.data.job.{ExecutablePath, ReturnCode}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
-import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.data.workflow.position.BranchId.{Then, try_}
 import js7.data.workflow.position.Position
+import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.TryTest._
 import js7.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global

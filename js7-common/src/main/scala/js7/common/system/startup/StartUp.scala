@@ -8,7 +8,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.common.process.ProcessPidRetriever.maybeOwnPid
 import js7.common.scalautil.Logger
 import js7.common.system.JavaInformations
-import js7.common.system.OperatingSystem.operatingSystem.{cpuModel, distributionNameAndVersionOption, hostname}
+import js7.common.system.ServerOperatingSystem.operatingSystem.{cpuModel, distributionNameAndVersionOption, hostname}
 import js7.common.utils.ByteUnits.toKiBGiB
 import monix.execution.atomic.AtomicBoolean
 

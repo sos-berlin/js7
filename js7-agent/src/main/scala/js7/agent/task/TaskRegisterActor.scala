@@ -9,9 +9,9 @@ import js7.agent.task.TaskRegisterActor._
 import js7.base.generic.Completed
 import js7.base.process.ProcessSignal
 import js7.base.process.ProcessSignal.{SIGKILL, SIGTERM}
+import js7.base.system.OperatingSystem.isWindows
 import js7.base.time.ScalaTime._
 import js7.common.scalautil.Logger
-import js7.common.system.OperatingSystem.isWindows
 import js7.data.job.TaskId
 import scala.collection.mutable
 import scala.concurrent.Promise

@@ -8,6 +8,7 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.inject.AgentModule
 import js7.agent.scheduler.job.task.TaskRunnerTest._
 import js7.agent.tests.TestAgentDirectoryProvider
+import js7.base.system.OperatingSystem.{isUnix, isWindows}
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.measureTime
 import js7.base.utils.Closer
@@ -16,7 +17,6 @@ import js7.common.process.Processes.{ShellFileExtension => sh}
 import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
 import js7.common.scalautil.FileUtils.syntax.RichPath
 import js7.common.scalautil.MonixUtils.syntax.RichTask
-import js7.common.system.OperatingSystem.{isUnix, isWindows}
 import js7.data.agent.AgentName
 import js7.data.job.{ExecutablePath, JobKey, ReturnCode}
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}

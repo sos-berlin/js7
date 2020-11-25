@@ -3,7 +3,6 @@ package js7.agent.task
 import akka.actor.{Actor, Props, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
-import js7.common.configutils.Configs._
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.Akkas.newAgentActorSystem
 import js7.agent.data.AgentTaskId
@@ -13,13 +12,14 @@ import js7.agent.tests.TestAgentDirectoryProvider
 import js7.base.generic.Completed
 import js7.base.process.ProcessSignal
 import js7.base.process.ProcessSignal.{SIGKILL, SIGTERM}
+import js7.base.system.OperatingSystem.isWindows
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.HasCloser
+import js7.common.configutils.Configs._
 import js7.common.process.Processes.Pid
 import js7.common.scalautil.Futures.implicits.SuccessFuture
-import js7.common.system.OperatingSystem.isWindows
 import js7.common.time.WaitForCondition.retryUntil
 import js7.data.job.JobKey
 import js7.data.workflow.WorkflowPath
@@ -30,7 +30,6 @@ import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.io
-import scala.jdk.CollectionConverters._
 
 /**
   * @author Joacim Zschimmer

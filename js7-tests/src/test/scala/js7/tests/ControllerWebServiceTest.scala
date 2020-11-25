@@ -31,7 +31,7 @@ import js7.common.process.Processes.{ShellFileExtension => sh}
 import js7.common.scalautil.FileUtils.syntax.RichPath
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.common.system.OperatingSystem.operatingSystem
+import js7.common.system.ServerOperatingSystem.operatingSystem
 import js7.common.time.WaitForCondition
 import js7.controller.data.events.AgentRefStateEvent
 import js7.controller.data.events.AgentRefStateEvent.AgentRegisteredController

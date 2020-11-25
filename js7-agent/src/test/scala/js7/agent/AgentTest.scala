@@ -9,12 +9,12 @@ import js7.agent.data.commands.AgentCommand.{AttachOrder, RegisterAsController}
 import js7.agent.tests.AgentTester
 import js7.agent.tests.TestAgentDirectoryProvider.provideAgentDirectory
 import js7.base.auth.SimpleUser
+import js7.base.system.OperatingSystem.isWindows
 import js7.base.time.ScalaTime._
 import js7.common.process.Processes.{ShellFileExtension => sh}
 import js7.common.scalautil.FileUtils.WorkingDirectory
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.common.system.OperatingSystem.isWindows
 import js7.core.command.CommandMeta
 import js7.data.agent.AgentName
 import js7.data.controller.ControllerId

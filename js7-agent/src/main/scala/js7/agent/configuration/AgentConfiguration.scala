@@ -9,6 +9,7 @@ import java.nio.file.{Path, Paths}
 import js7.agent.configuration.AgentConfiguration._
 import js7.agent.data.{KillScriptConf, ProcessKillScript}
 import js7.base.convert.AsJava.asAbsolutePath
+import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.Assertions.assertThat
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
@@ -18,7 +19,6 @@ import js7.common.configutils.Configs._
 import js7.common.process.Processes.ShellFileExtension
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.FileUtils.{EmptyPath, WorkingDirectory}
-import js7.common.system.OperatingSystem.isWindows
 import js7.common.time.JavaTimeConverters._
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.common.utils.JavaResource

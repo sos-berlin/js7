@@ -13,12 +13,12 @@ import js7.base.data.Writable.ops._
 import js7.base.data.{ByteArray, ByteSequence, Writable}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
+import js7.base.system.OperatingSystem.isUnix
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer
 import js7.base.utils.Closer.syntax._
 import js7.base.utils.Closer.withCloser
 import js7.base.utils.JavaCollections.syntax._
-import js7.common.system.OperatingSystem.isUnix
 import scala.annotation.tailrec
 import scala.collection.AbstractIterator
 import scala.language.implicitConversions

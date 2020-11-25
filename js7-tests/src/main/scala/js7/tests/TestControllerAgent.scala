@@ -9,6 +9,7 @@ import js7.agent.data.commands.AgentCommand.ShutDown
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.problem.Checked.Ops
 import js7.base.process.ProcessSignal.SIGTERM
+import js7.base.system.OperatingSystem.isWindows
 import js7.base.time.ScalaTime._
 import js7.base.time.{Stopwatch, Timestamp}
 import js7.base.utils.AutoClosing.autoClosing
@@ -25,7 +26,6 @@ import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.Logger
 import js7.common.system.FileUtils.temporaryDirectory
-import js7.common.system.OperatingSystem.isWindows
 import js7.common.utils.JavaShutdownHook
 import js7.core.event.StampedKeyedEventBus
 import js7.data.agent.AgentName

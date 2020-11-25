@@ -11,6 +11,7 @@ import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problems.DuplicateKey
 import js7.base.problem.{Checked, Problem}
+import js7.base.system.OperatingSystem.isMac
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.configutils.Configs._
@@ -20,7 +21,6 @@ import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.IOExecutor.Implicits.globalIOX
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.scalautil.xmls.ScalaXmls.implicits._
-import js7.common.system.OperatingSystem.isMac
 import js7.core.item.{InventoryItemReader, ItemPaths}
 import js7.data.agent.AgentName
 import js7.data.event.EventId

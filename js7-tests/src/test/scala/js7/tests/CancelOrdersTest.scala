@@ -2,10 +2,10 @@ package js7.tests
 
 import js7.base.problem.Checked.Ops
 import js7.base.process.ProcessSignal.{SIGKILL, SIGTERM}
+import js7.base.system.OperatingSystem.isWindows
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.common.system.OperatingSystem.isWindows
 import js7.controller.data.ControllerCommand.{CancelOrders, Response}
 import js7.data.Problems.{CancelStartedOrderProblem, UnknownOrderProblem}
 import js7.data.agent.AgentName

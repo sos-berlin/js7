@@ -9,6 +9,7 @@ import java.nio.file.Path
 import js7.base.generic.Completed
 import js7.base.process.ProcessSignal
 import js7.base.process.ProcessSignal.{SIGKILL, SIGTERM}
+import js7.base.system.OperatingSystem.{isMac, isWindows}
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.HasCloser
@@ -18,7 +19,6 @@ import js7.common.log.LogLevel.syntax._
 import js7.common.process.Processes._
 import js7.common.scalautil.IOExecutor.ioFuture
 import js7.common.scalautil.{ClosedFuture, IOExecutor, Logger}
-import js7.common.system.OperatingSystem._
 import js7.data.job.ReturnCode
 import js7.data.system.{Stderr, Stdout, StdoutOrStderr}
 import js7.taskserver.task.process.RichProcess._

@@ -5,10 +5,10 @@ import java.nio.file.Files
 import java.nio.file.Files._
 import java.nio.file.attribute.PosixFileAttributes
 import java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE
+import js7.base.system.OperatingSystem.isUnix
 import js7.common.process.Processes.ShellFileExtension
 import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
 import js7.common.scalautil.FileUtils.syntax._
-import js7.common.system.OperatingSystem.isUnix
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 

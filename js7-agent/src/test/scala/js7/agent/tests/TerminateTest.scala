@@ -17,7 +17,7 @@ import js7.common.guice.GuiceImplicits.RichInjector
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.common.system.OperatingSystem.operatingSystem
+import js7.common.system.ServerOperatingSystem.operatingSystem
 import js7.core.event.ActorEventCollector
 import js7.data.agent.AgentName
 import js7.data.event.EventRequest

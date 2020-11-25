@@ -13,6 +13,7 @@ import js7.agent.scheduler.job.task.{SimpleShellTaskRunner, TaskRunner}
 import js7.agent.scheduler.order.OrderActorTest._
 import js7.agent.tests.TestAgentDirectoryProvider
 import js7.base.generic.Completed
+import js7.base.system.OperatingSystem.isWindows
 import js7.base.time.ScalaTime._
 import js7.base.utils.HasCloser
 import js7.base.utils.ScalaUtils.syntax._
@@ -22,7 +23,6 @@ import js7.common.process.Processes.{ShellFileExtension => sh}
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.IOExecutor.Implicits.globalIOX
-import js7.common.system.OperatingSystem.isWindows
 import js7.common.utils.ByteUnits.toKBGB
 import js7.common.utils.Exceptions.repeatUntilNoException
 import js7.core.event.StampedKeyedEventBus

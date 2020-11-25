@@ -3,6 +3,7 @@ package js7.common.process
 import java.nio.file.Files.delete
 import java.nio.file.Path
 import java.util.concurrent.ForkJoinPool
+import js7.base.system.OperatingSystem.isWindows
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
 import js7.common.process.Processes._
@@ -10,7 +11,6 @@ import js7.common.process.ProcessesForkedTest._
 import js7.common.scalautil.FileUtils.syntax.RichPath
 import js7.common.scalautil.Futures.implicits.RichFutures
 import js7.common.scalautil.Logger
-import js7.common.system.OperatingSystem.isWindows
 import js7.common.time.WaitForCondition.waitForCondition
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.{ExecutionContext, Future}

@@ -6,6 +6,7 @@ import java.nio.file.Files._
 import java.nio.file.Path
 import js7.agent.data.AgentTaskId
 import js7.base.process.ProcessSignal.SIGKILL
+import js7.base.system.OperatingSystem.{isMac, isSolaris, isUnix, isWindows}
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.common.process.Processes
@@ -16,7 +17,6 @@ import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.Logger
 import js7.common.system.FileUtils._
-import js7.common.system.OperatingSystem.{isMac, isSolaris, isUnix, isWindows}
 import js7.common.utils.JavaResource
 import js7.taskserver.task.process.ProcessKillScriptTest._
 import org.scalatest.freespec.AnyFreeSpec
