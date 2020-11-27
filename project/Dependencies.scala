@@ -26,6 +26,7 @@ object Dependencies
   val scribeVersion = "2.7.12"
   val scalaJsDomVersion = "1.1.0"
   val shapelessVersion = "2.3.3"
+  val diffxVersion = "0.3.30"
 
   val slf4j               = "org.slf4j" % "slf4j-api"    % slf4jVersion
   val slf4jNop            = "org.slf4j" % "slf4j-nop"    % slf4jVersion
@@ -47,7 +48,7 @@ object Dependencies
   val scalaLogging        = "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2" :: slf4j :: Nil
   val cats                = "org.typelevel" %% "cats-core" % catsVersion
   val shapeless           = "com.chuusai" %% "shapeless" % shapelessVersion
-  val diffx               = "com.softwaremill.diffx" %% "diffx-core" % "0.3.28"
+  val diffx               = "com.softwaremill.diffx" %% "diffx-core" % diffxVersion
   val diffxScalaTest      = "com.softwaremill.diffx" %% "diffx-scalatest" % "0.3.29"
 
   val javaxInject         = "javax.inject" % "javax.inject" % "1"
