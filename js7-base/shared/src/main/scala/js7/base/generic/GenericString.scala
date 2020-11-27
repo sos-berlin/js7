@@ -17,8 +17,6 @@ trait GenericString
 
   final def nonEmpty = string.nonEmpty
 
-  override def hashCode = string.hashCode + 31 * getClass.hashCode
-
   override def toString = string
 }
 
