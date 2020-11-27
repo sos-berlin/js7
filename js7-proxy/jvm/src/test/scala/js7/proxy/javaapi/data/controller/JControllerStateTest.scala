@@ -1,6 +1,5 @@
 package js7.proxy.javaapi.data.controller
 
-import js7.base.annotation.javaApi
 import js7.base.auth.UserId
 import js7.base.crypt.silly.SillySigner
 import js7.base.problem.Checked.Ops
@@ -19,15 +18,14 @@ import js7.data.item.{InventoryItemSigner, Repo, VersionId}
 import js7.data.node.NodeId
 import js7.data.order.{Order, OrderId}
 import js7.data.value.StringValue
-import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.data.workflow.position.Position
+import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.proxy.javaapi.data.controller.JControllerStateTest._
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-@javaApi
 final class JControllerStateTest extends AnyFreeSpec
 {
   private val jControllerState = JControllerState(controllerState)
@@ -68,15 +66,14 @@ private object JControllerStateTest
   private val v2 = VersionId("2.0")
   private val aWorkflow = WorkflowParser.parse(WorkflowPath("/A-WORKFLOW") ~ v1,
     """|define workflow {
-       |  execute agent="AGENT", executable="/A-EXECUTABLE";
+       |  execute agent="AGENT", executable="A-EXECUTABLE";
        |}
        |""".stripMargin).orThrow
   private val bWorkflow = WorkflowParser.parse(WorkflowPath("/B-WORKFLOW") ~ v1,
     """|define workflow {
-       |  execute agent="AGENT", executable="/B-EXECUTABLE";
+       |  execute agent="AGENT", executable="B-EXECUTABLE";
        |}
        |""".stripMargin).orThrow
-  private val agentRef = AgentRef(AgentName("AGENT"), Uri("http://agent.example.com"))
 
   private val itemSigner = new InventoryItemSigner(SillySigner.Default, ControllerItems.jsonCodec)
 

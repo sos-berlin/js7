@@ -7,7 +7,7 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.data.ControllerCommand.RemoveOrdersWhenTerminated
 import js7.data.agent.AgentName
 import js7.data.item.VersionId
-import js7.data.job.ExecutablePath
+import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderRemoveMarked, OrderRemoved, OrderStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.instructions.Execute
@@ -81,8 +81,8 @@ final class RemoveOrderWhenTerminatedTest extends AnyFreeSpec with ControllerAge
 
 object RemoveOrderWhenTerminatedTest
 {
-  private val quickExecutablePath = ExecutablePath("/quick.cmd")
-  private val slowExecutablePath = ExecutablePath("/slow.cmd")
+  private val quickExecutablePath = RelativeExecutablePath("quick.cmd")
+  private val slowExecutablePath = RelativeExecutablePath("slow.cmd")
   private val agentName = AgentName("AGENT")
   private val versionId = VersionId("INITIAL")
 

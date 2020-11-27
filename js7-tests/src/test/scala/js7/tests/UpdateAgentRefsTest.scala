@@ -15,7 +15,7 @@ import js7.controller.data.ControllerCommand.UpdateAgentRefs
 import js7.controller.data.events.AgentRefStateEvent.AgentCouplingFailed
 import js7.data.agent.{AgentName, AgentRef}
 import js7.data.controller.ControllerId
-import js7.data.job.ExecutablePath
+import js7.data.job.{ExecutablePath, RelativeExecutablePath}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -42,7 +42,7 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
 
   "Standard operation" in {
     directoryProvider.prepareAgentFiles(agentFileTree)
-    agentFileTree.writeExecutable(ExecutablePath(s"/EXECUTABLE$sh"), script(0.s))
+    agentFileTree.writeExecutable(RelativeExecutablePath(s"EXECUTABLE$sh"), script(0.s))
 
     val agentRef = AgentRef(agentName, Uri(s"http://127.0.0.1:$agentPort1"))
     agent = RunningAgent.startForTest(agentFileTree.agentConfiguration) await 99.s
@@ -85,5 +85,5 @@ object UpdateAgentRefsTest
 {
   private val agentName = AgentName("AGENT")
   private val workflow = Workflow(WorkflowPath("/WORKFLOW"), Vector(
-    Execute(WorkflowJob(agentName, ExecutablePath(s"/EXECUTABLE$sh")))))
+    Execute(WorkflowJob(agentName, ExecutablePath(s"EXECUTABLE$sh")))))
 }

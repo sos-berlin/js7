@@ -12,8 +12,17 @@ import org.scalatest.freespec.AnyFreeSpec
 final class ExecutableTest extends AnyFreeSpec
 {
   "JSON" - {
-    "ExecutablePath" in {
-      testJson[Executable](ExecutablePath("/EXECUTABLE"), json"""
+    "RelativeExecutablePath" in {
+      testJson[Executable](RelativeExecutablePath("EXECUTABLE"), json"""
+        {
+          "TYPE": "ExecutablePath",
+          "path": "EXECUTABLE"
+        }
+      """)
+    }
+
+    "AbsoluteExecutablePath" in {
+      testJson[Executable](AbsoluteExecutablePath("/EXECUTABLE"), json"""
         {
           "TYPE": "ExecutablePath",
           "path": "/EXECUTABLE"
@@ -32,23 +41,38 @@ final class ExecutableTest extends AnyFreeSpec
   }
 
   "Invalid ExecutablePath" in {
-    assert(ExecutablePath.checked("")             == Left(EmptyStringProblem("ExecutablePath")))
-    assert(ExecutablePath.checked("/")            == Left(InvalidNameProblem("ExecutablePath", "/")))
-    assert(ExecutablePath.checked("/.")           == Left(InvalidNameProblem("ExecutablePath", "/.")))
-    assert(ExecutablePath.checked("/../file")     == Left(InvalidNameProblem("ExecutablePath", "/../file")))
-    assert(ExecutablePath.checked("/./file")      == Left(InvalidNameProblem("ExecutablePath", "/./file")))
-    assert(ExecutablePath.checked("/dir/./file")  == Left(InvalidNameProblem("ExecutablePath", "/dir/./file")))
-    assert(ExecutablePath.checked("/")            == Left(InvalidNameProblem("ExecutablePath", "/")))
-    assert(ExecutablePath.checked("file")         == Left(InvalidNameProblem("ExecutablePath", "file")))
-    assert(ExecutablePath.checked("/.hidden")     == Left(InvalidNameProblem("ExecutablePath", "/.hidden")))
-    assert(ExecutablePath.checked("""/a\b""")     == Left(InvalidNameProblem("ExecutablePath", """/a\b""")))
-    assert(ExecutablePath.checked("/dir/../file") == Left(InvalidNameProblem("ExecutablePath", "/dir/../file")))
-    assert(ExecutablePath.checked("/dir/./file")  == Left(InvalidNameProblem("ExecutablePath", "/dir/./file")))
+    assert(ExecutablePath.checked("")            == Left(EmptyStringProblem("RelativeExecutablePath")))
+    assert(ExecutablePath.checked(" ")           == Left(InvalidNameProblem("RelativeExecutablePath", " ")))
+    assert(ExecutablePath.checked(" X")          == Left(InvalidNameProblem("RelativeExecutablePath", " X")))
+    assert(ExecutablePath.checked("\tX")         == Left(InvalidNameProblem("RelativeExecutablePath", "\tX")))
+    assert(ExecutablePath.checked("X\n")         == Left(InvalidNameProblem("RelativeExecutablePath", "X\n")))
+    assert(ExecutablePath.checked(".")           == Left(InvalidNameProblem("RelativeExecutablePath", ".")))
+    assert(ExecutablePath.checked("../file")     == Left(InvalidNameProblem("RelativeExecutablePath", "../file")))
+    assert(ExecutablePath.checked("./file")      == Left(InvalidNameProblem("RelativeExecutablePath", "./file")))
+    assert(ExecutablePath.checked("dir/./file")  == Left(InvalidNameProblem("RelativeExecutablePath", "dir/./file")))
+    assert(ExecutablePath.checked(".hidden")     == Left(InvalidNameProblem("RelativeExecutablePath", ".hidden")))
+    //assert(ExecutablePath.checked("""/a\b""")     == Left(InvalidNameProblem("ExecutablePath", """/a\b""")))
+    assert(ExecutablePath.checked("dir/../file") == Left(InvalidNameProblem("RelativeExecutablePath", "dir/../file")))
+    assert(ExecutablePath.checked("dir\\../file") == Left(InvalidNameProblem("RelativeExecutablePath", "dir\\../file")))
+    assert(ExecutablePath.checked("dir/./file")  == Left(InvalidNameProblem("RelativeExecutablePath", "dir/./file")))
   }
 
   "Valid ExecutablePath" in {
-    assert(ExecutablePath.checked("/file")     == Right(ExecutablePath("/file")))
-    assert(ExecutablePath.checked("/dir/file") == Right(ExecutablePath("/dir/file")))
-    assert(ExecutablePath.checked("/file/")    == Right(ExecutablePath("/file/")))   // ?
+    assert(ExecutablePath.checked("/file")     == Right(AbsoluteExecutablePath("/file")))
+    assert(ExecutablePath.checked("file")      == Right(RelativeExecutablePath("file")))
+    assert(ExecutablePath.checked("/dir/file") == Right(AbsoluteExecutablePath("/dir/file")))
+    assert(ExecutablePath.checked("dir/file")  == Right(RelativeExecutablePath("dir/file")))
+    assert(ExecutablePath.checked("/file/")    == Right(AbsoluteExecutablePath("/file/")))   // ?
+    assert(ExecutablePath.checked("file/")     == Right(RelativeExecutablePath("file/")))   // ?
+    assert(ExecutablePath.checked("/")         == Right(AbsoluteExecutablePath("/")))
+    assert(ExecutablePath.checked("/.").isRight)
+    assert(ExecutablePath.checked("/../file").isRight)
+    assert(ExecutablePath.checked("/./file").isRight)
+    assert(ExecutablePath.checked("/dir/./file").isRight)
+    assert(ExecutablePath.checked("/").isRight)
+    assert(ExecutablePath.checked("/.hidden").isRight)
+    assert(ExecutablePath.checked("""/a\b""").isRight)
+    assert(ExecutablePath.checked("/dir/../file").isRight)
+    assert(ExecutablePath.checked("/dir/./file").isRight)
   }
 }

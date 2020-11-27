@@ -57,7 +57,7 @@ final class InventoryItemVerifierTest extends AnyFreeSpec
 object InventoryItemVerifierTest
 {
   private val workflow = {
-    val workflowScript = """define workflow { execute executable="/SCRIPT.cmd", agent="AGENT"; }"""
+    val workflowScript = """define workflow { execute executable="SCRIPT.cmd", agent="AGENT"; }"""
     WorkflowParser.parse(WorkflowPath("/WORKFLOW") ~ "1.0", workflowScript).orThrow
   }
 

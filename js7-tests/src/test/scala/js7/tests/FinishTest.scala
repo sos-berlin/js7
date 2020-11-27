@@ -5,14 +5,14 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.agent.AgentName
 import js7.data.event.{EventSeq, KeyedEvent}
-import js7.data.job.ExecutablePath
+import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
-import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.data.workflow.instructions.Fork
 import js7.data.workflow.position.BranchId.Then
 import js7.data.workflow.position.Position
+import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.FinishTest._
 import js7.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
@@ -25,7 +25,7 @@ final class FinishTest extends AnyFreeSpec
   "finish" in {
     checkEvents[OrderFinished]("""
       |define workflow {
-      |  execute agent="AGENT", executable="/test.cmd", successReturnCodes=[3];
+      |  execute agent="AGENT", executable="test.cmd", successReturnCodes=[3];
       |  finish;
       |  fail;
       |}""".stripMargin,
@@ -47,14 +47,14 @@ final class FinishTest extends AnyFreeSpec
      |define workflow {
      |  fork {
      |    "🥕": {
-     |      execute agent="AGENT", executable="/test.cmd", successReturnCodes=[3];
+     |      execute agent="AGENT", executable="test.cmd", successReturnCodes=[3];
      |      if (true) {
      |        finish;
      |      }
-     |      execute agent="AGENT", executable="/test.cmd", successReturnCodes=[3];
+     |      execute agent="AGENT", executable="test.cmd", successReturnCodes=[3];
      |     },
      |    "🍋": {
-     |      execute agent="AGENT", executable="/sleep.cmd";
+     |      execute agent="AGENT", executable="sleep.cmd";
      |    }
      |  }
      |}""".stripMargin)
@@ -97,14 +97,14 @@ final class FinishTest extends AnyFreeSpec
      |define workflow {
      |  fork {
      |    "🥕": {
-     |      execute agent="AGENT", executable="/sleep.cmd";
+     |      execute agent="AGENT", executable="sleep.cmd";
      |      if (true) {
      |        finish;
      |      }
-     |      execute agent="AGENT", executable="/test.cmd";
+     |      execute agent="AGENT", executable="test.cmd";
      |    },
      |    "🍋": {
-     |      execute agent="AGENT", executable="/test.cmd", successReturnCodes=[3];
+     |      execute agent="AGENT", executable="test.cmd", successReturnCodes=[3];
      |    }
      |  }
      |}""".stripMargin)
@@ -149,8 +149,8 @@ final class FinishTest extends AnyFreeSpec
   private def runUntil[E <: OrderEvent: ClassTag: TypeTag](workflowNotation: String): Vector[KeyedEvent[OrderEvent]] = {
     val workflow = WorkflowParser.parse(TestWorkflowId, workflowNotation).orThrow
     autoClosing(new DirectoryProvider(TestAgentName :: Nil, workflow :: Nil, testName = Some("FinishTest"))) { directoryProvider =>
-      directoryProvider.agents.head.writeExecutable(ExecutablePath("/test.cmd"), "exit 3")
-      directoryProvider.agents.head.writeExecutable(ExecutablePath("/sleep.cmd"), DirectoryProvider.script(100.ms))
+      directoryProvider.agents.head.writeExecutable(RelativeExecutablePath("test.cmd"), "exit 3")
+      directoryProvider.agents.head.writeExecutable(RelativeExecutablePath("sleep.cmd"), DirectoryProvider.script(100.ms))
       directoryProvider.run { (controller, _) =>
         controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
         controller.eventWatch.await[E](_.key == orderId)

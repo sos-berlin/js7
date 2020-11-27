@@ -7,11 +7,11 @@ import js7.common.process.Processes.{ShellFileExtension => sh}
 import js7.controller.RunningController
 import js7.data.agent.AgentName
 import js7.data.event.{<-:, EventSeq, KeyedEvent, TearableEventSeq}
-import js7.data.job.ExecutablePath
+import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwaiting, OrderDetachable, OrderDetached, OrderFinished, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
-import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.data.workflow.position.Position
+import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.OfferAndAwaitOrderTest._
 import js7.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
@@ -27,18 +27,18 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
     val workflows = List(
       WorkflowParser.parse(JoiningWorkflowId, s"""
         define workflow {
-          execute executable="/executable$sh", agent="AGENT";
+          execute executable="executable$sh", agent="AGENT";
           await orderId = "OFFERED-ORDER-ID";
-          execute executable="/executable$sh", agent="AGENT";
+          execute executable="executable$sh", agent="AGENT";
         }""").orThrow,
       WorkflowParser.parse(OfferingWorkflowId, s"""
         define workflow {
-          execute executable="/executable$sh", agent="AGENT";
+          execute executable="executable$sh", agent="AGENT";
           offer orderId = "OFFERED-ORDER-ID", timeout = 60;
-          execute executable="/executable$sh", agent="AGENT";
+          execute executable="executable$sh", agent="AGENT";
         }""").orThrow)
     autoClosing(new DirectoryProvider(TestAgentName :: Nil, workflows, testName = Some("OfferAndAwaitOrderTest"))) { directoryProvider =>
-      for (a <- directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/executable$sh"), ":")
+      for (a <- directoryProvider.agents) a.writeExecutable(RelativeExecutablePath(s"executable$sh"), ":")
 
       directoryProvider.run { (controller, _) =>
         runOrders(controller)
@@ -101,7 +101,7 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
           offer orderId = "OFFERED-ORDER-ID", timeout = 60;
         }""").orThrow)
     autoClosing(new DirectoryProvider(TestAgentName :: Nil, workflows, testName = Some("OfferAndAwaitOrderTest"))) { directoryProvider =>
-      for (a <- directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/executable$sh"), ":")
+      for (a <- directoryProvider.agents) a.writeExecutable(RelativeExecutablePath(s"executable$sh"), ":")
 
       directoryProvider.run { (controller, _) =>
         runOrders(controller)

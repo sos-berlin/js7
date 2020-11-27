@@ -8,6 +8,8 @@ import js7.base.utils.Collections.implicits.RichTraversable
 import js7.data.agent.AgentName
 import js7.data.job.{Executable, ExecutablePath, ExecutableScript, ReturnCode}
 import js7.data.order.OrderId
+import js7.data.parser.BasicParsers._
+import js7.data.parser.Parsers.checkedParse
 import js7.data.source.SourcePos
 import js7.data.value.NamedValues
 import js7.data.value.expression.Expression.BooleanConstant
@@ -16,8 +18,6 @@ import js7.data.value.expression.{Evaluator, Expression}
 import js7.data.workflow.Instruction.Labeled
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Finish, Fork, Goto, If, IfFailedGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction, End => EndInstr, Fail => FailInstr}
-import js7.data.parser.BasicParsers.{agentName, _}
-import js7.data.parser.Parsers.checkedParse
 import scala.concurrent.duration._
 
 /**
@@ -91,7 +91,7 @@ object WorkflowParser
     private def anonymousWorkflowJob[_: P] = P[WorkflowJob](
       for {
         kv <- keyValues(
-          keyValueConvert("executable", quotedString)(o => Right(ExecutablePath(o))) |
+          keyValueConvert("executable", quotedString)(ExecutablePath.checked) |
           keyValueConvert("script", constantExpression)(o =>
             Evaluator.Constant.eval(o).flatMap(_.toStringValue).map(v => ExecutableScript(v.string))) |
           keyValue("agent", agentName) |

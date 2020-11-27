@@ -5,7 +5,7 @@ import js7.base.problem.Problem
 import js7.data.agent.AgentName
 import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.context.OrderContext
-import js7.data.job.{ExecutablePath, ReturnCode}
+import js7.data.job.{RelativeExecutablePath, ReturnCode}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderFailedCatchable_, OrderMoved}
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.value.{NamedValues, NumericValue, StringValue}
@@ -20,7 +20,7 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class ExecuteTest extends AnyFreeSpec {
 
-  private val executeAnonymous = Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("/EXECUTABLE"),
+  private val executeAnonymous = Execute(WorkflowJob(AgentName("AGENT"), RelativeExecutablePath("EXECUTABLE"),
     returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 3, 9)))
   private val orderId = OrderId("ORDER")
 

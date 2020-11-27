@@ -1,36 +1,93 @@
 package js7.data.job
 
+import io.circe.syntax.EncoderOps
+import io.circe.{Decoder, Encoder, JsonObject}
 import java.nio.file.Path
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.generic.GenericString
 import js7.base.generic.GenericString.EmptyStringProblem
+import js7.base.problem.Checked
+import js7.base.problem.Checked._
 import js7.base.problem.Problems.InvalidNameProblem
+import js7.base.system.OperatingSystem.isWindows
 
 sealed trait Executable
 
-final case class ExecutablePath private(path: String)
+sealed trait ExecutablePath
 extends Executable with GenericString
 {
+  def path: String
   def string = path
+
+  def isAbsolute: Boolean
+}
+object ExecutablePath extends GenericString.Checked_[ExecutablePath]
+{
+  def unapply(executablePath: ExecutablePath) = Some(executablePath.path)
+
+  protected def unchecked(path: String) =
+    if (isAbsolute(path))
+      AbsoluteExecutablePath.checked(path).orThrow
+    else
+      RelativeExecutablePath.checked(path).orThrow
+
+  def sh(path: String) = apply(if (isWindows) s"$path.cmd" else path)
+
+  override def checked(path: String): Checked[ExecutablePath] =
+    if (isAbsolute(path))
+      AbsoluteExecutablePath.checked(path)
+    else
+      RelativeExecutablePath.checked(path)
+
+  private[job] def isAbsolute(path: String) =
+    path.startsWith("/") || path.startsWith("\\")/*also on Unix, to be reliable*/
+
+  override val jsonEncoder: Encoder.AsObject[ExecutablePath] =
+    o => JsonObject(
+      TypedJsonCodec.TypeFieldName -> "ExecutablePath".asJson,
+      "path" -> o.path.asJson)
+
+  override val jsonDecoder: Decoder[ExecutablePath] =
+    cursor => cursor.get[String]("path") map ExecutablePath.apply
+}
+
+final case class AbsoluteExecutablePath private(path: String)
+extends Executable with ExecutablePath
+{
+  assert(ExecutablePath.isAbsolute(path))
+
+  def isAbsolute = true
+}
+object AbsoluteExecutablePath {
+  def checked(path: String) =
+    if (path.isEmpty)
+      Left(EmptyStringProblem(path))
+    else if (!ExecutablePath.isAbsolute(path))
+      Left(InvalidNameProblem("AbsoluteExecutablePath", path))
+    else
+      Right(new AbsoluteExecutablePath(path))
+}
+
+final case class RelativeExecutablePath private(path: String)
+extends Executable with ExecutablePath
+{
+  assert(!ExecutablePath.isAbsolute(path))
+
+  def isAbsolute = false
 
   def toFile(directory: Path): Path =
     directory resolve path.stripPrefix("/")
 }
-
-object ExecutablePath extends GenericString.Checked_[ExecutablePath]
-{
-  protected def unchecked(path: String) = new ExecutablePath(path)
-
-  def sh(path: String) = apply(if (sys.props("os.name") startsWith "Windows") s"$path.cmd" else path)
-
-  override def checked(path: String) =
+object RelativeExecutablePath {
+  def checked(path: String): Checked[RelativeExecutablePath] =
     if (path.isEmpty)
-      Left(EmptyStringProblem(name))
-    else if (!path.startsWith("/") || path == "/" || path.contains('\\') || path.startsWith(".") || path.contains("/."))  // TODO Check for ".."
-      Left(InvalidNameProblem(name, path))
+      Left(EmptyStringProblem("RelativeExecutablePath"))
+    else if (ExecutablePath.isAbsolute(path) || path.contains('\\') || path.startsWith(".")
+      || path.contains("/.") || path.head.isWhitespace || path.last.isWhitespace)
+      Left(InvalidNameProblem("RelativeExecutablePath", path))
     else
-      super.checked(path)
+      Right(new RelativeExecutablePath(path))
 }
 
 final case class ExecutableScript(script: String)
@@ -43,7 +100,7 @@ object ExecutableScript extends GenericString.Companion[ExecutableScript]
 
 object Executable
 {
-  implicit val jsonCodec = TypedJsonCodec[Executable](
-    Subtype(deriveCodec[ExecutablePath]),
+  implicit val jsonCodec: TypedJsonCodec[Executable] = TypedJsonCodec(
+    Subtype(ExecutablePath.jsonEncoder, ExecutablePath.jsonDecoder, Seq(classOf[AbsoluteExecutablePath], classOf[RelativeExecutablePath])),
     Subtype(deriveCodec[ExecutableScript]))
 }

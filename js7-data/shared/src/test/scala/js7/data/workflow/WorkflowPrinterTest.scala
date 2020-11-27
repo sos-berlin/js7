@@ -25,9 +25,9 @@ final class WorkflowPrinterTest extends AnyFreeSpec
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("/my-script"))))),
+          Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("my-script"))))),
       """define workflow {
-        |  execute agent="AGENT", executable="/my-script";
+        |  execute agent="AGENT", executable="my-script";
         |}
         |""".stripMargin)
   }
@@ -37,9 +37,9 @@ final class WorkflowPrinterTest extends AnyFreeSpec
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("/my-script"), Map("KEY" -> StringValue("VALUE")))))),
+          Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("my-script"), Map("KEY" -> StringValue("VALUE")))))),
       """define workflow {
-        |  execute agent="AGENT", arguments={"KEY": "VALUE"}, executable="/my-script";
+        |  execute agent="AGENT", arguments={"KEY": "VALUE"}, executable="my-script";
         |}
         |""".stripMargin)
   }
@@ -49,9 +49,9 @@ final class WorkflowPrinterTest extends AnyFreeSpec
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("/my-script"), Map("KEY\n\"$" -> StringValue("VALUE")))))),
+          Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("my-script"), Map("KEY\n\"$" -> StringValue("VALUE")))))),
       """define workflow {
-        |  execute agent="AGENT", arguments={"KEY\n\"\$": "VALUE"}, executable="/my-script";
+        |  execute agent="AGENT", arguments={"KEY\n\"\$": "VALUE"}, executable="my-script";
         |}
         |""".stripMargin)
   }
@@ -81,10 +81,10 @@ final class WorkflowPrinterTest extends AnyFreeSpec
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("/my-script"), Map("KEY" -> StringValue("VALUE")),
+          Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("my-script"), Map("KEY" -> StringValue("VALUE")),
             ReturnCodeMeaning.NoFailure, taskLimit = 3, sigkillAfter = Some(10.s))))),
       """define workflow {
-        |  execute agent="AGENT", taskLimit=3, arguments={"KEY": "VALUE"}, failureReturnCodes=[], sigkillAfter=10, executable="/my-script";
+        |  execute agent="AGENT", taskLimit=3, arguments={"KEY": "VALUE"}, failureReturnCodes=[], sigkillAfter=10, executable="my-script";
         |}
         |""".stripMargin)
   }
@@ -97,17 +97,17 @@ final class WorkflowPrinterTest extends AnyFreeSpec
           Execute.Named(WorkflowJob.Name("A")),
           Execute.Named(WorkflowJob.Name("B"))),
         Map(
-          WorkflowJob.Name("A") -> WorkflowJob(AgentName("AGENT"), ExecutablePath("/a-script"), Map("KEY" -> StringValue("VALUE")), ReturnCodeMeaning.Success.of(0, 1)),
-          WorkflowJob.Name("B") -> WorkflowJob(AgentName("AGENT"), ExecutablePath("/b-script")))),
+          WorkflowJob.Name("A") -> WorkflowJob(AgentName("AGENT"), ExecutablePath("a-script"), Map("KEY" -> StringValue("VALUE")), ReturnCodeMeaning.Success.of(0, 1)),
+          WorkflowJob.Name("B") -> WorkflowJob(AgentName("AGENT"), ExecutablePath("b-script")))),
       """define workflow {
         |  job A;
         |  job B;
         |
         |  define job A {
-        |    execute agent="AGENT", arguments={"KEY": "VALUE"}, successReturnCodes=[0, 1], executable="/a-script"
+        |    execute agent="AGENT", arguments={"KEY": "VALUE"}, successReturnCodes=[0, 1], executable="a-script"
         |  }
         |  define job B {
-        |    execute agent="AGENT", executable="/b-script"
+        |    execute agent="AGENT", executable="b-script"
         |  }
         |}
         |""".stripMargin)
@@ -118,9 +118,9 @@ final class WorkflowPrinterTest extends AnyFreeSpec
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          "A" @: Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("/EXECUTABLE"))))),
+          "A" @: Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("EXECUTABLE"))))),
       """define workflow {
-        |  A: execute agent="AGENT", executable="/EXECUTABLE";
+        |  A: execute agent="AGENT", executable="EXECUTABLE";
         |}
         |""".stripMargin)
   }
@@ -135,10 +135,10 @@ final class WorkflowPrinterTest extends AnyFreeSpec
               In(LastReturnCode, ListExpression(NumericConstant(1) :: NumericConstant(2) :: Nil)),
               Equal(NamedValue.last("KEY"), StringConstant("VALUE"))),
             Workflow.of(
-              Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("/EXECUTABLE"))))))),
+              Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("EXECUTABLE"))))))),
       """define workflow {
         |  if (($returnCode in [1, 2]) || $KEY == 'VALUE') {
-        |    execute agent="AGENT", executable="/EXECUTABLE";
+        |    execute agent="AGENT", executable="EXECUTABLE";
         |  }
         |}
         |""".stripMargin)
@@ -151,19 +151,19 @@ final class WorkflowPrinterTest extends AnyFreeSpec
         Vector(
           If(Equal(LastReturnCode, NumericConstant(-1)),
             Workflow.of(
-              Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("/A-THEN"))),
+              Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("A-THEN"))),
               If(BooleanConstant(true),
                 Workflow.of(
-                  Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("/B-THEN")))),
+                  Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("B-THEN")))),
                 Some(Workflow.of(
-                  Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("/B-ELSE")))))))))),
+                  Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("B-ELSE")))))))))),
       """define workflow {
         |  if ($returnCode == -1) {
-        |    execute agent="AGENT", executable="/A-THEN";
+        |    execute agent="AGENT", executable="A-THEN";
         |    if (true) {
-        |      execute agent="AGENT", executable="/B-THEN";
+        |      execute agent="AGENT", executable="B-THEN";
         |    } else {
-        |      execute agent="AGENT", executable="/B-ELSE";
+        |      execute agent="AGENT", executable="B-ELSE";
         |    }
         |  }
         |}
@@ -175,16 +175,16 @@ final class WorkflowPrinterTest extends AnyFreeSpec
       Workflow.of(
         Fork.of(
             "🥕" -> Workflow.of(
-              Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("/A")))),
+              Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("A")))),
             "🍋" -> Workflow.of(
-              Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("/B")))))),
+              Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("B")))))),
       """define workflow {
         |  fork {
         |    "🥕": {
-        |      execute agent="AGENT", executable="/A";
+        |      execute agent="AGENT", executable="A";
         |    },
         |    "🍋": {
-        |      execute agent="AGENT", executable="/B";
+        |      execute agent="AGENT", executable="B";
         |    }
         |  };
         |}
@@ -216,20 +216,20 @@ final class WorkflowPrinterTest extends AnyFreeSpec
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("/A"))),
+          Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("A"))),
           IfFailedGoto(Label("FAILURE")),
-          Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("/B"))),
+          Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("B"))),
           Goto(Label("END")),
           "FAILURE" @:
-          Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("/OnFailure"))),
+          Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("OnFailure"))),
           "END" @:
           ExplicitEnd())),
       """define workflow {
-        |  execute agent="AGENT", executable="/A";
+        |  execute agent="AGENT", executable="A";
         |  ifFailedGoto FAILURE;
-        |  execute agent="AGENT", executable="/B";
+        |  execute agent="AGENT", executable="B";
         |  goto END;
-        |  FAILURE: execute agent="AGENT", executable="/OnFailure";
+        |  FAILURE: execute agent="AGENT", executable="OnFailure";
         |  END: end;
         |}
         |""".stripMargin)

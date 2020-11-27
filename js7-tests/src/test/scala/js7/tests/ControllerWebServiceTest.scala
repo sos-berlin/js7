@@ -39,7 +39,7 @@ import js7.controller.data.events.ControllerEvent.ControllerReady
 import js7.controller.data.{ControllerMetaState, ControllerState}
 import js7.data.agent.AgentName
 import js7.data.event.{<-:, Event, KeyedEvent}
-import js7.data.job.ExecutablePath
+import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.WorkflowPath
@@ -158,7 +158,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
               "agentName": "AGENT",
               "executable": {
                 "TYPE": "ExecutablePath",
-                "path": "/A$sh"
+                "path": "A$sh"
               },
               "taskLimit": 1
             }
@@ -178,7 +178,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
               "agentName": "AGENT",
               "executable": {
                 "TYPE": "ExecutablePath",
-                "path": "/B$sh"
+                "path": "B$sh"
               },
               "taskLimit": 1
             }
@@ -188,7 +188,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
               "agentName": "AGENT",
               "executable": {
                 "TYPE": "ExecutablePath",
-                "path": "/MISSING$sh"
+                "path": "MISSING$sh"
               },
               "taskLimit": 1
             }
@@ -254,7 +254,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
               "agentName": "AGENT",
               "executable": {
                "TYPE": "ExecutablePath",
-               "path": "/B$sh"
+               "path": "B$sh"
              },
               "taskLimit": 1
             }
@@ -264,7 +264,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
               "agentName": "AGENT",
               "executable": {
                "TYPE": "ExecutablePath",
-               "path": "/MISSING$sh"
+               "path": "MISSING$sh"
              },
               "taskLimit": 1
             }
@@ -512,7 +512,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         "TYPE": "ItemAdded",
         "path": "Workflow:/FOLDER/WORKFLOW-2",
         "signed": {
-          "string": "{\"TYPE\":\"Workflow\",\"path\":\"/FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentName\":\"AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/B$sh\"},\"taskLimit\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentName\":\"AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/MISSING$sh\"},\"taskLimit\":1}}]}",
+          "string": "{\"TYPE\":\"Workflow\",\"path\":\"/FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentName\":\"AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"B$sh\"},\"taskLimit\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentName\":\"AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"MISSING$sh\"},\"taskLimit\":1}}]}",
           "signature": {
             "TYPE": "Silly",
             "signatureString": "MY-SILLY-SIGNATURE"
@@ -522,7 +522,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         "TYPE": "ItemAdded",
         "path": "Workflow:/WORKFLOW",
         "signed": {
-          "string": "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentName\":\"AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/A$sh\"},\"taskLimit\":1}}]}",
+          "string": "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentName\":\"AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"A$sh\"},\"taskLimit\":1}}]}",
           "signature": {
             "TYPE": "Silly",
             "signatureString": "MY-SILLY-SIGNATURE"
@@ -609,7 +609,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           "TYPE": "ItemAdded",
           "path": "Workflow:/WORKFLOW",
           "signed": {
-            "string": "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentName\":\"AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/A$sh\"},\"taskLimit\":1}}]}",
+            "string": "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentName\":\"AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"A$sh\"},\"taskLimit\":1}}]}",
             "signature": {
               "TYPE": "Silly",
               "signatureString": "MY-SILLY-SIGNATURE"
@@ -620,7 +620,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           "TYPE": "ItemAdded",
           "path": "Workflow:/FOLDER/WORKFLOW-2",
           "signed": {
-            "string": "{\"TYPE\":\"Workflow\",\"path\":\"/FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentName\":\"AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/B$sh\"},\"taskLimit\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentName\":\"AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/MISSING$sh\"},\"taskLimit\":1}}]}",
+            "string": "{\"TYPE\":\"Workflow\",\"path\":\"/FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentName\":\"AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"B$sh\"},\"taskLimit\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentName\":\"AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"MISSING$sh\"},\"taskLimit\":1}}]}",
             "signature": {
               "TYPE": "Silly",
               "signatureString": "MY-SILLY-SIGNATURE"
@@ -815,7 +815,7 @@ object ControllerWebServiceTest
   }
 
   private def writeAgentConfiguration(agent: DirectoryProvider.AgentTree): Unit = {
-    agent.writeExecutable(ExecutablePath(s"/A$sh"), operatingSystem.sleepingShellScript(1.second))  // Allow some time to check web service before order finishes
-    agent.writeExecutable(ExecutablePath(s"/B$sh"), operatingSystem.sleepingShellScript(0.seconds))
+    agent.writeExecutable(RelativeExecutablePath(s"A$sh"), operatingSystem.sleepingShellScript(1.second))  // Allow some time to check web service before order finishes
+    agent.writeExecutable(RelativeExecutablePath(s"B$sh"), operatingSystem.sleepingShellScript(0.seconds))
   }
 }

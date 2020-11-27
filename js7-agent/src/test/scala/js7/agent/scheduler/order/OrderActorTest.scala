@@ -32,7 +32,7 @@ import js7.core.event.journal.{JournalActor, JournalConf}
 import js7.data.agent.AgentName
 import js7.data.event.{EventRequest, KeyedEvent, Stamped}
 import js7.data.item.VersionId
-import js7.data.job.{ExecutablePath, JobKey}
+import js7.data.job.{JobKey, RelativeExecutablePath}
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetachable, OrderDetached, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
 import js7.data.system.{Stderr, Stdout, StdoutOrStderr}
@@ -69,7 +69,7 @@ final class OrderActorTest extends AnyFreeSpec with HasCloser with BeforeAndAfte
   }
 
   "Shell script" in {
-    val executablePath = ExecutablePath(s"/TEST-1$sh")
+    val executablePath = RelativeExecutablePath(s"TEST-1$sh")
     executablePath.toFile(directoryProvider.agentDirectory / "config" / "executables").writeExecutable(TestScript)
     val (testActor, result) = runTestActor(DummyJobKey, WorkflowJob(TestAgentName, executablePath, Map("VAR1" -> StringValue("FROM-JOB"))))
     assert(result.events == ExpectedOrderEvents)
@@ -86,7 +86,7 @@ final class OrderActorTest extends AnyFreeSpec with HasCloser with BeforeAndAfte
     def line(x: String, i: Int) = (s" $x$i" * ((i+n/100-1)/(n/100))).trim.ensuring(_.length < 8000)  // Windows: Maximum command line length is 8191 characters
     val expectedStderr = (for (i <- 1 to n) yield line("e", i) + Nl).mkString
     val expectedStdout = (for (i <- 1 to n) yield line("o", i) + Nl).mkString
-    val executablePath = ExecutablePath(s"/TEST-2$sh")
+    val executablePath = RelativeExecutablePath(s"TEST-2$sh")
     executablePath.toFile(directoryProvider.agentDirectory / "config" / "executables").writeExecutable(
       (isWindows ?? "@echo off\n") +
         (for (i <- 1 to n) yield

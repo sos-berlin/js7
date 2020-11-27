@@ -7,7 +7,7 @@ import js7.data.job.ExecutablePath
 /**
   * @author Joacim Zschimmer
   */
-object ExecutablePaths
+private object ExecutablePaths
 {
   implicit final class RichExecutablePath(private val underlying: ExecutablePath) extends AnyVal
   {

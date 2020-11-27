@@ -8,7 +8,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.data.agent.AgentName
 import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
-import js7.data.job.ExecutablePath
+import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
@@ -43,9 +43,9 @@ final class ExecuteTest extends AnyFreeSpec
     autoClosing(new DirectoryProvider(TestAgentName :: Nil, inventoryItems = TestWorkflow :: Nil, testName = Some("ExecuteTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) {
         a.configDir / "agent.conf" ++= "js7.job.execution.signed-script-injection-allowed = on\n"
-        for (o <- Array("/SCRIPT-0a.cmd", "/SCRIPT-0b.cmd")) a.writeExecutable(ExecutablePath(o), ":")
-        for (o <- Array("/SCRIPT-1.cmd", "/SCRIPT-2.cmd", "/SCRIPT-3.cmd"))
-          a.writeExecutable(ExecutablePath(o),
+        for (o <- Array("SCRIPT-0a.cmd", "SCRIPT-0b.cmd")) a.writeExecutable(RelativeExecutablePath(o), ":")
+        for (o <- Array("SCRIPT-1.cmd", "SCRIPT-2.cmd", "SCRIPT-3.cmd"))
+          a.writeExecutable(RelativeExecutablePath(o),
             if (isWindows) "@exit %SCHEDULER_PARAM_RETURN_CODE%" else "exit $SCHEDULER_PARAM_RETURN_CODE")
       }
       directoryProvider.run { (controller, _) =>
@@ -74,8 +74,8 @@ object ExecuteTest
   private val ScriptProlog = isWindows ?? "@echo off\n"
   private val workflowNotation = s"""
     define workflow {
-      execute executable="/SCRIPT-0a.cmd", agent="AGENT";
-      execute executable="/SCRIPT-1.cmd", agent="AGENT", arguments={"return_code": "1"}, successReturnCodes=[1];
+      execute executable="SCRIPT-0a.cmd", agent="AGENT";
+      execute executable="SCRIPT-1.cmd", agent="AGENT", arguments={"return_code": "1"}, successReturnCodes=[1];
       job aJob;
       job bJob;  // returnCode=2
       if (true) {
@@ -83,7 +83,7 @@ object ExecuteTest
         job bJob;  // returnCode=3
         job cJob;  // returnCode=4
         define job bJob {
-          execute agent="AGENT", executable="/SCRIPT-3.cmd", arguments={"return_code": "3"}, successReturnCodes=[3];
+          execute agent="AGENT", executable="SCRIPT-3.cmd", arguments={"return_code": "3"}, successReturnCodes=[3];
         }
         define job cJob {
           execute agent="AGENT", script="${ScriptProlog}exit 4", arguments={"return_code": "4"}, successReturnCodes=[4];
@@ -92,10 +92,10 @@ object ExecuteTest
       job dJob, arguments={"return_code": "5"};
 
       define job aJob {
-        execute agent="AGENT", executable="/SCRIPT-0b.cmd";
+        execute agent="AGENT", executable="SCRIPT-0b.cmd";
       }
       define job bJob {
-        execute agent="AGENT", executable="/SCRIPT-2.cmd", arguments={"return_code": "2"}, successReturnCodes=[2];
+        execute agent="AGENT", executable="SCRIPT-2.cmd", arguments={"return_code": "2"}, successReturnCodes=[2];
       }
       define job dJob {
         execute agent="AGENT", script="${ScriptProlog}exit 5", successReturnCodes=[5];

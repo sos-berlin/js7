@@ -11,7 +11,7 @@ import js7.data.Problems.{CancelStartedOrderProblem, UnknownOrderProblem}
 import js7.data.agent.AgentName
 import js7.data.command.CancelMode
 import js7.data.item.VersionId
-import js7.data.job.{ExecutablePath, ReturnCode}
+import js7.data.job.{RelativeExecutablePath, ReturnCode}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelMarked, OrderCancelled, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderStarted, OrderStdWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
@@ -213,7 +213,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
 
 object CancelOrdersTest
 {
-  private val executablePath = ExecutablePath("/executable.cmd")
+  private val executablePath = RelativeExecutablePath("executable.cmd")
   private val agentName = AgentName("AGENT")
   private val versionId = VersionId("INITIAL")
 

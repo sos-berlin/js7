@@ -58,7 +58,7 @@ object TryExecutorTest {
   private val TestWorkflowId = WorkflowPath("/WORKFLOW") ~ "VERSION"
   private val AOrder = Order(OrderId("ORDER-A"), TestWorkflowId /: Position(7), Order.Fresh(),
     historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(1))) :: Nil)
-  private val TryJob = Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("/THEN")))
-  private val CatchJob = Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("/ELSE")))
+  private val TryJob = Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("THEN")))
+  private val CatchJob = Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("ELSE")))
   private val tryInstruction = TryInstruction(Workflow.of(TryJob), Workflow.of(CatchJob))
 }

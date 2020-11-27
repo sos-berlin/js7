@@ -9,7 +9,7 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.data.ControllerCommand.UpdateAgentRefs
 import js7.controller.data.events.AgentRefStateEvent.{AgentCouplingFailed, AgentReady}
 import js7.data.agent.{AgentName, AgentRef}
-import js7.data.job.ExecutablePath
+import js7.data.job.RelativeExecutablePath
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -54,6 +54,6 @@ object DuplicateAgentRefTest
   private val bAgentName = AgentName("B-AGENT")
   private val workflow = Workflow.of(
     WorkflowPath("/SINGLE") ~ "INITIAL",
-    Execute(WorkflowJob(aAgentName, ExecutablePath("/executable.cmd"))),
-    Execute(WorkflowJob(bAgentName, ExecutablePath("/executable.cmd"))))
+    Execute(WorkflowJob(aAgentName, RelativeExecutablePath("executable.cmd"))),
+    Execute(WorkflowJob(bAgentName, RelativeExecutablePath("executable.cmd"))))
 }

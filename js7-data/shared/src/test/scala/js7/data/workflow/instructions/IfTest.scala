@@ -20,8 +20,8 @@ final class IfTest extends AnyFreeSpec
 {
   private val if_ = If(
     GreaterOrEqual(LastReturnCode, NumericConstant(3)),
-    thenWorkflow = Workflow.of(Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("/THEN")))),
-    elseWorkflow = Some(Workflow.of(Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("/ELSE"))))),
+    thenWorkflow = Workflow.of(Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("THEN")))),
+    elseWorkflow = Some(Workflow.of(Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("ELSE"))))),
     Some(SourcePos(1, 2)))
 
   "JSON" in {
@@ -37,7 +37,7 @@ final class IfTest extends AnyFreeSpec
                 "agentName": "AGENT",
                 "executable": {
                   "TYPE": "ExecutablePath",
-                  "path": "/THEN"
+                  "path": "THEN"
                 },
                 "taskLimit": 1
               }
@@ -52,7 +52,7 @@ final class IfTest extends AnyFreeSpec
                 "agentName": "AGENT",
                 "executable": {
                   "TYPE": "ExecutablePath",
-                  "path": "/ELSE"
+                  "path": "ELSE"
                 },
                 "taskLimit": 1
               }

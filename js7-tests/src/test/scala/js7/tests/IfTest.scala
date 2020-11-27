@@ -6,7 +6,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.common.process.Processes.{ShellFileExtension => sh}
 import js7.data.agent.AgentName
 import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
-import js7.data.job.{ExecutablePath, ReturnCode}
+import js7.data.job.{RelativeExecutablePath, ReturnCode}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.{NumericValue, StringValue}
@@ -22,8 +22,8 @@ final class IfTest extends AnyFreeSpec {
 
   "test" in {
     autoClosing(new DirectoryProvider(TestAgentName :: Nil, inventoryItems = TestWorkflow :: Nil, testName = Some("IfTest"))) { directoryProvider =>
-      for (a <- directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/TEST$sh"), ":")
-      for (a <- directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/TEST-RC$sh"), jobScript)
+      for (a <- directoryProvider.agents) a.writeExecutable(RelativeExecutablePath(s"TEST$sh"), ":")
+      for (a <- directoryProvider.agents) a.writeExecutable(RelativeExecutablePath(s"TEST-RC$sh"), jobScript)
 
       directoryProvider.run { (controller, _) =>
         for (returnCode <- ExpectedEvents.keys) withClue(s"$returnCode: ") {
@@ -73,15 +73,15 @@ object IfTest {
      |  }
      |  if ($$ARG != "X" && variable(key="JOB-KEY", label=LABEL) == "JOB-RESULT" && variable("JOB-KEY", job=MYJOB) == "JOB-RESULT") {
      |    if (variable("returnCode", label=LABEL) == 0) {
-     |      execute executable="/TEST$sh", agent="AGENT";
+     |      execute executable="TEST$sh", agent="AGENT";
      |    } else {
-     |      execute executable="/TEST$sh", agent="AGENT";
+     |      execute executable="TEST$sh", agent="AGENT";
      |    }
      |  }
-     |  execute executable="/TEST$sh", agent="AGENT";
+     |  execute executable="TEST$sh", agent="AGENT";
      |
      |  define job MYJOB {
-     |    execute executable="/TEST-RC$sh", agent="AGENT", successReturnCodes=[0, 1];
+     |    execute executable="TEST-RC$sh", agent="AGENT", successReturnCodes=[0, 1];
      |  }
      |}""".stripMargin
   private val TestWorkflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW") ~ "INITIAL", workflowNotation).orThrow

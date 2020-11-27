@@ -35,7 +35,7 @@ import js7.core.crypt.pgp.PgpSigner
 import js7.data.agent.{AgentName, AgentRef}
 import js7.data.controller.ControllerItems
 import js7.data.item.{InventoryItem, InventoryItemSigner, ItemPath, VersionId}
-import js7.data.job.ExecutablePath
+import js7.data.job.RelativeExecutablePath
 import js7.tests.testenv.DirectoryProvider._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -327,7 +327,7 @@ object DirectoryProvider
     def writeTrustedSignatureKeys(verifier: SignatureVerifier): Unit =
       DirectoryProvider.writeTrustedSignatureKeys(verifier, configDir, "agent.conf")
 
-    def writeExecutable(path: ExecutablePath, string: String): Unit =
+    def writeExecutable(path: RelativeExecutablePath, string: String): Unit =
       path.toFile(executables).writeExecutable(string)
   }
 

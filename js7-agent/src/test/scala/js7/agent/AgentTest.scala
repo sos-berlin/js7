@@ -18,7 +18,7 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.core.command.CommandMeta
 import js7.data.agent.AgentName
 import js7.data.controller.ControllerId
-import js7.data.job.ExecutablePath
+import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.value.{NumericValue, StringValue}
@@ -88,7 +88,7 @@ object AgentTest {
       |echo "WORKDIR=$(pwd)" >$SCHEDULER_RETURN_VALUES
       |""".stripMargin
 
-  private val TestExecutablePath = ExecutablePath(s"/TEST$sh")
+  private val TestExecutablePath = RelativeExecutablePath(s"TEST$sh")
 
   private val TestWorkflow = Workflow.of(
     WorkflowPath("/WORKFLOW") ~ "VERSION",

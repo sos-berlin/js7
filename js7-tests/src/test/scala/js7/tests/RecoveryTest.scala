@@ -23,7 +23,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{<-:, Event, EventId, KeyedEvent, Stamped}
 import js7.data.item.RepoEvent.{ItemAdded, VersionAdded}
 import js7.data.item.{RepoEvent, VersionId}
-import js7.data.job.ExecutablePath
+import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.{NumericValue, StringValue}
@@ -152,7 +152,7 @@ private object RecoveryTest {
 
   private val TestConfig = config"js7.journal.remove-obsolete-files = false"
   private val AgentNames = AgentName("agent-111") :: AgentName("agent-222") :: Nil
-  private val TestExecutablePath = ExecutablePath("/TEST.cmd")
+  private val TestExecutablePath = RelativeExecutablePath("TEST.cmd")
 
   private val TestWorkflow = Workflow(WorkflowPath("/test") ~ "INITIAL",
     Vector(

@@ -19,7 +19,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.common.process.Processes.ShellFileAttributes
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Logger
-import js7.data.job.{ExecutablePath, ExecutableScript, JobKey}
+import js7.data.job.{AbsoluteExecutablePath, ExecutableScript, JobKey, RelativeExecutablePath}
 import js7.data.order.{Order, OrderId}
 import js7.data.value.NamedValues
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -45,7 +45,10 @@ extends Actor with Stash
   private var terminating = false
 
   private val checkedExecutable: Checked[Executable] = workflowJob.executable match {
-    case path: ExecutablePath =>
+    case path: AbsoluteExecutablePath =>
+      Left(Problem("AbsoluteExecutablePath still not supported"))  // TODO
+
+    case path: RelativeExecutablePath =>
       val file = path.toFile(executablesDirectory)
       if (!exists(file)) {
         logger.warn(s"Executable '$file' not found")

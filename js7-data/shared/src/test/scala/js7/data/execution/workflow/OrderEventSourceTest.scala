@@ -696,19 +696,19 @@ final class OrderEventSourceTest extends AnyFreeSpec
        """define workflow {
          |  try {                                     // 0
          |    try {                                   // 0/0:0
-         |      execute agent="a", executable="/ex";  // 0/0:0/0:0
+         |      execute agent="a", executable="ex";  // 0/0:0/0:0
          |    } catch {
-         |      execute agent="a", executable="/ex";  // 0/0:0/1:0
+         |      execute agent="a", executable="ex";  // 0/0:0/1:0
          |    }
          |  } catch {
-         |    execute agent="a", executable="/ex";    // 0/1:0
+         |    execute agent="a", executable="ex";    // 0/1:0
          |    try {                                   // 0/1:1
-         |      execute agent="a", executable="/ex";  // 0/1:1/0:0
+         |      execute agent="a", executable="ex";  // 0/1:1/0:0
          |    } catch {
-         |      execute agent="a", executable="/ex";  // 0/1:1/1:0
+         |      execute agent="a", executable="ex";  // 0/1:1/1:0
          |    }
          |  };
-         |  execute agent="a", executable="/ex";      // 1
+         |  execute agent="a", executable="ex";      // 1
          |}""".stripMargin).orThrow
 
     def eventSource(order: Order[Order.State]) =
@@ -783,16 +783,16 @@ final class OrderEventSourceTest extends AnyFreeSpec
            |  try
            |    fork {
            |      "🥕": {
-           |        execute agent="a", executable="/ex";   // 0/try:0/fork+🥕:0    // FAILS
+           |        execute agent="a", executable="ex";   // 0/try:0/fork+🥕:0    // FAILS
            |      },
            |      "🍋": {
-           |        execute agent="a", executable="/ex";   // 0/try:0/fork+🍋:0    // succeeds
+           |        execute agent="a", executable="ex";   // 0/try:0/fork+🍋:0    // succeeds
            |      }
            |    }
            |  catch {
-           |    execute agent="a", executable="/ex";       // 0/catch:0
+           |    execute agent="a", executable="ex";       // 0/catch:0
            |  };
-           |  execute agent="a", executable="/ex";         // 1
+           |  execute agent="a", executable="ex";         // 1
            |}""".stripMargin).orThrow
       var aChild: Order[Order.State] = {
         val pos = Position(0) / BranchId.try_(0) % 0 / BranchId.fork("🥕") % 0   // Execute
@@ -845,7 +845,7 @@ object OrderEventSourceTest {
     OrderForked.Child("🥕", OrderId("ORDER|🥕")),
     OrderForked.Child("🍋", OrderId("ORDER|🍋"))))
 
-  private val executeScript = Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("/executable")))
+  private val executeScript = Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("executable")))
 
   private def step(workflow: Workflow, outcome: Outcome): Option[OrderEvent] = {
     val process = new SingleOrderProcess(workflow)

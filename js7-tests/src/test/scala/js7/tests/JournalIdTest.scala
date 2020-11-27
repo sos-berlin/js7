@@ -11,7 +11,7 @@ import js7.core.event.journal.files.JournalFiles.listJournalFiles
 import js7.data.agent.AgentName
 import js7.data.event.JournalHeader.JournalIdMismatchProblem
 import js7.data.event.{Event, EventId, JournalHeader, JournalId, KeyedEvent, Stamped}
-import js7.data.job.ExecutablePath
+import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
@@ -106,7 +106,7 @@ final class JournalIdTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 private object JournalIdTest
 {
   private val agentName = AgentName("AGENT-111")
-  private val TestExecutablePath = ExecutablePath("/TEST.cmd")
+  private val TestExecutablePath = RelativeExecutablePath("TEST.cmd")
 
   private val TestWorkflow = Workflow(WorkflowPath("/test") ~ "INITIAL",
     Vector(

@@ -15,7 +15,7 @@ import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.agent.AgentName
 import js7.data.controller.ControllerItems.jsonCodec
 import js7.data.item.{InventoryItem, VersionId}
-import js7.data.job.ExecutablePath
+import js7.data.job.RelativeExecutablePath
 import js7.data.workflow.WorkflowPath
 import js7.proxy.javaapi.JProxyContext
 import js7.proxy.javaapi.data.auth.{JAdmission, JCredentials, JHttpsConfig}
@@ -56,7 +56,7 @@ final class JControllerProxyTest extends AnyFreeSpec with DirectoryProviderForSc
       configDir / "private/trusted-silly-signature-keys/key.silly" := "MY-SILLY-SIGNATURE"
     }
 
-    directoryProvider.agents.head.writeExecutable(ExecutablePath("/TEST.cmd"), script(1.s))
+    directoryProvider.agents.head.writeExecutable(RelativeExecutablePath("TEST.cmd"), script(1.s))
   }
 
   "JControllerProxy" in {

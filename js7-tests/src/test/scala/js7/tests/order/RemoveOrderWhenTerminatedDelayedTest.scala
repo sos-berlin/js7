@@ -7,7 +7,7 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.data.ControllerCommand.RemoveOrdersWhenTerminated
 import js7.data.agent.AgentName
 import js7.data.item.VersionId
-import js7.data.job.ExecutablePath
+import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.{OrderFinished, OrderRemoved, OrderStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
@@ -45,7 +45,7 @@ final class RemoveOrderWhenTerminatedDelayedTest extends AnyFreeSpec with Contro
 
 object RemoveOrderWhenTerminatedDelayedTest
 {
-  private val executablePath = ExecutablePath("/quick.cmd")
+  private val executablePath = RelativeExecutablePath("quick.cmd")
   private val agentName = AgentName("AGENT")
   private val versionId = VersionId("INITIAL")
 

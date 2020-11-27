@@ -28,7 +28,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.item.Repo.Entry
 import js7.data.item.RepoEvent.{ItemAdded, ItemChanged, ItemDeleted, ItemEvent, VersionAdded}
 import js7.data.item.{IntentoryItems, Repo, SourceType, VersionId}
-import js7.data.job.ExecutablePath
+import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.OrderAdded
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
 import js7.provider.Provider
@@ -98,7 +98,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
         |}
       """.stripMargin
 
-    directoryProvider.agents.head.writeExecutable(ExecutablePath("/EXECUTABLE"), ":")
+    directoryProvider.agents.head.writeExecutable(RelativeExecutablePath("EXECUTABLE"), ":")
 
     createDirectories(providerDirectory / "private")
     createDirectories(providerDirectory / "live" / "folder")
@@ -334,7 +334,7 @@ object ProviderTest
             "agentName": "AGENT",
             "executable": {
               "TYPE": "ExecutablePath",
-              "path": "/EXECUTABLE"
+              "path": "EXECUTABLE"
             },
             "taskLimit": 1
           }
@@ -351,7 +351,7 @@ object ProviderTest
             "agentName": "AGENT",
             "executable": {
               "TYPE": "ExecutablePath",
-              "path": "/OTHER-EXECUTABLE"
+              "path": "OTHER-EXECUTABLE"
             },
             "taskLimit": 1
           }

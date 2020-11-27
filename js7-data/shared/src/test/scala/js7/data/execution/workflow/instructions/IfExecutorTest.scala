@@ -76,8 +76,8 @@ object IfExecutorTest {
     historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(1) ++ Map("A" -> StringValue("AA")))) :: Nil)
   private val BOrder = Order(OrderId("ORDER-B"), TestWorkflowId /: Position(7), Order.Processed,
     historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(1) ++ Map("A" -> StringValue("XX")))) :: Nil)
-  private val ThenJob = Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("/THEN")))
-  private val ElseJob = Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("/ELSE")))
+  private val ThenJob = Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("THEN")))
+  private val ElseJob = Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("ELSE")))
 
   private def ifThenElse(booleanExpr: BooleanExpression) =
     If(booleanExpr, Workflow.of(ThenJob), Some(Workflow.of(ElseJob)))

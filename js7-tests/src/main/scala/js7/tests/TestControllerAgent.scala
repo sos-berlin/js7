@@ -30,7 +30,7 @@ import js7.common.utils.JavaShutdownHook
 import js7.core.event.StampedKeyedEventBus
 import js7.data.agent.AgentName
 import js7.data.event.{KeyedEvent, Stamped}
-import js7.data.job.ExecutablePath
+import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
 import js7.data.value.StringValue
@@ -49,7 +49,7 @@ import scala.concurrent.duration._
 object TestControllerAgent
 {
   private val TestWorkflowPath = WorkflowPath("/test")
-  private val TestExecutablePath = ExecutablePath("/test")
+  private val TestExecutablePath = RelativeExecutablePath("test")
   private val StdoutRowSize = 1000
   private val logger = Logger(getClass)
 

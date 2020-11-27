@@ -10,7 +10,7 @@ import js7.controller.data.ControllerCommand.TakeSnapshot
 import js7.controller.data.events.ControllerEvent
 import js7.core.event.journal.files.JournalFiles.listJournalFiles
 import js7.data.agent.AgentName
-import js7.data.job.ExecutablePath
+import js7.data.job.RelativeExecutablePath
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -57,7 +57,7 @@ final class ObsoleteJournalFilesRemovedTest extends AnyFreeSpec with DirectoryPr
 private object ObsoleteJournalFilesRemovedTest
 {
   private val agentName = AgentName("agent-111")
-  private val executablePath = ExecutablePath(s"/TEST$sh")
+  private val executablePath = RelativeExecutablePath(s"TEST$sh")
   private val workflow = Workflow.of(WorkflowPath("/test"),
     Execute(WorkflowJob(agentName, executablePath)))
   private val aOrder = FreshOrder(OrderId("🔵"), workflow.id.path)

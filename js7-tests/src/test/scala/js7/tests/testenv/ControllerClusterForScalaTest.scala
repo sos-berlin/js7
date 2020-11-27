@@ -16,14 +16,14 @@ import js7.common.message.ProblemCodeMessages
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.time.WaitForCondition.waitForCondition
 import js7.common.utils.FreeTcpPortFinder.{findFreeTcpPort, findFreeTcpPorts}
-import js7.controller.{ControllerTermination, RunningController}
 import js7.controller.data.ControllerCommand.ShutDown
+import js7.controller.{ControllerTermination, RunningController}
 import js7.core.event.journal.files.JournalFiles.listJournalFiles
 import js7.data.agent.AgentName
 import js7.data.cluster.ClusterEvent.ClusterCoupled
 import js7.data.cluster.{ClusterSetting, ClusterTiming}
 import js7.data.item.InventoryItem
-import js7.data.job.ExecutablePath
+import js7.data.job.RelativeExecutablePath
 import js7.data.node.NodeId
 import js7.tests.testenv.ControllerClusterForScalaTest.TestExecutablePath
 import js7.tests.testenv.DirectoryProvider.script
@@ -149,7 +149,7 @@ trait ControllerClusterForScalaTest
 
 object ControllerClusterForScalaTest
 {
-  val TestExecutablePath = ExecutablePath(s"/TEST.cmd")
+  val TestExecutablePath = RelativeExecutablePath(s"TEST.cmd")
 
   def assertEqualJournalFiles(
     primary: DirectoryProvider.ControllerTree,

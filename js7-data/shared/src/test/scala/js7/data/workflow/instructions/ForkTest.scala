@@ -18,8 +18,8 @@ import org.scalatest.freespec.AnyFreeSpec
 final class ForkTest extends AnyFreeSpec {
 
   private val fork = Fork.of(
-    "A" -> Workflow.of(Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("/A")))),
-    "B" -> Workflow.of(Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("/B")))))
+    "A" -> Workflow.of(Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("A")))),
+    "B" -> Workflow.of(Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("B")))))
     .copy(sourcePos = Some(SourcePos(1, 2)))
 
   "JSON" - {
@@ -38,7 +38,7 @@ final class ForkTest extends AnyFreeSpec {
                     "agentName": "AGENT",
                     "executable": {
                       "TYPE": "ExecutablePath",
-                      "path": "/A"
+                      "path": "A"
                     },
                     "taskLimit": 1
                   }
@@ -55,7 +55,7 @@ final class ForkTest extends AnyFreeSpec {
                     "agentName": "AGENT",
                     "executable": {
                       "TYPE": "ExecutablePath",
-                      "path": "/B"
+                      "path": "B"
                     },
                     "taskLimit": 1
                   }
@@ -71,8 +71,8 @@ final class ForkTest extends AnyFreeSpec {
   "Duplicate branch ids are rejected" in {  // TODO
     intercept[ProblemException] {
       Fork.of(
-        "A" -> Workflow.of(Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("/A")))),
-        "A" -> Workflow.of(Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("/B")))))
+        "A" -> Workflow.of(Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("A")))),
+        "A" -> Workflow.of(Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("B")))))
     }
   }
 

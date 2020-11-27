@@ -18,7 +18,7 @@ import js7.data.Problems.{ItemDeletedProblem, ItemVersionDoesNotMatchProblem}
 import js7.data.agent.AgentName
 import js7.data.event.{EventRequest, EventSeq}
 import js7.data.item.VersionId
-import js7.data.job.ExecutablePath
+import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
@@ -50,9 +50,9 @@ final class UpdateRepoTest extends AnyFreeSpec with ControllerAgentForScalaTest
          |  }
          |}
          |""".stripMargin
-    directoryProvider.agentToTree(TestAgentName).writeExecutable(ExecutablePath("/SCRIPT1.cmd"), sleepingShellScript(2 * Tick))
-    directoryProvider.agentToTree(TestAgentName).writeExecutable(ExecutablePath("/SCRIPT2.cmd"), ":")
-    directoryProvider.agentToTree(TestAgentName).writeExecutable(ExecutablePath("/SCRIPT4.cmd"), ":")
+    directoryProvider.agentToTree(TestAgentName).writeExecutable(RelativeExecutablePath("SCRIPT1.cmd"), sleepingShellScript(2 * Tick))
+    directoryProvider.agentToTree(TestAgentName).writeExecutable(RelativeExecutablePath("SCRIPT2.cmd"), ":")
+    directoryProvider.agentToTree(TestAgentName).writeExecutable(RelativeExecutablePath("SCRIPT4.cmd"), ":")
     super.beforeAll()
   }
 
@@ -144,7 +144,7 @@ object UpdateRepoTest
   private val TestWorkflowPath = WorkflowPath("/WORKFLOW")
   private val script1 = """
     define workflow {
-      execute executable="/SCRIPT1.cmd", agent="AGENT";
+      execute executable="SCRIPT1.cmd", agent="AGENT";
     }"""
 
   private val V1 = VersionId("1")
@@ -153,7 +153,7 @@ object UpdateRepoTest
   private val V2 = VersionId("2")
   private val script2 = """
     define workflow {
-      execute executable="/SCRIPT2.cmd", agent="AGENT";
+      execute executable="SCRIPT2.cmd", agent="AGENT";
     }"""
   private val workflow2 = WorkflowParser.parse(TestWorkflowPath ~ V2, script2).orThrow
 
@@ -166,7 +166,7 @@ object UpdateRepoTest
   private val V5 = VersionId("5")
   private val script5 = """
     define workflow {
-      execute executable="/SCRIPT4.cmd", agent="AGENT";
+      execute executable="SCRIPT4.cmd", agent="AGENT";
     }"""
   private val otherWorkflow5 = WorkflowParser.parse(WorkflowPath("/OTHER-WORKFLOW") ~ V5, script5).orThrow
 }

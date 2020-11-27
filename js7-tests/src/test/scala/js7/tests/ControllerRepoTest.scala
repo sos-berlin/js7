@@ -22,7 +22,7 @@ import js7.controller.data.ControllerCommand.UpdateRepo
 import js7.data.Problems.ItemDeletedProblem
 import js7.data.agent.AgentName
 import js7.data.item.VersionId
-import js7.data.job.ExecutablePath
+import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.{OrderAdded, OrderFinished, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
@@ -45,7 +45,7 @@ final class ControllerRepoTest extends AnyFreeSpec
       import provider.itemSigner
 
       for (v <- 1 to 4)  // For each version, we use a dedicated job which echos the VersionId
-        provider.agents.head.writeExecutable(ExecutablePath(s"/EXECUTABLE-V$v$sh"), (isWindows ?? "@") + s"echo /VERSION-$v/")
+        provider.agents.head.writeExecutable(RelativeExecutablePath(s"EXECUTABLE-V$v$sh"), (isWindows ?? "@") + s"echo /VERSION-$v/")
       provider.controller.configDir / "controller.conf" ++=
         """js7.auth.users.TEST-USER {
           |  password = "plain:TEST-PASSWORD"
@@ -177,7 +177,7 @@ final class ControllerRepoTest extends AnyFreeSpec
           .await(1.h)
 
       def generateCommands(n: Int, bundleFactor: Int): Seq[UpdateRepo] = {
-        val workflow0 = Workflow.of(Execute(WorkflowJob(TestAgentName, ExecutablePath(s"/EXECUTABLE"))))
+        val workflow0 = Workflow.of(Execute(WorkflowJob(TestAgentName, RelativeExecutablePath(s"EXECUTABLE"))))
         val versionCounter = AtomicInt(0)
         Observable.fromIterable(1 to n)
           .bufferTumbling(bundleFactor)
@@ -213,5 +213,5 @@ object ControllerRepoTest
   private val TestAgentName = AgentName("AGENT")
 
   private def testWorkflow(versionId: VersionId) = Workflow.of(
-    Execute(WorkflowJob(TestAgentName, ExecutablePath(s"/EXECUTABLE-V${versionId.string}$sh"))))
+    Execute(WorkflowJob(TestAgentName, RelativeExecutablePath(s"EXECUTABLE-V${versionId.string}$sh"))))
 }

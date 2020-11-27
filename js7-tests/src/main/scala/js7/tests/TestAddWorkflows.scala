@@ -59,7 +59,7 @@ final class TestAddWorkflows(settings: Settings)
   }
 
   private def generateCommands(signer: InventoryItemSigner[InventoryItem]): Seq[UpdateRepo] = {
-    val workflow0 = Workflow.of(Execute(WorkflowJob(agentName, ExecutablePath(s"/EXECUTABLE"))))
+    val workflow0 = Workflow.of(Execute(WorkflowJob(agentName, ExecutablePath("EXECUTABLE"))))
     val versionCounter = AtomicInt(0)
     Observable.fromIterable(1 to settings.workflowCount)
       .bufferTumbling(settings.bundleSize)

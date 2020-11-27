@@ -38,7 +38,7 @@ object AddOrderTimeoutTest
   private val workflow = WorkflowParser.parse(
     WorkflowPath("/WORKFLOW") ~ "1","""
       define workflow {
-        execute executable="/SCRIPT1.cmd", agent="AGENT";
+        execute executable="SCRIPT1.cmd", agent="AGENT";
       }"""
   ).orThrow
 }

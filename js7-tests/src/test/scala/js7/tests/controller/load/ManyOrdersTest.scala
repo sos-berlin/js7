@@ -10,7 +10,7 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.data.ControllerCommand.TakeSnapshot
 import js7.data.agent.AgentName
 import js7.data.event.{EventId, EventRequest}
-import js7.data.job.ExecutablePath
+import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
@@ -33,7 +33,7 @@ final class ManyOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   override def beforeAll() = {
     for (a <- directoryProvider.agents) {
-      a.writeExecutable(ExecutablePath(s"/TEST$sh"), script(10.ms))
+      a.writeExecutable(RelativeExecutablePath(s"TEST$sh"), script(10.ms))
     }
     super.beforeAll()
   }
@@ -81,11 +81,11 @@ object ManyOrdersTest
   private val   workflow = WorkflowParser.parse(
     WorkflowPath("/WORKFLOW") ~ "1",s"""
       define workflow {
-        execute executable="/TEST$sh", agent="AGENT", taskLimit=100;
-        execute executable="/TEST$sh", agent="AGENT", taskLimit=100;
-        execute executable="/TEST$sh", agent="AGENT", taskLimit=100;
-        execute executable="/TEST$sh", agent="AGENT", taskLimit=100;
-        execute executable="/TEST$sh", agent="AGENT", taskLimit=100;
+        execute executable="TEST$sh", agent="AGENT", taskLimit=100;
+        execute executable="TEST$sh", agent="AGENT", taskLimit=100;
+        execute executable="TEST$sh", agent="AGENT", taskLimit=100;
+        execute executable="TEST$sh", agent="AGENT", taskLimit=100;
+        execute executable="TEST$sh", agent="AGENT", taskLimit=100;
       }"""
   ).orThrow
 }

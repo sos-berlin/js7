@@ -133,7 +133,7 @@ object CommandQueueTest {
   private val logger = Logger(getClass)
   private val TestAgentName = AgentName("AGENT")
   private val TestWorkflow = Workflow.of(WorkflowPath("/A") ~ "VERSION",
-    Execute(WorkflowJob(TestAgentName, ExecutablePath("/EXECUTABLE"))))
+    Execute(WorkflowJob(TestAgentName, ExecutablePath("EXECUTABLE"))))
   private val itemSigner = new InventoryItemSigner(new SillySigner(SillySignature("MY-SILLY-SIGNATURE")), Workflow.jsonEncoder)
   private val signedWorkflow: Signed[Workflow] = itemSigner.toSigned(TestWorkflow)
 

@@ -14,7 +14,7 @@ import js7.data.Problems.UnknownOrderProblem
 import js7.data.agent.AgentName
 import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.item.VersionId
-import js7.data.job.ExecutablePath
+import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderResumeMarked, OrderResumed, OrderRetrying, OrderStarted, OrderStdWritten, OrderStdoutWritten, OrderSuspendMarked, OrderSuspended}
 import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem}
@@ -372,8 +372,8 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
 
 object SuspendResumeOrdersTest
 {
-  private val executablePath = ExecutablePath("/executable.cmd")
-  private val quickExecutablePath = ExecutablePath("/quick.cmd")
+  private val executablePath = RelativeExecutablePath("executable.cmd")
+  private val quickExecutablePath = RelativeExecutablePath("quick.cmd")
   private val agentName = AgentName("AGENT")
   private val versionId = VersionId("INITIAL")
 

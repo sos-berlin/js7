@@ -9,7 +9,7 @@ import js7.common.scalautil.Logger
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.data.agent.AgentName
 import js7.data.event.{EventId, EventRequest, EventSeq}
-import js7.data.job.ExecutablePath
+import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
@@ -35,9 +35,9 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   override def beforeAll() = {
     for (a <- directoryProvider.agents) {
-      a.writeExecutable(ExecutablePath(s"/OKAY$sh"), ":")
-      a.writeExecutable(ExecutablePath(s"/FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
-      a.writeExecutable(ExecutablePath(s"/FAIL-2$sh"), if (isWindows) "@exit 2" else "exit 2")
+      a.writeExecutable(RelativeExecutablePath(s"OKAY$sh"), ":")
+      a.writeExecutable(RelativeExecutablePath(s"FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
+      a.writeExecutable(RelativeExecutablePath(s"FAIL-2$sh"), if (isWindows) "@exit 2" else "exit 2")
     }
     super.beforeAll()
   }
@@ -45,7 +45,7 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
   "Nested try catch" in {
     val workflowNotation = s"""
        |define workflow {
-       |  try execute executable="/FAIL-1$sh", agent="AGENT";   // :0/try:0
+       |  try execute executable="FAIL-1$sh", agent="AGENT";   // :0/try:0
        |  catch                                                 // :0/catch
        |    if (catchCount < 2)                                 // :0/catch:0
        |      try retry;                                        // :0/catch:0/then:0/try:0
@@ -86,14 +86,14 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
        |define workflow {
        |  try {                                                   // :0
        |    try {                                                 // :0/try:0
-       |      execute executable="/OKAY$sh", agent="AGENT";       // :0/try:0/try:0
+       |      execute executable="OKAY$sh", agent="AGENT";       // :0/try:0/try:0
        |      try {                                               // :0/try:0/try:1
-       |        execute executable="/FAIL-1$sh", agent="AGENT";   // :0/try:0/try:1/try:0   OrderCatched
-       |        execute executable="/OKAY$sh", agent="AGENT";     // :0/try:0/try:1/try:1   skipped
+       |        execute executable="FAIL-1$sh", agent="AGENT";   // :0/try:0/try:1/try:0   OrderCatched
+       |        execute executable="OKAY$sh", agent="AGENT";     // :0/try:0/try:1/try:1   skipped
        |      } catch if (catchCount < 3) retry else fail;        // :0/try:0/try:1/catch:0
-       |      execute executable="/OKAY$sh", agent="AGENT";       // :0/try:0/try:2
+       |      execute executable="OKAY$sh", agent="AGENT";       // :0/try:0/try:2
        |    } catch if (catchCount < 2) retry else fail;
-       |  } catch execute executable="/OKAY$sh", agent="AGENT";   // :0/catch:0
+       |  } catch execute executable="OKAY$sh", agent="AGENT";   // :0/catch:0
        |}""".stripMargin
     val workflow = WorkflowParser.parse(WorkflowPath("/TEST"), workflowNotation).orThrow
     val versionId = updateRepo(change = workflow :: Nil)
@@ -168,7 +168,7 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
   "retryDelay" in {
     val workflowNotation = s"""
        |define workflow {
-       |  try (retryDelays=[2, 0]) execute executable="/FAIL-1$sh", agent="AGENT";
+       |  try (retryDelays=[2, 0]) execute executable="FAIL-1$sh", agent="AGENT";
        |  catch if (catchCount < 4) retry else fail;
        |}""".stripMargin
     val workflow = WorkflowParser.parse(WorkflowPath("/TEST"), workflowNotation).orThrow

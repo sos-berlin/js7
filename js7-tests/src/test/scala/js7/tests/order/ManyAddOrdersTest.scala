@@ -13,7 +13,7 @@ import js7.controller.data.events.AgentRefStateEvent.AgentReady
 import js7.data.agent.AgentName
 import js7.data.event.EventRequest
 import js7.data.item.VersionId
-import js7.data.job.ExecutablePath
+import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.OrderRemoved
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
@@ -79,7 +79,7 @@ final class ManyAddOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTe
 
 object ManyAddOrdersTest
 {
-  private val executablePath = ExecutablePath("/executable.cmd")
+  private val executablePath = RelativeExecutablePath("executable.cmd")
   private val agentName1 = AgentName("AGENT-1")
   private val agentName2 = AgentName("AGENT-2")
   private val versionId = VersionId("INITIAL")

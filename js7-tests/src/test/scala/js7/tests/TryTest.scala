@@ -6,7 +6,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.common.process.Processes.{ShellFileExtension => sh}
 import js7.data.agent.AgentName
 import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
-import js7.data.job.{ExecutablePath, ReturnCode}
+import js7.data.job.{RelativeExecutablePath, ReturnCode}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
@@ -23,9 +23,9 @@ final class TryTest extends AnyFreeSpec
   "Nested try catch with outer non-failing catch, OrderFinished" in {
     autoClosing(new DirectoryProvider(TestAgentName :: Nil, FinishingWorkflow :: Nil, testName = Some("TryTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) {
-        a.writeExecutable(ExecutablePath(s"/OKAY$sh"), ":")
-        a.writeExecutable(ExecutablePath(s"/FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
-        a.writeExecutable(ExecutablePath(s"/FAIL-2$sh"), if (isWindows) "@exit 2" else "exit 2")
+        a.writeExecutable(RelativeExecutablePath(s"OKAY$sh"), ":")
+        a.writeExecutable(RelativeExecutablePath(s"FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
+        a.writeExecutable(RelativeExecutablePath(s"FAIL-2$sh"), if (isWindows) "@exit 2" else "exit 2")
       }
       directoryProvider.run { (controller, _) =>
         val orderId = OrderId("🔺")
@@ -39,8 +39,8 @@ final class TryTest extends AnyFreeSpec
   "Nested try catch with failing catch, OrderFailed" in {
     autoClosing(new DirectoryProvider(TestAgentName :: Nil, StoppingWorkflow :: Nil, testName = Some("TryTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) {
-        a.writeExecutable(ExecutablePath(s"/FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
-        a.writeExecutable(ExecutablePath(s"/FAIL-2$sh"), if (isWindows) "@exit 2" else "exit 2")
+        a.writeExecutable(RelativeExecutablePath(s"FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
+        a.writeExecutable(RelativeExecutablePath(s"FAIL-2$sh"), if (isWindows) "@exit 2" else "exit 2")
       }
       directoryProvider.run { (controller, _) =>
         val orderId = OrderId("❌")
@@ -55,19 +55,19 @@ final class TryTest extends AnyFreeSpec
     val workflow = WorkflowParser.parse(WorkflowPath("/TRY-IF") ~ "INITIAL",
       s"""define workflow {
          |  try {
-         |    execute executable="/OKAY$sh", agent="AGENT";
+         |    execute executable="OKAY$sh", agent="AGENT";
          |    if (true) {
          |      fail;
          |    }
          |  } catch {
-         |    execute executable="/OKAY$sh", agent="AGENT";
+         |    execute executable="OKAY$sh", agent="AGENT";
          |  }
-         |  execute executable="/OKAY$sh", agent="AGENT";
+         |  execute executable="OKAY$sh", agent="AGENT";
          |}""".stripMargin).orThrow
     autoClosing(new DirectoryProvider(TestAgentName :: Nil, workflow :: Nil, testName = Some("TryTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) {
-        a.writeExecutable(ExecutablePath(s"/OKAY$sh"), ":")
-        a.writeExecutable(ExecutablePath(s"/FAIL$sh"), if (isWindows) "@exit 1" else "exit 1")
+        a.writeExecutable(RelativeExecutablePath(s"OKAY$sh"), ":")
+        a.writeExecutable(RelativeExecutablePath(s"FAIL$sh"), if (isWindows) "@exit 1" else "exit 1")
       }
       directoryProvider.run { (controller, _) =>
         val orderId = OrderId("⭕")
@@ -101,21 +101,21 @@ final class TryTest extends AnyFreeSpec
       s"""define workflow {
          |  try {
          |    fork {
-         |      "🥕": { execute executable="/OKAY$sh", agent="AGENT"; },
-         |      "🍋": { execute executable="/FAIL-1$sh", agent="AGENT"; },
-         |      "🌶": { if (true) execute executable="/FAIL-2$sh", agent="AGENT"; }
+         |      "🥕": { execute executable="OKAY$sh", agent="AGENT"; },
+         |      "🍋": { execute executable="FAIL-1$sh", agent="AGENT"; },
+         |      "🌶": { if (true) execute executable="FAIL-2$sh", agent="AGENT"; }
          |    }
-         |    execute executable="/NEVER$sh", agent="AGENT";
+         |    execute executable="NEVER$sh", agent="AGENT";
          |  } catch {
-         |    execute executable="/OKAY$sh", agent="AGENT";
+         |    execute executable="OKAY$sh", agent="AGENT";
          |  }
          |}""".stripMargin).orThrow
     autoClosing(new DirectoryProvider(TestAgentName :: Nil, workflow :: Nil, testName = Some("TryTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) {
-        a.writeExecutable(ExecutablePath(s"/OKAY$sh"), ":")
-        a.writeExecutable(ExecutablePath(s"/FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
-        a.writeExecutable(ExecutablePath(s"/FAIL-2$sh"), if (isWindows) "@exit 2" else "exit 2")
-        a.writeExecutable(ExecutablePath(s"/NEVER$sh"), if (isWindows) "@exit 3" else "exit 3")
+        a.writeExecutable(RelativeExecutablePath(s"OKAY$sh"), ":")
+        a.writeExecutable(RelativeExecutablePath(s"FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
+        a.writeExecutable(RelativeExecutablePath(s"FAIL-2$sh"), if (isWindows) "@exit 2" else "exit 2")
+        a.writeExecutable(RelativeExecutablePath(s"NEVER$sh"), if (isWindows) "@exit 3" else "exit 3")
       }
       directoryProvider.run { (controller, _) =>
         val orderId = OrderId("🔴")
@@ -169,14 +169,14 @@ object TryTest
      |define workflow {
      |  try {                                                 // #0
      |    try {                                               // #0/0#0
-     |      execute executable="/FAIL-1$sh", agent="AGENT";   // #0/0#0/0#0   OrderCatched
-     |      execute executable="/OKAY$sh", agent="AGENT";     // #0/0#0/0#1   skipped
+     |      execute executable="FAIL-1$sh", agent="AGENT";   // #0/0#0/0#0   OrderCatched
+     |      execute executable="OKAY$sh", agent="AGENT";     // #0/0#0/0#1   skipped
      |    } catch {
-     |      execute executable="/FAIL-2$sh", agent="AGENT";   // #0/0#0/1#0   OrderCatched
+     |      execute executable="FAIL-2$sh", agent="AGENT";   // #0/0#0/1#0   OrderCatched
      |    }
-     |    execute executable="/OKAY$sh", agent="AGENT";       // #0/0#1
+     |    execute executable="OKAY$sh", agent="AGENT";       // #0/0#1
      |  } catch {}
-     |  execute executable="/OKAY$sh", agent="AGENT";         // #1
+     |  execute executable="OKAY$sh", agent="AGENT";         // #1
      |}""".stripMargin
   private val FinishingWorkflow = WorkflowParser.parse(WorkflowPath("/FINISHING") ~ "INITIAL", finishingScript).orThrow
 
@@ -206,9 +206,9 @@ object TryTest
   private val stoppingScript = s"""
      |define workflow {
      |  try {                                               // #0
-     |    execute executable="/FAIL-1$sh", agent="AGENT";   // #0/0#0  OrderCatched
+     |    execute executable="FAIL-1$sh", agent="AGENT";   // #0/0#0  OrderCatched
      |  } catch {
-     |    execute executable="/FAIL-2$sh", agent="AGENT";   // #0/1#0  OrderFailed
+     |    execute executable="FAIL-2$sh", agent="AGENT";   // #0/1#0  OrderFailed
      |  }
      |}""".stripMargin
   private val StoppingWorkflow = WorkflowParser.parse(WorkflowPath("/STOPPING") ~ "INITIAL", stoppingScript).orThrow

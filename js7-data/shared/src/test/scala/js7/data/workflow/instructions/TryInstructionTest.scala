@@ -20,8 +20,8 @@ import scala.concurrent.duration._
 final class TryInstructionTest extends AnyFreeSpec
 {
   private val try_ = TryInstruction(
-    tryWorkflow = Workflow.of(Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("/TRY")))),
-    catchWorkflow = Workflow.of(Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("/CATCH")))))
+    tryWorkflow = Workflow.of(Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("TRY")))),
+    catchWorkflow = Workflow.of(Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("CATCH")))))
 
   "JSON" - {
     "with defaults" in {
@@ -36,7 +36,7 @@ final class TryInstructionTest extends AnyFreeSpec
                   "agentName": "AGENT",
                   "executable": {
                     "TYPE": "ExecutablePath",
-                    "path": "/TRY"
+                    "path": "TRY"
                   },
                   "taskLimit": 1
                 }
@@ -51,7 +51,7 @@ final class TryInstructionTest extends AnyFreeSpec
                   "agentName": "AGENT",
                   "executable": {
                     "TYPE": "ExecutablePath",
-                    "path": "/CATCH"
+                    "path": "CATCH"
                   },
                   "taskLimit": 1
                 }

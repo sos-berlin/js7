@@ -13,7 +13,7 @@
       "agentName": "agent-1",
       "executable": {
         "TYPE": "ExecutablePath",
-        "path": "/test"
+        "path": "test"
       },
       "taskLimit": 3
     },

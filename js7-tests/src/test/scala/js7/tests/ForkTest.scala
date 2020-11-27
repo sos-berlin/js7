@@ -11,7 +11,7 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.data.ControllerCommand.{CancelOrders, RemoveOrdersWhenTerminated}
 import js7.data.command.CancelMode
 import js7.data.event.EventSeq
-import js7.data.job.ExecutablePath
+import js7.data.job.{ExecutablePath, RelativeExecutablePath}
 import js7.data.order.OrderEvent._
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.StringValue
@@ -34,7 +34,7 @@ final class ForkTest extends AnyFreeSpec with ControllerAgentForScalaTest
   protected val inventoryItems = TestWorkflow :: DuplicateWorkflow :: Nil
 
   override def beforeAll() = {
-    directoryProvider.agents(0).writeExecutable(ExecutablePath("/SLOW.cmd"), script(60.s))
+    directoryProvider.agents(0).writeExecutable(RelativeExecutablePath("SLOW.cmd"), script(60.s))
     for (a <- directoryProvider.agents) a.writeExecutable(TestExecutablePath, script(100.ms))
     super.beforeAll()
   }
@@ -84,7 +84,7 @@ object ForkTest {
   private val DuplicateWorkflow = Workflow(
     WorkflowPath("/DUPLICATE") ~ "INITIAL",
     Vector(
-      Execute(WorkflowJob(AAgentName, ExecutablePath("/SLOW.cmd")))))
+      Execute(WorkflowJob(AAgentName, ExecutablePath("SLOW.cmd")))))
   private val TestOrder = FreshOrder(OrderId("🔺"), TestWorkflow.id.path, arguments = Map("KEY" -> StringValue("VALUE")))
   private val XOrderId = OrderId(s"🔺|🥕")
   private val YOrderId = OrderId(s"🔺|🍋")

@@ -1,6 +1,7 @@
 package js7.data.workflow
 
 import cats.syntax.show._
+import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.data.agent.AgentName
@@ -13,6 +14,7 @@ import js7.data.workflow.WorkflowPrinter.WorkflowShow
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Finish, Fork, Goto, If, IfFailedGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction}
 import js7.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowSource}
+import js7.tester.DiffxAssertions.assertEqual
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
 import scala.util.control.NoStackTrace
@@ -38,27 +40,27 @@ final class WorkflowParserTest extends AnyFreeSpec
   }
 
   "Execute anonymous" in {
-    checkWithSourcePos("""define workflow { execute executable="/my/executable", agent="AGENT"; }""",
+    checkWithSourcePos("""define workflow { execute executable="my/executable", agent="AGENT"; }""",
       Workflow.of(
         Execute.Anonymous(
-          WorkflowJob(AgentName("AGENT"), ExecutablePath("/my/executable")),
-          sourcePos(18, 68)),
-        ImplicitEnd(sourcePos(70, 71))))
+          WorkflowJob(AgentName("AGENT"), ExecutablePath("my/executable")),
+          sourcePos(18, 67)),
+        ImplicitEnd(sourcePos(69, 70))))
   }
 
   "Execute anonymous with relative agent path" in {
-    checkWithSourcePos("""define workflow { execute executable="/my/executable", agent="AGENT"; }""",
+    checkWithSourcePos("""define workflow { execute executable="my/executable", agent="AGENT"; }""",
       Workflow.of(
         Execute.Anonymous(
-          WorkflowJob(AgentName("AGENT"), ExecutablePath("/my/executable")),
-          sourcePos(18, 68)),
-        ImplicitEnd(sourcePos(70, 71))))
+          WorkflowJob(AgentName("AGENT"), ExecutablePath("my/executable")),
+          sourcePos(18, 67)),
+        ImplicitEnd(sourcePos(69, 70))))
   }
 
   "Execute anonymous with default arguments 'SCHEDULER_PARAM_'" in {
     checkWithSourcePos(
        """define workflow {
-         |  execute executable = "/my/executable",
+         |  execute executable = "my/executable",
          |          agent = "AGENT",
          |          arguments = { "A": "aaa", "B": "bbb", "I": -123 },
          |          taskLimit = 3,
@@ -67,15 +69,15 @@ final class WorkflowParserTest extends AnyFreeSpec
       Workflow.of(
         Execute.Anonymous(
           WorkflowJob(AgentName("AGENT"),
-            ExecutablePath("/my/executable"),
+            ExecutablePath("my/executable"),
             Map(
               "A" -> StringValue("aaa"),
               "B" -> StringValue("bbb"),
               "I" -> NumericValue(-123)),
             taskLimit = 3,
             sigkillAfter = Some(30.s)),
-          sourcePos(20, 199)),
-        ImplicitEnd(sourcePos(201, 202))))
+          sourcePos(20, 198)),
+        ImplicitEnd(sourcePos(200, 201))))
   }
 
   "Execute script with \\n" in {
@@ -111,10 +113,10 @@ final class WorkflowParserTest extends AnyFreeSpec
         job B, arguments = { "KEY": "VALUE" };
         job C;
         define job A {
-          execute executable="/my/executable", agent="AGENT", successReturnCodes=[0, 1, 3];
+          execute executable="my/executable", agent="AGENT", successReturnCodes=[0, 1, 3];
         }
         define job B {
-          execute executable="/my/executable", agent="AGENT"
+          execute executable="my/executable", agent="AGENT"
         }
         define job C {
           execute script="SCRIPT", agent="AGENT"
@@ -126,17 +128,17 @@ final class WorkflowParserTest extends AnyFreeSpec
           Execute.Named(WorkflowJob.Name("A"), sourcePos = sourcePos(33, 38)),
           Execute.Named(WorkflowJob.Name("B"), defaultArguments = Map("KEY" -> StringValue("VALUE")), sourcePos(48, 85)),
           Execute.Named(WorkflowJob.Name("C"), sourcePos = sourcePos(95, 100)),
-          ImplicitEnd(sourcePos(409, 410))),
+          ImplicitEnd(sourcePos(407, 408))),
         Map(
           WorkflowJob.Name("A") ->
             WorkflowJob(
               AgentName("AGENT"),
-              ExecutablePath("/my/executable"),
+              ExecutablePath("my/executable"),
               returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 1, 3)),
           WorkflowJob.Name("B") ->
             WorkflowJob(
               AgentName("AGENT"),
-              ExecutablePath("/my/executable")),
+              ExecutablePath("my/executable")),
           WorkflowJob.Name("C") ->
             WorkflowJob(
               AgentName("AGENT"),
@@ -148,57 +150,57 @@ final class WorkflowParserTest extends AnyFreeSpec
       define workflow {
         job DUPLICATE;
         define job DUPLICATE {
-          execute executable="/my/executable", agent="AGENT";
+          execute executable="my/executable", agent="AGENT";
         }
         define job DUPLICATE {
-          execute executable="/my/executable", agent="AGENT"
+          execute executable="my/executable", agent="AGENT"
         }
       }""")
       == Left(Problem("""Expected unique job definitions (duplicates: DUPLICATE):10:8, found """"")))
   }
 
   "Single instruction with relative job path" in {
-    checkWithSourcePos("""define workflow { execute executable="/A", agent="AGENT"; }""",
+    checkWithSourcePos("""define workflow { execute executable="A", agent="AGENT"; }""",
       Workflow.anonymous(
         Vector(
-          Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("/A")), sourcePos(18, 56)),
-          ImplicitEnd(sourcePos(58, 59)))))
+          Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("A")), sourcePos(18, 55)),
+          ImplicitEnd(sourcePos(57, 58)))))
   }
 
   "Single instruction with absolute job path" in {
-    checkWithSourcePos("""define workflow { execute executable="/A", agent="AGENT"; }""",
+    checkWithSourcePos("""define workflow { execute executable="A", agent="AGENT"; }""",
       Workflow.anonymous(
         Vector(
-          Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("/A")), sourcePos(18, 56)),
-          ImplicitEnd(sourcePos(58, 59)))))
+          Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("A")), sourcePos(18, 55)),
+          ImplicitEnd(sourcePos(57, 58)))))
   }
 
   "execute with successReturnCodes" in {
-    checkWithSourcePos("""define workflow { execute executable="/A", agent="AGENT", successReturnCodes=[0, 1, 3]; }""",
+    checkWithSourcePos("""define workflow { execute executable="A", agent="AGENT", successReturnCodes=[0, 1, 3]; }""",
       Workflow.anonymous(
         Vector(
           Execute.Anonymous(
-            WorkflowJob(AgentName("AGENT"), ExecutablePath("/A"), returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 1, 3)),
-            sourcePos(18, 86)),
-          ImplicitEnd(sourcePos(88, 89)))))
+            WorkflowJob(AgentName("AGENT"), ExecutablePath("A"), returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 1, 3)),
+            sourcePos(18, 85)),
+          ImplicitEnd(sourcePos(87, 88)))))
   }
 
   "execute with failureReturnCodes" in {
-    checkWithSourcePos("""define workflow { execute executable="/A", agent="AGENT", failureReturnCodes=[1, 3]; }""",
+    checkWithSourcePos("""define workflow { execute executable="A", agent="AGENT", failureReturnCodes=[1, 3]; }""",
       Workflow.anonymous(
         Vector(
           Execute.Anonymous(
-            WorkflowJob(AgentName("AGENT"), ExecutablePath("/A"), returnCodeMeaning = ReturnCodeMeaning.Failure.of(1, 3)),
-            sourcePos(18, 83)),
-          ImplicitEnd(sourcePos(85, 86)))))
+            WorkflowJob(AgentName("AGENT"), ExecutablePath("A"), returnCodeMeaning = ReturnCodeMeaning.Failure.of(1, 3)),
+            sourcePos(18, 82)),
+          ImplicitEnd(sourcePos(84, 85)))))
   }
 
   "Label and single instruction" in {
-    checkWithSourcePos("""define workflow { A: execute executable="/A", agent="AGENT"; }""",
+    checkWithSourcePos("""define workflow { A: execute executable="A", agent="AGENT"; }""",
       Workflow.anonymous(
         Vector(
-          "A" @: Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("/A")), sourcePos(21, 59)),
-          ImplicitEnd(sourcePos(61, 62)))))
+          "A" @: Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("A")), sourcePos(21, 58)),
+          ImplicitEnd(sourcePos(60, 61)))))
   }
 
   "if (...) {...}" in {
@@ -527,7 +529,7 @@ final class WorkflowParserTest extends AnyFreeSpec
 
   private def check2(source: String, workflow: Workflow, withSourcePos: Boolean): Unit = {
     val parsedWorkflow = WorkflowParser.parse(source).map(o => if (withSourcePos) o else o.withoutSourcePos)
-    assert(parsedWorkflow == Right(workflow.copy(source = Some(source))))
+    assertEqual(parsedWorkflow.orThrow, workflow.copy(source = Some(source)))
     val generatedSource = workflow.show
     assert(WorkflowParser.parse(generatedSource).map(_.withoutSourcePos)
       == Right(workflow.copy(source = Some(generatedSource)).withoutSourcePos),

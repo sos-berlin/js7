@@ -23,7 +23,7 @@ import js7.controller.data.events.AgentRefStateEvent.{AgentReady, AgentRegistere
 import js7.data.agent.AgentName
 import js7.data.event.JournalSeparators
 import js7.data.event.JournalSeparators.EndOfJournalFileMarker
-import js7.data.job.ExecutablePath
+import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
@@ -156,7 +156,7 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
 object JournalWebServiceTest
 {
   private val agentName = AgentName("AGENT-111")
-  private val executablePath = ExecutablePath("/TEST.cmd")
+  private val executablePath = RelativeExecutablePath("TEST.cmd")
 
   private val workflow = Workflow(WorkflowPath("/test") ~ "INITIAL",
     Vector(

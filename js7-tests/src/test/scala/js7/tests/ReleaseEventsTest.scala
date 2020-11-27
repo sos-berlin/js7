@@ -18,7 +18,7 @@ import js7.controller.data.events.ControllerEvent
 import js7.core.command.CommandMeta
 import js7.core.event.journal.files.JournalFiles.listJournalFiles
 import js7.data.agent.AgentName
-import js7.data.job.ExecutablePath
+import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
@@ -141,7 +141,7 @@ private object ReleaseEventsTest
   private val bUserAndPassword = UserAndPassword(UserId("B"), SecretString("PASSWORD"))
   private val xUserAndPassword = UserAndPassword(UserId("X"), SecretString("PASSWORD"))
   private val TestAgentName = AgentName("agent-111")
-  private val TestExecutablePath = ExecutablePath(s"/TEST$sh")
+  private val TestExecutablePath = RelativeExecutablePath(s"TEST$sh")
   private val TestWorkflow = Workflow.of(WorkflowPath("/test"),
     Execute(WorkflowJob(TestAgentName, TestExecutablePath)))
   private val aOrder = FreshOrder(OrderId("🔵"), TestWorkflow.id.path)

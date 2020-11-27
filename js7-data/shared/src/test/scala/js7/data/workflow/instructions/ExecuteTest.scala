@@ -44,14 +44,14 @@ final class ExecuteTest extends AnyFreeSpec
         Execute(
           WorkflowJob(
             AgentName("AGENT"),
-            ExecutablePath("/EXECUTABLE"))),
+            ExecutablePath("EXECUTABLE"))),
         json"""{
           "TYPE": "Execute.Anonymous",
           "job": {
             "agentName": "AGENT",
             "executable": {
               "TYPE": "ExecutablePath",
-              "path": "/EXECUTABLE"
+              "path": "EXECUTABLE"
             },
             "taskLimit": 1
           }
