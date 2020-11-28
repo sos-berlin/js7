@@ -11,8 +11,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentName
 import js7.data.job.{CommandLineExecutable, Executable, ExecutablePath, ExecutableScript, ReturnCode}
 import js7.data.order.Outcome
-import js7.data.value.{NamedValues, NumericValue}
-import js7.data.workflow.WorkflowPrinter
+import js7.data.value.{NamedValues, NumericValue, ValuePrinter}
 import js7.data.workflow.instructions.ReturnCodeMeaning
 import scala.concurrent.duration.FiniteDuration
 
@@ -41,7 +40,7 @@ final case class WorkflowJob private(
     (executable match {
       case ExecutablePath(o) => s"executablePath=$o"
       case ExecutableScript(o) => s"script=$o"
-      case CommandLineExecutable(expr) => s"command=" + WorkflowPrinter.quotedString(expr.toString)
+      case CommandLineExecutable(expr) => s"command=" + ValuePrinter.quoteString(expr.toString)
     }) +
     (returnCodeMeaning match {
       case ReturnCodeMeaning.Default => ""

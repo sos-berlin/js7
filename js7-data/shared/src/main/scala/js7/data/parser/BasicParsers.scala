@@ -57,14 +57,14 @@ object BasicParsers
   private def singleQuoted1[_: P] = P[String](
     ("'" ~~/
       singleQuotedContent ~~
-      "'".opaque("properly terminated '-quoted string without non-printable characters (except \\r or \\n)"))
+      "'".opaque("properly terminated '…'-quoted string without non-printable characters (except \\r or \\n)"))
     .map(_.replace("\r\n", "\n")))
 
   private def singleQuotedN[_: P](n: Int) = P[String](
     (("'" * n) ~~/
       singleQuotedContent ~~
       ("'".rep(min = 1, max = n - 1).! ~~ !"'" ~~ singleQuotedContent).rep ~~
-      ("'" * n).opaque(s"properly terminated ${"'" * n}-quoted string without non-printable characters (except \\r or \\n)"))
+      ("'" * n).opaque(s"properly terminated ${"'" * n}…${"'" * n}-quoted string without non-printable characters (except \\t, \\r and \\n) — or use ${"\"\""} (not '') for the empty string"))
     .map { case (head, pairs) =>
       (head + pairs.map { case (a, b) => a + b }.mkString).replace("\r\n", "\n") })
 
@@ -77,7 +77,7 @@ object BasicParsers
   private def doubleQuoted[_: P] = P[String](
     "\"" ~~/
       doubleQuotedContent ~~
-      "\"".opaque("""properly terminated "-quoted string"""))
+      "\"".opaque("""properly terminated "…"-quoted string"""))
 
   private def doubleQuotedContent[_: P] = P[String](
     (doubleQuotedContentPart ~~/ ("\\" ~~/ escapedChar ~~ doubleQuotedContentPart).rep(0))
@@ -90,6 +90,7 @@ object BasicParsers
     SingleChar.!.flatMap {
       case "\\" => valid("\\")
       case "\"" => valid("\"")
+      case "r" => valid("\r")
       case "n" => valid("\n")
       case "t" => valid("\t")
       case "$" => valid("$")

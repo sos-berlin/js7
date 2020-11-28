@@ -4,7 +4,8 @@ import cats.Show
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.{CommandLineExecutable, ExecutablePath, ExecutableScript}
-import js7.data.value.{BooleanValue, ListValue, NamedValues, NumericValue, StringValue, Value}
+import js7.data.value.ValuePrinter.{appendQuoted, appendValue}
+import js7.data.value.{NamedValues, ValuePrinter}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Finish, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction}
 import scala.annotation.tailrec
@@ -17,7 +18,7 @@ object WorkflowPrinter
   implicit val WorkflowShow: Show[Workflow] = w => print(w)
 
   def print(workflow: Workflow): String = {
-    val sb = new StringBuilder(1000)
+    val sb = new StringBuilder(1024)
     sb ++= "define workflow {\n"
     appendWorkflowContent(sb, nesting = 1, workflow)
     sb ++= "}\n"
@@ -26,9 +27,7 @@ object WorkflowPrinter
 
   private def appendWorkflowContent(sb: StringBuilder, nesting: Int, workflow: Workflow): Unit =
   {
-    def appendValue(value: Value) = WorkflowPrinter.appendValue(sb, value)
-
-    def appendQuoted(string: String) = WorkflowPrinter.appendQuoted(sb, string)
+    def appendQuoted(string: String) = ValuePrinter.appendQuoted(sb, string)
 
     def appendQuotedExpression(string: String) =
       if (string.contains('\n')) {
@@ -232,37 +231,4 @@ object WorkflowPrinter
     }
     sb ++= "}"
   }
-
-  def appendValue(sb: StringBuilder, value: Value): Unit =
-    value match {
-      case BooleanValue(bool) => sb.append(bool)
-      case NumericValue(number) => sb.append(number)
-      case StringValue(string) => appendQuoted(sb, string)
-      case ListValue(values) =>
-        sb.append('[')
-        val it = values.iterator
-        if (it.hasNext) {
-          appendValue(sb, it.next())
-          while (it.hasNext) {
-            sb.append(", ")
-            appendValue(sb, it.next())
-          }
-        }
-        sb.append(']')
-    }
-
-  def quotedString(string: String) = {
-    val sb = new StringBuilder
-    appendQuoted(sb, string)
-    sb.toString
-  }
-
-  def appendQuoted(sb: StringBuilder, string: String): Unit =
-    sb.append('"')
-      .append(string
-        .replace("\\", "\\\\")
-        .replace("\n", "\\n")
-        .replace("\"", "\\\"")
-        .replace("$", "\\$"))
-      .append('"')
 }

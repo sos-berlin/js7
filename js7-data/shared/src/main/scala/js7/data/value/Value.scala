@@ -81,6 +81,8 @@ final case class StringValue(string: String) extends Value {
 
   def toJava = string
   def convertToString = string
+
+  override def toString = ValuePrinter.quoteString(string)
 }
 object StringValue {
   @javaApi def of(value: String) = StringValue(value)
@@ -102,6 +104,8 @@ final case class NumericValue(number: BigDecimal) extends Value
   def toJava = number: BigDecimal
 
   def convertToString = number.toString
+
+  override def toString = convertToString
 }
 object NumericValue {
   val Zero = NumericValue(0)
@@ -129,6 +133,8 @@ final case class BooleanValue(booleanValue: Boolean) extends Value
   def toJava = java.lang.Boolean.valueOf(booleanValue)
 
   def convertToString = booleanValue.toString
+
+  override def toString = convertToString
 }
 object BooleanValue {
   val True = BooleanValue(true)
@@ -145,7 +151,7 @@ final case class ListValue(list: Seq[Value]) extends Value
 
   def toJava = list.asJava
 
-  def convertToString = toString
+  def convertToString = toString /*???*/
 
   override def toString = list.mkString("[", ", ", "]")
 }

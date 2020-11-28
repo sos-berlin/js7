@@ -37,7 +37,7 @@ final class BasicParsersTest extends AnyFreeSpec
   "String in single-quotes" - {
     "Empty single-quote string is not allowed" in {
       assert(checkedParse("''", quotedString(_)) ==
-        Left(Problem("Expected properly terminated ''-quoted string without non-printable characters (except \\r or \\n):1:3, found \"\"")))
+        Left(Problem("""Expected properly terminated ''…''-quoted string without non-printable characters (except \t, \r and \n) — or use "" (not '') for the empty string:1:3, found """"")))
     }
 
     "Backquote + single-quote cannot be used" in {
@@ -87,7 +87,7 @@ final class BasicParsersTest extends AnyFreeSpec
 
     "Control character is not allowed" in {
       assert(checkedParse("'\t'", quotedString(_)) == Left(Problem(
-        """Expected properly terminated '-quoted string without non-printable characters (except \r or \n):1:2, found "\t'"""")))
+        """Expected properly terminated '…'-quoted string without non-printable characters (except \r or \n):1:2, found "\t'"""")))
     }
 
     "Valid" in {
@@ -107,9 +107,9 @@ final class BasicParsersTest extends AnyFreeSpec
     "String interpolation is not supported" in {
       // TODO String interpolation
       assert(checkedParse(""""$variable"""", quotedString(_)) == Left(Problem(
-        """Expected properly terminated "-quoted string:1:2, found "$variable\""""")))
+        """Expected properly terminated "…"-quoted string:1:2, found "$variable\""""")))
       assert(checkedParse(""""x$variable"""", quotedString(_)) == Left(Problem(
-        """Expected properly terminated "-quoted string:1:3, found "$variable\""""")))
+        """Expected properly terminated "…"-quoted string:1:3, found "$variable\""""")))
     }
 
     "Valid" in {

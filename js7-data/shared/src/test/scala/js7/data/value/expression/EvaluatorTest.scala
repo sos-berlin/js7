@@ -4,12 +4,12 @@ import fastparse.NoWhitespace._
 import fastparse._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
+import js7.data.parser.Parsers.checkedParse
 import js7.data.value.expression.Expression._
 import js7.data.value.expression.Scope.ConstantExpressionRequiredProblem
 import js7.data.value.{BooleanValue, NumericValue, StringValue, Value}
 import js7.data.workflow.Label
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.parser.Parsers.checkedParse
 import org.scalactic.source
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks._
@@ -60,7 +60,7 @@ final class EvaluatorTest extends AnyFreeSpec
       Right(StringConstant("\\")))
 
     testSyntaxError(""" "$var" """,
-      """Expected properly terminated "-quoted string:1:2, found "$var\""""")
+      """Expected properly terminated "…"-quoted string:1:2, found "$var\""""")
 
     testEval(""" "x" """,
       result = "x",

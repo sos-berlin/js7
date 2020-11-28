@@ -51,7 +51,8 @@ final class WorkflowPrinterTest extends AnyFreeSpec
         Vector(
           Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("my-script"), Map("KEY\n\"$" -> StringValue("VALUE")))))),
       """define workflow {
-        |  execute agent="AGENT", arguments={"KEY\n\"\$": "VALUE"}, executable="my-script";
+        |  execute agent="AGENT", arguments={'KEY
+        |"$': "VALUE"}, executable="my-script";
         |}
         |""".stripMargin)
   }
