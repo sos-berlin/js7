@@ -3,6 +3,7 @@ package js7.base.time
 import java.lang.System.nanoTime
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch._
+import js7.base.utils.ScalaUtils.syntax._
 import scala.concurrent.duration._
 import scala.language.implicitConversions
 
@@ -63,28 +64,29 @@ object Stopwatch
 
   def bytesPerSecondString(duration: FiniteDuration, n: Long): String =
     if (n < 10_000_000)
-      perSecondString(duration, n / 1_000, "kB")
+      perSecondString(duration, n / 1_000, "kB", gap = false)
     else
       perSecondString(duration, n / 1_000_000, "MB")
 
-  def perSecondString(duration: FiniteDuration, n: Long, ops: String = "ops"): String =
-    Result(duration, n, ops).toShortString
+  def perSecondString(duration: FiniteDuration, n: Long, ops: String = "ops", gap: Boolean = true): String =
+    Result(duration, n, ops, gap).toShortString
 
-  final case class Result(duration: FiniteDuration, n: Long, ops: String = "ops") {
+  final case class Result(duration: FiniteDuration, n: Long, ops: String = "ops", private val gap: Boolean = true) {
     def singleDuration = duration / n
     def perSecondString = if (duration.toNanos == 0) "∞" else (n * 1000L*1000*1000 / duration.toNanos).toString
+    val gapOps = (gap ?? " ") + ops
 
     override def toString =
       if (n == 0)
-        s"0 $ops"
+        s"0$gapOps"
       else
-        s"${duration.pretty}/$n $ops (⌀${singleDuration.pretty}) $perSecondString $ops/s"
+        s"${duration.pretty}/$n$gapOps (⌀${singleDuration.pretty}) $perSecondString$gapOps/s"
 
     def toShortString =
       if (n == 0)
-        s"0 $ops"
+        s"0$gapOps"
       else
-        s"${duration.pretty}/$n $ops $perSecondString $ops/s"
+        s"${duration.pretty}/$n$gapOps $perSecondString$gapOps/s"
   }
   object Result {
     implicit def resultToString(result: Result) = result.toString
