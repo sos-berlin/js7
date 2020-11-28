@@ -5,7 +5,7 @@ import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.data.agent.AgentName
-import js7.data.job.{ExecutablePath, ExecutableScript}
+import js7.data.job.{CommandLineExecutable, ExecutablePath, ExecutableScript}
 import js7.data.order.OrderId
 import js7.data.source.SourcePos
 import js7.data.value.expression.Expression.{Equal, In, LastReturnCode, ListExpression, NamedValue, NumericConstant, Or, StringConstant}
@@ -193,6 +193,14 @@ final class WorkflowParserTest extends AnyFreeSpec
             WorkflowJob(AgentName("AGENT"), ExecutablePath("A"), returnCodeMeaning = ReturnCodeMeaning.Failure.of(1, 3)),
             sourcePos(18, 82)),
           ImplicitEnd(sourcePos(84, 85)))))
+  }
+
+  "execute with command line" in {
+    check("""define workflow { execute agent="AGENT", command="COMMAND"; }""",
+      Workflow.anonymous(
+        Vector(
+          Execute.Anonymous(
+            WorkflowJob(AgentName("AGENT"), CommandLineExecutable.fromString("COMMAND").orThrow)))))
   }
 
   "Label and single instruction" in {

@@ -6,7 +6,7 @@ import js7.base.problem.Checked
 import js7.base.time.ScalaTime._
 import js7.base.utils.Collections.implicits.RichTraversable
 import js7.data.agent.AgentName
-import js7.data.job.{Executable, ExecutablePath, ExecutableScript, ReturnCode}
+import js7.data.job.{CommandLineExecutable, CommandLineParser, Executable, ExecutablePath, ExecutableScript, ReturnCode}
 import js7.data.order.OrderId
 import js7.data.parser.BasicParsers._
 import js7.data.parser.Parsers.checkedParse
@@ -92,6 +92,7 @@ object WorkflowParser
       for {
         kv <- keyValues(
           keyValueConvert("executable", quotedString)(ExecutablePath.checked) |
+          keyValueConvert("command", quotedString)(string => CommandLineParser.parse(string) map CommandLineExecutable.apply) |
           keyValueConvert("script", constantExpression)(o =>
             Evaluator.Constant.eval(o).flatMap(_.toStringValue).map(v => ExecutableScript(v.string))) |
           keyValue("agent", agentName) |
@@ -101,7 +102,7 @@ object WorkflowParser
           keyValue("taskLimit", int) |
           keyValue("sigkillAfter", int))
         agentName <- kv[AgentName]("agent")
-        executable <- kv.oneOf[Executable]("executable", "script").map(_._2)
+        executable <- kv.oneOf[Executable]("executable", "command", "script").map(_._2)
         arguments <- kv[NamedValues]("arguments", NamedValues.empty)
         returnCodeMeaning <- kv.oneOfOr(Set("successReturnCodes", "failureReturnCodes"), ReturnCodeMeaning.Default)
         taskLimit <- kv[Int]("taskLimit", WorkflowJob.DefaultTaskLimit)

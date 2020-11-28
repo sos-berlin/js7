@@ -25,6 +25,7 @@ import js7.data.order.OrderEvent._
 import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
 import js7.data.system.{Stderr, Stdout, StdoutOrStderr}
 import js7.data.value.NamedValues
+import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.taskserver.task.process.StdChannels
 import monix.execution.Scheduler
@@ -35,7 +36,7 @@ import shapeless.tag.@@
 /**
   * @author Joacim Zschimmer
   */
-final class OrderActor private(orderId: OrderId, protected val journalActor: ActorRef @@ JournalActor.type, conf: Conf)
+final class OrderActor private(orderId: OrderId, workflow: Workflow, protected val journalActor: ActorRef @@ JournalActor.type, conf: Conf)
   (implicit protected val scheduler: Scheduler)
 extends KeyedJournalingActor[AgentState, OrderEvent]
 {
@@ -120,6 +121,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
           jobActor ! JobActor.Command.ProcessOrder(
             jobKey,
             order.castState[Order.Processing],
+            workflow,
             defaultArguments,
             new StdChannels(
               charBufferSize = charBufferSize,
@@ -307,8 +309,8 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
 
 private[order] object OrderActor
 {
-  private[order] def props(orderId: OrderId, journalActor: ActorRef @@ JournalActor.type, conf: OrderActor.Conf)(implicit s: Scheduler) =
-    Props { new OrderActor(orderId, journalActor = journalActor, conf) }
+  private[order] def props(orderId: OrderId, workflow: Workflow, journalActor: ActorRef @@ JournalActor.type, conf: OrderActor.Conf)(implicit s: Scheduler) =
+    Props { new OrderActor(orderId, workflow, journalActor = journalActor, conf) }
 
   sealed trait Command
   object Command {

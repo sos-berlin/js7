@@ -1,15 +1,18 @@
 package js7.tests
 
+import java.util.regex.Pattern
 import js7.agent.data.Problems.SignedInjectionNotAllowed
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax._
-import js7.common.scalautil.FileUtils.syntax._
+import js7.common.configutils.Configs.HoconStringInterpolator
+import js7.common.scalautil.FileUtils.syntax.RichPath
+import js7.common.scalautil.FileUtils.withTemporaryFile
 import js7.data.agent.AgentName
 import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import js7.data.job.RelativeExecutablePath
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.data.workflow.position.BranchId.Then
@@ -22,40 +25,91 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class ExecuteTest extends AnyFreeSpec
 {
-  "Executing an inline script is not allowed" in {
-    val workflowNotation = """
-      define workflow {
-        execute agent="AGENT", script=":";
-      }"""
-    val workflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW"), workflowNotation).orThrow
+  "signed-script-injection-allowed = off (default)" - {
+    "Executing an inline script is not allowed" in {
+      testInjectionNotAllowed("""
+        define workflow {
+          execute agent="AGENT", script=":";
+        }"""
+      )
+    }
 
-    autoClosing(new DirectoryProvider(TestAgentName :: Nil, inventoryItems = workflow :: Nil, testName = Some("ExecuteTest"))) { directoryProvider =>
-      directoryProvider.run { (controller, _) =>
-        val orderId = OrderId("❌")
-        controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
-        val orderProcessed = controller.eventWatch.await[OrderProcessed](_.key == orderId).head
-        assert(orderProcessed.value.event.outcome.asInstanceOf[Outcome.Disrupted].reason.problem == SignedInjectionNotAllowed)
+    "Executing an absolute path executable is not allowed" in {
+      testInjectionNotAllowed("""
+        define workflow {
+          execute agent="AGENT", executable="/ABSOLUTE";
+        }""")
+    }
+
+    def testInjectionNotAllowed(workflowNotation: String): Unit = {
+      val workflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW"), workflowNotation).orThrow
+
+      autoClosing(new DirectoryProvider(TestAgentName :: Nil, inventoryItems = workflow :: Nil, testName = Some("ExecuteTest"))) { directoryProvider =>
+        directoryProvider.run { (controller, _) =>
+          val orderId = OrderId("❌")
+          controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
+          val orderProcessed = controller.eventWatch.await[OrderProcessed](_.key == orderId).head
+          assert(orderProcessed.value.event.outcome.asInstanceOf[Outcome.Disrupted].reason.problem == SignedInjectionNotAllowed)
+        }
       }
     }
   }
 
-  "Execute" in {
-    autoClosing(new DirectoryProvider(TestAgentName :: Nil, inventoryItems = TestWorkflow :: Nil, testName = Some("ExecuteTest"))) { directoryProvider =>
-      for (a <- directoryProvider.agents) {
-        a.configDir / "agent.conf" ++= "js7.job.execution.signed-script-injection-allowed = on\n"
-        for (o <- Array("SCRIPT-0a.cmd", "SCRIPT-0b.cmd")) a.writeExecutable(RelativeExecutablePath(o), ":")
-        for (o <- Array("SCRIPT-1.cmd", "SCRIPT-2.cmd", "SCRIPT-3.cmd"))
-          a.writeExecutable(RelativeExecutablePath(o),
-            if (isWindows) "@exit %SCHEDULER_PARAM_RETURN_CODE%" else "exit $SCHEDULER_PARAM_RETURN_CODE")
+  "signed-script-injection-allowed = on" - {
+    "Execute" in {
+      val directoryProvider = new DirectoryProvider(TestAgentName :: Nil, inventoryItems = TestWorkflow :: Nil,
+        testName = Some("ExecuteTest"),
+        agentConfig = config"""js7.job.execution.signed-script-injection-allowed = on""")
+      autoClosing(directoryProvider) { _ =>
+        for (a <- directoryProvider.agents) {
+          for (o <- Seq("SCRIPT-0a.cmd", "SCRIPT-0b.cmd")) a.writeExecutable(RelativeExecutablePath(o), ":")
+          for (o <- Seq("SCRIPT-1.cmd", "SCRIPT-2.cmd", "SCRIPT-3.cmd"))
+            a.writeExecutable(RelativeExecutablePath(o),
+              if (isWindows) "@exit %SCHEDULER_PARAM_RETURN_CODE%" else "exit $SCHEDULER_PARAM_RETURN_CODE")
+        }
+        directoryProvider.run { (controller, _) =>
+          val orderId = OrderId("🔺")
+          controller.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path))
+          controller.eventWatch.await[OrderFinished](_.key == orderId)
+          checkEventSeq(orderId, controller.eventWatch.all[OrderEvent])
+        }
       }
-      directoryProvider.run { (controller, _) =>
-        val orderId = OrderId("🔺")
-        controller.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path))
-        controller.eventWatch.await[OrderFinished](_.key == orderId)
-        checkEventSeq(orderId, controller.eventWatch.all[OrderEvent])
+    }
+
+    "Execute with command line" in {
+      withTemporaryFile("ExecuteTest-", ".cmd") { executable =>
+        executable.writeExecutable(
+          if (isWindows) "@echo ==>%*<=="
+          else """echo "1->$1 2->$2 3->$3"""")
+        val workflowPath = WorkflowPath("/WORKFLOW")
+        val workflow = WorkflowParser.parse(workflowPath,
+          s"""define workflow {
+            |  execute agent="AGENT", script='echo RESULT=TEST-VALUE >>${if (isWindows) "%SCHEDULER_RETURN_VALUES%" else "$SCHEDULER_RETURN_VALUES"}';
+            |  execute agent="AGENT", executable="$executable";
+            |  execute agent="AGENT", command="$executable \\$$RESULT 'B b' C";
+            |}
+            |""".stripMargin).orThrow
+        val directoryProvider = new DirectoryProvider(Seq(TestAgentName), inventoryItems = Seq(workflow),
+          testName = Some("ExecuteTest"),
+          agentConfig = config"""js7.job.execution.signed-script-injection-allowed = on""")
+        autoClosing(directoryProvider) { _ =>
+          directoryProvider.run { (controller, _) =>
+            val orderId = OrderId("🔴")
+            controller.addOrderBlocking(FreshOrder(orderId, WorkflowPath("/WORKFLOW")))
+            controller.eventWatch.await[OrderStdoutWritten](o => o.key == orderId &&
+              removeAgentTaskId(o.event.chunk).contains(if (isWindows) "==><==" else "1-> 2-> 3->"))
+            controller.eventWatch.await[OrderStdoutWritten](o => o.key == orderId &&
+              o.event.chunk.contains(if (isWindows) "==><==" else "1->TEST-VALUE 2->B b 3->C"))
+            controller.eventWatch.await[OrderFinished](_.key == orderId)
+          }
+        }
       }
     }
   }
+
+  // TODO Replace --agent-task-id= by something different (for example, PID returned by Java 9)
+  private def removeAgentTaskId(string: String): String =
+    Pattern.compile("""--agent-task-id=[0-9]+-[0-9]+""").matcher(string).replaceAll("")
 
   private def checkEventSeq(orderId: OrderId, eventSeq: TearableEventSeq[IterableOnce, KeyedEvent[OrderEvent]]): Unit = {
     eventSeq match {

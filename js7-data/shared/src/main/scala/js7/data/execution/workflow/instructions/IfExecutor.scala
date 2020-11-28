@@ -24,7 +24,8 @@ object IfExecutor extends EventInstructionExecutor with PositionInstructionExecu
 
   def nextPosition(context: OrderContext, order: Order[Order.State], instruction: If) = {
     assertThat(Right(order) == context.idToOrder(order.id).map(_ withPosition order.position))
-    context.makeScope(order).evalBoolean(instruction.predicate)
+    context.makeScope(order)
+      .flatMap(_.evalBoolean(instruction.predicate))
       .map {
         case true => Some(Then)
         case false => instruction.elseWorkflow.isDefined ? Else

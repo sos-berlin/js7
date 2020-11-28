@@ -37,9 +37,9 @@ import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetachable, OrderDe
 import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
 import js7.data.system.{Stderr, Stdout, StdoutOrStderr}
 import js7.data.value.{NumericValue, StringValue}
-import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
+import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.taskserver.modules.shell.StandardRichProcessStartSynchronizer
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
@@ -170,7 +170,8 @@ private object OrderActorTest {
         sigkillProcessesAfter = 5.s,
         scriptInjectionAllowed = false)))
     private val orderActor = watch(actorOf(
-      OrderActor.props(TestOrder.id, journalActor = journalActor, OrderActor.Conf(config, JournalConf.fromConfig(config))),
+      OrderActor.props(TestOrder.id, Workflow.of(TestOrder.workflowId),
+        journalActor = journalActor, OrderActor.Conf(config, JournalConf.fromConfig(config))),
       s"Order-${TestOrder.id.string}"))
 
     private val orderChangeds = mutable.Buffer[OrderActor.Output.OrderChanged]()

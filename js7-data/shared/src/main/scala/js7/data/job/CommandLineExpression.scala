@@ -4,12 +4,16 @@ import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression.{ListExpression, MkString, SimpleValueExpression}
 import js7.data.value.expression.ExpressionOptimizer.optimizeExpression
 
-final case class CommandLineExpression(expressions: List[Expression])
+final case class CommandLineExpression(string: String, expressions: List[Expression])
+{
+  override def toString = string
+}
 
 object CommandLineExpression
 {
   def optimizeCommandLine(commandLine: CommandLineExpression): CommandLineExpression =
     CommandLineExpression(
+      commandLine.string,
       commandLine.expressions
         .view
         .map(optimizeExpression)

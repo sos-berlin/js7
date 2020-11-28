@@ -76,7 +76,7 @@ extends TaskRunner
     Task.deferFuture(
       for {
         richProcess <- startProcess(order, defaultArguments, stdChannels) andThen {
-          case Success(richProcess) => logger.info(s"Process '$richProcess' started for ${order.id}, ${conf.jobKey}, script ${conf.shellFile}")
+          case Success(richProcess) => logger.info(s"Process '$richProcess' started for ${order.id}, ${conf.jobKey}: ${conf.commandLine}")
         }
         returnCode <- richProcess.terminated andThen { case tried =>
           logger.info(s"Process '$richProcess' terminated with ${tried getOrElse tried} after ${richProcess.duration.pretty}")
@@ -118,7 +118,7 @@ extends TaskRunner
         agentTaskIdOption = Some(agentTaskId),
         killScriptOption = agentConfiguration.killScript)
       synchronizedStartProcess {
-        startPipedShellScript(conf.shellFile, processConfiguration, stdChannels)
+        startPipedShellScript(conf.commandLine, processConfiguration, stdChannels)
       } andThen { case Success(richProcess) =>
         terminatedPromise.completeWith(richProcess.terminated.map(_ => Completed))
         richProcessOnce := richProcess

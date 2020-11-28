@@ -28,7 +28,7 @@ final class IfExecutorTest extends AnyFreeSpec {
     def idToOrder = Map(AOrder.id -> AOrder, BOrder.id -> BOrder).checked
     def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
     def instruction(position: WorkflowPosition) = throw new NotImplementedError
-    def idToWorkflow(id: WorkflowId) = throw new NotImplementedError
+    def idToWorkflow(id: WorkflowId) = Map(TestWorkflowId -> Workflow.of(TestWorkflowId)).checked(id)
   }
 
   "JSON BranchId" - {

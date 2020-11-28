@@ -1,13 +1,12 @@
 package js7.taskserver.task.process
 
 import java.io.{InputStream, InputStreamReader, Reader, Writer}
-import java.nio.file.Path
 import js7.common.process.Processes._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.promiseFuture
 import js7.common.scalautil.IOExecutor
 import js7.common.scalautil.IOExecutor.ioFuture
-import js7.data.job.ReturnCode
+import js7.data.job.{CommandLine, ReturnCode}
 import js7.taskserver.task.process.RichProcess._
 import scala.annotation.tailrec
 import scala.concurrent.ExecutionContext
@@ -20,11 +19,11 @@ import scala.util.control.NonFatal
 class ShellScriptProcess private(
   processConfiguration: ProcessConfiguration,
   process: Process,
-  private[process] val temporaryScriptFile: Path,
+  private[process] val commandLine: CommandLine,
   argumentsForLogging: Seq[String])
   (implicit iox: IOExecutor, ec: ExecutionContext)
-extends RichProcess(processConfiguration, process, argumentsForLogging) {
-
+extends RichProcess(processConfiguration, process, argumentsForLogging)
+{
   stdin.close() // Process gets an empty stdin
 }
 
@@ -40,7 +39,9 @@ object ShellScriptProcess
     try {
       shellFile.write(scriptString, processConfiguration.encoding)
       val process = startProcessBuilder(processConfiguration, shellFile, arguments = Nil) { _.startRobustly() }
-      new ShellScriptProcess(processConfiguration, process, shellFile, argumentsForLogging = shellFile.toString :: Nil) {
+      new ShellScriptProcess(processConfiguration, process, CommandLine.fromFile(shellFile),
+        argumentsForLogging = shellFile.toString :: Nil)
+      {
         override val terminated = promiseFuture[ReturnCode] { p =>
           super.terminated onComplete { o =>
             tryDeleteFile(shellFile)
@@ -55,10 +56,11 @@ object ShellScriptProcess
     }
   }
 
-  def startPipedShellScript(shellFile: Path, conf: ProcessConfiguration, stdChannels: StdChannels)
+  def startPipedShellScript(commandLine: CommandLine, conf: ProcessConfiguration, stdChannels: StdChannels)
     (implicit ec: ExecutionContext, iox: IOExecutor): ShellScriptProcess =
   {
-    val processBuilder = new ProcessBuilder(toShellCommandArguments(shellFile, conf.idArgumentOption.toList).asJava)
+    val processBuilder = new ProcessBuilder(toShellCommandArguments(
+      commandLine.file, commandLine.arguments.tail ++ conf.idArgumentOption/*TODO Should not be an argument*/).asJava)
     for (o <- conf.workingDirectory) processBuilder.directory(o.toFile)
     processBuilder.environment.putAll(conf.additionalEnvironment.asJava)
     val process = processBuilder.startRobustly()
@@ -70,7 +72,7 @@ object ShellScriptProcess
       copy(process.getErrorStream, stdChannels.stderrWriter)
     }
 
-    new ShellScriptProcess(conf, process, shellFile, argumentsForLogging = shellFile.toString :: Nil) {
+    new ShellScriptProcess(conf, process, commandLine, argumentsForLogging = commandLine.toString :: Nil) {
       override def terminated = for {
         _ <- stdoutClosed
         _ <- stderrClosed

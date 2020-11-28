@@ -19,7 +19,7 @@ object FailExecutor extends EventInstructionExecutor
 
       case _: Order.Ready =>
         lazy val maybeErrorMessage = fail.message
-          .map(o => context.makeScope(order).evalString(o).fold(_.toString, identity))
+          .map(o => context.makeScope(order).flatMap(_.evalString(o)).fold(_.toString, identity))
         lazy val outcome = Outcome.Failed(maybeErrorMessage, fail.namedValues)
         Right(Some(order.id <-: (
           if (!fail.uncatchable) {

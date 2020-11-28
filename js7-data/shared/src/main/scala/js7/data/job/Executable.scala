@@ -3,7 +3,7 @@ package js7.data.job
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 import java.nio.file.Path
-import js7.base.circeutils.CirceUtils.deriveCodec
+import js7.base.circeutils.CirceUtils._
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.generic.GenericString
 import js7.base.generic.GenericString.EmptyStringProblem
@@ -90,6 +90,24 @@ object RelativeExecutablePath {
       Right(new RelativeExecutablePath(path))
 }
 
+final case class CommandLineExecutable(commandLineExpression: CommandLineExpression)
+extends Executable
+object CommandLineExecutable
+{
+  def fromString(commandLine: String) =
+    CommandLineParser.parse(commandLine) map apply
+
+  implicit val jsonEncoder: Encoder.AsObject[CommandLineExecutable] =
+    o => JsonObject("command" -> o.commandLineExpression.toString.asJson)
+
+  implicit val jsonDecoder: Decoder[CommandLineExecutable] =
+    cursor =>
+    for {
+      commandLine <- cursor.get[String]("command")
+      commandExpr <- CommandLineParser.parse(commandLine).toDecoderResult(cursor.history)
+    } yield CommandLineExecutable(commandExpr)
+}
+
 final case class ExecutableScript(script: String)
 extends Executable with GenericString
 {
@@ -102,5 +120,6 @@ object Executable
 {
   implicit val jsonCodec: TypedJsonCodec[Executable] = TypedJsonCodec(
     Subtype(ExecutablePath.jsonEncoder, ExecutablePath.jsonDecoder, Seq(classOf[AbsoluteExecutablePath], classOf[RelativeExecutablePath])),
-    Subtype(deriveCodec[ExecutableScript]))
+    Subtype(deriveCodec[ExecutableScript]),
+    Subtype[CommandLineExecutable])
 }

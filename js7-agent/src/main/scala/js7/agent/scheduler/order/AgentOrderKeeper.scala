@@ -187,7 +187,7 @@ with Stash {
       wrapException(s"Error when recovering ${recoveredOrder.id}") {
         val order = workflowRegister.reuseMemory(recoveredOrder)
         val workflow = workflowRegister(order.workflowId)  // Workflow is expected to be recovered
-        val actor = newOrderActor(order)
+        val actor = newOrderActor(order, workflow)
         orderRegister.recover(order, workflow, actor)
         actor ! OrderActor.Input.Recover(order)
       }
@@ -411,15 +411,15 @@ with Stash {
     }
 
   private def attachOrder(order: Order[Order.IsFreshOrReady], workflow: Workflow): Future[Completed] = {
-    val actor = newOrderActor(order)
+    val actor = newOrderActor(order, workflow)
     orderRegister.insert(order, workflow, actor)
     (actor ? OrderActor.Command.Attach(order)).mapTo[Completed]  // TODO ask will time-out when Journal blocks
     // Now expecting OrderEvent.OrderAttachedToAgent
   }
 
-  private def newOrderActor(order: Order[Order.State]) =
+  private def newOrderActor(order: Order[Order.State], workflow: Workflow) =
     watch(actorOf(
-      OrderActor.props(order.id, journalActor = journalActor, orderActorConf),
+      OrderActor.props(order.id, workflow, journalActor = journalActor, orderActorConf),
       name = uniqueActorName(encodeAsActorName("Order-" + order.id.string))))
 
   private def handleOrderEvent(order: Order[Order.State], event: OrderEvent): Unit = {
@@ -434,8 +434,9 @@ with Stash {
           }
 
         case FollowUp.AddChild(childOrder) =>
-          val actor = newOrderActor(childOrder)
-          orderRegister.insert(childOrder, workflowRegister(childOrder.workflowId), actor)
+          val workflow = workflowRegister(childOrder.workflowId)
+          val actor = newOrderActor(childOrder, workflow)
+          orderRegister.insert(childOrder, workflow, actor)
           actor ! OrderActor.Input.AddChild(childOrder)
           proceedWithOrder(childOrder.id)
 

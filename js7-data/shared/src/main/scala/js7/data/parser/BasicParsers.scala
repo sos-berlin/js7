@@ -46,7 +46,7 @@ object BasicParsers
   def quotedString[_: P] = P[String](
     doubleQuoted | singleQuoted)
 
-  private def singleQuoted[_: P] = P[String](
+  def singleQuoted[_: P] = P[String](
     //singleQuotedTooLong(6) |
       singleQuotedN(5) |
       singleQuotedN(4) |
@@ -122,9 +122,8 @@ object BasicParsers
   def keyValue[A](name: String, parser: => P[A])(implicit ctx: P[_]): P[(String, A)] =
     keyValueConvert(name, parser)(Checked.apply[A])
 
-  def keyValueConvert[A, B](name: String, parser: => P[A])(toValue: A => Checked[B])(implicit ctx: P[_]): P[(String, B)] = {
-    w ~ specificKeyValue(name, parser).flatMap(o => checkedToP(toValue(o)).map(name.->))
-  }
+  def keyValueConvert[A, B](name: String, parser: => P[A])(toValue: A => Checked[B])(implicit ctx: P[_]) = P[(String, B)](
+    w ~ specificKeyValue(name, parser).flatMap(o => checkedToP(toValue(o))).map(name.->))
 
   final case class KeyToValue[A](nameToValue: Map[String, A]) {
     def apply[A1 <: A](key: String, default: => A1)(implicit ctx: P[_]): P[A1] =

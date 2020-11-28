@@ -3,7 +3,6 @@ package js7.data.execution.workflow.context
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.implicitClass
-import js7.data.execution.workflow.context.OrderContext._
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.value.expression.{Scope, ValueSearch}
 import js7.data.value.{NumericValue, Value}
@@ -34,7 +33,14 @@ trait OrderContext
 
   protected def idToWorkflow(id: WorkflowId): Checked[Workflow]
 
-  final def makeScope(order: Order[Order.State]): Scope =
+  final def makeScope(order: Order[Order.State]): Checked[Scope] =
+    idToWorkflow(order.workflowId)
+      .map(OrderContext.makeScope(order, _))
+}
+
+object OrderContext
+{
+  final def makeScope(order: Order[Order.State], workflow: Workflow): Scope =
     new Scope {
       private lazy val catchCount = Right(NumericValue(order.workflowPosition.position.catchCount))
 
@@ -56,21 +62,16 @@ trait OrderContext
               .orElse(order.arguments.get(name)))
 
         case ValueSearch(ValueSearch.LastExecuted(positionSearch), what) =>
-          for {
-            workflow <- idToWorkflow(order.workflowId)
-            maybeValue <- order.historicOutcomes.reverseIterator
-              .collectFirst {
-                case HistoricOutcome(pos, outcome: Outcome.Completed) if workflow.positionMatchesSearch(pos, positionSearch) =>
-                  whatToValue(outcome, what)
-              }
-              .toChecked(Problem(s"There is no position in workflow that matches '$positionSearch'"))
-          } yield maybeValue
+          order.historicOutcomes
+            .reverseIterator
+            .collectFirst {
+              case HistoricOutcome(pos, outcome: Outcome.Completed) if workflow.positionMatchesSearch(pos, positionSearch) =>
+                whatToValue(outcome, what)
+            }
+            .toChecked(Problem(s"There is no position in workflow that matches '$positionSearch'"))
       }
     }
-}
 
-object OrderContext
-{
   private def whatToValue(outcome: Outcome.Completed, what: ValueSearch.What): Option[Value] =
     what match {
       case ValueSearch.NamedValue(key) => outcome.namedValues.get(key)

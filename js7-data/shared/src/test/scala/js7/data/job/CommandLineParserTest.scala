@@ -15,37 +15,42 @@ final class CommandLineParserTest extends AnyFreeSpec
 
   "Constant" in {
     assert(CommandLineParser.parse("ABC") ==
-      Right(CommandLineExpression(List(StringConstant("ABC")))))
+      Right(CommandLineExpression("ABC", List(StringConstant("ABC")))))
   }
 
   "Reference" in {
     assert(CommandLineParser.parse("XX $NAME YY $END") ==
-      Right(CommandLineExpression(List(
-        StringConstant("XX"),
-        MkString(NamedValue.last("NAME")),
-        StringConstant("YY"),
-        MkString(NamedValue.last("END"))))))
+      Right(CommandLineExpression("XX $NAME YY $END",
+        List(
+          StringConstant("XX"),
+          MkString(NamedValue.last("NAME")),
+          StringConstant("YY"),
+          MkString(NamedValue.last("END"))))))
   }
 
   "Constant in quotes" in {
     assert(CommandLineParser.parse(""""CONSTANT"""") ==
-      Right(CommandLineExpression(List(StringConstant("CONSTANT")))))
+      Right(CommandLineExpression(""""CONSTANT"""", List(StringConstant("CONSTANT")))))
   }
 
   "Reference in quotes" in {
     assert(CommandLineParser.parse(""">> "$NAME" <<""") ==
-      Right(CommandLineExpression(List(
-        StringConstant(">>"),
-        MkString(NamedValue.last("NAME")),
-        StringConstant("<<")))))
+      Right(CommandLineExpression(
+        """>> "$NAME" <<""",
+        List(
+          StringConstant(">>"),
+          MkString(NamedValue.last("NAME")),
+          StringConstant("<<")))))
   }
 
   "Reference and escaped characters in quotes" in {
     assert(CommandLineParser.parse("""XX "$NAME-\"QUOTED\"\\\$"""") ==
-      Right(CommandLineExpression(List(
-        StringConstant("XX"),
-          MkString(ListExpression(List(
-            NamedValue.last("NAME"),
-            StringConstant("""-"QUOTED"\$"""))))))))
+      Right(CommandLineExpression(
+        """XX "$NAME-\"QUOTED\"\\\$"""",
+        List(
+          StringConstant("XX"),
+            MkString(ListExpression(List(
+              NamedValue.last("NAME"),
+              StringConstant("""-"QUOTED"\$"""))))))))
   }
 }

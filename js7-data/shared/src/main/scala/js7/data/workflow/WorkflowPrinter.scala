@@ -3,7 +3,7 @@ package js7.data.workflow
 import cats.Show
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.job.{ExecutablePath, ExecutableScript}
+import js7.data.job.{CommandLineExecutable, ExecutablePath, ExecutableScript}
 import js7.data.value.{BooleanValue, ListValue, NamedValues, NumericValue, StringValue, Value}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Finish, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction}
@@ -24,7 +24,7 @@ object WorkflowPrinter
     sb.toString
   }
 
-  private def appendWorkflowContent(sb: StringBuilder, nesting: Int, workflow: Workflow): String =
+  private def appendWorkflowContent(sb: StringBuilder, nesting: Int, workflow: Workflow): Unit =
   {
     def appendValue(value: Value) = WorkflowPrinter.appendValue(sb, value)
 
@@ -77,6 +77,9 @@ object WorkflowPrinter
         case ExecutablePath(path) =>
           sb ++= ", executable="
           appendQuoted(path)
+        case CommandLineExecutable(command) =>
+          sb ++= ", command="
+          appendQuoted(command.toString)
         case ExecutableScript(script) =>
           sb ++= ", script="
           appendQuotedExpression(script)  // Last argument, because the script may have multiple lines
@@ -209,7 +212,6 @@ object WorkflowPrinter
       indent(nesting)
       sb ++= "}\n"
     }
-    sb.toString
   }
 
   def namedValuesToString(namedValues: NamedValues) = {
@@ -248,6 +250,12 @@ object WorkflowPrinter
         }
         sb.append(']')
     }
+
+  def quotedString(string: String) = {
+    val sb = new StringBuilder
+    appendQuoted(sb, string)
+    sb.toString
+  }
 
   def appendQuoted(sb: StringBuilder, string: String): Unit =
     sb.append('"')
