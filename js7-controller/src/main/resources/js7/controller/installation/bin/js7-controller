@@ -105,6 +105,8 @@ execute=(
   "${controllerOptions[@]}")
 
 while true; do
+  rm -rf "$data"/tmp
+
   (t=$(date +"%Y-%m-%d %H:%M:%S.%N"); echo -e "\n-------\n${t:0:23}" "${execute[@]}")
 
   "${execute[@]}" &
