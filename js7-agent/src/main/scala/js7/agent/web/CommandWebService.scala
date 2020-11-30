@@ -9,9 +9,10 @@ import js7.agent.web.common.AgentRouteProvider
 import js7.base.auth.ValidUserPermission
 import js7.base.problem.Checked
 import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
-import js7.common.akkahttp.CirceJsonOrYamlSupport._
+import js7.common.akkahttp.CirceJsonOrYamlSupport.{jsonOrYamlMarshaller, jsonUnmarshaller}
 import js7.common.akkahttp.StandardMarshallers._
 import js7.core.command.CommandMeta
+import js7.core.web.EntitySizeLimitProvider
 import js7.data.command.{CommandHandlerDetailed, CommandHandlerOverview}
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -19,7 +20,8 @@ import monix.execution.Scheduler
 /**
  * @author Joacim Zschimmer
  */
-trait CommandWebService extends AgentRouteProvider
+trait CommandWebService
+extends AgentRouteProvider with EntitySizeLimitProvider
 {
   protected def commandExecute(meta: CommandMeta, command: AgentCommand): Task[Checked[AgentCommand.Response]]
   protected def commandOverview: Task[CommandHandlerOverview]
@@ -32,9 +34,11 @@ trait CommandWebService extends AgentRouteProvider
       post {
         pathEnd {
           sessionTokenOption { maybeSessionToken =>
-            entity(as[AgentCommand]) { command =>
-              completeTask {
-                commandExecute(CommandMeta(user, maybeSessionToken), command)
+            withSizeLimit(entitySizeLimit) {
+              entity(as[AgentCommand]) { command =>
+                completeTask {
+                  commandExecute(CommandMeta(user, maybeSessionToken), command)
+                }
               }
             }
           }

@@ -23,8 +23,9 @@ import js7.common.akkautils.ByteStrings.syntax._
 import js7.common.http.StreamingSupport._
 import js7.common.scalautil.Logger
 import js7.controller.repo.{RepoUpdater, VerifiedUpdateRepo}
-import js7.controller.web.common.{ControllerRouteProvider, EntitySizeLimitProvider}
+import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.RepoRoute.{ExitStreamException, _}
+import js7.core.web.EntitySizeLimitProvider
 import js7.data.crypt.InventoryItemVerifier.Verified
 import js7.data.item.{InventoryItem, ItemPath, UpdateRepoOperation, VersionId}
 import monix.eval.Task
@@ -50,7 +51,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
     post {
       pathEnd {
         authorizedUser(Set[Permission](ValidUserPermission, UpdateRepoPermission)) { user =>
-          withSizeLimit(entitySizeLimit)/*call before entity*/(
+          withSizeLimit(entitySizeLimit) (
             entity(as[HttpEntity]) { httpEntity =>
               complete {
                 val startedAt = now
