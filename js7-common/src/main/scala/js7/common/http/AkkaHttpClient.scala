@@ -49,7 +49,6 @@ import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
-import scala.util.control.NoStackTrace
 import scala.util.{Failure, Success}
 
 /**

@@ -1,6 +1,5 @@
 package js7.proxy.javaapi
 
-import cats.effect.Resource
 import io.vavr.control.{Either => VEither}
 import java.util.concurrent.CompletableFuture
 import java.util.{Optional, OptionalLong}
@@ -8,7 +7,6 @@ import js7.base.annotation.javaApi
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.base.web.Uri
-import js7.controller.client.HttpControllerApi
 import js7.controller.data.ControllerCommand
 import js7.controller.data.ControllerCommand.{AddOrdersResponse, CancelOrders, ReleaseEvents, RemoveOrdersWhenTerminated, ResumeOrder, ResumeOrders, SuspendOrders, TakeSnapshot}
 import js7.data.cluster.ClusterSetting
@@ -17,7 +15,6 @@ import js7.data.item.VersionId
 import js7.data.node.NodeId
 import js7.data.order.OrderId
 import js7.proxy.ControllerApi
-import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.ProxyEvent
 import js7.proxy.javaapi.data.agent.JAgentRef
 import js7.proxy.javaapi.data.command.{JCancelMode, JSuspendMode}
@@ -29,7 +26,6 @@ import js7.proxy.javaapi.data.item.JUpdateRepoOperation
 import js7.proxy.javaapi.data.order.{JFreshOrder, JHistoricOutcome}
 import js7.proxy.javaapi.data.workflow.position.JPosition
 import js7.proxy.javaapi.eventbus.{JControllerEventBus, JStandardEventBus}
-import monix.eval.Task
 import monix.execution.FutureUtils.Java8Extensions
 import monix.execution.Scheduler
 import reactor.core.publisher.Flux
@@ -37,13 +33,8 @@ import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
 
 @javaApi
-final class JControllerApi private[javaapi](
-  apiResources: Seq[Resource[Task, HttpControllerApi]],
-  proxyConf: ProxyConf)
-  (implicit scheduler: Scheduler)
+final class JControllerApi private[javaapi](val asScala: ControllerApi)(implicit scheduler: Scheduler)
 {
-  private[js7] val asScala = new ControllerApi(apiResources, proxyConf)
-
   /** Fetch event stream from Controller. */
   def eventFlux(proxyEventBus: JStandardEventBus[ProxyEvent]): Flux[JEventAndControllerState[Event]] =
     eventFlux(proxyEventBus, OptionalLong.empty())

@@ -30,7 +30,8 @@ implements AutoCloseable
     private final JControllerProxy proxy;
     private int orderCounter = 0;
 
-    public JControllerFluxTester(Iterable<JAdmission> admissions, JHttpsConfig httpsConfig) throws InterruptedException, ExecutionException, TimeoutException {
+    public JControllerFluxTester(Iterable<JAdmission> admissions, JHttpsConfig httpsConfig)
+        throws InterruptedException, ExecutionException, TimeoutException {
         api = context.newControllerApi(admissions, httpsConfig);
         proxy = api.startProxy().get(99, SECONDS);
     }

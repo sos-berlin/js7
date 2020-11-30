@@ -3,7 +3,7 @@ package js7.controller.client
 import akka.actor.ActorSystem
 import cats.effect.Resource
 import com.typesafe.config.{Config, ConfigFactory}
-import js7.base.auth.UserAndPassword
+import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.session.SessionApi
 import js7.base.web.Uri
 import js7.common.akkahttp.https.{HttpsConfig, KeyStoreRef, TrustStoreRef}
@@ -63,4 +63,21 @@ object AkkaHttpControllerApi
           httpsConfig.keyStoreRef, httpsConfig.trustStoreRefs, name = name)))
       api <- HttpControllerApi.resource(uri, userAndPassword, httpClient, loginDelays)
     } yield api
+
+  def admissionsToApiResources(
+    admissions: Seq[Admission],
+    httpsConfig: HttpsConfig = HttpsConfig.empty,
+    name: String = "ControllerApi")
+    (implicit actorSystem: ActorSystem)
+  : Seq[Resource[Task, HttpControllerApi]] =
+    for ((a, i) <- admissions.zipWithIndex) yield
+      admissionToApiResource(a, httpsConfig, name = s"$name-$i")
+
+  def admissionToApiResource(
+    admission: Admission,
+    httpsConfig: HttpsConfig = HttpsConfig.empty,
+    name: String = "ControllerApi")
+    (implicit actorSystem: ActorSystem)
+  : Resource[Task, HttpControllerApi] =
+      AkkaHttpControllerApi.resource(admission.uri, admission.userAndPassword, httpsConfig, name = name)
 }
