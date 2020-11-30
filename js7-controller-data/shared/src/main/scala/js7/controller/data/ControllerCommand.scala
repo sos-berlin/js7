@@ -60,7 +60,7 @@ object ControllerCommand extends CommonCommand.Companion
 
   final case class AddOrders(orders: Seq[FreshOrder]) extends ControllerCommand {
     type Response = AddOrders.Response
-    override def toShortString = s"AddOrders(${orders.size} orders, ${orders.take(1).map(o => o.toString + ", ").mkString} ...)"
+    override def toShortString = s"AddOrders(${orders.size} orders, ${orders.take(1).map(o => o.toString.truncateWithEllipsis(200) + ", ").mkString} ...)"
   }
   object AddOrders {
     // AddOrderResponse is unnested to be accessible for Java code

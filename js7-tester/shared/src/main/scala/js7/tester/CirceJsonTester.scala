@@ -2,7 +2,7 @@ package js7.tester
 
 import io.circe.parser.parse
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, Json, Printer}
+import io.circe.{Decoder, DecodingFailure, Encoder, Json, ParsingFailure, Printer}
 import org.scalactic.source
 import org.scalatest.Assertion
 import org.scalatest.Assertions._
@@ -36,10 +36,13 @@ object CirceJsonTester
   private def parseJson(string: String): Json =
     rightOrThrow(parse(string))
 
-  private def rightOrThrow[R](either: Either[Throwable, R]): R =
+  private def rightOrThrow[R](either: Either[io.circe.Error, R]): R =
     either match {
+      case Left(t: DecodingFailure) =>
+        throw new RuntimeException(t.message + (if (t.history.isEmpty) "" else t.history.mkString("<-")), t)
+      case Left(t: ParsingFailure) =>
+        throw new RuntimeException(t.getMessage, t)   // Add stacktrace
       case Right(o) => o
-      case Left(t) => throw new RuntimeException(t.toString, t)   // Add stacktrace
     }
 
   def normalizeJson(json: Json): Json =
