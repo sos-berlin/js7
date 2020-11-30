@@ -6,15 +6,15 @@ import js7.base.problem.Checked
 import js7.base.time.ScalaTime._
 import js7.base.utils.Collections.implicits.RichTraversable
 import js7.data.agent.AgentName
-import js7.data.job.{CommandLineExecutable, CommandLineParser, Executable, ExecutablePath, ExecutableScript, ReturnCode}
+import js7.data.job.{CommandLineExecutable, CommandLineParser, ExecutablePath, ExecutableScript, ReturnCode}
 import js7.data.order.OrderId
 import js7.data.parser.BasicParsers._
 import js7.data.parser.Parsers.checkedParse
 import js7.data.source.SourcePos
-import js7.data.value.NamedValues
-import js7.data.value.expression.Expression.BooleanConstant
+import js7.data.value.expression.Expression.{BooleanConstant, ObjectExpression}
 import js7.data.value.expression.ExpressionParser.{booleanConstant, constantExpression, expression}
 import js7.data.value.expression.{Evaluator, Expression}
+import js7.data.value.{NamedValues, ObjectValue}
 import js7.data.workflow.Instruction.Labeled
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Finish, Fork, Goto, If, IfFailedGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction, End => EndInstr, Fail => FailInstr}
@@ -83,18 +83,22 @@ object WorkflowParser
       Index ~ keyword("end") ~ hardEnd
         map { case (start, end) => ExplicitEnd(sourcePos(start, end)) })
 
-    private def namedValues[_: P]: P[NamedValues] =
-      P[NamedValues](
-        curly(nonEmptyCommaSequence(quotedString ~ w ~ ":" ~ w ~/ value))
-         .map(_.toMap))
+    private def objectExpression[_: P]: P[ObjectExpression] = P(
+      curly(nonEmptyCommaSequence(quotedString ~ w ~ ":" ~ w ~/ expression))
+       .map(o => ObjectExpression(o.toMap)))
+
+    private def namedValues[_: P]: P[NamedValues] = P(
+      objectExpression
+        .flatMap(o => checkedToP(Evaluator.Constant.eval(o).flatMap(_.toObject).map(_.nameToValue))))
 
     private def anonymousWorkflowJob[_: P] = P[WorkflowJob](
       for {
         kv <- keyValues(
-          keyValueConvert("executable", quotedString)(ExecutablePath.checked) |
-          keyValueConvert("command", quotedString)(string => CommandLineParser.parse(string) map CommandLineExecutable.apply) |
-          keyValueConvert("script", constantExpression)(o =>
-            Evaluator.Constant.eval(o).flatMap(_.toStringValue).map(v => ExecutableScript(v.string))) |
+          keyValue("env", objectExpression) |
+          keyValue("v1Compatible", booleanConstant) |
+          keyValue("executable", quotedString) |
+          keyValue("command", quotedString) |
+          keyValue("script", constantExpression) |
           keyValue("agent", agentName) |
           keyValue("arguments", namedValues) |
           keyValue("successReturnCodes", successReturnCodes) |
@@ -102,7 +106,19 @@ object WorkflowParser
           keyValue("taskLimit", int) |
           keyValue("sigkillAfter", int))
         agentName <- kv[AgentName]("agent")
-        executable <- kv.oneOf[Executable]("executable", "command", "script").map(_._2)
+        env <- kv.oneOfOr[ObjectExpression](Set("env"), ObjectExpression.empty)
+        v1Compatible <- kv.noneOrOneOf[BooleanConstant]("v1Compatible").map(_.fold(false)(_._2.booleanValue))
+        executable <- kv.oneOf[Any]("executable", "command", "script").flatMap {
+          case ("executable", path: String) =>
+            Pass(ExecutablePath(path, env, v1Compatible = v1Compatible))
+          case ("command", command: String) =>
+            if (v1Compatible) Fail.opaque(s"v1Compatible=true is inappropriate for a command")
+            else checkedToP(CommandLineParser.parse(command).map(CommandLineExecutable(_, env)))
+          case ("script", script: Expression) =>
+            checkedToP(Evaluator.Constant.eval(script).flatMap(_.toStringValue)
+              .map(v => ExecutableScript(v.string, env, v1Compatible = v1Compatible)))
+          case _ => Fail.opaque("Invalid executable")  // Does not happen
+        }
         arguments <- kv[NamedValues]("arguments", NamedValues.empty)
         returnCodeMeaning <- kv.oneOfOr(Set("successReturnCodes", "failureReturnCodes"), ReturnCodeMeaning.Default)
         taskLimit <- kv[Int]("taskLimit", WorkflowJob.DefaultTaskLimit)
@@ -128,7 +144,8 @@ object WorkflowParser
     private def failInstruction[_: P] = P[FailInstr](
       (Index ~ keyword("fail") ~
         inParentheses(keyValues(
-          keyValue("namedValues", namedValues) |
+          keyValueConvert("namedValues", objectExpression)(o =>
+            Evaluator.Constant.eval(o).map(_.asInstanceOf[ObjectValue].nameToValue)) |
           keyValue("message", expression) |
           keyValue("uncatchable", booleanConstant))).? ~
         hardEnd)

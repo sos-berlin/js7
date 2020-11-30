@@ -16,8 +16,8 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.common.scalautil.{IOExecutor, Logger}
 import js7.data.job.ReturnCode
-import js7.data.order.Order
-import js7.data.value.{NamedValues, StringValue}
+import js7.data.order.OrderId
+import js7.data.value.NamedValues
 import js7.taskserver.modules.shell.RichProcessStartSynchronizer
 import js7.taskserver.task.process.ShellScriptProcess.startPipedShellScript
 import js7.taskserver.task.process.{ProcessConfiguration, RichProcess, StdChannels}
@@ -51,7 +51,6 @@ extends TaskRunner
 
   private val terminatedPromise = Promise[Completed]()
   private val startedAt = Timestamp.now
-  private val variablePrefix = DefaultShellVariablePrefix
   private lazy val returnValuesProvider = new ShellReturnValuesProvider(temporaryDirectory = agentConfiguration.temporaryDirectory)
   private val richProcessOnce = SetOnce[RichProcess]
   private var killedBeforeStart = false
@@ -68,15 +67,16 @@ extends TaskRunner
       }
     }
 
-  def processOrder(order: Order[Order.Processing], defaultArguments: NamedValues, stdChannels: StdChannels): Task[TaskStepEnded] =
-    for (returnCode <- runProcess(order, defaultArguments, stdChannels)) yield
+  def processOrder(orderId: OrderId, env: Map[String, String], stdChannels: StdChannels)
+  : Task[TaskStepEnded] =
+    for (returnCode <- runProcess(orderId, env, stdChannels)) yield
       TaskStepSucceeded(fetchReturnValuesThenDeleteFile(), returnCode)
 
-  private def runProcess(order: Order[Order.Processing], defaultArguments: NamedValues, stdChannels: StdChannels): Task[ReturnCode] =
+  private def runProcess(orderId: OrderId, env: Map[String, String], stdChannels: StdChannels): Task[ReturnCode] =
     Task.deferFuture(
       for {
-        richProcess <- startProcess(order, defaultArguments, stdChannels) andThen {
-          case Success(richProcess) => logger.info(s"Process '$richProcess' started for ${order.id}, ${conf.jobKey}: ${conf.commandLine}")
+        richProcess <- startProcess(env, stdChannels) andThen {
+          case Success(richProcess) => logger.info(s"Process '$richProcess' started for $orderId, ${conf.jobKey}: ${conf.commandLine}")
         }
         returnCode <- richProcess.terminated andThen { case tried =>
           logger.info(s"Process '$richProcess' terminated with ${tried getOrElse tried} after ${richProcess.duration.pretty}")
@@ -97,24 +97,15 @@ extends TaskRunner
     result
   }
 
-  private def startProcess(order: Order[Order.Processing], defaultArguments: NamedValues, stdChannels: StdChannels): Future[RichProcess] =
+  private def startProcess(env: Map[String, String], stdChannels: StdChannels): Future[RichProcess] =
     if (killedBeforeStart)
       Future.failed(new RuntimeException(s"$agentTaskId killed before start"))
     else {
-      val env = (conf.workflowJob.defaultArguments ++ defaultArguments ++ order.namedValues)
-        .view
-        .mapValues(_.toStringValue)
-        .collect {
-          case (name, Right(v)) => name -> v  // ignore toStringValue errors (ListValue)
-        }
-        .map { case (k, StringValue(v)) => (variablePrefix + k.toUpperCase) -> v }
-        .toMap +
-          returnValuesProvider.env
       val processConfiguration = ProcessConfiguration(
         stdFileMap = Map.empty,
         encoding = AgentConfiguration.FileEncoding,
         workingDirectory = Some(agentConfiguration.jobWorkingDirectory),
-        additionalEnvironment = env,
+        additionalEnvironment = env + returnValuesProvider.env,
         agentTaskIdOption = Some(agentTaskId),
         killScriptOption = agentConfiguration.killScript)
       synchronizedStartProcess {
@@ -139,7 +130,6 @@ extends TaskRunner
 
 object SimpleShellTaskRunner
 {
-  private val DefaultShellVariablePrefix = "SCHEDULER_PARAM_"
   private val logger = Logger(getClass)
 
   @Singleton

@@ -25,9 +25,11 @@ final class WorkflowPrinterTest extends AnyFreeSpec
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("my-script"))))),
+          Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("my-script"))),
+          Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("my-script", v1Compatible = true))))),
       """define workflow {
         |  execute agent="AGENT", executable="my-script";
+        |  execute agent="AGENT", v1Compatible=true, executable="my-script";
         |}
         |""".stripMargin)
   }
@@ -66,13 +68,16 @@ final class WorkflowPrinterTest extends AnyFreeSpec
             WorkflowJob(AgentName("AGENT"),
               ExecutableScript("LINE 1\nLINE 2\n'''LINE 3'''\n"),
               Map("KEY" -> StringValue("VALUE")),
-              ReturnCodeMeaning.Success.of(0, 1))))),
+              ReturnCodeMeaning.Success.of(0, 1))),
+          Execute.Anonymous(
+            WorkflowJob(AgentName("AGENT"), ExecutableScript("SCRIPT", v1Compatible = true))))),
       """define workflow {
         |  execute agent="AGENT", arguments={"KEY": "VALUE"}, successReturnCodes=[0, 1], script=
         |''''LINE 1
         |   |LINE 2
         |   |'''LINE 3'''
         |   |''''.stripMargin;
+        |  execute agent="AGENT", v1Compatible=true, script="SCRIPT";
         |}
         |""".stripMargin)
   }
@@ -238,7 +243,9 @@ final class WorkflowPrinterTest extends AnyFreeSpec
 
   private def check(workflow: Workflow, source: String): Unit = {
     assert(workflow.show == source)
-    assert(WorkflowParser.parse(source).map(_.withoutSourcePos) == Right(workflow.copy(source = Some(source)).withoutSourcePos))
+    val result = WorkflowParser.parse(source).map(_.withoutSourcePos)
+    val expected = Right(workflow.copy(source = Some(source)).withoutSourcePos)
+    assert(result == expected)
   }
 }
 

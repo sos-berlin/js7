@@ -10,7 +10,6 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentName
 import js7.data.folder.FolderPath
 import js7.data.item.ItemPath
-import js7.data.value.{NumericValue, StringValue, Value}
 import scala.reflect.ClassTag
 
 /**
@@ -38,10 +37,6 @@ object BasicParsers
   def identifier[_: P] = P[String](  // TODO Compare and test code with Identifier.isIdentifier
     (CharPred(isIdentifierStart).opaque("identifier start") ~ CharsWhile(isIdentifierPart, 0)).! ~
       identifierEnd)
-
-  def value[_: P] = P[Value](
-    ("-".? ~ digits).!.map(o => NumericValue(BigDecimal(o))) |
-      quotedString.map(StringValue.apply))
 
   def quotedString[_: P] = P[String](
     doubleQuoted | singleQuoted)
@@ -142,6 +137,9 @@ object BasicParsers
 
     def get[A1 <: A](key: String)(implicit ctx: P[_]): P[Option[A1]] =
       Pass(nameToValue.get(key).map(_.asInstanceOf[A1]))
+
+    def noneOrOneOf[A1 <: A](keys: String*)(implicit ctx: P[_]): P[Option[(String, A1)]] =
+      noneOrOneOf[A1](keys.toSet)
 
     def noneOrOneOf[A1 <: A](keys: Set[String])(implicit ctx: P[_]): P[Option[(String, A1)]] = {
       val intersection = nameToValue.keySet & keys

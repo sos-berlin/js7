@@ -1,11 +1,13 @@
 package js7.data.value.expression
 
 import fastparse.NoWhitespace._
-import io.circe.{Decoder, Encoder, Json}
+import io.circe.syntax._
+import io.circe.{Decoder, Encoder, Json, JsonObject}
 import java.lang.Character.{isUnicodeIdentifierPart, isUnicodeIdentifierStart}
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
 import js7.base.utils.Identifier.isIdentifier
 import js7.data.parser.Parsers.checkedParse
+import js7.data.value.ValuePrinter.quoteString
 import js7.data.workflow.Label
 import js7.data.workflow.instructions.executable.WorkflowJob
 import scala.collection.mutable
@@ -87,6 +89,24 @@ object Expression
   final case class ListExpression(expressions: List[Expression]) extends Expression {
     def precedence = Precedence.Factor
     override def toString = expressions.mkString("[", ", ", "]")
+  }
+
+  final case class ObjectExpression(nameToExpr: Map[String, Expression]) extends Expression {
+    def isEmpty = nameToExpr.isEmpty
+    def nonEmpty = nameToExpr.nonEmpty
+    def precedence = Precedence.Factor
+    override def toString = nameToExpr
+      .map { case (k, v) => quoteString(k) + ":" + v }
+      .mkString("{", ", ", "}")
+  }
+  object ObjectExpression {
+    val empty = ObjectExpression(Map.empty)
+
+    implicit val jsonEncoder: Encoder.AsObject[ObjectExpression] =
+      o => JsonObject.fromIterable(o.nameToExpr.view.mapValues(_.asJson).toSeq)
+
+    implicit val jsonDecoder: Decoder[ObjectExpression] =
+      _.as[Map[String, Expression]] map ObjectExpression.apply
   }
 
   final case class ToNumber(expression: Expression) extends NumericExpression {

@@ -38,9 +38,9 @@ final case class WorkflowJob private(
 
   def argumentsString = s"agent=${agentName.string}, " +
     (executable match {
-      case ExecutablePath(o) => s"executablePath=$o"
-      case ExecutableScript(o) => s"script=$o"
-      case CommandLineExecutable(expr) => s"command=" + ValuePrinter.quoteString(expr.toString)
+      case ExecutablePath(o, env, v1Compatible) => s"executablePath=$o"
+      case ExecutableScript(o, env, v1Compatible) => s"script=$o"
+      case CommandLineExecutable(expr, env) => s"command=" + ValuePrinter.quoteString(expr.toString)
     }) +
     (returnCodeMeaning match {
       case ReturnCodeMeaning.Default => ""

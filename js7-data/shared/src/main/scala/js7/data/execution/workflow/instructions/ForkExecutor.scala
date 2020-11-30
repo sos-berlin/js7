@@ -32,7 +32,7 @@ object ForkExecutor extends EventInstructionExecutor
             case _: Outcome.Succeeded =>
               OrderMoved(order.position.increment)
 
-            case _: Outcome.NotSucceeded =>
+            case _ =>
               OrderFailedCatchable_()
           }))))
 

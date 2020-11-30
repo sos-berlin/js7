@@ -5,7 +5,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.value.expression.{Scope, ValueSearch}
-import js7.data.value.{NumericValue, Value}
+import js7.data.value.{NamedValues, NumericValue, Value}
 import js7.data.workflow.instructions.Instructions
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow, WorkflowId}
@@ -35,12 +35,16 @@ trait OrderContext
 
   final def makeScope(order: Order[Order.State]): Checked[Scope] =
     idToWorkflow(order.workflowId)
-      .map(OrderContext.makeScope(order, _))
+      .map(OrderContext.makeScope(NamedValues.empty, order, _))
 }
 
 object OrderContext
 {
-  final def makeScope(order: Order[Order.State], workflow: Workflow): Scope =
+  final def makeScope(
+    highPriorityArguments: NamedValues,
+    order: Order[Order.State],
+    workflow: Workflow,
+    default: NamedValues = NamedValues.empty): Scope =
     new Scope {
       private lazy val catchCount = Right(NumericValue(order.workflowPosition.position.catchCount))
 
@@ -54,12 +58,15 @@ object OrderContext
 
         case ValueSearch(ValueSearch.LastOccurred, ValueSearch.NamedValue(name)) =>
           Right(
-            order.historicOutcomes.reverseIterator
-              .collectFirst {
-                case HistoricOutcome(_, outcome: Outcome.Completed) if outcome.namedValues.contains(name) =>
-                  outcome.namedValues(name)
-              }
-              .orElse(order.arguments.get(name)))
+            highPriorityArguments.get(name)
+              .orElse(
+                order.historicOutcomes.reverseIterator
+                  .collectFirst {
+                    case HistoricOutcome(_, outcome: Outcome.Completed) if outcome.namedValues.contains(name) =>
+                      outcome.namedValues(name)
+                  })
+              .orElse(order.arguments.get(name))
+              .orElse(default.get(name)))
 
         case ValueSearch(ValueSearch.LastExecuted(positionSearch), what) =>
           order.historicOutcomes

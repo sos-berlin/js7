@@ -12,6 +12,7 @@ import js7.common.akkahttp.WebLogDirectives
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
+import js7.common.configutils.Configs.HoconStringInterpolator
 import js7.common.message.ProblemCodeMessages
 import js7.common.scalautil.MonixUtils.syntax._
 import monix.execution.Scheduler.Implicits.global
@@ -37,7 +38,8 @@ trait WebServiceTest extends HasCloser with BeforeAndAfterAll with ScalatestRout
 
   override def testConfig = AgentConfiguration.DefaultConfig
   protected final def actorSystem = system
-  protected val config = WebLogDirectives.TestConfig
+  protected val config = config"js7.web.server.services.streaming-post-size-limit-factor = 50%"
+    .withFallback(WebLogDirectives.TestConfig)
 
   implicit val routeTestTimeout = RouteTestTimeout(5.seconds)
 

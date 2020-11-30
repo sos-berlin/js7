@@ -5,10 +5,11 @@ import js7.data.agent.AgentName
 import js7.data.job.{ExecutablePath, ExecutableScript}
 import js7.data.source.SourcePos
 import js7.data.value.StringValue
+import js7.data.value.expression.Expression.{NamedValue, NumericConstant, ObjectExpression}
 import js7.data.workflow.Instruction
 import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.tester.CirceJsonTester
+import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
@@ -18,7 +19,7 @@ final class ExecuteTest extends AnyFreeSpec
 {
   "JSON" - {
     "Named with defaults" in {
-      CirceJsonTester.testJson[Instruction.Labeled](
+      testJson[Instruction.Labeled](
         Execute.Named(WorkflowJob.Name("JOB")),
         json"""{
           "TYPE": "Execute.Named",
@@ -27,7 +28,7 @@ final class ExecuteTest extends AnyFreeSpec
     }
 
     "Named complete" in {
-      CirceJsonTester.testJson[Instruction.Labeled](
+      testJson[Instruction.Labeled](
         Execute.Named(WorkflowJob.Name("JOB"), Map("ARG" -> StringValue("VALUE")), Some(SourcePos(1, 2))),
         json"""{
           "TYPE": "Execute.Named",
@@ -40,7 +41,7 @@ final class ExecuteTest extends AnyFreeSpec
     }
 
     "Anonymous with defaults" in {
-      CirceJsonTester.testJson[Instruction.Labeled](
+      testJson[Instruction.Labeled](
         Execute(
           WorkflowJob(
             AgentName("AGENT"),
@@ -59,11 +60,14 @@ final class ExecuteTest extends AnyFreeSpec
     }
 
     "Anonymous complete" in {
-      CirceJsonTester.testJson[Instruction.Labeled](
+      testJson[Instruction.Labeled](
         Execute.Anonymous(
           WorkflowJob(
             AgentName("AGENT"),
-            ExecutableScript("SCRIPT"),
+            ExecutableScript("SCRIPT",
+              ObjectExpression(Map(
+                "ENV-VAR" -> NamedValue.last("VAR"),
+                "NUMBER" -> NumericConstant(7)))),
             Map("ARG" -> StringValue("VALUE"))),
           Some(SourcePos(1, 2))),
         json"""{
@@ -72,7 +76,11 @@ final class ExecuteTest extends AnyFreeSpec
             "agentName": "AGENT",
             "executable": {
               "TYPE": "ExecutableScript",
-              "script": "SCRIPT"
+              "script": "SCRIPT",
+              "env": {
+                "ENV-VAR": "$$VAR",
+                "NUMBER": "7"
+              }
             },
             "taskLimit": 1,
             "defaultArguments": {

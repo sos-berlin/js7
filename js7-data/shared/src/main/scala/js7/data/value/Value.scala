@@ -2,10 +2,11 @@ package js7.data.value
 
 import cats.instances.vector._
 import cats.syntax.traverse._
-import io.circe.{Decoder, DecodingFailure, Encoder, Json}
+import io.circe.{Decoder, DecodingFailure, Encoder, Json, JsonObject}
 import js7.base.annotation.javaApi
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
+import js7.data.value.ValuePrinter.quoteString
 import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 
@@ -21,6 +22,9 @@ sealed trait Value
 
   def toList: Checked[ListValue] =
     Left(InvalidExpressionTypeProblem("List", this))
+
+  def toObject: Checked[ObjectValue] =
+    Left(InvalidExpressionTypeProblem("Object", this))
 
   @javaApi
   def toJava: java.lang.Object
@@ -46,6 +50,7 @@ object Value
     case NumericValue(o) => Json.fromBigDecimal(o)
     case BooleanValue(o) => Json.fromBoolean(o)
     case ListValue(values) => Json.fromValues(values map jsonEncoder.apply)
+    case ObjectValue(values) => Json.fromJsonObject(JsonObject.fromIterable(values.view.mapValues(jsonEncoder.apply)))
   }
 
   implicit val jsonDecoder: Decoder[Value] = c => {
@@ -61,6 +66,10 @@ object Value
       Right(BooleanValue(j.asBoolean.get))
     else if (j.isArray)
       j.asArray.get.traverse(jsonDecoder.decodeJson).map(ListValue.apply)
+    else if (j.isObject)
+      j.asObject.get.toVector
+        .traverse { case (k, v) => jsonDecoder.decodeJson(v).map(k -> _) }
+        .map(o => ObjectValue(o.toMap))
     else
       Left(DecodingFailure(s"Unknown value JSON type: ${j.getClass.simpleScalaName}", c.history))
   }
@@ -123,14 +132,14 @@ object NumericValue {
 
 final case class BooleanValue(booleanValue: Boolean) extends Value
 {
-  def toStringValue = Right(StringValue(booleanValue.toString))
-
   override def toNumeric =
     Right(if (booleanValue) NumericValue.One else NumericValue.Zero)
 
   override def toBoolean = Right(BooleanValue(booleanValue))
 
   def toJava = java.lang.Boolean.valueOf(booleanValue)
+
+  def toStringValue = Right(StringValue(convertToString))
 
   def convertToString = booleanValue.toString
 
@@ -145,17 +154,36 @@ object BooleanValue {
 
 final case class ListValue(list: Seq[Value]) extends Value
 {
-  def toStringValue = Right(StringValue(list.mkString("[", ", ", "]")))
-
   override def toList = Right(this)
 
   def toJava = list.asJava
 
-  def convertToString = toString /*???*/
+  def toStringValue = Right(StringValue(convertToString))
 
-  override def toString = list.mkString("[", ", ", "]")
+  def convertToString = list.mkString("[", ", ", "]")
+
+  override def toString = convertToString
 }
 object ListValue {
+  @javaApi def of(values: java.util.List[Value]) = ListValue(values.asScala.toVector)
+  @javaApi def of(values: Array[Value]) = ListValue(values.toVector)
+}
+
+final case class ObjectValue(nameToValue: Map[String, Value]) extends Value
+{
+  override def toObject = Right(this)
+
+  def toStringValue = Right(StringValue(convertToString))
+
+  def toJava = ???
+
+  def convertToString = nameToValue
+    .map { case (k, v) => quoteString(k) + ":" + v }
+    .mkString("{", ", ", "}")
+
+  override def toString = convertToString
+}
+object ObjectValue {
   @javaApi def of(values: java.util.List[Value]) = ListValue(values.asScala.toVector)
   @javaApi def of(values: Array[Value]) = ListValue(values.toVector)
 }

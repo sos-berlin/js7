@@ -3,6 +3,7 @@ package js7.data.job
 import js7.base.circeutils.CirceUtils._
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.problem.Problems.InvalidNameProblem
+import js7.data.value.expression.Expression.{NamedValue, NumericConstant, ObjectExpression}
 import js7.tester.CirceJsonTester._
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -12,7 +13,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class ExecutableTest extends AnyFreeSpec
 {
   "JSON" - {
-    "RelativeExecutablePath" in {
+    "RelativeExecutablePath, minimum" in {
       testJson[Executable](RelativeExecutablePath("EXECUTABLE"), json"""
         {
           "TYPE": "ExecutablePath",
@@ -21,7 +22,28 @@ final class ExecutableTest extends AnyFreeSpec
       """)
     }
 
-    "AbsoluteExecutablePath" in {
+    "RelativeExecutablePath" in {
+      testJson[Executable](
+        RelativeExecutablePath(
+          "EXECUTABLE",
+          ObjectExpression(Map(
+            "ENV-VAR" -> NamedValue.last("VAR"),
+            "NUMBER" -> NumericConstant(7))),
+          v1Compatible = true),
+        json"""
+         {
+          "TYPE": "ExecutablePath",
+          "path": "EXECUTABLE",
+          "env": {
+            "ENV-VAR": "$$VAR",
+            "NUMBER": "7"
+          },
+          "v1Compatible": true
+        }
+      """)
+    }
+
+    "AbsoluteExecutablePath, minimum" in {
       testJson[Executable](AbsoluteExecutablePath("/EXECUTABLE"), json"""
         {
           "TYPE": "ExecutablePath",
@@ -30,11 +52,54 @@ final class ExecutableTest extends AnyFreeSpec
       """)
     }
 
-    "ExecutableScript" in {
-      testJson[Executable](ExecutableScript("SCRIPT"), json"""
+    "AbsoluteExecutablePath" in {
+      testJson[Executable](
+        AbsoluteExecutablePath(
+          "/EXECUTABLE",
+          ObjectExpression(Map(
+            "ENV-VAR" -> NamedValue.last("VAR"),
+            "NUMBER" -> NumericConstant(7))),
+          v1Compatible = true),
+        json"""
+         {
+          "TYPE": "ExecutablePath",
+          "path": "/EXECUTABLE",
+          "env": {
+            "ENV-VAR": "$$VAR",
+            "NUMBER": "7"
+          },
+          "v1Compatible": true
+        }
+      """)
+    }
+
+    "ExecutableScript, minumum" in {
+      testJson[Executable](
+        ExecutableScript("SCRIPT"),json"""
         {
           "TYPE": "ExecutableScript",
           "script": "SCRIPT"
+        }
+      """)
+    }
+
+    "ExecutableScript" in {
+      testJson[Executable](
+        ExecutableScript(
+          "SCRIPT",
+          ObjectExpression(Map(
+            "ENV-VAR" -> NamedValue.last("VAR"),
+            "NUMBER" -> NumericConstant(7))),
+          v1Compatible = true),
+      json"""
+        {
+          "TYPE": "ExecutableScript",
+          "script": "SCRIPT",
+          "env": {
+            "ENV-VAR": "$$VAR",
+            "NUMBER": "7"
+          },
+          "v1Compatible": true
         }
       """)
     }

@@ -23,6 +23,8 @@ final class ValueTest extends AnyFreeSpec
     testJson[Value](ListValue(List(
       StringValue("STRING"), NumericValue(1), BooleanValue.True, ListValue(List(BooleanValue.False)))),
       json"""[ "STRING", 1, true, [ false ]] """)
+    testJson[Value](ObjectValue(Map("A" -> StringValue("STRING"))),
+      json"""{ "A": "STRING" }""")
   }
 
   "StringValue" - {

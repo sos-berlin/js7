@@ -64,6 +64,7 @@ final class WorkflowTest extends AnyFreeSpec
                 "agentName": "AGENT",
                 "executable": {
                   "TYPE": "ExecutablePath",
+                  "v1Compatible": true,
                   "path": "A.cmd"
                 },
                 "taskLimit": 3,
@@ -83,6 +84,7 @@ final class WorkflowTest extends AnyFreeSpec
                     "agentName": "AGENT",
                     "executable": {
                       "TYPE": "ExecutablePath",
+                      "v1Compatible": true,
                       "path": "B.cmd"
                     },
                     "taskLimit": 3 ,
@@ -98,6 +100,7 @@ final class WorkflowTest extends AnyFreeSpec
                       "agentName": "AGENT",
                       "executable": {
                         "TYPE": "ExecutablePath",
+                        "v1Compatible": true,
                         "path": "B.cmd"
                       },
                       "taskLimit": 3,
@@ -119,6 +122,7 @@ final class WorkflowTest extends AnyFreeSpec
                           "agentName": "AGENT",
                           "executable": {
                             "TYPE": "ExecutablePath",
+                            "v1Compatible": true,
                             "path": "A.cmd"
                           },
                           "taskLimit": 3,
@@ -139,6 +143,7 @@ final class WorkflowTest extends AnyFreeSpec
                           "agentName": "AGENT",
                           "executable": {
                             "TYPE": "ExecutablePath",
+                            "v1Compatible": true,
                             "path": "B.cmd"
                           },
                           "taskLimit": 3,
@@ -157,6 +162,7 @@ final class WorkflowTest extends AnyFreeSpec
                 "agentName": "AGENT",
                 "executable": {
                   "TYPE": "ExecutablePath",
+                  "v1Compatible": true,
                   "path": "B.cmd"
                 },
                 "taskLimit": 3,
@@ -169,6 +175,7 @@ final class WorkflowTest extends AnyFreeSpec
               "agentName": "AGENT",
               "executable": {
                 "TYPE": "ExecutablePath",
+                "v1Compatible": true,
                 "path": "A.cmd"
               },
               "taskLimit": 3,
@@ -178,6 +185,7 @@ final class WorkflowTest extends AnyFreeSpec
               "agentName": "AGENT",
               "executable": {
                 "TYPE": "ExecutablePath",
+                "v1Compatible": true,
                 "path": "B.cmd"
               },
               "taskLimit": 3,
@@ -199,6 +207,7 @@ final class WorkflowTest extends AnyFreeSpec
                 "agentName": "AGENT",
                 "executable": {
                   "TYPE": "ExecutablePath",
+                  "v1Compatible": true,
                   "path": "A.cmd"
                 },
                 "taskLimit": 3,
@@ -220,6 +229,7 @@ final class WorkflowTest extends AnyFreeSpec
                     "agentName": "AGENT",
                     "executable": {
                       "TYPE": "ExecutablePath",
+                      "v1Compatible": true,
                       "path": "B.cmd"
                     },
                     "taskLimit": 3 ,
@@ -236,6 +246,7 @@ final class WorkflowTest extends AnyFreeSpec
                       "agentName": "AGENT",
                       "executable": {
                         "TYPE": "ExecutablePath",
+                        "v1Compatible": true,
                         "path": "B.cmd"
                       },
                       "taskLimit": 3,
@@ -262,6 +273,7 @@ final class WorkflowTest extends AnyFreeSpec
                           "agentName": "AGENT",
                           "executable": {
                             "TYPE": "ExecutablePath",
+                            "v1Compatible": true,
                             "path": "A.cmd"
                           },
                           "taskLimit": 3,
@@ -288,6 +300,7 @@ final class WorkflowTest extends AnyFreeSpec
                           "agentName": "AGENT",
                           "executable": {
                             "TYPE": "ExecutablePath",
+                            "v1Compatible": true,
                             "path": "B.cmd"
                           },
                           "taskLimit": 3,
@@ -312,6 +325,7 @@ final class WorkflowTest extends AnyFreeSpec
                 "agentName": "AGENT",
                 "executable": {
                   "TYPE": "ExecutablePath",
+                  "v1Compatible": true,
                   "path": "B.cmd"
                 },
                 "taskLimit": 3,
@@ -327,6 +341,7 @@ final class WorkflowTest extends AnyFreeSpec
               "agentName": "AGENT",
               "executable": {
                 "TYPE": "ExecutablePath",
+                "v1Compatible": true,
                 "path": "A.cmd"
               },
               "taskLimit": 3,
@@ -336,6 +351,7 @@ final class WorkflowTest extends AnyFreeSpec
               "agentName": "AGENT",
               "executable": {
                 "TYPE": "ExecutablePath",
+                "v1Compatible": true,
                 "path": "B.cmd"
               },
               "taskLimit": 3,
@@ -403,6 +419,7 @@ final class WorkflowTest extends AnyFreeSpec
                 "agentName": "AGENT",
                 "executable": {
                   "TYPE": "ExecutablePath",
+                  "v1Compatible": true,
                   "path": "A.cmd"
                 },
                 "taskLimit": 3,

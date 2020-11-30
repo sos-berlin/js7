@@ -9,7 +9,7 @@ import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.value.expression.Expression._
-import js7.data.value.{BooleanValue, ListValue, NumericValue, StringValue, Value}
+import js7.data.value.{BooleanValue, ListValue, NumericValue, ObjectValue, StringValue, Value}
 import js7.data.workflow.Label
 import js7.data.workflow.instructions.executable.WorkflowJob
 
@@ -22,6 +22,7 @@ final class Evaluator(scope: Scope)
     expr match {
       case BooleanConstant(o)    => Right(BooleanValue(o))
       case ListExpression(list) => list.traverse(eval) map ListValue.apply
+      case e: ObjectExpression => evalObjectExpression(e)
       case Equal          (a, b) => anyAnyToBool(a, b)(_ == _)
       case NotEqual       (a, b) => anyAnyToBool(a, b)(_ != _)
       case LessThan       (a, b) => numNumToBool(a, b)(_.number <  _.number)
@@ -72,6 +73,12 @@ final class Evaluator(scope: Scope)
 
   private def evalListExpression(expr: ListExpression): Checked[ListValue] =
     expr.expressions.traverse(eval).map(ListValue.apply)
+
+  def evalObjectExpression(expr: ObjectExpression): Checked[ObjectValue] =
+    expr.nameToExpr.toVector
+      .traverse { case (k, v) => eval(v) map k.-> }
+      .map(_.toMap)
+      .map(ObjectValue.apply)
 
   private def anyAnyToBool[A <: Expression, B <: Expression](a: A, b: B)(op: (Value, Value) => Boolean): Checked[BooleanValue] =
     for {

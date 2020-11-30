@@ -55,7 +55,7 @@ import js7.data.controller.ControllerItems
 import js7.data.crypt.InventoryItemVerifier
 import js7.data.event.{EventId, EventRequest, Stamped}
 import js7.data.item.InventoryItem
-import js7.data.order.OrderEvent.OrderFinished
+import js7.data.order.OrderEvent.OrderTerminated
 import js7.data.order.{FreshOrder, OrderEvent}
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -148,7 +148,7 @@ extends AutoCloseable
       .observe(EventRequest.singleClass[OrderEvent](eventId, Some(timeout + 9.s)))
       .takeWhile(_.value.key == order.id)
       .map(o => o.copy(value = o.value.event))
-      .takeWhileInclusive(o => !o.value.isInstanceOf[OrderFinished])
+      .takeWhileInclusive(o => !o.value.isInstanceOf[OrderTerminated])
       .toL(Vector)
       .await(timeout)
   }

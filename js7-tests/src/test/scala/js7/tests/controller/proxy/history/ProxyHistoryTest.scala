@@ -213,18 +213,18 @@ object ProxyHistoryTest
   private val BAgentName = AgentName("AGENT-B")
   private val TestWorkflow = WorkflowParser.parse(TestWorkflowId.asScala, s"""
      |define workflow {
-     |  execute executable="${TestExecutablePath.string}", agent="AGENT-A";
+     |  execute executable="${TestExecutablePath.path}", agent="AGENT-A";
      |  fork {
      |    "🥕": {
-     |      execute executable="${TestExecutablePath.string}", agent="AGENT-A";
-     |      execute executable="${TestExecutablePath.string}", agent="AGENT-A";
+     |      execute executable="${TestExecutablePath.path}", agent="AGENT-A";
+     |      execute executable="${TestExecutablePath.path}", agent="AGENT-A";
      |    },
      |    "🍋": {
-     |      execute executable="${TestExecutablePath.string}", agent="AGENT-A";
-     |      execute executable="${TestExecutablePath.string}", agent="AGENT-B";
+     |      execute executable="${TestExecutablePath.path}", agent="AGENT-A";
+     |      execute executable="${TestExecutablePath.path}", agent="AGENT-B";
      |    }
      |  }
-     |  execute executable="${TestExecutablePath.string}", agent="AGENT-A";
+     |  execute executable="${TestExecutablePath.path}", agent="AGENT-A";
      |}
      """.stripMargin.trim).orThrow
 

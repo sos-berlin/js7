@@ -149,7 +149,7 @@ trait ControllerClusterForScalaTest
 
 object ControllerClusterForScalaTest
 {
-  val TestExecutablePath = RelativeExecutablePath(s"TEST.cmd")
+  val TestExecutablePath = RelativeExecutablePath("TEST.cmd")
 
   def assertEqualJournalFiles(
     primary: DirectoryProvider.ControllerTree,

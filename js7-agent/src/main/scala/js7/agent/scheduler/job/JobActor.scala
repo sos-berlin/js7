@@ -1,6 +1,8 @@
 package js7.agent.scheduler.job
 
 import akka.actor.{Actor, DeadLetterSuppression, Props, Stash}
+import cats.instances.vector._
+import cats.syntax.traverse._
 import java.nio.file.Files.{createTempFile, exists, getPosixFilePermissions}
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE
@@ -23,8 +25,9 @@ import js7.common.scalautil.Logger
 import js7.data.execution.workflow.context.OrderContext
 import js7.data.job.{AbsoluteExecutablePath, CommandLine, CommandLineEvaluator, CommandLineExecutable, ExecutableScript, JobKey, RelativeExecutablePath}
 import js7.data.order.{Order, OrderId}
-import js7.data.value.NamedValues
 import js7.data.value.expression.Evaluator
+import js7.data.value.expression.Expression.ObjectExpression
+import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.taskserver.task.process.RichProcess.tryDeleteFile
@@ -50,47 +53,71 @@ extends Actor with Stash
   private var terminating = false
   private var temporaryFile = SetOnce[Path]
 
-  private val checkedExecutable: Checked[(Order[Order.Processing], Workflow) => Checked[Executable]] =
+  private val checkedExecutable: Checked[(Order[Order.Processing], Workflow) => Checked[Execute]] =
     workflowJob.executable match {
-      case AbsoluteExecutablePath(path) =>
+      case AbsoluteExecutablePath(path, envExpr, v1Compatible) =>
         if (!conf.scriptInjectionAllowed)
           Left(SignedInjectionNotAllowed)
-        else
-          Right((_, _) => toExecutable(Paths.get(path), path))
-
-      case path: RelativeExecutablePath =>
-        Right((_, _) => toExecutable(path.toFile(executablesDirectory), path.string))
-
-      case CommandLineExecutable(commandLineExpression) =>
-        Right { (order, workflow) =>
-          new CommandLineEvaluator(new Evaluator(OrderContext.makeScope(order, workflow)))
-            .eval(commandLineExpression)
-            .map(commandLine => Executable(commandLine, name = commandLine.file.getFileName.toString))
+        else {
+          val file = Paths.get(path)
+          warnIfNotExecutable(file)
+          Right((order, workflow) =>
+            evalEnv(toEvaluator(order, workflow), envExpr)
+              .map(env => Execute(CommandLine.fromFile(file), path, env, v1Compatible = v1Compatible)))
         }
 
-      case ExecutableScript(script) =>
+      case ex @ RelativeExecutablePath(path, envExpr, v1Compatible) =>
+        Right { (order, workflow) =>
+          val file = ex.toFile(executablesDirectory)
+          warnIfNotExecutable(file)
+          evalEnv(toEvaluator(order, workflow), envExpr)
+            .map(env => Execute(CommandLine.fromFile(file), path, env, v1Compatible = v1Compatible))
+        }
+
+      case ex @ CommandLineExecutable(commandLineExpression, envExpr) =>
+        Right { (order, workflow) =>
+          val evaluator = toEvaluator(order, workflow)
+          new CommandLineEvaluator(evaluator)
+            .eval(commandLineExpression)
+            .flatMap { commandLine =>
+              warnIfNotExecutable(commandLine.file)
+              evalEnv(evaluator, envExpr)
+                .map(env =>
+                  Execute(commandLine, name = commandLine.file.getFileName.toString, env, v1Compatible = ex.v1Compatible))
+            }
+        }
+
+      case ExecutableScript(script, envExpr, v1Compatible) =>
         if (!conf.scriptInjectionAllowed)
           Left(SignedInjectionNotAllowed)
         else {
           val file = createTempFile(temporaryDirectory, "script-", isWindows ?? ".cmd", ShellFileAttributes: _*)
           Checked.catchNonFatal {
             file.write(script, AgentConfiguration.FileEncoding)
-            Executable(CommandLine.fromFile(file), name = "tmp/" + file.getFileName, isTemporary = true)
           }.map { _ =>
             temporaryFile := file
-            (_, _) => Right(Executable(CommandLine.fromFile(file), name = "tmp/" + file.getFileName, isTemporary = true))
+            (order, workflow) =>
+              evalEnv(toEvaluator(order, workflow), envExpr).map(env =>
+                Execute(CommandLine.fromFile(file), name = "tmp/" + file.getFileName,
+                  env, v1Compatible = v1Compatible, isTemporary = true))
           }
         }
     }
 
-  private def toExecutable(file: Path, name: String): Checked[Executable] = {
+  private def toEvaluator(order: Order[Order.Processing], workflow: Workflow): Evaluator =
+    new Evaluator(OrderContext.makeScope(Map.empty, order, workflow, conf.workflowJob.defaultArguments))
+
+  private def evalEnv(evaluator: Evaluator, envExpr: ObjectExpression): Checked[Map[String, String]] =
+    evaluator.evalObjectExpression(envExpr)
+      .flatMap(_.nameToValue.toVector.traverse { case (k, v) => v.toStringValue.map(k -> _.string) })
+      .map(_.toMap)
+
+  private def warnIfNotExecutable(file: Path): Unit =
     if (!exists(file)) {
       logger.warn(s"Executable '$file' not found")
     } else if (isUnix && !Try(getPosixFilePermissions(file) contains OWNER_EXECUTE).getOrElse(true)) {
       logger.warn(s"Executable '$file' is not user executable")
     }
-    Right(Executable(CommandLine.fromFile(file), name))
-  }
 
   for (problem <- checkedExecutable.left) logger.error(problem.toString)
 
@@ -114,23 +141,35 @@ extends Actor with Stash
         checkedExecutable.flatMap(_(cmd.order, cmd.workflow)) match {
           case Left(problem) =>
             sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(problem), killed)  // Exception.toString is published !!!
-          case Right(executable) =>
-            if (!exists(executable.file)) {
-              val msg = s"Executable '${executable.file}' not found"
+          case Right(execute) =>
+            if (!exists(execute.file)) {
+              val msg = s"Execute '${execute.file}' not found"
               logger.error(s"Order '${cmd.order.id.string}' step failed: $msg")
               sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Problem.pure(msg)), killed)
             } else
-              Try(executable.file.toRealPath()) match {
+              Try(execute.file.toRealPath()) match {
                 case Failure(t) =>
-                  sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Problem.pure(s"Executable '$executable': $t")), killed)  // Exception.toString is published !!!
+                  sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Problem.pure(s"Execute '$execute': $t")), killed)  // Exception.toString is published !!!
                 case Success(executableFile) =>
                   assertThat(taskCount < workflowJob.taskLimit, "Task limit exceeded")
-                  if (!executable.isTemporary && !conf.scriptInjectionAllowed) {
-                    assertThat(executable.isTemporary || executableFile.startsWith(executablesDirectory),
-                      s"Executable directory '${conf.executablesDirectory}' does not contain file '$executableFile' ")
+                  if (!execute.isTemporary && !conf.scriptInjectionAllowed) {
+                    assertThat(execute.isTemporary || executableFile.startsWith(executablesDirectory),
+                      s"Execute directory '${conf.executablesDirectory}' does not contain file '$executableFile' ")
                   }
+                  val v1Env =
+                    if (!execute.v1Compatible) Map.empty[String, String]
+                    else
+                      (conf.workflowJob.defaultArguments ++ cmd.defaultArguments ++ cmd.order.namedValues)
+                        .view
+                        .mapValues(_.toStringValue)
+                        .collect {
+                          case (name, Right(v)) => name -> v  // ignore toStringValue errors (ListValue)
+                        }
+                        .map { case (k, StringValue(v)) => (DefaultV1EnvPrefix + k.toUpperCase) -> v }
+                        .toMap
+
                   val sender = this.sender()
-                  processOrder(cmd, executable.commandLine)
+                  processOrder(cmd.order.id, execute.commandLine, v1Env ++ execute.env, cmd.stdChannels)
                     .onComplete { triedStepEnded =>
                       self.!(Internal.TaskFinished(cmd.order, triedStepEnded))(sender)
                     }
@@ -177,11 +216,12 @@ extends Actor with Stash
       killOrder(orderId, SIGKILL)
   }
 
-  private def processOrder(cmd: Command.ProcessOrder, commandLine: CommandLine): Future[TaskStepEnded] = {
+  private def processOrder(orderId: OrderId, commandLine: CommandLine, env: Map[String, String], stdChannels: StdChannels)
+  : Future[TaskStepEnded] = {
     waitingForNextOrder = false
     val taskRunner = newTaskRunner(TaskConfiguration(jobKey, workflowJob, commandLine))
-    orderToRun.insert(cmd.order.id -> Run(taskRunner))
-    taskRunner.processOrder(cmd.order, cmd.defaultArguments, cmd.stdChannels)
+    orderToRun.insert(orderId -> Run(taskRunner))
+    taskRunner.processOrder(orderId, env, stdChannels)
       .guarantee(taskRunner.terminate/*for now (shell only), returns immediately s a completed Future*/)
       .runToFuture
   }
@@ -232,6 +272,8 @@ extends Actor with Stash
 
 object JobActor
 {
+  private val DefaultV1EnvPrefix = "SCHEDULER_PARAM_"
+
   def props(conf: Conf)(implicit s: Scheduler) = Props { new JobActor(conf) }
 
   final case class Conf(
@@ -274,7 +316,12 @@ object JobActor
     final case class KillOrder(orderId: OrderId) extends DeadLetterSuppression
   }
 
-  private case class Executable(commandLine: CommandLine, name: String, isTemporary: Boolean = false)
+  private case class Execute(
+    commandLine: CommandLine,
+    name: String,
+    env: Map[String,String],
+    v1Compatible: Boolean,
+    isTemporary: Boolean = false)
   {
     def file = commandLine.file
     override def toString = name

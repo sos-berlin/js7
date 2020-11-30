@@ -69,7 +69,7 @@ final class OrderActorTest extends AnyFreeSpec with HasCloser with BeforeAndAfte
   }
 
   "Shell script" in {
-    val executablePath = RelativeExecutablePath(s"TEST-1$sh")
+    val executablePath = RelativeExecutablePath(s"TEST-1$sh", v1Compatible = true)
     executablePath.toFile(directoryProvider.agentDirectory / "config" / "executables").writeExecutable(TestScript)
     val (testActor, result) = runTestActor(DummyJobKey, WorkflowJob(TestAgentName, executablePath, Map("VAR1" -> StringValue("FROM-JOB"))))
     assert(result.events == ExpectedOrderEvents)

@@ -7,7 +7,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.parser.Parsers.checkedParse
 import js7.data.value.expression.Expression._
 import js7.data.value.expression.Scope.ConstantExpressionRequiredProblem
-import js7.data.value.{BooleanValue, NumericValue, StringValue, Value}
+import js7.data.value.{BooleanValue, ListValue, NumericValue, ObjectValue, StringValue, Value}
 import js7.data.workflow.Label
 import js7.data.workflow.instructions.executable.WorkflowJob
 import org.scalactic.source
@@ -250,6 +250,29 @@ final class EvaluatorTest extends AnyFreeSpec
       result = true,
       Right(
         In(LastReturnCode, ListExpression(List(NumericConstant(1), NumericConstant(2), NumericConstant(3))))))
+
+
+    "objectExpression" in {
+      val expr = ObjectExpression(Map(
+        "A" -> NumericConstant(1),
+        "B" -> StringConstant("BBB"),
+        "LIST" -> ListExpression(List(NumericConstant(1), NumericConstant(2), NumericConstant(3)))))
+      assert(evaluator.evalObjectExpression(expr) ==
+        Right(ObjectValue(Map(
+          "A" -> NumericValue(1),
+          "B" -> StringValue("BBB"),
+          "LIST" -> ListValue(List(NumericValue(1), NumericValue(2), NumericValue(3)))))),
+        Right(
+          In(LastReturnCode, ListExpression(List(NumericConstant(1), NumericConstant(2), NumericConstant(3))))))
+    }
+
+    //testEval("""{"A": 1, "B": "BBB", "LIST": [1, 2, 3]}""",
+    //  result = Right(ObjectValue(Map(
+    //    "A" -> NumericValue(1),
+    //    "B" -> StringValue("BBB"),
+    //    "LIST" -> ListValue(List(NumericValue(1), NumericValue(2), NumericValue(3)))))),
+    //  Right(
+    //    In(LastReturnCode, ListExpression(List(NumericConstant(1), NumericConstant(2), NumericConstant(3))))))
 
     "Equal" in {
       forAll((a: Int, b: Int) => assert(

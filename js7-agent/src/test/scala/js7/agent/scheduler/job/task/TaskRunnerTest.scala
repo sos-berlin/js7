@@ -46,12 +46,12 @@ final class TaskRunnerTest extends AnyFreeSpec with BeforeAndAfterAll with TestA
     val newTaskRunner = injector.instance[SimpleShellTaskRunner.Factory]
     val executableDirectory = createTempDirectory("TaskRunnerTest-")
 
-    val executablePath = RelativeExecutablePath(s"TEST$sh")
+    val executablePath = RelativeExecutablePath(s"TEST$sh", v1Compatible = true)
     val shellFile = executablePath.toFile(executableDirectory)
     shellFile := TestScript
     if (isUnix) setPosixFilePermissions(shellFile, PosixFilePermissions.fromString("rwx------"))
-    val taskConfiguration = TaskConfiguration(JobKey.forTest, WorkflowJob(AgentName("TEST"), executablePath,
-      Map("var1" -> StringValue("VALUE1"))), CommandLine.fromFile(shellFile))
+    val taskConfiguration = TaskConfiguration(JobKey.forTest, WorkflowJob(AgentName("TEST"), executablePath),
+      CommandLine.fromFile(shellFile))
     info(measureTime(10, "TaskRunner") {
       val order = Order(
         OrderId("TEST"),
@@ -62,7 +62,7 @@ final class TaskRunnerTest extends AnyFreeSpec with BeforeAndAfterAll with TestA
       val stdoutWriter = new TestStdoutStderrWriter
       val stderrWriter = new TestStdoutStderrWriter
       val stdChannels = new StdChannels(charBufferSize = 10, stdoutWriter = stdoutWriter, stderrWriter = stderrWriter)
-      val ended = taskRunner.processOrder(order, Map.empty, stdChannels).guarantee(taskRunner.terminate) await 30.s
+      val ended = taskRunner.processOrder(order.id, Map("VAR1" -> "VALUE1"), stdChannels).guarantee(taskRunner.terminate) await 30.s
       assert(ended == TaskStepSucceeded(Map("result" -> StringValue("TEST-RESULT-VALUE1")), ReturnCode(0)))
       val nl = System.lineSeparator
       assert(stdoutWriter.string == s"Hej!${nl}var1=VALUE1$nl")
@@ -79,14 +79,14 @@ object TaskRunnerTest {
       |@echo off
       |echo Hej!
       |echo THIS IS STDERR>&2
-      |echo var1=%SCHEDULER_PARAM_VAR1%
-      |echo result=TEST-RESULT-%SCHEDULER_PARAM_VAR1% >>"%SCHEDULER_RETURN_VALUES%"
+      |echo var1=%VAR1%
+      |echo result=TEST-RESULT-%VAR1% >>"%SCHEDULER_RETURN_VALUES%"
       |""".stripMargin
     else """
       |echo "Hej!"
       |echo THIS IS STDERR >&2
-      |echo "var1=$SCHEDULER_PARAM_VAR1"
-      |echo "result=TEST-RESULT-$SCHEDULER_PARAM_VAR1" >>"$SCHEDULER_RETURN_VALUES"
+      |echo "var1=$VAR1"
+      |echo "result=TEST-RESULT-$VAR1" >>"$SCHEDULER_RETURN_VALUES"
       |""".stripMargin
 
   private final class TestStdoutStderrWriter extends Writer {

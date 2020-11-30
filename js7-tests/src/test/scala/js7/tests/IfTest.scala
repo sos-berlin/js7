@@ -39,7 +39,7 @@ final class IfTest extends AnyFreeSpec {
     }
   }
 
-  private def checkEventSeq(orderId: OrderId, eventSeq: TearableEventSeq[IterableOnce, KeyedEvent[OrderEvent]], returnCode: ReturnCode): Unit = {
+  private def checkEventSeq(orderId: OrderId, eventSeq: TearableEventSeq[IterableOnce, KeyedEvent[OrderEvent]], returnCode: ReturnCode): Unit =
     eventSeq match {
       case EventSeq.NonEmpty(stampeds) =>
         val events = stampeds.iterator.filter(_.value.key == orderId).map(_.value.event).to(Vector)
@@ -47,7 +47,6 @@ final class IfTest extends AnyFreeSpec {
       case o =>
         fail(s"Unexpected EventSeq received: $o")
     }
-  }
 }
 
 object IfTest {
@@ -81,7 +80,7 @@ object IfTest {
      |  execute executable="TEST$sh", agent="AGENT";
      |
      |  define job MYJOB {
-     |    execute executable="TEST-RC$sh", agent="AGENT", successReturnCodes=[0, 1];
+     |    execute executable="TEST-RC$sh", agent="AGENT", v1Compatible=true, successReturnCodes=[0, 1];
      |  }
      |}""".stripMargin
   private val TestWorkflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW") ~ "INITIAL", workflowNotation).orThrow

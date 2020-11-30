@@ -129,7 +129,7 @@ object OrderEvent {
   extends OrderActorEvent
 
   final case class OrderFailed(outcome: Option[Outcome.NotSucceeded] = None)
-  extends OrderActorEvent
+  extends OrderActorEvent with OrderTerminated
 
   final case class OrderFailedInFork(outcome: Option[Outcome.NotSucceeded] = None)
   extends OrderActorEvent
@@ -175,10 +175,10 @@ object OrderEvent {
   case object OrderFinished extends OrderActorEvent with OrderTerminated
 
   type OrderRemoveMarked = OrderRemoveMarked.type
-  case object OrderRemoveMarked extends OrderActorEvent with OrderTerminated
+  case object OrderRemoveMarked extends OrderActorEvent
 
   type OrderRemoved = OrderRemoved.type
-  case object OrderRemoved extends OrderActorEvent with OrderTerminated
+  case object OrderRemoved extends OrderActorEvent
 
   sealed trait OrderKillMarked extends OrderActorEvent {
     def kill: Option[CancelMode.Kill]

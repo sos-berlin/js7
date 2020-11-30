@@ -1,192 +1,255 @@
 package js7.tests
 
+import java.nio.file.Files.{createTempFile, delete}
 import java.util.regex.Pattern
-import js7.agent.data.Problems.SignedInjectionNotAllowed
-import js7.base.problem.Checked.Ops
+import js7.base.problem.Checked._
+import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.ScalaUtils.syntax._
-import js7.common.configutils.Configs.HoconStringInterpolator
+import js7.common.configutils.Configs._
 import js7.common.scalautil.FileUtils.syntax.RichPath
-import js7.common.scalautil.FileUtils.withTemporaryFile
+import js7.common.scalautil.Logger
 import js7.data.agent.AgentName
-import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
-import js7.data.job.RelativeExecutablePath
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
+import js7.data.item.VersionId
+import js7.data.job.{AbsoluteExecutablePath, CommandLineExecutable, CommandLineParser, ExecutableScript, RelativeExecutablePath, ReturnCode}
+import js7.data.order.OrderEvent.{OrderFailed, OrderFinished, OrderProcessed, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
-import js7.data.value.NamedValues
-import js7.data.workflow.position.BranchId.Then
-import js7.data.workflow.position.Position
-import js7.data.workflow.{WorkflowParser, WorkflowPath}
+import js7.data.value.expression.Expression.{NamedValue, NumericConstant, ObjectExpression}
+import js7.data.value.{NamedValues, NumericValue, StringValue, Value}
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.instructions.{Execute, ReturnCodeMeaning}
+import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath, WorkflowPrinter}
 import js7.tests.ExecuteTest._
-import js7.tests.testenv.DirectoryProvider
-import monix.execution.Scheduler.Implicits.global
+import js7.tests.testenv.ControllerAgentForScalaTest
 import org.scalatest.freespec.AnyFreeSpec
 
-final class ExecuteTest extends AnyFreeSpec
+final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  "signed-script-injection-allowed = off (default)" - {
-    "Executing an inline script is not allowed" in {
-      testInjectionNotAllowed("""
-        define workflow {
-          execute agent="AGENT", script=":";
-        }"""
-      )
-    }
+  protected val agentNames = agentName :: Nil
+  protected val inventoryItems = Nil
+  override protected val controllerConfig = config"""
+    js7.web.server.auth.public = on
+    js7.journal.remove-obsolete-files = false
+    js7.controller.agent-driver.command-batch-delay = 0ms
+    js7.controller.agent-driver.event-buffer-delay = 10ms"""
+  override protected def agentConfig = config"""
+    js7.job.execution.signed-script-injection-allowed = on
+    """
+  private val versionIdIterator = Iterator.from(1).map(i => VersionId(s"v$i"))
+  private val workflowPathIterator = Iterator.from(1).map(i => WorkflowPath(s"/WORKFLOW-$i"))
+  private val orderIdIterator = Iterator.from(1).map(i => OrderId(s"🔵-$i"))
+  private lazy val argScriptFile = createTempFile("ExecuteTest-arg-", ".cmd")
+  private lazy val myReturnCodeScriptFile = createTempFile("ExecuteTest-myExitCode-", ".cmd")
 
-    "Executing an absolute path executable is not allowed" in {
-      testInjectionNotAllowed("""
-        define workflow {
-          execute agent="AGENT", executable="/ABSOLUTE";
-        }""")
+  override def beforeAll() = {
+    for (a <- directoryProvider.agents) {
+     a.writeExecutable(RelativeExecutablePath("TEST-SCRIPT.cmd"), returnCodeScript(variableRef("myExitCode")))
     }
-
-    def testInjectionNotAllowed(workflowNotation: String): Unit = {
-      val workflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW"), workflowNotation).orThrow
-
-      autoClosing(new DirectoryProvider(TestAgentName :: Nil, inventoryItems = workflow :: Nil, testName = Some("ExecuteTest"))) { directoryProvider =>
-        directoryProvider.run { (controller, _) =>
-          val orderId = OrderId("❌")
-          controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
-          val orderProcessed = controller.eventWatch.await[OrderProcessed](_.key == orderId).head
-          assert(orderProcessed.value.event.outcome.asInstanceOf[Outcome.Disrupted].reason.problem == SignedInjectionNotAllowed)
-        }
-      }
-    }
+    argScriptFile.writeExecutable(
+      if (isWindows)
+        """@echo off
+          |echo ARGUMENTS=/%*/
+          |exit %2""".stripMargin
+      else
+        """echo ARGUMENTS=/$*/
+          |exit $2""".stripMargin)
+    myReturnCodeScriptFile.writeExecutable(returnCodeScript(variableRef("myExitCode")))
+    super.beforeAll()
   }
 
-  "signed-script-injection-allowed = on" - {
-    "Execute" in {
-      val directoryProvider = new DirectoryProvider(TestAgentName :: Nil, inventoryItems = TestWorkflow :: Nil,
-        testName = Some("ExecuteTest"),
-        agentConfig = config"""js7.job.execution.signed-script-injection-allowed = on""")
-      autoClosing(directoryProvider) { _ =>
-        for (a <- directoryProvider.agents) {
-          for (o <- Seq("SCRIPT-0a.cmd", "SCRIPT-0b.cmd")) a.writeExecutable(RelativeExecutablePath(o), ":")
-          for (o <- Seq("SCRIPT-1.cmd", "SCRIPT-2.cmd", "SCRIPT-3.cmd"))
-            a.writeExecutable(RelativeExecutablePath(o),
-              if (isWindows) "@exit %SCHEDULER_PARAM_RETURN_CODE%" else "exit $SCHEDULER_PARAM_RETURN_CODE")
-        }
-        directoryProvider.run { (controller, _) =>
-          val orderId = OrderId("🔺")
-          controller.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path))
-          controller.eventWatch.await[OrderFinished](_.key == orderId)
-          checkEventSeq(orderId, controller.eventWatch.all[OrderEvent])
-        }
-      }
-    }
+  override def afterAll() = {
+    super.afterAll()
+    delete(argScriptFile)
+    delete(myReturnCodeScriptFile)
+  }
 
-    "Execute with command line" in {
-      withTemporaryFile("ExecuteTest-", ".cmd") { executable =>
-        executable.writeExecutable(
-          if (isWindows) "@echo ==>%*<=="
-          else """echo "1->$1 2->$2 3->$3"""")
-        val workflowPath = WorkflowPath("/WORKFLOW")
-        val workflow = WorkflowParser.parse(workflowPath,
-          s"""define workflow {
-            |  execute agent="AGENT", script='echo RESULT=TEST-VALUE >>${if (isWindows) "%SCHEDULER_RETURN_VALUES%" else "$SCHEDULER_RETURN_VALUES"}';
-            |  execute agent="AGENT", executable="$executable";
-            |  execute agent="AGENT", command="$executable \\$$RESULT 'B b' C";
-            |}
-            |""".stripMargin).orThrow
-        val directoryProvider = new DirectoryProvider(Seq(TestAgentName), inventoryItems = Seq(workflow),
-          testName = Some("ExecuteTest"),
-          agentConfig = config"""js7.job.execution.signed-script-injection-allowed = on""")
-        autoClosing(directoryProvider) { _ =>
-          directoryProvider.run { (controller, _) =>
-            val orderId = OrderId("🔴")
-            controller.addOrderBlocking(FreshOrder(orderId, WorkflowPath("/WORKFLOW")))
-            controller.eventWatch.await[OrderStdoutWritten](o => o.key == orderId &&
-              removeAgentTaskId(o.event.chunk).contains(if (isWindows) "==><==" else "1-> 2-> 3->"))
-            controller.eventWatch.await[OrderStdoutWritten](o => o.key == orderId &&
-              o.event.chunk.contains(if (isWindows) "==><==" else "1->TEST-VALUE 2->B b 3->C"))
-            controller.eventWatch.await[OrderFinished](_.key == orderId)
+  addExecuteTest(Execute(WorkflowJob(agentName, ExecutableScript(returnCodeScript("0")))),
+    expectedOutcome = Outcome.Succeeded(NamedValues.rc(0)))
+
+  addExecuteTest(Execute(WorkflowJob(agentName, ExecutableScript(returnCodeScript("1")))),
+    expectedOutcome = Outcome.Failed(NamedValues.rc(1)))
+
+  addExecuteTest(
+    Execute(
+      WorkflowJob(agentName, ExecutableScript(returnCodeScript("2")),
+      returnCodeMeaning = ReturnCodeMeaning.Success(Set(ReturnCode(2))))),
+    expectedOutcome = Outcome.Succeeded(NamedValues.rc(2)))
+
+  addExecuteTest(Execute(WorkflowJob(agentName, ExecutableScript(returnCodeScript("44")))),
+    expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
+
+  addExecuteTest(Execute(
+    WorkflowJob(
+      agentName,
+      ExecutableScript(
+        returnCodeScript(variableRef("myExitCode")),
+        env = ObjectExpression(Map("myExitCode" -> NumericConstant(44)))))),
+    expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
+
+  addExecuteTest(Execute(
+    WorkflowJob(
+      agentName,
+      ExecutableScript(
+        returnCodeScript(variableRef("myExitCode")),
+        env = ObjectExpression(Map("myExitCode" -> NamedValue.last("orderValue")))))),
+    orderArguments = Map("orderValue" -> NumericValue(44)),
+    expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
+
+  addExecuteTest(Execute(
+    WorkflowJob(
+      agentName,
+      ExecutableScript(
+        returnCodeScript(variableRef("myExitCode")),
+        env = ObjectExpression(Map("myExitCode" -> NamedValue.last("defaultArg")))),
+      defaultArguments = Map("defaultArg" -> NumericValue(44)))),
+    expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
+
+  addExecuteTest(Execute(
+    WorkflowJob(
+      agentName,
+      ExecutableScript(
+        returnCodeScript(variableRef("myExitCode")),
+        env = ObjectExpression(Map("myExitCode" -> NamedValue.last("NAME")))),
+      defaultArguments = Map("NAME" -> NumericValue(99)))),  // ignored
+    orderArguments = Map("NAME" -> NumericValue(44)),  // has priority
+    expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
+
+  addExecuteTest(Execute(
+    WorkflowJob(
+      agentName,
+      RelativeExecutablePath(
+        "TEST-SCRIPT.cmd",
+        env = ObjectExpression(Map("myExitCode" -> NumericConstant(44)))))),
+    expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
+
+  addExecuteTest(Execute(
+    WorkflowJob(
+      agentName,
+      AbsoluteExecutablePath(
+        myReturnCodeScriptFile.toString,
+        env = ObjectExpression(Map("myExitCode" -> NumericConstant(44)))))),
+    expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
+
+  addExecuteTest(Execute(
+    WorkflowJob(
+      agentName,
+      CommandLineExecutable(
+        CommandLineParser.parse(s"""'$argScriptFile' ARG1-DUMMY 44""").orThrow))),
+    expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
+
+  addExecuteTest(Execute(
+    WorkflowJob(
+      agentName,
+      CommandLineExecutable(
+        CommandLineParser.parse(s"""'$myReturnCodeScriptFile'""").orThrow,
+        env = ObjectExpression(Map("myExitCode" -> NamedValue.last("orderValue")))))),
+    orderArguments = Map("orderValue" -> NumericValue(44)),
+    expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
+
+  addExecuteTest(Execute(
+    WorkflowJob(
+      agentName,
+      ExecutableScript(
+        returnCodeScript(variableRef("SCHEDULER_PARAM_MYEXITCODE")),
+        v1Compatible = true))),
+    orderArguments = Map("myExitCode" -> NumericValue(44)),
+    expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
+
+  addExecuteTest(Execute(
+    WorkflowJob(
+      agentName,
+      ExecutableScript(
+        returnCodeScript(variableRef("myExitCode")),
+      env = ObjectExpression(Map("myExitCode" -> NamedValue.last("UNKNOWN")))))),
+    expectedOutcome = Outcome.Disrupted(Problem("No such named value: UNKNOWN")))
+
+  "Jobs in nested workflow" in {
+    testWithWorkflow(
+      WorkflowParser.parse("""
+        define workflow {
+          job aJob;
+          job bJob;
+          if (true) {
+            job aJob;
+            job bJob;
+            define job aJob {
+              execute agent="AGENT", script="exit 11", successReturnCodes=[11];
+            }
+          };
+          define job aJob {
+              execute agent="AGENT", script="exit 1", successReturnCodes=[1];
           }
-        }
-      }
-    }
+          define job bJob {
+              execute agent="AGENT", script="exit 2", successReturnCodes=[2];
+          }
+        }""").orThrow,
+      expectedOutcomes = Seq(
+        Outcome.Succeeded(NamedValues.rc(1)),
+        Outcome.Succeeded(NamedValues.rc(2)),
+        Outcome.Succeeded(NamedValues.rc(11)),
+        Outcome.Succeeded(NamedValues.rc(2))))
   }
 
-  // TODO Replace --agent-task-id= by something different (for example, PID returned by Java 9)
-  private def removeAgentTaskId(string: String): String =
-    Pattern.compile("""--agent-task-id=[0-9]+-[0-9]+""").matcher(string).replaceAll("")
+  "Command line arguments" in {
+    // TODO Replace --agent-task-id= by something different (for example, PID returned by Java 9)
+    def removeAgentTaskId(string: String): String =
+      Pattern.compile(""" --agent-task-id=[0-9]+-[0-9]+""").matcher(string).replaceAll("")
 
-  private def checkEventSeq(orderId: OrderId, eventSeq: TearableEventSeq[IterableOnce, KeyedEvent[OrderEvent]]): Unit = {
-    eventSeq match {
-      case EventSeq.NonEmpty(stampeds) =>
-        val events = stampeds.iterator.filter(_.value.key == orderId).map(_.value.event).to(Vector)
-        assert(events == ExpectedEvents)
-      case o =>
-        fail(s"Unexpected EventSeq received: $o")
+    val events = runWithWorkflow(
+      toWorkflow(
+        Execute(WorkflowJob(
+          agentName,
+          CommandLineExecutable(
+            CommandLineParser.parse(s"""'$argScriptFile' 1 'two' "three" $$ARG""").orThrow)))),
+        orderArguments = Map("ARG" -> StringValue("ARG-VALUE")))
+    val stdout = events.collect { case OrderStdoutWritten(chunk) => chunk }.mkString
+    assert(removeAgentTaskId(stdout)
+      .contains("ARGUMENTS=/1 two three ARG-VALUE/"))
+  }
+
+  private def addExecuteTest(execute: Execute, orderArguments: Map[String, Value] = Map.empty, expectedOutcome: Outcome): Unit =
+    WorkflowPrinter.instructionToString(execute) in {
+      testWithWorkflow(toWorkflow(execute), orderArguments, Seq(expectedOutcome))
     }
+
+  private def testWithWorkflow(anonymousWorkflow: Workflow, orderArguments: Map[String, Value] = Map.empty, expectedOutcomes: Seq[Outcome]): Unit = {
+    val events = runWithWorkflow(anonymousWorkflow, orderArguments)
+    val outcomes = events.collect { case OrderProcessed(outcome) => outcome }
+    assert(outcomes == expectedOutcomes)
+
+    if (expectedOutcomes.last.isSucceeded) assert(events.last.isInstanceOf[OrderFinished])
+    else assert(events.last.isInstanceOf[OrderFailed])
+  }
+
+  private def runWithWorkflow(anonymousWorkflow: Workflow, orderArguments: Map[String, Value] = Map.empty): Seq[OrderEvent] = {
+    testPrintAndParse(anonymousWorkflow)
+
+    val versionId = versionIdIterator.next()
+    val workflow = anonymousWorkflow.withId(workflowPathIterator.next() ~ versionId)
+    val order = FreshOrder(orderIdIterator.next(), workflow.path, arguments = orderArguments)
+    directoryProvider.updateRepo(controller, versionId, Seq(workflow))
+
+    controller.runOrder(order).map(_.value)
+  }
+
+  private def testPrintAndParse(anonymousWorkflow: Workflow): Unit = {
+    val workflowNotation = WorkflowPrinter.print(anonymousWorkflow.withoutSource)
+    val reparsedWorkflow = WorkflowParser.parse(workflowNotation).map(_.withoutSource)
+    logger.debug(workflowNotation)
+    assert(reparsedWorkflow == Right(anonymousWorkflow.withoutSource))
   }
 }
 
 object ExecuteTest
 {
-  private val TestAgentName = AgentName("AGENT")
-  private val ScriptProlog = isWindows ?? "@echo off\n"
-  private val workflowNotation = s"""
-    define workflow {
-      execute executable="SCRIPT-0a.cmd", agent="AGENT";
-      execute executable="SCRIPT-1.cmd", agent="AGENT", arguments={"return_code": "1"}, successReturnCodes=[1];
-      job aJob;
-      job bJob;  // returnCode=2
-      if (true) {
-        job aJob;
-        job bJob;  // returnCode=3
-        job cJob;  // returnCode=4
-        define job bJob {
-          execute agent="AGENT", executable="SCRIPT-3.cmd", arguments={"return_code": "3"}, successReturnCodes=[3];
-        }
-        define job cJob {
-          execute agent="AGENT", script="${ScriptProlog}exit 4", arguments={"return_code": "4"}, successReturnCodes=[4];
-        }
-      };
-      job dJob, arguments={"return_code": "5"};
+  private val logger = Logger(getClass)
+  private val agentName = AgentName("AGENT")
 
-      define job aJob {
-        execute agent="AGENT", executable="SCRIPT-0b.cmd";
-      }
-      define job bJob {
-        execute agent="AGENT", executable="SCRIPT-2.cmd", arguments={"return_code": "2"}, successReturnCodes=[2];
-      }
-      define job dJob {
-        execute agent="AGENT", script="${ScriptProlog}exit 5", successReturnCodes=[5];
-      }
-    }"""
-  private val TestWorkflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW") ~ "INITIAL",  workflowNotation).orThrow
+  private def toWorkflow(execute: Execute): Workflow =
+    Workflow.of(execute)
 
-  private val ExpectedEvents = Vector(
-    OrderAdded(TestWorkflow.id, None),
-    OrderAttachable(TestAgentName),
-    OrderAttached(TestAgentName),
-    OrderStarted,
-    OrderProcessingStarted,
-    OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
-    OrderMoved(Position(1)),
-    OrderProcessingStarted,
-    OrderProcessed(Outcome.Succeeded(NamedValues.rc(1))),
-    OrderMoved(Position(2)),
-    OrderProcessingStarted,
-    OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
-    OrderMoved(Position(3)),
-    OrderProcessingStarted,
-    OrderProcessed(Outcome.Succeeded(NamedValues.rc(2))),
-    OrderMoved(Position(4) / Then % 0),
-    OrderProcessingStarted,
-    OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
-    OrderMoved(Position(4) / Then % 1),
-    OrderProcessingStarted,
-    OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
-    OrderMoved(Position(4) / Then % 2),
-    OrderProcessingStarted,
-    OrderProcessed(Outcome.Succeeded(NamedValues.rc(4))),
-    OrderMoved(Position(5)),
-    OrderProcessingStarted,
-    OrderProcessed(Outcome.Succeeded(NamedValues.rc(5))),
-    OrderMoved(Position(6)),
-    OrderDetachable,
-    OrderDetached,
-    OrderFinished)
+  private def variableRef(name: String) = if (isWindows) s"%$name%" else "$" + name
+
+  private def returnCodeScript(returnCode: String) =
+    if (isWindows) s"@exit $returnCode"
+    else s"exit $returnCode"
 }
