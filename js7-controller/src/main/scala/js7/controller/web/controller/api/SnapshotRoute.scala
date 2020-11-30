@@ -1,7 +1,7 @@
 package js7.controller.web.controller.api
 
 import akka.http.scaladsl.model.HttpEntity
-import akka.http.scaladsl.server.Directives.get
+import akka.http.scaladsl.server.Directives.{complete, get}
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.directives.ParameterDirectives._
 import akka.http.scaladsl.server.directives.PathDirectives.pathSingleSlash
@@ -66,22 +66,22 @@ trait SnapshotRoute extends ControllerRouteProvider
 
   private def historicSnapshot(eventId: EventId): Route =
     concurrentRequestsLimiter(
-      completeTask(Task.defer {
-        eventWatch.rawSnapshotAfter(after = eventId) match {
+      complete {
+        val checked = eventWatch.rawSnapshotAfter(after = eventId) match {
           case None =>
-            Task.pure(Left(SnapshotForUnknownEventIdProblem(eventId)))
+            Left(SnapshotForUnknownEventIdProblem(eventId))
 
           case Some(observable) =>
-            Task.pure(Right(
-              HttpEntity(
-                `application/x-ndjson`,
-                observable
-                  .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
-                    Task { logger.debug("whenShuttingDown completed") })
-                  .map(_.toByteString)
-                  .toAkkaSourceForHttpResponse)))
+            Right(HttpEntity(
+              `application/x-ndjson`,
+              observable
+                .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
+                  Task { logger.debug("whenShuttingDown completed") })
+                .map(_.toByteString)
+                .toAkkaSourceForHttpResponse))
         }
-      }))
+        checked
+      })
 
   private def snapshotToHttpEntity(state: ControllerState): HttpEntity.Chunked =
     HttpEntity(
