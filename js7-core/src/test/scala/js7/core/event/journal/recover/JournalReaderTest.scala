@@ -6,7 +6,6 @@ import io.circe.syntax.EncoderOps
 import java.nio.file.Files.delete
 import java.util.UUID
 import js7.base.circeutils.CirceUtils.RichJson
-import js7.base.data.ByteArray
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
@@ -148,7 +147,7 @@ final class JournalReaderTest extends AnyFreeSpec with TestJournalMixin
       val file = currentFile
       delete(file)  // File of last test
       autoClosing(new FileJsonWriter(file)) { writer =>
-        def write[A](a: A)(implicit encoder: Encoder[A]) = writer.write(ByteArray(encoder(a).compactPrint))
+        def write[A](a: A)(implicit encoder: Encoder[A]) = writer.write(encoder(a).toByteArray)
         def writeEvent(a: Stamped[KeyedEvent[TestEvent]]) = write(a)
 
         write(JournalHeader.forTest(journalId, eventId = EventId.BeforeFirst).asJson)

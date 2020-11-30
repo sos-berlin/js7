@@ -12,6 +12,7 @@ import io.circe.Encoder
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.utils.Ascii
+import js7.common.akkautils.ByteStrings.syntax._
 
 /**
   * @author Joacim Zschimmer
@@ -45,6 +46,6 @@ object JsonStreamingSupport
 
   def jsonSeqMarshaller[A: Encoder](implicit streamingSupport: JsonEntityStreamingSupport): ToEntityMarshaller[A] =
     Marshaller.withFixedContentType(streamingSupport.contentType)(value =>
-      HttpEntity.Strict(streamingSupport.contentType, ByteString(value.asJson.compactPrint)))
+      HttpEntity.Strict(streamingSupport.contentType, value.asJson.toByteSequence[ByteString]))
 }
 

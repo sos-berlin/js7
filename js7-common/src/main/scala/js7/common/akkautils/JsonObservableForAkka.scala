@@ -7,6 +7,7 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
 import js7.base.utils.ScalaUtils.syntax._
+import js7.common.akkautils.ByteStrings.syntax._
 import monix.reactive.Observable
 
 object JsonObservableForAkka
@@ -37,8 +38,7 @@ object JsonObservableForAkka
   }
 
   private def encode[A: Encoder](a: A): ByteString =
-    ByteString(a.asJson.compactPrint)
-    //ByteString.fromArrayUnsafe(CompactPrinter.printToByteBuffer(a.asJson).array())
+    a.asJson.toByteSequence[ByteString]
 
   private def decode[A: Decoder](byteString: ByteString): A =
     byteString.utf8String.parseJsonChecked.orThrow.as[A].orThrow

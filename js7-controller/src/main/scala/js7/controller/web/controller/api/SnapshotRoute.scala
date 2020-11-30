@@ -89,7 +89,8 @@ trait SnapshotRoute extends ControllerRouteProvider
       state.toSnapshotObservable
         .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
           Task { logger.debug("whenShuttingDown completed") })
-        .mapParallelOrderedBatch()(o => ByteString(o.asJson(ControllerState.snapshotObjectJsonCodec).compactPrint) ++ LF)
+        .mapParallelOrderedBatch()(_
+          .asJson(ControllerState.snapshotObjectJsonCodec).toByteSequence[ByteString] ++ LF)
         .toAkkaSourceForHttpResponse)
 }
 

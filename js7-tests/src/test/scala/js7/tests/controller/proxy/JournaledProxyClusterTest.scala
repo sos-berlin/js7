@@ -182,7 +182,7 @@ final class JournaledProxyClusterTest extends AnyFreeSpec with ClusterProxyTest
 
   private def calculateNumberOf[A: Encoder: TypeTag](n: Int, sample: A): Int =
     if (sys.props.contains("test.speed") && sys.runtime.maxMemory >= 16_000_000_000L) {
-      val sampleSize = sample.asJson.compactPrint.length
+      val sampleSize = sample.asJson.toByteArray.length
       logger.info(s"$n× ${implicitly[TypeTag[A]].tpe} à $sampleSize bytes = ${n * sampleSize} bytes")
       logger.info(sample.asJson.compactPrint)
       n

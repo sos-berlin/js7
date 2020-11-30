@@ -9,8 +9,9 @@ import io.circe.syntax.EncoderOps
 import io.circe.{CursorOp, Decoder, DecodingFailure, Encoder, HCursor, Json, JsonNumber, JsonObject, ParsingFailure, Printer}
 import java.io.{OutputStream, OutputStreamWriter}
 import java.nio.ByteBuffer
+import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.circeutils.AnyJsonCodecs.anyToJson
-import js7.base.data.Writable
+import js7.base.data.{ByteArray, ByteSequence, Writable}
 import js7.base.generic.GenericString
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
@@ -81,20 +82,29 @@ object CirceUtils
       else if (underlying.isEmpty) o
       else JsonObject.fromIterable(underlying.toIterable ++ o.toIterable)
 
-    def toPrettyString: String =
-      PrettyPrinter.print(Json.fromJsonObject(underlying))
+    def toByteArray: ByteArray =
+      ByteArray.fromString(compactPrint)
 
     def compactPrint: String =
       CompactPrinter.print(Json.fromJsonObject(underlying))
+
+    def toPrettyString: String =
+      PrettyPrinter.print(Json.fromJsonObject(underlying))
   }
 
   implicit final class RichJson(private val underlying: Json) extends AnyVal
   {
-    def toPrettyString: String =
-      PrettyPrinter.print(underlying)
+    def toByteSequence[ByteSeq](implicit ByteSeq: ByteSequence[ByteSeq]): ByteSeq =
+      ByteSeq.fromString(compactPrint)
+
+    def toByteArray: ByteArray =
+      ByteArray.fromString(compactPrint)
 
     def compactPrint: String =
       CompactPrinter.print(underlying)
+
+    def toPrettyString: String =
+      PrettyPrinter.print(underlying)
 
     def checkedAs[A: Decoder] = underlying.as[A].toChecked
 
@@ -254,7 +264,7 @@ object CirceUtils
   private final class JsonWritable[A: Encoder] extends Writable[A]
   {
     def writeToStream(a: A, out: OutputStream) = {
-      val w = new OutputStreamWriter(out)
+      val w = new OutputStreamWriter(out, UTF_8)
       w.write(a.asJson.compactPrint)
       w.flush()
     }

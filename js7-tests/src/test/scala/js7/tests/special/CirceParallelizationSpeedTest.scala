@@ -136,7 +136,7 @@ final class CirceParallelizationSpeedTest extends AnyFreeSpec
     seq.map(_.parseJsonAs[A].orThrow)
 
   private def encode[A: Encoder](a: A): ByteArray =
-    ByteArray.fromString(a.asJson.compactPrint)
+    a.asJson.toByteArray
 
   private def decode[A: Decoder](bytes: ByteArray): A =
     bytes.parseJsonAs[A].orThrow

@@ -121,7 +121,7 @@ extends AutoCloseable
         case None =>
         case Some(positionAndJson) =>
           throw new CorruptJournalException("Event header is missing", journalFile,
-            positionAndJson.copy(value = ByteArray(positionAndJson.value.compactPrint)))
+            positionAndJson.copy(value = positionAndJson.value.toByteArray))
       }
     }
     jsonReader.position
@@ -192,7 +192,7 @@ extends AutoCloseable
           nextEvent3()
         case Some(positionAndJson) =>
           throw new CorruptJournalException(s"Event header is missing", journalFile,
-            positionAndJson.copy(value = ByteArray(positionAndJson.value.compactPrint)))
+            positionAndJson.copy(value = positionAndJson.value.toByteArray))
 
         case None =>
           None
@@ -210,14 +210,14 @@ extends AutoCloseable
             val stampedEvent = deserialize(positionAndJson.value)
             if (stampedEvent.eventId <= _eventId)
               throw new CorruptJournalException(s"Journal is corrupt, EventIds are in wrong order: ${EventId.toString(stampedEvent.eventId)} follows ${EventId.toString(_eventId)}",
-                journalFile, positionAndJson.copy(value = ByteArray(positionAndJson.value.compactPrint)))
+                journalFile, positionAndJson.copy(value = positionAndJson.value.toByteArray))
 
             if (_totalEventCount != -1) _totalEventCount += 1
             Some(stampedEvent)
 
           case Transaction =>
             if (transaction.isInTransaction) throw new CorruptJournalException("Duplicate/nested transaction", journalFile,
-              positionAndJson.copy(value = ByteArray(positionAndJson.value.compactPrint)))
+              positionAndJson.copy(value = positionAndJson.value.toByteArray))
             transaction.begin()
             def read() =
               try jsonReader.read()
@@ -251,7 +251,7 @@ extends AutoCloseable
             nextEvent3()
 
           case _ => throw new CorruptJournalException(s"Unexpected JSON record", journalFile,
-            positionAndJson.copy(value = ByteArray(positionAndJson.value.compactPrint)))
+            positionAndJson.copy(value = positionAndJson.value.toByteArray))
         }
     }
 

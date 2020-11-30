@@ -3,7 +3,6 @@ package js7.core.event.journal.write
 import io.circe.syntax.EncoderOps
 import java.nio.file.Path
 import js7.base.circeutils.CirceUtils._
-import js7.base.data.ByteArray
 import js7.base.utils.Assertions.assertThat
 import js7.common.event.PositionAnd
 import js7.common.scalautil.Logger
@@ -106,8 +105,8 @@ with AutoCloseable
 
 private[journal] object EventJournalWriter
 {
-  private val TransactionByteArray = ByteArray(Transaction.asJson.compactPrint)
-  private val CommitByteArray = ByteArray(Commit.asJson.compactPrint)
+  private val TransactionByteArray = Transaction.asJson.toByteArray
+  private val CommitByteArray = Commit.asJson.toByteArray
 
   def forTest(journalMeta: JournalMeta, after: EventId, journalId: JournalId,
     observer: Option[JournalingObserver] = None, withoutSnapshots: Boolean = true)

@@ -41,7 +41,7 @@ extends JournalWriter(after = after, append = false)
 
   def beginSnapshotSection(): Unit = {
     if (snapshotStarted) throw new IllegalStateException("SnapshotJournalWriter: duplicate beginSnapshotSection()")
-    jsonWriter.write(ByteArray(SnapshotHeader.compactPrint))
+    jsonWriter.write(SnapshotHeader.toByteArray)
     flush(sync = false)
     snapshotStarted = true
   }
@@ -54,7 +54,7 @@ extends JournalWriter(after = after, append = false)
   }
 
   def endSnapshotSection(): Unit = {
-    jsonWriter.write(ByteArray(SnapshotFooter.compactPrint))
+    jsonWriter.write(SnapshotFooter.toByteArray)
     statistics.setFileLength(jsonWriter.fileLength)
   }
 

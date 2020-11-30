@@ -41,13 +41,13 @@ extends AutoCloseable
   def close() = jsonWriter.close()
 
   final def writeHeader(header: JournalHeader): Unit = {
-    jsonWriter.write(ByteArray.fromString(header.asJson.compactPrint))
+    jsonWriter.write(header.asJson.toByteArray)
     flush(sync = false)
   }
 
   def beginEventSection(sync: Boolean): Unit = {
     if (_eventsStarted) throw new IllegalStateException("EventJournalWriter: duplicate beginEventSection()")
-    jsonWriter.write(ByteArray(EventHeader.compactPrint))
+    jsonWriter.write(EventHeader.toByteArray)
     flush(sync = sync)
     _eventsStarted = true
   }
@@ -83,7 +83,7 @@ extends AutoCloseable
   }
 
   private def serialize[A: Encoder](a: A): ByteArray =
-    try ByteArray(a.asJson.compactPrint)
+    try a.asJson.toByteArray
     catch { case t: Exception => throw new SerializationException(t) }
 
   protected final def eventsStarted = _eventsStarted

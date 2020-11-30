@@ -7,7 +7,6 @@ import java.nio.file.Files.{delete, exists, move}
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import js7.base.circeutils.CirceUtils._
-import js7.base.data.ByteArray
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
@@ -551,7 +550,7 @@ extends Actor with Stash
         }
         .mapParallelOrderedBatch() { snapshotObject =>
           // TODO Crash with SerializationException like EventSnapshotWriter ?
-          snapshotObject -> ByteArray(snapshotObject.asJson(S.snapshotObjectJsonCodec).compactPrint)
+          snapshotObject -> snapshotObject.asJson(S.snapshotObjectJsonCodec).toByteArray
         }
         .foreach { case (snapshotObject, byteArray) =>
           snapshotWriter.writeSnapshot(byteArray)

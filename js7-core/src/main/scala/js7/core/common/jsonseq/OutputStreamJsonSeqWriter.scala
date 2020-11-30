@@ -30,7 +30,7 @@ extends AutoCloseable
 
   @TestOnly
   private[jsonseq] def writeJson(json: Json): Unit =
-    writeJson(ByteArray.fromString(json.compactPrint))
+    writeJson(json.toByteArray)
 
   def writeJson(byteArray: ByteArray): Unit = {
     if (withRS) buffered.write(RS)
