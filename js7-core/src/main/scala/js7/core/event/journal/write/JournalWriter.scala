@@ -5,6 +5,7 @@ import io.circe.syntax.EncoderOps
 import java.nio.file.{Files, Path}
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.data.ByteArray
+import js7.base.monixutils.MonixBase.DefaultBatchSize
 import js7.base.monixutils.MonixBase.syntax._
 import js7.common.utils.ByteUnits.toMB
 import js7.core.event.journal.data.JournalMeta
@@ -14,8 +15,7 @@ import js7.data.event.JournalSeparators.EventHeader
 import js7.data.event.{Event, EventId, JournalHeader, KeyedEvent, Stamped}
 import monix.execution.Scheduler
 import monix.reactive.Observable
-import scala.concurrent.Await
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
 
 /**
@@ -57,30 +57,30 @@ extends AutoCloseable
 
   protected def writeEvents_(stampedEvents: Seq[Stamped[KeyedEvent[Event]]]): Unit = {
     for (stamped <- stampedEvents) {
-      if (stamped.eventId <= _lastEventId)
-        throw new IllegalArgumentException(s"EventJournalWriter.writeEvent with EventId ${EventId.toString(stamped.eventId)} <= lastEventId ${EventId.toString(_lastEventId)}")
+      if (stamped.eventId <= _lastEventId) throw new IllegalArgumentException(
+        s"EventJournalWriter.writeEvent with EventId ${EventId.toString(stamped.eventId)}" +
+          s" <= lastEventId ${EventId.toString(_lastEventId)}")
       _lastEventId = stamped.eventId
     }
     import journalMeta.eventJsonCodec
-    if (sys.runtime.availableProcessors >= 4 && stampedEvents.sizeIs < JsonParallelizationThreshold)
-      writeJsonSerially(stampedEvents)
-    else
+    if (sys.runtime.availableProcessors > 1 && stampedEvents.sizeIs >= JsonParallelizationThreshold)
       writeJsonInParallel(stampedEvents)
+    else
+      writeJsonSerially(stampedEvents)
   }
 
   private def writeJsonSerially[A: Encoder](seq: Seq[A]): Unit =
-    for (a <- seq) {
-      jsonWriter.write(serialize(a))
-    }
+    for (a <- seq) jsonWriter.write(serialize(a))
 
-  private def writeJsonInParallel[A: Encoder](seq: Seq[A]): Unit =
-    // TODO Try to do it asynchronously (in JournalActor)
-    Await.result(
-      Observable.fromIterable(seq)
-        .mapParallelOrderedBatch(batchSize = JsonBatchSize)(
-          serialize[A])
-        .foreach(jsonWriter.write)(scheduler),
-      Duration.Inf)
+  private def writeJsonInParallel[A: Encoder](seq: Seq[A]): Unit = {
+    // TODO Try to call it asynchronously (in JournalActor)
+    implicit val s = scheduler
+    Observable.fromIterable(seq)
+      .mapParallelOrderedBatch(batchSize = JsonBatchSize)(
+        serialize[A])
+      .foreachL(jsonWriter.write)
+      .runSyncUnsafe() /*Blocking !!!*/
+  }
 
   private def serialize[A: Encoder](a: A): ByteArray =
     try ByteArray(a.asJson.compactPrint)
@@ -116,6 +116,6 @@ extends AutoCloseable
 }
 
 object JournalWriter {
-  private val JsonBatchSize = 1000
-  private val JsonParallelizationThreshold = 16 * JsonBatchSize
+  private val JsonBatchSize = DefaultBatchSize
+  private val JsonParallelizationThreshold = 3 * JsonBatchSize
 }
