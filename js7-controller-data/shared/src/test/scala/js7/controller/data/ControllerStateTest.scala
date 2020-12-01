@@ -41,7 +41,7 @@ final class ControllerStateTest extends AsyncFreeSpec {
           Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
           ClusterTiming(10.s, 20.s)))),
     ControllerMetaState(ControllerId("CONTROLLER-ID"), Timestamp("2019-05-24T12:00:00Z"), timezone = "Europe/Berlin"),
-    (AgentRefState(AgentRef(AgentName("AGENT"), Uri("https://AGENT")), None, EventId(7)) :: Nil)
+    (AgentRefState(AgentRef(AgentName("AGENT"), Uri("https://AGENT")), None, None, AgentRefState.Decoupled, EventId(7)) :: Nil)
       .toKeyedMap(_.name),
     Repo.empty.applyEvent(VersionAdded(VersionId("1.0"))).orThrow,
     (Order(OrderId("ORDER"), WorkflowPath("/WORKFLOW") /: Position(1), Order.Fresh(None)) :: Nil).toKeyedMap(_.id))
@@ -130,6 +130,9 @@ final class ControllerStateTest extends AsyncFreeSpec {
             "agentRef": {
               "name": "AGENT",
               "uri": "https://AGENT"
+            },
+            "couplingState": {
+              "TYPE": "Decoupled"
             },
             "eventId": 7
           }, {

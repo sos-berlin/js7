@@ -21,7 +21,7 @@ import js7.base.utils.SetOnce
 import js7.base.web.Uri
 import js7.common.akkautils.ReceiveLoggingActor
 import js7.common.configutils.Configs.ConvertibleConfig
-import js7.common.http.RecouplingStreamReader
+import js7.common.http.{AkkaHttpClient, RecouplingStreamReader}
 import js7.common.scalautil.Futures.promiseFuture
 import js7.common.scalautil.Logger
 import js7.common.scalautil.MonixUtils.promiseTask
@@ -75,7 +75,7 @@ with ReceiveLoggingActor.WithStash
   private var lastFetchedEventId = initialEventId
   private var lastCommittedEventId = initialEventId
   @volatile
-  private var lastProblem: Option[Problem] = None
+  private var lastCouplingFailed: Option[AgentCouplingFailed] = None
   private var currentFetchedFuture: Option[CancelableFuture[Completed]] = None
   private var releaseEventsCancelable: Option[Cancelable] = None
   private var delayNextReleaseEvents = false
@@ -109,17 +109,18 @@ with ReceiveLoggingActor.WithStash
 
     override protected def onCouplingFailed(api: AgentClient, problem: Problem) =
       Task.defer {
-        if (lastProblem.contains(problem)) {
+        val agentCouplingFailed = AgentCouplingFailed(AkkaHttpClient.toPrettyProblem(problem))
+        if (lastCouplingFailed contains agentCouplingFailed) {
           logger.debug(s"Coupling failed: $problem")
           Task.pure(true)
         } else {
-          lastProblem = Some(problem)
+          lastCouplingFailed = Some(agentCouplingFailed)
           logger.warn(s"Coupling failed: $problem")
           for (t <- problem.throwableOption if t.getStackTrace.nonEmpty) logger.debug(s"Coupling failed: $problem", t)
           if (noJournal)
             Task.pure(true)
           else
-            persistTask(AgentCouplingFailed(problem), async = true) { (_, _) =>
+            persistTask(agentCouplingFailed, async = true) { (_, _) =>
               true  // recouple and continue after onCouplingFailed
             }.map(_.orThrow)
         }
@@ -253,7 +254,7 @@ with ReceiveLoggingActor.WithStash
       }
 
     case Internal.OnCoupled(promise, agentOrderIds) =>
-      lastProblem = None
+      lastCouplingFailed = None
       delayNextReleaseEvents = false
       commandQueue.onCoupled(agentOrderIds)
       promise.success(Completed)
@@ -325,7 +326,7 @@ with ReceiveLoggingActor.WithStash
       commandQueue.maySend()
 
     case Internal.BatchSucceeded(responses) =>
-      lastProblem = None
+      lastCouplingFailed = None
       val succeededInputs = commandQueue.handleBatchSucceeded(responses)
 
       val detachedOrderIds = succeededInputs collect { case Input.DetachOrder(orderId) => orderId }

@@ -8,7 +8,7 @@ import akka.http.scaladsl.model.HttpMethods.{GET, POST}
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.headers.CacheDirectives.{`no-cache`, `no-store`}
 import akka.http.scaladsl.model.headers.{Accept, CustomHeader, RawHeader, `Cache-Control`}
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpHeader, HttpMethod, HttpRequest, HttpResponse, RequestEntity, StatusCode, StatusCodes, Uri => AkkaUri}
+import akka.http.scaladsl.model.{ContentTypes, ErrorInfo, HttpEntity, HttpHeader, HttpMethod, HttpRequest, HttpResponse, RequestEntity, StatusCode, StatusCodes, Uri => AkkaUri}
 import akka.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshal}
 import akka.http.scaladsl.{ConnectionContext, Http}
 import akka.stream.Materializer
@@ -382,6 +382,31 @@ object AkkaHttpClient
     protected val trustStoreRefs: Seq[TrustStoreRef] = Nil,
     protected val name: String = "")
   extends AkkaHttpClient
+
+  private val connectionWasClosedUnexpectedly = Problem.pure("Connection was closed unexpectedly")
+
+  def toPrettyProblem(problem: Problem): Problem = {
+    val pretty = problem match {
+      case Problem.IsThrowable(akka.http.scaladsl.model.EntityStreamException(ErrorInfo(summary, _))) =>
+        if (summary contains "connection was closed unexpectedly") connectionWasClosedUnexpectedly
+        else Problem.pure(summary)
+
+      case Problem.IsThrowable(t)
+        if t.getClass.getName endsWith "UnexpectedConnectionClosureException" =>
+        connectionWasClosedUnexpectedly
+
+      case Problem.IsThrowable(t: akka.stream.StreamTcpException) =>
+        t.getCause match {
+          case t: java.net.SocketException => Problem(t.getMessage)
+          case t: java.net.UnknownHostException => Problem(t.toString stripPrefix "java.net.")
+          case _ => problem
+        }
+
+      case _ => problem
+    }
+    if (pretty ne problem) logger.debug(s"toPrettyProblem($problem) => $pretty")
+    pretty
+  }
 
   final class HttpException private[http](method: HttpMethod, val uri: Uri, httpResponse: HttpResponse, val dataAsString: String)
   extends HttpClient.HttpException

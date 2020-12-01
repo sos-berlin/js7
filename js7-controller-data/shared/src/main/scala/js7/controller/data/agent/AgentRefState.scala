@@ -1,13 +1,20 @@
 package js7.controller.data.agent
 
 import js7.base.circeutils.CirceUtils.deriveCodec
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.{Checked, Problem}
+import js7.controller.data.agent.AgentRefState.{Coupled, CouplingFailed, CouplingState}
 import js7.controller.data.events.AgentRefStateEvent
 import js7.controller.data.events.AgentRefStateEvent.{AgentCouplingFailed, AgentEventsObserved, AgentReady, AgentRegisteredController}
 import js7.data.agent.{AgentRef, AgentRunId}
 import js7.data.event.EventId
 
-final case class AgentRefState(agentRef: AgentRef, agentRunId: Option[AgentRunId], eventId: EventId)
+final case class AgentRefState(
+  agentRef: AgentRef,
+  agentRunId: Option[AgentRunId],
+  timezone: Option[String],
+  couplingState: CouplingState,
+  eventId: EventId)
 {
   def name = agentRef.name
 
@@ -17,10 +24,16 @@ final case class AgentRefState(agentRef: AgentRef, agentRunId: Option[AgentRunId
         if (agentRunId.isDefined || eventId != EventId.BeforeFirst)
           Left(Problem("Duplicate AgentRegisteredController event: " + event))
         else
-          Right(copy(agentRunId = Some(agentRunId_)))
+          Right(copy(
+            agentRunId = Some(agentRunId_)))
 
-      case _: AgentReady | _: AgentCouplingFailed =>
-        Right(this)
+      case AgentReady(timezone) =>
+        Right(copy(
+          couplingState = Coupled,
+          timezone = Some(timezone)))
+
+      case AgentCouplingFailed(problem) =>
+        Right(copy(couplingState = CouplingFailed(problem)))
 
       case AgentEventsObserved(eventId_) =>
         if (eventId_ < eventId)
@@ -36,5 +49,17 @@ object AgentRefState
   implicit val jsonCodec = deriveCodec[AgentRefState]
 
   def apply(agentRef: AgentRef) =
-    new AgentRefState(agentRef, None, EventId.BeforeFirst)
+    new AgentRefState(agentRef, None, None, Decoupled, EventId.BeforeFirst)
+
+  sealed trait CouplingState
+  case object Coupled extends CouplingState
+  case class CouplingFailed(problem: Problem) extends CouplingState
+  case object Decoupled extends CouplingState
+
+  object CouplingState {
+    implicit val jsonCodec: TypedJsonCodec[CouplingState] = TypedJsonCodec(
+      Subtype(Coupled),
+      Subtype(deriveCodec[CouplingFailed]),
+      Subtype(Decoupled))
+  }
 }

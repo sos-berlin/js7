@@ -9,7 +9,7 @@ import js7.controller.data.ControllerState
 import js7.data.agent.AgentName
 import js7.data.order.{Order, OrderId}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.proxy.javaapi.data.agent.JAgentRef
+import js7.proxy.javaapi.data.agent.{JAgentRef, JAgentRefState}
 import js7.proxy.javaapi.data.cluster.JClusterState
 import js7.proxy.javaapi.data.common.JJournaledState
 import js7.proxy.javaapi.data.common.VavrConverters._
@@ -40,11 +40,17 @@ extends JJournaledState[JControllerState, ControllerState]
       .map(JWorkflow.apply)
       .toVavr
 
-  /** Looks up an AgentName in the current version. */
+  /** Looks up an AgentRef InventoryItem in the current version. */
   def nameToAgentRef(name: AgentName): VEither[Problem, JAgentRef] =
     asScala.nameToAgent.checked(name)
       .map(_.agentRef)
       .map(JAgentRef.apply)
+      .toVavr
+
+  /** Looks up an AgentRefState in the current version. */
+  def nameToAgentRefState(name: AgentName): VEither[Problem, JAgentRefState] =
+    asScala.nameToAgent.checked(name)
+      .map(JAgentRefState.apply)
       .toVavr
 
   def orderIds: java.util.Set[OrderId] =

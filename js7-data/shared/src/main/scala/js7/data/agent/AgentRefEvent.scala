@@ -12,9 +12,12 @@ sealed trait AgentRefEvent extends Event
 
 object AgentRefEvent
 {
-  final case class AgentAdded(uri: Uri) extends AgentRefEvent
+  sealed trait AgentAddedOrUpdated extends AgentRefEvent {
+    def uri: Uri
+  }
+  final case class AgentAdded(uri: Uri) extends AgentAddedOrUpdated
 
-  final case class AgentUpdated(uri: Uri) extends AgentRefEvent
+  final case class AgentUpdated(uri: Uri) extends AgentAddedOrUpdated
 
   //case object AgentDeleted extends AgentRefEvent
 
