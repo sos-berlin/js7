@@ -23,9 +23,9 @@ final class CommandLineParserTest extends AnyFreeSpec
       Right(CommandLineExpression("XX $NAME YY $END",
         List(
           StringConstant("XX"),
-          MkString(NamedValue.last("NAME")),
+          NamedValue.last("NAME"),
           StringConstant("YY"),
-          MkString(NamedValue.last("END"))))))
+          NamedValue.last("END")))))
   }
 
   "Constant in quotes" in {
@@ -39,7 +39,7 @@ final class CommandLineParserTest extends AnyFreeSpec
         """>> "$NAME" <<""",
         List(
           StringConstant(">>"),
-          MkString(NamedValue.last("NAME")),
+          NamedValue.last("NAME"),
           StringConstant("<<")))))
   }
 
@@ -49,8 +49,8 @@ final class CommandLineParserTest extends AnyFreeSpec
         """XX "$NAME-\"QUOTED\"\\\$"""",
         List(
           StringConstant("XX"),
-            MkString(ListExpression(List(
-              NamedValue.last("NAME"),
-              StringConstant("""-"QUOTED"\$"""))))))))
+          MkString(ListExpression(List(
+            NamedValue.last("NAME"),
+            StringConstant("""-"QUOTED"\$"""))))))))
   }
 }

@@ -3,7 +3,7 @@ package js7.data.job
 import js7.base.circeutils.CirceUtils._
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.problem.Problems.InvalidNameProblem
-import js7.data.value.expression.Expression.{ListExpression, MkString, NamedValue, NumericConstant, ObjectExpression, Add}
+import js7.data.value.expression.Expression.{Add, NamedValue, NumericConstant, ObjectExpression, StringConstant}
 import js7.tester.CirceJsonTester._
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -26,7 +26,7 @@ final class ExecutableTest extends AnyFreeSpec
       testJson[Executable](
         RelativeExecutablePath(
           "EXECUTABLE",
-          ObjectExpression(Map(
+          env = ObjectExpression(Map(
             "ENV-VAR" -> NamedValue.last("VAR"),
             "NUMBER" -> Add(NumericConstant(1), NumericConstant(2)))),
           v1Compatible = true),
@@ -56,7 +56,7 @@ final class ExecutableTest extends AnyFreeSpec
       testJson[Executable](
         AbsoluteExecutablePath(
           "/EXECUTABLE",
-          ObjectExpression(Map(
+          env = ObjectExpression(Map(
             "ENV-VAR" -> NamedValue.last("VAR"),
             "NUMBER" -> NumericConstant(7))),
           v1Compatible = true),
@@ -73,6 +73,32 @@ final class ExecutableTest extends AnyFreeSpec
       """)
     }
 
+    "CommandLineExecutable" in {
+      testJson[Executable](
+        CommandLineExecutable(
+          CommandLineExpression(
+          """PROGRAM ARG-1 'ARG 2' "ARG 3" $ARG4 "$ARG5"""",
+            List(
+              StringConstant("PROGRAM"),
+              StringConstant("ARG-1"),
+              StringConstant("ARG 2"),
+              StringConstant("ARG 3"),
+              NamedValue.last("ARG4"),
+              NamedValue.last("ARG5"))),
+          env = ObjectExpression(Map(
+            "ENV-VAR" -> NamedValue.last("VAR"),
+            "NUMBER" -> Add(NumericConstant(1), NumericConstant(2))))),
+        json"""
+        {
+          "TYPE": "CommandLineExecutable",
+           "command": "PROGRAM ARG-1 'ARG 2' \"ARG 3\" $$ARG4 \"$$ARG5\"",
+           "env": {
+             "ENV-VAR": "$$VAR",
+             "NUMBER": "1 + 2"
+           }
+        }""")
+    }
+
     "ExecutableScript, minumum" in {
       testJson[Executable](
         ExecutableScript("SCRIPT"),json"""
@@ -87,7 +113,7 @@ final class ExecutableTest extends AnyFreeSpec
       testJson[Executable](
         ExecutableScript(
           "SCRIPT",
-          ObjectExpression(Map(
+          env = ObjectExpression(Map(
             "ENV-VAR" -> NamedValue.last("VAR"),
             "NUMBER" -> NumericConstant(7))),
           v1Compatible = true),
