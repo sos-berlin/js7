@@ -76,6 +76,21 @@ object Expression
     override def toString = toString(a, ">", b)
   }
 
+  final case class Concat(a: Expression, b: Expression) extends BooleanExpression {
+    def precedence = Precedence.Addition
+    override def toString = toString(a, "++", b)
+  }
+
+  final case class Add(a: Expression, b: Expression) extends BooleanExpression {
+    def precedence = Precedence.Addition
+    override def toString = toString(a, "+", b)
+  }
+
+  final case class Substract(a: Expression, b: Expression) extends BooleanExpression {
+    def precedence = Precedence.Addition
+    override def toString = toString(a, "-", b)
+  }
+
   final case class In(a: Expression, b: ListExpression) extends BooleanExpression {
     def precedence = Precedence.WordOperator
     override def toString = toString(a, "in", b)
@@ -233,6 +248,7 @@ object Expression
     val Or = 2
     val And = 3
     val Comparison = 4
+    val Addition = 6
     val Factor = 99
 
     def toString(a: Expression, op: String, opPrecedence: Int, b: Expression): String =

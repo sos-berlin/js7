@@ -164,6 +164,12 @@ final class ExpressionParserTest extends AnyFreeSpec
       MkString(ListExpression(StringConstant("STRING") :: NamedValue.last("NAME") :: NumericConstant(7) :: Nil)))
   }
 
+  testExpression("1 + 2+3",
+    Add(Add(NumericConstant(1), NumericConstant(2)), NumericConstant(3)))
+
+  testExpression("'A' ++ 'B'++'C'",
+    Concat(Concat(StringConstant("A"), StringConstant("B")), StringConstant("C")))
+
   testExpression("'STRING'.stripMargin",
     StripMargin(StringConstant("STRING")))
 

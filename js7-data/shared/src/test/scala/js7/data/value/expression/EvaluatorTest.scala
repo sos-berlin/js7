@@ -27,13 +27,27 @@ final class EvaluatorTest extends AnyFreeSpec
 
         val findValue = {
           case ValueSearch(ValueSearch.LastOccurred, ValueSearch.NamedValue(name)) =>
-            Right(Map("ASTRING" -> StringValue("AA"), "ANUMBER" -> NumericValue(7), "ABOOLEAN" -> BooleanValue(true), "returnCode" -> NumericValue(1)).get(name))
+            Right(
+              Map(
+                "ASTRING" -> StringValue("AA"),
+                "ANUMBER" -> NumericValue(7),
+                "ABOOLEAN" -> BooleanValue(true),
+                "returnCode" -> NumericValue(1)
+              ).get(name))
           case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByPrefix("PREFIX")), ValueSearch.NamedValue(name)) =>
             Right(Map("KEY" -> "LABEL-VALUE").get(name) map StringValue.apply)
           case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByLabel(Label("LABEL"))), ValueSearch.NamedValue(name)) =>
-            Right(Map("KEY" -> StringValue("LABEL-VALUE"), "returnCode" -> NumericValue(2)).get(name))
+            Right(
+              Map(
+                "KEY" -> StringValue("LABEL-VALUE"),
+                "returnCode" -> NumericValue(2)
+              ).get(name))
           case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByWorkflowJob(WorkflowJob.Name("JOB"))), ValueSearch.NamedValue(name)) =>
-            Right(Map("KEY" -> StringValue("JOB-VALUE"), "returnCode" -> NumericValue(3)).get(name))
+            Right(
+              Map(
+                "KEY" -> StringValue("JOB-VALUE"),
+                "returnCode" -> NumericValue(3)
+              ).get(name))
           case ValueSearch(ValueSearch.Argument, ValueSearch.NamedValue(name)) =>
             Right(Map("ARG" -> "ARG-VALUE").get(name) map StringValue.apply)
           case o =>
@@ -174,6 +188,10 @@ final class EvaluatorTest extends AnyFreeSpec
         Right(StripMargin(StringConstant(longString))))
     }
 
+    testEval("""$returnCode == 1""",
+      result = true,
+      Right(Equal(LastReturnCode, NumericConstant(1))))
+
     testEval("""$returnCode == 0""",
       result = false,
       Right(Equal(LastReturnCode, NumericConstant(0))))
@@ -192,6 +210,22 @@ final class EvaluatorTest extends AnyFreeSpec
 
     testEval("""$returnCode < 1""", false,
       Right(LessThan(LastReturnCode, NumericConstant(1))))
+
+    testEval("""$returnCode + 0 == 1""",
+      result = true,
+      Right(Equal(Add(LastReturnCode, NumericConstant(0)), NumericConstant(1))))
+
+    testEval("""$returnCode + 1 == 2""",
+      result = true,
+      Right(Equal(Add(LastReturnCode, NumericConstant(1)), NumericConstant(2))))
+
+    testEval("""$returnCode - 3""",
+      result = -2,
+      Right(Substract(LastReturnCode, NumericConstant(3))))
+
+    testEval("""'->' ++ $returnCode ++ '<-'""",
+      result = "->1<-",
+      Right(Concat(Concat(StringConstant("->"), LastReturnCode), StringConstant("<-"))))
 
     testEval("""catchCount""",
       result = 3,

@@ -3,7 +3,7 @@ package js7.data.job
 import js7.base.circeutils.CirceUtils._
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.problem.Problems.InvalidNameProblem
-import js7.data.value.expression.Expression.{NamedValue, NumericConstant, ObjectExpression}
+import js7.data.value.expression.Expression.{ListExpression, MkString, NamedValue, NumericConstant, ObjectExpression, Add}
 import js7.tester.CirceJsonTester._
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -28,7 +28,7 @@ final class ExecutableTest extends AnyFreeSpec
           "EXECUTABLE",
           ObjectExpression(Map(
             "ENV-VAR" -> NamedValue.last("VAR"),
-            "NUMBER" -> NumericConstant(7))),
+            "NUMBER" -> Add(NumericConstant(1), NumericConstant(2)))),
           v1Compatible = true),
         json"""
          {
@@ -36,7 +36,7 @@ final class ExecutableTest extends AnyFreeSpec
           "path": "EXECUTABLE",
           "env": {
             "ENV-VAR": "$$VAR",
-            "NUMBER": "7"
+            "NUMBER": "1 + 2"
           },
           "v1Compatible": true
         }

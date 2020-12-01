@@ -1,6 +1,6 @@
 package js7.data.job
 
-import js7.base.problem.Checked
+import js7.base.problem.{Checked, Problem}
 import js7.base.problem.Checked._
 import js7.data.value.expression.{Evaluator, Scope, ValueSearch}
 import js7.data.value.{NumericValue, StringValue}
@@ -61,8 +61,11 @@ final class CommandLineEvaluatorTest extends AnyFreeSpec
           val findValue = {
             case ValueSearch(ValueSearch.LastOccurred, ValueSearch.NamedValue("NAME")) =>
               Right(Some(StringValue("MY NAME")))
+
             case ValueSearch(ValueSearch.LastOccurred, ValueSearch.NamedValue("NUMERIC")) =>
               Right(Some(NumericValue(7)))
+
+            case _ => Left(Problem("Unexpected ValueSearch"))
           }
         }))
 

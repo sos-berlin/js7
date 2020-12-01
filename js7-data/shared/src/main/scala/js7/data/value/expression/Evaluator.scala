@@ -23,6 +23,9 @@ final class Evaluator(scope: Scope)
       case BooleanConstant(o)    => Right(BooleanValue(o))
       case ListExpression(list) => list.traverse(eval) map ListValue.apply
       case e: ObjectExpression => evalObjectExpression(e)
+      case Concat         (a, b) => evalString(a).map2(evalString(b))(_.string ++ _.string).map(StringValue.apply)
+      case Add            (a, b) => numNumToNum(a, b)(_.number + _.number)
+      case Substract      (a, b) => numNumToNum(a, b)(_.number - _.number)
       case Equal          (a, b) => anyAnyToBool(a, b)(_ == _)
       case NotEqual       (a, b) => anyAnyToBool(a, b)(_ != _)
       case LessThan       (a, b) => numNumToBool(a, b)(_.number <  _.number)
@@ -79,6 +82,12 @@ final class Evaluator(scope: Scope)
       .traverse { case (k, v) => eval(v) map k.-> }
       .map(_.toMap)
       .map(ObjectValue.apply)
+
+  private def numNumToNum[A <: Expression, B <: Expression](a: A, b: B)(op: (NumericValue, NumericValue) => BigDecimal): Checked[NumericValue] =
+    for {
+      a1 <- evalNumeric(a)
+      b1 <- evalNumeric(b)
+    } yield NumericValue(op(a1, b1))
 
   private def anyAnyToBool[A <: Expression, B <: Expression](a: A, b: B)(op: (Value, Value) => Boolean): Checked[BooleanValue] =
     for {

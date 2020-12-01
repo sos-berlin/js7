@@ -104,9 +104,16 @@ object ExpressionParser
 
   private def bFactor[_: P] = P(not | factor)
 
-  // TODO Reject comparison of incomparable types ("1" != 1)
+  private def addition[_: P] = P[Expression](
+    leftRecurse(bFactor, P(StringIn("++", "+", "-")).!) {
+      case (a, "++", b) => valid(Concat(a, b))
+      case (a, "+", b) => valid(Add(a, b))
+      case (a, "-", b) => valid(Substract(a, b))
+      case (_, o, _) => invalid(s"Unexpected operator: $o") // Does not happen
+    })
+
   private def comparison[_: P] = P[Expression](
-    leftRecurse(bFactor, P(StringIn("==", "!=", "<=", ">=", "<", ">")).!) {
+    leftRecurse(addition, P(StringIn("==", "!=", "<=", ">=", "<", ">")).!) {
       case (a, "==", b) => valid(Equal(a, b))
       case (a, "!=", b) => valid(NotEqual(a, b))
       case (a, "<=", b) => valid(LessOrEqual(a, b))
