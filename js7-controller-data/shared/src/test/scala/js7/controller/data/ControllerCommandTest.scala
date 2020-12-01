@@ -312,7 +312,7 @@ final class ControllerCommandTest extends AnyFreeSpec
         Some(Seq(
           HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0))),
           HistoricOutcome(Position(1), Outcome.Failed(NamedValues.rc(1)))))),
-      json""" {
+      json"""{
         "TYPE": "ResumeOrder",
         "orderId": "ORDER",
         "position": [ 1 ],

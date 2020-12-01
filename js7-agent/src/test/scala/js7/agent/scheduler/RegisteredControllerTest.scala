@@ -20,7 +20,7 @@ final class RegisteredControllerTest extends AnyFreeSpec
         ControllerId("CONTROLLER"),
         AgentName("AGENT"),
         AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")))),
-      json""" {
+      json"""{
         "TYPE": "RegisteredController",
         "controllerId": "CONTROLLER",
         "agentName": "AGENT",

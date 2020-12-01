@@ -60,7 +60,7 @@ final class StandardMarshallersTest extends AnyFreeSpec with BeforeAndAfterAll {
       val response = Marshal(Right(A(7)): Checked[A]).to[HttpResponse] await 99.s
       assert(response.status == OK)
       assert(response.entity.contentType == ContentTypes.`application/json`)
-      assert(response.entity.toStrict(99.seconds).await(99.s).data.utf8String.parseJsonOrThrow == json""" { "number": 7 } """)
+      assert(response.entity.toStrict(99.seconds).await(99.s).data.utf8String.parseJsonOrThrow == json"""{ "number": 7 }""")
     }
 
     "Invalid" in {
