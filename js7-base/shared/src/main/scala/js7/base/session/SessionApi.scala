@@ -8,7 +8,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.HttpClient.HttpException
 import monix.eval.Task
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration._
 
 // Test in SessionRouteTest
 /**
@@ -137,8 +137,14 @@ object SessionApi
       loginUntilReachable_(userAndPassword, delays, onError, onlyIfNotLoggedIn = onlyIfNotLoggedIn)
   }
 
+  private val initialLoginDelays = {
+    val seq = Seq(1.s, 1.s, 1.s, 1.s, 1.s, 2.s, 3.s,  5.s, 5.s,  5.s, 5.s,  5.s, 5.s,  5.s, 5.s,  5.s, 5.s)
+    assert(seq.reduce(_ + _) == 1.minute)
+    seq
+  }
+
   def defaultLoginDelays(): Iterator[FiniteDuration] =
-    Iterator(1.s, 1.s, 1.s, 2.s, 3.s, 5.s) ++ Iterator.continually(10.s)/*TODO*/
+    initialLoginDelays.iterator ++ Iterator.continually(10.s)
 
   private def onErrorDoNothing(throwable: Throwable) = Task.pure(false)
 }
