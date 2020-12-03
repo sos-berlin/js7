@@ -26,13 +26,12 @@ object IfExecutor extends EventInstructionExecutor with PositionInstructionExecu
     assertThat(Right(order) == context.idToOrder(order.id).map(_ withPosition order.position))
     context.makeScope(order)
       .flatMap(_.evalBoolean(instruction.predicate))
-      .map {
-        case true => Some(Then)
-        case false => instruction.elseWorkflow.isDefined ? Else
-      }
-      .map {
-        case Some(thenOrElse) => Some(order.position / thenOrElse % 0)
-        case None => Some(order.position.increment)  // No else-part, skip instruction
+      .map { condition =>
+        Some(
+          condition ? Then orElse instruction.elseWorkflow.isDefined ? Else match {
+            case Some(thenOrElse) => order.position / thenOrElse % 0
+            case None => order.position.increment  // No else-part, skip instruction
+          })
       }
   }
 }

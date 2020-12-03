@@ -15,6 +15,6 @@ object AgentName extends GenericString.NameValidating[AgentName]
 {
   protected def unchecked(string: String) = new AgentName(string)
 
-  @javaApi @throws[RuntimeException]("on invalid syntax")
-  def of(validPath: String) = apply(validPath)
+  @javaApi
+  def of(validName: String) = apply(validName)
 }
