@@ -6,8 +6,8 @@ import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.execution.workflow.context.OrderContext
 import js7.data.execution.workflow.instructions.RetryExecutor._
+import js7.data.order.Order
 import js7.data.order.OrderEvent.{OrderFailed, OrderRetrying}
-import js7.data.order.{Order, Outcome}
 import js7.data.workflow.instructions.{Retry, TryInstruction}
 import js7.data.workflow.position.{BranchPath, TryBranchId}
 import scala.concurrent.duration._
@@ -19,7 +19,7 @@ final class RetryExecutor(clock: () => Timestamp) extends EventInstructionExecut
 {
   type Instr = Retry
 
-  def toEvent(context: OrderContext, order: Order[Order.State], retry: Retry) =
+  def toEvent(retry: Retry, order: Order[Order.State], context: OrderContext) =
     if (!order.isState[Order.Ready])
       Right(None)
     else

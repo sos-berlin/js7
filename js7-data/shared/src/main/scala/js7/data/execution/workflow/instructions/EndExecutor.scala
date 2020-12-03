@@ -13,7 +13,7 @@ object EndExecutor extends EventInstructionExecutor with PositionInstructionExec
 {
   type Instr = End
 
-  def toEvent(context: OrderContext, order: Order[Order.State], instruction: End) =
+  def toEvent(instruction: End, order: Order[Order.State], context: OrderContext) =
     Right(
       order.position.dropChild match {
         case None =>
@@ -32,7 +32,7 @@ object EndExecutor extends EventInstructionExecutor with PositionInstructionExec
           }
       })
 
-  def nextPosition(context: OrderContext, order: Order[Order.State], instruction: End) =
+  def nextPosition(instruction: End, order: Order[Order.State], context: OrderContext) =
     Right(
       for {
         returnPosition <- order.position.dropChild

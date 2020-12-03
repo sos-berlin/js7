@@ -19,12 +19,12 @@ trait InstructionExecutor {
 
 trait EventInstructionExecutor extends InstructionExecutor
 {
-  def toEvent(context: OrderContext, order: Order[Order.State], instruction: Instr): Checked[Option[KeyedEvent[OrderActorEvent]]]
+  def toEvent(instruction: Instr, order: Order[Order.State], context: OrderContext): Checked[Option[KeyedEvent[OrderActorEvent]]]
 }
 
 trait PositionInstructionExecutor extends InstructionExecutor
 {
-  def nextPosition(context: OrderContext, order: Order[Order.State], instruction: Instr): Checked[Option[Position]]
+  def nextPosition(instruction: Instr, order: Order[Order.State], context: OrderContext): Checked[Option[Position]]
 }
 
 object InstructionExecutor
@@ -44,16 +44,16 @@ object InstructionExecutor
       case _: Retry => new RetryExecutor(() => Timestamp.now)
     }
 
-  def nextPosition(context: OrderContext, order: Order[Order.State], instruction: Instruction): Checked[Option[Position]] =
+  def nextPosition(instruction: Instruction, order: Order[Order.State], context: OrderContext): Checked[Option[Position]] =
     instructionToExecutor(instruction) match {
-      case executor: PositionInstructionExecutor => executor.nextPosition(context, order, instruction.asInstanceOf[executor.Instr])
+      case executor: PositionInstructionExecutor => executor.nextPosition(instruction.asInstanceOf[executor.Instr], order, context)
       case _ => Right(None)
     }
 
   def toEvent(instruction: Instruction, order: Order[Order.State], context: OrderContext): Checked[Option[KeyedEvent[OrderActorEvent]]] =
     instructionToExecutor(instruction) match {
       case exec: EventInstructionExecutor =>
-        exec.toEvent(context, order, instruction.asInstanceOf[exec.Instr])
+        exec.toEvent(instruction.asInstanceOf[exec.Instr], order, context)
       case _ =>
         Right(None)
     }

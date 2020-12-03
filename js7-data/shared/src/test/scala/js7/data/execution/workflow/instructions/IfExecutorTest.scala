@@ -33,40 +33,40 @@ final class IfExecutorTest extends AnyFreeSpec {
 
   "JSON BranchId" - {
     "then" in {
-      testJson(IfExecutor.nextPosition(context, AOrder, ifThenElse(BooleanConstant(true))).orThrow,
+      testJson(IfExecutor.nextPosition(ifThenElse(BooleanConstant(true)), AOrder, context).orThrow,
         json"""[ 7, "then", 0 ]""")
     }
 
     "else" in {
-      testJson(IfExecutor.nextPosition(context, AOrder, ifThenElse(BooleanConstant(false))).orThrow,
+      testJson(IfExecutor.nextPosition(ifThenElse(BooleanConstant(false)), AOrder, context).orThrow,
         json"""[ 7, "else", 0 ]""")
     }
   }
 
   "If true" in {
-    assert(InstructionExecutor.nextPosition(context, AOrder, ifThenElse(BooleanConstant(true))) ==
+    assert(InstructionExecutor.nextPosition(ifThenElse(BooleanConstant(true)), AOrder, context) ==
       Right(Some(Position(7) / Then % 0)))
   }
 
   "If false" in {
-    assert(InstructionExecutor.nextPosition(context, AOrder, ifThenElse(BooleanConstant(false))) ==
+    assert(InstructionExecutor.nextPosition(ifThenElse(BooleanConstant(false)), AOrder, context) ==
       Right(Some(Position(7) / Else % 0)))
   }
 
   "If false, no else branch" in {
-    assert(InstructionExecutor.nextPosition(context, AOrder, ifThen(BooleanConstant(false))) ==
+    assert(InstructionExecutor.nextPosition(ifThen(BooleanConstant(false)), AOrder, context) ==
       Right(Some(Position(8))))
   }
 
   "Naned value comparison" in {
     val expr = Equal(NamedValue.last("A"), StringConstant("AA"))
-    assert(InstructionExecutor.nextPosition(context, AOrder, ifThenElse(expr)) == Right(Some(Position(7) / Then % 0)))
-    assert(InstructionExecutor.nextPosition(context, BOrder, ifThenElse(expr)) == Right(Some(Position(7) / Else % 0)))
+    assert(InstructionExecutor.nextPosition(ifThenElse(expr), AOrder, context) == Right(Some(Position(7) / Then % 0)))
+    assert(InstructionExecutor.nextPosition(ifThenElse(expr), BOrder, context) == Right(Some(Position(7) / Else % 0)))
   }
 
   "Error in expression" in {
     val expr = Equal(ToNumber(StringConstant("X")), NumericConstant(1))
-    assert(InstructionExecutor.nextPosition(context, AOrder, ifThenElse(expr)) == Left(Problem("Not a valid number: X")))
+    assert(InstructionExecutor.nextPosition(ifThenElse(expr), AOrder, context) == Left(Problem("Not a valid number: X")))
   }
 }
 

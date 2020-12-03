@@ -13,7 +13,7 @@ object GapExecutor extends EventInstructionExecutor {
 
   type Instr = Gap
 
-  def toEvent(context: OrderContext, order: Order[Order.State], instruction: Gap) =
+  def toEvent(instruction: Gap, order: Order[Order.State], context: OrderContext) =
     if (!order.isAttached)
       Left(Problem.pure(s"Instruction Gap but order is not attached to an agent: $order"))
     else

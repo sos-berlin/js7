@@ -15,7 +15,7 @@ object FinishExecutor extends EventInstructionExecutor
 {
   type Instr = Finish
 
-  def toEvent(context: OrderContext, order: Order[Order.State], instruction: Finish) =
+  def toEvent(instruction: Finish, order: Order[Order.State], context: OrderContext) =
     order.state match {
       case _: Order.Fresh =>
         Right(Some(order.id <-: OrderStarted))

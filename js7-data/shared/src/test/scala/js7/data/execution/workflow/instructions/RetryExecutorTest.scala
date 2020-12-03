@@ -59,6 +59,6 @@ object RetryExecutorTest
         else Gap()
       def idToWorkflow(id: WorkflowId) = throw new NotImplementedError
     }
-    new RetryExecutor(() => now).toEvent(context, order, Retry())
+    new RetryExecutor(() => now).toEvent(Retry(), order, context)
   }
 }

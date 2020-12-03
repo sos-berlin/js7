@@ -12,7 +12,7 @@ object FailExecutor extends EventInstructionExecutor
 {
   type Instr = Fail
 
-  def toEvent(context: OrderContext, order: Order[Order.State], fail: Fail) =
+  def toEvent(fail: Fail, order: Order[Order.State], context: OrderContext) =
     order.state match {
       case _: Order.Fresh =>
         Right(Some(order.id <-: OrderStarted))

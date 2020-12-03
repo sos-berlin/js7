@@ -37,18 +37,18 @@ final class FailExecutorTest extends AnyFreeSpec
 
   "toEvent" - {
     "Fresh order will be started" in {
-      assert(FailExecutor.toEvent(context, TestOrder.copy(state = Order.Fresh()), Fail()) ==
+      assert(FailExecutor.toEvent(Fail(), TestOrder.copy(state = Order.Fresh()), context) ==
         Right(Some(TestOrder.id <-: OrderStarted)))
     }
 
     "Catchable Fail" - {
       "Detached order" in {
-        assert(FailExecutor.toEvent(context, TestOrder, Fail()) ==
+        assert(FailExecutor.toEvent(Fail(), TestOrder, context) ==
           Right(Some(TestOrder.id <-: OrderFailedCatchable_(Some(Outcome.failed)))))
       }
 
       "Attached order" in {
-        assert(FailExecutor.toEvent(context, TestOrder.copy(attachedState = Some(Order.Attached(AgentName("AGENT")))), Fail()) ==
+        assert(FailExecutor.toEvent(Fail(), TestOrder.copy(attachedState = Some(Order.Attached(AgentName("AGENT")))), context) ==
           Right(Some(TestOrder.id <-: OrderFailedCatchable_(Some(Outcome.failed)))))
       }
     }
@@ -57,28 +57,28 @@ final class FailExecutorTest extends AnyFreeSpec
       val fail = Fail(uncatchable = true)
 
       "Attached order will be detached if fail is uncatchable" in {
-        assert(FailExecutor.toEvent(context, TestOrder.copy(attachedState = Some(Order.Attached(AgentName("AGENT")))), fail) ==
+        assert(FailExecutor.toEvent(fail, TestOrder.copy(attachedState = Some(Order.Attached(AgentName("AGENT")))), context) ==
           Right(Some(TestOrder.id <-: OrderDetachable)))
       }
 
       "OrderFailed" in {
-        assert(FailExecutor.toEvent(context, TestOrder, fail) ==
+        assert(FailExecutor.toEvent(fail, TestOrder, context) ==
           Right(Some(TestOrder.id <-: OrderFailed(Some(Outcome.failed)))))
       }
 
       "OrderFailed keeps last Outcome but not the namedValues" in {
         val order = TestOrder.copy(
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(888) ++ Map( "A" -> StringValue("AA")))) :: Nil)
-        assert(FailExecutor.toEvent(context, order, fail) == Right(Some(TestOrder.id <-: OrderFailed(Some(Outcome.failed)))))
+        assert(FailExecutor.toEvent(fail, order, context) == Right(Some(TestOrder.id <-: OrderFailed(Some(Outcome.failed)))))
       }
 
       "One fork's child order fails while the other has reached the end" in {
         // Not handled by FailExecutor. OrderEventSource handles this.
-        assert(FailExecutor.toEvent(context, Carrot, fail) == Right(None))
+        assert(FailExecutor.toEvent(fail, Carrot, context) == Right(None))
       }
 
       "One fork's child order ends while the other is in state FailedInFork" in {
-        assert(EndExecutor.toEvent(context, Lemon, ImplicitEnd()) ==
+        assert(EndExecutor.toEvent(ImplicitEnd(), Lemon, context) ==
           Right(Some(ForkedOrder.id <-: OrderJoined(Outcome.succeeded))))
       }
     }

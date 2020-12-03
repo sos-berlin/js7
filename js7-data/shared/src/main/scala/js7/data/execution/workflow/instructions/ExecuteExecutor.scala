@@ -13,7 +13,7 @@ object ExecuteExecutor extends EventInstructionExecutor
 {
   type Instr = Execute
 
-  def toEvent(context: OrderContext, order: Order[Order.State], instruction: Execute) =
+  def toEvent(instruction: Execute, order: Order[Order.State], context: OrderContext) =
     Right(
       // Order.Ready: Execution has to be started by the caller
       //order.ifState[Order.Fresh].map(order =>

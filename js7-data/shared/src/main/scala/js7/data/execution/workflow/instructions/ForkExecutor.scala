@@ -15,7 +15,7 @@ object ForkExecutor extends EventInstructionExecutor
 {
   type Instr = Fork
 
-  def toEvent(context: OrderContext, order: Order[Order.State], fork: Fork) =
+  def toEvent(fork: Fork, order: Order[Order.State], context: OrderContext) =
     Checked(
       order.ifState[Order.Fresh].map(order =>
         order.id <-: OrderStarted)

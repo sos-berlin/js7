@@ -13,7 +13,7 @@ object AwaitOrderExecutor extends EventInstructionExecutor
 {
   type Instr = AwaitOrder
 
-  def toEvent(context: OrderContext, order: Order[Order.State], instruction: AwaitOrder) =
+  def toEvent(instruction: AwaitOrder, order: Order[Order.State], context: OrderContext) =
     Right(
       order.ifState[Order.Fresh].map(order =>
         order.id <-: OrderStarted)

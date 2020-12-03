@@ -15,14 +15,14 @@ object IfExecutor extends EventInstructionExecutor with PositionInstructionExecu
 {
   type Instr = If
 
-  def toEvent(context: OrderContext, order: Order[Order.State], instruction: If) =
+  def toEvent(instruction: If, order: Order[Order.State], context: OrderContext) =
     if (order.isState[Order.Broken] || order.isState[Order.FailedWhileFresh] || order.isState[Order.Failed])
       Right(None)
     else
-      nextPosition(context, order, instruction)
+      nextPosition(instruction, order, context)
         .map(_.map(o => order.id <-: OrderMoved(o)))
 
-  def nextPosition(context: OrderContext, order: Order[Order.State], instruction: If) = {
+  def nextPosition(instruction: If, order: Order[Order.State], context: OrderContext) = {
     assertThat(Right(order) == context.idToOrder(order.id).map(_ withPosition order.position))
     context.makeScope(order)
       .flatMap(_.evalBoolean(instruction.predicate))

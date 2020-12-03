@@ -32,7 +32,7 @@ final class TryExecutorTest extends AnyFreeSpec
 
   "JSON" - {
     "try" in {
-      testJson(TryExecutor.nextPosition(context, AOrder, tryInstruction).orThrow,
+      testJson(TryExecutor.nextPosition(tryInstruction, AOrder, context).orThrow,
         json"""[ 7, "try+0", 0 ]""")
     }
 
@@ -43,7 +43,7 @@ final class TryExecutorTest extends AnyFreeSpec
   }
 
   "nextPosition" in {
-    assert(InstructionExecutor.nextPosition(context, AOrder, tryInstruction) ==
+    assert(InstructionExecutor.nextPosition(tryInstruction, AOrder, context) ==
       Right(Some(Position(7) / try_(0) % 0)))
   }
 

@@ -48,6 +48,6 @@ final class ExecuteTest extends AnyFreeSpec {
   private def toEvent(outcome: Outcome): Option[KeyedEvent[OrderActorEvent]] = {
     val order = Order(orderId, (WorkflowPath("/WORKFLOW") ~ "VERSION" ) /: (Position(1) / "A" % 20), Order.Processed,
       historicOutcomes = HistoricOutcome(Position(1) / "B" % 20, outcome) :: Nil)
-    ExecuteExecutor.toEvent(orderContext, order, executeAnonymous).orThrow
+    ExecuteExecutor.toEvent(executeAnonymous, order, orderContext).orThrow
   }
 }

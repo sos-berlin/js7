@@ -326,7 +326,7 @@ final class OrderEventSource(
             Right(Some(order.position.increment))
 
         case instr: Instruction =>
-          InstructionExecutor.nextPosition(context, order, instr)
+          InstructionExecutor.nextPosition(instr, order, context)
 
         //case _: End if order.position.isNested =>
         //  order.position.dropChild.flatMap(returnPosition =>

@@ -16,12 +16,12 @@ object TryExecutor extends PositionInstructionExecutor with EventInstructionExec
 
   type Instr = TryInstruction
 
-  def nextPosition(context: OrderContext, order: Order[Order.State], instruction: TryInstruction): Checked[Option[Position]] = {
+  def nextPosition(instruction: TryInstruction, order: Order[Order.State], context: OrderContext): Checked[Option[Position]] = {
     assertThat(Right(order) == context.idToOrder(order.id).map(_ withPosition order.position))
     Right(Some(nextPos(order)))
   }
 
-  def toEvent(context: OrderContext, order: Order[Order.State], instruction: TryInstruction) =
+  def toEvent(instruction: TryInstruction, order: Order[Order.State], context: OrderContext) =
     Right(
       order.ifState[Order.IsFreshOrReady].map(order =>
         order.id <-: OrderMoved(nextPos(order))))
