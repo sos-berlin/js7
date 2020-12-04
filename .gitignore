@@ -2,6 +2,7 @@
 /target/
 /*/target/
 /*/*/target/
+/project/project/project/target/
 
 # INTELLIJ IDEA
 /.idea/
