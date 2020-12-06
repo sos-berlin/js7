@@ -135,7 +135,7 @@ object OrderEvent {
   extends OrderActorEvent
 
   /** Only intermediate, not persisted. Will be converted to `OrderFailed` or `OrderCatched`. */
-  final case class OrderFailedCatchable_(outcome: Option[Outcome.NotSucceeded] = None)
+  final case class OrderFailedIntermediate_(outcome: Option[Outcome.NotSucceeded] = None, uncatchable: Boolean = false)
   extends OrderActorEvent
 
   final case class OrderCatched(outcome: Option[Outcome.NotSucceeded], movedTo: Position)

@@ -111,8 +111,8 @@ final case class Order[+S <: Order.State](
               state = FailedInFork,
               historicOutcomes = outcome_.fold(historicOutcomes)(o => historicOutcomes :+ HistoricOutcome(position, o))))
 
-        case OrderFailedCatchable_(_) =>
-          inapplicable
+        case OrderFailedIntermediate_(_, _) =>
+          inapplicable  // Intermediate event, internal only
 
         case OrderCatched(outcome_, movedTo) =>
           check((isState[Ready] || isState[Processed]) && !isSuspended && (isAttached | isDetached),
@@ -197,17 +197,14 @@ final case class Order[+S <: Order.State](
 
         case OrderDetachable =>
           attachedState match {
-            case Some(Attached(agentName))
-              if isState[Fresh] || isState[Ready] || isState[Forked] || isState[ProcessingKilled] ||
-                 isState[FailedWhileFresh] || isState[Failed] || isState[FailedInFork] || isState[Broken] =>
-                Right(copy(attachedState = Some(Detaching(agentName))))
+            case Some(Attached(agentName)) if isInDetachableState =>
+              Right(copy(attachedState = Some(Detaching(agentName))))
             case _ =>
               inapplicable
           }
 
         case OrderDetached =>
-          check(isDetaching && (isState[Fresh] || isState[Ready] || isState[Forked] || isState[ProcessingKilled] ||
-                                isState[FailedWhileFresh] || isState[Failed] || isState[FailedInFork] || isState[Broken]),
+          check(isDetaching && isInDetachableState,
             copy(attachedState = None))
 
         case OrderCancelMarked(mode) =>
@@ -257,7 +254,7 @@ final case class Order[+S <: Order.State](
 
   def isOrderFailedApplicable =
     !isSuspended &&
-      (isDetached || isAttached) &&
+      isDetached &&
       (isState[IsFreshOrReady] || isState[Processed])
 
   def withInstructionNr(to: InstructionNr): Order[S] =
@@ -329,6 +326,10 @@ final case class Order[+S <: Order.State](
       case o =>
         Left(Problem(s"'$id' should be Detaching, but is $o"))
     }
+
+  def isInDetachableState =
+    isState[Fresh] || isState[Ready] || isState[Forked] || isState[Processed] || isState[ProcessingKilled] ||
+    isState[FailedWhileFresh] || isState[Failed] || isState[FailedInFork] || isState[Broken]
 
   def isMarkable =
     !isState[IsTerminated] ||

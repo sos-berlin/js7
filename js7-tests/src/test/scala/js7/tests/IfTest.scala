@@ -7,7 +7,7 @@ import js7.common.process.Processes.{ShellFileExtension => sh}
 import js7.data.agent.AgentName
 import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import js7.data.job.{RelativeExecutablePath, ReturnCode}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.{NumericValue, StringValue}
 import js7.data.workflow.position.BranchId.{Else, Then}
@@ -29,10 +29,7 @@ final class IfTest extends AnyFreeSpec {
         for (returnCode <- ExpectedEvents.keys) withClue(s"$returnCode: ") {
           val orderId = OrderId("🔺" + returnCode.number)
           controller.addOrderBlocking(newOrder(orderId, returnCode))
-          if (returnCode == ReturnCode(2))
-            controller.eventWatch.await[OrderFailed](_.key == orderId)
-          else
-            controller.eventWatch.await[OrderFinished](_.key == orderId)
+          controller.eventWatch.await[OrderTerminated](_.key == orderId)
           checkEventSeq(orderId, controller.eventWatch.all[OrderEvent], returnCode)
         }
       }
@@ -130,7 +127,9 @@ object IfTest {
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(Outcome.Failed(Map("JOB-KEY" -> StringValue("JOB-RESULT"), "returnCode" -> NumericValue(2)))),
-      OrderFailed()))    // TODO Key-values in OrderFailed ?
+      OrderDetachable,
+      OrderDetached,
+      OrderFailed()))
 
   private def newOrder(orderId: OrderId, returnCode: ReturnCode) =
     FreshOrder(orderId, TestWorkflow.id.path, arguments = Map(

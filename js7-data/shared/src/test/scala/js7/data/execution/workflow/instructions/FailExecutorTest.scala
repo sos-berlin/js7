@@ -4,10 +4,9 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentName
 import js7.data.execution.workflow.context.OrderContext
 import js7.data.execution.workflow.instructions.FailExecutorTest._
-import js7.data.order.OrderEvent.{OrderDetachable, OrderFailed, OrderFailedCatchable_, OrderJoined, OrderStarted}
-import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
-import js7.data.value.{NamedValues, StringValue}
-import js7.data.workflow.instructions.{Fail, Fork, ImplicitEnd}
+import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderStarted}
+import js7.data.order.{Order, OrderId, Outcome}
+import js7.data.workflow.instructions.{Fail, Fork}
 import js7.data.workflow.position.BranchId.Then
 import js7.data.workflow.position.{InstructionNr, Position, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
@@ -44,42 +43,12 @@ final class FailExecutorTest extends AnyFreeSpec
     "Catchable Fail" - {
       "Detached order" in {
         assert(FailExecutor.toEvent(Fail(), TestOrder, context) ==
-          Right(Some(TestOrder.id <-: OrderFailedCatchable_(Some(Outcome.failed)))))
+          Right(Some(TestOrder.id <-: OrderFailedIntermediate_(Some(Outcome.failed)))))
       }
 
       "Attached order" in {
         assert(FailExecutor.toEvent(Fail(), TestOrder.copy(attachedState = Some(Order.Attached(AgentName("AGENT")))), context) ==
-          Right(Some(TestOrder.id <-: OrderFailedCatchable_(Some(Outcome.failed)))))
-      }
-    }
-
-    "Uncatchable Fail" - {
-      val fail = Fail(uncatchable = true)
-
-      "Attached order will be detached if fail is uncatchable" in {
-        assert(FailExecutor.toEvent(fail, TestOrder.copy(attachedState = Some(Order.Attached(AgentName("AGENT")))), context) ==
-          Right(Some(TestOrder.id <-: OrderDetachable)))
-      }
-
-      "OrderFailed" in {
-        assert(FailExecutor.toEvent(fail, TestOrder, context) ==
-          Right(Some(TestOrder.id <-: OrderFailed(Some(Outcome.failed)))))
-      }
-
-      "OrderFailed keeps last Outcome but not the namedValues" in {
-        val order = TestOrder.copy(
-          historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(888) ++ Map( "A" -> StringValue("AA")))) :: Nil)
-        assert(FailExecutor.toEvent(fail, order, context) == Right(Some(TestOrder.id <-: OrderFailed(Some(Outcome.failed)))))
-      }
-
-      "One fork's child order fails while the other has reached the end" in {
-        // Not handled by FailExecutor. OrderEventSource handles this.
-        assert(FailExecutor.toEvent(fail, Carrot, context) == Right(None))
-      }
-
-      "One fork's child order ends while the other is in state FailedInFork" in {
-        assert(EndExecutor.toEvent(ImplicitEnd(), Lemon, context) ==
-          Right(Some(ForkedOrder.id <-: OrderJoined(Outcome.succeeded))))
+          Right(Some(TestOrder.id <-: OrderFailedIntermediate_(Some(Outcome.failed)))))
       }
     }
   }

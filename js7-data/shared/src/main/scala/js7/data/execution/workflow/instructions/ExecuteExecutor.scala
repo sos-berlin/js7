@@ -1,7 +1,7 @@
 package js7.data.execution.workflow.instructions
 
 import js7.data.execution.workflow.context.OrderContext
-import js7.data.order.OrderEvent.{OrderFailedCatchable_, OrderMoved, OrderProcessingKilled}
+import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderMoved, OrderProcessingKilled}
 import js7.data.order.Outcome.Disrupted.JobSchedulerRestarted
 import js7.data.order.{Order, Outcome}
 import js7.data.workflow.instructions.Execute
@@ -29,7 +29,7 @@ object ExecuteExecutor extends EventInstructionExecutor
                 OrderMoved(order.position.increment)
 
               case _: Outcome.NotSucceeded =>
-                OrderFailedCatchable_()
+                OrderFailedIntermediate_()
 
               case _: Outcome.Killed =>
                 OrderProcessingKilled

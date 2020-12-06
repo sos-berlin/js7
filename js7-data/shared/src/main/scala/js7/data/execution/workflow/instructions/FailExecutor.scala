@@ -1,7 +1,7 @@
 package js7.data.execution.workflow.instructions
 
 import js7.data.execution.workflow.context.OrderContext
-import js7.data.order.OrderEvent.{OrderDetachable, OrderFailed, OrderFailedCatchable_, OrderFailedInFork, OrderStarted}
+import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderStarted}
 import js7.data.order.{Order, Outcome}
 import js7.data.workflow.instructions.Fail
 
@@ -21,15 +21,8 @@ object FailExecutor extends EventInstructionExecutor
         lazy val maybeErrorMessage = fail.message
           .map(o => context.makeScope(order).flatMap(_.evalString(o)).fold(_.toString, identity))
         lazy val outcome = Outcome.Failed(maybeErrorMessage, fail.namedValues)
-        Right(Some(order.id <-: (
-          if (!fail.uncatchable) {
-            OrderFailedCatchable_(Some(outcome))
-         } else if (order.position.isInFork) {
-            OrderFailedInFork(Some(outcome))
-         } else if (order.isAttached)
-            OrderDetachable
-          else
-            OrderFailed(Some(outcome)))))
+        Right(Some(order.id <-:
+          OrderFailedIntermediate_(Some(outcome), uncatchable = fail.uncatchable)))
 
       case _ => Right(None)
     }

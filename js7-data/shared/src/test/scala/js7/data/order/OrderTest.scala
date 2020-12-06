@@ -310,7 +310,7 @@ final class OrderTest extends AnyFreeSpec
         cancelMarkedAllowed[Fresh] orElse
         suspendMarkedAllowed[Fresh] orElse {
           case (_: OrderMoved       , _                 , IsDetached | IsAttached) => _.isInstanceOf[Fresh]
-          case (_: OrderFailed      , IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[FailedWhileFresh]  // Expression error
+          case (_: OrderFailed      , IsSuspended(false), IsDetached             ) => _.isInstanceOf[FailedWhileFresh]  // Expression error
           case (_: OrderStarted     , IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[Ready]
           case (OrderCancelled      , _                 , IsDetached             ) => _.isInstanceOf[Cancelled]
           case (OrderSuspended      , _                 , IsDetached             ) => _.isInstanceOf[Fresh]
@@ -336,7 +336,7 @@ final class OrderTest extends AnyFreeSpec
           case (_: OrderAwaiting         , IsSuspended(false), IsDetached             ) => _.isInstanceOf[Awaiting]
           case (_: OrderFailedInFork     , IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[FailedInFork]
           case (_: OrderCatched          , IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[Ready]
-          case (_: OrderFailed           , IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[Failed]
+          case (_: OrderFailed           , IsSuspended(false), IsDetached             ) => _.isInstanceOf[Failed]
           case (_: OrderRetrying         , IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[Ready]
           case (_: OrderFinished         , IsSuspended(false), IsDetached             ) => _.isInstanceOf[Finished]
           case (OrderCancelled           , _                 , IsDetached             ) => _.isInstanceOf[Cancelled]
@@ -365,10 +365,11 @@ final class OrderTest extends AnyFreeSpec
         removeMarkable[Processed] orElse
         markable[Processed] orElse
         cancelMarkedAllowed[Processed] orElse
-        suspendMarkedAllowed[Processed] orElse {
+        suspendMarkedAllowed[Processed] orElse
+        detachingAllowed[Processed] orElse {
           case (_: OrderMoved           , _                 , IsDetached | IsAttached) => _.isInstanceOf[Ready]
           case (_: OrderProcessingKilled, IsSuspended(false),              IsAttached) => _.isInstanceOf[ProcessingKilled]
-          case (_: OrderFailed          , IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[Failed]
+          case (_: OrderFailed          , IsSuspended(false), IsDetached             ) => _.isInstanceOf[Failed]
           case (_: OrderFailedInFork    , IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[FailedInFork]
           case (_: OrderCatched         , IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[Ready]
           case (_: OrderBroken          , _                 , _                      ) => _.isInstanceOf[Broken]

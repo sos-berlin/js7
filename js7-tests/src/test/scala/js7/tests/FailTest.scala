@@ -2,72 +2,100 @@ package js7.tests
 
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax._
+import js7.common.configutils.Configs.HoconStringInterpolator
 import js7.data.agent.AgentName
 import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import js7.data.job.RelativeExecutablePath
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.data.workflow.position.Position
-import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
+import js7.data.workflow.{Workflow, WorkflowId, WorkflowParser, WorkflowPath}
 import js7.tests.FailTest._
-import js7.tests.testenv.DirectoryProvider
+import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
 
-final class FailTest extends AnyFreeSpec
+final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  "fail" in {
-    runUntil[OrderFailed]("""
+  protected val agentNames = Seq(agentName)
+  protected val inventoryItems = Nil
+  override protected def controllerConfig = config"""
+    js7.web.server.auth.public = on
+    """
+  override protected def agentConfig = config"""
+    js7.job.execution.signed-script-injection-allowed = on
+    """
+  private val workflowIdIterator = Iterator.from(1).map(i => WorkflowPath(s"/WORKFLOW-$i") ~ i.toString)
+  private val orderIdIterator = Iterator.from(1).map(i => OrderId(s"♦️-$i"))
+
+  override def beforeAll() = {
+    directoryProvider.agents.head.writeExecutable(RelativeExecutablePath("test.cmd"), (isWindows ?? "@echo off\n") + "exit 3")
+    super.beforeAll()
+  }
+
+  "Fail" in {
+    val workflowId = workflowIdIterator.next()
+    val orderId = orderIdIterator.next()
+    runUntil[OrderFailed](orderId, workflowId, """
       |define workflow {
       |  execute agent="AGENT", executable="test.cmd", successReturnCodes=[3];
       |  fail;
       |}""".stripMargin,
       Vector(
-        OrderAdded(TestWorkflowId),
-        OrderAttachable(TestAgentName),
-        OrderAttached(TestAgentName),
+        OrderAdded(workflowId),
+        OrderAttachable(agentName),
+        OrderAttached(agentName),
         OrderStarted,
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
         OrderMoved(Position(1)),
+        OrderDetachable,
+        OrderDetached,
         OrderFailed(Some(Outcome.failed))))
   }
 
-  "fail (returnCode=7)" in {
-    runUntil[OrderFailed]("""
+  "Fail (returnCode=7)" in {
+    val workflowId = workflowIdIterator.next()
+    val orderId = orderIdIterator.next()
+    runUntil[OrderFailed](orderId, workflowId, """
       |define workflow {
       |  execute agent="AGENT", executable="test.cmd", successReturnCodes=[3];
       |  fail (namedValues = { "returnCode": 7 });
       |}""".stripMargin,
       Vector(
-        OrderAdded(TestWorkflowId),
-        OrderAttachable(TestAgentName),
-        OrderAttached(TestAgentName),
+        OrderAdded(workflowId),
+        OrderAttachable(agentName),
+        OrderAttached(agentName),
         OrderStarted,
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
         OrderMoved(Position(1)),
+        OrderDetachable,
+        OrderDetached,
         OrderFailed(Some(Outcome.Failed(NamedValues.rc(7))))))
   }
 
-  "fail (returnCode=7, message='ERROR')" in {
-    runUntil[OrderFailed]("""
+  "Fail (returnCode=7, message='ERROR')" in {
+    val workflowId = workflowIdIterator.next()
+    val orderId = orderIdIterator.next()
+    runUntil[OrderFailed](orderId, workflowId, """
       |define workflow {
       |  fail (namedValues = { "returnCode": 7 }, message='ERROR');
       |}""".stripMargin,
       Vector(
-        OrderAdded(TestWorkflowId),
+        OrderAdded(workflowId),
         OrderStarted,
         OrderFailed(Some(Outcome.Failed(Some("ERROR"), NamedValues.rc(7))))))
   }
 
-  "fail in fork" in {
-    runUntil[OrderFailed]("""
+  "Fail in fork" in {
+    val workflowId = workflowIdIterator.next()
+    val orderId = OrderId("🔺")
+    runUntil[OrderFailed](orderId, workflowId, """
       |define workflow {
       |  fork {
       |    "🥕": { execute agent="AGENT", executable="test.cmd", successReturnCodes=[3] },
@@ -75,7 +103,7 @@ final class FailTest extends AnyFreeSpec
       |  }
       |}""".stripMargin,
       Vector(
-        OrderAdded(TestWorkflowId),
+        OrderAdded(workflowId),
         OrderStarted,
         OrderForked(Vector(
           OrderForked.Child("🥕", OrderId("🔺|🥕")),
@@ -86,25 +114,56 @@ final class FailTest extends AnyFreeSpec
         OrderFailedInFork(Some(Outcome.failed))))
   }
 
-  private def runUntil[E <: OrderEvent: ClassTag: TypeTag](notation: String, expectedEvents: Vector[OrderEvent], moreExpectedEvents: (OrderId, Vector[OrderEvent])*): Unit =
+  "Uncatchable fail in fork" in {
+    val workflowId = workflowIdIterator.next()
+    val orderId = OrderId("🟥")
+    runUntil[OrderFailed](orderId, workflowId, """
+      |define workflow {
+      |  fork {
+      |    "🥕": { execute agent="AGENT", executable="test.cmd", successReturnCodes=[3] },
+      |    "🍋": { try { fail(uncatchable=true) } catch {}; }
+      |  }
+      |}""".stripMargin,
+      Vector(
+        OrderAdded(workflowId),
+        OrderStarted,
+        OrderForked(Vector(
+          OrderForked.Child("🥕", OrderId("🟥|🥕")),
+          OrderForked.Child("🍋", OrderId("🟥|🍋")))),
+        OrderJoined(Outcome.failed),
+        OrderFailed()),
+      OrderId("🟥|🍋") -> Vector(
+        OrderMoved(Position(0) / "fork+🍋" % 0 / "try+0" % 0),
+        OrderFailedInFork(Some(Outcome.failed))))
+  }
+
+  private def runUntil[E <: OrderEvent: ClassTag: TypeTag](
+    orderId: OrderId,
+    workflowId: WorkflowId,
+    workflowNotation: String,
+    expectedEvents: Vector[OrderEvent],
+    moreExpectedEvents: (OrderId, Vector[OrderEvent])*)
+  : Unit =
     runUntil[E](
-      WorkflowParser.parse(TestWorkflowId, notation).orThrow,
+      orderId,
+      WorkflowParser.parse(workflowId, workflowNotation).orThrow,
       expectedEvents,
       moreExpectedEvents: _*)
 
-  private def runUntil[E <: OrderEvent: ClassTag: TypeTag](workflow: Workflow, expectedEvents: Vector[OrderEvent], moreExpectedEvents: (OrderId, Vector[OrderEvent])*): Unit =
-    autoClosing(new DirectoryProvider(TestAgentName :: Nil, workflow :: Nil, testName = Some("FailTest"))) { directoryProvider =>
-      directoryProvider.agents.head.writeExecutable(RelativeExecutablePath("test.cmd"), (isWindows ?? "@echo off\n") + "exit 3")
-      directoryProvider.run { (controller, _) =>
-        val orderId = OrderId("🔺")
-        controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
-        controller.eventWatch.await[E](_.key == orderId)
-        checkEventSeq(orderId, controller.eventWatch.all[OrderEvent], expectedEvents)
-        for ((oId, expected) <- moreExpectedEvents) {
-          checkEventSeq(oId, controller.eventWatch.all[OrderEvent], expected)
-        }
-      }
+  private def runUntil[E <: OrderEvent: ClassTag: TypeTag](
+    orderId: OrderId,
+    workflow: Workflow,
+    expectedEvents: Vector[OrderEvent],
+    moreExpectedEvents: (OrderId, Vector[OrderEvent])*)
+  : Unit = {
+    directoryProvider.updateRepo(controller, workflow.id.versionId, Seq(workflow))
+    controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
+    controller.eventWatch.await[E](_.key == orderId)
+    checkEventSeq(orderId, controller.eventWatch.all[OrderEvent], expectedEvents)
+    for ((oId, expected) <- moreExpectedEvents) {
+      checkEventSeq(oId, controller.eventWatch.all[OrderEvent], expected)
     }
+  }
 
   private def checkEventSeq(orderId: OrderId, eventSeq: TearableEventSeq[IterableOnce, KeyedEvent[OrderEvent]], expected: Vector[OrderEvent]): Unit =
     eventSeq match {
@@ -118,6 +177,5 @@ final class FailTest extends AnyFreeSpec
 
 object FailTest
 {
-  private val TestAgentName = AgentName("AGENT")
-  private val TestWorkflowId = WorkflowPath("/WORKFLOW") ~ "INITIAL"
+  private val agentName = AgentName("AGENT")
 }

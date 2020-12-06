@@ -13,7 +13,7 @@ import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.context.OrderContext
 import js7.data.execution.workflow.instructions.{ForkExecutor, InstructionExecutor}
 import js7.data.order.Order.{IsTerminated, ProcessingKilled}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFailed, OrderFailedCatchable_, OrderFailedInFork, OrderMoved, OrderRemoved, OrderResumeMarked, OrderResumed, OrderSuspendMarked, OrderSuspended}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFailedIntermediate_, OrderMoved, OrderRemoved, OrderResumeMarked, OrderResumed, OrderSuspendMarked, OrderSuspended}
 import js7.data.order.{HistoricOutcome, Order, OrderId, OrderMark, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem}
 import js7.data.workflow.instructions.{End, Fork, Goto, IfFailedGoto, Retry, TryInstruction}
@@ -67,18 +67,14 @@ final class OrderEventSource(
                 case Right(Some(orderId <-: (moved: OrderMoved))) =>
                   applyMoveInstructions(orderId, moved) map Some.apply
 
-                case Right(Some(orderId <-: OrderFailedCatchable_(outcome))) =>  // OrderFailedCatchable_ is used internally only
+                case Right(Some(orderId <-: OrderFailedIntermediate_(outcome, uncatchable))) =>  // OrderFailedIntermediate_ is used internally only
                   assertThat(orderId == order.id)
                   findCatchPosition(order) match {
-                    case Some(firstCatchPos) if !isMaxRetriesReached(order, firstCatchPos) =>
+                    case Some(firstCatchPos) if !uncatchable && !isMaxRetriesReached(order, firstCatchPos) =>
                       applyMoveInstructions(order.withPosition(firstCatchPos))
                         .flatMap(movedPos => Right(Some(orderId <-: OrderCatched(outcome, movedPos))))
                     case _ =>
-                      Right(Some(orderId <-: (
-                        if (order.position.isInFork)
-                          OrderFailedInFork(outcome)
-                        else
-                          OrderFailed(outcome))))
+                      Right(Some(orderFailed(order, outcome)))
                   }
 
                 case o => o
@@ -107,12 +103,27 @@ final class OrderEventSource(
     checkedEvent match {
       case Left(problem) =>
         if (order.isOrderFailedApplicable)
-          Some(order.id <-: OrderFailed(Some(Outcome.Disrupted(problem))))
-        else
+          Some(orderFailed(order, Some(Outcome.Disrupted(problem))))
+        else if (order.isAttached && order.isInDetachableState && order.copy(attachedState = None).isOrderFailedApplicable) {
+          scribe.warn(s"Detaching ${order.id} after failure: $problem")
+          // Introduce a new 'OrderPrefailed' event for not loosing the problem ???
+          // Controller should reproduce the problem.
+          Some(order.id <-: OrderDetachable)
+        } else
           Some(order.id <-: OrderBroken(problem))
+
 
       case Right(o) => o
     }
+
+  private def orderFailed(order: Order[Order.State], outcome: Option[Outcome.NotSucceeded]) =
+    order.id <-: (
+      if (order.position.isInFork)
+        OrderFailedInFork(outcome)
+      else if (order.isAttached)
+        OrderDetachable
+      else
+        OrderFailed(outcome))
 
   private def findCatchPosition(order: Order[Order.State]): Option[Position] =
     for {
@@ -167,10 +178,10 @@ final class OrderEventSource(
     withOrder(orderId)(order =>
       if (order.parent.isDefined)
         Left(CancelChildOrderProblem(orderId))
-      else if (mode == CancelMode.FreshOnly && order.isStarted) {
+      else if (mode == CancelMode.FreshOnly && order.isStarted)
         // On Agent, the Order may already have been started without notice of the Controller
         Left(CancelStartedOrderProblem(orderId))
-      } else Right(
+      else Right(
         tryCancel(order, mode).orElse(
           (!order.isCancelling &&
             !order.isState[IsTerminated] &&

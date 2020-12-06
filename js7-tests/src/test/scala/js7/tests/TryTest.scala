@@ -167,16 +167,16 @@ object TryTest
   private val TestAgentName = AgentName("AGENT")
   private val finishingScript = s"""
      |define workflow {
-     |  try {                                                 // #0
-     |    try {                                               // #0/0#0
-     |      execute executable="FAIL-1$sh", agent="AGENT";   // #0/0#0/0#0   OrderCatched
-     |      execute executable="OKAY$sh", agent="AGENT";     // #0/0#0/0#1   skipped
+     |  try {                                                // :0
+     |    try {                                              // :0/try:0
+     |      execute executable="FAIL-1$sh", agent="AGENT";   // :0/try:0/try:0   OrderCatched
+     |      execute executable="OKAY$sh", agent="AGENT";     // :0/try:0/try:1   skipped
      |    } catch {
-     |      execute executable="FAIL-2$sh", agent="AGENT";   // #0/0#0/1#0   OrderCatched
+     |      execute executable="FAIL-2$sh", agent="AGENT";   // :0/try:0/catch:0   OrderCatched
      |    }
-     |    execute executable="OKAY$sh", agent="AGENT";       // #0/0#1
+     |    execute executable="OKAY$sh", agent="AGENT";       // :0/try:1
      |  } catch {}
-     |  execute executable="OKAY$sh", agent="AGENT";         // #1
+     |  execute executable="OKAY$sh", agent="AGENT";         // :1
      |}""".stripMargin
   private val FinishingWorkflow = WorkflowParser.parse(WorkflowPath("/FINISHING") ~ "INITIAL", finishingScript).orThrow
 
@@ -205,10 +205,10 @@ object TryTest
 
   private val stoppingScript = s"""
      |define workflow {
-     |  try {                                               // #0
-     |    execute executable="FAIL-1$sh", agent="AGENT";   // #0/0#0  OrderCatched
+     |  try {                                              // :0
+     |    execute executable="FAIL-1$sh", agent="AGENT";   // :0/try:0  OrderCatched
      |  } catch {
-     |    execute executable="FAIL-2$sh", agent="AGENT";   // #0/1#0  OrderFailed
+     |    execute executable="FAIL-2$sh", agent="AGENT";   // :0/catch:0  OrderFailed
      |  }
      |}""".stripMargin
   private val StoppingWorkflow = WorkflowParser.parse(WorkflowPath("/STOPPING") ~ "INITIAL", stoppingScript).orThrow
@@ -226,5 +226,7 @@ object TryTest
 
     OrderProcessingStarted,
     OrderProcessed(Outcome.Failed(ReturnCode(2))),
+    OrderDetachable,
+    OrderDetached,
     OrderFailed())
 }

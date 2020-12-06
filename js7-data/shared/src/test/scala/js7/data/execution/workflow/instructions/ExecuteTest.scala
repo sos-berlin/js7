@@ -6,7 +6,7 @@ import js7.data.agent.AgentName
 import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.context.OrderContext
 import js7.data.job.{RelativeExecutablePath, ReturnCode}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderFailedCatchable_, OrderMoved}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderFailedIntermediate_, OrderMoved}
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.value.{NamedValues, NumericValue, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -41,8 +41,8 @@ final class ExecuteTest extends AnyFreeSpec {
   "toEvent" in {
     assert(toEvent(Outcome.Succeeded(NamedValues.rc(0))) == Some(orderId <-: OrderMoved(Position(1) / "A" % 21)))
     assert(toEvent(Outcome.Succeeded(NamedValues.rc(1))) == Some(orderId <-: OrderMoved(Position(1) / "A" % 21)))
-    assert(toEvent(Outcome.Failed(NamedValues.rc(1))) == Some(orderId <-: OrderFailedCatchable_()))
-    assert(toEvent(Outcome.Disrupted(Problem("DISRUPTION"))) == Some(orderId <-: OrderFailedCatchable_()))
+    assert(toEvent(Outcome.Failed(NamedValues.rc(1))) == Some(orderId <-: OrderFailedIntermediate_()))
+    assert(toEvent(Outcome.Disrupted(Problem("DISRUPTION"))) == Some(orderId <-: OrderFailedIntermediate_()))
   }
 
   private def toEvent(outcome: Outcome): Option[KeyedEvent[OrderActorEvent]] = {
