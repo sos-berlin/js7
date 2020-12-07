@@ -26,7 +26,7 @@ final case class Order[+S <: Order.State](
   workflowPosition: WorkflowPosition,
   state: S,
   arguments: NamedValues = Map.empty,
-  historicOutcomes: Seq[HistoricOutcome] = Nil,
+  historicOutcomes: Seq[HistoricOutcome] = Vector.empty,
   attachedState: Option[AttachedState] = None,
   parent: Option[OrderId] = None,
   mark: Option[OrderMark] = None,
@@ -527,7 +527,7 @@ object Order
       state <- cursor.get[State]("state")
       attachedState <- cursor.get[Option[AttachedState]]("attachedState")
       parent <- cursor.get[Option[OrderId]]("parent")
-      historicOutcomes <- cursor.get[Seq[HistoricOutcome]]("historicOutcomes")
+      historicOutcomes <- cursor.get[Vector[HistoricOutcome]]("historicOutcomes")
       mark <- cursor.get[Option[OrderMark]]("mark")
       isSuspended <- cursor.getOrElse[Boolean]("isSuspended")(false)
       removeWhenTerminated <- cursor.getOrElse[Boolean]("removeWhenTerminated")(false)
