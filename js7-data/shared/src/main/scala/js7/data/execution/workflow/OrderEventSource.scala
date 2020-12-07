@@ -13,12 +13,13 @@ import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.context.OrderContext
 import js7.data.execution.workflow.instructions.{ForkExecutor, InstructionExecutor}
+import js7.data.lock.{LockName, LockState}
 import js7.data.order.Order.{IsTerminated, ProcessingKilled}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFailedIntermediate_, OrderMoved, OrderRemoved, OrderResumeMarked, OrderResumed, OrderSuspendMarked, OrderSuspended}
 import js7.data.order.{HistoricOutcome, Order, OrderId, OrderMark, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem}
 import js7.data.workflow.instructions.{End, Fork, Goto, IfFailedGoto, Retry, TryInstruction}
-import js7.data.workflow.position.{Position, WorkflowPosition}
+import js7.data.workflow.position.{BranchId, BranchPath, Position, WorkflowPosition}
 import js7.data.workflow.{Instruction, Workflow, WorkflowId}
 import scala.annotation.tailrec
 
@@ -26,14 +27,15 @@ import scala.annotation.tailrec
   * @author Joacim Zschimmer
   */
 final class OrderEventSource(
-  idToWorkflow: WorkflowId => Checked[Workflow],
   idToOrder: OrderId => Checked[Order[Order.State]],
+  idToWorkflow: WorkflowId => Checked[Workflow],
+  pathToLock: LockName => Checked[LockState],
   isAgent: Boolean)
 {
   private val context = new OrderContext {
     def idToOrder                               = OrderEventSource.this.idToOrder
-    def instruction(position: WorkflowPosition) = OrderEventSource.this.instruction(position)
     def idToWorkflow(id: WorkflowId)            = OrderEventSource.this.idToWorkflow(id)
+    def nameToLockState                         = OrderEventSource.this.pathToLock
 
     def childOrderEnded(order: Order[Order.State]): Boolean =
       order.parent.flatMap(o => idToOrder(o).toOption) match {
@@ -75,15 +77,10 @@ final class OrderEventSource(
                       applyMoveInstructions(orderId, moved)
                         .map(_ :: Nil)
 
-                    case orderId <-: OrderFailedIntermediate_(outcome, uncatchable) =>  // OrderFailedIntermediate_ is used internally only
+                    case orderId <-: OrderFailedIntermediate_(outcome, uncatchable) =>
+                      // OrderFailedIntermediate_ is used internally only
                       assertThat(orderId == order.id)
-                      findCatchPosition(order) match {
-                        case Some(firstCatchPos) if !uncatchable && !isMaxRetriesReached(order, firstCatchPos) =>
-                          applyMoveInstructions(order.withPosition(firstCatchPos))
-                            .flatMap(movedPos => Right((orderId <-: OrderCatched(outcome, movedPos)) :: Nil))
-                        case _ =>
-                          Right(orderFailed(order, outcome))
-                      }
+                      fail(order, outcome, uncatchable)
 
                     case o => Right(o :: Nil)
                   })
@@ -133,6 +130,16 @@ final class OrderEventSource(
           (order.id <-: OrderBroken(problem)) :: Nil
 
       case Right(o) => o
+    }
+
+  private def fail(order: Order[Order.State], outcome: Option[Outcome.NotSucceeded], uncatchable: Boolean)
+  : Checked[List[KeyedEvent[OrderActorEvent]]] =
+    findCatchPosition(order) match {
+      case Some(firstCatchPos) if !uncatchable && !isMaxRetriesReached(order, firstCatchPos) =>
+        applyMoveInstructions(order.withPosition(firstCatchPos))
+          .flatMap(movedPos => Right((order.id <-: OrderCatched(outcome, movedPos)) :: Nil))
+      case _ =>
+        Right(orderFailed(order, outcome))
     }
 
   private def orderFailed(order: Order[Order.State], outcome: Option[Outcome.NotSucceeded]) =

@@ -89,8 +89,9 @@ with Stash {
   private val orderActorConf = OrderActor.Conf(conf.config, conf.journalConf)
   private val orderRegister = new OrderRegister
   private val orderEventSource = new OrderEventSource(
-    workflowRegister.idToWorkflow.checked,
     orderRegister.idToOrder.checked,
+    workflowRegister.idToWorkflow.checked,
+    _ => Left(Problem.pure("Locks are available only at the Controller")),
     isAgent = true)
   private val orderEventHandler = new OrderEventHandler(
     workflowRegister.idToWorkflow.checked,

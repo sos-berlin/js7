@@ -91,6 +91,7 @@ private object JControllerStateTest
           ClusterTiming(10.s, 20.s)))),
     ControllerMetaState(ControllerId("CONTROLLER-ID"), Timestamp("2019-05-24T12:00:00Z"), timezone = "Europe/Berlin"),
     (AgentRefState(AgentRef(AgentName("AGENT"), Uri("https://AGENT")), None, None, AgentRefState.Decoupled, EventId(7)) :: Nil).toKeyedMap(_.name),
+    Map.empty,
     Repo.empty
       .applyEvents(List(
         VersionAdded(v1),

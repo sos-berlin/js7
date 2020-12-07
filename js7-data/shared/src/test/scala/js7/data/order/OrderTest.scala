@@ -10,8 +10,9 @@ import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentName
 import js7.data.command.{CancelMode, SuspendMode}
-import js7.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Cancelled, DelayedAfterError, Detaching, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, IsFreshOrReady, Offering, Processed, Processing, ProcessingKilled, Ready, State}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderResumed, OrderRetrying, OrderStarted, OrderSuspendMarked, OrderSuspended}
+import js7.data.lock.LockName
+import js7.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Cancelled, DelayedAfterError, Detaching, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, IsFreshOrReady, Offering, Processed, Processing, ProcessingKilled, Ready, State, WaitingForLock}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockAcquired, OrderLockQueued, OrderLockReleased, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderResumed, OrderRetrying, OrderStarted, OrderSuspendMarked, OrderSuspended}
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.Fork
@@ -180,6 +181,13 @@ final class OrderTest extends AnyFreeSpec
             }""")
       }
 
+      "WaitingForLock" in {
+        testJson[State](WaitingForLock,
+          json"""{
+            "TYPE": "WaitingForLock"
+          }""")
+      }
+
       "Offering" in {
         testJson[State](Offering(Timestamp.ofEpochMilli(123)),
           json"""{
@@ -271,6 +279,10 @@ final class OrderTest extends AnyFreeSpec
       OrderResumeMarked(),
       OrderResumed(),
 
+      OrderLockAcquired(LockName("LOCK")),
+      OrderLockQueued(LockName("LOCK")),
+      OrderLockReleased(LockName("LOCK")),
+
       OrderBroken(Problem("Problem")),
 
       OrderDetachable,
@@ -344,6 +356,19 @@ final class OrderTest extends AnyFreeSpec
           case (OrderSuspended           , IsSuspended(true) , IsAttached             ) => _.isInstanceOf[Ready]
           case (_: OrderResumeMarked     , _                 , _                      ) => _.isInstanceOf[Ready]
           case (_: OrderResumed          , IsSuspended(true) , IsDetached | IsAttached) => _.isInstanceOf[Ready]
+          case (_: OrderLockAcquired     , _                 , IsDetached             ) => _.isInstanceOf[Ready]
+          case (_: OrderLockQueued       , _                 , IsDetached             ) => _.isInstanceOf[WaitingForLock]
+          case (_: OrderBroken           , _                 , _                      ) => _.isInstanceOf[Broken]
+        })
+    }
+
+    "WaitingForLock" - {
+      checkAllEvents(Order(orderId, workflowId, WaitingForLock),
+        removeMarkable[WaitingForLock] orElse
+        markable[WaitingForLock] orElse
+        cancelMarkedAllowed[WaitingForLock] orElse
+        suspendMarkedAllowed[WaitingForLock] orElse {
+          case (_: OrderLockAcquired     , _                 , IsDetached             ) => _.isInstanceOf[Ready]
           case (_: OrderBroken           , _                 , _                      ) => _.isInstanceOf[Broken]
         })
     }

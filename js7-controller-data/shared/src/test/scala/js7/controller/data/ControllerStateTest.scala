@@ -15,6 +15,7 @@ import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{EventId, JournalState, JournaledState}
 import js7.data.item.RepoEvent.VersionAdded
 import js7.data.item.{Repo, VersionId}
+import js7.data.lock.{Lock, LockName, LockState}
 import js7.data.node.NodeId
 import js7.data.order.{Order, OrderId}
 import js7.data.workflow.WorkflowPath
@@ -43,6 +44,7 @@ final class ControllerStateTest extends AsyncFreeSpec {
     ControllerMetaState(ControllerId("CONTROLLER-ID"), Timestamp("2019-05-24T12:00:00Z"), timezone = "Europe/Berlin"),
     (AgentRefState(AgentRef(AgentName("AGENT"), Uri("https://AGENT")), None, None, AgentRefState.Decoupled, EventId(7)) :: Nil)
       .toKeyedMap(_.name),
+    Map(LockName("LOCK") -> LockState(Lock(LockName("LOCK")))),
     Repo.empty.applyEvent(VersionAdded(VersionId("1.0"))).orThrow,
     (Order(OrderId("ORDER"), WorkflowPath("/WORKFLOW") /: Position(1), Order.Fresh(None)) :: Nil).toKeyedMap(_.id))
 
@@ -51,7 +53,7 @@ final class ControllerStateTest extends AsyncFreeSpec {
   //}
 
   "estimatedSnapshotSize" in {
-    assert(controllerState.estimatedSnapshotSize == 7)
+    assert(controllerState.estimatedSnapshotSize == 8)
     for (list <- controllerState.toSnapshotObservable.toListL.runToFuture)
       yield assert(list.size == controllerState.estimatedSnapshotSize)
   }
@@ -75,6 +77,7 @@ final class ControllerStateTest extends AsyncFreeSpec {
           VersionAdded(VersionId("1.0"))
         ) ++
           controllerState.nameToAgent.values ++
+          controllerState.nameToLockState.values ++
           controllerState.idToOrder.values)
   }
 
@@ -135,6 +138,15 @@ final class ControllerStateTest extends AsyncFreeSpec {
               "TYPE": "Decoupled"
             },
             "eventId": 7
+          }, {
+            "TYPE": "LockState",
+            "lock": {
+              "name": "LOCK"
+            },
+            "acquired": {
+              "TYPE": "Available"
+            },
+            "queue": []
           }, {
             "TYPE": "Order",
             "historicOutcomes": [],

@@ -61,7 +61,9 @@ import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
 import js7.data.item.RepoEvent.{ItemAdded, ItemChanged, ItemDeleted, VersionAdded}
 import js7.data.item.{InventoryItem, RepoEvent}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancelMarked, OrderCoreEvent, OrderDetachable, OrderDetached, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderSuspendMarked}
+import js7.data.lock.Lock
+import js7.data.lock.LockEvent.{LockAdded, LockUpdated}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancelMarked, OrderCoreEvent, OrderDetachable, OrderDetached, OrderLockReleased, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderSuspendMarked}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
 import js7.data.workflow.instructions.Execute
@@ -627,9 +629,27 @@ with MainJournalingActor[ControllerState, Event]
                   case Some(_) =>
                     Some(name <-: AgentUpdated(uri))
                 }
-          })(
-            handleAgentRefEvents
-          ).map(_ => Right(ControllerCommand.Response.Accepted))
+          })(handleAgentRefEvents)
+            .map(_ => Right(ControllerCommand.Response.Accepted))
+
+      case ControllerCommand.UpdateLocks(locks) =>
+        if (locks.map(_.name).distinct.sizeIs != locks.size)
+          Future.successful(Left(Problem.pure("Duplicate LockNames in UpdateLocks command")))
+        else
+          persistTransaction(
+            locks.flatMap {
+              case lock @ Lock(name, nonExclusiveLimit) =>
+                _controllerState.nameToLockState.get(name).map(_.lock) match {
+                  case None =>
+                    Some(name <-: LockAdded(nonExclusiveLimit))
+                  case Some(`lock`) =>
+                    None
+                  case Some(_) =>
+                    Some(name <-: LockUpdated(nonExclusiveLimit))
+                }
+          }) { (_, updatedState) =>
+            _controllerState = updatedState
+          }.map(_ => Right(ControllerCommand.Response.Accepted))
 
       case cmd: ControllerCommand.ReplaceRepo =>
         Try(
@@ -830,8 +850,18 @@ with MainJournalingActor[ControllerState, Event]
       val updatedOrderIds = handleOrderEventOnly(stamped)
       _controllerState = _controllerState.applyStampedEvents(stamped :: Nil).orThrow
       updatedOrderIds foreach proceedWithOrder
+
+      stamped.value.event match {
+        case OrderLockReleased(lockName) =>
+          for (lockState <- _controllerState.nameToLockState.get(lockName);
+               queuedOrderId <- lockState.firstQueuedOrderId) {
+            proceedWithOrder(queuedOrderId)
+          }
+
+        case _ =>
+      }
     }
-    _controllerState = updatedState
+    _controllerState = updatedState  // Reduce memory usage (they are equal)
   }
 
   private def handleOrderEventOnly(stamped: Stamped[KeyedEvent[OrderEvent]]): Seq[OrderId] = {
@@ -1023,8 +1053,9 @@ with MainJournalingActor[ControllerState, Event]
 
   private def orderEventSource(controllerState: ControllerState) =
     new OrderEventSource(
-      controllerState.repo.idTo[Workflow],
       controllerState.idToOrder.checked,
+      controllerState.repo.idTo[Workflow],
+      controllerState.nameToLockState.checked,
       isAgent = false)
 
   private def orderEventHandler(controllerState: ControllerState) =

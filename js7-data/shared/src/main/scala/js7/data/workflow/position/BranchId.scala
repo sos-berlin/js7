@@ -25,6 +25,7 @@ object BranchId
   val Try_ = BranchId("try")
   val Catch_ = BranchId("catch")
   val ForkPrefix = "fork+"
+  val Lock = BranchId("lock")
 
   implicit def apply(branchId: String): Named = Named(branchId)
 

@@ -7,6 +7,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.Collections.implicits.RichTraversable
 import js7.data.agent.AgentName
 import js7.data.job.{CommandLineExecutable, CommandLineParser, ExecutablePath, ExecutableScript, ReturnCode}
+import js7.data.lock.LockName
 import js7.data.order.OrderId
 import js7.data.parser.BasicParsers._
 import js7.data.parser.Parsers.checkedParse
@@ -17,7 +18,7 @@ import js7.data.value.expression.{Evaluator, Expression}
 import js7.data.value.{NamedValues, ObjectValue}
 import js7.data.workflow.Instruction.Labeled
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Finish, Fork, Goto, If, IfFailedGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction, End => EndInstr, Fail => FailInstr}
+import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Finish, Fork, Goto, If, IfFailedGoto, ImplicitEnd, LockInstruction, Offer, Retry, ReturnCodeMeaning, TryInstruction, End => EndInstr, Fail => FailInstr}
 import scala.concurrent.duration._
 
 /**
@@ -227,6 +228,22 @@ object WorkflowParser
       Index ~ keyword("goto") ~ w ~ label ~ hardEnd
         map { case (start, n, end) => Goto(n, sourcePos(start, end)) })
 
+    private def lockInstruction[_: P] = P[LockInstruction](
+      (Index ~ keyword("lock") ~ w ~/
+        inParentheses(keyValues(
+          keyValue("lock", lockName))
+        ) ~/
+        Index ~/
+        w ~/ curlyWorkflowOrInstruction
+      ).flatMap { case (start, keyToValue, end, subworkflow) =>
+        for (LockName <- keyToValue[LockName]("lock")) yield
+          LockInstruction(
+            LockName,
+            exclusive = true,
+            subworkflow,
+            sourcePos(start, end))
+      })
+
     private def instruction[_: P]: P[Instruction] =
       P(awaitInstruction |
         endInstruction |
@@ -240,6 +257,7 @@ object WorkflowParser
         jobInstruction |
         retryInstruction |
         tryInstruction |
+        lockInstruction |
         offerInstruction)
 
     private def labeledInstruction[_: P] = P[Labeled](

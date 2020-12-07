@@ -54,10 +54,11 @@ object RetryExecutorTest
     val context = new OrderContext {
       def idToOrder = Map(order.id -> order).checked
       def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
-      def instruction(position: WorkflowPosition) =
+      override def instruction(position: WorkflowPosition) =
         if (position == workflowId /: tryPosition) tryInstruction.copy(retryDelays = Some(delays.toVector))
         else Gap()
       def idToWorkflow(id: WorkflowId) = throw new NotImplementedError
+      val nameToLockState = _ => Left(Problem("nameToLockState is not implemented here"))
     }
     new RetryExecutor(() => now).toEvents(Retry(), order, context)
   }

@@ -1,5 +1,6 @@
 package js7.data.execution.workflow.instructions
 
+import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentName
 import js7.data.execution.workflow.context.OrderContext
@@ -20,9 +21,11 @@ final class FailExecutorTest extends AnyFreeSpec
   private lazy val context = new OrderContext {
     val idToOrder = Map(TestOrder.id -> TestOrder, ForkedOrder.id -> ForkedOrder, Carrot.id -> Carrot, Lemon.id -> Lemon).checked
 
+    val nameToLockState = _ => Left(Problem("nameToLockState is not implemented here"))
+
     def childOrderEnded(order: Order[Order.State]) = Set(Carrot.id, Lemon.id)(order.id)
 
-    def instruction(position: WorkflowPosition) = position match {
+    override def instruction(position: WorkflowPosition) = position match {
       case WorkflowPosition(TestWorkflowId, Position(Nil, InstructionNr(1))) =>
         Fork.of(
           "🥕" -> Workflow.empty,

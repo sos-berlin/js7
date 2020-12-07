@@ -18,7 +18,9 @@ import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{Event, EventId, JournalEvent, JournalHeader, JournalState, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotMeta}
 import js7.data.item.{Repo, RepoEvent}
-import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderOffered, OrderRemoved, OrderStdWritten}
+import js7.data.lock.LockEvent.{LockAdded, LockUpdated}
+import js7.data.lock.{Lock, LockEvent, LockName, LockState}
+import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderRemoved, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import monix.reactive.Observable
 
@@ -30,6 +32,7 @@ final case class ControllerState(
   standards: JournaledState.Standards,
   controllerMetaState: ControllerMetaState,
   nameToAgent: Map[AgentName, AgentRefState],
+  nameToLockState: Map[LockName, LockState],
   repo: Repo,
   idToOrder: Map[OrderId, Order[Order.State]])
 extends JournaledState[ControllerState]
@@ -39,6 +42,7 @@ extends JournaledState[ControllerState]
     standards.snapshotSize +
     repo.estimatedEventCount +
     nameToAgent.size +
+    nameToLockState.size +
     idToOrder.size
 
   def toSnapshotObservable: Observable[Any] =
@@ -47,6 +51,7 @@ extends JournaledState[ControllerState]
     Observable.fromIterable(controllerMetaState.isDefined ? controllerMetaState) ++
     Observable.fromIterable(repo.eventsFor(ControllerItemPathCompanions)) ++
     Observable.fromIterable(nameToAgent.values) ++
+    Observable.fromIterable(nameToLockState.values) ++
     Observable.fromIterable(idToOrder.values)
 
   def withEventId(eventId: EventId) =
@@ -112,21 +117,23 @@ extends JournaledState[ControllerState]
           for {
             previousOrder <- idToOrder.checked(orderId)
             updatedOrder <- previousOrder.update(event)
-            childOrdersAddedOrRemoved <- event match {
+            updatedIdToOrder = idToOrder + (updatedOrder.id -> updatedOrder)
+            updatedControllerState <- event match {
               case event: OrderForked =>
-                Right(idToOrder ++ (
-                  for (childOrder <- previousOrder.newForkedOrders(event)) yield
-                    childOrder.id -> childOrder))
+                Right(copy(
+                  idToOrder = updatedIdToOrder
+                    ++ previousOrder.newForkedOrders(event).map(childOrder => childOrder.id -> childOrder)))
 
               case event: OrderJoined =>
                 previousOrder.state match {
                   case forked: Order.Forked =>
-                    Right(idToOrder -- forked.childOrderIds)
+                    Right(copy(
+                      idToOrder = updatedIdToOrder -- forked.childOrderIds))
 
                   case awaiting: Order.Awaiting =>
                     // Offered order is being kept ???
                     //Right(idToOrder - awaiting.offeredOrderId)
-                    Right(idToOrder)
+                    Right(this)
 
                   case state =>
                     Left(Problem(s"For event $event, $orderId must be in state Forked or Awaiting, not: $state"))
@@ -135,12 +142,18 @@ extends JournaledState[ControllerState]
               case event: OrderOffered =>
                 val offered = previousOrder.newOfferedOrder(event)
                 for (_ <- idToOrder.checkNoDuplicate(offered.id)) yield
-                  idToOrder + (offered.id -> offered)
+                  copy(
+                    idToOrder = updatedIdToOrder + (offered.id -> offered))
 
-              case _ => Right(idToOrder)
+              case event: OrderLockEvent =>
+                for (lockState <- nameToLockState(event.lockName).applyEvent(orderId <-: event)) yield
+                  copy(
+                    idToOrder = updatedIdToOrder,
+                    nameToLockState = nameToLockState + (event.lockName -> lockState))
+
+              case _ => Right(copy(idToOrder = updatedIdToOrder))
             }
-          } yield
-            copy(idToOrder = childOrdersAddedOrRemoved + (updatedOrder.id -> updatedOrder))
+          } yield updatedControllerState
 
         case _: OrderStdWritten =>
           Right(this)
@@ -151,6 +164,20 @@ extends JournaledState[ControllerState]
 
     case KeyedEvent(_, ControllerTestEvent) =>
       Right(this)
+
+    case KeyedEvent(name: LockName, event: LockEvent) =>
+      event match {
+        case LockAdded(nonExclusiveLimit) =>
+          if (nameToLockState contains name)
+            Left(DuplicateKey("Lock", name))
+          else
+            Right(copy(
+              nameToLockState = nameToLockState + (name -> LockState(Lock(name, nonExclusiveLimit)))))
+
+        case LockUpdated(nonExclusiveLimit) =>
+          Right(copy(
+              nameToLockState = nameToLockState + (name -> LockState(Lock(name, nonExclusiveLimit)))))
+      }
 
     case _ => applyStandardEvent(keyedEvent)
   }
@@ -165,6 +192,7 @@ object ControllerState extends JournaledState.Companion[ControllerState]
     EventId.BeforeFirst,
     JournaledState.Standards.empty,
     ControllerMetaState.Undefined,
+    Map.empty,
     Map.empty,
     Repo.empty,
     Map.empty)
@@ -182,6 +210,7 @@ object ControllerState extends JournaledState.Companion[ControllerState]
       Subtype(deriveCodec[ClusterStateSnapshot]),
       Subtype(deriveCodec[ControllerMetaState]),
       Subtype[AgentRefState],
+      Subtype[LockState],
       Subtype[RepoEvent],  // These events describe complete objects
       Subtype[AgentRegisteredController],  // These events describe complete objects
       Subtype[Order[Order.State]])
@@ -196,6 +225,7 @@ object ControllerState extends JournaledState.Companion[ControllerState]
       KeyedSubtype[ControllerEvent],
       KeyedSubtype[ClusterEvent],
       KeyedSubtype[AgentRefStateEvent],
+      KeyedSubtype[LockEvent],
       KeyedSubtype[OrderEvent])
   }
 }

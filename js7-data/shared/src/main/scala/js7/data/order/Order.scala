@@ -4,7 +4,7 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, DecodingFailure, Encoder, JsonObject}
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import js7.base.problem.Checked.Ops
+import js7.base.problem.Checked.{CheckedOption, Ops}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils._
@@ -15,7 +15,7 @@ import js7.data.order.Order._
 import js7.data.order.OrderEvent._
 import js7.data.value.NamedValues
 import js7.data.workflow.WorkflowId
-import js7.data.workflow.position.{InstructionNr, Position, WorkflowPosition}
+import js7.data.workflow.position.{BranchId, InstructionNr, Position, WorkflowPosition}
 import scala.reflect.ClassTag
 
 /**
@@ -249,6 +249,25 @@ final case class Order[+S <: Order.State](
               state = if (isState[Broken]) Ready else state,
               historicOutcomes = maybeHistoricOutcomes getOrElse historicOutcomes
             ).withPosition(maybePosition getOrElse position))
+
+        case _: OrderLockAcquired =>
+          // LockState handles this event, too
+          check(isDetached && (isState[Ready] || isState[WaitingForLock]),
+            copy(state = Ready).withPosition(position / BranchId.Lock % 0))
+
+        case _: OrderLockReleased =>
+          // LockState handles this event, too
+          if (isDetached && isState[Ready])
+            position.dropChild
+              .toChecked(Problem(s"OrderLockReleased event but position=$workflowPosition"))
+              .map(pos => withPosition(pos.increment))
+          else
+            inapplicable
+
+        case _: OrderLockQueued =>
+          check(isDetached && isState[Ready],
+            copy(
+              state = WaitingForLock))
       }
   }
 
@@ -465,6 +484,10 @@ object Order
     val Child = OrderForked.Child
   }
 
+  type WaitingForLock = WaitingForLock.type
+  case object WaitingForLock
+  extends IsStarted
+
   final case class Offering(until: Timestamp)
   extends IsStarted
 
@@ -499,6 +522,7 @@ object Order
     Subtype(deriveCodec[Forked]),
     Subtype(deriveCodec[Offering]),
     Subtype(deriveCodec[Awaiting]),
+    Subtype(WaitingForLock),
     Subtype(Failed),
     Subtype(FailedInFork),
     Subtype(Finished),

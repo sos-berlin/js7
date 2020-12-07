@@ -18,6 +18,7 @@ import js7.data.command.{CancelMode, CommonCommand, SuspendMode}
 import js7.data.controller.ControllerItems.itemPathJsonDecoder
 import js7.data.event.EventId
 import js7.data.item.{ItemPath, VersionId}
+import js7.data.lock.Lock
 import js7.data.node.NodeId
 import js7.data.order.{FreshOrder, HistoricOutcome, OrderId}
 import js7.data.workflow.position.Position
@@ -97,6 +98,11 @@ object ControllerCommand extends CommonCommand.Companion
   }
 
   final case class UpdateAgentRefs(agentRefs: Seq[AgentRef])
+  extends ControllerCommand {
+    type Response = Response.Accepted
+  }
+
+  final case class UpdateLocks(locks: Seq[Lock])
   extends ControllerCommand {
     type Response = Response.Accepted
   }
@@ -249,6 +255,7 @@ object ControllerCommand extends CommonCommand.Companion
   implicit val jsonCodec: TypedJsonCodec[ControllerCommand] = TypedJsonCodec[ControllerCommand](
     Subtype(deriveCodec[Batch]),
     Subtype(deriveCodec[UpdateAgentRefs]),
+    Subtype(deriveCodec[UpdateLocks]),
     Subtype(deriveCodec[AddOrder]),
     Subtype(deriveCodec[AddOrders]),
     Subtype[CancelOrders],

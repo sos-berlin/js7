@@ -14,7 +14,7 @@ import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, If}
 import js7.data.workflow.position.BranchId.{Else, Then}
-import js7.data.workflow.position.{Position, WorkflowPosition}
+import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
@@ -27,8 +27,8 @@ final class IfExecutorTest extends AnyFreeSpec {
   private lazy val context = new OrderContext {
     def idToOrder = Map(AOrder.id -> AOrder, BOrder.id -> BOrder).checked
     def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
-    def instruction(position: WorkflowPosition) = throw new NotImplementedError
     def idToWorkflow(id: WorkflowId) = Map(TestWorkflowId -> Workflow.of(TestWorkflowId)).checked(id)
+    val nameToLockState = _ => Left(Problem("nameToLockState is not implemented here"))
   }
 
   "JSON BranchId" - {

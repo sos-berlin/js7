@@ -5,7 +5,7 @@ import js7.base.utils.ScalaUtils.reuseIfEqual
 import js7.data.agent.AgentName
 import js7.data.workflow.Instruction.{@:, Labeled}
 import js7.data.workflow.Workflow
-import js7.data.workflow.instructions.{End, Execute, Fail, Fork, Gap, Goto, If, IfFailedGoto, Retry, TryInstruction}
+import js7.data.workflow.instructions.{End, Execute, Fail, Fork, Gap, Goto, If, IfFailedGoto, LockInstruction, Retry, TryInstruction}
 
 /**
   * @author Joacim Zschimmer
@@ -40,7 +40,7 @@ object Workflows
           case o @ _ @: (ex: Execute.Anonymous) if ex.job isExecutableOnAgent agentName =>
             o
 
-          case o @ _ @: (_: Fail | _: End | _: IfFailedGoto | _: Goto | _: Retry) =>
+          case o @ _ @: (_: Fail | _: End | _: IfFailedGoto | _: Goto | _: Retry | _: LockInstruction) =>
             o
 
           case labels @: instruction =>

@@ -10,6 +10,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentName
 import js7.data.command.CancelMode
 import js7.data.event.{KeyedEvent, Stamped}
+import js7.data.lock.LockName
 import js7.data.order.OrderEvent._
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
@@ -416,7 +417,33 @@ final class OrderEventTest extends AnyFreeSpec
       }""")
   }
 
-  private def check(event: OrderEvent, json: => Json) = testJson(event, json)
+  "OrderLockAcquired" in {
+    check(OrderLockAcquired(LockName("LOCK"), exclusively = false), json"""
+      {
+        "TYPE": "OrderLockAcquired",
+        "lockName": "LOCK",
+        "exclusively": false
+      }""")
+  }
+
+  "OrderLockQueued" in {
+    check(OrderLockQueued(LockName("LOCK")), json"""
+      {
+        "TYPE": "OrderLockQueued",
+        "lockName": "LOCK"
+      }""")
+  }
+
+  "OrderLockReleased" in {
+    check(OrderLockReleased(LockName("LOCK")), json"""
+      {
+        "TYPE": "OrderLockReleased",
+        "lockName": "LOCK"
+      }""")
+  }
+
+  private def check(event: OrderEvent, json: => Json) =
+    testJson(event, json)
 
   if (sys.props contains "test.speed") "Speed" in {
     val n = 10000

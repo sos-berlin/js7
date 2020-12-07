@@ -33,8 +33,9 @@ final class OrderEventSourceTest extends AnyFreeSpec
 {
   "JobSchedulerRestarted" in {
     val eventSource = new OrderEventSource(
-      Map(TestWorkflowId -> ForkWorkflow).checked,
       Map(disruptedOrder.id -> disruptedOrder).checked,
+      Map(TestWorkflowId -> ForkWorkflow).checked,
+      _ => Left(Problem("OrderEventSourceTest does not now locks")),
       isAgent = false)
     assert(eventSource.nextEvents(disruptedOrder.id) ==
       List(disruptedOrder.id <-: OrderMoved(disruptedOrder.position)))  // Move to same InstructionNr
@@ -684,8 +685,9 @@ final class OrderEventSourceTest extends AnyFreeSpec
     = {
       val order = templateOrder.copy(attachedState = attachedState)
       def eventSource(isAgent: Boolean) = new OrderEventSource(
-        Map(TestWorkflowId -> ForkWorkflow).checked,
         Map(order.id -> order).checked,
+        Map(TestWorkflowId -> ForkWorkflow).checked,
+        Map.empty.checked,
         isAgent = isAgent)
       body(order, eventSource(isAgent = false), eventSource(isAgent = true))
     }
@@ -713,8 +715,9 @@ final class OrderEventSourceTest extends AnyFreeSpec
 
     def eventSource(order: Order[Order.State]) =
       new OrderEventSource(
-        Map(workflow.id -> workflow).checked,
         Map(order.id -> order).checked,
+        Map(workflow.id -> workflow).checked,
+        _ => Left(Problem("OrderEventSourceTest does not know locks")),
         isAgent = false)
     val failed7 = Outcome.Failed(NamedValues.rc(7))
 
@@ -811,12 +814,13 @@ final class OrderEventSourceTest extends AnyFreeSpec
           Order.Forked.Child("🥕", aChild.id),
           Order.Forked.Child("🍋", bChild.id))))
       def liveEventSource = new OrderEventSource(
-        Map(workflow.id -> workflow).checked,
         Map(
           forkingOrder.id -> forkingOrder,
           aChild.id -> aChild,
           bChild.id -> bChild
         ).checked,
+        Map(workflow.id -> workflow).checked,
+        Map.empty.checked,
         isAgent = false)
 
       val event = OrderFailedInFork()
@@ -881,7 +885,8 @@ object OrderEventSourceTest {
   final class Process(workflow: Workflow) {
     val idToWorkflow = Map(workflow.id -> workflow).checked(_)
     val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
-    private def eventSource(isAgent: Boolean) = new OrderEventSource(idToWorkflow, o => idToOrder.checked(o), isAgent = isAgent)
+    private def eventSource(isAgent: Boolean) =
+      new OrderEventSource(o => idToOrder.checked(o), idToWorkflow, Map.empty.checked, isAgent = isAgent)
     private val eventHandler = new OrderEventHandler(idToWorkflow, o => idToOrder.checked(o))
     private val inProcess = mutable.Set[OrderId]()
 
@@ -965,7 +970,8 @@ object OrderEventSourceTest {
 
   private def newWorkflowEventSource(workflow: Workflow, orders: Iterable[Order[Order.State]], isAgent: Boolean) =
     new OrderEventSource(
-      Map(TestWorkflowId -> workflow).checked,
       orders.toKeyedMap(_.id).checked,
+      Map(TestWorkflowId -> workflow).checked,
+      _ => Left(Problem("OrderEventSourceTest does not know locks")),
       isAgent = isAgent)
 }

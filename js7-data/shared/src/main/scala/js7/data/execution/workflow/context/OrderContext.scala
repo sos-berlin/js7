@@ -3,6 +3,7 @@ package js7.data.execution.workflow.context
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.implicitClass
+import js7.data.lock.{LockName, LockState}
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.value.expression.{Scope, ValueSearch}
 import js7.data.value.{NamedValues, NumericValue, Value}
@@ -18,7 +19,12 @@ trait OrderContext
 {
   def idToOrder: OrderId => Checked[Order[Order.State]]
 
-  def instruction(workflowPosition: WorkflowPosition): Instruction
+  def nameToLockState: LockName => Checked[LockState]
+
+  def instruction(workflowPosition: WorkflowPosition): Instruction =
+    idToWorkflow(workflowPosition.workflowId)
+      .map(_.instruction(workflowPosition.position))
+      .orThrow
 
   def instruction_[A <: Instruction: ClassTag](workflowPosition: WorkflowPosition): Checked[Instruction] =
     instruction(workflowPosition) match {

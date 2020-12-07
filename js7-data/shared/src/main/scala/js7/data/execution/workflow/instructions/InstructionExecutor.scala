@@ -7,7 +7,7 @@ import js7.data.execution.workflow.context.OrderContext
 import js7.data.order.Order
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderMoved}
 import js7.data.workflow.Instruction
-import js7.data.workflow.instructions.{AwaitOrder, End, Execute, Fail, Finish, Fork, Gap, If, Offer, Retry, TryInstruction}
+import js7.data.workflow.instructions.{AwaitOrder, End, Execute, Fail, Finish, Fork, Gap, If, LockInstruction, Offer, Retry, TryInstruction}
 import js7.data.workflow.position.Position
 
 /**
@@ -40,6 +40,7 @@ object InstructionExecutor
       case _: Gap => GapExecutor
       case _: If => IfExecutor
       case _: TryInstruction => TryExecutor
+      case _: LockInstruction => LockExecutor
       case _: Offer => OfferExecutor
       case _: Retry => new RetryExecutor(() => Timestamp.now)
     }

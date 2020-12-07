@@ -10,6 +10,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentName
 import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.event.Event
+import js7.data.lock.LockName
 import js7.data.order.Order._
 import js7.data.system.{Stderr, Stdout, StdoutOrStderr}
 import js7.data.value.NamedValues
@@ -219,6 +220,19 @@ object OrderEvent {
     historicOutcomes: Option[Seq[HistoricOutcome]] = None)
   extends OrderActorEvent
 
+  sealed trait OrderLockEvent extends OrderActorEvent {
+    def lockName: LockName
+  }
+
+  final case class OrderLockAcquired(lockName: LockName, exclusively: Boolean = false)
+  extends OrderLockEvent
+
+  final case class OrderLockQueued(lockName: LockName)
+  extends OrderLockEvent
+
+  final case class OrderLockReleased(lockName: LockName)
+  extends OrderLockEvent
+
   implicit val jsonCodec = TypedJsonCodec[OrderEvent](
     Subtype[OrderAdded],
     Subtype(OrderRemoveMarked),
@@ -251,5 +265,8 @@ object OrderEvent {
     Subtype(deriveCodec[OrderAttachedToAgent]),
     Subtype(OrderDetachable),
     Subtype(OrderDetached),
-    Subtype(deriveCodec[OrderBroken]))
+    Subtype(deriveCodec[OrderBroken]),
+    Subtype(deriveCodec[OrderLockAcquired]),
+    Subtype(deriveCodec[OrderLockQueued]),
+    Subtype(deriveCodec[OrderLockReleased]))
 }

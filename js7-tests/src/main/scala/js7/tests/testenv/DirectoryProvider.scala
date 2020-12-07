@@ -346,6 +346,22 @@ object DirectoryProvider
           resultVariable.fold("")(o => s"""|echo "result=SCRIPT-VARIABLE-$$SCHEDULER_PARAM_${o.toUpperCase}" >>"$$SCHEDULER_RETURN_VALUES"""")
       ).stripMargin
 
+  final def waitingForFileScript(file: Path, delete: Boolean = false): String =
+    if (isWindows)  // TODO WINDOWS NOT TESTED
+       s"""@echo off
+          |:LOOP
+          |  if exist "$file" goto FOUND
+          |  timeout /t 1 >nul
+          |  goto LOOP
+          |:FOUND
+          |""" + (delete ?? s"del $file")
+    else
+       s"""#!/usr/bin/env bash
+          |set -e
+          |while [ ! -e '$file' ]; do
+          |  sleep 0.1
+          |done""".stripMargin + (delete ?? s" && rm '$file'")
+
   private def writeTrustedSignatureKeys(verifier: SignatureVerifier, configDir: Path, confFilename: String): Unit = {
     val dir = "private/" + verifier.companion.recommendedKeyDirectoryName
     createDirectory(configDir / dir)

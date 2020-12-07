@@ -10,6 +10,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentName
 import js7.data.folder.FolderPath
 import js7.data.item.ItemPath
+import js7.data.lock.LockName
 import scala.reflect.ClassTag
 
 /**
@@ -105,7 +106,14 @@ object BasicParsers
     pathString.flatMap(string =>
       AgentName.checked(string) match {
         case Left(problem) => Fail.opaque(problem.toString)
-        case Right(agentName) => Pass(agentName)
+        case Right(name) => Pass(name)
+      }))
+
+  def lockName(implicit ctx: P[_]) = P[LockName](
+    pathString.flatMap(string =>
+      LockName.checked(string) match {
+        case Left(problem) => Fail.opaque(problem.toString)
+        case Right(name) => Pass(name)
       }))
 
   def keyValues[A](namedValueParser: => P[(String, A)])(implicit ctx: P[_]) = P[KeyToValue[A]](

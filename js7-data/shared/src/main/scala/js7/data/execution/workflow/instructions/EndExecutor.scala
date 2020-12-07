@@ -4,7 +4,7 @@ import js7.data.execution.workflow.context.OrderContext
 import js7.data.execution.workflow.instructions.InstructionExecutor.instructionToExecutor
 import js7.data.order.Order
 import js7.data.order.OrderEvent.{OrderDetachable, OrderFinished, OrderMoved}
-import js7.data.workflow.instructions.{End, Fork}
+import js7.data.workflow.instructions.{End, Fork, LockInstruction}
 
 /**
   * @author Joacim Zschimmer
@@ -27,6 +27,8 @@ object EndExecutor extends EventInstructionExecutor with PositionInstructionExec
           context.instruction(order.workflowId /: returnPosition) match {
             case fork: Fork =>
               ForkExecutor.tryJoinChildOrder(context, order, fork)
+            case lock: LockInstruction =>
+              LockExecutor.onReturnFromSubworkflow(order, lock)
             case _ =>
               Some(order.id <-: OrderMoved(returnPosition.increment))
           }
@@ -38,6 +40,7 @@ object EndExecutor extends EventInstructionExecutor with PositionInstructionExec
         returnPosition <- order.position.dropChild
         next <- instructionToExecutor(context.instruction(order.workflowId /: returnPosition)) match {
           case ForkExecutor => None
+          case LockExecutor => None
           case _: PositionInstructionExecutor => Some(returnPosition.increment)  // Check this first for TryInstruction !!!
           case _: EventInstructionExecutor => Some(returnPosition)
           case _ => None

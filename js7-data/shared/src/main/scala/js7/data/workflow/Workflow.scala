@@ -277,7 +277,7 @@ extends InventoryItem
     position match {
       case Position(Nil, nr) => isDefinedAt(nr)
       case Position(BranchPath.Segment(nr, branchId) :: tail, tailNr) =>
-        instruction(nr).workflow(branchId) exists (_ isDefinedAt Position(tail, tailNr))
+        instruction(nr).workflow(branchId).exists(_ isDefinedAt Position(tail, tailNr))
     }
 
   private def isDefinedAt(nr: InstructionNr): Boolean =
@@ -372,7 +372,6 @@ extends InventoryItem
       instructions(nr.number)
     else
       Gap()
-
 
   def checkedPosition(position: Position): Checked[Position] =
     labeledInstruction(position).map(_ => position)

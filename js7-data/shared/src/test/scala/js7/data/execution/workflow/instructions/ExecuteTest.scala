@@ -11,7 +11,7 @@ import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.value.{NamedValues, NumericValue, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, ReturnCodeMeaning}
-import js7.data.workflow.position.{Position, WorkflowPosition}
+import js7.data.workflow.position.Position
 import js7.data.workflow.{WorkflowId, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -27,8 +27,8 @@ final class ExecuteTest extends AnyFreeSpec {
   private val orderContext = new OrderContext {
     def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
     def idToOrder = throw new NotImplementedError
-    def instruction(workflowPosition: WorkflowPosition) = throw new NotImplementedError
     def idToWorkflow(id: WorkflowId) = throw new NotImplementedError
+    val nameToLockState = _ => Left(Problem("nameToLockState is not implemented here"))
   }
 
   "toOutcome" in {

@@ -4,7 +4,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.job.JobKey
-import js7.data.order.OrderEvent.{OrderAwaiting, OrderForked, OrderJoined, OrderOffered, OrderProcessed, OrderRemoved, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderAwaiting, OrderForked, OrderJoined, OrderOffered, OrderProcessed, OrderRemoved}
 import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.{Workflow, WorkflowId}
