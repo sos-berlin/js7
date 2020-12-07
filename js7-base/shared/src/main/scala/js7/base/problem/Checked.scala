@@ -53,18 +53,8 @@ object Checked
       case e: ProblemException => Left(e.problem)
     }
 
-  // Why does not Cats provide a `traverse` ???
-  def traverse[F[_]: Applicative, A, B](checked: Checked[A])(f: A => F[B]): F[Checked[B]] =
-    checked match {
-      case Left(problem) => Applicative[F].pure(Left(problem))
-      case Right(a) => Applicative[F].map(f(a))(Right.apply)
-    }
-
   implicit final class Ops[A](private val underlying: Checked[A]) extends AnyVal
   {
-    def traverse[F[_]: Applicative, B](f: A => F[B]): F[Checked[B]] =
-      Checked.traverse(underlying)(f)
-
     def withProblemKey(key: Any): Checked[A] =
       mapProblem (_ withKey key)
 

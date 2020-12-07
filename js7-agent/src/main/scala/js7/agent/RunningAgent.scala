@@ -1,6 +1,7 @@
 package js7.agent
 
 import akka.actor.{ActorRef, ActorSystem, Props}
+import cats.syntax.traverse._
 import com.google.inject.Stage.PRODUCTION
 import com.google.inject.{Guice, Injector, Module}
 import com.typesafe.config.Config
@@ -33,7 +34,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext, Future, Promise, blocking}
+import scala.concurrent.{ExecutionContext, Future, Promise, blocking}
 import scala.util.{Failure, Success, Try}
 
 /**

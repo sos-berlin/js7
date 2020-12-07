@@ -4,6 +4,7 @@ import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.pattern.ask
 import akka.util.Timeout
 import cats.syntax.flatMap._
+import cats.syntax.traverse._
 import com.google.inject.Stage.{DEVELOPMENT, PRODUCTION}
 import com.google.inject.util.Modules
 import com.google.inject.util.Modules.EMPTY_MODULE

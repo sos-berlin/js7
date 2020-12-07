@@ -3,6 +3,7 @@ package js7.common.akkahttp.web.session
 import akka.http.scaladsl.model.StatusCodes.Unauthorized
 import akka.http.scaladsl.server.Directive1
 import akka.http.scaladsl.server.Directives._
+import cats.syntax.traverse._
 import js7.base.auth.{SessionToken, UserAndPassword, UserId}
 import js7.base.generic.Completed
 import js7.base.problem.Checked._
