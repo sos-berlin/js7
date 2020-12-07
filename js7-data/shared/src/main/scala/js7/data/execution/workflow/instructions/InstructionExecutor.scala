@@ -19,7 +19,7 @@ trait InstructionExecutor {
 
 trait EventInstructionExecutor extends InstructionExecutor
 {
-  def toEvent(instruction: Instr, order: Order[Order.State], context: OrderContext): Checked[Option[KeyedEvent[OrderActorEvent]]]
+  def toEvents(instruction: Instr, order: Order[Order.State], context: OrderContext): Checked[List[KeyedEvent[OrderActorEvent]]]
 }
 
 trait PositionInstructionExecutor extends InstructionExecutor
@@ -50,12 +50,12 @@ object InstructionExecutor
       case _ => Right(None)
     }
 
-  def toEvent(instruction: Instruction, order: Order[Order.State], context: OrderContext): Checked[Option[KeyedEvent[OrderActorEvent]]] =
+  def toEvents(instruction: Instruction, order: Order[Order.State], context: OrderContext): Checked[List[KeyedEvent[OrderActorEvent]]] =
     instructionToExecutor(instruction) match {
       case exec: EventInstructionExecutor =>
-        exec.toEvent(instruction.asInstanceOf[exec.Instr], order, context)
+        exec.toEvents(instruction.asInstanceOf[exec.Instr], order, context)
       case _ =>
-        Right(None)
+        Right(Nil)
     }
 
   private[instructions] def ifProcessedThenOrderMoved(order: Order[Order.State], context: OrderContext) =

@@ -13,7 +13,7 @@ object ExecuteExecutor extends EventInstructionExecutor
 {
   type Instr = Execute
 
-  def toEvent(instruction: Execute, order: Order[Order.State], context: OrderContext) =
+  def toEvents(instruction: Execute, order: Order[Order.State], context: OrderContext) =
     Right(
       // Order.Ready: Execution has to be started by the caller
       //order.ifState[Order.Fresh].map(order =>
@@ -33,5 +33,6 @@ object ExecuteExecutor extends EventInstructionExecutor
 
               case _: Outcome.Killed =>
                 OrderProcessingKilled
-            })))
+            }))
+        .toList)
 }

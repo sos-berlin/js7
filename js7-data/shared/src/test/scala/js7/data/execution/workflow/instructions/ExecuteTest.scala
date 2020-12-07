@@ -38,16 +38,16 @@ final class ExecuteTest extends AnyFreeSpec {
     assert(executeAnonymous.job.toOutcome(namedValues, ReturnCode(3)) == Outcome.Succeeded(namedValues + ("returnCode" -> NumericValue(3))))
   }
 
-  "toEvent" in {
-    assert(toEvent(Outcome.Succeeded(NamedValues.rc(0))) == Some(orderId <-: OrderMoved(Position(1) / "A" % 21)))
-    assert(toEvent(Outcome.Succeeded(NamedValues.rc(1))) == Some(orderId <-: OrderMoved(Position(1) / "A" % 21)))
-    assert(toEvent(Outcome.Failed(NamedValues.rc(1))) == Some(orderId <-: OrderFailedIntermediate_()))
-    assert(toEvent(Outcome.Disrupted(Problem("DISRUPTION"))) == Some(orderId <-: OrderFailedIntermediate_()))
+  "toEvents" in {
+    assert(toEvents(Outcome.Succeeded(NamedValues.rc(0))) == Seq(orderId <-: OrderMoved(Position(1) / "A" % 21)))
+    assert(toEvents(Outcome.Succeeded(NamedValues.rc(1))) == Seq(orderId <-: OrderMoved(Position(1) / "A" % 21)))
+    assert(toEvents(Outcome.Failed(NamedValues.rc(1))) == Seq(orderId <-: OrderFailedIntermediate_()))
+    assert(toEvents(Outcome.Disrupted(Problem("DISRUPTION"))) == Seq(orderId <-: OrderFailedIntermediate_()))
   }
 
-  private def toEvent(outcome: Outcome): Option[KeyedEvent[OrderActorEvent]] = {
+  private def toEvents(outcome: Outcome): Seq[KeyedEvent[OrderActorEvent]] = {
     val order = Order(orderId, (WorkflowPath("/WORKFLOW") ~ "VERSION" ) /: (Position(1) / "A" % 20), Order.Processed,
       historicOutcomes = HistoricOutcome(Position(1) / "B" % 20, outcome) :: Nil)
-    ExecuteExecutor.toEvent(executeAnonymous, order, orderContext).orThrow
+    ExecuteExecutor.toEvents(executeAnonymous, order, orderContext).orThrow
   }
 }

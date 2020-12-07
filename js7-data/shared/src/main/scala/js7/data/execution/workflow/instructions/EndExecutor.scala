@@ -13,9 +13,9 @@ object EndExecutor extends EventInstructionExecutor with PositionInstructionExec
 {
   type Instr = End
 
-  def toEvent(instruction: End, order: Order[Order.State], context: OrderContext) =
+  def toEvents(instruction: End, order: Order[Order.State], context: OrderContext) =
     Right(
-      order.position.dropChild match {
+      (order.position.dropChild match {
         case None =>
           for (order <- order.ifState[Order.Ready]) yield
             if (order.isAttached)
@@ -30,7 +30,7 @@ object EndExecutor extends EventInstructionExecutor with PositionInstructionExec
             case _ =>
               Some(order.id <-: OrderMoved(returnPosition.increment))
           }
-      })
+      }).toList)
 
   def nextPosition(instruction: End, order: Order[Order.State], context: OrderContext) =
     Right(

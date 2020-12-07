@@ -13,7 +13,7 @@ object AwaitOrderExecutor extends EventInstructionExecutor
 {
   type Instr = AwaitOrder
 
-  def toEvent(instruction: AwaitOrder, order: Order[Order.State], context: OrderContext) =
+  def toEvents(instruction: AwaitOrder, order: Order[Order.State], context: OrderContext) =
     Right(
       order.ifState[Order.Fresh].map(order =>
         order.id <-: OrderStarted)
@@ -27,5 +27,6 @@ object AwaitOrderExecutor extends EventInstructionExecutor
           } yield
             order.id <-: OrderJoined(Outcome.succeeded))
       .orElse(
-        ifProcessedThenOrderMoved(order, context)))
+        ifProcessedThenOrderMoved(order, context))
+      .toList)
 }

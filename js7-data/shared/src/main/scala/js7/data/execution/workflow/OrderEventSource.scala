@@ -2,6 +2,7 @@ package js7.data.execution.workflow
 
 import cats.instances.either._
 import cats.instances.vector._
+import cats.instances.list._
 import cats.syntax.traverse._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
@@ -46,44 +47,63 @@ final class OrderEventSource(
       }
   }
 
-  def nextEvent(orderId: OrderId): Option[KeyedEvent[OrderActorEvent]] = {
+  def nextEvents(orderId: OrderId): List[KeyedEvent[OrderActorEvent]] = {
     val order = idToOrder(orderId).orThrow
     if (order.isState[Order.Broken])
-      None  // Avoid issuing a second OrderBroken (would be a loop)
+      Nil  // Avoid issuing a second OrderBroken (would be a loop)
     else
-      checkedNextEvent(order) |> (invalidToEvent(order, _))
+      checkedNextEvents(order) |> (invalidToEvent(order, _))
   }
 
-  private def checkedNextEvent(order: Order[Order.State]): Checked[Option[KeyedEvent[OrderActorEvent]]] = {
-    def f(o: Option[OrderActorEvent]) = Checked(o.map(order.id <-: _))
-    f(orderMarkEvent(order))
-      .orElseT(
-        if (!weHave(order) || order.isSuspended)
-          Right(None)
-        else
-          f(awokeEvent(order)).orElseT(
-            joinedEvent(order).orElseT(
-              InstructionExecutor.toEvent(instruction(order.workflowPosition), order, context) match {
-                case Right(Some(orderId <-: (moved: OrderMoved))) =>
-                  applyMoveInstructions(orderId, moved) map Some.apply
+  private def checkedNextEvents(order: Order[Order.State]): Checked[List[KeyedEvent[OrderActorEvent]]] = {
+    def ifDefinedElse(o: Option[OrderActorEvent], orElse: Checked[List[KeyedEvent[OrderActorEvent]]]) =
+      o.fold(orElse)(e => Right((order.id <-: e) :: Nil))
+    ifDefinedElse(orderMarkEvent(order),
+      if (!weHave(order) || order.isSuspended)
+        Right(Nil)
+      else
+        ifDefinedElse(awokeEvent(order),
+          joinedEvent(order) match {
+            case Left(problem) => Left(problem)
+            case Right(Some(event)) => Right(event :: Nil)
+            case Right(None) =>
+              InstructionExecutor.toEvents(instruction(order.workflowPosition), order, context)
+                // Multiple returned events are expected to be independant and are applied to same idToOrder
+                .flatMap(_
+                  .traverse {
+                    case orderId <-: (moved: OrderMoved) =>
+                      applyMoveInstructions(orderId, moved)
+                        .map(_ :: Nil)
 
-                case Right(Some(orderId <-: OrderFailedIntermediate_(outcome, uncatchable))) =>  // OrderFailedIntermediate_ is used internally only
-                  assertThat(orderId == order.id)
-                  findCatchPosition(order) match {
-                    case Some(firstCatchPos) if !uncatchable && !isMaxRetriesReached(order, firstCatchPos) =>
-                      applyMoveInstructions(order.withPosition(firstCatchPos))
-                        .flatMap(movedPos => Right(Some(orderId <-: OrderCatched(outcome, movedPos))))
-                    case _ =>
-                      Right(Some(orderFailed(order, outcome)))
-                  }
+                    case orderId <-: OrderFailedIntermediate_(outcome, uncatchable) =>  // OrderFailedIntermediate_ is used internally only
+                      assertThat(orderId == order.id)
+                      findCatchPosition(order) match {
+                        case Some(firstCatchPos) if !uncatchable && !isMaxRetriesReached(order, firstCatchPos) =>
+                          applyMoveInstructions(order.withPosition(firstCatchPos))
+                            .flatMap(movedPos => Right((orderId <-: OrderCatched(outcome, movedPos)) :: Nil))
+                        case _ =>
+                          Right(orderFailed(order, outcome))
+                      }
 
-                case o => o
-              }))
-        )
-      .flatMapT(keyedEvent =>   // Check event
-        idToOrder(keyedEvent.key)
-          .flatMap(_.update(keyedEvent.event).map(_ => Some(keyedEvent))))
+                    case o => Right(o :: Nil)
+                  })
+                .map(_.flatten)
+          }))
+      .flatMap(checkEvents)
   }
+
+  private def checkEvents(keyedEvents: List[KeyedEvent[OrderActorEvent]]) = {
+    var id2o = Map.empty[OrderId, Checked[Order[Order.State]]]
+    var problem: Option[Problem] = None
+    for (KeyedEvent(orderId, event) <- keyedEvents if problem.isEmpty) {
+      id2o.getOrElse(orderId, idToOrder(orderId)).flatMap(_.update(event)) match {
+        case Left(prblm) => problem = Some(prblm)
+        case Right(order) => id2o += orderId -> Right(order)
+      }
+    }
+    problem.toLeft(keyedEvents)
+  }
+
 
   // Special handling for try with maxRetries and catch block with retry instruction only:
   // try (maxRetries=n) ... catch retry
@@ -98,32 +118,31 @@ final class OrderEventSource(
   private def catchStartsWithRetry(firstCatchPos: WorkflowPosition) =
     instruction(firstCatchPos).withoutSourcePos == Retry()
 
-  private def invalidToEvent[A](order: Order[Order.State], checkedEvent: Checked[Option[KeyedEvent[OrderActorEvent]]])
-  : Option[KeyedEvent[OrderActorEvent]] =
+  private def invalidToEvent[A](order: Order[Order.State], checkedEvent: Checked[List[KeyedEvent[OrderActorEvent]]])
+  : List[KeyedEvent[OrderActorEvent]] =
     checkedEvent match {
       case Left(problem) =>
         if (order.isOrderFailedApplicable)
-          Some(orderFailed(order, Some(Outcome.Disrupted(problem))))
+          orderFailed(order, Some(Outcome.Disrupted(problem)))
         else if (order.isAttached && order.isInDetachableState && order.copy(attachedState = None).isOrderFailedApplicable) {
           scribe.warn(s"Detaching ${order.id} after failure: $problem")
           // Introduce a new 'OrderPrefailed' event for not loosing the problem ???
           // Controller should reproduce the problem.
-          Some(order.id <-: OrderDetachable)
+          (order.id <-: OrderDetachable) :: Nil
         } else
-          Some(order.id <-: OrderBroken(problem))
-
+          (order.id <-: OrderBroken(problem)) :: Nil
 
       case Right(o) => o
     }
 
   private def orderFailed(order: Order[Order.State], outcome: Option[Outcome.NotSucceeded]) =
-    order.id <-: (
+    List(order.id <-: (
       if (order.position.isInFork)
         OrderFailedInFork(outcome)
       else if (order.isAttached)
         OrderDetachable
       else
-        OrderFailed(outcome))
+        OrderFailed(outcome)))
 
   private def findCatchPosition(order: Order[Order.State]): Option[Position] =
     for {
@@ -313,6 +332,7 @@ final class OrderEventSource(
   private def applyMoveInstructions(order: Order[Order.State], visited: List[Position]): Checked[Option[Position]] =
     applySingleMoveInstruction(order) match {
       case o @ Left(_) => o
+
       case Right(Some(position)) =>
         if (visited contains position)
           Left(Problem(s"${order.id} is in a workflow loop: " +
@@ -321,6 +341,7 @@ final class OrderEventSource(
                 .fold(_.toString, _.toString).truncateWithEllipsis(50)).mkString(" --> ")))
         else
           applyMoveInstructions(order.withPosition(position), position :: visited)
+
       case Right(None) => Right(Some(order.position))
     }
 

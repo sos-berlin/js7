@@ -458,18 +458,18 @@ with Stash {
           orderEntry.at(until) {  // TODO Schedule only the next order ?
             self ! Internal.Due(orderId)
           }
+
         case _ =>
-          orderEventSource.nextEvent(order.id) match {
-            case Some(KeyedEvent(orderId, OrderBroken(problem))) =>
+          val keyedEvents = orderEventSource.nextEvents(order.id)
+          keyedEvents foreach {
+            case KeyedEvent(orderId, OrderBroken(problem)) =>
               logger.error(s"Order ${orderId.string} is broken: $problem")
 
-            case Some(KeyedEvent(orderId_, event)) =>
+            case KeyedEvent(orderId_, event) =>
               orderRegister(orderId_).actor ? OrderActor.Command.HandleEvent(event)  // Ignore response ???
-
-            case None =>
-              if (order.isProcessable) {
-                onOrderIsProcessable(orderEntry)
-              }
+          }
+          if (keyedEvents.isEmpty && order.isProcessable) {
+            onOrderIsProcessable(orderEntry)
           }
       }
     }

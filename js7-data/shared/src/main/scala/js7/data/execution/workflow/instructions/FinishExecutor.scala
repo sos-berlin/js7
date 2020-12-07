@@ -15,19 +15,19 @@ object FinishExecutor extends EventInstructionExecutor
 {
   type Instr = Finish
 
-  def toEvent(instruction: Finish, order: Order[Order.State], context: OrderContext) =
+  def toEvents(instruction: Finish, order: Order[Order.State], context: OrderContext) =
     order.state match {
       case _: Order.Fresh =>
-        Right(Some(order.id <-: OrderStarted))
+        Right((order.id <-: OrderStarted) :: Nil)
 
       case _: Order.Ready =>
         if (order.isAttached)
-          Right(Some(order.id <-: OrderDetachable))
+          Right((order.id <-: OrderDetachable) :: Nil)
         else
           order.position.forkBranchReversed match {
             case Nil =>
               // Not in a fork
-              Right(Some(order.id <-: OrderFinished))
+              Right((order.id <-: OrderFinished) :: Nil)
 
             case BranchPath.Segment(nr, branchId) :: reverseInit =>
               // In a fork
@@ -38,9 +38,9 @@ object FinishExecutor extends EventInstructionExecutor
                 endPos <- branchWorkflow.instructions.iterator.zipWithIndex
                   .collectFirst { case (_: End, index) => forkPosition / branchId % InstructionNr(index) }
                   .toChecked(Problem(s"Missing End instruction in branch ${forkPosition / branchId}"))  // Does not happen
-              } yield Some(order.id <-: OrderMoved(endPos))
+              } yield (order.id <-: OrderMoved(endPos)) :: Nil
           }
 
-      case _ => Right(None)
+      case _ => Right(Nil)
     }
 }

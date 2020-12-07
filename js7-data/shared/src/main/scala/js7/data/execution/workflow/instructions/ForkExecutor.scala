@@ -15,7 +15,7 @@ object ForkExecutor extends EventInstructionExecutor
 {
   type Instr = Fork
 
-  def toEvent(fork: Fork, order: Order[Order.State], context: OrderContext) =
+  def toEvents(fork: Fork, order: Order[Order.State], context: OrderContext) =
     Checked(
       order.ifState[Order.Fresh].map(order =>
         order.id <-: OrderStarted)
@@ -34,7 +34,8 @@ object ForkExecutor extends EventInstructionExecutor
 
             case _ =>
               OrderFailedIntermediate_()
-          }))))
+          })))
+      .toList)
 
   private def checkOrderForked(context: OrderContext, orderForked: KeyedEvent[OrderForked]): KeyedEvent[OrderActorEvent] = {
     val duplicates = orderForked.event.children.map(_.orderId).flatMap(o => context.idToOrder(o).toOption)
@@ -42,7 +43,7 @@ object ForkExecutor extends EventInstructionExecutor
       // Internal error, maybe a lost event OrderDetached
       val problem = Problem.pure(s"Forked OrderIds duplicate existing ${duplicates mkString ", "}")
       scribe.error(problem.toString)
-      orderForked.key <-: OrderBroken(problem)  // TODO Invalidate whole toEvent with order.key <-: OrderBroken
+      orderForked.key <-: OrderBroken(problem)  // TODO Invalidate whole toEvents with order.key <-: OrderBroken
     } else
       orderForked
   }

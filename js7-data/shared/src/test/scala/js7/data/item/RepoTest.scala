@@ -128,7 +128,7 @@ final class RepoTest extends AnyFreeSpec
     assert(testRepo.currentTyped[BItem] == Map(by2.path -> by2))
   }
 
-  "toEvent" - {
+  "toEvents" - {
     "InventoryItem with alien version is rejected" in {
       assert(emptyRepo.itemToEvents(V1, toSigned(a1.withVersion(V2)) :: Nil) == Left(ItemVersionDoesNotMatchProblem(VersionId("1"), a1.path ~ V2)))
     }

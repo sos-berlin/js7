@@ -19,9 +19,9 @@ final class RetryExecutor(clock: () => Timestamp) extends EventInstructionExecut
 {
   type Instr = Retry
 
-  def toEvent(retry: Retry, order: Order[Order.State], context: OrderContext) =
+  def toEvents(retry: Retry, order: Order[Order.State], context: OrderContext) =
     if (!order.isState[Order.Ready])
-      Right(None)
+      Right(Nil)
     else
       order.workflowPosition.position.nextRetryBranchPath
         .flatMap(branchPath =>
@@ -36,11 +36,12 @@ final class RetryExecutor(clock: () => Timestamp) extends EventInstructionExecut
             .toChecked(missingTryProblem(branchPath))
             .map {
               case (Some(maxRetries), _) if order.position.tryCount >= maxRetries =>
-                Some(order.id <-: OrderFailed())
+                (order.id <-: OrderFailed()) :: Nil
               case (_, delay) =>
-                Some(order.id <-: OrderRetrying(
+                (order.id <-: OrderRetrying(
                   movedTo = branchPath % 0,
-                  delayedUntil = (delay > Duration.Zero) ? nextTimestamp(delay)))
+                  delayedUntil = (delay > Duration.Zero) ? nextTimestamp(delay))
+                ):: Nil
               })
 
   private def nextTimestamp(delay: FiniteDuration) =

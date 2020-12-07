@@ -1,5 +1,6 @@
 package js7.data.execution.workflow.instructions
 
+import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.<-:
@@ -11,7 +12,6 @@ import js7.data.workflow.instructions.{AwaitOrder, Offer}
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{WorkflowId, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -25,12 +25,12 @@ final class AwaitOrderExecutorTest extends AnyFreeSpec {
       def instruction(position: WorkflowPosition) = throw new NotImplementedError
       def idToWorkflow(id: WorkflowId) = throw new NotImplementedError
     }
-    assert(InstructionExecutor.toEvent(AwaitOrder(offeredOrder.id), awaitingOrder, context) ==
-      Right(Some(awaitingOrder.id <-: OrderAwaiting(offeredOrder.id))))
+    assert(InstructionExecutor.toEvents(AwaitOrder(offeredOrder.id), awaitingOrder, context) ==
+      Right(Seq(awaitingOrder.id <-: OrderAwaiting(offeredOrder.id))))
 
-    val offerResult = InstructionExecutor.toEvent(Offer(OfferingOrderId, 60.seconds), offeredOrder, context)
-    val Right(Some(OfferingOrderId <-: OrderOffered(OfferedOrderId, until))) = offerResult
-    assert(until >= Timestamp.now + 50.seconds && until <= Timestamp.now + 70.seconds)
+    val offerResult = InstructionExecutor.toEvents(Offer(OfferingOrderId, 60.s), offeredOrder, context)
+    val Right(Seq(OfferingOrderId <-: OrderOffered(OfferedOrderId, until))) = offerResult
+    assert(until >= Timestamp.now + 50.s && until <= Timestamp.now + 70.s)
   }
 }
 

@@ -47,10 +47,9 @@ final class TryExecutorTest extends AnyFreeSpec
       Right(Some(Position(7) / try_(0) % 0)))
   }
 
-  "toEvent" in {
-    assert(InstructionExecutor.toEvent(tryInstruction, AOrder, context) ==
-      Right(Some(
-        AOrder.id <-: OrderMoved(Position(7) / try_(0) % 0))))
+  "toEvents" in {
+    assert(InstructionExecutor.toEvents(tryInstruction, AOrder, context) ==
+      Right(Seq(AOrder.id <-: OrderMoved(Position(7) / try_(0) % 0))))
   }
 }
 

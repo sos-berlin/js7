@@ -19,24 +19,24 @@ import scala.concurrent.duration._
   */
 final class RetryExecutorTest extends AnyFreeSpec
 {
-  "toEvent" in {
-    assert(toEvent(Position(1)) == Left(Problem("Retry, but not in a catch-block")))
-    assert(toEvent(tryPosition) == Left(Problem("Retry, but not in a catch-block")))
-    assert(toEvent(tryPosition / "try+0" % 0) == Left(Problem("Retry, but not in a catch-block")))
+  "toEvents" in {
+    assert(toEvents(Position(1)) == Left(Problem("Retry, but not in a catch-block")))
+    assert(toEvents(tryPosition) == Left(Problem("Retry, but not in a catch-block")))
+    assert(toEvents(tryPosition / "try+0" % 0) == Left(Problem("Retry, but not in a catch-block")))
   }
 
   "Find try Position and increment BranchId" in {
-    assert(toEvent(tryPosition / "catch+0" % 0) == Right(Some(orderId <-: OrderRetrying(tryPosition / "try+1" % 0))))
-    assert(toEvent(tryPosition / "catch+1" % 0) == Right(Some(orderId <-: OrderRetrying(tryPosition / "try+2" % 0))))
+    assert(toEvents(tryPosition / "catch+0" % 0) == Right(Seq(orderId <-: OrderRetrying(tryPosition / "try+1" % 0))))
+    assert(toEvents(tryPosition / "catch+1" % 0) == Right(Seq(orderId <-: OrderRetrying(tryPosition / "try+2" % 0))))
   }
 
   "Delay" in {
     val delays = 0.second :: 1.second :: 2.seconds :: 11.5.seconds :: Nil
-    assert(toEvent(tryPosition / "catch+0" % 0, delays) == Right(Some(orderId <-: OrderRetrying(tryPosition / "try+1" % 0, None))))
-    assert(toEvent(tryPosition / "catch+1" % 0, delays) == Right(Some(orderId <-: OrderRetrying(tryPosition / "try+2" % 0, Some(now + 1.second)))))
-    assert(toEvent(tryPosition / "catch+2" % 0, delays) == Right(Some(orderId <-: OrderRetrying(tryPosition / "try+3" % 0, Some(now + 2.seconds)))))
-    assert(toEvent(tryPosition / "catch+3" % 0, delays) == Right(Some(orderId <-: OrderRetrying(tryPosition / "try+4" % 0, Some(now + 12.seconds)))))
-    assert(toEvent(tryPosition / "catch+4" % 0, delays) == Right(Some(orderId <-: OrderRetrying(tryPosition / "try+5" % 0, Some(now + 12.seconds)))))
+    assert(toEvents(tryPosition / "catch+0" % 0, delays) == Right(Seq(orderId <-: OrderRetrying(tryPosition / "try+1" % 0, None))))
+    assert(toEvents(tryPosition / "catch+1" % 0, delays) == Right(Seq(orderId <-: OrderRetrying(tryPosition / "try+2" % 0, Some(now + 1.second)))))
+    assert(toEvents(tryPosition / "catch+2" % 0, delays) == Right(Seq(orderId <-: OrderRetrying(tryPosition / "try+3" % 0, Some(now + 2.seconds)))))
+    assert(toEvents(tryPosition / "catch+3" % 0, delays) == Right(Seq(orderId <-: OrderRetrying(tryPosition / "try+4" % 0, Some(now + 12.seconds)))))
+    assert(toEvents(tryPosition / "catch+4" % 0, delays) == Right(Seq(orderId <-: OrderRetrying(tryPosition / "try+5" % 0, Some(now + 12.seconds)))))
   }
 }
 
@@ -48,7 +48,7 @@ object RetryExecutorTest
   private val workflowId = WorkflowPath("/WORKFLOW") ~ "VERSION"
   private val tryInstruction = TryInstruction(Workflow.empty, Workflow.empty)
 
-  private def toEvent(position: Position, delays: Seq[FiniteDuration] = Nil) = {
+  private def toEvents(position: Position, delays: Seq[FiniteDuration] = Nil) = {
     val order = Order(orderId, workflowId /: position, Order.Ready,
       historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(1))) :: Nil)
     val context = new OrderContext {
@@ -59,6 +59,6 @@ object RetryExecutorTest
         else Gap()
       def idToWorkflow(id: WorkflowId) = throw new NotImplementedError
     }
-    new RetryExecutor(() => now).toEvent(Retry(), order, context)
+    new RetryExecutor(() => now).toEvents(Retry(), order, context)
   }
 }

@@ -14,7 +14,7 @@ object OfferExecutor extends EventInstructionExecutor
 {
   type Instr = Offer
 
-  def toEvent(instruction: Offer, order: Order[Order.State], context: OrderContext) =
+  def toEvents(instruction: Offer, order: Order[Order.State], context: OrderContext) =
     Right(
       order.ifState[Order.Fresh].map(order =>
         order.id <-: OrderStarted)
@@ -22,5 +22,6 @@ object OfferExecutor extends EventInstructionExecutor
         order.ifState[Order.Ready].map(
           _.id <-: OrderOffered(instruction.orderId, Timestamp.now + instruction.timeout))
         .orElse(
-          ifProcessedThenOrderMoved(order, context))))
+          ifProcessedThenOrderMoved(order, context)))
+      .toList)
 }

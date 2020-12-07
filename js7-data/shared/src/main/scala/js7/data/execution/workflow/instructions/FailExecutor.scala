@@ -12,18 +12,17 @@ object FailExecutor extends EventInstructionExecutor
 {
   type Instr = Fail
 
-  def toEvent(fail: Fail, order: Order[Order.State], context: OrderContext) =
+  def toEvents(fail: Fail, order: Order[Order.State], context: OrderContext) =
     order.state match {
       case _: Order.Fresh =>
-        Right(Some(order.id <-: OrderStarted))
+        Right((order.id <-: OrderStarted) :: Nil)
 
       case _: Order.Ready =>
         lazy val maybeErrorMessage = fail.message
           .map(o => context.makeScope(order).flatMap(_.evalString(o)).fold(_.toString, identity))
         lazy val outcome = Outcome.Failed(maybeErrorMessage, fail.namedValues)
-        Right(Some(order.id <-:
-          OrderFailedIntermediate_(Some(outcome), uncatchable = fail.uncatchable)))
+        Right((order.id <-: OrderFailedIntermediate_(Some(outcome), uncatchable = fail.uncatchable)) :: Nil)
 
-      case _ => Right(None)
+      case _ => Right(Nil)
     }
 }

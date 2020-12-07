@@ -209,9 +209,9 @@ with MainJournalingActor[ControllerState, Event]
     private val events = mutable.Buffer[KeyedEvent[OrderEvent]]()
 
     def persistAndHandleLater(keyedEvent: KeyedEvent[OrderEvent]): Unit = {
-      val first = events.isEmpty
+      val isFirst = events.isEmpty
       events += keyedEvent
-      if (first) {
+      if (isFirst) {
         self ! Internal.AfterProceedEventsAdded
       }
     }
@@ -927,7 +927,7 @@ with MainJournalingActor[ControllerState, Event]
       case _ =>
     }
 
-    for (keyedEvent <- orderEventSource(_controllerState).nextEvent(order.id)) {
+    for (keyedEvent <- orderEventSource(_controllerState).nextEvents(order.id)) {
       keyedEvent match {
         case KeyedEvent(orderId, OrderBroken(problem)) =>
           logger.error(s"Order '${orderId.string}' is broken: $problem")

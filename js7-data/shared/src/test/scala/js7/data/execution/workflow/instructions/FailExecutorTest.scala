@@ -34,21 +34,21 @@ final class FailExecutorTest extends AnyFreeSpec
     def idToWorkflow(id: WorkflowId) = throw new NotImplementedError
   }
 
-  "toEvent" - {
+  "toEvents" - {
     "Fresh order will be started" in {
-      assert(FailExecutor.toEvent(Fail(), TestOrder.copy(state = Order.Fresh()), context) ==
-        Right(Some(TestOrder.id <-: OrderStarted)))
+      assert(FailExecutor.toEvents(Fail(), TestOrder.copy(state = Order.Fresh()), context) ==
+        Right(Seq(TestOrder.id <-: OrderStarted)))
     }
 
     "Catchable Fail" - {
       "Detached order" in {
-        assert(FailExecutor.toEvent(Fail(), TestOrder, context) ==
-          Right(Some(TestOrder.id <-: OrderFailedIntermediate_(Some(Outcome.failed)))))
+        assert(FailExecutor.toEvents(Fail(), TestOrder, context) ==
+          Right(Seq(TestOrder.id <-: OrderFailedIntermediate_(Some(Outcome.failed)))))
       }
 
       "Attached order" in {
-        assert(FailExecutor.toEvent(Fail(), TestOrder.copy(attachedState = Some(Order.Attached(AgentName("AGENT")))), context) ==
-          Right(Some(TestOrder.id <-: OrderFailedIntermediate_(Some(Outcome.failed)))))
+        assert(FailExecutor.toEvents(Fail(), TestOrder.copy(attachedState = Some(Order.Attached(AgentName("AGENT")))), context) ==
+          Right(Seq(TestOrder.id <-: OrderFailedIntermediate_(Some(Outcome.failed)))))
       }
     }
   }
