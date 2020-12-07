@@ -1,4 +1,5 @@
 # SBT
+/.bsp/sbt.json
 /target/
 /*/target/
 /*/*/target/
