@@ -21,8 +21,8 @@ final class LockExecutorTest extends AnyFreeSpec {
     def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
     def idToWorkflow(id: WorkflowId) = Map(workflow.id -> workflow).checked(id)
     val nameToLockState = Map(
-      freeLockId -> LockState(Lock(freeLockId)),
-      occupiedLockId -> LockState(Lock(occupiedLockId), Acquired.Exclusive(OrderId("OCCUPANT"))),
+      freeLockId -> LockState(Lock(freeLockId, limit = 1)),
+      occupiedLockId -> LockState(Lock(occupiedLockId, limit = 1), Acquired.Exclusive(OrderId("OCCUPANT"))),
     ).checked
   }
 
@@ -36,9 +36,9 @@ final class LockExecutorTest extends AnyFreeSpec {
       Right(Seq(freeLockOrder.id <-: OrderLockReleased(freeLockId))))
   }
 
-  "Lock can not acquired" in {
+  "Lock can not acquired and is queued" in {
     assert(InstructionExecutor.toEvents(workflow.instruction(occupiedLockOrder.position), occupiedLockOrder, context) ==
-      Right(Seq(occupiedLockOrder.id <-: OrderLockQueued(occupiedLockId))))
+      Right(Seq(occupiedLockOrder.id <-: OrderLockQueued(occupiedLockId, None))))
   }
 
   "Lock released and waiting order continues" in {

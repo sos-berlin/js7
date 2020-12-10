@@ -896,9 +896,9 @@ final class OrderEventSourceTest extends AnyFreeSpec
         ).checked,
         Map(workflow.id -> workflow).checked,
         Map(
-          LockId("LOCK") -> LockState(Lock(LockId("LOCK"))),
-          LockId("LOCK-1") -> LockState(Lock(LockId("LOCK-1"))),
-          LockId("LOCK-2") -> LockState(Lock(LockId("LOCK-2")))
+          LockId("LOCK") -> LockState(Lock(LockId("LOCK"), limit = 1)),
+          LockId("LOCK-1") -> LockState(Lock(LockId("LOCK-1"), limit = 1)),
+          LockId("LOCK-2") -> LockState(Lock(LockId("LOCK-2"), limit = 1))
         ).checked,
         isAgent = false)
 

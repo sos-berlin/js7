@@ -14,7 +14,7 @@ final case class ExplicitEnd(sourcePos: Option[SourcePos] = None) extends End
 {
   def withoutSourcePos = copy(sourcePos = None)
 
-  override def toString = "end"
+  override def toString = "end" + sourcePosToString
 }
 
 @JsonCodec

@@ -29,7 +29,7 @@ object LockExecutor extends EventInstructionExecutor
 
           case Left(refusal @ (LockRefusal.IsInUse | _: LockRefusal.LimitReached)) =>
             scribe.debug(s"Order '${order.id.string}': ${refusal.toProblem(lockId).toString}, $lockState")
-            Right(!order.isState[Order.WaitingForLock] ? OrderLockQueued(lockId))
+            Right(!order.isState[Order.WaitingForLock] ? OrderLockQueued(lockId, count))
 
           case Left(refusal) =>
             Left(refusal.toProblem(lockId))

@@ -74,12 +74,13 @@ final class ControllerCommandTest extends AnyFreeSpec
   }
 
   "UpdateLocks" in {
-    testJson[ControllerCommand](UpdateLocks(Seq(Lock(LockId("LOCK")))),
+    testJson[ControllerCommand](UpdateLocks(Seq(Lock(LockId("LOCK"), limit = 3))),
       json"""{
          "TYPE": "UpdateLocks",
          "locks": [
             {
-              "id": "LOCK"
+              "id": "LOCK",
+              "limit": 3
             }
          ]
       }""")

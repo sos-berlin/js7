@@ -43,7 +43,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   override def beforeAll() = {
     super.beforeAll()
-    controllerApi.updateLocks(Seq(Lock(lockId), Lock(lock2Name))).await(99.s).orThrow
+    controllerApi.updateLocks(Seq(Lock(lockId, limit = 1), Lock(lock2Name, limit = 1))).await(99.s).orThrow
   }
 
   "TEST" in {
@@ -88,7 +88,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
         assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
           OrderAdded(workflow.id),
           OrderStarted,
-          OrderLockQueued(lockId),
+          OrderLockQueued(lockId, None),
           OrderLockAcquired(lockId, None),
           OrderAttachable(agentId),
           OrderAttached(agentId),
@@ -106,7 +106,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
                controller.eventWatch.await[OrderLockAcquired](_.key == pair(1)).map(_.eventId).head)
       }
       assert(controller.controllerState.await(99.s).nameToLockState(lockId) ==
-        LockState(Lock(lockId), Available, Queue.empty))
+        LockState(Lock(lockId, limit = 1), Available, Queue.empty))
     }
   }
 
@@ -130,7 +130,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderLockAcquired(lock2Name, None),
       OrderFailed(Position(0), Some(Outcome.failed), lockIds = Seq(lock2Name, lockId))))
     assert(controller.controllerState.await(99.s).nameToLockState(lockId) ==
-      LockState(Lock(lockId), Available, Queue.empty))
+      LockState(Lock(lockId, limit = 1), Available, Queue.empty))
   }
 
   "Failed order in try/catch" in {
@@ -165,72 +165,86 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderLockReleased(lockId),
       OrderFinished))
     assert(controller.controllerState.await(99.s).nameToLockState(lockId) ==
-      LockState(Lock(lockId), Available, Queue.empty))
+      LockState(Lock(lockId, limit = 1), Available, Queue.empty))
   }
 
   "Failed forked order" in {
-    withTemporaryFile("LockTest-", ".tmp") { file =>
-      val workflow = defineWorkflow(workflowNotation = """
-        define workflow {
-          fork {
-            "BRANCH": {
-              lock (lock = "LOCK") {
-                fail;
-              }
+    val workflow = defineWorkflow(workflowNotation = """
+      define workflow {
+        fork {
+          "BRANCH": {
+            lock (lock = "LOCK") {
+              fail;
             }
           }
-        }""")
-      val orderId = OrderId("🟩")
-      controller.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+        }
+      }""")
+    val orderId = OrderId("🟩")
+    controller.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
 
-      controller.eventWatch.await[OrderTerminated](_.key == orderId)
-      assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
-        OrderAdded(workflow.id),
-        OrderStarted,
-        OrderForked(Seq(OrderForked.Child("BRANCH", orderId | "BRANCH"))),
-        OrderJoined(Outcome.failed),
-        OrderFailed(Position(0))))
+    controller.eventWatch.await[OrderTerminated](_.key == orderId)
+    assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
+      OrderAdded(workflow.id),
+      OrderStarted,
+      OrderForked(Seq(OrderForked.Child("BRANCH", orderId | "BRANCH"))),
+      OrderJoined(Outcome.failed),
+      OrderFailed(Position(0))))
 
-      assert(controller.eventWatch.keyedEvents[OrderEvent](orderId | "BRANCH") == Seq(
-        OrderLockAcquired(lockId, None),
-        OrderFailedInFork(Position(0) / "fork+BRANCH" % 0, Some(Outcome.failed), lockIds = Seq(lockId))))
+    assert(controller.eventWatch.keyedEvents[OrderEvent](orderId | "BRANCH") == Seq(
+      OrderLockAcquired(lockId, None),
+      OrderFailedInFork(Position(0) / "fork+BRANCH" % 0, Some(Outcome.failed), lockIds = Seq(lockId))))
 
-      assert(controller.controllerState.await(99.s).nameToLockState(lockId) ==
-        LockState(Lock(lockId), Available, Queue.empty))
-    }
+    assert(controller.controllerState.await(99.s).nameToLockState(lockId) ==
+      LockState(Lock(lockId, limit = 1), Available, Queue.empty))
   }
 
   "Forked order with same lock" in {
-    withTemporaryFile("LockTest-", ".tmp") { file =>
-      val workflow = defineWorkflow(workflowNotation = """
-        define workflow {
-          lock (lock = "LOCK") {
-            fork {
-              "BRANCH": {
-                lock (lock = "LOCK") {}
-              }
+    val workflow = defineWorkflow(workflowNotation = """
+      define workflow {
+        lock (lock = "LOCK") {
+          fork {
+            "BRANCH": {
+              lock (lock = "LOCK") {}
             }
           }
-        }""")
-      val orderId = OrderId("🟪")
-      controller.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+        }
+      }""")
+    val orderId = OrderId("🟪")
+    controller.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
 
-      controller.eventWatch.await[OrderTerminated](_.key == orderId)
-      assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
-        OrderAdded(workflow.id),
-        OrderStarted,
-        OrderLockAcquired(lockId, None),
-        OrderForked(Seq(OrderForked.Child("BRANCH", orderId | "BRANCH"))),
-        OrderJoined(Outcome.failed),
-        OrderFailed(Position(0), lockIds = Seq(lockId))))
+    controller.eventWatch.await[OrderTerminated](_.key == orderId)
+    assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
+      OrderAdded(workflow.id),
+      OrderStarted,
+      OrderLockAcquired(lockId, None),
+      OrderForked(Seq(OrderForked.Child("BRANCH", orderId | "BRANCH"))),
+      OrderJoined(Outcome.failed),
+      OrderFailed(Position(0), lockIds = Seq(lockId))))
 
-      assert(controller.eventWatch.keyedEvents[OrderEvent](orderId | "BRANCH") == Seq(
-        OrderFailedInFork(Position(0) / "lock" % 0 / "fork+BRANCH" % 0, Some(Outcome.Disrupted(Problem(
-          "Lock:LOCK has already been acquired by parent Order:🟪"))))))
+    assert(controller.eventWatch.keyedEvents[OrderEvent](orderId | "BRANCH") == Seq(
+      OrderFailedInFork(Position(0) / "lock" % 0 / "fork+BRANCH" % 0, Some(Outcome.Disrupted(Problem(
+        "Lock:LOCK has already been acquired by parent Order:🟪"))))))
 
-      assert(controller.controllerState.await(99.s).nameToLockState(lockId) ==
-        LockState(Lock(lockId), Available, Queue.empty))
-    }
+    assert(controller.controllerState.await(99.s).nameToLockState(lockId) ==
+      LockState(Lock(lockId, limit = 1), Available, Queue.empty))
+  }
+
+  "Acquire too much" in {
+    val workflow = defineWorkflow(workflowNotation = """
+      define workflow {
+        lock (lock = "LOCK", count = 2) {}
+      }""")
+    val orderId = OrderId("⬛️")
+    controller.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+
+    controller.eventWatch.await[OrderTerminated](_.key == orderId)
+    assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
+      OrderAdded(workflow.id),
+      OrderStarted,
+      OrderFailed(Position(0), Some(Outcome.Disrupted(Problem("Cannot fulfill lock count=2 with Lock:LOCK limit=1"))))))
+
+    assert(controller.controllerState.await(99.s).nameToLockState(lockId) ==
+      LockState(Lock(lockId, limit = 1), Available, Queue.empty))
   }
 
   private def defineWorkflow(workflowNotation: String): Workflow = {

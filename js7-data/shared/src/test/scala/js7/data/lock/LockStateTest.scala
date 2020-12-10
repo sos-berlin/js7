@@ -13,10 +13,11 @@ import scala.collection.immutable.Queue
 final class LockStateTest extends AnyFreeSpec
 {
   "JSON" in {
-    testJson(LockState(Lock(LockId("LOCK"))), json"""
+    testJson(LockState(Lock(LockId("LOCK"), limit = 1)), json"""
       {
         "lock": {
-          "id": "LOCK"
+          "id": "LOCK",
+          "limit": 1
         },
         "acquired": {
           "TYPE": "Available"
@@ -39,9 +40,9 @@ final class LockStateTest extends AnyFreeSpec
     orderId <-: OrderLockAcquired(lock.id, count)
 
   for ((lock, testName) <- Seq(
-    Lock(LockId("LOCK")) -> "Exclusive lock",
-    Lock(LockId("LOCK"), Some(1)) -> "Non-exclusive with limit=1",
-    Lock(LockId("LOCK"), Some(3)) -> "Non-exclusive with limit=3")) {
+    //Lock(LockId("LOCK")) -> "Exclusive lock",
+    Lock(LockId("LOCK"), 1) -> "Lock with limit=1",
+    Lock(LockId("LOCK"), 3) -> "Lock with limit=3")) {
 
     implicit val implicitLock = lock
 
@@ -65,27 +66,27 @@ final class LockStateTest extends AnyFreeSpec
       }
 
       "OrderLockQueued" in {
-        assert(applyEvent(Available, a <-: OrderLockQueued(lock.id)) == Left(Problem("Lock:LOCK is available an does not accept queuing")))
+        assert(applyEvent(Available, a <-: OrderLockQueued(lock.id, None)) == Left(Problem("Lock:LOCK is available an does not accept queuing")))
 
-        assert(applyEvent(Exclusive(a), a <-: OrderLockQueued(lock.id)) == Left(Problem("Lock:LOCK has already been acquired by this order")))
-        assert(applyEvent(Exclusive(a), b <-: OrderLockQueued(lock.id)) == Right(LockState(lock, Exclusive(a), Queue(b))))
+        assert(applyEvent(Exclusive(a), a <-: OrderLockQueued(lock.id, None)) == Left(Problem("Lock:LOCK has already been acquired by this order")))
+        assert(applyEvent(Exclusive(a), b <-: OrderLockQueued(lock.id, None)) == Right(LockState(lock, Exclusive(a), Queue(b))))
 
-        assert(applyEvent(NonExclusive(Map(a -> 1)), a <-: OrderLockQueued(lock.id)) == Left(Problem("Lock:LOCK has already been acquired by this order")))
-        assert(applyEvent(NonExclusive(Map(a -> 1, b -> 1)), a <-: OrderLockQueued(lock.id)) == Left(Problem("Lock:LOCK has already been acquired by this order")))
-        assert(applyEvent(NonExclusive(Map(a -> 1)), b <-: OrderLockQueued(lock.id)) == Right(LockState(lock, NonExclusive(Map(a -> 1)), Queue(b))))
+        assert(applyEvent(NonExclusive(Map(a -> 1)), a <-: OrderLockQueued(lock.id, None)) == Left(Problem("Lock:LOCK has already been acquired by this order")))
+        assert(applyEvent(NonExclusive(Map(a -> 1, b -> 1)), a <-: OrderLockQueued(lock.id, None)) == Left(Problem("Lock:LOCK has already been acquired by this order")))
+        assert(applyEvent(NonExclusive(Map(a -> 1)), b <-: OrderLockQueued(lock.id, None)) == Right(LockState(lock, NonExclusive(Map(a -> 1)), Queue(b))))
 
-        assert(LockState(lock, Exclusive(a)).applyEvent(b <-: OrderLockQueued(lock.id)) == Right(LockState(lock, Exclusive(a), Queue(b))))
-        assert(LockState(lock, Exclusive(a), Queue(b)).applyEvent(c <-: OrderLockQueued(lock.id)) == Right(LockState(lock, Exclusive(a), Queue(b, c))))
-        assert(LockState(lock, Exclusive(a), Queue(b, c)).applyEvent(d <-: OrderLockQueued(lock.id)) == Right(LockState(lock, Exclusive(a), Queue(b, c, d))))
-        assert(LockState(lock, Exclusive(a), Queue(b, c, d)).applyEvent(c <-: OrderLockQueued(lock.id)) == Left(Problem("Order 'C' already queues for Lock:LOCK")))
+        assert(LockState(lock, Exclusive(a)).applyEvent(b <-: OrderLockQueued(lock.id, None)) == Right(LockState(lock, Exclusive(a), Queue(b))))
+        assert(LockState(lock, Exclusive(a), Queue(b)).applyEvent(c <-: OrderLockQueued(lock.id, None)) == Right(LockState(lock, Exclusive(a), Queue(b, c))))
+        assert(LockState(lock, Exclusive(a), Queue(b, c)).applyEvent(d <-: OrderLockQueued(lock.id, None)) == Right(LockState(lock, Exclusive(a), Queue(b, c, d))))
+        assert(LockState(lock, Exclusive(a), Queue(b, c, d)).applyEvent(c <-: OrderLockQueued(lock.id, None)) == Left(Problem("Order 'C' already queues for Lock:LOCK")))
       }
 
       "Child order cannot lock if parent order has locked" in {
-        assert(applyEvent(Exclusive(a), (a | "CHILD") <-: OrderLockQueued(lock.id)) ==
+        assert(applyEvent(Exclusive(a), (a | "CHILD") <-: OrderLockQueued(lock.id, None)) ==
           Left(Problem("Lock:LOCK has already been acquired by parent Order:A")))
-        assert(applyEvent(Exclusive(a), (a | "CHILD" | "GRANDCHILD") <-: OrderLockQueued(lock.id)) ==
+        assert(applyEvent(Exclusive(a), (a | "CHILD" | "GRANDCHILD") <-: OrderLockQueued(lock.id, None)) ==
           Left(Problem("Lock:LOCK has already been acquired by parent Order:A")))
-        assert(applyEvent(Exclusive(a | "CHILD"), (a | "CHILD" | "GRANDCHILD") <-: OrderLockQueued(lock.id)) ==
+        assert(applyEvent(Exclusive(a | "CHILD"), (a | "CHILD" | "GRANDCHILD") <-: OrderLockQueued(lock.id, None)) ==
           Left(Problem("Lock:LOCK has already been acquired by parent Order:A|CHILD")))
       }
 
@@ -105,8 +106,24 @@ final class LockStateTest extends AnyFreeSpec
     }
   }
 
-  "Non-exclusive lock with limit=3" - {
-    implicit val lock = Lock(LockId("LOCK"), nonExclusiveLimit = Some(3))
+  //"Exclusive lock used non-exclusively" in {
+  //  implicit val lock = Lock(LockId("LOCK"))
+  //
+  //  assert(applyEvent(Available, orderLockAcquired(a, None)) == Right(LockState(lock, Exclusive(a))))
+  //  assert(applyEvent(Available, orderLockAcquired(a, Some(1))) == Right(LockState(lock, NonExclusive(Map(a -> 1)))))
+  //  assert(applyEvent(Available, orderLockAcquired(a, Some(2))) == Left(Problem("Lock:LOCK: 0+2 would exceed limit=1")))
+  //
+  //  assert(applyEvent(Exclusive(a), orderLockAcquired(b, None)) == Left(Problem("Lock:LOCK is in use")))
+  //  assert(applyEvent(Exclusive(a), orderLockAcquired(b, Some(1))) == Left(Problem("Lock:LOCK is in use")))
+  //  assert(applyEvent(Exclusive(a), orderLockAcquired(b, Some(2))) == Left(Problem("Lock:LOCK: Invalid count=2 requested")))
+  //
+  //  assert(applyEvent(NonExclusive(Map(a -> 1)), orderLockAcquired(b, None)) == Left(Problem("Lock:LOCK is in use")))
+  //  assert(applyEvent(NonExclusive(Map(a -> 1)), orderLockAcquired(b, Some(1))) == Left(Problem("Lock:LOCK: 1+1 would exceed limit=1")))
+  //  assert(applyEvent(NonExclusive(Map(a -> 1)), orderLockAcquired(b, Some(2))) == Left(Problem("Lock:LOCK: 1+2 would exceed limit=1")))
+  //}
+
+  "Lock with limit=3" - {
+    implicit val lock = Lock(LockId("LOCK"), limit = 3)
 
     "acquireFor" in {
       assert(applyEvent(NonExclusive(Map(a -> 1)), orderLockAcquired(b, Some(1))) == Right(LockState(lock, NonExclusive(Map(a -> 1, b -> 1)))))
@@ -120,11 +137,34 @@ final class LockStateTest extends AnyFreeSpec
       assert(applyEvent(NonExclusive(Map(a -> 99)), orderLockAcquired(b, Some(1))) == Left(Problem("Lock:LOCK: 99+1 would exceed limit=3")))
     }
 
-    "acquireFor with invalid count" in {
+    "acquireFor with invalid 'count' number" in {
       assert(applyEvent(Available, orderLockAcquired(c, Some(0))) == Left(Problem("Lock:LOCK: Invalid count=0 requested")))
       assert(applyEvent(Available, orderLockAcquired(c, Some(-1))) == Left(Problem("Lock:LOCK: Invalid count=-1 requested")))
       assert(applyEvent(NonExclusive(Map(a -> 1)), orderLockAcquired(c, Some(0))) == Left(Problem("Lock:LOCK: Invalid count=0 requested")))
       assert(applyEvent(NonExclusive(Map(a -> 1)), orderLockAcquired(c, Some(-1))) == Left(Problem("Lock:LOCK: Invalid count=-1 requested")))
     }
+  }
+
+  "acquireFor more than limit" in {
+    implicit val lock = Lock(LockId("LOCK"), limit = 1)
+    assert(applyEvent(Available, a <-: OrderLockQueued(lock.id, Some(2))) ==
+      Left(Problem("Cannot fulfill lock count=2 with Lock:LOCK limit=1")))
+  }
+
+  "Lock with limit=0" in {
+    implicit val lock = Lock(LockId("LOCK"), limit = 0)
+
+      assert(applyEvent(Available, orderLockAcquired(b, Some(1))) == Left(Problem("Lock:LOCK: 0+1 would exceed limit=0")))
+      assert(applyEvent(Exclusive(a), orderLockAcquired(b, Some(1))) == Left(Problem("Lock:LOCK is in use")))
+      assert(applyEvent(NonExclusive(Map(a -> 1)), orderLockAcquired(b, Some(1))) == Left(Problem("Lock:LOCK: 1+1 would exceed limit=0")))
+  }
+
+  "acquireFor with integer overflow" in {
+    implicit val lock = Lock(LockId("LOCK"), limit = Int.MaxValue)
+    assert(applyEvent(NonExclusive(Map(a -> 1)), orderLockAcquired(b, Some(2))) == Right(LockState(lock, NonExclusive(Map(a -> 1, b -> 2)))))
+    assert(Int.MaxValue + 1 == Int.MinValue)
+    assert(Int.MaxValue + Int.MaxValue == -2)
+    assert(applyEvent(NonExclusive(Map(a -> Int.MaxValue)), orderLockAcquired(b, Some(Int.MaxValue))) ==
+      Left(Problem("Lock:LOCK: 2147483647+2147483647 would exceed limit=2147483647")))
   }
 }

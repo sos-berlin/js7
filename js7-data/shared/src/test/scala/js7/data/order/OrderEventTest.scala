@@ -439,10 +439,11 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderLockQueued" in {
-    check(OrderLockQueued(LockId("LOCK")), json"""
+    check(OrderLockQueued(LockId("LOCK"), Some(1)), json"""
       {
         "TYPE": "OrderLockQueued",
-        "lockId": "LOCK"
+        "lockId": "LOCK",
+        "count": 1
       }""")
   }
 

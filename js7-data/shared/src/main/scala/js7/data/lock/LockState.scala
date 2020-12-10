@@ -3,6 +3,7 @@ package js7.data.lock
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.Big
 import js7.data.event.KeyedEvent
 import js7.data.lock.Acquired.Available
 import js7.data.lock.LockRefusal.{InvalidCount, IsInUse, LimitReached}
@@ -10,14 +11,20 @@ import js7.data.order.OrderEvent.{OrderFailedEvent, OrderLockAcquired, OrderLock
 import js7.data.order.OrderId
 import scala.collection.immutable.Queue
 
-final case class LockState(lock: Lock, acquired: Acquired = Available, queue: Queue[OrderId] = Queue.empty)
+final case class LockState(
+  lock: Lock,
+  acquired: Acquired = Available,
+  queue: Queue[OrderId] = Queue.empty)
+extends Big/*acquired and queue get big with many orders*/
 {
+  import lock.limit
+
   def applyEvent(keyedEvent: KeyedEvent[OrderLockEvent]): Checked[LockState] = {
     assertThat(keyedEvent.event.lockIds contains lock.id)
     keyedEvent match {
       case KeyedEvent(orderId, OrderLockAcquired(lock.id, count)) =>
         for (lockState <- toLockState(tryAcquire(orderId, count))) yield
-          queue.dequeueOption  match {
+          queue.dequeueOption match {
             case Some((`orderId`, tail)) => lockState.copy(queue = tail)
             case _ => lockState
           }
@@ -25,8 +32,10 @@ final case class LockState(lock: Lock, acquired: Acquired = Available, queue: Qu
       case KeyedEvent(orderId, OrderLockReleased(lock.id)) =>
         release(orderId)
 
-      case KeyedEvent(orderId, OrderLockQueued(lock.id)) =>
-        if (acquired == Available)
+      case KeyedEvent(orderId, OrderLockQueued(lock.id, count)) =>
+        if (!count.forall(_ <= limit))
+          Left(Problem(s"Cannot fulfill lock count=${count getOrElse ""} with $lockId limit=$limit"))
+        else if (acquired == Available)
           Left(Problem(s"$lockId is available an does not accept queuing"))
         else if (acquired.isAcquiredBy(orderId))
           Left(LockRefusal.AlreadyAcquiredByThisOrder.toProblem(lock.id))
@@ -78,12 +87,12 @@ final case class LockState(lock: Lock, acquired: Acquired = Available, queue: Qu
           Left(InvalidCount(n))
         else {
           val ok =
-            try math.addExact(acquired.lockCount, n) <= lock.limit
+            try math.addExact(acquired.lockCount, n) <= limit
             catch { case _: ArithmeticException => false }
           if (ok)
             Right(())
           else
-            Left(LimitReached(limit = lock.limit, count = acquired.lockCount, n))
+            Left(LimitReached(limit = limit, count = acquired.lockCount, n))
         }
     }
 

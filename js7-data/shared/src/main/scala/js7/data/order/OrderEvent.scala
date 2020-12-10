@@ -237,7 +237,7 @@ object OrderEvent {
     def lockIds = lockId :: Nil
   }
 
-  final case class OrderLockQueued(lockId: LockId)
+  final case class OrderLockQueued(lockId: LockId, count: Option[Int])
   extends OrderLockEvent  {
     def lockIds = lockId :: Nil
   }

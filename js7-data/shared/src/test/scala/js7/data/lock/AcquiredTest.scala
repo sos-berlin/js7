@@ -9,15 +9,23 @@ import org.scalatest.freespec.AnyFreeSpec
 final class AcquiredTest extends AnyFreeSpec
 {
   "JSON" in {
-    testJson(LockState(Lock(LockId("LOCK"))), json"""
+    testJson[Acquired](Available, json"""
       {
-        "lock": {
-          "id": "LOCK"
-        },
-        "acquired": {
-          "TYPE": "Available"
-        },
-        "queue": []
+        "TYPE": "Available"
+      }""")
+
+    testJson[Acquired](Exclusive(OrderId("A")), json"""
+      {
+        "TYPE": "Exclusive",
+        "orderId": "A"
+      }""")
+
+    testJson[Acquired](NonExclusive(Map(OrderId("A") -> 3)), json"""
+      {
+        "TYPE": "NonExclusive",
+        "orderToCount": {
+          "A": 3
+        }
       }""")
   }
 

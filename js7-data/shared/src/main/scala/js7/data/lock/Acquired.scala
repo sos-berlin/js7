@@ -58,36 +58,36 @@ object Acquired {
         Right(Available)
   }
 
-  final case class NonExclusive(orderIdToCount: Map[OrderId, Int]) extends Acquired
+  final case class NonExclusive(orderToCount: Map[OrderId, Int]) extends Acquired
   {
-    assertThat(orderIdToCount.nonEmpty)
-    assertThat(orderIdToCount.values.forall(_ >= 1))
+    assertThat(orderToCount.nonEmpty)
+    assertThat(orderToCount.values.forall(_ >= 1))
 
-    def lockCount = orderIdToCount.values.sum
+    def lockCount = orderToCount.values.sum
 
     def isAcquiredBy(orderId: OrderId) =
-      orderIdToCount contains orderId
+      orderToCount contains orderId
 
     def acquireFor(orderId: OrderId, count: Option[Int]) =
-      if (orderIdToCount contains orderId)
+      if (orderToCount contains orderId)
         Left(AlreadyAcquiredByThisOrder)
       else
         count match {
           case None => Left(IsInUse)
           case Some(n) =>
-            if (n >= 1) Right(NonExclusive(orderIdToCount + (orderId -> n)))
+            if (n >= 1) Right(NonExclusive(orderToCount + (orderId -> n)))
             else Left(InvalidCount(n))
         }
 
     def release(orderId: OrderId) =
-      if (!orderIdToCount.contains(orderId))
+      if (!orderToCount.contains(orderId))
         Left(UnknownReleasingOrderError)
       else
         Right(
-          if (orderIdToCount.size == 1)
+          if (orderToCount.size == 1)
             Available
           else
-            copy(orderIdToCount = orderIdToCount - orderId))
+            copy(orderToCount = orderToCount - orderId))
   }
 
   sealed trait ReleaseError

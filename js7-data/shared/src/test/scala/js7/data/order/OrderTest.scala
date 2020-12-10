@@ -280,7 +280,7 @@ final class OrderTest extends AnyFreeSpec
       OrderResumed(),
 
       OrderLockAcquired(LockId("LOCK")),
-      OrderLockQueued(LockId("LOCK")),
+      OrderLockQueued(LockId("LOCK"), None),
       OrderLockReleased(LockId("LOCK")),
 
       OrderBroken(Problem("Problem")),

@@ -42,7 +42,7 @@ object LockInstruction {
 
   def checked(lockId: LockId, count: Option[Int], lockedWorkflow: Workflow, sourcePos: Option[SourcePos] = None) =
     if (count.exists(_ < 1))
-      Left(Problem("Invalid cound=$count in lock instruction"))
+      Left(Problem(s"Invalid count=$count in lock instruction"))
     else
       Right(new LockInstruction(lockId, count, lockedWorkflow, sourcePos))
 }

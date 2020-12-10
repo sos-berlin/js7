@@ -638,14 +638,14 @@ with MainJournalingActor[ControllerState, Event]
         else
           persistTransaction(
             locks.flatMap {
-              case lock @ Lock(name, nonExclusiveLimit) =>
-                _controllerState.nameToLockState.get(name).map(_.lock) match {
+              case lock @ Lock(lockId, nonExclusiveLimit) =>
+                _controllerState.nameToLockState.get(lockId).map(_.lock) match {
                   case None =>
-                    Some(name <-: LockAdded(nonExclusiveLimit))
+                    Some(lockId <-: LockAdded(nonExclusiveLimit))
                   case Some(`lock`) =>
                     None
                   case Some(_) =>
-                    Some(name <-: LockUpdated(nonExclusiveLimit))
+                    Some(lockId <-: LockUpdated(nonExclusiveLimit))
                 }
           }) { (_, updatedState) =>
             _controllerState = updatedState

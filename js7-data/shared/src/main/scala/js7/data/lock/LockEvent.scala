@@ -10,10 +10,10 @@ sealed trait LockEvent extends Event {
 
 object LockEvent {
 
-  final case class LockAdded(nonExclusiveLimit: Option[Int])
+  final case class LockAdded(limit: Int)
   extends LockEvent
 
-  final case class LockUpdated(nonExclusiveLimit: Option[Int])
+  final case class LockUpdated(limit: Int)
   extends LockEvent
 
   implicit val jsonCodec = TypedJsonCodec[LockEvent](
