@@ -5,7 +5,7 @@ import js7.base.time.Timestamp
 import js7.base.utils.AutoClosing.autoClosing
 import js7.common.process.Processes.{ShellFileExtension => sh}
 import js7.controller.RunningController
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.event.{<-:, EventSeq, KeyedEvent, TearableEventSeq}
 import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwaiting, OrderDetachable, OrderDetached, OrderFinished, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderStarted}
@@ -37,7 +37,7 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
           offer orderId = "OFFERED-ORDER-ID", timeout = 60;
           execute executable="executable$sh", agent="AGENT";
         }""").orThrow)
-    autoClosing(new DirectoryProvider(TestAgentName :: Nil, workflows, testName = Some("OfferAndAwaitOrderTest"))) { directoryProvider =>
+    autoClosing(new DirectoryProvider(TestAgentId :: Nil, workflows, testName = Some("OfferAndAwaitOrderTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) a.writeExecutable(RelativeExecutablePath(s"executable$sh"), ":")
 
       directoryProvider.run { (controller, _) =>
@@ -46,8 +46,8 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
         checkEventSeq(controller.eventWatch.all[OrderEvent],
           expectedOffering = Vector(
               OrderAdded(OfferingWorkflowId),
-              OrderAttachable(TestAgentName),
-              OrderAttached(TestAgentName),
+              OrderAttachable(TestAgentId),
+              OrderAttached(TestAgentId),
               OrderStarted,
               OrderProcessingStarted,
               OrderProcessed(Outcome.succeededRC0),
@@ -56,8 +56,8 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
               OrderDetached,
               OrderOffered(OrderId("OFFERED-ORDER-ID"), TestOfferedUntil),
               OrderMoved(Position(2)),
-              OrderAttachable(TestAgentName),
-              OrderAttached(TestAgentName),
+              OrderAttachable(TestAgentId),
+              OrderAttached(TestAgentId),
               OrderProcessingStarted,
               OrderProcessed(Outcome.succeededRC0),
               OrderMoved(Position(3)),
@@ -66,8 +66,8 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
               OrderFinished),
           expectedAwaiting = Vector(
             OrderAdded(JoiningWorkflowId),
-            OrderAttachable(TestAgentName),
-            OrderAttached(TestAgentName),
+            OrderAttachable(TestAgentId),
+            OrderAttached(TestAgentId),
             OrderStarted,
             OrderProcessingStarted,
             OrderProcessed(Outcome.succeededRC0),
@@ -77,8 +77,8 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
             OrderAwaiting(OrderId("OFFERED-ORDER-ID")),
             OrderJoined(Outcome.succeeded),
             OrderMoved(Position(2)),
-            OrderAttachable(TestAgentName),
-            OrderAttached(TestAgentName),
+            OrderAttachable(TestAgentId),
+            OrderAttached(TestAgentId),
             OrderProcessingStarted,
             OrderProcessed(Outcome.succeededRC0),
             OrderMoved(Position(3)),
@@ -100,7 +100,7 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
         define workflow {
           offer orderId = "OFFERED-ORDER-ID", timeout = 60;
         }""").orThrow)
-    autoClosing(new DirectoryProvider(TestAgentName :: Nil, workflows, testName = Some("OfferAndAwaitOrderTest"))) { directoryProvider =>
+    autoClosing(new DirectoryProvider(TestAgentId :: Nil, workflows, testName = Some("OfferAndAwaitOrderTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) a.writeExecutable(RelativeExecutablePath(s"executable$sh"), ":")
 
       directoryProvider.run { (controller, _) =>
@@ -156,7 +156,7 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
 
 object OfferAndAwaitOrderTest
 {
-  private val TestAgentName = AgentName("AGENT")
+  private val TestAgentId = AgentId("AGENT")
   private val JoiningWorkflowId = WorkflowPath("/A") ~ "INITIAL"
   private val OfferingWorkflowId = WorkflowPath("/B") ~ "INITIAL"
 

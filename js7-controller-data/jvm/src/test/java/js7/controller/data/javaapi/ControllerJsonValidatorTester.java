@@ -19,7 +19,7 @@ final class ControllerJsonValidatorTester
                     "{ " +
                         "\"TYPE\": \"Execute.Anonymous\"," +
                         "\"job\": { " +
-                            "\"agentName\": \"AGENT\"," +
+                            "\"agentId\": \"AGENT\"," +
                             "\"executable\": {" +
                                 "\"TYPE\": \"ExecutablePath\"," +
                                 "\"path\": \"/JOB\"" +
@@ -49,7 +49,7 @@ final class ControllerJsonValidatorTester
             "{" +
                 "\"TYPE\": \"Execute.Anonymous\"," +
                 "\"job\": {" +
-                    "\"agentName\": \"AGENT\"," +
+                    "\"agentId\": \"AGENT\"," +
                     "\"executable\": {" +
                         "\"TYPE\": \"ExecutablePath\"," +
                         "\"path\": \"/EXECUTABLE\"" +

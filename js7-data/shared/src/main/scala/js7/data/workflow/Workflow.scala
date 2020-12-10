@@ -11,7 +11,7 @@ import js7.base.utils.Collections.emptyToNone
 import js7.base.utils.Collections.implicits.{RichIndexedSeq, RichPairTraversable}
 import js7.base.utils.ScalaUtils.reuseIfEqual
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.item.{InventoryItem, ItemId}
 import js7.data.job.JobKey
 import js7.data.value.expression.PositionSearch
@@ -229,40 +229,40 @@ extends InventoryItem
       }.toVector ++
         rawLabeledInstructions.lastOption)
 
-  private[workflow] def isPartiallyExecutableOnAgent(agentName: AgentName): Boolean =
+  private[workflow] def isPartiallyExecutableOnAgent(agentId: AgentId): Boolean =
     labeledInstructions.map(_.instruction) collect {
-      case o: Execute.Anonymous => o.job isExecutableOnAgent agentName
-      case o: Execute.Named => findJob(o.name) exists (_ isExecutableOnAgent agentName)
-      case o: Fork => o isPartiallyExecutableOnAgent agentName
+      case o: Execute.Anonymous => o.job isExecutableOnAgent agentId
+      case o: Execute.Named => findJob(o.name) exists (_ isExecutableOnAgent agentId)
+      case o: Fork => o isPartiallyExecutableOnAgent agentId
     } contains true
 
-  def isStartableOnAgent(position: Position, agentName: AgentName): Boolean =
-    isStartableOnAgent(instruction(position), agentName)
+  def isStartableOnAgent(position: Position, agentId: AgentId): Boolean =
+    isStartableOnAgent(instruction(position), agentId)
 
-  private def isStartableOnAgent(instruction: Instruction, agentName: AgentName): Boolean =
+  private def isStartableOnAgent(instruction: Instruction, agentId: AgentId): Boolean =
     instruction match {
-      case o: Fork => o.isStartableOnAgent(agentName)
-      case o: Execute.Anonymous => o.job.isExecutableOnAgent(agentName)
-      case o: Execute.Named => findJob(o.name) exists (_ isExecutableOnAgent agentName)
+      case o: Fork => o.isStartableOnAgent(agentId)
+      case o: Execute.Anonymous => o.job.isExecutableOnAgent(agentId)
+      case o: Execute.Named => findJob(o.name) exists (_ isExecutableOnAgent agentId)
       case _ => false
     }
 
-  private[workflow] def isStartableOnAgent(agentName: AgentName): Boolean =
-    checkedWorkflowJob(Position(0)) exists (_ isExecutableOnAgent agentName)
+  private[workflow] def isStartableOnAgent(agentId: AgentId): Boolean =
+    checkedWorkflowJob(Position(0)) exists (_ isExecutableOnAgent agentId)
 
-  //def determinedExecutingAgent(position: Position): Option[AgentName] =
+  //def determinedExecutingAgent(position: Position): Option[AgentId] =
   //  executingAgents(position) match {
   //    case a if a.size <= 1 => a.headOption
   //    case _ => None
   //  }
   //
-  //private[workflow] def determinedExecutingAgent: Option[AgentName] =
+  //private[workflow] def determinedExecutingAgent: Option[AgentId] =
   //  determinedExecutingAgent(Position(0))
   //
-  //def executingAgents(position: Position): Set[AgentName] =
+  //def executingAgents(position: Position): Set[AgentId] =
   //  instruction(position) match {
   //    case _: Execute =>
-  //      checkedWorkflowJob(Position(0)).toOption.map(_.agentName).toSet
+  //      checkedWorkflowJob(Position(0)).toOption.map(_.agentId).toSet
   //
   //    case fork: Fork =>
   //      fork.startAgents
@@ -270,7 +270,7 @@ extends InventoryItem
   //    case _ => Set.empty
   //  }
 
-  //private[workflow] def executingAgents: Set[AgentName] =
+  //private[workflow] def executingAgents: Set[AgentId] =
   //  executingAgents(Position(0))
 
   def isDefinedAt(position: Position): Boolean =

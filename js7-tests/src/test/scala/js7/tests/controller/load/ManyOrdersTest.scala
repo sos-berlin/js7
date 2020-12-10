@@ -10,7 +10,7 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.ByteUnits.toKBGB
 import js7.controller.client.AkkaHttpControllerApi.admissionToApiResource
 import js7.controller.data.ControllerCommand.TakeSnapshot
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.event.{EventId, EventRequest}
 import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.OrderFinished
@@ -27,7 +27,7 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class ManyOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentNames = agentName :: Nil
+  protected val agentIds = agentId :: Nil
   protected val inventoryItems = workflow :: Nil
   override protected val controllerConfig = config"""
     js7.web.server.auth.public = on
@@ -86,7 +86,7 @@ object ManyOrdersTest
   private val defaultN = 10
   private val orderSize = 4_000_000
   private val longTimeout = 999.s
-  private val agentName = AgentName("AGENT")
+  private val agentId = AgentId("AGENT")
   private val workflow = WorkflowParser.parse(
     WorkflowPath("/WORKFLOW") ~ "1", s"""
       define workflow {

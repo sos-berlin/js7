@@ -4,7 +4,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.configutils.Configs.HoconStringInterpolator
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
@@ -21,7 +21,7 @@ import scala.reflect.runtime.universe._
 
 final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentNames = Seq(agentName)
+  protected val agentIds = Seq(agentId)
   protected val inventoryItems = Nil
   override protected def controllerConfig = config"""
     js7.web.server.auth.public = on
@@ -47,8 +47,8 @@ final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
       |}""".stripMargin,
       Vector(
         OrderAdded(workflowId),
-        OrderAttachable(agentName),
-        OrderAttached(agentName),
+        OrderAttachable(agentId),
+        OrderAttached(agentId),
         OrderStarted,
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
@@ -68,8 +68,8 @@ final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
       |}""".stripMargin,
       Vector(
         OrderAdded(workflowId),
-        OrderAttachable(agentName),
-        OrderAttached(agentName),
+        OrderAttachable(agentId),
+        OrderAttached(agentId),
         OrderStarted,
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
@@ -177,5 +177,5 @@ final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
 object FailTest
 {
-  private val agentName = AgentName("AGENT")
+  private val agentId = AgentId("AGENT")
 }

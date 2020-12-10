@@ -17,7 +17,7 @@ import js7.common.process.Processes.{ShellFileExtension => sh}
 import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
 import js7.common.scalautil.FileUtils.syntax.RichPath
 import js7.common.scalautil.MonixUtils.syntax.RichTask
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.job.{CommandLine, JobKey, RelativeExecutablePath, ReturnCode}
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.value.StringValue
@@ -50,7 +50,7 @@ final class TaskRunnerTest extends AnyFreeSpec with BeforeAndAfterAll with TestA
     val shellFile = executablePath.toFile(executableDirectory)
     shellFile := TestScript
     if (isUnix) setPosixFilePermissions(shellFile, PosixFilePermissions.fromString("rwx------"))
-    val taskConfiguration = TaskConfiguration(JobKey.forTest, WorkflowJob(AgentName("TEST"), executablePath),
+    val taskConfiguration = TaskConfiguration(JobKey.forTest, WorkflowJob(AgentId("TEST"), executablePath),
       CommandLine.fromFile(shellFile))
     info(measureTime(10, "TaskRunner") {
       val order = Order(

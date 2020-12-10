@@ -15,7 +15,7 @@ import js7.common.system.ServerOperatingSystem.operatingSystem.sleepingShellScri
 import js7.controller.data.ControllerCommand
 import js7.controller.data.ControllerCommand.{RemoveOrdersWhenTerminated, ReplaceRepo, UpdateRepo}
 import js7.data.Problems.{ItemDeletedProblem, ItemVersionDoesNotMatchProblem}
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.event.{EventRequest, EventSeq}
 import js7.data.item.VersionId
 import js7.data.job.RelativeExecutablePath
@@ -35,7 +35,7 @@ import scala.concurrent.duration._
   */
 final class UpdateRepoTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentNames = TestAgentName :: Nil
+  protected val agentIds = TestAgentId :: Nil
   protected val inventoryItems = Nil
 
   override def beforeAll() = {
@@ -50,9 +50,9 @@ final class UpdateRepoTest extends AnyFreeSpec with ControllerAgentForScalaTest
          |  }
          |}
          |""".stripMargin
-    directoryProvider.agentToTree(TestAgentName).writeExecutable(RelativeExecutablePath("SCRIPT1.cmd"), sleepingShellScript(2 * Tick))
-    directoryProvider.agentToTree(TestAgentName).writeExecutable(RelativeExecutablePath("SCRIPT2.cmd"), ":")
-    directoryProvider.agentToTree(TestAgentName).writeExecutable(RelativeExecutablePath("SCRIPT4.cmd"), ":")
+    directoryProvider.agentToTree(TestAgentId).writeExecutable(RelativeExecutablePath("SCRIPT1.cmd"), sleepingShellScript(2 * Tick))
+    directoryProvider.agentToTree(TestAgentId).writeExecutable(RelativeExecutablePath("SCRIPT2.cmd"), ":")
+    directoryProvider.agentToTree(TestAgentId).writeExecutable(RelativeExecutablePath("SCRIPT4.cmd"), ":")
     super.beforeAll()
   }
 
@@ -140,7 +140,7 @@ final class UpdateRepoTest extends AnyFreeSpec with ControllerAgentForScalaTest
 object UpdateRepoTest
 {
   private val Tick = 2.s
-  private val TestAgentName = AgentName("AGENT")
+  private val TestAgentId = AgentId("AGENT")
   private val TestWorkflowPath = WorkflowPath("/WORKFLOW")
   private val script1 = """
     define workflow {

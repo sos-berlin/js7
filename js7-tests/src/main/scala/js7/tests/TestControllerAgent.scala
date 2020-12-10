@@ -28,7 +28,7 @@ import js7.common.scalautil.Logger
 import js7.common.system.FileUtils.temporaryDirectory
 import js7.common.utils.JavaShutdownHook
 import js7.core.event.StampedKeyedEventBus
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.OrderFinished
@@ -71,12 +71,12 @@ object TestControllerAgent
   }
 
   private def run(conf: Conf): Unit = {
-    autoClosing(new DirectoryProvider(conf.agentNames, makeWorkflow(conf) :: Nil, useDirectory = Some(conf.directory))) { env =>
+    autoClosing(new DirectoryProvider(conf.agentIds, makeWorkflow(conf) :: Nil, useDirectory = Some(conf.directory))) { env =>
       env.controller.configDir / "controller.conf" ++= "js7.web.server.auth.loopback-is-public = on\n"
       env.agents foreach { _.configDir / "agent.conf" ++= "js7.web.server.auth.loopback-is-public = on\n" }
       withCloser { implicit closer =>
-        for (agentName <- conf.agentNames) {
-          TestExecutablePath.toFile(env.agentToTree(agentName).configDir / "executables").writeExecutable(
+        for (agentId <- conf.agentIds) {
+          TestExecutablePath.toFile(env.agentToTree(agentId).configDir / "executables").writeExecutable(
               if (isWindows) s"""
                  |@echo off
                  |echo Hello
@@ -168,25 +168,25 @@ object TestControllerAgent
   }
 
   private val PathNames = LazyList("🥕", "🍋", "🍊", "🍐", "🍏", "🍓", "🍒") ++ Iterator.from(8).map("🌶".+)
-  private def testJob(conf: Conf, agentName: AgentName) =
-    WorkflowJob(agentName, TestExecutablePath,
-      Map("JOB-VARIABLE" -> StringValue(s"VALUE-$agentName")),
+  private def testJob(conf: Conf, agentId: AgentId) =
+    WorkflowJob(agentId, TestExecutablePath,
+      Map("JOB-VARIABLE" -> StringValue(s"VALUE-$agentId")),
       taskLimit = conf.tasksPerJob)
 
   private def makeWorkflow(conf: Conf): Workflow =
     Workflow.of(TestWorkflowPath,
-      Execute(testJob(conf, conf.agentNames.head)),
+      Execute(testJob(conf, conf.agentIds.head)),
       Fork.checked(
-        for ((agentName, pathName) <- conf.agentNames.toVector zip PathNames) yield
+        for ((agentId, pathName) <- conf.agentIds.toVector zip PathNames) yield
           Fork.Branch(
             pathName,
             Workflow(
               WorkflowPath("/TestControllerAgent") ~ "1",
-              Vector.fill(conf.workflowLength) { Execute(WorkflowJob(agentName, TestExecutablePath)) })))
+              Vector.fill(conf.workflowLength) { Execute(WorkflowJob(agentId, TestExecutablePath)) })))
         .orThrow,
       If(Or(Equal(LastReturnCode, NumericConstant(0)), Equal(LastReturnCode, NumericConstant(0))),
-        thenWorkflow = Workflow.of(Execute(testJob(conf, conf.agentNames.head))),
-        elseWorkflow = Some(Workflow.of(Execute(testJob(conf, conf.agentNames.head))))))
+        thenWorkflow = Workflow.of(Execute(testJob(conf, conf.agentIds.head))),
+        elseWorkflow = Some(Workflow.of(Execute(testJob(conf, conf.agentIds.head))))))
 
   private case class Conf(
     directory: Path,
@@ -204,7 +204,7 @@ object TestControllerAgent
     require(period > 0.s)
     require(orderGeneratorCount >= 1)
 
-    val agentNames: Seq[AgentName] = for (i <- 1 to agentCount) yield AgentName(s"AGENT-$i")
+    val agentIds: Seq[AgentId] = for (i <- 1 to agentCount) yield AgentId(s"AGENT-$i")
   }
 
   private object Conf {

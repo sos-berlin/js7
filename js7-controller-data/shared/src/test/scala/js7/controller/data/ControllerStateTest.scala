@@ -8,7 +8,7 @@ import js7.base.time.Timestamp
 import js7.base.utils.Collections.implicits._
 import js7.base.web.Uri
 import js7.controller.data.agent.AgentRefState
-import js7.data.agent.{AgentName, AgentRef}
+import js7.data.agent.{AgentId, AgentRef}
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterStateSnapshot, ClusterTiming}
 import js7.data.controller.ControllerId
 import js7.data.event.SnapshotMeta.SnapshotEventId
@@ -42,7 +42,7 @@ final class ControllerStateTest extends AsyncFreeSpec {
           Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
           ClusterTiming(10.s, 20.s)))),
     ControllerMetaState(ControllerId("CONTROLLER-ID"), Timestamp("2019-05-24T12:00:00Z"), timezone = "Europe/Berlin"),
-    (AgentRefState(AgentRef(AgentName("AGENT"), Uri("https://AGENT")), None, None, AgentRefState.Decoupled, EventId(7)) :: Nil)
+    (AgentRefState(AgentRef(AgentId("AGENT"), Uri("https://AGENT")), None, None, AgentRefState.Decoupled, EventId(7)) :: Nil)
       .toKeyedMap(_.name),
     Map(LockId("LOCK") -> LockState(Lock(LockId("LOCK")))),
     Repo.empty.applyEvent(VersionAdded(VersionId("1.0"))).orThrow,
@@ -131,7 +131,7 @@ final class ControllerStateTest extends AsyncFreeSpec {
           }, {
             "TYPE": "AgentRefState",
             "agentRef": {
-              "name": "AGENT",
+              "id": "AGENT",
               "uri": "https://AGENT"
             },
             "couplingState": {

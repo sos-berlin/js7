@@ -17,7 +17,7 @@ import js7.controller.data.ControllerCommand.{ReleaseEvents, TakeSnapshot}
 import js7.controller.data.events.ControllerEvent
 import js7.core.command.CommandMeta
 import js7.core.event.journal.files.JournalFiles.listJournalFiles
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
@@ -36,7 +36,7 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class ReleaseEventsTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
-  protected val agentNames = TestAgentName :: Nil
+  protected val agentIds = TestAgentId :: Nil
   protected val inventoryItems = TestWorkflow :: Nil
   override protected val controllerConfig = config"""
     js7.journal.users-allowed-to-release-events = [ "A", "B" ]
@@ -140,10 +140,10 @@ private object ReleaseEventsTest
   private val aUserAndPassword = UserAndPassword(UserId("A"), SecretString("PASSWORD"))
   private val bUserAndPassword = UserAndPassword(UserId("B"), SecretString("PASSWORD"))
   private val xUserAndPassword = UserAndPassword(UserId("X"), SecretString("PASSWORD"))
-  private val TestAgentName = AgentName("agent-111")
+  private val TestAgentId = AgentId("agent-111")
   private val TestExecutablePath = RelativeExecutablePath(s"TEST$sh")
   private val TestWorkflow = Workflow.of(WorkflowPath("/test"),
-    Execute(WorkflowJob(TestAgentName, TestExecutablePath)))
+    Execute(WorkflowJob(TestAgentId, TestExecutablePath)))
   private val aOrder = FreshOrder(OrderId("🔵"), TestWorkflow.id.path)
   private val bOrder = FreshOrder(OrderId("🔶"), TestWorkflow.id.path)
   private val cOrder = FreshOrder(OrderId("⭕️"), TestWorkflow.id.path)

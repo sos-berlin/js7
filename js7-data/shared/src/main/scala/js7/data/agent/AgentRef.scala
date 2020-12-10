@@ -6,7 +6,7 @@ import js7.base.web.Uri
 /**
   * @author Joacim Zschimmer
   */
-final case class AgentRef(name: AgentName, uri: Uri)
+final case class AgentRef(id: AgentId, uri: Uri)
 
 object AgentRef
 {

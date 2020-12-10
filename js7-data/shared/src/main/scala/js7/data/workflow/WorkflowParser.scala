@@ -5,7 +5,7 @@ import fastparse._
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime._
 import js7.base.utils.Collections.implicits.RichTraversable
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.job.{CommandLineExecutable, CommandLineParser, ExecutablePath, ExecutableScript, ReturnCode}
 import js7.data.lock.LockId
 import js7.data.order.OrderId
@@ -100,13 +100,13 @@ object WorkflowParser
           keyValue("executable", quotedString) |
           keyValue("command", quotedString) |
           keyValue("script", constantExpression) |
-          keyValue("agent", agentName) |
+          keyValue("agent", agentId) |
           keyValue("arguments", namedValues) |
           keyValue("successReturnCodes", successReturnCodes) |
           keyValue("failureReturnCodes", failureReturnCodes) |
           keyValue("taskLimit", int) |
           keyValue("sigkillAfter", int))
-        agentName <- kv[AgentName]("agent")
+        agentId <- kv[AgentId]("agent")
         env <- kv.oneOfOr[ObjectExpression](Set("env"), ObjectExpression.empty)
         v1Compatible <- kv.noneOrOneOf[BooleanConstant]("v1Compatible").map(_.fold(false)(_._2.booleanValue))
         executable <- kv.oneOf[Any]("executable", "command", "script").flatMap {
@@ -125,7 +125,7 @@ object WorkflowParser
         taskLimit <- kv[Int]("taskLimit", WorkflowJob.DefaultTaskLimit)
         sigkillAfter <- kv.get[Int]("sigkillAfter").map(_.map(_.s))
       } yield
-        WorkflowJob(agentName, executable, arguments, returnCodeMeaning, taskLimit = taskLimit,
+        WorkflowJob(agentId, executable, arguments, returnCodeMeaning, taskLimit = taskLimit,
           sigkillAfter = sigkillAfter))
 
     private def executeInstruction[_: P] = P[Execute.Anonymous](

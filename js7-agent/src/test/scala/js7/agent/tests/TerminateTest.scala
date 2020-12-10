@@ -19,7 +19,7 @@ import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.system.ServerOperatingSystem.operatingSystem
 import js7.core.event.ActorEventCollector
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.event.EventRequest
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, Outcome}
@@ -50,7 +50,7 @@ final class TerminateTest extends AnyFreeSpec with AgentTester
 
     val client = AgentClient(agentUri = agent.localUri, Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD")))
     client.login() await 99.s
-    client.commandExecute(RegisterAsController(agentName)) await 99.s
+    client.commandExecute(RegisterAsController(agentId)) await 99.s
 
     val eventCollector = newEventCollector(agent.injector)
 
@@ -62,7 +62,7 @@ final class TerminateTest extends AnyFreeSpec with AgentTester
           SimpleTestWorkflow.id,
           Order.Ready,
           Map("a" -> StringValue("A"))),
-        TestAgentName,
+        TestAgentId,
         itemSigner.sign(SimpleTestWorkflow)))
     ) await 99.s
 
@@ -84,7 +84,7 @@ final class TerminateTest extends AnyFreeSpec with AgentTester
 
 object TerminateTest
 {
-  private val agentName = AgentName("AGENT")
+  private val agentId = AgentId("AGENT")
   private val AScript = operatingSystem.sleepingShellScript(10.seconds)
 
   private def newEventCollector(injector: Injector): EventCollector =

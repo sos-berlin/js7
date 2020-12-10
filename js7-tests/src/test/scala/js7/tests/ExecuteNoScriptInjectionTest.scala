@@ -3,7 +3,7 @@ package js7.tests
 import js7.agent.data.Problems.SignedInjectionNotAllowed
 import js7.base.problem.Checked.Ops
 import js7.common.configutils.Configs.HoconStringInterpolator
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
@@ -14,7 +14,7 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class ExecuteNoScriptInjectionTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentNames = Seq(agentName)
+  protected val agentIds = Seq(agentId)
   protected val inventoryItems = Seq(scriptWorkflow, absolutePathWorkflow)
   override protected val controllerConfig = config"""
     js7.web.server.auth.public = on
@@ -42,7 +42,7 @@ final class ExecuteNoScriptInjectionTest extends AnyFreeSpec with ControllerAgen
 
 object ExecuteNoScriptInjectionTest
 {
-  private val agentName = AgentName("AGENT")
+  private val agentId = AgentId("AGENT")
   private val scriptWorkflow = WorkflowParser.parse(
     WorkflowPath("/SCRIPT-WORKFLOW"),
     """define workflow {

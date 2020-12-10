@@ -8,7 +8,7 @@ import js7.base.system.OperatingSystem.isWindows
 import js7.common.configutils.Configs._
 import js7.common.scalautil.FileUtils.syntax.RichPath
 import js7.common.scalautil.Logger
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.item.VersionId
 import js7.data.job.{AbsoluteExecutablePath, CommandLineExecutable, CommandLineParser, ExecutableScript, RelativeExecutablePath, ReturnCode}
 import js7.data.order.OrderEvent.{OrderFailed, OrderFinished, OrderProcessed, OrderStdoutWritten}
@@ -24,7 +24,7 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentNames = agentName :: Nil
+  protected val agentIds = agentId :: Nil
   protected val inventoryItems = Nil
   override protected val controllerConfig = config"""
     js7.web.server.auth.public = on
@@ -62,24 +62,24 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
     delete(myReturnCodeScriptFile)
   }
 
-  addExecuteTest(Execute(WorkflowJob(agentName, ExecutableScript(returnCodeScript("0")))),
+  addExecuteTest(Execute(WorkflowJob(agentId, ExecutableScript(returnCodeScript("0")))),
     expectedOutcome = Outcome.Succeeded(NamedValues.rc(0)))
 
-  addExecuteTest(Execute(WorkflowJob(agentName, ExecutableScript(returnCodeScript("1")))),
+  addExecuteTest(Execute(WorkflowJob(agentId, ExecutableScript(returnCodeScript("1")))),
     expectedOutcome = Outcome.Failed(NamedValues.rc(1)))
 
   addExecuteTest(
     Execute(
-      WorkflowJob(agentName, ExecutableScript(returnCodeScript("2")),
+      WorkflowJob(agentId, ExecutableScript(returnCodeScript("2")),
       returnCodeMeaning = ReturnCodeMeaning.Success(Set(ReturnCode(2))))),
     expectedOutcome = Outcome.Succeeded(NamedValues.rc(2)))
 
-  addExecuteTest(Execute(WorkflowJob(agentName, ExecutableScript(returnCodeScript("44")))),
+  addExecuteTest(Execute(WorkflowJob(agentId, ExecutableScript(returnCodeScript("44")))),
     expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
 
   addExecuteTest(Execute(
     WorkflowJob(
-      agentName,
+      agentId,
       ExecutableScript(
         returnCodeScript(variableRef("myExitCode")),
         env = ObjectExpression(Map("myExitCode" -> NumericConstant(44)))))),
@@ -87,7 +87,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   addExecuteTest(Execute(
     WorkflowJob(
-      agentName,
+      agentId,
       ExecutableScript(
         returnCodeScript(variableRef("myExitCode")),
         env = ObjectExpression(Map("myExitCode" -> NamedValue.last("orderValue")))))),
@@ -96,7 +96,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   addExecuteTest(Execute(
     WorkflowJob(
-      agentName,
+      agentId,
       ExecutableScript(
         returnCodeScript(variableRef("myExitCode")),
         env = ObjectExpression(Map("myExitCode" -> NamedValue.last("defaultArg")))),
@@ -105,7 +105,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   addExecuteTest(Execute(
     WorkflowJob(
-      agentName,
+      agentId,
       ExecutableScript(
         returnCodeScript(variableRef("myExitCode")),
         env = ObjectExpression(Map("myExitCode" -> NamedValue.last("NAME")))),
@@ -115,7 +115,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   addExecuteTest(Execute(
     WorkflowJob(
-      agentName,
+      agentId,
       RelativeExecutablePath(
         "TEST-SCRIPT.cmd",
         env = ObjectExpression(Map("myExitCode" -> NumericConstant(44)))))),
@@ -123,7 +123,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   addExecuteTest(Execute(
     WorkflowJob(
-      agentName,
+      agentId,
       AbsoluteExecutablePath(
         myReturnCodeScriptFile.toString,
         env = ObjectExpression(Map("myExitCode" -> NumericConstant(44)))))),
@@ -131,14 +131,14 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   addExecuteTest(Execute(
     WorkflowJob(
-      agentName,
+      agentId,
       CommandLineExecutable(
         CommandLineParser.parse(s"""'$argScriptFile' ARG1-DUMMY 44""").orThrow))),
     expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
 
   addExecuteTest(Execute(
     WorkflowJob(
-      agentName,
+      agentId,
       CommandLineExecutable(
         CommandLineParser.parse(s"""'$myReturnCodeScriptFile'""").orThrow,
         env = ObjectExpression(Map("myExitCode" -> NamedValue.last("orderValue")))))),
@@ -147,7 +147,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   addExecuteTest(Execute(
     WorkflowJob(
-      agentName,
+      agentId,
       ExecutableScript(
         returnCodeScript(variableRef("SCHEDULER_PARAM_MYEXITCODE")),
         v1Compatible = true))),
@@ -156,7 +156,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   addExecuteTest(Execute(
     WorkflowJob(
-      agentName,
+      agentId,
       ExecutableScript(
         returnCodeScript(variableRef("myExitCode")),
       env = ObjectExpression(Map("myExitCode" -> NamedValue.last("UNKNOWN")))))),
@@ -197,7 +197,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val events = runWithWorkflow(
       toWorkflow(
         Execute(WorkflowJob(
-          agentName,
+          agentId,
           CommandLineExecutable(
             CommandLineParser.parse(s"""'$argScriptFile' 1 'two' "three" $$ARG""").orThrow)))),
         orderArguments = Map("ARG" -> StringValue("ARG-VALUE")))
@@ -242,7 +242,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
 object ExecuteTest
 {
   private val logger = Logger(getClass)
-  private val agentName = AgentName("AGENT")
+  private val agentId = AgentId("AGENT")
 
   private def toWorkflow(execute: Execute): Workflow =
     Workflow.of(execute)

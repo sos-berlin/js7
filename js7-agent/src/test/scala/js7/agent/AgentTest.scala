@@ -16,7 +16,7 @@ import js7.common.scalautil.FileUtils.WorkingDirectory
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.core.command.CommandMeta
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.controller.ControllerId
 import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.OrderProcessed
@@ -24,7 +24,7 @@ import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.value.{NumericValue, StringValue}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.test.TestSetting.TestAgentName
+import js7.data.workflow.test.TestSetting.TestAgentId
 import js7.data.workflow.{Workflow, WorkflowPath}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
@@ -56,11 +56,11 @@ final class AgentTest extends AnyFreeSpec with AgentTester
           }
           RunningAgent.run(agentConf, timeout = Some(99.s)) { agent =>
             val agentApi = agent.api(CommandMeta(TestUser))
-            assert(agentApi.commandExecute(RegisterAsController(agentName)).await(99.s).toOption.get
+            assert(agentApi.commandExecute(RegisterAsController(agentId)).await(99.s).toOption.get
               .isInstanceOf[RegisterAsController.Response])
 
             val order = Order(OrderId("TEST"), TestWorkflow.id, Order.Ready)
-            assert(agentApi.commandExecute(AttachOrder(order, TestAgentName, itemSigner.sign(TestWorkflow))).await(99.s)
+            assert(agentApi.commandExecute(AttachOrder(order, TestAgentId, itemSigner.sign(TestWorkflow))).await(99.s)
               == Right(AgentCommand.Response.Accepted))
             val Right(eventWatch) = agentApi.eventWatchForController(TestControllerId).await(99.seconds)
             val orderProcessed = eventWatch.await[OrderProcessed]().head.value.event
@@ -75,7 +75,7 @@ final class AgentTest extends AnyFreeSpec with AgentTester
 object AgentTest {
   private val TestControllerId = ControllerId("CONTROLLER")
   private val TestUser = SimpleUser(TestControllerId.toUserId)
-  private val agentName = AgentName("AGENT")
+  private val agentId = AgentId("AGENT")
 
   private val TestScript =
     if (isWindows) """
@@ -92,5 +92,5 @@ object AgentTest {
 
   private val TestWorkflow = Workflow.of(
     WorkflowPath("/WORKFLOW") ~ "VERSION",
-    Execute(WorkflowJob(TestAgentName, TestExecutablePath)))
+    Execute(WorkflowJob(TestAgentId, TestExecutablePath)))
 }

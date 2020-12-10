@@ -6,7 +6,7 @@ import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.web.Uri
 import js7.controller.data.ControllerCommand._
-import js7.data.agent.{AgentName, AgentRef}
+import js7.data.agent.{AgentId, AgentRef}
 import js7.data.cluster.{ClusterCommand, ClusterSetting}
 import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.item.VersionId
@@ -61,12 +61,12 @@ final class ControllerCommandTest extends AnyFreeSpec
   }
 
   "UpdateAgentRefs" in {
-    testJson[ControllerCommand](UpdateAgentRefs(Seq(AgentRef(AgentName("AGENT"), Uri("https://agent")))),
+    testJson[ControllerCommand](UpdateAgentRefs(Seq(AgentRef(AgentId("AGENT"), Uri("https://agent")))),
       json"""{
          "TYPE": "UpdateAgentRefs",
          "agentRefs": [
             {
-              "name": "AGENT",
+              "id": "AGENT",
               "uri": "https://agent"
             }
          ]

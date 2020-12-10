@@ -22,7 +22,7 @@ import js7.common.scalautil.IOExecutor.Implicits.globalIOX
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.scalautil.xmls.ScalaXmls.implicits._
 import js7.core.item.{InventoryItemReader, ItemPaths}
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.event.EventId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.item.Repo.Entry
@@ -46,7 +46,7 @@ import scala.concurrent.duration._
 final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   override protected def suppressAgentAndRepoInitialization = true
-  protected val agentNames = agentName :: Nil
+  protected val agentIds = agentId :: Nil
   protected val inventoryItems = Nil
   private lazy val agentRef = directoryProvider.agentRefs.head
   private lazy val privateKeyPassword = SecretString("")
@@ -73,7 +73,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       s"""js7.provider.add-orders-every = 0.1s
         |js7.provider.add-orders-earlier = 0.1s
         |js7.provider.agents {
-        |  ${agentRef.name} {
+        |  ${agentRef.id} {
         |    uri = "${agentRef.uri}"
         |  }
         |}
@@ -121,7 +121,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
     }
 
     "Start with two workflows" in {
-      //live / (agentRef.name.string + ".agent.json") := agentRef
+      //live / (agentRef.id.string + ".agent.json") := agentRef
       writeWorkflowFile(AWorkflowPath)
       writeWorkflowFile(BWorkflowPath)
       v1Time
@@ -224,7 +224,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
     "Initial observation with a workflow and an agentRef added" in {
       lastEventId = controller.eventWatch.lastAddedEventId
       writeWorkflowFile(BWorkflowPath)
-      //live / (s"$agentName.json") := AgentRef(agentName, uri = agent.localUri)
+      //live / (s"$agentId.json") := AgentRef(agentId, uri = agent.localUri)
 
       whenObserved
       val versionId = controller.eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
@@ -315,7 +315,7 @@ object ProviderTest
     js7.provider.directory-watch.poll-interval = ${if (isMac) "100ms" else "300s"}
     """
 
-  private val agentName = AgentName("AGENT")
+  private val agentId = AgentId("AGENT")
   private val AWorkflowPath = WorkflowPath("/A")
   private val BWorkflowPath = WorkflowPath("/B")
   private val CWorkflowPath = WorkflowPath("/C")
@@ -331,7 +331,7 @@ object ProviderTest
         {
           "TYPE": "Execute.Anonymous",
           "job": {
-            "agentName": "AGENT",
+            "agentId": "AGENT",
             "executable": {
               "TYPE": "ExecutablePath",
               "path": "EXECUTABLE"
@@ -348,7 +348,7 @@ object ProviderTest
         {
           "TYPE": "Execute.Anonymous",
           "job": {
-            "agentName": "AGENT",
+            "agentId": "AGENT",
             "executable": {
               "TYPE": "ExecutablePath",
               "path": "OTHER-EXECUTABLE"

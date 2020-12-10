@@ -4,7 +4,7 @@ import java.util.UUID
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Problem
 import js7.base.web.Uri
-import js7.data.agent.{AgentName, AgentRef, AgentRunId}
+import js7.data.agent.{AgentId, AgentRef, AgentRunId}
 import js7.data.event.JournalId
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
@@ -14,14 +14,14 @@ final class AgentRefStateTest extends AnyFreeSpec
   "JSON" in {
     testJson[AgentRefState](
       AgentRefState(
-        AgentRef(AgentName("AGENT"), Uri("https://URI")),
+        AgentRef(AgentId("AGENT"), Uri("https://URI")),
         None,
         None,
         AgentRefState.Decoupled,
         123L),
       json"""{
         "agentRef": {
-          "name": "AGENT",
+          "id": "AGENT",
           "uri": "https://URI"
         },
         "couplingState": {
@@ -34,14 +34,14 @@ final class AgentRefStateTest extends AnyFreeSpec
 
     testJson[AgentRefState](
       AgentRefState(
-        AgentRef(AgentName("AGENT"), Uri("https://URI")),
+        AgentRef(AgentId("AGENT"), Uri("https://URI")),
         Some(agentRunId),
         None,
         AgentRefState.Decoupled,
         123L),
       json"""{
         "agentRef": {
-          "name": "AGENT",
+          "id": "AGENT",
           "uri": "https://URI"
         },
         "agentRunId": "ABEiM0RVZneImaq7zN3u_w",

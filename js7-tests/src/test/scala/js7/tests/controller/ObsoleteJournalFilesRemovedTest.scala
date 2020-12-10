@@ -9,7 +9,7 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.data.ControllerCommand.TakeSnapshot
 import js7.controller.data.events.ControllerEvent
 import js7.core.event.journal.files.JournalFiles.listJournalFiles
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.job.RelativeExecutablePath
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
@@ -26,7 +26,7 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class ObsoleteJournalFilesRemovedTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
-  protected val agentNames = agentName :: Nil
+  protected val agentIds = agentId :: Nil
   protected val inventoryItems = workflow :: Nil
   override protected def controllerConfig = config"js7.journal.release-events-delay = 0s"
     .withFallback(super.controllerConfig)
@@ -56,9 +56,9 @@ final class ObsoleteJournalFilesRemovedTest extends AnyFreeSpec with DirectoryPr
 
 private object ObsoleteJournalFilesRemovedTest
 {
-  private val agentName = AgentName("agent-111")
+  private val agentId = AgentId("agent-111")
   private val executablePath = RelativeExecutablePath(s"TEST$sh")
   private val workflow = Workflow.of(WorkflowPath("/test"),
-    Execute(WorkflowJob(agentName, executablePath)))
+    Execute(WorkflowJob(agentId, executablePath)))
   private val aOrder = FreshOrder(OrderId("🔵"), workflow.id.path)
 }

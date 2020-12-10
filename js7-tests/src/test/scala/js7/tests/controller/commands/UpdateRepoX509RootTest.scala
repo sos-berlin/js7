@@ -29,7 +29,7 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class UpdateRepoX509RootTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentNames = Nil
+  protected val agentIds = Nil
   protected val inventoryItems = Nil
   //private lazy val (signer_, verifier_) = X509Signer.forTest()
   //override protected def verifier = verifier_

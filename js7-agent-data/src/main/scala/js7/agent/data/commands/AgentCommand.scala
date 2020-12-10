@@ -15,7 +15,7 @@ import js7.base.process.ProcessSignal
 import js7.base.utils.Big
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.agent.{AgentName, AgentRunId}
+import js7.data.agent.{AgentId, AgentRunId}
 import js7.data.command.CommonCommand
 import js7.data.event.EventId
 import js7.data.order.{Order, OrderId, OrderMark}
@@ -91,7 +91,7 @@ object AgentCommand extends CommonCommand.Companion
     * The Agent Server starts a new Agent, dedicated to the Controller.
     * Command may be given twice (in case of a sudden restart).
     */
-  final case class RegisterAsController(agentName: AgentName) extends AgentCommand {
+  final case class RegisterAsController(agentId: AgentId) extends AgentCommand {
     type Response = RegisterAsController.Response
   }
   object RegisterAsController {
@@ -102,7 +102,7 @@ object AgentCommand extends CommonCommand.Companion
 
   /** Couples the registered Controller identified by current User.
     * @param agentRunId Must be the value returned by `RegisterAsController`. */
-  final case class CoupleController(agentName: AgentName, agentRunId: AgentRunId, eventId: EventId) extends AgentCommand {
+  final case class CoupleController(agentId: AgentId, agentRunId: AgentRunId, eventId: EventId) extends AgentCommand {
     type Response = CoupleController.Response
   }
   object CoupleController {
@@ -141,9 +141,9 @@ object AgentCommand extends CommonCommand.Companion
     override def toShortString = s"AttachOrder(${order.id.string}, ${order.workflowPosition}, ${order.state.getClass.simpleScalaName}))"
   }
   object AttachOrder {
-    def apply(order: Order[Order.IsFreshOrReady], agentName: AgentName, signedWorkflow: SignedString) =
+    def apply(order: Order[Order.IsFreshOrReady], agentId: AgentId, signedWorkflow: SignedString) =
       new AttachOrder(
-        order.copy(attachedState = Some(Order.Attached(agentName))),
+        order.copy(attachedState = Some(Order.Attached(agentId))),
         signedWorkflow)
   }
 

@@ -10,7 +10,7 @@ import js7.base.utils.ScalaUtils.syntax.RichThrowableEither
 import js7.common.configutils.Configs.HoconStringInterpolator
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.data.events.AgentRefStateEvent.AgentReady
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.event.EventRequest
 import js7.data.item.VersionId
 import js7.data.job.RelativeExecutablePath
@@ -31,7 +31,7 @@ import scala.util.Random
 // Try to resemble a failed manual test
 final class ManyAddOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentNames = Seq(agentName1, agentName2)
+  protected val agentIds = Seq(agentId1, agentId2)
   protected val inventoryItems = Seq(workflow, workflow2)
   override def controllerConfig = config"""
     js7.auth.users.TEST-USER {
@@ -80,14 +80,14 @@ final class ManyAddOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTe
 object ManyAddOrdersTest
 {
   private val executablePath = RelativeExecutablePath("executable.cmd")
-  private val agentName1 = AgentName("AGENT-1")
-  private val agentName2 = AgentName("AGENT-2")
+  private val agentId1 = AgentId("AGENT-1")
+  private val agentId2 = AgentId("AGENT-2")
   private val versionId = VersionId("INITIAL")
 
   private val workflow = Workflow.of(
     WorkflowPath("/SINGLE") ~ versionId,
-    Execute(WorkflowJob(agentName1, executablePath, taskLimit = 3)),
-    Execute(WorkflowJob(agentName2, executablePath, taskLimit = 3)))
+    Execute(WorkflowJob(agentId1, executablePath, taskLimit = 3)),
+    Execute(WorkflowJob(agentId2, executablePath, taskLimit = 3)))
 
   private val workflow2 =json"""
     {
@@ -156,7 +156,7 @@ object ManyAddOrdersTest
       } ],
       "jobs": {
         "job1_e": {
-          "agentName": "AGENT-1",
+          "agentId": "AGENT-1",
           "executable": {
             "TYPE": "ExecutableScript",
             "script": "echo \"hello world1\"\n"
@@ -167,7 +167,7 @@ object ManyAddOrdersTest
           "taskLimit": 500
         },
         "job1_d": {
-          "agentName": "AGENT-1",
+          "agentId": "AGENT-1",
           "executable": {
             "TYPE": "ExecutableScript",
             "script": "echo \"hello world1\"\n"
@@ -178,7 +178,7 @@ object ManyAddOrdersTest
           "taskLimit": 500
         },
         "job2_c": {
-          "agentName": "AGENT-1",
+          "agentId": "AGENT-1",
           "executable": {
             "TYPE": "ExecutableScript",
             "script": "echo \"hello world\"\n"
@@ -189,7 +189,7 @@ object ManyAddOrdersTest
           "taskLimit": 500
         },
         "job2_b": {
-          "agentName": "AGENT-2",
+          "agentId": "AGENT-2",
           "executable": {
             "TYPE": "ExecutableScript",
             "script": "echo \"hello world\"\n"
@@ -200,7 +200,7 @@ object ManyAddOrdersTest
           "taskLimit": 500
         },
         "job2": {
-          "agentName": "AGENT-2",
+          "agentId": "AGENT-2",
           "executable": {
             "TYPE": "ExecutableScript",
             "script": "echo \"hello world1\"\n"
@@ -211,7 +211,7 @@ object ManyAddOrdersTest
           "taskLimit": 500
         },
         "job1": {
-          "agentName": "AGENT-1",
+          "agentId": "AGENT-1",
           "executable": {
             "TYPE": "ExecutableScript",
             "script": "echo \"hello world1\"\n"
@@ -222,7 +222,7 @@ object ManyAddOrdersTest
           "taskLimit": 500
         },
         "job3": {
-          "agentName": "AGENT-2",
+          "agentId": "AGENT-2",
           "executable": {
             "TYPE": "ExecutableScript",
             "script": "echo \"hello world\"\nsleep 1"
@@ -233,7 +233,7 @@ object ManyAddOrdersTest
           "taskLimit": 500
         },
         "job1_b": {
-          "agentName": "AGENT-1",
+          "agentId": "AGENT-1",
           "executable": {
             "TYPE": "ExecutableScript",
             "script": "echo \"hello world1\"\n"
@@ -244,7 +244,7 @@ object ManyAddOrdersTest
           "taskLimit": 500
         },
         "job2_a": {
-          "agentName": "AGENT-1",
+          "agentId": "AGENT-1",
           "executable": {
             "TYPE": "ExecutableScript",
             "script": "echo \"hello world\"\n"
@@ -255,7 +255,7 @@ object ManyAddOrdersTest
           "taskLimit": 500
         },
         "job1_a": {
-          "agentName": "AGENT-2",
+          "agentId": "AGENT-2",
           "executable": {
             "TYPE": "ExecutableScript",
             "script": "echo \"hello world1\"\n"

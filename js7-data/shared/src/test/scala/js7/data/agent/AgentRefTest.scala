@@ -11,9 +11,9 @@ import org.scalatest.freespec.AnyFreeSpec
 final class AgentRefTest extends AnyFreeSpec
 {
   "JSON" in {
-    testJson(AgentRef(AgentName("AGENT"), Uri("http://127.0.0.1")),
+    testJson(AgentRef(AgentId("AGENT"), Uri("http://127.0.0.1")),
       json"""{
-        "name": "AGENT",
+        "id": "AGENT",
         "uri": "http://127.0.0.1"
       }""")
   }

@@ -12,7 +12,7 @@ import js7.common.http.CirceJsonSupport._
 import js7.controller.data.agent.AgentRefState
 import js7.controller.web.controller.api.AgentRefRouteTest._
 import js7.controller.web.controller.api.test.RouteTester
-import js7.data.agent.{AgentName, AgentRef}
+import js7.data.agent.{AgentId, AgentRef}
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
@@ -40,12 +40,12 @@ final class AgentRefRouteTest extends AnyFreeSpec with RouteTester with AgentRef
   //  }
   //}
 
-  // Seq[AgentName]
+  // Seq[AgentId]
   for (uri <- List(s"$AgentUri/")) {
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
         assert(status == OK)
-        assert(responseAs[Checked[Set[AgentName]]] == Right(nameToAgent.keySet))
+        assert(responseAs[Checked[Set[AgentId]]] == Right(nameToAgent.keySet))
       }
     }
   }
@@ -82,7 +82,7 @@ final class AgentRefRouteTest extends AnyFreeSpec with RouteTester with AgentRef
 object AgentRefRouteTest
 {
   private val AgentUri = "/api/agent"
-  private val aAgent = AgentRef(AgentName("A-AGENT"), Uri("https://localhost:0"))
-  private val bAgent = AgentRef(AgentName("B-AGENT"), Uri("https://localhost:65535"))
+  private val aAgent = AgentRef(AgentId("A-AGENT"), Uri("https://localhost:0"))
+  private val bAgent = AgentRef(AgentId("B-AGENT"), Uri("https://localhost:65535"))
   private val nameToAgent = Seq(aAgent, bAgent).map(AgentRefState.apply).toKeyedMap(_.name)
 }

@@ -7,7 +7,7 @@ import js7.base.web.Uri
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.data.ControllerCommand.UpdateAgentRefs
 import js7.controller.data.events.AgentRefStateEvent.AgentCouplingFailed
-import js7.data.agent.{AgentName, AgentRef}
+import js7.data.agent.{AgentId, AgentRef}
 import js7.data.job.ExecutableScript
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
@@ -25,7 +25,7 @@ final class TerminateWithUnknownAgentTest extends AnyFreeSpec with ControllerAge
 {
   private lazy val socket = new ServerSocket(0, /*backlog=*/1)
   protected val inventoryItems = workflow ::  Nil
-  protected val agentNames = Nil
+  protected val agentIds = Nil
   override protected def provideAgentClientCertificate = false
 
   override def afterAll() = {
@@ -34,7 +34,7 @@ final class TerminateWithUnknownAgentTest extends AnyFreeSpec with ControllerAge
   }
 
   "Terminate Controller while AgentDriver is trying to send a command to a non-existent Agent" in {
-    controller.executeCommandAsSystemUser(UpdateAgentRefs(Seq(AgentRef(agentName, Uri(s"http://127.0.0.1:${socket.getLocalPort}")))))
+    controller.executeCommandAsSystemUser(UpdateAgentRefs(Seq(AgentRef(agentId, Uri(s"http://127.0.0.1:${socket.getLocalPort}")))))
       .await(99.s).orThrow
     controller.addOrderBlocking(FreshOrder(OrderId("TEST"), workflow.path))
     socket.close()
@@ -45,7 +45,7 @@ final class TerminateWithUnknownAgentTest extends AnyFreeSpec with ControllerAge
 
 private object TerminateWithUnknownAgentTest
 {
-  private val agentName = AgentName("UNKNOWN")
+  private val agentId = AgentId("UNKNOWN")
   private val workflow = Workflow.of(WorkflowPath("/WORKFLOW"),
-    Execute.Anonymous(WorkflowJob(agentName, ExecutableScript(":"))))
+    Execute.Anonymous(WorkflowJob(agentId, ExecutableScript(":"))))
 }

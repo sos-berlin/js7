@@ -7,13 +7,13 @@ import js7.common.scalautil.FileUtils.deleteDirectoryContentRecursively
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Logger
 import js7.controller.tests.TestEnvironment._
-import js7.data.agent.AgentName
-import js7.data.item.{SourceType, ItemPath}
+import js7.data.agent.AgentId
+import js7.data.item.{ItemPath, SourceType}
 
 /**
   * @author Joacim Zschimmer
   */
-final class TestEnvironment(agentNames: Seq[AgentName], temporaryDirectory: Path)
+final class TestEnvironment(agentIds: Seq[AgentId], temporaryDirectory: Path)
 extends AutoCloseable {
 
   if (exists(temporaryDirectory)) {
@@ -23,10 +23,10 @@ extends AutoCloseable {
 
   createDirectories(controllerDir / "config/private")
   createDirectories(controllerDir / "data")
-  for (agentName <- agentNames) {
-    createDirectories(agentDir(agentName) / "config/private")
-    createDirectories(agentDir(agentName) / "config/executables")
-    createDirectory(agentDir(agentName) / "data")
+  for (agentId <- agentIds) {
+    createDirectories(agentDir(agentId) / "config/private")
+    createDirectories(agentDir(agentId) / "config/executables")
+    createDirectory(agentDir(agentId) / "data")
   }
 
   def close(): Unit = {
@@ -38,10 +38,10 @@ extends AutoCloseable {
    def controllerDir: Path =
     temporaryDirectory / "controller"
 
-  def agentFile(agentName: AgentName, path: ItemPath, t: SourceType): Path =
-    agentDir(agentName) / "config/live" resolve path.toFile(t)
+  def agentFile(agentId: AgentId, path: ItemPath, t: SourceType): Path =
+    agentDir(agentId) / "config/live" resolve path.toFile(t)
 
-  def agentDir(name: AgentName): Path =
+  def agentDir(name: AgentId): Path =
     agentsDir / name.string
 
   def agentsDir = temporaryDirectory / "agents"

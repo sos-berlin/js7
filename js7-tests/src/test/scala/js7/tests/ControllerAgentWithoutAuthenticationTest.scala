@@ -18,7 +18,7 @@ import js7.controller.RunningController
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.data.ControllerCommand.{ReplaceRepo, UpdateAgentRefs}
 import js7.controller.data.events.AgentRefStateEvent.AgentCouplingFailed
-import js7.data.agent.{AgentName, AgentRef}
+import js7.data.agent.{AgentId, AgentRef}
 import js7.data.controller.ControllerItems
 import js7.data.item.{InventoryItemSigner, VersionId}
 import js7.data.job.ExecutablePath
@@ -88,7 +88,7 @@ final class ControllerAgentWithoutAuthenticationTest extends AnyFreeSpec
         "--data-directory=" + dir / "controller/data" ::
         "--http-port=" + controllerPort :: Nil))
 
-      val agentRef = AgentRef(agentName, Uri(s"http://127.0.0.1:$agentPort"))
+      val agentRef = AgentRef(agentId, Uri(s"http://127.0.0.1:$agentPort"))
       val agent = RunningAgent(agentConfiguration) await 99.seconds
       val controller = RunningController(controllerConfiguration) await 99.seconds
       controller.waitUntilReady()
@@ -108,9 +108,9 @@ final class ControllerAgentWithoutAuthenticationTest extends AnyFreeSpec
 object ControllerAgentWithoutAuthenticationTest
 {
   private val versionId = VersionId("INITIAL")
-  private val agentName = AgentName("AGENT")
+  private val agentId = AgentId("AGENT")
   private val executablePath = ExecutablePath("EXECUTABLE.cmd")
   private val workflow = Workflow.of(WorkflowPath("/WORKFLOW") ~ versionId,
-    Execute(WorkflowJob(agentName, executablePath)))
+    Execute(WorkflowJob(agentId, executablePath)))
   private val orderId = OrderId("🔵")
 }

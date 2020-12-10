@@ -13,7 +13,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class WorkflowsTest extends AnyFreeSpec {
 
   "reduceForAgent A" in {
-    assert(TestWorkflow.reduceForAgent(AAgentName) == Workflow(
+    assert(TestWorkflow.reduceForAgent(AAgentId) == Workflow(
       TestWorkflow.id,
       Vector(
         /*0*/ Fork.of(
@@ -36,7 +36,7 @@ final class WorkflowsTest extends AnyFreeSpec {
   }
 
   "reduceForAgent B" in {
-    assert(TestWorkflow.reduceForAgent(BAgentName) == Workflow(
+    assert(TestWorkflow.reduceForAgent(BAgentId) == Workflow(
       WorkflowPath("/WORKFLOW") ~ "INITIAL" ,
       Vector(
         /*0*/ Gap(),
@@ -56,38 +56,38 @@ final class WorkflowsTest extends AnyFreeSpec {
 
   "isStartableOnAgent" - {
     val isStartableSetting = List(
-      Position(0) -> List(AAgentName),
-      Position(0) / "fork+🥕" % 0 -> List(AAgentName),
+      Position(0) -> List(AAgentId),
+      Position(0) / "fork+🥕" % 0 -> List(AAgentId),
       Position(0) / "fork+🥕" % 1 -> Nil,
-      Position(0) / "fork+🍋" % 0 -> List(AAgentName),
+      Position(0) / "fork+🍋" % 0 -> List(AAgentId),
       Position(0) / "fork+🍋" % 1 -> Nil,
-      Position(1) -> List(AAgentName),
-      Position(1) / "fork+🥕" % 0 -> List(AAgentName),
+      Position(1) -> List(AAgentId),
+      Position(1) / "fork+🥕" % 0 -> List(AAgentId),
       Position(1) / "fork+🥕" % 1 -> Nil,
-      Position(1) / "fork+🍋" % 0 -> List(AAgentName),
+      Position(1) / "fork+🍋" % 0 -> List(AAgentId),
       Position(1) / "fork+🍋" % 1 -> Nil,
-      Position(2) -> List(BAgentName),
-      Position(3) -> List(AAgentName, BAgentName),
-      Position(3) / "fork+🥕" % 0 -> List(BAgentName),
+      Position(2) -> List(BAgentId),
+      Position(3) -> List(AAgentId, BAgentId),
+      Position(3) / "fork+🥕" % 0 -> List(BAgentId),
       Position(3) / "fork+🥕" % 1 -> Nil,
-      Position(3) / "fork+🍋" % 0 -> List(AAgentName),
-      Position(3) / "fork+🍋" % 1 -> List(BAgentName),
+      Position(3) / "fork+🍋" % 0 -> List(AAgentId),
+      Position(3) / "fork+🍋" % 1 -> List(BAgentId),
       Position(3) / "fork+🍋" % 2 -> Nil,
-      Position(4) -> List(AAgentName, BAgentName),  // Order 🍋 is created on A but executed on B
-      Position(4) / "fork+🥕" % 0 -> List(AAgentName),
+      Position(4) -> List(AAgentId, BAgentId),  // Order 🍋 is created on A but executed on B
+      Position(4) / "fork+🥕" % 0 -> List(AAgentId),
       Position(4) / "fork+🥕" % 1 -> Nil,
-      Position(4) / "fork+🍋" % 0 -> List(BAgentName),
+      Position(4) / "fork+🍋" % 0 -> List(BAgentId),
       Position(4) / "fork+🍋" % 1 -> Nil,
       Position(5) -> Nil)
 
-    for ((position, agentNames) <- isStartableSetting) {
-      for ((agentName, expected) <- agentNames.map(_ -> true) ++ (AgentNames filterNot agentNames.toSet).map(_ -> false)) {
-        s"isStartableOnAgent($position $agentName) = $expected" in {
-          assert(TestWorkflow.isStartableOnAgent(position, agentName) == expected)
+    for ((position, agentIds) <- isStartableSetting) {
+      for ((agentId, expected) <- agentIds.map(_ -> true) ++ (AgentIds filterNot agentIds.toSet).map(_ -> false)) {
+        s"isStartableOnAgent($position $agentId) = $expected" in {
+          assert(TestWorkflow.isStartableOnAgent(position, agentId) == expected)
         }
-        s".reduceForAgent.isStartableOnAgent($position $agentName) = $expected" in {
-          //assert(SimpleTestWorkflow.reduceForAgent(agentName).isStartableOnAgent(position, agentName))
-          assert(TestWorkflow.reduceForAgent(agentName).isStartableOnAgent(position, agentName) == expected)
+        s".reduceForAgent.isStartableOnAgent($position $agentId) = $expected" in {
+          //assert(SimpleTestWorkflow.reduceForAgent(agentId).isStartableOnAgent(position, agentId))
+          assert(TestWorkflow.reduceForAgent(agentId).isStartableOnAgent(position, agentId) == expected)
         }
       }
     }
@@ -95,9 +95,9 @@ final class WorkflowsTest extends AnyFreeSpec {
 
   //"determinedExecutingAgent" - {
   //  val setting = List(
-  //    Position(0) -> Some(AAgentName),
-  //    Position(1) -> Some(AAgentName),
-  //    Position(2) -> Some(BAgentName),
+  //    Position(0) -> Some(AAgentId),
+  //    Position(1) -> Some(AAgentId),
+  //    Position(2) -> Some(BAgentId),
   //    Position(3) -> None,
   //    Position(4) -> None,
   //    Position(5) -> Nil)

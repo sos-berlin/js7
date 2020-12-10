@@ -12,7 +12,7 @@ import js7.controller.data.events.AgentRefStateEvent.AgentRegisteredController
 import js7.controller.data.events.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.controller.data.events.{AgentRefStateEvent, ControllerEvent}
 import js7.data.agent.AgentRefEvent.{AgentAdded, AgentUpdated}
-import js7.data.agent.{AgentName, AgentRef, AgentRefEvent}
+import js7.data.agent.{AgentId, AgentRef, AgentRefEvent}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerItems.ControllerItemPathCompanions
 import js7.data.event.KeyedEvent.NoKey
@@ -33,7 +33,7 @@ final case class ControllerState(
   eventId: EventId,
   standards: JournaledState.Standards,
   controllerMetaState: ControllerMetaState,
-  nameToAgent: Map[AgentName, AgentRefState],
+  nameToAgent: Map[AgentId, AgentRefState],
   nameToLockState: Map[LockId, LockState],
   repo: Repo,
   idToOrder: Map[OrderId, Order[Order.State]])
@@ -82,7 +82,7 @@ extends JournaledState[ControllerState]
       for (o <- repo.applyEvent(event)) yield
         copy(repo = o)
 
-    case KeyedEvent(name: AgentName, event: AgentRefEvent) =>
+    case KeyedEvent(name: AgentId, event: AgentRefEvent) =>
       event match {
         case AgentAdded(uri) =>
           if (nameToAgent contains name)
@@ -99,7 +99,7 @@ extends JournaledState[ControllerState]
                   uri = uri))))
       }
 
-    case KeyedEvent(name: AgentName, event: AgentRefStateEvent) =>
+    case KeyedEvent(name: AgentId, event: AgentRefStateEvent) =>
       nameToAgent.checked(name)
         .flatMap(agentRefState =>
           agentRefState.applyEvent(event)

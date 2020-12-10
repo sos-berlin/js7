@@ -4,7 +4,7 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.execution.workflow.context.OrderContext
 import js7.data.execution.workflow.instructions.IfExecutorTest._
 import js7.data.job.ExecutablePath
@@ -76,8 +76,8 @@ object IfExecutorTest {
     historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(1) ++ Map("A" -> StringValue("AA")))) :: Nil)
   private val BOrder = Order(OrderId("ORDER-B"), TestWorkflowId /: Position(7), Order.Processed,
     historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(1) ++ Map("A" -> StringValue("XX")))) :: Nil)
-  private val ThenJob = Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("THEN")))
-  private val ElseJob = Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("ELSE")))
+  private val ThenJob = Execute(WorkflowJob(AgentId("AGENT"), ExecutablePath("THEN")))
+  private val ElseJob = Execute(WorkflowJob(AgentId("AGENT"), ExecutablePath("ELSE")))
 
   private def ifThenElse(booleanExpr: BooleanExpression) =
     If(booleanExpr, Workflow.of(ThenJob), Some(Workflow.of(ElseJob)))

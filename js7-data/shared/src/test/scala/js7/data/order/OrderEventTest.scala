@@ -7,7 +7,7 @@ import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.command.CancelMode
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.lock.LockId
@@ -40,10 +40,10 @@ final class OrderEventTest extends AnyFreeSpec
 
   "OrderAttachable" in {
     check(
-      OrderAttachable(AgentName("AGENT")),
+      OrderAttachable(AgentId("AGENT")),
       json"""{
         "TYPE": "OrderAttachable",
-        "agentName": "AGENT"
+        "agentId": "AGENT"
       }""")
   }
 
@@ -54,7 +54,7 @@ final class OrderEventTest extends AnyFreeSpec
         Order.Ready,
         Map("KEY" -> StringValue("VALUE")),
         HistoricOutcome(Position(123), Outcome.succeeded) :: Nil,
-        AgentName("AGENT"),
+        AgentId("AGENT"),
         Some(OrderId("PARENT")),
         Some(OrderMark.Suspending()),
         isSuspended = true,
@@ -82,7 +82,7 @@ final class OrderEventTest extends AnyFreeSpec
             }
           }
         ],
-        "agentName":"AGENT",
+        "agentId":"AGENT",
         "parent": "PARENT",
         "mark": {
           "TYPE": "Suspending",
@@ -94,10 +94,10 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderAttached" in {
-    check(OrderAttached(AgentName("AGENT")), json"""
+    check(OrderAttached(AgentId("AGENT")), json"""
       {
         "TYPE": "OrderAttached",
-        "agentName":"AGENT"
+        "agentId":"AGENT"
       }""")
   }
 

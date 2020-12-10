@@ -17,7 +17,7 @@ import js7.common.utils.UntilNoneIterator
 import js7.controller.RunningController
 import js7.controller.data.events.ControllerEvent
 import js7.core.common.jsonseq.InputStreamJsonSeqReader
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{<-:, Event, EventId, KeyedEvent, Stamped}
@@ -53,7 +53,7 @@ final class RecoveryTest extends AnyFreeSpec
       val Seq(order1, order2, order3) = orders
       var lastEventId = EventId.BeforeFirst
       val directoryProvider = new DirectoryProvider(
-        AgentNames,
+        AgentIds,
         TestWorkflow :: QuickWorkflow :: Nil,
         signer = new SillySigner(SillySignature("MY-SILLY-SIGNATURE")),
         verifier = new SillySignatureVerifier(SillySignature("MY-SILLY-SIGNATURE") :: Nil, "RecoveryTest"),
@@ -151,7 +151,7 @@ private object RecoveryTest {
   private val logger = Logger(getClass)
 
   private val TestConfig = config"js7.journal.remove-obsolete-files = false"
-  private val AgentNames = AgentName("agent-111") :: AgentName("agent-222") :: Nil
+  private val AgentIds = AgentId("agent-111") :: AgentId("agent-222") :: Nil
   private val TestExecutablePath = RelativeExecutablePath("TEST.cmd", v1Compatible = true)
 
   private val TestWorkflow = Workflow(WorkflowPath("/test") ~ "INITIAL",
@@ -162,16 +162,16 @@ private object RecoveryTest {
       Execute(WorkflowJob.Name("TEST-1")),
       Execute(WorkflowJob.Name("TEST-1"))),
     Map(
-      WorkflowJob.Name("TEST-0") -> WorkflowJob(AgentNames(0), TestExecutablePath, Map("var1" -> StringValue(s"VALUE-${AgentNames(0).string}"))),
-      WorkflowJob.Name("TEST-1") -> WorkflowJob(AgentNames(1), TestExecutablePath, Map("var1" -> StringValue(s"VALUE-${AgentNames(1).string}")))))
+      WorkflowJob.Name("TEST-0") -> WorkflowJob(AgentIds(0), TestExecutablePath, Map("var1" -> StringValue(s"VALUE-${AgentIds(0).string}"))),
+      WorkflowJob.Name("TEST-1") -> WorkflowJob(AgentIds(1), TestExecutablePath, Map("var1" -> StringValue(s"VALUE-${AgentIds(1).string}")))))
 
-  private val QuickWorkflow = Workflow.of(WorkflowPath("/quick") ~ "INITIAL", Execute(WorkflowJob(AgentNames(0), TestExecutablePath)))
+  private val QuickWorkflow = Workflow.of(WorkflowPath("/quick") ~ "INITIAL", Execute(WorkflowJob(AgentIds(0), TestExecutablePath)))
   private val QuickOrder = FreshOrder(OrderId("QUICK-ORDER"), QuickWorkflow.id.path)
 
   private val ExpectedOrderEvents = Vector(
     OrderAdded(TestWorkflow.id, None, Map.empty),
-    OrderAttachable(AgentNames(0)),
-    OrderAttached(AgentNames(0)),
+    OrderAttachable(AgentIds(0)),
+    OrderAttached(AgentIds(0)),
     OrderStarted,
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
@@ -187,8 +187,8 @@ private object RecoveryTest {
     OrderMoved(Position(3)),
     OrderDetachable,
     OrderDetached,
-    OrderAttachable(AgentNames(1)),
-    OrderAttached(AgentNames(1)),
+    OrderAttachable(AgentIds(1)),
+    OrderAttached(AgentIds(1)),
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
     OrderProcessed(Outcome.Succeeded(Map("returnCode" -> NumericValue(0), "result" -> StringValue("SCRIPT-VARIABLE-VALUE-agent-222")))),

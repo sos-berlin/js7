@@ -2,7 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.execution.workflow.context.OrderContext
 import js7.data.execution.workflow.instructions.FailExecutorTest._
 import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderStarted}
@@ -50,7 +50,7 @@ final class FailExecutorTest extends AnyFreeSpec
       }
 
       "Attached order" in {
-        assert(FailExecutor.toEvents(Fail(), TestOrder.copy(attachedState = Some(Order.Attached(AgentName("AGENT")))), context) ==
+        assert(FailExecutor.toEvents(Fail(), TestOrder.copy(attachedState = Some(Order.Attached(AgentId("AGENT")))), context) ==
           Right(Seq(TestOrder.id <-: OrderFailedIntermediate_(Some(Outcome.failed)))))
       }
     }

@@ -3,7 +3,7 @@ package js7.proxy.javaapi.data.agent
 import io.vavr.control.{Either => VEither}
 import js7.base.problem.Problem
 import js7.base.web.Uri
-import js7.data.agent.{AgentName, AgentRef}
+import js7.data.agent.{AgentId, AgentRef}
 import js7.proxy.javaapi.data.common.JJsonable
 
 final case class JAgentRef(asScala: AgentRef)
@@ -12,8 +12,8 @@ extends JJsonable[JAgentRef]
   protected type AsScala = AgentRef
   protected def companion = JAgentRef
 
-  def name: AgentName =
-    asScala.name
+  def name: AgentId =
+    asScala.id
 
   def uri: Uri =
     asScala.uri

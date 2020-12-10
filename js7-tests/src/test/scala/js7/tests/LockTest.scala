@@ -10,7 +10,7 @@ import js7.common.configutils.Configs._
 import js7.common.scalautil.FileUtils.withTemporaryFile
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.item.VersionId
 import js7.data.lock.Acquired.Available
 import js7.data.lock.{Lock, LockId, LockState}
@@ -29,7 +29,7 @@ import scala.collection.immutable.Queue
 
 final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentNames = Seq(agentName)
+  protected val agentIds = Seq(agentId)
   protected val inventoryItems = Nil
   override protected def controllerConfig = config"""
     js7.web.server.auth.public = on
@@ -73,8 +73,8 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
         OrderAdded(workflow.id),
         OrderStarted,
         OrderLockAcquired(lockId, None),
-        OrderAttachable(agentName),
-        OrderAttached(agentName),
+        OrderAttachable(agentId),
+        OrderAttached(agentId),
         OrderProcessingStarted,
         OrderProcessed(Outcome.succeededRC0),
         OrderMoved(Position(0) / "lock" % 1),
@@ -90,8 +90,8 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
           OrderStarted,
           OrderLockQueued(lockId),
           OrderLockAcquired(lockId, None),
-          OrderAttachable(agentName),
-          OrderAttached(agentName),
+          OrderAttachable(agentId),
+          OrderAttached(agentId),
           OrderProcessingStarted,
           OrderProcessed(Outcome.succeededRC0),
           OrderMoved(Position(0) / "lock" % 1),
@@ -155,8 +155,8 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderMoved(Position(0) / "lock" % 0 / "try+0" % 0),
       OrderLockAcquired(lock2Name, None),
       OrderCatched(Position(0) / "lock" % 0 / "catch+0" % 0, Some(Outcome.failed), lockIds = Seq(lock2Name)),
-      OrderAttachable(agentName),
-      OrderAttached(agentName),
+      OrderAttachable(agentId),
+      OrderAttached(agentId),
       OrderProcessingStarted,
       OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(0) / "lock" % 1),
@@ -243,7 +243,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
 }
 
 object LockTest {
-  private val agentName = AgentName("AGENT")
+  private val agentId = AgentId("AGENT")
   private val lockId = LockId("LOCK")
   private val lock2Name = LockId("LOCK-2")
 }

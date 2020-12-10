@@ -30,7 +30,7 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class UpdateRepoX509Test extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentNames = Nil
+  protected val agentIds = Nil
   protected val inventoryItems = Nil
   override protected lazy val verifier = {
     runProcess(s"openssl req -x509 -sha512 -newkey rsa:1024 -days 2 -subj '/CN=SIGNER' -nodes" +

@@ -13,7 +13,7 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import js7.controller.data.ControllerCommand.UpdateAgentRefs
 import js7.controller.data.events.AgentRefStateEvent.AgentCouplingFailed
-import js7.data.agent.{AgentName, AgentRef}
+import js7.data.agent.{AgentId, AgentRef}
 import js7.data.controller.ControllerId
 import js7.data.job.{ExecutablePath, RelativeExecutablePath}
 import js7.data.order.{FreshOrder, OrderId}
@@ -28,10 +28,10 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
-  protected val agentNames = Nil
+  protected val agentIds = Nil
   protected val inventoryItems = workflow :: Nil
   private lazy val agentPort1 :: agentPort2 :: agentPort3 :: Nil = findFreeTcpPorts(3)
-  private lazy val agentFileTree = new DirectoryProvider.AgentTree(directoryProvider.directory, agentName, "AGENT", agentPort1)
+  private lazy val agentFileTree = new DirectoryProvider.AgentTree(directoryProvider.directory, agentId, "AGENT", agentPort1)
   private lazy val controller = directoryProvider.startController() await 99.s
   private var agent: RunningAgent = null
 
@@ -44,7 +44,7 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
     directoryProvider.prepareAgentFiles(agentFileTree)
     agentFileTree.writeExecutable(RelativeExecutablePath(s"EXECUTABLE$sh"), script(0.s))
 
-    val agentRef = AgentRef(agentName, Uri(s"http://127.0.0.1:$agentPort1"))
+    val agentRef = AgentRef(agentId, Uri(s"http://127.0.0.1:$agentPort1"))
     agent = RunningAgent.startForTest(agentFileTree.agentConfiguration) await 99.s
 
     controller.executeCommandAsSystemUser(UpdateAgentRefs(Seq(agentRef))).await(99.s).orThrow
@@ -53,7 +53,7 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
 
   "Change Agent's URI and keep Agent's state" in {
     agent.terminate() await 99.s
-    val agentRef = AgentRef(agentName, Uri(s"http://127.0.0.1:$agentPort2"))
+    val agentRef = AgentRef(agentId, Uri(s"http://127.0.0.1:$agentPort2"))
     agent = RunningAgent.startForTest(
       agentFileTree.agentConfiguration.copy(
         webServerPorts = List(WebServerPort.localhost(agentPort2)))
@@ -64,7 +64,7 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
 
   "Change Agent's URI and start Agent with clean state: should fail" in {
     agent.terminate() await 99.s
-    val agentRef = AgentRef(agentName, Uri(s"http://127.0.0.1:$agentPort3"))
+    val agentRef = AgentRef(agentId, Uri(s"http://127.0.0.1:$agentPort3"))
     // DELETE AGENT'S STATE DIRECTORY
     deleteDirectoryContentRecursively(agentFileTree.stateDir)
     agent = RunningAgent.startForTest(
@@ -83,7 +83,7 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
 
 object UpdateAgentRefsTest
 {
-  private val agentName = AgentName("AGENT")
+  private val agentId = AgentId("AGENT")
   private val workflow = Workflow(WorkflowPath("/WORKFLOW"), Vector(
-    Execute(WorkflowJob(agentName, ExecutablePath(s"EXECUTABLE$sh")))))
+    Execute(WorkflowJob(agentId, ExecutablePath(s"EXECUTABLE$sh")))))
 }

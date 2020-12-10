@@ -11,7 +11,7 @@ import js7.common.scalautil.Futures.implicits.SuccessFuture
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.client.AkkaHttpControllerApi
 import js7.data.Problems.ItemVersionDoesNotMatchProblem
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.item.RepoEvent.ItemAdded
 import js7.data.item.{UpdateRepoOperation, VersionId}
@@ -37,7 +37,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class JournaledProxyTest
 extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with ControllerAgentForScalaTest
 {
-  override protected def agentNames = agentName :: Nil
+  override protected def agentIds = agentId :: Nil
   protected val inventoryItems = Nil
   protected def config = ProxyConfs.defaultConfig
 
@@ -115,8 +115,8 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with Controll
         orderIds
           .map(_ -> List[OrderEvent](
             OrderAdded(workflow.path ~ versionId),
-            OrderAttachable(agentName),
-            OrderAttached(agentName),
+            OrderAttachable(agentId),
+            OrderAttached(agentId),
             OrderStarted,
             OrderProcessingStarted,
             OrderStdoutWritten("TEST ☘\n"),
@@ -131,5 +131,5 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with Controll
 }
 
 object JournaledProxyTest {
-  private val agentName = AgentName("AGENT")
+  private val agentId = AgentId("AGENT")
 }

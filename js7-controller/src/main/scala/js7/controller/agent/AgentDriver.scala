@@ -32,7 +32,7 @@ import js7.controller.data.ControllerState
 import js7.controller.data.events.AgentRefStateEvent
 import js7.controller.data.events.AgentRefStateEvent.{AgentCouplingFailed, AgentRegisteredController}
 import js7.core.event.journal.{JournalActor, KeyedJournalingActor}
-import js7.data.agent.{AgentName, AgentRunId}
+import js7.data.agent.{AgentId, AgentRunId}
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, Stamped}
 import js7.data.order.{Order, OrderEvent, OrderId, OrderMark}
 import js7.data.workflow.Workflow
@@ -51,7 +51,7 @@ import shapeless.tag.@@
   *
   * @author Joacim Zschimmer
   */
-final class AgentDriver private(agentName: AgentName,
+final class AgentDriver private(agentId: AgentId,
   initialUri: Uri,
   initialAgentRunId: Option[AgentRunId],
   initialEventId: EventId,
@@ -64,9 +64,9 @@ with ReceiveLoggingActor.WithStash
 {
   protected def journalConf = controllerConfiguration.journalConf
 
-  private val logger = Logger.withPrefix[this.type](agentName.string)
+  private val logger = Logger.withPrefix[this.type](agentId.string)
   private val agentUserAndPassword: Option[UserAndPassword] =
-    controllerConfiguration.config.optionAs[SecretString]("js7.auth.agents." + ConfigUtil.joinPath(agentName.string))
+    controllerConfiguration.config.optionAs[SecretString]("js7.auth.agents." + ConfigUtil.joinPath(agentId.string))
       .map(password => UserAndPassword(controllerConfiguration.controllerId.toUserId, password))
 
   private val agentRunIdOnce = SetOnce.fromOption(initialAgentRunId)
@@ -95,7 +95,7 @@ with ReceiveLoggingActor.WithStash
       (for {
         _ <- EitherT(registerAsControllerIfNeeded)
         completed <- EitherT(
-          client.commandExecute(CoupleController(agentName, agentRunIdOnce.orThrow, eventId = eventId))
+          client.commandExecute(CoupleController(agentId, agentRunIdOnce.orThrow, eventId = eventId))
             .map(_.map { case CoupleController.Response(orderIds) =>
               logger.trace(s"CoupleController returned attached OrderIds={${orderIds.toSeq.sorted.mkString(" ")}}")
               attachedOrderIds = orderIds
@@ -188,7 +188,7 @@ with ReceiveLoggingActor.WithStash
         ).runToFuture
   }
 
-  protected def key = agentName  // Only one version is active at any time
+  protected def key = agentId  // Only one version is active at any time
 
   private def newAgentClient(uri: Uri): AgentClient =
     AgentClient(uri, agentUserAndPassword,
@@ -394,7 +394,7 @@ with ReceiveLoggingActor.WithStash
       else
         (for {
           agentRunId <- EitherT(
-            client.commandExecute(RegisterAsController(agentName)).map(_.map(_.agentRunId)))
+            client.commandExecute(RegisterAsController(agentId)).map(_.map(_.agentRunId)))
           completed <- EitherT(
             if (noJournal)
               Task.pure(Right(Completed))
@@ -440,7 +440,7 @@ with ReceiveLoggingActor.WithStash
         client.close()
       })
 
-  override def toString = s"AgentDriver($agentName)"
+  override def toString = s"AgentDriver($agentId)"
 }
 
 private[controller] object AgentDriver
@@ -448,11 +448,11 @@ private[controller] object AgentDriver
   private val EventClasses = Set[Class[_ <: Event]](classOf[OrderEvent], classOf[AgentControllerEvent.AgentReadyForController])
   private val DecoupledProblem = Problem.pure("Agent has been decoupled")
 
-  def props(agentName: AgentName, uri: Uri, agentRunId: Option[AgentRunId], eventId: EventId,
+  def props(agentId: AgentId, uri: Uri, agentRunId: Option[AgentRunId], eventId: EventId,
     agentDriverConfiguration: AgentDriverConfiguration, controllerConfiguration: ControllerConfiguration,
     journalActor: ActorRef @@ JournalActor.type)(implicit s: Scheduler)
   =
-    Props { new AgentDriver(agentName, uri, agentRunId, eventId, agentDriverConfiguration, controllerConfiguration, journalActor) }
+    Props { new AgentDriver(agentId, uri, agentRunId, eventId, agentDriverConfiguration, controllerConfiguration, journalActor) }
 
   sealed trait Queueable extends Input {
     def toShortString = toString
@@ -466,7 +466,7 @@ private[controller] object AgentDriver
 
     final case class ChangeUri(uri: Uri)
 
-    final case class AttachOrder(order: Order[Order.IsFreshOrReady], agentName: AgentName, signedWorkflow: Signed[Workflow]/*TODO Separate this*/)
+    final case class AttachOrder(order: Order[Order.IsFreshOrReady], agentId: AgentId, signedWorkflow: Signed[Workflow]/*TODO Separate this*/)
     extends Input with Queueable {
       def orderId = order.id
       override lazy val hashCode = 31 * order.id.hashCode + signedWorkflow.value.id.hashCode  // Accelerate CommandQueue

@@ -15,7 +15,7 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class AddOrderTimeoutTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentNames = Nil
+  protected val agentIds = Nil
   protected val inventoryItems = workflow :: Nil
   override protected val controllerConfig = config"""
     js7.web.server.auth.public = on

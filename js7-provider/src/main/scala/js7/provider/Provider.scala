@@ -22,7 +22,7 @@ import js7.controller.data.ControllerCommand.{ReplaceRepo, UpdateAgentRefs, Upda
 import js7.controller.workflow.WorkflowReader
 import js7.core.crypt.generic.MessageSigners
 import js7.core.item.{ItemPaths, TypedSourceReader}
-import js7.data.agent.{AgentName, AgentRef}
+import js7.data.agent.{AgentId, AgentRef}
 import js7.data.controller.ControllerItems
 import js7.data.item.IntentoryItems.diffInventoryItems
 import js7.data.item.{IntentoryItems, InventoryItem, InventoryItemSigner, ItemPath, VersionId}
@@ -72,7 +72,7 @@ extends HasCloser with Observing with ProvideActorSystem
   private def updateAgents: Task[Completed] = {
     val agentRefs = config.getObject("js7.provider.agents").asScala
       .collect { case (name, obj: ConfigObject) =>
-        AgentRef(AgentName(name), Uri(obj.toConfig.getString("uri")))
+        AgentRef(AgentId(name), Uri(obj.toConfig.getString("uri")))
       }
       .toVector
     for {

@@ -9,7 +9,7 @@ import js7.base.utils.Collections.implicits._
 import js7.base.web.Uri
 import js7.controller.data.agent.AgentRefState
 import js7.controller.data.{ControllerMetaState, ControllerState}
-import js7.data.agent.{AgentName, AgentRef}
+import js7.data.agent.{AgentId, AgentRef}
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterTiming}
 import js7.data.controller.{ControllerId, ControllerItems}
 import js7.data.event.{EventId, JournalState, JournaledState}
@@ -90,7 +90,7 @@ private object JControllerStateTest
           Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
           ClusterTiming(10.s, 20.s)))),
     ControllerMetaState(ControllerId("CONTROLLER-ID"), Timestamp("2019-05-24T12:00:00Z"), timezone = "Europe/Berlin"),
-    (AgentRefState(AgentRef(AgentName("AGENT"), Uri("https://AGENT")), None, None, AgentRefState.Decoupled, EventId(7)) :: Nil).toKeyedMap(_.name),
+    (AgentRefState(AgentRef(AgentId("AGENT"), Uri("https://AGENT")), None, None, AgentRefState.Decoupled, EventId(7)) :: Nil).toKeyedMap(_.name),
     Map.empty,
     Repo.empty
       .applyEvents(List(

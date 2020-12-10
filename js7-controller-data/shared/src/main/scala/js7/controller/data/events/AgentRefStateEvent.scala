@@ -3,14 +3,14 @@ package js7.controller.data.events
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Problem
-import js7.data.agent.{AgentName, AgentRunId}
+import js7.data.agent.{AgentId, AgentRunId}
 import js7.data.event.{Event, EventId}
 
 /**
   * @author Joacim Zschimmer
   */
 sealed trait AgentRefStateEvent extends Event {
-  type Key = AgentName
+  type Key = AgentId
 }
 
 object AgentRefStateEvent

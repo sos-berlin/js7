@@ -5,7 +5,7 @@ import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.problem.Problems.UnknownKeyProblem
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.item.VersionId
 import js7.data.job.{ExecutablePath, ExecutableScript, JobKey}
 import js7.data.value.expression.Expression.{BooleanConstant, Equal, LastReturnCode, NumericConstant}
@@ -30,7 +30,7 @@ final class WorkflowTest extends AnyFreeSpec
       testJson[Workflow](
         Workflow(WorkflowPath.NoId,
           Vector(Labeled(Some("TEST-LABEL"), Execute(WorkflowJob.Name("JOB")))),
-          Map(WorkflowJob.Name("JOB") -> WorkflowJob(AgentName("AGENT"), ExecutablePath("EXECUTABLE")))),
+          Map(WorkflowJob.Name("JOB") -> WorkflowJob(AgentId("AGENT"), ExecutablePath("EXECUTABLE")))),
         json"""{
           "instructions": [
             {
@@ -41,7 +41,7 @@ final class WorkflowTest extends AnyFreeSpec
           ],
           "jobs": {
             "JOB": {
-              "agentName": "AGENT",
+              "agentId": "AGENT",
               "executable": {
                 "TYPE": "ExecutablePath",
                 "path": "EXECUTABLE"
@@ -61,7 +61,7 @@ final class WorkflowTest extends AnyFreeSpec
             {
               "TYPE": "Execute.Anonymous",
               "job": {
-                "agentName": "AGENT",
+                "agentId": "AGENT",
                 "executable": {
                   "TYPE": "ExecutablePath",
                   "v1Compatible": true,
@@ -81,7 +81,7 @@ final class WorkflowTest extends AnyFreeSpec
                 ],
                 "jobs": {
                   "B": {
-                    "agentName": "AGENT",
+                    "agentId": "AGENT",
                     "executable": {
                       "TYPE": "ExecutablePath",
                       "v1Compatible": true,
@@ -97,7 +97,7 @@ final class WorkflowTest extends AnyFreeSpec
                   {
                     "TYPE": "Execute.Anonymous",
                     "job": {
-                      "agentName": "AGENT",
+                      "agentId": "AGENT",
                       "executable": {
                         "TYPE": "ExecutablePath",
                         "v1Compatible": true,
@@ -119,7 +119,7 @@ final class WorkflowTest extends AnyFreeSpec
                       {
                         "TYPE": "Execute.Anonymous",
                         "job": {
-                          "agentName": "AGENT",
+                          "agentId": "AGENT",
                           "executable": {
                             "TYPE": "ExecutablePath",
                             "v1Compatible": true,
@@ -140,7 +140,7 @@ final class WorkflowTest extends AnyFreeSpec
                       {
                         "TYPE": "Execute.Anonymous",
                         "job": {
-                          "agentName": "AGENT",
+                          "agentId": "AGENT",
                           "executable": {
                             "TYPE": "ExecutablePath",
                             "v1Compatible": true,
@@ -159,7 +159,7 @@ final class WorkflowTest extends AnyFreeSpec
             {
               "TYPE": "Execute.Anonymous",
               "job": {
-                "agentName": "AGENT",
+                "agentId": "AGENT",
                 "executable": {
                   "TYPE": "ExecutablePath",
                   "v1Compatible": true,
@@ -172,7 +172,7 @@ final class WorkflowTest extends AnyFreeSpec
           ],
           "jobs": {
             "A": {
-              "agentName": "AGENT",
+              "agentId": "AGENT",
               "executable": {
                 "TYPE": "ExecutablePath",
                 "v1Compatible": true,
@@ -182,7 +182,7 @@ final class WorkflowTest extends AnyFreeSpec
               "defaultArguments": { "JOB_A": "A-VALUE" }
             },
             "B": {
-              "agentName": "AGENT",
+              "agentId": "AGENT",
               "executable": {
                 "TYPE": "ExecutablePath",
                 "v1Compatible": true,
@@ -204,7 +204,7 @@ final class WorkflowTest extends AnyFreeSpec
               "position": [ 0 ],
               "TYPE": "Execute.Anonymous",
               "job": {
-                "agentName": "AGENT",
+                "agentId": "AGENT",
                 "executable": {
                   "TYPE": "ExecutablePath",
                   "v1Compatible": true,
@@ -226,7 +226,7 @@ final class WorkflowTest extends AnyFreeSpec
                 ],
                 "jobs": {
                   "B": {
-                    "agentName": "AGENT",
+                    "agentId": "AGENT",
                     "executable": {
                       "TYPE": "ExecutablePath",
                       "v1Compatible": true,
@@ -243,7 +243,7 @@ final class WorkflowTest extends AnyFreeSpec
                     "position": [ 1, "else", 0 ],
                     "TYPE": "Execute.Anonymous",
                     "job": {
-                      "agentName": "AGENT",
+                      "agentId": "AGENT",
                       "executable": {
                         "TYPE": "ExecutablePath",
                         "v1Compatible": true,
@@ -270,7 +270,7 @@ final class WorkflowTest extends AnyFreeSpec
                         "position": [ 2, "fork+🥕", 0 ],
                         "TYPE": "Execute.Anonymous",
                         "job": {
-                          "agentName": "AGENT",
+                          "agentId": "AGENT",
                           "executable": {
                             "TYPE": "ExecutablePath",
                             "v1Compatible": true,
@@ -297,7 +297,7 @@ final class WorkflowTest extends AnyFreeSpec
                         "position": [ 2, "fork+🍋", 0 ],
                         "TYPE": "Execute.Anonymous",
                         "job": {
-                          "agentName": "AGENT",
+                          "agentId": "AGENT",
                           "executable": {
                             "TYPE": "ExecutablePath",
                             "v1Compatible": true,
@@ -322,7 +322,7 @@ final class WorkflowTest extends AnyFreeSpec
               "position": [ 3 ],
               "TYPE": "Execute.Anonymous",
               "job": {
-                "agentName": "AGENT",
+                "agentId": "AGENT",
                 "executable": {
                   "TYPE": "ExecutablePath",
                   "v1Compatible": true,
@@ -338,7 +338,7 @@ final class WorkflowTest extends AnyFreeSpec
           ],
           "jobs": {
             "A": {
-              "agentName": "AGENT",
+              "agentId": "AGENT",
               "executable": {
                 "TYPE": "ExecutablePath",
                 "v1Compatible": true,
@@ -348,7 +348,7 @@ final class WorkflowTest extends AnyFreeSpec
               "defaultArguments": { "JOB_A": "A-VALUE" }
             },
             "B": {
-              "agentName": "AGENT",
+              "agentId": "AGENT",
               "executable": {
                 "TYPE": "ExecutablePath",
                 "v1Compatible": true,
@@ -370,11 +370,11 @@ final class WorkflowTest extends AnyFreeSpec
           Map(
             WorkflowJob.Name("EXECUTABLE") ->
               WorkflowJob(
-                AgentName("AGENT"),
+                AgentId("AGENT"),
                 ExecutablePath("EXECUTABLE")),
             WorkflowJob.Name("OWN-SCRIPT") ->
               WorkflowJob(
-                AgentName("AGENT"),
+                AgentId("AGENT"),
                 ExecutableScript("#!/usr/bin/env bash\n...")))),
         json"""{
           "path": "/TEST",
@@ -390,7 +390,7 @@ final class WorkflowTest extends AnyFreeSpec
           ],
           "jobs": {
             "EXECUTABLE": {
-              "agentName": "AGENT",
+              "agentId": "AGENT",
               "executable": {
                 "TYPE": "ExecutablePath",
                 "path": "EXECUTABLE"
@@ -398,7 +398,7 @@ final class WorkflowTest extends AnyFreeSpec
               "taskLimit": 1
             },
             "OWN-SCRIPT": {
-              "agentName": "AGENT",
+              "agentId": "AGENT",
               "executable": {
                 "TYPE": "ExecutableScript",
                 "script": "#!/usr/bin/env bash\n..."
@@ -416,7 +416,7 @@ final class WorkflowTest extends AnyFreeSpec
             {
               "TYPE": "Execute.Anonymous",
               "job": {
-                "agentName": "AGENT",
+                "agentId": "AGENT",
                 "executable": {
                   "TYPE": "ExecutablePath",
                   "v1Compatible": true,
@@ -436,14 +436,14 @@ final class WorkflowTest extends AnyFreeSpec
       val workflow = Workflow(
         WorkflowPath("/WORKFLOW") ~ VersionId("1"),
         Vector(
-          Execute(WorkflowJob(AgentName("AGENT"), ExecutableScript("echo HELLO\n")))))
+          Execute(WorkflowJob(AgentId("AGENT"), ExecutableScript("echo HELLO\n")))))
       testJson(workflow,json"""
         {
           "instructions": [
             {
               "TYPE": "Execute.Anonymous",
               "job": {
-                "agentName": "AGENT",
+                "agentId": "AGENT",
                 "executable": {
                   "TYPE": "ExecutableScript",
                   "script": "echo HELLO\n"
@@ -463,8 +463,8 @@ final class WorkflowTest extends AnyFreeSpec
       "A" @: Execute.Named(WorkflowJob.Name("JOB-A")),
       If(Equal(LastReturnCode, NumericConstant(1)),
         thenWorkflow = Workflow.of(
-          "B" @: Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("EXECUTABLE")))))),
-      Map(WorkflowJob.Name("JOB-A") -> WorkflowJob(AgentName("AGENT"), ExecutablePath("EXECUTABLE"))))
+          "B" @: Execute(WorkflowJob(AgentId("AGENT"), ExecutablePath("EXECUTABLE")))))),
+      Map(WorkflowJob.Name("JOB-A") -> WorkflowJob(AgentId("AGENT"), ExecutablePath("EXECUTABLE"))))
       .completelyChecked.orThrow
     assert(workflow.positionMatchesSearch(Position(0), PositionSearch.ByLabel("A")))
     assert(!workflow.positionMatchesSearch(Position(0), PositionSearch.ByLabel("B")))
@@ -478,10 +478,10 @@ final class WorkflowTest extends AnyFreeSpec
 
   "labelToPosition of a branch" in {
     val workflow = Workflow.of(
-      "A" @: Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("EXECUTABLE"))),
+      "A" @: Execute(WorkflowJob(AgentId("AGENT"), ExecutablePath("EXECUTABLE"))),
       If(Equal(LastReturnCode, NumericConstant(1)),
         thenWorkflow = Workflow.of(
-          "B" @: Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("EXECUTABLE"))))))
+          "B" @: Execute(WorkflowJob(AgentId("AGENT"), ExecutablePath("EXECUTABLE"))))))
       .completelyChecked.orThrow
     assert(workflow.labelToPosition(Nil, Label("A")) == Right(Position(0)))
     assert(workflow.labelToPosition(Nil, Label("UNKNOWN")) == Left(UnknownKeyProblem("Label", "UNKNOWN")))
@@ -490,10 +490,10 @@ final class WorkflowTest extends AnyFreeSpec
 
   "labelToPosition of whole workflow" in {
     val workflow = Workflow.of(
-      "A" @: Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("EXECUTABLE"))),
+      "A" @: Execute(WorkflowJob(AgentId("AGENT"), ExecutablePath("EXECUTABLE"))),
       If(Equal(LastReturnCode, NumericConstant(1)),
         thenWorkflow = Workflow.of(
-          "B" @: Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("EXECUTABLE"))))))
+          "B" @: Execute(WorkflowJob(AgentId("AGENT"), ExecutablePath("EXECUTABLE"))))))
       .completelyChecked.orThrow
     assert(workflow.labelToPosition(Label("A")) == Right(Position(0)))
     assert(workflow.labelToPosition(Label("B")) == Right(Position(1) / Then % 0))
@@ -502,10 +502,10 @@ final class WorkflowTest extends AnyFreeSpec
 
   "Duplicate labels" in {
     assert(Workflow.of(
-      "DUPLICATE" @: Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("EXECUTABLE"))),
+      "DUPLICATE" @: Execute(WorkflowJob(AgentId("AGENT"), ExecutablePath("EXECUTABLE"))),
       If(Equal(LastReturnCode, NumericConstant(1)),
         thenWorkflow = Workflow.of(
-          "DUPLICATE" @: Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("EXECUTABLE"))))))
+          "DUPLICATE" @: Execute(WorkflowJob(AgentId("AGENT"), ExecutablePath("EXECUTABLE"))))))
       .completelyChecked ==
       Left(Problem("Label 'DUPLICATE' is duplicated at positions 0, 1/then:0")))
   }
@@ -513,8 +513,8 @@ final class WorkflowTest extends AnyFreeSpec
   "Duplicate label in nested workflow" in {
     assert(intercept[RuntimeException] {
       Workflow.of(
-        "A" @: Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("EXECUTABLE"))),
-        "A" @: Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("EXECUTABLE"))))
+        "A" @: Execute(WorkflowJob(AgentId("AGENT"), ExecutablePath("EXECUTABLE"))),
+        "A" @: Execute(WorkflowJob(AgentId("AGENT"), ExecutablePath("EXECUTABLE"))))
     }
     .toString contains "Duplicate labels")
   }
@@ -547,7 +547,7 @@ final class WorkflowTest extends AnyFreeSpec
   }
 
   "reduce" in {
-    val job = Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("EXECUTABLE-A")))
+    val job = Execute(WorkflowJob(AgentId("AGENT"), ExecutablePath("EXECUTABLE-A")))
     val B = Label("B")
     val C = Label("C")
     val D = Label("D")
@@ -753,7 +753,7 @@ final class WorkflowTest extends AnyFreeSpec
 
     "try catch is okay" in {
       val workflow = {
-        val execute = Execute.Anonymous(WorkflowJob(AgentName("AGENT"), ExecutablePath("SCRIPT")))
+        val execute = Execute.Anonymous(WorkflowJob(AgentId("AGENT"), ExecutablePath("SCRIPT")))
         Workflow.of(
           execute,
           TryInstruction(

@@ -20,7 +20,7 @@ import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.data.ControllerCommand
 import js7.controller.data.events.AgentRefStateEvent.{AgentReady, AgentRegisteredController}
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.event.JournalSeparators
 import js7.data.event.JournalSeparators.EndOfJournalFileMarker
 import js7.data.job.RelativeExecutablePath
@@ -40,7 +40,7 @@ import scala.collection.mutable
 
 final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest
 {
-  protected val agentNames = agentName :: Nil
+  protected val agentIds = agentId :: Nil
   protected val inventoryItems = workflow :: Nil
   private lazy val uri = controller.localUri
   private lazy val controllerApi = new AkkaHttpControllerApi(
@@ -155,10 +155,10 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
 
 object JournalWebServiceTest
 {
-  private val agentName = AgentName("AGENT-111")
+  private val agentId = AgentId("AGENT-111")
   private val executablePath = RelativeExecutablePath("TEST.cmd")
 
   private val workflow = Workflow(WorkflowPath("/test") ~ "INITIAL",
     Vector(
-      Execute(WorkflowJob(agentName, executablePath))))
+      Execute(WorkflowJob(agentId, executablePath))))
 }

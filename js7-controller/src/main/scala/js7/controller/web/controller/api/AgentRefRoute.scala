@@ -13,7 +13,7 @@ import js7.common.akkahttp.StandardDirectives.remainingPath
 import js7.common.akkahttp.StandardMarshallers.checkedToResponseMarshaller
 import js7.controller.data.agent.AgentRefState
 import js7.controller.web.common.ControllerRouteProvider
-import js7.data.agent.{AgentName, AgentRef}
+import js7.data.agent.{AgentId, AgentRef}
 import monix.eval.Task
 import monix.execution.Scheduler
 
@@ -22,7 +22,7 @@ import monix.execution.Scheduler
   */
 trait AgentRefRoute extends ControllerRouteProvider
 {
-  protected def nameToAgentRefState: Task[Checked[Map[AgentName, AgentRefState]]]
+  protected def nameToAgentRefState: Task[Checked[Map[AgentId, AgentRefState]]]
 
   private implicit def implicitScheduler: Scheduler = scheduler
 
@@ -36,7 +36,7 @@ trait AgentRefRoute extends ControllerRouteProvider
           pathSingleSlash {
             parameter("return".?) {
               case None =>
-                completeTask[Checked[Iterable[AgentName]]](
+                completeTask[Checked[Iterable[AgentId]]](
                   nameToAgentRefState.map(_.map(_.keys)))
 
               case Some("AgentRef") =>
@@ -51,7 +51,7 @@ trait AgentRefRoute extends ControllerRouteProvider
                 complete(NotFound)
             }
           } ~
-          path(remainingPath[AgentName]) { name =>
+          path(remainingPath[AgentId]) { name =>
             parameter("return".?) {
               case None | Some("AgentRefState") =>
                 completeTask[Checked[AgentRefState]](

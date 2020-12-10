@@ -7,7 +7,7 @@ import js7.data.event.Event
 
 sealed trait AgentRefEvent extends Event
 {
-  type Key = AgentName
+  type Key = AgentId
 }
 
 object AgentRefEvent

@@ -1,7 +1,7 @@
 package js7.proxy.javaapi.data.agent;
 
 import js7.base.web.Uri;
-import js7.data.agent.AgentName;
+import js7.data.agent.AgentId;
 import static js7.proxy.javaapi.data.common.VavrUtils.getOrThrow;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -14,7 +14,7 @@ class JAgentRefTester
     private static final String agentRefJson =
        "{\n" +
        "  \"TYPE\": \"AgentRef\",\n" +
-       "  \"name\": \"AGENT\",\n" +
+       "  \"id\": \"AGENT\",\n" +
        "  \"uri\": \"https://agent.example.com\"\n" +
        "}";
 
@@ -25,14 +25,14 @@ class JAgentRefTester
     }
 
     void test() {
-        testAgentName();
+        testAgentId();
         testJson();
         assertThat(agentRef.uri(), equalTo(Uri.of("https://agent.example.com")));
         assertThat(agentRef.uri().string(), equalTo("https://agent.example.com"));
     }
 
-    private void testAgentName() {
-        assertThat(agentRef.name(), equalTo(AgentName.of("AGENT")));
+    private void testAgentId() {
+        assertThat(agentRef.name(), equalTo(AgentId.of("AGENT")));
     }
 
     private void testJson() {

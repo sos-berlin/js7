@@ -51,7 +51,7 @@ import js7.core.event.journal.{JournalActor, MainJournalingActor}
 import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.Problems.{CannotRemoveOrderProblem, UnknownOrderProblem}
 import js7.data.agent.AgentRefEvent.{AgentAdded, AgentUpdated}
-import js7.data.agent.{AgentName, AgentRef, AgentRefEvent, AgentRunId}
+import js7.data.agent.{AgentId, AgentRef, AgentRefEvent, AgentRunId}
 import js7.data.cluster.ClusterState
 import js7.data.crypt.InventoryItemVerifier
 import js7.data.event.JournalEvent.JournalEventsReleased
@@ -276,7 +276,7 @@ with MainJournalingActor[ControllerState, Event]
       this._controllerState = controllerState
       //controllerMetaState = controllerState.controllerMetaState.copy(totalRunningTime = recovered.totalRunningTime)
       for (agentRef <- controllerState.nameToAgent.values.map(_.agentRef)) {
-        val agentRefState = controllerState.nameToAgent.getOrElse(agentRef.name, AgentRefState(agentRef))
+        val agentRefState = controllerState.nameToAgent.getOrElse(agentRef.id, AgentRefState(agentRef))
         registerAgent(agentRef, agentRefState.agentRunId, eventId = agentRefState.eventId)
       }
 
@@ -432,7 +432,7 @@ with MainJournalingActor[ControllerState, Event]
 
     case AgentDriver.Output.EventsFromAgent(stampedAgentEvents, committedPromise) =>
       val agentEntry = agentRegister(sender())
-      import agentEntry.agentName
+      import agentEntry.agentId
       var timestampedEvents: Seq[Timestamped[Event]] =
         stampedAgentEvents.view.flatMap {
           case Stamped(_, timestamp, keyedEvent) =>
@@ -444,16 +444,16 @@ with MainJournalingActor[ControllerState, Event]
 
               case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
                 val ownEvent = event match {
-                  case _: OrderEvent.OrderAttachedToAgent => OrderAttached(agentName) // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
+                  case _: OrderEvent.OrderAttachedToAgent => OrderAttached(agentId) // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
                   case _ => event
                 }
                 Some(Timestamped(orderId <-: ownEvent, Some(timestamp)))
 
               case KeyedEvent(_: NoKey, AgentControllerEvent.AgentReadyForController(timezone, _)) =>
-                Some(Timestamped(agentEntry.agentName <-: AgentReady(timezone), Some(timestamp)))
+                Some(Timestamped(agentEntry.agentId <-: AgentReady(timezone), Some(timestamp)))
 
               case _ =>
-                logger.error(s"Unknown event received from ${agentEntry.agentName}: $keyedEvent")
+                logger.error(s"Unknown event received from ${agentEntry.agentId}: $keyedEvent")
                 None
             }
         }.toVector
@@ -466,7 +466,7 @@ with MainJournalingActor[ControllerState, Event]
           Future.successful(None)
         else {
           val agentEventId = stampedAgentEvents.last.eventId
-          timestampedEvents :+= Timestamped(agentName <-: AgentEventsObserved(agentEventId))
+          timestampedEvents :+= Timestamped(agentId <-: AgentEventsObserved(agentEventId))
           persistTransactionTimestamped(timestampedEvents, async = true, alreadyDelayed = agentDriverConfiguration.eventBufferDelay) {
             (stampedEvents, updatedState) =>
               handleOrderEvents(
@@ -615,8 +615,8 @@ with MainJournalingActor[ControllerState, Event]
         }
 
       case ControllerCommand.UpdateAgentRefs(agentRefs) =>
-        if (agentRefs.map(_.name).distinct.sizeIs != agentRefs.size)
-          Future.successful(Left(Problem.pure("Duplicate AgentNames in UpdateAgentRefs command")))
+        if (agentRefs.map(_.id).distinct.sizeIs != agentRefs.size)
+          Future.successful(Left(Problem.pure("Duplicate AgentIds in UpdateAgentRefs command")))
         else
           persistTransaction(
             agentRefs.flatMap {
@@ -770,25 +770,25 @@ with MainJournalingActor[ControllerState, Event]
   private def handleAgentRefEvents(stamped: Seq[Stamped[KeyedEvent[AgentRefEvent]]], updatedState: ControllerState): Unit = {
     _controllerState = updatedState
     stamped.map(_.value) foreach {
-      case KeyedEvent(agentName, AgentAdded(uri)) =>
-        val agentRef = AgentRef(agentName, uri)
+      case KeyedEvent(agentId, AgentAdded(uri)) =>
+        val agentRef = AgentRef(agentId, uri)
         val entry = registerAgent(agentRef, agentRunId = None, eventId = EventId.BeforeFirst)
         entry.actor ! AgentDriver.Input.StartFetchingEvents
 
-      case KeyedEvent(agentName, AgentUpdated(uri)) =>
-        val agentRef = AgentRef(agentName, uri)
+      case KeyedEvent(agentId, AgentUpdated(uri)) =>
+        val agentRef = AgentRef(agentId, uri)
         agentRegister.update(agentRef)
-        agentRegister(agentRef.name).reconnect()
+        agentRegister(agentRef.id).reconnect()
     }
   }
 
   private def registerAgent(agent: AgentRef, agentRunId: Option[AgentRunId], eventId: EventId): AgentEntry = {
     val actor = watch(actorOf(
-      AgentDriver.props(agent.name, agent.uri, agentRunId, eventId = eventId, agentDriverConfiguration, controllerConfiguration,
+      AgentDriver.props(agent.id, agent.uri, agentRunId, eventId = eventId, agentDriverConfiguration, controllerConfiguration,
         journalActor = journalActor),
-      encodeAsActorName("Agent-" + agent.name)))
+      encodeAsActorName("Agent-" + agent.id)))
     val entry = AgentEntry(agent, actor)
-    agentRegister.insert(agent.name -> entry)
+    agentRegister.insert(agent.id -> entry)
     entry
   }
 
@@ -1002,12 +1002,12 @@ with MainJournalingActor[ControllerState, Event]
       .onProblem(p => logger.error(p withPrefix "tryAttachOrderToAgent:"))
     ) {  // TODO OrderBroken on error?
       if (order.isDetached && order.mark.isEmpty)
-        persist(order.id <-: OrderAttachable(agentEntry.agentName))(handleOrderEvent)
+        persist(order.id <-: OrderAttachable(agentEntry.agentId))(handleOrderEvent)
       else if (order.isAttaching) {
         val orderEntry = orderRegister(order.id)
         if (!orderEntry.triedToAttached) {
           orderEntry.triedToAttached = true
-          agentEntry.actor ! AgentDriver.Input.AttachOrder(order, agentEntry.agentName, signedWorkflow)  // OutOfMemoryError when Agent is unreachable !!!
+          agentEntry.actor ! AgentDriver.Input.AttachOrder(order, agentEntry.agentId, signedWorkflow)  // OutOfMemoryError when Agent is unreachable !!!
         }
       }
     }
@@ -1016,16 +1016,16 @@ with MainJournalingActor[ControllerState, Event]
     for {
       signedWorkflow <- _controllerState.repo.idToSigned[Workflow](order.workflowId)
       job <- signedWorkflow.value.checkedWorkflowJob(order.position)
-      agentEntry <- agentRegister.checked(job.agentName)
+      agentEntry <- agentRegister.checked(job.agentId)
     } yield (signedWorkflow, job, agentEntry)
 
   private def detachOrderFromAgent(orderId: OrderId): Unit =
     _controllerState.idToOrder.checked(orderId)
       .flatMap(_.detaching)
       .onProblem(p => logger.error(s"detachOrderFromAgent '$orderId': not Detaching: $p"))
-      .foreach { agentName =>
-        agentRegister.get(agentName) match {
-          case None => logger.error(s"detachOrderFromAgent '$orderId': Unknown $agentName")
+      .foreach { agentId =>
+        agentRegister.get(agentId) match {
+          case None => logger.error(s"detachOrderFromAgent '$orderId': Unknown $agentId")
           case Some(a) => a.actor ! AgentDriver.Input.DetachOrder(orderId)
         }
       }
@@ -1112,13 +1112,13 @@ private[controller] object ControllerOrderKeeper
     def checked(orderId: OrderId) = idToOrder.get(orderId).toChecked(UnknownOrderProblem(orderId))
   }
 
-  private class AgentRegister extends ActorRegister[AgentName, AgentEntry](_.actor) {
-    override def insert(kv: (AgentName, AgentEntry)) = super.insert(kv)
+  private class AgentRegister extends ActorRegister[AgentId, AgentEntry](_.actor) {
+    override def insert(kv: (AgentId, AgentEntry)) = super.insert(kv)
     override def -=(a: ActorRef) = super.-=(a)
 
     def update(agentRef: AgentRef): Unit = {
-      val oldEntry = apply(agentRef.name)
-      super.update(agentRef.name -> oldEntry.copy(agentRef = agentRef))
+      val oldEntry = apply(agentRef.id)
+      super.update(agentRef.id -> oldEntry.copy(agentRef = agentRef))
     }
 
     def runningActorCount = values.count(o => !o.actorTerminated)
@@ -1129,7 +1129,7 @@ private[controller] object ControllerOrderKeeper
     actor: ActorRef,
     var actorTerminated: Boolean = false)
   {
-    def agentName = agentRef.name
+    def agentId = agentRef.id
 
     def reconnect()(implicit sender: ActorRef): Unit =
       actor ! AgentDriver.Input.ChangeUri(uri = agentRef.uri)

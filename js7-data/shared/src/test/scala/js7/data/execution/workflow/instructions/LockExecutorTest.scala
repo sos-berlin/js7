@@ -1,7 +1,7 @@
 package js7.data.execution.workflow.instructions
 
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.execution.workflow.context.OrderContext
 import js7.data.execution.workflow.instructions.LockExecutorTest._
 import js7.data.job.ExecutablePath
@@ -51,7 +51,7 @@ object LockExecutorTest {
   private val freeLockId = LockId("FREE-LOCK")
   private val occupiedLockId = LockId("OCCUPIED-LOCK")
   private val exclusiveLockId = LockId("EXCLUSIVE-LOCK")
-  private val execute = Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("JOB")))
+  private val execute = Execute(WorkflowJob(AgentId("AGENT"), ExecutablePath("JOB")))
 
   private val workflow = Workflow.of(WorkflowPath("/WORKFLOW") ~ "VERSION",
     LockInstruction(freeLockId, None, Workflow.of(execute)),

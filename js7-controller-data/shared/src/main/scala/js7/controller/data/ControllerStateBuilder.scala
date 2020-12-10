@@ -6,7 +6,7 @@ import js7.controller.data.agent.AgentRefState
 import js7.controller.data.events.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.controller.data.events.{AgentRefStateEvent, ControllerEvent}
 import js7.data.agent.AgentRefEvent.{AgentAdded, AgentUpdated}
-import js7.data.agent.{AgentName, AgentRef, AgentRefEvent}
+import js7.data.agent.{AgentId, AgentRef, AgentRefEvent}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{JournalEvent, JournalState, JournaledState, JournaledStateBuilder, KeyedEvent, Stamped}
@@ -26,7 +26,7 @@ extends JournaledStateBuilder[ControllerState]
   private var controllerMetaState = ControllerMetaState.Undefined
   private var repo = Repo.empty
   private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
-  private val nameToAgentRefState = mutable.Map[AgentName, AgentRefState]()
+  private val nameToAgentRefState = mutable.Map[AgentId, AgentRefState]()
   private val nameToLockState = mutable.Map[LockId, LockState]()
 
   protected def onInitializeState(state: ControllerState): Unit = {
@@ -82,7 +82,7 @@ extends JournaledStateBuilder[ControllerState]
     case Stamped(_, _, KeyedEvent(_: NoKey, event: RepoEvent)) =>
       repo = repo.applyEvent(event).orThrow
 
-    case Stamped(_, _, KeyedEvent(name: AgentName, event: AgentRefEvent)) =>
+    case Stamped(_, _, KeyedEvent(name: AgentId, event: AgentRefEvent)) =>
       event match {
         case AgentAdded(uri) =>
           nameToAgentRefState.insert(name -> AgentRefState(AgentRef(name, uri)))
@@ -94,7 +94,7 @@ extends JournaledStateBuilder[ControllerState]
               uri = uri))
       }
 
-    case Stamped(_, _, KeyedEvent(name: AgentName, event: AgentRefStateEvent)) =>
+    case Stamped(_, _, KeyedEvent(name: AgentId, event: AgentRefStateEvent)) =>
       nameToAgentRefState += name -> nameToAgentRefState(name).applyEvent(event).orThrow
 
     case Stamped(_, _, KeyedEvent(orderId: OrderId, event: OrderEvent)) =>

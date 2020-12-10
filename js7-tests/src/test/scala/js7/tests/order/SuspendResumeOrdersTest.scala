@@ -11,7 +11,7 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.data.ControllerCommand.{Batch, CancelOrders, Response, ResumeOrder, ResumeOrders, SuspendOrders}
 import js7.controller.data.events.AgentRefStateEvent.AgentReady
 import js7.data.Problems.UnknownOrderProblem
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.item.VersionId
 import js7.data.job.RelativeExecutablePath
@@ -32,7 +32,7 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentNames = agentName :: Nil
+  protected val agentIds = agentId :: Nil
   protected val inventoryItems = singleJobWorkflow :: twoJobsWorkflow :: forkWorkflow :: tryWorkflow :: Nil
   override def controllerConfig = config"js7.journal.remove-obsolete-files = false" withFallback super.controllerConfig
 
@@ -55,8 +55,8 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
 
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id) == Seq(
       OrderAdded(singleJobWorkflow.id, order.scheduledFor),
-      OrderAttachable(agentName),
-      OrderAttached(agentName),
+      OrderAttachable(agentId),
+      OrderAttached(agentId),
       OrderSuspendMarked(),
       OrderDetachable,
       OrderDetached,
@@ -71,8 +71,8 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     controller.eventWatch.await[OrderFinished](_.key == order.id)
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id, after = lastEventId) == Seq(
       OrderResumed(None),
-      OrderAttachable(agentName),
-      OrderAttached(agentName),
+      OrderAttachable(agentId),
+      OrderAttached(agentId),
       OrderStarted,
       OrderProcessingStarted,
       OrderStdoutWritten("TEST ☘\n"),
@@ -92,8 +92,8 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     controller.eventWatch.await[OrderSuspended](_.key == order.id)
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
       OrderAdded(singleJobWorkflow.id, order.scheduledFor),
-      OrderAttachable(agentName),
-      OrderAttached(agentName),
+      OrderAttachable(agentId),
+      OrderAttached(agentId),
       OrderStarted,
       OrderProcessingStarted,
       OrderSuspendMarked(),
@@ -122,8 +122,8 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     controller.eventWatch.await[OrderSuspended](_.key == order.id)
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
       OrderAdded(singleJobWorkflow.id, order.scheduledFor),
-      OrderAttachable(agentName),
-      OrderAttached(agentName),
+      OrderAttachable(agentId),
+      OrderAttached(agentId),
       OrderStarted,
       OrderProcessingStarted,
       OrderSuspendMarked(SuspendMode(Some(CancelMode.Kill()))),
@@ -139,8 +139,8 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
 
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id, after = lastEventId) == Seq(
       OrderResumed(None),
-      OrderAttachable(agentName),
-      OrderAttached(agentName),
+      OrderAttachable(agentId),
+      OrderAttached(agentId),
       OrderProcessingStarted,
       OrderStdoutWritten("TEST ☘\n"),
       OrderProcessed(Outcome.succeededRC0),
@@ -160,8 +160,8 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     for (order <- orders) {
       assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
         OrderAdded(twoJobsWorkflow.id, order.scheduledFor),
-        OrderAttachable(agentName),
-        OrderAttached(agentName),
+        OrderAttachable(agentId),
+        OrderAttached(agentId),
         OrderStarted,
         OrderProcessingStarted,
         OrderSuspendMarked(),
@@ -179,8 +179,8 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       assert(controller.eventWatch.keyedEvents[OrderEvent](order.id, after = lastEventId)
         .filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
           OrderResumed(None),
-          OrderAttachable(agentName),
-          OrderAttached(agentName),
+          OrderAttachable(agentId),
+          OrderAttached(agentId),
           OrderProcessingStarted,
           OrderProcessed(Outcome.succeededRC0),
           OrderMoved(Position(2)),
@@ -215,8 +215,8 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
         OrderId("FORK") <-: OrderAdded(forkWorkflow.id, order.scheduledFor),
         OrderId("FORK") <-: OrderStarted,
         OrderId("FORK") <-: OrderForked(Seq(OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("FORK|🥕")))),
-        OrderId("FORK|🥕") <-: OrderAttachable(agentName),
-        OrderId("FORK|🥕") <-: OrderAttached(agentName),
+        OrderId("FORK|🥕") <-: OrderAttachable(agentId),
+        OrderId("FORK|🥕") <-: OrderAttached(agentId),
         OrderId("FORK|🥕") <-: OrderProcessingStarted,
         OrderId("FORK") <-: OrderSuspendMarked(),
         OrderId("FORK|🥕") <-: OrderProcessed(Outcome.succeededRC0),
@@ -257,8 +257,8 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
 
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
       OrderAdded(twoJobsWorkflow.id, order.scheduledFor),
-      OrderAttachable(agentName),
-      OrderAttached(agentName),
+      OrderAttachable(agentId),
+      OrderAttached(agentId),
       OrderStarted,
       OrderProcessingStarted,
       OrderSuspendMarked(),
@@ -270,8 +270,8 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       // and so order is detached for suspending (which has been withdrawn by ResumeOrders).
       OrderDetachable,
       OrderDetached,
-      OrderAttachable(agentName),
-      OrderAttached(agentName),
+      OrderAttachable(agentId),
+      OrderAttached(agentId),
 
       OrderProcessingStarted,
       OrderProcessed(Outcome.succeededRC0),
@@ -293,8 +293,8 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     controller.eventWatch.await[OrderSuspended](_.key == order.id)
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
       OrderAdded(twoJobsWorkflow.id, order.scheduledFor),
-      OrderAttachable(agentName),
-      OrderAttached(agentName),
+      OrderAttachable(agentId),
+      OrderAttached(agentId),
       OrderStarted,
       OrderProcessingStarted,
       OrderSuspendMarked(),
@@ -333,8 +333,8 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
 
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
       OrderAdded(tryWorkflow.id, order.scheduledFor),
-      OrderAttachable(agentName),
-      OrderAttached(agentName),
+      OrderAttachable(agentId),
+      OrderAttached(agentId),
       OrderStarted,
       OrderProcessingStarted,
       OrderSuspendMarked(),
@@ -374,30 +374,30 @@ object SuspendResumeOrdersTest
 {
   private val executablePath = RelativeExecutablePath("executable.cmd")
   private val quickExecutablePath = RelativeExecutablePath("quick.cmd")
-  private val agentName = AgentName("AGENT")
+  private val agentId = AgentId("AGENT")
   private val versionId = VersionId("INITIAL")
 
   private val singleJobWorkflow = Workflow.of(
     WorkflowPath("/SINGLE") ~ versionId,
-    Execute(WorkflowJob(agentName, executablePath)))
+    Execute(WorkflowJob(agentId, executablePath)))
 
   private val twoJobsWorkflow = Workflow.of(
     WorkflowPath("/TWO") ~ versionId,
-    Execute(WorkflowJob(agentName, executablePath, taskLimit = 10)),
-    Execute(WorkflowJob(agentName, executablePath, taskLimit = 10)))
+    Execute(WorkflowJob(agentId, executablePath, taskLimit = 10)),
+    Execute(WorkflowJob(agentId, executablePath, taskLimit = 10)))
 
   private val forkWorkflow = Workflow.of(
     WorkflowPath("/FORK") ~ versionId,
     Fork.of(
       "🥕" -> Workflow.of(
-        Execute(WorkflowJob(agentName, executablePath)),
-        Execute(WorkflowJob(agentName, executablePath)))),
-    Execute(WorkflowJob(agentName, executablePath)))
+        Execute(WorkflowJob(agentId, executablePath)),
+        Execute(WorkflowJob(agentId, executablePath)))),
+    Execute(WorkflowJob(agentId, executablePath)))
 
   private val tryWorkflow = Workflow.of(
     WorkflowPath("/TRY") ~ versionId,
-    Execute(WorkflowJob(agentName, executablePath)),
-    Execute(WorkflowJob(agentName, executablePath)),
+    Execute(WorkflowJob(agentId, executablePath)),
+    Execute(WorkflowJob(agentId, executablePath)),
     TryInstruction(
       Workflow.of(
         Fail()),

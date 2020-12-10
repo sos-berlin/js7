@@ -39,7 +39,7 @@ final class WorkflowPrinter(sb: StringBuilder) {
 
   def appendWorkflowExecutable(job: WorkflowJob): Unit = {
     sb ++= "agent="
-    appendQuoted(job.agentName.string)
+    appendQuoted(job.agentId.string)
     if (job.taskLimit != WorkflowJob.DefaultTaskLimit) {
       sb ++= ", taskLimit="
       sb.append(job.taskLimit)

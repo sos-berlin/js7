@@ -20,7 +20,7 @@ import js7.controller.RunningController
 import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.data.ControllerCommand.UpdateRepo
 import js7.data.Problems.ItemDeletedProblem
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.item.VersionId
 import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.{OrderAdded, OrderFinished, OrderStdoutWritten}
@@ -41,7 +41,7 @@ final class ControllerRepoTest extends AnyFreeSpec
   import ControllerRepoTest._
 
   "test" in {
-    autoClosing(new DirectoryProvider(List(TestAgentName), testName = Some("ControllerRepoTest"))) { provider =>
+    autoClosing(new DirectoryProvider(List(TestAgentId), testName = Some("ControllerRepoTest"))) { provider =>
       import provider.itemSigner
 
       for (v <- 1 to 4)  // For each version, we use a dedicated job which echos the VersionId
@@ -177,7 +177,7 @@ final class ControllerRepoTest extends AnyFreeSpec
           .await(1.h)
 
       def generateCommands(n: Int, bundleFactor: Int): Seq[UpdateRepo] = {
-        val workflow0 = Workflow.of(Execute(WorkflowJob(TestAgentName, RelativeExecutablePath(s"EXECUTABLE"))))
+        val workflow0 = Workflow.of(Execute(WorkflowJob(TestAgentId, RelativeExecutablePath(s"EXECUTABLE"))))
         val versionCounter = AtomicInt(0)
         Observable.fromIterable(1 to n)
           .bufferTumbling(bundleFactor)
@@ -210,8 +210,8 @@ object ControllerRepoTest
   private val V4 = VersionId("4")
   private val V5 = VersionId("5")
   private val V6 = VersionId("6")
-  private val TestAgentName = AgentName("AGENT")
+  private val TestAgentId = AgentId("AGENT")
 
   private def testWorkflow(versionId: VersionId) = Workflow.of(
-    Execute(WorkflowJob(TestAgentName, RelativeExecutablePath(s"EXECUTABLE-V${versionId.string}$sh"))))
+    Execute(WorkflowJob(TestAgentId, RelativeExecutablePath(s"EXECUTABLE-V${versionId.string}$sh"))))
 }

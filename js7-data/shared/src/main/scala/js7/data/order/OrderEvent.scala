@@ -7,7 +7,7 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Problem
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.event.Event
 import js7.data.lock.LockId
@@ -55,7 +55,7 @@ object OrderEvent {
     state: IsFreshOrReady,
     arguments: NamedValues,
     historicOutcomes: Seq[HistoricOutcome],
-    agentName: AgentName,
+    agentId: AgentId,
     parent: Option[OrderId],
     mark: Option[OrderMark],
     isSuspended: Boolean,
@@ -64,7 +64,7 @@ object OrderEvent {
     workflowPosition.workflowId.requireNonAnonymous()
   }
 
-  final case class OrderAttached(agentName: AgentName)
+  final case class OrderAttached(agentId: AgentId)
   extends OrderCoreEvent
 
   type OrderStarted = OrderStarted.type
@@ -169,7 +169,7 @@ object OrderEvent {
   /**
     * Controller may have started to attach Order to Agent..
     */
-  final case class OrderAttachable(agentName: AgentName) extends OrderCoreEvent
+  final case class OrderAttachable(agentId: AgentId) extends OrderCoreEvent
 
   type OrderDetachable = OrderDetachable.type
   /**

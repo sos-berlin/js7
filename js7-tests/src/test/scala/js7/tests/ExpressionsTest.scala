@@ -5,7 +5,7 @@ import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.AutoClosing.autoClosing
 import js7.common.process.Processes.{ShellFileExtension => sh}
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
@@ -22,7 +22,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class ExpressionsTest extends AnyFreeSpec
 {
   "test" in {
-    autoClosing(new DirectoryProvider(TestAgentName :: Nil, inventoryItems = TestWorkflow :: Nil, testName = Some("ExpressionsTest"))) { directoryProvider =>
+    autoClosing(new DirectoryProvider(TestAgentId :: Nil, inventoryItems = TestWorkflow :: Nil, testName = Some("ExpressionsTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) a.writeExecutable(RelativeExecutablePath(s"TEST$sh"), ":")
       for (a <- directoryProvider.agents) a.writeExecutable(RelativeExecutablePath(s"TEST-RC$sh", v1Compatible = true), jobScript)
 
@@ -49,7 +49,7 @@ final class ExpressionsTest extends AnyFreeSpec
 }
 
 object ExpressionsTest {
-  private val TestAgentName = AgentName("AGENT")
+  private val TestAgentId = AgentId("AGENT")
 
   private val jobScript =
     if (isWindows)
@@ -97,8 +97,8 @@ object ExpressionsTest {
     OrderId("⭕️") -> Vector(
       OrderAdded(TestWorkflow.id, None, Map("ARG" -> StringValue("ARG-VALUE"))),
       OrderMoved(Position(0) / Then % 0),
-      OrderAttachable(TestAgentName),
-      OrderAttached(TestAgentName),
+      OrderAttachable(TestAgentId),
+      OrderAttached(TestAgentId),
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(Outcome.Succeeded(Map("JOB-KEY" -> StringValue("JOB-RESULT")) ++ NamedValues.rc(0))),
@@ -111,8 +111,8 @@ object ExpressionsTest {
         "ARG2" -> StringValue("ARG2-VALUE"),
         "RETURN_CODE" -> StringValue("1"))),
       OrderMoved(Position(0) / Then % 0),
-      OrderAttachable(TestAgentName),
-      OrderAttached(TestAgentName),
+      OrderAttachable(TestAgentId),
+      OrderAttached(TestAgentId),
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(Outcome.Succeeded(Map("JOB-KEY" -> StringValue("JOB-RESULT")) ++ NamedValues.rc(1))),

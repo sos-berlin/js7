@@ -12,7 +12,7 @@ import js7.common.configutils.Configs._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.controller.ControllerItems.jsonCodec
 import js7.data.item.{InventoryItem, VersionId}
 import js7.data.job.RelativeExecutablePath
@@ -39,7 +39,7 @@ final class JControllerProxyTest extends AnyFreeSpec with DirectoryProviderForSc
     }
     """
 
-  protected val agentNames = AgentName("AGENT") :: Nil
+  protected val agentIds = AgentId("AGENT") :: Nil
   protected val inventoryItems = Nil
 
   override def beforeAll() = {

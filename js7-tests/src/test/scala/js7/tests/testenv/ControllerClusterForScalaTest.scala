@@ -19,7 +19,7 @@ import js7.common.utils.FreeTcpPortFinder.{findFreeTcpPort, findFreeTcpPorts}
 import js7.controller.data.ControllerCommand.ShutDown
 import js7.controller.{ControllerTermination, RunningController}
 import js7.core.event.journal.files.JournalFiles.listJournalFiles
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.cluster.ClusterEvent.ClusterCoupled
 import js7.data.cluster.{ClusterSetting, ClusterTiming}
 import js7.data.item.InventoryItem
@@ -38,7 +38,7 @@ trait ControllerClusterForScalaTest
 {
   this: TestSuite =>
 
-  protected def agentNames: Seq[AgentName] = AgentName("AGENT") :: Nil
+  protected def agentIds: Seq[AgentId] = AgentId("AGENT") :: Nil
   protected def inventoryItems: Seq[InventoryItem]
   protected def shellScript = script(0.s)
 
@@ -71,9 +71,9 @@ trait ControllerClusterForScalaTest
   : Unit =
     withCloser { implicit closer =>
       val testName = ControllerClusterForScalaTest.this.getClass.getSimpleName
-      val agentPorts = findFreeTcpPorts(agentNames.size)
+      val agentPorts = findFreeTcpPorts(agentIds.size)
       val timing = ClusterTiming(1.s, 5.s)
-      val primary = new DirectoryProvider(agentNames, inventoryItems, testName = Some(s"$testName-Primary"),
+      val primary = new DirectoryProvider(agentIds, inventoryItems, testName = Some(s"$testName-Primary"),
         controllerConfig = combineArgs(
           primaryControllerConfig,
           configIf(configureClusterNodes, config"""

@@ -7,7 +7,7 @@ import js7.base.utils.Collections.implicits._
 import js7.base.utils.Identifier.{isIdentifierPart, isIdentifierStart}
 import js7.base.utils.ScalaUtils._
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.folder.FolderPath
 import js7.data.item.ItemPath
 import js7.data.lock.LockId
@@ -102,9 +102,9 @@ object BasicParsers
   def path[A <: ItemPath: ItemPath.Companion](implicit ctx: P[_]) = P[A](
     pathString.map(p => FolderPath.Root.resolve[A](p)))
 
-  def agentName(implicit ctx: P[_]) = P[AgentName](
+  def agentId(implicit ctx: P[_]) = P[AgentId](
     pathString.flatMap(string =>
-      AgentName.checked(string) match {
+      AgentId.checked(string) match {
         case Left(problem) => Fail.opaque(problem.toString)
         case Right(name) => Pass(name)
       }))

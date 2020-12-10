@@ -12,7 +12,7 @@ import js7.common.time.WaitForCondition.waitForCondition
 import js7.controller.agent.AgentDriver.{Input, Queueable}
 import js7.controller.agent.CommandQueue.QueuedInputResponse
 import js7.controller.agent.CommandQueueTest._
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.item.InventoryItemSigner
 import js7.data.job.ExecutablePath
 import js7.data.order.{Order, OrderId, OrderMark}
@@ -50,11 +50,11 @@ final class CommandQueueTest extends AnyFreeSpec
 
     // The first Input is sent alone to the Agent regardless of commandBatchSize.
     val aOrder = toOrder("A")
-    var ok = commandQueue.enqueue(AgentDriver.Input.AttachOrder(aOrder, TestAgentName, signedWorkflow))
+    var ok = commandQueue.enqueue(AgentDriver.Input.AttachOrder(aOrder, TestAgentId, signedWorkflow))
     assert(ok)
 
     // Duplicate
-    ok = commandQueue.enqueue(AgentDriver.Input.AttachOrder(aOrder, TestAgentName, signedWorkflow))
+    ok = commandQueue.enqueue(AgentDriver.Input.AttachOrder(aOrder, TestAgentId, signedWorkflow))
     assert(!ok)
 
     expected += toQueuedInputResponse(aOrder) :: Nil
@@ -62,24 +62,24 @@ final class CommandQueueTest extends AnyFreeSpec
     assert(commandQueue.succeeded == expected)
 
     val twoOrders = toOrder("B") :: toOrder("C") :: Nil
-    for (o <- twoOrders) commandQueue.enqueue(AgentDriver.Input.AttachOrder(o, TestAgentName, signedWorkflow))
+    for (o <- twoOrders) commandQueue.enqueue(AgentDriver.Input.AttachOrder(o, TestAgentId, signedWorkflow))
     waitForCondition(99.s, 10.ms) { commandQueue.succeeded == expected }
     assert(commandQueue.succeeded == expected)
 
     // After the Agent has processed the Input, the two queued commands are sent as a Batch to the Agent
-    commandQueue.handleBatchSucceeded(commandQueue.succeeded.last) shouldEqual List(Input.AttachOrder(aOrder, TestAgentName, signedWorkflow))
+    commandQueue.handleBatchSucceeded(commandQueue.succeeded.last) shouldEqual List(Input.AttachOrder(aOrder, TestAgentId, signedWorkflow))
     expected += twoOrders map toQueuedInputResponse
     waitForCondition(99.s, 10.ms) { commandQueue.succeeded == expected }
     assert(commandQueue.succeeded == expected)
 
     val fiveOrders = toOrder("D") :: toOrder("E") :: toOrder("F") :: toOrder("G") :: toOrder("H") :: Nil
-    for (o <- fiveOrders) commandQueue.enqueue(AgentDriver.Input.AttachOrder(o, TestAgentName, signedWorkflow))
+    for (o <- fiveOrders) commandQueue.enqueue(AgentDriver.Input.AttachOrder(o, TestAgentId, signedWorkflow))
     expected += fiveOrders take 1 map toQueuedInputResponse
     waitForCondition(99.s, 10.ms) { commandQueue.succeeded == expected }
     assert(commandQueue.succeeded == expected)
 
     // After the Agent has processed the Input, three of the queued commands are sent as a Batch to the Agent
-    commandQueue.handleBatchSucceeded(commandQueue.succeeded.last) shouldEqual fiveOrders.take(1).map(o => Input.AttachOrder(o, TestAgentName, signedWorkflow))
+    commandQueue.handleBatchSucceeded(commandQueue.succeeded.last) shouldEqual fiveOrders.take(1).map(o => Input.AttachOrder(o, TestAgentId, signedWorkflow))
     expected += fiveOrders drop 1 take 3 map toQueuedInputResponse
     waitForCondition(99.s, 10.ms) { commandQueue.succeeded == expected }
     assert(commandQueue.succeeded == expected)
@@ -121,7 +121,7 @@ final class CommandQueueTest extends AnyFreeSpec
     }
     commandQueue.onCoupled(Set.empty)
     for (order <- orders) {
-      commandQueue.enqueue(AgentDriver.Input.AttachOrder(order, TestAgentName, signedWorkflow))
+      commandQueue.enqueue(AgentDriver.Input.AttachOrder(order, TestAgentId, signedWorkflow))
     }
     commandQueue.maySend()
     waitForCondition(9.s, 10.ms) { commandQueue.succeeded.get() == n }
@@ -131,14 +131,14 @@ final class CommandQueueTest extends AnyFreeSpec
 
 object CommandQueueTest {
   private val logger = Logger(getClass)
-  private val TestAgentName = AgentName("AGENT")
+  private val TestAgentId = AgentId("AGENT")
   private val TestWorkflow = Workflow.of(WorkflowPath("/A") ~ "VERSION",
-    Execute(WorkflowJob(TestAgentName, ExecutablePath("EXECUTABLE"))))
+    Execute(WorkflowJob(TestAgentId, ExecutablePath("EXECUTABLE"))))
   private val itemSigner = new InventoryItemSigner(new SillySigner(SillySignature("MY-SILLY-SIGNATURE")), Workflow.jsonEncoder)
   private val signedWorkflow: Signed[Workflow] = itemSigner.toSigned(TestWorkflow)
 
   private def toQueuedInputResponse(order: Order[Order.IsFreshOrReady]) =
-    QueuedInputResponse(AgentDriver.Input.AttachOrder(order, TestAgentName, signedWorkflow), Right(AgentCommand.Response.Accepted))
+    QueuedInputResponse(AgentDriver.Input.AttachOrder(order, TestAgentId, signedWorkflow), Right(AgentCommand.Response.Accepted))
 
   private def toOrder(name: String) = Order(OrderId(name), TestWorkflow.id, Order.Fresh.StartImmediately)
 

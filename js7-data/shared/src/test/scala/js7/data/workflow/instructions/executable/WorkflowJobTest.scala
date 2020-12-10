@@ -4,7 +4,7 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.problem.Problems.InvalidNameProblem
 import js7.base.time.ScalaTime._
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.job.{RelativeExecutablePath, ReturnCode}
 import js7.data.value.{NumericValue, StringValue}
 import js7.data.workflow.instructions.ReturnCodeMeaning
@@ -20,10 +20,10 @@ final class WorkflowJobTest extends AnyFreeSpec
     "default" in {
       testJson(
         WorkflowJob(
-          AgentName("AGENT"),
+          AgentId("AGENT"),
           RelativeExecutablePath("EXECUTABLE")),
         json"""{
-          "agentName": "AGENT",
+          "agentId": "AGENT",
           "executable": {
             "TYPE": "ExecutablePath",
             "path": "EXECUTABLE"
@@ -35,14 +35,14 @@ final class WorkflowJobTest extends AnyFreeSpec
     "complete" in {
       testJson(
         WorkflowJob(
-          AgentName("AGENT"),
+          AgentId("AGENT"),
           RelativeExecutablePath("EXECUTABLE"),
           Map("NAME" -> StringValue("VALUE"), "NUMBER" -> NumericValue(7)),
           ReturnCodeMeaning.Success(Set(ReturnCode(0), ReturnCode(1))),
           taskLimit = 3,
           sigkillAfter = Some(10.s)),
         json"""{
-          "agentName": "AGENT",
+          "agentId": "AGENT",
           "executable": {
             "TYPE": "ExecutablePath",
             "path": "EXECUTABLE"

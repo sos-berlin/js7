@@ -8,7 +8,7 @@ import js7.base.crypt.{GenericSignature, SignedString}
 import js7.base.problem.TestCodeProblem
 import js7.base.process.ProcessSignal.SIGTERM
 import js7.common.message.ProblemCodeMessages
-import js7.data.agent.{AgentName, AgentRunId}
+import js7.data.agent.{AgentId, AgentRunId}
 import js7.data.command.CancelMode
 import js7.data.event.JournalId
 import js7.data.order.{Order, OrderId, OrderMark}
@@ -100,10 +100,10 @@ final class AgentCommandTest extends AnyFreeSpec
   }
 
   "RegisterAsController" in {
-    check(AgentCommand.RegisterAsController(AgentName("AGENT")),
+    check(AgentCommand.RegisterAsController(AgentId("AGENT")),
       json"""{
         "TYPE": "RegisterAsController",
-        "agentName": "AGENT"
+        "agentId": "AGENT"
       }""")
   }
 
@@ -119,12 +119,12 @@ final class AgentCommandTest extends AnyFreeSpec
   "CoupleController" in {
     check(
       AgentCommand.CoupleController(
-        AgentName("AGENT"),
+        AgentId("AGENT"),
         AgentRunId(JournalId(UUID.fromString("11111111-2222-3333-4444-555555555555"))),
         1000L),
       json"""{
         "TYPE": "CoupleController",
-        "agentName": "AGENT",
+        "agentId": "AGENT",
         "agentRunId": "ERERESIiMzNERFVVVVVVVQ",
         "eventId": 1000
       }""")
@@ -173,7 +173,7 @@ final class AgentCommandTest extends AnyFreeSpec
             SimpleTestWorkflow.id /: Position(3),
             Order.Ready,
             Map("KEY" -> StringValue("VALUE"))),
-          AgentName("AGENT"),
+          AgentId("AGENT"),
           SignedString("""{"TYPE":"Workflow",...}""", GenericSignature("Silly", "MY-SILLY-SIGNATURE"))),
         json"""{
           "TYPE": "AttachOrder",
@@ -194,7 +194,7 @@ final class AgentCommandTest extends AnyFreeSpec
             },
             "attachedState": {
               "TYPE": "Attached",
-              "agentName": "AGENT"
+              "agentId": "AGENT"
             },
             "historicOutcomes": []
           },

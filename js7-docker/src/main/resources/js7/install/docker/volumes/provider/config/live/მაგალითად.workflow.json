@@ -10,7 +10,7 @@
   ],
   "jobs": {
     "JOB-1": {
-      "agentName": "agent-1",
+      "agentId": "agent-1",
       "executable": {
         "TYPE": "ExecutablePath",
         "path": "test"
@@ -18,7 +18,7 @@
       "taskLimit": 3
     },
     "JOB-2": {
-      "agentName": "agent-2",
+      "agentId": "agent-2",
       "executable": {
         "TYPE": "ExecutableScript",
         "script": "#!/usr/bin/env bash\nset -e\n\necho \"はじめまして。 $SCHEDULER_PARAM_TESTARGUMENT\"\nsleep 2\nexit\n"

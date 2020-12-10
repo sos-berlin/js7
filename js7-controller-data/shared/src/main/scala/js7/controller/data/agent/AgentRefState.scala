@@ -16,7 +16,7 @@ final case class AgentRefState(
   couplingState: CouplingState,
   eventId: EventId)
 {
-  def name = agentRef.name
+  def name = agentRef.id
 
   def applyEvent(event: AgentRefStateEvent): Checked[AgentRefState] =
     event match {

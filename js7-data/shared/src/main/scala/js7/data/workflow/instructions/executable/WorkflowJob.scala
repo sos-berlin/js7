@@ -8,7 +8,7 @@ import js7.base.generic.GenericString
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.job.{CommandLineExecutable, Executable, ExecutablePath, ExecutableScript, ReturnCode}
 import js7.data.order.Outcome
 import js7.data.value.{NamedValues, NumericValue, ValuePrinter}
@@ -19,7 +19,7 @@ import scala.concurrent.duration.FiniteDuration
   * @author Joacim Zschimmer
   */
 final case class WorkflowJob private(
-  agentName: AgentName,
+  agentId: AgentId,
   executable: Executable,
   defaultArguments: NamedValues,
   returnCodeMeaning: ReturnCodeMeaning,
@@ -31,12 +31,12 @@ final case class WorkflowJob private(
       success = returnCodeMeaning.isSuccess(returnCode),
       namedValues + ("returnCode" -> NumericValue(returnCode.number)))
 
-  def isExecutableOnAgent(agentName: AgentName): Boolean =
-    this.agentName == agentName
+  def isExecutableOnAgent(agentId: AgentId): Boolean =
+    this.agentId == agentId
 
   override def toString = s"Job($argumentsString)"
 
-  def argumentsString = s"agent=${agentName.string}, " +
+  def argumentsString = s"agent=${agentId.string}, " +
     (executable match {
       case ExecutablePath(o, env, v1Compatible) => s"executablePath=$o"
       case ExecutableScript(o, env, v1Compatible) => s"script=$o"
@@ -54,24 +54,24 @@ object WorkflowJob
   val DefaultTaskLimit = 1
 
   def apply(
-    agentName: AgentName,
+    agentId: AgentId,
     executable: Executable,
     defaultArguments: NamedValues = Map.empty,
     returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default,
     taskLimit: Int = DefaultTaskLimit,
     sigkillAfter: Option[FiniteDuration] = None)
   : WorkflowJob =
-    checked(agentName, executable, defaultArguments, returnCodeMeaning, taskLimit, sigkillAfter).orThrow
+    checked(agentId, executable, defaultArguments, returnCodeMeaning, taskLimit, sigkillAfter).orThrow
 
   def checked(
-    agentName: AgentName,
+    agentId: AgentId,
     executable: Executable,
     defaultArguments: NamedValues = Map.empty,
     returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default,
     taskLimit: Int = DefaultTaskLimit,
     sigkillAfter: Option[FiniteDuration] = None)
   : Checked[WorkflowJob] =
-    Right(new WorkflowJob(agentName, executable, defaultArguments, returnCodeMeaning, taskLimit, sigkillAfter))
+    Right(new WorkflowJob(agentId, executable, defaultArguments, returnCodeMeaning, taskLimit, sigkillAfter))
 
   final case class Name private(string: String) extends GenericString
   object Name extends GenericString.NameValidating[Name] {
@@ -88,7 +88,7 @@ object WorkflowJob
       //  case JobKey.Named(_, jobName) => ("jobName" -> jobName.asJson) :: Nil
       //  case _ => Nil
       //}) :::
-      ("agentName" -> workflowJob.agentName.asJson) ::
+      ("agentId" -> workflowJob.agentId.asJson) ::
       ("executable" -> workflowJob.executable.asJson) ::
       workflowJob.defaultArguments.nonEmpty.thenList("defaultArguments" -> workflowJob.defaultArguments.asJson) :::
       (workflowJob.returnCodeMeaning != ReturnCodeMeaning.Default thenList ("returnCodeMeaning" -> workflowJob.returnCodeMeaning.asJson)) :::
@@ -100,12 +100,12 @@ object WorkflowJob
     for {
       //jobName <- cursor.get[Option[Name]]("jobName").map(_ getOrElse Name.Anonymous)
       executable <- cursor.get[Executable]("executable")
-      agentName <- cursor.get[AgentName]("agentName")
+      agentId <- cursor.get[AgentId]("agentId")
       arguments <- cursor.getOrElse[NamedValues]("defaultArguments")(Map.empty)
       rc <- cursor.getOrElse[ReturnCodeMeaning]("returnCodeMeaning")(ReturnCodeMeaning.Default)
       taskLimit <- cursor.get[Int]("taskLimit")
       sigkillProcessesAfter <- cursor.get[Option[FiniteDuration]]("sigkillAfter")
-      job <- checked(agentName, executable, arguments, rc, taskLimit, sigkillProcessesAfter)
+      job <- checked(agentId, executable, arguments, rc, taskLimit, sigkillProcessesAfter)
         .toDecoderResult(cursor.history)
     } yield job
 }

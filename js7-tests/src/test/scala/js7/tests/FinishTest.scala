@@ -3,7 +3,7 @@ package js7.tests
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
-import js7.data.agent.AgentName
+import js7.data.agent.AgentId
 import js7.data.event.{EventSeq, KeyedEvent}
 import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten}
@@ -31,8 +31,8 @@ final class FinishTest extends AnyFreeSpec
       |}""".stripMargin,
       Vector(
         OrderAdded(TestWorkflowId),
-        OrderAttachable(TestAgentName),
-        OrderAttached(TestAgentName),
+        OrderAttachable(TestAgentId),
+        OrderAttached(TestAgentId),
         OrderStarted,
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
@@ -72,8 +72,8 @@ final class FinishTest extends AnyFreeSpec
 
     assert(events.filter(_.key == (orderId | "🥕")).map(_.event) ==
       Vector(
-        OrderAttachable(TestAgentName),
-        OrderAttached(TestAgentName),
+        OrderAttachable(TestAgentId),
+        OrderAttached(TestAgentId),
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
         OrderMoved(Position(0) / "fork+🥕" % 1 / Then % 0),  // Position of Finish
@@ -83,8 +83,8 @@ final class FinishTest extends AnyFreeSpec
 
     assert(events.filter(_.key == (orderId | "🍋")).map(_.event) ==
       Vector(
-        OrderAttachable(TestAgentName),
-        OrderAttached(TestAgentName),
+        OrderAttachable(TestAgentId),
+        OrderAttached(TestAgentId),
         OrderProcessingStarted,
         OrderProcessed(Outcome.succeededRC0),
         OrderMoved(Position(0) / "fork+🍋" % 1),
@@ -122,8 +122,8 @@ final class FinishTest extends AnyFreeSpec
 
     assert(events.filter(_.key == (orderId | "🥕")).map(_.event) ==
       Vector(
-        OrderAttachable(TestAgentName),
-        OrderAttached(TestAgentName),
+        OrderAttachable(TestAgentId),
+        OrderAttached(TestAgentId),
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
         OrderMoved(Position(0) / "fork+🥕" % 1 / Then % 0),  // Position of Finish
@@ -133,8 +133,8 @@ final class FinishTest extends AnyFreeSpec
 
     assert(events.filter(_.key == (orderId | "🍋")).map(_.event) ==
       Vector(
-        OrderAttachable(TestAgentName),
-        OrderAttached(TestAgentName),
+        OrderAttachable(TestAgentId),
+        OrderAttached(TestAgentId),
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
         OrderMoved(Position(0) / "fork+🍋" % 1),
@@ -148,7 +148,7 @@ final class FinishTest extends AnyFreeSpec
 
   private def runUntil[E <: OrderEvent: ClassTag: TypeTag](workflowNotation: String): Vector[KeyedEvent[OrderEvent]] = {
     val workflow = WorkflowParser.parse(TestWorkflowId, workflowNotation).orThrow
-    autoClosing(new DirectoryProvider(TestAgentName :: Nil, workflow :: Nil, testName = Some("FinishTest"))) { directoryProvider =>
+    autoClosing(new DirectoryProvider(TestAgentId :: Nil, workflow :: Nil, testName = Some("FinishTest"))) { directoryProvider =>
       directoryProvider.agents.head.writeExecutable(RelativeExecutablePath("test.cmd"), "exit 3")
       directoryProvider.agents.head.writeExecutable(RelativeExecutablePath("sleep.cmd"), DirectoryProvider.script(100.ms))
       directoryProvider.run { (controller, _) =>
@@ -166,6 +166,6 @@ final class FinishTest extends AnyFreeSpec
 object FinishTest
 {
   private val orderId = OrderId("🔺")
-  private val TestAgentName = AgentName("AGENT")
+  private val TestAgentId = AgentId("AGENT")
   private val TestWorkflowId = WorkflowPath("/WORKFLOW") ~ "INITIAL"
 }
